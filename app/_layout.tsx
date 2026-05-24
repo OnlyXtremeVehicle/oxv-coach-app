@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { OfflineBanner } from '@/components/OfflineBanner';
+import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { useAuthStore } from '@/store/useAuthStore';
 import { colors } from '@/theme/tokens';
 
@@ -18,6 +20,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     initialize();
+    initNetInfo();
+    return () => {
+      teardownNetInfo();
+    };
   }, [initialize]);
 
   useEffect(() => {
@@ -37,6 +43,7 @@ export default function RootLayout() {
             animation: 'fade',
           }}
         />
+        <OfflineBanner />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
