@@ -1,0 +1,98 @@
+# ============================================================
+# OXV Coach — .gitignore
+# ============================================================
+
+# ----------------------------------------------------------------
+# SECRETS — NE JAMAIS COMMITER
+# ----------------------------------------------------------------
+.env
+.env.local
+.env.production
+.env.development
+*.pem
+*.key
+*.p8
+*.p12
+serviceAccountKey.json
+
+# Credentials Apple
+ios/*.mobileprovision
+ios/*.cer
+
+# Credentials Google
+android/app/google-services.json
+android/app/*.keystore
+
+# ----------------------------------------------------------------
+# REACT NATIVE / EXPO
+# ----------------------------------------------------------------
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.aab
+*.apk
+*.ipa
+
+# Build artifacts
+ios/build/
+ios/Pods/
+ios/Podfile.lock
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# ----------------------------------------------------------------
+# TYPESCRIPT / JAVASCRIPT
+# ----------------------------------------------------------------
+*.tsbuildinfo
+.tsc-cache/
+coverage/
+.nyc_output/
+
+# ----------------------------------------------------------------
+# IDE & ÉDITEURS
+# ----------------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ----------------------------------------------------------------
+# LOGS
+# ----------------------------------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ----------------------------------------------------------------
+# TESTS
+# ----------------------------------------------------------------
+coverage/
+.jest-cache/
+
+# ----------------------------------------------------------------
+# DONNÉES DE TEST LOCAL (à ne pas commiter)
+# ----------------------------------------------------------------
+test-data/
+local-storage/
+
+# Enregistrements UBX privés et volumineux : exclus par défaut...
+*.ubx
+local-recordings/
+# ...sauf les fixtures de test reproductibles
+!test-fixtures/*.ubx
+
+# ----------------------------------------------------------------
+# DONNÉES PRIVÉES OXV
+# ----------------------------------------------------------------
+# Si vous exportez le schéma Supabase et qu'il contient des
+# infos sensibles, mettez-le ici
+docs/architecture/05_SCHEMA_SUPABASE_PRIVATE.sql

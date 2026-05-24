@@ -1,0 +1,12 @@
+node_modules/
+.expo/
+dist/
+android/
+ios/
+supabase/
+*.lock
+*.log
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+docs/architecture/06_RLS_POLICIES_ACTUELLES.sql

@@ -1,0 +1,103 @@
+{
+  "expo": {
+    "name": "OXV",
+    "slug": "oxv-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "oxv",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1220"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "fr.oxvehicle.app",
+      "buildNumber": "1",
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "OXV se connecte à votre RaceBox Mini S pour analyser votre télémétrie.",
+        "NSBluetoothPeripheralUsageDescription": "OXV communique en Bluetooth avec votre RaceBox.",
+        "NSLocationWhenInUseUsageDescription": "iOS requiert l'accès à la localisation pour scanner les appareils Bluetooth.",
+        "NSCameraUsageDescription": "OXV utilise l'appareil photo pour votre photo de profil et la lecture des documents.",
+        "NSPhotoLibraryUsageDescription": "OXV utilise vos photos pour votre profil et vos véhicules.",
+        "UIBackgroundModes": [
+          "bluetooth-central"
+        ],
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true,
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "android": {
+      "package": "fr.oxvehicle.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1220"
+      },
+      "permissions": [
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-apple-authentication",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "OXV se connecte à votre RaceBox pour récupérer la télémétrie."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "OXV utilise vos photos pour votre profil et vos véhicules.",
+          "cameraPermission": "OXV utilise l'appareil photo pour votre profil et vos documents."
+        }
+      ],
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": "OXV utilise Face ID pour sécuriser votre compte."
+        }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "react-native",
+          "organization": "only-xtreme-vehicle"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "d168d639-22e2-4190-a9ea-cc6a31e3acaa"
+      }
+    },
+    "owner": "oxv"
+  }
+}
