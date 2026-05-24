@@ -1392,6 +1392,8 @@ export type Database = {
           avatar_url: string | null
           birth_date: string | null
           blood_type: string | null
+          cgu_accepted_at: string | null
+          cgu_version: string | null
           created_at: string | null
           deletion_requested_at: string | null
           deletion_scheduled_at: string | null
@@ -1414,9 +1416,13 @@ export type Database = {
           notif_newsletter: boolean | null
           notif_offers: boolean | null
           notification_preferences: Json | null
+          pact_accepted_at: string | null
+          pact_version: string | null
           phone: string | null
           pilot_level: string | null
           preferred_language: string | null
+          privacy_accepted_at: string | null
+          privacy_version: string | null
           profile_completed_at: string | null
           public_handle: string | null
           ritual_jminus1_enabled: boolean
@@ -1440,6 +1446,8 @@ export type Database = {
           avatar_url?: string | null
           birth_date?: string | null
           blood_type?: string | null
+          cgu_accepted_at?: string | null
+          cgu_version?: string | null
           created_at?: string | null
           deletion_requested_at?: string | null
           deletion_scheduled_at?: string | null
@@ -1462,9 +1470,13 @@ export type Database = {
           notif_newsletter?: boolean | null
           notif_offers?: boolean | null
           notification_preferences?: Json | null
+          pact_accepted_at?: string | null
+          pact_version?: string | null
           phone?: string | null
           pilot_level?: string | null
           preferred_language?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           profile_completed_at?: string | null
           public_handle?: string | null
           ritual_jminus1_enabled?: boolean
@@ -1488,6 +1500,8 @@ export type Database = {
           avatar_url?: string | null
           birth_date?: string | null
           blood_type?: string | null
+          cgu_accepted_at?: string | null
+          cgu_version?: string | null
           created_at?: string | null
           deletion_requested_at?: string | null
           deletion_scheduled_at?: string | null
@@ -1510,9 +1524,13 @@ export type Database = {
           notif_newsletter?: boolean | null
           notif_offers?: boolean | null
           notification_preferences?: Json | null
+          pact_accepted_at?: string | null
+          pact_version?: string | null
           phone?: string | null
           pilot_level?: string | null
           preferred_language?: string | null
+          privacy_accepted_at?: string | null
+          privacy_version?: string | null
           profile_completed_at?: string | null
           public_handle?: string | null
           ritual_jminus1_enabled?: boolean

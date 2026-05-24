@@ -17,6 +17,11 @@ type UserProfile = {
   last_name: string | null;
   pilot_level: string | null;
   is_admin: boolean;
+  profile_completed_at: string | null;
+  pact_accepted_at: string | null;
+  pact_version: string | null;
+  cgu_accepted_at: string | null;
+  privacy_accepted_at: string | null;
 };
 
 type AuthState = {
@@ -45,7 +50,9 @@ const initialState: AuthState = {
 async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, first_name, last_name, pilot_level, is_admin')
+    .select(
+      'id, email, first_name, last_name, pilot_level, is_admin, profile_completed_at, pact_accepted_at, pact_version, cgu_accepted_at, privacy_accepted_at'
+    )
     .eq('id', userId)
     .maybeSingle();
   if (error) {

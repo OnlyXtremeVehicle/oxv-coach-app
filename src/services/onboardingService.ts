@@ -1,0 +1,120 @@
+/**
+ * Persistance de l'onboarding pilote.
+ *
+ * Chaque action onboarding (niveau pilote, acceptation CGU/RGPD/Pacte,
+ * complétion finale) écrit dans `users` côté Supabase. En cas de réseau
+ * absent, l'action est enqueue dans `offlineQueue` pour rejouage à la
+ * reconnexion (cf. doctrine offline-first).
+ *
+ * Toutes les actions sont **idempotentes** — rejouer la même acceptation
+ * ne crée pas de doublon, juste un overwrite (write-through MMKV + DB).
+ */
+
+import { supabase } from '@/lib/supabase';
+import { enqueueAction } from '@/services/offlineQueue';
+import { useAuthStore } from '@/store/useAuthStore';
+
+export const PACT_VERSION = '1.0';
+export const CGU_VERSION = '1.0';
+export const PRIVACY_VERSION = '1.0';
+
+export type PilotLevelChoice = 'debutant' | 'intermediaire' | 'confirme' | 'expert';
+
+export async function setPilotLevel(level: PilotLevelChoice): Promise<boolean> {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return false;
+
+  const { error } = await supabase.from('users').update({ pilot_level: level }).eq('id', userId);
+
+  if (error) {
+    enqueueAction({
+      kind: 'update_pilot_level',
+      payload: { userId, level },
+    });
+    console.warn('[OXV] setPilotLevel offline-queued :', error.message);
+    return false;
+  }
+  await useAuthStore.getState().refreshProfile();
+  return true;
+}
+
+export async function acceptCguAndPrivacy(): Promise<boolean> {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return false;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('users')
+    .update({
+      cgu_accepted_at: now,
+      cgu_version: CGU_VERSION,
+      privacy_accepted_at: now,
+      privacy_version: PRIVACY_VERSION,
+    })
+    .eq('id', userId);
+
+  if (error) {
+    console.warn('[OXV] acceptCguAndPrivacy échec :', error.message);
+    return false;
+  }
+  await useAuthStore.getState().refreshProfile();
+  return true;
+}
+
+export async function acceptPact(): Promise<boolean> {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return false;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('users')
+    .update({
+      pact_accepted_at: now,
+      pact_version: PACT_VERSION,
+    })
+    .eq('id', userId);
+
+  if (error) {
+    enqueueAction({
+      kind: 'accept_pact',
+      payload: { userId, pactVersion: PACT_VERSION },
+    });
+    console.warn('[OXV] acceptPact offline-queued :', error.message);
+    return false;
+  }
+  await useAuthStore.getState().refreshProfile();
+  return true;
+}
+
+/**
+ * Marque l'onboarding comme terminé. Appelé à la fin du flux #06 après
+ * acceptation du Pacte. À partir de là, le routeur app/index.tsx redirige
+ * vers `(app)/` plutôt que `(onboarding)/`.
+ */
+export async function completeOnboarding(): Promise<boolean> {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return false;
+
+  const { error } = await supabase
+    .from('users')
+    .update({ profile_completed_at: new Date().toISOString() })
+    .eq('id', userId);
+
+  if (error) {
+    console.warn('[OXV] completeOnboarding échec :', error.message);
+    return false;
+  }
+  await useAuthStore.getState().refreshProfile();
+  return true;
+}
+
+/** Indique si l'utilisateur a tout signé et peut entrer dans l'app. */
+export function isOnboardingComplete(profile: {
+  profile_completed_at: string | null;
+  pact_accepted_at: string | null;
+  cgu_accepted_at: string | null;
+}): boolean {
+  return Boolean(
+    profile.profile_completed_at && profile.pact_accepted_at && profile.cgu_accepted_at
+  );
+}
