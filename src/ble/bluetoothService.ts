@@ -25,6 +25,8 @@ type RawDataListener = (bytes: Uint8Array) => void;
 export class RaceBoxBluetoothService {
   private manager: BleManager;
   private currentDevice: Device | null = null;
+  /** Dernier device connecté — conservé après déconnexion pour permettre la reconnexion auto. */
+  private lastConnectedDeviceId: string | null = null;
   private notificationSubscription: Subscription | null = null;
   private frameBuffer: UbxFrameBuffer;
   private status: BleStatus = 'idle';
@@ -210,12 +212,23 @@ export class RaceBoxBluetoothService {
         }
       );
 
+      this.lastConnectedDeviceId = deviceId;
       this.emitStatus('connected');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erreur inconnue';
       this.emitError(`Connexion échouée : ${message}`);
       this.emitStatus('error');
     }
+  }
+
+  /** ID du dernier device connecté, pour reconnexion auto par initBle. */
+  public getLastConnectedDeviceId(): string | null {
+    return this.lastConnectedDeviceId;
+  }
+
+  /** Oublie le dernier device : empêche les futurs auto-reconnect. */
+  public forgetLastDevice(): void {
+    this.lastConnectedDeviceId = null;
   }
 
   public async disconnect(): Promise<void> {

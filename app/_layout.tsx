@@ -5,10 +5,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { initBle, teardownBle } from '@/ble/initBle';
+import { BleErrorModal } from '@/components/BleErrorModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
+import { initSentry } from '@/lib/sentry';
 import { useAuthStore } from '@/store/useAuthStore';
 import { colors } from '@/theme/tokens';
+
+initSentry();
 
 SplashScreen.preventAutoHideAsync().catch(() => {
   // SplashScreen peut être indisponible en mode dev client, on ignore.
@@ -21,8 +26,10 @@ export default function RootLayout() {
   useEffect(() => {
     initialize();
     initNetInfo();
+    initBle();
     return () => {
       teardownNetInfo();
+      teardownBle();
     };
   }, [initialize]);
 
@@ -44,6 +51,7 @@ export default function RootLayout() {
           }}
         />
         <OfflineBanner />
+        <BleErrorModal />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
