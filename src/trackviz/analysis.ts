@@ -39,7 +39,7 @@ function percentile(values: number[], p: number): number {
   return sorted[idx];
 }
 
-function withNumbers(values: Array<number | null | undefined>): number[] {
+function withNumbers(values: (number | null | undefined)[]): number[] {
   return values.filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
 }
 
