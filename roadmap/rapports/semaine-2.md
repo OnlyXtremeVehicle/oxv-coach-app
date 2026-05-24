@@ -163,3 +163,93 @@ Semaine 3 dans tous les cas : BLE scan + connect + receive UBX en condition rée
 Reste l'arbitrage Q10 sur WatermelonDB avant de finir la semaine 2.
 
 — Claude Code, 24 mai 2026
+
+---
+
+## Addendum — Q10 option B livrée (jour 4)
+
+Décision actée : option B (MMKV + Supabase direct + offline queue). WatermelonDB écarté. Commit `73f9339`.
+
+### Fichiers ajoutés
+
+[src/lib/mmkv.ts](src/lib/mmkv.ts) — storage local rapide via `react-native-mmkv` v4 :
+- Instance unique `oxv-coach-cache` créée par `createMMKV()` (API v4, plus `new MMKV()`)
+- Helpers typés `cacheGet<T>` / `cacheSet<T>` / `cacheDelete` avec TTL optionnel
+- `STORAGE_KEYS` centralisées (`LAST_SESSIONS`, `PROFILE`, `CIRCUITS`, `OFFLINE_QUEUE`, etc.)
+- `cacheClearReadCache()` qui préserve la queue d'écritures (utile au logout) + `cacheClearAll()` pour les tests
+- Note de sécurité explicite : les tokens auth restent dans `expo-secure-store`, MMKV ne stocke que du cache non-sensible
+
+[src/lib/netinfo.ts](src/lib/netinfo.ts) — détection réseau :
+- `initNetInfo()` : subscribe `@react-native-community/netinfo`, alimente `useAppStateStore.setCondition('network', ...)` et `useUIStore.setOfflineBannerVisible(...)`
+- Lecture initiale via `NetInfo.fetch()` pour gérer le démarrage offline
+- Flush automatique de `offlineQueue` quand le réseau revient après un offline
+- Une seule instance globale, idempotente
+
+[src/services/offlineQueue.ts](src/services/offlineQueue.ts) — file d'écritures différées :
+- 4 `kind` d'actions supportées : `accept_pact`, `mark_notification_read`, `register_lap_marker`, `update_pilot_level`
+- API : `enqueueAction({ kind, payload })`, `getQueue()`, `flushQueue()`, `clearQueue()`
+- Politique de retry : 5 tentatives max par action, drop avec log au-delà (acceptable en V1, pas de DLQ)
+- **Doctrine d'idempotence** explicite dans le commentaire d'entête : toute action poussée doit être idempotente côté serveur (`upsert` ou contraintes `UNIQUE`)
+- 2 actions câblées réellement (`accept_pact`, `update_pilot_level`), 2 en placeholder (les écrans qui les déclenchent n'existent pas encore)
+
+[src/components/OfflineBanner.tsx](src/components/OfflineBanner.tsx) — écran #26 :
+- Bannière jaune `colors.system.warning` en haut, gérée par safe-area-insets
+- `pointerEvents="none"` : signale mais ne bloque pas l'usage
+- Pilotée par `useUIStore.offlineBannerVisible` (alimenté par netinfo)
+
+[app/_layout.tsx](app/_layout.tsx) — wiring au démarrage :
+- `initNetInfo()` dans le `useEffect` du `RootLayout`, `teardownNetInfo()` au unmount
+- `<OfflineBanner />` rendu au-dessus du `Stack` Expo Router
+
+Dépendances : `react-native-mmkv` 4.3.1, `@react-native-community/netinfo` 11.3.1.
+
+### Notes d'implémentation
+
+- MMKV v4 a changé l'API : la classe `MMKV` n'est plus exportée comme valeur, on instancie via `createMMKV(config)`, et la méthode de suppression s'appelle `remove(key)` (pas `delete`). Le code est aligné.
+- L'écran de capture UBX (debug) utilise déjà `expo-file-system` ; on est cohérent : MMKV pour les key/value courts, FileSystem pour les blobs `.ubx`.
+- Le hub `useUIStore.hubMode` reste calculé côté composant à partir de `useAppStateStore.state` + position. Pas branché automatiquement par netinfo (volontaire : le mode hub dépend de plus que du réseau).
+
+### État final semaine 2
+
+10 commits sur `main`, toute la semaine 2 livrée :
+
+| # | Commit | Sujet |
+|---|---|---|
+| 1 | `f7fe331` | init projet |
+| 2 | `12784fb` | rapport sem 1 |
+| 3 | `8172157` | .gitattributes |
+| 4 | `562b360` | placeholders assets |
+| 5 | `a132a49` | capture UBX |
+| 6 | `1d31de3` | addendum rapport sem 1 |
+| 7 | `54dfa6f` | state machine + stores + types |
+| 8 | `121bdb8` | CI GitHub Actions |
+| 9 | `169de9c` | rapport sem 2 partiel + Q10 |
+| 10 | `73f9339` | MMKV + netinfo + offline queue + bannière (Q10 → B) |
+
+Typecheck OK, lint 0 erreur, format Prettier OK partout.
+
+### Ce qui reste à votre main pour clôturer la semaine 2
+
+Identique à la fin de semaine 1, rien de nouveau :
+
+1. Smoke test device (`expo run:ios` ou `eas build --profile development`) — la bannière offline devrait être visible si vous activez le mode avion
+2. Push initial sur GitHub — le workflow `check.yml` tournera tout seul
+3. Compte EAS dédié `oxv@oxvehicle.fr` — **bloquant pour la semaine 3** (BLE = build natif requis)
+
+### Préparation semaine 3 (BLE en condition réelle)
+
+Pour démarrer la semaine 3 sans accroc, il me faut :
+
+- Le build dev installé sur votre téléphone (via EAS Build ou `expo run:ios` local)
+- Un RaceBox Mini S à portée pour pouvoir tester le scan/connect/streaming
+- L'écran [debug-capture](app/(app)/debug-capture.tsx) accessible (le lien dev est sur l'accueil)
+
+Plan de la semaine 3 :
+- J1 : connecter `useTelemetryStore` au `bluetoothService` (`onData`, `onStatusChange`)
+- J2-3 : scan + connect + flux UBX 25 Hz, valider sur capture 5 min
+- J4 : reconnexion automatique + détection coupure > 30s → modal #25
+- J5 : capture fixture session réelle 30-60 min + rapport
+
+Estimation : 5 jours-claude, **conditionné à votre matériel disponible**.
+
+— Claude Code, addendum 24 mai 2026 (soirée, jour 4)
