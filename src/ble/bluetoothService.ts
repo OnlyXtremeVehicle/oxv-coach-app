@@ -20,6 +20,7 @@ type StatusListener = (status: BleStatus) => void;
 type DeviceListener = (device: RaceBoxDevice) => void;
 type DataListener = (data: RaceBoxData) => void;
 type ErrorListener = (error: string) => void;
+type RawDataListener = (bytes: Uint8Array) => void;
 
 export class RaceBoxBluetoothService {
   private manager: BleManager;
@@ -33,6 +34,7 @@ export class RaceBoxBluetoothService {
   private deviceListeners: DeviceListener[] = [];
   private dataListeners: DataListener[] = [];
   private errorListeners: ErrorListener[] = [];
+  private rawDataListeners: RawDataListener[] = [];
 
   // Compteur de trames pour debug
   private frameCount = 0;
@@ -73,6 +75,17 @@ export class RaceBoxBluetoothService {
     this.errorListeners.push(listener);
     return () => {
       this.errorListeners = this.errorListeners.filter((l) => l !== listener);
+    };
+  }
+
+  /**
+   * Émet les bytes BLE bruts dès qu'ils arrivent, avant resync et parsing.
+   * Utile pour capturer des fixtures (.ubx) reproductibles pour les tests.
+   */
+  public onRawData(listener: RawDataListener): () => void {
+    this.rawDataListeners.push(listener);
+    return () => {
+      this.rawDataListeners = this.rawDataListeners.filter((l) => l !== listener);
     };
   }
 
@@ -176,6 +189,12 @@ export class RaceBoxBluetoothService {
           if (!characteristic?.value) return;
 
           const bytes = new Uint8Array(Buffer.from(characteristic.value, 'base64'));
+
+          // Émet les bytes bruts AVANT le resync, pour capture de fixtures.
+          if (this.rawDataListeners.length > 0) {
+            for (const listener of this.rawDataListeners) listener(bytes);
+          }
+
           const frames = this.frameBuffer.push(bytes);
 
           for (const frame of frames) {

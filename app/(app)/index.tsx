@@ -1,5 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link } from 'expo-router';
 
 import { useAuthStore } from '@/store/useAuthStore';
 import { colors, spacing, typography, fontSize, fontWeight, borderRadius } from '@/theme/tokens';
@@ -46,6 +47,16 @@ export default function HomeScreen() {
             Se déconnecter
           </Text>
         </Pressable>
+
+        {__DEV__ ? (
+          <Link href="/(app)/debug-capture" asChild>
+            <Pressable style={{ marginTop: spacing.lg, alignItems: 'center' }}>
+              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
+                Mode debug — capture UBX
+              </Text>
+            </Pressable>
+          </Link>
+        ) : null}
       </View>
     </SafeAreaView>
   );
