@@ -38,7 +38,8 @@ import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
 import { computeMargin } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
-import { upsertSegmentAnalyses } from './segmentAnalysesService';
+import { generateDebrief } from './debriefGenerator';
+import { listSegmentAnalysesForSession, upsertSegmentAnalyses } from './segmentAnalysesService';
 import { fetchSessionLaps } from './sessionsService';
 
 export type AnalyzeSourceKind = 'ubx_local' | 'telemetry_frames' | 'none';
@@ -140,6 +141,14 @@ export async function analyzeAndPersistSession(
 
   // ── Marge globale (depuis laps + session) ────────────────────────────────
   let marginGlobal: number | null = null;
+  let computedFirstName: string | null = null;
+  let computedCircuitName = 'Beltoise';
+  let computedStartedAt = new Date().toISOString();
+  let computedBestLap: number | null = null;
+  let computedLapCount = 0;
+  let computedVehicle: number | null = null;
+  let computedPilot: number | null = null;
+
   try {
     const [session, laps] = await Promise.all([
       fetchSession(input.telemetrySessionId),
@@ -148,6 +157,12 @@ export async function analyzeAndPersistSession(
     if (session) {
       const result = computeMargin({ session, laps });
       marginGlobal = result.marginGlobal;
+      computedVehicle = result.marginVehicle;
+      computedPilot = result.marginPilot;
+      computedCircuitName = session.circuit_name ?? 'Beltoise';
+      computedStartedAt = session.started_at;
+      computedBestLap = session.best_lap_seconds ?? null;
+      computedLapCount = laps.filter((l) => !l.is_outlap && !l.is_inlap).length;
       await upsertAnalysis({
         telemetrySessionId: input.telemetrySessionId,
         userId: input.userId,
@@ -159,6 +174,31 @@ export async function analyzeAndPersistSession(
     }
   } catch (e) {
     notes.push(`Marge globale KO : ${errMsg(e)}`);
+  }
+
+  // ── Debrief J+1 généré localement (V1 sans OpenAI, cf. Q31 sem 11) ──────
+  if (marginGlobal !== null) {
+    try {
+      // Optionnel : récupérer le prénom du profil pour personnaliser le récit.
+      // Évite un fetch dédié — l'appelant peut le passer en V1.1 via input.
+      const segments = await listSegmentAnalysesForSession(input.telemetrySessionId);
+      const debrief = generateDebrief({
+        firstName: computedFirstName,
+        circuitName: computedCircuitName,
+        sessionStartedAt: computedStartedAt,
+        marginGlobal,
+        marginZone: null, // déterminé par marginZoneOf à l'intérieur
+        marginVehicle: computedVehicle,
+        marginPilot: computedPilot,
+        lapCount: computedLapCount,
+        bestLapSeconds: computedBestLap,
+        segments,
+      });
+      await updateDebriefText(input.telemetrySessionId, debrief.text);
+      notes.push('Debrief J+1 généré et persisté.');
+    } catch (e) {
+      notes.push(`Debrief KO : ${errMsg(e)}`);
+    }
   }
 
   return {
@@ -341,6 +381,14 @@ async function fetchSession(sessionId: string): Promise<TelemetrySession | null>
     .maybeSingle();
   if (error || !data) return null;
   return data as unknown as TelemetrySession;
+}
+
+async function updateDebriefText(sessionId: string, text: string): Promise<void> {
+  const { error } = await supabase
+    .from('app_session_analyses')
+    .update({ debrief_text: text })
+    .eq('telemetry_session_id', sessionId);
+  if (error) throw new Error(error.message);
 }
 
 function errMsg(e: unknown): string {
