@@ -68,6 +68,60 @@ export type Database = {
           },
         ]
       }
+      app_progression_shares: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          included_metrics: Json
+          last_viewed_at: string | null
+          revoked_at: string | null
+          share_scope: string
+          share_token: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          included_metrics?: Json
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          share_scope: string
+          share_token: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          included_metrics?: Json
+          last_viewed_at?: string | null
+          revoked_at?: string | null
+          share_scope?: string
+          share_token?: string
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_progression_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_progression_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_session_analyses: {
         Row: {
           algo_version: string
