@@ -45,6 +45,47 @@ interface AnalysisRow {
   computed_at: string;
 }
 
+export interface RecentAnalysisRow extends SessionAnalysis {
+  /** Timestamp de la session sous-jacente, pour ordonner sur l'axe X. */
+  sessionStartedAt: string;
+  circuitName: string | null;
+}
+
+/**
+ * Liste les N dernières analyses du user, jointes avec la session
+ * sous-jacente pour récupérer le timestamp et le circuit. Triées
+ * chronologiquement décroissantes.
+ */
+export async function listRecentAnalyses(userId: string, limit = 50): Promise<RecentAnalysisRow[]> {
+  const { data, error } = await supabase
+    .from('app_session_analyses')
+    .select(
+      'id, telemetry_session_id, user_id, margin_global, margin_zone, margin_vehicle, margin_pilot, margin_breakdown, next_focus_corner_index, next_focus_phrase, debrief_text, algo_version, computed_at, telemetry_sessions(started_at, circuit_name)'
+    )
+    .eq('user_id', userId)
+    .order('computed_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.warn('[OXV] listRecentAnalyses :', error.message);
+    return [];
+  }
+  if (!data) return [];
+
+  return data.map((row: Record<string, unknown>) => {
+    const baseAnalysis = mapRow(row as unknown as AnalysisRow);
+    const joined = row.telemetry_sessions as
+      | { started_at?: string; circuit_name?: string | null }
+      | null
+      | undefined;
+    return {
+      ...baseAnalysis,
+      sessionStartedAt: joined?.started_at ?? (row.computed_at as string),
+      circuitName: joined?.circuit_name ?? null,
+    };
+  });
+}
+
 export async function getAnalysisForSession(
   telemetrySessionId: string
 ): Promise<SessionAnalysis | null> {
