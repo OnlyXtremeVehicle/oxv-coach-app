@@ -9,6 +9,7 @@ import { initBle, teardownBle } from '@/ble/initBle';
 import { initFlic, teardownFlic } from '@/ble/initFlic';
 import { BleErrorModal } from '@/components/BleErrorModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
+import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { initSentry } from '@/lib/sentry';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -29,10 +30,12 @@ export default function RootLayout() {
     initNetInfo();
     initBle();
     initFlic();
+    initGeolocation().catch(() => undefined);
     return () => {
       teardownNetInfo();
       teardownBle();
       teardownFlic();
+      teardownGeolocation();
     };
   }, [initialize]);
 
