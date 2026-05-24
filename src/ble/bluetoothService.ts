@@ -242,6 +242,9 @@ export class RaceBoxBluetoothService {
         this.currentDevice = null;
       }
       this.frameBuffer.clear();
+      // Déconnexion volontaire = on oublie le device pour que le
+      // watchdog initBle ne tente pas de reconnect automatique.
+      this.lastConnectedDeviceId = null;
       this.emitStatus('disconnected');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erreur inconnue';

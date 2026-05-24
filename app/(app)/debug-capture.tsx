@@ -27,6 +27,7 @@ import {
   startCapture,
   stopCapture,
 } from '@/ble/captureMode';
+import { requestBlePermissions } from '@/ble/permissions';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import type { BleStatus, RaceBoxDevice } from '@/types/telemetry';
 
@@ -59,9 +60,14 @@ export default function DebugCaptureScreen() {
     return () => clearInterval(interval);
   }, [capturing]);
 
-  const onScan = () => {
+  const onScan = async () => {
     setBleError(null);
     setDevices([]);
+    const perms = await requestBlePermissions();
+    if (!perms.granted) {
+      setBleError(`Permissions BLE refusées : ${perms.missing.join(', ')}`);
+      return;
+    }
     bluetoothService.startScan();
   };
 
