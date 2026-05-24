@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 
 import { initBle, teardownBle } from '@/ble/initBle';
+import { initFlic, teardownFlic } from '@/ble/initFlic';
 import { BleErrorModal } from '@/components/BleErrorModal';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
@@ -27,9 +28,11 @@ export default function RootLayout() {
     initialize();
     initNetInfo();
     initBle();
+    initFlic();
     return () => {
       teardownNetInfo();
       teardownBle();
+      teardownFlic();
     };
   }, [initialize]);
 

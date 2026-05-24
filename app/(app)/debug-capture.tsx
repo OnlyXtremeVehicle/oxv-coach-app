@@ -1,16 +1,15 @@
 /**
- * Écran de debug : capture des bytes UBX bruts depuis un RaceBox.
+ * Écran de debug : capture des bytes UBX bruts depuis un RaceBox +
+ * détection de tours live + simulation Flic 2.
  *
- * Visible uniquement quand __DEV__ est vrai. Permet à Gabin de produire
- * des fixtures .ubx réutilisables pour les tests du parser (semaines 3-4),
- * comme évoqué en Q5 du rapport d'onboarding.
+ * Visible uniquement quand __DEV__ est vrai. Permet à Gabin de :
+ *   - capturer des fixtures .ubx réelles (Q5)
+ *   - valider la détection de tours sur la finish line Beltoise
+ *   - tester les markers Flic 2 sans matériel
  *
- * Workflow type :
- *   1. Démarrer le scan BLE
- *   2. Sélectionner son RaceBox dans la liste
- *   3. Démarrer la capture
- *   4. Rouler (ou simuler 30-60 min)
- *   5. Stopper, sauvegarder, partager le .ubx via la sheet système
+ * Toutes les sections sont composables : on peut démarrer une session
+ * test sans BLE pour valider les markers, ou capturer sans démarrer la
+ * détection de tours, etc.
  */
 
 import { useEffect, useState } from 'react';
@@ -27,9 +26,24 @@ import {
   startCapture,
   stopCapture,
 } from '@/ble/captureMode';
+import { flic2Service } from '@/ble/flic2Service';
+import {
+  type LapDetectorStatus,
+  getLapDetectorStatus,
+  startLapDetection,
+  stopLapDetection,
+} from '@/ble/lapDetectionRunner';
 import { requestBlePermissions } from '@/ble/permissions';
+import { useSessionStore } from '@/store/useSessionStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import type { BleStatus, RaceBoxDevice } from '@/types/telemetry';
+
+// Finish line Beltoise (circuits.id = e4bc0bd2…, Haute Saintonge officiel)
+const BELTOISE_FINISH = {
+  lat: 45.6004,
+  lon: -0.141,
+  radiusM: 40,
+};
 
 export default function DebugCaptureScreen() {
   const [bleStatus, setBleStatus] = useState<BleStatus>(bluetoothService.getStatus());
@@ -39,6 +53,12 @@ export default function DebugCaptureScreen() {
   const [, setTick] = useState(0);
   const [lastUri, setLastUri] = useState<string | null>(getLastSavedUri());
   const [actionError, setActionError] = useState<string | null>(null);
+  const [lapStatus, setLapStatus] = useState<LapDetectorStatus>(getLapDetectorStatus());
+
+  const sessionStatus = useSessionStore((s) => s.status);
+  const sessionLapCount = useSessionStore((s) => s.lapCount);
+  const sessionBestLapMs = useSessionStore((s) => s.bestLapMs);
+  const markers = useSessionStore((s) => s.markers);
 
   useEffect(() => {
     const offStatus = bluetoothService.onStatusChange(setBleStatus);
@@ -53,12 +73,18 @@ export default function DebugCaptureScreen() {
     };
   }, []);
 
-  // Rafraîchissement périodique des stats live pendant la capture
+  // Rafraîchissement périodique des stats live pendant la capture ou la détection.
   useEffect(() => {
-    if (!capturing) return;
-    const interval = setInterval(() => setTick((t) => t + 1), 500);
+    if (!capturing && !lapStatus.active) return;
+    const interval = setInterval(() => {
+      setTick((t) => t + 1);
+      setLapStatus(getLapDetectorStatus());
+    }, 500);
     return () => clearInterval(interval);
-  }, [capturing]);
+  }, [capturing, lapStatus.active]);
+
+  const connected = bleStatus === 'connected';
+  const liveStats = getCurrentStats();
 
   const onScan = async () => {
     setBleError(null);
@@ -80,13 +106,13 @@ export default function DebugCaptureScreen() {
     await bluetoothService.disconnect();
   };
 
-  const onStart = () => {
+  const onStartCapture = () => {
     setActionError(null);
     startCapture();
     setCapturing(true);
   };
 
-  const onStop = async () => {
+  const onStopCapture = async () => {
     setActionError(null);
     try {
       const uri = await stopCapture();
@@ -106,17 +132,41 @@ export default function DebugCaptureScreen() {
     }
   };
 
-  const connected = bleStatus === 'connected';
-  // getCurrentStats() est un getter pur sur le buffer ; recalculé à chaque render
-  // (rerender forcé toutes les 500 ms pendant la capture via setTick).
-  const liveStats = getCurrentStats();
+  const onStartLapDetection = () => {
+    startLapDetection({
+      finishLineLat: BELTOISE_FINISH.lat,
+      finishLineLon: BELTOISE_FINISH.lon,
+      finishLineRadiusM: BELTOISE_FINISH.radiusM,
+    });
+    setLapStatus(getLapDetectorStatus());
+  };
+
+  const onStopLapDetection = () => {
+    stopLapDetection();
+    setLapStatus(getLapDetectorStatus());
+  };
+
+  const onStartTestSession = () => {
+    useSessionStore.getState().startSession({
+      id: `debug-${Date.now()}`,
+      userId: 'debug-user',
+      startedAt: new Date(),
+      endedAt: null,
+      circuitId: null,
+      vehicleId: null,
+    });
+  };
+
+  const onStopTestSession = () => {
+    useSessionStore.getState().endSession();
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>DEBUG / CAPTURE UBX</Text>
+        <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>DEBUG / TÉLÉMÉTRIE</Text>
         <Text style={[typography.screenTitle, { marginBottom: spacing.xxl }]}>
-          Capture d'une session RaceBox
+          Outils de capture et de validation
         </Text>
 
         <Section label="BLE">
@@ -161,7 +211,7 @@ export default function DebugCaptureScreen() {
         ) : null}
 
         {connected ? (
-          <Section label="Capture">
+          <Section label="Capture UBX brute">
             <Row label="État" value={capturing ? 'EN COURS' : 'arrêtée'} />
             <Row label="Chunks reçus" value={liveStats.chunkCount.toLocaleString('fr-FR')} />
             <Row
@@ -178,8 +228,12 @@ export default function DebugCaptureScreen() {
             />
 
             <ButtonsRow>
-              {!capturing ? <Btn label="Démarrer la capture" onPress={onStart} primary /> : null}
-              {capturing ? <Btn label="Arrêter et sauvegarder" onPress={onStop} primary /> : null}
+              {!capturing ? (
+                <Btn label="Démarrer la capture" onPress={onStartCapture} primary />
+              ) : null}
+              {capturing ? (
+                <Btn label="Arrêter et sauvegarder" onPress={onStopCapture} primary />
+              ) : null}
             </ButtonsRow>
 
             {actionError ? <Row label="Erreur" value={actionError} danger /> : null}
@@ -194,6 +248,81 @@ export default function DebugCaptureScreen() {
             ) : null}
           </Section>
         ) : null}
+
+        {connected ? (
+          <Section label="Détection de tours (Beltoise)">
+            <Row label="Détecteur" value={lapStatus.active ? 'actif' : 'inactif'} />
+            <Row label="Passages ligne (raw)" value={lapStatus.rawCrossings} />
+            <Row label="Tours enregistrés" value={sessionLapCount} />
+            {sessionBestLapMs !== null ? (
+              <Row label="Meilleur tour" value={`${(sessionBestLapMs / 1000).toFixed(3)} s`} />
+            ) : null}
+
+            <ButtonsRow>
+              {!lapStatus.active ? (
+                <Btn label="Démarrer détection" onPress={onStartLapDetection} primary />
+              ) : (
+                <Btn label="Arrêter détection" onPress={onStopLapDetection} />
+              )}
+            </ButtonsRow>
+          </Section>
+        ) : null}
+
+        <Section label="Session test (pour les markers)">
+          <Row label="Statut" value={sessionStatus} />
+          <Row label="Marqueurs Flic" value={markers.length} />
+
+          <ButtonsRow>
+            {sessionStatus === 'recording' || sessionStatus === 'paused' ? (
+              <Btn label="Arrêter session" onPress={onStopTestSession} />
+            ) : (
+              <Btn label="Démarrer session" onPress={onStartTestSession} primary />
+            )}
+          </ButtonsRow>
+        </Section>
+
+        <Section label="Flic 2 — simulation (V1 stub)">
+          <Text
+            style={{
+              color: colors.text.tertiary,
+              fontSize: fontSize.caption,
+              marginBottom: spacing.md,
+            }}
+          >
+            Pas de scan BLE réel en V1. Simulez un clic et vérifiez qu'un marqueur s'ajoute à la
+            session active.
+          </Text>
+
+          <ButtonsRow>
+            <Btn label="Single (good)" onPress={() => flic2Service.simulateClick('good')} primary />
+            <Btn label="Double (incident)" onPress={() => flic2Service.simulateClick('incident')} />
+            <Btn label="Triple (question)" onPress={() => flic2Service.simulateClick('question')} />
+          </ButtonsRow>
+
+          {markers.length > 0 ? (
+            <View style={{ marginTop: spacing.lg }}>
+              <Text style={[typography.eyebrow, { marginBottom: spacing.sm }]}>
+                DERNIERS MARQUEURS
+              </Text>
+              {markers
+                .slice(-5)
+                .reverse()
+                .map((m, i) => (
+                  <Text
+                    key={`${m.at}-${i}`}
+                    style={{
+                      color: colors.text.secondary,
+                      fontSize: fontSize.caption,
+                      marginBottom: 4,
+                    }}
+                  >
+                    {new Date(m.at).toLocaleTimeString('fr-FR')} — {m.kind} (tour{' '}
+                    {m.lapNumber ?? '—'})
+                  </Text>
+                ))}
+            </View>
+          ) : null}
+        </Section>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable onPress={() => router.back()}>
