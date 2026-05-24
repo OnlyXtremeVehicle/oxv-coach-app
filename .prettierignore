@@ -10,3 +10,4 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 docs/architecture/06_RLS_POLICIES_ACTUELLES.sql
+src/types/database.types.ts
