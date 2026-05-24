@@ -31,11 +31,7 @@ function baseCtx(overrides: Partial<AppContext> = {}): AppContext {
   };
 }
 
-function makeSession(opts: {
-  id?: string;
-  startsAtIso: string;
-  endsAtIso?: string;
-}): SessionRef {
+function makeSession(opts: { id?: string; startsAtIso: string; endsAtIso?: string }): SessionRef {
   return {
     id: opts.id ?? 's1',
     startsAt: new Date(opts.startsAtIso),
@@ -55,7 +51,7 @@ describe('determineState — pré-conditions', () => {
     );
   });
 
-  it("priorise S1 sur S2 quand pas de compte ET onboarding non fait", () => {
+  it('priorise S1 sur S2 quand pas de compte ET onboarding non fait', () => {
     expect(
       determineState(baseCtx({ hasAccount: false, onboardingComplete: false }))
     ).toBe<PilotState>('S1_decouverte');
@@ -123,9 +119,7 @@ describe('determineState — atterrissage et décantation', () => {
     expect(
       determineState(
         baseCtx({
-          pastSessions: [
-            makeSession({ startsAtIso: '2026-05-24T10:00:00Z', endsAtIso: endedAt }),
-          ],
+          pastSessions: [makeSession({ startsAtIso: '2026-05-24T10:00:00Z', endsAtIso: endedAt })],
         })
       )
     ).toBe<PilotState>('S8_atterrissage');
@@ -136,9 +130,7 @@ describe('determineState — atterrissage et décantation', () => {
     expect(
       determineState(
         baseCtx({
-          pastSessions: [
-            makeSession({ startsAtIso: '2026-05-23T10:00:00Z', endsAtIso: endedAt }),
-          ],
+          pastSessions: [makeSession({ startsAtIso: '2026-05-23T10:00:00Z', endsAtIso: endedAt })],
         })
       )
     ).toBe<PilotState>('S9_decantation');
@@ -149,9 +141,7 @@ describe('determineState — atterrissage et décantation', () => {
     expect(
       determineState(
         baseCtx({
-          pastSessions: [
-            makeSession({ startsAtIso: '2026-05-21T10:00:00Z', endsAtIso: endedAt }),
-          ],
+          pastSessions: [makeSession({ startsAtIso: '2026-05-21T10:00:00Z', endsAtIso: endedAt })],
         })
       )
     ).toBe<PilotState>('S10_repos');
@@ -227,13 +217,13 @@ describe('isScreenValid', () => {
     expect(isScreenValid('13_bilan', 'S10_repos')).toBe(true);
   });
 
-  it("refuse tout écran pilote en S6 (silence en piste)", () => {
+  it('refuse tout écran pilote en S6 (silence en piste)', () => {
     expect(isScreenValid('13_bilan', 'S6_roulage')).toBe(false);
     expect(isScreenValid('20_accueil', 'S6_roulage')).toBe(false);
     expect(isScreenValid('22_paddock_entre_runs', 'S6_roulage')).toBe(false);
   });
 
-  it('autorise les écrans d\'onboarding uniquement en S2', () => {
+  it("autorise les écrans d'onboarding uniquement en S2", () => {
     expect(isScreenValid('01_accueil_philosophique', 'S2_initiation')).toBe(true);
     expect(isScreenValid('06_pacte', 'S2_initiation')).toBe(true);
     expect(isScreenValid('01_accueil_philosophique', 'S10_repos')).toBe(false);
