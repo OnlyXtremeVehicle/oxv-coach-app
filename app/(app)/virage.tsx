@@ -17,14 +17,30 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { useEffect, useState } from 'react';
+
 import { getCorner, nextCornerIndex, previousCornerIndex } from '@/lib/circuitTopology';
-import { type MarginZone, marginLabelOf } from '@/types/domain';
+import { type SegmentAnalysisRow, getSegmentAnalysis } from '@/services/segmentAnalysesService';
+import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function VirageScreen() {
   const params = useLocalSearchParams<{ index?: string; sessionId?: string }>();
   const cornerIndex = Number(params.index ?? '1');
   const corner = getCorner(cornerIndex);
+
+  const [stats, setStats] = useState<SegmentAnalysisRow | null>(null);
+
+  useEffect(() => {
+    if (!params.sessionId || !corner) return;
+    let cancelled = false;
+    getSegmentAnalysis(params.sessionId, corner.index).then((s) => {
+      if (!cancelled) setStats(s);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionId, corner]);
 
   if (!corner) {
     return <VirageNotFound />;
@@ -50,8 +66,11 @@ export default function VirageScreen() {
     });
   };
 
-  // V1 : valeurs placeholders, à remplacer par les vraies stats en sem 7-8.
-  const placeholderZone: MarginZone = 'yellow';
+  const zone: MarginZone =
+    stats?.marginZone ??
+    (stats?.marginPercent !== null && stats?.marginPercent !== undefined
+      ? marginZoneOf(stats.marginPercent)
+      : 'yellow');
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -64,29 +83,49 @@ export default function VirageScreen() {
           style={[
             typography.caption,
             {
-              color: colorForZone(placeholderZone),
+              color: colorForZone(zone),
               marginTop: spacing.sm,
               marginBottom: spacing.xxl,
             },
           ]}
         >
-          {marginLabelOf(placeholderZone)}
+          {marginLabelOf(zone)}
+          {stats?.marginPercent !== null && stats?.marginPercent !== undefined
+            ? ` · ${Math.round(stats.marginPercent)}%`
+            : ''}
         </Text>
 
         <Section eyebrow="TRAJECTOIRE" title="Votre tracé contre l'optimum">
-          <Text style={typography.body}>
-            Visualisation à venir. La sem. 7 connectera votre trajectoire réelle au tracé de
-            référence Beltoise pour ce virage.
-          </Text>
+          {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
+            <Text style={typography.body}>
+              Écart latéral moyen au tracé de référence : {stats.avgLateralErrorM.toFixed(1)} m (max{' '}
+              {stats.maxLateralErrorM?.toFixed(1) ?? '—'} m).
+            </Text>
+          ) : (
+            <Text style={typography.body}>
+              La trajectoire détaillée apparaîtra après votre première session enregistrée.
+            </Text>
+          )}
         </Section>
 
         <Section eyebrow="PHYSIQUE" title="Ce que la voiture a vécu">
-          <StatRow label="Vitesse à l'entrée" value="—" />
-          <StatRow label="G latéral max" value="—" />
-          <StatRow label="Vitesse à la sortie" value="—" />
-          <Text style={[typography.caption, { marginTop: spacing.md }]}>
-            Données par virage en cours de calcul (sem. 7-8).
-          </Text>
+          <StatRow
+            label="Vitesse à l'entrée"
+            value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
+          />
+          <StatRow
+            label="G latéral max"
+            value={stats?.maxGLateral != null ? `${stats.maxGLateral.toFixed(2)} g` : '—'}
+          />
+          <StatRow
+            label="Vitesse à la sortie"
+            value={stats?.exitSpeedKmh != null ? `${Math.round(stats.exitSpeedKmh)} km/h` : '—'}
+          />
+          {!stats ? (
+            <Text style={[typography.caption, { marginTop: spacing.md }]}>
+              Stats disponibles après votre première session analysée.
+            </Text>
+          ) : null}
         </Section>
 
         <Section eyebrow="QUESTION" title="">

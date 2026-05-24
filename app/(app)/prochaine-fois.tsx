@@ -15,20 +15,37 @@
  * si vous voulez tracker le taux de lecture.
  */
 
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { mockCornerMargins } from '@/lib/circuitTopology';
-import { selectFocusCorner } from '@/services/focusCorner';
+import { type FocusCornerSelection, selectFocusCorner } from '@/services/focusCorner';
+import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function ProchaineFoisScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sessionId = params.sessionId ?? 'demo';
 
-  const margins = mockCornerMargins(sessionId);
-  const focus = selectFocusCorner(margins);
+  const [focus, setFocus] = useState<FocusCornerSelection | null>(() =>
+    selectFocusCorner(mockCornerMargins(sessionId))
+  );
+
+  // Si on a un vrai sessionId, on essaie de remplacer la mock par les
+  // vraies marges issues de l'analyse trackviz.
+  useEffect(() => {
+    if (!params.sessionId) return;
+    let cancelled = false;
+    getCornerMarginsZones(params.sessionId).then((res) => {
+      if (cancelled || !res) return;
+      setFocus(selectFocusCorner(res.zones, res.numeric));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionId]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>

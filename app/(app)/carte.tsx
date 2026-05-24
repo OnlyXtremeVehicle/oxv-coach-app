@@ -24,6 +24,7 @@ import {
   mockCornerMargins,
 } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
+import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { type MarginZone } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
@@ -31,6 +32,7 @@ export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const [circuit, setCircuit] = useState<Circuit | null>(null);
   const [loading, setLoading] = useState(true);
+  const [liveMargins, setLiveMargins] = useState<Record<number, MarginZone> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +47,20 @@ export default function CarteScreen() {
     };
   }, []);
 
-  const margins = mockCornerMargins(params.sessionId ?? 'demo');
+  // Si on a un sessionId réel, on tente de charger les vraies marges
+  // par virage depuis app_segment_analyses. Sinon, fallback sur le mock.
+  useEffect(() => {
+    if (!params.sessionId) return;
+    let cancelled = false;
+    getCornerMarginsZones(params.sessionId).then((res) => {
+      if (!cancelled && res) setLiveMargins(res.zones);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionId]);
+
+  const margins = liveMargins ?? mockCornerMargins(params.sessionId ?? 'demo');
 
   const onCornerTap = (index: number) => {
     router.push({

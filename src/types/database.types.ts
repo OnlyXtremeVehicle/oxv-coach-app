@@ -122,6 +122,112 @@ export type Database = {
           },
         ]
       }
+      app_segment_analyses: {
+        Row: {
+          algo_version: string
+          apex_speed_kmh: number | null
+          avg_lateral_error_m: number | null
+          avg_speed_kmh: number | null
+          computed_at: string
+          duration_seconds: number | null
+          end_progress: number | null
+          entry_speed_kmh: number | null
+          exit_speed_kmh: number | null
+          id: string
+          kind: string | null
+          margin_percent: number | null
+          margin_zone: string | null
+          max_g_accel: number | null
+          max_g_braking: number | null
+          max_g_lateral: number | null
+          max_lateral_error_m: number | null
+          max_speed_kmh: number | null
+          min_speed_kmh: number | null
+          sample_count: number | null
+          segment_index: number
+          segment_name: string | null
+          start_progress: number | null
+          telemetry_session_id: string
+          user_id: string
+        }
+        Insert: {
+          algo_version?: string
+          apex_speed_kmh?: number | null
+          avg_lateral_error_m?: number | null
+          avg_speed_kmh?: number | null
+          computed_at?: string
+          duration_seconds?: number | null
+          end_progress?: number | null
+          entry_speed_kmh?: number | null
+          exit_speed_kmh?: number | null
+          id?: string
+          kind?: string | null
+          margin_percent?: number | null
+          margin_zone?: string | null
+          max_g_accel?: number | null
+          max_g_braking?: number | null
+          max_g_lateral?: number | null
+          max_lateral_error_m?: number | null
+          max_speed_kmh?: number | null
+          min_speed_kmh?: number | null
+          sample_count?: number | null
+          segment_index: number
+          segment_name?: string | null
+          start_progress?: number | null
+          telemetry_session_id: string
+          user_id: string
+        }
+        Update: {
+          algo_version?: string
+          apex_speed_kmh?: number | null
+          avg_lateral_error_m?: number | null
+          avg_speed_kmh?: number | null
+          computed_at?: string
+          duration_seconds?: number | null
+          end_progress?: number | null
+          entry_speed_kmh?: number | null
+          exit_speed_kmh?: number | null
+          id?: string
+          kind?: string | null
+          margin_percent?: number | null
+          margin_zone?: string | null
+          max_g_accel?: number | null
+          max_g_braking?: number | null
+          max_g_lateral?: number | null
+          max_lateral_error_m?: number | null
+          max_speed_kmh?: number | null
+          min_speed_kmh?: number | null
+          sample_count?: number | null
+          segment_index?: number
+          segment_name?: string | null
+          start_progress?: number | null
+          telemetry_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_segment_analyses_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "app_segment_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_segment_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_session_analyses: {
         Row: {
           algo_version: string
