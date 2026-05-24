@@ -177,3 +177,62 @@ La semaine 1 fait ce qu'elle devait : poser les fondations, sans rien coder de m
 Le seul vrai trou est le **smoke test sur device** que je ne peux pas faire à votre place. Quand vous l'aurez fait et que le "Bienvenue, Gabin" s'affiche après votre login, on peut considérer la semaine 1 validée et passer à la semaine 2.
 
 — Claude Code, 24 mai 2026
+
+---
+
+## Addendum — réponses Q7/Q8/Q9 et nouveaux livrables
+
+Reçu vos validations Q7 (placeholders), Q8 (.gitattributes), Q9 (compte EAS option B). Trois nouvelles tâches actées en fin de semaine 1.
+
+### Q8 — .gitattributes (livré)
+
+Commit `8172157`. Template appliqué : LF par défaut, binaires marqués (`*.png`, `*.ubx`, fonts, etc.), `*.bat/.cmd/.ps1` autorisés en CRLF, `package-lock.json` et `src/types/database.types.ts` marqués `linguist-generated`. Renormalize lancé : 0 fichier touché — git avait déjà stocké en LF via `autocrlf=true` au premier commit. Plus aucun warning CRLF lors des commits suivants.
+
+### Q7 — Placeholders assets (livré)
+
+Commit `562b360`. Trois PNG générés par [scripts/generate-placeholder-assets.js](scripts/generate-placeholder-assets.js) :
+- `assets/icon.png` 1024×1024 — insigne stylisé bouclier-casque (visière + V + X central), rouge `#C8102E` sur fond `#050505`
+- `assets/splash.png` 2048×2048 — même insigne plus petit, abondance de fond noir
+- `assets/adaptive-icon.png` 1024×1024 — foreground sur fond transparent (Android)
+
+Corrigé aussi `app.json` : `splash.backgroundColor` et `android.adaptiveIcon.backgroundColor` passés de `#0B1220` (résidu V1) à `#050505` (vraie charte OXV). Le script peut être relancé pour régénérer.
+
+**À ne pas confondre avec les définitifs.** PNG estampillés "PLACEHOLDER" dans le commit message. À remplacer par les visuels designer avant la soumission stores (semaine 14).
+
+### Q5 — Capture UBX (livré, par anticipation)
+
+Commit `a132a49`. Pipeline complet pour produire des fixtures `.ubx` réelles depuis un RaceBox physique, en vue des tests parser/BLE des semaines 3-4 :
+
+- [src/ble/bluetoothService.ts](src/ble/bluetoothService.ts) reçoit un nouveau `onRawData(listener)` qui émet les bytes BLE bruts **avant** le resync du `UbxFrameBuffer` (sans bouger le pipeline existant)
+- [src/ble/captureMode.ts](src/ble/captureMode.ts) : module standalone `start`/`stop`/`share`, écrit en base64 via `expo-file-system` dans `${documentDirectory}/fixtures/racebox-capture-{ts}.ubx`
+- [app/(app)/debug-capture.tsx](app/(app)/debug-capture.tsx) : écran scan → connect → start → stop → share, stats live (chunks, bytes, durée) avec rerender 500 ms pendant la capture
+- Lien "Mode debug — capture UBX" sur l'écran d'accueil visible **uniquement** sous `__DEV__`
+- [scripts/README_CAPTURE_UBX.md](scripts/README_CAPTURE_UBX.md) : pas-à-pas pour vous + replay Node.js pour les tests parser
+
+Deps ajoutées : `expo-file-system` 17.0.1, `expo-sharing` 12.0.1 (Expo SDK 51).
+
+### Q9 — Compte EAS (en attente côté vous)
+
+Décidé option B : nouveau compte Expo dédié `oxv@oxvehicle.fr`. Action préalable côté vous : configurer la redirection OVH `oxv@oxvehicle.fr → votre boîte` (5 minutes), puis `sign up` sur expo.dev, puis `eas login` et `eas init` dans le projet. Pas urgent jusqu'à fin de semaine 2 ; bloquant à partir de la semaine 3 (BLE = build natif requis).
+
+### État final de la semaine 1
+
+Cinq commits sur `main` :
+1. `f7fe331` — chore: initialisation projet
+2. `12784fb` — docs: rapport semaine 1
+3. `8172157` — chore: .gitattributes
+4. `562b360` — chore(assets): placeholders
+5. `a132a49` — feat(debug): capture UBX
+
+Typecheck OK, lint 0 erreur (4 warnings legacy V1 sur `sessionsService.ts`, à nettoyer en semaine 5 quand on retouchera ce service).
+
+### Ce qui reste à votre main pour clôturer la semaine 1
+
+1. Smoke test sur device (`npx expo run:ios` / `npx eas build … --profile development`)
+2. Login + vérifier "Bienvenue, Gabin." + logout
+3. Créer le repo GitHub `oxv-coach-app` privé et push : `git remote add origin … && git push -u origin main`
+4. (À votre rythme) configurer `oxv@oxvehicle.fr` chez OVH puis `eas init` (avant semaine 3)
+
+Pas de démarrage de la semaine 2 sans votre feu vert sur ces 4 points.
+
+— Claude Code, addendum 24 mai 2026 (soirée)
