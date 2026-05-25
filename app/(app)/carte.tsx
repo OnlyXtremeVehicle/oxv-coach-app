@@ -1,10 +1,9 @@
 /**
- * Écran #14 — Carte du circuit.
+ * Écran #14 — Carte du circuit (bilan post-session).
  *
- * Affiche le tracé réel du circuit Beltoise (depuis OSM, sem 16) avec
- * les 7 virages coloriés selon la marge du pilote sur la session
- * courante. Utilise le composant CircuitInspector partagé (sem 12)
- * qui projette les coordonnées GPS réelles en SVG.
+ * Refactor sem 16 : utilise CircuitMap PilotPreset avec animation
+ * d'entrée + trajectoire GPS réelle du pilote superposée au tracé
+ * officiel + 7 virages coloriés par sa marge.
  *
  * Tap sur un virage → écran #15 Zoom virage.
  */
@@ -14,42 +13,63 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CircuitInspector } from '@/components/CircuitInspector';
-import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { supabase } from '@/lib/supabase';
+import { BELTOISE_CORNERS, mockCornerMargins } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
-import { mockCornerMargins } from '@/lib/circuitTopology';
 import { type MarginZone } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const [circuit, setCircuit] = useState<Circuit | null>(null);
-  const [, setLoading] = useState(true);
   const [liveMargins, setLiveMargins] = useState<Record<number, MarginZone> | null>(null);
+  const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [selectedCorner, setSelectedCorner] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     getDefaultCircuit().then((c) => {
-      if (!cancelled) {
-        setCircuit(c);
-        setLoading(false);
-      }
+      if (!cancelled) setCircuit(c);
     });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Si on a un sessionId réel, on tente de charger les vraies marges
-  // par virage depuis app_segment_analyses. Sinon, fallback sur le mock.
+  // Charge les vraies marges + la trajectoire GPS si on a un sessionId
   useEffect(() => {
     if (!params.sessionId) return;
+    const sessionId = params.sessionId; // narrow avant closures async
     let cancelled = false;
-    getCornerMarginsZones(params.sessionId).then((res) => {
+
+    getCornerMarginsZones(sessionId).then((res) => {
       if (!cancelled && res) setLiveMargins(res.zones);
     });
+
+    // Charge les premiers 1000 frames de la session pour la trajectoire
+    // (downsampling implicite : sufficient pour rendu SVG fluide)
+    (async () => {
+      const { data } = await supabase
+        .from('telemetry_frames')
+        .select('latitude, longitude, speed_kmh')
+        .eq('session_id', sessionId)
+        .order('elapsed_ms', { ascending: true })
+        .limit(1000);
+      if (cancelled || !data) return;
+      const points: TrajectoryPoint[] = (
+        data as { latitude: number | null; longitude: number | null; speed_kmh: number | null }[]
+      )
+        .filter((p) => p.latitude !== null && p.longitude !== null)
+        .map((p) => ({
+          lat: Number(p.latitude),
+          lon: Number(p.longitude),
+          speed: p.speed_kmh !== null ? Number(p.speed_kmh) : null,
+        }));
+      if (points.length > 1) setTrajectory(points);
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -76,10 +96,12 @@ export default function CarteScreen() {
           {circuit?.name ?? 'Haute Saintonge'}
         </Text>
 
-        <CircuitInspector
-          selectedIndex={selectedCorner}
-          colorMode="zone"
+        <PilotPreset
+          animate
+          trajectory={trajectory ?? undefined}
+          trajectoryColorMode="uniform"
           zoneByIndex={margins}
+          selectedIndex={selectedCorner}
           height={360}
         />
 
@@ -87,8 +109,7 @@ export default function CarteScreen() {
           {BELTOISE_CORNERS.length} virages — tap pour zoomer
         </Text>
 
-        {/* Liste des virages avec tap direct (alternative au SVG pour
-            l'accessibilité des écrans tactiles plus petits) */}
+        {/* Liste tappable des virages */}
         <View style={{ gap: spacing.xs }}>
           {BELTOISE_CORNERS.map((corner) => {
             const zone = margins[corner.index] ?? 'green';
@@ -139,14 +160,7 @@ export default function CarteScreen() {
                 >
                   {corner.name}
                 </Text>
-                <Text
-                  style={{
-                    color: colors.text.tertiary,
-                    fontSize: fontSize.caption,
-                  }}
-                >
-                  ›
-                </Text>
+                <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>›</Text>
               </Pressable>
             );
           })}

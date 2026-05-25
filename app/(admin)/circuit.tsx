@@ -19,7 +19,13 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { CircuitInspector, type ColorMode } from '@/components/CircuitInspector';
+import {
+  CircuitMap,
+  CornersLayer,
+  StartArrowLayer,
+  TrackLayer,
+  type CornerColorMode as ColorMode,
+} from '@/components/CircuitMap';
 import { BELTOISE_CORNERS, type CornerTopology } from '@/lib/circuitTopology';
 import { type SegmentAggregate, aggregateSegmentStats } from '@/services/segmentAnalysesService';
 import {
@@ -103,14 +109,17 @@ export default function CircuitInspectorScreen() {
           hasHistoricalData={aggregates.length > 0}
         />
 
-        {/* Carte SVG */}
+        {/* Carte SVG — composition manuelle pour mode admin (toggle pace/zone) */}
         <View style={{ marginTop: spacing.xl }}>
-          <CircuitInspector
-            selectedIndex={selected}
-            colorMode={colorMode}
-            zoneByIndex={zoneByIndex}
-            height={360}
-          />
+          <CircuitMap height={360}>
+            <TrackLayer animate={false} />
+            <StartArrowLayer />
+            <CornersLayer
+              colorMode={colorMode}
+              zoneByIndex={zoneByIndex}
+              selectedIndex={selected}
+            />
+          </CircuitMap>
         </View>
 
         {/* Légende */}
