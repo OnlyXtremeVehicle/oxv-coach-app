@@ -36,6 +36,7 @@ interface NavTarget {
 const NAV_TARGETS: NavTarget[] = [
   { label: 'Carte du circuit', href: '/(app)/carte' },
   { label: 'Détails par virage', href: '/(app)/virage' },
+  { label: 'Télémétrie', href: '/(app)/telemetry' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
   { label: 'Progression', href: '/(app)/progression' },
 ];
@@ -175,7 +176,11 @@ export default function BilanScreen() {
 
         <View style={{ gap: spacing.md }}>
           {NAV_TARGETS.map((target) => (
-            <NavCard key={target.href} label={target.label} href={target.href} />
+            <NavCard
+              key={target.href}
+              label={target.label}
+              href={session?.id ? `${target.href}?sessionId=${session.id}` : target.href}
+            />
           ))}
         </View>
 
