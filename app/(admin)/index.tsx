@@ -24,6 +24,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Analytique',
     description: 'Métriques globales post-session, export.',
   },
+  {
+    href: '/(admin)/circuit',
+    label: 'Inspecteur circuit',
+    description: 'Topologie Beltoise, 14 virages, heatmap historique des marges.',
+  },
 ];
 
 export default function AdminHubScreen() {

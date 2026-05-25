@@ -121,6 +121,170 @@ export async function upsertSegmentAnalyses(input: {
   return count ?? rows.length;
 }
 
+export interface SegmentAggregate {
+  segmentIndex: number;
+  sessionCount: number;
+  avgMarginPercent: number | null;
+  avgEntrySpeedKmh: number | null;
+  avgApexSpeedKmh: number | null;
+  avgExitSpeedKmh: number | null;
+  avgMaxGLateral: number | null;
+  avgLateralErrorM: number | null;
+  /** Distribution des zones sur toutes les sessions agrégées. */
+  zoneDistribution: { green: number; yellow: number; red: number };
+}
+
+/**
+ * Agrège les `app_segment_analyses` par `segment_index`, optionnellement
+ * filtré par user. Renvoie pour chaque virage la marge moyenne historique
+ * et la distribution de zones. Utile pour la vue admin circuit (qui sert
+ * à inspecter la richesse des données collectées) et pour des analyses
+ * temporelles ultérieures.
+ *
+ * Si `userId` est omis, on agrège sur l'ensemble des sessions de tous
+ * les pilotes — réservé aux vues admin.
+ */
+export async function aggregateSegmentStats(userId?: string): Promise<SegmentAggregate[]> {
+  let query = supabase
+    .from('app_segment_analyses')
+    .select(
+      'segment_index, margin_percent, margin_zone, entry_speed_kmh, apex_speed_kmh, exit_speed_kmh, max_g_lateral, avg_lateral_error_m'
+    );
+  if (userId) query = query.eq('user_id', userId);
+
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error) console.warn('[OXV] aggregateSegmentStats :', error.message);
+    return [];
+  }
+
+  // GroupBy segment_index côté client (les sessions sont peu nombreuses V1)
+  const buckets = new Map<number, AggregateBucket>();
+  for (const row of data as AggregateRow[]) {
+    const idx = row.segment_index;
+    if (!buckets.has(idx)) {
+      buckets.set(idx, {
+        segmentIndex: idx,
+        sessionCount: 0,
+        marginSum: 0,
+        marginCount: 0,
+        entrySum: 0,
+        entryCount: 0,
+        apexSum: 0,
+        apexCount: 0,
+        exitSum: 0,
+        exitCount: 0,
+        gLatSum: 0,
+        gLatCount: 0,
+        latErrSum: 0,
+        latErrCount: 0,
+        green: 0,
+        yellow: 0,
+        red: 0,
+      });
+    }
+    const b = buckets.get(idx)!;
+    b.sessionCount += 1;
+    accumulate(b, 'margin', row.margin_percent);
+    accumulate(b, 'entry', row.entry_speed_kmh);
+    accumulate(b, 'apex', row.apex_speed_kmh);
+    accumulate(b, 'exit', row.exit_speed_kmh);
+    accumulate(b, 'gLat', row.max_g_lateral);
+    accumulate(b, 'latErr', row.avg_lateral_error_m);
+    if (row.margin_zone === 'green') b.green += 1;
+    else if (row.margin_zone === 'yellow') b.yellow += 1;
+    else if (row.margin_zone === 'red') b.red += 1;
+  }
+
+  return Array.from(buckets.values())
+    .map(
+      (b): SegmentAggregate => ({
+        segmentIndex: b.segmentIndex,
+        sessionCount: b.sessionCount,
+        avgMarginPercent: avg(b.marginSum, b.marginCount),
+        avgEntrySpeedKmh: avg(b.entrySum, b.entryCount),
+        avgApexSpeedKmh: avg(b.apexSum, b.apexCount),
+        avgExitSpeedKmh: avg(b.exitSum, b.exitCount),
+        avgMaxGLateral: avg(b.gLatSum, b.gLatCount),
+        avgLateralErrorM: avg(b.latErrSum, b.latErrCount),
+        zoneDistribution: { green: b.green, yellow: b.yellow, red: b.red },
+      })
+    )
+    .sort((a, b) => a.segmentIndex - b.segmentIndex);
+}
+
+interface AggregateRow {
+  segment_index: number;
+  margin_percent: number | string | null;
+  margin_zone: string | null;
+  entry_speed_kmh: number | string | null;
+  apex_speed_kmh: number | string | null;
+  exit_speed_kmh: number | string | null;
+  max_g_lateral: number | string | null;
+  avg_lateral_error_m: number | string | null;
+}
+
+interface AggregateBucket {
+  segmentIndex: number;
+  sessionCount: number;
+  marginSum: number;
+  marginCount: number;
+  entrySum: number;
+  entryCount: number;
+  apexSum: number;
+  apexCount: number;
+  exitSum: number;
+  exitCount: number;
+  gLatSum: number;
+  gLatCount: number;
+  latErrSum: number;
+  latErrCount: number;
+  green: number;
+  yellow: number;
+  red: number;
+}
+
+function accumulate(
+  b: AggregateBucket,
+  key: 'margin' | 'entry' | 'apex' | 'exit' | 'gLat' | 'latErr',
+  value: number | string | null
+): void {
+  if (value === null || value === undefined) return;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return;
+  switch (key) {
+    case 'margin':
+      b.marginSum += num;
+      b.marginCount += 1;
+      break;
+    case 'entry':
+      b.entrySum += num;
+      b.entryCount += 1;
+      break;
+    case 'apex':
+      b.apexSum += num;
+      b.apexCount += 1;
+      break;
+    case 'exit':
+      b.exitSum += num;
+      b.exitCount += 1;
+      break;
+    case 'gLat':
+      b.gLatSum += num;
+      b.gLatCount += 1;
+      break;
+    case 'latErr':
+      b.latErrSum += num;
+      b.latErrCount += 1;
+      break;
+  }
+}
+
+function avg(sum: number, count: number): number | null {
+  if (count === 0) return null;
+  return sum / count;
+}
+
 /**
  * Récupère un mapping `{ cornerIndex: MarginZone }` compatible avec
  * `selectFocusCorner`. Si aucune analyse n'existe pour cette session,
