@@ -28,6 +28,11 @@ import {
   loadFriendSessionList,
 } from '@/services/duelService';
 import { listAcceptedFriends } from '@/services/friendshipsService';
+import {
+  type SegmentAnalysisRow,
+  listSegmentAnalysesForSession,
+} from '@/services/segmentAnalysesService';
+import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
@@ -58,8 +63,12 @@ export default function DuelScreen() {
   const [myStats, setMyStats] = useState<AggregatedStats | null>(null);
   const [theirStats, setTheirStats] = useState<AggregatedStats | null>(null);
 
+  const [mySegments, setMySegments] = useState<SegmentAnalysisRow[]>([]);
+  const [theirSegments, setTheirSegments] = useState<SegmentAnalysisRow[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(false);
+  const [segmentsLoading, setSegmentsLoading] = useState(false);
 
   // Chargement initial : sessions des 2 côtés + info friend
   useEffect(() => {
@@ -111,6 +120,27 @@ export default function DuelScreen() {
     void reloadAggregated();
   }, [reloadAggregated]);
 
+  // En mode snapshot, fetch les segment analyses des 2 côtés quand
+  // les sessions sélectionnées changent. RLS strict côté DB.
+  useEffect(() => {
+    if (mode !== 'snapshot') return;
+    let cancelled = false;
+    (async () => {
+      setSegmentsLoading(true);
+      const [mine, theirs] = await Promise.all([
+        selectedMine ? listSegmentAnalysesForSession(selectedMine) : Promise.resolve([]),
+        selectedTheirs ? listSegmentAnalysesForSession(selectedTheirs) : Promise.resolve([]),
+      ]);
+      if (cancelled) return;
+      setMySegments(mine);
+      setTheirSegments(theirs);
+      setSegmentsLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, selectedMine, selectedTheirs]);
+
   const friendDisplayName = useMemo(() => {
     if (!friendInfo) return 'Cet ami';
     return (
@@ -157,6 +187,9 @@ export default function DuelScreen() {
             onSelectTheirs={setSelectedTheirs}
             selectedMineRow={selectedMineRow}
             selectedTheirsRow={selectedTheirsRow}
+            mySegments={mySegments}
+            theirSegments={theirSegments}
+            segmentsLoading={segmentsLoading}
           />
         ) : (
           <AggregatedView
@@ -252,6 +285,9 @@ interface SnapshotProps {
   onSelectTheirs: (id: string) => void;
   selectedMineRow: RecentAnalysisRow | undefined;
   selectedTheirsRow: DuelSessionRow | undefined;
+  mySegments: SegmentAnalysisRow[];
+  theirSegments: SegmentAnalysisRow[];
+  segmentsLoading: boolean;
 }
 
 function SnapshotView(props: SnapshotProps) {
@@ -301,7 +337,157 @@ function SnapshotView(props: SnapshotProps) {
           }
         />
       </View>
+
+      {/* Comparaison virage par virage (V1.1) */}
+      <CornerComparisonSection
+        mySegments={props.mySegments}
+        theirSegments={props.theirSegments}
+        loading={props.segmentsLoading}
+      />
     </>
+  );
+}
+
+function CornerComparisonSection({
+  mySegments,
+  theirSegments,
+  loading,
+}: {
+  mySegments: SegmentAnalysisRow[];
+  theirSegments: SegmentAnalysisRow[];
+  loading: boolean;
+}) {
+  const mineByIdx = useMemo(() => {
+    const map = new Map<number, SegmentAnalysisRow>();
+    for (const s of mySegments) map.set(s.segmentIndex, s);
+    return map;
+  }, [mySegments]);
+
+  const theirsByIdx = useMemo(() => {
+    const map = new Map<number, SegmentAnalysisRow>();
+    for (const s of theirSegments) map.set(s.segmentIndex, s);
+    return map;
+  }, [theirSegments]);
+
+  if (!loading && mySegments.length === 0 && theirSegments.length === 0) return null;
+
+  return (
+    <View style={{ marginTop: spacing.xxl }}>
+      <Text
+        style={[
+          typography.eyebrow,
+          {
+            color: colors.text.tertiary,
+            marginBottom: spacing.md,
+            textAlign: 'center',
+          },
+        ]}
+      >
+        VIRAGE PAR VIRAGE
+      </Text>
+      {loading ? (
+        <ActivityIndicator color={colors.text.secondary} style={{ marginVertical: spacing.lg }} />
+      ) : (
+        <View
+          style={{
+            borderRadius: borderRadius.lg,
+            borderWidth: 0.5,
+            borderColor: colors.border.subtle,
+            backgroundColor: colors.background.secondary,
+            overflow: 'hidden',
+          }}
+        >
+          {BELTOISE_CORNERS.map((corner, i) => (
+            <CornerRow
+              key={corner.index}
+              cornerIndex={corner.index}
+              cornerName={corner.name}
+              mine={mineByIdx.get(corner.index) ?? null}
+              theirs={theirsByIdx.get(corner.index) ?? null}
+              isLast={i === BELTOISE_CORNERS.length - 1}
+            />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+function CornerRow({
+  cornerIndex,
+  cornerName,
+  mine,
+  theirs,
+  isLast,
+}: {
+  cornerIndex: number;
+  cornerName: string;
+  mine: SegmentAnalysisRow | null;
+  theirs: SegmentAnalysisRow | null;
+  isLast: boolean;
+}) {
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderBottomWidth: isLast ? 0 : 0.5,
+        borderBottomColor: colors.border.subtle,
+        gap: spacing.md,
+      }}
+    >
+      <View style={{ width: 70 }}>
+        <Text
+          style={{
+            color: colors.text.tertiary,
+            fontSize: fontSize.eyebrow,
+            letterSpacing: 1.5,
+          }}
+        >
+          V{cornerIndex}
+        </Text>
+        <Text
+          style={{
+            color: colors.text.secondary,
+            fontSize: fontSize.caption,
+            marginTop: 2,
+          }}
+          numberOfLines={1}
+        >
+          {cornerName}
+        </Text>
+      </View>
+
+      <SegmentMargeCell row={mine} />
+      <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>·</Text>
+      <SegmentMargeCell row={theirs} />
+    </View>
+  );
+}
+
+function SegmentMargeCell({ row }: { row: SegmentAnalysisRow | null }) {
+  if (!row || row.marginPercent === null) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>—</Text>
+      </View>
+    );
+  }
+  const color = colorForZone(row.marginZone);
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <Text
+        style={{
+          color,
+          fontSize: fontSize.bodyLarge,
+          fontWeight: fontWeight.medium,
+        }}
+      >
+        {Math.round(row.marginPercent)}%
+      </Text>
+    </View>
   );
 }
 
