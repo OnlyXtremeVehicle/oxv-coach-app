@@ -76,17 +76,42 @@ export async function listMyCoaches(): Promise<MyCoachAssignment[]> {
 /**
  * Donne le consentement RGPD pour une assignation donnée.
  * Le coach pourra dès lors voir les sessions/analyses du pilote.
+ * Notifie le coach via push (fire-and-forget).
  */
 export async function giveConsent(assignmentId: string): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('coach_pilots')
     .update({ pilot_consent_at: new Date().toISOString() })
-    .eq('id', assignmentId);
+    .eq('id', assignmentId)
+    .select('coach_id, pilot_id')
+    .maybeSingle();
 
   if (error) {
     console.warn('[OXV][pilot] giveConsent :', error.message);
     return { ok: false, error: error.message };
   }
+
+  // Notif au coach (fire-and-forget)
+  if (data) {
+    const row = data as { coach_id: string; pilot_id: string };
+    const { data: pilot } = await supabase
+      .from('users')
+      .select('first_name')
+      .eq('id', row.pilot_id)
+      .maybeSingle();
+    supabase.functions
+      .invoke('notify-coach-consent-received', {
+        body: {
+          coachId: row.coach_id,
+          pilotFirstName: (pilot as { first_name?: string | null } | null)?.first_name ?? null,
+        },
+      })
+      .then(({ error: notifErr }) => {
+        if (notifErr)
+          console.warn('[OXV][pilot] notify-coach-consent-received :', notifErr.message);
+      });
+  }
+
   return { ok: true };
 }
 

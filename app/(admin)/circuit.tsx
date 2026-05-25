@@ -208,7 +208,7 @@ export default function CircuitInspectorScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour admin
             </Text>
@@ -260,6 +260,7 @@ function ToggleButton(props: {
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={props.disabled ? undefined : props.onPress}
       style={({ pressed }) => ({
         flex: 1,
@@ -400,6 +401,7 @@ function CornerRow(props: {
 
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
         flexDirection: 'row',

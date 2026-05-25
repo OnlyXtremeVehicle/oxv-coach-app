@@ -16,6 +16,7 @@ import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import * as haptics from '@/lib/haptics';
 import {
   type MyCoachAssignment,
   giveConsent,
@@ -50,7 +51,12 @@ export default function MonCoachScreen() {
 
   async function onToggle(assignment: MyCoachAssignment, next: boolean) {
     const result = next ? await giveConsent(assignment.id) : await revokeConsent(assignment.id);
-    if (result.ok) await reload();
+    if (result.ok) {
+      // Confirmation tactile : un consentement RGPD mérite un retour clair
+      if (next) haptics.success();
+      else haptics.tap();
+      await reload();
+    }
   }
 
   const activeAssignments = coaches.filter((c) => c.active);
@@ -87,7 +93,7 @@ export default function MonCoachScreen() {
         <ExplainerCard />
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>

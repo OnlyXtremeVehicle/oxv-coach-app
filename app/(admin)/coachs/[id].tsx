@@ -147,6 +147,7 @@ export default function AdminCoachDetailScreen() {
         {coach ? (
           <View style={{ marginTop: spacing.lg }}>
             <Pressable
+              accessibilityRole="button"
               onPress={onSendInvitation}
               style={({ pressed }) => ({
                 paddingHorizontal: spacing.md,
@@ -168,6 +169,7 @@ export default function AdminCoachDetailScreen() {
         {/* Bouton Assigner */}
         <View style={{ marginTop: spacing.xxl, marginBottom: spacing.lg }}>
           <Pressable
+            accessibilityRole="button"
             onPress={() => setShowPicker(!showPicker)}
             style={({ pressed }) => ({
               height: 48,
@@ -239,7 +241,7 @@ export default function AdminCoachDetailScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour à la liste des coachs
             </Text>
@@ -301,6 +303,7 @@ function PilotPicker(props: {
             const name = [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || pilot.email;
             return (
               <Pressable
+                accessibilityRole="button"
                 key={pilot.id}
                 onPress={() => props.onSelect(pilot.id)}
                 style={({ pressed }) => ({
@@ -416,6 +419,7 @@ function AssignmentRow(props: {
 
       {!assignment.pilotConsentAt ? (
         <Pressable
+          accessibilityRole="button"
           onPress={props.onForceConsent}
           style={({ pressed }) => ({
             marginTop: spacing.md,

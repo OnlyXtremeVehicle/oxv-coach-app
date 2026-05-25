@@ -170,13 +170,31 @@ export async function assignPilotToCoach(input: {
     created_by: input.createdBy,
     notes: input.notes ?? null,
     // pilot_consent_at reste null → le coach ne verra rien tant que le
-    // pilote n'a pas consenti (via l'app V1.1 ou via forcePilotConsent).
+    // pilote n'a pas consenti (via /(app)/mon-coach ou forcePilotConsent).
   });
 
   if (error) {
     console.warn('[OXV][admin] assignPilotToCoach :', error.message);
     return { ok: false, error: error.message };
   }
+
+  // Fire-and-forget : notif au pilote (avec prénom du coach pour le message)
+  const { data: coach } = await supabase
+    .from('users')
+    .select('first_name')
+    .eq('id', input.coachId)
+    .maybeSingle();
+  supabase.functions
+    .invoke('notify-pilot-coach-assigned', {
+      body: {
+        pilotId: input.pilotId,
+        coachFirstName: (coach as { first_name?: string | null } | null)?.first_name ?? null,
+      },
+    })
+    .then(({ error: notifErr }) => {
+      if (notifErr) console.warn('[OXV][admin] notify-pilot-coach-assigned :', notifErr.message);
+    });
+
   return { ok: true };
 }
 

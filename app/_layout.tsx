@@ -106,6 +106,12 @@ export default function RootLayout() {
         pathname: '/(coach)/pilote/[id]',
         params: { id: data.pilotId },
       } as never);
+    } else if (data?.type === 'coach_assigned') {
+      // Pilote tape la notif "Un coach vous suit" → ouvre l'écran consentement
+      router.push('/(app)/mon-coach' as never);
+    } else if (data?.type === 'pilot_consented') {
+      // Coach tape la notif "Un pilote a consenti" → ouvre son hub
+      router.push('/(coach)' as never);
     }
   }, [lastNotifResponse, navState?.key]);
 

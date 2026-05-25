@@ -177,7 +177,7 @@ function NoFocusState() {
       >
         Aucune zone ne ressort. Continuez comme ça.
       </Text>
-      <Pressable onPress={() => router.back()}>
+      <Pressable accessibilityRole="button" onPress={() => router.back()}>
         <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
           Retour au bilan
         </Text>

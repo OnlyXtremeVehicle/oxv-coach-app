@@ -21,6 +21,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { FadeInSection } from '@/components/motion';
+import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -132,11 +134,18 @@ export default function DebriefScreen() {
           {formatDateLong(data.startedAt)} — {data.circuitName}
         </Text>
 
-        <Acte numero="1" titre="Récit" body={data.recit} />
-        <Acte numero="2" titre="Méta-analyse" body={data.meta} />
-        <Acte numero="3" titre="Préparation" body={data.preparation} />
+        <FadeInSection delay={0}>
+          <Acte numero="1" titre="Récit" body={data.recit} />
+        </FadeInSection>
+        <FadeInSection delay={250}>
+          <Acte numero="2" titre="Méta-analyse" body={data.meta} />
+        </FadeInSection>
+        <FadeInSection delay={500}>
+          <Acte numero="3" titre="Préparation" body={data.preparation} />
+        </FadeInSection>
 
-        <View
+        <FadeInSection
+          delay={800}
           style={{
             marginTop: spacing.huge,
             padding: spacing.xl,
@@ -163,7 +172,7 @@ export default function DebriefScreen() {
           >
             — OXV COACH
           </Text>
-        </View>
+        </FadeInSection>
 
         {!data.generated ? (
           <Text
@@ -177,7 +186,11 @@ export default function DebriefScreen() {
         ) : null}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            onPressIn={() => haptics.tap()}
+            onPress={() => router.back()}
+          >
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
@@ -225,7 +238,11 @@ function DebriefEmpty() {
         <Text style={[typography.manifest, { textAlign: 'center' }]}>
           Le récit viendra après votre première sortie.
         </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: spacing.xxxl }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={{ marginTop: spacing.xxxl }}
+        >
           <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
         </Pressable>
       </View>

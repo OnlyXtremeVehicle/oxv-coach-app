@@ -55,3 +55,6 @@ jobs:
 
       - name: Scan doctrinal (verbes interdits)
         run: npx tsx scripts/check-doctrine.ts
+
+      - name: Scan accessibilité (Pressables sans accessibilityRole)
+        run: npx tsx scripts/check-accessibility.ts --strict
