@@ -194,6 +194,33 @@ export async function toggleAssignmentActive(
 }
 
 /**
+ * Envoie un email d'invitation au coach via Edge Function Resend.
+ * Le coach doit déjà exister en base (créé par admin manuellement et
+ * promu via promoteToCoach). Cet email lui donne les instructions
+ * pour télécharger l'app, se connecter, et signer le pacte coaching.
+ */
+export async function sendCoachInvitation(input: {
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  temporaryPassword?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.functions.invoke('send-coach-invitation', {
+    body: {
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName,
+      temporaryPassword: input.temporaryPassword,
+    },
+  });
+  if (error) {
+    console.warn('[OXV][admin] sendCoachInvitation :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
  * Promeut un user (role='pilot') en coach (role='coach').
  * Action réversible via demoteToPilot.
  */
