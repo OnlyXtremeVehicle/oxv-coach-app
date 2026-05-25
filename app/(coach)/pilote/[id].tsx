@@ -19,6 +19,7 @@ import {
 } from '@/services/coachService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateLong } from '@/utils/format';
 
 type Mode = 'browse' | 'compare';
 
@@ -200,7 +201,7 @@ function SessionRow({
   selected?: boolean;
   onToggle?: () => void;
 }) {
-  const dateStr = dateLong(session.startedAt);
+  const dateStr = formatDateLong(session.startedAt);
   const lapStr = session.lapCount
     ? `${session.lapCount} tour${session.lapCount > 1 ? 's' : ''}`
     : '—';
@@ -323,16 +324,4 @@ function colorForZone(zone: MarginZone | null): string {
     : zone === 'yellow'
       ? colors.margin.yellow
       : colors.margin.red;
-}
-
-function dateLong(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

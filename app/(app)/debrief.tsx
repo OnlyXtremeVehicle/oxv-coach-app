@@ -25,6 +25,7 @@ import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateLong } from '@/utils/format';
 
 interface DebriefData {
   sessionId: string;
@@ -128,7 +129,7 @@ export default function DebriefScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>DEBRIEF</Text>
         <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          {dateLong(data.startedAt)} — {data.circuitName}
+          {formatDateLong(data.startedAt)} — {data.circuitName}
         </Text>
 
         <Acte numero="1" titre="Récit" body={data.recit} />
@@ -262,16 +263,4 @@ function fallbackMeta(): string {
 
 function fallbackPreparation(): string {
   return 'La prochaine fois, vous pourrez peut-être explorer une seule zone, à votre rythme. Une invitation, pas une consigne.';
-}
-
-function dateLong(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

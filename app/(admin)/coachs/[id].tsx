@@ -30,6 +30,7 @@ import {
 } from '@/services/coachAdminService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 export default function AdminCoachDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -308,7 +309,7 @@ function AssignmentRow(props: {
     [assignment.pilotFirstName, assignment.pilotLastName].filter(Boolean).join(' ') ||
     assignment.pilotEmail;
   const consentText = assignment.pilotConsentAt
-    ? `Consenti le ${dateShort(assignment.pilotConsentAt)}`
+    ? `Consenti le ${formatDateShort(assignment.pilotConsentAt)}`
     : 'Pas encore consenti';
 
   return (
@@ -352,7 +353,7 @@ function AssignmentRow(props: {
               },
             ]}
           >
-            {consentText} · Assigné le {dateShort(assignment.createdAt)}
+            {consentText} · Assigné le {formatDateShort(assignment.createdAt)}
           </Text>
         </View>
         <Switch
@@ -384,16 +385,4 @@ function AssignmentRow(props: {
       ) : null}
     </View>
   );
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

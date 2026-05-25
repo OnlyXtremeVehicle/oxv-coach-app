@@ -39,6 +39,7 @@ import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDi
 import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 export default function VirageScreen() {
   const params = useLocalSearchParams<{ index?: string; sessionId?: string }>();
@@ -284,7 +285,7 @@ export default function VirageScreen() {
                       { color: colors.text.tertiary, marginTop: spacing.sm },
                     ]}
                   >
-                    {dateShort(a.createdAt)}
+                    {formatDateShort(a.createdAt)}
                   </Text>
                 </View>
               ))}
@@ -485,17 +486,5 @@ function colorForZone(zone: MarginZone): string {
       return colors.margin.yellow;
     case 'red':
       return colors.margin.red;
-  }
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
   }
 }
