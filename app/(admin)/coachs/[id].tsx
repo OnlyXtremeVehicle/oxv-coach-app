@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
@@ -26,6 +26,7 @@ import {
   listAssignmentsForCoach,
   listCoaches,
   listPilots,
+  sendCoachInvitation,
   toggleAssignmentActive,
 } from '@/services/coachAdminService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -104,6 +105,33 @@ export default function AdminCoachDetailScreen() {
     if (result.ok) await reload();
   }
 
+  async function onSendInvitation() {
+    if (!coach) return;
+    Alert.alert(
+      "Envoyer l'invitation",
+      `Un email d'invitation sera envoyé à ${coach.email}. Le compte doit déjà être créé côté Supabase (vous le voyez ici donc c'est bon).`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Envoyer',
+          style: 'default',
+          onPress: async () => {
+            const result = await sendCoachInvitation({
+              email: coach.email,
+              firstName: coach.firstName,
+              lastName: coach.lastName,
+            });
+            if (result.ok) {
+              Alert.alert('Envoyé', `Email d'invitation envoyé à ${coach.email}.`);
+            } else {
+              Alert.alert('Échec', result.error ?? 'Erreur inconnue.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
@@ -113,6 +141,28 @@ export default function AdminCoachDetailScreen() {
         </Text>
         {coach ? (
           <Text style={[typography.caption, { color: colors.text.tertiary }]}>{coach.email}</Text>
+        ) : null}
+
+        {/* Bouton Envoyer invitation */}
+        {coach ? (
+          <View style={{ marginTop: spacing.lg }}>
+            <Pressable
+              onPress={onSendInvitation}
+              style={({ pressed }) => ({
+                paddingHorizontal: spacing.md,
+                paddingVertical: spacing.sm,
+                borderRadius: borderRadius.sm,
+                borderWidth: 0.5,
+                borderColor: colors.border.medium,
+                alignSelf: 'flex-start',
+                opacity: pressed ? 0.85 : 1,
+              })}
+            >
+              <Text style={[typography.caption, { color: colors.text.secondary }]}>
+                Envoyer l'email d'invitation
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
 
         {/* Bouton Assigner */}
