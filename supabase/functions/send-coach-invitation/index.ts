@@ -1,3 +1,4 @@
+// @ts-nocheck — Deno runtime, pas Node
 // Edge Function : send-coach-invitation
 //
 // Envoie un email d'invitation à un nouveau coach via Resend.
