@@ -96,7 +96,7 @@ Une fois la migration appliquée et l'Edge Function déployée :
 
 ```sql
 SELECT
-  id, created_at, action, payload
+  id, created_at, action, metadata
 FROM admin_audit
 WHERE action = 'coach_annotation_notified'
 ORDER BY created_at DESC
@@ -105,10 +105,10 @@ LIMIT 10;
 
 Chaque ligne contient :
 - `user_id` : le coach
-- `payload.pilot_id` : le pilote notifié
-- `payload.annotation_id` : la note source
-- `payload.corner_index` : le virage
-- `payload.edge_request_id` : id de l'appel pg_net (pour debugger côté logs Edge Function)
+- `metadata.pilot_id` : le pilote notifié
+- `metadata.annotation_id` : la note source
+- `metadata.corner_index` : le virage
+- `metadata.edge_request_id` : id de l'appel pg_net (pour debugger côté logs Edge Function)
 
 ## Doctrine
 
