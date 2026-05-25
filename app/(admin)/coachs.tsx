@@ -93,7 +93,7 @@ export default function AdminCoachsScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour admin
             </Text>
@@ -145,6 +145,7 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
         </Pressable>
       </Link>
       <Pressable
+        accessibilityRole="button"
         onPress={onDemote}
         style={({ pressed }) => ({
           paddingHorizontal: spacing.sm,

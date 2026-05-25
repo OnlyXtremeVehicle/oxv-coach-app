@@ -93,7 +93,7 @@ export default function MonCoachScreen() {
         <ExplainerCard />
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>

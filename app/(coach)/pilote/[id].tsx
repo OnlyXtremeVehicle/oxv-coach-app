@@ -181,7 +181,7 @@ export default function CoachPilotDetailScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour à mes pilotes
             </Text>

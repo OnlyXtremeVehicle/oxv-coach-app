@@ -226,7 +226,7 @@ export default function BilanScreen() {
         ) : null}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
@@ -333,7 +333,11 @@ function BilanEmpty() {
         <Text style={[typography.manifest, { textAlign: 'center', paddingHorizontal: spacing.md }]}>
           Votre première session écrira la première ligne.
         </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: spacing.xxxl }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={{ marginTop: spacing.xxxl }}
+        >
           <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
             Retour à l'accueil
           </Text>
@@ -360,7 +364,7 @@ function BilanError({ message }: { message: string }) {
         >
           {message}
         </Text>
-        <Pressable onPress={() => router.back()}>
+        <Pressable accessibilityRole="button" onPress={() => router.back()}>
           <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
         </Pressable>
       </View>

@@ -123,6 +123,7 @@ export default function PartageScreen() {
             const active = scope === opt.id;
             return (
               <Pressable
+                accessibilityRole="button"
                 key={opt.id}
                 onPress={() => setScope(opt.id)}
                 style={({ pressed }) => ({
@@ -157,6 +158,7 @@ export default function PartageScreen() {
             const active = duration === d.days;
             return (
               <Pressable
+                accessibilityRole="button"
                 key={d.label}
                 onPress={() => setDuration(d.days)}
                 style={({ pressed }) => ({
@@ -233,7 +235,7 @@ export default function PartageScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
@@ -293,7 +295,7 @@ function ShareCard({ link, onRevoke }: { link: ShareLink; onRevoke: () => void }
         {link.viewCount > 1 ? 's' : ''}
       </Text>
       {!revoked && !expired ? (
-        <Pressable onPress={onRevoke} style={{ marginTop: spacing.sm }}>
+        <Pressable accessibilityRole="button" onPress={onRevoke} style={{ marginTop: spacing.sm }}>
           <Text style={{ color: colors.system.error, fontSize: fontSize.caption }}>Révoquer</Text>
         </Pressable>
       ) : null}

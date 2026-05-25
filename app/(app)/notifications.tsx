@@ -46,7 +46,7 @@ export default function NotificationsScreen() {
         </View>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
@@ -71,6 +71,7 @@ function TabBar({
         const active = t === value;
         return (
           <Pressable
+            accessibilityRole="button"
             key={t}
             onPress={() => onChange(t)}
             style={({ pressed }) => ({

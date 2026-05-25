@@ -238,7 +238,11 @@ function DebriefEmpty() {
         <Text style={[typography.manifest, { textAlign: 'center' }]}>
           Le récit viendra après votre première sortie.
         </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: spacing.xxxl }}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={{ marginTop: spacing.xxxl }}
+        >
           <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
         </Pressable>
       </View>

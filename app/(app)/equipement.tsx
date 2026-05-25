@@ -126,6 +126,7 @@ export default function EquipementScreen() {
         <View style={{ gap: spacing.md }}>
           {devices.map((d) => (
             <Pressable
+              accessibilityRole="button"
               key={d.id}
               onPress={() => onSelect(d.id)}
               disabled={connecting}

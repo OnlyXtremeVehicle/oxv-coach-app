@@ -135,7 +135,7 @@ export default function ComparateurScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
@@ -152,6 +152,7 @@ function ModePicker({ value, onChange }: { value: Mode; onChange: (m: Mode) => v
         const active = m === value;
         return (
           <Pressable
+            accessibilityRole="button"
             key={m}
             onPress={() => onChange(m)}
             style={({ pressed }) => ({
@@ -265,6 +266,7 @@ function SessionPicker({
           const active = selectedId === s.telemetrySessionId;
           return (
             <Pressable
+              accessibilityRole="button"
               key={s.telemetrySessionId}
               onPress={() => onSelect(s.telemetrySessionId)}
               style={({ pressed }) => ({

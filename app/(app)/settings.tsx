@@ -254,7 +254,7 @@ export default function SettingsScreen() {
         </Pressable>
 
         <View style={{ marginTop: spacing.xl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
