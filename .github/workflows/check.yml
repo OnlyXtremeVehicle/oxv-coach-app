@@ -45,3 +45,6 @@ jobs:
 
       - name: Jest tests
         run: npm test -- --ci --reporters=default --coverage=false
+
+      - name: Scan doctrinal (verbes interdits)
+        run: npx tsx scripts/check-doctrine.ts
