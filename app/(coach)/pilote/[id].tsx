@@ -20,11 +20,38 @@ import {
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
+type Mode = 'browse' | 'compare';
+
 export default function CoachPilotDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const [pilot, setPilot] = useState<CoachPilotRow | null>(null);
   const [sessions, setSessions] = useState<PilotSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState<Mode>('browse');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  const toggleSelected = (sessionId: string) => {
+    setSelectedIds((prev) => {
+      if (prev.includes(sessionId)) return prev.filter((id) => id !== sessionId);
+      if (prev.length >= 2) return [prev[1], sessionId]; // FIFO max 2
+      return [...prev, sessionId];
+    });
+  };
+
+  const canCompare = selectedIds.length === 2;
+
+  const openComparison = () => {
+    if (!canCompare || !params.id) return;
+    // Cast nécessaire le temps que les typed routes Expo se régénèrent
+    router.push({
+      pathname: '/(coach)/comparer',
+      params: {
+        pilotId: params.id,
+        sessionA: selectedIds[0],
+        sessionB: selectedIds[1],
+      },
+    } as never);
+  };
 
   useEffect(() => {
     if (!params.id) return;
@@ -67,16 +94,86 @@ export default function CoachPilotDetailScreen() {
           <EmptyState />
         ) : (
           <>
-            <Text
-              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: spacing.md,
+              }}
             >
-              {sessions.length} {sessions.length === 1 ? 'SESSION' : 'SESSIONS'}
-            </Text>
+              <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>
+                {sessions.length} {sessions.length === 1 ? 'SESSION' : 'SESSIONS'}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setMode(mode === 'browse' ? 'compare' : 'browse');
+                  setSelectedIds([]);
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.accent.coach,
+                    fontSize: fontSize.caption,
+                    fontWeight: fontWeight.medium,
+                  }}
+                >
+                  {mode === 'browse' ? 'Comparer 2 sessions' : 'Annuler'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {mode === 'compare' ? (
+              <Text
+                style={[
+                  typography.caption,
+                  { color: colors.text.tertiary, marginBottom: spacing.md },
+                ]}
+              >
+                Sélectionnez deux sessions à comparer ({selectedIds.length}/2).
+              </Text>
+            ) : null}
+
             <View style={{ gap: spacing.sm }}>
               {sessions.map((session) => (
-                <SessionRow key={session.id} session={session} />
+                <SessionRow
+                  key={session.id}
+                  session={session}
+                  mode={mode}
+                  selected={selectedIds.includes(session.id)}
+                  onToggle={() => toggleSelected(session.id)}
+                />
               ))}
             </View>
+
+            {mode === 'compare' ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={!canCompare}
+                onPress={openComparison}
+                style={{
+                  marginTop: spacing.xl,
+                  padding: spacing.lg,
+                  borderRadius: borderRadius.md,
+                  backgroundColor: canCompare ? colors.accent.coach : colors.background.secondary,
+                  borderWidth: 0.5,
+                  borderColor: canCompare ? colors.accent.coach : colors.border.subtle,
+                  alignItems: 'center',
+                  opacity: canCompare ? 1 : 0.5,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.text.primary,
+                    fontSize: fontSize.body,
+                    fontWeight: fontWeight.semibold,
+                  }}
+                >
+                  Ouvrir le comparatif
+                </Text>
+              </Pressable>
+            ) : null}
           </>
         )}
 
@@ -92,16 +189,88 @@ export default function CoachPilotDetailScreen() {
   );
 }
 
-function SessionRow({ session }: { session: PilotSessionSummary }) {
+function SessionRow({
+  session,
+  mode = 'browse',
+  selected = false,
+  onToggle,
+}: {
+  session: PilotSessionSummary;
+  mode?: Mode;
+  selected?: boolean;
+  onToggle?: () => void;
+}) {
   const dateStr = dateLong(session.startedAt);
   const lapStr = session.lapCount
     ? `${session.lapCount} tour${session.lapCount > 1 ? 's' : ''}`
     : '—';
   const marginStr = session.marginGlobal !== null ? `${Math.round(session.marginGlobal)} %` : '—';
 
+  const rowContent = (
+    <>
+      <View
+        style={{
+          width: 6,
+          height: 40,
+          borderRadius: 3,
+          backgroundColor: colorForZone(session.marginZone),
+        }}
+      />
+      <View style={{ flex: 1 }}>
+        <Text
+          style={{
+            color: colors.text.primary,
+            fontSize: fontSize.body,
+            fontWeight: fontWeight.regular,
+          }}
+        >
+          {dateStr}
+        </Text>
+        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
+          {session.circuitName ?? 'Beltoise'} · {lapStr}
+          {session.marginZone ? ` · ${marginLabelOf(session.marginZone)}` : ''}
+        </Text>
+      </View>
+      <Text
+        style={{
+          color: colors.text.primary,
+          fontSize: fontSize.title,
+          fontWeight: fontWeight.light,
+          fontFamily: 'Menlo',
+        }}
+      >
+        {marginStr}
+      </Text>
+    </>
+  );
+
+  if (mode === 'compare') {
+    return (
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: selected }}
+        onPress={onToggle}
+        style={({ pressed }) => ({
+          padding: spacing.lg,
+          borderRadius: borderRadius.md,
+          borderWidth: selected ? 1.5 : 0.5,
+          borderColor: selected ? colors.accent.coach : colors.border.subtle,
+          backgroundColor: selected ? colors.background.elevated : colors.background.secondary,
+          opacity: pressed ? 0.85 : 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.lg,
+        })}
+      >
+        {rowContent}
+      </Pressable>
+    );
+  }
+
   return (
     <Link href={{ pathname: '/(app)/bilan', params: { sessionId: session.id } }} asChild>
       <Pressable
+        accessibilityRole="button"
         style={({ pressed }) => ({
           padding: spacing.lg,
           borderRadius: borderRadius.md,
@@ -114,41 +283,7 @@ function SessionRow({ session }: { session: PilotSessionSummary }) {
           gap: spacing.lg,
         })}
       >
-        <View
-          style={{
-            width: 6,
-            height: 40,
-            borderRadius: 3,
-            backgroundColor: colorForZone(session.marginZone),
-          }}
-        />
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            {dateStr}
-          </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-          >
-            {session.circuitName ?? 'Beltoise'} · {lapStr}
-            {session.marginZone ? ` · ${marginLabelOf(session.marginZone)}` : ''}
-          </Text>
-        </View>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            fontFamily: 'Menlo',
-          }}
-        >
-          {marginStr}
-        </Text>
+        {rowContent}
       </Pressable>
     </Link>
   );
