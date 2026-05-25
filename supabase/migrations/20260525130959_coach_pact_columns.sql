@@ -1,0 +1,1 @@
+-- Applied directly to prod via SQL Editor — placeholder for CLI history sync
