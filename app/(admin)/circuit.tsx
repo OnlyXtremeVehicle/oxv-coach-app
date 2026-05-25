@@ -454,8 +454,7 @@ function CornerDetail(props: {
     ['Pace', corner.pace],
     ['Apex latitude', corner.apexLat.toFixed(6)],
     ['Apex longitude', corner.apexLon.toFixed(6)],
-    ['SVG X (V1 placeholder)', String(corner.svgX)],
-    ['SVG Y (V1 placeholder)', String(corner.svgY)],
+    ['Track point index', String(corner.trackPointIndex)],
   ];
   if (segmentProgress) {
     staticRows.push(
