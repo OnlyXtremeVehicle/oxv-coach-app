@@ -21,6 +21,7 @@ import { Link, router, useLocalSearchParams } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
+import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -51,6 +52,7 @@ export default function BilanScreen() {
   const [margin, setMargin] = useState<ComputeMarginOutput | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!profile) {
@@ -185,6 +187,39 @@ export default function BilanScreen() {
             />
           ))}
         </View>
+
+        {/* CTA Export PDF */}
+        {session?.id ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={exporting}
+            onPress={async () => {
+              setExporting(true);
+              await exportAndShareBilanPdf({ sessionId: session.id });
+              setExporting(false);
+            }}
+            style={({ pressed }) => ({
+              marginTop: spacing.xl,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.border.medium,
+              backgroundColor: colors.background.secondary,
+              alignItems: 'center',
+              opacity: pressed || exporting ? 0.6 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.text.primary,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              {exporting ? 'Préparation du PDF…' : 'Partager mon bilan en PDF'}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable onPress={() => router.back()}>
