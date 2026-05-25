@@ -225,6 +225,31 @@ export default function BilanScreen() {
           </Pressable>
         ) : null}
 
+        {/* CTA Duel pédagogique — comparer avec un ami */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/(app)/amis' as never)}
+          style={({ pressed }) => ({
+            marginTop: spacing.md,
+            padding: spacing.lg,
+            borderRadius: borderRadius.md,
+            borderWidth: 0.5,
+            borderColor: colors.border.subtle,
+            alignItems: 'center',
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: colors.text.secondary,
+              fontSize: fontSize.body,
+              fontWeight: fontWeight.regular,
+            }}
+          >
+            Comparer avec un ami
+          </Text>
+        </Pressable>
+
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
