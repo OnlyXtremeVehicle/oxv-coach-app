@@ -125,6 +125,11 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/mon-coach' as never)}
           />
           <SettingRow
+            label="Mes amis pilotes"
+            hint="Comparer"
+            onPress={() => router.push('/(app)/amis' as never)}
+          />
+          <SettingRow
             label="Partager une vue"
             hint="Bientôt"
             onPress={() => router.push('/(app)/partage')}
