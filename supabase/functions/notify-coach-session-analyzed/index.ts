@@ -74,12 +74,33 @@ serve(async (req) => {
     }
 
     // 3. Filtre les coachs qui ont un push token
-    const recipients = (assignments as Array<{ coach_id: string; users: { expo_push_token: string | null } | null }>)
+    const candidates = (assignments as Array<{ coach_id: string; users: { expo_push_token: string | null } | null }>)
       .map((a) => ({ coachId: a.coach_id, token: a.users?.expo_push_token }))
       .filter((r): r is { coachId: string; token: string } => Boolean(r.token));
 
-    if (recipients.length === 0) {
+    if (candidates.length === 0) {
       return new Response(JSON.stringify({ skipped: 'no_tokens' }), { status: 200 });
+    }
+
+    // 3b. Throttle : 1h par défaut pour 'session_analyzed' (le coach n'a
+    // pas besoin d'être alerté 5 fois si le pilote enchaîne 5 tours).
+    // L'envoi de la 1re notif inscrit le log, les suivantes < 1h sont skippées.
+    const THROTTLE_WINDOW_SEC = 3600;
+    const recipients: { coachId: string; token: string }[] = [];
+    for (const c of candidates) {
+      const { data: allowed } = await supabase.rpc('should_send_notif', {
+        recipient: c.coachId,
+        source: payload.pilot_id,
+        notif: 'session_analyzed',
+        window_seconds: THROTTLE_WINDOW_SEC,
+      });
+      if (allowed === true) recipients.push(c);
+    }
+
+    if (recipients.length === 0) {
+      return new Response(JSON.stringify({ skipped: 'throttled', candidates: candidates.length }), {
+        status: 200,
+      });
     }
 
     // 4. Prépare et envoie les notifs (Expo supporte un array de messages)
