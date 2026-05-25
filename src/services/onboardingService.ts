@@ -15,6 +15,7 @@ import { enqueueAction } from '@/services/offlineQueue';
 import { useAuthStore } from '@/store/useAuthStore';
 
 export const PACT_VERSION = '1.0';
+export const COACH_PACT_VERSION = '1.0';
 export const CGU_VERSION = '1.0';
 export const PRIVACY_VERSION = '1.0';
 
@@ -87,6 +88,31 @@ export async function acceptPact(): Promise<boolean> {
 }
 
 /**
+ * Acceptation du Pacte de coaching (pour les users role='coach').
+ * Distinct de acceptPact() qui est le Pacte de pilotage.
+ */
+export async function acceptCoachPact(): Promise<boolean> {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return false;
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from('users')
+    .update({
+      coach_pact_accepted_at: now,
+      coach_pact_version: COACH_PACT_VERSION,
+    } as never)
+    .eq('id', userId);
+
+  if (error) {
+    console.warn('[OXV] acceptCoachPact échec :', error.message);
+    return false;
+  }
+  await useAuthStore.getState().refreshProfile();
+  return true;
+}
+
+/**
  * Marque l'onboarding comme terminé. Appelé à la fin du flux #06 après
  * acceptation du Pacte. À partir de là, le routeur app/index.tsx redirige
  * vers `(app)/` plutôt que `(onboarding)/`.
@@ -108,13 +134,25 @@ export async function completeOnboarding(): Promise<boolean> {
   return true;
 }
 
-/** Indique si l'utilisateur a tout signé et peut entrer dans l'app. */
+/**
+ * Indique si l'utilisateur a tout signé et peut entrer dans l'app.
+ * Le pacte requis dépend du rôle : pilote signe pact_accepted_at,
+ * coach signe coach_pact_accepted_at.
+ */
 export function isOnboardingComplete(profile: {
   profile_completed_at: string | null;
   pact_accepted_at: string | null;
+  coach_pact_accepted_at?: string | null;
   cgu_accepted_at: string | null;
+  role?: 'pilot' | 'admin' | 'coach';
 }): boolean {
-  return Boolean(
-    profile.profile_completed_at && profile.pact_accepted_at && profile.cgu_accepted_at
-  );
+  const baseSigned = Boolean(profile.profile_completed_at && profile.cgu_accepted_at);
+  if (!baseSigned) return false;
+
+  // Coach signe le pacte de coaching, pas le pacte de pilotage
+  if (profile.role === 'coach') {
+    return Boolean(profile.coach_pact_accepted_at);
+  }
+  // Pilote (et admin par défaut) signe le pacte de pilotage
+  return Boolean(profile.pact_accepted_at);
 }
