@@ -37,6 +37,7 @@ const NAV_TARGETS: NavTarget[] = [
   { label: 'Carte du circuit', href: '/(app)/carte' },
   { label: 'Détails par virage', href: '/(app)/virage' },
   { label: 'Tour par tour', href: '/(app)/tours' },
+  { label: 'Rejouer un tour', href: '/(app)/replay' },
   { label: 'Télémétrie', href: '/(app)/telemetry' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
   { label: 'Progression', href: '/(app)/progression' },
