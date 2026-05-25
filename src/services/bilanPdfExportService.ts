@@ -22,6 +22,7 @@ import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { getSegmentAnalysis } from '@/services/segmentAnalysesService';
 import { supabase } from '@/lib/supabase';
 import type { MarginZone } from '@/types/domain';
+import { formatDateLong, formatLapTime } from '@/utils/format';
 
 export interface BilanPdfInput {
   sessionId: string;
@@ -303,25 +304,6 @@ function colorForZone(zone: MarginZone | null): string {
 function labelForZone(zone: MarginZone | null): string {
   if (!zone) return '—';
   return zone === 'green' ? 'Confortable' : zone === 'yellow' ? 'À explorer' : 'Terrain serré';
-}
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds - mins * 60;
-  if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
-  return `${secs.toFixed(2)} s`;
-}
-
-function formatDateLong(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }
 
 function escapeHtml(s: string): string {

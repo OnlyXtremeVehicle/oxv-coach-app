@@ -19,6 +19,7 @@ import { Link } from 'expo-router';
 import { type CoachPilotRow, listMyPilots } from '@/services/coachService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 export default function CoachHubScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -121,7 +122,7 @@ function PilotCard({ pilot }: { pilot: CoachPilotRow }) {
           {fullName}
         </Text>
         <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-          {level} · Assigné le {dateShort(pilot.assignedAt)}
+          {level} · Assigné le {formatDateShort(pilot.assignedAt)}
         </Text>
       </Pressable>
     </Link>
@@ -168,17 +169,5 @@ function prettyLevel(level: string | null): string {
       return 'Expert';
     default:
       return 'Niveau —';
-  }
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
   }
 }

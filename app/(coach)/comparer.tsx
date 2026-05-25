@@ -22,6 +22,7 @@ import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type SessionSnapshot, loadSessionSnapshot, logCoachView } from '@/services/coachService';
 import { type MarginZone } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort, formatLapTime } from '@/utils/format';
 
 export default function CoachComparerScreen() {
   const params = useLocalSearchParams<{
@@ -184,7 +185,7 @@ function SessionCard({
   snap: SessionSnapshot;
   accent: string;
 }) {
-  const dateStr = dateShort(snap.startedAt);
+  const dateStr = formatDateShort(snap.startedAt);
   const marginStr = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
   const lapStr =
     snap.bestLapSeconds !== null ? `Meilleur tour ${formatLapTime(snap.bestLapSeconds)}` : null;
@@ -400,23 +401,4 @@ function formatDeltaCount(a: number | null, b: number | null): string {
   const delta = b - a;
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
   return `${sign}${Math.abs(delta)}`;
-}
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds - mins * 60;
-  if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
-  return `${secs.toFixed(2)} s`;
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

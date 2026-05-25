@@ -23,6 +23,9 @@ export const STORAGE_KEYS = {
 
   // File d'attente d'écritures
   OFFLINE_QUEUE: 'queue:offline',
+
+  // Préférences UI persistées (par utilisateur, namespaced via suffix userId)
+  PREF_DETAIL_LEVEL: 'pref:detail_level',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

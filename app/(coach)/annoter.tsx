@@ -36,6 +36,7 @@ import {
   updateAnnotation,
 } from '@/services/coachAnnotationsService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 export default function CoachAnnoterScreen() {
   const params = useLocalSearchParams<{
@@ -172,7 +173,7 @@ export default function CoachAnnoterScreen() {
                       {a.visibility === 'private' ? 'BROUILLON' : 'PARTAGÉE'}
                     </Text>
                     <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                      {dateShort(a.createdAt)}
+                      {formatDateShort(a.createdAt)}
                     </Text>
                   </View>
                   <Text
@@ -368,16 +369,4 @@ function VisibilityChip({
       </Text>
     </Pressable>
   );
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }
