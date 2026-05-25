@@ -35,7 +35,7 @@ export { PilotPreset, type PilotPresetProps } from './presets/PilotPreset';
 export { CoachPreset, type CoachPresetProps } from './presets/CoachPreset';
 export { PublicPreset, type PublicPresetProps } from './presets/PublicPreset';
 
-// Projection (réutilisable hors layers, ex: pour calculer la position
-// d'un tap utilisateur sur le SVG)
-export { projectToScene, getScenePoints, getCircuitViewBox } from './projection';
+// Projection (réutilisable hors layers — calcul d'une position sur le
+// SVG, ou viewBox zoomé sur un virage spécifique)
+export { projectToScene, getScenePoints, getCircuitViewBox, getCornerViewBox } from './projection';
 export type { ScenePoint } from './projection';

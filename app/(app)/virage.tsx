@@ -1,26 +1,42 @@
 /**
- * Écran #15 — Zoom virage.
+ * Écran #15 — Zoom virage (deep-dive).
  *
- * Vue détaillée d'un virage avec 3 éclairages doctrine :
- *   1. Trajectoire — votre tracé vs idéal (placeholder V1)
- *   2. Physique   — vitesse entrée, G_lat max, vitesse sortie (placeholder)
- *   3. Question   — une seule question ouverte, jamais d'instruction
+ * Vue détaillée d'un virage avec, dans l'ordre :
+ *   1. Carte zoomée sur l'apex + trajectoire GPS du pilote
+ *   2. Vitesses (entrée, min, apex, sortie) + delta entrée → sortie
+ *   3. Forces vécues — G latéral, freinage, accélération (barres)
+ *   4. Trajectoire — écart latéral moyen + max au tracé de référence
+ *   5. Question ouverte (manifeste doctrine)
  *
- * Navigation : boutons précédent/suivant entre les 14 virages. Le swipe
- * gestuel viendra en V1.1 (gesture-handler + reanimated, plus complexe).
+ * Le pilote pro y lit les chiffres bruts, le particulier voit les
+ * formes (longueur des barres, couleur de la marge). Lecture seule —
+ * l'app décrit, ne juge pas.
  *
- * V1 : contenu placeholder — les vraies métriques par virage arrivent
- * sem 7-8 quand `margin_breakdown` portera les données par virage.
+ * Bouton « Comparer ce virage » → ouvre virage-comparer.tsx avec un
+ * picker pour choisir une 2e session.
  */
 
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { useEffect, useState } from 'react';
-
+import {
+  CircuitMap,
+  CornersLayer,
+  TrackLayer,
+  TrajectoryLayer,
+  getCornerViewBox,
+} from '@/components/CircuitMap';
+import { GForceBars } from '@/components/GForceBars';
 import { getCorner, nextCornerIndex, previousCornerIndex } from '@/lib/circuitTopology';
-import { type SegmentAnalysisRow, getSegmentAnalysis } from '@/services/segmentAnalysesService';
+import { supabase } from '@/lib/supabase';
+import {
+  type CoachAnnotation,
+  listVisibleAnnotationsForCorner,
+} from '@/services/coachAnnotationsService';
+import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
@@ -29,22 +45,63 @@ export default function VirageScreen() {
   const cornerIndex = Number(params.index ?? '1');
   const corner = getCorner(cornerIndex);
 
-  const [stats, setStats] = useState<SegmentAnalysisRow | null>(null);
+  const [deepDive, setDeepDive] = useState<CornerDeepDive | null>(null);
+  const [annotations, setAnnotations] = useState<CoachAnnotation[]>([]);
+  const [sessionPilotId, setSessionPilotId] = useState<string | null>(null);
+  const profile = useAuthStore((s) => s.profile);
+  const isCoach = profile?.role === 'coach' || profile?.role === 'admin';
 
   useEffect(() => {
     if (!params.sessionId || !corner) return;
     let cancelled = false;
-    getSegmentAnalysis(params.sessionId, corner.index).then((s) => {
-      if (!cancelled) setStats(s);
+    loadCornerDeepDive(params.sessionId, corner.index).then((d) => {
+      if (!cancelled) setDeepDive(d);
     });
     return () => {
       cancelled = true;
     };
   }, [params.sessionId, corner]);
 
+  // Charge les annotations partagées par les coachs de ce pilote
+  useEffect(() => {
+    if (!profile?.id || !corner) return;
+    let cancelled = false;
+    listVisibleAnnotationsForCorner(profile.id, corner.index, params.sessionId ?? null).then(
+      (rows) => {
+        if (!cancelled) setAnnotations(rows);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, corner, params.sessionId]);
+
+  // Côté coach : récupère l'id du pilote propriétaire de la session
+  // pour pouvoir l'annoter. RLS protège (un coach ne lit que les sessions
+  // d'un pilote qu'il suit).
+  useEffect(() => {
+    if (!isCoach || !params.sessionId) return;
+    const sessionId = params.sessionId; // narrow avant async closure
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('telemetry_sessions')
+        .select('user_id')
+        .eq('id', sessionId)
+        .maybeSingle();
+      if (!cancelled && data) setSessionPilotId(data.user_id as string);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCoach, params.sessionId]);
+
   if (!corner) {
     return <VirageNotFound />;
   }
+
+  const stats = deepDive?.stats ?? null;
+  const trajectory = deepDive?.trajectory ?? [];
 
   const onPrev = () => {
     router.replace({
@@ -66,11 +123,36 @@ export default function VirageScreen() {
     });
   };
 
+  const onCompare = () => {
+    router.push({
+      pathname: '/(app)/virage-comparer',
+      params: {
+        index: String(cornerIndex),
+        sessionA: params.sessionId ?? '',
+      },
+    } as never);
+  };
+
   const zone: MarginZone =
     stats?.marginZone ??
     (stats?.marginPercent !== null && stats?.marginPercent !== undefined
       ? marginZoneOf(stats.marginPercent)
       : 'yellow');
+
+  const trajectoryPoints =
+    trajectory.length > 1
+      ? trajectory.map((p) => ({ lat: p.lat, lon: p.lon, speed: p.speedKmh }))
+      : null;
+
+  const viewBox = getCornerViewBox(
+    { lat: corner.apexLat, lon: corner.apexLon },
+    100 // 100m de rayon = ~200m de fenêtre, large
+  );
+
+  const deltaEntryExit =
+    stats?.entrySpeedKmh != null && stats?.exitSpeedKmh != null
+      ? stats.exitSpeedKmh - stats.entrySpeedKmh
+      : null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -85,7 +167,7 @@ export default function VirageScreen() {
             {
               color: colorForZone(zone),
               marginTop: spacing.sm,
-              marginBottom: spacing.xxl,
+              marginBottom: spacing.xl,
             },
           ]}
         >
@@ -95,12 +177,74 @@ export default function VirageScreen() {
             : ''}
         </Text>
 
-        <Section eyebrow="TRAJECTOIRE" title="Votre tracé contre l'optimum">
+        {/* Carte zoomée sur le virage */}
+        <CircuitMap viewBox={viewBox} height={260}>
+          <TrackLayer animate={false} opacity={0.3} strokeWidth={6} />
+          {trajectoryPoints ? (
+            <TrajectoryLayer points={trajectoryPoints} colorMode="speed-heatmap" />
+          ) : null}
+          <CornersLayer
+            colorMode="zone"
+            zoneByIndex={{ [corner.index]: zone }}
+            selectedIndex={corner.index}
+            showLabels
+            radius={18}
+          />
+        </CircuitMap>
+
+        {/* Vitesses */}
+        <Section eyebrow="VITESSES">
+          <View style={{ gap: spacing.xs }}>
+            <StatRow
+              label="À l'entrée"
+              value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
+            />
+            <StatRow
+              label="Au point bas"
+              value={stats?.minSpeedKmh != null ? `${Math.round(stats.minSpeedKmh)} km/h` : '—'}
+            />
+            <StatRow
+              label="À l'apex"
+              value={stats?.apexSpeedKmh != null ? `${Math.round(stats.apexSpeedKmh)} km/h` : '—'}
+            />
+            <StatRow
+              label="À la sortie"
+              value={stats?.exitSpeedKmh != null ? `${Math.round(stats.exitSpeedKmh)} km/h` : '—'}
+            />
+            {deltaEntryExit !== null ? (
+              <StatRow
+                label="Écart entrée → sortie"
+                value={`${deltaEntryExit > 0 ? '+' : ''}${Math.round(deltaEntryExit)} km/h`}
+                emphasis
+              />
+            ) : null}
+          </View>
+        </Section>
+
+        {/* Forces vécues */}
+        <Section eyebrow="FORCES VÉCUES">
+          <GForceBars
+            lateralG={stats?.maxGLateral ?? null}
+            brakingG={stats?.maxGBraking ?? null}
+            accelG={stats?.maxGAccel ?? null}
+          />
+        </Section>
+
+        {/* Trajectoire */}
+        <Section eyebrow="TRAJECTOIRE">
           {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
-            <Text style={typography.body}>
-              Écart latéral moyen au tracé de référence : {stats.avgLateralErrorM.toFixed(1)} m (max{' '}
-              {stats.maxLateralErrorM?.toFixed(1) ?? '—'} m).
-            </Text>
+            <View style={{ gap: spacing.xs }}>
+              <StatRow
+                label="Écart latéral moyen"
+                value={`${stats.avgLateralErrorM.toFixed(1)} m`}
+              />
+              <StatRow
+                label="Écart latéral max"
+                value={
+                  stats?.maxLateralErrorM != null ? `${stats.maxLateralErrorM.toFixed(1)} m` : '—'
+                }
+              />
+            </View>
           ) : (
             <Text style={typography.body}>
               La trajectoire détaillée apparaîtra après votre première session enregistrée.
@@ -108,37 +252,125 @@ export default function VirageScreen() {
           )}
         </Section>
 
-        <Section eyebrow="PHYSIQUE" title="Ce que la voiture a vécu">
-          <StatRow
-            label="Vitesse à l'entrée"
-            value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
-          />
-          <StatRow
-            label="G latéral max"
-            value={stats?.maxGLateral != null ? `${stats.maxGLateral.toFixed(2)} g` : '—'}
-          />
-          <StatRow
-            label="Vitesse à la sortie"
-            value={stats?.exitSpeedKmh != null ? `${Math.round(stats.exitSpeedKmh)} km/h` : '—'}
-          />
-          {!stats ? (
-            <Text style={[typography.caption, { marginTop: spacing.md }]}>
-              Stats disponibles après votre première session analysée.
-            </Text>
-          ) : null}
-        </Section>
+        {/* Annotations coach (si partagées) */}
+        {annotations.length > 0 ? (
+          <Section eyebrow={annotations.length > 1 ? 'NOTES DE VOS COACHS' : 'NOTE DE VOTRE COACH'}>
+            <View style={{ gap: spacing.sm }}>
+              {annotations.map((a) => (
+                <View
+                  key={a.id}
+                  style={{
+                    padding: spacing.md,
+                    borderRadius: borderRadius.md,
+                    borderWidth: 0.5,
+                    borderColor: colors.accent.coach,
+                    backgroundColor: colors.background.secondary,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: colors.text.primary,
+                      fontSize: fontSize.body,
+                      fontWeight: fontWeight.light,
+                      fontStyle: 'italic',
+                      lineHeight: fontSize.body * 1.6,
+                    }}
+                  >
+                    « {a.body} »
+                  </Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: colors.text.tertiary, marginTop: spacing.sm },
+                    ]}
+                  >
+                    {dateShort(a.createdAt)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
 
-        <Section eyebrow="QUESTION" title="">
+        {/* Question ouverte — doctrine */}
+        <View style={{ marginBottom: spacing.xxxl }}>
+          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>QUESTION</Text>
           <Text style={[typography.manifest, { textAlign: 'center', marginVertical: spacing.lg }]}>
             Était-ce volontaire&nbsp;?
           </Text>
-        </Section>
+        </View>
 
+        {/* CTA Comparaison */}
+        {params.sessionId ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCompare}
+            style={({ pressed }) => ({
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.border.medium,
+              backgroundColor: colors.background.secondary,
+              alignItems: 'center',
+              opacity: pressed ? 0.85 : 1,
+              marginBottom: spacing.md,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.text.primary,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Comparer ce virage à une autre session
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* CTA Annoter (coach uniquement, et si pilotId résolu) */}
+        {isCoach && sessionPilotId ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/annoter',
+                params: {
+                  pilotId: sessionPilotId,
+                  cornerIndex: String(cornerIndex),
+                  sessionId: params.sessionId ?? '',
+                },
+              } as never)
+            }
+            style={({ pressed }) => ({
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              backgroundColor: colors.background.secondary,
+              alignItems: 'center',
+              opacity: pressed ? 0.85 : 1,
+              marginBottom: spacing.xl,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.coach,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Annoter ce virage
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* Navigation entre virages */}
         <View
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
-            marginTop: spacing.xxxl,
+            marginTop: spacing.lg,
             gap: spacing.md,
           }}
         >
@@ -147,7 +379,7 @@ export default function VirageScreen() {
         </View>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour à la carte
             </Text>
@@ -158,36 +390,24 @@ export default function VirageScreen() {
   );
 }
 
-function Section({
-  eyebrow,
-  title,
-  children,
-}: {
-  eyebrow: string;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: spacing.xxxl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.sm }]}>{eyebrow}</Text>
-      {title ? (
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            marginBottom: spacing.lg,
-          }}
-        >
-          {title}
-        </Text>
-      ) : null}
+    <View style={{ marginBottom: spacing.xxxl, marginTop: spacing.xxl }}>
+      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>{eyebrow}</Text>
       {children}
     </View>
   );
 }
 
-function StatRow({ label, value }: { label: string; value: string }) {
+function StatRow({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+}) {
   return (
     <View
       style={{
@@ -203,7 +423,8 @@ function StatRow({ label, value }: { label: string; value: string }) {
         style={{
           color: colors.text.primary,
           fontSize: fontSize.body,
-          fontWeight: fontWeight.regular,
+          fontWeight: emphasis ? fontWeight.semibold : fontWeight.regular,
+          fontFamily: 'Menlo',
         }}
       >
         {value}
@@ -215,6 +436,7 @@ function StatRow({ label, value }: { label: string; value: string }) {
 function NavBtn({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
@@ -244,7 +466,11 @@ function VirageNotFound() {
     >
       <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>VIRAGE</Text>
       <Text style={[typography.screenTitle, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
-      <Pressable onPress={() => router.back()} style={{ marginTop: spacing.xxxl }}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.back()}
+        style={{ marginTop: spacing.xxxl }}
+      >
         <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
       </Pressable>
     </SafeAreaView>
@@ -259,5 +485,17 @@ function colorForZone(zone: MarginZone): string {
       return colors.margin.yellow;
     case 'red':
       return colors.margin.red;
+  }
+}
+
+function dateShort(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
   }
 }
