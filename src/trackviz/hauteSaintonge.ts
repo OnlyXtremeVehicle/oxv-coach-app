@@ -1,11 +1,14 @@
 /**
- * Données statiques du circuit Haute Saintonge (tracé Beltoise).
+ * Données réelles du circuit Haute Saintonge (tracé Beltoise).
  *
- * Inspiré du module trackviz partagé par Gabin en sem 11, adapté à notre
- * topologie 14 virages (`src/lib/circuitTopology.ts`). Les coordonnées GPS
- * de la polyline sont interpolées depuis les apex des virages — V1 pour
- * permettre le map-matching. Calibration topométrique précise renvoyée
- * en sem 13+.
+ * Source : OpenStreetMap way 54412766 (highway=raceway). 76 points GPS
+ * extraits directement du tracé officiel, sans interpolation. Précision
+ * topométrique typique OSM : ±2-5 m sur les apex (suffisant pour V1
+ * map-matching).
+ *
+ * Refactor sem 16 : remplace l'interpolation V1 sem 11 (42 points faux
+ * basés sur 14 virages fictifs ~45.60/-0.14) par les vraies coordonnées
+ * (~45.24/-0.09).
  */
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
@@ -18,65 +21,166 @@ export interface TrackPoint {
 }
 
 /**
- * Polyline du tracé Beltoise : pour chaque virage, on intercale 3 points
- * (entrée, apex, sortie) interpolés autour de l'apex GPS connu, ce qui
- * donne ~42 points le long du tracé.
+ * Polyline réelle du tracé Beltoise depuis OSM way 54412766.
+ * 76 points GPS qui suivent le ruban d'asphalte de la piste principale
+ * (sans la voie des stands).
  */
-function buildTrack(): TrackPoint[] {
-  const points: TrackPoint[] = [];
-  for (let i = 0; i < BELTOISE_CORNERS.length; i++) {
-    const corner = BELTOISE_CORNERS[i];
-    const next = BELTOISE_CORNERS[(i + 1) % BELTOISE_CORNERS.length];
-    // Entrée (légèrement avant l'apex, vers le virage précédent)
-    const prev = BELTOISE_CORNERS[(i - 1 + BELTOISE_CORNERS.length) % BELTOISE_CORNERS.length];
-    points.push({
-      lat: corner.apexLat * 0.7 + prev.apexLat * 0.3,
-      lon: corner.apexLon * 0.7 + prev.apexLon * 0.3,
-    });
-    // Apex exact
-    points.push({ lat: corner.apexLat, lon: corner.apexLon });
-    // Sortie (légèrement après, vers le suivant)
-    points.push({
-      lat: corner.apexLat * 0.6 + next.apexLat * 0.4,
-      lon: corner.apexLon * 0.6 + next.apexLon * 0.4,
-    });
-  }
-  return points;
-}
-
-export const HAUTE_SAINTONGE_TRACK: TrackPoint[] = buildTrack();
+export const HAUTE_SAINTONGE_TRACK: TrackPoint[] = [
+  { lat: 45.2390749, lon: -0.0908906 },
+  { lat: 45.2391293, lon: -0.0912516 },
+  { lat: 45.2393437, lon: -0.092159 },
+  { lat: 45.2394476, lon: -0.0925844 },
+  { lat: 45.2395153, lon: -0.092798 },
+  { lat: 45.239577, lon: -0.092932 },
+  { lat: 45.239856, lon: -0.0934017 },
+  { lat: 45.2400284, lon: -0.093669 },
+  { lat: 45.240145, lon: -0.0939316 },
+  { lat: 45.2402083, lon: -0.0940822 },
+  { lat: 45.2405154, lon: -0.0948129 },
+  { lat: 45.2406122, lon: -0.0950511 },
+  { lat: 45.2406761, lon: -0.0952084 },
+  { lat: 45.2408144, lon: -0.095594 },
+  { lat: 45.2409609, lon: -0.0959996 },
+  { lat: 45.2411163, lon: -0.0963118 },
+  { lat: 45.2412871, lon: -0.0965422 },
+  { lat: 45.2414841, lon: -0.0966891 },
+  { lat: 45.2416352, lon: -0.0967584 },
+  { lat: 45.2418259, lon: -0.0967968 },
+  { lat: 45.2419573, lon: -0.0968077 },
+  { lat: 45.2421921, lon: -0.0967996 },
+  { lat: 45.2424763, lon: -0.0967393 }, // apex virage 1
+  { lat: 45.2426869, lon: -0.0965477 },
+  { lat: 45.2428089, lon: -0.0963115 },
+  { lat: 45.2428654, lon: -0.0960924 },
+  { lat: 45.2428731, lon: -0.0958743 },
+  { lat: 45.2428442, lon: -0.0955631 },
+  { lat: 45.2426515, lon: -0.0941293 },
+  { lat: 45.242074, lon: -0.0895603 },
+  { lat: 45.2419553, lon: -0.0886945 },
+  { lat: 45.2418981, lon: -0.0882683 },
+  { lat: 45.2418691, lon: -0.0881955 },
+  { lat: 45.2418313, lon: -0.0881423 }, // apex virage 2
+  { lat: 45.2417749, lon: -0.0881122 },
+  { lat: 45.2417019, lon: -0.0881083 },
+  { lat: 45.2416307, lon: -0.0881483 }, // apex virage 3 (épingle Est)
+  { lat: 45.2415802, lon: -0.0882331 },
+  { lat: 45.2415538, lon: -0.0883407 },
+  { lat: 45.2415523, lon: -0.0887451 },
+  { lat: 45.2416112, lon: -0.0900869 },
+  { lat: 45.2416275, lon: -0.0905141 },
+  { lat: 45.2416234, lon: -0.0906659 },
+  { lat: 45.2415943, lon: -0.0907899 }, // apex virage 4
+  { lat: 45.2415453, lon: -0.0908748 },
+  { lat: 45.2414674, lon: -0.0909465 },
+  { lat: 45.2411299, lon: -0.0911627 },
+  { lat: 45.2405671, lon: -0.0915498 },
+  { lat: 45.2404245, lon: -0.0916411 },
+  { lat: 45.2403405, lon: -0.0916795 },
+  { lat: 45.2402726, lon: -0.0916873 },
+  { lat: 45.2401704, lon: -0.0916685 },
+  { lat: 45.2400719, lon: -0.0916003 },
+  { lat: 45.2399848, lon: -0.0914963 }, // apex virage 5
+  { lat: 45.2398547, lon: -0.0911735 },
+  { lat: 45.2396985, lon: -0.0907832 },
+  { lat: 45.2396566, lon: -0.0906487 },
+  { lat: 45.239662, lon: -0.0904954 }, // apex virage 6 (épingle Sud)
+  { lat: 45.2397425, lon: -0.0903263 },
+  { lat: 45.2398744, lon: -0.0899898 },
+  { lat: 45.2399065, lon: -0.0897982 },
+  { lat: 45.2399029, lon: -0.0895865 },
+  { lat: 45.2398511, lon: -0.089349 },
+  { lat: 45.2397661, lon: -0.0891708 },
+  { lat: 45.2396453, lon: -0.0890188 },
+  { lat: 45.2395497, lon: -0.0889292 },
+  { lat: 45.2394321, lon: -0.0888765 },
+  { lat: 45.2393108, lon: -0.0888715 },
+  { lat: 45.2392012, lon: -0.0889068 },
+  { lat: 45.2390839, lon: -0.0889951 }, // apex virage 7 (la ramenée)
+  { lat: 45.2389909, lon: -0.0891372 },
+  { lat: 45.2389297, lon: -0.089298 },
+  { lat: 45.2388985, lon: -0.0895002 },
+  { lat: 45.2389076, lon: -0.0896707 },
+  { lat: 45.2389931, lon: -0.090321 },
+  { lat: 45.2390749, lon: -0.0908906 }, // bouclage sur le premier point
+];
 
 /**
- * Segments du circuit : un par virage (kind='turn') + interstices
- * (kind='straight') quand 2 virages sont éloignés. V1 : on définit
- * uniquement les 14 virages, les lignes droites étant implicites.
+ * Segments dérivés des 7 virages. Chaque segment couvre la portion de
+ * tracé entre deux apex consécutifs (le segment 1 va de mi-distance
+ * apex 7→apex 1 jusqu'à mi-distance apex 1→apex 2). Les progress sont
+ * calculés à partir des trackPointIndex pour rester cohérents avec la
+ * polyline réelle.
  */
-export const HAUTE_SAINTONGE_SEGMENTS: TrackVizSegmentDefinition[] = BELTOISE_CORNERS.map(
-  (corner, i) => {
-    const segmentSpan = 1 / BELTOISE_CORNERS.length;
-    const start = i * segmentSpan;
-    const end = (i + 1) * segmentSpan;
-    return {
+function buildSegments(): TrackVizSegmentDefinition[] {
+  const totalPoints = HAUTE_SAINTONGE_TRACK.length;
+  const segments: TrackVizSegmentDefinition[] = [];
+
+  for (let i = 0; i < BELTOISE_CORNERS.length; i++) {
+    const corner = BELTOISE_CORNERS[i];
+    const apexIdx = corner.trackPointIndex;
+    const prev = BELTOISE_CORNERS[(i - 1 + BELTOISE_CORNERS.length) % BELTOISE_CORNERS.length];
+    const next = BELTOISE_CORNERS[(i + 1) % BELTOISE_CORNERS.length];
+
+    // Le segment commence à mi-chemin entre apex précédent et celui-ci,
+    // et finit à mi-chemin entre celui-ci et le suivant.
+    // Pour le 1er virage, "prev" est le dernier — on ne wrap pas autour
+    // de 0/totalPoints pour rester simple en V1 (le segment 1 commence
+    // alors à 0).
+    const startIdx = i === 0 ? 0 : Math.floor((prev.trackPointIndex + apexIdx) / 2);
+    const endIdx =
+      i === BELTOISE_CORNERS.length - 1
+        ? totalPoints - 1
+        : Math.floor((apexIdx + next.trackPointIndex) / 2);
+
+    const progressStart = startIdx / (totalPoints - 1);
+    const progressEnd = endIdx / (totalPoints - 1);
+    const apexProgress = apexIdx / (totalPoints - 1);
+
+    segments.push({
       id: `corner-${corner.index}`,
       order: corner.index,
       name: corner.name,
-      kind: 'turn' as const,
-      progressStart: Number(start.toFixed(4)),
-      progressEnd: Number(end.toFixed(4)),
-      apexProgress: Number((start + segmentSpan / 2).toFixed(4)),
+      kind: 'turn',
+      progressStart: Number(progressStart.toFixed(4)),
+      progressEnd: Number(progressEnd.toFixed(4)),
+      apexProgress: Number(apexProgress.toFixed(4)),
       coachingFocus:
         corner.pace === 'fast'
           ? 'Patience à la corde, ouverture progressive.'
           : corner.pace === 'slow'
             ? 'Repère de freinage stable, point de corde clair.'
             : 'Lecture du virage en continu, transitions douces.',
-    };
+    });
   }
-);
+
+  return segments;
+}
+
+export const HAUTE_SAINTONGE_SEGMENTS: TrackVizSegmentDefinition[] = buildSegments();
+
+/**
+ * Longueur calculée approximative via haversine sur la polyline réelle.
+ * Le bbox est ~440 m × 660 m, longueur totale du ruban ≈ 1.5-1.8 km.
+ */
+function computeTotalLengthM(): number {
+  const R = 6371000;
+  let total = 0;
+  for (let i = 1; i < HAUTE_SAINTONGE_TRACK.length; i++) {
+    const a = HAUTE_SAINTONGE_TRACK[i - 1];
+    const b = HAUTE_SAINTONGE_TRACK[i];
+    const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+    const dLon = ((b.lon - a.lon) * Math.PI) / 180;
+    const lat1 = (a.lat * Math.PI) / 180;
+    const lat2 = (b.lat * Math.PI) / 180;
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+    total += R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+  }
+  return Math.round(total);
+}
 
 export const HAUTE_SAINTONGE_CIRCUIT = {
   id: 'beltoise',
   name: 'Circuit de Haute Saintonge',
-  totalLengthM: 1130,
+  totalLengthM: computeTotalLengthM(),
   cornerCount: BELTOISE_CORNERS.length,
 };

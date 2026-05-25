@@ -18,9 +18,9 @@ describe('buildTrackGeometry', () => {
     const geom = buildTrackGeometry(HAUTE_SAINTONGE_TRACK);
     expect(geom.trackPoints.length).toBe(HAUTE_SAINTONGE_TRACK.length);
     expect(geom.cumulativeDistances.length).toBe(HAUTE_SAINTONGE_TRACK.length);
-    // ~1.1 km attendu pour Beltoise V1 (interpolé depuis 14 virages)
-    expect(geom.totalLengthM).toBeGreaterThan(500);
-    expect(geom.totalLengthM).toBeLessThan(3500);
+    // Beltoise depuis OSM way 54412766 (refactor sem 16) : ~1.5-1.8 km
+    expect(geom.totalLengthM).toBeGreaterThan(1000);
+    expect(geom.totalLengthM).toBeLessThan(2500);
   });
 
   it('expose cumulativeDistances croissantes', () => {
@@ -41,14 +41,15 @@ describe('mapMatchPoint', () => {
   });
 
   it('renvoie un progress dans [0, 1]', () => {
-    const res = mapMatchPoint({ lat: 45.6012, lon: -0.141 }, geom);
+    // Point dans le bbox Beltoise (centre approx)
+    const res = mapMatchPoint({ lat: 45.2408, lon: -0.092 }, geom);
     expect(res.progress).toBeGreaterThanOrEqual(0);
     expect(res.progress).toBeLessThanOrEqual(1);
   });
 
   it('détecte une erreur latérale élevée pour un point hors tracé', () => {
-    // Un point ~200 m au nord du circuit
-    const offTrack = { lat: 45.605, lon: -0.141 };
+    // Un point ~500 m au nord-est du circuit
+    const offTrack = { lat: 45.245, lon: -0.085 };
     const res = mapMatchPoint(offTrack, geom);
     expect(res.lateralErrorM).toBeGreaterThan(50);
   });
@@ -106,10 +107,14 @@ describe('TrackProjection', () => {
 });
 
 describe('analyzeTrackVizSession (sanity sur demo)', () => {
-  it('produit 14 segments analysés sur la session demo', () => {
+  it('produit ~7 segments analysés sur la session demo (refactor sem 16)', () => {
     const samples = buildDemoTrackVizSamples();
     const result = analyzeTrackVizSession(samples);
-    expect(result.segments.length).toBe(14);
+    // Tolérance ±1 : un segment court peut avoir < 2 samples et être
+    // filtré par analyzeSegment. Confortable pour V1, à durcir V1.1
+    // quand on aura un .ubx réel de session.
+    expect(result.segments.length).toBeGreaterThanOrEqual(6);
+    expect(result.segments.length).toBeLessThanOrEqual(7);
   });
 
   it('chaque segment a marginPercent dans [0, 100]', () => {
