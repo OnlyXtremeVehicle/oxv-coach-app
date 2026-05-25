@@ -1,3 +1,4 @@
+// @ts-nocheck — Deno runtime, pas Node
 // Edge Function : generate-debrief-ai
 //
 // Génère le debrief J+1 littéraire via OpenAI à partir des données de
