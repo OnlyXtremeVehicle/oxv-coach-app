@@ -11,10 +11,25 @@
  *   - onError : erreur
  */
 
-import { BleManager, Device, Subscription } from 'react-native-ble-plx';
+import type { BleManager, Device, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { parseRaceBoxDataMessage, UbxFrameBuffer, isRaceBoxDataMessage } from '@/ubx/parser';
 import { RaceBoxData, RaceBoxDevice, BleStatus, RACEBOX_PROTOCOL } from '@/types/telemetry';
+
+/**
+ * Charge `react-native-ble-plx` à la demande pour éviter le crash au
+ * boot dans Expo Go (où le module natif n'existe pas). Retourne `null`
+ * si l'import échoue — le service tombe alors en mode no-op.
+ */
+function loadBleManagerCtor(): (new () => BleManager) | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('react-native-ble-plx').BleManager;
+  } catch (e) {
+    console.warn('[OXV] react-native-ble-plx indisponible (Expo Go ?) — BLE désactivé.', e);
+    return null;
+  }
+}
 
 type StatusListener = (status: BleStatus) => void;
 type DeviceListener = (device: RaceBoxDevice) => void;
@@ -23,7 +38,7 @@ type ErrorListener = (error: string) => void;
 type RawDataListener = (bytes: Uint8Array) => void;
 
 export class RaceBoxBluetoothService {
-  private manager: BleManager;
+  private manager: BleManager | null;
   private currentDevice: Device | null = null;
   /** Dernier device connecté — conservé après déconnexion pour permettre la reconnexion auto. */
   private lastConnectedDeviceId: string | null = null;
@@ -44,8 +59,14 @@ export class RaceBoxBluetoothService {
   private currentRateHz = 0;
 
   constructor() {
-    this.manager = new BleManager();
+    const Ctor = loadBleManagerCtor();
+    this.manager = Ctor ? new Ctor() : null;
     this.frameBuffer = new UbxFrameBuffer();
+  }
+
+  /** `true` si le module BLE natif est chargé (faux en Expo Go). */
+  public isAvailable(): boolean {
+    return this.manager !== null;
   }
 
   // ============================================================
@@ -117,6 +138,10 @@ export class RaceBoxBluetoothService {
   // ============================================================
 
   public async startScan(): Promise<void> {
+    if (!this.manager) {
+      this.emitError('Bluetooth indisponible dans ce runtime (Expo Go).');
+      return;
+    }
     const state = await this.manager.state();
     if (state !== 'PoweredOn') {
       this.emitError(`Bluetooth non disponible (état : ${state})`);
@@ -149,6 +174,7 @@ export class RaceBoxBluetoothService {
   }
 
   public stopScan(): void {
+    if (!this.manager) return;
     this.manager.stopDeviceScan();
     if (this.status === 'scanning') {
       this.emitStatus('idle');
@@ -160,6 +186,10 @@ export class RaceBoxBluetoothService {
   // ============================================================
 
   public async connect(deviceId: string): Promise<void> {
+    if (!this.manager) {
+      this.emitError('Bluetooth indisponible dans ce runtime (Expo Go).');
+      return;
+    }
     try {
       this.stopScan();
       this.emitStatus('connecting');
@@ -290,7 +320,7 @@ export class RaceBoxBluetoothService {
 
   public destroy(): void {
     this.disconnect();
-    this.manager.destroy();
+    this.manager?.destroy();
   }
 }
 

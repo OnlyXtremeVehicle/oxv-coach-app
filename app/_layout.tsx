@@ -13,6 +13,7 @@ import { OfflineBanner } from '@/components/OfflineBanner';
 import { UpdateModal } from '@/components/UpdateModal';
 import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
+import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -32,15 +33,22 @@ export default function RootLayout() {
   const navState = useRootNavigationState();
 
   useEffect(() => {
+    console.warn(`[OXV] Runtime : ${runtimeLabel()}`);
     initialize();
     initNetInfo();
-    initBle();
-    initFlic();
+    if (!isExpoGo()) {
+      // BLE et Flic 2 nécessitent des modules natifs custom indisponibles
+      // dans Expo Go. En preview UI, on les skip — l'app reste navigable.
+      initBle();
+      initFlic();
+    }
     initGeolocation().catch(() => undefined);
     return () => {
       teardownNetInfo();
-      teardownBle();
-      teardownFlic();
+      if (!isExpoGo()) {
+        teardownBle();
+        teardownFlic();
+      }
       teardownGeolocation();
     };
   }, [initialize]);
@@ -52,7 +60,10 @@ export default function RootLayout() {
   }, [status]);
 
   // Enregistre le token Expo Push après connexion réussie. Idempotent.
+  // Skip en Expo Go (le token push remote n'y est pas généré, et l'app
+  // tomberait sur une erreur silencieuse).
   useEffect(() => {
+    if (isExpoGo()) return;
     if (status === 'authenticated' && profileId) {
       registerForPushNotifications(profileId).catch(() => undefined);
     }
