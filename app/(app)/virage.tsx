@@ -30,7 +30,13 @@ import {
 } from '@/components/CircuitMap';
 import { GForceBars } from '@/components/GForceBars';
 import { getCorner, nextCornerIndex, previousCornerIndex } from '@/lib/circuitTopology';
+import { supabase } from '@/lib/supabase';
+import {
+  type CoachAnnotation,
+  listVisibleAnnotationsForCorner,
+} from '@/services/coachAnnotationsService';
 import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
@@ -40,6 +46,10 @@ export default function VirageScreen() {
   const corner = getCorner(cornerIndex);
 
   const [deepDive, setDeepDive] = useState<CornerDeepDive | null>(null);
+  const [annotations, setAnnotations] = useState<CoachAnnotation[]>([]);
+  const [sessionPilotId, setSessionPilotId] = useState<string | null>(null);
+  const profile = useAuthStore((s) => s.profile);
+  const isCoach = profile?.role === 'coach' || profile?.role === 'admin';
 
   useEffect(() => {
     if (!params.sessionId || !corner) return;
@@ -51,6 +61,40 @@ export default function VirageScreen() {
       cancelled = true;
     };
   }, [params.sessionId, corner]);
+
+  // Charge les annotations partagées par les coachs de ce pilote
+  useEffect(() => {
+    if (!profile?.id || !corner) return;
+    let cancelled = false;
+    listVisibleAnnotationsForCorner(profile.id, corner.index, params.sessionId ?? null).then(
+      (rows) => {
+        if (!cancelled) setAnnotations(rows);
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id, corner, params.sessionId]);
+
+  // Côté coach : récupère l'id du pilote propriétaire de la session
+  // pour pouvoir l'annoter. RLS protège (un coach ne lit que les sessions
+  // d'un pilote qu'il suit).
+  useEffect(() => {
+    if (!isCoach || !params.sessionId) return;
+    const sessionId = params.sessionId; // narrow avant async closure
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('telemetry_sessions')
+        .select('user_id')
+        .eq('id', sessionId)
+        .maybeSingle();
+      if (!cancelled && data) setSessionPilotId(data.user_id as string);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCoach, params.sessionId]);
 
   if (!corner) {
     return <VirageNotFound />;
@@ -208,6 +252,46 @@ export default function VirageScreen() {
           )}
         </Section>
 
+        {/* Annotations coach (si partagées) */}
+        {annotations.length > 0 ? (
+          <Section eyebrow={annotations.length > 1 ? 'NOTES DE VOS COACHS' : 'NOTE DE VOTRE COACH'}>
+            <View style={{ gap: spacing.sm }}>
+              {annotations.map((a) => (
+                <View
+                  key={a.id}
+                  style={{
+                    padding: spacing.md,
+                    borderRadius: borderRadius.md,
+                    borderWidth: 0.5,
+                    borderColor: colors.accent.coach,
+                    backgroundColor: colors.background.secondary,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: colors.text.primary,
+                      fontSize: fontSize.body,
+                      fontWeight: fontWeight.light,
+                      fontStyle: 'italic',
+                      lineHeight: fontSize.body * 1.6,
+                    }}
+                  >
+                    « {a.body} »
+                  </Text>
+                  <Text
+                    style={[
+                      typography.caption,
+                      { color: colors.text.tertiary, marginTop: spacing.sm },
+                    ]}
+                  >
+                    {dateShort(a.createdAt)}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </Section>
+        ) : null}
+
         {/* Question ouverte — doctrine */}
         <View style={{ marginBottom: spacing.xxxl }}>
           <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>QUESTION</Text>
@@ -229,7 +313,7 @@ export default function VirageScreen() {
               backgroundColor: colors.background.secondary,
               alignItems: 'center',
               opacity: pressed ? 0.85 : 1,
-              marginBottom: spacing.xl,
+              marginBottom: spacing.md,
             })}
           >
             <Text
@@ -240,6 +324,43 @@ export default function VirageScreen() {
               }}
             >
               Comparer ce virage à une autre session
+            </Text>
+          </Pressable>
+        ) : null}
+
+        {/* CTA Annoter (coach uniquement, et si pilotId résolu) */}
+        {isCoach && sessionPilotId ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/annoter',
+                params: {
+                  pilotId: sessionPilotId,
+                  cornerIndex: String(cornerIndex),
+                  sessionId: params.sessionId ?? '',
+                },
+              } as never)
+            }
+            style={({ pressed }) => ({
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              backgroundColor: colors.background.secondary,
+              alignItems: 'center',
+              opacity: pressed ? 0.85 : 1,
+              marginBottom: spacing.xl,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.coach,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Annoter ce virage
             </Text>
           </Pressable>
         ) : null}
@@ -364,5 +485,17 @@ function colorForZone(zone: MarginZone): string {
       return colors.margin.yellow;
     case 'red':
       return colors.margin.red;
+  }
+}
+
+function dateShort(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  } catch {
+    return '—';
   }
 }
