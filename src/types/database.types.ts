@@ -1761,6 +1761,8 @@ export type Database = {
           blood_type: string | null
           cgu_accepted_at: string | null
           cgu_version: string | null
+          coach_pact_accepted_at: string | null
+          coach_pact_version: string | null
           created_at: string | null
           deletion_requested_at: string | null
           deletion_scheduled_at: string | null
@@ -1818,6 +1820,8 @@ export type Database = {
           blood_type?: string | null
           cgu_accepted_at?: string | null
           cgu_version?: string | null
+          coach_pact_accepted_at?: string | null
+          coach_pact_version?: string | null
           created_at?: string | null
           deletion_requested_at?: string | null
           deletion_scheduled_at?: string | null
@@ -1875,6 +1879,8 @@ export type Database = {
           blood_type?: string | null
           cgu_accepted_at?: string | null
           cgu_version?: string | null
+          coach_pact_accepted_at?: string | null
+          coach_pact_version?: string | null
           created_at?: string | null
           deletion_requested_at?: string | null
           deletion_scheduled_at?: string | null
@@ -2211,6 +2217,14 @@ export type Database = {
       generate_oxv_reference: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
       is_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
+      log_coach_view: {
+        Args: {
+          action_subtype?: string
+          target_pilot_uuid: string
+          target_session_uuid?: string
+        }
+        Returns: undefined
+      }
       schedule_rituals_for_registration: {
         Args: { p_registration_id: string }
         Returns: undefined

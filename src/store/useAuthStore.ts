@@ -23,6 +23,8 @@ type UserProfile = {
   profile_completed_at: string | null;
   pact_accepted_at: string | null;
   pact_version: string | null;
+  coach_pact_accepted_at: string | null;
+  coach_pact_version: string | null;
   cgu_accepted_at: string | null;
   privacy_accepted_at: string | null;
 };
@@ -54,7 +56,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const { data, error } = await supabase
     .from('users')
     .select(
-      'id, email, first_name, last_name, pilot_level, is_admin, role, profile_completed_at, pact_accepted_at, pact_version, cgu_accepted_at, privacy_accepted_at'
+      'id, email, first_name, last_name, pilot_level, is_admin, role, profile_completed_at, pact_accepted_at, pact_version, coach_pact_accepted_at, coach_pact_version, cgu_accepted_at, privacy_accepted_at'
     )
     .eq('id', userId)
     .maybeSingle();
