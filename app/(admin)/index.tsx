@@ -79,7 +79,7 @@ export default function AdminHubScreen() {
         </View>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.replace('/(app)')}>
+          <Pressable accessibilityRole="button" onPress={() => router.replace('/(app)')}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Sortir de l'admin
             </Text>

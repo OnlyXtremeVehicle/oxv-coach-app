@@ -87,6 +87,7 @@ export default function NiveauScreen() {
               const active = selected === level.id;
               return (
                 <Pressable
+                  accessibilityRole="button"
                   key={level.id}
                   onPress={() => setSelected(level.id)}
                   style={({ pressed }) => ({

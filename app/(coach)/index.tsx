@@ -155,7 +155,7 @@ export default function CoachHubScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={signOut}>
+          <Pressable accessibilityRole="button" onPress={signOut}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Se déconnecter
             </Text>

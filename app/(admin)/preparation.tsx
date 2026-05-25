@@ -130,6 +130,7 @@ export default function PreparationScreen() {
                     {p.kycStatus.toUpperCase()}
                   </Text>
                   <Pressable
+                    accessibilityRole="button"
                     onPress={() => confirmPromote(p)}
                     style={({ pressed }) => ({
                       paddingHorizontal: spacing.sm,
@@ -157,7 +158,7 @@ export default function PreparationScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>

@@ -165,6 +165,7 @@ function GranularityPicker({
         const active = opt.id === value;
         return (
           <Pressable
+            accessibilityRole="button"
             key={opt.id}
             onPress={() => onChange(opt.id)}
             style={({ pressed }) => ({

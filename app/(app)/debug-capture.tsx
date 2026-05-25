@@ -187,6 +187,7 @@ export default function DebugCaptureScreen() {
           <Section label="Appareils détectés">
             {devices.map((d) => (
               <Pressable
+                accessibilityRole="button"
                 key={d.id}
                 onPress={() => onConnect(d.id)}
                 style={({ pressed }) => ({
@@ -325,7 +326,7 @@ export default function DebugCaptureScreen() {
         </Section>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
               Retour à l'accueil
             </Text>
@@ -405,6 +406,7 @@ function Btn({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
         paddingVertical: spacing.md,
