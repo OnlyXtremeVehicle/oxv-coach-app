@@ -31,39 +31,39 @@ describe('selectFocusCorner', () => {
       1: 'green',
       2: 'yellow',
       3: 'yellow',
-      7: 'red',
-      14: 'yellow',
+      6: 'red',
+      7: 'yellow',
     };
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= 7; i++) {
       if (!margins[i]) margins[i] = 'green';
     }
     const sel = selectFocusCorner(margins);
     expect(sel).not.toBeNull();
     expect(sel!.zone).toBe('red');
-    expect(sel!.corner.index).toBe(7);
+    expect(sel!.corner.index).toBe(6);
   });
 
   it('prend le rouge avec la plus petite marge si plusieurs rouges', () => {
     const margins: Record<number, MarginZone> = {};
-    for (let i = 1; i <= 14; i++) margins[i] = 'green';
+    for (let i = 1; i <= 7; i++) margins[i] = 'green';
     margins[3] = 'red';
-    margins[9] = 'red';
-    const sel = selectFocusCorner(margins, { 3: 8, 9: 3 });
-    expect(sel!.corner.index).toBe(9);
+    margins[5] = 'red';
+    const sel = selectFocusCorner(margins, { 3: 8, 5: 3 });
+    expect(sel!.corner.index).toBe(5);
   });
 
   it('prend le jaune le plus faible si aucun rouge', () => {
     const margins: Record<number, MarginZone> = {};
-    for (let i = 1; i <= 14; i++) margins[i] = 'green';
+    for (let i = 1; i <= 7; i++) margins[i] = 'green';
+    margins[2] = 'yellow';
     margins[6] = 'yellow';
-    margins[11] = 'yellow';
-    const sel = selectFocusCorner(margins, { 6: 25, 11: 16 });
-    expect(sel!.corner.index).toBe(11);
+    const sel = selectFocusCorner(margins, { 2: 25, 6: 16 });
+    expect(sel!.corner.index).toBe(6);
   });
 
   it('renvoie null quand tout est vert (rien à proposer)', () => {
     const margins: Record<number, MarginZone> = {};
-    for (let i = 1; i <= 14; i++) margins[i] = 'green';
+    for (let i = 1; i <= 7; i++) margins[i] = 'green';
     expect(selectFocusCorner(margins)).toBeNull();
   });
 
@@ -73,9 +73,9 @@ describe('selectFocusCorner', () => {
 
   it('produit une phrase non-directive (pas de verbes interdits)', () => {
     const margins: Record<number, MarginZone> = {};
-    for (let i = 1; i <= 14; i++) margins[i] = 'green';
+    for (let i = 1; i <= 7; i++) margins[i] = 'green';
     margins[5] = 'red';
-    margins[10] = 'yellow';
+    margins[3] = 'yellow';
 
     const red = selectFocusCorner(margins);
     expectNonDirective(red!.phrase);
@@ -89,10 +89,11 @@ describe('selectFocusCorner', () => {
 
   it('inclut le nom du virage dans la phrase', () => {
     const margins: Record<number, MarginZone> = {};
-    for (let i = 1; i <= 14; i++) margins[i] = 'green';
+    for (let i = 1; i <= 7; i++) margins[i] = 'green';
     margins[7] = 'red';
     const sel = selectFocusCorner(margins);
-    expect(sel!.phrase).toContain('Le S des chênes');
+    // Virage 7 = "La ramenée" depuis refactor sem 16
+    expect(sel!.phrase).toContain('La ramenée');
   });
 });
 

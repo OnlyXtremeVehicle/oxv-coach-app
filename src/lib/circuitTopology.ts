@@ -1,152 +1,99 @@
 /**
  * Topologie statique du circuit Haute Saintonge (tracé Beltoise).
  *
- * Pour V1 : 14 virages avec positions GPS approximatives et coordonnées
- * SVG dans le viewBox du tracé. Ces valeurs sont des placeholders cohérents
- * avec la doctrine ("14 virages") mais ne sont PAS issues d'un relevé
- * topométrique précis. La calibration officielle viendra en sem 11
- * (procédure section 9 de docs/architecture/02_PARTIE_2_algorithmes.md).
+ * Données réelles depuis OSM (Open Street Map) — way 54412766
+ * "highway=raceway". 7 virages identifiés par analyse automatique des
+ * changements de cap (script scripts/analyze-track-corners.ts).
  *
- * En attendant, l'app affiche un rendu plausible et permet de valider
- * la grammaire visuelle (pastilles colorées, zoom virage, navigation).
+ * Coordonnées GPS réelles bbox :
+ *   lat ∈ [45.2389, 45.2429] (~440 m d'amplitude N/S)
+ *   lon ∈ [-0.0968, -0.0881] (~660 m d'amplitude E/W)
+ *
+ * Les noms ci-dessous sont des propositions sobres OXV à confirmer
+ * avec le circuit de Haute Saintonge (Q19 ouverte). Modifier
+ * BELTOISE_CORNERS[*].name pour les noms officiels quand vous les
+ * recevrez.
  */
 
 import type { MarginZone } from '@/types/domain';
 
 export interface CornerTopology {
-  /** Numéro de virage, 1-14. */
+  /** Numéro de virage, 1-7. */
   index: number;
-  /** Nom poétique du virage — à valider avec Gabin (V1 = placeholders). */
+  /** Nom du virage — à valider avec le circuit Beltoise. */
   name: string;
-  /** Position GPS approximative du point de corde. */
+  /** Position GPS réelle du point de corde (depuis OSM way 54412766). */
   apexLat: number;
   apexLon: number;
-  /** Position dans le viewBox SVG du circuit (pour rendu direct sans projection). */
-  svgX: number;
-  svgY: number;
+  /** Index du point apex dans HAUTE_SAINTONGE_TRACK (référence interne). */
+  trackPointIndex: number;
   /** Profil de virage — utilisé pour le manifeste contextuel. */
   pace: 'fast' | 'medium' | 'slow';
 }
 
-/** ViewBox du SVG `circuits.track_svg_path` du circuit Haute Saintonge. */
-export const BELTOISE_SVG_VIEWBOX = { width: 1000, height: 600 } as const;
-
 /**
- * 14 virages estimés visuellement sur le tracé SVG simplifié.
- * Les coordonnées GPS sont des approximations dans le bbox connu du circuit.
- *
- * Bbox réel : lat ∈ [45.6002, 45.6023], lon ∈ [-0.1440, -0.1379].
- * Centre approximatif : lat 45.6012, lon -0.1410.
+ * Les 7 virages du tracé Beltoise, identifiés automatiquement par analyse
+ * des changements de cap sur la polyline OSM. L'angle de braquage indique
+ * la classification pace :
+ *   - angle ≥ 28°  → slow (épingle)
+ *   - 20-28°       → medium (virage moyen)
+ *   - < 20°        → fast (courbe rapide)
  */
 export const BELTOISE_CORNERS: readonly CornerTopology[] = [
   {
     index: 1,
-    name: 'V1 — Entrée',
-    apexLat: 45.60055,
-    apexLon: -0.14,
-    svgX: 700,
-    svgY: 405,
+    name: 'Saintonge 1',
+    apexLat: 45.2424763,
+    apexLon: -0.0967393,
+    trackPointIndex: 22,
     pace: 'medium',
   },
-  { index: 2, name: 'V2', apexLat: 45.60085, apexLon: -0.1393, svgX: 870, svgY: 360, pace: 'fast' },
+  {
+    index: 2,
+    name: 'Saintonge 2',
+    apexLat: 45.2418313,
+    apexLon: -0.0881423,
+    trackPointIndex: 33,
+    pace: 'medium',
+  },
   {
     index: 3,
-    name: 'V3 — Épingle nord',
-    apexLat: 45.6011,
-    apexLon: -0.1395,
-    svgX: 900,
-    svgY: 310,
+    name: "L'épingle Est",
+    apexLat: 45.2416307,
+    apexLon: -0.0881483,
+    trackPointIndex: 36,
     pace: 'slow',
   },
   {
     index: 4,
-    name: 'V4',
-    apexLat: 45.60135,
-    apexLon: -0.1405,
-    svgX: 815,
-    svgY: 260,
+    name: 'Le balcon',
+    apexLat: 45.2415943,
+    apexLon: -0.0907899,
+    trackPointIndex: 43,
     pace: 'medium',
   },
   {
     index: 5,
-    name: 'V5',
-    apexLat: 45.60155,
-    apexLon: -0.1415,
-    svgX: 720,
-    svgY: 195,
+    name: 'Le retour',
+    apexLat: 45.2399848,
+    apexLon: -0.0914963,
+    trackPointIndex: 53,
     pace: 'medium',
   },
   {
     index: 6,
-    name: 'V6 — Le S des chênes (entrée)',
-    apexLat: 45.60175,
-    apexLon: -0.1425,
-    svgX: 600,
-    svgY: 165,
-    pace: 'fast',
-  },
-  {
-    index: 7,
-    name: 'V7 — Le S des chênes (sortie)',
-    apexLat: 45.602,
-    apexLon: -0.1432,
-    svgX: 470,
-    svgY: 175,
-    pace: 'fast',
-  },
-  {
-    index: 8,
-    name: 'V8',
-    apexLat: 45.6022,
-    apexLon: -0.1438,
-    svgX: 330,
-    svgY: 200,
-    pace: 'medium',
-  },
-  {
-    index: 9,
-    name: 'V9 — Épingle ouest',
-    apexLat: 45.6021,
-    apexLon: -0.144,
-    svgX: 200,
-    svgY: 235,
+    name: "L'épingle Sud",
+    apexLat: 45.239662,
+    apexLon: -0.0904954,
+    trackPointIndex: 57,
     pace: 'slow',
   },
   {
-    index: 10,
-    name: 'V10',
-    apexLat: 45.6017,
-    apexLon: -0.1438,
-    svgX: 130,
-    svgY: 300,
-    pace: 'medium',
-  },
-  { index: 11, name: 'V11', apexLat: 45.6013, apexLon: -0.1432, svgX: 90, svgY: 360, pace: 'fast' },
-  {
-    index: 12,
-    name: 'V12',
-    apexLat: 45.6009,
-    apexLon: -0.1425,
-    svgX: 115,
-    svgY: 415,
-    pace: 'medium',
-  },
-  {
-    index: 13,
-    name: 'V13',
-    apexLat: 45.60065,
-    apexLon: -0.1418,
-    svgX: 180,
-    svgY: 455,
-    pace: 'medium',
-  },
-  {
-    index: 14,
-    name: 'V14 — Ligne droite',
-    apexLat: 45.6005,
-    apexLon: -0.1412,
-    svgX: 290,
-    svgY: 445,
+    index: 7,
+    name: 'La ramenée',
+    apexLat: 45.2390839,
+    apexLon: -0.0889951,
+    trackPointIndex: 69,
     pace: 'fast',
   },
 ] as const;
@@ -168,7 +115,8 @@ export function previousCornerIndex(currentIndex: number): number {
 /**
  * Marges par virage pour une session donnée. V1 = mock random reproductible
  * basé sur le sessionId (pour que la même session affiche les mêmes couleurs
- * d'ouverture en ouverture). Sem 7+ : vraie data depuis margin_breakdown.
+ * d'ouverture en ouverture). Remplacé par les vraies marges depuis
+ * app_segment_analyses dès qu'une analyse trackviz a tourné sur la session.
  */
 export function mockCornerMargins(sessionId: string): Record<number, MarginZone> {
   const margins: Record<number, MarginZone> = {};
