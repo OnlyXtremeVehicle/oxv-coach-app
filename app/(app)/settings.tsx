@@ -117,6 +117,12 @@ export default function SettingsScreen() {
           <SettingRow label="Email" value={profile?.email ?? '—'} />
           <SettingRow label="Niveau pilote" value={prettyLevel(profile?.pilot_level)} />
           <SettingRow
+            label="Mon coach"
+            hint="Gérer"
+            // Cast nécessaire tant que typed-routes Expo n'a pas regen
+            onPress={() => router.push('/(app)/mon-coach' as never)}
+          />
+          <SettingRow
             label="Partager une vue"
             hint="Bientôt"
             onPress={() => router.push('/(app)/partage')}
