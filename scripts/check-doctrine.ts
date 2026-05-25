@@ -25,7 +25,16 @@ import * as path from 'path';
 
 // Liste alignée avec src/services/__tests__/focusCorner.test.ts
 // et src/services/__tests__/debriefGenerator.test.ts
+//
+// 3 catégories :
+//   1. Verbes de pilotage directifs (la doctrine miroir interdit de dire
+//      au pilote comment piloter)
+//   2. Impératifs UI paternalistes (« appuyez sur » suggère que l'user
+//      ne sait pas naviguer son téléphone)
+//   3. Jugements gratuits (« bravo », « parfait » : on n'évalue pas
+//      l'humain, on lui montre les chiffres)
 const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
+  // Catégorie 1 : verbes de pilotage
   { pattern: /\bfreinez\b/gi, verb: 'freinez' },
   { pattern: /\baccélérez\b/gi, verb: 'accélérez' },
   { pattern: /\bouvrez les gaz\b/gi, verb: 'ouvrez les gaz' },
@@ -36,6 +45,38 @@ const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
   { pattern: /\bvous devriez\b/gi, verb: 'vous devriez' },
   { pattern: /\btu dois\b/gi, verb: 'tu dois' },
   { pattern: /\btu peux\b/gi, verb: 'tu peux' },
+  // Catégorie 2 : impératifs UI paternalistes
+  { pattern: /\bappuyez sur\b/gi, verb: 'appuyez sur' },
+  { pattern: /\bcliquez sur\b/gi, verb: 'cliquez sur' },
+  { pattern: /\btapez sur\b/gi, verb: 'tapez sur' },
+  { pattern: /\bn'oubliez pas\b/gi, verb: "n'oubliez pas" },
+  { pattern: /\bn'hésitez pas\b/gi, verb: "n'hésitez pas" },
+  { pattern: /\bpensez à\b/gi, verb: 'pensez à' },
+  { pattern: /\bessayez de\b/gi, verb: 'essayez de' },
+  // Catégorie 3 : jugements gratuits
+  { pattern: /\bbravo\b/gi, verb: 'bravo' },
+  { pattern: /\bbien joué\b/gi, verb: 'bien joué' },
+  { pattern: /\bsuper\s*!/gi, verb: 'super !' },
+  { pattern: /\bparfait\s*!/gi, verb: 'parfait !' },
+  { pattern: /\bexcellent\s*!/gi, verb: 'excellent !' },
+  { pattern: /\battention\s*!/gi, verb: 'attention !' },
+  // Catégorie 4 : termes anglais dans texte UI (la doctrine OXV est en français)
+  { pattern: /\btap\b/gi, verb: 'tap (anglais)' },
+  { pattern: /\bswipe\b/gi, verb: 'swipe (anglais)' },
+  { pattern: /\bclick\b/gi, verb: 'click (anglais)' },
+];
+
+// Patterns supplémentaires : dates sans locale fr-FR explicite
+// → `toLocaleDateString()` sans argument est ambigu, on veut fr-FR
+const ADDITIONAL_PATTERNS: { pattern: RegExp; verb: string }[] = [
+  {
+    pattern: /\.toLocaleDateString\(\)/g,
+    verb: 'toLocaleDateString() sans fr-FR explicite',
+  },
+  {
+    pattern: /\.toLocaleTimeString\(\)/g,
+    verb: 'toLocaleTimeString() sans fr-FR explicite',
+  },
 ];
 
 // Patterns à ignorer (faux positifs structurels)
@@ -44,6 +85,7 @@ const IGNORE_LINE_PATTERNS = [
   /^\s*\*/, // commentaire bloc (étoile en début)
   /FORBIDDEN_VERBS/, // tableau de test anti-doctrine
   /'freinez'|'accélérez'|'évitez'/, // tableau de test
+  /haptics\.tap/, // appel de fonction RN haptics, pas du texte UI
 ];
 
 interface Violation {
@@ -82,6 +124,17 @@ function scanFile(filePath: string): Violation[] {
 
     for (const { pattern, verb } of FORBIDDEN_PATTERNS) {
       pattern.lastIndex = 0; // reset le regex global
+      if (pattern.test(line)) {
+        violations.push({
+          file: filePath,
+          line: i + 1,
+          verb,
+          excerpt: line.trim().slice(0, 100),
+        });
+      }
+    }
+    for (const { pattern, verb } of ADDITIONAL_PATTERNS) {
+      pattern.lastIndex = 0;
       if (pattern.test(line)) {
         violations.push({
           file: filePath,

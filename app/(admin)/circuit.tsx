@@ -203,7 +203,7 @@ export default function CircuitInspectorScreen() {
               },
             ]}
           >
-            Tap un virage pour ses détails.
+            Un toucher révèle les détails d&apos;un virage.
           </Text>
         )}
 

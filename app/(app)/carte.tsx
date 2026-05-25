@@ -106,7 +106,7 @@ export default function CarteScreen() {
         />
 
         <Text style={[typography.caption, { marginTop: spacing.lg, marginBottom: spacing.lg }]}>
-          {BELTOISE_CORNERS.length} virages — tap pour zoomer
+          {BELTOISE_CORNERS.length} virages — zoom au toucher
         </Text>
 
         {/* Liste tappable des virages */}
