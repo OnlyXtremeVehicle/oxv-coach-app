@@ -106,8 +106,22 @@ export default function ProgressionScreen() {
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable onPress={() => router.back()}>
+        <View style={{ marginTop: spacing.xxl, alignItems: 'center', gap: spacing.lg }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/(app)/stats' as never)}
+          >
+            <Text
+              style={{
+                color: colors.text.secondary,
+                fontSize: fontSize.caption,
+                textDecorationLine: 'underline',
+              }}
+            >
+              Voir vos statistiques agrégées
+            </Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
           </Pressable>
         </View>
