@@ -177,29 +177,37 @@ export async function analyzeAndPersistSession(
     notes.push(`Marge globale KO : ${errMsg(e)}`);
   }
 
-  // ── Debrief J+1 généré localement (V1 sans OpenAI, cf. Q31 sem 11) ──────
+  // ── Debrief J+1 généré (OpenAI d'abord, fallback local sinon) ──────────
   if (marginGlobal !== null) {
     try {
-      // Optionnel : récupérer le prénom du profil pour personnaliser le récit.
-      // Évite un fetch dédié — l'appelant peut le passer en V1.1 via input.
-      const segments = await listSegmentAnalysesForSession(input.telemetrySessionId);
-      const debrief = generateDebrief({
-        firstName: computedFirstName,
-        circuitName: computedCircuitName,
-        sessionStartedAt: computedStartedAt,
-        marginGlobal,
-        marginZone: null, // déterminé par marginZoneOf à l'intérieur
-        marginVehicle: computedVehicle,
-        marginPilot: computedPilot,
-        lapCount: computedLapCount,
-        bestLapSeconds: computedBestLap,
-        segments,
+      // Tentative OpenAI via Edge Function generate-debrief-ai
+      const { error: aiError } = await supabase.functions.invoke('generate-debrief-ai', {
+        body: { sessionId: input.telemetrySessionId },
       });
-      await updateDebriefText(input.telemetrySessionId, debrief.text);
-      notes.push('Debrief J+1 généré et persisté.');
 
-      // Programmation de la notif locale J+1. Best-effort, n'influence
-      // pas le résultat de l'analyse.
+      if (!aiError) {
+        notes.push('Debrief J+1 généré via OpenAI.');
+      } else {
+        // Fallback local — toujours doctrinal, juste moins riche narrativement
+        console.warn('[OXV] OpenAI debrief KO, fallback local :', aiError.message);
+        const segments = await listSegmentAnalysesForSession(input.telemetrySessionId);
+        const debrief = generateDebrief({
+          firstName: computedFirstName,
+          circuitName: computedCircuitName,
+          sessionStartedAt: computedStartedAt,
+          marginGlobal,
+          marginZone: null,
+          marginVehicle: computedVehicle,
+          marginPilot: computedPilot,
+          lapCount: computedLapCount,
+          bestLapSeconds: computedBestLap,
+          segments,
+        });
+        await updateDebriefText(input.telemetrySessionId, debrief.text);
+        notes.push('Debrief J+1 généré (fallback local).');
+      }
+
+      // Programmation de la notif locale J+1. Best-effort.
       const notifId = await scheduleDebriefNotification({
         userId: input.userId,
         sessionId: input.telemetrySessionId,
