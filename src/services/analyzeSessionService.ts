@@ -39,6 +39,7 @@ import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 import { computeMargin } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
 import { generateDebrief } from './debriefGenerator';
+import { scheduleDebriefNotification } from './pushNotificationsService';
 import { listSegmentAnalysesForSession, upsertSegmentAnalyses } from './segmentAnalysesService';
 import { fetchSessionLaps } from './sessionsService';
 
@@ -196,6 +197,14 @@ export async function analyzeAndPersistSession(
       });
       await updateDebriefText(input.telemetrySessionId, debrief.text);
       notes.push('Debrief J+1 généré et persisté.');
+
+      // Programmation de la notif locale J+1. Best-effort, n'influence
+      // pas le résultat de l'analyse.
+      const notifId = await scheduleDebriefNotification({
+        userId: input.userId,
+        sessionId: input.telemetrySessionId,
+      });
+      if (notifId) notes.push(`Notif debrief J+1 programmée (${notifId.slice(0, 8)}…).`);
     } catch (e) {
       notes.push(`Debrief KO : ${errMsg(e)}`);
     }

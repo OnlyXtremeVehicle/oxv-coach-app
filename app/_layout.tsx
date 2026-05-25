@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 
 import { initBle, teardownBle } from '@/ble/initBle';
 import { initFlic, teardownFlic } from '@/ble/initFlic';
@@ -13,6 +14,7 @@ import { UpdateModal } from '@/components/UpdateModal';
 import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { initSentry } from '@/lib/sentry';
+import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { colors } from '@/theme/tokens';
 
@@ -25,6 +27,9 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 export default function RootLayout() {
   const initialize = useAuthStore((s) => s.initialize);
   const status = useAuthStore((s) => s.status);
+  const profileId = useAuthStore((s) => s.profile?.id);
+  const lastNotifResponse = Notifications.useLastNotificationResponse();
+  const navState = useRootNavigationState();
 
   useEffect(() => {
     initialize();
@@ -45,6 +50,30 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [status]);
+
+  // Enregistre le token Expo Push après connexion réussie. Idempotent.
+  useEffect(() => {
+    if (status === 'authenticated' && profileId) {
+      registerForPushNotifications(profileId).catch(() => undefined);
+    }
+  }, [status, profileId]);
+
+  // Deep-link sur tap d'une notification : route vers l'écran ciblé.
+  // On attend que le navigation state soit prêt pour éviter les races.
+  useEffect(() => {
+    if (!lastNotifResponse || !navState?.key) return;
+    const data = lastNotifResponse.notification.request.content.data as
+      | { type?: string; sessionId?: string }
+      | undefined;
+    if (data?.type === 'debrief' && data.sessionId) {
+      router.push({
+        pathname: '/(app)/debrief',
+        params: { sessionId: data.sessionId },
+      });
+    } else if (data?.type === 'session_reminder') {
+      router.push('/(app)');
+    }
+  }, [lastNotifResponse, navState?.key]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.primary }}>

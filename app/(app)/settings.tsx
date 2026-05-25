@@ -9,11 +9,14 @@
  * affiche une caption "Bientôt".
  */
 
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
+import { supabase } from '@/lib/supabase';
+import { cancelAllOxvNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
@@ -23,6 +26,36 @@ export default function SettingsScreen() {
   const status = useAuthStore((s) => s.status);
 
   const appVersion = (Constants.expoConfig?.version ?? '0.0.0') as string;
+
+  const [pushEnabled, setPushEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('push_notif_enabled')
+        .eq('id', profile.id)
+        .maybeSingle();
+      if (cancelled) return;
+      const row = data as { push_notif_enabled?: boolean | null } | null;
+      setPushEnabled(row?.push_notif_enabled !== false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
+
+  async function togglePush(next: boolean) {
+    if (!profile?.id) return;
+    setPushEnabled(next);
+    await supabase
+      .from('users')
+      .update({ push_notif_enabled: next } as never)
+      .eq('id', profile.id);
+    if (!next) await cancelAllOxvNotifications();
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -88,6 +121,42 @@ export default function SettingsScreen() {
             hint="Bientôt"
             onPress={() => router.push('/(app)/partage')}
           />
+        </Section>
+
+        {/* Préférences */}
+        <Section label="PRÉFÉRENCES">
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  color: colors.text.primary,
+                  fontSize: fontSize.body,
+                  fontWeight: fontWeight.regular,
+                }}
+              >
+                Notifications OXV
+              </Text>
+              <Text
+                style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
+              >
+                Debrief J+1 · Veille de session
+              </Text>
+            </View>
+            <Switch
+              value={pushEnabled}
+              onValueChange={togglePush}
+              trackColor={{ false: colors.border.subtle, true: colors.accent.red }}
+              thumbColor={colors.text.primary}
+            />
+          </View>
         </Section>
 
         {/* Légal */}

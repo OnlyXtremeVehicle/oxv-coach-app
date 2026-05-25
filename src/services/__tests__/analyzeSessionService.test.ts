@@ -19,6 +19,25 @@ jest.mock('expo-file-system', () => ({
   documentDirectory: '/tmp/',
 }));
 
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  requestPermissionsAsync: jest.fn().mockResolvedValue({ status: 'granted' }),
+  getExpoPushTokenAsync: jest.fn().mockResolvedValue({ data: 'ExponentPushToken[test]' }),
+  scheduleNotificationAsync: jest.fn().mockResolvedValue('notif-id'),
+  cancelAllScheduledNotificationsAsync: jest.fn(),
+  setNotificationChannelAsync: jest.fn(),
+  AndroidImportance: { DEFAULT: 3 },
+}));
+
+jest.mock('expo-device', () => ({
+  isDevice: false,
+}));
+
+jest.mock('react-native', () => ({
+  Platform: { OS: 'ios' },
+}));
+
 jest.mock('@/lib/supabase', () => ({
   supabase: {
     from: jest.fn(() => ({
