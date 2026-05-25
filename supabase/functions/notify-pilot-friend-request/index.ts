@@ -73,6 +73,20 @@ serve(async (req) => {
     return new Response(JSON.stringify({ skipped: 'opted_out' }), { status: 200 });
   }
 
+  // Throttle 24h : protège contre un initiator qui révoquerait/recréerait
+  // sa demande en boucle. La contrainte UNIQUE(pilot_a, pilot_b) bloque
+  // déjà la plupart des cas mais on garde un filet de sécurité.
+  const { data: throttleAllowed } = await supabase.rpc('should_send_notif', {
+    recipient: payload.recipient_id,
+    source: payload.initiator_id,
+    notif: 'friend_request',
+    window_seconds: 86400, // 24 h
+  });
+  if (throttleAllowed === false) {
+    console.log('[friend-request] throttled (24h window)');
+    return new Response(JSON.stringify({ skipped: 'throttled' }), { status: 200 });
+  }
+
   // Lookup initiator (nom à afficher)
   const { data: initiator } = await supabase
     .from('users')

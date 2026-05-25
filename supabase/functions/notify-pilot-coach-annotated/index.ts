@@ -71,6 +71,21 @@ serve(async (req) => {
       return new Response(JSON.stringify({ skipped: 'no_token' }), { status: 200 });
     }
 
+    // 1.bis Throttle : si le même coach a déjà notifié ce pilote dans
+    // les 15 dernières minutes, on skip. Évite le spam quand le coach
+    // annote 5 virages d'affilée d'une même session. L'annotation reste
+    // visible dans l'écran virage, juste pas de push.
+    const { data: throttleAllowed } = await supabase.rpc('should_send_notif', {
+      recipient: payload.pilot_id,
+      source: payload.coach_id,
+      notif: 'coach_annotation',
+      window_seconds: 900, // 15 min
+    });
+    if (throttleAllowed === false) {
+      console.log('[notify-coach-annotated] throttled (15min window)');
+      return new Response(JSON.stringify({ skipped: 'throttled' }), { status: 200 });
+    }
+
     // 2. Récupère le prénom du coach pour personnaliser le titre
     const { data: coach } = await supabase
       .from('users')

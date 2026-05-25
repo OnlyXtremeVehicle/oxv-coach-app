@@ -36,11 +36,13 @@ Edge Function n'envoie qu'aux coachs où allowed === true
 | Type de notif | Fenêtre | Justification |
 | --- | --- | --- |
 | `session_analyzed` | 1 h | Pilote peut enchaîner 5 manches en track day, 1 notif par heure suffit |
-| `coach_annotation` | Pas de throttle | Le coach annote rarement, c'est intentionnel et attendu |
-| `coach_assigned` | Pas de throttle | Évènement unique |
-| `consent_received` | Pas de throttle | Évènement unique |
+| `coach_annotation` | **15 min** | Si le coach annote 5 virages d'une même session d'affilée, on ne notifie qu'une fois. L'annotation reste visible dans l'écran virage à chaque ouverture |
+| `friend_request` | **24 h** | Filet de sécurité contre un initiator qui révoquerait/recréerait sa demande. La contrainte UNIQUE(pilot_a, pilot_b) bloque déjà la plupart des cas |
+| `coach_assigned` | Pas de throttle | Événement unique |
+| `consent_received` | Pas de throttle | Événement unique |
+| `friend_accepted` | Pas de throttle | Événement unique (réponse à une demande spécifique) |
 
-À ajuster selon les retours alpha — typiquement on peut tester avec un throttle plus long (4h) si encore trop spammant.
+À ajuster selon les retours alpha — typiquement on peut tester avec un throttle plus long (4h sur session_analyzed) si encore trop spammant.
 
 ## Activation
 
