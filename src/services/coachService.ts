@@ -12,6 +12,93 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { type MarginZone } from '@/types/domain';
+import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
+
+export interface SessionSnapshot {
+  sessionId: string;
+  startedAt: string;
+  marginGlobal: number | null;
+  marginZone: MarginZone | null;
+  bestLapSeconds: number | null;
+  lapCount: number | null;
+  trajectory: { lat: number; lon: number; speed: number | null }[];
+  zoneByIndex: Record<number, MarginZone>;
+  marginByIndex: Record<number, number>;
+}
+
+/**
+ * Charge en parallèle la trajectoire GPS et les zones de marge par virage
+ * pour une session donnée. Utilisé par la vue coach comparative pour
+ * afficher 2 cartes côte à côte.
+ *
+ * RLS : le coach voit les `telemetry_frames` et `app_segment_analyses` du
+ * pilote suivi grâce aux policies *_coach_select définies en migration
+ * 0016 (sem 15).
+ */
+export async function loadSessionSnapshot(sessionId: string): Promise<SessionSnapshot | null> {
+  const [sessionResult, framesResult, zonesResult] = await Promise.all([
+    supabase
+      .from('telemetry_sessions')
+      .select(
+        'id, started_at, best_lap_seconds, lap_count, app_session_analyses(margin_global, margin_zone)'
+      )
+      .eq('id', sessionId)
+      .maybeSingle(),
+    supabase
+      .from('telemetry_frames')
+      .select('latitude, longitude, speed_kmh')
+      .eq('session_id', sessionId)
+      .order('elapsed_ms', { ascending: true })
+      .limit(1000),
+    getCornerMarginsZones(sessionId),
+  ]);
+
+  if (sessionResult.error || !sessionResult.data) {
+    if (sessionResult.error) {
+      console.warn('[OXV][coach] loadSessionSnapshot session :', sessionResult.error.message);
+    }
+    return null;
+  }
+  if (framesResult.error) {
+    console.warn('[OXV][coach] loadSessionSnapshot frames :', framesResult.error.message);
+  }
+
+  const row = sessionResult.data as Record<string, unknown>;
+  const analysisJoined = row.app_session_analyses as
+    | { margin_global?: number | null; margin_zone?: string | null }[]
+    | { margin_global?: number | null; margin_zone?: string | null }
+    | null;
+  const firstAnalysis = Array.isArray(analysisJoined) ? analysisJoined[0] : analysisJoined;
+
+  const framesData = (framesResult.data ?? []) as {
+    latitude: number | null;
+    longitude: number | null;
+    speed_kmh: number | null;
+  }[];
+  const trajectory = framesData
+    .filter((p) => p.latitude !== null && p.longitude !== null)
+    .map((p) => ({
+      lat: Number(p.latitude),
+      lon: Number(p.longitude),
+      speed: p.speed_kmh !== null ? Number(p.speed_kmh) : null,
+    }));
+
+  return {
+    sessionId: row.id as string,
+    startedAt: row.started_at as string,
+    marginGlobal:
+      firstAnalysis?.margin_global !== null && firstAnalysis?.margin_global !== undefined
+        ? Number(firstAnalysis.margin_global)
+        : null,
+    marginZone: (firstAnalysis?.margin_zone as MarginZone | null | undefined) ?? null,
+    bestLapSeconds: row.best_lap_seconds !== null ? Number(row.best_lap_seconds) : null,
+    lapCount: row.lap_count !== null ? Number(row.lap_count) : null,
+    trajectory,
+    zoneByIndex: zonesResult?.zones ?? {},
+    marginByIndex: zonesResult?.numeric ?? {},
+  };
+}
 
 export interface CoachPilotRow {
   pilotId: string;
