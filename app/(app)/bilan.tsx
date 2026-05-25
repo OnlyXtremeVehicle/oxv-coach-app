@@ -19,6 +19,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
+import { CountUpNumber, FadeInSection } from '@/components/motion';
+import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
@@ -144,17 +146,18 @@ export default function BilanScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>BILAN DE SESSION</Text>
 
-        <View
+        <FadeInSection
           style={{ alignItems: 'center', marginTop: spacing.xxxl, marginBottom: spacing.giant }}
         >
-          <Text
+          <CountUpNumber
+            value={margin.marginGlobal}
+            duration={1100}
+            suffix="%"
             style={[
               typography.heroNumber,
               { color: colorForZone(margin.marginZone), marginBottom: spacing.lg },
             ]}
-          >
-            {Math.round(margin.marginGlobal)}%
-          </Text>
+          />
           <Text
             style={[
               typography.screenTitle,
@@ -167,7 +170,7 @@ export default function BilanScreen() {
           >
             {marginLabelOf(margin.marginZone)}
           </Text>
-        </View>
+        </FadeInSection>
 
         <Text
           style={[
@@ -179,12 +182,13 @@ export default function BilanScreen() {
         </Text>
 
         <View style={{ gap: spacing.md }}>
-          {NAV_TARGETS.map((target) => (
-            <NavCard
-              key={target.href}
-              label={target.label}
-              href={session?.id ? `${target.href}?sessionId=${session.id}` : target.href}
-            />
+          {NAV_TARGETS.map((target, i) => (
+            <FadeInSection key={target.href} delay={150 + i * 80}>
+              <NavCard
+                label={target.label}
+                href={session?.id ? `${target.href}?sessionId=${session.id}` : target.href}
+              />
+            </FadeInSection>
           ))}
         </View>
 
@@ -281,6 +285,8 @@ function NavCard({ label, href }: { label: string; href: string }) {
   return (
     <Link href={href as never} asChild>
       <Pressable
+        accessibilityRole="button"
+        onPressIn={() => haptics.tap()}
         style={({ pressed }) => ({
           paddingVertical: spacing.lg,
           paddingHorizontal: spacing.xl,

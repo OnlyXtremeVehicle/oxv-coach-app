@@ -11,6 +11,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
+import * as haptics from '@/lib/haptics';
 import {
   type CoachPilotRow,
   type PilotSessionSummary,
@@ -43,6 +44,7 @@ export default function CoachPilotDetailScreen() {
 
   const openComparison = () => {
     if (!canCompare || !params.id) return;
+    haptics.confirm();
     // Cast nécessaire le temps que les typed routes Expo se régénèrent
     router.push({
       pathname: '/(coach)/comparer',

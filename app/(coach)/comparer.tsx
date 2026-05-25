@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CoachPreset } from '@/components/CircuitMap';
+import { FadeInSection } from '@/components/motion';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type SessionSnapshot, loadSessionSnapshot, logCoachView } from '@/services/coachService';
 import { type MarginZone } from '@/types/domain';
@@ -91,23 +92,24 @@ export default function CoachComparerScreen() {
           <EmptyState />
         ) : (
           <>
-            {/* Cartes */}
+            {/* Cartes — apparition décalée pour laisser le coach lire A avant que B arrive */}
             <View
               style={{
                 flexDirection: sideBySide ? 'row' : 'column',
                 gap: spacing.lg,
               }}
             >
-              <View style={{ flex: 1 }}>
+              <FadeInSection delay={0} style={{ flex: 1 }}>
                 <SessionCard label="Session A" snap={snapA} accent={colors.accent.coach} />
-              </View>
-              <View style={{ flex: 1 }}>
+              </FadeInSection>
+              <FadeInSection delay={350} style={{ flex: 1 }}>
                 <SessionCard label="Session B" snap={snapB} accent={colors.accent.coach} />
-              </View>
+              </FadeInSection>
             </View>
 
             {/* Delta global */}
-            <View
+            <FadeInSection
+              delay={700}
               style={{
                 marginTop: spacing.xxl,
                 padding: spacing.xl,
@@ -137,10 +139,10 @@ export default function CoachComparerScreen() {
                 label="Nombre de tours"
                 deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
               />
-            </View>
+            </FadeInSection>
 
             {/* Delta par virage */}
-            <View style={{ marginTop: spacing.xxl }}>
+            <FadeInSection delay={900} style={{ marginTop: spacing.xxl }}>
               <Text
                 style={[
                   typography.eyebrow,
@@ -162,7 +164,7 @@ export default function CoachComparerScreen() {
                   />
                 ))}
               </View>
-            </View>
+            </FadeInSection>
           </>
         )}
 
