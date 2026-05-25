@@ -194,6 +194,39 @@ export async function toggleAssignmentActive(
 }
 
 /**
+ * Promeut un user (role='pilot') en coach (role='coach').
+ * Action réversible via demoteToPilot.
+ */
+export async function promoteToCoach(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('users').update({ role: 'coach' }).eq('id', userId);
+  if (error) {
+    console.warn('[OXV][admin] promoteToCoach :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Rétrograde un coach en pilote (role='pilot').
+ *
+ * À utiliser quand l'admin se trompe, ou quand un coach quitte ses
+ * fonctions. Les assignations coach_pilots existantes deviennent
+ * dormantes (le user perd ses droits via is_coach_of qui filtre sur
+ * active=true ET consent NOT NULL — la double-protection RLS tient).
+ *
+ * V1.1 : faire en transaction avec désactivation explicite des
+ * assignations pour un nettoyage immédiat.
+ */
+export async function demoteToPilot(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('users').update({ role: 'pilot' }).eq('id', userId);
+  if (error) {
+    console.warn('[OXV][admin] demoteToPilot :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
  * Force le consentement RGPD pour une assignation donnée.
  *
  * À utiliser SEULEMENT quand le pilote a consenti par voie hors-app

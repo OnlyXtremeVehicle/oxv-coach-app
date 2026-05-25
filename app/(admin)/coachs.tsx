@@ -11,16 +11,22 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 
-import { type CoachRow, listCoaches } from '@/services/coachAdminService';
+import { type CoachRow, demoteToPilot, listCoaches } from '@/services/coachAdminService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function AdminCoachsScreen() {
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const reload = async () => {
+    const rows = await listCoaches();
+    setCoaches(rows);
+    setLoading(false);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +40,30 @@ export default function AdminCoachsScreen() {
       cancelled = true;
     };
   }, []);
+
+  function confirmDemote(coach: CoachRow) {
+    const name = [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.email;
+    if (coach.activeAssignmentsCount > 0) {
+      Alert.alert(
+        'Coach actif',
+        `${name} a ${coach.activeAssignmentsCount} assignation(s) active(s). Désactivez-les d'abord avant de rétrograder.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+    Alert.alert('Rétrograder en pilote', `${name} perdra ses droits coach. Continuer ?`, [
+      { text: 'Annuler', style: 'cancel' },
+      {
+        text: 'Rétrograder',
+        style: 'destructive',
+        onPress: async () => {
+          const result = await demoteToPilot(coach.id);
+          if (result.ok) await reload();
+          else Alert.alert('Échec', result.error ?? 'Erreur inconnue.');
+        },
+      },
+    ]);
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -57,7 +87,7 @@ export default function AdminCoachsScreen() {
         ) : (
           <View style={{ gap: spacing.sm }}>
             {coaches.map((coach) => (
-              <CoachCard key={coach.id} coach={coach} />
+              <CoachCard key={coach.id} coach={coach} onDemote={() => confirmDemote(coach)} />
             ))}
           </View>
         )}
@@ -74,7 +104,7 @@ export default function AdminCoachsScreen() {
   );
 }
 
-function CoachCard({ coach }: { coach: CoachRow }) {
+function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void }) {
   const fullName = [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.email;
   const assignText =
     coach.activeAssignmentsCount === 0
@@ -84,31 +114,58 @@ function CoachCard({ coach }: { coach: CoachRow }) {
         : `${coach.activeAssignmentsCount} pilotes actifs`;
 
   return (
-    <Link href={{ pathname: '/(admin)/coachs/[id]', params: { id: coach.id } } as never} asChild>
+    <View
+      style={{
+        padding: spacing.lg,
+        borderRadius: borderRadius.md,
+        borderWidth: 0.5,
+        borderColor: colors.border.subtle,
+        backgroundColor: colors.background.secondary,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+      }}
+    >
+      <Link href={{ pathname: '/(admin)/coachs/[id]', params: { id: coach.id } } as never} asChild>
+        <Pressable style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
+          <Text
+            style={{
+              color: colors.text.primary,
+              fontSize: fontSize.body,
+              fontWeight: fontWeight.regular,
+            }}
+          >
+            {fullName}
+          </Text>
+          <Text
+            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
+          >
+            {coach.email} · {assignText}
+          </Text>
+        </Pressable>
+      </Link>
       <Pressable
+        onPress={onDemote}
         style={({ pressed }) => ({
-          padding: spacing.lg,
-          borderRadius: borderRadius.md,
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.xs,
+          borderRadius: borderRadius.sm,
           borderWidth: 0.5,
-          borderColor: colors.border.subtle,
-          backgroundColor: colors.background.secondary,
-          opacity: pressed ? 0.85 : 1,
+          borderColor: colors.border.medium,
+          opacity: pressed ? 0.85 : coach.activeAssignmentsCount > 0 ? 0.4 : 1,
         })}
       >
         <Text
           style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.regular,
+            color: colors.text.secondary,
+            fontSize: 11,
+            fontWeight: fontWeight.medium,
           }}
         >
-          {fullName}
-        </Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
-          {coach.email} · {assignText}
+          ↤ pilote
         </Text>
       </Pressable>
-    </Link>
+    </View>
   );
 }
 
