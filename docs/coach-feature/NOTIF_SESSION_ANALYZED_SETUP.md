@@ -36,16 +36,20 @@ supabase db push
 # ou via Dashboard SQL Editor : coller migrations/0022_*.sql
 ```
 
-### 3. Vérifier les variables Postgres
+### 3. Vérifier les secrets Vault
 
-Les mêmes que pour PR-J (déjà configurées si PR-J est active) :
+Les mêmes que pour PR-J (déjà configurés si PR-J est active). Voir
+`docs/coach-feature/NOTIF_ANNOTATIONS_SETUP.md` étape 4 pour les
+créer dans le Vault Supabase.
 
 ```sql
-SELECT current_setting('app.edge_functions_base_url', true);
--- Doit renvoyer https://<ref>.functions.supabase.co
-SELECT current_setting('app.edge_functions_invoke_secret', true);
--- Doit renvoyer un secret non vide
+-- Vérification rapide
+SELECT name FROM vault.decrypted_secrets WHERE name LIKE 'edge_functions_%';
+-- Doit lister au moins edge_functions_base_url
 ```
+
+⚠️ Pré-requis : migration `0025_notif_triggers_use_vault.sql` appliquée
+(les triggers lisent désormais le Vault au lieu de current_setting).
 
 ## Test end-to-end
 
