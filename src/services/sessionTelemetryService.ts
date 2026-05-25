@@ -162,3 +162,21 @@ export async function loadSpeedTracePoints(
     speedKmh: f.speedKmh as number,
   }));
 }
+
+/**
+ * Renvoie les points {progress, gLong} pour le ThrottleBrakeTrace.
+ * gLong > 0 = throttle, gLong < 0 = brake.
+ */
+export async function loadThrottleBrakePoints(
+  sessionId: string
+): Promise<{ progress: number; gLong: number }[]> {
+  const frames = await loadSessionFrames(sessionId);
+  const validFrames = frames.filter((f) => f.gLong !== null);
+  if (validFrames.length < 2) return [];
+
+  const total = validFrames.length;
+  return validFrames.map((f, i) => ({
+    progress: i / (total - 1),
+    gLong: f.gLong as number,
+  }));
+}
