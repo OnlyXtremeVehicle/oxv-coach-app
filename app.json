@@ -79,14 +79,6 @@
         }
       ],
       [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "react-native",
-          "organization": "only-xtreme-vehicle"
-        }
-      ],
-      [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
