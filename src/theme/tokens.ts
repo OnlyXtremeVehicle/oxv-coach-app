@@ -32,6 +32,7 @@ export const colors = {
     red: '#C8102E',
     gold: '#C4A459', // Heritage uniquement
     bronze: '#B87333', // Admin uniquement
+    coach: '#1E3A5F', // Coach uniquement — bleu nuit, posture d'écoute
   },
 
   margin: {

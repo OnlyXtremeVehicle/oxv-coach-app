@@ -30,9 +30,18 @@ export default function IndexRoute() {
 
   // Profil chargé mais incomplet OU pas encore récupéré : on bascule vers
   // l'onboarding qui se chargera de tout signer puis de marquer le profil
-  // comme terminé.
+  // comme terminé. Les coachs/admins ont aussi besoin de signer le pacte.
   if (!profile || !isOnboardingComplete(profile)) {
     return <Redirect href="/(onboarding)" />;
+  }
+
+  // Routing par rôle :
+  //  - coach → écran dédié avec liste de ses pilotes
+  //  - admin/pilot → flux pilote standard (admin a accès en plus à /(admin))
+  if (profile.role === 'coach') {
+    // Cast nécessaire le temps que les typed routes Expo se régénèrent
+    // (la nouvelle route /(coach) est inconnue tant que Metro n'a pas tourné).
+    return <Redirect href={'/(coach)' as never} />;
   }
 
   return <Redirect href="/(app)" />;

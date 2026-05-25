@@ -1,12 +1,3 @@
-/**
- * Types TypeScript générés depuis le schéma Supabase de prod.
- * Projet : fouvuqkdxarjpjbqnsjq (Frankfurt)
- * Généré le 2026-05-24 via MCP Supabase.
- *
- * Régénérer après toute migration : commande équivalente à
- *   npx supabase gen types typescript --project-id fouvuqkdxarjpjbqnsjq > src/types/database.types.ts
- */
-
 export type Json =
   | string
   | number
@@ -63,6 +54,13 @@ export type Database = {
             foreignKeyName: "admin_audit_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "admin_audit_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -112,6 +110,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_progression_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "app_progression_shares_user_id_fkey"
@@ -223,6 +228,13 @@ export type Database = {
             foreignKeyName: "app_segment_analyses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "app_segment_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -297,6 +309,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "app_session_analyses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "app_session_analyses_user_id_fkey"
@@ -398,6 +417,110 @@ export type Database = {
             foreignKeyName: "circuits_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "circuits_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_pilots: {
+        Row: {
+          active: boolean
+          coach_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          pilot_consent_at: string | null
+          pilot_id: string
+        }
+        Insert: {
+          active?: boolean
+          coach_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          pilot_consent_at?: string | null
+          pilot_id: string
+        }
+        Update: {
+          active?: boolean
+          coach_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          pilot_consent_at?: string | null
+          pilot_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_pilots_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_pilots_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -470,6 +593,13 @@ export type Database = {
             foreignKeyName: "contact_messages_read_by_fkey"
             columns: ["read_by"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "contact_messages_read_by_fkey"
+            columns: ["read_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -533,6 +663,13 @@ export type Database = {
             foreignKeyName: "documents_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "documents_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -542,6 +679,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "documents_validated_by_fkey"
+            columns: ["validated_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "documents_validated_by_fkey"
@@ -604,6 +748,13 @@ export type Database = {
             foreignKeyName: "email_log_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "email_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -656,6 +807,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "heritage_packs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "heritage_packs_user_id_fkey"
@@ -815,6 +973,13 @@ export type Database = {
             foreignKeyName: "media_uploaded_by_fkey"
             columns: ["uploaded_by"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "media_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -824,6 +989,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "media_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "media_user_id_fkey"
@@ -929,6 +1101,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "payments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "payments_user_id_fkey"
@@ -1067,6 +1246,13 @@ export type Database = {
             foreignKeyName: "registrations_cancelled_by_fkey"
             columns: ["cancelled_by"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "registrations_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1097,6 +1283,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "registrations_user_id_fkey"
@@ -1282,6 +1475,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "ritual_dispatches_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "ritual_dispatches_user_id_fkey"
@@ -1536,6 +1736,13 @@ export type Database = {
             foreignKeyName: "telemetry_sessions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "telemetry_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1563,6 +1770,7 @@ export type Database = {
           emergency_contact_phone: string | null
           emergency_contact_relation: string | null
           experience_years: string | null
+          expo_push_token: string | null
           ffsa_license: string | null
           first_name: string | null
           id: string
@@ -1585,6 +1793,8 @@ export type Database = {
           privacy_version: string | null
           profile_completed_at: string | null
           public_handle: string | null
+          push_notif_enabled: boolean
+          push_token_updated_at: string | null
           ritual_jminus1_enabled: boolean
           ritual_jminus2_enabled: boolean
           ritual_jminus7_enabled: boolean
@@ -1617,6 +1827,7 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
+          expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
           id?: string
@@ -1639,6 +1850,8 @@ export type Database = {
           privacy_version?: string | null
           profile_completed_at?: string | null
           public_handle?: string | null
+          push_notif_enabled?: boolean
+          push_token_updated_at?: string | null
           ritual_jminus1_enabled?: boolean
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
@@ -1671,6 +1884,7 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
+          expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
           id?: string
@@ -1693,6 +1907,8 @@ export type Database = {
           privacy_version?: string | null
           profile_completed_at?: string | null
           public_handle?: string | null
+          push_notif_enabled?: boolean
+          push_token_updated_at?: string | null
           ritual_jminus1_enabled?: boolean
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
@@ -1716,6 +1932,13 @@ export type Database = {
             foreignKeyName: "users_kyc_validated_by_fkey"
             columns: ["kyc_validated_by"]
             isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "users_kyc_validated_by_fkey"
+            columns: ["kyc_validated_by"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -1725,6 +1948,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "users_suspended_by_fkey"
+            columns: ["suspended_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "users_suspended_by_fkey"
@@ -1794,6 +2024,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "vehicles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "vehicles_user_id_fkey"
@@ -1921,6 +2158,20 @@ export type Database = {
         }
         Relationships: []
       }
+      coach_pilots_view: {
+        Row: {
+          assigned_at: string | null
+          assignment_id: string | null
+          avatar_url: string | null
+          first_name: string | null
+          last_name: string | null
+          notes: string | null
+          pilot_consent_at: string | null
+          pilot_id: string | null
+          pilot_level: string | null
+        }
+        Relationships: []
+      }
       stats_dashboard: {
         Row: {
           active_pilotes: number | null
@@ -1959,6 +2210,7 @@ export type Database = {
       }
       generate_oxv_reference: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      is_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
       schedule_rituals_for_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
@@ -2004,7 +2256,7 @@ export type Database = {
         | "cancelled"
         | "completed"
         | "archived"
-      user_role: "pilot" | "admin"
+      user_role: "pilot" | "admin" | "coach"
       weather_status_enum: "pending" | "confirmed" | "postponed"
     }
     CompositeTypes: {
@@ -2177,7 +2429,7 @@ export const Constants = {
         "completed",
         "archived",
       ],
-      user_role: ["pilot", "admin"],
+      user_role: ["pilot", "admin", "coach"],
       weather_status_enum: ["pending", "confirmed", "postponed"],
     },
   },
