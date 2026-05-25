@@ -77,7 +77,7 @@ export default function AdminCoachsScreen() {
         <Text
           style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
         >
-          Tap un coach pour gérer ses pilotes assignés.
+          Un toucher ouvre la gestion des pilotes assignés.
         </Text>
 
         {loading ? (
