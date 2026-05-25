@@ -64,7 +64,7 @@ SELECT name FROM vault.decrypted_secrets WHERE name LIKE 'edge_functions_%';
 ## Vérification
 
 ```sql
-SELECT id, created_at, action, payload
+SELECT id, created_at, action, metadata
 FROM admin_audit
 WHERE action = 'session_analysis_notified'
 ORDER BY created_at DESC
@@ -73,9 +73,9 @@ LIMIT 10;
 
 Chaque ligne contient :
 - `user_id` : le pilote
-- `payload.analysis_id`
-- `payload.telemetry_session_id`
-- `payload.edge_request_id` (pour debugger côté logs Edge Function)
+- `metadata.analysis_id`
+- `metadata.telemetry_session_id`
+- `metadata.edge_request_id` (pour debugger côté logs Edge Function)
 
 ## Doctrine
 
