@@ -85,6 +85,15 @@
           "project": "react-native",
           "organization": "only-xtreme-vehicle"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#C8102E",
+          "defaultChannel": "debrief",
+          "enableBackgroundRemoteNotifications": false
+        }
       ]
     ],
     "experiments": {
