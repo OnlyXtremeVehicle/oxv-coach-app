@@ -16,7 +16,12 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 
-import { type CoachPilotRow, listMyPilots } from '@/services/coachService';
+import {
+  type CoachDashboardSummary,
+  type CoachPilotRow,
+  listMyPilots,
+  loadCoachDashboardSummary,
+} from '@/services/coachService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { formatDateShort } from '@/utils/format';
@@ -25,13 +30,15 @@ export default function CoachHubScreen() {
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
+  const [summary, setSummary] = useState<CoachDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    listMyPilots().then((rows) => {
+    Promise.all([listMyPilots(), loadCoachDashboardSummary()]).then(([rows, s]) => {
       if (!cancelled) {
         setPilots(rows);
+        setSummary(s);
         setLoading(false);
       }
     });
@@ -61,6 +68,79 @@ export default function CoachHubScreen() {
           <EmptyState />
         ) : (
           <>
+            {/* Bandeau alerte : nouvelles sessions à voir (24h) */}
+            {summary && summary.lastDaySessionCount > 0 ? (
+              <View
+                style={{
+                  padding: spacing.md,
+                  borderRadius: borderRadius.md,
+                  borderWidth: 0.5,
+                  borderColor: colors.accent.coach,
+                  backgroundColor: colors.background.elevated,
+                  marginBottom: spacing.xl,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.md,
+                }}
+              >
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: colors.accent.coach,
+                  }}
+                />
+                <Text style={{ color: colors.text.primary, fontSize: fontSize.body, flex: 1 }}>
+                  {summary.lastDaySessionCount === 1
+                    ? '1 nouvelle session dans les dernières 24 h.'
+                    : `${summary.lastDaySessionCount} nouvelles sessions dans les dernières 24 h.`}
+                </Text>
+              </View>
+            ) : null}
+
+            {/* Stats globales sobres */}
+            {summary ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  gap: spacing.xs,
+                  marginBottom: spacing.xl,
+                }}
+              >
+                <DashStat
+                  value={summary.pilotCount.toString()}
+                  label={summary.pilotCount > 1 ? 'pilotes' : 'pilote'}
+                />
+                <DashStat
+                  value={summary.recentSessionCount.toString()}
+                  label={`session${summary.recentSessionCount > 1 ? 's' : ''} sur ${summary.recentSessionsDays}j`}
+                />
+                <DashStat
+                  value={summary.sharedAnnotationCount.toString()}
+                  label={`note${summary.sharedAnnotationCount > 1 ? 's' : ''} partagée${summary.sharedAnnotationCount > 1 ? 's' : ''}`}
+                />
+              </View>
+            ) : null}
+
+            {/* Brouillons rappel sobre */}
+            {summary && summary.draftAnnotationCount > 0 ? (
+              <Text
+                style={[
+                  typography.caption,
+                  {
+                    color: colors.text.tertiary,
+                    marginBottom: spacing.xl,
+                    fontStyle: 'italic',
+                  },
+                ]}
+              >
+                {summary.draftAnnotationCount === 1
+                  ? '1 note en brouillon en attente de partage.'
+                  : `${summary.draftAnnotationCount} notes en brouillon en attente de partage.`}
+              </Text>
+            ) : null}
+
             <Text
               style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
             >
@@ -170,4 +250,43 @@ function prettyLevel(level: string | null): string {
     default:
       return 'Niveau —';
   }
+}
+
+function DashStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View
+      style={{
+        flex: 1,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        borderWidth: 0.5,
+        borderColor: colors.border.subtle,
+        backgroundColor: colors.background.secondary,
+        alignItems: 'center',
+      }}
+    >
+      <Text
+        style={{
+          color: colors.text.primary,
+          fontSize: fontSize.titleLarge,
+          fontWeight: fontWeight.light,
+          fontFamily: 'Menlo',
+        }}
+      >
+        {value}
+      </Text>
+      <Text
+        style={[
+          typography.eyebrow,
+          {
+            color: colors.text.tertiary,
+            marginTop: spacing.xs,
+            textAlign: 'center',
+          },
+        ]}
+      >
+        {label.toUpperCase()}
+      </Text>
+    </View>
+  );
 }
