@@ -1,0 +1,4 @@
+project_id = "fouvuqkdxarjpjbqnsjq"
+
+[functions.cron-analyze-pending-sessions]
+verify_jwt = false
