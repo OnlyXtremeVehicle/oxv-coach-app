@@ -23,6 +23,7 @@ import {
   revokeConsent,
 } from '@/services/pilotConsentService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateLong } from '@/utils/format';
 
 export default function MonCoachScreen() {
   const [coaches, setCoaches] = useState<MyCoachAssignment[]>([]);
@@ -107,7 +108,7 @@ function CoachCard({
     assignment.coachEmail;
   const consented = assignment.pilotConsentAt !== null;
   const consentText = consented
-    ? `Vous avez consenti le ${dateShort(assignment.pilotConsentAt!)}`
+    ? `Vous avez consenti le ${formatDateLong(assignment.pilotConsentAt!)}`
     : "Vous n'avez pas encore consenti";
 
   return (
@@ -151,7 +152,7 @@ function CoachCard({
           <Text
             style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
           >
-            Assigné par OXV le {dateShort(assignment.createdAt)}
+            Assigné par OXV le {formatDateLong(assignment.createdAt)}
           </Text>
         </View>
         <Switch
@@ -251,16 +252,4 @@ function ExplainerCard() {
       </Text>
     </View>
   );
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

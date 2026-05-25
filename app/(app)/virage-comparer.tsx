@@ -32,6 +32,7 @@ import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDi
 import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginZoneOf } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 interface SessionOption {
   id: string;
@@ -187,7 +188,7 @@ export default function VirageComparerScreen() {
                         fontSize: fontSize.body,
                       }}
                     >
-                      {dateShort(o.startedAt)}
+                      {formatDateShort(o.startedAt)}
                     </Text>
                     <Text
                       style={{
@@ -433,16 +434,4 @@ function DeltaRow({
       </Text>
     </View>
   );
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }

@@ -26,6 +26,7 @@ import { supabase } from '@/lib/supabase';
 import { loadGGPoints, loadSpeedTracePoints } from '@/services/sessionTelemetryService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort } from '@/utils/format';
 
 interface SessionPickerRow {
   id: string;
@@ -234,7 +235,7 @@ export default function TelemetryScreen() {
                                 fontSize: fontSize.body,
                               }}
                             >
-                              {dateShort(o.startedAt)}
+                              {formatDateShort(o.startedAt)}
                             </Text>
                           </Pressable>
                         ))
@@ -313,16 +314,4 @@ function EmptyText({ children }: { children: React.ReactNode }) {
       {children}
     </Text>
   );
-}
-
-function dateShort(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return '—';
-  }
 }
