@@ -11,6 +11,7 @@
     "scripts/",
     "supabase/",
     "coverage/",
+    "web-snippets/",
     "src/types/database.types.ts",
     "*.config.js"
   ],
