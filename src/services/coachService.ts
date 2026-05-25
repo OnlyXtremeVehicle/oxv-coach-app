@@ -67,10 +67,37 @@ export async function listMyPilots(): Promise<CoachPilotRow[]> {
 }
 
 /**
+ * Loggue un accès coach aux données pilote dans admin_audit, en
+ * fire-and-forget (n'attend pas, ne bloque pas la requête principale).
+ *
+ * Délègue à la fonction Postgres `log_coach_view` qui vérifie elle-même
+ * que l'appelant est bien coach actif et consenti — un user lambda ne
+ * peut donc pas bombarder les logs avec de faux events.
+ */
+export function logCoachView(
+  targetPilotId: string,
+  options?: { sessionId?: string; subtype?: string }
+): void {
+  // Cast le temps que database.types regen connaisse log_coach_view
+  supabase
+    .rpc('log_coach_view' as never, {
+      target_pilot_uuid: targetPilotId,
+      action_subtype: options?.subtype ?? 'coach_view',
+      target_session_uuid: options?.sessionId ?? null,
+    } as never)
+    .then(({ error }: { error: { message: string } | null }) => {
+      if (error) console.warn('[OXV][coach] logCoachView :', error.message);
+    });
+}
+
+/**
  * Liste les sessions d'un pilote spécifique (filtrées par RLS coach).
  * Joint app_session_analyses pour avoir la marge globale d'un coup.
+ * Loggue l'accès dans admin_audit (fire-and-forget).
  */
 export async function listPilotSessions(pilotId: string): Promise<PilotSessionSummary[]> {
+  logCoachView(pilotId, { subtype: 'coach_view_sessions' });
+
   const { data, error } = await supabase
     .from('telemetry_sessions')
     .select(
