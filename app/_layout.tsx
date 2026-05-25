@@ -80,6 +80,9 @@ export default function RootLayout() {
           sessionId?: string | null;
           cornerIndex?: number;
           pilotId?: string;
+          friendshipId?: string;
+          friendId?: string;
+          initiatorId?: string;
         }
       | undefined;
     if (data?.type === 'debrief' && data.sessionId) {
@@ -112,6 +115,14 @@ export default function RootLayout() {
     } else if (data?.type === 'pilot_consented') {
       // Coach tape la notif "Un pilote a consenti" → ouvre son hub
       router.push('/(coach)' as never);
+    } else if (data?.type === 'friend_request') {
+      // Pilote tape la notif "X souhaite vous comparer" → ouvre la liste
+      // d'amis pour qu'il puisse accepter/décliner la demande.
+      router.push('/(app)/amis' as never);
+    } else if (data?.type === 'friend_accepted' && data.friendId) {
+      // Pilote tape la notif "X a accepté" → ouvre directement le duel
+      // pour qu'il puisse commencer la comparaison.
+      router.push(`/(app)/duel/${data.friendId}` as never);
     }
   }, [lastNotifResponse, navState?.key]);
 
