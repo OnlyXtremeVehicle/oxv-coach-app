@@ -13,8 +13,16 @@
  * courbe pour éviter une visualisation trompeuse.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
@@ -22,6 +30,8 @@ import { router } from 'expo-router';
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type Granularity = 'week' | 'month' | 'all';
 
@@ -207,6 +217,33 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
           .map((p) => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`)
           .join(' ');
 
+  // Animation draw-on de la courbe (~1.2s ease-out)
+  const dashOffset = useRef(new Animated.Value(1)).current;
+  // Longueur approximative de la polyline (somme des segments)
+  const pathLength = useMemo(() => {
+    let total = 0;
+    for (let i = 1; i < xy.length; i++) {
+      const dx = xy[i].x - xy[i - 1].x;
+      const dy = xy[i].y - xy[i - 1].y;
+      total += Math.sqrt(dx * dx + dy * dy);
+    }
+    return total;
+  }, [xy]);
+  useEffect(() => {
+    dashOffset.setValue(1);
+    Animated.timing(dashOffset, {
+      toValue: 0,
+      duration: 1200,
+      delay: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [dashOffset, pathD]);
+  const interpolatedOffset = dashOffset.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, pathLength],
+  });
+
   return (
     <View
       style={{
@@ -240,14 +277,16 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
           opacity={0.1}
         />
 
-        {/* Courbe */}
-        <Path
+        {/* Courbe — draw-on progressif gauche à droite (~1.2s) */}
+        <AnimatedPath
           d={pathD}
           stroke={colors.text.primary}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
+          strokeDasharray={`${pathLength}`}
+          strokeDashoffset={interpolatedOffset}
         />
 
         {/* Points */}
