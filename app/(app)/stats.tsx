@@ -25,6 +25,7 @@ import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { type PilotStats, loadPilotStats } from '@/services/statsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDuration, formatLapTime } from '@/utils/format';
 
 export default function StatsScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -315,18 +316,4 @@ function EmptyState() {
       </Text>
     </View>
   );
-}
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds - mins * 60;
-  if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
-  return `${secs.toFixed(2)} s`;
-}
-
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours} h ${mins} min`;
-  return `${mins} min`;
 }
