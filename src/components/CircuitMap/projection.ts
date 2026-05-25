@@ -46,6 +46,18 @@ export function getScenePoints(): ScenePoint[] {
   return HAUTE_SAINTONGE_TRACK.map((p) => projectToScene(p));
 }
 
+/**
+ * ViewBox SVG zoomé sur un virage spécifique. Centre = apex du virage,
+ * rayon par défaut 80 m (couvre largement l'entrée + apex + sortie). À
+ * passer en prop `viewBox` du CircuitMap pour basculer la même carte
+ * en mode zoom sans dupliquer la projection.
+ */
+export function getCornerViewBox(apex: { lat: number; lon: number }, radiusM = 80): string {
+  const p = projectToScene(apex);
+  const size = radiusM * 2;
+  return `${p.x - radiusM} ${p.y - radiusM} ${size} ${size}`;
+}
+
 // ============================================================================
 // Cache interne — recalculé une fois au premier appel
 // ============================================================================

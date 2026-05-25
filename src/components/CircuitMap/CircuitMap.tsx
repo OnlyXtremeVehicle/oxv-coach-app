@@ -27,6 +27,12 @@ export interface CircuitMapProps {
   background?: string;
   /** Border radius du conteneur. Par défaut 12. */
   borderRadius?: number;
+  /**
+   * Override du viewBox SVG. Par défaut on prend le viewBox du circuit
+   * entier (getCircuitViewBox), mais on peut zoomer sur un virage en
+   * passant getCornerViewBox(cornerIndex).
+   */
+  viewBox?: string;
 }
 
 export const CircuitMap = memo(function CircuitMap({
@@ -34,8 +40,9 @@ export const CircuitMap = memo(function CircuitMap({
   height = 320,
   background = colors.background.secondary,
   borderRadius = 12,
+  viewBox: viewBoxOverride,
 }: CircuitMapProps) {
-  const viewBox = getCircuitViewBox();
+  const viewBox = viewBoxOverride ?? getCircuitViewBox();
   return (
     <View
       style={{
