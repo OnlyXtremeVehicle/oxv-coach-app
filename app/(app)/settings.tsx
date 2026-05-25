@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Constants from 'expo-constants';
 
+import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { supabase } from '@/lib/supabase';
 import { cancelAllOxvNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const appVersion = (Constants.expoConfig?.version ?? '0.0.0') as string;
 
   const [pushEnabled, setPushEnabled] = useState<boolean>(true);
+  const { level: detailLevel, toggle: toggleDetail, canToggle: canToggleDetail } = useDetailLevel();
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -163,6 +165,47 @@ export default function SettingsScreen() {
               thumbColor={colors.text.primary}
             />
           </View>
+
+          {/* Mode détaillé (visible uniquement pour pilote — coach/admin sont fixés) */}
+          {canToggleDetail ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md,
+                borderTopWidth: 0.5,
+                borderTopColor: colors.border.subtle,
+              }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: colors.text.primary,
+                    fontSize: fontSize.body,
+                    fontWeight: fontWeight.regular,
+                  }}
+                >
+                  Mode détaillé
+                </Text>
+                <Text
+                  style={[
+                    typography.caption,
+                    { color: colors.text.tertiary, marginTop: spacing.xs },
+                  ]}
+                >
+                  Affiche les métriques techniques (G, deltas, temps total) sur les écrans d'analyse
+                </Text>
+              </View>
+              <Switch
+                value={detailLevel === 'detailed'}
+                onValueChange={toggleDetail}
+                trackColor={{ false: colors.border.subtle, true: colors.accent.red }}
+                thumbColor={colors.text.primary}
+              />
+            </View>
+          ) : null}
         </Section>
 
         {/* Légal */}

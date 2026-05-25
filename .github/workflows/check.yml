@@ -45,6 +45,13 @@ jobs:
 
       - name: Jest tests
         run: npm test -- --ci --reporters=default --coverage=false
+        env:
+          # Tests RLS — skippés silencieusement si secrets absents.
+          # Pour activer : définir ces 3 secrets dans Settings > Secrets.
+          # Voir docs/TESTS_RLS_SETUP.md
+          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
 
       - name: Scan doctrinal (verbes interdits)
         run: npx tsx scripts/check-doctrine.ts

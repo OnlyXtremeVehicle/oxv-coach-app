@@ -22,8 +22,13 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { GGDiagram, type GGPoint } from '@/components/GGDiagram';
 import { SpeedTrace, type SpeedTracePoint } from '@/components/SpeedTrace';
+import { ThrottleBrakeTrace, type ThrottleBrakePoint } from '@/components/ThrottleBrakeTrace';
 import { supabase } from '@/lib/supabase';
-import { loadGGPoints, loadSpeedTracePoints } from '@/services/sessionTelemetryService';
+import {
+  loadGGPoints,
+  loadSpeedTracePoints,
+  loadThrottleBrakePoints,
+} from '@/services/sessionTelemetryService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { formatDateShort } from '@/utils/format';
@@ -39,6 +44,7 @@ export default function TelemetryScreen() {
 
   const [ggPoints, setGGPoints] = useState<GGPoint[]>([]);
   const [trace, setTrace] = useState<SpeedTracePoint[]>([]);
+  const [throttleBrake, setThrottleBrake] = useState<ThrottleBrakePoint[]>([]);
   const [compareTrace, setCompareTrace] = useState<SpeedTracePoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [compareOptions, setCompareOptions] = useState<SessionPickerRow[]>([]);
@@ -54,10 +60,15 @@ export default function TelemetryScreen() {
     const sessionId = params.sessionId;
     let cancelled = false;
 
-    Promise.all([loadGGPoints(sessionId), loadSpeedTracePoints(sessionId)]).then(([gg, st]) => {
+    Promise.all([
+      loadGGPoints(sessionId),
+      loadSpeedTracePoints(sessionId),
+      loadThrottleBrakePoints(sessionId),
+    ]).then(([gg, st, tb]) => {
       if (cancelled) return;
       setGGPoints(gg);
       setTrace(st);
+      setThrottleBrake(tb);
       setLoading(false);
     });
     return () => {
@@ -243,6 +254,17 @@ export default function TelemetryScreen() {
                     </View>
                   ) : null}
                 </>
+              )}
+            </Section>
+
+            {/* Throttle/Brake derived view */}
+            <Section eyebrow="ACCÉLÉRATION / FREINAGE" sublabel="Dérivé du g longitudinal">
+              {throttleBrake.length < 2 ? (
+                <EmptyText>
+                  Pas de données d'accélération longitudinale exploitables pour cette session.
+                </EmptyText>
+              ) : (
+                <ThrottleBrakeTrace points={throttleBrake} />
               )}
             </Section>
           </>

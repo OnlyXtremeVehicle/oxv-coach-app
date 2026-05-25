@@ -46,20 +46,33 @@ supabase db push
 # Ou via Dashboard > SQL Editor → coller migrations/0021_*.sql
 ```
 
-### 4. Configurer les variables Postgres pour pg_net
+### 4. Configurer les secrets via Supabase Vault
+
+⚠️ Supabase managed ne permet PAS `ALTER DATABASE postgres SET ...` (permissions superuser refusées au user `postgres` du Dashboard). On utilise donc le **Vault Supabase** — la convention officielle.
+
+**Pré-requis** : la migration `0025_notif_triggers_use_vault.sql` doit être appliquée (elle patche les triggers pour lire le Vault).
 
 Dans Supabase Dashboard > SQL Editor :
 
 ```sql
--- URL de base des Edge Functions (à adapter avec votre ref projet)
-ALTER DATABASE postgres SET app.edge_functions_base_url
-  TO 'https://<your-ref>.functions.supabase.co';
+-- 1. Stocke l'URL des Edge Functions dans le Vault
+SELECT vault.create_secret(
+  'https://<TON-REF>.functions.supabase.co',
+  'edge_functions_base_url',
+  'URL de base des Edge Functions OXV'
+);
 
--- Secret pour authentifier l'appel (peut être un random UUID)
--- Pour V1, on peut laisser vide si l'Edge Function n'exige pas d'auth.
--- Sinon générer un secret et le coller AUSSI dans Edge Function env.
-ALTER DATABASE postgres SET app.edge_functions_invoke_secret
-  TO '<random-uuid-secret>';
+-- 2. Optionnel : secret bearer pour authentifier les appels pg_net
+-- (V1 alpha : on peut laisser tomber, l'URL Edge Function suffit)
+SELECT vault.create_secret(
+  gen_random_uuid()::text,
+  'edge_functions_invoke_secret',
+  'Secret bearer pour authentifier pg_net → Edge Functions'
+);
+
+-- 3. Vérification
+SELECT name FROM vault.decrypted_secrets WHERE name LIKE 'edge_functions_%';
+-- Doit lister edge_functions_base_url (et invoke_secret si créé)
 ```
 
 ### 5. Vérifier que pg_net est activé
