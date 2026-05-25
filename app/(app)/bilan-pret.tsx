@@ -10,12 +10,14 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { confirm as hapticConfirm } from '@/lib/haptics';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function BilanPretScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
 
   const onDecouvrir = () => {
+    hapticConfirm();
     router.replace({
       pathname: '/(app)/bilan',
       params: params.sessionId ? { sessionId: params.sessionId } : {},

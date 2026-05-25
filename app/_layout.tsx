@@ -9,6 +9,7 @@ import * as Notifications from 'expo-notifications';
 import { initBle, teardownBle } from '@/ble/initBle';
 import { initFlic, teardownFlic } from '@/ble/initFlic';
 import { BleErrorModal } from '@/components/BleErrorModal';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { UpdateModal } from '@/components/UpdateModal';
 import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
@@ -87,20 +88,22 @@ export default function RootLayout() {
   }, [lastNotifResponse, navState?.key]);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <SafeAreaProvider>
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.background.primary },
-            animation: 'fade',
-          }}
-        />
-        <OfflineBanner />
-        <BleErrorModal />
-        <UpdateModal />
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+        <SafeAreaProvider>
+          <StatusBar style="light" />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background.primary },
+              animation: 'fade',
+            }}
+          />
+          <OfflineBanner />
+          <BleErrorModal />
+          <UpdateModal />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

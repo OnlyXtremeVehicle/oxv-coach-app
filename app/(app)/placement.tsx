@@ -14,6 +14,7 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import { success as hapticSuccess } from '@/lib/haptics';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function PlacementScreen() {
@@ -88,7 +89,10 @@ export default function PlacementScreen() {
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => router.replace('/(app)')}
+        onPress={() => {
+          hapticSuccess();
+          router.replace('/(app)');
+        }}
         style={({ pressed }) => ({
           height: 52,
           borderRadius: borderRadius.lg,
