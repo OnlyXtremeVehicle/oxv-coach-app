@@ -29,6 +29,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Inspecteur circuit',
     description: 'Topologie Beltoise, 14 virages, heatmap historique des marges.',
   },
+  {
+    href: '/(admin)/coachs',
+    label: 'Coachs',
+    description: 'Assignations coach ↔ pilote, gestion des consentements.',
+  },
 ];
 
 export default function AdminHubScreen() {

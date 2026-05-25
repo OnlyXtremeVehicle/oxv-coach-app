@@ -7,11 +7,12 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
+import { promoteToCoach } from '@/services/coachAdminService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 interface PilotEntry {
@@ -26,31 +27,47 @@ export default function PreparationScreen() {
   const [pilots, setPilots] = useState<PilotEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const reload = async () => {
+    const { data } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, email, kyc_status, pilot_level')
+      .eq('role', 'pilot')
+      .order('last_name', { ascending: true })
+      .limit(50);
+    setPilots(
+      (data ?? []).map((row) => ({
+        id: row.id,
+        fullName: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || row.email || '—',
+        email: row.email ?? '',
+        kycStatus: row.kyc_status ?? 'pending',
+        level: row.pilot_level,
+      }))
+    );
+    setLoading(false);
+  };
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('users')
-        .select('id, first_name, last_name, email, kyc_status, pilot_level')
-        .eq('role', 'pilot')
-        .order('last_name', { ascending: true })
-        .limit(50);
-      if (cancelled) return;
-      setPilots(
-        (data ?? []).map((row) => ({
-          id: row.id,
-          fullName: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || row.email || '—',
-          email: row.email ?? '',
-          kycStatus: row.kyc_status ?? 'pending',
-          level: row.pilot_level,
-        }))
-      );
-      setLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
+    reload();
   }, []);
+
+  function confirmPromote(pilot: PilotEntry) {
+    Alert.alert(
+      'Promouvoir en coach',
+      `${pilot.fullName} aura les droits coach OXV. Il pourra voir les sessions des pilotes qui lui seront assignés (avec leur consentement). Continuer ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Promouvoir',
+          style: 'default',
+          onPress: async () => {
+            const result = await promoteToCoach(pilot.id);
+            if (result.ok) await reload();
+            else Alert.alert('Échec', result.error ?? 'Erreur inconnue.');
+          },
+        },
+      ]
+    );
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -100,17 +117,40 @@ export default function PreparationScreen() {
                     {p.email} · niveau {p.level ?? '—'}
                   </Text>
                 </View>
-                <Text
-                  style={{
-                    color: kycColor(p.kycStatus),
-                    fontSize: fontSize.caption,
-                    fontWeight: fontWeight.medium,
-                    fontFamily: 'Menlo',
-                    letterSpacing: 1,
-                  }}
-                >
-                  {p.kycStatus.toUpperCase()}
-                </Text>
+                <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
+                  <Text
+                    style={{
+                      color: kycColor(p.kycStatus),
+                      fontSize: fontSize.caption,
+                      fontWeight: fontWeight.medium,
+                      fontFamily: 'Menlo',
+                      letterSpacing: 1,
+                    }}
+                  >
+                    {p.kycStatus.toUpperCase()}
+                  </Text>
+                  <Pressable
+                    onPress={() => confirmPromote(p)}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: spacing.xs,
+                      borderRadius: borderRadius.sm,
+                      borderWidth: 0.5,
+                      borderColor: colors.accent.coach,
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Text
+                      style={{
+                        color: colors.accent.coach,
+                        fontSize: 11,
+                        fontWeight: fontWeight.medium,
+                      }}
+                    >
+                      ↦ coach
+                    </Text>
+                  </Pressable>
+                </View>
               </View>
             ))}
           </View>
