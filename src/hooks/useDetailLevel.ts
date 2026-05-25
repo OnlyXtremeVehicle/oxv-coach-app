@@ -18,7 +18,10 @@ import { useState } from 'react';
 
 import { useAuthStore } from '@/store/useAuthStore';
 
-export type DetailLevel = 'simple' | 'detailed';
+import { type DetailLevel, canToggleForRole, defaultLevelForRole } from './detailLevelLogic';
+
+// Re-export pour les écrans qui importaient depuis ce fichier
+export { type DetailLevel, canToggleForRole, defaultLevelForRole } from './detailLevelLogic';
 
 export function useDetailLevel(): {
   level: DetailLevel;
@@ -27,12 +30,11 @@ export function useDetailLevel(): {
   canToggle: boolean;
 } {
   const role = useAuthStore((s) => s.profile?.role);
-  const defaultLevel: DetailLevel = role === 'coach' || role === 'admin' ? 'detailed' : 'simple';
-  const [level, setLevel] = useState<DetailLevel>(defaultLevel);
+  const [level, setLevel] = useState<DetailLevel>(defaultLevelForRole(role));
 
   return {
     level,
     toggle: () => setLevel((l) => (l === 'simple' ? 'detailed' : 'simple')),
-    canToggle: role !== 'coach' && role !== 'admin',
+    canToggle: canToggleForRole(role),
   };
 }
