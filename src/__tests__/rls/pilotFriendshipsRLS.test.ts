@@ -237,10 +237,7 @@ function canonicalPair(a: string, b: string): { pilotA: string; pilotB: string }
     } as never);
 
     const client = await userClient(alice.email, alice.password);
-    const { data } = await client
-      .from('app_session_analyses')
-      .select('id')
-      .eq('user_id', bob.id);
+    const { data } = await client.from('app_session_analyses').select('id').eq('user_id', bob.id);
     expect(data ?? []).toHaveLength(0);
   });
 
@@ -256,10 +253,7 @@ function canonicalPair(a: string, b: string): { pilotA: string; pilotB: string }
     } as never);
 
     const client = await userClient(alice.email, alice.password);
-    const { data } = await client
-      .from('app_session_analyses')
-      .select('id')
-      .eq('user_id', bob.id);
+    const { data } = await client.from('app_session_analyses').select('id').eq('user_id', bob.id);
     expect(data ?? []).toHaveLength(0);
   });
 

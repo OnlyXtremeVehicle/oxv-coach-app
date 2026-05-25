@@ -86,7 +86,7 @@ function rowFromDb(row: FriendshipDbRow): FriendshipRow {
 function buildEntry(
   myUserId: string,
   row: FriendshipDbRow,
-  otherUser: UserLookupRow | null,
+  otherUser: UserLookupRow | null
 ): FriendListEntry {
   const isAFromMe = row.pilot_a === myUserId;
   const friendId = isAFromMe ? row.pilot_b : row.pilot_a;
@@ -107,7 +107,7 @@ type PendingFilter = FriendshipStatus | 'pending_received' | 'pending_sent';
 
 async function listFriendshipsWithStatus(
   myUserId: string,
-  filter: PendingFilter,
+  filter: PendingFilter
 ): Promise<FriendListEntry[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
@@ -131,9 +131,7 @@ async function listFriendshipsWithStatus(
   const friendships = rawRows as unknown as FriendshipDbRow[];
   if (friendships.length === 0) return [];
 
-  const otherIds = friendships.map((row) =>
-    row.pilot_a === myUserId ? row.pilot_b : row.pilot_a,
-  );
+  const otherIds = friendships.map((row) => (row.pilot_a === myUserId ? row.pilot_b : row.pilot_a));
 
   const { data: users, error: usersError } = await supabase
     .from('users')
@@ -145,15 +143,15 @@ async function listFriendshipsWithStatus(
   }
 
   const usersById = new Map<string, UserLookupRow>(
-    (users ?? []).map((u) => [u.id as string, u as unknown as UserLookupRow]),
+    (users ?? []).map((u) => [u.id as string, u as unknown as UserLookupRow])
   );
 
   return friendships.map((row) =>
     buildEntry(
       myUserId,
       row,
-      usersById.get(row.pilot_a === myUserId ? row.pilot_b : row.pilot_a) ?? null,
-    ),
+      usersById.get(row.pilot_a === myUserId ? row.pilot_b : row.pilot_a) ?? null
+    )
   );
 }
 
@@ -193,7 +191,7 @@ export async function findUserByPublicHandle(handle: string): Promise<UserLookup
 
 export async function sendFriendRequest(
   myUserId: string,
-  recipientUserId: string,
+  recipientUserId: string
 ): Promise<{ row: FriendshipRow; created: boolean } | { error: string }> {
   if (myUserId === recipientUserId) {
     return { error: 'self_friendship_forbidden' };
@@ -234,10 +232,7 @@ export async function sendFriendRequest(
   return { row: rowFromDb(createdRaw as unknown as FriendshipDbRow), created: true };
 }
 
-async function updateStatus(
-  friendshipId: string,
-  newStatus: FriendshipStatus,
-): Promise<boolean> {
+async function updateStatus(friendshipId: string, newStatus: FriendshipStatus): Promise<boolean> {
   const { error } = await supabase
     .from('pilot_friendships' as never)
     .update({ status: newStatus, responded_at: new Date().toISOString() } as never)
@@ -262,10 +257,7 @@ export function revokeFriendship(friendshipId: string): Promise<boolean> {
   return updateStatus(friendshipId, 'revoked');
 }
 
-export async function isFriendsWith(
-  myUserId: string,
-  otherUserId: string,
-): Promise<boolean> {
+export async function isFriendsWith(myUserId: string, otherUserId: string): Promise<boolean> {
   if (myUserId === otherUserId) return false;
   const { pilotA, pilotB } = canonicalPair(myUserId, otherUserId);
   const { data } = await supabase
