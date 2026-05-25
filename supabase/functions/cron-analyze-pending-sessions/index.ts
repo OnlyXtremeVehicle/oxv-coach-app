@@ -1,3 +1,4 @@
+// @ts-nocheck — Deno runtime, pas Node
 // Edge Function : cron-analyze-pending-sessions
 //
 // Balaye les telemetry_sessions completed sans analyse persistée et
