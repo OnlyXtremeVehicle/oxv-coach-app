@@ -14,11 +14,33 @@
  * écran décide d'exposer ou pas le toggle visuellement.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
+import { STORAGE_KEYS, storage } from '@/lib/mmkv';
 import { useAuthStore } from '@/store/useAuthStore';
 
-export type DetailLevel = 'simple' | 'detailed';
+import { type DetailLevel, canToggleForRole, defaultLevelForRole } from './detailLevelLogic';
+
+// Re-export pour les écrans qui importaient depuis ce fichier
+export { type DetailLevel, canToggleForRole, defaultLevelForRole } from './detailLevelLogic';
+
+/**
+ * Renvoie la clé MMKV namespacée par userId. Permet à 2 comptes sur le
+ * même device (rare mais possible en alpha) d'avoir des préférences
+ * séparées sans s'écraser mutuellement.
+ */
+function prefKey(userId: string | undefined): string {
+  return userId ? `${STORAGE_KEYS.PREF_DETAIL_LEVEL}:${userId}` : STORAGE_KEYS.PREF_DETAIL_LEVEL;
+}
+
+/**
+ * Lit le niveau persisté pour cet utilisateur, ou null si jamais set.
+ */
+function readPersistedLevel(userId: string | undefined): DetailLevel | null {
+  const raw = storage.getString(prefKey(userId));
+  if (raw === 'simple' || raw === 'detailed') return raw;
+  return null;
+}
 
 export function useDetailLevel(): {
   level: DetailLevel;
@@ -26,13 +48,32 @@ export function useDetailLevel(): {
   /** True si l'utilisateur est dans un contexte qui propose le toggle (pilote). */
   canToggle: boolean;
 } {
-  const role = useAuthStore((s) => s.profile?.role);
-  const defaultLevel: DetailLevel = role === 'coach' || role === 'admin' ? 'detailed' : 'simple';
-  const [level, setLevel] = useState<DetailLevel>(defaultLevel);
+  const profile = useAuthStore((s) => s.profile);
+  const role = profile?.role;
+  const userId = profile?.id;
+
+  // Initial : persisté > défaut selon rôle
+  const [level, setLevel] = useState<DetailLevel>(
+    () => readPersistedLevel(userId) ?? defaultLevelForRole(role)
+  );
+
+  // Si l'identité change (login/logout/switch), recharge la préférence
+  useEffect(() => {
+    setLevel(readPersistedLevel(userId) ?? defaultLevelForRole(role));
+  }, [userId, role]);
 
   return {
     level,
-    toggle: () => setLevel((l) => (l === 'simple' ? 'detailed' : 'simple')),
-    canToggle: role !== 'coach' && role !== 'admin',
+    toggle: () => {
+      setLevel((l) => {
+        const next: DetailLevel = l === 'simple' ? 'detailed' : 'simple';
+        // Persiste seulement pour les pilotes (les pros sont fixés par défaut)
+        if (canToggleForRole(role)) {
+          storage.set(prefKey(userId), next);
+        }
+        return next;
+      });
+    },
+    canToggle: canToggleForRole(role),
   };
 }

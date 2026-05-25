@@ -23,6 +23,7 @@ import { fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatLapTime } from '@/utils/format';
 
 export default function ReplayScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; lapNumber?: string }>();
@@ -228,11 +229,4 @@ function EmptyState() {
       </Text>
     </View>
   );
-}
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds - mins * 60;
-  if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
-  return `${secs.toFixed(2)} s`;
 }

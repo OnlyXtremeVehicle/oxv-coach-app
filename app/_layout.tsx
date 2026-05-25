@@ -75,7 +75,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (!lastNotifResponse || !navState?.key) return;
     const data = lastNotifResponse.notification.request.content.data as
-      | { type?: string; sessionId?: string }
+      | {
+          type?: string;
+          sessionId?: string | null;
+          cornerIndex?: number;
+        }
       | undefined;
     if (data?.type === 'debrief' && data.sessionId) {
       router.push({
@@ -84,6 +88,15 @@ export default function RootLayout() {
       });
     } else if (data?.type === 'session_reminder') {
       router.push('/(app)');
+    } else if (data?.type === 'coach_annotation' && data.cornerIndex) {
+      // Note du coach : ouvrir le zoom virage concerné (avec sessionId si lié)
+      router.push({
+        pathname: '/(app)/virage',
+        params: {
+          index: String(data.cornerIndex),
+          sessionId: data.sessionId ?? '',
+        },
+      });
     }
   }, [lastNotifResponse, navState?.key]);
 
