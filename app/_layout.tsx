@@ -79,6 +79,7 @@ export default function RootLayout() {
           type?: string;
           sessionId?: string | null;
           cornerIndex?: number;
+          pilotId?: string;
         }
       | undefined;
     if (data?.type === 'debrief' && data.sessionId) {
@@ -97,6 +98,14 @@ export default function RootLayout() {
           sessionId: data.sessionId ?? '',
         },
       });
+    } else if (data?.type === 'session_analyzed' && data.pilotId) {
+      // Côté coach : nouvelle session analysée pour un pilote suivi.
+      // Ouvre le détail pilote — le coach voit la nouvelle session en
+      // tête de liste et peut tap pour voir le bilan.
+      router.push({
+        pathname: '/(coach)/pilote/[id]',
+        params: { id: data.pilotId },
+      } as never);
     }
   }, [lastNotifResponse, navState?.key]);
 
