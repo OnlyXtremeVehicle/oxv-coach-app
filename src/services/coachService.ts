@@ -80,11 +80,14 @@ export function logCoachView(
 ): void {
   // Cast le temps que database.types regen connaisse log_coach_view
   supabase
-    .rpc('log_coach_view' as never, {
-      target_pilot_uuid: targetPilotId,
-      action_subtype: options?.subtype ?? 'coach_view',
-      target_session_uuid: options?.sessionId ?? null,
-    } as never)
+    .rpc(
+      'log_coach_view' as never,
+      {
+        target_pilot_uuid: targetPilotId,
+        action_subtype: options?.subtype ?? 'coach_view',
+        target_session_uuid: options?.sessionId ?? null,
+      } as never
+    )
     .then(({ error }: { error: { message: string } | null }) => {
       if (error) console.warn('[OXV][coach] logCoachView :', error.message);
     });
