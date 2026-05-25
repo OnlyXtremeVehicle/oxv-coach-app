@@ -225,3 +225,106 @@ export async function listPilotSessions(pilotId: string): Promise<PilotSessionSu
     };
   });
 }
+
+// ============================================================================
+// Dashboard coach — synthèse pour le hub
+// ============================================================================
+
+export interface CoachDashboardSummary {
+  pilotCount: number;
+  /** Sessions complétées des pilotes suivis dans les N derniers jours. */
+  recentSessionCount: number;
+  recentSessionsDays: number;
+  /** Sessions des pilotes suivis dans les dernières 24h (alertes). */
+  lastDaySessionCount: number;
+  /** Annotations brouillon du coach (non partagées avec le pilote). */
+  draftAnnotationCount: number;
+  /** Annotations partagées par le coach (cumulé, depuis toujours). */
+  sharedAnnotationCount: number;
+}
+
+/**
+ * Charge la synthèse du dashboard coach en parallèle. Best-effort : si
+ * une requête échoue, on renvoie 0 plutôt que faire planter le hub.
+ *
+ * RLS appliqué :
+ *   - `coach_pilots_view` filtre déjà sur coach_id = auth.uid()
+ *   - `telemetry_sessions` policy coach_select autorise les sessions des
+ *     pilotes suivis
+ *   - `coach_annotations` policy coach FOR ALL autorise les notes propres
+ */
+export async function loadCoachDashboardSummary(): Promise<CoachDashboardSummary> {
+  const recentDays = 7;
+  const since7d = new Date(Date.now() - recentDays * 24 * 60 * 60 * 1000).toISOString();
+  const since1d = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  // 1. Pilotes assignés (via vue, RLS-filtered)
+  const pilotsPromise = supabase
+    .from('coach_pilots_view')
+    .select('pilot_id', { count: 'exact', head: true });
+
+  // 2. IDs pilotes pour requêter leurs sessions ensuite
+  const pilotIdsPromise = supabase.from('coach_pilots_view').select('pilot_id');
+
+  const [pilotsResult, pilotIdsResult] = await Promise.all([pilotsPromise, pilotIdsPromise]);
+
+  const pilotIds = (pilotIdsResult.data ?? []).map(
+    (r: Record<string, unknown>) => r.pilot_id as string
+  );
+
+  if (pilotIds.length === 0) {
+    return {
+      pilotCount: pilotsResult.count ?? 0,
+      recentSessionCount: 0,
+      recentSessionsDays: recentDays,
+      lastDaySessionCount: 0,
+      draftAnnotationCount: 0,
+      sharedAnnotationCount: 0,
+    };
+  }
+
+  // 3. Sessions 7j (count) + 24h (count) en parallèle
+  const recent7dPromise = supabase
+    .from('telemetry_sessions')
+    .select('id', { count: 'exact', head: true })
+    .in('user_id', pilotIds)
+    .eq('status', 'completed')
+    .gte('started_at', since7d);
+
+  const recent1dPromise = supabase
+    .from('telemetry_sessions')
+    .select('id', { count: 'exact', head: true })
+    .in('user_id', pilotIds)
+    .eq('status', 'completed')
+    .gte('started_at', since1d);
+
+  // 4. Annotations brouillon + partagées du coach (cast `as never` car
+  // database.types n'a pas encore coach_annotations)
+  const draftsPromise = supabase
+    .from('coach_annotations' as never)
+    .select('id', { count: 'exact', head: true })
+    .eq('visibility', 'private')
+    .is('deleted_at', null);
+
+  const sharedPromise = supabase
+    .from('coach_annotations' as never)
+    .select('id', { count: 'exact', head: true })
+    .eq('visibility', 'shared')
+    .is('deleted_at', null);
+
+  const [recent7d, recent1d, drafts, shared] = await Promise.all([
+    recent7dPromise,
+    recent1dPromise,
+    draftsPromise,
+    sharedPromise,
+  ]);
+
+  return {
+    pilotCount: pilotsResult.count ?? 0,
+    recentSessionCount: recent7d.count ?? 0,
+    recentSessionsDays: recentDays,
+    lastDaySessionCount: recent1d.count ?? 0,
+    draftAnnotationCount: drafts.count ?? 0,
+    sharedAnnotationCount: shared.count ?? 0,
+  };
+}
