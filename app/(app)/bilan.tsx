@@ -250,6 +250,33 @@ export default function BilanScreen() {
           </Text>
         </Pressable>
 
+        {/* CTA Souvenirs — médias OXV de la session */}
+        {session?.id ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/(app)/session-media/${session.id}` as never)}
+            style={({ pressed }) => ({
+              marginTop: spacing.sm,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.border.subtle,
+              alignItems: 'center',
+              opacity: pressed ? 0.6 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.text.secondary,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.regular,
+              }}
+            >
+              Voir mes souvenirs de session
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
