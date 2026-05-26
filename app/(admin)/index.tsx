@@ -34,6 +34,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Coachs',
     description: 'Assignations coach ↔ pilote, gestion des consentements.',
   },
+  {
+    href: '/(admin)/sessions-media',
+    label: 'Médias',
+    description: 'Dépôt des photos / vidéos prises sur piste par session.',
+  },
 ];
 
 export default function AdminHubScreen() {
