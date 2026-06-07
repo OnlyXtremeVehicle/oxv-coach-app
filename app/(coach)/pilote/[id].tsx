@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link, router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
 import {
@@ -143,6 +143,7 @@ export default function CoachPilotDetailScreen() {
                 <SessionRow
                   key={session.id}
                   session={session}
+                  pilotId={params.id}
                   mode={mode}
                   selected={selectedIds.includes(session.id)}
                   onToggle={() => toggleSelected(session.id)}
@@ -194,11 +195,13 @@ export default function CoachPilotDetailScreen() {
 
 function SessionRow({
   session,
+  pilotId,
   mode = 'browse',
   selected = false,
   onToggle,
 }: {
   session: PilotSessionSummary;
+  pilotId?: string;
   mode?: Mode;
   selected?: boolean;
   onToggle?: () => void;
@@ -271,15 +274,23 @@ function SessionRow({
   }
 
   return (
-    <Link href={{ pathname: '/(app)/bilan', params: { sessionId: session.id } }} asChild>
+    <View
+      style={{
+        borderRadius: borderRadius.md,
+        borderWidth: 0.5,
+        borderColor: colors.border.subtle,
+        backgroundColor: colors.background.secondary,
+        overflow: 'hidden',
+      }}
+    >
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Ouvrir le bilan du ${dateStr}`}
+        onPress={() =>
+          router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
+        }
         style={({ pressed }) => ({
           padding: spacing.lg,
-          borderRadius: borderRadius.md,
-          borderWidth: 0.5,
-          borderColor: colors.border.subtle,
-          backgroundColor: colors.background.secondary,
           opacity: pressed ? 0.85 : 1,
           flexDirection: 'row',
           alignItems: 'center',
@@ -288,7 +299,35 @@ function SessionRow({
       >
         {rowContent}
       </Pressable>
-    </Link>
+      {/* Saisie du contexte coach (§10.3) sur cette session */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Ajouter le contexte de cette séance"
+        onPress={() =>
+          router.push({
+            pathname: '/(coach)/contexte',
+            params: { pilotId: pilotId ?? '', sessionId: session.id },
+          } as never)
+        }
+        style={({ pressed }) => ({
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.sm,
+          borderTopWidth: 0.5,
+          borderTopColor: colors.border.subtle,
+          opacity: pressed ? 0.7 : 1,
+        })}
+      >
+        <Text
+          style={{
+            color: colors.accent.coach,
+            fontSize: fontSize.caption,
+            fontWeight: fontWeight.medium,
+          }}
+        >
+          Contexte de séance
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 

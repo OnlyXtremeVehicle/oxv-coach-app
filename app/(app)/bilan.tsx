@@ -24,6 +24,8 @@ import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
+import { buildContextRows } from '@/services/coachContextLogic';
+import { getSessionContext } from '@/services/coachSessionContextService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -58,6 +60,7 @@ export default function BilanScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [contextRows, setContextRows] = useState<{ label: string; value: string }[]>([]);
 
   useEffect(() => {
     if (!profile) {
@@ -121,6 +124,19 @@ export default function BilanScreen() {
     };
   }, [profile, params.sessionId]);
 
+  // Contexte coach (§10.3) sur cette session — affiché si le coach en a posé.
+  useEffect(() => {
+    if (!session?.id) return;
+    let cancelled = false;
+    getSessionContext(session.id).then((ctx) => {
+      if (cancelled || !ctx) return;
+      setContextRows(buildContextRows(ctx).map((r) => ({ label: r.label, value: r.value })));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id]);
+
   if (loading) {
     return (
       <SafeAreaView
@@ -183,6 +199,45 @@ export default function BilanScreen() {
         >
           {manifestForMargin(margin)}
         </Text>
+
+        {/* Contexte du coach (§10.3) — ce que le capteur ne capte pas. */}
+        {contextRows.length > 0 ? (
+          <FadeInSection
+            style={{
+              marginBottom: spacing.huge,
+              padding: spacing.xl,
+              borderRadius: borderRadius.lg,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              backgroundColor: colors.background.secondary,
+            }}
+          >
+            <Text
+              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
+            >
+              LE CONTEXTE DE VOTRE COACH
+            </Text>
+            <View style={{ gap: spacing.md }}>
+              {contextRows.map((row) => (
+                <View key={row.label}>
+                  <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+                    {row.label}
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.text.primary,
+                      fontSize: fontSize.body,
+                      marginTop: 2,
+                      lineHeight: fontSize.body * 1.4,
+                    }}
+                  >
+                    {row.value}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </FadeInSection>
+        ) : null}
 
         <View style={{ gap: spacing.md }}>
           {NAV_TARGETS.map((target, i) => (
