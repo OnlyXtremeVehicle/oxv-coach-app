@@ -13,6 +13,7 @@
  */
 
 import { CircuitMap, type CircuitMapProps } from '../CircuitMap';
+import { BrakingPointsLayer, type BrakingMarker } from '../layers/BrakingPointsLayer';
 import { CornersLayer } from '../layers/CornersLayer';
 import { StartArrowLayer } from '../layers/StartArrowLayer';
 import { TrackLayer } from '../layers/TrackLayer';
@@ -34,6 +35,8 @@ export interface PilotPresetProps extends Omit<CircuitMapProps, 'children'> {
   zoneByIndex?: Record<number, MarginZone>;
   /** Virage sélectionné (highlight). */
   selectedIndex?: number | null;
+  /** Points de freinage à superposer (pilier §3.4). Optionnel. */
+  brakingPoints?: BrakingMarker[];
 }
 
 export function PilotPreset({
@@ -42,6 +45,7 @@ export function PilotPreset({
   trajectoryColorMode = 'uniform',
   zoneByIndex,
   selectedIndex = null,
+  brakingPoints,
   ...mapProps
 }: PilotPresetProps) {
   return (
@@ -50,6 +54,9 @@ export function PilotPreset({
       <StartArrowLayer />
       {trajectory && trajectory.length > 1 ? (
         <TrajectoryLayer points={trajectory} colorMode={trajectoryColorMode} />
+      ) : null}
+      {brakingPoints && brakingPoints.length > 0 ? (
+        <BrakingPointsLayer points={brakingPoints} />
       ) : null}
       <CornersLayer
         colorMode={zoneByIndex ? 'zone' : 'pace'}

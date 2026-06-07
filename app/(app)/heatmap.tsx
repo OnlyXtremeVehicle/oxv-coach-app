@@ -15,7 +15,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { type BrakingMarker } from '@/components/CircuitMap';
 import { supabase } from '@/lib/supabase';
+import { detectBrakingPoints } from '@/services/brakingPointsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
 
@@ -24,6 +26,7 @@ export default function HeatmapScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
 
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
+  const [brakingPoints, setBrakingPoints] = useState<BrakingMarker[]>([]);
   const [stats, setStats] = useState<{ min: number; max: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,6 +78,14 @@ export default function HeatmapScreen() {
 
       if (points.length > 1) {
         setTrajectory(points);
+        // Pilier §3.4 : points de freinage projetés sur le tracé.
+        setBrakingPoints(
+          detectBrakingPoints(points).map((bp) => ({
+            lat: bp.lat,
+            lon: bp.lon,
+            intensity: bp.intensity,
+          }))
+        );
         const speeds = points
           .map((p) => p.speed)
           .filter((s): s is number => typeof s === 'number' && Number.isFinite(s));
@@ -141,6 +152,7 @@ export default function HeatmapScreen() {
               animate
               trajectory={trajectory ?? undefined}
               trajectoryColorMode="speed-heatmap"
+              brakingPoints={brakingPoints}
               height={400}
             />
 
@@ -158,6 +170,32 @@ export default function HeatmapScreen() {
               <LegendDot color={colors.margin.yellow} label="Intermédiaire" />
               <LegendDot color={colors.margin.green} label="Rapide" />
             </View>
+
+            {/* Légende points de freinage */}
+            {brakingPoints.length > 0 ? (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: spacing.xs,
+                  marginTop: spacing.sm,
+                }}
+              >
+                <View
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    backgroundColor: colors.margin.red,
+                    opacity: 0.7,
+                  }}
+                />
+                <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
+                  Cercles : zones de freinage marqué
+                </Text>
+              </View>
+            ) : null}
 
             {stats ? (
               <Text
