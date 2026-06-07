@@ -84,7 +84,13 @@ Le virage doctrinal de juin 2026 (« OXV Coach » → **OXV Mirror**, abandon du
 ### 🟢 §7 — Volet social : carte interactive
 - [x] **FAIT** : liste des pings (§7.1, PR #58) + carte interactive native `react-native-maps` (§7.2, PR #59). Pings événements OXV/partenaires/soirées/tournages/hôtes, réservés aux membres validés (RLS `is_validated_member`, migration 0033). Fallback liste en Expo Go.
 
-### 🟢 §8 — Espace coach : SaaS complet
+### 🟢 §8 (cahier v3) — Carte écosystème & référencement national
+- [x] **Étape A FAITE** (migration 0036, PR à venir) : annuaire des circuits de France (couche gratuite « aimant ») + services autour (restauration, hébergement, loisirs, journées de roulage OXV **et concurrents** — annuaire neutre). Carte nationale `react-native-maps` + fallback liste, détail circuit avec services groupés par type. Référencement / mise en relation **uniquement, aucun encaissement** (compatible micro-entreprise).
+- [ ] `is_premium` posé sur `circuit_services` mais **non imposé** : pas de notion d'abonnement aujourd'hui (app gratuite au lancement). Gating premium à activer quand le modèle d'abonnement existera.
+- [ ] Référencement national = travail de données progressif (démarrage Nouvelle-Aquitaine + circuits majeurs). Saisie back-office côté OXV.
+- [ ] **Étape B** (réservation + commission marketplace) : phase ultérieure, prérequis juridique (sortie micro, statut intermédiaire à valider avocat).
+
+### 🟢 §10 (cahier v3) — Espace coach : SaaS complet
 - [x] **Permissions modulaires** à la carte (PR #56) : table `coach_permissions`, helper `coach_has_permission()`, hook `useCoachPermissions`. Le rôle coach n'est plus binaire.
 - [x] **Gestion des roulages** (migration 0034) : le coach crée ses roulages et invite ses pilotes (gating `manage_own_sessions`) ; le pilote accepte/décline. Décision Gabin 2026-06-07.
 - [ ] ~~Remise dégressive -5/-10/-15 %~~ — **ABANDONNÉE** (décision Gabin 2026-06-07, confirmée après relecture cahier v3).
