@@ -204,6 +204,26 @@ function ModePassive({
       ) : (
         <Text style={typography.manifest}>Votre première session écrira la première ligne.</Text>
       )}
+
+      {/* Accès à la carte écosystème (§8) — préparer ses sorties. */}
+      <Link href={'/(app)/circuits' as never} asChild>
+        <Pressable
+          accessibilityRole="button"
+          style={({ pressed }) => ({
+            marginTop: spacing.xl,
+            padding: spacing.lg,
+            borderRadius: borderRadius.md,
+            borderWidth: 0.5,
+            borderColor: colors.border.subtle,
+            alignItems: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>
+            Carte des circuits
+          </Text>
+        </Pressable>
+      </Link>
     </View>
   );
 }
