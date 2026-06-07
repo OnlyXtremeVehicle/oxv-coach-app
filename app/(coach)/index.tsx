@@ -151,6 +151,34 @@ export default function CoachHubScreen() {
                 <PilotCard key={pilot.pilotId} pilot={pilot} />
               ))}
             </View>
+
+            {/* CTA comparatif 2 pilotes — visible si au moins 2 pilotes suivis */}
+            {pilots.length >= 2 ? (
+              <Link href={'/(coach)/comparer-pilotes' as never} asChild>
+                <Pressable
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({
+                    marginTop: spacing.lg,
+                    padding: spacing.lg,
+                    borderRadius: borderRadius.md,
+                    borderWidth: 0.5,
+                    borderColor: colors.accent.coach,
+                    alignItems: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      color: colors.accent.coach,
+                      fontSize: fontSize.body,
+                      fontWeight: fontWeight.medium,
+                    }}
+                  >
+                    Comparer deux pilotes
+                  </Text>
+                </Pressable>
+              </Link>
+            ) : null}
           </>
         )}
 
