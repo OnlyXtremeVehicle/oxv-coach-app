@@ -69,6 +69,25 @@ export function formatDateLong(iso: string): string {
 }
 
 /**
+ * Montant en centimes d'euro → chaîne fr-FR (« 1 200 € », « 49,50 € »).
+ * Affiche les centimes uniquement s'ils sont non nuls.
+ */
+export function formatPriceCents(cents: number): string {
+  try {
+    const euros = cents / 100;
+    const hasCents = cents % 100 !== 0;
+    return euros.toLocaleString('fr-FR', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: hasCents ? 2 : 0,
+      maximumFractionDigits: 2,
+    });
+  } catch {
+    return '—';
+  }
+}
+
+/**
  * Date + heure fr-FR (« 10 juil. 2026, 09:00 »). Utilisé pour les roulages.
  */
 export function formatDateTime(iso: string): string {

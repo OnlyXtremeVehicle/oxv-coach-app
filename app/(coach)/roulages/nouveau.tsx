@@ -31,6 +31,7 @@ export default function NouveauRoulageScreen() {
   const [startsAt, setStartsAt] = useState<Date>(defaultStart);
   const [location, setLocation] = useState('');
   const [maxPilots, setMaxPilots] = useState('');
+  const [price, setPrice] = useState('');
   const [notes, setNotes] = useState('');
 
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -74,11 +75,15 @@ export default function NouveauRoulageScreen() {
 
   async function onSubmit() {
     const parsedMax = maxPilots.trim() === '' ? null : Number(maxPilots.trim());
+    // Prix saisi en euros (virgule ou point) → centimes entiers.
+    const priceTrimmed = price.trim().replace(',', '.');
+    const parsedPrice = priceTrimmed === '' ? null : Math.round(Number(priceTrimmed) * 100);
     const input = {
       title,
       startsAt: startsAt.toISOString(),
       location: location.trim() || null,
       maxPilots: parsedMax,
+      pricePerPilot: Number.isNaN(parsedPrice as number) ? null : parsedPrice,
       notes: notes.trim() || null,
     };
 
@@ -147,6 +152,18 @@ export default function NouveauRoulageScreen() {
             keyboardType="number-pad"
             style={inputStyle}
             accessibilityLabel="Nombre de places"
+          />
+        </Field>
+
+        <Field label="Prix par place en euros (optionnel)">
+          <TextInput
+            value={price}
+            onChangeText={setPrice}
+            placeholder="Gratuit"
+            placeholderTextColor={colors.text.tertiary}
+            keyboardType="decimal-pad"
+            style={inputStyle}
+            accessibilityLabel="Prix par place en euros"
           />
         </Field>
 

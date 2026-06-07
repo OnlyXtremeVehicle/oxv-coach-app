@@ -21,6 +21,8 @@ export interface Roulage {
   endsAt: string | null;
   location: string | null;
   maxPilots: number | null;
+  /** Prix par place en centimes d'euro. null = non tarifé. */
+  pricePerPilot: number | null;
   notes: string | null;
   status: RoulageStatus;
   createdAt: string;
@@ -45,6 +47,8 @@ export interface RoulageInput {
   endsAt?: string | null;
   location?: string | null;
   maxPilots?: number | null;
+  /** Prix par place en centimes d'euro. null/absent = non tarifé. */
+  pricePerPilot?: number | null;
   notes?: string | null;
 }
 
@@ -89,6 +93,12 @@ export function validateRoulageInput(input: RoulageInput, nowISO: string): strin
   if (input.maxPilots != null) {
     if (!Number.isInteger(input.maxPilots) || input.maxPilots <= 0) {
       return 'Le nombre de places doit être un entier positif.';
+    }
+  }
+
+  if (input.pricePerPilot != null) {
+    if (!Number.isInteger(input.pricePerPilot) || input.pricePerPilot < 0) {
+      return 'Le prix par place doit être un montant positif.';
     }
   }
 
@@ -145,4 +155,58 @@ export function summarizeInvitations(invitations: RoulageInvitation[]): Invitati
 export function remainingPlaces(roulage: Roulage, acceptedCount: number): number | null {
   if (roulage.maxPilots == null) return null;
   return Math.max(0, roulage.maxPilots - acceptedCount);
+}
+
+/**
+ * Revenu d'un roulage en centimes : prix par place × pilotes ayant accepté.
+ * Retourne 0 si le roulage n'est pas tarifé (pricePerPilot null) ou annulé.
+ */
+export function roulageRevenueCents(roulage: Roulage, acceptedCount: number): number {
+  if (roulage.pricePerPilot == null || roulage.status === 'cancelled') return 0;
+  return roulage.pricePerPilot * acceptedCount;
+}
+
+/** Résumé du tableau de bord business d'un coach (§10.2, sans remise). */
+export interface CoachBusinessSummary {
+  pilotCount: number;
+  roulageCount: number;
+  /** Roulages ouverts/passés non annulés. */
+  activeRoulageCount: number;
+  /** Revenu total cumulé en centimes (somme des revenus par roulage). */
+  totalRevenueCents: number;
+  /** Nombre total de présences confirmées sur l'ensemble des roulages. */
+  totalAccepted: number;
+}
+
+/**
+ * Calcule le résumé business d'un coach à partir de ses roulages et du
+ * nombre de présences confirmées par roulage. 100 % déterministe et testable.
+ *
+ * @param pilotCount        nombre de pilotes suivis par le coach
+ * @param roulages          roulages du coach
+ * @param acceptedByRoulage map roulageId → nombre de présences confirmées
+ */
+export function computeCoachBusinessSummary(
+  pilotCount: number,
+  roulages: Roulage[],
+  acceptedByRoulage: Map<string, number>
+): CoachBusinessSummary {
+  let totalRevenueCents = 0;
+  let totalAccepted = 0;
+  let activeRoulageCount = 0;
+
+  for (const r of roulages) {
+    const accepted = acceptedByRoulage.get(r.id) ?? 0;
+    totalAccepted += accepted;
+    if (r.status !== 'cancelled') activeRoulageCount += 1;
+    totalRevenueCents += roulageRevenueCents(r, accepted);
+  }
+
+  return {
+    pilotCount,
+    roulageCount: roulages.length,
+    activeRoulageCount,
+    totalRevenueCents,
+    totalAccepted,
+  };
 }

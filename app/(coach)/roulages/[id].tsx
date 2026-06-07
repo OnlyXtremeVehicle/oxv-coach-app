@@ -34,7 +34,7 @@ import {
   setRoulageStatus,
 } from '@/services/roulagesService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
-import { formatDateTime } from '@/utils/format';
+import { formatDateTime, formatPriceCents } from '@/utils/format';
 
 function pilotName(p: CoachPilotRow): string {
   return [p.firstName, p.lastName].filter(Boolean).join(' ') || 'Pilote';
@@ -172,6 +172,13 @@ export default function RoulageDetailScreen() {
             style={{ color: colors.text.secondary, fontSize: fontSize.body, marginTop: spacing.md }}
           >
             {roulage.location}
+          </Text>
+        ) : null}
+        {roulage.pricePerPilot != null ? (
+          <Text
+            style={{ color: colors.text.secondary, fontSize: fontSize.body, marginTop: spacing.xs }}
+          >
+            {formatPriceCents(roulage.pricePerPilot)} par place
           </Text>
         ) : null}
         {roulage.notes ? (
