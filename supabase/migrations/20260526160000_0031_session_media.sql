@@ -93,7 +93,7 @@ CREATE POLICY session_media_select_friend ON public.session_media
 DROP POLICY IF EXISTS session_media_select_coach ON public.session_media;
 CREATE POLICY session_media_select_coach ON public.session_media
   FOR SELECT TO authenticated
-  USING (public.is_coach_of(auth.uid(), pilot_user_id) AND deleted_at IS NULL);
+  USING (public.is_coach_of(pilot_user_id) AND deleted_at IS NULL);
 
 -- SELECT : admins
 DROP POLICY IF EXISTS session_media_select_admin ON public.session_media;
@@ -158,7 +158,7 @@ BEGIN
             -- Friend
             OR public.are_friends(auth.uid(), ((storage.foldername(name))[1])::uuid)
             -- Coach
-            OR public.is_coach_of(auth.uid(), ((storage.foldername(name))[1])::uuid)
+            OR public.is_coach_of(((storage.foldername(name))[1])::uuid)
             -- Admin
             OR public.is_admin()
           )
