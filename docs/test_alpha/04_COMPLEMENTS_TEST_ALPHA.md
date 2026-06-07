@@ -27,7 +27,7 @@ Ce document complète ces livrables sur **quatre angles spécifiques** qui méri
 
 ### 1.1 — Contexte
 
-Dans le dispositif OXV Coach classique, le **bouton Flic 2 de marquage** sert au pilote en piste pour signaler manuellement des moments intéressants au cours de la session. Les trois usages prévus sont :
+Dans le dispositif OXV Mirror classique, le **bouton Flic 2 de marquage** sert au pilote en piste pour signaler manuellement des moments intéressants au cours de la session. Les trois usages prévus sont :
 
 - **Clic simple** : marqueur libre (« je veux retrouver ce moment dans mon bilan »)
 - **Double-clic** : incident (« sortie de piste, blocage de roue, événement inhabituel »)
@@ -70,7 +70,7 @@ clic suffit.
 
 ### 1.4 — Distribution effective
 
-Sur les 12 boîtiers OXV Coach que vous distribuez, **prévoyez 12 boutons Flic 2** appairés au préalable. Le coût d'achat est d'environ 35-45 € par bouton, soit **420-540 € de boutons** pour le test alpha.
+Sur les 12 boîtiers OXV Mirror que vous distribuez, **prévoyez 12 boutons Flic 2** appairés au préalable. Le coût d'achat est d'environ 35-45 € par bouton, soit **420-540 € de boutons** pour le test alpha.
 
 Si cet investissement vous paraît trop important, vous pouvez :
 
@@ -117,7 +117,7 @@ CLAUSE COMPLÉMENTAIRE — PARTICIPATION AU TEST ALPHA OXV
 En participant à la Balade Découverte OXV du 5 juillet 2026,
 j'accepte expressément que :
 
-1. Les données télémétriques collectées par l'équipement OXV Coach
+1. Les données télémétriques collectées par l'équipement OXV Mirror
    pendant la balade puissent être analysées par OXV à des fins
    d'amélioration de ses algorithmes et de son application.
 
@@ -239,7 +239,7 @@ Et pour chacun, identifie :
 | Communication aux confirmés | Honnête : « Plusieurs personnes ont eu un imprévu. Nous maintenons à 4 ou 5, ce sera plus intime mais tout aussi utile. Tu confirmes ? » |
 | Apprentissage | Mesurer le taux de désistement pour calibrer les futures sessions |
 
-**Scénario C — Equipement OXV Coach indisponible (RaceBox non livrés)**
+**Scénario C — Equipement OXV Mirror indisponible (RaceBox non livrés)**
 
 | Détail | Action |
 |---|---|
@@ -249,7 +249,7 @@ Et pour chacun, identifie :
 | Communication | « L'équipement définitif n'arrive pas à temps. On maintient la balade pour le côté convivial et on testera l'app en mode démo sur l'app classique. » |
 | Apprentissage | Vous testez quand même les rituels J-7/J-2/J-1, l'inscription, le briefing, et le ressenti général |
 
-**Scénario D — App OXV Coach pas prête à temps**
+**Scénario D — App OXV Mirror pas prête à temps**
 
 | Détail | Action |
 |---|---|

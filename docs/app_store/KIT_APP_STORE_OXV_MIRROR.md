@@ -1,6 +1,6 @@
-# Kit App Store — OXV Coach
+# Kit App Store — OXV Mirror
 
-**Tous les textes, spécifications et métadonnées nécessaires pour publier OXV Coach sur Apple App Store et Google Play**
+**Tous les textes, spécifications et métadonnées nécessaires pour publier OXV Mirror sur Apple App Store et Google Play**
 **À utiliser le jour de la soumission, après livraison du build par le développeur**
 **Version 1.0 — Mai 2026**
 
@@ -8,7 +8,7 @@
 
 ## Préambule
 
-Ce kit contient l'intégralité des contenus à fournir à Apple App Store Connect et Google Play Console au moment de la publication d'OXV Coach. Il est rédigé en anticipation, plusieurs mois avant le lancement réel, pour deux raisons :
+Ce kit contient l'intégralité des contenus à fournir à Apple App Store Connect et Google Play Console au moment de la publication d'OXV Mirror. Il est rédigé en anticipation, plusieurs mois avant le lancement réel, pour deux raisons :
 
 - **Gagner du temps le jour J** : la publication d'une app demande typiquement 4-8h de saisie dans les consoles. Avec ce kit, ce temps tombe à 1-2h.
 - **Garantir la cohérence** : tous les textes ont été rédigés avec la même grammaire OXV (sec, premium, vouvoiement), évitant les improvisations de dernière minute qui produisent des textes inégaux.
@@ -21,7 +21,7 @@ Ce kit contient l'intégralité des contenus à fournir à Apple App Store Conne
 
 ### 1.1 — Nom officiel
 
-**Nom de l'app** : `OXV Coach`
+**Nom de l'app** : `OXV Mirror`
 
 Choisi pour :
 - Préserver la marque OXV présente dans tous nos documents
@@ -50,7 +50,7 @@ Cette description courte apparaît dans les résultats de recherche Google Play.
 ### 1.4 — Promotional text Apple (170 caractères max, modifiable sans review)
 
 ```
-Vivez vos sessions track day autrement. OXV Coach vous montre
+Vivez vos sessions track day autrement. OXV Mirror vous montre
 vos données après chaque roulage. Sans instruction, sans
 pression. Juste un miroir.
 ```
@@ -63,10 +63,10 @@ Ce texte est unique car **modifiable à tout moment** sans nouvelle review Apple
 
 ### 2.1 — Description Apple App Store (4000 caractères max)
 
-À copier-coller dans App Store Connect → My Apps → OXV Coach → Description :
+À copier-coller dans App Store Connect → My Apps → OXV Mirror → Description :
 
 ```
-OXV Coach est l'application officielle d'OXV (Only Xtreme
+OXV Mirror est l'application officielle d'OXV (Only Xtreme
 Vehicle), plateforme premium de track day au Circuit de
 Haute Saintonge.
 
@@ -76,7 +76,7 @@ Elle vous montre ce qui s'est passé pendant votre session.
 À vous d'en tirer ce qui vous fait avancer.
 
 
-CE QUE FAIT OXV COACH
+CE QUE FAIT OXV MIRROR
 
 Après chaque session de pilotage, l'application vous présente
 une lecture posée et qualitative de votre conduite :
@@ -91,7 +91,7 @@ L'application fonctionne avec un équipement de télémétrie OXV
 qui vous est remis au paddock pour chaque session.
 
 
-CE QUE NE FAIT PAS OXV COACH
+CE QUE NE FAIT PAS OXV MIRROR
 
 — Aucune instruction de pilotage en temps réel
 — Aucun affichage à l'écran pendant la conduite
@@ -104,7 +104,7 @@ en piste et votre liberté de pilote.
 
 LA DOCTRINE OXV
 
-Sécurité avant performance. À chaque session, OXV Coach
+Sécurité avant performance. À chaque session, OXV Mirror
 identifie une seule zone où vous avez de la marge pour
 avancer en sécurité, et une zone où il vaut mieux maintenir
 votre rythme actuel.
@@ -115,7 +115,7 @@ fondamental entre OXV et les autres outils télémétriques.
 
 LE PARCOURS COMPLET
 
-OXV Coach prolonge votre expérience de pilotage sur 9 jours :
+OXV Mirror prolonge votre expérience de pilotage sur 9 jours :
 
 — J-7 à J-1 : préparation mentale (emails et audio personnalisé)
 — Le jour J : reconnaissance paddock, silence en piste, retour
@@ -126,7 +126,7 @@ OXV Coach prolonge votre expérience de pilotage sur 9 jours :
 
 POUR QUI
 
-OXV Coach est réservée aux pilotes inscrits à une session OXV.
+OXV Mirror est réservée aux pilotes inscrits à une session OXV.
 L'application est gratuite pour la phase de lancement.
 
 Vous devez être majeur, titulaire d'un permis B valide, et
@@ -139,7 +139,7 @@ Vos données télémétriques sont hébergées en Europe (Frankfurt).
 Elles vous appartiennent. Vous pouvez les consulter, les
 exporter, les supprimer à tout moment depuis vos paramètres.
 
-OXV Coach est conforme au RGPD européen.
+OXV Mirror est conforme au RGPD européen.
 
 
 EN UNE PHRASE
@@ -156,7 +156,7 @@ La piste est à vous. Les décisions aussi.
 
 Identique à Apple, à un détail près : Google Play accepte mieux les retours à la ligne. Vous pouvez utiliser le même texte exactement, ou ajouter quelques sauts de ligne supplémentaires pour la lisibilité mobile.
 
-À copier-coller dans Google Play Console → All apps → OXV Coach → Main store listing → Full description.
+À copier-coller dans Google Play Console → All apps → OXV Mirror → Main store listing → Full description.
 
 ---
 
@@ -235,7 +235,7 @@ Vous disposez déjà de l'**insigne OXV** (le bouclier-casque rouge/V central) q
 - Aucun élément superflu
 
 **À éviter absolument** :
-- Mettre "OXV Coach" en texte (illisible à 60×60 pixels sur l'écran d'accueil)
+- Mettre "OXV Mirror" en texte (illisible à 60×60 pixels sur l'écran d'accueil)
 - Effet de profondeur 3D ou dégradés complexes (datent visuellement)
 - Marges blanches ou claires (cassent l'effet premium)
 
@@ -257,7 +257,7 @@ Toutes ces variantes peuvent être générées automatiquement par EAS Build d'E
 
 **Décision** : produire **6 captures d'écran** par plateforme, qui racontent une **histoire** plutôt que de montrer des fonctionnalités isolées.
 
-L'enjeu est marketing : une personne qui découvre OXV Coach sur l'App Store doit comprendre en 10 secondes ce qu'elle gagne à télécharger.
+L'enjeu est marketing : une personne qui découvre OXV Mirror sur l'App Store doit comprendre en 10 secondes ce qu'elle gagne à télécharger.
 
 ### 5.2 — Le storyboard des 6 captures
 
@@ -281,7 +281,7 @@ Chaque capture combine :
 |---|---|
 | Écran montré | #20 Accueil par défaut (mode C hors-piste) |
 | Texte incrusté en haut | « Vos sessions valent mieux qu'un chrono. » |
-| Sous-texte (optionnel) | « OXV Coach prolonge votre pilotage sur 9 jours. » |
+| Sous-texte (optionnel) | « OXV Mirror prolonge votre pilotage sur 9 jours. » |
 | Fond | Noir OXV `#050505` |
 | Couleur accent | Rouge OXV `#C8102E` |
 
@@ -374,7 +374,7 @@ Au moment du lancement, fournir au designer ou développeur :
 
 Une vidéo de présentation **n'est pas obligatoire** sur Apple App Store ni Google Play. Mais elle augmente significativement les téléchargements (de 15 à 35% selon les sources industrielles).
 
-Pour OXV Coach, je recommande **d'attendre la V1.1** pour produire une vidéo, en se basant sur du **vrai contenu** (vraie session, vrais pilotes, vraie data).
+Pour OXV Mirror, je recommande **d'attendre la V1.1** pour produire une vidéo, en se basant sur du **vrai contenu** (vraie session, vrais pilotes, vraie data).
 
 Une vidéo produite avec des maquettes en V1 paraîtra artificielle et contredira votre positionnement premium.
 
@@ -465,7 +465,7 @@ Cela permet aux reviewers de **voir l'app dans son contexte réel** sans avoir b
 À écrire dans le champ "App Review Information" → "Notes" :
 
 ```
-OXV Coach is a companion app for OXV Coach premium track day
+OXV Mirror is a companion app for OXV Mirror premium track day
 sessions in France.
 
 The app receives telemetry data from a Bluetooth device (RaceBox
@@ -514,7 +514,7 @@ Si demandée, produire cette vidéo en interne, sans qualité broadcasting requi
 
 ### 9.2 — Date cible recommandée
 
-Pour OXV Coach :
+Pour OXV Mirror :
 - **Septembre 2026** : si le développement démarre en juin 2026 (réaliste si vous démarrez le brief dev dès la mi-juillet après le test alpha)
 - **Novembre-décembre 2026** : si le développement démarre en septembre 2026 (plus prudent)
 
@@ -527,7 +527,7 @@ Période **idéale** : **septembre-octobre** ou **fin novembre**.
 
 ### 9.3 — Soft launch ou full launch ?
 
-Pour OXV Coach, je recommande un **soft launch** :
+Pour OXV Mirror, je recommande un **soft launch** :
 
 - **Phase 1** : publication sur App Store et Google Play sans communication massive
 - **Phase 2** (1-2 semaines plus tard) : annonce aux 12 amis du test alpha, qui téléchargent et donnent leurs derniers retours
@@ -541,7 +541,7 @@ Le soft launch permet de **détecter les bugs de production** avant qu'une masse
 
 ### 10.1 — Côté contenu (ce que ce kit fournit)
 
-- [ ] Nom officiel : "OXV Coach"
+- [ ] Nom officiel : "OXV Mirror"
 - [ ] Sous-titre Apple : "Track day premium"
 - [ ] Description courte Google : 71 caractères validés
 - [ ] Description longue : 2200 caractères validés
@@ -586,11 +586,11 @@ Au moment de la publication réelle :
 
 C'est ce qu'on appelle de la **pré-production** dans l'industrie tech : anticiper les éléments qui n'ont pas besoin d'attendre la fin du développement, pour réduire le time-to-market.
 
-Bon lancement à OXV Coach quand le moment viendra.
+Bon lancement à OXV Mirror quand le moment viendra.
 
 ---
 
-*Kit App Store OXV Coach — Version 1.0 — Mai 2026*
+*Kit App Store OXV Mirror — Version 1.0 — Mai 2026*
 
 *À utiliser au moment de la publication officielle après livraison du build par le développeur.*
 

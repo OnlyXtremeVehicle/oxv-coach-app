@@ -200,8 +200,8 @@ insert into public.events (
   '2026-07-05 09:30:00+02',
   12,
   '{"balade_decouverte": 0}'::jsonb,
-  'Demi-journée de balade automobile entre amis dans la campagne charentaise. Test alpha du parcours OXV Coach. Conduite normale, respect du Code de la route, événement privé.',
-  'Test alpha avec amis pour validation parcours client et app OXV Coach. Décharge de responsabilité à faire signer sur place. Restauration prévue après le convoi.'
+  'Demi-journée de balade automobile entre amis dans la campagne charentaise. Test alpha du parcours OXV Mirror. Conduite normale, respect du Code de la route, événement privé.',
+  'Test alpha avec amis pour validation parcours client et app OXV Mirror. Décharge de responsabilité à faire signer sur place. Restauration prévue après le convoi.'
 );
 ```
 
@@ -401,7 +401,7 @@ Pour un événement de type 'balade_decouverte', générer un message qui :
 
 ---
 
-## 5. Adaptation de l'app OXV Coach
+## 5. Adaptation de l'app OXV Mirror
 
 ### 5.1 — Détection du type d'événement
 
@@ -479,7 +479,7 @@ Cela vous permet, ultérieurement, de filtrer ces données dans vos analyses glo
 - [ ] Adapter l'étape 5 (Confirmation) avec le bon texte
 - [ ] Tester le parcours complet en mode `balade_decouverte`
 
-### Travail app OXV Coach
+### Travail app OXV Mirror
 
 - [ ] Adapter l'écran #07 pour afficher le lieu dynamique
 - [ ] Adapter l'écran #09 avec le bon message d'installation
@@ -495,7 +495,7 @@ Cela vous permet, ultérieurement, de filtrer ces données dans vos analyses glo
 | Backend (migrations + RLS) | 2-3h | J-21 (vers le 14 juin) |
 | Admin "Créer événement" | 3-4h | J-14 (21 juin) |
 | Parcours réservation | 2-3h | J-10 (25 juin) |
-| App OXV Coach (mineurs) | 1-2h | J-7 (28 juin) |
+| App OXV Mirror (mineurs) | 1-2h | J-7 (28 juin) |
 | Tests bout en bout | 2-3h | J-3 (2 juillet) |
 
 **Total : 10-15 heures de développement** réparties sur 3 semaines.

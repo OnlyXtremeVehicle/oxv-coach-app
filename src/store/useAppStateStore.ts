@@ -1,5 +1,5 @@
 /**
- * Store de la state machine du pilote OXV Coach.
+ * Store de la state machine du pilote OXV Mirror.
  *
  * Source de vérité de `state: PilotState` (S1..S10). Recalcule l'état
  * via `determineState()` à chaque changement de contexte (sessions,

@@ -1,5 +1,5 @@
 /**
- * Service de géolocalisation OXV Coach.
+ * Service de géolocalisation OXV Mirror.
  *
  * Foreground only en V1 — le background location iOS demande la permission
  * `Always` + `UIBackgroundModes: location` qui sont des décisions de

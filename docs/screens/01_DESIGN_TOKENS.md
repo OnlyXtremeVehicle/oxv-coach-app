@@ -1,4 +1,4 @@
-# Charte graphique OXV Coach — Design Tokens
+# Charte graphique OXV Mirror — Design Tokens
 
 > Référence unique et complète pour tous les choix visuels de l'app.
 > Claude Code doit implémenter ces tokens dans un fichier `src/theme/tokens.ts` et s'y référer partout.
@@ -7,7 +7,7 @@
 
 ## Philosophie visuelle
 
-OXV Coach s'inspire de **trois univers** :
+OXV Mirror s'inspire de **trois univers** :
 
 - **Ferrari** pour la sobriété sèche et l'absence de superflu
 - **Apple** pour la qualité d'exécution et le mode sombre maîtrisé
@@ -610,7 +610,7 @@ Toute information critique (zone verte/jaune/rouge) doit être doublée par un t
 
 ---
 
-*Charte graphique OXV Coach — Design Tokens — Mai 2026*
+*Charte graphique OXV Mirror — Design Tokens — Mai 2026*
 
 *Tokens à implémenter dans `src/theme/tokens.ts` et à utiliser partout dans l'app.*
 *Toute exception à ces tokens doit être justifiée dans le rapport hebdomadaire de Claude Code.*

@@ -1,4 +1,4 @@
-# Pacte de coaching — OXV Coach
+# Pacte de coaching — OXV Mirror
 
 **Document signé à l'activation du compte coach OXV**
 **Version 1.0 — En vigueur au [date de mise en service]**
@@ -8,7 +8,7 @@
 
 ## Préambule
 
-Ce document n'est pas un contrat de travail ni un mandat commercial. Il est une **déclaration d'engagement** entre OXV et vous, coach utilisateur de l'application OXV Coach.
+Ce document n'est pas un contrat de travail ni un mandat commercial. Il est une **déclaration d'engagement** entre OXV et vous, coach utilisateur de l'application OXV Mirror.
 
 En cochant la case d'acceptation lors de l'activation de votre compte coach, vous reconnaissez avoir lu, compris et accepté chacun des points énoncés ci-dessous.
 
@@ -23,7 +23,7 @@ En tant que coach OXV, vous êtes un **observateur tiers** des sessions de pilot
 Vous accédez en **lecture seule** aux éléments suivants pour chaque pilote consentant :
 
 - Les sessions de pilotage enregistrées (date, durée, circuit, télémétrie GPS et inertielle)
-- Les analyses post-session calculées par OXV Coach (marges par virage, vitesses, accélérations)
+- Les analyses post-session calculées par OXV Mirror (marges par virage, vitesses, accélérations)
 - La progression historique du pilote
 - Les notes que le pilote a éventuellement saisies dans son journal
 
@@ -47,7 +47,7 @@ Votre rôle se limite à **proposer aux pilotes consentants un regard extérieur
 
 ## Article 3 — Comment l'application vous accompagne
 
-OXV Coach met à votre disposition :
+OXV Mirror met à votre disposition :
 
 - Une vue dédiée listant les pilotes qui vous sont assignés et ont consenti
 - L'accès en lecture aux mêmes écrans d'analyse que le pilote concerné (bilan, carte du circuit, zoom virage, progression)
@@ -61,7 +61,7 @@ L'application **ne génère pas pour vous** de recommandations, de scores ou d'i
 
 En tant que coach OXV, vous vous engagez à :
 
-1. **Respecter la confidentialité** des données du pilote consultées via OXV Coach. Ces données ne peuvent en aucun cas être :
+1. **Respecter la confidentialité** des données du pilote consultées via OXV Mirror. Ces données ne peuvent en aucun cas être :
    - partagées avec des tiers (autres pilotes, sponsors, médias, réseaux sociaux)
    - exportées hors de l'application en dehors du cadre strict du suivi du pilote
    - utilisées à des fins commerciales (démarchage, prospection, comparaison publique)
@@ -80,7 +80,7 @@ En tant que coach OXV, vous vous engagez à :
 
 Vous vous engagez à :
 
-1. **Ne pas dévoyer la fonction coach** : OXV Coach n'est pas un canal commercial pour vendre vos propres prestations. Si vous proposez des coachings payants en dehors d'OXV, c'est strictement séparé et OXV n'est pas partie prenante.
+1. **Ne pas dévoyer la fonction coach** : OXV Mirror n'est pas un canal commercial pour vendre vos propres prestations. Si vous proposez des coachings payants en dehors d'OXV, c'est strictement séparé et OXV n'est pas partie prenante.
 
 2. **Conserver vos identifiants** : votre compte coach donne accès à des données sensibles. Vous vous engagez à ne pas le partager ni à le laisser sur un appareil non sécurisé.
 
@@ -96,7 +96,7 @@ En tant que coach OXV, vous disposez des droits suivants :
 
 1. **Droit de retrait** : vous pouvez à tout moment demander à OXV la suppression de votre compte coach. Les assignations en cours sont alors immédiatement révoquées.
 
-2. **Droit d'accès** : vous pouvez consulter à tout moment la journalisation de vos propres accès via OXV Coach.
+2. **Droit d'accès** : vous pouvez consulter à tout moment la journalisation de vos propres accès via OXV Mirror.
 
 3. **Droit à l'information** : OXV s'engage à vous notifier dans un délai raisonnable de toute modification substantielle de ce pacte. Une nouvelle acceptation pourra vous être demandée.
 
@@ -111,7 +111,7 @@ Ce pacte prend fin dans les cas suivants :
 - À votre demande (suppression de compte)
 - Sur décision d'OXV en cas de manquement avéré à l'un des articles ci-dessus
 - Sur décision d'OXV pour réorganisation interne, sans condition justifiée
-- À la cessation d'activité d'OXV Coach (avec un préavis de trente jours)
+- À la cessation d'activité d'OXV Mirror (avec un préavis de trente jours)
 
 Dans tous les cas, les données auxquelles vous avez eu accès dans le cadre de votre rôle restent soumises aux engagements de confidentialité de l'Article 4, indéfiniment.
 
@@ -131,4 +131,4 @@ Le présent pacte est conservé sous forme numérique avec horodatage par OXV po
 
 ---
 
-*OXV Coach — Pacte de coaching — Version 1.0*
+*OXV Mirror — Pacte de coaching — Version 1.0*

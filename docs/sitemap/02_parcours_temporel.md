@@ -6,7 +6,7 @@
 
 ## Vue d'ensemble — Le récit en 9 jours
 
-OXV Coach n'est pas une app qu'on ouvre à la demande. C'est un **compagnon temporel** qui orchestre l'expérience de track day sur 9 jours, de J-7 à J+1.
+OXV Mirror n'est pas une app qu'on ouvre à la demande. C'est un **compagnon temporel** qui orchestre l'expérience de track day sur 9 jours, de J-7 à J+1.
 
 ```
 J-7 ───── J-2 ───── J-1 ───── J0 ───── J+1

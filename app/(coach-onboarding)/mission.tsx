@@ -20,7 +20,7 @@ const POINTS: { eyebrow: string; title: string; body: string }[] = [
   {
     eyebrow: 'POSTURE',
     title: "Vous observez, vous n'instruisez pas.",
-    body: "OXV Coach vous donne les données. Le sens, c'est vous qui le posez avec le pilote. L'application ne génère pas d'instructions à transmettre, et vous-même restez libre de votre interprétation.",
+    body: "OXV Mirror vous donne les données. Le sens, c'est vous qui le posez avec le pilote. L'application ne génère pas d'instructions à transmettre, et vous-même restez libre de votre interprétation.",
   },
   {
     eyebrow: 'CONSENTEMENT',

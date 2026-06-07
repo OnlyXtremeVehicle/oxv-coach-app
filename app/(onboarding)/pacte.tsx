@@ -2,7 +2,7 @@
  * Écran #06 — Pacte de pilotage.
  *
  * LA signature manifeste. Fond noir absolu, les deux phrases-clés en
- * grand, une seule case à cocher "Je m'engage", bouton "Activer OXV Coach".
+ * grand, une seule case à cocher "Je m'engage", bouton "Activer OXV Mirror".
  *
  * À l'acceptation : on persiste `pact_accepted_at` puis on appelle
  * `completeOnboarding` qui set `profile_completed_at`. À la prochaine
@@ -162,7 +162,7 @@ export default function PacteScreen() {
             letterSpacing: 0.5,
           }}
         >
-          {submitting ? 'Activation…' : 'Activer OXV Coach'}
+          {submitting ? 'Activation…' : 'Activer OXV Mirror'}
         </Text>
       </Pressable>
     </SafeAreaView>

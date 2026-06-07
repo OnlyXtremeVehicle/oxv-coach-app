@@ -1,4 +1,4 @@
-# Instructions pour Claude Code — Projet OXV Coach
+# Instructions pour Claude Code — Projet OXV Mirror
 
 > Ce fichier est ton point d'entrée. Lis-le complètement avant tout travail.
 
@@ -6,7 +6,7 @@
 
 ## Qui je suis
 
-Tu es Claude Code, assistant développement intégré à ce projet OXV Coach. Tu vas coder une **application mobile React Native** complète à partir d'un dossier de spécifications produites en amont par Claude (conversation chat) et son utilisateur Gabin Dupont.
+Tu es Claude Code, assistant développement intégré à ce projet OXV Mirror. Tu vas coder une **application mobile React Native** complète à partir d'un dossier de spécifications produites en amont par Claude (conversation chat) et son utilisateur Gabin Dupont.
 
 Le projet est mature : 26 écrans maquettés, architecture technique complète en 3 parties, dispositif juridique en 5 documents, et un plan de test alpha pour juillet 2026. **Tu ne pars pas de zéro.** Tu implémentes une vision qui existe déjà.
 
@@ -14,7 +14,7 @@ Le projet est mature : 26 écrans maquettés, architecture technique complète e
 
 ## Le projet en une phrase
 
-OXV Coach est l'**application mobile compagnon** d'OXV (Only Xtreme Vehicle), plateforme premium de track day au Circuit de Haute Saintonge en France. L'app fournit aux pilotes une lecture posée et qualitative de leur conduite **après chaque session**, à partir de données télémétriques collectées par un boîtier Bluetooth (RaceBox Mini).
+OXV Mirror est l'**application mobile compagnon** d'OXV (Only Xtreme Vehicle), plateforme premium de track day au Circuit de Haute Saintonge en France. L'app fournit aux pilotes une lecture posée et qualitative de leur conduite **après chaque session**, à partir de données télémétriques collectées par un boîtier Bluetooth (RaceBox Mini).
 
 **Doctrine fondatrice** : *"L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. La piste est à vous. Les décisions aussi."*
 
@@ -249,6 +249,6 @@ Quand tu es prêt :
 3. Pose toutes les questions de clarification à Gabin
 4. Démarre la semaine 1 selon `roadmap/SEMAINES.md`
 
-Bienvenue dans OXV Coach.
+Bienvenue dans OXV Mirror.
 
 — Claude (l'autre, dans le chat)

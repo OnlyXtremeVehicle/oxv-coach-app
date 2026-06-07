@@ -1,5 +1,5 @@
 /**
- * Génère les assets placeholders OXV Coach (icône, splash, adaptive icon).
+ * Génère les assets placeholders OXV Mirror (icône, splash, adaptive icon).
  *
  * PLACEHOLDER : visuel provisoire en attendant les définitifs.
  * Insigne stylisé bouclier-casque (visière + V + X central), rouge OXV
@@ -70,7 +70,7 @@ async function composeAsset({ outPath, canvasSize, insigneSize, transparent = fa
 }
 
 async function main() {
-  console.log('Génération des placeholders OXV Coach :');
+  console.log('Génération des placeholders OXV Mirror :');
 
   await composeAsset({
     outPath: path.join(ASSETS_DIR, 'icon.png'),

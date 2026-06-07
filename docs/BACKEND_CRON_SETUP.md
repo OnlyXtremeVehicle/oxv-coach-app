@@ -123,4 +123,4 @@ curl -X POST 'https://fouvuqkdxarjpjbqnsjq.supabase.co/functions/v1/generate-deb
 
 ---
 
-— Setup backend OXV Coach, sem 16
+— Setup backend OXV Mirror, sem 16

@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Aperçu — Circuit Beltoise / Haute Saintonge</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #050505;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 48px 24px 96px;
+      }
+      .eyebrow {
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.35);
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: clamp(28px, 5vw, 44px);
+        font-weight: 200;
+        letter-spacing: -0.5px;
+        line-height: 1.1;
+        margin: 0 0 8px;
+      }
+      .subtitle {
+        font-size: 15px;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.55);
+        margin: 0 0 48px;
+      }
+      .map-wrap {
+        background: #0a0a0a;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 32px;
+      }
+      svg.circuit {
+        width: 100%;
+        height: auto;
+        max-height: 520px;
+        display: block;
+      }
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 32px;
+      }
+      .corner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border: 0.5px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        background: #0a0a0a;
+      }
+      .badge {
+        width: 28px;
+        height: 28px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.35);
+        color: #050505;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .corner-name {
+        flex: 1;
+        font-size: 14px;
+      }
+      .pace {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.35);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .facts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 16px;
+        margin: 32px 0;
+        padding: 24px;
+        border: 0.5px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        background: #0a0a0a;
+      }
+      .fact-label {
+        font-size: 10px;
+        font-weight: 500;
+        letter-spacing: 2.5px;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.35);
+        margin: 0 0 6px;
+      }
+      .fact-value {
+        font-size: 22px;
+        font-weight: 300;
+        margin: 0;
+      }
+      .fact-unit {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.55);
+        margin-left: 3px;
+      }
+      footer {
+        margin-top: 64px;
+        padding-top: 24px;
+        border-top: 0.5px solid rgba(255, 255, 255, 0.08);
+        font-size: 12px;
+        font-weight: 300;
+        color: rgba(255, 255, 255, 0.35);
+      }
+      footer a { color: rgba(255, 255, 255, 0.55); }
+      /* Animation du tracé */
+      @keyframes drawTrack { to { stroke-dashoffset: 0; } }
+      .track { animation: drawTrack 1500ms cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <p class="eyebrow">Aperçu local</p>
+      <h1>Circuit de Haute Saintonge</h1>
+      <p class="subtitle">Tracé Beltoise — rendu identique aux 3 surfaces OXV (app pilote, app coach, web).</p>
+
+      <div class="map-wrap">
+        <svg class="circuit" id="map" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Tracé du circuit"></svg>
+      </div>
+
+      <section class="facts" id="facts"></section>
+
+      <section>
+        <p class="eyebrow" style="margin-bottom: 16px;">Les sept virages</p>
+        <div class="legend" id="legend"></div>
+      </section>
+
+      <footer>
+        <p>Coordonnées GPS issues de
+          <a href="https://www.openstreetmap.org/way/54412766" target="_blank" rel="noopener">OpenStreetMap way 54412766</a>,
+          © contributeurs OpenStreetMap.</p>
+        <p>Données rendues : 76 points GPS, 7 virages identifiés par analyse automatique des changements de cap.</p>
+      </footer>
+    </div>
+
+    <script>
+      // ============================================================
+      // Données (copie exacte des sources du repo)
+      // ============================================================
+      const TRACK = [
+        { lat: 45.2390749, lon: -0.0908906 },
+        { lat: 45.2391293, lon: -0.0912516 },
+        { lat: 45.2393437, lon: -0.092159 },
+        { lat: 45.2394476, lon: -0.0925844 },
+        { lat: 45.2395153, lon: -0.092798 },
+        { lat: 45.239577, lon: -0.092932 },
+        { lat: 45.239856, lon: -0.0934017 },
+        { lat: 45.2400284, lon: -0.093669 },
+        { lat: 45.240145, lon: -0.0939316 },
+        { lat: 45.2402083, lon: -0.0940822 },
+        { lat: 45.2405154, lon: -0.0948129 },
+        { lat: 45.2406122, lon: -0.0950511 },
+        { lat: 45.2406761, lon: -0.0952084 },
+        { lat: 45.2408144, lon: -0.095594 },
+        { lat: 45.2409609, lon: -0.0959996 },
+        { lat: 45.2411163, lon: -0.0963118 },
+        { lat: 45.2412871, lon: -0.0965422 },
+        { lat: 45.2414841, lon: -0.0966891 },
+        { lat: 45.2416352, lon: -0.0967584 },
+        { lat: 45.2418259, lon: -0.0967968 },
+        { lat: 45.2419573, lon: -0.0968077 },
+        { lat: 45.2421921, lon: -0.0967996 },
+        { lat: 45.2424763, lon: -0.0967393 },
+        { lat: 45.2426869, lon: -0.0965477 },
+        { lat: 45.2428089, lon: -0.0963115 },
+        { lat: 45.2428654, lon: -0.0960924 },
+        { lat: 45.2428731, lon: -0.0958743 },
+        { lat: 45.2428442, lon: -0.0955631 },
+        { lat: 45.2426515, lon: -0.0941293 },
+        { lat: 45.242074, lon: -0.0895603 },
+        { lat: 45.2419553, lon: -0.0886945 },
+        { lat: 45.2418981, lon: -0.0882683 },
+        { lat: 45.2418691, lon: -0.0881955 },
+        { lat: 45.2418313, lon: -0.0881423 },
+        { lat: 45.2417749, lon: -0.0881122 },
+        { lat: 45.2417019, lon: -0.0881083 },
+        { lat: 45.2416307, lon: -0.0881483 },
+        { lat: 45.2415802, lon: -0.0882331 },
+        { lat: 45.2415538, lon: -0.0883407 },
+        { lat: 45.2415523, lon: -0.0887451 },
+        { lat: 45.2416112, lon: -0.0900869 },
+        { lat: 45.2416275, lon: -0.0905141 },
+        { lat: 45.2416234, lon: -0.0906659 },
+        { lat: 45.2415943, lon: -0.0907899 },
+        { lat: 45.2415453, lon: -0.0908748 },
+        { lat: 45.2414674, lon: -0.0909465 },
+        { lat: 45.2411299, lon: -0.0911627 },
+        { lat: 45.2405671, lon: -0.0915498 },
+        { lat: 45.2404245, lon: -0.0916411 },
+        { lat: 45.2403405, lon: -0.0916795 },
+        { lat: 45.2402726, lon: -0.0916873 },
+        { lat: 45.2401704, lon: -0.0916685 },
+        { lat: 45.2400719, lon: -0.0916003 },
+        { lat: 45.2399848, lon: -0.0914963 },
+        { lat: 45.2398547, lon: -0.0911735 },
+        { lat: 45.2396985, lon: -0.0907832 },
+        { lat: 45.2396566, lon: -0.0906487 },
+        { lat: 45.239662, lon: -0.0904954 },
+        { lat: 45.2397425, lon: -0.0903263 },
+        { lat: 45.2398744, lon: -0.0899898 },
+        { lat: 45.2399065, lon: -0.0897982 },
+        { lat: 45.2399029, lon: -0.0895865 },
+        { lat: 45.2398511, lon: -0.089349 },
+        { lat: 45.2397661, lon: -0.0891708 },
+        { lat: 45.2396453, lon: -0.0890188 },
+        { lat: 45.2395497, lon: -0.0889292 },
+        { lat: 45.2394321, lon: -0.0888765 },
+        { lat: 45.2393108, lon: -0.0888715 },
+        { lat: 45.2392012, lon: -0.0889068 },
+        { lat: 45.2390839, lon: -0.0889951 },
+        { lat: 45.2389909, lon: -0.0891372 },
+        { lat: 45.2389297, lon: -0.089298 },
+        { lat: 45.2388985, lon: -0.0895002 },
+        { lat: 45.2389076, lon: -0.0896707 },
+        { lat: 45.2389931, lon: -0.090321 },
+        { lat: 45.2390749, lon: -0.0908906 },
+      ];
+
+      const CORNERS = [
+        { index: 1, name: 'Saintonge 1',    apexLat: 45.2424763, apexLon: -0.0967393, pace: 'medium' },
+        { index: 2, name: 'Saintonge 2',    apexLat: 45.2418313, apexLon: -0.0881423, pace: 'medium' },
+        { index: 3, name: "L'épingle Est",  apexLat: 45.2416307, apexLon: -0.0881483, pace: 'slow'   },
+        { index: 4, name: 'Le balcon',      apexLat: 45.2415943, apexLon: -0.0907899, pace: 'medium' },
+        { index: 5, name: 'Le retour',      apexLat: 45.2399848, apexLon: -0.0914963, pace: 'medium' },
+        { index: 6, name: "L'épingle Sud",  apexLat: 45.239662,  apexLon: -0.0904954, pace: 'slow'   },
+        { index: 7, name: 'La ramenée',     apexLat: 45.2390839, apexLon: -0.0889951, pace: 'fast'   },
+      ];
+
+      // ============================================================
+      // Projection lat/lon -> scène 2D (même algo que projection.ts)
+      // ============================================================
+      const VIEWBOX_PADDING_PCT = 12;
+      const sumLat = TRACK.reduce((s, p) => s + p.lat, 0);
+      const sumLon = TRACK.reduce((s, p) => s + p.lon, 0);
+      const originLat = sumLat / TRACK.length;
+      const originLon = sumLon / TRACK.length;
+      const mPerDegLat = 111320;
+      const mPerDegLon = 111320 * Math.cos(originLat * Math.PI / 180);
+
+      function project(p) {
+        return {
+          x: (p.lon - originLon) * mPerDegLon,
+          y: -(p.lat - originLat) * mPerDegLat,
+        };
+      }
+
+      const pts = TRACK.map(project);
+      const xs = pts.map(p => p.x);
+      const ys = pts.map(p => p.y);
+      const minX = Math.min(...xs), maxX = Math.max(...xs);
+      const minY = Math.min(...ys), maxY = Math.max(...ys);
+      const w = maxX - minX, h = maxY - minY;
+      const padX = w * VIEWBOX_PADDING_PCT / 100;
+      const padY = h * VIEWBOX_PADDING_PCT / 100;
+      const viewBox = `${minX - padX} ${minY - padY} ${w + 2 * padX} ${h + 2 * padY}`;
+
+      // ============================================================
+      // Rendu
+      // ============================================================
+      const svg = document.getElementById('map');
+      svg.setAttribute('viewBox', viewBox);
+
+      // Track polyline
+      const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+      const track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      track.setAttribute('d', d);
+      track.setAttribute('stroke', '#FFFFFF');
+      track.setAttribute('stroke-width', '3');
+      track.setAttribute('stroke-linecap', 'round');
+      track.setAttribute('stroke-linejoin', 'round');
+      track.setAttribute('fill', 'none');
+      track.setAttribute('opacity', '0.85');
+      svg.appendChild(track);
+
+      // Mesure la longueur du chemin pour animer
+      const len = track.getTotalLength();
+      track.setAttribute('stroke-dasharray', len);
+      track.setAttribute('stroke-dashoffset', len);
+      track.classList.add('track');
+
+      // Flèche départ
+      const start = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      start.setAttribute('x1', pts[0].x);
+      start.setAttribute('y1', pts[0].y);
+      start.setAttribute('x2', pts[1].x);
+      start.setAttribute('y2', pts[1].y);
+      start.setAttribute('stroke', '#C8102E');
+      start.setAttribute('stroke-width', '8');
+      start.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(start);
+
+      // Virages
+      CORNERS.forEach(c => {
+        const p = project({ lat: c.apexLat, lon: c.apexLon });
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', 14);
+        circle.setAttribute('fill', 'rgba(255, 255, 255, 0.35)');
+        circle.setAttribute('stroke', '#050505');
+        circle.setAttribute('stroke-width', 2);
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', p.x);
+        txt.setAttribute('y', p.y + 5);
+        txt.setAttribute('font-size', 14);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('fill', '#050505');
+        txt.setAttribute('font-weight', 'bold');
+        txt.textContent = c.index;
+        g.appendChild(circle);
+        g.appendChild(txt);
+        svg.appendChild(g);
+      });
+
+      // Facts
+      function haversine(a, b) {
+        const R = 6371000;
+        const dLat = (b.lat - a.lat) * Math.PI / 180;
+        const dLon = (b.lon - a.lon) * Math.PI / 180;
+        const lat1 = a.lat * Math.PI / 180;
+        const lat2 = b.lat * Math.PI / 180;
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+      }
+      let total = 0;
+      for (let i = 1; i < TRACK.length; i++) total += haversine(TRACK[i - 1], TRACK[i]);
+      const lengthKm = (total / 1000).toFixed(2);
+
+      const facts = document.getElementById('facts');
+      facts.innerHTML = `
+        <div>
+          <p class="fact-label">Longueur</p>
+          <p class="fact-value">${lengthKm}<span class="fact-unit">km</span></p>
+        </div>
+        <div>
+          <p class="fact-label">Virages</p>
+          <p class="fact-value">${CORNERS.length}</p>
+        </div>
+        <div>
+          <p class="fact-label">Points GPS</p>
+          <p class="fact-value">${TRACK.length}</p>
+        </div>
+      `;
+
+      // Légende des virages
+      const labelPace = { fast: 'Courbe rapide', medium: 'Virage moyen', slow: 'Épingle' };
+      const legend = document.getElementById('legend');
+      legend.innerHTML = CORNERS.map(c => `
+        <div class="corner">
+          <span class="badge">${c.index}</span>
+          <span class="corner-name">${c.name}</span>
+          <span class="pace">${labelPace[c.pace]}</span>
+        </div>
+      `).join('');
+    </script>
+  </body>
+</html>

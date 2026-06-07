@@ -80,7 +80,7 @@ export default function PartageScreen() {
       await Share.share({
         message: shareUrlFor(link.token),
         url: shareUrlFor(link.token),
-        title: 'OXV Coach — Partage',
+        title: 'OXV Mirror — Partage',
       });
     } catch {
       // L'utilisateur a fermé la sheet, pas d'erreur à remonter.

@@ -1,4 +1,4 @@
-# OXV Coach — Guide pilote alpha
+# OXV Mirror — Guide pilote alpha
 
 > Bienvenue dans la phase alpha. Vous comptez parmi les premières personnes à essayer l'application qui accompagne vos sessions OXV.
 >
@@ -8,7 +8,7 @@
 
 ## L'app en une phrase
 
-OXV Coach est un **miroir**, pas un coach. Elle vous montre ce que la voiture a vécu pendant votre session, sans vous dire quoi faire ensuite. La piste est à vous. Les décisions aussi.
+OXV Mirror est un **miroir**, pas un coach. Elle vous montre ce que la voiture a vécu pendant votre session, sans vous dire quoi faire ensuite. La piste est à vous. Les décisions aussi.
 
 ---
 

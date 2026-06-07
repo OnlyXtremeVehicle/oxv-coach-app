@@ -22,8 +22,8 @@
 | `media` | 0 | Photos/vidéos post-session |
 | `email_log` | 0 | Historique emails Resend |
 | `pricing` | 5 | Tarification dynamique par offre/saison |
-| `telemetry_sessions` | 10 | **App OXV Coach** — sessions enregistrées |
-| `telemetry_frames` | 0 | **App OXV Coach** — trames GPS/inertielles |
+| `telemetry_sessions` | 10 | **App OXV Mirror** — sessions enregistrées |
+| `telemetry_frames` | 0 | **App OXV Mirror** — trames GPS/inertielles |
 | `circuits` | 3 | Circuits configurés (Beltoise + autres) |
 | `laps` | 1 | Tours individuels d'une session |
 | `weather_snapshots` | 14 | Capture météo avant/pendant/après |
@@ -33,11 +33,11 @@
 | `ritual_dispatches` | 0 | Rituels J-7, J-2, J-1 |
 | `resend_events` | 0 | Webhooks Resend (deliveries) |
 
-**Important** : les tables `telemetry_sessions`, `telemetry_frames`, `circuits`, `laps`, `weather_snapshots`, `qdi_scores`, `ritual_dispatches`, `resend_events` **existent déjà**. L'app OXV Coach a déjà une infrastructure backend partielle.
+**Important** : les tables `telemetry_sessions`, `telemetry_frames`, `circuits`, `laps`, `weather_snapshots`, `qdi_scores`, `ritual_dispatches`, `resend_events` **existent déjà**. L'app OXV Mirror a déjà une infrastructure backend partielle.
 
 ---
 
-## Tables critiques pour l'app OXV Coach
+## Tables critiques pour l'app OXV Mirror
 
 ### Table `users`
 
@@ -111,7 +111,7 @@ created_at                      timestamptz DEFAULT now()
 updated_at                      timestamptz DEFAULT now()
 ```
 
-**Pour l'app OXV Coach** :
+**Pour l'app OXV Mirror** :
 - L'app lit `pilot_level` au démarrage pour calibrer les analyses
 - L'app peut écrire `profile_completed_at` à la fin de l'onboarding
 - Les toggles `ritual_jminus7_enabled` etc. permettent au pilote de désactiver les rituels depuis l'app
@@ -121,7 +121,7 @@ updated_at                      timestamptz DEFAULT now()
 
 ### Table `telemetry_sessions` (DÉJÀ EXISTANTE)
 
-C'est ici que l'app OXV Coach va écrire ses sessions :
+C'est ici que l'app OXV Mirror va écrire ses sessions :
 
 ```sql
 id                              uuid PRIMARY KEY DEFAULT gen_random_uuid()
@@ -442,7 +442,7 @@ Voir `06_RLS_POLICIES_ACTUELLES.sql` (généré automatiquement par Claude depui
 
 ---
 
-## Implications pour l'app OXV Coach
+## Implications pour l'app OXV Mirror
 
 ### Bonnes nouvelles
 

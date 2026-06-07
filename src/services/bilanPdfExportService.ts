@@ -289,7 +289,7 @@ function buildBilanHtml(data: BilanHtmlData): string {
 
   <div class="footer">
     <p>L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. La piste est à vous. Les décisions aussi.</p>
-    <p class="signature">— OXV COACH</p>
+    <p class="signature">— OXV MIRROR</p>
   </div>
 </body>
 </html>

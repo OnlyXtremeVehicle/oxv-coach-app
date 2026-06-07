@@ -1,4 +1,4 @@
-# Guide de connexion Supabase pour OXV Coach
+# Guide de connexion Supabase pour OXV Mirror
 
 > Comment connecter le projet React Native au backend Supabase existant de Gabin (project `fouvuqkdxarjpjbqnsjq` en région Frankfurt).
 
@@ -6,7 +6,7 @@
 
 ## Préambule
 
-Votre backend Supabase est **déjà opérationnel** sur oxvehicle.fr depuis plusieurs mois. L'app OXV Coach doit s'y connecter, lire les mêmes tables (users, sessions, etc.) et écrire dans les nouvelles tables qu'on va créer (app_sessions, app_circuit_references, etc.).
+Votre backend Supabase est **déjà opérationnel** sur oxvehicle.fr depuis plusieurs mois. L'app OXV Mirror doit s'y connecter, lire les mêmes tables (users, sessions, etc.) et écrire dans les nouvelles tables qu'on va créer (app_sessions, app_circuit_references, etc.).
 
 Ce guide explique :
 1. Comment **récupérer vos credentials** Supabase de façon sécurisée
@@ -66,7 +66,7 @@ Ce guide explique :
 
 ### 2.1 — Créer le fichier `.env`
 
-À la racine du projet `oxv-coach-app/`, créer un fichier `.env` (sans extension) avec ce contenu :
+À la racine du projet `oxv-mirror-app/`, créer un fichier `.env` (sans extension) avec ce contenu :
 
 ```env
 EXPO_PUBLIC_SUPABASE_URL=https://fouvuqkdxarjpjbqnsjq.supabase.co
@@ -286,7 +286,7 @@ Sauvegarder dans `docs/architecture/edge_functions/`.
 Une fois ces exports réalisés, votre structure de dossier sera enrichie :
 
 ```
-oxv-coach-app/
+oxv-mirror-app/
 ├── docs/
 │   ├── architecture/
 │   │   ├── 01_PARTIE_1_stack_supabase.md
@@ -356,4 +356,4 @@ Si Claude Code peut le faire **sans hésitation et sans inventer**, c'est que la
 
 ---
 
-*Guide Supabase Connection — OXV Coach — Mai 2026*
+*Guide Supabase Connection — OXV Mirror — Mai 2026*

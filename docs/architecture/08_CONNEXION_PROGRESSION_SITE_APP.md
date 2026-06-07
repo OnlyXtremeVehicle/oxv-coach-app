@@ -1,12 +1,12 @@
-# Connexion Progression Site ↔ App OXV Coach
+# Connexion Progression Site ↔ App OXV Mirror
 
-> Cahier des charges pour synchroniser la page "Ma progression" de oxvehicle.fr avec les données générées par l'app mobile OXV Coach.
+> Cahier des charges pour synchroniser la page "Ma progression" de oxvehicle.fr avec les données générées par l'app mobile OXV Mirror.
 
 ---
 
 ## Contexte
 
-L'app OXV Coach (mobile) génère des données télémétriques riches lors de chaque session de pilotage :
+L'app OXV Mirror (mobile) génère des données télémétriques riches lors de chaque session de pilotage :
 - Sessions complètes dans `telemetry_sessions`
 - Détail tour par tour dans `laps`
 - Conditions météo dans `weather_snapshots`
@@ -184,7 +184,7 @@ Explorer en détail dans l'app
 
 Si l'app détecte que l'utilisateur a déjà l'app installée (via un cookie ou un test de deep link), afficher plutôt :
 ```
-[Ouvrir OXV Coach →]
+[Ouvrir OXV Mirror →]
 ```
 
 ---
@@ -468,7 +468,7 @@ Avant mise en production :
 
 Pour la Phase 2, dépend de la création de la table `app_session_analyses` par l'app V2 (semaine 7-8 du plan app).
 
-### Côté app OXV Coach
+### Côté app OXV Mirror
 
 **Aucune modification** nécessaire — l'app écrit déjà dans les bonnes tables.
 
@@ -492,6 +492,6 @@ Pour la Phase 2, dépend de la création de la table `app_session_analyses` par 
 
 ---
 
-*Cahier des charges — Connexion Progression Site ↔ App OXV Coach*
+*Cahier des charges — Connexion Progression Site ↔ App OXV Mirror*
 *Version 1.0 — Mai 2026*
 *Pour Claude Code : à implémenter en parallèle du dev app (semaine 13-14) ou après publication app.*
