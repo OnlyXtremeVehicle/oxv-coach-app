@@ -1,6 +1,9 @@
 # ============================================================
-# OXV Coach — .gitignore
+# OXV Mirror — .gitignore
 # ============================================================
+
+# Supabase CLI local temp (project-ref, versions) — non sensible mais inutile en git
+supabase/.temp/
 
 # ----------------------------------------------------------------
 # SECRETS — NE JAMAIS COMMITER
