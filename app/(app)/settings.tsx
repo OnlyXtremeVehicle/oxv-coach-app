@@ -17,6 +17,7 @@ import Constants from 'expo-constants';
 
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { supabase } from '@/lib/supabase';
+import { isAnalyticsOptedOut, setAnalyticsOptOut } from '@/services/analyticsService';
 import { cancelAllOxvNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
@@ -29,7 +30,14 @@ export default function SettingsScreen() {
   const appVersion = (Constants.expoConfig?.version ?? '0.0.0') as string;
 
   const [pushEnabled, setPushEnabled] = useState<boolean>(true);
+  // Mesure d'audience anonyme : activée sauf opt-out explicite (§9).
+  const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean>(() => !isAnalyticsOptedOut());
   const { level: detailLevel, toggle: toggleDetail, canToggle: canToggleDetail } = useDetailLevel();
+
+  function toggleAnalytics(next: boolean) {
+    setAnalyticsEnabled(next);
+    setAnalyticsOptOut(!next);
+  }
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -222,6 +230,38 @@ export default function SettingsScreen() {
 
         {/* Données */}
         <Section label="DONNÉES">
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              paddingHorizontal: spacing.lg,
+              paddingVertical: spacing.md,
+            }}
+          >
+            <View style={{ flex: 1, paddingRight: spacing.md }}>
+              <Text
+                style={{
+                  color: colors.text.primary,
+                  fontSize: fontSize.body,
+                  fontWeight: fontWeight.regular,
+                }}
+              >
+                Mesure d&apos;audience
+              </Text>
+              <Text
+                style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
+              >
+                Statistiques anonymes d&apos;usage. Aucune donnée personnelle, aucun cookie.
+              </Text>
+            </View>
+            <Switch
+              value={analyticsEnabled}
+              onValueChange={toggleAnalytics}
+              trackColor={{ false: colors.border.subtle, true: colors.accent.red }}
+              thumbColor={colors.text.primary}
+            />
+          </View>
           <SettingRow label="Exporter mes données" hint="Bientôt" />
           <SettingRow label="Supprimer mon compte" hint="Bientôt" danger />
         </Section>

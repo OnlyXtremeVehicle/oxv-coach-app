@@ -16,6 +16,7 @@ import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
+import { trackEvent } from '@/services/analyticsService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { colors } from '@/theme/tokens';
@@ -37,6 +38,8 @@ export default function RootLayout() {
     console.warn(`[OXV] Runtime : ${runtimeLabel()}`);
     initialize();
     initNetInfo();
+    // Mesure d'audience anonyme (§9) — no-op si non configurée ou opt-out.
+    trackEvent('app_ouverte');
     if (!isExpoGo()) {
       // BLE et Flic 2 nécessitent des modules natifs custom indisponibles
       // dans Expo Go. En preview UI, on les skip — l'app reste navigable.
