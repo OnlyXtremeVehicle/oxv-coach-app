@@ -16,6 +16,16 @@
 //
 // Le résultat écrase app_session_analyses.debrief_text.
 //
+// GARDE-FOU DOCTRINAL (cahier OXV Mirror §11 : "debrief IA strictement
+// descriptif, jamais prescriptif"). Le prompt ne suffit pas — un LLM peut
+// déraper. On scanne donc la SORTIE générée :
+//   1. Génération GPT
+//   2. Scan des verbes interdits sur le texte produit
+//   3. Si violation → 1 retry avec consigne renforcée listant les fautes
+//   4. Si encore en faute → on REFUSE de persister (422), l'app pilote
+//      fallback sur le générateur local descriptif (maîtrisé, sûr)
+// Ainsi rien d'interdit ne peut atteindre le pilote, même si GPT dérape.
+//
 // Sécurité :
 //   - verify_jwt = true (seul user authentifié peut appeler)
 //   - Si OPENAI_API_KEY absent : 500, app fallback sur debriefGenerator local
@@ -25,6 +35,43 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
+
+// ---------------------------------------------------------------------------
+// Garde-fou : verbes/expressions interdits dans le texte généré.
+// Aligné sur scripts/check-doctrine.ts (catégorie verbes de pilotage +
+// prescriptions). On ne garde QUE les patterns pertinents pour un debrief
+// (pas les termes anglais UI tap/swipe ni les jugements bravo qui visent
+// l'interface). Tout ce qui ORDONNE ou CONSEILLE est banni.
+// ---------------------------------------------------------------------------
+const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
+  { re: /\bfreinez\b/i, label: 'freinez' },
+  { re: /\baccélérez\b/i, label: 'accélérez' },
+  { re: /\bouvrez les gaz\b/i, label: 'ouvrez les gaz' },
+  { re: /\btracez\b/i, label: 'tracez' },
+  { re: /\bévitez\b/i, label: 'évitez' },
+  { re: /\bpoussez\b/i, label: 'poussez' },
+  { re: /\bcorrigez\b/i, label: 'corrigez' },
+  { re: /\baméliorez\b/i, label: 'améliorez' },
+  { re: /\boptimisez\b/i, label: 'optimisez' },
+  { re: /\bgagnez\b/i, label: 'gagnez' },
+  { re: /\bil faut\b/i, label: 'il faut' },
+  { re: /\bvous devez\b/i, label: 'vous devez' },
+  { re: /\bvous devriez\b/i, label: 'vous devriez' },
+  { re: /\bvous pouvez\b/i, label: 'vous pouvez' },
+  { re: /\btu dois\b/i, label: 'tu dois' },
+  { re: /\btu peux\b/i, label: 'tu peux' },
+  { re: /\bje vous conseille\b/i, label: 'je vous conseille' },
+  { re: /\bje vous recommande\b/i, label: 'je vous recommande' },
+];
+
+/** Retourne la liste des verbes interdits trouvés dans le texte (vide = propre). */
+function findForbiddenVerbs(text: string): string[] {
+  const found: string[] = [];
+  for (const { re, label } of FORBIDDEN_PATTERNS) {
+    if (re.test(text)) found.push(label);
+  }
+  return found;
+}
 
 Deno.serve(async (req: Request) => {
   try {
@@ -85,24 +132,24 @@ Deno.serve(async (req: Request) => {
       )
       .join('\n');
 
-    const systemPrompt = `Tu es OXV Mirror, une application de télémétrie pour pilotes de track day.
+    const systemPrompt = `Tu es OXV Mirror, une application de RESTITUTION FACTUELLE de données de roulage sur circuit. Tu n'es PAS un coach : tu ne conseilles pas, tu ne corriges pas, tu n'ordonnes pas. Tu décris ce que les capteurs ont mesuré, le pilote interprète seul.
 
-Doctrine NON NÉGOCIABLE pour ce debrief :
-- Vouvoiement systématique
-- AUCUN verbe directif : pas de "freinez", "accélérez", "ouvrez les gaz", "tracez", "évitez", "il faut", "vous devez", "vous devriez", "tu peux", "pousse"
-- AUCUNE instruction de pilotage
-- AUCUN score, AUCUN classement, AUCUNE comparaison avec d'autres pilotes
-- L'app est un MIROIR, pas un coach. Vous décrivez ce qui s'est passé, vous ne dirigez pas
-- Le ton est sobre, posetit, premium ferrari : pas d'emoji, pas d'exclamation, phrases courtes
-- Vocabulaire autorisé : "à observer", "à creuser la prochaine fois", "était-ce volontaire ?", "confortable", "terrain serré", "apprivoisé"
+Doctrine NON NÉGOCIABLE (toute violation rend le texte inutilisable) :
+- Vouvoiement systématique.
+- STRICTEMENT DESCRIPTIF : énonce des faits mesurés. Jamais de prescription, de conseil, de recommandation, de correction.
+- AUCUN verbe directif ni d'incitation. Interdits absolus : "freinez", "accélérez", "ouvrez les gaz", "tracez", "évitez", "poussez", "corrigez", "améliorez", "optimisez", "gagnez", "il faut", "vous devez", "vous devriez", "vous pouvez", "tu dois", "tu peux", "je vous conseille", "je vous recommande".
+- AUCUN score, AUCUN classement, AUCUNE comparaison avec d'autres pilotes.
+- L'app est un MIROIR. Elle montre. Elle ne dirige pas.
+- Ton sobre, posé, premium "Ferrari sec" : pas d'emoji, pas d'exclamation, phrases courtes.
+- Vocabulaire autorisé : "à observer", "à creuser la prochaine fois", "était-ce volontaire ?", "confortable", "terrain serré", "apprivoisé".
 
-Structure OBLIGATOIRE : 3 paragraphes séparés par exactement "\n---\n" (pas d'espaces) :
+Structure OBLIGATOIRE : 3 paragraphes séparés par exactement "\n---\n" (pas d'espaces autour des tirets) :
 
-ACTE 1 - RÉCIT (~80 mots) : Narration de la session d'hier. Mentionnez éventuellement le nombre de tours, le best lap, et un virage marquant si la donnée est là.
+ACTE 1 — RÉCIT (~80 mots) : Narration factuelle de la session. Mentionnez les faits mesurés disponibles (nombre de tours, meilleur tour, un virage marquant par sa donnée). Au passé, descriptif.
 
-ACTE 2 - MÉTA-ANALYSE (~60 mots) : Mise en perspective, le temps long. Ce que l'équilibre véhicule/pilote dit. Pas de jugement.
+ACTE 2 — CE QUE MONTRENT LES CHIFFRES (~60 mots) : Mise en relation NEUTRE des faits mesurés (équilibre des marges, régularité observée). Décrivez ce que les données montrent, sans porter de jugement ni en tirer de leçon. Pas de "il faudrait", pas de "cela suggère de".
 
-ACTE 3 - PRÉPARATION (~50 mots) : Invitation pour la prochaine fois. Mentionnez le virage à plus faible marge comme "terrain le plus serré" — jamais comme "à corriger". Phrase finale type "Une invitation, pas une consigne."`;
+ACTE 3 — LA PROCHAINE FOIS (~50 mots) : Désignez factuellement le virage à plus faible marge comme "le terrain le plus serré de cette session" — comme un simple constat, jamais comme "à corriger" ni "à travailler". Posez éventuellement une question ouverte ("était-ce volontaire ?"). Phrase finale : "Un constat, pas une consigne."`;
 
     const userPrompt = `Pilote : ${pilot?.first_name ?? 'le pilote'} (niveau ${pilot?.pilot_level ?? 'non renseigné'})
 Circuit : ${session.circuit_name ?? 'Beltoise'}
@@ -118,34 +165,92 @@ ${segmentsContext || '(pas de segments analysés)'}
 
 Génère le debrief 3 actes selon la doctrine.`;
 
-    const oaiRes = await fetch(OPENAI_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        temperature: 0.7,
-        max_tokens: 600,
-      }),
-    });
-
-    if (!oaiRes.ok) {
-      const errText = await oaiRes.text();
-      return new Response(JSON.stringify({ error: 'openai_error', detail: errText }), {
-        status: 502,
+    // Helper d'appel OpenAI — réutilisé pour la génération initiale + retry.
+    async function callOpenAI(messages: { role: string; content: string }[]): Promise<string> {
+      const res = await fetch(OPENAI_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ model: MODEL, messages, temperature: 0.6, max_tokens: 600 }),
       });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`openai_http_${res.status}: ${errText.slice(0, 200)}`);
+      }
+      const json = await res.json();
+      const text = json.choices?.[0]?.message?.content?.trim();
+      if (!text) throw new Error('openai_empty_response');
+      return text;
     }
 
-    const oaiJson = await oaiRes.json();
-    const generatedText = oaiJson.choices?.[0]?.message?.content?.trim();
-    if (!generatedText) {
-      return new Response(JSON.stringify({ error: 'openai_empty_response' }), { status: 502 });
+    // --- Génération initiale ---
+    let generatedText: string;
+    try {
+      generatedText = await callOpenAI([
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return new Response(JSON.stringify({ error: 'openai_error', detail: msg }), { status: 502 });
+    }
+
+    // --- GARDE-FOU : scan des verbes interdits sur la sortie ---
+    let forbidden = findForbiddenVerbs(generatedText);
+    let retried = false;
+
+    if (forbidden.length > 0) {
+      retried = true;
+      console.warn('[OXV] debrief IA : verbes interdits détectés, retry :', forbidden.join(', '));
+      // Retry unique avec consigne renforcée listant précisément les fautes.
+      try {
+        generatedText = await callOpenAI([
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+          { role: 'assistant', content: generatedText },
+          {
+            role: 'user',
+            content: `Votre réponse contenait des termes prescriptifs INTERDITS : ${forbidden.join(', ')}. Réécrivez le debrief entièrement en restant STRICTEMENT DESCRIPTIF. Remplacez toute formulation qui conseille, ordonne ou recommande par un simple constat factuel. N'utilisez aucun des termes interdits. Gardez la structure 3 actes séparés par "\\n---\\n".`,
+          },
+        ]);
+        forbidden = findForbiddenVerbs(generatedText);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn('[OXV] debrief IA : retry échoué :', msg);
+        forbidden = ['retry_failed'];
+      }
+    }
+
+    // Si après retry le texte est TOUJOURS en faute → on REFUSE de persister.
+    // L'app pilote tombera sur le générateur local descriptif (sûr).
+    if (forbidden.length > 0) {
+      // Trace RGPD/doctrine : on loggue le refus pour audit.
+      await supabase
+        .from('admin_audit')
+        .insert({
+          user_id: session.user_id,
+          action: 'debrief_ai_rejected_doctrine',
+          metadata: {
+            session_id: sessionId,
+            forbidden_terms: forbidden,
+            retried,
+          },
+        })
+        .then(
+          () => undefined,
+          () => undefined,
+        );
+
+      return new Response(
+        JSON.stringify({
+          error: 'doctrine_violation',
+          detail: 'Texte généré non conforme à la doctrine après retry — fallback local requis.',
+          forbidden,
+        }),
+        { status: 422, headers: { 'Content-Type': 'application/json' } },
+      );
     }
 
     // Sanity check : vérifie qu'il y a bien 3 paragraphes séparés par ---
@@ -175,6 +280,7 @@ Génère le debrief 3 actes selon la doctrine.`;
         sessionId,
         textLength: generatedText.length,
         parts: parts.length,
+        retried,
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
