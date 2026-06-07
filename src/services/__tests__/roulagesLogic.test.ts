@@ -3,7 +3,9 @@ import {
   type RoulageInvitation,
   INVITATION_STATUS_LABELS,
   ROULAGE_STATUS_LABELS,
+  computeCoachBusinessSummary,
   remainingPlaces,
+  roulageRevenueCents,
   splitRoulagesByTime,
   summarizeInvitations,
   validateRoulageInput,
@@ -21,6 +23,7 @@ function makeRoulage(over: Partial<Roulage> = {}): Roulage {
     endsAt: null,
     location: null,
     maxPilots: null,
+    pricePerPilot: null,
     notes: null,
     status: 'open',
     createdAt: NOW,
@@ -92,6 +95,24 @@ describe('validateRoulageInput', () => {
   it('accepte maxPilots null/absent', () => {
     expect(validateRoulageInput({ title: 'x', startsAt: future, maxPilots: null }, NOW)).toBeNull();
   });
+
+  it('refuse un prix négatif ou non entier', () => {
+    expect(
+      validateRoulageInput({ title: 'x', startsAt: future, pricePerPilot: -100 }, NOW)
+    ).toMatch(/prix/i);
+    expect(
+      validateRoulageInput({ title: 'x', startsAt: future, pricePerPilot: 12.34 }, NOW)
+    ).toMatch(/prix/i);
+  });
+
+  it('accepte un prix entier positif ou nul', () => {
+    expect(
+      validateRoulageInput({ title: 'x', startsAt: future, pricePerPilot: 0 }, NOW)
+    ).toBeNull();
+    expect(
+      validateRoulageInput({ title: 'x', startsAt: future, pricePerPilot: 15000 }, NOW)
+    ).toBeNull();
+  });
 });
 
 describe('splitRoulagesByTime', () => {
@@ -152,6 +173,53 @@ describe('remainingPlaces', () => {
 
   it('ne descend jamais sous zéro', () => {
     expect(remainingPlaces(makeRoulage({ maxPilots: 4 }), 9)).toBe(0);
+  });
+});
+
+describe('roulageRevenueCents', () => {
+  it('multiplie prix par place et présences', () => {
+    expect(roulageRevenueCents(makeRoulage({ pricePerPilot: 15000 }), 4)).toBe(60000);
+  });
+
+  it('retourne 0 si non tarifé', () => {
+    expect(roulageRevenueCents(makeRoulage({ pricePerPilot: null }), 4)).toBe(0);
+  });
+
+  it('retourne 0 si annulé', () => {
+    expect(roulageRevenueCents(makeRoulage({ pricePerPilot: 15000, status: 'cancelled' }), 4)).toBe(
+      0
+    );
+  });
+});
+
+describe('computeCoachBusinessSummary', () => {
+  it('agrège pilotes, roulages, présences et revenu', () => {
+    const r1 = makeRoulage({ id: 'r1', pricePerPilot: 10000 });
+    const r2 = makeRoulage({ id: 'r2', pricePerPilot: 20000, status: 'done' });
+    const r3 = makeRoulage({ id: 'r3', pricePerPilot: 5000, status: 'cancelled' });
+    const accepted = new Map([
+      ['r1', 3],
+      ['r2', 2],
+      ['r3', 4],
+    ]);
+    const summary = computeCoachBusinessSummary(7, [r1, r2, r3], accepted);
+    expect(summary.pilotCount).toBe(7);
+    expect(summary.roulageCount).toBe(3);
+    expect(summary.activeRoulageCount).toBe(2); // r3 annulé exclu
+    expect(summary.totalAccepted).toBe(9); // 3+2+4 (annulé compté en présences brutes)
+    // revenu : r1 3×10000 + r2 2×20000 + r3 annulé 0 = 30000 + 40000 = 70000
+    expect(summary.totalRevenueCents).toBe(70000);
+  });
+
+  it('gère un coach sans roulage', () => {
+    const summary = computeCoachBusinessSummary(0, [], new Map());
+    expect(summary).toEqual({
+      pilotCount: 0,
+      roulageCount: 0,
+      activeRoulageCount: 0,
+      totalRevenueCents: 0,
+      totalAccepted: 0,
+    });
   });
 });
 

@@ -20,7 +20,7 @@ import {
   respondToInvitation,
 } from '@/services/roulagesService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
-import { formatDateTime } from '@/utils/format';
+import { formatDateTime, formatPriceCents } from '@/utils/format';
 
 export default function PilotRoulagesScreen() {
   const [items, setItems] = useState<PilotInvitation[]>([]);
@@ -118,6 +118,17 @@ export default function PilotRoulagesScreen() {
                       style={[typography.caption, { color: colors.text.tertiary, marginTop: 2 }]}
                     >
                       {roulage.location}
+                    </Text>
+                  ) : null}
+                  {roulage.pricePerPilot != null ? (
+                    <Text
+                      style={{
+                        color: colors.text.secondary,
+                        fontSize: fontSize.caption,
+                        marginTop: spacing.xs,
+                      }}
+                    >
+                      {formatPriceCents(roulage.pricePerPilot)} par place
                     </Text>
                   ) : null}
 

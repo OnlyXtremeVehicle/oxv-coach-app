@@ -32,6 +32,7 @@ interface RoulageRow {
   ends_at: string | null;
   location: string | null;
   max_pilots: number | null;
+  price_per_pilot: number | null;
   notes: string | null;
   status: RoulageStatus;
   created_at: string;
@@ -57,6 +58,7 @@ function mapRoulage(row: RoulageRow): Roulage {
     endsAt: row.ends_at,
     location: row.location,
     maxPilots: row.max_pilots,
+    pricePerPilot: row.price_per_pilot,
     notes: row.notes,
     status: row.status,
     createdAt: row.created_at,
@@ -108,6 +110,7 @@ export async function createRoulage(input: RoulageInput): Promise<Roulage | null
     ends_at: input.endsAt || null,
     location: input.location?.trim() || null,
     max_pilots: input.maxPilots ?? null,
+    price_per_pilot: input.pricePerPilot ?? null,
     notes: input.notes?.trim() || null,
   };
 
@@ -165,6 +168,27 @@ export async function listRoulageInvitations(roulageId: string): Promise<Roulage
     return [];
   }
   return (data as unknown as InvitationRow[]).map(mapInvitation);
+}
+
+/**
+ * Statuts d'invitation de TOUS les roulages du coach courant (RLS : seuls
+ * les roulages dont il est propriétaire remontent). Sert au calcul des
+ * présences confirmées par roulage pour le tableau de bord business.
+ */
+export async function listMyRoulageInvitationStatuses(): Promise<
+  { roulageId: string; status: RoulageInvitation['status'] }[]
+> {
+  const { data, error } = await supabase
+    .from('roulage_invitations' as never)
+    .select('roulage_id, status' as never);
+
+  if (error || !data) {
+    if (error) console.warn('[roulages] listMyRoulageInvitationStatuses error:', error.message);
+    return [];
+  }
+  return (data as unknown as { roulage_id: string; status: RoulageInvitation['status'] }[]).map(
+    (r) => ({ roulageId: r.roulage_id, status: r.status })
+  );
 }
 
 /**
