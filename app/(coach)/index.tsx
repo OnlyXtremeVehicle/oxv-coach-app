@@ -185,6 +185,36 @@ export default function CoachHubScreen() {
           </>
         )}
 
+        {/* Gestion des roulages — gatée par la permission manage_own_sessions
+            (§8). Visible hors du bloc pilotes : un coach peut préparer un
+            roulage avant d'avoir des pilotes à convier. */}
+        {permissions.canManageOwnSessions ? (
+          <Link href={'/(coach)/roulages' as never} asChild>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => ({
+                marginTop: spacing.lg,
+                padding: spacing.lg,
+                borderRadius: borderRadius.md,
+                borderWidth: 0.5,
+                borderColor: colors.accent.coach,
+                alignItems: 'center',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text
+                style={{
+                  color: colors.accent.coach,
+                  fontSize: fontSize.body,
+                  fontWeight: fontWeight.medium,
+                }}
+              >
+                Mes roulages
+              </Text>
+            </Pressable>
+          </Link>
+        ) : null}
+
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={signOut}>
             <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>

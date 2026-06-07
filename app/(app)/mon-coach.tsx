@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
 import {
@@ -89,6 +89,33 @@ export default function MonCoachScreen() {
             ))}
           </View>
         )}
+
+        {/* Accès aux invitations de roulages (§8). Le pilote convié par un
+            coach gère ici sa présence. */}
+        <Link href={'/(app)/roulages' as never} asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              marginTop: spacing.xl,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              alignItems: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.coach,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Mes invitations aux roulages
+            </Text>
+          </Pressable>
+        </Link>
 
         <ExplainerCard />
 

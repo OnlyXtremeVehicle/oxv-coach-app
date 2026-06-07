@@ -86,8 +86,9 @@ Le virage doctrinal de juin 2026 (« OXV Coach » → **OXV Mirror**, abandon du
 
 ### 🟢 §8 — Espace coach : SaaS complet
 - [x] **Permissions modulaires** à la carte (PR #56) : table `coach_permissions`, helper `coach_has_permission()`, hook `useCoachPermissions`. Le rôle coach n'est plus binaire.
-- [ ] Gestion des roulages organisés par le coach — **en attente règles Gabin**
-- [ ] Tableau de bord business (revenus, remise dégressive -5/-10/-15 %) — **en attente règles Gabin**
+- [x] **Gestion des roulages** (migration 0034) : le coach crée ses roulages et invite ses pilotes (gating `manage_own_sessions`) ; le pilote accepte/décline. Décision Gabin 2026-06-07.
+- [ ] ~~Remise dégressive -5/-10/-15 %~~ — **ABANDONNÉE** (décision Gabin 2026-06-07, aucune logique de prix dans l'app).
+- [ ] Tableau de bord business (revenus global + par coach, **admin OXV seulement**) — source de la donnée revenu à confirmer avec Gabin avant implémentation.
 - [ ] Paramètres contextuels coach (niveau, objectif, matériel, météo vécue)
 - [ ] Méthodes/repères du coach appliqués à la restitution
 - [ ] Propriété partagée de la donnée enrichie (à formaliser au contrat SaaS)
