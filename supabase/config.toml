@@ -2,3 +2,26 @@ project_id = "fouvuqkdxarjpjbqnsjq"
 
 [functions.cron-analyze-pending-sessions]
 verify_jwt = false
+
+# Functions appelées par des triggers DB (pg_net) avec un Bearer = secret
+# custom (edge_functions_invoke_secret), pas un JWT Supabase. Le gateway
+# rejetterait un JWT invalide → verify_jwt doit être false pour ces functions.
+# (generate-debrief-ai et send-coach-invitation restent en verify_jwt=true :
+#  appelées depuis l'app avec le JWT de l'utilisateur connecté.)
+[functions.notify-coach-consent-received]
+verify_jwt = false
+
+[functions.notify-coach-session-analyzed]
+verify_jwt = false
+
+[functions.notify-pilot-coach-annotated]
+verify_jwt = false
+
+[functions.notify-pilot-coach-assigned]
+verify_jwt = false
+
+[functions.notify-pilot-friend-accepted]
+verify_jwt = false
+
+[functions.notify-pilot-friend-request]
+verify_jwt = false
