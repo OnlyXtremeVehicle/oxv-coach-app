@@ -164,7 +164,7 @@ function ModePassive({
 
   return (
     <View style={{ marginTop: spacing.huge }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV COACH</Text>
+      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV MIRROR</Text>
       <Text style={[typography.screenTitle, { marginBottom: spacing.xxl }]}>{greetingText}</Text>
 
       {loading ? null : recentSession ? (

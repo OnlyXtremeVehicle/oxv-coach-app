@@ -16,6 +16,6 @@ ALTER TABLE public.users
 COMMENT ON COLUMN public.users.pact_accepted_at IS
   'Timestamp d''acceptation du Pacte de pilotage. NULL = pacte non encore accepté.';
 COMMENT ON COLUMN public.users.cgu_accepted_at IS
-  'Timestamp d''acceptation des CGU OXV Coach. NULL = CGU non encore acceptées.';
+  'Timestamp d''acceptation des CGU OXV Mirror. NULL = CGU non encore acceptées.';
 COMMENT ON COLUMN public.users.privacy_accepted_at IS
   'Timestamp d''acceptation de la Politique de confidentialité.';

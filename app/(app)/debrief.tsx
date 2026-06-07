@@ -170,7 +170,7 @@ export default function DebriefScreen() {
               letterSpacing: 2.5,
             }}
           >
-            — OXV COACH
+            — OXV MIRROR
           </Text>
         </FadeInSection>
 

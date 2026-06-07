@@ -28,7 +28,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={{ flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'center' }}>
-          <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV COACH</Text>
+          <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV MIRROR</Text>
           <Text style={[typography.screenTitle, { marginBottom: spacing.huge }]}>Entrez.</Text>
 
           <TextInput

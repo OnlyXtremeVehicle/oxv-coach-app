@@ -1,5 +1,5 @@
 /**
- * Machine à états du pilote OXV Coach.
+ * Machine à états du pilote OXV Mirror.
  *
  * 10 états (S1 → S10) qui pilotent quels écrans sont valides à tout
  * moment. Voir docs/sitemap/04_state_machine.md pour la spec complète.

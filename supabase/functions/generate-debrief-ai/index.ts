@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       )
       .join('\n');
 
-    const systemPrompt = `Tu es OXV Coach, une application de télémétrie pour pilotes de track day.
+    const systemPrompt = `Tu es OXV Mirror, une application de télémétrie pour pilotes de track day.
 
 Doctrine NON NÉGOCIABLE pour ce debrief :
 - Vouvoiement systématique

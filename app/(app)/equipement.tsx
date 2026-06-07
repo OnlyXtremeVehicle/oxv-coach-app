@@ -5,7 +5,7 @@
  * à portée, sélection d'un appareil, connexion, transition automatique
  * vers #09 Placement.
  *
- * Doctrine : on utilise "Équipement OXV Coach" et pas "RaceBox" côté
+ * Doctrine : on utilise "Équipement OXV Mirror" et pas "RaceBox" côté
  * pilote (brand-neutral).
  */
 
@@ -107,7 +107,7 @@ export default function EquipementScreen() {
           ÉQUIPEMENT
         </Text>
         <Text style={[typography.screenTitle, { marginBottom: spacing.xl }]}>
-          À la recherche de votre équipement OXV Coach…
+          À la recherche de votre équipement OXV Mirror…
         </Text>
 
         {status === 'scanning' && devices.length === 0 && !error ? (
@@ -150,7 +150,7 @@ export default function EquipementScreen() {
                     fontWeight: fontWeight.medium,
                   }}
                 >
-                  {d.name.replace(/^RaceBox/, 'OXV Coach')}
+                  {d.name.replace(/^RaceBox/, 'OXV Mirror')}
                 </Text>
                 <Text
                   style={{

@@ -1,5 +1,5 @@
 /**
- * Store des états d'interface OXV Coach.
+ * Store des états d'interface OXV Mirror.
  *
  * Tout ce qui est "comment l'app se présente" sans toucher au métier :
  * overlays (offline, ble error, update), mode du hub (#20), bannière

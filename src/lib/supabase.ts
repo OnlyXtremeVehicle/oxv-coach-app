@@ -1,5 +1,5 @@
 /**
- * Client Supabase OXV Coach
+ * Client Supabase OXV Mirror
  *
  * Client unique pour toute l'app. Tokens chiffrés via expo-secure-store.
  * Typé contre le schéma Supabase de production (fouvuqkdxarjpjbqnsjq, Frankfurt).

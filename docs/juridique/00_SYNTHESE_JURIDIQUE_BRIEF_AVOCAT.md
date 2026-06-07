@@ -1,6 +1,6 @@
 # Synthèse juridique OXV — Brief pour l'avocat
 
-**Trois documents complémentaires pour cadrer OXV et OXV Coach**
+**Trois documents complémentaires pour cadrer OXV et OXV Mirror**
 **Date de rédaction : Mai 2026**
 **Statut : V1 à valider par un avocat spécialisé en droit du sport mécanique**
 
@@ -11,14 +11,14 @@
 OXV opère désormais sur deux dimensions complémentaires :
 
 - **Une prestation de track day premium** (la journée de roulage au Circuit de Haute Saintonge)
-- **Une application mobile de visualisation télémétrique** (OXV Coach)
+- **Une application mobile de visualisation télémétrique** (OXV Mirror)
 
 Ces deux dimensions appellent **trois documents juridiques distincts**, qui se complètent sans se chevaucher :
 
 | Document | Nature | Quand le pilote l'accepte | Effet juridique |
 |---|---|---|---|
 | **CGV prestations OXV** | Contrat de prestation de services | À la réservation d'une session | Définit les conditions commerciales (prix, paiement, annulation, sécurité piste) |
-| **CGU app OXV Coach** | Contrat de fourniture de service numérique | À la première activation de l'app | Définit l'usage de l'app, le traitement RGPD, la responsabilité éditeur |
+| **CGU app OXV Mirror** | Contrat de fourniture de service numérique | À la première activation de l'app | Définit l'usage de l'app, le traitement RGPD, la responsabilité éditeur |
 | **Pacte de pilotage** | Déclaration unilatérale d'engagement | À la première activation de l'app | Reconnaît expressément la nature et les limites de l'app |
 
 ---
@@ -52,7 +52,7 @@ Cette forme a été préférée à l'EURL pour deux raisons :
 
 ### Décision 2 — App gratuite au lancement
 
-L'application OXV Coach est **gratuite pour tous les pilotes inscrits aux prestations OXV** pendant la phase de lancement.
+L'application OXV Mirror est **gratuite pour tous les pilotes inscrits aux prestations OXV** pendant la phase de lancement.
 
 Aucun abonnement séparé n'est facturé. L'usage de l'app est inclus implicitement dans la prestation track day.
 
@@ -194,7 +194,7 @@ Ces trois documents juridiques s'articulent avec d'autres pièces du projet OXV 
 
 ## Le pacte en deux phrases
 
-Au-delà du droit, le **pacte de pilotage** vit dans deux phrases qui résument toute la philosophie OXV Coach :
+Au-delà du droit, le **pacte de pilotage** vit dans deux phrases qui résument toute la philosophie OXV Mirror :
 
 > **L'app est un miroir. Elle vous montre. Elle ne vous dirige pas.**
 >

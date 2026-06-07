@@ -1,6 +1,6 @@
-# 🏎️ OXV Coach — Architecture technique de l'app
+# 🏎️ OXV Mirror — Architecture technique de l'app
 
-> **Document technique pour le développement de l'app native OXV Coach**
+> **Document technique pour le développement de l'app native OXV Mirror**
 > Partie 1/3 : Stack, architecture en couches, schéma Supabase, parsing UBX
 > Version : 1.0 · Mai 2026
 > Périmètre : V1 ambitieuse (5 écrans + bouton marquage + partage progression)

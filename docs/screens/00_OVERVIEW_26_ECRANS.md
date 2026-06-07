@@ -1,4 +1,4 @@
-# Overview des 26 écrans OXV Coach
+# Overview des 26 écrans OXV Mirror
 
 > Description textuelle détaillée de chaque écran de l'app pour permettre l'implémentation par Claude Code.
 > Les maquettes visuelles V3 ont été produites en HTML/SVG dans la conversation chat de référence ; ce document en transcrit l'essentiel.
@@ -46,7 +46,7 @@
 
 **Composition** :
 - Insigne OXV grand centré (faucon stylisé rouge sur noir)
-- Sous l'insigne, en majuscules letter-spaced : `OXV COACH`
+- Sous l'insigne, en majuscules letter-spaced : `OXV MIRROR`
 - Sous le titre, une phrase manifeste : *"Bienvenue dans le miroir."*
 - En bas, bouton discret : `Commencer` (rouge OXV, plein, large)
 
@@ -130,7 +130,7 @@
   - *"L'app est un miroir. Elle vous montre. Elle ne vous dirige pas."*
   - *"La piste est à vous. Les décisions aussi."*
 - En bas, une seule case à cocher : *"Je m'engage."*
-- Bouton `Activer OXV Coach`
+- Bouton `Activer OXV Mirror`
 
 **Important** : ce pacte est consultable à tout moment depuis Settings (#24), affiché en signature en haut.
 
@@ -157,12 +157,12 @@
 
 **Composition** :
 - Animation discrète (pulsation, pas d'animation criarde)
-- Texte : *"À la recherche de votre équipement OXV Coach…"*
+- Texte : *"À la recherche de votre équipement OXV Mirror…"*
 - Liste des appareils détectés (généralement 1) :
   - Card "OXV-A47" avec icône discrete + bouton `Sélectionner`
 - En cas d'échec après 30 secondes : fallback vers écran #25 (BLE error)
 
-**Note de doctrine** : utiliser "Équipement OXV Coach" et pas "RaceBox" côté pilote (brand-neutral).
+**Note de doctrine** : utiliser "Équipement OXV Mirror" et pas "RaceBox" côté pilote (brand-neutral).
 
 ---
 
@@ -448,7 +448,7 @@
 
 **Signature en bas** :
 - *"L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause."*
-- *"— OXV COACH"*
+- *"— OXV MIRROR"*
 
 **Important** : ce contenu est généré par OpenAI côté backend, pas dans l'app. L'app reçoit le texte final.
 
@@ -566,7 +566,7 @@ Pour chaque écran qui pourrait afficher des données vides (première session, 
 
 ---
 
-*Overview des 26 écrans OXV Coach — Version 1.0 — Mai 2026*
+*Overview des 26 écrans OXV Mirror — Version 1.0 — Mai 2026*
 
 *Document à utiliser par Claude Code pour l'implémentation React Native.*
 *Les maquettes visuelles V3 d'origine ont été produites en HTML/SVG dans la conversation chat de référence.*

@@ -1,5 +1,5 @@
 /**
- * OXV Coach — Design Tokens
+ * OXV Mirror — Design Tokens
  *
  * Référence unique pour tous les choix visuels de l'app.
  * Voir docs/screens/01_DESIGN_TOKENS.md pour la documentation complète.

@@ -10,21 +10,21 @@
 
 ## Préambule
 
-Cet événement n'est **pas une session OXV commerciale**. C'est un **test alpha** du parcours client complet et de l'application OXV Coach, organisé entre amis dans un cadre privé.
+Cet événement n'est **pas une session OXV commerciale**. C'est un **test alpha** du parcours client complet et de l'application OXV Mirror, organisé entre amis dans un cadre privé.
 
 Il n'engage aucune transaction financière, ne fait l'objet d'aucune déclaration administrative (groupe de moins de 50 véhicules, pas de classement, pas de chronométrage public), et se déroule **dans le strict respect du Code de la route**.
 
 Son objectif est triple :
 
 1. Valider le parcours client de A à Z (inscription, rituels, jumelage équipement, restitution)
-2. Tester l'équipement OXV Coach (RaceBox) en conditions de campagne
+2. Tester l'équipement OXV Mirror (RaceBox) en conditions de campagne
 3. Recueillir les retours qualitatifs d'amis bienveillants mais critiques
 
 ---
 
 ## 1. Vue d'ensemble — Le programme en une phrase
 
-> *Une demi-journée de balade automobile entre amis dans la campagne charentaise, en utilisant l'application OXV Coach comme si c'était une vraie session, suivie d'un déjeuner-débrief pour partager les retours.*
+> *Une demi-journée de balade automobile entre amis dans la campagne charentaise, en utilisant l'application OXV Mirror comme si c'était une vraie session, suivie d'un déjeuner-débrief pour partager les retours.*
 
 ---
 
@@ -44,7 +44,7 @@ Cherchez à inviter **10 à 12 amis** correspondant aux trois profils suivants, 
 - Disponibilité confirmée 48h avant
 - Véhicule personnel utilisable (préférence pour voitures sportives ou plaisantes, mais une berline familiale est acceptable)
 - Assurance auto en cours de validité (vérification visuelle au point de RV)
-- Smartphone iOS ou Android compatible OXV Coach
+- Smartphone iOS ou Android compatible OXV Mirror
 
 ---
 
@@ -107,7 +107,7 @@ Coordonnées GPS à confirmer une fois le lieu précis choisi.
 
 - Accueil informel des amis
 - Café, petit-déjeuner léger
-- Distribution des équipements OXV Coach (un boîtier par voiture)
+- Distribution des équipements OXV Mirror (un boîtier par voiture)
 - Présentation de l'objectif de la journée
 
 ### 9h30-9h45 — Briefing
@@ -122,13 +122,13 @@ Briefing court (15 minutes) en plein air :
    - Respect des limitations de vitesse
    - Si quelqu'un veut sortir du convoi, il sort
 4. **Présentation rapide de l'app** : 5 minutes max
-   - Comment installer le boîtier OXV Coach
+   - Comment installer le boîtier OXV Mirror
    - Comment l'app va détecter l'arrivée et démarrer
    - "Vous ne touchez plus à votre téléphone pendant la conduite"
 
 ### 9h45-10h00 — Installation de l'équipement
 
-Chaque ami installe son boîtier OXV Coach sur son tableau de bord avec le support magnétique. Vérification du jumelage Bluetooth. Cette étape est cruciale pour tester l'écran de jumelage paddock (#07-09).
+Chaque ami installe son boîtier OXV Mirror sur son tableau de bord avec le support magnétique. Vérification du jumelage Bluetooth. Cette étape est cruciale pour tester l'écran de jumelage paddock (#07-09).
 
 ### 10h00 — Départ du convoi
 
@@ -176,7 +176,7 @@ Pendant le déjeuner :
 
 ### 15h00 — Clôture
 
-Restitution des équipements OXV Coach. Remerciements. Promesse de partager les analyses détaillées dans les jours qui suivent (test du Debrief J+1 le lundi 6 juillet).
+Restitution des équipements OXV Mirror. Remerciements. Promesse de partager les analyses détaillées dans les jours qui suivent (test du Debrief J+1 le lundi 6 juillet).
 
 ---
 
@@ -184,7 +184,7 @@ Restitution des équipements OXV Coach. Remerciements. Promesse de partager les 
 
 ### Équipements à apporter (vous)
 
-- **12 boîtiers OXV Coach** (RaceBox + support magnétique) — à acheter ou louer
+- **12 boîtiers OXV Mirror** (RaceBox + support magnétique) — à acheter ou louer
 - **12 supports magnétiques** ou kits d'installation
 - **2-3 boîtiers de réserve** en cas de panne
 - **Câbles de recharge** type USB-C pour les RaceBox si besoin
@@ -206,11 +206,11 @@ Restitution des équipements OXV Coach. Remerciements. Promesse de partager les 
 
 ### Autres dépenses prévisibles
 
-- Location/achat des RaceBox : à voir avec votre planning d'acquisition de l'équipement OXV Coach
+- Location/achat des RaceBox : à voir avec votre planning d'acquisition de l'équipement OXV Mirror
 - Carburant pour vous (essence + déplacement) : 50 €
 - Imprévus : 100 €
 
-**Budget total estimatif** : 600 à 1000 € pour la demi-journée (hors équipement OXV Coach déjà acquis pour le développement de l'app).
+**Budget total estimatif** : 600 à 1000 € pour la demi-journée (hors équipement OXV Mirror déjà acquis pour le développement de l'app).
 
 ---
 
@@ -266,7 +266,7 @@ Si moins de 8 amis confirment à J-3, vous avez deux options :
 - Maintenir avec moins de monde (6-7 personnes) : le test reste valide
 - Reporter d'une semaine ou deux
 
-### Risque 3 — Panne d'un équipement OXV Coach
+### Risque 3 — Panne d'un équipement OXV Mirror
 
 Vous emportez 2-3 boîtiers de secours. Si un boîtier lâche en route, vous le remplacez à la pause de mi-parcours.
 

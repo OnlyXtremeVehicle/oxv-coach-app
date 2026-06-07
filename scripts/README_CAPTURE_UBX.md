@@ -7,7 +7,7 @@ référence, pour les tests du parser et du service BLE (semaines 3-4).
 ## Préalable
 
 - Un RaceBox Mini S chargé et appairé en BLE
-- L'app OXV Coach installée en build de développement (`expo-dev-client`),
+- L'app OXV Mirror installée en build de développement (`expo-dev-client`),
   pas Expo Go — le BLE n'est pas accessible sous Expo Go
 - iOS ou Android, peu importe
 
@@ -92,7 +92,7 @@ Les fichiers `.ubx` contiennent des **traces GPS précises** (votre position
 ne pas partager hors équipe OXV.
 
 Le `.gitignore` autorise `test-fixtures/*.ubx` côté repo, mais le
-repo OXV Coach est privé sur GitHub. Si jamais il passe public un jour,
+repo OXV Mirror est privé sur GitHub. Si jamais il passe public un jour,
 **retirer toutes les fixtures** avant.
 
 ## Format du fichier

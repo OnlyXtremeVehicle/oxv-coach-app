@@ -1,4 +1,4 @@
-# 🏎️ OXV Coach — Architecture technique (Partie 3)
+# 🏎️ OXV Mirror — Architecture technique (Partie 3)
 
 > **Connectivité BLE, déploiement, sécurité, coûts**
 > Document final de la trilogie d'architecture
@@ -402,7 +402,7 @@ L'app doit demander les permissions de manière progressive et expliquée :
 
 ```
 1ère ouverture
-├── "OXV Coach a besoin du Bluetooth pour se connecter à votre RaceBox"
+├── "OXV Mirror a besoin du Bluetooth pour se connecter à votre RaceBox"
 │   └── Demande NSBluetooth*
 ├── "Et de la localisation pendant la session"
 │   └── Demande Location (when in use)
@@ -521,7 +521,7 @@ Workflow :
 2. EAS submit → upload sur App Store Connect
 3. Sur App Store Connect : "TestFlight" → ajouter testeurs
 4. Testeurs reçoivent invitation par email
-5. Installent TestFlight app + l'app OXV Coach
+5. Installent TestFlight app + l'app OXV Mirror
 
 **Avantages** : 90 jours de test illimité, jusqu'à 10000 testeurs externes (avec review Apple beta), tests crash automatiques.
 

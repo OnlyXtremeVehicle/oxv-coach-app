@@ -1,5 +1,5 @@
 /**
- * Types métier OXV Coach — concepts produits transversaux.
+ * Types métier OXV Mirror — concepts produits transversaux.
  *
  * Sépare le métier OXV (marge, zone, étiquette humaine, mode hub) du
  * BLE/télémétrie (src/types/telemetry.ts) et de la state machine

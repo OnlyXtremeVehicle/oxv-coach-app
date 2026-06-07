@@ -30,7 +30,7 @@ export default function AccueilPhilosophiqueScreen() {
         <Text
           style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
         >
-          OXV COACH
+          OXV MIRROR
         </Text>
         <Text style={[typography.manifest, { textAlign: 'center', paddingHorizontal: spacing.md }]}>
           Bienvenue dans le miroir.

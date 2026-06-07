@@ -48,7 +48,7 @@ export interface OxvUser {
 }
 
 /**
- * Préférences de notification — alignées doctrine OXV Coach.
+ * Préférences de notification — alignées doctrine OXV Mirror.
  *
  * Les notifications sociales (new_follower, mention), de classement
  * (rank_change, new_record) et de "coaching" (coach_response) ont été

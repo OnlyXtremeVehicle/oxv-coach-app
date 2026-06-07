@@ -1,12 +1,12 @@
-# OXV Coach — Projet de développement
+# OXV Mirror — Projet de développement
 
-> Dossier projet complet pour le développement de l'application mobile OXV Coach avec Claude Code.
+> Dossier projet complet pour le développement de l'application mobile OXV Mirror avec Claude Code.
 
 ---
 
 ## Vue d'ensemble
 
-Ce dossier contient **tout ce qui est nécessaire** pour développer l'application OXV Coach avec Claude Code, par étapes hebdomadaires.
+Ce dossier contient **tout ce qui est nécessaire** pour développer l'application OXV Mirror avec Claude Code, par étapes hebdomadaires.
 
 Il a été produit le 23 mai 2026 en consolidation de plusieurs mois de réflexion produit, design, technique et juridique.
 
@@ -19,8 +19,8 @@ Il a été produit le 23 mai 2026 en consolidation de plusieurs mois de réflexi
 Dézipper ce dossier dans un emplacement de votre choix, par exemple :
 
 ```bash
-unzip oxv-coach-app.zip
-cd oxv-coach-app
+unzip oxv-mirror-app.zip
+cd oxv-mirror-app
 ```
 
 ### 2. Vérifier que Claude Code est installé
@@ -44,7 +44,7 @@ Au premier lancement, Claude Code vous demande de vous connecter avec votre comp
 
 ### 4. Lancer Claude Code dans le projet
 
-Une fois dans le dossier `oxv-coach-app/` :
+Une fois dans le dossier `oxv-mirror-app/` :
 
 ```bash
 claude
@@ -67,7 +67,7 @@ montrer que tu as bien compris le projet. Ne code rien encore.
 ## Structure du dossier
 
 ```
-oxv-coach-app/
+oxv-mirror-app/
 ├── CLAUDE.md                          ← Point d'entrée pour Claude Code
 ├── README.md                          ← Ce fichier (pour vous)
 ├── docs/
@@ -226,7 +226,7 @@ Si vous rencontrez un problème avec ce dossier, vous pouvez :
 - Revenir vers Claude (chat) qui a produit ce dossier
 - Consulter la documentation Claude Code sur docs.claude.com
 
-Bonne route avec OXV Coach.
+Bonne route avec OXV Mirror.
 
 — Claude (chat), 23 mai 2026
 

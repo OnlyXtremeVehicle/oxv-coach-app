@@ -1,6 +1,6 @@
-# Pacte de pilotage — OXV Coach
+# Pacte de pilotage — OXV Mirror
 
-**Document signé à l'activation de l'application OXV Coach**
+**Document signé à l'activation de l'application OXV Mirror**
 **Version 1.0 — En vigueur au [date de mise en service]**
 **Éditeur : OXV (SASU) — [SIRET à compléter] — [Adresse à compléter]**
 
@@ -8,7 +8,7 @@
 
 ## Préambule
 
-Ce document n'est pas un contrat commercial. Il est une **déclaration d'engagement mutuel** entre OXV et vous, pilote utilisateur de l'application OXV Coach.
+Ce document n'est pas un contrat commercial. Il est une **déclaration d'engagement mutuel** entre OXV et vous, pilote utilisateur de l'application OXV Mirror.
 
 En cochant la case d'acceptation lors de l'activation de l'application, vous reconnaissez avoir lu, compris et accepté chacun des points énoncés ci-dessous.
 
@@ -18,7 +18,7 @@ Cette déclaration est conservée comme preuve dans nos systèmes pour une duré
 
 ## Article 1 — La nature de l'application
 
-OXV Coach est un outil de **visualisation et d'analyse a posteriori** de données télémétriques recueillies pendant vos sessions de pilotage sur circuit.
+OXV Mirror est un outil de **visualisation et d'analyse a posteriori** de données télémétriques recueillies pendant vos sessions de pilotage sur circuit.
 
 L'application **n'est pas et ne saurait être considérée comme** :
 
@@ -63,7 +63,7 @@ OXV décline en revanche toute responsabilité concernant :
 - Tout dommage matériel, corporel ou immatériel résultant de votre comportement sur piste
 - Toute interprétation personnelle que vous pourriez faire des observations qualitatives fournies par l'application
 
-Cette répartition des responsabilités est l'expression directe du principe fondateur d'OXV Coach : **l'application est un miroir, elle vous montre ; elle ne vous dirige pas.**
+Cette répartition des responsabilités est l'expression directe du principe fondateur d'OXV Mirror : **l'application est un miroir, elle vous montre ; elle ne vous dirige pas.**
 
 ---
 
@@ -91,7 +91,7 @@ Si un incident survient pendant une session (sortie de piste, accident matériel
 
 ## Article 6 — Durée et révocation
 
-Ce pacte est conclu pour la durée de votre utilisation de l'application OXV Coach.
+Ce pacte est conclu pour la durée de votre utilisation de l'application OXV Mirror.
 
 Il prend fin de plein droit :
 

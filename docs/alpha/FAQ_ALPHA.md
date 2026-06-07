@@ -1,4 +1,4 @@
-# OXV Coach — FAQ alpha
+# OXV Mirror — FAQ alpha
 
 > Questions remontées en pré-alpha + questions anticipées. Ce document évoluera au fil des retours pilotes.
 

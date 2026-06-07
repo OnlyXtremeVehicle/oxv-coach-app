@@ -1,6 +1,6 @@
-# Conditions Générales d'Utilisation — OXV Coach
+# Conditions Générales d'Utilisation — OXV Mirror
 
-**Application mobile OXV Coach**
+**Application mobile OXV Mirror**
 **Version 1.0 — En vigueur au [date de mise en service]**
 **Éditeur : OXV (SASU) — [SIRET à compléter]**
 **Adresse : [Siège social à compléter]**
@@ -12,8 +12,8 @@
 
 Pour l'application des présentes conditions générales :
 
-- **« L'Éditeur »** désigne la société OXV (SASU), éditrice de l'application OXV Coach.
-- **« L'Application »** désigne l'application mobile « OXV Coach » dans toutes ses versions (iOS, Android), incluant ses composants logiciels et serveurs associés.
+- **« L'Éditeur »** désigne la société OXV (SASU), éditrice de l'application OXV Mirror.
+- **« L'Application »** désigne l'application mobile « OXV Mirror » dans toutes ses versions (iOS, Android), incluant ses composants logiciels et serveurs associés.
 - **« L'Utilisateur »** ou **« le Pilote »** désigne toute personne physique majeure utilisant l'Application après avoir accepté les présentes CGU.
 - **« L'Équipement »** désigne le boîtier de télémétrie fourni par OXV au pilote lors de chaque session, contenant les capteurs GPS et inertiels nécessaires à la collecte des données.
 - **« Les Données Télémétriques »** désignent l'ensemble des mesures collectées par l'Équipement pendant les sessions du Pilote (position, accélération, vitesse, orientation), ainsi que leurs dérivés calculés par les algorithmes de l'Application.
@@ -23,7 +23,7 @@ Pour l'application des présentes conditions générales :
 
 ## Article 2 — Objet des CGU
 
-Les présentes CGU régissent l'utilisation de l'Application OXV Coach par tout Pilote inscrit aux prestations OXV.
+Les présentes CGU régissent l'utilisation de l'Application OXV Mirror par tout Pilote inscrit aux prestations OXV.
 
 Elles définissent les droits et obligations de chacune des parties, ainsi que les modalités d'usage, de fourniture du service, de traitement des données et de résiliation.
 
@@ -61,7 +61,7 @@ L'Équipement de télémétrie est fourni gratuitement par OXV à chaque Session
 
 ### 3.4 — Gratuité de l'application
 
-Pour la phase de lancement, l'Application OXV Coach est fournie gratuitement à tous les Pilotes inscrits à une prestation OXV. Aucun abonnement n'est facturé.
+Pour la phase de lancement, l'Application OXV Mirror est fournie gratuitement à tous les Pilotes inscrits à une prestation OXV. Aucun abonnement n'est facturé.
 
 OXV se réserve le droit de modifier ce modèle commercial dans l'avenir, sous réserve d'en informer les Utilisateurs au minimum trente (30) jours avant la mise en application de tout changement tarifaire.
 
@@ -243,7 +243,7 @@ OXV ne partage les données de l'Utilisateur avec aucun tiers, à l'exception :
 
 ### 9.1 — Propriété de l'Application
 
-L'Application OXV Coach, ses algorithmes, ses interfaces, son code source, son design et ses contenus éditoriaux sont la propriété exclusive d'OXV.
+L'Application OXV Mirror, ses algorithmes, ses interfaces, son code source, son design et ses contenus éditoriaux sont la propriété exclusive d'OXV.
 
 Toute reproduction, représentation, modification ou exploitation non autorisée, totale ou partielle, est interdite et expose son auteur à des poursuites civiles et pénales.
 
@@ -258,7 +258,7 @@ OXV bénéficie d'une licence d'usage limitée sur ces données pour :
 
 ### 9.3 — Marque OXV
 
-« OXV », « OXV Coach » et le logotype associé sont des marques déposées d'OXV. Toute utilisation sans autorisation écrite préalable est interdite.
+« OXV », « OXV Mirror » et le logotype associé sont des marques déposées d'OXV. Toute utilisation sans autorisation écrite préalable est interdite.
 
 ---
 

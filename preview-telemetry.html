@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Aperçu — Télémétrie pro OXV</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #050505;
+        color: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        min-height: 100vh;
+      }
+      .container { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+      .eyebrow {
+        font-size: 10px; font-weight: 500; letter-spacing: 2.5px; text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.35); margin: 0 0 12px;
+      }
+      h1 {
+        font-size: clamp(28px, 5vw, 44px); font-weight: 200; letter-spacing: -0.5px;
+        line-height: 1.1; margin: 0 0 8px;
+      }
+      .subtitle { font-size: 15px; font-weight: 300; color: rgba(255, 255, 255, 0.55); margin: 0 0 48px; }
+      .section { background: #0a0a0a; border-radius: 12px; padding: 24px; margin-bottom: 32px; }
+      .section-eyebrow {
+        font-size: 10px; font-weight: 500; letter-spacing: 2.5px; text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.35); margin: 0 0 4px;
+      }
+      .section-title { font-size: 12px; color: rgba(255, 255, 255, 0.55); margin: 0 0 24px; }
+      .gg-wrap { display: flex; justify-content: center; padding: 24px 0; }
+      svg.gg { width: 320px; height: 320px; }
+      svg.speed { width: 100%; height: 220px; }
+      .stats {
+        display: flex; justify-content: space-around; margin-top: 24px;
+        padding-top: 24px; border-top: 0.5px solid rgba(255,255,255,0.08);
+      }
+      .stat { text-align: center; }
+      .stat-label {
+        font-size: 9px; letter-spacing: 2px; color: rgba(255, 255, 255, 0.35);
+        text-transform: uppercase; margin-bottom: 6px;
+      }
+      .stat-value {
+        font-size: 18px; font-family: 'Menlo', 'Monaco', monospace; font-weight: 500;
+      }
+      .note {
+        font-size: 12px; color: rgba(255, 255, 255, 0.55); line-height: 1.6;
+        padding: 16px; border: 0.5px solid rgba(255, 255, 255, 0.08); border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <p class="eyebrow">Aperçu local</p>
+      <h1>Télémétrie pro</h1>
+      <p class="subtitle">Diagramme G-G + trace vitesse — données simulées réalistes (RaceBox @ 25Hz, 1 tour Beltoise).</p>
+
+      <div class="section">
+        <p class="section-eyebrow">Enveloppe d'engagement</p>
+        <p class="section-title">Diagramme g-g</p>
+        <div class="gg-wrap">
+          <svg class="gg" id="gg" viewBox="-2.3 -2.3 4.6 4.6" preserveAspectRatio="xMidYMid meet"></svg>
+        </div>
+        <div class="stats">
+          <div class="stat"><div class="stat-label">LAT MAX</div><div class="stat-value" id="lat-max">—</div></div>
+          <div class="stat"><div class="stat-label">FREIN MAX</div><div class="stat-value" id="brake-max">—</div></div>
+          <div class="stat"><div class="stat-label">ACCEL MAX</div><div class="stat-value" id="accel-max">—</div></div>
+        </div>
+        <p style="font-size: 12px; color: rgba(255,255,255,0.35); text-align: center; margin-top: 16px;" id="point-count"></p>
+      </div>
+
+      <div class="section">
+        <p class="section-eyebrow">Trace vitesse</p>
+        <p class="section-title">Vitesse au long du tour</p>
+        <svg class="speed" id="speed" viewBox="0 0 340 220" preserveAspectRatio="none"></svg>
+      </div>
+
+      <p class="note">
+        Le diagramme g-g représente toutes les accélérations vécues. Un cercle plein indique que la voiture a exploité l'enveloppe d'adhérence à 360°. Un cercle creux indique des zones inexploitées. La lecture appartient au pilote ou à son coach.
+      </p>
+    </div>
+
+    <script>
+      // ============================================================
+      // Simulation : 1 tour Beltoise (7 virages) avec un pilote engagé
+      // ============================================================
+      const APEX_PROGRESS = [0.16, 0.30, 0.34, 0.51, 0.67, 0.74, 0.85];
+      const APEX_PACE = ['medium', 'medium', 'slow', 'medium', 'medium', 'slow', 'fast'];
+
+      // Génère ~1500 frames à 25Hz sur 60 secondes
+      const TOTAL = 1500;
+      const points = [];
+      const speed = [];
+
+      for (let i = 0; i < TOTAL; i++) {
+        const t = i / (TOTAL - 1); // progression 0..1
+
+        // Trouve le virage le plus proche
+        let inCorner = false;
+        let nearestApex = -1;
+        let distToApex = 1;
+        let pace = 'medium';
+        APEX_PROGRESS.forEach((a, idx) => {
+          const d = Math.abs(t - a);
+          if (d < 0.04) {
+            inCorner = true;
+            if (d < distToApex) {
+              distToApex = d;
+              nearestApex = idx;
+              pace = APEX_PACE[idx];
+            }
+          }
+        });
+
+        let v, gLat, gLong;
+        if (inCorner) {
+          // Dans un virage : vitesse basse, gLat élevé
+          const speedBase = pace === 'slow' ? 65 : pace === 'fast' ? 130 : 90;
+          v = speedBase + (Math.random() - 0.5) * 10;
+          gLat = (pace === 'slow' ? 1.2 : pace === 'fast' ? 1.6 : 1.4) * (Math.random() > 0.5 ? 1 : -1);
+          gLat += (Math.random() - 0.5) * 0.2;
+          gLong = (Math.random() - 0.5) * 0.4;
+        } else {
+          // En ligne droite : vitesse élevée, gLong selon proximité freinage/sortie
+          const nextApexIdx = APEX_PROGRESS.findIndex((a) => a > t);
+          const nextApex = nextApexIdx >= 0 ? APEX_PROGRESS[nextApexIdx] : 1.0;
+          const prevApex = nextApexIdx > 0 ? APEX_PROGRESS[nextApexIdx - 1] : 0;
+          const midStraight = (nextApex + prevApex) / 2;
+          const distToNext = nextApex - t;
+
+          if (distToNext > 0 && distToNext < 0.06) {
+            // Freinage approche virage
+            v = 130 - (0.06 - distToNext) * 800;
+            gLong = -1.2 + (Math.random() - 0.5) * 0.3;
+          } else if (t > midStraight) {
+            // Accélération après apex
+            v = 100 + (t - prevApex) * 350;
+            gLong = 0.5 + (Math.random() - 0.5) * 0.3;
+          } else {
+            // Plein gaz
+            v = 165 + (Math.random() - 0.5) * 8;
+            gLong = 0.15 + (Math.random() - 0.5) * 0.2;
+          }
+          gLat = (Math.random() - 0.5) * 0.2;
+        }
+
+        v = Math.max(40, Math.min(195, v));
+        points.push({ gLat, gLong, speedKmh: v });
+        speed.push({ progress: t, speedKmh: v });
+      }
+
+      // ============================================================
+      // Rendu G-G
+      // ============================================================
+      const gg = document.getElementById('gg');
+      const ns = 'http://www.w3.org/2000/svg';
+
+      // Cercles concentriques
+      [0.5, 1.0, 1.5].forEach((r) => {
+        const c = document.createElementNS(ns, 'circle');
+        c.setAttribute('cx', 0); c.setAttribute('cy', 0); c.setAttribute('r', r);
+        c.setAttribute('fill', 'none'); c.setAttribute('stroke', 'rgba(255,255,255,0.08)');
+        c.setAttribute('stroke-width', 0.015); c.setAttribute('stroke-dasharray', '0.05 0.05');
+        gg.appendChild(c);
+      });
+      // Cercle enveloppe max
+      const env = document.createElementNS(ns, 'circle');
+      env.setAttribute('cx', 0); env.setAttribute('cy', 0); env.setAttribute('r', 2);
+      env.setAttribute('fill', 'none'); env.setAttribute('stroke', 'rgba(255,255,255,0.35)');
+      env.setAttribute('stroke-width', 0.025); env.setAttribute('opacity', 0.5);
+      gg.appendChild(env);
+
+      // Axes
+      [0,1].forEach((axis) => {
+        const l = document.createElementNS(ns, 'line');
+        if (axis === 0) { l.setAttribute('x1', -2); l.setAttribute('x2', 2); l.setAttribute('y1', 0); l.setAttribute('y2', 0); }
+        else { l.setAttribute('x1', 0); l.setAttribute('x2', 0); l.setAttribute('y1', -2); l.setAttribute('y2', 2); }
+        l.setAttribute('stroke', 'rgba(255,255,255,0.08)'); l.setAttribute('stroke-width', 0.015);
+        gg.appendChild(l);
+      });
+
+      // Labels
+      function label(text, x, y, anchor = 'middle') {
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', x); t.setAttribute('y', y);
+        t.setAttribute('font-size', 0.14); t.setAttribute('text-anchor', anchor);
+        t.setAttribute('fill', 'rgba(255,255,255,0.35)'); t.setAttribute('font-weight', 'bold');
+        t.textContent = text; gg.appendChild(t);
+      }
+      label('FREIN', 0, -2.05);
+      label('ACCEL', 0, 2.18);
+      label('G', -2.05, 0.05, 'start');
+      label('D', 2.05, 0.05, 'end');
+
+      // Points
+      function colorForSpeed(s) {
+        const t = Math.min(1, s / 200);
+        if (t < 0.33) return '#4A8FCC';
+        if (t < 0.66) return '#FFFFFF';
+        return '#C8102E';
+      }
+      points.forEach((p) => {
+        const c = document.createElementNS(ns, 'circle');
+        c.setAttribute('cx', p.gLat); c.setAttribute('cy', -p.gLong); c.setAttribute('r', 0.04);
+        c.setAttribute('fill', colorForSpeed(p.speedKmh)); c.setAttribute('opacity', 0.55);
+        gg.appendChild(c);
+      });
+
+      // Stats
+      const maxLat = points.reduce((m, p) => Math.max(m, Math.abs(p.gLat)), 0);
+      const maxBrake = points.reduce((m, p) => Math.min(m, p.gLong), 0);
+      const maxAccel = points.reduce((m, p) => Math.max(m, p.gLong), 0);
+      document.getElementById('lat-max').textContent = maxLat.toFixed(2) + ' g';
+      document.getElementById('brake-max').textContent = Math.abs(maxBrake).toFixed(2) + ' g';
+      document.getElementById('accel-max').textContent = maxAccel.toFixed(2) + ' g';
+      document.getElementById('point-count').textContent = points.length + ' mesures · cercle = enveloppe d\'adhérence';
+
+      // ============================================================
+      // Rendu Speed Trace
+      // ============================================================
+      const sp = document.getElementById('speed');
+      const PAD_L = 36, PAD_R = 12, PAD_T = 12, PAD_B = 24;
+      const W = 340, H = 220;
+      const vMin = 40, vMax = 200;
+      const innerW = W - PAD_L - PAD_R;
+      const innerH = H - PAD_T - PAD_B;
+      const xFor = (p) => PAD_L + p * innerW;
+      const yFor = (v) => PAD_T + innerH - ((v - vMin) / (vMax - vMin)) * innerH;
+
+      // Graduations Y
+      [vMin, 120, vMax].forEach((v) => {
+        const l = document.createElementNS(ns, 'line');
+        l.setAttribute('x1', PAD_L); l.setAttribute('x2', W - PAD_R);
+        l.setAttribute('y1', yFor(v)); l.setAttribute('y2', yFor(v));
+        l.setAttribute('stroke', 'rgba(255,255,255,0.08)'); l.setAttribute('stroke-width', 0.5);
+        sp.appendChild(l);
+        const t = document.createElementNS(ns, 'text');
+        t.setAttribute('x', 4); t.setAttribute('y', yFor(v) + 3);
+        t.setAttribute('font-size', 9); t.setAttribute('fill', 'rgba(255,255,255,0.35)');
+        t.textContent = v + ' km/h';
+        sp.appendChild(t);
+      });
+
+      // Lignes apex
+      APEX_PROGRESS.forEach((p) => {
+        const l = document.createElementNS(ns, 'line');
+        l.setAttribute('x1', xFor(p)); l.setAttribute('x2', xFor(p));
+        l.setAttribute('y1', PAD_T); l.setAttribute('y2', PAD_T + innerH);
+        l.setAttribute('stroke', 'rgba(255,255,255,0.08)'); l.setAttribute('stroke-width', 0.5);
+        l.setAttribute('stroke-dasharray', '2 4');
+        sp.appendChild(l);
+      });
+
+      // Courbe
+      const d = speed.map((p, i) =>
+        (i === 0 ? 'M' : 'L') + ' ' + xFor(p.progress).toFixed(1) + ',' + yFor(p.speedKmh).toFixed(1)
+      ).join(' ');
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', d); path.setAttribute('stroke', '#FFFFFF');
+      path.setAttribute('stroke-width', 1.8); path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+      sp.appendChild(path);
+    </script>
+  </body>
+</html>

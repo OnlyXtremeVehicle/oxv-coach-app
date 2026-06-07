@@ -101,7 +101,7 @@ export default function CircuitPage() {
             , © contributeurs OpenStreetMap.
           </p>
           <p className={styles.footerLine}>
-            Cette carte est partagée avec l'application mobile OXV Coach et ses vues coach. Toute
+            Cette carte est partagée avec l'application mobile OXV Mirror et ses vues coach. Toute
             évolution topologique se propage simultanément aux trois surfaces.
           </p>
         </footer>

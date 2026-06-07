@@ -10,7 +10,7 @@
 
 Un test alpha entre amis ne vaut que par **ce que vous en retirez comme apprentissage**. La pire issue serait de finir la journée avec un sentiment vague "ça s'est bien passé" sans avoir capté les signaux faibles, les bugs cachés, les réactions émotionnelles qui font la différence entre un produit qui marche et un produit qui décolle.
 
-Ce document est votre **boîte à outils méthodologique** pour transformer 6 heures d'événement en données exploitables pour la V1.1 d'OXV Coach.
+Ce document est votre **boîte à outils méthodologique** pour transformer 6 heures d'événement en données exploitables pour la V1.1 d'OXV Mirror.
 
 Il se compose de **quatre grilles complémentaires** :
 
@@ -153,7 +153,7 @@ SECTION 1 — AVANT LA BALADE (la semaine d'avant)
 
 ---
 
-SECTION 2 — L'ÉQUIPEMENT OXV COACH
+SECTION 2 — L'ÉQUIPEMENT OXV MIRROR
 
 2.1 L'installation du boîtier sur votre tableau de bord vous
     a paru :
@@ -175,7 +175,7 @@ SECTION 2 — L'ÉQUIPEMENT OXV COACH
 
 ---
 
-SECTION 3 — L'APP OXV COACH (au retour, sur votre téléphone)
+SECTION 3 — L'APP OXV MIRROR (au retour, sur votre téléphone)
 
 3.1 Combien de temps avez-vous passé sur l'app après la balade ?
 
@@ -221,7 +221,7 @@ SECTION 3 — L'APP OXV COACH (au retour, sur votre téléphone)
 
 SECTION 4 — LA PHILOSOPHIE OXV
 
-4.1 OXV Coach se présente comme « un miroir, pas un coach ».
+4.1 OXV Mirror se présente comme « un miroir, pas un coach ».
     Cette idée vous parle :
 
   □ Beaucoup, c'est ce qui me plaît
@@ -255,7 +255,7 @@ SECTION 5 — LE PARCOURS COMPLET
   ____________________________________________________________
   ____________________________________________________________
 
-5.3 Si OXV Coach existait en vrai sur un circuit, vous y
+5.3 Si OXV Mirror existait en vrai sur un circuit, vous y
     inscrieriez-vous pour de vrai ?
 
   □ Oui, sans hésiter

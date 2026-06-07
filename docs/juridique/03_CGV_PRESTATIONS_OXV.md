@@ -6,7 +6,7 @@
 **Siège social : [Adresse à compléter]**
 **Contact : contact@oxvehicle.fr**
 
-> **Note importante** : ces CGV mettent à jour la version 1.0 pour intégrer l'usage de l'application OXV Coach. Elles s'appliquent à toute réservation effectuée à compter de leur entrée en vigueur.
+> **Note importante** : ces CGV mettent à jour la version 1.0 pour intégrer l'usage de l'application OXV Mirror. Elles s'appliquent à toute réservation effectuée à compter de leur entrée en vigueur.
 
 ---
 
@@ -14,12 +14,12 @@
 
 Pour l'application des présentes Conditions Générales de Vente :
 
-- **« OXV »** désigne la société OXV (SASU), prestataire des services de track day et éditrice de l'application OXV Coach.
+- **« OXV »** désigne la société OXV (SASU), prestataire des services de track day et éditrice de l'application OXV Mirror.
 - **« Le Pilote »** ou **« le Client »** désigne toute personne physique majeure réservant une prestation OXV.
 - **« La Session »** désigne une journée de roulage sur circuit organisée par OXV au Circuit de Haute Saintonge (La Génétouze).
 - **« L'Offre »** désigne le format choisi par le Client parmi les offres OXV (Access, Signature, Promotion, Heritage), telles que définies sur oxvehicle.fr.
-- **« L'Application »** désigne l'application mobile OXV Coach, fournie par OXV.
-- **« L'Équipement OXV Coach »** désigne le boîtier de télémétrie remis au Pilote pour la durée de la Session.
+- **« L'Application »** désigne l'application mobile OXV Mirror, fournie par OXV.
+- **« L'Équipement OXV Mirror »** désigne le boîtier de télémétrie remis au Pilote pour la durée de la Session.
 
 ---
 
@@ -47,7 +47,7 @@ Chaque Offre comprend :
 - L'accès privatisé au tracé Beltoise pour la durée de la Session
 - Le briefing pilote obligatoire
 - L'encadrement par le staff OXV
-- La mise à disposition de l'Équipement OXV Coach et l'usage gratuit de l'Application OXV Coach
+- La mise à disposition de l'Équipement OXV Mirror et l'usage gratuit de l'Application OXV Mirror
 - Les prestations spécifiques propres à chaque format, telles que détaillées sur oxvehicle.fr
 
 ### 3.2 — Progression et déblocage des Offres
@@ -215,24 +215,24 @@ Cette assurance couvre la responsabilité d'OXV en tant qu'organisateur, mais ne
 
 ---
 
-## Article 9 — Application OXV Coach et Équipement
+## Article 9 — Application OXV Mirror et Équipement
 
 ### 9.1 — Mise à disposition gratuite
 
 OXV met gratuitement à disposition de chaque Pilote inscrit à une Session :
 
-- L'**Application OXV Coach**, téléchargeable sur l'App Store ou Google Play
-- L'**Équipement OXV Coach** (boîtier de télémétrie), remis au paddock le jour de la Session et restitué en fin de journée
+- L'**Application OXV Mirror**, téléchargeable sur l'App Store ou Google Play
+- L'**Équipement OXV Mirror** (boîtier de télémétrie), remis au paddock le jour de la Session et restitué en fin de journée
 
 ### 9.2 — Acceptation des CGU et du Pacte de pilotage
 
-L'usage de l'Application est conditionné à l'acceptation préalable des **Conditions Générales d'Utilisation de l'Application OXV Coach** et du **Pacte de pilotage**, documents juridiquement séparés mais complémentaires aux présentes CGV.
+L'usage de l'Application est conditionné à l'acceptation préalable des **Conditions Générales d'Utilisation de l'Application OXV Mirror** et du **Pacte de pilotage**, documents juridiquement séparés mais complémentaires aux présentes CGV.
 
 Ces documents sont accessibles à tout moment dans l'Application et sur oxvehicle.fr.
 
 ### 9.3 — Restitution de l'Équipement
 
-L'Équipement OXV Coach reste la propriété d'OXV. Le Pilote s'engage à le restituer en l'état à la fin de chaque Session.
+L'Équipement OXV Mirror reste la propriété d'OXV. Le Pilote s'engage à le restituer en l'état à la fin de chaque Session.
 
 En cas de perte, détérioration ou vol de l'Équipement, le Pilote sera redevable d'une indemnité forfaitaire correspondant au coût de remplacement (de l'ordre de trois cents euros, montant susceptible d'évoluer).
 
@@ -288,7 +288,7 @@ OXV est responsable, dans les limites du droit français, de :
 - La bonne organisation logistique de la Session
 - La privatisation effective du Circuit pendant la durée prévue
 - La présence du staff d'encadrement annoncé
-- La conformité de l'Équipement OXV Coach mis à disposition
+- La conformité de l'Équipement OXV Mirror mis à disposition
 - La protection des données personnelles du Pilote conformément au RGPD
 
 ### 11.2 — Exclusions de responsabilité d'OXV
@@ -323,9 +323,9 @@ Le Pilote peut s'opposer à tout moment à l'usage de son image par simple email
 
 ### 12.2 — Données télémétriques
 
-Les Données Télémétriques collectées par l'Équipement OXV Coach sont la propriété du Pilote.
+Les Données Télémétriques collectées par l'Équipement OXV Mirror sont la propriété du Pilote.
 
-OXV en a un usage limité, défini dans les CGU de l'Application OXV Coach (article 8 et 9 des CGU).
+OXV en a un usage limité, défini dans les CGU de l'Application OXV Mirror (article 8 et 9 des CGU).
 
 ### 12.3 — Droits de propriété intellectuelle
 

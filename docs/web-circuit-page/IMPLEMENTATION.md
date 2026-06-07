@@ -4,7 +4,7 @@
 
 ## Contexte
 
-La page `/circuit` est la **vitrine publique** du Circuit Beltoise de Haute Saintonge. Elle sert de point de repère visuel partagé avec l'app mobile OXV Coach.
+La page `/circuit` est la **vitrine publique** du Circuit Beltoise de Haute Saintonge. Elle sert de point de repère visuel partagé avec l'app mobile OXV Mirror.
 
 **Une seule carte, trois surfaces** :
 
@@ -54,8 +54,8 @@ web-snippets/
 ```bash
 # Depuis la racine du repo site oxvehicle.fr (Next.js)
 
-# Source = clone du repo app OXV Coach
-SRC=../oxv-coach-app/web-snippets
+# Source = clone du repo app OXV Mirror
+SRC=../oxv-mirror-app/web-snippets
 
 cp -r $SRC/app/circuit             ./app/circuit
 cp -r $SRC/components/CircuitMap   ./components/CircuitMap

@@ -1,4 +1,4 @@
-# 🏎️ OXV Coach — Architecture technique (Partie 2 — version augmentée)
+# 🏎️ OXV Mirror — Architecture technique (Partie 2 — version augmentée)
 
 > **Algorithmes de marge et modèles de compétition automobile**
 > Version augmentée : intègre les modèles utilisés en F1, GT et endurance
@@ -744,7 +744,7 @@ Total : **8 sessions de roulage** pour valider l'app avant ouverture publique.
 
 ### 10.4. Limites assumées du système
 
-Ce que OXV Coach **ne peut pas faire** avec RaceBox Mini seul :
+Ce que OXV Mirror **ne peut pas faire** avec RaceBox Mini seul :
 
 - Mesurer précisément les pressions pneus à chaque virage
 - Détecter une casse mécanique
@@ -752,7 +752,7 @@ Ce que OXV Coach **ne peut pas faire** avec RaceBox Mini seul :
 - Donner des conseils de réglage châssis
 - Comparer aux pilotes pros à la milliseconde
 
-Ce que OXV Coach **fait bien** :
+Ce que OXV Mirror **fait bien** :
 
 - Observer la marge globale et par zone du pilote
 - Détecter les zones de progression sûres

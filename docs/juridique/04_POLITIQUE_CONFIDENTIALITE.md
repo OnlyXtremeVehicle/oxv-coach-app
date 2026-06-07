@@ -1,6 +1,6 @@
 # Politique de confidentialité — OXV
 
-**Site oxvehicle.fr et application OXV Coach**
+**Site oxvehicle.fr et application OXV Mirror**
 **Version 1.0 — En vigueur au [date de mise en service]**
 **Éditeur : OXV (SASU) — [SIRET à compléter]**
 
@@ -10,7 +10,7 @@
 
 Chez OXV, nous accordons une importance fondamentale à la protection de vos données personnelles. Ce document explique de manière transparente ce que nous collectons, pourquoi nous le collectons, comment nous le protégeons, et quels sont vos droits.
 
-Cette politique s'applique à toutes les interactions que vous pouvez avoir avec OXV : navigation sur oxvehicle.fr, inscription à nos prestations, utilisation de l'application OXV Coach, contact via nos formulaires, ou réception de nos communications.
+Cette politique s'applique à toutes les interactions que vous pouvez avoir avec OXV : navigation sur oxvehicle.fr, inscription à nos prestations, utilisation de l'application OXV Mirror, contact via nos formulaires, ou réception de nos communications.
 
 Elle est rédigée en conformité avec le **Règlement Général sur la Protection des Données (RGPD)** européen et la **loi française Informatique et Libertés** dans sa version modifiée.
 
@@ -87,9 +87,9 @@ Lors de la création d'un compte pilote sur oxvehicle.fr, nous collectons :
 | **Véhicules** | Marque, modèle, immatriculation, photos | Préparation de la session et contrôles techniques |
 | **Contact d'urgence** | Nom et téléphone de la personne à prévenir | Sécurité en cas d'incident |
 
-### 3.5 — Utilisation de l'application OXV Coach
+### 3.5 — Utilisation de l'application OXV Mirror
 
-Lorsque vous utilisez l'application OXV Coach pendant et après une session, nous collectons :
+Lorsque vous utilisez l'application OXV Mirror pendant et après une session, nous collectons :
 
 | Catégorie | Données précises | Pourquoi |
 |---|---|---|
@@ -118,7 +118,7 @@ Les finalités de traitement, et leurs bases légales au sens du RGPD, sont les 
 | Finalité | Base légale RGPD | Article |
 |---|---|---|
 | Fourniture du service de track day | Exécution du contrat | Article 6.1.b |
-| Fonctionnement de l'application OXV Coach | Exécution du contrat | Article 6.1.b |
+| Fonctionnement de l'application OXV Mirror | Exécution du contrat | Article 6.1.b |
 | Facturation et obligations comptables | Obligation légale | Article 6.1.c |
 | Vérification KYC (identité, assurance) | Obligation légale et contractuelle | Article 6.1.c |
 | Communication commerciale (newsletter) | Consentement explicite | Article 6.1.a |
@@ -164,7 +164,7 @@ OXV ne procède à aucun autre partage avec des tiers commerciaux. Vos données 
 
 ### 5.4 — Partage social initié par vous
 
-Si vous utilisez la fonction « Partage social » de l'application OXV Coach, les données que vous choisissez de partager (progression, bilan, virage, carte) sont accessibles par le destinataire du lien que vous avez généré.
+Si vous utilisez la fonction « Partage social » de l'application OXV Mirror, les données que vous choisissez de partager (progression, bilan, virage, carte) sont accessibles par le destinataire du lien que vous avez généré.
 
 Vous restez seul responsable du choix du destinataire. Vous pouvez **révoquer ce partage à tout moment** depuis vos paramètres dans l'application.
 
@@ -196,7 +196,7 @@ Le RGPD vous accorde des droits étendus que vous pouvez exercer à tout moment.
 
 Vous pouvez **demander à connaître l'ensemble des données** que nous détenons sur vous, ainsi que les finalités de leur traitement.
 
-**Comment exercer** : depuis vos paramètres dans l'application OXV Coach, ou par email à contact@oxvehicle.fr.
+**Comment exercer** : depuis vos paramètres dans l'application OXV Mirror, ou par email à contact@oxvehicle.fr.
 
 ### 7.2 — Droit de rectification (article 16 RGPD)
 
@@ -272,7 +272,7 @@ OXV envisage de déployer un outil de mesure d'audience **respectueux de la vie 
 
 Lorsque cet outil sera activé, la présente politique sera mise à jour pour le mentionner explicitement. Aucun consentement préalable ne sera requis, car l'outil ne traite aucune donnée personnelle au sens du RGPD.
 
-### 8.4 — Application mobile OXV Coach
+### 8.4 — Application mobile OXV Mirror
 
 L'application mobile **n'utilise pas de cookies** au sens classique. Les données sont stockées localement sur votre appareil et synchronisées avec nos serveurs lors de vos sessions, conformément aux dispositions techniques décrites dans nos CGU.
 
@@ -378,4 +378,4 @@ Pour toute question, demande ou réclamation relative à la protection de vos do
 
 ---
 
-*Cette politique de confidentialité est complémentaire des autres documents juridiques OXV : CGV (prestations track day), CGU (application OXV Coach) et Pacte de pilotage. En cas de divergence d'interprétation, les dispositions les plus protectrices de vos droits prévalent.*
+*Cette politique de confidentialité est complémentaire des autres documents juridiques OXV : CGV (prestations track day), CGU (application OXV Mirror) et Pacte de pilotage. En cas de divergence d'interprétation, les dispositions les plus protectrices de vos droits prévalent.*

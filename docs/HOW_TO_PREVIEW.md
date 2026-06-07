@@ -1,4 +1,4 @@
-# Comment visionner l'app OXV Coach
+# Comment visionner l'app OXV Mirror
 
 Trois voies, par effort croissant. Choisissez selon ce que vous voulez voir.
 
