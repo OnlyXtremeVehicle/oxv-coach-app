@@ -35,6 +35,8 @@ import {
   listMyAnnotationsForCorner,
   updateAnnotation,
 } from '@/services/coachAnnotationsService';
+import { type CoachAnnotationTemplate } from '@/services/coachCurationLogic';
+import { listMyTemplates } from '@/services/coachCurationService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { formatDateShort } from '@/utils/format';
 
@@ -53,6 +55,21 @@ export default function CoachAnnoterScreen() {
   const [visibility, setVisibility] = useState<AnnotationVisibility>('shared');
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    listMyTemplates().then((rows) => {
+      if (!cancelled) setTemplates(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const applyTemplate = (tpl: CoachAnnotationTemplate) => {
+    setBody((prev) => (prev.trim().length > 0 ? `${prev}\n${tpl.body}` : tpl.body));
+  };
 
   const reload = async () => {
     if (!params.pilotId) return;
@@ -220,6 +237,41 @@ export default function CoachAnnoterScreen() {
           >
             {editingId ? 'MODIFIER LA NOTE' : 'NOUVELLE NOTE'}
           </Text>
+
+          {/* Gabarits réutilisables (§10.3c-C) — appui pour insérer. */}
+          {templates.length > 0 ? (
+            <View
+              style={{
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                gap: spacing.sm,
+                marginBottom: spacing.md,
+              }}
+            >
+              {templates.map((t) => (
+                <Pressable
+                  key={t.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Insérer le gabarit ${t.label}`}
+                  onPress={() => applyTemplate(t)}
+                  style={({ pressed }) => ({
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.xs,
+                    borderRadius: borderRadius.sm,
+                    borderWidth: 0.5,
+                    borderColor: colors.border.medium,
+                    backgroundColor: colors.background.secondary,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
+                    + {t.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
           <TextInput
             value={body}
             onChangeText={setBody}
