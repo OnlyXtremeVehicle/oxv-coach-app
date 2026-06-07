@@ -22,6 +22,7 @@ import {
   listMyPilots,
   loadCoachDashboardSummary,
 } from '@/services/coachService';
+import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { formatDateShort } from '@/utils/format';
@@ -29,6 +30,7 @@ import { formatDateShort } from '@/utils/format';
 export default function CoachHubScreen() {
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
+  const { permissions } = useCoachPermissions();
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [summary, setSummary] = useState<CoachDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -152,8 +154,9 @@ export default function CoachHubScreen() {
               ))}
             </View>
 
-            {/* CTA comparatif 2 pilotes — visible si au moins 2 pilotes suivis */}
-            {pilots.length >= 2 ? (
+            {/* CTA comparatif 2 pilotes — gaté par la permission view_pilots
+                (§8.1) et visible si au moins 2 pilotes suivis */}
+            {permissions.canViewPilots && pilots.length >= 2 ? (
               <Link href={'/(coach)/comparer-pilotes' as never} asChild>
                 <Pressable
                   accessibilityRole="button"
