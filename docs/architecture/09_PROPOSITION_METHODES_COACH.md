@@ -1,9 +1,13 @@
-# Proposition — « Méthodes du coach appliquées à la restitution » (§10.3)
+# Méthodes du coach appliquées à la restitution (§10.3) — VALIDÉ & IMPLÉMENTÉ
 
-> **Statut : PROPOSITION, non implémentée.** Ce document cadre le 3ᵉ volet de
-> l'enrichissement coach (cahier v3 §10.3). Il attend la validation de Gabin
-> avant tout développement. Les deux premiers volets du §10.3 sont déjà livrés
-> (annotations textuelles ; paramètres contextuels niveau/objectif/matériel/météo).
+> **Statut : validé par Gabin (2026-06-07) et implémenté.** Les **quatre** options
+> ci-dessous ont été retenues, l'option D dans sa **version sûre** (lecture
+> attribuée, séparée de la marge OXV). Réalisation :
+> - **A — Repères de référence** : migration 0038, PR #65.
+> - **B — Priorisation / curation** + **C — Gabarits** : migration 0039, PR #66.
+> - **D — Lecture du coach (version sûre)** : migration 0040, PR finale.
+>
+> Le reste du document conserve l'analyse doctrinale qui a fondé ces choix.
 
 ---
 
@@ -97,11 +101,15 @@ jamais mélangé à la voix d'OXV.
 - Garde-fous : passage au scanner doctrinal (verbes interdits) sur tout texte ;
   rendu toujours préfixé « Votre coach », jamais impératif.
 
-## 6. Décision attendue de Gabin
+## 6. Décision de Gabin (2026-06-07) — tranchée
 
-1. Valide-t-on l'orientation **B + A étiquetées**, ou un sous-ensemble ?
-2. Le périmètre est-il **par session** ou **par pilote** (méthode durable) ?
-3. Confirme-t-on l'exclusion de l'option D (réinterprétation automatique) ?
+1. **Les quatre options retenues** (A, B, C, D).
+2. **D en version sûre** : la lecture du coach est calculée puis présentée
+   **séparément** et **attribuée** (« La lecture de votre coach »), elle ne
+   remplace jamais la marge neutre d'OXV. La réinterprétation silencieuse des
+   indicateurs OXV (D littéral) est **écartée**.
+3. **Périmètre** : repères (A) et lecture (D) au niveau **coach** (un jeu
+   appliqué à ses élèves) ; priorisation (B) au niveau **coach ↔ pilote**.
 
-Tant que ce n'est pas tranché, **rien n'est codé sur ce volet** — les deux autres
-volets du §10.3 (annotations, paramètres contextuels) sont, eux, opérationnels.
+Implémenté dans les PR #65 (A), #66 (B+C) et la PR finale (D). Garde-fous tenus :
+tout est étiqueté coach, descriptif, et passe le scanner doctrinal.

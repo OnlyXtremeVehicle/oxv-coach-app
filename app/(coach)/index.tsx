@@ -238,6 +238,32 @@ export default function CoachHubScreen() {
           </Pressable>
         </Link>
 
+        {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
+        <Link href={'/(coach)/lecture' as never} asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              marginTop: spacing.md,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              alignItems: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.coach,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Ma lecture
+            </Text>
+          </Pressable>
+        </Link>
+
         {/* Gestion des roulages — gatée par la permission manage_own_sessions
             (§8). Visible hors du bloc pilotes : un coach peut préparer un
             roulage avant d'avoir des pilotes à convier. */}
