@@ -95,9 +95,11 @@ Le virage doctrinal de juin 2026 (« OXV Coach » → **OXV Mirror**, abandon du
 - [x] **Gestion des roulages** (migration 0034) : le coach crée ses roulages et invite ses pilotes (gating `manage_own_sessions`) ; le pilote accepte/décline. Décision Gabin 2026-06-07.
 - [ ] ~~Remise dégressive -5/-10/-15 %~~ — **ABANDONNÉE** (décision Gabin 2026-06-07, confirmée après relecture cahier v3).
 - [x] **Tableau de bord business CÔTÉ COACH** (migration 0035, cahier v3 §10.2 sans remise) : nombre de pilotes, roulages, présences confirmées, revenu cumulé = prix/place × présences. Gating `can_view_business_dashboard`. Revenu réel uniquement (pas de chiffre fabriqué, pas de CA OXV global, pas de commission).
-- [ ] Paramètres contextuels coach (niveau, objectif, matériel, météo vécue)
-- [ ] Méthodes/repères du coach appliqués à la restitution
-- [ ] Propriété partagée de la donnée enrichie (à formaliser au contrat SaaS)
+- [x] **§10.3 Enrichissement coach — complet** :
+  - annotations textuelles (coach_annotations, déjà livré) ;
+  - paramètres contextuels niveau/objectif/matériel/météo (migration 0037, PR #64) ;
+  - méthodes appliquées à la restitution (§10.3c, décision Gabin = les 4 options, D en version sûre) : repères par virage (0038, #65), priorisation + gabarits (0039, #66), « La lecture de votre coach » dérivée et attribuée (0040, #67).
+- [ ] Propriété partagée de la donnée enrichie — à formaliser au **contrat de licence SaaS coach** (avocat), pas un point de code.
 
 ### 🟢 §4 — Option B : WebView
 - [x] **DÉCISION GABIN (2026-06-07) : tout natif, pas de WebView.** L'app reste 100 % native (garage / documents / progression compris). On conserve la cohérence UX et l'offline-first ; l'évolution de contenu passe par un build. L'option WebView est écartée.
