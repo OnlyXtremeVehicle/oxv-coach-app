@@ -70,6 +70,16 @@ export default function ProgressionScreen() {
 
   const stats = useMemo(() => computeStats(analyses), [analyses]);
 
+  // §3.3 — cœur du pilier Évolution : cette session VS la précédente.
+  // analyses est trié décroissant (plus récente en tête).
+  const lastDelta = useMemo(() => {
+    if (analyses.length < 2) return null;
+    const current = Number(analyses[0].marginGlobal);
+    const previous = Number(analyses[1].marginGlobal);
+    if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+    return { current, previous, delta: current - previous };
+  }, [analyses]);
+
   if (loading) {
     return (
       <SafeAreaView
@@ -92,6 +102,9 @@ export default function ProgressionScreen() {
         <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
           Vous avancez.
         </Text>
+
+        {/* §3.3 — depuis la dernière session (constat neutre, vs soi) */}
+        {lastDelta ? <LastSessionDelta {...lastDelta} /> : null}
 
         {analyses.length < 3 ? (
           <EmptyState count={analyses.length} />
@@ -392,6 +405,70 @@ function EmptyState({ count }: { count: number }) {
           : count === 1
             ? '1 session enregistrée.'
             : `${count} sessions enregistrées.`}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Encart « depuis la dernière session » — le cœur du pilier §3.3.
+ * Constat factuel neutre : le delta de marge vs la session précédente.
+ * Jamais un jugement (« mieux »/« moins bien ») — juste le signe et la
+ * valeur, avec une formulation descriptive (« en hausse »/« stable »).
+ */
+function LastSessionDelta({
+  current,
+  previous,
+  delta,
+}: {
+  current: number;
+  previous: number;
+  delta: number;
+}) {
+  const rounded = Math.round(delta);
+  const stable = Math.abs(rounded) < 1;
+  const word = stable ? 'stable' : rounded > 0 ? 'en hausse' : 'en baisse';
+  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '±';
+  const accent = stable
+    ? colors.text.secondary
+    : rounded > 0
+      ? colors.margin.green
+      : colors.margin.yellow;
+
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: spacing.lg,
+        borderRadius: borderRadius.lg,
+        borderWidth: 0.5,
+        borderColor: colors.border.subtle,
+        backgroundColor: colors.background.secondary,
+        marginBottom: spacing.xl,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text
+          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.xs }]}
+        >
+          DEPUIS VOTRE DERNIÈRE SESSION
+        </Text>
+        <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
+          Marge {word} · {Math.round(previous)} % → {Math.round(current)} %
+        </Text>
+      </View>
+      <Text
+        style={{
+          color: accent,
+          fontSize: fontSize.titleLarge,
+          fontWeight: fontWeight.light,
+          fontFamily: 'Menlo',
+        }}
+      >
+        {stable ? '±0' : `${sign}${Math.abs(rounded)}`}
+        <Text style={{ fontSize: fontSize.caption, color: colors.text.tertiary }}> pts</Text>
       </Text>
     </View>
   );
