@@ -69,6 +69,23 @@ export function formatDateLong(iso: string): string {
 }
 
 /**
+ * Date + heure fr-FR (« 10 juil. 2026, 09:00 »). Utilisé pour les roulages.
+ */
+export function formatDateTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('fr-FR', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return '—';
+  }
+}
+
+/**
  * Formate un delta entre deux valeurs avec signe non-mathématique
  * (« + » ou « − » U+2212, pas « - »).
  *
