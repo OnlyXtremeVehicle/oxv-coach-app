@@ -24,7 +24,10 @@ import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
+import { getCorner } from '@/lib/circuitTopology';
 import { buildContextRows } from '@/services/coachContextLogic';
+import { type CoachPilotHighlight } from '@/services/coachCurationLogic';
+import { listHighlightsForMe } from '@/services/coachCurationService';
 import { getSessionContext } from '@/services/coachSessionContextService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -61,6 +64,7 @@ export default function BilanScreen() {
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [contextRows, setContextRows] = useState<{ label: string; value: string }[]>([]);
+  const [highlights, setHighlights] = useState<CoachPilotHighlight[]>([]);
 
   useEffect(() => {
     if (!profile) {
@@ -136,6 +140,19 @@ export default function BilanScreen() {
       cancelled = true;
     };
   }, [session?.id]);
+
+  // Priorisation coach (§10.3c-B) — virages mis en avant pour ce pilote.
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    listHighlightsForMe().then((rows) => {
+      if (!cancelled)
+        setHighlights(rows.filter((h) => h.highlightCornerIndexes.length > 0 || h.note));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
 
   if (loading) {
     return (
@@ -238,6 +255,77 @@ export default function BilanScreen() {
             </View>
           </FadeInSection>
         ) : null}
+
+        {/* Priorisation du coach (§10.3c-B) — ordre de lecture proposé. */}
+        {highlights.map((h) => (
+          <FadeInSection
+            key={h.id}
+            style={{
+              marginBottom: spacing.huge,
+              padding: spacing.xl,
+              borderRadius: borderRadius.lg,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              backgroundColor: colors.background.secondary,
+            }}
+          >
+            <Text
+              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
+            >
+              MIS EN AVANT PAR VOTRE COACH
+            </Text>
+            {h.note ? (
+              <Text
+                style={{
+                  color: colors.text.secondary,
+                  fontSize: fontSize.body,
+                  fontStyle: 'italic',
+                  lineHeight: fontSize.body * 1.5,
+                  marginBottom: h.highlightCornerIndexes.length > 0 ? spacing.md : 0,
+                }}
+              >
+                « {h.note} »
+              </Text>
+            ) : null}
+            <View style={{ gap: spacing.sm }}>
+              {h.highlightCornerIndexes.map((idx, i) => (
+                <Pressable
+                  key={`${h.id}-${idx}`}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ouvrir ${getCorner(idx)?.name ?? `virage ${idx}`}`}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(app)/virage',
+                      params: { index: String(idx), sessionId: session?.id ?? '' },
+                    } as never)
+                  }
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.md,
+                    paddingVertical: spacing.sm,
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                >
+                  <Text
+                    style={{
+                      color: colors.accent.coach,
+                      fontSize: fontSize.body,
+                      fontWeight: fontWeight.medium,
+                      fontFamily: 'Menlo',
+                    }}
+                  >
+                    {i + 1}.
+                  </Text>
+                  <Text style={{ color: colors.text.primary, fontSize: fontSize.body, flex: 1 }}>
+                    {getCorner(idx)?.name ?? `Virage ${idx}`}
+                  </Text>
+                  <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
+                </Pressable>
+              ))}
+            </View>
+          </FadeInSection>
+        ))}
 
         <View style={{ gap: spacing.md }}>
           {NAV_TARGETS.map((target, i) => (

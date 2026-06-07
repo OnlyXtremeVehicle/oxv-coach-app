@@ -85,11 +85,36 @@ export default function CoachPilotDetailScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>PILOTE SUIVI</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
+        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.lg }]}>
           {fullName}
         </Text>
+
+        {/* Priorisation du bilan (§10.3c-B) */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({ pathname: '/(coach)/priorites', params: { pilotId: params.id } } as never)
+          }
+          style={({ pressed }) => ({
+            marginBottom: spacing.xxl,
+            padding: spacing.md,
+            borderRadius: borderRadius.md,
+            borderWidth: 0.5,
+            borderColor: colors.accent.coach,
+            alignItems: 'center',
+            opacity: pressed ? 0.7 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: colors.accent.coach,
+              fontSize: fontSize.caption,
+              fontWeight: fontWeight.medium,
+            }}
+          >
+            Priorités du bilan
+          </Text>
+        </Pressable>
 
         {loading ? (
           <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
