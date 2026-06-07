@@ -28,6 +28,8 @@ import { getCorner } from '@/lib/circuitTopology';
 import { buildContextRows } from '@/services/coachContextLogic';
 import { type CoachPilotHighlight } from '@/services/coachCurationLogic';
 import { listHighlightsForMe } from '@/services/coachCurationService';
+import { type CoachReadingWeights, computeCoachReading } from '@/services/coachReadingLogic';
+import { listReadingWeightsForMe } from '@/services/coachReadingService';
 import { getSessionContext } from '@/services/coachSessionContextService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -65,6 +67,7 @@ export default function BilanScreen() {
   const [exporting, setExporting] = useState(false);
   const [contextRows, setContextRows] = useState<{ label: string; value: string }[]>([]);
   const [highlights, setHighlights] = useState<CoachPilotHighlight[]>([]);
+  const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
 
   useEffect(() => {
     if (!profile) {
@@ -148,6 +151,18 @@ export default function BilanScreen() {
     listHighlightsForMe().then((rows) => {
       if (!cancelled)
         setHighlights(rows.filter((h) => h.highlightCornerIndexes.length > 0 || h.note));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.id]);
+
+  // Lecture du coach (§10.3c-D) — pondérations des coachs du pilote.
+  useEffect(() => {
+    if (!profile?.id) return;
+    let cancelled = false;
+    listReadingWeightsForMe().then((rows) => {
+      if (!cancelled) setReadingWeights(rows);
     });
     return () => {
       cancelled = true;
@@ -326,6 +341,66 @@ export default function BilanScreen() {
             </View>
           </FadeInSection>
         ))}
+
+        {/* La lecture de votre coach (§10.3c-D) — dérivée des sous-composantes,
+            présentée SÉPARÉMENT et attribuée. Jamais à la place de la marge OXV. */}
+        {readingWeights.map((w) => {
+          const reading = computeCoachReading(margin.breakdown, w);
+          if (reading === null) return null;
+          return (
+            <FadeInSection
+              key={w.coachId}
+              style={{
+                marginBottom: spacing.huge,
+                padding: spacing.xl,
+                borderRadius: borderRadius.lg,
+                borderWidth: 0.5,
+                borderColor: colors.accent.coach,
+                backgroundColor: colors.background.secondary,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>
+                LA LECTURE DE VOTRE COACH
+              </Text>
+              <Text
+                style={{
+                  color: colors.text.primary,
+                  fontSize: 40,
+                  fontWeight: fontWeight.light,
+                  fontFamily: 'Menlo',
+                  marginTop: spacing.sm,
+                }}
+              >
+                {reading}%
+              </Text>
+              {w.note ? (
+                <Text
+                  style={{
+                    color: colors.text.secondary,
+                    fontSize: fontSize.caption,
+                    fontStyle: 'italic',
+                    textAlign: 'center',
+                    marginTop: spacing.sm,
+                    lineHeight: fontSize.caption * 1.5,
+                  }}
+                >
+                  « {w.note} »
+                </Text>
+              ) : null}
+              <Text
+                style={{
+                  color: colors.text.tertiary,
+                  fontSize: fontSize.caption,
+                  textAlign: 'center',
+                  marginTop: spacing.sm,
+                }}
+              >
+                La grille de lecture de votre coach, à côté de la marge OXV — pas à sa place.
+              </Text>
+            </FadeInSection>
+          );
+        })}
 
         <View style={{ gap: spacing.md }}>
           {NAV_TARGETS.map((target, i) => (
