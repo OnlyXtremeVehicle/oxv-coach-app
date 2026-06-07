@@ -1,14 +1,15 @@
 /**
- * Écran Amis pilotes — gestion des amitiés pour le Duel pédagogique.
+ * Écran Amis pilotes — gestion des amitiés pour la vue Côte à côte.
  *
  * 3 sections :
  *   1. Ajouter un ami (recherche par @handle)
  *   2. Demandes reçues (accept / decline)
- *   3. Mes amis (tap → écran duel, swipe → révoquer)
+ *   3. Mes amis (toucher → écran côte à côte, swipe → révoquer)
  *   4. Demandes envoyées (révoquer si attente trop longue)
  *
  * Doctrine : pas de notion de "score d'amitié", pas de classement, pas
- * de notifications agressives. Juste une liste sobre.
+ * de notifications agressives. Juste une liste sobre. La comparaison
+ * entre amis est un partage volontaire entre copains, pas du coaching.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -196,7 +197,7 @@ export default function AmisScreen() {
               <FriendRow
                 key={f.friendshipId}
                 entry={f}
-                onPress={() => router.push(`/(app)/duel/${f.friendId}` as never)}
+                onPress={() => router.push(`/(app)/cote-a-cote/${f.friendId}` as never)}
                 actions={[
                   {
                     label: 'Révoquer',

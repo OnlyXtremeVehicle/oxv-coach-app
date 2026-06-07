@@ -1,14 +1,19 @@
 /**
- * Écran Duel pédagogique — comparaison côte à côte avec un ami pilote.
+ * Écran Côte à côte — comparaison amicale entre deux copains pilotes.
+ *
+ * Ce n'est PAS du coaching ni un classement : c'est un partage entre amis
+ * qui ont chacun opt-in. Deux pilotes consentants regardent leurs chiffres
+ * l'un à côté de l'autre, par jeu, sans hiérarchie.
  *
  * 2 modes au choix :
  *   1. SNAPSHOT  — 1 session vs 1 session (sélecteur des 2 côtés)
  *   2. AGRÉGÉ    — moyenne + best des N dernières sessions des 2
  *
- * Doctrine OXV :
- *   - PAS DE GAGNANT DÉSIGNÉ. Pas de badge, pas de "vainqueur", pas de %.
- *   - Juste les chiffres côte à côte, neutres.
- *   - Phrase manifeste en bas : « Pas de gagnant. Juste de quoi observer. »
+ * Doctrine OXV Mirror :
+ *   - PAS DE GAGNANT DÉSIGNÉ. Pas de badge, pas de "vainqueur".
+ *   - Pas de conseil, pas d'interprétation : l'app montre, elle ne juge pas.
+ *   - Juste les chiffres côte à côte, neutres, entre deux copains.
+ *   - Phrase manifeste en bas : « Entre copains. Pas de classement. »
  *
  * Sécurité : 100% RLS (migration 0027). Si l'ami a révoqué l'amitié
  * pendant qu'on est sur l'écran, le fetch retourne [] et on tombe sur
@@ -170,7 +175,7 @@ export default function DuelScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>DUEL PÉDAGOGIQUE</Text>
+        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>CÔTE À CÔTE</Text>
         <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
           Vous & {friendDisplayName}
         </Text>
@@ -212,7 +217,7 @@ export default function DuelScreen() {
             },
           ]}
         >
-          Pas de gagnant. Juste de quoi observer.
+          Entre copains. Pas de classement.
         </Text>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
