@@ -6,8 +6,7 @@
  * tournages, expériences chez l'hôte. Chaque point porte ses infos
  * dédiées (adresse, e-mail, lien direct, détail événement).
  *
- * La carte interactive (react-native-maps) arrive dans la PR §7.2 — un
- * CTA « Voir sur la carte » sera branché ici.
+ * Un CTA « Voir sur la carte » ouvre la vue carte interactive (§7.2).
  *
  * Doctrine : aucune mécanique de classement / gamification. Liste sobre.
  */
@@ -64,9 +63,36 @@ export default function SocialScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>OXV SOCIAL</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
+        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.lg }]}>
           Le territoire OXV.
         </Text>
+
+        {/* CTA carte interactive (§7.2) — visible s'il y a des points */}
+        {pings.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/(app)/social-carte' as never)}
+            style={({ pressed }) => ({
+              marginBottom: spacing.xl,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.red,
+              alignItems: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.red,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Voir sur la carte
+            </Text>
+          </Pressable>
+        ) : null}
 
         {pings.length === 0 ? (
           <View
