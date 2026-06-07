@@ -225,7 +225,7 @@ export default function BilanScreen() {
           </Pressable>
         ) : null}
 
-        {/* CTA Duel pédagogique — comparer avec un ami */}
+        {/* CTA Côte à côte — comparer avec un copain (entre amis, pas du coaching) */}
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/(app)/amis' as never)}
@@ -246,7 +246,7 @@ export default function BilanScreen() {
               fontWeight: fontWeight.regular,
             }}
           >
-            Comparer avec un ami
+            Comparer avec un copain
           </Text>
         </Pressable>
 
