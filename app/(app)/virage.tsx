@@ -35,6 +35,8 @@ import {
   type CoachAnnotation,
   listVisibleAnnotationsForCorner,
 } from '@/services/coachAnnotationsService';
+import { type CoachCornerReference, compareSpeedToReference } from '@/services/coachReferenceLogic';
+import { listCoachReferencesForCorner } from '@/services/coachReferenceService';
 import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
@@ -48,6 +50,7 @@ export default function VirageScreen() {
 
   const [deepDive, setDeepDive] = useState<CornerDeepDive | null>(null);
   const [annotations, setAnnotations] = useState<CoachAnnotation[]>([]);
+  const [coachReferences, setCoachReferences] = useState<CoachCornerReference[]>([]);
   const [sessionPilotId, setSessionPilotId] = useState<string | null>(null);
   const profile = useAuthStore((s) => s.profile);
   const isCoach = profile?.role === 'coach' || profile?.role === 'admin';
@@ -76,6 +79,19 @@ export default function VirageScreen() {
       cancelled = true;
     };
   }, [profile?.id, corner, params.sessionId]);
+
+  // Repères du coach pour ce virage (§10.3c-A). RLS : le pilote voit ceux
+  // de ses coachs consentis ; le coach voit les siens.
+  useEffect(() => {
+    if (!corner) return;
+    let cancelled = false;
+    listCoachReferencesForCorner(corner.index).then((rows) => {
+      if (!cancelled) setCoachReferences(rows);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [corner]);
 
   // Côté coach : récupère l'id du pilote propriétaire de la session
   // pour pouvoir l'annoter. RLS protège (un coach ne lit que les sessions
@@ -293,6 +309,23 @@ export default function VirageScreen() {
           </Section>
         ) : null}
 
+        {/* Repères du coach (§10.3c-A) — superposés, étiquetés, factuels. */}
+        {coachReferences.length > 0 ? (
+          <Section
+            eyebrow={coachReferences.length > 1 ? 'REPÈRES DE VOS COACHS' : 'REPÈRE DE VOTRE COACH'}
+          >
+            <View style={{ gap: spacing.sm }}>
+              {coachReferences.map((ref) => (
+                <CoachReferenceCard
+                  key={ref.id}
+                  reference={ref}
+                  apexKmh={stats?.apexSpeedKmh ?? null}
+                />
+              ))}
+            </View>
+          </Section>
+        ) : null}
+
         {/* Question ouverte — doctrine */}
         <View style={{ marginBottom: spacing.xxxl }}>
           <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>QUESTION</Text>
@@ -451,6 +484,60 @@ function NavBtn({ label, onPress }: { label: string; onPress: () => void }) {
     >
       <Text style={{ color: colors.text.primary, fontSize: fontSize.caption }}>{label}</Text>
     </Pressable>
+  );
+}
+
+function CoachReferenceCard({
+  reference,
+  apexKmh,
+}: {
+  reference: CoachCornerReference;
+  apexKmh: number | null;
+}) {
+  const speedCmp =
+    reference.targetSpeedKmh != null
+      ? compareSpeedToReference(apexKmh, reference.targetSpeedKmh)
+      : null;
+
+  return (
+    <View
+      style={{
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        borderWidth: 0.5,
+        borderColor: colors.accent.coach,
+        backgroundColor: colors.background.secondary,
+        gap: spacing.xs,
+      }}
+    >
+      {reference.brakingPointM != null ? (
+        <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+          Point de freinage repère : {Math.round(reference.brakingPointM)} m
+        </Text>
+      ) : null}
+      {reference.targetSpeedKmh != null ? (
+        <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+          Vitesse repère : {Math.round(reference.targetSpeedKmh)} km/h
+          {speedCmp
+            ? ` · votre apex : ${Math.round(apexKmh as number)} km/h (${
+                speedCmp.deltaKmh > 0 ? '+' : ''
+              }${speedCmp.deltaKmh})`
+            : ''}
+        </Text>
+      ) : null}
+      {reference.trajectoryNote ? (
+        <Text
+          style={{
+            color: colors.text.secondary,
+            fontSize: fontSize.caption,
+            fontStyle: 'italic',
+            lineHeight: fontSize.caption * 1.5,
+          }}
+        >
+          {reference.trajectoryNote}
+        </Text>
+      ) : null}
+    </View>
   );
 }
 

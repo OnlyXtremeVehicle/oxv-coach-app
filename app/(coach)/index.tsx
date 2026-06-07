@@ -185,6 +185,33 @@ export default function CoachHubScreen() {
           </>
         )}
 
+        {/* Mes repères de virage (§10.3c-A) — outil pédagogique de base,
+            disponible pour tout coach. */}
+        <Link href={'/(coach)/reperes' as never} asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              marginTop: spacing.lg,
+              padding: spacing.lg,
+              borderRadius: borderRadius.md,
+              borderWidth: 0.5,
+              borderColor: colors.accent.coach,
+              alignItems: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text
+              style={{
+                color: colors.accent.coach,
+                fontSize: fontSize.body,
+                fontWeight: fontWeight.medium,
+              }}
+            >
+              Mes repères de virage
+            </Text>
+          </Pressable>
+        </Link>
+
         {/* Gestion des roulages — gatée par la permission manage_own_sessions
             (§8). Visible hors du bloc pilotes : un coach peut préparer un
             roulage avant d'avoir des pilotes à convier. */}
