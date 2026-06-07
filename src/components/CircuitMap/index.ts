@@ -29,6 +29,11 @@ export {
   type TrajectoryColorMode,
 } from './layers/TrajectoryLayer';
 export { StartArrowLayer } from './layers/StartArrowLayer';
+export {
+  BrakingPointsLayer,
+  type BrakingPointsLayerProps,
+  type BrakingMarker,
+} from './layers/BrakingPointsLayer';
 
 // Presets (compositions pré-configurées)
 export { PilotPreset, type PilotPresetProps } from './presets/PilotPreset';
