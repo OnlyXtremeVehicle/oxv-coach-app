@@ -10,7 +10,9 @@
 
 Le virage doctrinal de juin 2026 (« OXV Coach » → **OXV Mirror**, abandon du coaching au profit de la restitution factuelle) a été **intégré dans le code**. Les contradictions majeures sont résolues, les 4 piliers factuels qui remplacent le QDI sont livrés, et le risque juridique principal (debrief IA) est couvert par un garde-fou déterministe.
 
-**Restent** : la relecture juridique des 5 documents, et les gros chantiers explicitement différés post-alpha (volet social carte, permissions modulaires coach, WebView).
+**Faits depuis** : volet social (liste §7.1 + carte native §7.2), fondation permissions modulaires coach (§8.1), mesure d'audience RGPD type Plausible (§9). **Décidé** : §4 WebView écarté, l'app reste tout natif.
+
+**Restent** : application des corrections juridiques proposées (en attente validation Gabin), et le **§8 avancé** (tableau de bord business : revenus, remises dégressives, gestion des roulages) — en attente des règles commerciales de Gabin.
 
 ---
 
@@ -80,21 +82,21 @@ Le virage doctrinal de juin 2026 (« OXV Coach » → **OXV Mirror**, abandon du
 ## 3. Différé POST-alpha (gros chantiers, hors périmètre 5 juillet)
 
 ### 🟢 §7 — Volet social : carte interactive
-**Totalement absent.** Carte France/Nouvelle-Aquitaine, pings événements/partenaires/tournages/hôtes, groupes privés. Chantier ≈ 2-3 semaines. À planifier V1.1.
+- [x] **FAIT** : liste des pings (§7.1, PR #58) + carte interactive native `react-native-maps` (§7.2, PR #59). Pings événements OXV/partenaires/soirées/tournages/hôtes, réservés aux membres validés (RLS `is_validated_member`, migration 0033). Fallback liste en Expo Go.
 
 ### 🟢 §8 — Espace coach : SaaS complet
-- [ ] **Permissions modulaires** à la carte (le rôle coach est binaire actuellement)
-- [ ] Gestion des roulages organisés par le coach
-- [ ] Tableau de bord business (revenus, remise dégressive -5/-10/-15 %)
+- [x] **Permissions modulaires** à la carte (PR #56) : table `coach_permissions`, helper `coach_has_permission()`, hook `useCoachPermissions`. Le rôle coach n'est plus binaire.
+- [ ] Gestion des roulages organisés par le coach — **en attente règles Gabin**
+- [ ] Tableau de bord business (revenus, remise dégressive -5/-10/-15 %) — **en attente règles Gabin**
 - [ ] Paramètres contextuels coach (niveau, objectif, matériel, météo vécue)
 - [ ] Méthodes/repères du coach appliqués à la restitution
 - [ ] Propriété partagée de la donnée enrichie (à formaliser au contrat SaaS)
 
 ### 🟢 §4 — Option B : WebView
-- [ ] Basculer garage/documents/progression en WebView vers oxvehicle.fr (actuellement tout natif). Décision d'archi à arbitrer — le natif fonctionne, la WebView réduit la maintenance double.
+- [x] **DÉCISION GABIN (2026-06-07) : tout natif, pas de WebView.** L'app reste 100 % native (garage / documents / progression compris). On conserve la cohérence UX et l'offline-first ; l'évolution de contenu passe par un build. L'option WebView est écartée.
 
 ### 🟢 §9 — Mesure d'audience
-- [ ] Solution RGPD type Plausible (actuellement Sentry seul).
+- [x] **FAIT (PR #57)** : `analyticsService.trackEvent()` vers Plausible (cookieless, sans PII, opt-out MMKV). Inactif tant que `EXPO_PUBLIC_PLAUSIBLE_DOMAIN` n'est pas renseigné.
 
 ---
 
