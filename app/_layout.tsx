@@ -120,9 +120,9 @@ export default function RootLayout() {
       // d'amis pour qu'il puisse accepter/décliner la demande.
       router.push('/(app)/amis' as never);
     } else if (data?.type === 'friend_accepted' && data.friendId) {
-      // Pilote tape la notif "X a accepté" → ouvre directement le duel
-      // pour qu'il puisse commencer la comparaison.
-      router.push(`/(app)/duel/${data.friendId}` as never);
+      // Pilote tape la notif "X a accepté" → ouvre directement la vue
+      // côte à côte pour qu'il puisse comparer avec son copain.
+      router.push(`/(app)/cote-a-cote/${data.friendId}` as never);
     }
   }, [lastNotifResponse, navState?.key]);
 

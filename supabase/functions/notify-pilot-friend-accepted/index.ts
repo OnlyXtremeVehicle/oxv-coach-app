@@ -11,7 +11,7 @@
  * Doctrine OXV :
  *   - Titre : « {prénom responder} a accepté »
  *   - Corps : « Vous pouvez désormais comparer vos bilans. »
- *   - Deep-link : /(app)/duel/{responder_id} pour ouvrir directement le duel
+ *   - Deep-link : /(app)/cote-a-cote/{responder_id} pour ouvrir la vue côte à côte
  */
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
