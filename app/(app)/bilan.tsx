@@ -38,6 +38,7 @@ interface NavTarget {
 
 const NAV_TARGETS: NavTarget[] = [
   { label: 'Signature de pilotage', href: '/(app)/signature' },
+  { label: 'Régularité', href: '/(app)/regularite' },
   { label: 'Carte du circuit', href: '/(app)/carte' },
   { label: 'Détails par virage', href: '/(app)/virage' },
   { label: 'Tour par tour', href: '/(app)/tours' },
