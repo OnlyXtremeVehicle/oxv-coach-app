@@ -14,6 +14,9 @@
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
+      },
       "ios": {
         "resourceClass": "m-medium",
         "simulator": false
@@ -21,6 +24,9 @@
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }
