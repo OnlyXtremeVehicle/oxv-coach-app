@@ -40,11 +40,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#050505"
       },
-      "config": {
-        "googleMaps": {
-          "apiKey": "REPLACE_WITH_GOOGLE_MAPS_ANDROID_API_KEY"
-        }
-      },
       "permissions": [
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
