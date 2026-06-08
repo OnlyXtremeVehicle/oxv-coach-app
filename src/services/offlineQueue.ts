@@ -40,7 +40,7 @@ function readQueue(): QueuedAction[] {
   try {
     return JSON.parse(raw) as QueuedAction[];
   } catch {
-    storage.remove(STORAGE_KEYS.OFFLINE_QUEUE);
+    storage.delete(STORAGE_KEYS.OFFLINE_QUEUE);
     return [];
   }
 }
@@ -73,7 +73,7 @@ export function getQueue(): QueuedAction[] {
 }
 
 export function clearQueue(): void {
-  storage.remove(STORAGE_KEYS.OFFLINE_QUEUE);
+  storage.delete(STORAGE_KEYS.OFFLINE_QUEUE);
 }
 
 export async function flushQueue(): Promise<{

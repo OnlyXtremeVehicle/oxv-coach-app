@@ -10,9 +10,9 @@
  * (cache de lecture, queue d'écritures idempotentes).
  */
 
-import { createMMKV } from 'react-native-mmkv';
+import { MMKV } from 'react-native-mmkv';
 
-export const storage = createMMKV({ id: 'oxv-coach-cache' });
+export const storage = new MMKV({ id: 'oxv-coach-cache' });
 
 export const STORAGE_KEYS = {
   // Cache de lecture (TTL court)
@@ -54,26 +54,26 @@ export function cacheGet<T>(key: string): T | null {
   try {
     const entry = JSON.parse(raw) as CacheEntry<T>;
     if (entry.expiresAt !== null && Date.now() > entry.expiresAt) {
-      storage.remove(key);
+      storage.delete(key);
       return null;
     }
     return entry.value;
   } catch {
-    storage.remove(key);
+    storage.delete(key);
     return null;
   }
 }
 
 export function cacheDelete(key: string): void {
-  storage.remove(key);
+  storage.delete(key);
 }
 
 /** Vide le cache de lecture, garde la file d'écritures intacte. */
 export function cacheClearReadCache(): void {
-  storage.remove(STORAGE_KEYS.LAST_SESSIONS);
-  storage.remove(STORAGE_KEYS.PROFILE);
-  storage.remove(STORAGE_KEYS.CIRCUITS);
-  storage.remove(STORAGE_KEYS.CIRCUIT_BELTOISE);
+  storage.delete(STORAGE_KEYS.LAST_SESSIONS);
+  storage.delete(STORAGE_KEYS.PROFILE);
+  storage.delete(STORAGE_KEYS.CIRCUITS);
+  storage.delete(STORAGE_KEYS.CIRCUIT_BELTOISE);
 }
 
 /** Pour les tests et la déconnexion : tout effacer. */
