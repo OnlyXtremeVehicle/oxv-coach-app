@@ -154,6 +154,8 @@ export interface CircuitTraceProps {
   role?: 'pilot' | 'coach';
   /** Hauteur fixe (px) pour un usage en héros dans une ScrollView. Sinon `flex: 1`. */
   height?: number;
+  /** Couche affichée par défaut (si disponible). Défaut : Régularité. */
+  defaultLayer?: LayerId;
 }
 
 export function CircuitTrace({
@@ -162,20 +164,21 @@ export function CircuitTrace({
   layers = PILOT_LAYERS,
   role = 'pilot',
   height,
+  defaultLayer = 'regularity',
 }: CircuitTraceProps) {
   const selectable = layers.filter(
     (id) =>
       (role === 'coach' || LAYERS[id].role === 'pilot') &&
       (id === 'geometry' || LAYERS[id].available(session))
   );
-  const [active, setActive] = useState<LayerId>(() =>
-    selectable.includes('regularity') ? 'regularity' : (selectable[0] ?? 'geometry')
-  );
-  const current: LayerId = selectable.includes(active)
-    ? active
-    : selectable.includes('regularity')
-      ? 'regularity'
-      : 'geometry';
+  const pickDefault = (): LayerId =>
+    selectable.includes(defaultLayer)
+      ? defaultLayer
+      : selectable.includes('regularity')
+        ? 'regularity'
+        : (selectable[0] ?? 'geometry');
+  const [active, setActive] = useState<LayerId>(pickDefault);
+  const current: LayerId = selectable.includes(active) ? active : pickDefault();
 
   const coloring = useMemo(
     () =>

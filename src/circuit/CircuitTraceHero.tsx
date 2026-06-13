@@ -19,14 +19,17 @@ import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { CircuitTrace } from './CircuitTrace';
 import { generateCircuit } from './circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from './hauteSaintonge';
+import type { LayerId } from './layers';
 import type { SessionInsights } from './sessionInsights';
 
 export interface CircuitTraceHeroProps {
   sessionId?: string;
   height?: number;
+  /** Couche affichée par défaut (selon l'écran : Régularité en 20.1, Vitesse d'apex en 20.2). */
+  defaultLayer?: LayerId;
 }
 
-export function CircuitTraceHero({ sessionId, height = 340 }: CircuitTraceHeroProps) {
+export function CircuitTraceHero({ sessionId, height = 340, defaultLayer }: CircuitTraceHeroProps) {
   const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
   const [session, setSession] = useState<SessionInsights | null>(null);
   const [loading, setLoading] = useState<boolean>(!!sessionId);
@@ -55,7 +58,13 @@ export function CircuitTraceHero({ sessionId, height = 340 }: CircuitTraceHeroPr
 
   return (
     <View style={[styles.wrapper, { height }]}>
-      <CircuitTrace circuit={circuit} session={session} role="pilot" height={height} />
+      <CircuitTrace
+        circuit={circuit}
+        session={session}
+        role="pilot"
+        height={height}
+        defaultLayer={defaultLayer}
+      />
       {loading ? (
         <View style={styles.overlay} pointerEvents="none">
           <ActivityIndicator color="#A1A1AA" />

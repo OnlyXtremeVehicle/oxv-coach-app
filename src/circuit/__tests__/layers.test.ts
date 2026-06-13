@@ -49,6 +49,14 @@ describe('colorByCorner sur la démo 7 virages', () => {
     expect(byCorner[6]!.r).toBeGreaterThan(byCorner[6]!.b); // corner_7 (+9 %) rouge
   });
 
+  it('Anatomie freinage : freinage le plus court = vert, le plus long = rouge', () => {
+    const { byCorner, min, max } = colorByCorner('brakeDist', DEMO_SESSION_INSIGHTS, 7);
+    expect(min).toBe(60); // corner_3
+    expect(max).toBe(150); // corner_5
+    expect(byCorner[2]!.g).toBeGreaterThan(byCorner[2]!.r); // corner_3 (60 m) vert
+    expect(byCorner[4]!.r).toBeGreaterThan(byCorner[4]!.g); // corner_5 (150 m) rouge
+  });
+
   it('couche géométrie : aucune couleur de virage (coloriage = courbure ailleurs)', () => {
     const { byCorner, min, max } = colorByCorner('geometry', DEMO_SESSION_INSIGHTS, 7);
     expect(byCorner.every((c) => c === null)).toBe(true);
