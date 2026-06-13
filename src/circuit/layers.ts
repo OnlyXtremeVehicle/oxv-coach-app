@@ -18,8 +18,9 @@ export type LayerId =
   | 'apexSpeed'
   | 'brakeDist'
   | 'chassisBalance'
-  | 'loadTransfer';
-export type LayerKind = 'geometry' | 'sequential' | 'diverging';
+  | 'loadTransfer'
+  | 'timeLoss';
+export type LayerKind = 'geometry' | 'sequential' | 'diverging' | 'sector';
 
 export interface RGB {
   r: number;
@@ -144,6 +145,16 @@ export const LAYERS: Record<LayerId, LayerDescriptor> = {
     valueForCorner: (s, i) => recordValue(s.load_transfer, i),
     available: (s) => !!s && recordAvailable(s.load_transfer),
   },
+  // Couche COACH : comparative/interprétative, attribuée au coach (badge or).
+  timeLoss: {
+    id: 'timeLoss',
+    label: 'Perte de temps (par secteur)',
+    role: 'coach',
+    kind: 'sector',
+    unit: '%',
+    valueForCorner: () => null, // colorée par secteur, pas par virage (cf. §5.2)
+    available: (s) => !!s && !!s.ideal_lap && s.ideal_lap.loss_by_sector_pct.length > 0,
+  },
 };
 
 /** Couches accessibles au pilote (factuelles, ordre du sélecteur). */
@@ -155,6 +166,9 @@ export const PILOT_LAYERS: LayerId[] = [
   'chassisBalance',
   'loadTransfer',
 ];
+
+/** Couches accessibles au coach : pilote + comparatives/interprétatives (attribuées coach). */
+export const COACH_LAYERS: LayerId[] = [...PILOT_LAYERS, 'timeLoss'];
 
 // Sens de normalisation des couches séquentielles : true = valeur haute → vert.
 // apexSpeed : vitesse élevée = vert. régularité/transfert : valeur faible = vert.
@@ -210,4 +224,22 @@ export function sectionCornerMap(circuit: Circuit): (number | null)[] {
     for (let i = c.startIdx; i < c.endIdx && i < map.length; i++) map[i] = c.index;
   }
   return map;
+}
+
+/**
+ * Couche « Perte de temps » : colore le ruban PAR SECTEUR (découpage en N segments
+ * égaux d'index), pas par virage (réserve §5.2 — tant que secteur↔virages n'est pas
+ * calé). 0 % de perte = vert, perte maximale = rouge. Renvoie une couleur par section.
+ */
+export function colorBySector(session: SessionInsights | null, nSections: number): (RGB | null)[] {
+  const out: (RGB | null)[] = new Array<RGB | null>(nSections).fill(null);
+  const loss = session?.ideal_lap?.loss_by_sector_pct;
+  if (!loss || loss.length === 0 || nSections === 0) return out;
+  const maxLoss = Math.max(...loss) || 1;
+  const nSectors = loss.length;
+  for (let i = 0; i < nSections; i++) {
+    const sector = Math.min(nSectors - 1, Math.floor((i / nSections) * nSectors));
+    out[i] = sequentialColor(loss[sector] / maxLoss);
+  }
+  return out;
 }

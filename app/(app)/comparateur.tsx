@@ -17,6 +17,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
+import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { marginLabelOf, marginZoneOf } from '@/types/domain';
@@ -104,6 +105,17 @@ export default function ComparateurScreen() {
         ) : (
           <>
             <DeltaPanel a={rowA} b={rowB} />
+
+            {/* Lecture coach (specs v4 §05 §4.3) : où le temps se loge sur le tracé
+                (perte de temps par secteur), couche comparative attribuée au coach
+                (badge + liseré or). Sur VOS propres tours — aucune comparaison
+                inter-pilotes ici, donc pas d'exposition de données d'un tiers. */}
+            {selectedA ? (
+              <View style={{ marginTop: spacing.xl, marginBottom: spacing.xl }}>
+                <CircuitTraceHero sessionId={selectedA} role="coach" defaultLayer="timeLoss" />
+              </View>
+            ) : null}
+
             <SessionPicker
               label="Référence A"
               sessions={filtered}

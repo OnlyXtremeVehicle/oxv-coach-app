@@ -27,6 +27,17 @@ export interface DataQuality {
   laps_detected: number;
 }
 
+/** Tour idéal composé + répartition du temps perdu PAR SECTEUR (pas par virage). */
+export interface IdealLap {
+  ideal_time_s: number;
+  real_best_s: number;
+  gap_s: number;
+  best_lap: number;
+  /** Pourcentage du temps perdu, secteur par secteur (N secteurs temporels égaux). */
+  loss_by_sector_pct: number[];
+  worst_sector: number;
+}
+
 export interface SessionInsights {
   telemetry_session_id: string;
   user_id: string;
@@ -37,6 +48,7 @@ export interface SessionInsights {
   dispersion: CornerRecord | null;
   chassis_balance: CornerRecord | null;
   load_transfer: CornerRecord | null;
+  ideal_lap: IdealLap | null;
   data_quality: DataQuality | null;
 }
 
@@ -87,6 +99,14 @@ export const DEMO_SESSION_INSIGHTS: SessionInsights = {
     corner_5: 0.6,
     corner_6: 0.4,
     corner_7: 0.52,
+  },
+  ideal_lap: {
+    ideal_time_s: 94.3,
+    real_best_s: 95.8,
+    gap_s: 1.5,
+    best_lap: 6,
+    loss_by_sector_pct: [5, 0, 12, 20, 0, 8, 0, 15, 10, 0, 5, 20],
+    worst_sector: 4,
   },
   data_quality: {
     frames_used: 11800,

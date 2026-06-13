@@ -1,8 +1,11 @@
 import { generateCircuit } from '../circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '../hauteSaintonge';
 import {
+  COACH_LAYERS,
   LAYERS,
+  PILOT_LAYERS,
   colorByCorner,
+  colorBySector,
   divergingColor,
   sectionCornerMap,
   sequentialColor,
@@ -77,6 +80,34 @@ describe('disponibilité des couches (état vide honnête)', () => {
 
   it('la couche géométrie est toujours disponible', () => {
     expect(LAYERS.geometry.available(null)).toBe(true);
+  });
+});
+
+describe('couche coach — Perte de temps (par secteur)', () => {
+  it('timeLoss est une couche coach, absente des couches pilote', () => {
+    expect(COACH_LAYERS).toContain('timeLoss');
+    expect(PILOT_LAYERS).not.toContain('timeLoss');
+    expect(LAYERS.timeLoss.role).toBe('coach');
+  });
+
+  it('disponible si ideal_lap.loss_by_sector_pct présent', () => {
+    expect(LAYERS.timeLoss.available(DEMO_SESSION_INSIGHTS)).toBe(true);
+    expect(LAYERS.timeLoss.available(null)).toBe(false);
+    expect(LAYERS.timeLoss.available({ ...DEMO_SESSION_INSIGHTS, ideal_lap: null })).toBe(false);
+  });
+
+  it('colorBySector : secteur sans perte = vert, secteur de perte max = rouge', () => {
+    // loss = [5,0,12,20,0,8,0,15,10,0,5,20] (12 secteurs) ; 120 sections → 10/secteur.
+    const cols = colorBySector(DEMO_SESSION_INSIGHTS, 120);
+    expect(cols).toHaveLength(120);
+    const s1 = cols[15]!; // secteur 1 : 0 % de perte
+    const s3 = cols[35]!; // secteur 3 : 20 % (perte max)
+    expect(s1.g).toBeGreaterThan(s1.r); // 0 % → vert
+    expect(s3.r).toBeGreaterThan(s3.g); // max → rouge
+  });
+
+  it('colorBySector vide sans ideal_lap', () => {
+    expect(colorBySector(null, 10).every((c) => c === null)).toBe(true);
   });
 });
 
