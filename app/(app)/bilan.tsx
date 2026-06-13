@@ -271,7 +271,10 @@ export default function BilanScreen() {
             VOTRE MEILLEUR TOUR
           </Text>
           <Text
-            style={[typography.heroNumber, { color: colors.text.primary, marginBottom: spacing.lg }]}
+            style={[
+              typography.heroNumber,
+              { color: colors.text.primary, marginBottom: spacing.lg },
+            ]}
           >
             {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
           </Text>
@@ -311,8 +314,8 @@ export default function BilanScreen() {
                       marginTop: spacing.md,
                     }}
                   >
-                    {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par rapport à
-                    votre dernière venue.
+                    {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par rapport
+                    à votre dernière venue.
                   </Text>
                 ) : null}
               </>
