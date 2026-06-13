@@ -19,6 +19,7 @@ import { Canvas, useFrame } from '@react-three/fiber/native';
 import * as THREE from 'three';
 
 import { curvature, type Circuit, type Point } from './circuitGenerator';
+import { cornerFacts } from './cornerFacts';
 import {
   LAYERS,
   PILOT_LAYERS,
@@ -181,6 +182,9 @@ export function CircuitTrace({
   const [active, setActive] = useState<LayerId>(pickDefault);
   const current: LayerId = selectable.includes(active) ? active : pickDefault();
 
+  const [selectedCorner, setSelectedCorner] = useState<number | null>(null);
+  const facts = selectedCorner != null ? cornerFacts(session, selectedCorner) : [];
+
   const layer = LAYERS[current];
   const layerKind = layer.kind;
   const isCoachLayer = layer.role === 'coach';
@@ -251,6 +255,42 @@ export function CircuitTrace({
         </View>
       )}
 
+      {/* Sélecteur de virage (tap → détail factuel, §2). */}
+      {circuit.corners.length > 0 ? (
+        <View style={styles.cornerRow}>
+          {circuit.corners.map((c) => {
+            const on = c.index === selectedCorner;
+            return (
+              <Pressable
+                key={c.index}
+                onPress={() => setSelectedCorner(on ? null : c.index)}
+                accessibilityRole="button"
+                accessibilityLabel={`Virage ${c.index}`}
+                accessibilityState={{ selected: on }}
+                style={[styles.cornerChip, on && styles.cornerChipOn]}
+              >
+                <Text style={[styles.cornerChipText, on && styles.cornerChipTextOn]}>
+                  {c.index}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
+      {/* Détail factuel du virage sélectionné — aucun conseil (doctrine Mirror). */}
+      {selectedCorner != null && facts.length > 0 ? (
+        <View style={styles.factPanel} pointerEvents="none">
+          <Text style={styles.factTitle}>VIRAGE {selectedCorner}</Text>
+          {facts.map((f) => (
+            <View key={f.label} style={styles.factRow}>
+              <Text style={styles.factLabel}>{f.label}</Text>
+              <Text style={styles.factValue}>{f.value}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
       <View style={styles.chips}>
         {selectable.map((id) => {
           const on = id === current;
@@ -312,4 +352,42 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 4,
   },
+  cornerRow: {
+    position: 'absolute',
+    top: 24,
+    left: 24,
+    maxWidth: '60%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  cornerChip: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(18,18,18,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cornerChipOn: { borderColor: '#C4A459', backgroundColor: 'rgba(196,164,89,0.18)' },
+  cornerChipText: { color: '#A1A1AA', fontSize: 12, fontFamily: 'Menlo' },
+  cornerChipTextOn: { color: '#F8F9FA' },
+  factPanel: {
+    position: 'absolute',
+    top: 64,
+    left: 24,
+    maxWidth: 280,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(10,10,10,0.82)',
+    gap: 6,
+  },
+  factTitle: { color: '#A1A1AA', fontSize: 11, letterSpacing: 2, marginBottom: 2 },
+  factRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 16 },
+  factLabel: { color: '#A1A1AA', fontSize: 12 },
+  factValue: { color: '#F8F9FA', fontSize: 12, fontFamily: 'Menlo' },
 });
