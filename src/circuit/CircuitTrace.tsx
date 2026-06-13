@@ -23,6 +23,7 @@ import {
   LAYERS,
   PILOT_LAYERS,
   colorByCorner,
+  colorBySector,
   sectionCornerMap,
   type LayerId,
   type RGB,
@@ -180,34 +181,59 @@ export function CircuitTrace({
   const [active, setActive] = useState<LayerId>(pickDefault);
   const current: LayerId = selectable.includes(active) ? active : pickDefault();
 
+  const layer = LAYERS[current];
+  const layerKind = layer.kind;
+  const isCoachLayer = layer.role === 'coach';
+
   const coloring = useMemo(
     () =>
-      current === 'geometry' || !session
+      current === 'geometry' || layerKind === 'sector' || !session
         ? null
         : colorByCorner(current, session, circuit.corners.length),
-    [current, session, circuit]
+    [current, layerKind, session, circuit]
   );
 
   const colors = useMemo(() => {
     const N = circuit.ribbon.length;
+    const steel = rgbToThree(STEEL).multiplyScalar(0.5);
+    // Couche coach « Perte de temps » : coloriage par secteur (cf. §5.2).
+    if (layerKind === 'sector' && session) {
+      const bySector = colorBySector(session, N);
+      return Array.from({ length: N }, (_, i) => {
+        const rgb = bySector[i];
+        return rgb ? rgbToThree(rgb) : steel.clone();
+      });
+    }
     if (!coloring) {
       const radii = localRadii(circuit.centerline);
       return Array.from({ length: N }, (_, i) => radiusToColor(radii[i]));
     }
     const map = sectionCornerMap(circuit);
-    const steel = rgbToThree(STEEL).multiplyScalar(0.5);
     return Array.from({ length: N }, (_, i) => {
       const cidx = map[i];
       const rgb = cidx ? coloring.byCorner[cidx - 1] : null;
       return rgb ? rgbToThree(rgb) : steel.clone();
     });
-  }, [circuit, coloring]);
+  }, [circuit, coloring, layerKind, session]);
 
   const { group, extent } = useMemo(() => buildScene(circuit, colors), [circuit, colors]);
-  const layer = LAYERS[current];
+
+  // Étendue de la légende (selon le type de couche).
+  let legendRange: string | null = null;
+  if (layerKind === 'sector' && session?.ideal_lap) {
+    legendRange = `0 – ${Math.max(...session.ideal_lap.loss_by_sector_pct)} ${layer.unit}`;
+  } else if (coloring && coloring.min !== null && coloring.max !== null) {
+    legendRange = `${coloring.min} – ${coloring.max} ${layer.unit}`;
+  }
 
   return (
-    <View style={[styles.container, height != null && { flex: 0, height }]}>
+    <View
+      style={[
+        styles.container,
+        height != null && { flex: 0, height },
+        isCoachLayer && styles.coachOutline,
+      ]}
+    >
       <Canvas camera={{ fov: 50, near: 1, far: 5000, position: [0, extent, extent * 2] }}>
         <color attach="background" args={[NIGHT]} />
         <fog attach="fog" args={[NIGHT, extent * 2, extent * 6]} />
@@ -215,14 +241,13 @@ export function CircuitTrace({
         <Rig extent={extent} />
       </Canvas>
 
-      {current !== 'geometry' && coloring && (
+      {current !== 'geometry' && (
         <View style={styles.legend} pointerEvents="none">
-          <Text style={styles.legendLabel}>{layer.label.toUpperCase()}</Text>
-          {coloring.min !== null && coloring.max !== null && (
-            <Text style={styles.legendRange}>
-              {coloring.min} – {coloring.max} {layer.unit}
-            </Text>
-          )}
+          {isCoachLayer ? <Text style={styles.coachBadge}>COACH</Text> : null}
+          <Text style={[styles.legendLabel, isCoachLayer && styles.legendLabelCoach]}>
+            {layer.label.toUpperCase()}
+          </Text>
+          {legendRange ? <Text style={styles.legendRange}>{legendRange}</Text> : null}
         </View>
       )}
 
@@ -272,5 +297,19 @@ const styles = StyleSheet.create({
   chipTextOn: { color: '#F8F9FA' },
   legend: { position: 'absolute', top: 24, right: 24, alignItems: 'flex-end' },
   legendLabel: { color: '#A1A1AA', fontSize: 11, letterSpacing: 2 },
+  legendLabelCoach: { color: '#C4A459' },
   legendRange: { color: '#F8F9FA', fontSize: 13, marginTop: 4 },
+  // Attribution coach (doctrine 06 §2) : badge + liseré Or Heritage --oxv-gold.
+  coachOutline: { borderWidth: 1, borderColor: '#C4A459' },
+  coachBadge: {
+    color: '#0A0A0A',
+    backgroundColor: '#C4A459',
+    fontSize: 10,
+    letterSpacing: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
 });

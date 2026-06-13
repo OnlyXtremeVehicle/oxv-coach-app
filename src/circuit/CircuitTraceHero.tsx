@@ -19,7 +19,7 @@ import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { CircuitTrace } from './CircuitTrace';
 import { generateCircuit } from './circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from './hauteSaintonge';
-import type { LayerId } from './layers';
+import { COACH_LAYERS, PILOT_LAYERS, type LayerId } from './layers';
 import type { SessionInsights } from './sessionInsights';
 
 export interface CircuitTraceHeroProps {
@@ -27,9 +27,16 @@ export interface CircuitTraceHeroProps {
   height?: number;
   /** Couche affichée par défaut (selon l'écran : Régularité en 20.1, Vitesse d'apex en 20.2). */
   defaultLayer?: LayerId;
+  /** Rôle : 'coach' débloque les couches comparatives attribuées au coach. */
+  role?: 'pilot' | 'coach';
 }
 
-export function CircuitTraceHero({ sessionId, height = 340, defaultLayer }: CircuitTraceHeroProps) {
+export function CircuitTraceHero({
+  sessionId,
+  height = 340,
+  defaultLayer,
+  role = 'pilot',
+}: CircuitTraceHeroProps) {
   const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
   const [session, setSession] = useState<SessionInsights | null>(null);
   const [loading, setLoading] = useState<boolean>(!!sessionId);
@@ -61,7 +68,8 @@ export function CircuitTraceHero({ sessionId, height = 340, defaultLayer }: Circ
       <CircuitTrace
         circuit={circuit}
         session={session}
-        role="pilot"
+        role={role}
+        layers={role === 'coach' ? COACH_LAYERS : PILOT_LAYERS}
         height={height}
         defaultLayer={defaultLayer}
       />
