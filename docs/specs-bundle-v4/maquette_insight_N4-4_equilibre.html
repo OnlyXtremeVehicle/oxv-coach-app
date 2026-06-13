@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Équilibre châssis (N4.4)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--night-card:#121212;--cream:#F8F9FA;--cream-soft:#E5E5E5;--cream-mute:#A1A1AA;
+  --cream-line:rgba(255,255,255,0.05);--cream-edge:rgba(255,255,255,0.15);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;--oxv-gold:#C4A459;
+  --qdi-trajectory:#E63946;--qdi-fluidity:#FFB703;--qdi-braking:#60A5FA;--qdi-acceleration:#4ADE80;--qdi-regularity:#C084FC;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+  --bento-bg:rgba(18,18,18,0.7);--bento-border:rgba(255,255,255,0.05);--bento-radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+.phone{width:390px;flex-shrink:0;background:var(--night);border-radius:44px;border:1px solid var(--cream-edge);
+  overflow:hidden;position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.notch{height:34px;display:flex;align-items:center;justify-content:center;}
+.notch::after{content:'';width:120px;height:7px;background:#000;border-radius:99px;border:1px solid rgba(255,255,255,0.08);}
+.screen{height:780px;overflow-y:auto;overflow-x:hidden;padding:0 22px 40px;}
+.screen::-webkit-scrollbar{width:0;}
+.appbar{display:flex;align-items:center;gap:14px;padding:14px 0 18px;position:sticky;top:0;
+  background:linear-gradient(var(--night) 70%,transparent);z-index:5;}
+.back{color:var(--cream-mute);font-size:20px;}
+.appbar-t{font-family:var(--display);font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--cream-mute);
+  display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--cream-edge);}
+.eyebrow b{color:var(--copper-glow);font-weight:400;letter-spacing:0.26em;}
+.lead{font-family:var(--sans);font-weight:300;font-size:15px;line-height:1.5;color:var(--cream-soft);margin-bottom:18px;letter-spacing:-0.01em;}
+.lead b{font-family:var(--display);font-style:italic;font-weight:700;color:var(--cream);}
+
+.trace-card{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);padding:16px 14px 12px;margin-bottom:8px;}
+.trace-cap{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:10px;}
+.legend{display:flex;gap:14px;margin-top:8px;padding-top:11px;border-top:1px solid var(--cream-line);flex-wrap:wrap;}
+.legw{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8.5px;letter-spacing:0.06em;color:var(--cream-mute);text-transform:uppercase;}
+.sw{width:14px;height:3px;border-radius:2px;}
+.hint{font-family:var(--mono);font-size:8.5px;color:var(--cream-mute);text-align:center;letter-spacing:0.04em;margin-bottom:18px;opacity:0.7;}
+
+/* balance par virage : barre centrée (sous-virage gauche / survirage droite) */
+.bal{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);padding:16px 16px 14px;margin-bottom:14px;}
+.bal .h{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:4px;}
+.bal .axis{display:flex;justify-content:space-between;font-family:var(--mono);font-size:8px;color:var(--cream-mute);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;}
+.brow{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.brow .lab{font-family:var(--mono);font-size:10px;color:var(--cream-soft);width:26px;flex-shrink:0;}
+.brow .mid{flex:1;height:18px;position:relative;background:rgba(255,255,255,0.03);border-radius:4px;}
+.brow .center{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,0.2);}
+.brow .barv{position:absolute;top:3px;bottom:3px;border-radius:3px;}
+.brow .v{font-family:var(--mono);font-size:9px;width:48px;flex-shrink:0;text-align:right;}
+
+.fact{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);padding:18px 16px;margin-bottom:14px;position:relative;overflow:hidden;}
+.fact::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--qdi-regularity);}
+.fact .stmt{font-family:var(--sans);font-weight:300;font-size:16px;line-height:1.5;color:var(--cream);}
+.fact .stmt b{font-family:var(--display);font-weight:700;font-style:italic;color:var(--cream);font-size:16px;}
+.fact .stmt .hot{color:var(--qdi-regularity);font-weight:400;font-style:normal;}
+
+.source{display:flex;align-items:flex-start;gap:10px;margin-bottom:18px;padding:11px 13px;background:rgba(255,255,255,0.025);border-radius:8px;}
+.source .ic{color:var(--cream-mute);font-size:14px;font-style:normal;margin-top:1px;}
+.source .tx{font-family:var(--sans);font-size:11px;font-weight:300;color:var(--cream-mute);line-height:1.45;}
+.source .tx b{color:var(--cream-soft);font-weight:400;}
+
+.guard{border:1px dashed rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;margin-bottom:18px;}
+.guard .h{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:6px;}
+.guard .no{font-family:var(--sans);font-size:12.5px;font-style:italic;color:var(--cream-mute);line-height:1.5;text-decoration:line-through;text-decoration-color:rgba(230,57,70,0.5);}
+
+.doctrine{text-align:center;padding:4px 14px;}
+.doctrine p{font-family:var(--sans);font-style:italic;font-size:12px;font-weight:300;color:var(--cream-mute);line-height:1.6;}
+
+.notes{width:340px;flex-shrink:0;padding-top:20px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+@media(max-width:820px){.notes{width:390px;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="appbar"><i class="back">‹</i><span class="appbar-t">Signature · Équilibre</span></div>
+    <div class="eyebrow"><b>Niveau 4</b> · Rotation réelle vs trajectoire</div>
+    <div class="lead">Deux capteurs, deux vérités : comment votre voiture <b>pivote</b> (gyroscope) face à où elle <b>va</b> (GPS). L'écart, c'est l'équilibre.</div>
+
+    <div class="trace-card">
+      <div class="trace-cap">Virage 7 · rotation réelle vs géométrique</div>
+      <svg width="100%" height="135" viewBox="0 0 320 135" role="img" aria-label="Deux courbes de taux de rotation au virage 7 ; la rotation réelle dépasse la géométrique en milieu de courbe, signe de survirage">
+        <line x1="0" y1="118" x2="320" y2="118" stroke="rgba(255,255,255,0.10)" stroke-width="1"/>
+        <text x="4" y="20" font-family="JetBrains Mono,monospace" font-size="8" fill="#A1A1AA">deg/s</text>
+        <!-- zone d'écart (survirage) hachurée entre les deux courbes, milieu de courbe -->
+        <path d="M120,74 C150,40 175,38 205,52 L205,68 C175,54 150,56 120,86 Z" fill="rgba(192,132,252,0.16)"/>
+        <!-- yaw géométrique (GPS) : cloche douce -->
+        <path d="M20,116 C70,108 95,96 120,86 C150,66 175,64 205,68 C240,73 270,104 300,116"
+          fill="none" stroke="var(--qdi-braking)" stroke-width="2"/>
+        <!-- yaw réel (gyro) : cloche plus haute et pointue au milieu -->
+        <path d="M20,116 C70,106 95,92 120,74 C150,40 175,38 205,52 C240,64 270,102 300,116"
+          fill="none" stroke="var(--qdi-regularity)" stroke-width="2"/>
+        <text x="150" y="34" font-family="JetBrains Mono,monospace" font-size="8.5" fill="#C084FC">+18 %</text>
+        <!-- repères entrée/corde/sortie -->
+        <text x="22" y="132" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#A1A1AA">ENTRÉE</text>
+        <text x="150" y="132" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#A1A1AA">CORDE</text>
+        <text x="270" y="132" font-family="JetBrains Mono,monospace" font-size="7.5" fill="#A1A1AA">SORTIE</text>
+      </svg>
+      <div class="legend">
+        <div class="legw"><span class="sw" style="background:var(--qdi-regularity)"></span>Rotation réelle · gyroscope</div>
+        <div class="legw"><span class="sw" style="background:var(--qdi-braking)"></span>Rotation géométrique · GPS</div>
+      </div>
+    </div>
+    <div class="hint">↑ la voiture pivote plus que la trajectoire ne l'impose</div>
+
+    <div class="bal">
+      <div class="h">Signature par virage</div>
+      <div class="axis"><span>← sous-virage</span><span>neutre</span><span>survirage →</span></div>
+      <!-- barres centrées : négatif = sous-virage (gauche, bleu), positif = survirage (droite, violet) -->
+      <div class="brow"><span class="lab">V7</span><div class="mid"><div class="center"></div><div class="barv" style="left:50%;width:22%;background:var(--qdi-regularity)"></div></div><span class="v" style="color:var(--qdi-regularity)">+18 %</span></div>
+      <div class="brow"><span class="lab">V3</span><div class="mid"><div class="center"></div><div class="barv" style="left:50%;width:11%;background:var(--qdi-regularity)"></div></div><span class="v" style="color:var(--cream-mute)">+9 %</span></div>
+      <div class="brow"><span class="lab">V1</span><div class="mid"><div class="center"></div><div class="barv" style="left:46%;width:4%;background:var(--cream-mute)"></div></div><span class="v" style="color:var(--cream-mute)">≈ 0</span></div>
+      <div class="brow"><span class="lab">V5</span><div class="mid"><div class="center"></div><div class="barv" style="right:50%;width:13%;background:var(--qdi-braking)"></div></div><span class="v" style="color:var(--cream-mute)">−11 %</span></div>
+      <div class="brow"><span class="lab">V2</span><div class="mid"><div class="center"></div><div class="barv" style="right:50%;width:19%;background:var(--qdi-braking)"></div></div><span class="v" style="color:var(--qdi-braking)">−16 %</span></div>
+    </div>
+
+    <div class="fact">
+      <div class="stmt">Au virage 7, votre voiture pivote <b>18 % plus vite</b> que la trajectoire ne l'impose — une <span class="hot">signature de survirage</span> présente sur 12 de vos 18 tours.</div>
+    </div>
+
+    <div class="source">
+      <i class="ic">⊙</i>
+      <div class="tx"><b>Source :</b> gyroscope axe Z (rotation réelle, deg/s) comparé à la variation du cap GPS (rotation géométrique). Écart mesuré en phase d'appui, G latéral &gt; 0,3 g.</div>
+    </div>
+
+    <div class="guard">
+      <div class="h">Ce que l'app ne vous dira jamais</div>
+      <div class="no">« Corrigez le survirage au V7, levez moins le pied en milieu de courbe. »</div>
+    </div>
+
+    <div class="doctrine"><p>L'app lit le comportement de votre voiture. L'interpréter et l'ajuster relève de vous, ou de votre coach.</p></div>
+  </div>
+</div>
+
+<div class="notes">
+  <h3>N4.4 — Équilibre châssis</h3>
+  <p class="ld">Survirage et sous-virage, mesurés objectivement. L'insight le plus avancé du catalogue : il faut deux capteurs distincts pour l'obtenir, et c'est invisible avec du GPS seul.</p>
+  <div class="note"><b>Pourquoi c'est unique</b><p>Le gyroscope donne la rotation <i>réelle</i> de la voiture ; le cap GPS donne la rotation que la <i>trajectoire</i> implique. Leur écart révèle l'équilibre. Aucune app grand public ne sépare ces deux signaux — c'est le cœur de votre différenciation data.</p></div>
+  <div class="note"><b>Une notion d'ingénieur, rendue lisible</b><p>« Survirage » est un terme technique flou pour beaucoup. La barre centrée (sous-virage à gauche, survirage à droite) le rend instantanément lisible, virage par virage, sans bagage théorique.</p></div>
+  <div class="note"><b>Le protocole le permet</b><p>Le RaceBox expose le yaw (gyro Z, deg/s) et le heading GPS séparément, tous deux à 25 Hz. La doc confirme l'orientation des axes : le calcul est sans ambiguïté. Formule 4.4 dans l'addendum.</p></div>
+  <div class="note"><b>Constat, jamais correction</b><p>« La voiture pivote 18 % plus vite » est une mesure physique. L'app ne dit pas comment corriger — ce serait du coaching châssis, hors agrément. Le coach, lui, peut le faire. Frontière dans le bloc barré.</p></div>
+  <div class="note"><b>Violet régularité (#C084FC)</b><p>La couleur QDI de la régularité porte le survirage ; bleu freinage pour le sous-virage. Deux pôles lisibles, charte stricte, zéro Heritage.</p></div>
+</div>
+
+</body>
+</html>

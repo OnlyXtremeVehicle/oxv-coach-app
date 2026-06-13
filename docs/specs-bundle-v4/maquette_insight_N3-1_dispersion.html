@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Dispersion de trajectoire (N3.1)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--night-card:#121212;--cream:#F8F9FA;--cream-soft:#E5E5E5;--cream-mute:#A1A1AA;
+  --cream-line:rgba(255,255,255,0.05);--cream-edge:rgba(255,255,255,0.15);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;--oxv-gold:#C4A459;
+  --qdi-trajectory:#E63946;--qdi-fluidity:#FFB703;--qdi-braking:#60A5FA;--qdi-acceleration:#4ADE80;--qdi-regularity:#C084FC;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+  --bento-bg:rgba(18,18,18,0.7);--bento-border:rgba(255,255,255,0.05);--bento-radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+.phone{width:390px;flex-shrink:0;background:var(--night);border-radius:44px;border:1px solid var(--cream-edge);
+  overflow:hidden;position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.notch{height:34px;display:flex;align-items:center;justify-content:center;}
+.notch::after{content:'';width:120px;height:7px;background:#000;border-radius:99px;border:1px solid rgba(255,255,255,0.08);}
+.screen{height:780px;overflow-y:auto;overflow-x:hidden;padding:0 22px 40px;}
+.screen::-webkit-scrollbar{width:0;}
+.appbar{display:flex;align-items:center;gap:14px;padding:14px 0 18px;position:sticky;top:0;
+  background:linear-gradient(var(--night) 70%,transparent);z-index:5;}
+.back{color:var(--cream-mute);font-size:20px;}
+.appbar-t{font-family:var(--display);font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--cream-mute);
+  display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--cream-edge);}
+.eyebrow b{color:var(--copper-glow);font-weight:400;letter-spacing:0.26em;}
+.lead{font-family:var(--sans);font-weight:300;font-size:15px;line-height:1.5;color:var(--cream-soft);margin-bottom:18px;letter-spacing:-0.01em;}
+.lead b{font-family:var(--display);font-style:italic;font-weight:700;color:var(--cream);}
+
+.map-card{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);padding:16px 14px 12px;margin-bottom:14px;}
+.map-cap{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;}
+.legend{display:flex;gap:14px;margin-top:10px;padding-top:11px;border-top:1px solid var(--cream-line);}
+.legw{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8.5px;letter-spacing:0.06em;color:var(--cream-mute);text-transform:uppercase;}
+.sw{width:14px;height:3px;border-radius:2px;}
+
+.bars{margin-bottom:14px;}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px;}
+.bar-lab{font-family:var(--mono);font-size:10px;color:var(--cream-soft);width:54px;flex-shrink:0;letter-spacing:0.04em;}
+.bar-track{flex:1;height:7px;background:rgba(255,255,255,0.05);border-radius:99px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:99px;}
+.bar-val{font-family:var(--mono);font-size:10px;color:var(--cream-mute);width:42px;text-align:right;flex-shrink:0;}
+
+.fact{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);padding:18px 16px;margin-bottom:14px;position:relative;overflow:hidden;}
+.fact::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--qdi-trajectory);}
+.fact .stmt{font-family:var(--sans);font-weight:300;font-size:16px;line-height:1.5;color:var(--cream);}
+.fact .stmt b{font-family:var(--display);font-weight:700;font-style:italic;color:var(--cream);font-size:16px;}
+.fact .stmt .hot{color:var(--qdi-trajectory);font-weight:400;font-style:normal;}
+.fact .stmt .cool{color:var(--qdi-acceleration);font-weight:400;font-style:normal;}
+
+.source{display:flex;align-items:center;gap:10px;margin-bottom:18px;padding:11px 13px;background:rgba(255,255,255,0.025);border-radius:8px;}
+.source .ic{color:var(--cream-mute);font-size:14px;font-style:normal;}
+.source .tx{font-family:var(--sans);font-size:11px;font-weight:300;color:var(--cream-mute);line-height:1.4;}
+.source .tx b{color:var(--cream-soft);font-weight:400;}
+
+.guard{border:1px dashed rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;margin-bottom:18px;}
+.guard .h{font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:6px;}
+.guard .no{font-family:var(--sans);font-size:12.5px;font-style:italic;color:var(--cream-mute);line-height:1.5;text-decoration:line-through;text-decoration-color:rgba(230,57,70,0.5);}
+
+.doctrine{text-align:center;padding:4px 14px;}
+.doctrine p{font-family:var(--sans);font-style:italic;font-size:12px;font-weight:300;color:var(--cream-mute);line-height:1.6;}
+
+.notes{width:340px;flex-shrink:0;padding-top:20px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+@media(max-width:820px){.notes{width:390px;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="appbar"><i class="back">‹</i><span class="appbar-t">Régularité · Trajectoire</span></div>
+    <div class="eyebrow"><b>Niveau 3</b> · Dispersion spatiale</div>
+    <div class="lead">Vos <b>18 tours</b> superposés. Là où les lignes s'écartent, votre trajectoire change d'un tour à l'autre.</div>
+
+    <div class="map-card">
+      <div class="map-cap"><span>Tracé Beltoise · 18 tours superposés</span><span style="color:var(--qdi-trajectory)">écart max 1,8 m</span></div>
+      <svg width="100%" height="240" viewBox="0 0 320 240" role="img" aria-label="Tracé du circuit avec les 18 trajectoires superposées ; la dispersion est large au virage 4, serrée au virage 1">
+        <!-- faisceau de trajectoires : on dessine une ligne médiane + variations.
+             Zones serrées = lignes quasi confondues ; zone large (V4) = éventail. -->
+        <defs>
+          <linearGradient id="disp" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#E63946"/><stop offset="100%" stop-color="#FFB703"/>
+          </linearGradient>
+        </defs>
+        <!-- halo de dispersion (large au V4) -->
+        <path d="M70,205 C40,150 45,95 95,70 C140,48 150,80 175,95 C205,113 250,95 270,130 C288,162 250,200 200,200 C150,200 120,210 70,205 Z"
+              fill="none" stroke="rgba(230,57,70,0.10)" stroke-width="22" stroke-linecap="round"/>
+        <!-- 18 traces : médiane nette + variations fines, sauf V4 (en haut à droite du virage 95,70→175,95) éventail large -->
+        <g fill="none" stroke="rgba(248,249,250,0.30)" stroke-width="1">
+          <path d="M70,204 C41,150 46,96 96,71 C141,49 151,81 176,96 C206,114 250,96 269,130 C287,161 250,199 200,199 C150,199 120,209 70,204"/>
+          <path d="M70,206 C40,150 44,94 94,69 C138,46 148,77 178,92 C207,111 251,94 271,131 C289,163 251,201 201,201 C151,201 121,211 70,206"/>
+          <path d="M71,205 C42,151 47,97 97,72 C144,52 156,86 173,99 C204,116 249,97 268,129 C286,160 249,198 199,198 C149,198 119,208 71,205"/>
+          <path d="M69,205 C39,149 43,95 93,70 C135,44 143,73 181,89 C209,109 252,95 270,130 C288,162 250,200 200,200 C150,200 120,210 69,205"/>
+          <path d="M70,205 C41,150 45,95 95,70 C140,48 160,90 170,101 C202,117 250,96 269,130 C287,161 250,199 200,199 C150,199 120,209 70,205"/>
+        </g>
+        <!-- ligne médiane nette -->
+        <path d="M70,205 C40,150 45,95 95,70 C140,48 150,80 175,95 C205,113 250,95 270,130 C288,162 250,200 200,200 C150,200 120,210 70,205"
+              fill="none" stroke="var(--cream)" stroke-width="1.6" opacity="0.85"/>
+        <!-- marqueur V4 (dispersion large) -->
+        <circle cx="150" cy="80" r="5" fill="none" stroke="var(--qdi-trajectory)" stroke-width="2"/>
+        <text x="158" y="76" font-family="JetBrains Mono,monospace" font-size="9" fill="#E63946">V4 · 1,8 m</text>
+        <!-- marqueur V1 (serré) -->
+        <circle cx="95" cy="70" r="4" fill="none" stroke="var(--qdi-acceleration)" stroke-width="2"/>
+        <text x="20" y="58" font-family="JetBrains Mono,monospace" font-size="9" fill="#4ADE80">V1 · 0,3 m</text>
+        <!-- start/finish -->
+        <line x1="64" y1="200" x2="76" y2="210" stroke="var(--cream-mute)" stroke-width="2"/>
+      </svg>
+      <div class="legend">
+        <div class="legw"><span class="sw" style="background:var(--cream)"></span>Trajectoire médiane</div>
+        <div class="legw"><span class="sw" style="background:rgba(230,57,70,0.4)"></span>Zone de variation</div>
+      </div>
+    </div>
+
+    <div class="bars">
+      <div class="bar-row"><span class="bar-lab">V4</span><div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--qdi-trajectory)"></div></div><span class="bar-val">1,8 m</span></div>
+      <div class="bar-row"><span class="bar-lab">V7</span><div class="bar-track"><div class="bar-fill" style="width:67%;background:var(--gold)"></div></div><span class="bar-val">1,2 m</span></div>
+      <div class="bar-row"><span class="bar-lab">V2</span><div class="bar-track"><div class="bar-fill" style="width:39%;background:var(--gold)"></div></div><span class="bar-val">0,7 m</span></div>
+      <div class="bar-row"><span class="bar-lab">V5</span><div class="bar-track"><div class="bar-fill" style="width:28%;background:var(--qdi-acceleration)"></div></div><span class="bar-val">0,5 m</span></div>
+      <div class="bar-row"><span class="bar-lab">V1</span><div class="bar-track"><div class="bar-fill" style="width:17%;background:var(--qdi-acceleration)"></div></div><span class="bar-val">0,3 m</span></div>
+    </div>
+
+    <div class="fact">
+      <div class="stmt">Le virage 4 est votre point le <span class="hot">moins reproductible</span> : votre corde y varie de <b>1,8 m</b>. Le virage 1 ne bouge que de <span class="cool">0,3 m</span>.</div>
+    </div>
+
+    <div class="source">
+      <i class="ic">⊙</i>
+      <div class="tx"><b>Source :</b> 18 tours alignés sur la distance parcourue ; écart-type de la position latérale GPS en chaque point du tracé.</div>
+    </div>
+
+    <div class="guard">
+      <div class="h">Ce que l'app ne vous dira jamais</div>
+      <div class="no">« Soyez plus régulier au virage 4, visez mieux la corde. »</div>
+    </div>
+
+    <div class="doctrine"><p>L'app vous montre où votre ligne hésite. À vous — ou à votre coach — d'en faire quelque chose.</p></div>
+  </div>
+</div>
+
+<div class="notes">
+  <h3>N3.1 — Dispersion de trajectoire</h3>
+  <p class="ld">La variabilité spatiale de la ligne, virage par virage. Un insight soi-contre-soi qu'aucune app grand public ne sort : on ne compare pas à un idéal, on mesure votre propre constance.</p>
+  <div class="note"><b>Ce que personne ne montre</b><p>RaceChrono superpose des courbes de vitesse. Ici on superpose les <i>trajectoires</i> et on quantifie leur dispersion en mètres, point par point. Le faisceau qui s'évase au V4 dit tout d'un coup d'œil.</p></div>
+  <div class="note"><b>Calculé, pas ressenti</b><p>Écart-type de la position latérale sur 18 tours alignés par distance curviligne (pas par temps — c'est ce qui permet de comparer le même point du circuit). Formule dans l'addendum du moteur d'insights.</p></div>
+  <div class="note"><b>Strictement descriptif</b><p>« Votre corde varie de 1,8 m » est un fait géométrique. La phrase ne dit jamais de viser mieux. Le bloc barré rend la frontière explicite et assumée.</p></div>
+  <div class="note"><b>Couleurs de la charte</b><p>Rouge trajectoire (#E63946, couleur QDI figée) pour la dispersion élevée, vert perf pour la constance. Aucune couleur Heritage. Cohérent avec les autres écrans.</p></div>
+</div>
+
+</body>
+</html>
