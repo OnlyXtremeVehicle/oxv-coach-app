@@ -152,6 +152,8 @@ export interface CircuitTraceProps {
   /** Couches proposées dans le sélecteur (par défaut, les couches pilote). */
   layers?: LayerId[];
   role?: 'pilot' | 'coach';
+  /** Hauteur fixe (px) pour un usage en héros dans une ScrollView. Sinon `flex: 1`. */
+  height?: number;
 }
 
 export function CircuitTrace({
@@ -159,6 +161,7 @@ export function CircuitTrace({
   session = null,
   layers = PILOT_LAYERS,
   role = 'pilot',
+  height,
 }: CircuitTraceProps) {
   const selectable = layers.filter(
     (id) =>
@@ -201,7 +204,7 @@ export function CircuitTrace({
   const layer = LAYERS[current];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, height != null && { flex: 0, height }]}>
       <Canvas camera={{ fov: 50, near: 1, far: 5000, position: [0, extent, extent * 2] }}>
         <color attach="background" args={[NIGHT]} />
         <fog attach="fog" args={[NIGHT, extent * 2, extent * 6]} />

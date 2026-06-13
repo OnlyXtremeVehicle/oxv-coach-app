@@ -19,6 +19,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
+import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { FadeInSection } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
@@ -258,6 +259,13 @@ export default function BilanScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>BILAN DE SESSION</Text>
+
+        {/* Tracé 3D en héros (specs v4 §05 §4.1) : « je me revois ». Couche par
+            défaut Régularité ; géométrie = circuit officiel, couches data si la
+            session porte des insights (sinon forme du circuit seule, honnête). */}
+        <FadeInSection style={{ marginTop: spacing.xl }}>
+          <CircuitTraceHero sessionId={session.id} />
+        </FadeInSection>
 
         {/* Héros « Le Sillage » — le fait saillant de la séance, situé dans le
             fil du pilote (soi contre soi). Valeur en couleur DONNÉE (crème),
