@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV — Tracé 3D</title>
+<style>
+  :root{
+    --night:#050505; --night-soft:#0E0E0E; --night-card:#121212;
+    --cream:#F8F9FA; --cream-mute:#A1A1AA; --cream-line:rgba(255,255,255,.05); --cream-edge:rgba(255,255,255,.15);
+    --gold:#FFB703; --copper-glow:#FFC93C; --oxv-red:#C8102E; --oxv-gold:#C4A459;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--night);color:var(--cream);
+    font-family:'Inter',system-ui,sans-serif;overflow:hidden}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+  .hud{position:fixed;pointer-events:none;z-index:10}
+  .hud-tl{top:24px;left:24px}
+  .eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.28em;
+    text-transform:uppercase;color:var(--cream-mute)}
+  .title{font-family:'Syncopate',sans-serif;font-size:22px;letter-spacing:.12em;
+    text-transform:uppercase;margin-top:6px;color:var(--cream)}
+  .meta{margin-top:10px;font-size:12px;color:var(--cream-mute);line-height:1.7}
+  .meta b{color:var(--cream);font-weight:600}
+  .hud-bl{bottom:20px;left:24px;font-size:10px;color:var(--cream-mute);
+    font-family:'JetBrains Mono',monospace;letter-spacing:.04em}
+  .legend{position:fixed;bottom:20px;right:24px;z-index:10;text-align:right}
+  .legend-bar{width:160px;height:6px;border-radius:3px;margin:6px 0 4px auto;
+    background:linear-gradient(90deg,#4ADE80,var(--gold),var(--oxv-red))}
+  .legend-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--cream-mute);display:flex;justify-content:space-between;width:160px;margin-left:auto}
+  .loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:var(--night);z-index:50;font-family:'JetBrains Mono',monospace;font-size:12px;
+    letter-spacing:.2em;text-transform:uppercase;color:var(--cream-mute)}
+  .corner-tag{position:fixed;transform:translate(-50%,-50%);pointer-events:none;z-index:5}
+  .corner-dot{width:26px;height:26px;border-radius:50%;border:1.5px solid var(--oxv-gold);
+    background:rgba(5,5,5,.7);display:flex;align-items:center;justify-content:center;
+    font-family:'Syncopate',sans-serif;font-size:10px;color:var(--oxv-gold);backdrop-filter:blur(4px)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="loading" id="loading">Chargement du tracé…</div>
+
+<div class="hud hud-tl">
+  <div class="eyebrow">Circuit</div>
+  <div class="title" id="c-name">—</div>
+  <div class="meta" id="c-meta"></div>
+</div>
+<div class="legend">
+  <div class="legend-bar"></div>
+  <div class="legend-lbl"><span>Rapide</span><span>Serré</span></div>
+</div>
+<div class="hud hud-bl" id="c-attr">© contributeurs OpenStreetMap</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+// ===== module générateur inliné =====
+// =============================================================================
+// OXV — Générateur de circuits 3D
+// Entrée : un way OpenStreetMap (ou un tableau de {lat, lon})
+// Sortie : tracé débruité, virages détectés (analyse des changements de cap),
+//          géométrie de ruban prête pour Three.js.
+// Aucune dépendance externe. Fonctionne dans Node et dans le navigateur.
+//
+// Attribution OSM obligatoire à l'affichage : « © contributeurs OpenStreetMap ».
+// =============================================================================
+
+// --- 1. Récupération d'un tracé depuis OpenStreetMap -------------------------
+async function fetchOsmWay(wayId, fetchImpl) {
+  const f = fetchImpl || (typeof fetch !== 'undefined' ? fetch : null);
+  if (!f) throw new Error("Aucune implémentation fetch disponible.");
+  const url = `https://api.openstreetmap.org/api/0.6/way/${wayId}/full.json`;
+  const res = await f(url);
+  if (!res.ok) throw new Error(`OSM a répondu ${res.status} pour le way ${wayId}.`);
+  const osm = await res.json();
+  return parseOsmWay(osm);
+}
+
+// Parse la réponse OSM /full.json en {name, points:[{lat,lon}], closed}
+function parseOsmWay(osm) {
+  const ways = osm.elements.filter(e => e.type === 'way');
+  if (!ways.length) throw new Error("Aucun way dans la réponse OSM.");
+  const way = ways[0];
+  const nodesById = {};
+  osm.elements.filter(e => e.type === 'node').forEach(n => { nodesById[n.id] = n; });
+  const points = way.nodes
+    .map(id => nodesById[id])
+    .filter(n => n && n.lat != null)
+    .map(n => ({ lat: n.lat, lon: n.lon }));
+  const closed = way.nodes[0] === way.nodes[way.nodes.length - 1];
+  return { name: way.tags?.name || null, points, closed, osmWayId: way.id };
+}
+
+// --- 2. Projection géographique → mètres (plan tangent local) ----------------
+function projectToMeters(points) {
+  if (!points.length) return [];
+  const lat0 = points[0].lat * Math.PI / 180;
+  const mPerLat = 111320, mPerLon = 111320 * Math.cos(lat0);
+  // origine au premier point pour des coordonnées petites et centrées
+  const x0 = points[0].lon * mPerLon, y0 = points[0].lat * mPerLat;
+  return points.map(p => ({ x: p.lon * mPerLon - x0, y: p.lat * mPerLat - y0 }));
+}
+
+// --- 3. Débruitage : moyenne glissante (passe-bas) ---------------------------
+// win = demi-fenêtre. Sur tracé OSM propre : 1. Sur GPS RaceBox brut : 6 à 10.
+function smooth(pts, win, closed) {
+  const n = pts.length, out = [];
+  for (let i = 0; i < n; i++) {
+    let sx = 0, sy = 0, c = 0;
+    for (let j = i - win; j <= i + win; j++) {
+      let k = j;
+      if (closed) k = ((j % n) + n) % n;          // boucle : on enroule
+      else k = Math.max(0, Math.min(n - 1, j));    // ouvert : on borne
+      sx += pts[k].x; sy += pts[k].y; c++;
+    }
+    out.push({ x: sx / c, y: sy / c });
+  }
+  return out;
+}
+
+// --- 4. Rééchantillonnage spatial : un point tous les `step` mètres ----------
+function resampleByDistance(pts, step) {
+  if (!pts.length) return [];
+  const out = [pts[0]]; let acc = 0;
+  for (let i = 1; i < pts.length; i++) {
+    acc += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+    if (acc >= step) { out.push(pts[i]); acc = 0; }
+  }
+  return out;
+}
+
+// --- 5. Courbure en chaque point via variation de cap ------------------------
+// κ ≈ |Δcap| / distance  (rad/m). Le rayon vaut R = 1/κ.
+function curvature(pts) {
+  const k = new Array(pts.length).fill(0);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const h1 = Math.atan2(pts[i].y - pts[i-1].y, pts[i].x - pts[i-1].x);
+    const h2 = Math.atan2(pts[i+1].y - pts[i].y, pts[i+1].x - pts[i].x);
+    let dh = h2 - h1;
+    while (dh > Math.PI) dh -= 2 * Math.PI;
+    while (dh < -Math.PI) dh += 2 * Math.PI;
+    const d = (Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y)
+             + Math.hypot(pts[i+1].x - pts[i].x, pts[i+1].y - pts[i].y)) / 2;
+    k[i] = d > 0 ? Math.abs(dh) / d : 0;
+  }
+  return k;
+}
+
+// --- 6. Détection des virages : zones contiguës de forte courbure ------------
+// rThresh = rayon seuil (m) en dessous duquel on est "en virage".
+// Hystérésis à 0,5×seuil pour ne pas hacher un virage en plusieurs.
+function detectCorners(pts, k, rThresh) {
+  const kT = 1 / rThresh;
+  const corners = [];
+  let inC = false, start = 0;
+  for (let i = 0; i < k.length; i++) {
+    if (k[i] > kT && !inC) { inC = true; start = i; }
+    else if (k[i] <= kT * 0.5 && inC) {
+      inC = false;
+      let apex = start, kmax = 0;
+      for (let j = start; j < i; j++) if (k[j] > kmax) { kmax = k[j]; apex = j; }
+      if (i - start >= 1) {
+        corners.push({
+          index: corners.length + 1,
+          apexIdx: apex,
+          startIdx: start,
+          endIdx: i,
+          radius_m: Math.round(1 / kmax),
+          // sens du virage : signe du produit vectoriel tangentes
+          direction: cornerDirection(pts, apex),
+        });
+      }
+    }
+  }
+  return corners;
+}
+
+function cornerDirection(pts, i) {
+  if (i <= 0 || i >= pts.length - 1) return 'unknown';
+  const ax = pts[i].x - pts[i-1].x, ay = pts[i].y - pts[i-1].y;
+  const bx = pts[i+1].x - pts[i].x, by = pts[i+1].y - pts[i].y;
+  const cross = ax * by - ay * bx;
+  return cross > 0 ? 'left' : 'right';
+}
+
+// --- 7. Géométrie du ruban 3D (deux bords parallèles) ------------------------
+// width = largeur de piste en mètres. Renvoie sommets gauche/droite + tangente.
+function buildRibbon(pts, width, closed) {
+  const half = width / 2, n = pts.length, ribbon = [];
+  for (let i = 0; i < n; i++) {
+    const prev = closed ? pts[((i-1)%n+n)%n] : pts[Math.max(0, i-1)];
+    const next = closed ? pts[(i+1)%n] : pts[Math.min(n-1, i+1)];
+    const tx = next.x - prev.x, ty = next.y - prev.y;
+    const len = Math.hypot(tx, ty) || 1;
+    const nx = -ty / len, ny = tx / len;  // normale
+    ribbon.push({
+      center: [pts[i].x, pts[i].y],
+      left:  [pts[i].x + nx * half, pts[i].y + ny * half],
+      right: [pts[i].x - nx * half, pts[i].y - ny * half],
+    });
+  }
+  return ribbon;
+}
+
+// --- 8. Pipeline complet -----------------------------------------------------
+function generateCircuit(rawPoints, opts = {}) {
+  const {
+    smoothWin = 1,      // débruitage (OSM propre = 1 ; GPS brut = 6-10)
+    resampleStep = 10,  // mètres entre points rééchantillonnés
+    cornerRadius = 100, // seuil de rayon (m) pour qu'une courbe soit un virage
+    trackWidth = 12,    // largeur de piste (m) pour le ruban 3D
+    closed = true,
+  } = opts;
+
+  const projected = projectToMeters(rawPoints);
+  const smoothed = smooth(projected, smoothWin, closed);
+  const resampled = resampleByDistance(smoothed, resampleStep);
+  const k = curvature(resampled);
+  const corners = detectCorners(resampled, k, cornerRadius);
+  const ribbon = buildRibbon(resampled, trackWidth, closed);
+
+  let length_m = 0;
+  for (let i = 1; i < resampled.length; i++)
+    length_m += Math.hypot(resampled[i].x - resampled[i-1].x, resampled[i].y - resampled[i-1].y);
+  if (closed && resampled.length > 1)
+    length_m += Math.hypot(resampled[0].x - resampled[resampled.length-1].x,
+                           resampled[0].y - resampled[resampled.length-1].y);
+
+  return {
+    centerline: resampled,   // [{x,y}] débruité, en mètres
+    corners,                 // virages détectés
+    ribbon,                  // géométrie 3D
+    length_m: Math.round(length_m),
+    closed,
+    params: { smoothWin, resampleStep, cornerRadius, trackWidth },
+  };
+}
+
+// ===== fin module =====
+// module inliné ci-dessous
+
+// --- Paramètres du circuit à charger -----------------------------------------
+const OSM_WAY_ID = 54412766;          // « Piste vitesse » — référence de test
+const PARAMS = { smoothWin:1, resampleStep:10, cornerRadius:100, trackWidth:12, closed:true };
+
+// --- Récupération + génération ----------------------------------------------
+const EMBEDDED = {"name":"Piste vitesse","points":[{"lat":45.2428731,"lon":-0.0958743},{"lat":45.2428442,"lon":-0.0955631},{"lat":45.2426515,"lon":-0.0941293},{"lat":45.242074,"lon":-0.0895603},{"lat":45.2419553,"lon":-0.0886945},{"lat":45.2418981,"lon":-0.0882683},{"lat":45.2418691,"lon":-0.0881955},{"lat":45.2418313,"lon":-0.0881423},{"lat":45.2417749,"lon":-0.0881122},{"lat":45.2417019,"lon":-0.0881083},{"lat":45.2416307,"lon":-0.0881483},{"lat":45.2415802,"lon":-0.0882331},{"lat":45.2415538,"lon":-0.0883407},{"lat":45.2415523,"lon":-0.0887451},{"lat":45.2416112,"lon":-0.0900869},{"lat":45.2416275,"lon":-0.0905141},{"lat":45.2416234,"lon":-0.0906659},{"lat":45.2415943,"lon":-0.0907899},{"lat":45.2415453,"lon":-0.0908748},{"lat":45.2414674,"lon":-0.0909465},{"lat":45.2411299,"lon":-0.0911627},{"lat":45.2405671,"lon":-0.0915498},{"lat":45.2404245,"lon":-0.0916411},{"lat":45.2403405,"lon":-0.0916795},{"lat":45.2402726,"lon":-0.0916873},{"lat":45.2401704,"lon":-0.0916685},{"lat":45.2400719,"lon":-0.0916003},{"lat":45.2399848,"lon":-0.0914963},{"lat":45.2398547,"lon":-0.0911735},{"lat":45.2396985,"lon":-0.0907832},{"lat":45.2396566,"lon":-0.0906487},{"lat":45.239662,"lon":-0.0904954},{"lat":45.2397425,"lon":-0.0903263},{"lat":45.2398744,"lon":-0.0899898},{"lat":45.2399065,"lon":-0.0897982},{"lat":45.2399029,"lon":-0.0895865},{"lat":45.2398511,"lon":-0.089349},{"lat":45.2397661,"lon":-0.0891708},{"lat":45.2396453,"lon":-0.0890188},{"lat":45.2395497,"lon":-0.0889292},{"lat":45.2394321,"lon":-0.0888765},{"lat":45.2393108,"lon":-0.0888715},{"lat":45.2392012,"lon":-0.0889068},{"lat":45.2390839,"lon":-0.0889951},{"lat":45.2389909,"lon":-0.0891372},{"lat":45.2389297,"lon":-0.089298},{"lat":45.2388985,"lon":-0.0895002},{"lat":45.2389076,"lon":-0.0896707},{"lat":45.2389931,"lon":-0.090321},{"lat":45.2390749,"lon":-0.0908906},{"lat":45.2391492,"lon":-0.0910597},{"lat":45.2393919,"lon":-0.0914741},{"lat":45.2395374,"lon":-0.0917249},{"lat":45.2396432,"lon":-0.0920074},{"lat":45.2397981,"lon":-0.0924186},{"lat":45.2400325,"lon":-0.0930043},{"lat":45.2403074,"lon":-0.0937242},{"lat":45.2405294,"lon":-0.0943033},{"lat":45.2409338,"lon":-0.0953603},{"lat":45.2410466,"lon":-0.0955437},{"lat":45.2411914,"lon":-0.0956705},{"lat":45.241302,"lon":-0.0957909},{"lat":45.2413841,"lon":-0.0959345},{"lat":45.2415133,"lon":-0.09621},{"lat":45.2416288,"lon":-0.0964173},{"lat":45.2418437,"lon":-0.096663},{"lat":45.242001,"lon":-0.0967561},{"lat":45.2421921,"lon":-0.0967996},{"lat":45.2424763,"lon":-0.0967393},{"lat":45.2426869,"lon":-0.0965477},{"lat":45.2428089,"lon":-0.0963115},{"lat":45.2428654,"lon":-0.0960924},{"lat":45.2428731,"lon":-0.0958743}],"closed":true,"osmWayId":54412766};
+let circuit = generateCircuit(EMBEDDED.points, PARAMS);
+let circuitName = EMBEDDED.name || ("Way " + OSM_WAY_ID);
+
+// --- Renseigner le HUD -------------------------------------------------------
+document.getElementById('c-name').textContent = circuitName;
+document.getElementById('c-meta').innerHTML =
+  `<b>${(circuit.length_m/1000).toFixed(2)} km</b> · <b>${circuit.corners.length}</b> virages<br>`+
+  `Analyse automatique des changements de cap`;
+
+// --- Scène Three.js ----------------------------------------------------------
+const app = document.getElementById('app');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050505);
+scene.fog = new THREE.Fog(0x050505, 400, 1400);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 1, 5000);
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+app.appendChild(renderer.domElement);
+
+// centre géométrique pour cadrer
+const cl = circuit.centerline;
+let cx=0, cy=0; cl.forEach(p=>{cx+=p.x;cy+=p.y}); cx/=cl.length; cy/=cl.length;
+let ext=0; cl.forEach(p=>{ext=Math.max(ext,Math.hypot(p.x-cx,p.y-cy))});
+
+// --- Couleur par courbure : vert (rapide) → or → rouge (serré) ---------------
+function radiusToColor(r){
+  // r grand = rapide (vert), r petit = serré (rouge). Bornes 15 m … 200 m.
+  const t = Math.max(0, Math.min(1, (200 - r) / (200 - 15)));
+  const green = new THREE.Color(0x4ADE80), gold = new THREE.Color(0xFFB703), red = new THREE.Color(0xC8102E);
+  return t < 0.5 ? green.clone().lerp(gold, t*2) : gold.clone().lerp(red, (t-0.5)*2);
+}
+// rayon local le long du tracé (pour colorer le ruban segment par segment)
+function localRadii(pts){
+  const out = new Array(pts.length).fill(300);
+  for(let i=1;i<pts.length-1;i++){
+    const h1=Math.atan2(pts[i].y-pts[i-1].y,pts[i].x-pts[i-1].x);
+    const h2=Math.atan2(pts[i+1].y-pts[i].y,pts[i+1].x-pts[i].x);
+    let dh=h2-h1; while(dh>Math.PI)dh-=2*Math.PI; while(dh<-Math.PI)dh+=2*Math.PI;
+    const d=(Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y)+Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].y-pts[i].y))/2;
+    out[i] = Math.abs(dh)>1e-4 ? d/Math.abs(dh) : 300;
+  }
+  return out;
+}
+const radii = localRadii(cl);
+
+// --- Construire le maillage du ruban (2 triangles par section) ---------------
+const rib = circuit.ribbon, N = rib.length;
+const positions = [], colors = [], indices = [];
+const Z = 0;
+for(let i=0;i<N;i++){
+  const L=rib[i].left, R=rib[i].right;
+  positions.push(L[0]-cx, Z, -(L[1]-cy));   // y/z permutés : piste à plat, vue 3/4
+  positions.push(R[0]-cx, Z, -(R[1]-cy));
+  const col = radiusToColor(radii[i]);
+  colors.push(col.r,col.g,col.b, col.r,col.g,col.b);
+}
+const segs = PARAMS.closed ? N : N-1;
+for(let i=0;i<segs;i++){
+  const a=2*i, b=2*i+1, c=2*((i+1)%N), d=2*((i+1)%N)+1;
+  indices.push(a,b,c,  b,d,c);
+}
+const geo = new THREE.BufferGeometry();
+geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+geo.setAttribute('color', new THREE.Float32BufferAttribute(colors,3));
+geo.setIndex(indices);
+geo.computeVertexNormals();
+const mat = new THREE.MeshBasicMaterial({ vertexColors:true, side:THREE.DoubleSide });
+scene.add(new THREE.Mesh(geo, mat));
+
+// --- Liseré central or (ligne médiane) ---------------------------------------
+const linePts = cl.map(p=>new THREE.Vector3(p.x-cx, Z+0.3, -(p.y-cy)));
+if(PARAMS.closed) linePts.push(linePts[0].clone());
+const lineGeo = new THREE.BufferGeometry().setFromPoints(linePts);
+scene.add(new THREE.Line(lineGeo, new THREE.LineBasicMaterial({ color:0xC4A459, transparent:true, opacity:.45 })));
+
+// --- Sol discret (grille) ----------------------------------------------------
+const grid = new THREE.GridHelper(ext*3, 30, 0x1a1a1a, 0x101010);
+grid.position.y = -0.5;
+scene.add(grid);
+
+// --- Marqueurs de virages (tags HTML projetés) -------------------------------
+const cornerTags = circuit.corners.map(c=>{
+  const p = cl[c.apexIdx];
+  const el = document.createElement('div');
+  el.className = 'corner-tag';
+  el.innerHTML = `<div class="corner-dot">${c.index}</div>`;
+  document.body.appendChild(el);
+  return { el, pos:new THREE.Vector3(p.x-cx, Z+4, -(p.y-cy)) };
+});
+
+// --- Caméra orbitale simple (drag pour tourner, molette pour zoomer) ---------
+let theta=Math.PI*0.25, phi=Math.PI*0.32, dist=ext*2.4;
+let dragging=false, px=0, py=0;
+renderer.domElement.addEventListener('pointerdown',e=>{dragging=true;px=e.clientX;py=e.clientY});
+addEventListener('pointerup',()=>dragging=false);
+addEventListener('pointermove',e=>{
+  if(!dragging)return;
+  theta -= (e.clientX-px)*0.005; phi -= (e.clientY-py)*0.005;
+  phi = Math.max(0.12, Math.min(Math.PI/2-0.05, phi));
+  px=e.clientX; py=e.clientY;
+});
+renderer.domElement.addEventListener('wheel',e=>{
+  e.preventDefault(); dist *= (1 + Math.sign(e.deltaY)*0.08);
+  dist = Math.max(ext*0.8, Math.min(ext*5, dist));
+},{passive:false});
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+document.getElementById('loading').style.display='none';
+
+// --- Boucle de rendu ---------------------------------------------------------
+const v = new THREE.Vector3();
+function animate(){
+  requestAnimationFrame(animate);
+  // rotation auto lente quand on ne touche pas
+  if(!dragging) theta += 0.0012;
+  camera.position.set(
+    Math.sin(theta)*Math.cos(phi)*dist,
+    Math.sin(phi)*dist,
+    Math.cos(theta)*Math.cos(phi)*dist
+  );
+  camera.lookAt(0,0,0);
+  renderer.render(scene,camera);
+
+  // projeter les tags de virages en 2D
+  cornerTags.forEach(t=>{
+    v.copy(t.pos).project(camera);
+    if(v.z>1){ t.el.style.display='none'; return; }
+    t.el.style.display='block';
+    t.el.style.left = ((v.x*0.5+0.5)*innerWidth)+'px';
+    t.el.style.top  = ((-v.y*0.5+0.5)*innerHeight)+'px';
+  });
+}
+animate();
+</script>
+</body>
+</html>

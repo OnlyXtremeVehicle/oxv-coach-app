@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Galerie des lectures approfondies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--night-card:#121212;--cream:#F8F9FA;--cream-soft:#E5E5E5;--cream-mute:#A1A1AA;
+  --cream-line:rgba(255,255,255,0.05);--cream-edge:rgba(255,255,255,0.15);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;--oxv-gold:#C4A459;
+  --qdi-trajectory:#E63946;--qdi-fluidity:#FFB703;--qdi-braking:#60A5FA;--qdi-acceleration:#4ADE80;--qdi-regularity:#C084FC;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+  --bento-bg:rgba(18,18,18,0.7);--bento-border:rgba(255,255,255,0.05);--bento-radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+.phone{width:390px;flex-shrink:0;background:var(--night);border-radius:44px;border:1px solid var(--cream-edge);
+  overflow:hidden;position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.notch{height:34px;display:flex;align-items:center;justify-content:center;}
+.notch::after{content:'';width:120px;height:7px;background:#000;border-radius:99px;border:1px solid rgba(255,255,255,0.08);}
+.screen{height:780px;overflow-y:auto;overflow-x:hidden;padding:0 20px 40px;}
+.screen::-webkit-scrollbar{width:0;}
+.appbar{display:flex;align-items:center;gap:14px;padding:14px 0 10px;position:sticky;top:0;
+  background:linear-gradient(var(--night) 75%,transparent);z-index:5;}
+.back{color:var(--cream-mute);font-size:20px;}
+.appbar-t{font-family:var(--display);font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream);}
+
+.hero{padding:6px 2px 20px;}
+.hero .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:12px;}
+.hero h1{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.25;color:var(--cream);letter-spacing:-0.01em;margin-bottom:10px;}
+.hero p{font-family:var(--sans);font-weight:300;font-size:13.5px;line-height:1.55;color:var(--cream-mute);}
+
+.tier{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--cream-mute);
+  display:flex;align-items:center;gap:10px;margin:18px 2px 12px;}
+.tier::after{content:'';flex:1;height:1px;background:var(--cream-line);}
+
+.card{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);
+  padding:15px 15px 14px;margin-bottom:11px;position:relative;overflow:hidden;cursor:pointer;
+  transition:border-color 0.2s,transform 0.2s;}
+.card:hover{border-color:var(--cream-edge);transform:translateY(-1px);}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;}
+.card.c-traj::before{background:var(--qdi-trajectory);}
+.card.c-brake::before{background:var(--qdi-braking);}
+.card.c-flow::before{background:var(--qdi-fluidity);}
+.card.c-reg::before{background:var(--qdi-regularity);}
+.card.c-acc::before{background:var(--qdi-acceleration);}
+.card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.card-name{font-family:var(--display);font-weight:400;font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:var(--cream);}
+.card-badge{font-family:var(--mono);font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream-mute);
+  border:1px solid var(--cream-line);border-radius:99px;padding:3px 8px;}
+.card-fact{font-family:var(--sans);font-weight:300;font-size:13px;line-height:1.5;color:var(--cream-soft);margin-bottom:12px;}
+.card-fact b{font-family:var(--mono);font-weight:500;font-style:normal;}
+.c-traj .card-fact b{color:var(--qdi-trajectory);}
+.c-brake .card-fact b{color:var(--qdi-braking);}
+.c-flow .card-fact b{color:var(--qdi-fluidity);}
+.c-reg .card-fact b{color:var(--qdi-regularity);}
+.c-acc .card-fact b{color:var(--qdi-acceleration);}
+
+/* mini-sparkline par carte */
+.spark{height:34px;width:100%;}
+
+.footer{margin-top:16px;padding:16px 14px;border:1px dashed rgba(255,255,255,0.12);border-radius:var(--bento-radius);text-align:center;}
+.footer p{font-family:var(--sans);font-style:italic;font-size:12px;font-weight:300;color:var(--cream-mute);line-height:1.6;}
+
+.notes{width:340px;flex-shrink:0;padding-top:20px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+@media(max-width:820px){.notes{width:390px;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="appbar"><i class="back">‹</i><span class="appbar-t">Lectures approfondies</span></div>
+
+    <div class="hero">
+      <div class="eyebrow">Session du 12 juillet · 18 tours</div>
+      <h1>Ce que vos données révèlent</h1>
+      <p>Neuf lectures, du constat direct à la signature de votre voiture. Chacune montre un fait — jamais une consigne.</p>
+    </div>
+
+    <div class="tier">Décomposition · les fondations</div>
+
+    <div class="card c-brake">
+      <div class="card-top"><span class="card-name">Anatomie de virage</span><span class="card-badge">N2</span></div>
+      <div class="card-fact">Virage 3 : freinage sur <b>95 m</b>, corde à 78 km/h, réaccél. sur 140 m.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="0" y="6" width="100" height="22" fill="rgba(96,165,250,0.1)"/>
+        <rect x="100" y="6" width="55" height="22" fill="rgba(230,57,70,0.1)"/>
+        <rect x="155" y="6" width="145" height="22" fill="rgba(74,222,128,0.1)"/>
+        <path d="M4,9 C40,11 75,24 128,27 C150,28 165,26 200,20 C245,12 270,10 296,9" fill="none" stroke="var(--cream)" stroke-width="1.5"/>
+        <circle cx="128" cy="27" r="2.5" fill="var(--qdi-trajectory)"/>
+      </svg>
+    </div>
+
+    <div class="card c-brake">
+      <div class="card-top"><span class="card-name">Diagramme G-G</span><span class="card-badge">N2</span></div>
+      <div class="card-fact">Votre grip se concentre sur les <b>axes purs</b> — freiner ou tourner.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <g transform="translate(150,17)">
+          <circle cx="0" cy="0" r="15" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+          <g fill="rgba(96,165,250,0.55)">
+            <circle cx="0" cy="-13" r="1.6"/><circle cx="0" cy="-9" r="1.6"/><circle cx="2" cy="-6" r="1.6"/>
+            <circle cx="0" cy="13" r="1.6" fill="rgba(74,222,128,0.55)"/><circle cx="0" cy="9" r="1.6" fill="rgba(74,222,128,0.55)"/>
+            <circle cx="-13" cy="0" r="1.6" fill="rgba(230,57,70,0.55)"/><circle cx="-9" cy="0" r="1.6" fill="rgba(230,57,70,0.55)"/>
+            <circle cx="13" cy="0" r="1.6" fill="rgba(230,57,70,0.55)"/><circle cx="9" cy="0" r="1.6" fill="rgba(230,57,70,0.55)"/>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card c-acc">
+      <div class="card-top"><span class="card-name">Profils gaz & frein</span><span class="card-badge">N2</span></div>
+      <div class="card-fact">Remises de gaz <b>progressives</b> en S1, plus abruptes en S3.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M4,28 C40,22 70,10 110,9 C140,9 150,24 195,26 C230,27 255,12 296,8" fill="none" stroke="var(--qdi-acceleration)" stroke-width="1.5"/>
+        <path d="M4,30 L40,28 L42,16 L80,15 L82,26 L130,25 L132,12 L180,11 L182,22 L296,10" fill="none" stroke="rgba(230,57,70,0.4)" stroke-width="1"/>
+      </svg>
+    </div>
+
+    <div class="tier">Régularité · soi contre soi</div>
+
+    <div class="card c-traj">
+      <div class="card-top"><span class="card-name">Dispersion de trajectoire</span><span class="card-badge">N3</span></div>
+      <div class="card-fact">Votre corde varie de <b>1,8 m</b> au virage 4, contre 0,3 m au virage 1.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,17 L60,17 L60,16 L120,18" fill="none" stroke="rgba(248,249,250,0.25)" stroke-width="1"/>
+        <path d="M120,18 C150,4 150,30 180,17 C150,26 150,8 120,18" fill="rgba(230,57,70,0.18)" stroke="none"/>
+        <path d="M120,18 C150,8 165,9 180,14 L300,16" fill="none" stroke="var(--qdi-trajectory)" stroke-width="1.5"/>
+        <path d="M120,18 C150,28 165,27 180,20 L300,18" fill="none" stroke="rgba(230,57,70,0.5)" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <div class="card c-acc">
+      <div class="card-top"><span class="card-name">Tour idéal composé</span><span class="card-badge">N3</span></div>
+      <div class="card-fact">Votre potentiel : <b>1:41.2</b> — 80 % de l'écart se loge dans le secteur 2.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <rect x="0" y="10" width="92" height="14" rx="3" fill="rgba(74,222,128,0.5)"/>
+        <rect x="96" y="10" width="112" height="14" rx="3" fill="rgba(96,165,250,0.5)"/>
+        <rect x="212" y="10" width="88" height="14" rx="3" fill="rgba(74,222,128,0.5)"/>
+      </svg>
+    </div>
+
+    <div class="card c-reg">
+      <div class="card-top"><span class="card-name">Dérive sur la session</span><span class="card-badge">N3</span></div>
+      <div class="card-fact">Vos temps progressent jusqu'au <b>tour 9</b>, puis se stabilisent.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,8 C40,10 70,20 110,24 C150,27 220,27 300,26" fill="none" stroke="var(--qdi-regularity)" stroke-width="1.5"/>
+        <circle cx="110" cy="24" r="2.5" fill="var(--copper-glow)"/>
+      </svg>
+    </div>
+
+    <div class="tier">Signature · comportement</div>
+
+    <div class="card c-flow">
+      <div class="card-top"><span class="card-name">Cohérence du flow</span><span class="card-badge">N4</span></div>
+      <div class="card-fact">Vos tours les plus rapides sont vos plus <b>fluides</b>, pas les plus agressifs.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <polyline points="0,17 16,8 26,26 38,7 52,27 64,13 78,5 90,28 104,12 118,25 130,11 150,27 158,14 172,6 186,27" fill="none" stroke="rgba(230,57,70,0.4)" stroke-width="1"/>
+        <polyline points="150,17 175,14 200,19 225,13 250,18 275,15 300,17" fill="none" stroke="var(--qdi-fluidity)" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <div class="card c-brake">
+      <div class="card-top"><span class="card-name">Corrélation causale</span><span class="card-badge">N4</span></div>
+      <div class="card-fact">Relâcher tôt le frein au V6 = vos secteurs S2 les plus <b>lents</b>.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="20" y1="28" x2="285" y2="8" stroke="rgba(96,165,250,0.35)" stroke-width="1" stroke-dasharray="3 3"/>
+        <g fill="var(--qdi-braking)">
+          <circle cx="40" cy="26" r="2"/><circle cx="70" cy="24" r="2"/><circle cx="100" cy="22" r="2"/>
+          <circle cx="130" cy="19" r="2"/><circle cx="160" cy="17" r="2"/><circle cx="190" cy="15" r="2"/>
+          <circle cx="220" cy="13" r="2"/><circle cx="250" cy="11" r="2"/><circle cx="275" cy="9" r="2"/>
+        </g>
+      </svg>
+    </div>
+
+    <div class="card c-reg">
+      <div class="card-top"><span class="card-name">Équilibre châssis</span><span class="card-badge">N4 · 6 axes</span></div>
+      <div class="card-fact">Au virage 7, la voiture pivote <b>18 %</b> plus vite que la trajectoire.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M10,30 C70,28 100,12 150,22 C175,27 200,29 290,30" fill="none" stroke="var(--qdi-braking)" stroke-width="1.5"/>
+        <path d="M10,30 C70,26 100,4 150,10 C175,14 200,28 290,30" fill="none" stroke="var(--qdi-regularity)" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <div class="card c-acc">
+      <div class="card-top"><span class="card-name">Transfert de charge</span><span class="card-badge">N4 · 6 axes</span></div>
+      <div class="card-fact">Votre entrée la plus progressive : le roulis s'établit en <b>0,4 s</b> au V3.</div>
+      <svg class="spark" viewBox="0 0 300 34" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M10,30 C50,29 70,6 95,5 C115,4 130,24 160,28 C200,30 245,30 290,30" fill="none" stroke="var(--qdi-fluidity)" stroke-width="1.5"/>
+        <path d="M10,30 C60,29 80,14 130,8 C180,4 240,6 290,6" fill="none" stroke="rgba(96,165,250,0.5)" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <div class="footer">
+      <p>Chaque lecture est un miroir. Elle vous montre. Elle ne vous dirige pas.</p>
+    </div>
+  </div>
+</div>
+
+<div class="notes">
+  <h3>Galerie — vue d'ensemble</h3>
+  <p class="ld">L'écran d'accueil de la lecture approfondie. Il rassemble les neuf insights sur trois niveaux et donne, d'un coup d'œil, la mesure de la profondeur — c'est l'écran qui fait comprendre le niveau de l'app.</p>
+  <div class="note"><b>Rôle : la vitrine</b><p>Un pilote — ou un coach qu'on veut convaincre — saisit ici en cinq secondes ce que l'app sait faire. Les mini-sparklines donnent un avant-goût visuel ; le tap ouvre l'écran détaillé de chaque insight.</p></div>
+  <div class="note"><b>Trois familles, par sens</b><p>« Décomposition · fondations » (N2), « Régularité · soi contre soi » (N3), « Signature · comportement » (N4). Le pilote navigue par ce qu'il veut comprendre, du plus simple au plus avancé. Les badges restent discrets.</p></div>
+  <div class="note"><b>Le badge « 6 axes »</b><p>Les deux insights les plus avancés (équilibre, transfert) portent un marqueur qui signale qu'ils exploitent gyroscope + accéléromètre. C'est un signe de profondeur, sans jargon.</p></div>
+  <div class="note"><b>Chaque carte = un fait</b><p>Aucune carte ne formule de consigne. Toutes énoncent un constat chiffré. Le rappel doctrinal en pied d'écran scelle l'ensemble : un miroir, pas un directeur.</p></div>
+  <div class="note"><b>Charte intégrale</b><p>Chaque carte porte la couleur QDI figée de sa dimension (trajectoire, freinage, fluidité, régularité, accélération). Aucune couleur Heritage. Cohérent avec les six écrans de détail.</p></div>
+</div>
+
+</body>
+</html>

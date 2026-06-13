@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Vue AR coach in-lens (E0.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--cream:#F8F9FA;--cream-mute:#A1A1AA;--cream-line:rgba(255,255,255,0.08);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;
+  --qdi-acceleration:#4ADE80;--qdi-braking:#60A5FA;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+
+/* ---- Lunette : champ de vision sombre, affichage déporté ---- */
+.lens-stage{width:520px;flex-shrink:0;}
+.lens-cap{font-family:var(--mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--cream-mute);
+  text-align:center;margin-bottom:14px;display:flex;align-items:center;gap:10px;justify-content:center;}
+.lens-cap .d{width:6px;height:6px;border-radius:50%;background:var(--oxv-red);box-shadow:0 0 8px var(--oxv-red);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.lens{position:relative;width:520px;height:300px;border-radius:18px;overflow:hidden;
+  background:radial-gradient(circle at 50% 45%, #0b0d0a 0%, #050505 70%);
+  border:1px solid var(--cream-line);box-shadow:inset 0 0 80px rgba(0,0,0,0.9);}
+/* simulate field of view vignette */
+.lens::before{content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%);pointer-events:none;}
+/* le HUD est posé en bas — hors ligne de regard direct */
+.hud{position:absolute;left:0;right:0;bottom:0;padding:22px 26px 24px;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;}
+
+/* fait central : chrono géant */
+.hud-main{display:flex;flex-direction:column;}
+.hud-main .k{font-family:var(--mono);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:4px;}
+.hud-main .v{font-family:var(--display);font-weight:700;font-style:italic;font-size:58px;line-height:0.9;color:var(--cream);
+  text-shadow:0 0 24px rgba(0,0,0,0.9);}
+.hud-main .v .ms{font-size:30px;color:var(--copper-glow);}
+
+/* faits secondaires : 2 max, alignés à droite */
+.hud-side{display:flex;flex-direction:column;gap:14px;align-items:flex-end;}
+.chip{text-align:right;}
+.chip .k{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-mute);}
+.chip .v{font-family:var(--display);font-weight:400;font-size:26px;color:var(--cream);margin-top:2px;text-shadow:0 0 18px rgba(0,0,0,0.9);}
+.chip .v.delta{color:var(--qdi-acceleration);}
+
+/* secteur courant : petit repère haut-gauche */
+.sector{position:absolute;top:18px;left:22px;display:flex;align-items:center;gap:8px;}
+.sector .lab{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cream-mute);}
+.sector .pill{font-family:var(--display);font-size:13px;font-weight:700;color:var(--night);background:var(--copper-glow);
+  padding:3px 10px;border-radius:99px;}
+/* pilote suivi : haut-droite */
+.who{position:absolute;top:18px;right:22px;font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--cream-mute);text-align:right;}
+.who b{color:var(--cream);font-weight:400;}
+
+.lens-foot{font-family:var(--sans);font-size:12px;font-weight:300;font-style:italic;color:var(--cream-mute);text-align:center;margin-top:16px;line-height:1.6;}
+
+.notes{width:340px;flex-shrink:0;padding-top:6px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+.note.warn b{color:#ffb703;}
+@media(max-width:900px){.lens-stage,.lens{width:100%;max-width:520px;}.notes{width:520px;max-width:100%;}}
+</style>
+</head>
+<body>
+
+<div class="lens-stage">
+  <div class="lens-cap"><span class="d"></span>Affichage in-lens · Ray-Ban Display · vu par le COACH</div>
+  <div class="lens">
+    <div class="sector"><span class="lab">Secteur</span><span class="pill">S2</span></div>
+    <div class="who">Pilote suivi<br><b>A. Mercier</b></div>
+    <div class="hud">
+      <div class="hud-main">
+        <div class="k">Tour en cours</div>
+        <div class="v">1:43<span class="ms">.2</span></div>
+      </div>
+      <div class="hud-side">
+        <div class="chip"><div class="k">Δ vs son réf.</div><div class="v delta">−0.4</div></div>
+        <div class="chip"><div class="k">Tour</div><div class="v">12</div></div>
+      </div>
+    </div>
+  </div>
+  <p class="lens-foot">Le pilote, lui, ne voit rien : il roule en silence.<br>Seul le coach, au bord de piste, lit ces faits.</p>
+</div>
+
+<div class="notes">
+  <h3>Écran E0.2 — Vue AR coach</h3>
+  <p class="ld">L'affichage déporté dans les lunettes du coach (Ray-Ban Display, voie Web View). Contraintes radicales : lisible d'un coup d'œil, au soleil, sans détourner l'attention.</p>
+  <div class="note"><b>3 faits maximum</b><p>Chrono du tour (géant), delta vs la référence perso du pilote, n° de tour. Plus un repère de secteur. Rien d'autre. Pas de graphe, pas de texte long.</p></div>
+  <div class="note warn"><b>Le pilote en silence</b><p>C'est LE coach qui porte les lunettes, jamais le pilote. La doctrine « silence en piste » reste intacte : aucune distraction côté conduite.</p></div>
+  <div class="note"><b>Faits, pas consignes</b><p>« Δ −0.4 » est un fait. L'écran n'affiche jamais « dis-lui de freiner plus tard ». Le coach lit, le coach décide de sa pédagogie — sa responsabilité, pas celle d'OXV.</p></div>
+  <div class="note"><b>HUD en périphérie</b><p>L'info est posée en bas du champ, hors ligne de regard directe, avec une vignette sombre. Pensé pour un coach à l'arrêt qui jette un œil, pas pour saturer sa vision.</p></div>
+  <div class="note warn"><b>Statut preview</b><p>Voie Web View (route ar-view, hors bundle Expo). Prototypable maintenant ; non publiable au grand public tant que Meta n'a pas ouvert la disponibilité générale. Latence à valider en réel.</p></div>
+</div>
+
+</body>
+</html>

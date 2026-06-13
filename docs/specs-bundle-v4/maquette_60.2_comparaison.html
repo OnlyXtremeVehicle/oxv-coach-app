@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Comparaison opt-in (60.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--night-card:#121212;--cream:#F8F9FA;--cream-soft:#E5E5E5;--cream-mute:#A1A1AA;
+  --cream-line:rgba(255,255,255,0.05);--cream-edge:rgba(255,255,255,0.15);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;--oxv-gold:#C4A459;
+  --qdi-braking:#60A5FA;--qdi-regularity:#C084FC;--qdi-acceleration:#4ADE80;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+  --bento-bg:rgba(18,18,18,0.7);--bento-border:rgba(255,255,255,0.05);--bento-radius:12px;--ease:cubic-bezier(0.25,0.46,0.45,0.94);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+.phone{width:390px;flex-shrink:0;background:var(--night);border-radius:44px;border:1px solid var(--cream-edge);
+  overflow:hidden;position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.notch{height:34px;display:flex;align-items:center;justify-content:center;}
+.notch::after{content:'';width:120px;height:7px;background:#000;border-radius:99px;border:1px solid rgba(255,255,255,0.08);}
+.screen{height:760px;overflow-y:auto;overflow-x:hidden;padding:0 22px 110px;}
+.screen::-webkit-scrollbar{width:0;}
+.appbar{display:flex;align-items:center;gap:14px;padding:14px 0 20px;position:sticky;top:0;
+  background:linear-gradient(var(--night) 70%,transparent);z-index:5;}
+.back{color:var(--cream-mute);font-size:20px;}
+.appbar-t{font-family:var(--display);font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:var(--cream-mute);
+  display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--cream-edge);}
+
+/* en-têtes des 2 pilotes — strictement symétriques */
+.heads{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:6px;}
+.head{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 8px;
+  background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);}
+.avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-family:var(--display);font-size:14px;font-weight:700;color:var(--night);}
+.av-a{background:var(--copper-glow);}
+.av-b{background:var(--cream-soft);}
+.head .nm{font-family:var(--sans);font-size:13px;font-weight:400;color:var(--cream);}
+.head .ct{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;color:var(--cream-mute);}
+.vs{text-align:center;font-family:var(--display);font-size:10px;letter-spacing:0.2em;color:var(--cream-mute);margin:14px 0 18px;}
+
+/* lignes de faits comparés */
+.cmp-row{margin-bottom:18px;}
+.cmp-label{font-family:var(--mono);font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cream-mute);text-align:center;margin-bottom:8px;}
+.cmp-vals{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cmp-cell{text-align:center;padding:14px 8px;background:var(--night-card);border:1px solid var(--cream-line);border-radius:var(--bento-radius);}
+.cmp-cell .v{font-family:var(--display);font-weight:400;font-size:22px;color:var(--cream);letter-spacing:0.01em;}
+.cmp-cell .u{font-family:var(--sans);font-size:11px;color:var(--cream-mute);font-weight:300;margin-top:4px;}
+
+/* mini-barres factuelles, même échelle, aucune couleur "gagnant" */
+.bar{height:4px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:10px;overflow:hidden;}
+.bar i{display:block;height:100%;background:var(--cream-mute);border-radius:2px;}
+
+.doctrine{text-align:center;padding:14px 14px 4px;}
+.doctrine p{font-family:var(--sans);font-style:italic;font-size:12px;font-weight:300;color:var(--cream-mute);line-height:1.6;}
+.consent{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:14px;
+  font-family:var(--mono);font-size:9px;letter-spacing:0.1em;color:var(--cream-mute);}
+.consent .d{width:6px;height:6px;border-radius:50%;background:var(--qdi-acceleration);box-shadow:0 0 8px var(--qdi-acceleration);}
+
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:88px;background:rgba(5,5,5,0.92);backdrop-filter:blur(20px);
+  border-top:1px solid var(--cream-line);display:flex;align-items:flex-start;justify-content:space-around;padding:14px 20px 0;}
+.tab{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--cream-mute);font-size:18px;}
+.tab.active{color:var(--gold);}
+.tab span{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;text-transform:uppercase;}
+.ti{font-style:normal;}
+.notes{width:330px;flex-shrink:0;padding-top:20px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+.note.red b{color:#ff6b6b;}
+@media(max-width:820px){.notes{width:390px;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="appbar"><i class="back">‹</i><span class="appbar-t">Comparaison</span></div>
+    <div class="eyebrow">Cercle · Opt-in</div>
+
+    <div class="heads">
+      <div class="head"><div class="avatar av-a">VOUS</div><div class="nm">Vous</div><div class="ct">Beltoise · 8 juil.</div></div>
+      <div class="head"><div class="avatar av-b">M·D</div><div class="nm">M. Dubreuil</div><div class="ct">Beltoise · 8 juil.</div></div>
+    </div>
+    <div class="vs">— FAITS CÔTE À CÔTE —</div>
+
+    <div class="cmp-row">
+      <div class="cmp-label">Tour le plus régulier</div>
+      <div class="cmp-vals">
+        <div class="cmp-cell"><div class="v">1:42.8</div><div class="u">votre tour</div><div class="bar"><i style="width:88%"></i></div></div>
+        <div class="cmp-cell"><div class="v">1:41.5</div><div class="u">son tour</div><div class="bar"><i style="width:92%"></i></div></div>
+      </div>
+    </div>
+
+    <div class="cmp-row">
+      <div class="cmp-label">Régularité (amplitude)</div>
+      <div class="cmp-vals">
+        <div class="cmp-cell"><div class="v">±0,9</div><div class="u">secondes</div><div class="bar"><i style="width:70%"></i></div></div>
+        <div class="cmp-cell"><div class="v">±1,4</div><div class="u">secondes</div><div class="bar"><i style="width:48%"></i></div></div>
+      </div>
+    </div>
+
+    <div class="cmp-row">
+      <div class="cmp-label">Vitesse maxi · ligne droite</div>
+      <div class="cmp-vals">
+        <div class="cmp-cell"><div class="v">218</div><div class="u">km/h</div><div class="bar"><i style="width:84%"></i></div></div>
+        <div class="cmp-cell"><div class="v">224</div><div class="u">km/h</div><div class="bar"><i style="width:90%"></i></div></div>
+      </div>
+    </div>
+
+    <div class="doctrine"><p>Deux pilotages. Aucun « meilleur ».<br>À vous de lire ce que les chiffres disent.</p></div>
+    <div class="consent"><span class="d"></span>Partage accepté par les deux pilotes · révocable</div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab"><i class="ti">◇</i><span>Session</span></div>
+    <div class="tab"><i class="ti">◷</i><span>Historique</span></div>
+    <div class="tab"><i class="ti">◉</i><span>Circuits</span></div>
+    <div class="tab active"><i class="ti">⊕</i><span>Communauté</span></div>
+    <div class="tab"><i class="ti">◐</i><span>Profil</span></div>
+  </div>
+</div>
+
+<div class="notes">
+  <h3>Écran 60.2 — Comparaison</h3>
+  <p class="ld">L'écran qui matérialise la ligne rouge doctrinale. Il rend la comparaison possible sans jamais désigner de gagnant.</p>
+  <div class="note red"><b>La ligne rouge tenue</b><p>Les deux colonnes sont strictement symétriques. Aucune surbrillance « gagnant », aucune flèche, aucun rang. Les barres partagent la même échelle mais ne colorient personne en vert/rouge.</p></div>
+  <div class="note"><b>Faits, le pilote conclut</b><p>« Son tour est plus rapide, le vôtre est plus régulier » — l'app ne le dit même pas. Elle pose les chiffres ; la lecture appartient au pilote. La doctrine le verrouille.</p></div>
+  <div class="note"><b>Double consentement visible</b><p>Le bandeau bas rappelle que les DEUX pilotes ont partagé, et que c'est révocable. Sans ce double opt-in, l'écran n'existe pas.</p></div>
+  <div class="note"><b>Le piège à ne jamais ouvrir</b><p>Le jour où l'on ajouterait un classement « entre amis », on bascule hors doctrine et on rouvre le risque juridique. Cet écran est conçu pour rendre ce pas impossible.</p></div>
+</div>
+
+</body>
+</html>
