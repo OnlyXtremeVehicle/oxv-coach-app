@@ -13,13 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircuitTrace } from '@/circuit/CircuitTrace';
 import { generateCircuit } from '@/circuit/circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
+import { DEMO_SESSION_INSIGHTS } from '@/circuit/sessionInsights';
 
 export default function DebugCircuitScreen() {
   const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
 
   return (
     <View style={styles.root}>
-      <CircuitTrace circuit={circuit} />
+      <CircuitTrace circuit={circuit} session={DEMO_SESSION_INSIGHTS} role="pilot" />
 
       <SafeAreaView style={styles.hud} pointerEvents="none">
         <Text style={styles.eyebrow}>CIRCUIT</Text>
