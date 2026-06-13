@@ -16,6 +16,7 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import {
   type CircuitService,
   type DirectoryCircuit,
@@ -25,6 +26,16 @@ import {
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+
+/**
+ * Le tracé 3D n'est disponible que pour Haute Saintonge (seul circuit dont on a
+ * la géométrie OSM, cf. fixture). Pour les autres, on n'affiche pas de tracé
+ * plutôt qu'une géométrie qui ne serait pas la leur (doctrine : ne pas maquiller).
+ * Géométrie par circuit = à venir avec la création de tracé (08 §5.3).
+ */
+function hasTrace3D(circuit: DirectoryCircuit | null): boolean {
+  return /saintonge/i.test(circuit?.officialName ?? circuit?.name ?? '');
+}
 
 export default function CircuitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -80,6 +91,21 @@ export default function CircuitDetailScreen() {
           >
             {circuitSubtitle(circuit)}
           </Text>
+        ) : null}
+
+        {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
+        {hasTrace3D(circuit) ? (
+          <View style={{ marginTop: spacing.xxl }}>
+            <Text
+              style={[
+                typography.eyebrow,
+                { color: colors.text.tertiary, marginBottom: spacing.md },
+              ]}
+            >
+              LE TRACÉ
+            </Text>
+            <CircuitTraceHero height={300} defaultLayer="geometry" />
+          </View>
         ) : null}
 
         <Text
