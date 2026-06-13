@@ -6,9 +6,13 @@
  * - Sans EXPO_PUBLIC_SENTRY_DSN : no-op aussi.
  * - En preview/production avec DSN : init standard, traces 100%.
  *
- * Le plugin @sentry/react-native/expo est déjà dans app.json, donc
- * la native auto-instrumentation est installée au build. Cette fonction
- * gère uniquement le runtime JS.
+ * NB : le plugin config @sentry/react-native/expo a été RETIRÉ de app.json
+ * en semaine 14 (conflit Gradle 8.8, doublon d'autolinking). Le module natif
+ * @sentry/react-native (~5.24.3) reste fourni par l'autolinking RN, donc la
+ * capture native fonctionne au runtime dès qu'un DSN est présent. Ce qui n'est
+ * plus câblé au build, c'est l'auto-instrumentation / l'upload de sourcemaps
+ * via le plugin (à reconfigurer le jour où Sentry sera réellement activé en
+ * prod). Cette fonction ne gère que le runtime JS.
  */
 
 import * as Sentry from '@sentry/react-native';
