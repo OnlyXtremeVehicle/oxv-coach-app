@@ -326,6 +326,119 @@ export type Database = {
           },
         ]
       }
+      articles: {
+        Row: {
+          body: string
+          category: string
+          created_at: string
+          cta_label: string | null
+          cta_page: string | null
+          date: string
+          date_label: string | null
+          featured: boolean
+          id: string
+          lead: string
+          published: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_page?: string | null
+          date?: string
+          date_label?: string | null
+          featured?: boolean
+          id: string
+          lead: string
+          published?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string
+          created_at?: string
+          cta_label?: string | null
+          cta_page?: string | null
+          date?: string
+          date_label?: string | null
+          featured?: boolean
+          id?: string
+          lead?: string
+          published?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      circuit_services: {
+        Row: {
+          address: string | null
+          circuit_id: string
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_premium: boolean
+          is_published: boolean
+          kind: string
+          lat: number | null
+          lon: number | null
+          name: string
+          organizer: string | null
+          updated_at: string
+          url: string | null
+        }
+        Insert: {
+          address?: string | null
+          circuit_id: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_premium?: boolean
+          is_published?: boolean
+          kind: string
+          lat?: number | null
+          lon?: number | null
+          name: string
+          organizer?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Update: {
+          address?: string | null
+          circuit_id?: string
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_premium?: boolean
+          is_published?: boolean
+          kind?: string
+          lat?: number | null
+          lon?: number | null
+          name?: string
+          organizer?: string | null
+          updated_at?: string
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circuit_services_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circuits: {
         Row: {
           bbox_max_lat: number | null
@@ -347,6 +460,7 @@ export type Database = {
           name: string
           official_name: string | null
           region: string | null
+          review_status: string
           total_sessions: number | null
           track_svg_path: string | null
           turns_count: number | null
@@ -373,6 +487,7 @@ export type Database = {
           name: string
           official_name?: string | null
           region?: string | null
+          review_status?: string
           total_sessions?: number | null
           track_svg_path?: string | null
           turns_count?: number | null
@@ -399,6 +514,7 @@ export type Database = {
           name?: string
           official_name?: string | null
           region?: string | null
+          review_status?: string
           total_sessions?: number | null
           track_svg_path?: string | null
           turns_count?: number | null
@@ -423,6 +539,300 @@ export type Database = {
           {
             foreignKeyName: "circuits_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_annotation_template: {
+        Row: {
+          body: string
+          coach_id: string
+          created_at: string
+          id: string
+          label: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          coach_id: string
+          created_at?: string
+          id?: string
+          label: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          coach_id?: string
+          created_at?: string
+          id?: string
+          label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_annotation_template_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_annotation_template_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_annotation_template_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_annotations: {
+        Row: {
+          body: string
+          coach_id: string
+          corner_index: number
+          created_at: string
+          deleted_at: string | null
+          id: string
+          pilot_id: string
+          telemetry_session_id: string | null
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          body: string
+          coach_id: string
+          corner_index: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          pilot_id: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          body?: string
+          coach_id?: string
+          corner_index?: number
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          pilot_id?: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_annotations_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_corner_reference: {
+        Row: {
+          braking_point_m: number | null
+          coach_id: string
+          corner_index: number
+          created_at: string
+          id: string
+          target_speed_kmh: number | null
+          trajectory_note: string | null
+          updated_at: string
+        }
+        Insert: {
+          braking_point_m?: number | null
+          coach_id: string
+          corner_index: number
+          created_at?: string
+          id?: string
+          target_speed_kmh?: number | null
+          trajectory_note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          braking_point_m?: number | null
+          coach_id?: string
+          corner_index?: number
+          created_at?: string
+          id?: string
+          target_speed_kmh?: number | null
+          trajectory_note?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_corner_reference_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_corner_reference_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_corner_reference_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_permissions: {
+        Row: {
+          can_manage_own_sessions: boolean
+          can_view_business_dashboard: boolean
+          can_view_pilots: boolean
+          granted_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_manage_own_sessions?: boolean
+          can_view_business_dashboard?: boolean
+          can_view_pilots?: boolean
+          granted_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_manage_own_sessions?: boolean
+          can_view_business_dashboard?: boolean
+          can_view_pilots?: boolean
+          granted_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_pilot_highlight: {
+        Row: {
+          coach_id: string
+          created_at: string
+          highlight_corner_indexes: number[]
+          id: string
+          note: string | null
+          pilot_id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          highlight_corner_indexes?: number[]
+          id?: string
+          note?: string | null
+          pilot_id: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          highlight_corner_indexes?: number[]
+          id?: string
+          note?: string | null
+          pilot_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_pilot_highlight_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_pilot_highlight_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_pilot_highlight_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_pilot_highlight_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_pilot_highlight_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_pilot_highlight_pilot_id_fkey"
+            columns: ["pilot_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -526,6 +936,217 @@ export type Database = {
           },
         ]
       }
+      coach_reading_weights: {
+        Row: {
+          coach_id: string
+          note: string | null
+          updated_at: string
+          w_pilot: number
+          w_regularity: number
+          w_smoothness: number
+          w_vehicle: number
+        }
+        Insert: {
+          coach_id: string
+          note?: string | null
+          updated_at?: string
+          w_pilot?: number
+          w_regularity?: number
+          w_smoothness?: number
+          w_vehicle?: number
+        }
+        Update: {
+          coach_id?: string
+          note?: string | null
+          updated_at?: string
+          w_pilot?: number
+          w_regularity?: number
+          w_smoothness?: number
+          w_vehicle?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_reading_weights_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: true
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_reading_weights_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: true
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_reading_weights_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_roulages: {
+        Row: {
+          circuit_name: string
+          coach_id: string
+          created_at: string
+          ends_at: string | null
+          id: string
+          location: string | null
+          max_pilots: number | null
+          notes: string | null
+          price_per_pilot: number | null
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          circuit_name?: string
+          coach_id: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          max_pilots?: number | null
+          notes?: string | null
+          price_per_pilot?: number | null
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          circuit_name?: string
+          coach_id?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          location?: string | null
+          max_pilots?: number | null
+          notes?: string | null
+          price_per_pilot?: number | null
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_roulages_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_roulages_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_roulages_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_session_context: {
+        Row: {
+          coach_id: string
+          created_at: string
+          equipment: string | null
+          id: string
+          objective: string | null
+          pilot_id: string
+          pilot_level: string | null
+          session_id: string
+          updated_at: string
+          weather_note: string | null
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          equipment?: string | null
+          id?: string
+          objective?: string | null
+          pilot_id: string
+          pilot_level?: string | null
+          session_id: string
+          updated_at?: string
+          weather_note?: string | null
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          equipment?: string | null
+          id?: string
+          objective?: string | null
+          pilot_id?: string
+          pilot_level?: string | null
+          session_id?: string
+          updated_at?: string
+          weather_note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_session_context_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_session_context_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_messages: {
         Row: {
           created_at: string
@@ -599,6 +1220,205 @@ export type Database = {
           {
             foreignKeyName: "contact_messages_read_by_fkey"
             columns: ["read_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      corporate_leads: {
+        Row: {
+          company: string
+          contact_name: string
+          contact_role: string | null
+          created_at: string
+          day_format: string | null
+          email: string
+          guests: string | null
+          id: string
+          message: string | null
+          phone: string | null
+          sector: string | null
+          status: string
+          target_date: string | null
+        }
+        Insert: {
+          company: string
+          contact_name: string
+          contact_role?: string | null
+          created_at?: string
+          day_format?: string | null
+          email: string
+          guests?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          sector?: string | null
+          status?: string
+          target_date?: string | null
+        }
+        Update: {
+          company?: string
+          contact_name?: string
+          contact_role?: string | null
+          created_at?: string
+          day_format?: string | null
+          email?: string
+          guests?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          sector?: string | null
+          status?: string
+          target_date?: string | null
+        }
+        Relationships: []
+      }
+      demandes_inscription: {
+        Row: {
+          admin_note: string | null
+          birth_date: string | null
+          bpjeps: string | null
+          city: string | null
+          coaching_pilots: string | null
+          coaching_pitch: string | null
+          coaching_tracks: string | null
+          coaching_years: string | null
+          consent_cgv: boolean
+          consent_contact: boolean
+          consent_rgpd: boolean
+          created_at: string
+          created_user_id: string | null
+          email: string
+          ffsa_category: string | null
+          ffsa_number: string | null
+          first_name: string
+          id: string
+          last_name: string
+          motivation: string | null
+          phone: string
+          pro_status: string | null
+          rc_pro: string | null
+          referral: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          statut: Database["public"]["Enums"]["oxv_demande_statut"]
+          track_experience: string | null
+          type_demande: Database["public"]["Enums"]["oxv_demande_type"]
+          vehicle_brand: string | null
+          vehicle_model: string | null
+          vehicle_type: string | null
+          vehicle_year: number | null
+        }
+        Insert: {
+          admin_note?: string | null
+          birth_date?: string | null
+          bpjeps?: string | null
+          city?: string | null
+          coaching_pilots?: string | null
+          coaching_pitch?: string | null
+          coaching_tracks?: string | null
+          coaching_years?: string | null
+          consent_cgv?: boolean
+          consent_contact?: boolean
+          consent_rgpd?: boolean
+          created_at?: string
+          created_user_id?: string | null
+          email: string
+          ffsa_category?: string | null
+          ffsa_number?: string | null
+          first_name: string
+          id?: string
+          last_name: string
+          motivation?: string | null
+          phone: string
+          pro_status?: string | null
+          rc_pro?: string | null
+          referral?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          statut?: Database["public"]["Enums"]["oxv_demande_statut"]
+          track_experience?: string | null
+          type_demande: Database["public"]["Enums"]["oxv_demande_type"]
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+          vehicle_year?: number | null
+        }
+        Update: {
+          admin_note?: string | null
+          birth_date?: string | null
+          bpjeps?: string | null
+          city?: string | null
+          coaching_pilots?: string | null
+          coaching_pitch?: string | null
+          coaching_tracks?: string | null
+          coaching_years?: string | null
+          consent_cgv?: boolean
+          consent_contact?: boolean
+          consent_rgpd?: boolean
+          created_at?: string
+          created_user_id?: string | null
+          email?: string
+          ffsa_category?: string | null
+          ffsa_number?: string | null
+          first_name?: string
+          id?: string
+          last_name?: string
+          motivation?: string | null
+          phone?: string
+          pro_status?: string | null
+          rc_pro?: string | null
+          referral?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          statut?: Database["public"]["Enums"]["oxv_demande_statut"]
+          track_experience?: string | null
+          type_demande?: Database["public"]["Enums"]["oxv_demande_type"]
+          vehicle_brand?: string | null
+          vehicle_model?: string | null
+          vehicle_type?: string | null
+          vehicle_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demandes_inscription_created_user_id_fkey"
+            columns: ["created_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "demandes_inscription_created_user_id_fkey"
+            columns: ["created_user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "demandes_inscription_created_user_id_fkey"
+            columns: ["created_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demandes_inscription_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "demandes_inscription_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "demandes_inscription_reviewed_by_fkey"
+            columns: ["reviewed_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -901,6 +1721,86 @@ export type Database = {
           },
         ]
       }
+      lodgings: {
+        Row: {
+          address: string | null
+          booking_url: string | null
+          circuit_id: string | null
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          distance_to_circuit_km: number | null
+          id: string
+          is_premium: boolean | null
+          is_published: boolean | null
+          lat: number | null
+          lodging_type: string | null
+          lon: number | null
+          name: string
+          price_range: string | null
+          region: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          address?: string | null
+          booking_url?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          distance_to_circuit_km?: number | null
+          id?: string
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          lodging_type?: string | null
+          lon?: number | null
+          name: string
+          price_range?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          address?: string | null
+          booking_url?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          distance_to_circuit_km?: number | null
+          id?: string
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          lodging_type?: string | null
+          lon?: number | null
+          name?: string
+          price_range?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lodgings_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media: {
         Row: {
           description: string | null
@@ -1002,6 +1902,107 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notif_throttle_log: {
+        Row: {
+          id: number
+          notif_type: string
+          recipient_user_id: string
+          sent_at: string
+          source_user_id: string
+        }
+        Insert: {
+          id?: number
+          notif_type: string
+          recipient_user_id: string
+          sent_at?: string
+          source_user_id: string
+        }
+        Update: {
+          id?: number
+          notif_type?: string
+          recipient_user_id?: string
+          sent_at?: string
+          source_user_id?: string
+        }
+        Relationships: []
+      }
+      partners: {
+        Row: {
+          address: string | null
+          circuit_id: string | null
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_official_partner: boolean | null
+          is_premium: boolean | null
+          is_published: boolean | null
+          lat: number | null
+          logo_url: string | null
+          lon: number | null
+          name: string
+          partner_type: string | null
+          region: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          address?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_official_partner?: boolean | null
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          logo_url?: string | null
+          lon?: number | null
+          name: string
+          partner_type?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          address?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_official_partner?: boolean | null
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          logo_url?: string | null
+          lon?: number | null
+          name?: string
+          partner_type?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "circuits"
             referencedColumns: ["id"]
           },
         ]
@@ -1114,6 +2115,141 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pilot_friendships: {
+        Row: {
+          id: string
+          initiator_id: string
+          pilot_a: string
+          pilot_b: string
+          requested_at: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          id?: string
+          initiator_id: string
+          pilot_a: string
+          pilot_b: string
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          id?: string
+          initiator_id?: string
+          pilot_a?: string
+          pilot_b?: string
+          requested_at?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_friendships_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_initiator_id_fkey"
+            columns: ["initiator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_a_fkey"
+            columns: ["pilot_a"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_a_fkey"
+            columns: ["pilot_a"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_a_fkey"
+            columns: ["pilot_a"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_b_fkey"
+            columns: ["pilot_b"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_b_fkey"
+            columns: ["pilot_b"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "pilot_friendships_pilot_b_fkey"
+            columns: ["pilot_b"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pilot_goals: {
+        Row: {
+          body: string
+          created_at: string
+          evaluated_at: string | null
+          evaluated_session_id: string | null
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          evaluated_at?: string | null
+          evaluated_session_id?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          evaluated_at?: string | null
+          evaluated_session_id?: string | null
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_goals_evaluated_session_id_fkey"
+            columns: ["evaluated_session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1352,6 +2488,83 @@ export type Database = {
           },
         ]
       }
+      restaurants: {
+        Row: {
+          address: string | null
+          circuit_id: string | null
+          city: string | null
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string | null
+          created_by: string | null
+          cuisine_type: string | null
+          description: string | null
+          distance_to_circuit_km: number | null
+          id: string
+          is_premium: boolean | null
+          is_published: boolean | null
+          lat: number | null
+          lon: number | null
+          name: string
+          price_range: string | null
+          region: string | null
+          updated_at: string | null
+          url: string | null
+        }
+        Insert: {
+          address?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          cuisine_type?: string | null
+          description?: string | null
+          distance_to_circuit_km?: number | null
+          id?: string
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          lon?: number | null
+          name: string
+          price_range?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Update: {
+          address?: string | null
+          circuit_id?: string | null
+          city?: string | null
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          cuisine_type?: string | null
+          description?: string | null
+          distance_to_circuit_km?: number | null
+          id?: string
+          is_premium?: boolean | null
+          is_published?: boolean | null
+          lat?: number | null
+          lon?: number | null
+          name?: string
+          price_range?: string | null
+          region?: string | null
+          updated_at?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurants_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ritual_dispatches: {
         Row: {
           attempt_count: number
@@ -1492,6 +2705,234 @@ export type Database = {
           },
         ]
       }
+      roulage_invitations: {
+        Row: {
+          id: string
+          invited_at: string
+          pilot_id: string
+          responded_at: string | null
+          roulage_id: string
+          status: string
+        }
+        Insert: {
+          id?: string
+          invited_at?: string
+          pilot_id: string
+          responded_at?: string | null
+          roulage_id: string
+          status?: string
+        }
+        Update: {
+          id?: string
+          invited_at?: string
+          pilot_id?: string
+          responded_at?: string | null
+          roulage_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roulage_invitations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "roulage_invitations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "roulage_invitations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roulage_invitations_roulage_id_fkey"
+            columns: ["roulage_id"]
+            isOneToOne: false
+            referencedRelation: "coach_roulages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_insights: {
+        Row: {
+          anatomy: Json | null
+          chassis_balance: Json | null
+          computed_at: string | null
+          data_quality: Json | null
+          dispersion: Json | null
+          engine_version: string | null
+          flow_coherence: Json | null
+          gg_envelope: Json | null
+          id: string
+          ideal_lap: Json | null
+          load_transfer: Json | null
+          n_frames: number | null
+          n_laps: number | null
+          session_drift: Json | null
+          telemetry_session_id: string
+          throttle_brake: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          anatomy?: Json | null
+          chassis_balance?: Json | null
+          computed_at?: string | null
+          data_quality?: Json | null
+          dispersion?: Json | null
+          engine_version?: string | null
+          flow_coherence?: Json | null
+          gg_envelope?: Json | null
+          id?: string
+          ideal_lap?: Json | null
+          load_transfer?: Json | null
+          n_frames?: number | null
+          n_laps?: number | null
+          session_drift?: Json | null
+          telemetry_session_id: string
+          throttle_brake?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          anatomy?: Json | null
+          chassis_balance?: Json | null
+          computed_at?: string | null
+          data_quality?: Json | null
+          dispersion?: Json | null
+          engine_version?: string | null
+          flow_coherence?: Json | null
+          gg_envelope?: Json | null
+          id?: string
+          ideal_lap?: Json | null
+          load_transfer?: Json | null
+          n_frames?: number | null
+          n_laps?: number | null
+          session_drift?: Json | null
+          telemetry_session_id?: string
+          throttle_brake?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_insights_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: true
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      session_media: {
+        Row: {
+          caption: string | null
+          deleted_at: string | null
+          display_order: number
+          duration_seconds: number | null
+          file_size_bytes: number | null
+          height_px: number | null
+          id: string
+          media_type: string
+          mime_type: string | null
+          pilot_user_id: string
+          storage_path: string
+          telemetry_session_id: string
+          uploaded_at: string
+          uploaded_by_user_id: string | null
+          width_px: number | null
+        }
+        Insert: {
+          caption?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          height_px?: number | null
+          id?: string
+          media_type: string
+          mime_type?: string | null
+          pilot_user_id: string
+          storage_path: string
+          telemetry_session_id: string
+          uploaded_at?: string
+          uploaded_by_user_id?: string | null
+          width_px?: number | null
+        }
+        Update: {
+          caption?: string | null
+          deleted_at?: string | null
+          display_order?: number
+          duration_seconds?: number | null
+          file_size_bytes?: number | null
+          height_px?: number | null
+          id?: string
+          media_type?: string
+          mime_type?: string | null
+          pilot_user_id?: string
+          storage_path?: string
+          telemetry_session_id?: string
+          uploaded_at?: string
+          uploaded_by_user_id?: string | null
+          width_px?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_media_pilot_user_id_fkey"
+            columns: ["pilot_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "session_media_pilot_user_id_fkey"
+            columns: ["pilot_user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "session_media_pilot_user_id_fkey"
+            columns: ["pilot_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_media_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_media_uploaded_by_user_id_fkey"
+            columns: ["uploaded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "session_media_uploaded_by_user_id_fkey"
+            columns: ["uploaded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "session_media_uploaded_by_user_id_fkey"
+            columns: ["uploaded_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           available_offers: Json | null
@@ -1567,60 +3008,166 @@ export type Database = {
         }
         Relationships: []
       }
+      social_pings: {
+        Row: {
+          address: string | null
+          contact_email: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          ends_at: string | null
+          event_url: string | null
+          id: string
+          is_published: boolean
+          kind: string
+          lat: number
+          live_url: string | null
+          lon: number
+          starts_at: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          event_url?: string | null
+          id?: string
+          is_published?: boolean
+          kind: string
+          lat: number
+          live_url?: string | null
+          lon: number
+          starts_at?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          contact_email?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          ends_at?: string | null
+          event_url?: string | null
+          id?: string
+          is_published?: boolean
+          kind?: string
+          lat?: number
+          live_url?: string | null
+          lon?: number
+          starts_at?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_pings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "social_pings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "social_pings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telemetry_frames: {
         Row: {
           altitude_m: number | null
           battery_level: number | null
           created_at: string
           elapsed_ms: number
+          fix_valid: boolean | null
           g_force_x: number | null
           g_force_y: number | null
           g_force_z: number | null
           gps_accuracy_m: number | null
           gps_fix: number | null
           heading: number | null
+          heading_accuracy: number | null
           id: number
+          itow_ms: number | null
           latitude: number | null
           longitude: number | null
+          pdop: number | null
+          rotation_x: number | null
+          rotation_y: number | null
+          rotation_z: number | null
           satellites: number | null
           session_id: string
+          speed_accuracy: number | null
           speed_kmh: number | null
+          speed_ms: number | null
         }
         Insert: {
           altitude_m?: number | null
           battery_level?: number | null
           created_at?: string
           elapsed_ms: number
+          fix_valid?: boolean | null
           g_force_x?: number | null
           g_force_y?: number | null
           g_force_z?: number | null
           gps_accuracy_m?: number | null
           gps_fix?: number | null
           heading?: number | null
+          heading_accuracy?: number | null
           id?: number
+          itow_ms?: number | null
           latitude?: number | null
           longitude?: number | null
+          pdop?: number | null
+          rotation_x?: number | null
+          rotation_y?: number | null
+          rotation_z?: number | null
           satellites?: number | null
           session_id: string
+          speed_accuracy?: number | null
           speed_kmh?: number | null
+          speed_ms?: number | null
         }
         Update: {
           altitude_m?: number | null
           battery_level?: number | null
           created_at?: string
           elapsed_ms?: number
+          fix_valid?: boolean | null
           g_force_x?: number | null
           g_force_y?: number | null
           g_force_z?: number | null
           gps_accuracy_m?: number | null
           gps_fix?: number | null
           heading?: number | null
+          heading_accuracy?: number | null
           id?: number
+          itow_ms?: number | null
           latitude?: number | null
           longitude?: number | null
+          pdop?: number | null
+          rotation_x?: number | null
+          rotation_y?: number | null
+          rotation_z?: number | null
           satellites?: number | null
           session_id?: string
+          speed_accuracy?: number | null
           speed_kmh?: number | null
+          speed_ms?: number | null
         }
         Relationships: [
           {
@@ -2201,6 +3748,7 @@ export type Database = {
     }
     Functions: {
       admin_ritual_stats: { Args: { p_days_back?: number }; Returns: Json }
+      app_get_secret: { Args: { secret_name: string }; Returns: string }
       apply_resend_event: {
         Args: {
           p_bounce_reason?: string
@@ -2210,13 +3758,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      are_friends: {
+        Args: { user_a: string; user_b: string }
+        Returns: boolean
+      }
       cancel_pending_rituals_for_registration: {
         Args: { p_registration_id: string }
         Returns: number
       }
+      cleanup_old_notif_logs: { Args: never; Returns: number }
+      coach_has_permission: {
+        Args: { coach_uuid: string; permission_name: string }
+        Returns: boolean
+      }
       generate_oxv_reference: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
+      is_coach: { Args: never; Returns: boolean }
       is_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
+      is_my_coach: { Args: { coach_uuid: string }; Returns: boolean }
+      is_validated_member: { Args: never; Returns: boolean }
       log_coach_view: {
         Args: {
           action_subtype?: string
@@ -2225,9 +3785,20 @@ export type Database = {
         }
         Returns: undefined
       }
+      oxv_get_secret: { Args: { secret_name: string }; Returns: string }
+      oxv_is_admin: { Args: never; Returns: boolean }
       schedule_rituals_for_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      should_send_notif: {
+        Args: {
+          notif: string
+          recipient: string
+          source: string
+          window_seconds: number
+        }
+        Returns: boolean
       }
     }
     Enums: {
@@ -2247,6 +3818,8 @@ export type Database = {
         | "video_embedded"
         | "telemetry_report"
       offer_type_enum: "access" | "signature" | "promotion" | "heritage"
+      oxv_demande_statut: "en_attente" | "acceptee" | "refusee"
+      oxv_demande_type: "pilote" | "pilote_pro" | "coach"
       payment_method_enum: "card" | "bank_transfer" | "paypal"
       payment_status_enum: "pending" | "succeeded" | "failed" | "refunded"
       registration_status_enum:
@@ -2417,6 +3990,8 @@ export const Constants = {
         "telemetry_report",
       ],
       offer_type_enum: ["access", "signature", "promotion", "heritage"],
+      oxv_demande_statut: ["en_attente", "acceptee", "refusee"],
+      oxv_demande_type: ["pilote", "pilote_pro", "coach"],
       payment_method_enum: ["card", "bank_transfer", "paypal"],
       payment_status_enum: ["pending", "succeeded", "failed", "refunded"],
       registration_status_enum: [
