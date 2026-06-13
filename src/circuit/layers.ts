@@ -12,7 +12,13 @@
 import type { Circuit } from './circuitGenerator';
 import type { AnatomyCorner, CornerRecord, SessionInsights } from './sessionInsights';
 
-export type LayerId = 'geometry' | 'regularity' | 'apexSpeed' | 'chassisBalance' | 'loadTransfer';
+export type LayerId =
+  | 'geometry'
+  | 'regularity'
+  | 'apexSpeed'
+  | 'brakeDist'
+  | 'chassisBalance'
+  | 'loadTransfer';
 export type LayerKind = 'geometry' | 'sequential' | 'diverging';
 
 export interface RGB {
@@ -111,6 +117,15 @@ export const LAYERS: Record<LayerId, LayerDescriptor> = {
     valueForCorner: (s, i) => anatomyValue(s, i, (c) => c.apex_speed_kmh),
     available: (s) => !!s && !!s.anatomy && s.anatomy.length > 0,
   },
+  brakeDist: {
+    id: 'brakeDist',
+    label: 'Anatomie freinage',
+    role: 'pilot',
+    kind: 'sequential',
+    unit: 'm',
+    valueForCorner: (s, i) => anatomyValue(s, i, (c) => c.brake_dist_m),
+    available: (s) => !!s && !!s.anatomy && s.anatomy.length > 0,
+  },
   chassisBalance: {
     id: 'chassisBalance',
     label: 'Équilibre châssis',
@@ -136,6 +151,7 @@ export const PILOT_LAYERS: LayerId[] = [
   'geometry',
   'regularity',
   'apexSpeed',
+  'brakeDist',
   'chassisBalance',
   'loadTransfer',
 ];

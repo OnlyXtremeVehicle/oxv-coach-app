@@ -17,6 +17,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { FadeInSection } from '@/components/motion';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -31,6 +32,7 @@ export default function SignatureScreen() {
 
   const [signature, setSignature] = useState<PilotSignature | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -41,8 +43,8 @@ export default function SignatureScreen() {
 
     (async () => {
       // Résout la session cible (param ou dernière complétée)
-      let sessionId = params.sessionId;
-      if (!sessionId) {
+      let resolvedId = params.sessionId;
+      if (!resolvedId) {
         const { data: row } = await supabase
           .from('telemetry_sessions')
           .select('id')
@@ -51,16 +53,17 @@ export default function SignatureScreen() {
           .order('started_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        sessionId = (row as { id?: string } | null)?.id;
+        resolvedId = (row as { id?: string } | null)?.id;
       }
-      if (!sessionId || cancelled) {
+      if (!resolvedId || cancelled) {
         setLoading(false);
         return;
       }
+      setSessionId(resolvedId);
 
       const [segments, laps] = await Promise.all([
-        listSegmentAnalysesForSession(sessionId),
-        fetchSessionLaps(sessionId),
+        listSegmentAnalysesForSession(resolvedId),
+        fetchSessionLaps(resolvedId),
       ]);
       if (cancelled) return;
 
@@ -118,6 +121,12 @@ export default function SignatureScreen() {
         <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
           Votre empreinte.
         </Text>
+
+        {/* Tracé : où la signature s'exprime sur la piste (specs v4 §05 §4.2).
+            Couche d'entrée Vitesse d'apex ; le pilote bascule vers Anatomie freinage. */}
+        <FadeInSection style={{ marginBottom: spacing.xl }}>
+          <CircuitTraceHero sessionId={sessionId ?? undefined} defaultLayer="apexSpeed" />
+        </FadeInSection>
 
         {!hasContent ? (
           <View
