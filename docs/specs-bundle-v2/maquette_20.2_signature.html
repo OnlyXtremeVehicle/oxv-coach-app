@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Signature de pilotage (20.2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#050505;--night-card:#121212;--cream:#F8F9FA;--cream-soft:#E5E5E5;--cream-mute:#A1A1AA;
+  --cream-line:rgba(255,255,255,0.05);--cream-edge:rgba(255,255,255,0.15);
+  --gold:#FFB703;--copper-glow:#FFC93C;--oxv-red:#C8102E;--oxv-gold:#C4A459;
+  --qdi-trajectory:#E63946;--qdi-fluidity:#FFB703;--qdi-braking:#60A5FA;--qdi-acceleration:#4ADE80;--qdi-regularity:#C084FC;
+  --display:'Syncopate','Inter',sans-serif;--sans:'Inter',-apple-system,sans-serif;--mono:'JetBrains Mono',Menlo,monospace;
+  --bento-bg:rgba(18,18,18,0.7);--bento-border:rgba(255,255,255,0.05);--bento-border-h:rgba(255,255,255,0.15);--bento-radius:12px;
+  --ease:cubic-bezier(0.25,0.46,0.45,0.94);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#000;font-family:var(--sans);color:var(--cream);-webkit-font-smoothing:antialiased;
+  min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;gap:40px;flex-wrap:wrap;}
+.phone{width:390px;flex-shrink:0;background:var(--night);border-radius:44px;border:1px solid var(--cream-edge);
+  overflow:hidden;position:relative;box-shadow:0 40px 120px rgba(0,0,0,0.6);}
+.notch{height:34px;display:flex;align-items:center;justify-content:center;}
+.notch::after{content:'';width:120px;height:7px;background:#000;border-radius:99px;border:1px solid rgba(255,255,255,0.08);}
+.screen{height:760px;overflow-y:auto;overflow-x:hidden;padding:0 22px 110px;}
+.screen::-webkit-scrollbar{width:0;}
+.appbar{display:flex;align-items:center;gap:14px;padding:14px 0 22px;position:sticky;top:0;
+  background:linear-gradient(var(--night) 70%,transparent);z-index:5;}
+.back{color:var(--cream-mute);font-size:20px;}
+.appbar-t{font-family:var(--display);font-size:12px;font-weight:400;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream);}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.28em;text-transform:uppercase;color:var(--cream-mute);
+  display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.eyebrow::before{content:'';width:24px;height:1px;background:var(--cream-edge);}
+.lead{font-family:var(--sans);font-weight:300;font-size:14px;color:var(--cream-mute);line-height:1.5;margin-bottom:22px;}
+.lead b{color:var(--cream-soft);font-weight:400;}
+
+/* radar empreinte */
+.sig-wrap{background:var(--bento-bg);border:1px solid var(--bento-border);border-radius:var(--bento-radius);
+  padding:18px 16px 20px;margin-bottom:18px;}
+.sig-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.sig-head .t{font-family:var(--display);font-size:14px;font-weight:400;letter-spacing:0.05em;color:var(--cream);}
+.sig-head .s{font-family:var(--mono);font-size:10px;color:var(--copper-glow);letter-spacing:0.1em;}
+.radar{display:block;margin:4px auto 0;}
+
+/* traits factuels */
+.traits-title{font-family:var(--display);font-weight:400;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--cream-mute);margin:24px 0 12px;}
+.trait{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--cream-line);}
+.trait:last-child{border-bottom:0;}
+.trait .ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+  background:rgba(255,255,255,0.04);}
+.trait .body{flex:1;}
+.trait .lab{font-family:var(--sans);font-size:14px;font-weight:400;color:var(--cream);}
+.trait .desc{font-family:var(--sans);font-size:12px;font-weight:300;color:var(--cream-mute);margin-top:2px;line-height:1.4;}
+.trait .val{font-family:var(--mono);font-size:13px;color:var(--cream-soft);text-align:right;flex-shrink:0;}
+
+.doctrine{text-align:center;padding:22px 16px 4px;}
+.doctrine p{font-family:var(--sans);font-style:italic;font-size:12px;font-weight:300;color:var(--cream-mute);line-height:1.6;}
+
+.tabbar{position:absolute;bottom:0;left:0;right:0;height:88px;background:rgba(5,5,5,0.92);backdrop-filter:blur(20px);
+  border-top:1px solid var(--cream-line);display:flex;align-items:flex-start;justify-content:space-around;padding:14px 20px 0;}
+.tab{display:flex;flex-direction:column;align-items:center;gap:5px;color:var(--cream-mute);font-size:18px;}
+.tab.active{color:var(--gold);}
+.tab span{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;text-transform:uppercase;}
+.ti{font-style:normal;}
+
+.notes{width:330px;flex-shrink:0;padding-top:20px;}
+.notes h3{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--cream);margin-bottom:6px;}
+.notes .ld{font-size:13px;color:var(--cream-mute);line-height:1.6;margin-bottom:22px;font-weight:300;}
+.note{border-left:2px solid var(--oxv-red);padding:2px 0 2px 14px;margin-bottom:18px;}
+.note b{display:block;font-family:var(--mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--copper-glow);margin-bottom:5px;}
+.note p{font-size:12.5px;color:var(--cream-soft);line-height:1.55;font-weight:300;}
+@media(max-width:820px){.notes{width:390px;}}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="appbar"><i class="back">‹</i><span class="appbar-t">Signature de pilotage</span></div>
+
+    <div class="eyebrow">Pilier 1 · Empreinte</div>
+    <p class="lead">Votre manière à vous. Pas une note — <b>une identité de pilotage</b>, lue dans vos données.</p>
+
+    <div class="sig-wrap">
+      <div class="sig-head"><span class="t">Votre empreinte</span><span class="s">18 tours · 3 secteurs</span></div>
+      <svg class="radar" width="300" height="230" viewBox="0 0 300 230" role="img" aria-label="Empreinte de pilotage sur 5 axes factuels">
+        <g transform="translate(150,118)">
+          <!-- grilles -->
+          <g fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1">
+            <polygon points="0,-90 85.6,-27.8 52.9,72.8 -52.9,72.8 -85.6,-27.8"/>
+            <polygon points="0,-60 57,-18.5 35.3,48.5 -35.3,48.5 -57,-18.5"/>
+            <polygon points="0,-30 28.5,-9.3 17.6,24.3 -17.6,24.3 -28.5,-9.3"/>
+          </g>
+          <g stroke="rgba(255,255,255,0.07)" stroke-width="1">
+            <line x1="0" y1="0" x2="0" y2="-90"/><line x1="0" y1="0" x2="85.6" y2="-27.8"/>
+            <line x1="0" y1="0" x2="52.9" y2="72.8"/><line x1="0" y1="0" x2="-52.9" y2="72.8"/>
+            <line x1="0" y1="0" x2="-85.6" y2="-27.8"/>
+          </g>
+          <!-- empreinte (valeurs factuelles, pas un score global) -->
+          <polygon points="0,-74 64,-20.8 39,53.6 -44,60.5 -57,-18.5"
+            fill="rgba(196,16,46,0.18)" stroke="var(--oxv-red)" stroke-width="2" stroke-linejoin="round"/>
+          <g fill="var(--oxv-red)">
+            <circle cx="0" cy="-74" r="3"/><circle cx="64" cy="-20.8" r="3"/><circle cx="39" cy="53.6" r="3"/>
+            <circle cx="-44" cy="60.5" r="3"/><circle cx="-57" cy="-18.5" r="3"/>
+          </g>
+          <!-- labels (idiome HUD) -->
+          <g font-family="JetBrains Mono,monospace" font-size="9" fill="#A1A1AA" letter-spacing="1">
+            <text x="0" y="-100" text-anchor="middle">CAP</text>
+            <text x="100" y="-30" text-anchor="start">VISÉE</text>
+            <text x="60" y="92" text-anchor="middle">PLONGÉE</text>
+            <text x="-60" y="92" text-anchor="middle">TRAJECT.</text>
+            <text x="-100" y="-30" text-anchor="end">ANTICIP.</text>
+          </g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="traits-title">Ce que dit votre empreinte</div>
+    <div class="trait">
+      <div class="ico" style="color:var(--qdi-braking)">◑</div>
+      <div class="body"><div class="lab">Appuis constants</div><div class="desc">Vos zones de freinage varient peu d'un tour à l'autre</div></div>
+      <div class="val">±4 m</div>
+    </div>
+    <div class="trait">
+      <div class="ico" style="color:var(--qdi-trajectory)">◠</div>
+      <div class="body"><div class="lab">Plongée marquée en S2</div><div class="desc">Mise en appui plus tardive et franche au secteur 2</div></div>
+      <div class="val">S2</div>
+    </div>
+    <div class="trait">
+      <div class="ico" style="color:var(--qdi-fluidity)">∿</div>
+      <div class="body"><div class="lab">Visée régulière</div><div class="desc">Orientation d'entrée de courbe reproductible</div></div>
+      <div class="val">14/18</div>
+    </div>
+
+    <div class="doctrine"><p>Votre signature est une identité, pas une performance à corriger.</p></div>
+  </div>
+
+  <div class="tabbar">
+    <div class="tab active"><i class="ti">◇</i><span>Session</span></div>
+    <div class="tab"><i class="ti">◷</i><span>Historique</span></div>
+    <div class="tab"><i class="ti">◉</i><span>Circuits</span></div>
+    <div class="tab"><i class="ti">⊕</i><span>Communauté</span></div>
+    <div class="tab"><i class="ti">◐</i><span>Profil</span></div>
+  </div>
+</div>
+
+<div class="notes">
+  <h3>Écran 20.2 — Signature</h3>
+  <p class="ld">L'écran le plus différenciant : aucune app concurrente ne formalise « l'empreinte » d'un pilote. C'est une identité visuelle dérivée de faits.</p>
+  <div class="note"><b>Empreinte, pas score</b><p>Le radar représente la forme du pilotage sur 5 axes factuels (idiome HUD : Cap, Visée, Plongée, Trajectoire, Anticipation). Ce n'est PAS une note sur 100 — c'est une silhouette.</p></div>
+  <div class="note"><b>L'idiome HUD exposé</b><p>Vos 5 mots internes deviennent les axes du radar, chacun adossé à une mesure réelle. Évocateurs mais factuels — jamais « améliorez votre visée ».</p></div>
+  <div class="note"><b>Décrit, jamais jugé</b><p>« Plongée marquée en S2 » est un constat neutre. La doctrine en bas le verrouille : une identité ne se corrige pas.</p></div>
+  <div class="note"><b>Faucon silencieux</b><p>« Plongée », « Visée » évoquent le totem en interne — mais il n'est jamais nommé. Il vit dans les formes, pas dans les mots.</p></div>
+</div>
+
+</body>
+</html>

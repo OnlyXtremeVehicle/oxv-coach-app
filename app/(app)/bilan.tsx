@@ -19,7 +19,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
-import { CountUpNumber, FadeInSection } from '@/components/motion';
+import { FadeInSection } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
@@ -32,11 +32,12 @@ import { type CoachReadingWeights, computeCoachReading } from '@/services/coachR
 import { listReadingWeightsForMe } from '@/services/coachReadingService';
 import { getSessionContext } from '@/services/coachSessionContextService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
-import { fetchSessionLaps } from '@/services/sessionsService';
+import { type RegularityBand, computeRegularity } from '@/services/regularityService';
+import { fetchPreviousSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { type MarginZone, marginLabelOf } from '@/types/domain';
 import type { TelemetrySession } from '@/types/telemetry';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { formatDateShort, formatLapTime } from '@/utils/format';
 
 interface NavTarget {
   label: string;
@@ -56,6 +57,30 @@ const NAV_TARGETS: NavTarget[] = [
   { label: 'Progression', href: '/(app)/progression' },
 ];
 
+/**
+ * Fait saillant central du bilan (héros « Le Sillage »). Un fait descriptif —
+ * le tour de référence — situé dans le fil des séances du pilote sur ce circuit
+ * (soi contre soi). Remplace l'ancien score « marge globale % » : un fait, pas
+ * un verdict. Couleur de la valeur = donnée, jamais un rouge qui jugerait.
+ */
+interface SalientFact {
+  bestSeconds: number | null;
+  lapCount: number;
+  spreadSeconds: number | null;
+  band: RegularityBand | null;
+  /** Rang de cette séance dans le fil du circuit (1 = première). */
+  sessionsHere: number;
+  /** Meilleur tour de la séance précédente sur ce circuit, pour le delta. */
+  prevBestSeconds: number | null;
+  prevDate: string | null;
+}
+
+/** Delta de temps factuel, signe non-mathématique (« − » U+2212), jamais coloré. */
+function formatDeltaSeconds(d: number): string {
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return `${sign}${Math.abs(d).toFixed(1).replace('.', ',')} s`;
+}
+
 export default function BilanScreen() {
   const profile = useAuthStore((s) => s.profile);
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -68,6 +93,7 @@ export default function BilanScreen() {
   const [contextRows, setContextRows] = useState<{ label: string; value: string }[]>([]);
   const [highlights, setHighlights] = useState<CoachPilotHighlight[]>([]);
   const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
+  const [salient, setSalient] = useState<SalientFact | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -169,6 +195,42 @@ export default function BilanScreen() {
     };
   }, [profile?.id]);
 
+  // Fait saillant (héros « Le Sillage ») : tour de référence + situation soi
+  // contre soi dans le fil des séances de ce circuit. Sort de la table `laps`,
+  // indépendant des `telemetry_frames` (vides jusqu'à la 1re vraie capture).
+  // Phase M : delta calculé côté Supabase ; ici on n'assemble que des chronos
+  // déjà en base. Phase L : la frise + le tracé ancré viendront ici.
+  useEffect(() => {
+    if (!session?.id || !profile?.id) return;
+    const sessionId = session.id;
+    const circuitId = session.circuit_id;
+    const ownBest = session.best_lap_seconds;
+    let cancelled = false;
+    (async () => {
+      const laps = await fetchSessionLaps(sessionId);
+      const reg = computeRegularity(
+        laps
+          .filter((l) => !l.is_outlap && !l.is_inlap)
+          .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }))
+      );
+      const previous = await fetchPreviousSessions(profile.id, circuitId, 8, sessionId);
+      if (cancelled) return;
+      const prevWithBest = previous.find((s) => s.best_lap_seconds != null) ?? null;
+      setSalient({
+        bestSeconds: reg.bestSeconds ?? ownBest ?? null,
+        lapCount: reg.lapCount,
+        spreadSeconds: reg.spreadSeconds,
+        band: reg.band,
+        sessionsHere: previous.length + 1,
+        prevBestSeconds: prevWithBest?.best_lap_seconds ?? null,
+        prevDate: prevWithBest?.started_at ?? null,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id, session?.circuit_id, session?.best_lap_seconds, profile?.id]);
+
   if (loading) {
     return (
       <SafeAreaView
@@ -197,40 +259,96 @@ export default function BilanScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>BILAN DE SESSION</Text>
 
+        {/* Héros « Le Sillage » — le fait saillant de la séance, situé dans le
+            fil du pilote (soi contre soi). Valeur en couleur DONNÉE (crème),
+            jamais un rouge de verdict (doctrine 01:69). */}
         <FadeInSection
           style={{ alignItems: 'center', marginTop: spacing.xxxl, marginBottom: spacing.giant }}
         >
-          <CountUpNumber
-            value={margin.marginGlobal}
-            duration={1100}
-            suffix="%"
-            style={[
-              typography.heroNumber,
-              { color: colorForZone(margin.marginZone), marginBottom: spacing.lg },
-            ]}
-          />
+          <Text
+            style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.lg }]}
+          >
+            VOTRE MEILLEUR TOUR
+          </Text>
           <Text
             style={[
-              typography.screenTitle,
-              {
-                color: colorForZone(margin.marginZone),
-                textAlign: 'center',
-                fontWeight: fontWeight.light,
-              },
+              typography.heroNumber,
+              { color: colors.text.primary, marginBottom: spacing.lg },
             ]}
           >
-            {marginLabelOf(margin.marginZone)}
+            {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
           </Text>
-        </FadeInSection>
 
-        <Text
-          style={[
-            typography.manifest,
-            { textAlign: 'center', marginBottom: spacing.huge, paddingHorizontal: spacing.md },
-          ]}
-        >
-          {manifestForMargin(margin)}
-        </Text>
+          {salient ? (
+            salient.prevBestSeconds != null ? (
+              <>
+                <Text
+                  style={[
+                    typography.screenTitle,
+                    {
+                      color: colors.text.secondary,
+                      textAlign: 'center',
+                      fontWeight: fontWeight.light,
+                    },
+                  ]}
+                >
+                  Votre {salient.sessionsHere}ᵉ séance ici.
+                </Text>
+                <Text
+                  style={{
+                    color: colors.text.tertiary,
+                    fontSize: fontSize.body,
+                    textAlign: 'center',
+                    marginTop: spacing.sm,
+                  }}
+                >
+                  Précédente : {formatLapTime(salient.prevBestSeconds)}
+                  {salient.prevDate ? ` · ${formatDateShort(salient.prevDate)}` : ''}
+                </Text>
+                {salient.bestSeconds != null ? (
+                  <Text
+                    style={{
+                      color: colors.text.secondary,
+                      fontSize: fontSize.body,
+                      fontFamily: 'Menlo',
+                      marginTop: spacing.md,
+                    }}
+                  >
+                    {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par rapport
+                    à votre dernière venue.
+                  </Text>
+                ) : null}
+              </>
+            ) : (
+              <Text
+                style={[
+                  typography.screenTitle,
+                  {
+                    color: colors.text.secondary,
+                    textAlign: 'center',
+                    fontWeight: fontWeight.light,
+                  },
+                ]}
+              >
+                Première séance sur ce circuit. Le fil commence ici.
+              </Text>
+            )
+          ) : null}
+
+          {salient && salient.band && salient.spreadSeconds != null && salient.lapCount >= 2 ? (
+            <Text
+              style={{
+                color: colors.text.tertiary,
+                fontSize: fontSize.caption,
+                textAlign: 'center',
+                marginTop: spacing.lg,
+              }}
+            >
+              Vos {salient.lapCount} tours tiennent dans{' '}
+              {salient.spreadSeconds.toFixed(1).replace('.', ',')} s.
+            </Text>
+          ) : null}
+        </FadeInSection>
 
         {/* Contexte du coach (§10.3) — ce que le capteur ne capte pas. */}
         {contextRows.length > 0 ? (
@@ -530,28 +648,6 @@ async function loadSession(
     .limit(1)
     .maybeSingle();
   return (data as TelemetrySession | null) ?? null;
-}
-
-function colorForZone(zone: MarginZone): string {
-  switch (zone) {
-    case 'green':
-      return colors.margin.green;
-    case 'yellow':
-      return colors.margin.yellow;
-    case 'red':
-      return colors.margin.red;
-  }
-}
-
-function manifestForMargin(margin: ComputeMarginOutput): string {
-  switch (margin.marginZone) {
-    case 'green':
-      return 'Belle séance. Vous avez du terrain à explorer en sécurité.';
-    case 'yellow':
-      return 'Belle séance. Une zone à creuser la prochaine fois.';
-    case 'red':
-      return "Vous avez touché vos limites. C'est noté.";
-  }
 }
 
 function NavCard({ label, href }: { label: string; href: string }) {

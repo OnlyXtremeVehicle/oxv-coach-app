@@ -88,7 +88,7 @@ function buildSelection(
     zone,
     estimatedMargin,
     phrase: buildPhrase(corner, zone),
-    observation: buildObservation(corner, zone, estimatedMargin),
+    observation: buildObservation(zone, estimatedMargin),
   };
 }
 
@@ -105,21 +105,22 @@ function buildPhrase(corner: CornerTopology, zone: MarginZone): string {
   }
 }
 
-function buildObservation(corner: CornerTopology, zone: MarginZone, margin: number): string {
+/**
+ * Sous-titre observationnel. Doctrine (frontière fait/cause, Pattern 4) :
+ * côté pilote on s'arrête AU FAIT (la marge estimée) et on ouvre une
+ * question. On ne désigne JAMAIS une cause à corriger ni un geste à faire
+ * (« un repère de freinage plus tôt », « plus de patience à la corde ») —
+ * même formulé en question : reformuler un conseil ne le rend pas conforme
+ * si le contenu reste actionnable. La causalité orientée appartient au
+ * CoachBand (un coach agréé, attribué), jamais au miroir du pilote.
+ */
+function buildObservation(zone: MarginZone, margin: number): string {
   const pct = Math.round(margin);
   switch (zone) {
     case 'red':
-      return `Marge estimée ${pct}%. Que sentiez-vous à cet endroit ?`;
-    case 'yellow': {
-      const pace = corner.pace;
-      if (pace === 'slow') {
-        return `Marge estimée ${pct}%. La prochaine fois, peut-être un repère de freinage un peu plus tôt ?`;
-      }
-      if (pace === 'fast') {
-        return `Marge estimée ${pct}%. La prochaine fois, peut-être un peu plus de patience à la corde ?`;
-      }
-      return `Marge estimée ${pct}%. La prochaine fois, qu'aimeriez-vous explorer ?`;
-    }
+      return `Marge estimée ${pct}%. Qu'avez-vous ressenti à cet endroit ?`;
+    case 'yellow':
+      return `Marge estimée ${pct}%. Qu'aimeriez-vous explorer ici la prochaine fois ?`;
     case 'green':
       return `Marge confortable.`;
   }

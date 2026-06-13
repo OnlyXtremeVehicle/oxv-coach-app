@@ -64,6 +64,15 @@ const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
   { pattern: /\btap\b/gi, verb: 'tap (anglais)' },
   { pattern: /\bswipe\b/gi, verb: 'swipe (anglais)' },
   { pattern: /\bclick\b/gi, verb: 'click (anglais)' },
+  // Catégorie 5 : conseils reformulés en groupe nominal (frontière fait/cause,
+  // Pattern 4). Le scanner par verbes ne les capte pas ; ces tournures
+  // désignent une cause à corriger et sont réservées au CoachBand (coach
+  // agréé, attribué), jamais au miroir du pilote. Cf. focusCorner.ts.
+  { pattern: /\brepère de freinage\b/gi, verb: 'repère de freinage' },
+  { pattern: /\brepère de corde\b/gi, verb: 'repère de corde' },
+  { pattern: /\bpatience à la corde\b/gi, verb: 'patience à la corde' },
+  { pattern: /\bfreiner plus (tôt|tard)\b/gi, verb: 'freiner plus tôt/tard' },
+  { pattern: /\brelâch(?:er|ez) plus (tôt|tard)\b/gi, verb: 'relâcher plus tôt/tard' },
 ];
 
 // Patterns supplémentaires : dates sans locale fr-FR explicite
