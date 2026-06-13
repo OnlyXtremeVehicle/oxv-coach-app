@@ -10,14 +10,17 @@
 import { Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAppStateStore } from '@/store/useAppStateStore';
 import { useUIStore } from '@/store/useUIStore';
 import { colors, fontSize, fontWeight, spacing } from '@/theme/tokens';
 
 export function OfflineBanner() {
   const visible = useUIStore((s) => s.offlineBannerVisible);
+  // Principe 3 « silence en piste » : pas de bannière pendant le roulage.
+  const driving = useAppStateStore((s) => s.state === 'S6_roulage');
   const insets = useSafeAreaInsets();
 
-  if (!visible) return null;
+  if (!visible || driving) return null;
 
   return (
     <View

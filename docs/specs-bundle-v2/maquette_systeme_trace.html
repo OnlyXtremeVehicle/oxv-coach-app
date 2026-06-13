@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Système tracé-centré</title>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#050505; --night-deep:#000; --night-soft:#0E0E0E; --night-card:#121212;
+    --cream:#F8F9FA; --cream-soft:#E5E5E5; --cream-mute:#A1A1AA;
+    --cream-faint:rgba(248,249,250,0.50); --cream-line:rgba(255,255,255,0.05); --cream-edge:rgba(255,255,255,0.15);
+    --gold:#FFB703; --copper-glow:#FFC93C; --copper-deep:#C68B00;
+    --red:#E63946; --blue-tech:#60A5FA; --green-perf:#4ADE80; --purple-tech:#C084FC; --steel:#5C5C66;
+    --oxv-red:#C8102E; --oxv-gold:#C4A459;
+    --qdi-trajectory:#E63946; --qdi-fluidity:#FFB703; --qdi-braking:#60A5FA; --qdi-acceleration:#4ADE80; --qdi-regularity:#C084FC;
+    --display:'Syncopate',sans-serif; --sans:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#1a1a1a;font-family:var(--sans);color:var(--cream);padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:46px}
+
+  .intro{max-width:920px;text-align:center}
+  .intro .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  .intro h1{font-family:var(--display);font-size:21px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px;line-height:1.4}
+  .intro p{color:var(--cream-mute);font-size:14px;line-height:1.75;font-weight:300}
+  .principle{display:flex;gap:18px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+  .pcard{background:var(--night);border:1px solid var(--cream-line);border-radius:12px;padding:14px 18px;max-width:270px;text-align:left}
+  .pcard .pn{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px}
+  .pcard .pt{font-size:12px;line-height:1.55;color:var(--cream-soft);font-weight:300}
+
+  .row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+
+  .phone{width:384px;background:var(--night);border-radius:38px;padding:14px;box-shadow:0 30px 80px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06);flex-shrink:0}
+  .screen{background:var(--night);border-radius:26px;overflow:hidden;position:relative;min-height:792px}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:var(--night-deep);border-radius:0 0 16px 16px;z-index:30}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:38px 22px 14px}
+  .appbar .badge{display:flex;align-items:center;gap:9px}
+  .shield{width:18px;height:22px;background:var(--oxv-red);clip-path:polygon(50% 0,100% 22%,100% 62%,50% 100%,0 62%,0 22%);opacity:0.92}
+  .appbar .title{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--cream-mute)}
+  .appbar .action{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--cream-faint)}
+
+  .content{padding:4px 20px 26px}
+  .eyebrow-screen{font-family:var(--mono);font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--cream-faint);margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .eyebrow-screen .dot{width:6px;height:6px;border-radius:50%}
+  .lead{font-family:var(--display);font-size:14px;font-weight:700;line-height:1.5;letter-spacing:0.01em;margin-bottom:18px}
+  .lead .hi{color:var(--gold)} .lead .hi-r{color:var(--qdi-trajectory)} .lead .hi-p{color:var(--qdi-regularity)}
+
+  /* ===== LE TRACÉ — coeur du système ===== */
+  .track-stage{background:var(--night-card);border:1px solid var(--cream-line);border-radius:18px;padding:16px 14px 12px;margin-bottom:14px;position:relative}
+  .track-stage .ts-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .ts-name{font-family:var(--mono);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;color:var(--cream-faint)}
+  .ts-tag{font-family:var(--mono);font-size:8px;letter-spacing:0.14em;color:var(--cream-mute);border:1px solid var(--cream-line);border-radius:10px;padding:3px 8px}
+  .track-svg{width:100%;display:block}
+
+  /* secteur chips */
+  .sector-chips{display:flex;gap:6px;margin-top:8px}
+  .schip{flex:1;text-align:center;padding:7px 4px;border-radius:8px;background:var(--night-deep);border-top:2px solid}
+  .schip .sc-n{font-family:var(--mono);font-size:8px;letter-spacing:0.14em;color:var(--cream-faint)}
+  .schip .sc-v{font-family:var(--display);font-size:12px;font-weight:700;margin-top:3px}
+
+  /* fact rows sous tracé */
+  .facts{display:flex;flex-direction:column;gap:1px;margin-bottom:14px;border-radius:12px;overflow:hidden}
+  .frow{display:flex;justify-content:space-between;align-items:center;padding:13px 15px;background:var(--night-card)}
+  .frow .fl{font-size:12px;color:var(--cream-mute);font-weight:300}
+  .frow .fv{font-family:var(--display);font-size:13px;font-weight:700}
+
+  /* legende trajectoires */
+  .tlegend{display:flex;gap:14px;justify-content:center;margin-top:10px;flex-wrap:wrap}
+  .tleg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:8px;letter-spacing:0.08em;color:var(--cream-mute)}
+  .tleg .ln{width:18px;height:2px;border-radius:2px}
+
+  /* replay controls */
+  .replay{display:flex;align-items:center;gap:12px;background:var(--night-card);border:1px solid var(--cream-line);border-radius:12px;padding:12px 15px;margin-bottom:14px}
+  .replay .play{width:34px;height:34px;border-radius:50%;background:var(--gold);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .replay .play svg{margin-left:2px}
+  .replay .rp-bar{flex:1}
+  .rp-track{height:4px;background:var(--night-deep);border-radius:3px;position:relative;margin-bottom:6px}
+  .rp-fill{position:absolute;left:0;top:0;height:100%;width:42%;background:var(--gold);border-radius:3px}
+  .rp-knob{position:absolute;left:42%;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;background:var(--cream)}
+  .rp-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--cream-faint)}
+  .live-readout{display:flex;gap:8px;margin-bottom:14px}
+  .lr{flex:1;background:var(--night-card);border:1px solid var(--cream-line);border-radius:10px;padding:10px;text-align:center}
+  .lr .lr-l{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;color:var(--cream-faint);text-transform:uppercase}
+  .lr .lr-v{font-family:var(--display);font-size:16px;font-weight:700;margin-top:4px}
+
+  /* ===== BANDEAU COACH sous le tracé ===== */
+  .coach-band{background:rgba(196,164,89,0.06);border:1px solid var(--oxv-gold);border-radius:14px;padding:15px;margin-top:4px}
+  .cb-head{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .cb-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--oxv-gold),var(--copper-deep));display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:10px;font-weight:700;color:var(--night)}
+  .cb-meta{flex:1}
+  .cb-name{font-family:var(--display);font-size:10px;font-weight:700;color:var(--oxv-gold);letter-spacing:0.02em}
+  .cb-role{font-family:var(--mono);font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--cream-faint);margin-top:2px}
+  .cb-badge{font-family:var(--mono);font-size:7px;letter-spacing:0.1em;color:var(--oxv-gold);border:1px solid var(--oxv-gold);border-radius:10px;padding:3px 7px}
+  .cb-text{font-size:12px;line-height:1.6;color:var(--cream-soft);font-weight:300}
+  .cb-text .pin{color:var(--oxv-gold);font-weight:500}
+  .cb-anchor{font-family:var(--mono);font-size:8px;letter-spacing:0.1em;color:var(--cream-faint);margin-top:9px;display:flex;align-items:center;gap:6px}
+  .cb-anchor .pinico{width:5px;height:5px;border-radius:50%;background:var(--oxv-gold)}
+
+  .doctrine-foot{text-align:center;font-family:var(--mono);font-size:8px;letter-spacing:0.14em;color:var(--cream-faint);text-transform:uppercase;margin-top:16px;padding-top:14px;border-top:1px solid var(--cream-line)}
+
+  /* annotations */
+  .annot{width:300px;flex-shrink:0;padding-top:30px}
+  .annot h3{font-family:var(--display);font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:0.02em}
+  .annot .ann-sub{font-family:var(--mono);font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cream-faint);margin-bottom:20px}
+  .ann{margin-bottom:18px;padding-left:16px;border-left:2px solid var(--cream-line);position:relative}
+  .ann::before{content:'';position:absolute;left:-5px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  .ann.gold::before{background:var(--oxv-gold)} .ann.red::before{background:var(--red)} .ann.blue::before{background:var(--blue-tech)}
+  .ann h4{font-size:12px;font-weight:600;color:var(--cream);margin-bottom:5px}
+  .ann p{font-size:12px;line-height:1.6;color:var(--cream-mute);font-weight:300}
+  .ann code{font-family:var(--mono);font-size:10px;color:var(--copper-glow);background:rgba(255,201,60,0.08);padding:1px 5px;border-radius:3px}
+
+  .section-sep{width:100%;max-width:920px;height:1px;background:rgba(255,255,255,0.08);margin:6px 0}
+  .foot{max-width:920px;text-align:center;color:var(--cream-faint);font-size:12px;line-height:1.75;font-weight:300}
+  .foot strong{color:var(--cream-mute);font-weight:500}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">OXV Mirror · Système visuel tracé-centré · Direction pour les 50 écrans</div>
+    <h1>LE TRACÉ DU CIRCUIT EST LE LANGAGE COMMUN DE L'APP</h1>
+    <p>
+      Un pilote pense en virages, pas en écarts-types. Chaque insight se pose donc <strong style="color:var(--cream-soft)">sur le tracé schématique</strong>, à l'endroit exact où il se produit.
+      Le chiffre vit sur la carte ; on ne le lit plus à plat pour imaginer le virage ensuite.
+      Trois maquettes fixent le système — Claude Code l'applique ensuite aux 50 écrans.
+    </p>
+    <div class="principle">
+      <div class="pcard"><div class="pn">Comprendre sa conduite</div><div class="pt">Voir SES trajectoires sur le tracé, c'est la fonction miroir à son sommet. On montre où ça se passe ; le pilote en tire sa lecture.</div></div>
+      <div class="pcard"><div class="pn">Faire évoluer</div><div class="pt">Le progrès devient géographique : ce virage, session après session, le faisceau se resserre. Visible, jamais dicté.</div></div>
+      <div class="pcard"><div class="pn">Coach en bandeau</div><div class="pt">L'annotation du coach est séparée sous le tracé, ancrée à un point précis, attribuée. Elle n'envahit jamais le miroir du pilote.</div></div>
+    </div>
+  </div>
+
+  <!-- ============ ÉCRAN A — DISPERSION : FAISCEAU DE TRAJECTOIRES ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Trajectoires</span></div>
+          <span class="action">18 TOURS</span>
+        </div>
+        <div class="content">
+          <div class="eyebrow-screen"><span class="dot" style="background:var(--qdi-trajectory)"></span> Trajectoire · vos 18 tours superposés</div>
+          <div class="lead">Au <span class="hi-r">V4</span>, vos trajectoires s'évasent. Au <span class="hi-p">V1</span>, elles se confondent.</div>
+
+          <div class="track-stage">
+            <div class="ts-head"><span class="ts-name">Circuit Haute Saintonge · tracé Beltoise</span><span class="ts-tag">FAISCEAU</span></div>
+            <svg class="track-svg" viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- piste de référence (médiane) -->
+              <path d="M40,150 C40,90 70,55 120,55 L180,55 C210,55 225,75 225,95 C225,118 205,128 180,128 L140,128 C120,128 110,138 118,152 C128,168 165,165 200,160 C245,153 280,140 280,105 C280,70 260,58 240,58"
+                stroke="var(--cream-line)" stroke-width="14" stroke-linecap="round"/>
+              <!-- faisceau serré au V1 (bas gauche) : 4 traits quasi superposés -->
+              <path d="M40,150 C40,90 70,55 120,55" stroke="var(--qdi-regularity)" stroke-width="1.4" opacity="0.55"/>
+              <path d="M42,150 C42,91 71,57 121,56" stroke="var(--qdi-regularity)" stroke-width="1.4" opacity="0.55"/>
+              <path d="M39,151 C39,89 69,54 119,55" stroke="var(--qdi-regularity)" stroke-width="1.4" opacity="0.55"/>
+              <!-- faisceau évasé au V4 (centre, le retour serré) : traits dispersés -->
+              <path d="M180,128 L140,128 C118,128 106,136 116,152" stroke="var(--qdi-trajectory)" stroke-width="1.4" opacity="0.5"/>
+              <path d="M180,124 L138,123 C112,123 98,134 110,150" stroke="var(--qdi-trajectory)" stroke-width="1.4" opacity="0.5"/>
+              <path d="M180,132 L143,133 C124,133 114,142 122,155" stroke="var(--qdi-trajectory)" stroke-width="1.4" opacity="0.5"/>
+              <path d="M180,120 L135,118 C108,118 94,131 108,148" stroke="var(--qdi-trajectory)" stroke-width="1.4" opacity="0.5"/>
+              <!-- marqueurs virages -->
+              <circle cx="120" cy="55" r="3" fill="var(--qdi-regularity)"/>
+              <text x="118" y="46" font-family="JetBrains Mono" font-size="8" fill="var(--qdi-regularity)" text-anchor="middle">V1</text>
+              <circle cx="130" cy="138" r="3" fill="var(--qdi-trajectory)"/>
+              <text x="128" y="178" font-family="JetBrains Mono" font-size="8" fill="var(--qdi-trajectory)" text-anchor="middle">V4</text>
+              <!-- ligne start -->
+              <rect x="36" y="146" width="8" height="3" fill="var(--cream)" opacity="0.6"/>
+            </svg>
+            <div class="tlegend">
+              <div class="tleg"><span class="ln" style="background:var(--qdi-regularity)"></span> V1 — amplitude 0,3 m</div>
+              <div class="tleg"><span class="ln" style="background:var(--qdi-trajectory)"></span> V4 — amplitude 1,8 m</div>
+            </div>
+          </div>
+
+          <div class="facts">
+            <div class="frow"><span class="fl">Virage le plus régulier (V1)</span><span class="fv" style="color:var(--qdi-regularity)">0,3 m</span></div>
+            <div class="frow"><span class="fl">Virage le plus dispersé (V4)</span><span class="fv" style="color:var(--qdi-trajectory)">1,8 m</span></div>
+            <div class="frow"><span class="fl">Tours analysés</span><span class="fv">18</span></div>
+          </div>
+
+          <div class="coach-band">
+            <div class="cb-head">
+              <div class="cb-avatar">JB</div>
+              <div class="cb-meta"><div class="cb-name">J. Beltoise</div><div class="cb-role">Coach · invité par vous</div></div>
+              <span class="cb-badge">PAROLE COACH</span>
+            </div>
+            <div class="cb-text">Ton V4 est le vrai gisement. <span class="pin">Fixe un repère de corde unique et tiens-le sur toute la sortie.</span></div>
+            <div class="cb-anchor"><span class="pinico"></span> Annotation ancrée au V4</div>
+          </div>
+
+          <div class="doctrine-foot">L'app montre le faisceau · le coach lit · vous décidez</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>POURQUOI C'EST JUSTE</h3>
+      <div class="ann-sub">Écran A · dispersion spatiale</div>
+      <div class="ann red">
+        <h4>Le chiffre vit sur le tracé</h4>
+        <p>On ne lit plus « 1,8 m » dans le vide : on <strong style="color:var(--cream-soft)">voit le faisceau s'évaser au V4</strong> et se confondre au V1. Le pilote comprend instantanément, sans traduire mentalement.</p>
+      </div>
+      <div class="ann blue">
+        <h4>Inédit, et pratique</h4>
+        <p>Superposer ses 18 trajectoires réelles sur le tracé schématique : aucune app grand public ne le fait lisiblement. C'est la <code>compréhension de sa conduite</code>, pas un rapport.</p>
+      </div>
+      <div class="ann gold">
+        <h4>Coach en bandeau ancré</h4>
+        <p>Sous le tracé, encart or, badge, et surtout <code>ancré au V4</code> : la consigne du coach pointe le point exact. Séparée du miroir, attribuée à J. Beltoise.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <!-- ============ ÉCRAN B — REJOUER LE TOUR ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Rejouer le tour</span></div>
+          <span class="action">TOUR 7 · 1:42.8</span>
+        </div>
+        <div class="content">
+          <div class="eyebrow-screen"><span class="dot" style="background:var(--gold)"></span> Évolution · revivez votre tour</div>
+          <div class="lead">Suivez votre tour, mètre par mètre. <span class="hi">Vitesse</span> et <span class="hi">appuis</span> défilent avec vous.</div>
+
+          <div class="track-stage">
+            <div class="ts-head"><span class="ts-name">Tracé Beltoise · trajectoire empruntée</span><span class="ts-tag">REPLAY</span></div>
+            <svg class="track-svg" viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M40,150 C40,90 70,55 120,55 L180,55 C210,55 225,75 225,95 C225,118 205,128 180,128 L140,128 C120,128 110,138 118,152 C128,168 165,165 200,160 C245,153 280,140 280,105 C280,70 260,58 240,58"
+                stroke="var(--cream-line)" stroke-width="14" stroke-linecap="round"/>
+              <!-- portion déjà parcourue : coloriée par vitesse (vert rapide -> bleu lent au freinage) -->
+              <path d="M40,150 C40,90 70,55 120,55" stroke="var(--green-perf)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+              <path d="M120,55 L175,55" stroke="var(--qdi-fluidity)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+              <path d="M175,55 C200,55 213,72 215,92" stroke="var(--blue-tech)" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+              <!-- reste du tour : en attente, discret -->
+              <path d="M215,92 C217,114 200,124 180,124 L140,124 C122,124 112,134 118,150 C128,166 165,163 200,158 C243,151 276,138 276,105 C276,72 258,60 240,60"
+                stroke="var(--steel)" stroke-width="2" stroke-dasharray="2 3" opacity="0.4"/>
+              <!-- position courante : le point -->
+              <circle cx="215" cy="92" r="6" fill="var(--gold)"/>
+              <circle cx="215" cy="92" r="11" fill="none" stroke="var(--gold)" stroke-width="1" opacity="0.4"/>
+              <text x="215" y="82" font-family="JetBrains Mono" font-size="7" fill="var(--gold)" text-anchor="middle">FREINAGE</text>
+              <rect x="36" y="146" width="8" height="3" fill="var(--cream)" opacity="0.6"/>
+            </svg>
+            <div class="tlegend">
+              <div class="tleg"><span class="ln" style="background:var(--green-perf)"></span> Plein gaz</div>
+              <div class="tleg"><span class="ln" style="background:var(--qdi-fluidity)"></span> Vitesse haute</div>
+              <div class="tleg"><span class="ln" style="background:var(--blue-tech)"></span> Freinage</div>
+            </div>
+          </div>
+
+          <div class="live-readout">
+            <div class="lr"><div class="lr-l">Vitesse</div><div class="lr-v" style="color:var(--blue-tech)">112</div></div>
+            <div class="lr"><div class="lr-l">G frein</div><div class="lr-v" style="color:var(--blue-tech)">1,4</div></div>
+            <div class="lr"><div class="lr-l">Temps</div><div class="lr-v">0:38.2</div></div>
+          </div>
+
+          <div class="replay">
+            <div class="play"><svg width="12" height="14" viewBox="0 0 12 14"><path d="M0,0 L12,7 L0,14 Z" fill="#050505"/></svg></div>
+            <div class="rp-bar">
+              <div class="rp-track"><div class="rp-fill"></div><div class="rp-knob"></div></div>
+              <div class="rp-meta"><span>S1</span><span>S2 · ici</span><span>S3</span></div>
+            </div>
+          </div>
+
+          <div class="coach-band">
+            <div class="cb-head">
+              <div class="cb-avatar">JB</div>
+              <div class="cb-meta"><div class="cb-name">J. Beltoise</div><div class="cb-role">Coach · invité par vous</div></div>
+              <span class="cb-badge">PAROLE COACH</span>
+            </div>
+            <div class="cb-text">Regarde ce freinage : tu portes 1,4 G ici. <span class="pin">On peut viser une entrée plus tardive au prochain run.</span></div>
+            <div class="cb-anchor"><span class="pinico"></span> Annotation ancrée au freinage S2</div>
+          </div>
+
+          <div class="doctrine-foot">L'app rejoue le fait · le coach commente · vous décidez</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>POURQUOI C'EST JUSTE</h3>
+      <div class="ann-sub">Écran B · rejouer le tour</div>
+      <div class="ann">
+        <h4>Revivre, pas lire un rapport</h4>
+        <p>Le point parcourt le tracé ; vitesse et G <strong style="color:var(--cream-soft)">défilent en synchronie</strong>. Le pilote revit sa session — l'inverse d'un tableau de chiffres statiques.</p>
+      </div>
+      <div class="ann blue">
+        <h4>Le trait colorié = le fait</h4>
+        <p>La trajectoire <strong style="color:var(--cream-soft)">empruntée</strong> (jamais « idéale »), coloriée par vitesse : vert plein gaz, bleu freinage. On lit la conduite le long du trait, virage par virage.</p>
+      </div>
+      <div class="ann gold">
+        <h4>Coach ancré au point lu</h4>
+        <p>Le bandeau coach pointe le <code>freinage S2</code> exactement là où le point se trouve. Synchronisé au replay, séparé, attribué.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <!-- ============ ÉCRAN C — SOI CONTRE SOI / ÉVOLUTION ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Soi contre soi</span></div>
+          <span class="action">2 TOURS</span>
+        </div>
+        <div class="content">
+          <div class="eyebrow-screen"><span class="dot" style="background:var(--qdi-acceleration)"></span> Évolution · meilleur tour vs dernier tour</div>
+          <div class="lead">Vos deux tours divergent surtout en <span class="hi">S2</span>. Voyez où, sur le tracé.</div>
+
+          <div class="track-stage">
+            <div class="ts-head"><span class="ts-name">Tracé Beltoise · superposition à soi</span><span class="ts-tag">A vs B</span></div>
+            <svg class="track-svg" viewBox="0 0 320 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M40,150 C40,90 70,55 120,55 L180,55 C210,55 225,75 225,95 C225,118 205,128 180,128 L140,128 C120,128 110,138 118,152 C128,168 165,165 200,160 C245,153 280,140 280,105 C280,70 260,58 240,58"
+                stroke="var(--cream-line)" stroke-width="14" stroke-linecap="round"/>
+              <!-- tour A (meilleur) -->
+              <path d="M40,150 C40,90 70,55 120,55 L180,55 C210,55 225,75 225,95 C225,118 205,128 180,128 L140,128 C120,128 110,138 118,152 C128,168 165,165 200,160 C245,153 280,140 280,105 C280,70 260,58 240,58"
+                stroke="var(--gold)" stroke-width="2.2" opacity="0.95"/>
+              <!-- tour B (dernier) : colle en S1/S3, s'écarte en S2 (le retour central) -->
+              <path d="M41,150 C41,91 71,57 121,57 L180,57"
+                stroke="var(--cream-mute)" stroke-width="2.2" opacity="0.85" stroke-dasharray="4 3"/>
+              <path d="M180,57 C212,57 230,77 230,98 C230,124 206,134 180,134 L138,134 C116,134 104,144 114,158"
+                stroke="var(--cream-mute)" stroke-width="2.2" opacity="0.85" stroke-dasharray="4 3"/>
+              <path d="M114,158 C126,172 165,169 200,164 C247,157 280,142 280,105 C280,70 260,58 240,58"
+                stroke="var(--cream-mute)" stroke-width="2.2" opacity="0.85" stroke-dasharray="4 3"/>
+              <!-- zone de divergence S2 surlignée -->
+              <ellipse cx="205" cy="115" rx="42" ry="32" fill="none" stroke="var(--red)" stroke-width="1" stroke-dasharray="3 2" opacity="0.6"/>
+              <text x="205" y="118" font-family="JetBrains Mono" font-size="8" fill="var(--red)" text-anchor="middle">ÉCART S2</text>
+              <rect x="36" y="146" width="8" height="3" fill="var(--cream)" opacity="0.6"/>
+            </svg>
+            <div class="tlegend">
+              <div class="tleg"><span class="ln" style="background:var(--gold)"></span> Votre meilleur tour</div>
+              <div class="tleg"><span class="ln" style="background:var(--cream-mute)"></span> Votre dernier tour</div>
+            </div>
+          </div>
+
+          <div class="sector-chips">
+            <div class="schip" style="border-top-color:var(--qdi-acceleration)"><div class="sc-n">S1</div><div class="sc-v" style="color:var(--qdi-acceleration)">+0,0</div></div>
+            <div class="schip" style="border-top-color:var(--red)"><div class="sc-n">S2</div><div class="sc-v" style="color:var(--red)">+0,9</div></div>
+            <div class="schip" style="border-top-color:var(--qdi-acceleration)"><div class="sc-n">S3</div><div class="sc-v" style="color:var(--qdi-acceleration)">+0,1</div></div>
+          </div>
+          <div style="height:14px"></div>
+
+          <div class="facts">
+            <div class="frow"><span class="fl">Écart total au tour</span><span class="fv" style="color:var(--gold)">+1,0 s</span></div>
+            <div class="frow"><span class="fl">Où se loge l'écart</span><span class="fv" style="color:var(--red)">S2 · 90 %</span></div>
+          </div>
+
+          <div class="coach-band">
+            <div class="cb-head">
+              <div class="cb-avatar">JB</div>
+              <div class="cb-meta"><div class="cb-name">J. Beltoise</div><div class="cb-role">Coach · invité par vous</div></div>
+              <span class="cb-badge">PAROLE COACH</span>
+            </div>
+            <div class="cb-text">Tes S1 et S3 sont identiques au meilleur. <span class="pin">Tout se joue dans la zone S2 entourée — c'est là qu'on travaille.</span></div>
+            <div class="cb-anchor"><span class="pinico"></span> Annotation ancrée à la zone S2</div>
+          </div>
+
+          <div class="doctrine-foot">L'app superpose vos tours · le coach oriente · vous décidez</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>POURQUOI C'EST JUSTE</h3>
+      <div class="ann-sub">Écran C · soi contre soi spatial</div>
+      <div class="ann">
+        <h4>L'écart devient géographique</h4>
+        <p>Deux de SES tours sur le même tracé : ils se collent en S1/S3 et <strong style="color:var(--cream-soft)">s'écartent visiblement en S2</strong>. Le pilote voit OÙ il a changé, pas juste « +1,0 s ».</p>
+      </div>
+      <div class="ann">
+        <h4>Le moteur de progression</h4>
+        <p>C'est le cœur de « faire évoluer » : la même vue, session après session, montre le <code>faisceau qui se resserre</code>. Le progrès se constate sur la carte, sans qu'on dicte la trajectoire.</p>
+      </div>
+      <div class="ann gold">
+        <h4>Coach ancré à la zone</h4>
+        <p>Le bandeau pointe la <code>zone S2 entourée</code> — exactement le lieu de l'écart. L'app montre la divergence ; le coach dit qu'on y travaille.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <div class="foot">
+    <strong>Le système, en une phrase :</strong> le tracé schématique dark est le support de tout insight ; le fait s'y inscrit là où il se produit (faisceau, replay coloré, superposition à soi) ;
+    le bandeau coach est séparé sous le tracé, ancré à un point précis, attribué à un tiers agréé.<br><br>
+    Cette grille s'applique aux 50 écrans : restitution, détail data, sessions, circuits, garage, communauté. Claude Code reçoit le pattern <strong>TrackStage + Facts + CoachBand</strong> et le décline.
+    L'app montre, sur le tracé, ce que le pilote ne voyait pas seul. Elle ne dirige jamais. La piste — et les décisions — restent à lui.
+  </div>
+
+</body>
+</html>

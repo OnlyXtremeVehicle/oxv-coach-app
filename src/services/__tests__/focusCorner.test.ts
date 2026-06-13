@@ -16,6 +16,15 @@ const FORBIDDEN_VERBS = [
   'évitez',
   'il faut',
   'vous devez',
+  // Conseils reformulés en groupe nominal / question : interdits côté
+  // pilote (frontière fait/cause, Pattern 4). Le scanner CI lexical ne les
+  // voit pas car la chaîne est générée par ce service, pas écrite en dur
+  // dans un .tsx — ce test EST le garde-fou.
+  'repère de freinage',
+  'repère de corde',
+  'patience à la corde',
+  'plus tôt',
+  'plus tard',
 ];
 
 function expectNonDirective(phrase: string): void {

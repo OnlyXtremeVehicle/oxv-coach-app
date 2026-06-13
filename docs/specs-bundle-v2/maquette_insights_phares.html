@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV Mirror — Insights phares (séparation pilote / coach)</title>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#050505; --night-deep:#000; --night-soft:#0E0E0E; --night-card:#121212;
+    --cream:#F8F9FA; --cream-soft:#E5E5E5; --cream-mute:#A1A1AA;
+    --cream-faint:rgba(248,249,250,0.50); --cream-line:rgba(255,255,255,0.05); --cream-edge:rgba(255,255,255,0.15);
+    --gold:#FFB703; --copper-glow:#FFC93C; --copper-deep:#C68B00;
+    --red:#E63946; --blue-tech:#60A5FA; --green-perf:#4ADE80; --purple-tech:#C084FC; --steel:#5C5C66;
+    --oxv-red:#C8102E; --oxv-gold:#C4A459;
+    --qdi-trajectory:#E63946; --qdi-fluidity:#FFB703; --qdi-braking:#60A5FA; --qdi-acceleration:#4ADE80; --qdi-regularity:#C084FC;
+    --display:'Syncopate',sans-serif; --sans:'Inter',sans-serif; --mono:'JetBrains Mono',monospace;
+    --ease:cubic-bezier(0.25,0.46,0.45,0.94);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#1a1a1a;font-family:var(--sans);color:var(--cream);padding:40px 20px;display:flex;flex-direction:column;align-items:center;gap:48px}
+
+  .intro{max-width:880px;text-align:center;margin-bottom:8px}
+  .intro .eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  .intro h1{font-family:var(--display);font-size:20px;font-weight:700;letter-spacing:0.04em;margin-bottom:16px}
+  .intro p{color:var(--cream-mute);font-size:14px;line-height:1.7;font-weight:300}
+  .legend{display:flex;gap:24px;justify-content:center;margin-top:22px;flex-wrap:wrap}
+  .legend-item{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--cream-soft)}
+  .swatch{width:30px;height:14px;border-radius:3px}
+  .sw-pilot{background:var(--night-card);border:1px solid var(--cream-edge)}
+  .sw-coach{background:rgba(196,164,89,0.10);border:1px solid var(--oxv-gold)}
+
+  .row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+
+  /* ===== Téléphone ===== */
+  .phone{width:380px;background:var(--night);border-radius:38px;padding:14px;box-shadow:0 30px 80px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.06);flex-shrink:0}
+  .screen{background:var(--night);border-radius:26px;overflow:hidden;position:relative;min-height:760px}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:var(--night-deep);border-radius:0 0 16px 16px;z-index:30}
+
+  .appbar{display:flex;align-items:center;justify-content:space-between;padding:38px 22px 18px}
+  .appbar .badge{display:flex;align-items:center;gap:9px}
+  .shield{width:18px;height:22px;background:var(--oxv-red);clip-path:polygon(50% 0,100% 22%,100% 62%,50% 100%,0 62%,0 22%);opacity:0.92}
+  .appbar .title{font-family:var(--mono);font-size:10px;letter-spacing:0.26em;text-transform:uppercase;color:var(--cream-mute)}
+  .appbar .action{font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--cream-faint)}
+
+  .content{padding:6px 22px 30px}
+
+  .insight-tag{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:9px;letter-spacing:0.22em;text-transform:uppercase;color:var(--cream-mute);margin-bottom:18px;padding:5px 10px;border:1px solid var(--cream-line);border-radius:20px}
+  .insight-tag .dot{width:6px;height:6px;border-radius:50%}
+
+  .lead{font-family:var(--display);font-size:15px;font-weight:700;line-height:1.5;letter-spacing:0.01em;margin-bottom:8px}
+  .lead .hi{color:var(--gold)}
+  .lead .hi-purple{color:var(--qdi-regularity)}
+  .lead .hi-red{color:var(--qdi-trajectory)}
+  .sub{color:var(--cream-mute);font-size:13px;line-height:1.6;font-weight:300;margin-bottom:24px}
+
+  /* viz blocks */
+  .viz{background:var(--night-card);border:1px solid var(--cream-line);border-radius:16px;padding:20px 18px;margin-bottom:18px}
+  .viz-title{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--cream-faint);margin-bottom:16px}
+
+  /* dispersion corners */
+  .corner-grid{display:flex;flex-direction:column;gap:16px}
+  .corner{display:flex;align-items:center;gap:14px}
+  .corner-label{font-family:var(--mono);font-size:11px;color:var(--cream-mute);width:34px;flex-shrink:0}
+  .track-bar{flex:1;height:30px;background:var(--night-deep);border-radius:6px;position:relative;overflow:hidden}
+  .spread{position:absolute;top:50%;transform:translateY(-50%);height:18px;border-radius:4px;opacity:0.85}
+  .spread-dots{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center}
+  .spread-dots span{width:5px;height:5px;border-radius:50%;background:var(--cream);position:absolute}
+  .corner-val{font-family:var(--display);font-size:13px;font-weight:700;width:54px;text-align:right;flex-shrink:0}
+
+  /* composite lap sectors */
+  .sectors{display:flex;gap:8px;margin-bottom:18px}
+  .sector{flex:1;background:var(--night-deep);border-radius:10px;padding:14px 10px;text-align:center;border-top:2px solid}
+  .sector .s-name{font-family:var(--mono);font-size:9px;letter-spacing:0.16em;color:var(--cream-faint);margin-bottom:8px}
+  .sector .s-time{font-family:var(--display);font-size:15px;font-weight:700}
+  .sector .s-from{font-family:var(--mono);font-size:8px;color:var(--cream-faint);margin-top:6px}
+  .composite-hero{text-align:center;padding:6px 0 4px}
+  .composite-hero .ch-label{font-family:var(--mono);font-size:9px;letter-spacing:0.2em;text-transform:uppercase;color:var(--cream-faint);margin-bottom:6px}
+  .composite-hero .ch-val{font-family:var(--display);font-size:34px;font-weight:700;color:var(--gold);letter-spacing:0.02em}
+  .composite-hero .ch-real{font-family:var(--mono);font-size:10px;color:var(--cream-mute);margin-top:8px}
+
+  /* flow scatter */
+  .scatter{position:relative;height:180px;background:var(--night-deep);border-radius:10px;margin-bottom:6px}
+  .scatter .axis-y{position:absolute;left:8px;top:8px;font-family:var(--mono);font-size:8px;color:var(--cream-faint);letter-spacing:0.1em}
+  .scatter .axis-x{position:absolute;right:10px;bottom:6px;font-family:var(--mono);font-size:8px;color:var(--cream-faint);letter-spacing:0.1em}
+  .scatter .pt{position:absolute;width:9px;height:9px;border-radius:50%;transform:translate(-50%,50%)}
+  .scatter .trend{position:absolute;left:0;right:0;bottom:0;top:0}
+  .scatter-note{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;color:var(--cream-faint);margin-top:4px}
+
+  .source{font-family:var(--mono);font-size:9px;color:var(--cream-faint);letter-spacing:0.08em;line-height:1.6;padding:12px 0 4px;border-top:1px solid var(--cream-line)}
+  .source .src-label{color:var(--steel)}
+
+  /* ===== Frontière pilote / coach ===== */
+  .divider{display:flex;align-items:center;gap:12px;margin:26px 0 20px}
+  .divider .line{flex:1;height:1px;background:var(--cream-line)}
+  .divider .lbl{font-family:var(--mono);font-size:8px;letter-spacing:0.24em;text-transform:uppercase;color:var(--steel)}
+
+  /* ===== Bloc coach ===== */
+  .coach-block{background:rgba(196,164,89,0.06);border:1px solid var(--oxv-gold);border-radius:16px;padding:18px;position:relative}
+  .coach-head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .coach-avatar{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--oxv-gold),var(--copper-deep));display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:11px;font-weight:700;color:var(--night)}
+  .coach-meta{flex:1}
+  .coach-name{font-family:var(--display);font-size:11px;font-weight:700;color:var(--oxv-gold);letter-spacing:0.02em}
+  .coach-role{font-family:var(--mono);font-size:8px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cream-faint);margin-top:2px}
+  .coach-badge{font-family:var(--mono);font-size:8px;letter-spacing:0.12em;color:var(--oxv-gold);border:1px solid var(--oxv-gold);border-radius:12px;padding:3px 8px}
+  .coach-text{font-size:13px;line-height:1.65;color:var(--cream-soft);font-weight:300}
+  .coach-text .prescr{color:var(--oxv-gold);font-weight:500}
+
+  /* annotations à droite */
+  .annot{width:300px;flex-shrink:0;padding-top:30px}
+  .annot h3{font-family:var(--display);font-size:13px;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:0.02em}
+  .annot .ann-sub{font-family:var(--mono);font-size:9px;letter-spacing:0.16em;text-transform:uppercase;color:var(--cream-faint);margin-bottom:20px}
+  .ann{margin-bottom:20px;padding-left:16px;border-left:2px solid var(--cream-line);position:relative}
+  .ann::before{content:'';position:absolute;left:-5px;top:5px;width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  .ann.green::before{background:var(--green-perf)}
+  .ann.gold::before{background:var(--oxv-gold)}
+  .ann.red::before{background:var(--red)}
+  .ann h4{font-size:12px;font-weight:600;color:var(--cream);margin-bottom:5px}
+  .ann p{font-size:12px;line-height:1.6;color:var(--cream-mute);font-weight:300}
+  .ann code{font-family:var(--mono);font-size:10px;color:var(--copper-glow);background:rgba(255,201,60,0.08);padding:1px 5px;border-radius:3px}
+
+  .verdict-strike{background:rgba(230,57,70,0.06);border:1px solid rgba(230,57,70,0.3);border-radius:10px;padding:12px 14px;margin-top:8px}
+  .verdict-strike .vs-label{font-family:var(--mono);font-size:8px;letter-spacing:0.18em;text-transform:uppercase;color:var(--red);margin-bottom:6px}
+  .verdict-strike .vs-text{font-size:12px;color:var(--cream-mute);text-decoration:line-through;text-decoration-color:rgba(230,57,70,0.5);font-weight:300;line-height:1.5}
+
+  .section-sep{width:100%;max-width:880px;height:1px;background:rgba(255,255,255,0.08);margin:8px 0}
+  .foot{max-width:880px;text-align:center;color:var(--cream-faint);font-size:12px;line-height:1.7;font-weight:300;margin-top:8px}
+  .foot strong{color:var(--cream-mute);font-weight:500}
+</style>
+</head>
+<body>
+
+  <div class="intro">
+    <div class="eyebrow">OXV Mirror · Moteur d'insights · Démonstration de conformité</div>
+    <h1>TROIS INSIGHTS PHARES — ET LA FRONTIÈRE PILOTE / COACH</h1>
+    <p>
+      Chaque écran révèle un fait que le pilote ne pouvait pas voir seul, à partir des seules données du RaceBox.
+      Le haut de l'écran (espace pilote) <strong style="color:var(--cream-soft)">décrit ce qui est</strong> — jamais ce qu'il faut faire.
+      Le bas (espace coach), visuellement séparé et attribué, est le seul endroit où une <strong style="color:var(--cream-soft)">lecture causale orientée</strong> apparaît — sous la responsabilité du coach, pas d'OXV.
+    </p>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch sw-pilot"></span> Espace pilote — le fait, jamais le verdict</div>
+      <div class="legend-item"><span class="swatch sw-coach"></span> Espace coach — la cause à corriger, attribuée</div>
+    </div>
+  </div>
+
+  <!-- ============ INSIGHT 1 — DISPERSION DE TRAJECTOIRE ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Dispersion</span></div>
+          <span class="action">18 TOURS</span>
+        </div>
+        <div class="content">
+          <div class="insight-tag"><span class="dot" style="background:var(--qdi-trajectory)"></span> Trajectoire · révélé</div>
+          <div class="lead">Votre point de corde au <span class="hi-red">V4</span> varie de <span class="hi-red">1,8 m</span> d'un tour à l'autre.</div>
+          <div class="sub">Au V1, il ne bouge que de 0,3 m. Voici la régularité spatiale de chaque virage, mesurée sur vos 18 tours.</div>
+
+          <div class="viz">
+            <div class="viz-title">Amplitude du point de corde · par virage</div>
+            <div class="corner-grid">
+              <div class="corner">
+                <span class="corner-label">V1</span>
+                <div class="track-bar">
+                  <div class="spread" style="left:46%;width:8%;background:var(--qdi-regularity)"></div>
+                </div>
+                <span class="corner-val" style="color:var(--qdi-regularity)">0,3 m</span>
+              </div>
+              <div class="corner">
+                <span class="corner-label">V2</span>
+                <div class="track-bar">
+                  <div class="spread" style="left:38%;width:22%;background:var(--gold)"></div>
+                </div>
+                <span class="corner-val" style="color:var(--gold)">0,9 m</span>
+              </div>
+              <div class="corner">
+                <span class="corner-label">V4</span>
+                <div class="track-bar">
+                  <div class="spread" style="left:26%;width:48%;background:var(--qdi-trajectory)"></div>
+                </div>
+                <span class="corner-val" style="color:var(--qdi-trajectory)">1,8 m</span>
+              </div>
+              <div class="corner">
+                <span class="corner-label">V6</span>
+                <div class="track-bar">
+                  <div class="spread" style="left:40%;width:18%;background:var(--gold)"></div>
+                </div>
+                <span class="corner-val" style="color:var(--gold)">0,7 m</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="source">
+            <span class="src-label">SOURCE</span> · Position GNSS RaceBox (~10 cm, 25 Hz) · écart-type latéral au point de corde géométrique de chaque virage · 18 tours valides.
+          </div>
+
+          <div class="divider"><div class="line"></div><span class="lbl">Lecture du coach</span><div class="line"></div></div>
+
+          <div class="coach-block">
+            <div class="coach-head">
+              <div class="coach-avatar">JB</div>
+              <div class="coach-meta">
+                <div class="coach-name">J. Beltoise</div>
+                <div class="coach-role">Coach · invité par vous</div>
+              </div>
+              <span class="coach-badge">PAROLE COACH</span>
+            </div>
+            <div class="coach-text">
+              Le V4 est ton vrai gisement. <span class="prescr">Fixe un repère de corde unique et tiens-le</span> ; ta dispersion là-bas coûte plus que tout le reste du tracé.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>CE QUE LA MAQUETTE DÉMONTRE</h3>
+      <div class="ann-sub">Insight 1 · dispersion</div>
+      <div class="ann red">
+        <h4>Le fait révélé, côté pilote</h4>
+        <p>« Votre corde varie de 1,8 m. » C'est un <strong style="color:var(--cream-soft)">constat spatial pur</strong> — l'app pose le chiffre, ne dit pas de viser plus tard. Le pilote voit où sa main tremble et en tire sa conclusion.</p>
+      </div>
+      <div class="ann">
+        <h4>Inédit marché</h4>
+        <p>RaceChrono donne une trace brute à lire seul. Personne ne quantifie la <code>dispersion par virage</code> en clair. C'est de la profondeur sans densité illisible.</p>
+      </div>
+      <div class="ann gold">
+        <h4>La frontière, visible</h4>
+        <p>Sous le trait « Lecture du coach », encart or, avatar, badge <code>PAROLE COACH</code>. C'est J. Beltoise qui prescrit (« fixe un repère »), pas OXV. La responsabilité pédagogique est attribuée.</p>
+      </div>
+      <div class="verdict-strike">
+        <div class="vs-label">Ce que l'app ne dira jamais (côté pilote)</div>
+        <div class="vs-text">« Visez la corde du V4 plus tard et plus régulièrement pour gagner 0,3 s. »</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <!-- ============ INSIGHT 2 — TOUR DE RÉFÉRENCE COMPOSÉ ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Tour de référence</span></div>
+          <span class="action">COMPOSÉ</span>
+        </div>
+        <div class="content">
+          <div class="insight-tag"><span class="dot" style="background:var(--gold)"></span> Évolution · soi contre soi</div>
+          <div class="lead">Vos meilleurs secteurs, assemblés, donnent un tour de <span class="hi">1:41.2</span>.</div>
+          <div class="sub">Soit 1,6 s sous votre meilleur tour réellement bouclé. Voici d'où vient chaque secteur de ce tour théorique.</div>
+
+          <div class="viz">
+            <div class="viz-title">Tour de référence · composé de vos meilleurs secteurs</div>
+            <div class="sectors">
+              <div class="sector" style="border-top-color:var(--qdi-acceleration)">
+                <div class="s-name">S1</div>
+                <div class="s-time" style="color:var(--qdi-acceleration)">31.4</div>
+                <div class="s-from">tour 12</div>
+              </div>
+              <div class="sector" style="border-top-color:var(--qdi-braking)">
+                <div class="s-name">S2</div>
+                <div class="s-time" style="color:var(--qdi-braking)">38.9</div>
+                <div class="s-from">tour 7</div>
+              </div>
+              <div class="sector" style="border-top-color:var(--qdi-regularity)">
+                <div class="s-name">S3</div>
+                <div class="s-time" style="color:var(--qdi-regularity)">30.9</div>
+                <div class="s-from">tour 15</div>
+              </div>
+            </div>
+            <div class="composite-hero">
+              <div class="ch-label">Tour de référence composé</div>
+              <div class="ch-val">1:41.2</div>
+              <div class="ch-real">Votre meilleur tour réel bouclé : 1:42.8 — écart : 1,6 s</div>
+            </div>
+          </div>
+
+          <div class="source">
+            <span class="src-label">SOURCE</span> · Temps par secteur dérivés des passages GNSS aux portes de secteur · meilleur S1/S2/S3 sur 18 tours · somme arithmétique. Tour non roulé tel quel.
+          </div>
+
+          <div class="divider"><div class="line"></div><span class="lbl">Lecture du coach</span><div class="line"></div></div>
+
+          <div class="coach-block">
+            <div class="coach-head">
+              <div class="coach-avatar">JB</div>
+              <div class="coach-meta">
+                <div class="coach-name">J. Beltoise</div>
+                <div class="coach-role">Coach · invité par vous</div>
+              </div>
+              <span class="coach-badge">PAROLE COACH</span>
+            </div>
+            <div class="coach-text">
+              Ton S2 du tour 7 prouve que le rythme est là. <span class="prescr">L'objectif de la prochaine sortie : reproduire ce S2 deux tours de suite.</span> Le 1:41 est à ta portée, il est déjà dans tes données.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>CE QUE LA MAQUETTE DÉMONTRE</h3>
+      <div class="ann-sub">Insight 2 · tour composé</div>
+      <div class="ann green">
+        <h4>Le fait révélé, côté pilote</h4>
+        <p>Le tour idéal = <strong style="color:var(--cream-soft)">somme de vos vrais meilleurs secteurs</strong>, chacun tracé à son tour d'origine. C'est un agrégat de vos données, pas une trajectoire « idéale » imposée. Honnêteté absolue : « tour non roulé tel quel ».</p>
+      </div>
+      <div class="ann">
+        <h4>Pourquoi c'est fort</h4>
+        <p>Le pilote voit que le potentiel existe <strong style="color:var(--cream-soft)">déjà dans sa propre main</strong> — pas un idéal abstrait. Soi contre soi, version potentiel.</p>
+      </div>
+      <div class="ann gold">
+        <h4>La frontière, visible</h4>
+        <p>L'app montre <em>d'où vient</em> chaque secteur. Le coach, lui, fixe l'<code>objectif</code> (« reproduire ce S2 »). L'app décrit le potentiel ; le coach trace le chemin.</p>
+      </div>
+      <div class="verdict-strike">
+        <div class="vs-label">Ce que l'app ne dira jamais (côté pilote)</div>
+        <div class="vs-text">« Concentrez-vous sur le S2, c'est là que vous devez gagner du temps. »</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <!-- ============ INSIGHT 3 — COHÉRENCE DU FLOW ============ -->
+  <div class="row">
+    <div class="phone">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="appbar">
+          <div class="badge"><div class="shield"></div><span class="title">Cohérence du flow</span></div>
+          <span class="action">18 TOURS</span>
+        </div>
+        <div class="content">
+          <div class="insight-tag"><span class="dot" style="background:var(--qdi-fluidity)"></span> Fluidité · révélé</div>
+          <div class="lead">Vos tours les plus rapides ne sont pas vos plus <span class="hi">agressifs</span> au volant.</div>
+          <div class="sub">Chaque point est un tour : douceur des commandes en horizontal, temps au tour en vertical. Le motif se lit de lui-même.</div>
+
+          <div class="viz">
+            <div class="viz-title">Temps au tour × douceur des commandes (jerk)</div>
+            <div class="scatter">
+              <div class="axis-y">RAPIDE ↑</div>
+              <div class="axis-x">PLUS DOUX →</div>
+              <!-- points : x = douceur (gauche=brusque), y = lent en bas / rapide en haut -->
+              <span class="pt" style="left:18%;bottom:22%;background:var(--steel)"></span>
+              <span class="pt" style="left:24%;bottom:30%;background:var(--steel)"></span>
+              <span class="pt" style="left:30%;bottom:26%;background:var(--steel)"></span>
+              <span class="pt" style="left:33%;bottom:40%;background:var(--cream-mute)"></span>
+              <span class="pt" style="left:40%;bottom:38%;background:var(--cream-mute)"></span>
+              <span class="pt" style="left:44%;bottom:52%;background:var(--cream-mute)"></span>
+              <span class="pt" style="left:52%;bottom:50%;background:var(--cream-soft)"></span>
+              <span class="pt" style="left:58%;bottom:64%;background:var(--cream-soft)"></span>
+              <span class="pt" style="left:63%;bottom:62%;background:var(--gold)"></span>
+              <span class="pt" style="left:70%;bottom:74%;background:var(--gold)"></span>
+              <span class="pt" style="left:76%;bottom:78%;background:var(--qdi-fluidity)"></span>
+              <span class="pt" style="left:82%;bottom:86%;background:var(--qdi-fluidity)"></span>
+              <svg class="trend" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <line x1="14" y1="80" x2="86" y2="16" stroke="rgba(255,183,3,0.35)" stroke-width="0.8" stroke-dasharray="3 2"/>
+              </svg>
+            </div>
+            <div class="scatter-note">
+              <span>Commandes brusques</span>
+              <span>Commandes fluides</span>
+            </div>
+          </div>
+
+          <div class="source">
+            <span class="src-label">SOURCE</span> · Jerk = dérivée de l'accélération (IMU 3 axes, ±8g, 25 Hz) + vitesse de lacet (gyro ±320 dps). Douceur = jerk moyen inversé par tour. Corrélation sur 18 tours.
+          </div>
+
+          <div class="divider"><div class="line"></div><span class="lbl">Lecture du coach</span><div class="line"></div></div>
+
+          <div class="coach-block">
+            <div class="coach-head">
+              <div class="coach-avatar">JB</div>
+              <div class="coach-meta">
+                <div class="coach-name">J. Beltoise</div>
+                <div class="coach-role">Coach · invité par vous</div>
+              </div>
+              <span class="coach-badge">PAROLE COACH</span>
+            </div>
+            <div class="coach-text">
+              La preuve est sous tes yeux : la vitesse vient de la propreté, pas de l'attaque. <span class="prescr">Cherche la douceur d'abord, le chrono suivra</span> — surtout en entrée de courbe rapide.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annot">
+      <h3>CE QUE LA MAQUETTE DÉMONTRE</h3>
+      <div class="ann-sub">Insight 3 · flow</div>
+      <div class="ann">
+        <h4>Le fait révélé, côté pilote</h4>
+        <p>Une <strong style="color:var(--cream-soft)">corrélation tracée</strong> : tours fluides en haut à droite, brusques en bas à gauche. L'app affiche le nuage et nomme le motif. Elle ne dit pas « soyez plus doux ».</p>
+      </div>
+      <div class="ann">
+        <h4>Contre-intuitif = mémorable</h4>
+        <p>Le pilote croit souvent que vite = attaquer. Le <code>jerk</code> dérivé de l'IMU prouve le contraire sur ses propres tours. Personne en grand public ne montre ça.</p>
+      </div>
+      <div class="ann gold">
+        <h4>La frontière, visible</h4>
+        <p>L'app pose le lien (« les rapides sont les fluides »). Le coach en fait une <code>consigne</code> (« cherche la douceur d'abord »). Même fait, deux niveaux — séparés visuellement et juridiquement.</p>
+      </div>
+      <div class="verdict-strike">
+        <div class="vs-label">Ce que l'app ne dira jamais (côté pilote)</div>
+        <div class="vs-text">« Adoucissez vos commandes en entrée de courbe pour gagner du temps. »</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-sep"></div>
+
+  <div class="foot">
+    <strong>La règle, rendue visible sur les trois écrans :</strong> l'espace pilote ne contient que des faits descriptifs — un constat spatial, un agrégat de ses meilleurs secteurs, une corrélation observée.
+    La causalité orientée (« la cause à corriger », « cherche ceci », « l'objectif est cela ») n'apparaît que sous le trait « Lecture du coach », dans un encart attribué à un tiers agréé que le pilote a invité.<br><br>
+    OXV affiche. Le coach interprète. Le pilote décide. La frontière n'est pas une nuance de formulation : c'est une séparation d'espace, de couleur et de responsabilité.
+  </div>
+
+</body>
+</html>

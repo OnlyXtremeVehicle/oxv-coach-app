@@ -15,11 +15,19 @@ import { useState } from 'react';
 import { Modal, Pressable, Text, View } from 'react-native';
 
 import { abandonReconnect, manualReconnect } from '@/ble/initBle';
+import { useAppStateStore } from '@/store/useAppStateStore';
 import { useUIStore } from '@/store/useUIStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export function BleErrorModal() {
-  const visible = useUIStore((s) => s.bleErrorModalVisible);
+  // Doctrine — Principe 3 « silence en piste » : pendant le roulage
+  // (S6_roulage), aucun écran/overlay ne s'affiche, quelle que soit la
+  // cause (perte BLE, timeout). Garde-fou de rendu = garantie dure,
+  // indépendante de qui a mis `bleErrorModalVisible` à true. La
+  // reconnexion automatique continue en fond ; l'état se consulte au
+  // paddock, à l'arrêt.
+  const driving = useAppStateStore((s) => s.state === 'S6_roulage');
+  const visible = useUIStore((s) => s.bleErrorModalVisible) && !driving;
   const [reconnecting, setReconnecting] = useState(false);
 
   const onReconnect = async () => {
