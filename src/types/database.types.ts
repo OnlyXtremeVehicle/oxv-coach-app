@@ -3772,6 +3772,15 @@ export type Database = {
         Returns: boolean
       }
       generate_oxv_reference: { Args: never; Returns: string }
+      get_shared_progression: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          included_metrics: Json
+          share_scope: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_coach: { Args: never; Returns: boolean }
       is_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
