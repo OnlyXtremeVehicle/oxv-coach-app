@@ -140,6 +140,26 @@ export async function analyzeAndPersistSession(
     notes.push('Pas assez de samples pour analyse par segment.');
   }
 
+  // ── Insights (mirror-insights-v1) ────────────────────────────────────────
+  // Calculés CÔTÉ SERVEUR via l'edge function compute-session-insights : la
+  // table session_insights est en écriture service_role uniquement (RLS), donc
+  // l'app ne peut pas l'écrire elle-même. Best-effort, ne bloque jamais le
+  // bilan ; inactif tant que l'edge function n'est pas déployée (l'invoke
+  // échoue alors proprement). La logique de calcul est testée côté app dans
+  // src/services/sessionInsightsEngine.ts (miroir de l'edge).
+  if (segmentsPersisted > 0) {
+    try {
+      const { error: insightsError } = await supabase.functions.invoke('compute-session-insights', {
+        body: { sessionId: input.telemetrySessionId },
+      });
+      notes.push(
+        insightsError ? `Insights KO : ${insightsError.message}` : 'Insights calculés (serveur).'
+      );
+    } catch (e) {
+      notes.push(`Insights KO : ${errMsg(e)}`);
+    }
+  }
+
   // ── Marge globale (depuis laps + session) ────────────────────────────────
   let marginGlobal: number | null = null;
   let computedFirstName: string | null = null;
