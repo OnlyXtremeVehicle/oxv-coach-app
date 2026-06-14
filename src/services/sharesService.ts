@@ -164,29 +164,16 @@ export interface SharedProgression {
  * ne renvoie que des champs sûrs (jamais user_id ni token d'autrui).
  */
 export async function fetchSharedProgression(token: string): Promise<SharedProgression | null> {
-  // La RPC n'est typée qu'après régénération des types post-migration : cast localisé.
-  const rpc = supabase.rpc as unknown as (
-    fn: string,
-    args: Record<string, unknown>
-  ) => Promise<{ data: unknown; error: unknown }>;
-  const { data, error } = await rpc('get_shared_progression', { p_token: token });
-  if (error || !data) return null;
-  const row = Array.isArray(data) ? data[0] : data;
-  if (!row || typeof row !== 'object') return null;
-  const r = row as {
-    share_scope?: string;
-    included_metrics?: unknown;
-    created_at?: string;
-    expires_at?: string | null;
-  };
-  if (!r.share_scope) return null;
+  const { data, error } = await supabase.rpc('get_shared_progression', { p_token: token });
+  if (error || !data || data.length === 0) return null;
+  const row = data[0];
   return {
-    scope: r.share_scope as ShareScope,
-    includedMetrics: Array.isArray(r.included_metrics)
-      ? r.included_metrics.filter((m): m is string => typeof m === 'string')
+    scope: row.share_scope as ShareScope,
+    includedMetrics: Array.isArray(row.included_metrics)
+      ? row.included_metrics.filter((m): m is string => typeof m === 'string')
       : [],
-    createdAt: r.created_at ?? '',
-    expiresAt: r.expires_at ?? null,
+    createdAt: row.created_at ?? '',
+    expiresAt: row.expires_at ?? null,
   };
 }
 
