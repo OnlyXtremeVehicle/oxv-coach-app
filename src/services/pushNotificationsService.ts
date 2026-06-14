@@ -26,6 +26,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
+import { type NotifChannel, readNotifPref } from '@/services/notifPreferencesLogic';
 
 // Configuration globale du handler — comment réagir quand une notif arrive
 // alors que l'app est au premier plan. V1 : on AFFICHE la bannière, mais
@@ -144,7 +145,7 @@ export interface ScheduleDebriefInput {
 export async function scheduleDebriefNotification(
   input: ScheduleDebriefInput
 ): Promise<string | null> {
-  const enabled = await isPushEnabled(input.userId);
+  const enabled = await isChannelEnabled(input.userId, 'debrief');
   if (!enabled) return null;
 
   const delayMs = input.delayMs ?? 24 * 60 * 60 * 1000;
@@ -185,7 +186,7 @@ export interface ScheduleSessionReminderInput {
 export async function scheduleSessionReminder(
   input: ScheduleSessionReminderInput
 ): Promise<string | null> {
-  const enabled = await isPushEnabled(input.userId);
+  const enabled = await isChannelEnabled(input.userId, 'reminder');
   if (!enabled) return null;
 
   const hoursBefore = input.hoursBefore ?? 18;
@@ -230,14 +231,23 @@ export async function cancelAllOxvNotifications(): Promise<void> {
 // Helpers
 // ============================================================================
 
-async function isPushEnabled(userId: string): Promise<boolean> {
+/**
+ * Un canal de notification est-il actif pour ce pilote ?
+ * Maître `push_notif_enabled` (opt-in global) ET préférence fine par canal (D5,
+ * stockée dans notification_preferences). Défaut-ON si non renseigné.
+ */
+async function isChannelEnabled(userId: string, channel: NotifChannel): Promise<boolean> {
   const { data } = await supabase
     .from('users')
-    .select('push_notif_enabled')
+    .select('push_notif_enabled, notification_preferences')
     .eq('id', userId)
     .maybeSingle();
-  const row = data as { push_notif_enabled?: boolean | null } | null;
-  return row?.push_notif_enabled !== false;
+  const row = data as {
+    push_notif_enabled?: boolean | null;
+    notification_preferences?: unknown;
+  } | null;
+  if (row?.push_notif_enabled === false) return false;
+  return readNotifPref(row?.notification_preferences, channel);
 }
 
 function errMsg(e: unknown): string {
