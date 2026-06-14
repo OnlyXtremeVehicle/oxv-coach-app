@@ -42,6 +42,7 @@ export interface SessionInsights {
   telemetry_session_id: string;
   user_id: string;
   engine_version: string;
+  computed_at: string | null;
   n_laps: number;
   n_frames: number;
   anatomy: AnatomyCorner[] | null;
@@ -62,6 +63,7 @@ export const DEMO_SESSION_INSIGHTS: SessionInsights = {
   telemetry_session_id: 'b62ab3af-5d6a-4e88-b316-73a0729933ae',
   user_id: 'demo',
   engine_version: 'mirror-insights-demo',
+  computed_at: '2026-05-30T12:00:00.000Z',
   n_laps: 8,
   n_frames: 11800,
   anatomy: [

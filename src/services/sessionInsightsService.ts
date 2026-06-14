@@ -22,7 +22,7 @@ export async function fetchSessionInsights(
   const { data, error } = await supabase
     .from('session_insights')
     .select(
-      'telemetry_session_id, user_id, engine_version, n_laps, n_frames, anatomy, dispersion, chassis_balance, load_transfer, ideal_lap, data_quality'
+      'telemetry_session_id, user_id, engine_version, computed_at, n_laps, n_frames, anatomy, dispersion, chassis_balance, load_transfer, ideal_lap, data_quality'
     )
     .eq('telemetry_session_id', telemetrySessionId)
     .order('computed_at', { ascending: false })
@@ -36,6 +36,7 @@ export async function fetchSessionInsights(
     telemetry_session_id: data.telemetry_session_id,
     user_id: data.user_id ?? 'unknown',
     engine_version: data.engine_version ?? '',
+    computed_at: data.computed_at ?? null,
     n_laps: data.n_laps ?? 0,
     n_frames: data.n_frames ?? 0,
     anatomy: (data.anatomy as unknown as AnatomyCorner[] | null) ?? null,

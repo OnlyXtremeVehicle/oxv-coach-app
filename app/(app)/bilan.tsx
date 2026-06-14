@@ -20,6 +20,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
+import type { SessionInsights } from '@/circuit/sessionInsights';
+import {
+  BlindspotsBlock,
+  DataQualityBanner,
+  ProvenanceLine,
+  SourceMethodBlock,
+} from '@/components/InsightTransparency';
 import { FadeInSection } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
@@ -32,6 +39,7 @@ import { listHighlightsForMe } from '@/services/coachCurationService';
 import { type CoachReadingWeights, computeCoachReading } from '@/services/coachReadingLogic';
 import { listReadingWeightsForMe } from '@/services/coachReadingService';
 import { getSessionContext } from '@/services/coachSessionContextService';
+import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
 import { type RegularityBand, computeRegularity } from '@/services/regularityService';
 import { fetchPreviousSessions, fetchSessionLaps } from '@/services/sessionsService';
@@ -95,6 +103,7 @@ export default function BilanScreen() {
   const [highlights, setHighlights] = useState<CoachPilotHighlight[]>([]);
   const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
   const [salient, setSalient] = useState<SalientFact | null>(null);
+  const [insights, setInsights] = useState<SessionInsights | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -157,6 +166,20 @@ export default function BilanScreen() {
       cancelled = true;
     };
   }, [profile, params.sessionId]);
+
+  // Insights de session (transparence, charte 11) — fiabilité + provenance du
+  // calcul. Absents tant que telemetry_frames est vide (avant Valence) : les
+  // blocs se masquent alors d'eux-mêmes plutôt que d'inventer une donnée.
+  useEffect(() => {
+    if (!session?.id) return;
+    let cancelled = false;
+    fetchSessionInsights(session.id).then((row) => {
+      if (!cancelled) setInsights(row);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id]);
 
   // Contexte coach (§10.3) sur cette session — affiché si le coach en a posé.
   useEffect(() => {
@@ -260,6 +283,14 @@ export default function BilanScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>BILAN DE SESSION</Text>
 
+        {/* Fiabilité de la donnée (charte 11, T2) — affichée tôt : si la capture
+            est fragile, le pilote le sait avant de lire quoi que ce soit. */}
+        {insights?.data_quality ? (
+          <View style={{ marginTop: spacing.lg }}>
+            <DataQualityBanner dataQuality={insights.data_quality} />
+          </View>
+        ) : null}
+
         {/* Tracé 3D en héros (specs v4 §05 §4.1) : « je me revois ». Couche par
             défaut Régularité ; géométrie = circuit officiel, couches data si la
             session porte des insights (sinon forme du circuit seule, honnête). */}
@@ -349,18 +380,42 @@ export default function BilanScreen() {
             )
           ) : null}
 
-          {salient && salient.band && salient.spreadSeconds != null && salient.lapCount >= 2 ? (
-            <Text
-              style={{
-                color: colors.text.tertiary,
-                fontSize: fontSize.caption,
-                textAlign: 'center',
-                marginTop: spacing.lg,
-              }}
-            >
-              Vos {salient.lapCount} tours tiennent dans{' '}
-              {salient.spreadSeconds.toFixed(1).replace('.', ',')} s.
-            </Text>
+          {/* Régularité au même rang que le chrono (charte 10, E2) : le temps au
+              tour ne doit jamais être le seul chiffre dominant. Même style
+              heroNumber → prominence égale. La doctrine « un seul chiffre »
+              (CLAUDE.md §5) cède ici devant l'exigence éthique d'équilibre
+              vitesse / régularité, plus spécifique et plus récente. */}
+          {salient && salient.spreadSeconds != null && salient.lapCount >= 2 ? (
+            <View style={{ alignItems: 'center', marginTop: spacing.giant }}>
+              <Text
+                style={[
+                  typography.eyebrow,
+                  { color: colors.text.tertiary, marginBottom: spacing.lg },
+                ]}
+              >
+                RÉGULARITÉ
+              </Text>
+              <Text
+                style={[
+                  typography.heroNumber,
+                  { color: colors.text.primary, marginBottom: spacing.lg },
+                ]}
+              >
+                {salient.spreadSeconds.toFixed(1).replace('.', ',')} s
+              </Text>
+              <Text
+                style={[
+                  typography.screenTitle,
+                  {
+                    color: colors.text.secondary,
+                    textAlign: 'center',
+                    fontWeight: fontWeight.light,
+                  },
+                ]}
+              >
+                L’amplitude de vos {salient.lapCount} tours.
+              </Text>
+            </View>
           ) : null}
         </FadeInSection>
 
@@ -629,6 +684,31 @@ export default function BilanScreen() {
             </Text>
           </Pressable>
         ) : null}
+
+        {/* Transparence (charte 11) — source/méthode (T1), angles morts (T5),
+            provenance du calcul (T3). Toujours visibles : la méthode et les
+            limites ne sont pas une option. La provenance ne s'affiche que si la
+            session porte des insights calculés. */}
+        <FadeInSection style={{ marginTop: spacing.xxxl }}>
+          <SourceMethodBlock
+            items={[
+              'Calculé à partir des trames du boîtier (GPS et capteurs inertiels, 25 points par seconde).',
+              'Les tours sont détectés au passage de la ligne ; les virages, par la courbure du tracé.',
+              'Aucune donnée extérieure : seulement votre séance, telle qu’elle a été enregistrée.',
+            ]}
+          />
+          <BlindspotsBlock
+            items={[
+              'L’app ne connaît pas la trajectoire que vous visiez, ni vos intentions.',
+              'Elle décrit ce qui s’est passé. Elle ne dit pas ce qu’il fallait faire.',
+              'La segmentation des virages est une estimation, pas une vérité du circuit.',
+            ]}
+          />
+          <ProvenanceLine
+            engineVersion={insights?.engine_version}
+            computedAt={insights?.computed_at}
+          />
+        </FadeInSection>
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
