@@ -73,6 +73,16 @@ const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
   { pattern: /\bpatience à la corde\b/gi, verb: 'patience à la corde' },
   { pattern: /\bfreiner plus (tôt|tard)\b/gi, verb: 'freiner plus tôt/tard' },
   { pattern: /\brelâch(?:er|ez) plus (tôt|tard)\b/gi, verb: 'relâcher plus tôt/tard' },
+  // Catégorie 6 : NOMS de jugement (fiche 10 §C — garde-langage bien-être). On
+  // décrit des faits, jamais une note sur la personne ou sa performance.
+  // Exclus volontairement : « échec » (alertes techniques légitimes) et
+  // « faible » (usage factuel : « dispersion faible »). « lent » → préférer
+  // « vitesse basse ».
+  { pattern: /\blent\b/gi, verb: 'lent (→ « vitesse basse »)' },
+  { pattern: /\bmauvais(?:e)?\b/gi, verb: 'mauvais' },
+  { pattern: /\bmédiocre\b/gi, verb: 'médiocre' },
+  { pattern: /\bdécevant(?:e)?\b/gi, verb: 'décevant' },
+  { pattern: /\braté(?:e)?\b/gi, verb: 'raté' },
 ];
 
 // Patterns supplémentaires : dates sans locale fr-FR explicite

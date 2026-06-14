@@ -290,9 +290,9 @@ function Legend({ mode }: { mode: ColorMode }) {
   const items =
     mode === 'pace'
       ? [
-          { color: colors.margin.green, label: 'Rapide' },
-          { color: colors.margin.yellow, label: 'Moyen' },
-          { color: colors.margin.red, label: 'Lent' },
+          { color: colors.margin.green, label: 'Vitesse élevée' },
+          { color: colors.margin.yellow, label: 'Vitesse moyenne' },
+          { color: colors.margin.red, label: 'Vitesse basse' },
         ]
       : [
           { color: colors.margin.green, label: 'Confortable (≥ 30%)' },
@@ -393,7 +393,12 @@ function CornerRow(props: {
   onPress: () => void;
 }) {
   const { corner, aggregate, isSelected, onPress } = props;
-  const paceLabel = corner.pace === 'fast' ? 'Rapide' : corner.pace === 'medium' ? 'Moyen' : 'Lent';
+  const paceLabel =
+    corner.pace === 'fast'
+      ? 'Vitesse élevée'
+      : corner.pace === 'medium'
+        ? 'Vitesse moyenne'
+        : 'Vitesse basse';
   const marginText =
     aggregate?.avgMarginPercent !== null && aggregate?.avgMarginPercent !== undefined
       ? `${aggregate.avgMarginPercent.toFixed(0)}% · ${aggregate.sessionCount} sess.`

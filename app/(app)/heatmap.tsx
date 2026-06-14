@@ -2,7 +2,7 @@
  * Écran Carte de chaleur — pilier §3.4 du cahier OXV Mirror.
  *
  * Visualisation PURE : la vitesse projetée en couleurs le long du tracé
- * réel. Rouge = lent, jaune = intermédiaire, vert = rapide. Zéro mot,
+ * réel. Rouge = vitesse basse, jaune = moyenne, vert = élevée. Zéro mot,
  * zéro note : la donnée rendue visible. « Le miroir le plus littéral. »
  *
  * Réutilise PilotPreset + TrajectoryLayer (mode speed-heatmap) déjà en
@@ -166,9 +166,9 @@ export default function HeatmapScreen() {
                 marginTop: spacing.lg,
               }}
             >
-              <LegendDot color={colors.margin.red} label="Lent" />
-              <LegendDot color={colors.margin.yellow} label="Intermédiaire" />
-              <LegendDot color={colors.margin.green} label="Rapide" />
+              <LegendDot color={colors.margin.red} label="Vitesse basse" />
+              <LegendDot color={colors.margin.yellow} label="Vitesse moyenne" />
+              <LegendDot color={colors.margin.green} label="Vitesse élevée" />
             </View>
 
             {/* Légende points de freinage */}
