@@ -149,6 +149,47 @@ export async function revokeShare(id: string): Promise<boolean> {
   return true;
 }
 
+export interface SharedProgression {
+  scope: ShareScope;
+  includedMetrics: string[];
+  createdAt: string;
+  expiresAt: string | null;
+}
+
+/**
+ * Lit un partage par token via la RPC sécurisée `get_shared_progression`
+ * (migration secure_progression_share_read). Renvoie null si le token est
+ * inconnu, révoqué ou expiré → écran « partage terminé » (doc 07 §4.3).
+ * La RPC incrémente view_count côté serveur (traçabilité pour l'émetteur) et
+ * ne renvoie que des champs sûrs (jamais user_id ni token d'autrui).
+ */
+export async function fetchSharedProgression(token: string): Promise<SharedProgression | null> {
+  // La RPC n'est typée qu'après régénération des types post-migration : cast localisé.
+  const rpc = supabase.rpc as unknown as (
+    fn: string,
+    args: Record<string, unknown>
+  ) => Promise<{ data: unknown; error: unknown }>;
+  const { data, error } = await rpc('get_shared_progression', { p_token: token });
+  if (error || !data) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== 'object') return null;
+  const r = row as {
+    share_scope?: string;
+    included_metrics?: unknown;
+    created_at?: string;
+    expires_at?: string | null;
+  };
+  if (!r.share_scope) return null;
+  return {
+    scope: r.share_scope as ShareScope,
+    includedMetrics: Array.isArray(r.included_metrics)
+      ? r.included_metrics.filter((m): m is string => typeof m === 'string')
+      : [],
+    createdAt: r.created_at ?? '',
+    expiresAt: r.expires_at ?? null,
+  };
+}
+
 interface RawShareRow {
   id: string;
   user_id: string;
