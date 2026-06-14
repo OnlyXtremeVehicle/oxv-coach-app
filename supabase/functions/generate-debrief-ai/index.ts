@@ -16,6 +16,13 @@
 //
 // Le résultat écrase app_session_analyses.debrief_text.
 //
+// RGPD (S5, charte 12) :
+//   - Le payload envoyé à OpenAI (US) est NON NOMINATIF : pas de prénom, pas
+//     d'identifiant — seulement le niveau déclaré, le circuit et des grandeurs
+//     de roulage (marges, vitesses, G). Minimisation du transfert hors-UE.
+//   - Réglage opt-out : si users.ai_debrief_enabled = false, on n'appelle pas
+//     OpenAI (403) ; l'app pilote retombe sur le générateur local descriptif.
+//
 // GARDE-FOU DOCTRINAL (cahier OXV Mirror §11 : "debrief IA strictement
 // descriptif, jamais prescriptif"). Le prompt ne suffit pas — un LLM peut
 // déraper. On scanne donc la SORTIE générée :
@@ -95,20 +102,40 @@ Deno.serve(async (req: Request) => {
     );
 
     // Récupérer la session + le pilote + l'analyse
+    // RGPD (S5) : on ne lit PAS started_at (date/heure exacte, quasi-identifiante
+    // par recoupement) — elle n'est pas utile au debrief et n'a pas à être chargée.
     const { data: session } = await supabase
       .from('telemetry_sessions')
-      .select('id, user_id, circuit_name, started_at, lap_count, best_lap_seconds')
+      .select('id, user_id, circuit_name, lap_count, best_lap_seconds')
       .eq('id', sessionId)
       .maybeSingle();
     if (!session) {
       return new Response(JSON.stringify({ error: 'session_not_found' }), { status: 404 });
     }
 
-    const { data: pilot } = await supabase
+    // RGPD (S5) : on ne lit QUE le niveau (donnée non identifiante). Le prénom
+    // n'est plus transmis à OpenAI — il restait identifiant couplé au circuit/
+    // perfs. `ai_debrief_enabled` porte le réglage opt-out (défaut : actif).
+    const { data: pilot, error: pilotError } = await supabase
       .from('users')
-      .select('first_name, pilot_level')
+      .select('pilot_level, ai_debrief_enabled')
       .eq('id', session.user_id)
       .maybeSingle();
+
+    // Gate opt-out (S5). Modèle OPT-OUT, donc défaut-ON assumé : seul un
+    // ai_debrief_enabled VRAIMENT à false bloque l'appel OpenAI. On distingue
+    // l'opt-out explicite (false → 403, fallback local) d'une lecture
+    // indisponible (erreur ou pilote absent → on procède, défaut-ON cohérent
+    // avec le modèle opt-out). La lecture passe par service_role (pas de RLS).
+    if (pilotError) {
+      console.warn('[OXV] debrief IA : lecture du réglage opt-out KO, défaut-ON :', pilotError.message);
+    }
+    if (pilot && pilot.ai_debrief_enabled === false) {
+      return new Response(
+        JSON.stringify({ error: 'ai_debrief_disabled', detail: 'Opt-out IA actif — fallback local.' }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { data: analysis } = await supabase
       .from('app_session_analyses')
@@ -151,7 +178,8 @@ ACTE 2 — CE QUE MONTRENT LES CHIFFRES (~60 mots) : Mise en relation NEUTRE des
 
 ACTE 3 — LA PROCHAINE FOIS (~50 mots) : Désignez factuellement le virage à plus faible marge comme "le terrain le plus serré de cette session" — comme un simple constat, jamais comme "à corriger" ni "à travailler". Posez éventuellement une question ouverte ("était-ce volontaire ?"). Phrase finale : "Un constat, pas une consigne."`;
 
-    const userPrompt = `Pilote : ${pilot?.first_name ?? 'le pilote'} (niveau ${pilot?.pilot_level ?? 'non renseigné'})
+    // RGPD (S5) : payload non nominatif — pas de prénom, pas d'identifiant.
+    const userPrompt = `Pilote : niveau ${pilot?.pilot_level ?? 'non renseigné'}
 Circuit : ${session.circuit_name ?? 'Beltoise'}
 Nombre de tours : ${session.lap_count ?? '?'}
 Meilleur tour : ${session.best_lap_seconds ? `${session.best_lap_seconds}s` : 'inconnu'}

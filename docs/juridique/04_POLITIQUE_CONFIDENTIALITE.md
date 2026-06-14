@@ -149,7 +149,7 @@ Nous faisons appel à un nombre limité de prestataires techniques nécessaires 
 | **Supabase** | Hébergement de la base de données et stockage de fichiers | Frankfurt, Allemagne (UE) |
 | **Vercel** | Hébergement du site oxvehicle.fr | Infrastructure globale, données techniques principalement en Europe |
 | **Resend** | Envoi des emails transactionnels (confirmations, factures) | Infrastructure Europe |
-| **OpenAI** | Génération des messages audio personnalisés (rituels avant session) | États-Unis (avec clauses contractuelles types validées par la Commission européenne) |
+| **OpenAI** | Génération du texte de debrief après session, à partir de vos données de roulage (sans prénom ni identifiant) | États-Unis (avec clauses contractuelles types validées par la Commission européenne) |
 | **ElevenLabs** | Synthèse vocale des messages audio | États-Unis (avec clauses contractuelles types) |
 | **Stripe (à venir)** | Traitement des paiements par carte (quand activé) | Irlande, Union européenne |
 
@@ -177,7 +177,8 @@ Vous restez seul responsable du choix du destinataire. Vous pouvez **révoquer c
 | **Compte pilote actif** | Pendant toute la durée d'activité | Nécessaire au service |
 | **Compte pilote inactif** | 3 ans après la dernière connexion | Délai de prescription commerciale courante |
 | **Documents KYC** | 5 ans après la dernière session | Obligation légale en matière de vérification d'identité |
-| **Données télémétriques** | Pendant toute la durée d'activité du compte | Cœur du service |
+| **Données télémétriques brutes** (trames du boîtier) | 12 mois (environ une saison) | Données volumineuses ; minimisation au-delà de leur utilité directe |
+| **Analyses et lectures de session dérivées** (marges, anatomie, tracé) | Pendant toute la durée d'activité du compte | Cœur du service ; votre historique de progression |
 | **Factures et données comptables** | 10 ans | Obligation légale française |
 | **Newsletter (avec consentement)** | Jusqu'à votre désinscription | Consentement |
 | **Logs techniques** | 12 mois | Sécurité et débogage |
@@ -316,11 +317,11 @@ L'essentiel de vos données est traité au sein de l'Union européenne, principa
 
 Deux exceptions concernent des prestataires américains, pour lesquels OXV s'est assurée des garanties suivantes :
 
-- **OpenAI** (génération des messages audio) et **ElevenLabs** (synthèse vocale) : ces prestataires sont liés à OXV par les **clauses contractuelles types** validées par la Commission européenne (décision 2021/914), garantissant un niveau de protection équivalent à celui du RGPD.
+- **OpenAI** (génération du texte de debrief après session) et **ElevenLabs** (synthèse vocale, le cas échéant) : ces prestataires sont liés à OXV par les **clauses contractuelles types** validées par la Commission européenne (décision 2021/914), garantissant un niveau de protection équivalent à celui du RGPD.
 
-Les données transmises à ces services sont **anonymisées** (le prénom du pilote est utilisé uniquement à la génération du message, sans contexte personnel additionnel) et ne sont pas conservées au-delà du traitement immédiat.
+Les données transmises à OpenAI pour la génération du debrief ne comportent **ni votre prénom, ni votre nom, ni vos coordonnées, ni aucun identifiant de compte**. Elles se limitent à des données de roulage non nominatives (marges, forces latérales, temps au tour, nombre de tours, niveau déclaré) et au nom du circuit. Elles ne sont pas conservées par le prestataire au-delà du traitement immédiat, conformément à notre contrat de sous-traitance.
 
-Si vous le souhaitez, vous pouvez **désactiver la réception des messages audio personnalisés** dans vos paramètres. Aucune donnée ne sera alors transmise à ces prestataires américains.
+Si vous le souhaitez, vous pouvez **désactiver le debrief assisté par IA** dans vos paramètres. Aucune donnée ne sera alors transmise à ce prestataire américain : le debrief est alors rédigé localement, sur votre appareil et nos serveurs européens.
 
 ---
 

@@ -7,9 +7,6 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "env": {
-        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": ""
-      },
       "android": {
         "buildType": "apk"
       },
