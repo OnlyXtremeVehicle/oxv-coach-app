@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_audit: {
@@ -3303,6 +3328,7 @@ export type Database = {
           address_line: string | null
           address_zip: string | null
           admin_notes: string | null
+          ai_debrief_enabled: boolean
           avatar_url: string | null
           birth_date: string | null
           blood_type: string | null
@@ -3362,6 +3388,7 @@ export type Database = {
           address_line?: string | null
           address_zip?: string | null
           admin_notes?: string | null
+          ai_debrief_enabled?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           blood_type?: string | null
@@ -3421,6 +3448,7 @@ export type Database = {
           address_line?: string | null
           address_zip?: string | null
           admin_notes?: string | null
+          ai_debrief_enabled?: boolean
           avatar_url?: string | null
           birth_date?: string | null
           blood_type?: string | null
@@ -3767,6 +3795,7 @@ export type Database = {
         Returns: number
       }
       cleanup_old_notif_logs: { Args: never; Returns: number }
+      cleanup_old_telemetry_frames: { Args: never; Returns: number }
       coach_has_permission: {
         Args: { coach_uuid: string; permission_name: string }
         Returns: boolean
@@ -3979,6 +4008,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       document_status_enum: ["pending", "validated", "rejected", "expired"],
