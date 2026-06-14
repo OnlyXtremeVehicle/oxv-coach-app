@@ -264,7 +264,13 @@ export default function BilanScreen() {
             défaut Régularité ; géométrie = circuit officiel, couches data si la
             session porte des insights (sinon forme du circuit seule, honnête). */}
         <FadeInSection style={{ marginTop: spacing.xl }}>
-          <CircuitTraceHero sessionId={session.id} />
+          {/* Role-aware : un coach qui consulte la session d'un de ses pilotes voit
+              les couches coach + l'attribution (badge or). Le pilote sur sa propre
+              session voit les couches pilote. Accès déjà consenti (RLS coach). */}
+          <CircuitTraceHero
+            sessionId={session.id}
+            role={session.user_id === profile?.id ? 'pilot' : 'coach'}
+          />
         </FadeInSection>
 
         {/* Héros « Le Sillage » — le fait saillant de la séance, situé dans le
