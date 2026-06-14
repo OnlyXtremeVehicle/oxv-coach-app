@@ -16,6 +16,14 @@
 -- en attendant, appel manuel/edge planifiée (même note que 0024).
 -- ============================================================================
 
+-- Index sur created_at : la purge filtre par âge. Sans lui, chaque exécution
+-- fait un seq scan complet d'une table alimentée à 25 Hz (potentiellement très
+-- volumineuse). La table est vide avant Valence (07/2026) : création immédiate
+-- sans coût. Si elle était déjà grosse en prod, préférer CREATE INDEX CONCURRENTLY
+-- hors transaction.
+CREATE INDEX IF NOT EXISTS idx_telemetry_frames_created_at
+  ON public.telemetry_frames (created_at);
+
 CREATE OR REPLACE FUNCTION public.cleanup_old_telemetry_frames()
 RETURNS integer
 LANGUAGE plpgsql

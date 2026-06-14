@@ -177,7 +177,8 @@ Vous restez seul responsable du choix du destinataire. Vous pouvez **révoquer c
 | **Compte pilote actif** | Pendant toute la durée d'activité | Nécessaire au service |
 | **Compte pilote inactif** | 3 ans après la dernière connexion | Délai de prescription commerciale courante |
 | **Documents KYC** | 5 ans après la dernière session | Obligation légale en matière de vérification d'identité |
-| **Données télémétriques** | Pendant toute la durée d'activité du compte | Cœur du service |
+| **Données télémétriques brutes** (trames du boîtier) | 12 mois (environ une saison) | Données volumineuses ; minimisation au-delà de leur utilité directe |
+| **Analyses et lectures de session dérivées** (marges, anatomie, tracé) | Pendant toute la durée d'activité du compte | Cœur du service ; votre historique de progression |
 | **Factures et données comptables** | 10 ans | Obligation légale française |
 | **Newsletter (avec consentement)** | Jusqu'à votre désinscription | Consentement |
 | **Logs techniques** | 12 mois | Sécurité et débogage |
@@ -318,7 +319,7 @@ Deux exceptions concernent des prestataires américains, pour lesquels OXV s'est
 
 - **OpenAI** (génération du texte de debrief après session) et **ElevenLabs** (synthèse vocale, le cas échéant) : ces prestataires sont liés à OXV par les **clauses contractuelles types** validées par la Commission européenne (décision 2021/914), garantissant un niveau de protection équivalent à celui du RGPD.
 
-Les données transmises à OpenAI pour la génération du debrief ne comportent **ni votre prénom, ni votre nom, ni vos coordonnées, ni aucun identifiant de compte**. Elles se limitent à des données de roulage non nominatives (marges, vitesses, temps au tour, niveau déclaré) et au nom du circuit. Elles ne sont pas conservées par le prestataire au-delà du traitement immédiat, conformément à notre contrat de sous-traitance.
+Les données transmises à OpenAI pour la génération du debrief ne comportent **ni votre prénom, ni votre nom, ni vos coordonnées, ni aucun identifiant de compte**. Elles se limitent à des données de roulage non nominatives (marges, forces latérales, temps au tour, nombre de tours, niveau déclaré) et au nom du circuit. Elles ne sont pas conservées par le prestataire au-delà du traitement immédiat, conformément à notre contrat de sous-traitance.
 
 Si vous le souhaitez, vous pouvez **désactiver le debrief assisté par IA** dans vos paramètres. Aucune donnée ne sera alors transmise à ce prestataire américain : le debrief est alors rédigé localement, sur votre appareil et nos serveurs européens.
 

@@ -102,9 +102,11 @@ Deno.serve(async (req: Request) => {
     );
 
     // Récupérer la session + le pilote + l'analyse
+    // RGPD (S5) : on ne lit PAS started_at (date/heure exacte, quasi-identifiante
+    // par recoupement) — elle n'est pas utile au debrief et n'a pas à être chargée.
     const { data: session } = await supabase
       .from('telemetry_sessions')
-      .select('id, user_id, circuit_name, started_at, lap_count, best_lap_seconds')
+      .select('id, user_id, circuit_name, lap_count, best_lap_seconds')
       .eq('id', sessionId)
       .maybeSingle();
     if (!session) {
@@ -114,14 +116,20 @@ Deno.serve(async (req: Request) => {
     // RGPD (S5) : on ne lit QUE le niveau (donnée non identifiante). Le prénom
     // n'est plus transmis à OpenAI — il restait identifiant couplé au circuit/
     // perfs. `ai_debrief_enabled` porte le réglage opt-out (défaut : actif).
-    const { data: pilot } = await supabase
+    const { data: pilot, error: pilotError } = await supabase
       .from('users')
       .select('pilot_level, ai_debrief_enabled')
       .eq('id', session.user_id)
       .maybeSingle();
 
-    // Gate opt-out (S5) : si le pilote a désactivé le débrief assisté par IA,
-    // on n'appelle PAS OpenAI. L'app retombe sur le générateur local descriptif.
+    // Gate opt-out (S5). Modèle OPT-OUT, donc défaut-ON assumé : seul un
+    // ai_debrief_enabled VRAIMENT à false bloque l'appel OpenAI. On distingue
+    // l'opt-out explicite (false → 403, fallback local) d'une lecture
+    // indisponible (erreur ou pilote absent → on procède, défaut-ON cohérent
+    // avec le modèle opt-out). La lecture passe par service_role (pas de RLS).
+    if (pilotError) {
+      console.warn('[OXV] debrief IA : lecture du réglage opt-out KO, défaut-ON :', pilotError.message);
+    }
     if (pilot && pilot.ai_debrief_enabled === false) {
       return new Response(
         JSON.stringify({ error: 'ai_debrief_disabled', detail: 'Opt-out IA actif — fallback local.' }),

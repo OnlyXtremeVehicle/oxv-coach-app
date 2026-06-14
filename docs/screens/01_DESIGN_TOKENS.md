@@ -72,7 +72,7 @@ export const colors = {
 ### 1.2 — Règles strictes d'usage
 
 **RÈGLE 1 — Or Heritage** (`#C4A459`)
-- À utiliser EXCLUSIVEMENT sur les écrans Heritage (pack 4 sessions à 2 490 €)
+- À utiliser EXCLUSIVEMENT sur les écrans Heritage (pack 4 sessions à 3500€)
 - INTERDIT sur Access, Signature, Promotion
 - Symbolise le "club privilégié"
 
