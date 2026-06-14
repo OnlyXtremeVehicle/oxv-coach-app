@@ -205,25 +205,63 @@ function ModePassive({
         <Text style={typography.manifest}>Votre première session écrira la première ligne.</Text>
       )}
 
-      {/* Accès à la carte écosystème (§8) — préparer ses sorties. */}
-      <Link href={'/(app)/circuits' as never} asChild>
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => ({
-            marginTop: spacing.xl,
-            padding: spacing.lg,
-            borderRadius: borderRadius.md,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            alignItems: 'center',
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>
-            Carte des circuits
-          </Text>
-        </Pressable>
-      </Link>
+      {/* Hub central (#20, sitemap carte 3) — porte d'entrée vers l'app,
+          accessible SANS session. Sans ce menu, un compte neuf reste piégé
+          sur l'accueil : tous les écrans étaient derrière le bilan (donc
+          derrière une session). Vouvoiement, sobre, boîtier « Équipement ». */}
+      <View style={{ marginTop: spacing.xxxl, gap: spacing.md }}>
+        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>NAVIGATION</Text>
+        <HubCard label="Mon bilan" hint="Votre dernière analyse" href="/(app)/bilan" />
+        <HubCard label="Ma progression" hint="Votre fil dans le temps" href="/(app)/progression" />
+        <HubCard label="Mon équipement" hint="Connecter le boîtier" href="/(app)/equipement" />
+        <HubCard label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
+        <HubCard label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
+        <HubCard
+          label="Aperçu du tracé 3D"
+          hint="Démonstration — Haute Saintonge"
+          href="/(app)/debug-circuit"
+        />
+      </View>
     </View>
+  );
+}
+
+function HubCard({ label, hint, href }: { label: string; hint: string; href: string }) {
+  return (
+    <Link href={href as never} asChild>
+      <Pressable
+        accessibilityRole="button"
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingVertical: spacing.lg,
+          paddingHorizontal: spacing.xl,
+          borderRadius: borderRadius.lg,
+          borderWidth: 0.5,
+          borderColor: colors.border.subtle,
+          backgroundColor: colors.background.secondary,
+          opacity: pressed ? 0.85 : 1,
+        })}
+      >
+        <View style={{ flex: 1, paddingRight: spacing.md }}>
+          <Text
+            style={{
+              color: colors.text.primary,
+              fontSize: fontSize.body,
+              fontWeight: fontWeight.regular,
+            }}
+          >
+            {label}
+          </Text>
+          <Text
+            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
+          >
+            {hint}
+          </Text>
+        </View>
+        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
+      </Pressable>
+    </Link>
   );
 }
