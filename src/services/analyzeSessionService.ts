@@ -180,7 +180,11 @@ export async function analyzeAndPersistSession(
   // ── Debrief J+1 généré (OpenAI d'abord, fallback local sinon) ──────────
   if (marginGlobal !== null) {
     try {
-      // Tentative OpenAI via Edge Function generate-debrief-ai
+      // Tentative OpenAI via Edge Function generate-debrief-ai.
+      // Opt-out IA (S5) : appliqué CÔTÉ SERVEUR — si le pilote a désactivé le
+      // débrief assisté par IA (users.ai_debrief_enabled = false), l'edge
+      // function renvoie 403 SANS rien transmettre à OpenAI, et l'on retombe
+      // automatiquement sur le générateur local descriptif ci-dessous.
       const { error: aiError } = await supabase.functions.invoke('generate-debrief-ai', {
         body: { sessionId: input.telemetrySessionId },
       });

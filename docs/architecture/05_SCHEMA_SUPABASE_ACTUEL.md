@@ -16,7 +16,7 @@
 | `vehicles` | 4 | Véhicules des pilotes |
 | `documents` | 5 | KYC (permis, identité, assurances) |
 | `sessions` | 44 | Sessions de roulage planifiées |
-| `heritage_packs` | 0 | Packs saison Heritage (3500€) |
+| `heritage_packs` | 0 | Packs saison Heritage (2 490 €) |
 | `registrations` | 5 | Inscriptions pilotes aux sessions |
 | `payments` | 2 | Transactions Stripe |
 | `media` | 0 | Photos/vidéos post-session |

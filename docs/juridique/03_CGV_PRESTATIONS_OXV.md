@@ -40,7 +40,7 @@ OXV propose quatre formats de prestation, dont le détail est consultable sur ox
 - **Access** : journée complète, équipement de base, à partir de 250 € pour la première session, 350 € pour les suivantes
 - **Signature** : journée complète avec coaching software et télémétrie avancée, 590 €
 - **Promotion** : Signature + accompagnement médias (drone, photographe professionnel, droits cédés), 890 €
-- **Heritage** : pack saison de quatre sessions, 3 500 €
+- **Heritage** : pack saison de quatre sessions, 2 490 €
 
 Chaque Offre comprend :
 
