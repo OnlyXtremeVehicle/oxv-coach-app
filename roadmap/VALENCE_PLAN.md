@@ -5,6 +5,17 @@
 
 Audit de préparation réalisé le 2026-06-14 (6 axes, lecture du code réel).
 
+## Avancement (2026-06-14)
+
+- ✅ **Navigation** : hub d'accueil pilote (PR #100) — tous les écrans atteignables sans session.
+- ✅ **P0 — Chaîne de capture** : write path de bout en bout (PR #101). `placement` → `roulage` →
+  écriture `telemetry_frames` + `laps` + session `completed` → analyse → bilan peuplé. Mapping testé,
+  flush anti-perte, `.ubx` filet. **Reste : smoke test RaceBox réel + BLE arrière-plan.**
+  ⚠️ Déviation à arbitrer : laps écrits par l'app (vs décision « dérivés des frames côté serveur »).
+- ✅ **P2 — Runbook comptes** : `roadmap/RUNBOOK_VALENCE.md`.
+- ⏳ **P1 — Moteur d'insights** (`mirror-insights-v1`) : à construire (tracé coloré par vraies données).
+- ⏳ **P3 — Finitions** : 6 écrans minces + bugs mineurs + (optionnel) barre d'onglets.
+
 ---
 
 ## Verdict en une phrase
