@@ -149,12 +149,16 @@ export default function BilanScreen() {
         setMargin(result);
         setLoading(false);
 
-        // Persiste en arrière-plan, l'échec ne bloque pas l'affichage.
-        upsertAnalysis({
-          telemetrySessionId: targetSession.id,
-          userId: profile.id,
-          result,
-        }).catch(() => undefined);
+        // Persiste en arrière-plan — UNIQUEMENT si le lecteur est le pilote
+        // propriétaire. Un coach est en lecture seule (doctrine) et la RLS
+        // rejetterait une écriture avec l'id du coach sur la session d'un autre.
+        if (targetSession.user_id === profile.id) {
+          upsertAnalysis({
+            telemetrySessionId: targetSession.id,
+            userId: profile.id,
+            result,
+          }).catch(() => undefined);
+        }
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : String(err));

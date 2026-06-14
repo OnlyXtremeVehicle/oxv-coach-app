@@ -20,21 +20,18 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { mockCornerMargins } from '@/lib/circuitTopology';
 import { type FocusCornerSelection, selectFocusCorner } from '@/services/focusCorner';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function ProchaineFoisScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
-  const sessionId = params.sessionId ?? 'demo';
 
-  const [focus, setFocus] = useState<FocusCornerSelection | null>(() =>
-    selectFocusCorner(mockCornerMargins(sessionId))
-  );
+  // Doctrine : pas de fausse donnée. On ne propose un virage à observer QUE si
+  // l'analyse réelle existe ; sinon NoFocusState (état vide honnête).
+  const [focus, setFocus] = useState<FocusCornerSelection | null>(null);
 
-  // Si on a un vrai sessionId, on essaie de remplacer la mock par les
-  // vraies marges issues de l'analyse trackviz.
+  // On remplit le focus depuis les vraies marges issues de l'analyse trackviz.
   useEffect(() => {
     if (!params.sessionId) return;
     let cancelled = false;
