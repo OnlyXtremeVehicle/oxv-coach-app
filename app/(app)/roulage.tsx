@@ -32,7 +32,10 @@ export default function RoulageScreen() {
     const res = await stopCaptureSession();
     hapticSuccess();
     if (res.ok && res.sessionId) {
-      router.replace({ pathname: '/(app)/pilotage-fini', params: { sessionId: res.sessionId } });
+      router.replace({
+        pathname: '/(app)/pilotage-fini',
+        params: { sessionId: res.sessionId, ubxUri: res.ubxUri ?? '' },
+      });
     } else {
       // Capture déjà close ou erreur : on ne bloque pas le pilote.
       router.replace('/(app)');

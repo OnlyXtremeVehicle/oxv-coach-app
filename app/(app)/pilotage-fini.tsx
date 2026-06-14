@@ -19,7 +19,7 @@ import { colors, fontSize, fontWeight, spacing, typography } from '@/theme/token
 const TRANSITION_MS = 4_000;
 
 export default function PilotageFiniScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; ubxUri?: string }>();
   const lapCount = useSessionStore((s) => s.lapCount);
   const meta = useSessionStore((s) => s.meta);
 
@@ -27,11 +27,13 @@ export default function PilotageFiniScreen() {
     const timer = setTimeout(() => {
       router.replace({
         pathname: '/(app)/donnees-securite',
-        params: { sessionId: params.sessionId ?? '' },
+        // On relaie l'URI .ubx local : il sert de source d'analyse prioritaire
+        // (déjà en mémoire flash) si l'écriture en base a connu des trous réseau.
+        params: { sessionId: params.sessionId ?? '', ubxUri: params.ubxUri ?? '' },
       });
     }, TRANSITION_MS);
     return () => clearTimeout(timer);
-  }, [params.sessionId]);
+  }, [params.sessionId, params.ubxUri]);
 
   const startedAt = meta?.startedAt ?? null;
   const endedAt = meta?.endedAt ?? new Date();

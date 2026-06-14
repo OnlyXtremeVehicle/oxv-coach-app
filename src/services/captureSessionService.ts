@@ -7,19 +7,28 @@
  *      et les INSÈRE par paquets dans telemetry_frames ;
  *   3. lance la détection de tours (lapDetectionRunner → useSessionStore) et la
  *      capture .ubx locale (captureMode) comme filet de sécurité ;
- *   4. à l'arrêt : flush final, agrégats, status 'completed', upload .ubx.
+ *   4. à l'arrêt : flush final (attend un flush en vol puis draine), persiste
+ *      les tours dans `laps`, calcule les agrégats, passe la session en
+ *      'completed', upload le .ubx.
  *
  * Le mapping trame→ligne est isolé et testé (captureFrameMapping). Ici on ne
- * fait que l'orchestration réseau/état (non testée unitairement — dépend de BLE).
+ * fait que l'orchestration réseau/état.
  *
- * Doctrine « silence en piste » : ce service n'affiche rien ; c'est l'écran de
- * roulage qui décide. La capture tourne tant que l'app est au premier plan
- * (V1 ; le BLE en arrière-plan viendra avec les entitlements natifs).
+ * Doctrine « silence en piste » : ce service n'affiche rien. La capture tourne
+ * tant que l'app est au premier plan (V1 ; BLE arrière-plan = entitlements à
+ * venir). `elapsed_ms` dérive de l'horloge murale, rendu MONOTONE par session
+ * (un éventuel recul d'horloge / throttling arrière-plan ne réordonne pas les
+ * trames). iTOW est stocké pour un ordonnancement plus robuste ultérieur.
  */
 
 import { bluetoothService } from '@/ble/bluetoothService';
 import { startCapture, stopCapture } from '@/ble/captureMode';
-import { startLapDetection, stopLapDetection } from '@/ble/lapDetectionRunner';
+import {
+  type RecordedLap,
+  getRecordedLaps,
+  startLapDetection,
+  stopLapDetection,
+} from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
 import { uploadTelemetryFile } from '@/services/telemetryStorage';
 import { useSessionStore } from '@/store/useSessionStore';
@@ -45,10 +54,13 @@ interface CaptureState {
   startMs: number;
   buffer: TelemetryFrameInsert[];
   total: number;
+  dropped: number;
+  lastElapsed: number;
   maxima: SessionMaxima;
   unsubData: () => void;
   timer: ReturnType<typeof setInterval> | null;
   flushing: boolean;
+  flushPromise: Promise<void> | null;
 }
 
 let current: CaptureState | null = null;
@@ -102,10 +114,13 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     startMs,
     buffer: [],
     total: 0,
+    dropped: 0,
+    lastElapsed: 0,
     maxima: { ...EMPTY_MAXIMA },
     unsubData: () => undefined,
     timer: null,
     flushing: false,
+    flushPromise: null,
   };
   current = state;
 
@@ -113,10 +128,10 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   try {
     startCapture();
   } catch {
-    /* capture locale indisponible — on continue, les frames partent en DB */
+    /* capture locale indisponible — les frames partent quand même en DB */
   }
 
-  // Détection de tours (écrit lapCount/bestLapMs dans le store).
+  // Détection de tours (compteurs live dans le store + enregistrement détaillé).
   startLapDetection({
     finishLineLat: finish.lat,
     finishLineLon: finish.lon,
@@ -136,36 +151,79 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // Flux de trames → buffer → flush par paquets.
   state.unsubData = bluetoothService.onData((frame: RaceBoxData) => {
     if (current !== state) return;
-    state.buffer.push(raceBoxToFrameInsert(frame, sessionId, Date.now() - state.startMs));
+    // elapsed monotone : on n'autorise jamais un recul (clock skew / throttling).
+    const elapsed = Math.max(Date.now() - state.startMs, state.lastElapsed);
+    state.lastElapsed = elapsed;
+    state.buffer.push(raceBoxToFrameInsert(frame, sessionId, elapsed));
     state.maxima = updateMaxima(state.maxima, frame);
-    if (state.buffer.length >= FLUSH_EVERY_FRAMES) void flush();
+    if (state.buffer.length >= FLUSH_EVERY_FRAMES) void flush(state);
   });
-  state.timer = setInterval(() => void flush(), FLUSH_INTERVAL_MS);
+  state.timer = setInterval(() => void flush(state), FLUSH_INTERVAL_MS);
 
   return { ok: true, sessionId };
 }
 
-/** Écrit le buffer courant dans telemetry_frames (best-effort, non réentrant). */
-async function flush(): Promise<void> {
-  const state = current;
-  if (!state || state.flushing || state.buffer.length === 0) return;
+/**
+ * Draine le buffer dans telemetry_frames. Non réentrant : un appel concurrent
+ * renvoie la promesse du flush en cours. La boucle vide tout le buffer (y
+ * compris les trames ajoutées pendant l'écriture), donc un flush final attendu
+ * ne laisse aucune queue de session derrière lui.
+ */
+function flush(state: CaptureState): Promise<void> {
+  if (state.flushing) return state.flushPromise ?? Promise.resolve();
   state.flushing = true;
-  const batch = state.buffer;
-  state.buffer = [];
-  try {
-    const { error } = await supabase.from('telemetry_frames').insert(batch as never);
-    if (error) {
-      // On ne ré-empile pas (risque de gonfler la mémoire) ; le .ubx local reste
-      // le filet de récupération si un lot échoue.
-      console.warn('[OXV][capture] écriture frames KO :', error.message);
-    } else {
-      state.total += batch.length;
+  state.flushPromise = (async () => {
+    try {
+      while (state.buffer.length > 0) {
+        const batch = state.buffer.splice(0); // prend tout, vide en place
+        const { error } = await supabase.from('telemetry_frames').insert(batch as never);
+        if (error) {
+          // Lot perdu (réseau) : on compte la perte ; le .ubx local sert de filet.
+          state.dropped += batch.length;
+          console.warn('[OXV][capture] écriture frames KO :', error.message);
+        } else {
+          state.total += batch.length;
+        }
+      }
+    } finally {
+      state.flushing = false;
     }
-  } catch (e) {
-    console.warn('[OXV][capture] écriture frames exception :', e instanceof Error ? e.message : e);
-  } finally {
-    state.flushing = false;
+  })();
+  return state.flushPromise;
+}
+
+/** Attend la fin d'un flush éventuellement en vol, puis draine ce qui reste. */
+async function drain(state: CaptureState): Promise<void> {
+  if (state.flushPromise) {
+    try {
+      await state.flushPromise;
+    } catch {
+      /* déjà loggé */
+    }
   }
+  await flush(state);
+}
+
+/** Persiste les tours détectés dans la table laps (best-effort). */
+async function persistLaps(state: CaptureState, laps: RecordedLap[]): Promise<void> {
+  if (laps.length === 0) return;
+  const bestMs = Math.min(...laps.map((l) => l.durationMs));
+  const rows = laps.map((l) => ({
+    session_id: state.sessionId,
+    lap_number: l.lapNumber,
+    duration_seconds: l.durationMs / 1000,
+    started_at: new Date(l.startedAtMs).toISOString(),
+    ended_at: new Date(l.endedAtMs).toISOString(),
+    start_lat: l.startLat,
+    start_lon: l.startLon,
+    end_lat: l.endLat,
+    end_lon: l.endLon,
+    is_best_lap: l.durationMs === bestMs,
+    is_outlap: false,
+    is_inlap: false,
+  }));
+  const { error } = await supabase.from('laps').insert(rows as never);
+  if (error) console.warn('[OXV][capture] écriture laps KO :', error.message);
 }
 
 export interface StopCaptureResult {
@@ -173,34 +231,37 @@ export interface StopCaptureResult {
   sessionId?: string;
   ubxUri?: string | null;
   totalFrames?: number;
+  droppedFrames?: number;
   error?: string;
 }
 
 /**
- * Arrête l'enregistrement : flush final, agrégats, status 'completed', upload .ubx.
- * Retourne le sessionId pour router vers le flux de bilan.
+ * Arrête l'enregistrement : flush final, persistance des tours, agrégats,
+ * status 'completed', upload .ubx. Retourne sessionId + ubxUri pour le bilan.
  */
 export async function stopCaptureSession(): Promise<StopCaptureResult> {
+  // Capture-and-null synchrone : un second appel concurrent court-circuite.
   const state = current;
+  current = null;
   if (!state) return { ok: false, error: 'Aucune capture active.' };
 
-  // 1. Stoppe l'arrivée de nouvelles trames + le timer, puis flush final.
+  // 1. Stoppe l'arrivée de nouvelles trames + le timer, puis flush final complet.
   state.unsubData();
-  state.unsubData = () => undefined;
-  if (state.timer) {
-    clearInterval(state.timer);
-    state.timer = null;
-  }
-  await flush();
+  if (state.timer) clearInterval(state.timer);
+  await drain(state);
 
-  // 2. Arrête détection de tours + relève les compteurs.
+  // 2. Arrête la détection de tours, relève compteurs + tours détaillés.
   stopLapDetection();
+  const recordedLaps = getRecordedLaps();
   const store = useSessionStore.getState();
   const lapCount = store.lapCount;
   const bestLapSeconds = store.bestLapMs != null ? store.bestLapMs / 1000 : null;
   store.endSession();
 
-  // 3. Ferme la capture .ubx locale (filet de sécurité).
+  // 3. Persiste les tours détaillés (régularité + tour-par-tour du bilan).
+  await persistLaps(state, recordedLaps);
+
+  // 4. Ferme la capture .ubx locale (filet de sécurité).
   let ubxUri: string | null = null;
   try {
     ubxUri = await stopCapture();
@@ -208,7 +269,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
     ubxUri = null;
   }
 
-  // 4. Marque la session 'completed' avec les agrégats.
+  // 5. Marque la session 'completed' avec les agrégats.
   const durationSeconds = Math.round((Date.now() - state.startMs) / 1000);
   const { error } = await supabase
     .from('telemetry_sessions')
@@ -228,26 +289,37 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   if (error) {
     console.warn('[OXV][capture] complétion de session KO :', error.message);
   }
+  if (state.dropped > 0) {
+    console.warn(`[OXV][capture] ${state.dropped} trame(s) perdue(s) à l'écriture (filet .ubx).`);
+  }
 
-  const { sessionId, userId, total } = state;
-  current = null;
+  const { sessionId, userId, total, dropped } = state;
 
-  // 5. Upload du .ubx brut en arrière-plan (best-effort, non bloquant).
+  // 6. Upload du .ubx brut en arrière-plan (best-effort, non bloquant).
   if (ubxUri) {
     uploadTelemetryFile({ fileUri: ubxUri, userId, telemetrySessionId: sessionId }).catch((e) =>
       console.warn('[OXV][capture] upload .ubx KO :', e instanceof Error ? e.message : e)
     );
   }
 
-  return { ok: true, sessionId, ubxUri, totalFrames: total };
+  return { ok: true, sessionId, ubxUri, totalFrames: total, droppedFrames: dropped };
 }
 
 /** Abandonne la capture en cours : marque 'aborted', sans router vers le bilan. */
 export async function abortCaptureSession(): Promise<void> {
   const state = current;
+  current = null;
   if (!state) return;
   state.unsubData();
   if (state.timer) clearInterval(state.timer);
+  // Attend un flush éventuellement en vol pour ne pas écrire après l'abandon.
+  if (state.flushPromise) {
+    try {
+      await state.flushPromise;
+    } catch {
+      /* ignore */
+    }
+  }
   stopLapDetection();
   try {
     await stopCapture();
@@ -260,5 +332,4 @@ export async function abortCaptureSession(): Promise<void> {
     .update({ status: 'aborted', ended_at: new Date().toISOString() } as never)
     .eq('id', state.sessionId)
     .eq('user_id', state.userId);
-  current = null;
 }
