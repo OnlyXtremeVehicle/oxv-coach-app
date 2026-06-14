@@ -10,14 +10,40 @@
  * du reste."* — pose la promesse du silence.
  */
 
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
+import { startCaptureSession } from '@/services/captureSessionService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function PlacementScreen() {
+  const profile = useAuthStore((s) => s.profile);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onStart() {
+    if (starting) return;
+    if (!profile?.id) {
+      setError('Profil non chargé. Reconnectez-vous.');
+      return;
+    }
+    setStarting(true);
+    setError(null);
+    // Démarre l'enregistrement réel (création session + écriture des trames).
+    const res = await startCaptureSession({ userId: profile.id, circuitName: 'Beltoise' });
+    if (res.ok) {
+      hapticSuccess();
+      router.replace('/(app)/roulage');
+    } else {
+      setStarting(false);
+      setError(res.error ?? "L'enregistrement n'a pas pu démarrer.");
+    }
+  }
+
   return (
     <SafeAreaView
       style={{
@@ -85,14 +111,24 @@ export default function PlacementScreen() {
         <Text style={[typography.manifest, { color: colors.text.secondary }]}>
           Vous le verrez peu. Il s'occupera du reste.
         </Text>
+
+        {error ? (
+          <Text
+            style={{
+              color: colors.system.error,
+              fontSize: fontSize.caption,
+              marginTop: spacing.lg,
+            }}
+          >
+            {error}
+          </Text>
+        ) : null}
       </View>
 
       <Pressable
         accessibilityRole="button"
-        onPress={() => {
-          hapticSuccess();
-          router.replace('/(app)');
-        }}
+        disabled={starting}
+        onPress={onStart}
         style={({ pressed }) => ({
           height: 52,
           borderRadius: borderRadius.lg,
@@ -100,19 +136,23 @@ export default function PlacementScreen() {
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: spacing.xl,
-          opacity: pressed ? 0.85 : 1,
+          opacity: pressed || starting ? 0.85 : 1,
         })}
       >
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
-            letterSpacing: 0.5,
-          }}
-        >
-          C'est fait
-        </Text>
+        {starting ? (
+          <ActivityIndicator color={colors.text.primary} />
+        ) : (
+          <Text
+            style={{
+              color: colors.text.primary,
+              fontSize: fontSize.body,
+              fontWeight: fontWeight.medium,
+              letterSpacing: 0.5,
+            }}
+          >
+            C'est fait
+          </Text>
+        )}
       </Pressable>
     </SafeAreaView>
   );

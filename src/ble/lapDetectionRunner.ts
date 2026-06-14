@@ -29,6 +29,28 @@ import {
 let state: LapDetectorState | null = null;
 let unsubscribe: (() => void) | null = null;
 let previousLapAt: number | null = null;
+let previousLapLat: number | null = null;
+let previousLapLon: number | null = null;
+let lapNumber = 0;
+
+/** Un tour complet détecté, prêt à être persisté dans la table `laps`. */
+export interface RecordedLap {
+  lapNumber: number;
+  startedAtMs: number;
+  endedAtMs: number;
+  durationMs: number;
+  startLat: number | null;
+  startLon: number | null;
+  endLat: number | null;
+  endLon: number | null;
+}
+
+let recordedLaps: RecordedLap[] = [];
+
+/** Tours détaillés enregistrés depuis le dernier startLapDetection (snapshot). */
+export function getRecordedLaps(): RecordedLap[] {
+  return [...recordedLaps];
+}
 
 export interface LapDetectionStartOptions {
   finishLineLat: number;
@@ -40,6 +62,10 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
   stopLapDetection();
   state = createLapDetector(opts.finishLineLat, opts.finishLineLon, opts.finishLineRadiusM ?? 30);
   previousLapAt = null;
+  previousLapLat = null;
+  previousLapLon = null;
+  lapNumber = 0;
+  recordedLaps = [];
 
   unsubscribe = bluetoothService.onData((frame) => {
     if (!state) return;
@@ -51,13 +77,30 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
     const now = Date.now();
     const completedLap = processGpsPoint(state, frame.gps.latitude, frame.gps.longitude, now);
 
-    if (!completedLap) return;
+    if (!completedLap) {
+      return;
+    }
+
     if (previousLapAt !== null) {
       const lapDurationMs = now - previousLapAt;
+      lapNumber += 1;
       useSessionStore.getState().registerLap(lapDurationMs);
+      recordedLaps.push({
+        lapNumber,
+        startedAtMs: previousLapAt,
+        endedAtMs: now,
+        durationMs: lapDurationMs,
+        startLat: previousLapLat,
+        startLon: previousLapLon,
+        endLat: frame.gps.latitude,
+        endLon: frame.gps.longitude,
+      });
     }
-    // sinon : premier passage = outlap, on ne le compte pas.
+    // Le premier passage = fin d'outlap : on mémorise le point de départ du
+    // premier tour chronométré, sans le compter.
     previousLapAt = now;
+    previousLapLat = frame.gps.latitude;
+    previousLapLon = frame.gps.longitude;
   });
 }
 
