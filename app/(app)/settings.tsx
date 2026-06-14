@@ -98,7 +98,10 @@ export default function SettingsScreen() {
   }
 
   // Granularité notifs (D5) : écrit la préférence par canal dans le JSONB,
-  // en préservant les autres clés.
+  // en préservant les autres clés. La coupure agit sur les FUTURES
+  // programmations (les schedulers lisent la préférence à l'analyse de session) ;
+  // une notif déjà planifiée n'est pas annulée rétroactivement (impact faible :
+  // le debrief est programmé au moment de l'analyse, pas à l'avance).
   async function toggleNotifChannel(channel: NotifChannel, next: boolean) {
     if (!profile?.id) return;
     const updated = writeNotifPref(notifPrefs, channel, next);
@@ -560,6 +563,8 @@ function ToggleRow({
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
+        accessibilityLabel={label}
+        accessibilityHint={caption}
         trackColor={{ false: colors.border.subtle, true: colors.accent.red }}
         thumbColor={colors.text.primary}
       />

@@ -26,24 +26,19 @@ export interface ExportResult {
   sessionCount?: number;
 }
 
-/** Exécute une requête de lecture et renvoie [] en cas d'erreur (tolérant). */
-async function safeRows<T>(
-  promise: PromiseLike<{ data: T[] | null; error: unknown }>
-): Promise<T[]> {
-  try {
-    const { data } = await promise;
-    return data ?? [];
-  } catch {
-    return [];
-  }
-}
-
 interface ExportPayload {
   exported_at: string;
   format_version: number;
   note: string;
+  /** true si au moins une section a échoué (RLS/réseau) — l'export est partiel. */
+  partial: boolean;
+  /** Sections dont la lecture a échoué (vides dans cet export). */
+  failed_sections: string[];
   profile: unknown;
   telemetry_sessions: unknown[];
+  vehicles: unknown[];
+  pilot_goals: unknown[];
+  pilot_friendships: unknown[];
   app_session_analyses: unknown[];
   app_segment_analyses: unknown[];
   session_insights: unknown[];
@@ -53,29 +48,72 @@ interface ExportPayload {
 }
 
 async function collectMyData(userId: string, exportedAtIso: string): Promise<ExportPayload> {
-  const { data: profile } = await supabase.from('users').select('*').eq('id', userId).maybeSingle();
+  const failed: string[] = [];
 
-  const sessions = await safeRows(
+  /** Lit une table en NOTANT l'échec (au lieu de le masquer) : honnêteté de l'export. */
+  async function rows<T>(
+    table: string,
+    promise: PromiseLike<{ data: T[] | null; error: unknown }>
+  ): Promise<T[]> {
+    try {
+      const { data, error } = await promise;
+      if (error) {
+        failed.push(table);
+        return [];
+      }
+      return data ?? [];
+    } catch {
+      failed.push(table);
+      return [];
+    }
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profileError) failed.push('profile');
+
+  const sessions = await rows(
+    'telemetry_sessions',
     supabase.from('telemetry_sessions').select('*').eq('user_id', userId)
   );
   const sessionIds = sessions
     .map((s) => (s as { id?: string }).id)
     .filter((id): id is string => typeof id === 'string');
 
-  const [analyses, insights, shares] = await Promise.all([
-    safeRows(supabase.from('app_session_analyses').select('*').eq('user_id', userId)),
-    safeRows(supabase.from('session_insights').select('*').eq('user_id', userId)),
-    safeRows(supabase.from('app_progression_shares').select('*').eq('user_id', userId)),
+  // Tables filtrées directement par user_id (données fournies par le pilote).
+  const [vehicles, goals, friendships, analyses, insights, shares] = await Promise.all([
+    rows('vehicles', supabase.from('vehicles').select('*').eq('user_id', userId)),
+    rows('pilot_goals', supabase.from('pilot_goals').select('*').eq('user_id', userId)),
+    rows(
+      'pilot_friendships',
+      supabase.from('pilot_friendships').select('*').or(`pilot_a.eq.${userId},pilot_b.eq.${userId}`)
+    ),
+    rows(
+      'app_session_analyses',
+      supabase.from('app_session_analyses').select('*').eq('user_id', userId)
+    ),
+    rows('session_insights', supabase.from('session_insights').select('*').eq('user_id', userId)),
+    rows(
+      'app_progression_shares',
+      supabase.from('app_progression_shares').select('*').eq('user_id', userId)
+    ),
   ]);
 
   // Tables liées à la session (filtrées par les sessions du pilote).
   const [segments, laps, media] = sessionIds.length
     ? await Promise.all([
-        safeRows(
+        rows(
+          'app_segment_analyses',
           supabase.from('app_segment_analyses').select('*').in('telemetry_session_id', sessionIds)
         ),
-        safeRows(supabase.from('laps').select('*').in('session_id', sessionIds)),
-        safeRows(supabase.from('session_media').select('*').in('telemetry_session_id', sessionIds)),
+        rows('laps', supabase.from('laps').select('*').in('session_id', sessionIds)),
+        rows(
+          'session_media',
+          supabase.from('session_media').select('*').in('telemetry_session_id', sessionIds)
+        ),
       ])
     : [[], [], []];
 
@@ -83,8 +121,13 @@ async function collectMyData(userId: string, exportedAtIso: string): Promise<Exp
     exported_at: exportedAtIso,
     format_version: 1,
     note: 'Export de vos données OXV Mirror. Les trames brutes du boîtier (telemetry_frames) sont exclues pour des raisons de taille ; disponibles sur demande à contact@oxvehicle.fr.',
+    partial: failed.length > 0,
+    failed_sections: failed,
     profile: profile ?? null,
     telemetry_sessions: sessions,
+    vehicles,
+    pilot_goals: goals,
+    pilot_friendships: friendships,
     app_session_analyses: analyses,
     app_segment_analyses: segments,
     session_insights: insights,

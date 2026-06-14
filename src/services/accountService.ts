@@ -30,14 +30,21 @@ export async function requestAccountDeletion(userId: string): Promise<DeletionRe
   const now = new Date();
   const scheduled = new Date(now.getTime() + DELETION_GRACE_DAYS * 24 * 60 * 60 * 1000);
 
-  const { error } = await supabase
+  // .select('id') : on VÉRIFIE qu'une ligne a bien été écrite. Sans cela, un
+  // UPDATE qui ne matche aucune ligne (RLS, id désynchronisé) renverrait ok
+  // sans rien écrire — le pilote croirait sa suppression planifiée à tort.
+  const { data, error } = await supabase
     .from('users')
     .update({
       deletion_requested_at: now.toISOString(),
       deletion_scheduled_at: scheduled.toISOString(),
     } as never)
-    .eq('id', userId);
+    .eq('id', userId)
+    .select('id');
 
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return { ok: false, error: 'Aucune ligne mise à jour (demande non enregistrée).' };
+  }
   return { ok: true, scheduledFor: scheduled.toISOString() };
 }
