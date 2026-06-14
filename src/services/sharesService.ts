@@ -13,11 +13,41 @@ import { supabase } from '@/lib/supabase';
 
 export type ShareScope = 'last_session' | 'last_5_sessions' | 'full_history' | 'progression_only';
 
+/**
+ * Métriques partageables (liste blanche). RGPD §2.2 : minimisation + granularité —
+ * le pilote choisit métrique par métrique ce qu'il expose, défaut = ensemble vide.
+ * Métriques factuelles uniquement (doctrine Mirror : aucun score/jugement exposé).
+ */
+export const SHAREABLE_METRICS: { key: string; label: string }[] = [
+  { key: 'best_lap', label: 'Meilleur tour' },
+  { key: 'regularity', label: 'Régularité' },
+  { key: 'progression', label: 'Évolution (soi contre soi)' },
+  { key: 'lap_count', label: 'Nombre de tours' },
+  { key: 'signature', label: 'Signature de pilotage' },
+];
+
+const VALID_METRIC_KEYS = new Set(SHAREABLE_METRICS.map((m) => m.key));
+
+/** Ne garde que des clés connues, sans doublon (liste blanche stricte). */
+export function sanitizeIncludedMetrics(metrics: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const m of metrics) {
+    if (VALID_METRIC_KEYS.has(m) && !seen.has(m)) {
+      seen.add(m);
+      out.push(m);
+    }
+  }
+  return out;
+}
+
 export interface ShareLink {
   id: string;
   userId: string;
   token: string;
   scope: ShareScope;
+  /** Liste blanche des métriques exposées (jamais plus que ce qui est coché). */
+  includedMetrics: string[];
   expiresAt: string | null;
   revokedAt: string | null;
   viewCount: number;
@@ -59,6 +89,7 @@ function generateShareToken(): string {
 export async function createShare(opts: {
   scope: ShareScope;
   expiresInDays?: number;
+  includedMetrics?: string[];
 }): Promise<ShareLink | null> {
   const { data: authData } = await supabase.auth.getUser();
   const userId = authData.user?.id;
@@ -75,10 +106,12 @@ export async function createShare(opts: {
       user_id: userId,
       share_token: token,
       share_scope: opts.scope,
+      // Liste blanche stricte : on n'écrit QUE des clés connues, jamais plus.
+      included_metrics: sanitizeIncludedMetrics(opts.includedMetrics ?? []),
       expires_at: expiresAt,
     })
     .select(
-      'id, user_id, share_token, share_scope, expires_at, revoked_at, view_count, last_viewed_at, created_at'
+      'id, user_id, share_token, share_scope, included_metrics, expires_at, revoked_at, view_count, last_viewed_at, created_at'
     )
     .single();
 
@@ -93,7 +126,7 @@ export async function listMyShares(): Promise<ShareLink[]> {
   const { data, error } = await supabase
     .from('app_progression_shares')
     .select(
-      'id, user_id, share_token, share_scope, expires_at, revoked_at, view_count, last_viewed_at, created_at'
+      'id, user_id, share_token, share_scope, included_metrics, expires_at, revoked_at, view_count, last_viewed_at, created_at'
     )
     .order('created_at', { ascending: false });
 
@@ -121,6 +154,7 @@ interface RawShareRow {
   user_id: string;
   share_token: string;
   share_scope: string;
+  included_metrics: unknown;
   expires_at: string | null;
   revoked_at: string | null;
   view_count: number;
@@ -129,11 +163,15 @@ interface RawShareRow {
 }
 
 function mapRow(row: RawShareRow): ShareLink {
+  const included = Array.isArray(row.included_metrics)
+    ? row.included_metrics.filter((m): m is string => typeof m === 'string')
+    : [];
   return {
     id: row.id,
     userId: row.user_id,
     token: row.share_token,
     scope: row.share_scope as ShareScope,
+    includedMetrics: included,
     expiresAt: row.expires_at,
     revokedAt: row.revoked_at,
     viewCount: row.view_count,

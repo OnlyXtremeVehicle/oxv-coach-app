@@ -17,11 +17,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import {
+  SHAREABLE_METRICS,
   type ShareLink,
   type ShareScope,
   createShare,
   listMyShares,
   revokeShare,
+  sanitizeIncludedMetrics,
   shareUrlFor,
 } from '@/services/sharesService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
@@ -49,7 +51,12 @@ const DURATIONS: { days: number | null; label: string }[] = [
 export default function PartageScreen() {
   const [scope, setScope] = useState<ShareScope>('last_session');
   const [duration, setDuration] = useState<number | null>(7);
+  // Défaut = ensemble VIDE : le pilote construit son partage activement (RGPD §2.2).
+  const [metrics, setMetrics] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+
+  const toggleMetric = (key: string) =>
+    setMetrics((prev) => (prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]));
   const [shares, setShares] = useState<ShareLink[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,9 +74,13 @@ export default function PartageScreen() {
   }, []);
 
   const onCreate = async () => {
-    if (submitting) return;
+    if (submitting || metrics.length === 0) return;
     setSubmitting(true);
-    const link = await createShare({ scope, expiresInDays: duration ?? undefined });
+    const link = await createShare({
+      scope,
+      expiresInDays: duration ?? undefined,
+      includedMetrics: sanitizeIncludedMetrics(metrics),
+    });
     setSubmitting(false);
     if (!link) {
       Alert.alert('Création impossible', 'Réessayez quand votre connexion sera de retour.');
@@ -186,10 +197,57 @@ export default function PartageScreen() {
           })}
         </View>
 
+        <Text style={[typography.eyebrow, { marginBottom: spacing.xs }]}>MÉTRIQUES PARTAGÉES</Text>
+        <Text
+          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.md }]}
+        >
+          Vous ne partagez que ce que vous cochez. Rien n'est exposé par défaut.
+        </Text>
+        <View style={{ gap: spacing.sm, marginBottom: spacing.xxxl }}>
+          {SHAREABLE_METRICS.map((m) => {
+            const on = metrics.includes(m.key);
+            return (
+              <Pressable
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={m.label}
+                key={m.key}
+                onPress={() => toggleMetric(m.key)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: spacing.md,
+                  padding: spacing.md,
+                  borderRadius: borderRadius.md,
+                  borderWidth: on ? 1 : 0.5,
+                  borderColor: on ? colors.accent.red : colors.border.subtle,
+                  backgroundColor: on ? 'rgba(200, 16, 46, 0.08)' : colors.background.secondary,
+                  opacity: pressed ? 0.85 : 1,
+                })}
+              >
+                <View
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 4,
+                    borderWidth: 1.5,
+                    borderColor: on ? colors.accent.red : colors.border.medium,
+                    backgroundColor: on ? colors.accent.red : 'transparent',
+                  }}
+                />
+                <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+                  {m.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ disabled: submitting || metrics.length === 0 }}
           onPress={onCreate}
-          disabled={submitting}
+          disabled={submitting || metrics.length === 0}
           style={({ pressed }) => ({
             height: 52,
             borderRadius: borderRadius.lg,
@@ -199,7 +257,7 @@ export default function PartageScreen() {
             flexDirection: 'row',
             gap: spacing.sm,
             marginBottom: spacing.xxl,
-            opacity: pressed ? 0.85 : 1,
+            opacity: metrics.length === 0 ? 0.4 : pressed ? 0.85 : 1,
           })}
         >
           {submitting ? <ActivityIndicator color={colors.text.primary} /> : null}
@@ -292,7 +350,8 @@ function ShareCard({ link, onRevoke }: { link: ShareLink; onRevoke: () => void }
       </Text>
       <Text style={[typography.caption, { color: colors.text.tertiary }]}>
         Créé {timeAgoFr(new Date(link.createdAt))} · {link.viewCount} vue
-        {link.viewCount > 1 ? 's' : ''}
+        {link.viewCount > 1 ? 's' : ''} · {link.includedMetrics.length} métrique
+        {link.includedMetrics.length > 1 ? 's' : ''}
       </Text>
       {!revoked && !expired ? (
         <Pressable accessibilityRole="button" onPress={onRevoke} style={{ marginTop: spacing.sm }}>
