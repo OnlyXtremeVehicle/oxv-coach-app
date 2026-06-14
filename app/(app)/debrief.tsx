@@ -134,6 +134,34 @@ export default function DebriefScreen() {
           {formatDateLong(data.startedAt)} — {data.circuitName}
         </Text>
 
+        {/* Provenance du texte (charte 11, T4) : un récit rédigé par un modèle de
+            langage est annoncé comme tel. Pas de voix d'auteur masquée. */}
+        {data.generated ? (
+          <View
+            style={{
+              alignSelf: 'flex-start',
+              paddingVertical: spacing.xs,
+              paddingHorizontal: spacing.md,
+              borderRadius: borderRadius.sm,
+              borderWidth: 0.5,
+              borderColor: colors.border.subtle,
+              backgroundColor: colors.background.secondary,
+              marginBottom: spacing.xl,
+            }}
+          >
+            <Text
+              style={{
+                color: colors.text.tertiary,
+                fontSize: fontSize.eyebrow,
+                fontFamily: 'Menlo',
+                letterSpacing: 1.5,
+              }}
+            >
+              RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE
+            </Text>
+          </View>
+        ) : null}
+
         <FadeInSection delay={0}>
           <Acte numero="1" titre="Récit" body={data.recit} />
         </FadeInSection>
