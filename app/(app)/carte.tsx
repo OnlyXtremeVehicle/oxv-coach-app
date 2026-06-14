@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { supabase } from '@/lib/supabase';
-import { BELTOISE_CORNERS, mockCornerMargins } from '@/lib/circuitTopology';
+import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { type MarginZone } from '@/types/domain';
@@ -75,7 +75,10 @@ export default function CarteScreen() {
     };
   }, [params.sessionId]);
 
-  const margins = liveMargins ?? mockCornerMargins(params.sessionId ?? 'demo');
+  // Doctrine : jamais de fausse donnée. Sans marges réelles (pas de session
+  // analysée), on n'invente rien — les virages restent neutres.
+  const margins = liveMargins ?? {};
+  const hasMargins = Object.keys(margins).length > 0;
 
   const onCornerTap = (index: number) => {
     setSelectedCorner(index);
@@ -106,13 +109,15 @@ export default function CarteScreen() {
         />
 
         <Text style={[typography.caption, { marginTop: spacing.lg, marginBottom: spacing.lg }]}>
-          {BELTOISE_CORNERS.length} virages — zoom au toucher
+          {hasMargins
+            ? `${BELTOISE_CORNERS.length} virages — zoom au toucher`
+            : `${BELTOISE_CORNERS.length} virages — marges par virage indisponibles pour cette session`}
         </Text>
 
         {/* Liste tappable des virages */}
         <View style={{ gap: spacing.xs }}>
           {BELTOISE_CORNERS.map((corner) => {
-            const zone = margins[corner.index] ?? 'green';
+            const zone = margins[corner.index] ?? null;
             return (
               <Pressable
                 accessibilityRole="button"
@@ -178,7 +183,7 @@ export default function CarteScreen() {
   );
 }
 
-function colorForZone(zone: MarginZone): string {
+function colorForZone(zone: MarginZone | null | undefined): string {
   switch (zone) {
     case 'green':
       return colors.margin.green;
@@ -186,5 +191,8 @@ function colorForZone(zone: MarginZone): string {
       return colors.margin.yellow;
     case 'red':
       return colors.margin.red;
+    default:
+      // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
+      return colors.text.tertiary;
   }
 }
