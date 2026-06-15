@@ -148,7 +148,7 @@ async function executeAction(action: QueuedAction): Promise<void> {
         .update({
           coach_pact_accepted_at: new Date(action.createdAt).toISOString(),
           coach_pact_version: coachPactVersion,
-        } as never)
+        })
         .eq('id', userId);
       if (error) throw error;
       return;

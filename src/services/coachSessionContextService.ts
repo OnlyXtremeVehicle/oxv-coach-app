@@ -56,8 +56,8 @@ function clean(v: string | null | undefined): string | null {
  */
 export async function getSessionContext(sessionId: string): Promise<SessionContext | null> {
   const { data, error } = await supabase
-    .from('coach_session_context' as never)
-    .select('*' as never)
+    .from('coach_session_context')
+    .select('*')
     .eq('session_id', sessionId)
     .maybeSingle();
 
@@ -93,9 +93,9 @@ export async function upsertSessionContext(
   };
 
   const { data, error } = await supabase
-    .from('coach_session_context' as never)
-    .upsert(payload as never, { onConflict: 'coach_id,session_id' } as never)
-    .select('*' as never)
+    .from('coach_session_context')
+    .upsert(payload, { onConflict: 'coach_id,session_id' })
+    .select('*')
     .single();
 
   if (error || !data) {

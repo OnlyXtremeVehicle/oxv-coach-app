@@ -50,8 +50,8 @@ function mapRow(row: RawRow): PilotGoal {
  */
 export async function getActiveGoal(): Promise<PilotGoal | null> {
   const { data, error } = await supabase
-    .from('pilot_goals' as never)
-    .select('*' as never)
+    .from('pilot_goals')
+    .select('*')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(1)
@@ -66,8 +66,8 @@ export async function getActiveGoal(): Promise<PilotGoal | null> {
 
 export async function listMyGoals(limit = 20): Promise<PilotGoal[]> {
   const { data, error } = await supabase
-    .from('pilot_goals' as never)
-    .select('*' as never)
+    .from('pilot_goals')
+    .select('*')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -87,19 +87,16 @@ export async function createGoal(body: string): Promise<PilotGoal | null> {
   if (!userId) return null;
 
   // Marque les anciens actifs comme 'continued' (un seul actif à la fois)
-  await supabase
-    .from('pilot_goals' as never)
-    .update({ status: 'continued' } as never)
-    .eq('status', 'active');
+  await supabase.from('pilot_goals').update({ status: 'continued' }).eq('status', 'active');
 
   const { data, error } = await supabase
-    .from('pilot_goals' as never)
+    .from('pilot_goals')
     .insert({
       user_id: userId,
       body: body.trim(),
       status: 'active',
-    } as never)
-    .select('*' as never)
+    })
+    .select('*')
     .single();
 
   if (error || !data) {
@@ -126,7 +123,8 @@ export async function updateGoalStatus(
   }
 
   const { error } = await supabase
-    .from('pilot_goals' as never)
+    .from('pilot_goals')
+    // objet construit dynamiquement (champs conditionnels) -> cast assumé
     .update(update as never)
     .eq('id', id);
 
@@ -138,10 +136,7 @@ export async function updateGoalStatus(
 }
 
 export async function deleteGoal(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('pilot_goals' as never)
-    .delete()
-    .eq('id', id);
+  const { error } = await supabase.from('pilot_goals').delete().eq('id', id);
   if (error) {
     console.warn('[OXV][goals] deleteGoal :', error.message);
     return false;

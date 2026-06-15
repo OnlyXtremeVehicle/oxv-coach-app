@@ -105,7 +105,7 @@ export async function acceptCoachPact(): Promise<boolean> {
     .update({
       coach_pact_accepted_at: now,
       coach_pact_version: COACH_PACT_VERSION,
-    } as never)
+    })
     .eq('id', userId);
 
   if (error) {
