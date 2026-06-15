@@ -119,14 +119,20 @@ async function executeAction(action: QueuedAction): Promise<void> {
         userId: string;
         pactVersion: string;
       };
+      // Miroir du couple online acceptPact() + completeOnboarding() : on écrit
+      // pact_accepted_at (horodaté à l'instant du tap = valeur juridique),
+      // pact_version ET profile_completed_at en une seule update. Sans
+      // pact_accepted_at, isOnboardingComplete() renvoie false pour un pilote
+      // et le re-route en onboarding à chaque boot.
       const { error } = await supabase
         .from('users')
-        .update({ profile_completed_at: new Date().toISOString() })
+        .update({
+          pact_accepted_at: new Date(action.createdAt).toISOString(),
+          pact_version: pactVersion,
+          profile_completed_at: new Date().toISOString(),
+        })
         .eq('id', userId);
       if (error) throw error;
-      // Note : le tracking de la version du pacte sera stocké dans
-      // app_session_analyses.pact_accepted_at + pact_version (sem. 7).
-      void pactVersion;
       return;
     }
 
