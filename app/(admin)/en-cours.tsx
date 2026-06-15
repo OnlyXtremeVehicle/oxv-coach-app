@@ -18,6 +18,7 @@ import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from 
 interface LiveSession {
   id: string;
   userId: string;
+  pilotName: string;
   startedAt: string;
   lapCount: number;
   status: string;
@@ -32,19 +33,24 @@ export default function EnCoursScreen() {
     (async () => {
       const { data } = await supabase
         .from('telemetry_sessions')
-        .select('id, user_id, started_at, lap_count, status')
+        .select('id, user_id, started_at, lap_count, status, users(first_name, last_name)')
         .eq('status', 'recording')
         .order('started_at', { ascending: false })
         .limit(20);
       if (cancelled) return;
       setSessions(
-        (data ?? []).map((row) => ({
-          id: row.id,
-          userId: row.user_id ?? '',
-          startedAt: row.started_at ?? '',
-          lapCount: row.lap_count ?? 0,
-          status: row.status ?? 'unknown',
-        }))
+        (data ?? []).map((row) => {
+          const u = row.users as { first_name: string | null; last_name: string | null } | null;
+          const name = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
+          return {
+            id: row.id,
+            userId: row.user_id ?? '',
+            pilotName: name || `Pilote ${(row.user_id ?? '').slice(0, 8)}`,
+            startedAt: row.started_at ?? '',
+            lapCount: row.lap_count ?? 0,
+            status: row.status ?? 'unknown',
+          };
+        })
       );
       setLoading(false);
     })();
@@ -104,7 +110,7 @@ export default function EnCoursScreen() {
                     marginBottom: spacing.xs,
                   }}
                 >
-                  User {s.userId.slice(0, 8)}…
+                  {s.pilotName}
                 </Text>
                 <Text style={[typography.caption, { color: colors.text.tertiary }]}>
                   Démarrée à {timeOnly(s.startedAt)} · {s.lapCount} tour{s.lapCount > 1 ? 's' : ''}

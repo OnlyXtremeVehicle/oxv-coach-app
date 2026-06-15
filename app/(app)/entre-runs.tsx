@@ -14,7 +14,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { useSessionStore } from '@/store/useSessionStore';
-import { marginZoneOf, marginLabelOf, type MarginZone } from '@/types/domain';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { formatChronoMs } from '@/utils/time';
 
@@ -22,10 +21,9 @@ export default function EntreRunsScreen() {
   const lapCount = useSessionStore((s) => s.lapCount);
   const bestLapMs = useSessionStore((s) => s.bestLapMs);
 
-  // Marge à chaud : pour V1, on prend une heuristique basée sur le
-  // bestLapMs. À enrichir sem 12 avec la vraie marge live.
-  const liveMargin = estimateLiveMargin(bestLapMs);
-  const zone = marginZoneOf(liveMargin);
+  // Doctrine « jamais de fausse donnée » : aucune marge fabriquée à chaud.
+  // La marge composite se calcule au bilan, après la session. Ici, on ne
+  // montre que du réel : le meilleur tour et le nombre de tours.
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
@@ -45,40 +43,24 @@ export default function EntreRunsScreen() {
             borderColor: colors.border.subtle,
             backgroundColor: colors.background.secondary,
             alignItems: 'center',
-            marginBottom: spacing.xl,
+            marginBottom: spacing.xxxl,
           }}
         >
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>DERNIER RUN</Text>
+          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>MEILLEUR TOUR</Text>
           <Text
             style={{
-              color: colorForZone(zone),
+              color: colors.text.primary,
               fontSize: fontSize.hero,
               fontWeight: fontWeight.ultralight,
               marginBottom: spacing.sm,
             }}
           >
-            {Math.round(liveMargin)}%
+            {bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}
           </Text>
-          <Text
-            style={{
-              color: colorForZone(zone),
-              fontSize: fontSize.title,
-              fontWeight: fontWeight.light,
-            }}
-          >
-            {marginLabelOf(zone)}
+          <Text style={[typography.caption, { textAlign: 'center', color: colors.text.tertiary }]}>
+            {lapCount} {lapCount > 1 ? 'tours' : 'tour'} · la marge se lit au bilan, après la
+            session.
           </Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: spacing.md,
-            marginBottom: spacing.xxxl,
-          }}
-        >
-          <StatCard label="Tours" value={String(lapCount)} />
-          <StatCard label="Meilleur" value={bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'} />
         </View>
 
         <View style={{ flex: 1 }} />
@@ -109,53 +91,4 @@ export default function EntreRunsScreen() {
       </View>
     </SafeAreaView>
   );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.ultralight,
-          marginBottom: spacing.xs,
-        }}
-      >
-        {value}
-      </Text>
-      <Text style={[typography.caption, { textAlign: 'center' }]}>{label}</Text>
-    </View>
-  );
-}
-
-function colorForZone(zone: MarginZone): string {
-  switch (zone) {
-    case 'green':
-      return colors.margin.green;
-    case 'yellow':
-      return colors.margin.yellow;
-    case 'red':
-      return colors.margin.red;
-  }
-}
-
-/**
- * Estimation grossière de marge à chaud — V1 sans algo live. Une vraie
- * marge incrémentale viendra sem 12 quand le module trackviz alimentera
- * `useSessionStore` en stats live.
- */
-function estimateLiveMargin(bestLapMs: number | null): number {
-  if (bestLapMs === null) return 50;
-  return 35;
 }

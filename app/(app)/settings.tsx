@@ -234,7 +234,7 @@ export default function SettingsScreen() {
           />
           <SettingRow
             label="Partager une vue"
-            hint="Bientôt"
+            hint="Gérer"
             onPress={() => router.push('/(app)/partage')}
           />
         </Section>
@@ -339,9 +339,21 @@ export default function SettingsScreen() {
 
         {/* Légal */}
         <Section label="LÉGAL">
-          <SettingRow label="Pacte de pilotage" hint="Consulter" />
-          <SettingRow label="Conditions générales" hint="Consulter" />
-          <SettingRow label="Politique de confidentialité" hint="Consulter" />
+          <SettingRow
+            label="Pacte de pilotage"
+            hint="Consulter"
+            onPress={() => router.push('/(app)/legal/pacte' as never)}
+          />
+          <SettingRow
+            label="Conditions générales"
+            hint="Consulter"
+            onPress={() => router.push('/(app)/legal/cgu' as never)}
+          />
+          <SettingRow
+            label="Politique de confidentialité"
+            hint="Consulter"
+            onPress={() => router.push('/(app)/legal/confidentialite' as never)}
+          />
         </Section>
 
         {/* Données */}

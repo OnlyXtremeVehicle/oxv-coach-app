@@ -112,7 +112,7 @@ export async function registerForPushNotifications(userId: string): Promise<Regi
       .update({
         expo_push_token: token,
         push_token_updated_at: new Date().toISOString(),
-      } as never)
+      })
       .eq('id', userId);
     if (error) {
       return { granted: true, token, reason: `Persist KO : ${error.message}` };

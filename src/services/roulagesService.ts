@@ -82,8 +82,8 @@ function mapInvitation(row: InvitationRow): RoulageInvitation {
 /** Liste les roulages créés par le coach courant. */
 export async function listMyRoulages(): Promise<Roulage[]> {
   const { data, error } = await supabase
-    .from('coach_roulages' as never)
-    .select('*' as never)
+    .from('coach_roulages')
+    .select('*')
     .order('starts_at', { ascending: true });
 
   if (error || !data) {
@@ -115,9 +115,9 @@ export async function createRoulage(input: RoulageInput): Promise<Roulage | null
   };
 
   const { data, error } = await supabase
-    .from('coach_roulages' as never)
-    .insert(payload as never)
-    .select('*' as never)
+    .from('coach_roulages')
+    .insert(payload)
+    .select('*')
     .single();
 
   if (error || !data) {
@@ -129,10 +129,7 @@ export async function createRoulage(input: RoulageInput): Promise<Roulage | null
 
 /** Met à jour le statut d'un roulage (ex. annuler / clôturer). */
 export async function setRoulageStatus(id: string, status: RoulageStatus): Promise<boolean> {
-  const { error } = await supabase
-    .from('coach_roulages' as never)
-    .update({ status } as never)
-    .eq('id', id);
+  const { error } = await supabase.from('coach_roulages').update({ status }).eq('id', id);
 
   if (error) {
     console.warn('[roulages] setRoulageStatus error:', error.message);
@@ -144,8 +141,8 @@ export async function setRoulageStatus(id: string, status: RoulageStatus): Promi
 /** Récupère un roulage par id (coach propriétaire ou pilote invité, via RLS). */
 export async function getRoulage(id: string): Promise<Roulage | null> {
   const { data, error } = await supabase
-    .from('coach_roulages' as never)
-    .select('*' as never)
+    .from('coach_roulages')
+    .select('*')
     .eq('id', id)
     .maybeSingle();
 
@@ -159,8 +156,8 @@ export async function getRoulage(id: string): Promise<Roulage | null> {
 /** Liste les invitations d'un roulage (vue coach propriétaire). */
 export async function listRoulageInvitations(roulageId: string): Promise<RoulageInvitation[]> {
   const { data, error } = await supabase
-    .from('roulage_invitations' as never)
-    .select('*' as never)
+    .from('roulage_invitations')
+    .select('*')
     .eq('roulage_id', roulageId);
 
   if (error || !data) {
@@ -178,9 +175,7 @@ export async function listRoulageInvitations(roulageId: string): Promise<Roulage
 export async function listMyRoulageInvitationStatuses(): Promise<
   { roulageId: string; status: RoulageInvitation['status'] }[]
 > {
-  const { data, error } = await supabase
-    .from('roulage_invitations' as never)
-    .select('roulage_id, status' as never);
+  const { data, error } = await supabase.from('roulage_invitations').select('roulage_id, status');
 
   if (error || !data) {
     if (error) console.warn('[roulages] listMyRoulageInvitationStatuses error:', error.message);
@@ -200,9 +195,9 @@ export async function invitePilot(
   pilotId: string
 ): Promise<RoulageInvitation | null> {
   const { data, error } = await supabase
-    .from('roulage_invitations' as never)
-    .insert({ roulage_id: roulageId, pilot_id: pilotId } as never)
-    .select('*' as never)
+    .from('roulage_invitations')
+    .insert({ roulage_id: roulageId, pilot_id: pilotId })
+    .select('*')
     .single();
 
   if (error || !data) {
@@ -214,10 +209,7 @@ export async function invitePilot(
 
 /** Retire une invitation (coach propriétaire). */
 export async function removeInvitation(invitationId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('roulage_invitations' as never)
-    .delete()
-    .eq('id', invitationId);
+  const { error } = await supabase.from('roulage_invitations').delete().eq('id', invitationId);
 
   if (error) {
     console.warn('[roulages] removeInvitation error:', error.message);
@@ -240,8 +232,8 @@ export interface PilotInvitation {
  */
 export async function listMyInvitations(): Promise<PilotInvitation[]> {
   const { data, error } = await supabase
-    .from('roulage_invitations' as never)
-    .select('*, coach_roulages(*)' as never)
+    .from('roulage_invitations')
+    .select('*, coach_roulages(*)')
     .order('invited_at', { ascending: false });
 
   if (error || !data) {
@@ -271,11 +263,11 @@ export async function respondToInvitation(
   nowISO: string
 ): Promise<boolean> {
   const { error } = await supabase
-    .from('roulage_invitations' as never)
+    .from('roulage_invitations')
     .update({
       status: accepted ? 'accepted' : 'declined',
       responded_at: nowISO,
-    } as never)
+    })
     .eq('id', invitationId);
 
   if (error) {

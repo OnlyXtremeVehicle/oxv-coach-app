@@ -4,10 +4,9 @@
  * Affiche tous les users role='coach' avec leur nombre d'assignations
  * actives. Tap un coach → écran de gestion de ses assignations.
  *
- * Pour promouvoir un user en coach, passer par le Dashboard Supabase
- * (UPDATE users SET role = 'coach' WHERE id = ...). V1 n'expose pas
- * cette action dans l'app (sécurité : un admin pourrait promouvoir
- * par erreur).
+ * Promotion pilote → coach : depuis l'écran Préparation (bouton « ↦ coach »,
+ * avec confirmation explicite Alert). Rétrogradation coach → pilote : ici
+ * même, avec garde-fou (refus si le coach a des assignations actives).
  */
 
 import { useEffect, useState } from 'react';

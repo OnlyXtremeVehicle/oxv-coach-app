@@ -12,7 +12,7 @@
  * Voir migration 20260526120000_0027_pilot_friendships.sql.
  *
  * Note typage : la table n'est pas encore régénérée dans database.types.ts.
- * On suit le pattern pilotGoalsService : .from('pilot_friendships' as never)
+ * On suit le pattern pilotGoalsService : .from('pilot_friendships')
  * + cast as unknown as FriendshipDbRow. À nettoyer après prochaine
  * regen des types via `supabase gen types`.
  */
@@ -111,8 +111,8 @@ async function listFriendshipsWithStatus(
 ): Promise<FriendListEntry[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query: any = supabase
-    .from('pilot_friendships' as never)
-    .select('*' as never)
+    .from('pilot_friendships')
+    .select('*')
     .or(`pilot_a.eq.${myUserId},pilot_b.eq.${myUserId}`);
 
   if (filter === 'pending_received') {
@@ -201,8 +201,8 @@ export async function sendFriendRequest(
 
   // Check existing — peu importe le status, on évite le doublon
   const { data: existingRaw } = await supabase
-    .from('pilot_friendships' as never)
-    .select('*' as never)
+    .from('pilot_friendships')
+    .select('*')
     .eq('pilot_a', pilotA)
     .eq('pilot_b', pilotB)
     .maybeSingle();
@@ -215,14 +215,14 @@ export async function sendFriendRequest(
   }
 
   const { data: createdRaw, error } = await supabase
-    .from('pilot_friendships' as never)
+    .from('pilot_friendships')
     .insert({
       pilot_a: pilotA,
       pilot_b: pilotB,
       initiator_id: myUserId,
       status: 'pending',
-    } as never)
-    .select('*' as never)
+    })
+    .select('*')
     .single();
 
   if (error || !createdRaw) {
@@ -234,8 +234,8 @@ export async function sendFriendRequest(
 
 async function updateStatus(friendshipId: string, newStatus: FriendshipStatus): Promise<boolean> {
   const { error } = await supabase
-    .from('pilot_friendships' as never)
-    .update({ status: newStatus, responded_at: new Date().toISOString() } as never)
+    .from('pilot_friendships')
+    .update({ status: newStatus, responded_at: new Date().toISOString() })
     .eq('id', friendshipId);
 
   if (error) {
@@ -261,8 +261,8 @@ export async function isFriendsWith(myUserId: string, otherUserId: string): Prom
   if (myUserId === otherUserId) return false;
   const { pilotA, pilotB } = canonicalPair(myUserId, otherUserId);
   const { data } = await supabase
-    .from('pilot_friendships' as never)
-    .select('id' as never)
+    .from('pilot_friendships')
+    .select('id')
     .eq('pilot_a', pilotA)
     .eq('pilot_b', pilotB)
     .eq('status', 'accepted')

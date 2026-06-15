@@ -165,16 +165,12 @@ export function logCoachView(
   targetPilotId: string,
   options?: { sessionId?: string; subtype?: string }
 ): void {
-  // Cast le temps que database.types regen connaisse log_coach_view
   supabase
-    .rpc(
-      'log_coach_view' as never,
-      {
-        target_pilot_uuid: targetPilotId,
-        action_subtype: options?.subtype ?? 'coach_view',
-        target_session_uuid: options?.sessionId ?? null,
-      } as never
-    )
+    .rpc('log_coach_view', {
+      target_pilot_uuid: targetPilotId,
+      action_subtype: options?.subtype ?? 'coach_view',
+      target_session_uuid: options?.sessionId ?? undefined,
+    })
     .then(({ error }: { error: { message: string } | null }) => {
       if (error) console.warn('[OXV][coach] logCoachView :', error.message);
     });
@@ -301,13 +297,13 @@ export async function loadCoachDashboardSummary(): Promise<CoachDashboardSummary
   // 4. Annotations brouillon + partagées du coach (cast `as never` car
   // database.types n'a pas encore coach_annotations)
   const draftsPromise = supabase
-    .from('coach_annotations' as never)
+    .from('coach_annotations')
     .select('id', { count: 'exact', head: true })
     .eq('visibility', 'private')
     .is('deleted_at', null);
 
   const sharedPromise = supabase
-    .from('coach_annotations' as never)
+    .from('coach_annotations')
     .select('id', { count: 'exact', head: true })
     .eq('visibility', 'shared')
     .is('deleted_at', null);

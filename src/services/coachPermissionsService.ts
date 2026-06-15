@@ -40,8 +40,8 @@ export async function loadMyCoachPermissions(): Promise<CoachPermissions> {
   if (!userId) return DEFAULT_COACH_PERMISSIONS;
 
   const { data, error } = await supabase
-    .from('coach_permissions' as never)
-    .select('can_view_pilots, can_manage_own_sessions, can_view_business_dashboard' as never)
+    .from('coach_permissions')
+    .select('can_view_pilots, can_manage_own_sessions, can_view_business_dashboard')
     .eq('user_id', userId)
     .maybeSingle();
 

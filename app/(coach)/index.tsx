@@ -37,13 +37,18 @@ export default function CoachHubScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([listMyPilots(), loadCoachDashboardSummary()]).then(([rows, s]) => {
-      if (!cancelled) {
-        setPilots(rows);
-        setSummary(s);
-        setLoading(false);
-      }
-    });
+    Promise.all([listMyPilots(), loadCoachDashboardSummary()])
+      .then(([rows, s]) => {
+        if (!cancelled) {
+          setPilots(rows);
+          setSummary(s);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        // Réseau coupé : on sort du loading (la liste vide est gérée par EmptyState).
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

@@ -38,7 +38,7 @@ export async function requestAccountDeletion(userId: string): Promise<DeletionRe
     .update({
       deletion_requested_at: now.toISOString(),
       deletion_scheduled_at: scheduled.toISOString(),
-    } as never)
+    })
     .eq('id', userId)
     .select('id');
 

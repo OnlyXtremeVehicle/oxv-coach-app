@@ -343,7 +343,7 @@ function SnapshotView(props: SnapshotProps) {
         />
       </View>
 
-      {/* Comparaison virage par virage (V1.1) */}
+      {/* Comparaison virage par virage */}
       <CornerComparisonSection
         mySegments={props.mySegments}
         theirSegments={props.theirSegments}
