@@ -234,7 +234,7 @@ export default function SettingsScreen() {
           />
           <SettingRow
             label="Partager une vue"
-            hint="Bientôt"
+            hint="Gérer"
             onPress={() => router.push('/(app)/partage')}
           />
         </Section>

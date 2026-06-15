@@ -75,6 +75,8 @@ export default function ProchaineFoisScreen() {
             </Text>
 
             <View style={{ flexDirection: 'row', gap: spacing.md }}>
+              {/* Poids visuel identique aux deux options : l'app ne pousse pas
+                  vers un choix (doctrine miroir). */}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.back()}
@@ -82,7 +84,8 @@ export default function ProchaineFoisScreen() {
                   flex: 1,
                   height: 52,
                   borderRadius: borderRadius.lg,
-                  backgroundColor: colors.accent.red,
+                  borderWidth: 1,
+                  borderColor: colors.border.medium,
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: pressed ? 0.85 : 1,
@@ -92,7 +95,7 @@ export default function ProchaineFoisScreen() {
                   style={{
                     color: colors.text.primary,
                     fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
+                    fontWeight: fontWeight.regular,
                   }}
                 >
                   Compris
