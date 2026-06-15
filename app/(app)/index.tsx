@@ -213,8 +213,10 @@ function ModePassive({
         <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>NAVIGATION</Text>
         <HubCard label="Mon bilan" hint="Votre dernière analyse" href="/(app)/bilan" />
         <HubCard label="Ma progression" hint="Votre fil dans le temps" href="/(app)/progression" />
+        <HubCard label="Mes objectifs" hint="Vos repères personnels" href="/(app)/objectifs" />
         <HubCard label="Mon équipement" hint="Connecter le boîtier" href="/(app)/equipement" />
         <HubCard label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
+        <HubCard label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
         <HubCard label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
         <HubCard
           label="Aperçu du tracé 3D"
