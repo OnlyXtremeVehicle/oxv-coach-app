@@ -55,7 +55,11 @@ export async function acceptCguAndPrivacy(): Promise<boolean> {
     .eq('id', userId);
 
   if (error) {
-    console.warn('[OXV] acceptCguAndPrivacy échec :', error.message);
+    enqueueAction({
+      kind: 'accept_cgu_privacy',
+      payload: { userId, cguVersion: CGU_VERSION, privacyVersion: PRIVACY_VERSION },
+    });
+    console.warn('[OXV] acceptCguAndPrivacy offline-queued :', error.message);
     return false;
   }
   await useAuthStore.getState().refreshProfile();
@@ -105,7 +109,11 @@ export async function acceptCoachPact(): Promise<boolean> {
     .eq('id', userId);
 
   if (error) {
-    console.warn('[OXV] acceptCoachPact échec :', error.message);
+    enqueueAction({
+      kind: 'accept_coach_pact',
+      payload: { userId, coachPactVersion: COACH_PACT_VERSION },
+    });
+    console.warn('[OXV] acceptCoachPact offline-queued :', error.message);
     return false;
   }
   await useAuthStore.getState().refreshProfile();

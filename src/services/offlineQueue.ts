@@ -20,6 +20,8 @@ import { supabase } from '@/lib/supabase';
 
 export type QueuedActionKind =
   | 'accept_pact'
+  | 'accept_coach_pact'
+  | 'accept_cgu_privacy'
   | 'mark_notification_read'
   | 'register_lap_marker'
   | 'update_pilot_level';
@@ -130,6 +132,42 @@ async function executeAction(action: QueuedAction): Promise<void> {
           pact_accepted_at: new Date(action.createdAt).toISOString(),
           pact_version: pactVersion,
           profile_completed_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+      if (error) throw error;
+      return;
+    }
+
+    case 'accept_coach_pact': {
+      const { userId, coachPactVersion } = action.payload as {
+        userId: string;
+        coachPactVersion: string;
+      };
+      const { error } = await supabase
+        .from('users')
+        .update({
+          coach_pact_accepted_at: new Date(action.createdAt).toISOString(),
+          coach_pact_version: coachPactVersion,
+        } as never)
+        .eq('id', userId);
+      if (error) throw error;
+      return;
+    }
+
+    case 'accept_cgu_privacy': {
+      const { userId, cguVersion, privacyVersion } = action.payload as {
+        userId: string;
+        cguVersion: string;
+        privacyVersion: string;
+      };
+      const ts = new Date(action.createdAt).toISOString();
+      const { error } = await supabase
+        .from('users')
+        .update({
+          cgu_accepted_at: ts,
+          cgu_version: cguVersion,
+          privacy_accepted_at: ts,
+          privacy_version: privacyVersion,
         })
         .eq('id', userId);
       if (error) throw error;
