@@ -175,6 +175,14 @@ export async function analyzeAndPersistSession(
       fetchSession(input.telemetrySessionId),
       fetchSessionLaps(input.telemetrySessionId),
     ]);
+    // Prénom du pilote pour le debrief de fallback (sinon le récit local
+    // perd le prénom). Best-effort : si la lecture échoue, on reste à null.
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('first_name')
+      .eq('id', input.userId)
+      .maybeSingle();
+    computedFirstName = userRow?.first_name ?? null;
     if (session) {
       const result = computeMargin({ session, laps });
       marginGlobal = result.marginGlobal;

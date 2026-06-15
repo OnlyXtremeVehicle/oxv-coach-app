@@ -64,9 +64,9 @@ export async function listVisibleAnnotationsForCorner(
   sessionId?: string | null
 ): Promise<CoachAnnotation[]> {
   let query = supabase
-    .from('coach_annotations' as never)
+    .from('coach_annotations')
     // Cast nécessaire le temps que database.types regen connaisse la table
-    .select('*' as never)
+    .select('*')
     .eq('pilot_id', pilotId)
     .eq('corner_index', cornerIndex)
     .order('created_at', { ascending: false });
@@ -94,8 +94,8 @@ export async function listMyAnnotationsForCorner(
   sessionId?: string | null
 ): Promise<CoachAnnotation[]> {
   let query = supabase
-    .from('coach_annotations' as never)
-    .select('*' as never)
+    .from('coach_annotations')
+    .select('*')
     .eq('pilot_id', pilotId)
     .eq('corner_index', cornerIndex)
     .is('deleted_at', null)
@@ -136,7 +136,7 @@ export async function createAnnotation(
   }
 
   const { data, error } = await supabase
-    .from('coach_annotations' as never)
+    .from('coach_annotations')
     .insert({
       coach_id: coachId,
       pilot_id: input.pilotId,
@@ -144,8 +144,8 @@ export async function createAnnotation(
       corner_index: input.cornerIndex,
       body: input.body.trim(),
       visibility: input.visibility ?? 'shared',
-    } as never)
-    .select('*' as never)
+    })
+    .select('*')
     .single();
 
   if (error || !data) {
@@ -163,10 +163,7 @@ export async function updateAnnotation(
   if (patch.body !== undefined) update.body = patch.body.trim();
   if (patch.visibility !== undefined) update.visibility = patch.visibility;
 
-  const { error } = await supabase
-    .from('coach_annotations' as never)
-    .update(update as never)
-    .eq('id', id);
+  const { error } = await supabase.from('coach_annotations').update(update).eq('id', id);
 
   if (error) {
     console.warn('[OXV][annotations] update :', error.message);
@@ -181,8 +178,8 @@ export async function updateAnnotation(
  */
 export async function deleteAnnotation(id: string): Promise<boolean> {
   const { error } = await supabase
-    .from('coach_annotations' as never)
-    .update({ deleted_at: new Date().toISOString() } as never)
+    .from('coach_annotations')
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id);
 
   if (error) {

@@ -27,7 +27,7 @@ const VIEWS: { href: string; label: string; description: string }[] = [
   {
     href: '/(admin)/circuit',
     label: 'Inspecteur circuit',
-    description: 'Topologie Beltoise, 14 virages, heatmap historique des marges.',
+    description: 'Topologie Beltoise, 7 virages, heatmap historique des marges.',
   },
   {
     href: '/(admin)/coachs',

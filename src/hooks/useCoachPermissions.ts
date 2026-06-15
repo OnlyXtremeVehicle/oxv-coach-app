@@ -20,12 +20,17 @@ export function useCoachPermissions(): { permissions: CoachPermissions; loading:
 
   useEffect(() => {
     let cancelled = false;
-    loadMyCoachPermissions().then((p) => {
-      if (!cancelled) {
-        setPermissions(p);
-        setLoading(false);
-      }
-    });
+    loadMyCoachPermissions()
+      .then((p) => {
+        if (!cancelled) {
+          setPermissions(p);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        // Fail-safe : on conserve les permissions de base et on sort du loading.
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

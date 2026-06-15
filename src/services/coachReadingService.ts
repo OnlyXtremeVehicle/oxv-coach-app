@@ -41,8 +41,8 @@ export async function getMyReadingWeights(): Promise<CoachReadingWeights | null>
   if (!coachId) return null;
 
   const { data, error } = await supabase
-    .from('coach_reading_weights' as never)
-    .select('*' as never)
+    .from('coach_reading_weights')
+    .select('*')
     .eq('coach_id', coachId)
     .maybeSingle();
 
@@ -55,9 +55,7 @@ export async function getMyReadingWeights(): Promise<CoachReadingWeights | null>
 
 /** Pondérations des coachs du pilote courant (via RLS is_my_coach). */
 export async function listReadingWeightsForMe(): Promise<CoachReadingWeights[]> {
-  const { data, error } = await supabase
-    .from('coach_reading_weights' as never)
-    .select('*' as never);
+  const { data, error } = await supabase.from('coach_reading_weights').select('*');
 
   if (error || !data) {
     if (error) console.warn('[coachReading] listReadingWeightsForMe error:', error.message);
@@ -84,9 +82,9 @@ export async function upsertReadingWeights(
   };
 
   const { data, error } = await supabase
-    .from('coach_reading_weights' as never)
-    .upsert(payload as never, { onConflict: 'coach_id' } as never)
-    .select('*' as never)
+    .from('coach_reading_weights')
+    .upsert(payload, { onConflict: 'coach_id' })
+    .select('*')
     .single();
 
   if (error || !data) {

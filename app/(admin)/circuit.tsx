@@ -3,7 +3,7 @@
  *
  * Affiche tout ce qu'on a en base sur le circuit Beltoise :
  *   - Tracé SVG calculé depuis les GPS (HAUTE_SAINTONGE_TRACK)
- *   - 14 virages avec leurs métadonnées (nom, pace, lat/lon, progress)
+ *   - Les virages avec leurs métadonnées (nom, pace, lat/lon, progress)
  *   - Stats agrégées sur l'historique des analyses (sessions × pilotes)
  *   - Toggle de colorisation : par pace (statique) ou par marge moyenne
  *     historique (`aggregateSegmentStats`)
@@ -135,7 +135,10 @@ export default function CircuitInspectorScreen() {
             ['Apex moyens (medium)', String(paceDistribution.medium)],
             ['Apex lents (slow)', String(paceDistribution.slow)],
             ['Polyline interpolée', `${HAUTE_SAINTONGE_TRACK.length} points`],
-            ['Segments uniformes', `${HAUTE_SAINTONGE_SEGMENTS.length} (span 1/14 chacun)`],
+            [
+              'Segments uniformes',
+              `${HAUTE_SAINTONGE_SEGMENTS.length} (span 1/${HAUTE_SAINTONGE_SEGMENTS.length} chacun)`,
+            ],
           ]}
         />
 
@@ -157,14 +160,14 @@ export default function CircuitInspectorScreen() {
           <StatTable
             rows={[
               ['Sessions analysées (max)', String(totalSessions)],
-              ['Virages avec donnée', `${aggregates.length} / 14`],
+              ['Virages avec donnée', `${aggregates.length} / ${BELTOISE_CORNERS.length}`],
               ['Marge moyenne (tous virages)', formatGlobalMargin(aggregates)],
             ]}
           />
         )}
 
-        {/* Liste des 14 virages */}
-        <SectionHeader label="LES 14 VIRAGES" />
+        {/* Liste des virages */}
+        <SectionHeader label={`LES ${BELTOISE_CORNERS.length} VIRAGES`} />
         <View style={{ gap: spacing.xs }}>
           {BELTOISE_CORNERS.map((corner) => (
             <CornerRow

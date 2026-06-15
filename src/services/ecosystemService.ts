@@ -93,9 +93,9 @@ function mapService(row: ServiceRow): CircuitService {
  */
 export async function fetchDirectoryCircuits(): Promise<DirectoryCircuit[]> {
   const { data, error } = await supabase
-    .from('circuits' as never)
+    .from('circuits')
     .select(
-      'id, name, official_name, city, region, length_km, turns_count, finish_line_lat, finish_line_lon, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon, is_official' as never
+      'id, name, official_name, city, region, length_km, turns_count, finish_line_lat, finish_line_lon, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon, is_official'
     )
     .eq('is_official', true);
 
@@ -111,8 +111,8 @@ export async function fetchDirectoryCircuits(): Promise<DirectoryCircuit[]> {
 /** Liste les services publiés d'un circuit donné. */
 export async function listCircuitServices(circuitId: string): Promise<CircuitService[]> {
   const { data, error } = await supabase
-    .from('circuit_services' as never)
-    .select('*' as never)
+    .from('circuit_services')
+    .select('*')
     .eq('circuit_id', circuitId)
     .eq('is_published', true);
 

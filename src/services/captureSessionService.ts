@@ -96,7 +96,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
       circuit_id: input.circuitId ?? null,
       circuit_name: input.circuitName ?? 'Beltoise',
       vehicle_id: input.vehicleId ?? null,
-    } as never)
+    })
     .select('id')
     .single();
 
@@ -176,7 +176,7 @@ function flush(state: CaptureState): Promise<void> {
     try {
       while (state.buffer.length > 0) {
         const batch = state.buffer.splice(0); // prend tout, vide en place
-        const { error } = await supabase.from('telemetry_frames').insert(batch as never);
+        const { error } = await supabase.from('telemetry_frames').insert(batch);
         if (error) {
           // Lot perdu (réseau) : on compte la perte ; le .ubx local sert de filet.
           state.dropped += batch.length;
@@ -222,7 +222,7 @@ async function persistLaps(state: CaptureState, laps: RecordedLap[]): Promise<vo
     is_outlap: false,
     is_inlap: false,
   }));
-  const { error } = await supabase.from('laps').insert(rows as never);
+  const { error } = await supabase.from('laps').insert(rows);
   if (error) console.warn('[OXV][capture] écriture laps KO :', error.message);
 }
 
@@ -283,7 +283,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
       max_g_lateral: state.maxima.maxGLateral || null,
       max_g_longitudinal: state.maxima.maxGLongitudinal || null,
       total_frames: state.total,
-    } as never)
+    })
     .eq('id', state.sessionId)
     .eq('user_id', state.userId);
   if (error) {
@@ -329,7 +329,7 @@ export async function abortCaptureSession(): Promise<void> {
   useSessionStore.getState().abortSession();
   await supabase
     .from('telemetry_sessions')
-    .update({ status: 'aborted', ended_at: new Date().toISOString() } as never)
+    .update({ status: 'aborted', ended_at: new Date().toISOString() })
     .eq('id', state.sessionId)
     .eq('user_id', state.userId);
 }

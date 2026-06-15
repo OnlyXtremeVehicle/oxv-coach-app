@@ -79,10 +79,7 @@ function mapRow(row: DbRow): SocialPing {
  * date d'événement croissante (les non-datés en fin).
  */
 export async function listSocialPings(): Promise<SocialPing[]> {
-  const { data, error } = await supabase
-    .from('social_pings' as never)
-    .select('*' as never)
-    .eq('is_published', true);
+  const { data, error } = await supabase.from('social_pings').select('*').eq('is_published', true);
 
   if (error || !data) {
     if (error) console.warn('[socialPings] list error:', error.message);

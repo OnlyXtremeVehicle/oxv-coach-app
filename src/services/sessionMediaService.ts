@@ -85,8 +85,8 @@ function mapRow(row: DbRow): SessionMediaItem {
  */
 export async function listSessionMedia(telemetrySessionId: string): Promise<SessionMediaItem[]> {
   const { data, error } = await supabase
-    .from('session_media' as never)
-    .select('*' as never)
+    .from('session_media')
+    .select('*')
     .eq('telemetry_session_id', telemetrySessionId)
     .is('deleted_at', null)
     .order('display_order', { ascending: true })
@@ -155,7 +155,7 @@ export async function uploadSessionMedia(opts: {
 
   // 2. Insert DB row
   const { data: createdRaw, error: insertErr } = await supabase
-    .from('session_media' as never)
+    .from('session_media')
     .insert({
       id: mediaId,
       telemetry_session_id: opts.telemetrySessionId,
@@ -169,8 +169,8 @@ export async function uploadSessionMedia(opts: {
       duration_seconds: opts.durationSeconds ?? null,
       caption: opts.caption ?? null,
       uploaded_by_user_id: opts.uploadedByUserId,
-    } as never)
-    .select('*' as never)
+    })
+    .select('*')
     .single();
 
   if (insertErr || !createdRaw) {
@@ -192,8 +192,8 @@ export async function uploadSessionMedia(opts: {
  */
 export async function softDeleteSessionMedia(mediaId: string): Promise<boolean> {
   const { error } = await supabase
-    .from('session_media' as never)
-    .update({ deleted_at: new Date().toISOString() } as never)
+    .from('session_media')
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', mediaId);
 
   if (error) {
@@ -216,7 +216,8 @@ export async function updateSessionMedia(
   if (Object.keys(update).length === 0) return true;
 
   const { error } = await supabase
-    .from('session_media' as never)
+    .from('session_media')
+    // objet construit dynamiquement (champs conditionnels) -> cast assumé
     .update(update as never)
     .eq('id', mediaId);
 
