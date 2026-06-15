@@ -1,13 +1,14 @@
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
 import { isOnboardingComplete } from '@/services/onboardingService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 export default function IndexRoute() {
   const status = useAuthStore((s) => s.status);
   const profile = useAuthStore((s) => s.profile);
+  const initialize = useAuthStore((s) => s.initialize);
 
   if (status === 'idle' || status === 'loading') {
     return (
@@ -20,6 +21,60 @@ export default function IndexRoute() {
         }}
       >
         <ActivityIndicator color={colors.text.secondary} />
+      </View>
+    );
+  }
+
+  // Échec d'initialisation (réseau / session) : on n'envoie PAS vers login en
+  // silence — on explique et on propose de réessayer (relance initialize()).
+  if (status === 'error') {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.background.primary,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: spacing.xl,
+        }}
+      >
+        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>IMPRÉVU</Text>
+        <Text style={[typography.screenTitle, { marginTop: spacing.md, textAlign: 'center' }]}>
+          Connexion impossible.
+        </Text>
+        <Text
+          style={[
+            typography.caption,
+            { color: colors.text.tertiary, marginTop: spacing.md, textAlign: 'center' },
+          ]}
+        >
+          Vérifiez votre réseau, puis réessayez.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => initialize()}
+          style={({ pressed }) => ({
+            marginTop: spacing.xxxl,
+            height: 52,
+            paddingHorizontal: spacing.xxl,
+            borderRadius: borderRadius.lg,
+            borderWidth: 1,
+            borderColor: colors.border.medium,
+            alignItems: 'center',
+            justifyContent: 'center',
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text
+            style={{
+              color: colors.text.primary,
+              fontSize: fontSize.body,
+              fontWeight: fontWeight.regular,
+            }}
+          >
+            Réessayer
+          </Text>
+        </Pressable>
       </View>
     );
   }
