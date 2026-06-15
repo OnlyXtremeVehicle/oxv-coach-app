@@ -216,6 +216,7 @@ function ModePassive({
         <HubCard label="Mes objectifs" hint="Vos repères personnels" href="/(app)/objectifs" />
         <HubCard label="Mon équipement" hint="Connecter le boîtier" href="/(app)/equipement" />
         <HubCard label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
+        <HubCard label="Lieux & partenaires" hint="Autour des circuits" href="/(app)/lieux" />
         <HubCard label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
         <HubCard label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
         <HubCard
