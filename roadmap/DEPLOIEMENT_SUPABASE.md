@@ -147,13 +147,25 @@ par Supabase dans le runtime Edge — **ne pas les redéfinir**. À fournir
 manuellement :
 
 ```bash
-supabase secrets set OPENAI_API_KEY=sk-...        # debrief IA (generate-debrief-ai)
-supabase secrets set RESEND_API_KEY=re_...        # email invitation coach
-supabase secrets set CRON_TOKEN=<jeton-long>      # protège le cron + invoke triggers
+supabase secrets set OPENAI_API_KEY=sk-...                 # debrief IA (generate-debrief-ai)
+supabase secrets set RESEND_API_KEY=re_...                 # email invitation coach
+supabase secrets set CRON_TOKEN=<jeton-long>               # protège le cron (X-Cron-Token)
+supabase secrets set EDGE_FUNCTIONS_INVOKE_SECRET=<jeton>  # garde des functions trigger→function
 ```
 
-> Le `CRON_TOKEN` doit correspondre au `edge_functions_invoke_secret` du Vault
-> (§4) si tu utilises le même jeton pour authentifier les appels trigger→function.
+> **`EDGE_FUNCTIONS_INVOKE_SECRET` DOIT être identique au secret Vault
+> `edge_functions_invoke_secret` (§4).** C'est la même valeur des deux côtés :
+> les triggers (pg_net) lisent le secret du Vault et l'envoient en
+> `Authorization: Bearer …` ; les functions (`notify-pilot-coach-annotated`,
+> `notify-coach-session-analyzed`, `notify-pilot-friend-request`,
+> `notify-pilot-friend-accepted`, `purge-deleted-accounts`) lisent le secret de
+> leur env et comparent. Si les deux ne correspondent pas, les notifs partent en
+> 401 (silencieux, fire-and-forget). Si l'env de la function est vide, la garde
+> est **désactivée** (les notifs continuent de partir, un WARNING est loggé).
+>
+> Les deux functions appelées depuis l'app — `notify-pilot-coach-assigned` et
+> `notify-coach-consent-received` — sont en `verify_jwt = true` (cf. config.toml)
+> et n'utilisent PAS ce secret : le gateway exige le JWT de l'utilisateur connecté.
 
 ### Cron (cron-analyze-pending-sessions)
 
