@@ -16,6 +16,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -95,6 +96,8 @@ export default function HomeHubScreen() {
         )}
 
         <View style={{ flex: 1, minHeight: spacing.xxxl }} />
+
+        <SpaceSwitcher current="pilot" />
 
         {__DEV__ ? (
           <Link href="/(app)/debug-capture" asChild>

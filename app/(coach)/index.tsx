@@ -22,6 +22,7 @@ import {
   listMyPilots,
   loadCoachDashboardSummary,
 } from '@/services/coachService';
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
@@ -326,6 +327,8 @@ export default function CoachHubScreen() {
             </Pressable>
           </Link>
         ) : null}
+
+        <SpaceSwitcher current="coach" />
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={signOut}>

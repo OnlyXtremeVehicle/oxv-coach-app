@@ -6,6 +6,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
 
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 
 const VIEWS: { href: string; label: string; description: string }[] = [
@@ -82,6 +83,8 @@ export default function AdminHubScreen() {
             </Link>
           ))}
         </View>
+
+        <SpaceSwitcher current="admin" />
 
         <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.replace('/(app)')}>
