@@ -16,8 +16,10 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link } from 'expo-router';
 
+import { Fact } from '@/components/Fact';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
+import { getAnalysisForSession } from '@/services/analysesService';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
@@ -35,6 +37,7 @@ export default function HomeHubScreen() {
   const state = useAppStateStore((s) => s.state);
 
   const [recentSession, setRecentSession] = useState<RecentSession | null>(null);
+  const [synthese, setSynthese] = useState<{ marginGlobal: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,8 +64,12 @@ export default function HomeHubScreen() {
           startedAt: new Date(data.started_at),
           circuitName: data.circuit_name,
         });
+        const analysis = await getAnalysisForSession(data.id);
+        if (!cancelled && analysis) {
+          setSynthese({ marginGlobal: analysis.marginGlobal });
+        }
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     })();
 
     return () => {
@@ -91,6 +98,7 @@ export default function HomeHubScreen() {
             greeting={greeting}
             firstName={firstName}
             recentSession={recentSession}
+            synthese={synthese}
             loading={loading}
           />
         )}
@@ -156,11 +164,13 @@ function ModePassive({
   greeting,
   firstName,
   recentSession,
+  synthese,
   loading,
 }: {
   greeting: string;
   firstName: string;
   recentSession: RecentSession | null;
+  synthese: { marginGlobal: number } | null;
   loading: boolean;
 }) {
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
@@ -202,6 +212,15 @@ function ModePassive({
               {recentSession.circuitName ?? 'Session'}
             </Text>
             <Text style={typography.caption}>{timeAgoFr(recentSession.startedAt)}</Text>
+            {synthese ? (
+              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
+                <Fact
+                  label="Marge globale"
+                  value={String(Math.round(synthese.marginGlobal))}
+                  unit="%"
+                />
+              </View>
+            ) : null}
           </Pressable>
         </Link>
       ) : (
