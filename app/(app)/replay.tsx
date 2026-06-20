@@ -41,19 +41,23 @@ export default function ReplayScreen() {
       return;
     }
     let cancelled = false;
-    fetchSessionLaps(params.sessionId).then((rows) => {
-      if (cancelled) return;
-      setLaps(rows);
-      // Pré-sélectionne le tour du param ou le meilleur tour
-      const initial = params.lapNumber
-        ? Number(params.lapNumber)
-        : (rows.find((l) => l.is_best_lap)?.lap_number ??
-          rows.find((l) => !l.is_outlap && !l.is_inlap)?.lap_number ??
-          rows[0]?.lap_number ??
-          null);
-      setSelectedLap(initial);
-      setLoadingLaps(false);
-    });
+    fetchSessionLaps(params.sessionId)
+      .then((rows) => {
+        if (cancelled) return;
+        setLaps(rows);
+        // Pré-sélectionne le tour du param ou le meilleur tour
+        const initial = params.lapNumber
+          ? Number(params.lapNumber)
+          : (rows.find((l) => l.is_best_lap)?.lap_number ??
+            rows.find((l) => !l.is_outlap && !l.is_inlap)?.lap_number ??
+            rows[0]?.lap_number ??
+            null);
+        setSelectedLap(initial);
+        setLoadingLaps(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadingLaps(false);
+      });
     return () => {
       cancelled = true;
     };

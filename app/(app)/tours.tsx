@@ -43,11 +43,15 @@ export default function ToursScreen() {
       return;
     }
     let cancelled = false;
-    fetchSessionLaps(params.sessionId).then((rows) => {
-      if (cancelled) return;
-      setLaps(rows);
-      setLoading(false);
-    });
+    fetchSessionLaps(params.sessionId)
+      .then((rows) => {
+        if (cancelled) return;
+        setLaps(rows);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

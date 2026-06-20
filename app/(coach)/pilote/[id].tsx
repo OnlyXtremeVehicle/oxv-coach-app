@@ -60,17 +60,20 @@ export default function CoachPilotDetailScreen() {
     if (!params.id) return;
     let cancelled = false;
     (async () => {
-      // Charge les détails pilote (filtré par RLS via coach_pilots_view)
-      const pilots = await listMyPilots();
-      if (cancelled) return;
-      const found = pilots.find((p) => p.pilotId === params.id) ?? null;
-      setPilot(found);
+      try {
+        // Charge les détails pilote (filtré par RLS via coach_pilots_view)
+        const pilots = await listMyPilots();
+        if (cancelled) return;
+        const found = pilots.find((p) => p.pilotId === params.id) ?? null;
+        setPilot(found);
 
-      // Charge les sessions (filtré par RLS via telemetry_sessions_coach_select)
-      const sess = await listPilotSessions(params.id);
-      if (cancelled) return;
-      setSessions(sess);
-      setLoading(false);
+        // Charge les sessions (filtré par RLS via telemetry_sessions_coach_select)
+        const sess = await listPilotSessions(params.id);
+        if (cancelled) return;
+        setSessions(sess);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
     return () => {
       cancelled = true;

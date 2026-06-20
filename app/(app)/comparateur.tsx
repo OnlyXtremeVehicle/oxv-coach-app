@@ -52,16 +52,20 @@ export default function ComparateurScreen() {
       return;
     }
     let cancelled = false;
-    listRecentAnalyses(profile.id, 100).then((rows) => {
-      if (cancelled) return;
-      setAnalyses(rows);
-      setLoading(false);
-      // Pré-sélection : les deux plus récentes
-      if (rows.length >= 2) {
-        setSelectedA(rows[1].telemetrySessionId);
-        setSelectedB(rows[0].telemetrySessionId);
-      }
-    });
+    listRecentAnalyses(profile.id, 100)
+      .then((rows) => {
+        if (cancelled) return;
+        setAnalyses(rows);
+        setLoading(false);
+        // Pré-sélection : les deux plus récentes
+        if (rows.length >= 2) {
+          setSelectedA(rows[1].telemetrySessionId);
+          setSelectedB(rows[0].telemetrySessionId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

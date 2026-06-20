@@ -45,8 +45,11 @@ export default function ObjectifsScreen() {
 
   const reload = async () => {
     setLoading(true);
-    setGoals(await listMyGoals());
-    setLoading(false);
+    try {
+      setGoals(await listMyGoals());
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

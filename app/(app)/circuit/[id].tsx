@@ -48,15 +48,17 @@ export default function CircuitDetailScreen() {
   useEffect(() => {
     let cancelled = false;
     if (!circuitId) return;
-    Promise.all([fetchDirectoryCircuits(), listCircuitServices(circuitId)]).then(
-      ([circuits, svcs]) => {
+    Promise.all([fetchDirectoryCircuits(), listCircuitServices(circuitId)])
+      .then(([circuits, svcs]) => {
         if (!cancelled) {
           setCircuit(circuits.find((c) => c.id === circuitId) ?? null);
           setServices(svcs);
           setLoading(false);
         }
-      }
-    );
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
