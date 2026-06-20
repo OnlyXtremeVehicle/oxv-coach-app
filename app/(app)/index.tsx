@@ -222,11 +222,13 @@ function ModePassive({
         <HubCard label="Lieux & partenaires" hint="Autour des circuits" href="/(app)/lieux" />
         <HubCard label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
         <HubCard label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
-        <HubCard
-          label="Aperçu du tracé 3D"
-          hint="Démonstration — Haute Saintonge"
-          href="/(app)/debug-circuit"
-        />
+        {__DEV__ ? (
+          <HubCard
+            label="Aperçu du tracé 3D"
+            hint="Démonstration — Haute Saintonge"
+            href="/(app)/debug-circuit"
+          />
+        ) : null}
       </View>
     </View>
   );
