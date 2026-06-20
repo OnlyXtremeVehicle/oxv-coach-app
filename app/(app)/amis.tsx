@@ -46,15 +46,18 @@ export default function AmisScreen() {
 
   const reload = useCallback(async () => {
     if (!profile?.id) return;
-    const [a, r, s] = await Promise.all([
-      listAcceptedFriends(profile.id),
-      listPendingReceived(profile.id),
-      listPendingSent(profile.id),
-    ]);
-    setAccepted(a);
-    setReceived(r);
-    setSent(s);
-    setLoading(false);
+    try {
+      const [a, r, s] = await Promise.all([
+        listAcceptedFriends(profile.id),
+        listPendingReceived(profile.id),
+        listPendingSent(profile.id),
+      ]);
+      setAccepted(a);
+      setReceived(r);
+      setSent(s);
+    } finally {
+      setLoading(false);
+    }
   }, [profile?.id]);
 
   useEffect(() => {

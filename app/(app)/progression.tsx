@@ -47,12 +47,16 @@ export default function ProgressionScreen() {
       return;
     }
     let cancelled = false;
-    listRecentAnalyses(profile.id, 100).then((rows) => {
-      if (!cancelled) {
-        setAnalyses(rows);
-        setLoading(false);
-      }
-    });
+    listRecentAnalyses(profile.id, 100)
+      .then((rows) => {
+        if (!cancelled) {
+          setAnalyses(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

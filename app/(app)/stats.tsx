@@ -39,11 +39,15 @@ export default function StatsScreen() {
       return;
     }
     let cancelled = false;
-    loadPilotStats(profile.id).then((s) => {
-      if (cancelled) return;
-      setStats(s);
-      setLoading(false);
-    });
+    loadPilotStats(profile.id)
+      .then((s) => {
+        if (cancelled) return;
+        setStats(s);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

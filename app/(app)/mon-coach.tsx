@@ -31,19 +31,26 @@ export default function MonCoachScreen() {
   const [loading, setLoading] = useState(true);
 
   const reload = async () => {
-    const rows = await listMyCoaches();
-    setCoaches(rows);
-    setLoading(false);
+    try {
+      const rows = await listMyCoaches();
+      setCoaches(rows);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     let cancelled = false;
-    listMyCoaches().then((rows) => {
-      if (!cancelled) {
-        setCoaches(rows);
-        setLoading(false);
-      }
-    });
+    listMyCoaches()
+      .then((rows) => {
+        if (!cancelled) {
+          setCoaches(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

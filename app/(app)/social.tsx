@@ -31,12 +31,16 @@ export default function SocialScreen() {
 
   useEffect(() => {
     let cancelled = false;
-    listSocialPings().then((rows) => {
-      if (!cancelled) {
-        setPings(rows);
-        setLoading(false);
-      }
-    });
+    listSocialPings()
+      .then((rows) => {
+        if (!cancelled) {
+          setPings(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
