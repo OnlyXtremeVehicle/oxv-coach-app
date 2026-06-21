@@ -8,17 +8,22 @@
  * pas activée par l'admin, l'écran l'indique sobrement sans rien exposer.
  *
  * Doctrine : lecture factuelle, aucun classement, vouvoiement.
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button. Logique inchangée.
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Link, router, useFocusEffect } from 'expo-router';
 
 import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { type Roulage, ROULAGE_STATUS_LABELS, splitRoulagesByTime } from '@/services/roulagesLogic';
 import { listMyRoulages } from '@/services/roulagesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateTime } from '@/utils/format';
 
 export default function CoachRoulagesScreen() {
@@ -43,87 +48,68 @@ export default function CoachRoulagesScreen() {
   );
 
   if (permLoading) {
-    return <Centered>{<ActivityIndicator color={colors.text.secondary} />}</Centered>;
+    return (
+      <Screen scroll={false}>
+        <AppBar title="ROULAGES" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
+    );
   }
 
   // Feature gardée : permission non accordée → message sobre.
   if (!permissions.canManageOwnSessions) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-        <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
+      <Screen>
+        <AppBar title="ROULAGES" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
           <Header />
-          <View
-            style={{
-              marginTop: spacing.xl,
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-            }}
-          >
-            <Text style={[typography.manifest, { color: colors.text.secondary }]}>
+          <Card style={{ marginTop: theme.spacing.xl }}>
+            <Text style={s.manifest}>
               La gestion des roulages n&apos;est pas activée sur votre compte.
             </Text>
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.md }]}
-            >
+            <Text style={s.caption}>
               Cette fonctionnalité est ouverte au cas par cas par l&apos;équipe OXV.
             </Text>
-          </View>
-          <BackLink />
-        </ScrollView>
-      </SafeAreaView>
+          </Card>
+        </View>
+      </Screen>
     );
   }
 
   const { upcoming, past } = splitRoulagesByTime(roulages, new Date().toISOString());
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
+    <Screen>
+      <AppBar title="ROULAGES" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Header />
 
-        <Link href={'/(coach)/roulages/nouveau' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: spacing.xl,
-              marginBottom: spacing.xl,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.background.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Créer un roulage
-            </Text>
-          </Pressable>
-        </Link>
+        <View style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
+          <Link href={'/(coach)/roulages/nouveau' as never} asChild>
+            <Button label="Créer un roulage" />
+          </Link>
+        </View>
 
         {loading ? (
-          <ActivityIndicator color={colors.text.secondary} style={{ marginTop: spacing.xl }} />
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            style={{ marginTop: theme.spacing.xl }}
+          />
         ) : roulages.length === 0 ? (
           <EmptyState />
         ) : (
           <>
             {upcoming.length > 0 ? (
-              <Section title="À VENIR">
+              <Section title="À venir">
                 {upcoming.map((r) => (
                   <RoulageCard key={r.id} roulage={r} />
                 ))}
               </Section>
             ) : null}
             {past.length > 0 ? (
-              <Section title="PASSÉS">
+              <Section title="Passés">
                 {past.map((r) => (
                   <RoulageCard key={r.id} roulage={r} muted />
                 ))}
@@ -131,29 +117,27 @@ export default function CoachRoulagesScreen() {
             ) : null}
           </>
         )}
-
-        <BackLink />
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function Header() {
   return (
     <>
-      <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>COACH OXV</Text>
-      <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>Vos roulages.</Text>
+      <Text style={s.eyebrow}>COACH OXV</Text>
+      <Text style={s.title}>Vos roulages.</Text>
     </>
   );
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: spacing.xxl }}>
-      <Text style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}>
-        {title}
-      </Text>
-      <View style={{ gap: spacing.md }}>{children}</View>
+    <View style={{ marginBottom: theme.spacing.xxl }}>
+      <View style={{ marginBottom: theme.spacing.md }}>
+        <SectionLabel>{title}</SectionLabel>
+      </View>
+      <View style={{ gap: theme.spacing.md }}>{children}</View>
     </View>
   );
 }
@@ -164,36 +148,18 @@ function RoulageCard({ roulage, muted }: { roulage: Roulage; muted?: boolean }) 
       href={{ pathname: '/(coach)/roulages/[id]', params: { id: roulage.id } } as never}
       asChild
     >
-      <Pressable
-        style={({ pressed }) => ({
-          padding: spacing.xl,
-          borderRadius: borderRadius.lg,
-          borderWidth: 0.5,
-          borderColor: muted ? colors.border.subtle : colors.accent.coach,
-          backgroundColor: colors.background.secondary,
-          opacity: pressed ? 0.85 : muted ? 0.7 : 1,
-        })}
-      >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.title,
-              fontWeight: fontWeight.light,
-              flex: 1,
-            }}
-          >
-            {roulage.title}
+      <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : muted ? 0.7 : 1 })}>
+        <Card style={muted ? undefined : { borderColor: theme.palette.coach }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+            <Text style={[s.cardTitle, { flex: 1 }]}>{roulage.title}</Text>
+            {roulage.status !== 'open' ? (
+              <Text style={s.statusLabel}>{ROULAGE_STATUS_LABELS[roulage.status]}</Text>
+            ) : null}
+          </View>
+          <Text style={[s.caption, { marginTop: theme.spacing.xs }]}>
+            {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
           </Text>
-          {roulage.status !== 'open' ? (
-            <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-              {ROULAGE_STATUS_LABELS[roulage.status]}
-            </Text>
-          ) : null}
-        </View>
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
-          {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
-        </Text>
+        </Card>
       </Pressable>
     </Link>
   );
@@ -201,52 +167,55 @@ function RoulageCard({ roulage, muted }: { roulage: Roulage; muted?: boolean }) 
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun roulage pour l&apos;instant.
-      </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={[s.manifest, { textAlign: 'center' }]}>Aucun roulage pour l&apos;instant.</Text>
+      <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.md }]}>
         Créez-en un pour convier vos pilotes.
       </Text>
-    </View>
+    </Card>
   );
 }
 
-function BackLink() {
-  return (
-    <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-      <Pressable accessibilityRole="button" onPress={() => router.back()}>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-function Centered({ children }: { children: React.ReactNode }) {
-  return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      {children}
-    </SafeAreaView>
-  );
-}
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  cardTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  statusLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+};

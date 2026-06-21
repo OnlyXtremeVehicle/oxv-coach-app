@@ -8,24 +8,21 @@
  *
  * Doctrine : c'est le coach (professionnel agréé) qui apporte ce contexte ;
  * OXV ne fournit que l'outil. Ton sobre, vouvoiement, aucun jugement imposé.
+ *
+ * Reskin V2 : Screen + AppBar, SectionLabel/Button du kit. Logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { contextHasContent } from '@/services/coachContextLogic';
 import { getSessionContext, upsertSessionContext } from '@/services/coachSessionContextService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachContexteScreen() {
   const params = useLocalSearchParams<{ pilotId?: string; sessionId?: string }>();
@@ -76,22 +73,20 @@ export default function CoachContexteScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen>
+      <AppBar title="CONTEXTE" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>CONTEXTE</Text>
-          <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>La séance.</Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-          >
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+          <Text style={s.title}>La séance.</Text>
+          <Text style={s.subtitle}>
             Ce que le capteur ne capte pas. Visible par votre pilote sur son bilan.
           </Text>
 
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={s.caption}>Chargement…</Text>
           ) : (
             <>
               <Field
@@ -120,53 +115,20 @@ export default function CoachContexteScreen() {
                 multiline
               />
 
-              {saved ? (
-                <Text
-                  style={{
-                    color: colors.margin.green,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  Contexte enregistré.
-                </Text>
-              ) : null}
+              {saved ? <Text style={s.savedNote}>Contexte enregistré.</Text> : null}
 
-              <Pressable
-                accessibilityRole="button"
-                disabled={saving || !pilotId || !sessionId}
+              <Button
+                label={
+                  saving ? 'Enregistrement…' : hasContent ? 'Enregistrer' : 'Effacer le contexte'
+                }
                 onPress={onSave}
-                style={({ pressed }) => ({
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.accent.coach,
-                  alignItems: 'center',
-                  opacity: saving || !pilotId || !sessionId ? 0.5 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: colors.background.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  {saving ? 'Enregistrement…' : hasContent ? 'Enregistrer' : 'Effacer le contexte'}
-                </Text>
-              </Pressable>
+                disabled={saving || !pilotId || !sessionId}
+              />
             </>
           )}
-
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-            <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -184,31 +146,67 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.sm }]}>
-        {label.toUpperCase()}
-      </Text>
+    <View style={{ marginBottom: theme.spacing.lg }}>
+      <View style={{ marginBottom: theme.spacing.sm }}>
+        <SectionLabel>{label.toUpperCase()}</SectionLabel>
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text.tertiary}
+        placeholderTextColor={theme.palette.creamMute}
         multiline={multiline}
         maxLength={280}
         accessibilityLabel={label}
-        style={{
-          borderWidth: 0.5,
-          borderColor: colors.border.medium,
-          borderRadius: borderRadius.md,
-          backgroundColor: colors.background.secondary,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          minHeight: multiline ? 72 : undefined,
-          textAlignVertical: multiline ? 'top' : 'center',
-        }}
+        style={[s.input, multiline ? s.inputMultiline : null]}
       />
     </View>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xxl,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  savedNote: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: theme.dataColors.accel,
+    marginBottom: theme.spacing.md,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.palette.card2,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    textAlignVertical: 'center' as const,
+  },
+  inputMultiline: {
+    minHeight: 72,
+    textAlignVertical: 'top' as const,
+  },
+};

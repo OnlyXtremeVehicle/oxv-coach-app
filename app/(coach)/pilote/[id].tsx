@@ -4,11 +4,13 @@
  * Lecture seule. Tap sur une session → ouvre l'écran bilan existant
  * (/(app)/bilan?sessionId=xxx) qui fonctionne grâce aux RLS coach SELECT
  * sur app_session_analyses et autres tables analyses.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Segmented/Button. Logique
+ * inchangée (sélection comparaison FIFO, navigation bilan/contexte/priorités).
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
@@ -19,10 +21,18 @@ import {
   listPilotSessions,
 } from '@/services/coachService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateLong } from '@/utils/format';
 
 type Mode = 'browse' | 'compare';
+
+// Couleurs de zone de marge (donnée, toujours doublée du libellé marginLabelOf).
+const ZONE_COLORS = { green: '#97C459', yellow: '#EF9F27', red: theme.palette.red } as const;
 
 export default function CoachPilotDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -85,57 +95,36 @@ export default function CoachPilotDetailScreen() {
     : 'Chargement…';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>PILOTE SUIVI</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.lg }]}>
-          {fullName}
-        </Text>
+    <Screen>
+      <AppBar title="PILOTE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>PILOTE SUIVI</Text>
+        <Text style={s.title}>{fullName}</Text>
 
         {/* Priorisation du bilan (§10.3c-B) */}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({ pathname: '/(coach)/priorites', params: { pilotId: params.id } } as never)
-          }
-          style={({ pressed }) => ({
-            marginBottom: spacing.xxl,
-            padding: spacing.md,
-            borderRadius: borderRadius.md,
-            borderWidth: 0.5,
-            borderColor: colors.accent.coach,
-            alignItems: 'center',
-            opacity: pressed ? 0.7 : 1,
-          })}
-        >
-          <Text
-            style={{
-              color: colors.accent.coach,
-              fontSize: fontSize.caption,
-              fontWeight: fontWeight.medium,
-            }}
-          >
-            Priorités du bilan
-          </Text>
-        </Pressable>
+        <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
+          <Button
+            label="Priorités du bilan"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/priorites',
+                params: { pilotId: params.id },
+              } as never)
+            }
+          />
+        </View>
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.caption}>Chargement…</Text>
         ) : sessions.length === 0 ? (
           <EmptyState />
         ) : (
           <>
-            <View
-              style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: spacing.md,
-              }}
-            >
-              <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>
-                {sessions.length} {sessions.length === 1 ? 'SESSION' : 'SESSIONS'}
-              </Text>
+            <View style={s.rowBetween}>
+              <SectionLabel>
+                {`${sessions.length} ${sessions.length === 1 ? 'SESSION' : 'SESSIONS'}`}
+              </SectionLabel>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
@@ -143,30 +132,19 @@ export default function CoachPilotDetailScreen() {
                   setSelectedIds([]);
                 }}
               >
-                <Text
-                  style={{
-                    color: colors.accent.coach,
-                    fontSize: fontSize.caption,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
+                <Text style={s.action}>
                   {mode === 'browse' ? 'Comparer 2 sessions' : 'Annuler'}
                 </Text>
               </Pressable>
             </View>
 
             {mode === 'compare' ? (
-              <Text
-                style={[
-                  typography.caption,
-                  { color: colors.text.tertiary, marginBottom: spacing.md },
-                ]}
-              >
+              <Text style={[s.caption, { marginTop: theme.spacing.md }]}>
                 Sélectionnez deux sessions à comparer ({selectedIds.length}/2).
               </Text>
             ) : null}
 
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
               {sessions.map((session) => (
                 <SessionRow
                   key={session.id}
@@ -180,44 +158,24 @@ export default function CoachPilotDetailScreen() {
             </View>
 
             {mode === 'compare' ? (
-              <Pressable
-                accessibilityRole="button"
-                disabled={!canCompare}
-                onPress={openComparison}
-                style={{
-                  marginTop: spacing.xl,
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: canCompare ? colors.accent.coach : colors.background.secondary,
-                  borderWidth: 0.5,
-                  borderColor: canCompare ? colors.accent.coach : colors.border.subtle,
-                  alignItems: 'center',
-                  opacity: canCompare ? 1 : 0.5,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.semibold,
-                  }}
-                >
-                  Ouvrir le comparatif
-                </Text>
-              </Pressable>
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <Button
+                  label="Ouvrir le comparatif"
+                  disabled={!canCompare}
+                  onPress={openComparison}
+                />
+              </View>
             ) : null}
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Retour à mes pilotes
-            </Text>
+            <Text style={s.back}>Retour à mes pilotes</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -251,30 +209,13 @@ function SessionRow({
         }}
       />
       <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.regular,
-          }}
-        >
-          {dateStr}
-        </Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
+        <Text style={s.sessionDate}>{dateStr}</Text>
+        <Text style={[s.caption, { marginTop: theme.spacing.xs }]}>
           {session.circuitName ?? 'Beltoise'} · {lapStr}
           {session.marginZone ? ` · ${marginLabelOf(session.marginZone)}` : ''}
         </Text>
       </View>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.title,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {marginStr}
-      </Text>
+      <Text style={s.sessionValue}>{marginStr}</Text>
     </>
   );
 
@@ -284,33 +225,25 @@ function SessionRow({
         accessibilityRole="checkbox"
         accessibilityState={{ checked: selected }}
         onPress={onToggle}
-        style={({ pressed }) => ({
-          padding: spacing.lg,
-          borderRadius: borderRadius.md,
-          borderWidth: selected ? 1.5 : 0.5,
-          borderColor: selected ? colors.accent.coach : colors.border.subtle,
-          backgroundColor: selected ? colors.background.elevated : colors.background.secondary,
-          opacity: pressed ? 0.85 : 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: spacing.lg,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
-        {rowContent}
+        <Card
+          style={{
+            borderColor: selected ? theme.palette.coach : theme.palette.line,
+            borderWidth: selected ? 1.5 : 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: theme.spacing.md,
+          }}
+        >
+          {rowContent}
+        </Card>
       </Pressable>
     );
   }
 
   return (
-    <View
-      style={{
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        overflow: 'hidden',
-      }}
-    >
+    <Card style={{ padding: 0, overflow: 'hidden' }}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`Ouvrir le bilan du ${dateStr}`}
@@ -318,11 +251,11 @@ function SessionRow({
           router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
         }
         style={({ pressed }) => ({
-          padding: spacing.lg,
+          padding: theme.spacing.md,
           opacity: pressed ? 0.85 : 1,
           flexDirection: 'row',
           alignItems: 'center',
-          gap: spacing.lg,
+          gap: theme.spacing.md,
         })}
       >
         {rowContent}
@@ -338,59 +271,93 @@ function SessionRow({
           } as never)
         }
         style={({ pressed }) => ({
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.sm,
-          borderTopWidth: 0.5,
-          borderTopColor: colors.border.subtle,
+          paddingHorizontal: theme.spacing.md,
+          paddingVertical: theme.spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: theme.palette.line,
           opacity: pressed ? 0.7 : 1,
         })}
       >
-        <Text
-          style={{
-            color: colors.accent.coach,
-            fontSize: fontSize.caption,
-            fontWeight: fontWeight.medium,
-          }}
-        >
-          Contexte de séance
-        </Text>
+        <Text style={s.action}>Contexte de séance</Text>
       </Pressable>
-    </View>
+    </Card>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucune session pour ce pilote.
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={[s.manifest, { textAlign: 'center' }]}>Aucune session pour ce pilote.</Text>
+      <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.md }]}>
+        Les sessions apparaissent ici dès qu&apos;elles sont analysées.
       </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
-        Les sessions apparaissent ici dès qu'elles sont analysées.
-      </Text>
-    </View>
+    </Card>
   );
 }
 
 function colorForZone(zone: MarginZone | null): string {
-  if (!zone) return colors.text.tertiary;
+  if (!zone) return theme.palette.creamMute;
   return zone === 'green'
-    ? colors.margin.green
+    ? ZONE_COLORS.green
     : zone === 'yellow'
-      ? colors.margin.yellow
-      : colors.margin.red;
+      ? ZONE_COLORS.yellow
+      : ZONE_COLORS.red;
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  rowBetween: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+  },
+  action: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 1,
+    color: theme.palette.coach,
+  },
+  sessionDate: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  sessionValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.value,
+    color: theme.palette.cream,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.micro,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

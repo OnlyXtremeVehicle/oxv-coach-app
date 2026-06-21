@@ -8,11 +8,12 @@
  *
  * Doctrine : factuel, vouvoiement, pas d'emoji. Aucune donnée d'autrui au-delà
  * de la liste blanche n'existe pour le spectateur.
+ * Reskin V2 : Screen + AppBar (écran partagé public, lecture seule, sans
+ * flèche de retour). La RPC et la logique d'accès sont inchangées.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -20,7 +21,11 @@ import {
   type SharedProgression,
   fetchSharedProgression,
 } from '@/services/sharesService';
-import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 const SCOPE_LABELS: Record<string, string> = {
   last_session: 'Dernière session',
@@ -60,102 +65,112 @@ export default function SharedProgressionScreen() {
     };
   }, [token]);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>
-          PROGRESSION PARTAGÉE
-        </Text>
+  if (loading) {
+    return (
+      <Screen scroll={false}>
+        <AppBar title="PROGRESSION PARTAGÉE" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
+    );
+  }
 
-        {loading ? (
-          <View style={{ paddingVertical: spacing.huge, alignItems: 'center' }}>
-            <ActivityIndicator color={colors.text.secondary} />
-          </View>
-        ) : !share ? (
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-            <Text
-              style={[typography.screenTitle, { textAlign: 'center', marginBottom: spacing.md }]}
-            >
+  return (
+    <Screen>
+      <AppBar title="PROGRESSION PARTAGÉE" />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        {!share ? (
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
+            <Text style={[s.screenTitle, { textAlign: 'center', marginBottom: theme.spacing.md }]}>
               Partage terminé.
             </Text>
-            <Text
-              style={[
-                typography.manifest,
-                { color: colors.text.tertiary, textAlign: 'center', paddingHorizontal: spacing.md },
-              ]}
-            >
+            <Text style={s.manifest}>
               Ce lien n'est plus accessible — révoqué, expiré, ou inconnu.
             </Text>
           </View>
         ) : (
           <>
-            <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>
-              {SCOPE_LABELS[share.scope] ?? 'Progression'}
-            </Text>
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.sm }]}
-            >
+            <Text style={s.screenTitle}>{SCOPE_LABELS[share.scope] ?? 'Progression'}</Text>
+            <Text style={s.subtitle}>
               {share.expiresAt
                 ? `Accessible jusqu'au ${new Date(share.expiresAt).toLocaleDateString('fr-FR')}`
                 : 'Sans date de fin'}
             </Text>
 
-            <Text
-              style={[
-                typography.eyebrow,
-                { color: colors.text.tertiary, marginTop: spacing.xxl, marginBottom: spacing.md },
-              ]}
-            >
-              CE QUI EST PARTAGÉ
-            </Text>
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <SectionLabel>Ce qui est partagé</SectionLabel>
+            </View>
             {share.includedMetrics.length === 0 ? (
-              <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+              <Text style={[s.subtitle, { marginTop: theme.spacing.md }]}>
                 Aucune métrique n'a été incluse dans ce partage.
               </Text>
             ) : (
-              <View style={{ gap: spacing.sm }}>
+              <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
                 {share.includedMetrics.map((key) => (
-                  <View
-                    key={key}
-                    style={{
-                      padding: spacing.lg,
-                      borderRadius: borderRadius.lg,
-                      borderWidth: 0.5,
-                      borderColor: colors.border.subtle,
-                      backgroundColor: colors.background.secondary,
-                    }}
-                  >
-                    <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
-                      {METRIC_LABEL[key] ?? key}
-                    </Text>
-                  </View>
+                  <Card key={key}>
+                    <Text style={s.metric}>{METRIC_LABEL[key] ?? key}</Text>
+                  </Card>
                 ))}
               </View>
             )}
 
-            <Text
-              style={[
-                typography.caption,
-                {
-                  color: colors.text.tertiary,
-                  fontStyle: 'italic',
-                  marginTop: spacing.xxl,
-                  paddingHorizontal: spacing.md,
-                  textAlign: 'center',
-                },
-              ]}
-            >
-              Vous ne voyez que ce que ce pilote a choisi d'exposer.
-            </Text>
+            <Text style={s.note}>Vous ne voyez que ce que ce pilote a choisi d'exposer.</Text>
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
+
+const s = {
+  screenTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.2,
+    marginTop: theme.spacing.sm,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
+  },
+  metric: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  note: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.md,
+    textAlign: 'center' as const,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

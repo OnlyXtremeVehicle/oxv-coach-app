@@ -6,17 +6,22 @@
  *
  * Ces repères sont superposés à la donnée de vos élèves, étiquetés « Repère
  * de votre coach ». Descriptif, attribué — jamais une consigne.
+ *
+ * Reskin V2 : Screen + AppBar, Card, typo/couleurs @/theme/v2. Logique
+ * (chargement des repères, navigation vers l'éditeur) inchangée.
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type CoachCornerReference, referenceHasContent } from '@/services/coachReferenceLogic';
 import { listMyCornerReferences } from '@/services/coachReferenceService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 
 export default function CoachReperesScreen() {
   const [byIndex, setByIndex] = useState<Map<number, CoachCornerReference>>(new Map());
@@ -39,21 +44,22 @@ export default function CoachReperesScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>MES REPÈRES</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>Vos repères.</Text>
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-        >
+    <Screen>
+      <AppBar title="REPÈRES" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={[s.eyebrow, { color: theme.palette.coach }]}>MES REPÈRES</Text>
+        <Text style={s.title}>Vos repères.</Text>
+        <Text style={s.manifest}>
           Vos repères par virage, superposés à la donnée de vos élèves. Des repères, jamais des
           consignes.
         </Text>
 
         {loading ? (
-          <ActivityIndicator color={colors.text.secondary} />
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <ActivityIndicator color={theme.palette.creamMute} />
+          </View>
         ) : (
-          <View style={{ gap: spacing.md }}>
+          <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.xxl }}>
             {BELTOISE_CORNERS.map((corner) => {
               const ref = byIndex.get(corner.index);
               const filled = ref ? referenceHasContent(ref) : false;
@@ -68,61 +74,46 @@ export default function CoachReperesScreen() {
                       params: { index: String(corner.index) },
                     } as never)
                   }
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: spacing.lg,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor: filled ? colors.accent.coach : colors.border.subtle,
-                    backgroundColor: colors.background.secondary,
-                    opacity: pressed ? 0.85 : 1,
-                  })}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                 >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: colors.text.primary,
-                        fontSize: fontSize.body,
-                        fontWeight: fontWeight.medium,
-                      }}
-                    >
-                      {String(corner.index).padStart(2, '0')} · {corner.name}
-                    </Text>
-                    {filled && ref ? (
-                      <Text
-                        style={[
-                          typography.caption,
-                          { color: colors.text.tertiary, marginTop: spacing.xs },
-                        ]}
-                      >
-                        {summarizeReference(ref)}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Text
+                  <Card
                     style={{
-                      color: filled ? colors.accent.coach : colors.text.tertiary,
-                      fontSize: fontSize.caption,
-                      fontWeight: fontWeight.medium,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderColor: filled ? theme.palette.coach : theme.palette.line,
                     }}
                   >
-                    {filled ? 'Modifier' : 'Ajouter'}
-                  </Text>
+                    <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+                      <Text style={s.cornerName}>
+                        {String(corner.index).padStart(2, '0')} · {corner.name}
+                      </Text>
+                      {filled && ref ? (
+                        <Text style={s.cornerSummary}>{summarizeReference(ref)}</Text>
+                      ) : null}
+                    </View>
+                    <Text
+                      style={[
+                        s.action,
+                        { color: filled ? theme.palette.coach : theme.palette.creamMute },
+                      ]}
+                    >
+                      {filled ? 'Modifier' : 'Ajouter'}
+                    </Text>
+                  </Card>
                 </Pressable>
               );
             })}
           </View>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -133,3 +124,54 @@ function summarizeReference(ref: CoachCornerReference): string {
   if (ref.trajectoryNote) parts.push(ref.trajectoryNote);
   return parts.join(' · ');
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+  cornerName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  cornerSummary: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  action: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

@@ -8,48 +8,36 @@
  *
  * Rendu markdown volontairement minimal et sobre (titres, listes,
  * paragraphes) — l'emphase inline est retirée pour une lecture posée.
+ * Reskin V2 : Screen + AppBar, typographie de la charte. Le texte juridique
+ * et la logique de rendu markdown sont inchangés.
  */
 
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { LEGAL_DOCUMENTS } from '@/legal/legalDocuments';
-import { colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Screen } from '@/ui/Screen';
 
 export default function LegalDocScreen() {
   const { doc } = useLocalSearchParams<{ doc: string }>();
   const document = doc ? LEGAL_DOCUMENTS[doc] : undefined;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>DOCUMENT</Text>
-
+    <Screen>
+      <AppBar title="DOCUMENT" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {document ? (
           <>
-            <Text
-              style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-            >
-              {document.title}
-            </Text>
+            <Text style={styles.screenTitle}>{document.title}</Text>
             {renderMarkdown(document.body)}
           </>
         ) : (
-          <Text style={[typography.manifest, { marginTop: spacing.xxl }]}>
-            Document introuvable.
-          </Text>
+          <Text style={styles.manifest}>Document introuvable.</Text>
         )}
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={{ marginTop: spacing.xxxl, alignItems: 'center' }}
-        >
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-        </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -60,7 +48,7 @@ function renderMarkdown(body: string) {
     const t = line.trim();
     const key = `l${i}`;
 
-    if (t === '') return <View key={key} style={{ height: spacing.sm }} />;
+    if (t === '') return <View key={key} style={{ height: theme.spacing.sm }} />;
     if (t === '---' || t === '***' || t === '___') return <View key={key} style={styles.hr} />;
     if (t.startsWith('### '))
       return (
@@ -101,44 +89,62 @@ function renderMarkdown(body: string) {
 }
 
 const styles = StyleSheet.create({
+  screenTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.2,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xxl,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic',
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.xxl,
+  },
   h1: {
-    color: colors.text.primary,
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.regular,
-    marginTop: spacing.xl,
-    marginBottom: spacing.md,
+    fontFamily: theme.fonts.display,
+    color: theme.palette.cream,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   h2: {
-    color: colors.text.primary,
-    fontSize: fontSize.body,
-    fontWeight: fontWeight.medium,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
+    fontFamily: theme.fonts.bodySemi,
+    color: theme.palette.cream,
+    fontSize: theme.fontSize.bodyLg,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.sm,
   },
   h3: {
-    color: colors.text.secondary,
-    fontSize: fontSize.body,
-    fontWeight: fontWeight.medium,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
+    fontFamily: theme.fonts.bodyMedium,
+    color: theme.palette.creamSoft,
+    fontSize: theme.fontSize.body,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
   },
   para: {
-    color: colors.text.secondary,
-    fontSize: fontSize.body,
-    fontWeight: fontWeight.light,
-    lineHeight: fontSize.body * 1.6,
-    marginBottom: spacing.xs,
+    fontFamily: theme.fonts.bodyLight,
+    color: theme.palette.creamSoft,
+    fontSize: theme.fontSize.body,
+    lineHeight: theme.fontSize.body * 1.6,
+    marginBottom: theme.spacing.xs,
   },
   bullet: {
-    paddingLeft: spacing.md,
+    paddingLeft: theme.spacing.md,
   },
   quote: {
     fontStyle: 'italic',
-    color: colors.text.tertiary,
+    color: theme.palette.creamMute,
   },
   hr: {
-    height: 0.5,
-    backgroundColor: colors.border.subtle,
-    marginVertical: spacing.lg,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: theme.palette.line,
+    marginVertical: theme.spacing.lg,
   },
 });
