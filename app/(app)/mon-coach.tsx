@@ -9,11 +9,13 @@
  *   - Le consentement est libre. L'app n'insiste pas, ne moralise pas.
  *   - Pas d'instruction à donner son accord — c'est strictement neutre.
  *   - Le pilote peut révoquer à tout moment, sans justification.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, typo/couleurs
+ * @/theme/v2 (accent coach neutre). Logique de consentement inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
@@ -23,7 +25,12 @@ import {
   listMyCoaches,
   revokeConsent,
 } from '@/services/pilotConsentService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateLong } from '@/utils/format';
 
 export default function MonCoachScreen() {
@@ -68,25 +75,28 @@ export default function MonCoachScreen() {
 
   const activeAssignments = coaches.filter((c) => c.active);
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>MON COACH</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-          Le regard d'un autre.
-        </Text>
-        <Text
-          style={[typography.manifest, { color: colors.text.secondary, marginBottom: spacing.xxl }]}
-        >
-          Vous décidez qui voit vos sessions.
-        </Text>
+  if (loading) {
+    return (
+      <Screen scroll={false}>
+        <AppBar title="MON COACH" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
+    );
+  }
 
-        {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
-        ) : activeAssignments.length === 0 ? (
+  return (
+    <Screen>
+      <AppBar title="MON COACH" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Le regard d&apos;un autre.</Text>
+        <Text style={s.manifest}>Vous décidez qui voit vos sessions.</Text>
+
+        {activeAssignments.length === 0 ? (
           <EmptyState />
         ) : (
-          <View style={{ gap: spacing.md }}>
+          <View style={{ gap: theme.spacing.md }}>
             {activeAssignments.map((assignment) => (
               <CoachCard
                 key={assignment.id}
@@ -100,39 +110,14 @@ export default function MonCoachScreen() {
         {/* Accès aux invitations de roulages (§8). Le pilote convié par un
             coach gère ici sa présence. */}
         <Link href={'/(app)/roulages' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: spacing.xl,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.accent.coach,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Mes invitations aux roulages
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <Button label="Mes invitations aux roulages" variant="ghost" />
+          </View>
         </Link>
 
         <ExplainerCard />
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -152,15 +137,7 @@ function CoachCard({
     : "Vous n'avez pas encore consenti";
 
   return (
-    <View
-      style={{
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: consented ? colors.accent.coach : colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
+    <Card style={consented ? { borderColor: theme.palette.coach } : undefined}>
       <View
         style={{
           flexDirection: 'row',
@@ -168,128 +145,120 @@ function CoachCard({
           alignItems: 'flex-start',
         }}
       >
-        <View style={{ flex: 1, marginRight: spacing.lg }}>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.title,
-              fontWeight: fontWeight.light,
-            }}
-          >
-            {fullName}
-          </Text>
+        <View style={{ flex: 1, marginRight: theme.spacing.lg }}>
+          <Text style={s.coachName}>{fullName}</Text>
           <Text
             style={[
-              typography.caption,
-              {
-                color: consented ? colors.margin.green : colors.text.tertiary,
-                marginTop: spacing.sm,
-              },
+              s.coachMeta,
+              { color: consented ? theme.dataColors.accel : theme.palette.creamMute },
             ]}
           >
             {consentText}
           </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-          >
+          <Text style={[s.coachMeta, { marginTop: theme.spacing.xs }]}>
             Assigné par OXV le {formatDateLong(assignment.createdAt)}
           </Text>
         </View>
         <Switch
           value={consented}
           onValueChange={onToggle}
-          trackColor={{ false: colors.border.subtle, true: colors.accent.coach }}
-          thumbColor={colors.text.primary}
+          trackColor={{ false: theme.palette.line, true: theme.palette.coach }}
+          thumbColor={theme.palette.cream}
         />
       </View>
 
-      {assignment.notes ? (
-        <Text
-          style={[
-            typography.caption,
-            {
-              color: colors.text.secondary,
-              marginTop: spacing.md,
-              fontStyle: 'italic',
-              paddingTop: spacing.md,
-              borderTopWidth: 0.5,
-              borderTopColor: colors.border.subtle,
-            },
-          ]}
-        >
-          {assignment.notes}
-        </Text>
-      ) : null}
-    </View>
+      {assignment.notes ? <Text style={s.coachNotes}>{assignment.notes}</Text> : null}
+    </Card>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun coach assigné.
-      </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
-        Si l'équipe OXV vous assigne un coach, son nom apparaîtra ici. Vous resterez libre de
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Aucun coach assigné.</Text>
+      <Text style={s.emptyHint}>
+        Si l&apos;équipe OXV vous assigne un coach, son nom apparaîtra ici. Vous resterez libre de
         consentir ou non au partage de vos données.
       </Text>
-    </View>
+    </Card>
   );
 }
 
 function ExplainerCard() {
   return (
-    <View
-      style={{
-        marginTop: spacing.xxxl,
-        padding: spacing.xl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.sm }]}>
-        CE QUE LE COACH VOIT
-      </Text>
-      <Text
-        style={{
-          color: colors.text.secondary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.light,
-          lineHeight: fontSize.body * 1.6,
-          marginBottom: spacing.md,
-        }}
-      >
+    <Card style={{ marginTop: theme.spacing.xxl }}>
+      <SectionLabel>CE QUE LE COACH VOIT</SectionLabel>
+      <Text style={[s.explainerBody, { marginTop: theme.spacing.sm }]}>
         Quand vous consentez, votre coach voit vos sessions, vos analyses par virage, et votre
         progression. Il ne voit jamais votre email, votre téléphone ou vos documents.
       </Text>
-      <Text
-        style={{
-          color: colors.text.secondary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.light,
-          lineHeight: fontSize.body * 1.6,
-        }}
-      >
+      <Text style={[s.explainerBody, { marginTop: theme.spacing.md }]}>
         Vous pouvez retirer votre accord à tout moment. Le coach cessera immédiatement de voir vos
         données.
       </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginBottom: theme.spacing.xxl,
+  },
+  coachName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
+  },
+  coachMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  coachNotes: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: theme.spacing.md,
+  },
+  explainerBody: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.6,
+  },
+};

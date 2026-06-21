@@ -10,11 +10,13 @@
  * Doctrine : pas de notion de "score d'amitié", pas de classement, pas
  * de notifications agressives. Juste une liste sobre. La comparaison
  * entre amis est un partage volontaire entre copains, pas du coaching.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, typo/couleurs
+ * @/theme/v2. Logique d'amitiés (recherche, accept, révoque) inchangée.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -30,7 +32,12 @@ import {
   sendFriendRequest,
 } from '@/services/friendshipsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { timeAgoFr } from '@/utils/time';
 
 export default function AmisScreen() {
@@ -116,54 +123,40 @@ export default function AmisScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="AMIS" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>AMIS PILOTES</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Pour comparer, en miroir.
-        </Text>
+    <Screen>
+      <AppBar title="AMIS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Pour comparer, en miroir.</Text>
 
         {/* Bloc recherche */}
-        <View style={blockStyle}>
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>AJOUTER UN AMI</Text>
+        <Card style={{ marginBottom: theme.spacing.xxl }}>
+          <SectionLabel>AJOUTER UN AMI</SectionLabel>
           <TextInput
             value={searchHandle}
             onChangeText={setSearchHandle}
             placeholder="@handle du pilote"
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={theme.palette.creamMute}
             autoCapitalize="none"
             autoCorrect={false}
-            style={inputStyle}
+            style={s.input}
             accessibilityLabel="Handle du pilote à inviter"
           />
-          <Pressable
-            accessibilityRole="button"
-            disabled={searching || !searchHandle.trim()}
+          <Button
+            label={searching ? 'Recherche…' : 'Envoyer la demande'}
             onPress={handleSendRequest}
-            style={({ pressed }) => ({
-              ...primaryButtonStyle,
-              opacity: pressed || searching || !searchHandle.trim() ? 0.6 : 1,
-            })}
-          >
-            <Text style={primaryButtonTextStyle}>
-              {searching ? 'Recherche…' : 'Envoyer la demande'}
-            </Text>
-          </Pressable>
-        </View>
+            disabled={searching || !searchHandle.trim()}
+          />
+        </Card>
 
         {/* Demandes reçues */}
         {received.length > 0 && (
@@ -192,7 +185,7 @@ export default function AmisScreen() {
         {/* Mes amis acceptés */}
         <Section title={`MES AMIS (${accepted.length})`}>
           {accepted.length === 0 ? (
-            <Text style={emptyStyle}>
+            <Text style={s.empty}>
               Aucun ami pour l&apos;instant. Invitez un autre pilote OXV pour comparer vos bilans.
             </Text>
           ) : (
@@ -229,27 +222,9 @@ export default function AmisScreen() {
         )}
 
         {/* Phrase manifeste doctrinale */}
-        <Text
-          style={[
-            typography.manifest,
-            {
-              marginTop: spacing.huge,
-              textAlign: 'center',
-              color: colors.text.tertiary,
-              paddingHorizontal: spacing.md,
-            },
-          ]}
-        >
-          Comparer pour comprendre, pas pour départager.
-        </Text>
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+        <Text style={s.manifest}>Comparer pour comprendre, pas pour départager.</Text>
+      </View>
+    </Screen>
   );
 }
 
@@ -263,15 +238,8 @@ interface ActionDef {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: spacing.xxl }}>
-      <Text
-        style={[
-          typography.eyebrow,
-          { color: colors.text.tertiary, marginBottom: spacing.md, marginTop: spacing.lg },
-        ]}
-      >
-        {title}
-      </Text>
+    <View style={{ marginBottom: theme.spacing.xxl, gap: theme.spacing.sm }}>
+      <SectionLabel>{title}</SectionLabel>
       {children}
     </View>
   );
@@ -293,58 +261,25 @@ function FriendRow({
     : timeAgoFr(new Date(entry.requestedAt));
 
   const inner = (
-    <View
-      style={{
-        padding: spacing.lg,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        marginBottom: spacing.sm,
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-        }}
-      >
-        {displayName}
-      </Text>
-      <Text
-        style={{
-          color: colors.text.tertiary,
-          fontSize: fontSize.caption,
-          marginTop: spacing.xs,
-        }}
-      >
-        {subtitle}
-      </Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: spacing.sm,
-          marginTop: spacing.md,
-        }}
-      >
+    <Card>
+      <Text style={s.rowName}>{displayName}</Text>
+      <Text style={s.rowMeta}>{subtitle}</Text>
+      <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
         {actions.map((a) => (
           <Pressable
             key={a.label}
             accessibilityRole="button"
             onPress={a.onPress}
-            style={({ pressed }) => ({
-              ...(a.kind === 'primary' ? primaryChipStyle : subtleChipStyle),
-              opacity: pressed ? 0.7 : 1,
-            })}
+            style={({ pressed }) => [
+              a.kind === 'primary' ? s.chipPrimary : s.chipSubtle,
+              { opacity: pressed ? 0.7 : 1 },
+            ]}
           >
-            <Text style={a.kind === 'primary' ? primaryChipTextStyle : subtleChipTextStyle}>
-              {a.label}
-            </Text>
+            <Text style={a.kind === 'primary' ? s.chipPrimaryTxt : s.chipSubtleTxt}>{a.label}</Text>
           </Pressable>
         ))}
       </View>
-    </View>
+    </Card>
   );
 
   if (onPress) {
@@ -359,68 +294,83 @@ function FriendRow({
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-const blockStyle = {
-  padding: spacing.xl,
-  borderRadius: borderRadius.lg,
-  borderWidth: 0.5,
-  borderColor: colors.border.subtle,
-  backgroundColor: colors.background.secondary,
-  marginBottom: spacing.xxl,
-} as const;
-
-const inputStyle = {
-  borderWidth: 0.5,
-  borderColor: colors.border.medium,
-  borderRadius: borderRadius.md,
-  padding: spacing.md,
-  fontSize: fontSize.body,
-  color: colors.text.primary,
-  marginBottom: spacing.md,
-} as const;
-
-const primaryButtonStyle = {
-  padding: spacing.lg,
-  borderRadius: borderRadius.md,
-  backgroundColor: colors.accent.red,
-  alignItems: 'center',
-} as const;
-
-const primaryButtonTextStyle = {
-  color: colors.background.primary,
-  fontSize: fontSize.body,
-  fontWeight: fontWeight.medium,
-} as const;
-
-const primaryChipStyle = {
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.sm,
-  borderRadius: borderRadius.sm,
-  backgroundColor: colors.accent.red,
-} as const;
-
-const primaryChipTextStyle = {
-  color: colors.background.primary,
-  fontSize: fontSize.caption,
-  fontWeight: fontWeight.medium,
-} as const;
-
-const subtleChipStyle = {
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.sm,
-  borderRadius: borderRadius.sm,
-  borderWidth: 0.5,
-  borderColor: colors.border.medium,
-} as const;
-
-const subtleChipTextStyle = {
-  color: colors.text.secondary,
-  fontSize: fontSize.caption,
-} as const;
-
-const emptyStyle = {
-  color: colors.text.tertiary,
-  fontSize: fontSize.caption,
-  textAlign: 'center' as const,
-  padding: spacing.lg,
-  fontStyle: 'italic' as const,
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
+  },
+  input: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  empty: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    paddingVertical: theme.spacing.lg,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.md,
+  },
+  rowName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  rowMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  chipPrimary: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.palette.cream,
+  },
+  chipPrimaryTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: '#000',
+  },
+  chipSubtle: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+  },
+  chipSubtleTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
 };

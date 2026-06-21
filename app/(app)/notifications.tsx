@@ -1,5 +1,5 @@
 /**
- * Écran #23 — Notifications.
+ * Écran #23 — Notifications. Design V2 (charte oxv-mirror-app).
  *
  * 3 tabs en haut : À traiter / À découvrir / Archives.
  * Badges rouges uniquement sur "À traiter" quand il y a des actions
@@ -7,15 +7,18 @@
  *
  * V1 : tabs présents avec états vides pédagogiques. Le wiring push
  * réel (expo-notifications + Supabase Edge Function) arrive en sem 11.
+ * Reskin V2 : Screen + AppBar, Card, logique inchangée.
  */
 
 import { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { useUIStore } from '@/store/useUIStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 
 type Tab = 'todo' | 'discover' | 'archive';
 
@@ -30,28 +33,20 @@ export default function NotificationsScreen() {
   const unread = useUIStore((s) => s.unreadNotificationsCount);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>NOTIFICATIONS</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Vos messages
-        </Text>
+    <Screen>
+      <AppBar title="NOTIFICATIONS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Vos messages</Text>
 
         <TabBar value={tab} onChange={setTab} todoBadge={unread} />
 
-        <View style={{ marginTop: spacing.xxl }}>
+        <View style={{ marginTop: theme.spacing.xl }}>
           {tab === 'todo' ? <EmptyTab label="Rien à traiter." /> : null}
           {tab === 'discover' ? <EmptyTab label="Rien de nouveau pour le moment." /> : null}
           {tab === 'archive' ? <EmptyTab label="Aucun message archivé." /> : null}
         </View>
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -66,57 +61,33 @@ function TabBar({
 }) {
   const tabs: Tab[] = ['todo', 'discover', 'archive'];
   return (
-    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
       {tabs.map((t) => {
         const active = t === value;
         return (
           <Pressable
             accessibilityRole="button"
+            accessibilityState={{ selected: active }}
             key={t}
             onPress={() => onChange(t)}
             style={({ pressed }) => ({
               flex: 1,
-              paddingVertical: spacing.sm,
-              borderRadius: borderRadius.md,
+              paddingVertical: theme.spacing.sm,
+              borderRadius: theme.radius.pill,
               borderWidth: 1,
-              borderColor: active ? colors.accent.red : colors.border.subtle,
-              backgroundColor: active ? 'rgba(200, 16, 46, 0.10)' : 'transparent',
+              borderColor: active ? theme.palette.edge : theme.palette.line,
+              backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card2,
               alignItems: 'center',
               flexDirection: 'row',
               justifyContent: 'center',
-              gap: spacing.sm,
+              gap: theme.spacing.sm,
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Text
-              style={{
-                color: active ? colors.text.primary : colors.text.secondary,
-                fontSize: fontSize.caption,
-                fontWeight: active ? fontWeight.medium : fontWeight.regular,
-              }}
-            >
-              {TAB_LABELS[t]}
-            </Text>
+            <Text style={[s.tabT, active && s.tabTOn]}>{TAB_LABELS[t]}</Text>
             {t === 'todo' && todoBadge > 0 ? (
-              <View
-                style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: colors.accent.red,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: 10,
-                    fontWeight: fontWeight.semibold,
-                  }}
-                >
-                  {todoBadge > 9 ? '9+' : todoBadge}
-                </Text>
+              <View style={s.badge}>
+                <Text style={s.badgeT}>{todoBadge > 9 ? '9+' : todoBadge}</Text>
               </View>
             ) : null}
           </Pressable>
@@ -128,19 +99,48 @@ function TabBar({
 
 function EmptyTab({ label }: { label: string }) {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        {label}
-      </Text>
-    </View>
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTxt}>{label}</Text>
+    </Card>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  tabT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  tabTOn: { color: theme.palette.cream },
+  badge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: 4,
+    borderRadius: 9,
+    backgroundColor: theme.palette.red,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  badgeT: {
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+  },
+  emptyTxt: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+};
