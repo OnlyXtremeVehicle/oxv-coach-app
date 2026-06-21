@@ -54,6 +54,7 @@ interface NavTarget {
 }
 
 const NAV_TARGETS: NavTarget[] = [
+  { label: 'Débrief présentiel', href: '/(app)/debrief-presentiel' },
   { label: 'Signature de pilotage', href: '/(app)/signature' },
   { label: 'Régularité', href: '/(app)/regularite' },
   { label: 'Carte du circuit', href: '/(app)/carte' },
