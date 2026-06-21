@@ -11,17 +11,25 @@
  * Doctrine : chiffres factuels, aucun classement, aucune remise, vouvoiement.
  * Aucun chiffre fabriqué — le revenu n'apparaît que si des roulages sont
  * tarifés.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact, accent coach neutre.
+ * Logique inchangée (permissions, chargement, calculs de revenu).
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { loadCoachBusinessSummary } from '@/services/coachBusinessService';
 import { type CoachBusinessSummary } from '@/services/roulagesLogic';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatPriceCents } from '@/utils/format';
 
 export default function CoachBusinessScreen() {
@@ -51,195 +59,139 @@ export default function CoachBusinessScreen() {
 
   if (permLoading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="BUSINESS" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   // Feature gardée : permission non accordée → message sobre.
   if (!permissions.canViewBusinessDashboard) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-        <ScrollView contentContainerStyle={{ padding: spacing.xl }}>
+      <Screen>
+        <AppBar title="BUSINESS" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
           <Header />
-          <View
-            style={{
-              marginTop: spacing.xl,
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-            }}
-          >
-            <Text style={[typography.manifest, { color: colors.text.secondary }]}>
+          <Card style={{ marginTop: theme.spacing.xl }}>
+            <Text style={s.manifest}>
               Le tableau de bord business n&apos;est pas activé sur votre compte.
             </Text>
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.md }]}
-            >
+            <Text style={s.caption}>
               Cet accès est ouvert au cas par cas par l&apos;équipe OXV.
             </Text>
-          </View>
-          <BackLink />
-        </ScrollView>
-      </SafeAreaView>
+          </Card>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
+    <Screen>
+      <AppBar title="BUSINESS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Header />
 
         {loading || !summary ? (
-          <ActivityIndicator color={colors.text.secondary} style={{ marginTop: spacing.xxl }} />
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            style={{ marginTop: theme.spacing.xxl }}
+          />
         ) : (
-          <View style={{ marginTop: spacing.xl }}>
+          <View style={{ marginTop: theme.spacing.xl }}>
             {/* Revenu cumulé — l'indicateur central */}
-            <View
+            <Card
               style={{
-                padding: spacing.xl,
-                borderRadius: borderRadius.lg,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                backgroundColor: colors.background.secondary,
+                borderColor: theme.palette.coach,
                 alignItems: 'center',
-                marginBottom: spacing.xl,
+                paddingVertical: theme.spacing.xl,
+                marginBottom: theme.spacing.xl,
               }}
             >
-              <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>
-                REVENU DE VOS ROULAGES
-              </Text>
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: 44,
-                  fontWeight: fontWeight.light,
-                  fontFamily: 'Menlo',
-                  marginTop: spacing.sm,
-                }}
-              >
-                {formatPriceCents(summary.totalRevenueCents)}
-              </Text>
-              <Text
-                style={[
-                  typography.caption,
-                  { color: colors.text.tertiary, marginTop: spacing.xs, textAlign: 'center' },
-                ]}
-              >
+              <SectionLabel>Revenu de vos roulages</SectionLabel>
+              <Text style={s.hero}>{formatPriceCents(summary.totalRevenueCents)}</Text>
+              <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.xs }]}>
                 {summary.totalRevenueCents === 0
                   ? 'Renseignez un prix sur vos roulages pour suivre vos revenus.'
                   : 'Cumul des présences confirmées sur vos roulages tarifés.'}
               </Text>
-            </View>
+            </Card>
 
             {/* Stats secondaires */}
-            <View style={{ flexDirection: 'row', gap: spacing.xs }}>
-              <Stat
-                value={summary.pilotCount}
-                label={summary.pilotCount > 1 ? 'pilotes' : 'pilote'}
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <Fact
+                label={summary.pilotCount > 1 ? 'Pilotes' : 'Pilote'}
+                value={String(summary.pilotCount)}
               />
-              <Stat
-                value={summary.activeRoulageCount}
-                label={summary.activeRoulageCount > 1 ? 'roulages' : 'roulage'}
+              <Fact
+                label={summary.activeRoulageCount > 1 ? 'Roulages' : 'Roulage'}
+                value={String(summary.activeRoulageCount)}
               />
-              <Stat
-                value={summary.totalAccepted}
-                label={summary.totalAccepted > 1 ? 'présences' : 'présence'}
+              <Fact
+                label={summary.totalAccepted > 1 ? 'Présences' : 'Présence'}
+                value={String(summary.totalAccepted)}
               />
             </View>
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push('/(coach)/roulages' as never)}
-              style={({ pressed }) => ({
-                marginTop: spacing.xxl,
-                padding: spacing.lg,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.accent.coach,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
-                }}
-              >
-                Gérer mes roulages
-              </Text>
-            </Pressable>
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <Button
+                label="Gérer mes roulages"
+                variant="ghost"
+                onPress={() => router.push('/(coach)/roulages' as never)}
+              />
+            </View>
           </View>
         )}
-
-        <BackLink />
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function Header() {
   return (
     <>
-      <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>COACH OXV</Text>
-      <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>Votre activité.</Text>
+      <Text style={s.eyebrow}>COACH OXV</Text>
+      <Text style={s.title}>Votre activité.</Text>
     </>
   );
 }
 
-function Stat({ value, label }: { value: number; label: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={[
-          typography.eyebrow,
-          { color: colors.text.tertiary, marginTop: spacing.xs, textAlign: 'center' },
-        ]}
-      >
-        {label.toUpperCase()}
-      </Text>
-    </View>
-  );
-}
-
-function BackLink() {
-  return (
-    <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-      <Pressable accessibilityRole="button" onPress={() => router.back()}>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-      </Pressable>
-    </View>
-  );
-}
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  hero: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.display,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+};

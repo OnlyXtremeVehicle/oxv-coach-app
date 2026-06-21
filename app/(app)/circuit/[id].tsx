@@ -9,11 +9,12 @@
  * réservation (étape A). Annuaire neutre (roulages OXV et concurrents).
  *
  * Doctrine : factuel, sobre, aucun classement.
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel. Le tracé (CircuitTraceHero)
+ * et la logique de données sont inchangés.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
@@ -25,7 +26,11 @@ import {
   groupServicesByKind,
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 /**
  * Le tracé 3D n'est disponible que pour Haute Saintonge (seul circuit dont on a
@@ -66,16 +71,12 @@ export default function CircuitDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="CIRCUIT" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
@@ -83,83 +84,58 @@ export default function CircuitDetailScreen() {
   const groups = groupServicesByKind(services);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>CIRCUIT</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>{title}</Text>
+    <Screen>
+      <AppBar title="CIRCUIT" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>{title}</Text>
         {circuit && circuitSubtitle(circuit) ? (
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.sm }]}
-          >
-            {circuitSubtitle(circuit)}
-          </Text>
+          <Text style={s.subtitle}>{circuitSubtitle(circuit)}</Text>
         ) : null}
 
         {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
         {hasTrace3D(circuit) ? (
-          <View style={{ marginTop: spacing.xxl }}>
-            <Text
-              style={[
-                typography.eyebrow,
-                { color: colors.text.tertiary, marginBottom: spacing.md },
-              ]}
-            >
-              LE TRACÉ
-            </Text>
-            <CircuitTraceHero height={300} defaultLayer="geometry" />
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <SectionLabel>Le tracé</SectionLabel>
+            <View style={{ marginTop: theme.spacing.md }}>
+              <CircuitTraceHero height={300} defaultLayer="geometry" />
+            </View>
           </View>
         ) : null}
 
-        <Text
-          style={[
-            typography.eyebrow,
-            { color: colors.text.tertiary, marginTop: spacing.xxl, marginBottom: spacing.md },
-          ]}
-        >
-          AUTOUR DU CIRCUIT
-        </Text>
+        <View style={{ marginTop: theme.spacing.xxl }}>
+          <SectionLabel>Autour du circuit</SectionLabel>
+        </View>
 
         {groups.length === 0 ? (
-          <View
+          <Card
             style={{
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
               alignItems: 'center',
+              paddingVertical: theme.spacing.xxl,
+              marginTop: theme.spacing.md,
             }}
           >
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, textAlign: 'center' }]}
-            >
+            <Text style={s.emptyHint}>
               Les services autour de ce circuit seront référencés ici.
             </Text>
-          </View>
+          </Card>
         ) : (
           groups.map((group) => (
-            <View key={group.kind} style={{ marginBottom: spacing.xxl }}>
-              <Text
-                style={[typography.eyebrow, { color: colors.accent.red, marginBottom: spacing.md }]}
-              >
-                {SERVICE_KIND_LABELS[group.kind].toUpperCase()}
-              </Text>
-              <View style={{ gap: spacing.md }}>
-                {group.items.map((s) => (
-                  <ServiceCard key={s.id} service={s} />
-                ))}
-              </View>
+            <View key={group.kind} style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+              <SectionLabel>{SERVICE_KIND_LABELS[group.kind]}</SectionLabel>
+              {group.items.map((svc) => (
+                <ServiceCard key={svc.id} service={svc} />
+              ))}
             </View>
           ))
         )}
 
-        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -169,49 +145,19 @@ function ServiceCard({ service }: { service: CircuitService }) {
   };
 
   return (
-    <View
-      style={{
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-        }}
-      >
-        {service.name}
-      </Text>
-      {service.organizer ? (
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
-          {service.organizer}
-        </Text>
-      ) : null}
-      {service.description ? (
-        <Text
-          style={{
-            color: colors.text.secondary,
-            fontSize: fontSize.caption,
-            marginTop: spacing.sm,
-            lineHeight: fontSize.caption * 1.5,
-          }}
-        >
-          {service.description}
-        </Text>
-      ) : null}
-      {service.address ? (
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
-          {service.address}
-        </Text>
-      ) : null}
+    <Card>
+      <Text style={s.serviceName}>{service.name}</Text>
+      {service.organizer ? <Text style={s.serviceMeta}>{service.organizer}</Text> : null}
+      {service.description ? <Text style={s.serviceBody}>{service.description}</Text> : null}
+      {service.address ? <Text style={s.serviceAddr}>{service.address}</Text> : null}
 
       <View
-        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.md }}
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          gap: theme.spacing.sm,
+          marginTop: theme.spacing.md,
+        }}
       >
         {service.url ? <Action label="Site" onPress={() => openUrl(service.url)} /> : null}
         {service.contactEmail ? (
@@ -221,7 +167,7 @@ function ServiceCard({ service }: { service: CircuitService }) {
           <Action label="Téléphone" onPress={() => openUrl(`tel:${service.contactPhone}`)} />
         ) : null}
       </View>
-    </View>
+    </Card>
   );
 }
 
@@ -231,15 +177,77 @@ function Action({ label, onPress }: { label: string; onPress: () => void }) {
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingHorizontal: spacing.md,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.sm,
-        borderWidth: 0.5,
-        borderColor: colors.border.medium,
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.radius.sm,
+        borderWidth: 1,
+        borderColor: theme.palette.edge,
         opacity: pressed ? 0.7 : 1,
       })}
     >
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>{label}</Text>
+      <Text style={s.actionT}>{label}</Text>
     </Pressable>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.2,
+    marginTop: theme.spacing.sm,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  serviceName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  serviceMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  serviceBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.sm,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  serviceAddr: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  actionT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

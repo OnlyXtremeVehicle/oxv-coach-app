@@ -13,6 +13,9 @@
  *
  * Note : on n'a pas d'écran « liste de toutes les sessions » dédié —
  * cet écran joue ce rôle pour la V1.
+ *
+ * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
+ * rôle admin). Logique d'upload / suppression / caption inchangée.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -26,7 +29,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -41,8 +43,14 @@ import {
   uploadSessionMedia,
 } from '@/services/sessionMediaService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 import { formatDateLong } from '@/utils/format';
+
+// Bronze = couleur de RÔLE réservée à l'admin (doctrine).
+const BRONZE = '#B87333';
 
 interface SessionOption {
   id: string;
@@ -208,67 +216,53 @@ export default function AdminSessionsMediaScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>ADMIN OXV</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Médias par session
-        </Text>
+    <Screen>
+      <AppBar title="MÉDIAS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN OXV</Text>
+        <Text style={s.title}>Médias par session</Text>
 
         {/* Sélecteur session */}
-        <Text
-          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.sm }]}
-        >
-          1. CHOISIR UNE SESSION
-        </Text>
+        <Text style={s.sectionLabel}>1. CHOISIR UNE SESSION</Text>
         {loadingSessions ? (
-          <ActivityIndicator color={colors.text.secondary} />
+          <ActivityIndicator color={BRONZE} />
         ) : sessions.length === 0 ? (
-          <Text style={emptyStyle}>Aucune session complétée trouvée.</Text>
+          <Text style={s.empty}>Aucune session complétée trouvée.</Text>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={{ flexDirection: 'row', gap: spacing.sm, paddingVertical: spacing.sm }}>
-              {sessions.map((s) => {
-                const active = selectedSession?.id === s.id;
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: theme.spacing.sm,
+                paddingVertical: theme.spacing.sm,
+              }}
+            >
+              {sessions.map((session) => {
+                const active = selectedSession?.id === session.id;
                 const pilotName =
-                  [s.userFirstName, s.userLastName].filter(Boolean).join(' ').trim() ||
-                  `Pilote ${s.userId.slice(0, 6)}`;
+                  [session.userFirstName, session.userLastName].filter(Boolean).join(' ').trim() ||
+                  `Pilote ${session.userId.slice(0, 6)}`;
                 return (
                   <Pressable
-                    key={s.id}
+                    key={session.id}
                     accessibilityRole="button"
-                    onPress={() => setSelectedSession(s)}
+                    onPress={() => setSelectedSession(session)}
                     style={({ pressed }) => ({
-                      paddingHorizontal: spacing.md,
-                      paddingVertical: spacing.sm,
-                      borderRadius: borderRadius.md,
-                      borderWidth: 0.5,
-                      borderColor: active ? colors.accent.red : colors.border.subtle,
-                      backgroundColor: active
-                        ? 'rgba(200, 16, 46, 0.10)'
-                        : colors.background.secondary,
+                      paddingHorizontal: theme.spacing.md,
+                      paddingVertical: theme.spacing.sm,
+                      borderRadius: theme.radius.md,
+                      borderWidth: 1,
+                      borderColor: active ? BRONZE : theme.palette.line,
+                      backgroundColor: active ? 'rgba(184,115,51,0.10)' : theme.palette.card2,
                       maxWidth: 220,
                       opacity: pressed ? 0.85 : 1,
                     })}
                   >
-                    <Text
-                      numberOfLines={1}
-                      style={{
-                        color: colors.text.primary,
-                        fontSize: fontSize.caption,
-                        fontWeight: fontWeight.medium,
-                      }}
-                    >
+                    <Text numberOfLines={1} style={s.sessionName}>
                       {pilotName}
                     </Text>
-                    <Text
-                      style={{
-                        color: colors.text.tertiary,
-                        fontSize: fontSize.eyebrow,
-                        marginTop: 2,
-                      }}
-                    >
-                      {s.startedAt ? formatDateLong(s.startedAt) : '—'}
+                    <Text style={s.sessionDate}>
+                      {session.startedAt ? formatDateLong(session.startedAt) : '—'}
                     </Text>
                   </Pressable>
                 );
@@ -279,39 +273,30 @@ export default function AdminSessionsMediaScreen() {
 
         {/* Zone média */}
         {selectedSession ? (
-          <View style={{ marginTop: spacing.xxl }}>
-            <Text
-              style={[
-                typography.eyebrow,
-                { color: colors.text.tertiary, marginBottom: spacing.sm },
-              ]}
-            >
-              2. MÉDIAS ({media.length})
-            </Text>
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <Text style={s.sectionLabel}>2. MÉDIAS ({media.length})</Text>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: theme.spacing.sm,
+                marginBottom: theme.spacing.lg,
+              }}
+            >
               <Pressable
                 accessibilityRole="button"
                 disabled={uploading}
                 onPress={() => handlePickAndUpload('photo')}
                 style={({ pressed }) => ({
                   flex: 1,
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.accent.red,
+                  padding: theme.spacing.md,
+                  borderRadius: theme.radius.md,
+                  backgroundColor: BRONZE,
                   alignItems: 'center',
                   opacity: pressed || uploading ? 0.6 : 1,
                 })}
               >
-                <Text
-                  style={{
-                    color: colors.background.primary,
-                    fontSize: fontSize.caption,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  {uploading ? 'Upload…' : 'Ajouter photo'}
-                </Text>
+                <Text style={s.primaryBtnTxt}>{uploading ? 'Upload…' : 'Ajouter photo'}</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -319,32 +304,24 @@ export default function AdminSessionsMediaScreen() {
                 onPress={() => handlePickAndUpload('video')}
                 style={({ pressed }) => ({
                   flex: 1,
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.border.medium,
+                  padding: theme.spacing.md,
+                  borderRadius: theme.radius.md,
+                  borderWidth: 1,
+                  borderColor: theme.palette.edge,
                   alignItems: 'center',
                   opacity: pressed || uploading ? 0.6 : 1,
                 })}
               >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.caption,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  Ajouter vidéo
-                </Text>
+                <Text style={s.ghostBtnTxt}>Ajouter vidéo</Text>
               </Pressable>
             </View>
 
             {loadingMedia ? (
-              <ActivityIndicator color={colors.text.secondary} />
+              <ActivityIndicator color={BRONZE} />
             ) : media.length === 0 ? (
-              <Text style={emptyStyle}>Aucun média pour cette session. Ajoutez-en ci-dessus.</Text>
+              <Text style={s.empty}>Aucun média pour cette session. Ajoutez-en ci-dessus.</Text>
             ) : (
-              <View style={{ gap: spacing.md }}>
+              <View style={{ gap: theme.spacing.md }}>
                 {media.map((m) => (
                   <AdminMediaRow
                     key={m.id}
@@ -357,20 +334,12 @@ export default function AdminSessionsMediaScreen() {
             )}
           </View>
         ) : (
-          <Text style={[emptyStyle, { marginTop: spacing.xxl, fontStyle: 'italic' as const }]}>
+          <Text style={[s.empty, { marginTop: theme.spacing.xxl, fontStyle: 'italic' }]}>
             Sélectionnez une session ci-dessus pour gérer ses médias.
           </Text>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Retour admin
-            </Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -388,25 +357,15 @@ function AdminMediaRow({
   const [draftCaption, setDraftCaption] = useState(item.caption ?? '');
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: spacing.md,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
+    <Card style={{ flexDirection: 'row', gap: theme.spacing.md }}>
       {/* Thumbnail */}
       <View
         style={{
           width: 80,
           height: 80,
-          borderRadius: borderRadius.sm,
+          borderRadius: theme.radius.sm,
           overflow: 'hidden',
-          backgroundColor: colors.background.primary,
+          backgroundColor: theme.palette.night,
         }}
       >
         {item.mediaType === 'photo' && item.signedUrl ? (
@@ -417,28 +376,14 @@ function AdminMediaRow({
           />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Text
-              style={{
-                color: colors.text.tertiary,
-                fontSize: fontSize.eyebrow,
-                letterSpacing: 1,
-              }}
-            >
-              {item.mediaType === 'video' ? 'VIDÉO' : '—'}
-            </Text>
+            <Text style={s.thumbLabel}>{item.mediaType === 'video' ? 'VIDÉO' : '—'}</Text>
           </View>
         )}
       </View>
 
       {/* Info + actions */}
-      <View style={{ flex: 1, gap: spacing.xs }}>
-        <Text
-          style={{
-            color: colors.text.tertiary,
-            fontSize: fontSize.eyebrow,
-            letterSpacing: 1,
-          }}
-        >
+      <View style={{ flex: 1, gap: theme.spacing.xs }}>
+        <Text style={s.mediaMeta}>
           {item.mediaType.toUpperCase()}
           {item.fileSizeBytes ? ` · ${Math.round(item.fileSizeBytes / 1024)} Ko` : ''}
         </Text>
@@ -449,15 +394,8 @@ function AdminMediaRow({
             if (draftCaption !== (item.caption ?? '')) onCaptionChange(draftCaption);
           }}
           placeholder="Caption optionnelle…"
-          placeholderTextColor={colors.text.tertiary}
-          style={{
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            borderRadius: borderRadius.sm,
-            padding: spacing.sm,
-            fontSize: fontSize.caption,
-            color: colors.text.primary,
-          }}
+          placeholderTextColor={theme.palette.creamMute}
+          style={s.captionInput}
           accessibilityLabel="Caption du média"
         />
         <Pressable
@@ -465,29 +403,101 @@ function AdminMediaRow({
           onPress={onDelete}
           style={({ pressed }) => ({
             alignSelf: 'flex-start',
-            paddingHorizontal: spacing.sm,
-            paddingVertical: spacing.xs,
+            paddingHorizontal: theme.spacing.sm,
+            paddingVertical: theme.spacing.xs,
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.accent.red,
-              fontSize: fontSize.eyebrow,
-              letterSpacing: 1,
-            }}
-          >
-            SUPPRIMER
-          </Text>
+          <Text style={s.deleteTxt}>SUPPRIMER</Text>
         </Pressable>
       </View>
-    </View>
+    </Card>
   );
 }
 
-const emptyStyle = {
-  color: colors.text.tertiary,
-  fontSize: fontSize.caption,
-  textAlign: 'center' as const,
-  padding: spacing.lg,
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  sectionLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginBottom: theme.spacing.sm,
+  },
+  sessionName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.cream,
+  },
+  sessionDate: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  primaryBtnTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: '#000',
+  },
+  ghostBtnTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
+  thumbLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+  mediaMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+  captionInput: {
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    borderRadius: theme.radius.sm,
+    padding: theme.spacing.sm,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.cream,
+  },
+  deleteTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: theme.palette.red,
+  },
+  empty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    padding: theme.spacing.lg,
+  },
 };

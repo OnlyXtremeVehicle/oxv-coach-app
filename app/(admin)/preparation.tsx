@@ -4,16 +4,27 @@
  * Liste des pilotes inscrits à la prochaine session OXV, leur statut
  * KYC, et leur équipement affecté. V1 : structure visuelle, données
  * réelles à wirer avec une vraie session OXV (table `registrations`).
+ *
+ * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
+ * rôle admin) ; le bouton de promotion garde l'accent coach. Logique
+ * de données et de promotion inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
 import { promoteToCoach } from '@/services/coachAdminService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+
+// Bronze = couleur de RÔLE réservée à l'admin (doctrine).
+const BRONZE = '#B87333';
+// Couleurs sémantiques de statut KYC (factuelles, doublées d'un libellé).
+const STATUS = { green: '#97C459', yellow: '#EF9F27', red: '#C8102E' };
 
 interface PilotEntry {
   id: string;
@@ -70,112 +81,117 @@ export default function PreparationScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.bronze }]}>
-          ADMIN · PRÉPARATION
-        </Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
-          Pilotes ({pilots.length})
-        </Text>
+    <Screen>
+      <AppBar title="PRÉPARATION" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN · PRÉPARATION</Text>
+        <Text style={s.title}>Pilotes ({pilots.length})</Text>
 
         {loading ? (
-          <ActivityIndicator color={colors.accent.bronze} />
+          <ActivityIndicator color={BRONZE} />
         ) : pilots.length === 0 ? (
-          <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-            Aucun pilote inscrit.
-          </Text>
+          <Text style={s.empty}>Aucun pilote inscrit.</Text>
         ) : (
-          <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             {pilots.map((p) => (
-              <View
-                key={p.id}
-                style={{
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.border.subtle,
-                  backgroundColor: colors.background.secondary,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
+              <Card key={p.id} style={s.row}>
                 <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      color: colors.text.primary,
-                      fontSize: fontSize.body,
-                      fontWeight: fontWeight.regular,
-                    }}
-                  >
-                    {p.fullName}
-                  </Text>
-                  <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+                  <Text style={s.name}>{p.fullName}</Text>
+                  <Text style={s.meta}>
                     {p.email} · niveau {p.level ?? '—'}
                   </Text>
                 </View>
-                <View style={{ alignItems: 'flex-end', gap: spacing.xs }}>
-                  <Text
-                    style={{
-                      color: kycColor(p.kycStatus),
-                      fontSize: fontSize.caption,
-                      fontWeight: fontWeight.medium,
-                      fontFamily: 'Menlo',
-                      letterSpacing: 1,
-                    }}
-                  >
+                <View style={{ alignItems: 'flex-end', gap: theme.spacing.xs }}>
+                  <Text style={[s.kyc, { color: kycColor(p.kycStatus) }]}>
                     {p.kycStatus.toUpperCase()}
                   </Text>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => confirmPromote(p)}
                     style={({ pressed }) => ({
-                      paddingHorizontal: spacing.sm,
-                      paddingVertical: spacing.xs,
-                      borderRadius: borderRadius.sm,
-                      borderWidth: 0.5,
-                      borderColor: colors.accent.coach,
+                      paddingHorizontal: theme.spacing.sm,
+                      paddingVertical: theme.spacing.xs,
+                      borderRadius: theme.radius.sm,
+                      borderWidth: 1,
+                      borderColor: theme.palette.coach,
                       opacity: pressed ? 0.85 : 1,
                     })}
                   >
-                    <Text
-                      style={{
-                        color: colors.accent.coach,
-                        fontSize: 11,
-                        fontWeight: fontWeight.medium,
-                      }}
-                    >
-                      ↦ coach
-                    </Text>
+                    <Text style={s.promote}>↦ coach</Text>
                   </Pressable>
                 </View>
-              </View>
+              </Card>
             ))}
           </View>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function kycColor(status: string): string {
   switch (status) {
     case 'validated':
-      return colors.margin.green;
+      return STATUS.green;
     case 'rejected':
-      return colors.margin.red;
+      return STATUS.red;
     case 'expired':
-      return colors.margin.yellow;
+      return STATUS.yellow;
     default:
-      return colors.text.tertiary;
+      return theme.palette.creamMute;
   }
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xxl,
+  },
+  row: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+  },
+  name: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  kyc: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 1,
+  },
+  promote: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: theme.palette.coach,
+  },
+  empty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+};

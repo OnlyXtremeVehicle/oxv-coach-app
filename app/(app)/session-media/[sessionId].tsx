@@ -10,6 +10,8 @@
  *
  * Sécurité : RLS DB + RLS Storage filtrent automatiquement. Si le pilote
  * n'a pas accès, le fetch retourne [].
+ * Reskin V2 : Screen + AppBar, Card pour l'état vide. La grille et le
+ * lecteur plein écran (Modal) sont inchangés.
  */
 
 import { useEffect, useState } from 'react';
@@ -20,15 +22,16 @@ import {
   Linking,
   Modal,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { type SessionMediaItem, listSessionMedia } from '@/services/sessionMediaService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_GUTTER = 8;
@@ -61,57 +64,28 @@ export default function SessionMediaScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="SOUVENIRS" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>SOUVENIRS</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Vos médias de session
-        </Text>
+    <Screen>
+      <AppBar title="SOUVENIRS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Vos médias de session</Text>
 
         {media.length === 0 ? (
-          <View
-            style={{
-              padding: spacing.xxl,
-              alignItems: 'center',
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-            }}
-          >
-            <Text
-              style={[
-                typography.manifest,
-                { color: colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
-              ]}
-            >
-              Pas encore de souvenirs pour cette session.
-            </Text>
-            <Text
-              style={{
-                marginTop: spacing.md,
-                color: colors.text.tertiary,
-                fontSize: fontSize.caption,
-                textAlign: 'center',
-              }}
-            >
+          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+            <Text style={s.emptyTitle}>Pas encore de souvenirs pour cette session.</Text>
+            <Text style={s.emptyHint}>
               Les médias sont ajoutés par OXV après la journée de roulage.
             </Text>
-          </View>
+          </Card>
         ) : (
           <View
             style={{
@@ -126,15 +100,15 @@ export default function SessionMediaScreen() {
           </View>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </View>
 
       <MediaModal item={selected} onClose={() => setSelected(null)} />
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -148,11 +122,11 @@ function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => v
       style={({ pressed }) => ({
         width: TILE_SIZE,
         height: TILE_SIZE,
-        borderRadius: borderRadius.md,
+        borderRadius: theme.radius.md,
         overflow: 'hidden',
-        backgroundColor: colors.background.secondary,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
+        backgroundColor: theme.palette.card2,
+        borderWidth: 1,
+        borderColor: theme.palette.line,
         opacity: pressed ? 0.8 : 1,
       })}
     >
@@ -170,30 +144,31 @@ function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => v
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>—</Text>
+          <Text style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}>—</Text>
         </View>
       )}
       {item.mediaType === 'video' ? (
         <View
           style={{
             position: 'absolute',
-            bottom: spacing.xs,
-            right: spacing.xs,
-            paddingHorizontal: spacing.xs,
+            bottom: theme.spacing.xs,
+            right: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.xs,
             paddingVertical: 2,
-            borderRadius: borderRadius.sm,
+            borderRadius: theme.radius.sm,
             backgroundColor: 'rgba(0,0,0,0.6)',
           }}
         >
           <Text
             style={{
-              color: colors.text.primary,
-              fontSize: fontSize.eyebrow,
-              fontWeight: fontWeight.medium,
+              fontFamily: theme.fonts.mono,
+              color: theme.palette.cream,
+              fontSize: theme.fontSize.eyebrow,
               letterSpacing: 1,
+              textTransform: 'uppercase',
             }}
           >
-            VIDÉO
+            Vidéo
           </Text>
         </View>
       ) : null}
@@ -223,30 +198,32 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
           backgroundColor: 'rgba(0,0,0,0.92)',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: spacing.lg,
+          padding: theme.spacing.lg,
         }}
       >
         {item.mediaType === 'video' ? (
-          <View style={{ alignItems: 'center', gap: spacing.lg }}>
-            <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+          <View style={{ alignItems: 'center', gap: theme.spacing.lg }}>
+            <Text style={{ color: theme.palette.cream, fontSize: theme.fontSize.body }}>
               {item.caption ?? 'Vidéo de session'}
             </Text>
             <Pressable
               accessibilityRole="button"
               onPress={handleVideoOpen}
               style={({ pressed }) => ({
-                paddingHorizontal: spacing.xl,
-                paddingVertical: spacing.lg,
-                borderRadius: borderRadius.md,
-                backgroundColor: colors.accent.red,
+                paddingHorizontal: theme.spacing.xl,
+                paddingVertical: theme.spacing.lg,
+                borderRadius: theme.radius.md,
+                backgroundColor: theme.palette.red,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
               <Text
                 style={{
-                  color: colors.background.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
+                  fontFamily: theme.fonts.mono,
+                  color: theme.palette.cream,
+                  fontSize: 11,
+                  letterSpacing: 1.4,
+                  textTransform: 'uppercase',
                 }}
               >
                 Lire la vidéo
@@ -257,8 +234,8 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
           <Image
             source={{ uri: item.signedUrl }}
             style={{
-              width: SCREEN_WIDTH - 2 * spacing.lg,
-              height: SCREEN_WIDTH - 2 * spacing.lg,
+              width: SCREEN_WIDTH - 2 * theme.spacing.lg,
+              height: SCREEN_WIDTH - 2 * theme.spacing.lg,
             }}
             resizeMode="contain"
           />
@@ -266,11 +243,12 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
         {item.caption ? (
           <Text
             style={{
-              marginTop: spacing.lg,
-              color: colors.text.secondary,
-              fontSize: fontSize.caption,
+              fontFamily: theme.fonts.body,
+              marginTop: theme.spacing.lg,
+              color: theme.palette.creamSoft,
+              fontSize: theme.fontSize.small,
               textAlign: 'center',
-              maxWidth: SCREEN_WIDTH - 2 * spacing.xl,
+              maxWidth: SCREEN_WIDTH - 2 * theme.spacing.xl,
             }}
           >
             {item.caption}
@@ -278,15 +256,48 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
         ) : null}
         <Text
           style={{
-            marginTop: spacing.xxl,
-            color: colors.text.tertiary,
-            fontSize: fontSize.eyebrow,
+            fontFamily: theme.fonts.mono,
+            marginTop: theme.spacing.xxl,
+            color: theme.palette.creamMute,
+            fontSize: theme.fontSize.eyebrow,
             letterSpacing: 1.5,
+            textTransform: 'uppercase',
           }}
         >
-          TOUCHER POUR FERMER
+          Toucher pour fermer
         </Text>
       </Pressable>
     </Modal>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

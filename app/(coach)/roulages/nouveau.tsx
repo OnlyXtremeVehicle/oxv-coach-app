@@ -6,17 +6,22 @@
  * liste (le nouveau roulage apparaît, prêt à recevoir des invitations).
  *
  * Doctrine : vouvoiement, pas d'injonction, libellés factuels.
+ * Reskin V2 : Screen + AppBar, SectionLabel/Button, champs au style V2.
+ * Logique inchangée (états, picker date/heure, validation, création).
  */
 
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 import { validateRoulageInput } from '@/services/roulagesLogic';
 import { createRoulage } from '@/services/roulagesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateTime } from '@/utils/format';
 
 function defaultStart(): Date {
@@ -106,118 +111,90 @@ export default function NouveauRoulageScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>NOUVEAU ROULAGE</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Un roulage à vous.
-        </Text>
+    <Screen>
+      <AppBar title="NOUVEAU ROULAGE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>COACH OXV</Text>
+        <Text style={s.title}>Un roulage à vous.</Text>
 
-        <Field label="Titre">
-          <TextInput
-            value={title}
-            onChangeText={setTitle}
-            placeholder="Journée piste, séance privée…"
-            placeholderTextColor={colors.text.tertiary}
-            style={inputStyle}
-            accessibilityLabel="Titre du roulage"
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <Field label="Titre">
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Journée piste, séance privée…"
+              placeholderTextColor={theme.palette.creamMute}
+              style={inputStyle}
+              accessibilityLabel="Titre du roulage"
+            />
+          </Field>
+
+          <Field label="Date et heure">
+            <Pressable accessibilityRole="button" onPress={openPicker} style={inputStyle}>
+              <Text style={s.inputText}>{formatDateTime(startsAt.toISOString())}</Text>
+            </Pressable>
+          </Field>
+
+          <Field label="Lieu (optionnel)">
+            <TextInput
+              value={location}
+              onChangeText={setLocation}
+              placeholder="Circuit de Haute Saintonge"
+              placeholderTextColor={theme.palette.creamMute}
+              style={inputStyle}
+              accessibilityLabel="Lieu du roulage"
+            />
+          </Field>
+
+          <Field label="Places (optionnel)">
+            <TextInput
+              value={maxPilots}
+              onChangeText={setMaxPilots}
+              placeholder="Sans limite"
+              placeholderTextColor={theme.palette.creamMute}
+              keyboardType="number-pad"
+              style={inputStyle}
+              accessibilityLabel="Nombre de places"
+            />
+          </Field>
+
+          <Field label="Prix par place en euros (optionnel)">
+            <TextInput
+              value={price}
+              onChangeText={setPrice}
+              placeholder="Gratuit"
+              placeholderTextColor={theme.palette.creamMute}
+              keyboardType="decimal-pad"
+              style={inputStyle}
+              accessibilityLabel="Prix par place en euros"
+            />
+          </Field>
+
+          <Field label="Notes (optionnel)">
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Informations pratiques pour vos pilotes."
+              placeholderTextColor={theme.palette.creamMute}
+              multiline
+              style={[inputStyle, { minHeight: 88, textAlignVertical: 'top' }]}
+              accessibilityLabel="Notes du roulage"
+            />
+          </Field>
+
+          {error ? <Text style={s.error}>{error}</Text> : null}
+
+          <Button
+            label={saving ? 'Enregistrement…' : 'Enregistrer'}
+            disabled={saving}
+            onPress={onSubmit}
           />
-        </Field>
 
-        <Field label="Date et heure">
-          <Pressable accessibilityRole="button" onPress={openPicker} style={inputStyle}>
-            <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
-              {formatDateTime(startsAt.toISOString())}
-            </Text>
-          </Pressable>
-        </Field>
-
-        <Field label="Lieu (optionnel)">
-          <TextInput
-            value={location}
-            onChangeText={setLocation}
-            placeholder="Circuit de Haute Saintonge"
-            placeholderTextColor={colors.text.tertiary}
-            style={inputStyle}
-            accessibilityLabel="Lieu du roulage"
-          />
-        </Field>
-
-        <Field label="Places (optionnel)">
-          <TextInput
-            value={maxPilots}
-            onChangeText={setMaxPilots}
-            placeholder="Sans limite"
-            placeholderTextColor={colors.text.tertiary}
-            keyboardType="number-pad"
-            style={inputStyle}
-            accessibilityLabel="Nombre de places"
-          />
-        </Field>
-
-        <Field label="Prix par place en euros (optionnel)">
-          <TextInput
-            value={price}
-            onChangeText={setPrice}
-            placeholder="Gratuit"
-            placeholderTextColor={colors.text.tertiary}
-            keyboardType="decimal-pad"
-            style={inputStyle}
-            accessibilityLabel="Prix par place en euros"
-          />
-        </Field>
-
-        <Field label="Notes (optionnel)">
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            placeholder="Informations pratiques pour vos pilotes."
-            placeholderTextColor={colors.text.tertiary}
-            multiline
-            style={[inputStyle, { minHeight: 88, textAlignVertical: 'top' }]}
-            accessibilityLabel="Notes du roulage"
-          />
-        </Field>
-
-        {error ? (
-          <Text
-            style={{
-              color: colors.accent.red,
-              fontSize: fontSize.caption,
-              marginBottom: spacing.lg,
-            }}
-          >
-            {error}
-          </Text>
-        ) : null}
-
-        <Pressable
-          accessibilityRole="button"
-          disabled={saving}
-          onPress={onSubmit}
-          style={({ pressed }) => ({
-            padding: spacing.lg,
-            borderRadius: borderRadius.md,
-            backgroundColor: colors.accent.coach,
-            alignItems: 'center',
-            opacity: saving ? 0.5 : pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={{
-              color: colors.background.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-            }}
-          >
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </Text>
-        </Pressable>
-
-        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Annuler</Text>
-          </Pressable>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
+            <Pressable accessibilityRole="button" onPress={() => router.back()}>
+              <Text style={s.cancel}>Annuler</Text>
+            </Pressable>
+          </View>
         </View>
 
         {pickerOpen ? (
@@ -228,29 +205,65 @@ export default function NouveauRoulageScreen() {
             onChange={onPickerChange}
           />
         ) : null}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 const inputStyle = {
-  borderWidth: 0.5,
-  borderColor: colors.border.medium,
-  borderRadius: borderRadius.md,
-  backgroundColor: colors.background.secondary,
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.md,
-  color: colors.text.primary,
-  fontSize: fontSize.body,
+  borderWidth: 1,
+  borderColor: theme.palette.line,
+  borderRadius: theme.radius.md,
+  backgroundColor: theme.palette.card2,
+  paddingHorizontal: theme.spacing.md,
+  paddingVertical: theme.spacing.md,
+  color: theme.palette.cream,
+  fontFamily: theme.fonts.body,
+  fontSize: theme.fontSize.body,
 } as const;
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.sm }]}>
-        {label.toUpperCase()}
-      </Text>
+    <View style={{ marginBottom: theme.spacing.lg }}>
+      <View style={{ marginBottom: theme.spacing.sm }}>
+        <SectionLabel>{label}</SectionLabel>
+      </View>
       {children}
     </View>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  inputText: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  error: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+    marginBottom: theme.spacing.lg,
+  },
+  cancel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.micro,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

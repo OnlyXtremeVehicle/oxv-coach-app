@@ -4,6 +4,9 @@
  * Modèles de texte réutilisables pour accélérer la saisie des annotations.
  * Confort de saisie côté coach ; les annotations restent cadrées par la
  * doctrine au moment où elles sont écrites.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, typo/couleurs
+ * @/theme/v2. Logique (templates, validation, CRUD) inchangée.
  */
 
 import { useCallback, useState } from 'react';
@@ -16,12 +19,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 
 import { type CoachAnnotationTemplate, validateTemplate } from '@/services/coachCurationLogic';
 import { createTemplate, deleteTemplate, listMyTemplates } from '@/services/coachCurationService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachGabaritsScreen() {
   const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
@@ -74,45 +81,35 @@ export default function CoachGabaritsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
+      <AppBar title="GABARITS" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>GABARITS</Text>
-          <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>Vos formules.</Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-          >
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xxl,
+          }}
+        >
+          <Text style={[s.eyebrow, { color: theme.palette.coach }]}>GABARITS</Text>
+          <Text style={s.title}>Vos formules.</Text>
+          <Text style={s.manifest}>
             Des modèles réutilisables pour annoter plus vite. Vous gardez la main sur chaque mot.
           </Text>
 
           {/* Liste existante */}
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
           ) : templates.length === 0 ? (
-            <Text
-              style={[
-                typography.caption,
-                { color: colors.text.tertiary, marginBottom: spacing.xl },
-              ]}
-            >
+            <Text style={[s.empty, { marginTop: theme.spacing.xxl }]}>
               Aucun gabarit pour l&apos;instant.
             </Text>
           ) : (
-            <View style={{ gap: spacing.sm, marginBottom: spacing.xxl }}>
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xxl }}>
               {templates.map((t) => (
-                <View
-                  key={t.id}
-                  style={{
-                    padding: spacing.md,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor: colors.border.subtle,
-                    backgroundColor: colors.background.secondary,
-                  }}
-                >
+                <Card key={t.id}>
                   <View
                     style={{
                       flexDirection: 'row',
@@ -120,123 +117,148 @@ export default function CoachGabaritsScreen() {
                       alignItems: 'center',
                     }}
                   >
-                    <Text
-                      style={{
-                        color: colors.text.primary,
-                        fontSize: fontSize.body,
-                        fontWeight: fontWeight.medium,
-                        flex: 1,
-                      }}
-                    >
-                      {t.label}
-                    </Text>
+                    <Text style={[s.tplLabel, { flex: 1 }]}>{t.label}</Text>
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Supprimer le gabarit ${t.label}`}
                       onPress={() => onDelete(t.id)}
                     >
-                      <Text style={{ color: colors.accent.red, fontSize: fontSize.caption }}>
-                        Supprimer
-                      </Text>
+                      <Text style={s.deleteTxt}>Supprimer</Text>
                     </Pressable>
                   </View>
-                  <Text
-                    style={{
-                      color: colors.text.secondary,
-                      fontSize: fontSize.caption,
-                      marginTop: spacing.xs,
-                      lineHeight: fontSize.caption * 1.5,
-                    }}
-                  >
-                    {t.body}
-                  </Text>
-                </View>
+                  <Text style={s.tplBody}>{t.body}</Text>
+                </Card>
               ))}
             </View>
           )}
 
           {/* Nouveau gabarit */}
-          <Text
-            style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
-          >
-            NOUVEAU GABARIT
-          </Text>
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <SectionLabel>NOUVEAU GABARIT</SectionLabel>
+          </View>
           <TextInput
             value={label}
             onChangeText={setLabel}
             placeholder="Nom (ex. Sortie de virage)"
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={theme.palette.creamMute}
             maxLength={60}
             accessibilityLabel="Nom du gabarit"
-            style={inputStyle}
+            style={[s.input, { marginTop: theme.spacing.md }]}
           />
           <TextInput
             value={body}
             onChangeText={setBody}
             placeholder="Le texte du gabarit, sobre et descriptif."
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={theme.palette.creamMute}
             multiline
             maxLength={1000}
             accessibilityLabel="Texte du gabarit"
-            style={[inputStyle, { minHeight: 96, textAlignVertical: 'top', marginTop: spacing.md }]}
+            style={[
+              s.input,
+              { minHeight: 96, textAlignVertical: 'top', marginTop: theme.spacing.md },
+            ]}
           />
 
-          {error ? (
-            <Text
-              style={{
-                color: colors.accent.red,
-                fontSize: fontSize.caption,
-                marginTop: spacing.md,
-              }}
-            >
-              {error}
-            </Text>
-          ) : null}
+          {error ? <Text style={s.errorTxt}>{error}</Text> : null}
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={saving}
-            onPress={onCreate}
-            style={({ pressed }) => ({
-              marginTop: spacing.lg,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: saving ? 0.5 : pressed ? 0.85 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.background.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              {saving ? 'Ajout…' : 'Ajouter le gabarit'}
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <Button
+              label={saving ? 'Ajout…' : 'Ajouter le gabarit'}
+              onPress={onCreate}
+              disabled={saving}
+            />
+          </View>
 
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
+              <Text style={s.backLink}>Retour</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const inputStyle = {
-  borderWidth: 0.5,
-  borderColor: colors.border.medium,
-  borderRadius: borderRadius.md,
-  backgroundColor: colors.background.secondary,
-  paddingHorizontal: spacing.md,
-  paddingVertical: spacing.md,
-  color: colors.text.primary,
-  fontSize: fontSize.body,
-} as const;
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  empty: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  tplLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  tplBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.xs,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  deleteTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.red,
+  },
+  input: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+  },
+  errorTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+    marginTop: theme.spacing.md,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

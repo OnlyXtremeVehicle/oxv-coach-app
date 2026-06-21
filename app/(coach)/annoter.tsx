@@ -11,25 +11,19 @@
  * Doctrine : ton sobre rappelé en placeholder du textarea. Le coach
  * peut bien sûr écrire ce qu'il veut — la doctrine est là pour le
  * cadrer, pas pour censurer.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Chip/Button du kit. Accent
+ * coach = theme.palette.coach (crème neutre). Logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { getCorner } from '@/lib/circuitTopology';
 import {
-  type CoachAnnotation,
   type AnnotationVisibility,
+  type CoachAnnotation,
   createAnnotation,
   deleteAnnotation,
   listMyAnnotationsForCorner,
@@ -37,7 +31,12 @@ import {
 } from '@/services/coachAnnotationsService';
 import { type CoachAnnotationTemplate } from '@/services/coachCurationLogic';
 import { listMyTemplates } from '@/services/coachCurationService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
 export default function CoachAnnoterScreen() {
@@ -125,148 +124,94 @@ export default function CoachAnnoterScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen>
+      <AppBar title="ANNOTER" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>ANNOTER</Text>
-          <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>
-            {corner?.name ?? `Virage ${cornerIndex}`}
-          </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-          >
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+          <Text style={s.title}>{corner?.name ?? `Virage ${cornerIndex}`}</Text>
+          <Text style={s.subtitle}>
             {params.sessionId ? 'Note attachée à cette session' : 'Note générique sur le virage'}
           </Text>
 
           {/* Notes existantes */}
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={s.caption}>Chargement…</Text>
           ) : annotations.length === 0 ? (
-            <Text
-              style={[
-                typography.caption,
-                { color: colors.text.tertiary, marginBottom: spacing.xl },
-              ]}
-            >
-              Aucune note pour l'instant.
+            <Text style={[s.caption, { marginBottom: theme.spacing.xl }]}>
+              Aucune note pour l&apos;instant.
             </Text>
           ) : (
-            <View style={{ gap: spacing.sm, marginBottom: spacing.xxl }}>
-              <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>
-                {annotations.length} NOTE{annotations.length > 1 ? 'S' : ''} EXISTANTE
-                {annotations.length > 1 ? 'S' : ''}
-              </Text>
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
+              <SectionLabel>
+                {`${annotations.length} NOTE${annotations.length > 1 ? 'S' : ''} EXISTANTE${
+                  annotations.length > 1 ? 'S' : ''
+                }`}
+              </SectionLabel>
               {annotations.map((a) => (
-                <View
+                <Card
                   key={a.id}
-                  style={{
-                    padding: spacing.md,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor:
-                      a.visibility === 'private' ? colors.border.medium : colors.accent.coach,
-                    backgroundColor: colors.background.secondary,
-                  }}
+                  style={
+                    a.visibility === 'private'
+                      ? { borderColor: theme.palette.line }
+                      : { borderColor: theme.palette.coach }
+                  }
                 >
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      marginBottom: spacing.xs,
-                    }}
-                  >
+                  <View style={s.noteHead}>
                     <Text
                       style={[
-                        typography.eyebrow,
+                        s.noteFlag,
                         {
                           color:
-                            a.visibility === 'private' ? colors.text.tertiary : colors.accent.coach,
+                            a.visibility === 'private'
+                              ? theme.palette.creamMute
+                              : theme.palette.coach,
                         },
                       ]}
                     >
                       {a.visibility === 'private' ? 'BROUILLON' : 'PARTAGÉE'}
                     </Text>
-                    <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                      {formatDateShort(a.createdAt)}
-                    </Text>
+                    <Text style={s.noteDate}>{formatDateShort(a.createdAt)}</Text>
                   </View>
-                  <Text
-                    style={{
-                      color: colors.text.primary,
-                      fontSize: fontSize.body,
-                      lineHeight: fontSize.body * 1.5,
-                    }}
-                  >
-                    {a.body}
-                  </Text>
+                  <Text style={s.noteBody}>{a.body}</Text>
                   <View
                     style={{
                       flexDirection: 'row',
-                      gap: spacing.lg,
-                      marginTop: spacing.md,
+                      gap: theme.spacing.lg,
+                      marginTop: theme.spacing.md,
                     }}
                   >
                     <Pressable accessibilityRole="button" onPress={() => onEdit(a)}>
-                      <Text
-                        style={{
-                          color: colors.accent.coach,
-                          fontSize: fontSize.caption,
-                          fontWeight: fontWeight.medium,
-                        }}
-                      >
-                        Modifier
-                      </Text>
+                      <Text style={s.actionEdit}>Modifier</Text>
                     </Pressable>
                     <Pressable accessibilityRole="button" onPress={() => onDelete(a.id)}>
-                      <Text style={{ color: colors.accent.red, fontSize: fontSize.caption }}>
-                        Supprimer
-                      </Text>
+                      <Text style={s.actionDelete}>Supprimer</Text>
                     </Pressable>
                   </View>
-                </View>
+                </Card>
               ))}
             </View>
           )}
 
           {/* Formulaire */}
-          <Text
-            style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
-          >
-            {editingId ? 'MODIFIER LA NOTE' : 'NOUVELLE NOTE'}
-          </Text>
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <SectionLabel>{editingId ? 'MODIFIER LA NOTE' : 'NOUVELLE NOTE'}</SectionLabel>
+          </View>
 
           {/* Gabarits réutilisables (§10.3c-C) — appui pour insérer. */}
           {templates.length > 0 ? (
-            <View
-              style={{
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                gap: spacing.sm,
-                marginBottom: spacing.md,
-              }}
-            >
+            <View style={s.templateRow}>
               {templates.map((t) => (
                 <Pressable
                   key={t.id}
                   accessibilityRole="button"
                   accessibilityLabel={`Insérer le gabarit ${t.label}`}
                   onPress={() => applyTemplate(t)}
-                  style={({ pressed }) => ({
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.xs,
-                    borderRadius: borderRadius.sm,
-                    borderWidth: 0.5,
-                    borderColor: colors.border.medium,
-                    backgroundColor: colors.background.secondary,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
+                  style={({ pressed }) => [s.templateChip, { opacity: pressed ? 0.7 : 1 }]}
                 >
-                  <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-                    + {t.label}
-                  </Text>
+                  <Text style={s.templateChipText}>+ {t.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -276,38 +221,17 @@ export default function CoachAnnoterScreen() {
             value={body}
             onChangeText={setBody}
             placeholder="Ce que vous avez observé sur ce virage. Sobre, descriptif, ouvert."
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={theme.palette.creamMute}
             multiline
             numberOfLines={6}
             maxLength={1000}
-            style={{
-              backgroundColor: colors.background.secondary,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              padding: spacing.md,
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              minHeight: 120,
-              textAlignVertical: 'top',
-            }}
+            style={s.textarea}
           />
-          <Text
-            style={[
-              typography.caption,
-              { color: colors.text.tertiary, textAlign: 'right', marginTop: spacing.xs },
-            ]}
-          >
-            {body.length} / 1000
-          </Text>
+          <Text style={s.counter}>{body.length} / 1000</Text>
 
           {/* Toggle visibilité */}
           <View
-            style={{
-              flexDirection: 'row',
-              gap: spacing.md,
-              marginTop: spacing.lg,
-            }}
+            style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg }}
           >
             <VisibilityChip
               label="Partagée avec le pilote"
@@ -322,66 +246,31 @@ export default function CoachAnnoterScreen() {
           </View>
 
           {/* Boutons */}
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xl }}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onSave}
-              disabled={saving || !body.trim()}
-              style={({ pressed }) => ({
-                flex: 1,
-                padding: spacing.lg,
-                borderRadius: borderRadius.md,
-                backgroundColor: !body.trim() ? colors.background.secondary : colors.accent.coach,
-                borderWidth: 0.5,
-                borderColor: !body.trim() ? colors.border.subtle : colors.accent.coach,
-                alignItems: 'center',
-                opacity: pressed ? 0.85 : !body.trim() ? 0.5 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.semibold,
-                }}
-              >
-                {editingId ? 'Mettre à jour' : 'Enregistrer'}
-              </Text>
-            </Pressable>
+          <View
+            style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}
+          >
+            <View style={{ flex: 1 }}>
+              <Button
+                label={editingId ? 'Mettre à jour' : 'Enregistrer'}
+                onPress={onSave}
+                disabled={saving || !body.trim()}
+              />
+            </View>
             {editingId ? (
-              <Pressable
-                accessibilityRole="button"
+              <Button
+                label="Annuler"
+                variant="ghost"
                 onPress={() => {
                   setEditingId(null);
                   setBody('');
                   setVisibility('shared');
                 }}
-                style={({ pressed }) => ({
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.border.subtle,
-                  alignItems: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>
-                  Annuler
-                </Text>
-              </Pressable>
+              />
             ) : null}
           </View>
-
-          <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-            <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -399,26 +288,140 @@ function VisibilityChip({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        padding: spacing.sm,
-        borderRadius: borderRadius.md,
-        borderWidth: active ? 1 : 0.5,
-        borderColor: active ? colors.accent.coach : colors.border.subtle,
-        backgroundColor: active ? colors.background.elevated : colors.background.secondary,
-        alignItems: 'center',
-        opacity: pressed ? 0.85 : 1,
-      })}
+      style={({ pressed }) => [
+        s.visChip,
+        active ? s.visChipOn : null,
+        { opacity: pressed ? 0.85 : 1 },
+      ]}
     >
-      <Text
-        style={{
-          color: active ? colors.text.primary : colors.text.secondary,
-          fontSize: fontSize.caption,
-          fontWeight: active ? fontWeight.medium : fontWeight.regular,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={[s.visChipText, active ? s.visChipTextOn : null]}>{label}</Text>
     </Pressable>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  subtitle: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  noteHead: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.xs,
+  },
+  noteFlag: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+  },
+  noteDate: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  noteBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.body * 1.5,
+  },
+  actionEdit: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+  },
+  actionDelete: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.red,
+  },
+  templateRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  templateChip: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  templateChipText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: theme.palette.creamSoft,
+  },
+  textarea: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    padding: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    minHeight: 120,
+    textAlignVertical: 'top' as const,
+  },
+  counter: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+    textAlign: 'right' as const,
+    marginTop: theme.spacing.xs,
+  },
+  visChip: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center' as const,
+  },
+  visChipOn: {
+    borderColor: theme.palette.coach,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  visChipText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  visChipTextOn: {
+    color: theme.palette.cream,
+  },
+};

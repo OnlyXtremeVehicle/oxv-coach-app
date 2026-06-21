@@ -4,6 +4,9 @@
  * Point de freinage de référence, vitesse repère, note de trajectoire pour
  * un virage. Ces repères apparaissent chez l'élève, étiquetés « Repère de
  * votre coach ». Vocabulaire « repère », jamais « consigne » (doctrine).
+ *
+ * Reskin V2 : Screen + AppBar, SectionLabel/Button, typo/couleurs
+ * @/theme/v2. Logique (chargement, validation, upsert) inchangée.
  */
 
 import { useEffect, useState } from 'react';
@@ -16,13 +19,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { getCorner } from '@/lib/circuitTopology';
 import { validateCornerReference } from '@/services/coachReferenceLogic';
 import { listMyCornerReferences, upsertCornerReference } from '@/services/coachReferenceService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function RepereEditorScreen() {
   const params = useLocalSearchParams<{ index?: string }>();
@@ -82,25 +88,31 @@ export default function RepereEditorScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
+      <AppBar
+        title="REPÈRE"
+        subtitle={`VIRAGE ${String(cornerIndex).padStart(2, '0')}`}
+        onBack={() => router.back()}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xxl,
+          }}
+        >
+          <Text style={[s.eyebrow, { color: theme.palette.coach }]}>
             REPÈRE · VIRAGE {String(cornerIndex).padStart(2, '0')}
           </Text>
-          <Text
-            style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-          >
-            {corner?.name ?? `Virage ${cornerIndex}`}
-          </Text>
+          <Text style={s.title}>{corner?.name ?? `Virage ${cornerIndex}`}</Text>
 
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
           ) : (
-            <>
+            <View style={{ marginTop: theme.spacing.xxl }}>
               <Field
                 label="Point de freinage repère (m)"
                 value={brakingPoint}
@@ -124,63 +136,30 @@ export default function RepereEditorScreen() {
               />
 
               {error ? (
-                <Text
-                  style={{
-                    color: colors.accent.red,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  {error}
-                </Text>
+                <Text style={[s.errorTxt, { marginBottom: theme.spacing.md }]}>{error}</Text>
               ) : null}
               {saved ? (
-                <Text
-                  style={{
-                    color: colors.margin.green,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
+                <Text style={[s.savedTxt, { marginBottom: theme.spacing.md }]}>
                   Repère enregistré.
                 </Text>
               ) : null}
 
-              <Pressable
-                accessibilityRole="button"
-                disabled={saving}
+              <Button
+                label={saving ? 'Enregistrement…' : 'Enregistrer'}
                 onPress={onSave}
-                style={({ pressed }) => ({
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.accent.coach,
-                  alignItems: 'center',
-                  opacity: saving ? 0.5 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: colors.background.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
-                </Text>
-              </Pressable>
-            </>
+                disabled={saving}
+              />
+            </View>
           )}
 
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
+              <Text style={s.backLink}>Retour</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -200,32 +179,79 @@ function Field({
   multiline?: boolean;
 }) {
   return (
-    <View style={{ marginBottom: spacing.lg }}>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.sm }]}>
-        {label.toUpperCase()}
-      </Text>
+    <View style={{ marginBottom: theme.spacing.lg }}>
+      <View style={{ marginBottom: theme.spacing.sm }}>
+        <SectionLabel>{label.toUpperCase()}</SectionLabel>
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={colors.text.tertiary}
+        placeholderTextColor={theme.palette.creamMute}
         keyboardType={keyboardType}
         multiline={multiline}
         maxLength={multiline ? 280 : 12}
         accessibilityLabel={label}
-        style={{
-          borderWidth: 0.5,
-          borderColor: colors.border.medium,
-          borderRadius: borderRadius.md,
-          backgroundColor: colors.background.secondary,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.md,
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          minHeight: multiline ? 72 : undefined,
-          textAlignVertical: multiline ? 'top' : 'center',
-        }}
+        style={[
+          s.input,
+          multiline
+            ? { minHeight: 72, textAlignVertical: 'top' as const }
+            : { textAlignVertical: 'center' as const },
+        ]}
       />
     </View>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  input: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+  },
+  errorTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+  },
+  savedTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.dataColors.accel,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

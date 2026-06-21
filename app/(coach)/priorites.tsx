@@ -5,6 +5,9 @@
  * lecture) et une note d'intro. Sur le bilan du pilote, cela apparaît sous
  * « Mis en avant par votre coach ». Aucune injonction : un ordre de lecture
  * proposé et attribué.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, pills de virage,
+ * typo/couleurs @/theme/v2. Logique (sélection, note, upsert) inchangée.
  */
 
 import { useEffect, useState } from 'react';
@@ -17,13 +20,16 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { toggleCornerIndex } from '@/services/coachCurationLogic';
 import { getMyHighlightForPilot, upsertHighlight } from '@/services/coachCurationService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachPrioritesScreen() {
   const params = useLocalSearchParams<{ pilotId?: string }>();
@@ -67,36 +73,33 @@ export default function CoachPrioritesScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
+      <AppBar title="PRIORITÉS" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>PRIORITÉS</Text>
-          <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>
-            Le bilan, à votre main.
-          </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-          >
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xxl,
+          }}
+        >
+          <Text style={[s.eyebrow, { color: theme.palette.coach }]}>PRIORITÉS</Text>
+          <Text style={s.title}>Le bilan, à votre main.</Text>
+          <Text style={s.manifest}>
             Mettez en avant les virages à regarder en premier. Un ordre de lecture, pas une
             consigne.
           </Text>
 
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
           ) : (
             <>
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.text.tertiary, marginBottom: spacing.md },
-                ]}
-              >
-                VIRAGES MIS EN AVANT
-              </Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+              <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
+                <SectionLabel>VIRAGES MIS EN AVANT</SectionLabel>
+              </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
                 {BELTOISE_CORNERS.map((corner) => {
                   const order = selected.indexOf(corner.index);
                   const active = order >= 0;
@@ -107,25 +110,13 @@ export default function CoachPrioritesScreen() {
                       accessibilityState={{ selected: active }}
                       accessibilityLabel={`Virage ${corner.index}, ${corner.name}`}
                       onPress={() => setSelected((prev) => toggleCornerIndex(prev, corner.index))}
-                      style={({ pressed }) => ({
-                        paddingHorizontal: spacing.md,
-                        paddingVertical: spacing.sm,
-                        borderRadius: borderRadius.md,
-                        borderWidth: active ? 1 : 0.5,
-                        borderColor: active ? colors.accent.coach : colors.border.subtle,
-                        backgroundColor: active
-                          ? colors.background.elevated
-                          : colors.background.secondary,
-                        opacity: pressed ? 0.8 : 1,
-                      })}
+                      style={({ pressed }) => [
+                        s.pill,
+                        active && s.pillOn,
+                        { opacity: pressed ? 0.8 : 1 },
+                      ]}
                     >
-                      <Text
-                        style={{
-                          color: active ? colors.text.primary : colors.text.secondary,
-                          fontSize: fontSize.caption,
-                          fontWeight: active ? fontWeight.medium : fontWeight.regular,
-                        }}
-                      >
+                      <Text style={[s.pillT, active && s.pillTOn]}>
                         {active ? `${order + 1}. ` : ''}
                         {corner.name}
                       </Text>
@@ -134,82 +125,117 @@ export default function CoachPrioritesScreen() {
                 })}
               </View>
 
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.text.tertiary, marginTop: spacing.xxl, marginBottom: spacing.sm },
-                ]}
-              >
-                NOTE D&apos;INTRODUCTION (OPTIONNEL)
-              </Text>
+              <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.sm }}>
+                <SectionLabel>NOTE D&apos;INTRODUCTION (OPTIONNEL)</SectionLabel>
+              </View>
               <TextInput
                 value={note}
                 onChangeText={setNote}
                 placeholder="Un mot pour orienter la lecture du bilan."
-                placeholderTextColor={colors.text.tertiary}
+                placeholderTextColor={theme.palette.creamMute}
                 multiline
                 maxLength={280}
                 accessibilityLabel="Note d'introduction"
-                style={{
-                  borderWidth: 0.5,
-                  borderColor: colors.border.medium,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.background.secondary,
-                  padding: spacing.md,
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  minHeight: 88,
-                  textAlignVertical: 'top',
-                  marginBottom: spacing.lg,
-                }}
+                style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}
               />
 
               {saved ? (
-                <Text
-                  style={{
-                    color: colors.margin.green,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
+                <Text style={[s.savedTxt, { marginTop: theme.spacing.md }]}>
                   Priorités enregistrées.
                 </Text>
               ) : null}
 
-              <Pressable
-                accessibilityRole="button"
-                disabled={saving || !pilotId}
-                onPress={onSave}
-                style={({ pressed }) => ({
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.accent.coach,
-                  alignItems: 'center',
-                  opacity: saving || !pilotId ? 0.5 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: colors.background.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
-                </Text>
-              </Pressable>
+              <View style={{ marginTop: theme.spacing.lg }}>
+                <Button
+                  label={saving ? 'Enregistrement…' : 'Enregistrer'}
+                  onPress={onSave}
+                  disabled={saving || !pilotId}
+                />
+              </View>
             </>
           )}
 
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
+              <Text style={s.backLink}>Retour</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  pill: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: theme.palette.card2,
+    borderColor: theme.palette.line,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  pillOn: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: theme.palette.coach },
+  pillT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+  },
+  pillTOn: { color: theme.palette.cream },
+  input: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+  },
+  savedTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.dataColors.accel,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};
