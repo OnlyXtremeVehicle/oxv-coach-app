@@ -218,6 +218,7 @@ function ModePassive({
         <NavRow label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
         <NavRow label="Lieux & partenaires" hint="Autour des circuits" href="/(app)/lieux" />
         <NavRow label="Belle route" hint="Balade & points de vue" href="/(app)/belle-route" />
+        <NavRow label="Mes belles routes" hint="Vos routes enregistrées" href="/(app)/mes-routes" />
         <NavRow label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
         <NavRow label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
         {__DEV__ ? (

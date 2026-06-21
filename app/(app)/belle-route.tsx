@@ -18,10 +18,12 @@ import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import { router } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
 import * as Location from 'expo-location';
+import Toast from 'react-native-toast-message';
 
 import { isExpoGo } from '@/lib/runtime';
 import { findScenicPois } from '@/services/routing/scenicPoiService';
 import { planScenicRoute } from '@/services/routing/scenicRouteService';
+import { saveRoute } from '@/services/routing/scenicRoutesService';
 import type { Curviness, GeoPoint, ScenicPoi, ScenicRoute } from '@/services/routing/types';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -60,6 +62,7 @@ export default function BelleRouteScreen() {
   const [loadingPois, setLoadingPois] = useState(true);
   const [planning, setPlanning] = useState(false);
   const [routeUnavailable, setRouteUnavailable] = useState(false);
+  const [saving, setSaving] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   // Position de départ (géoloc, sinon Beltoise) + points de vue autour (keyless).
@@ -120,6 +123,26 @@ export default function BelleRouteScreen() {
       else setRouteUnavailable(true);
     } finally {
       setPlanning(false);
+    }
+  }
+
+  async function onSave() {
+    setSaving(true);
+    try {
+      const saved = await saveRoute({
+        name: `Belle route · ${distanceKm} km`,
+        start,
+        curviness,
+        route,
+        pois,
+      });
+      Toast.show({
+        type: saved ? 'success' : 'error',
+        text1: saved ? 'Route enregistrée' : 'Connexion requise',
+        text2: saved ? 'Retrouvez-la dans « Mes belles routes ».' : undefined,
+      });
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -264,6 +287,14 @@ export default function BelleRouteScreen() {
             label={planning ? 'Calcul…' : 'Calculer une belle route'}
             onPress={onPlan}
             disabled={planning}
+          />
+        </View>
+        <View style={{ marginTop: theme.spacing.sm }}>
+          <Button
+            label={saving ? 'Enregistrement…' : 'Enregistrer cette route'}
+            variant="ghost"
+            onPress={onSave}
+            disabled={saving}
           />
         </View>
       </View>
