@@ -1,5 +1,5 @@
 /**
- * Écran Régularité — pilier §3.2 du cahier OXV Mirror.
+ * Écran Régularité — pilier §3.2 du cahier OXV Mirror. Design V2.
  *
  * Mesure mathématique de la constance : l'écart entre les tours. Fait
  * statistique, pas jugement. « Êtes-vous régulier ? » et non « bon ? ».
@@ -8,11 +8,13 @@
  * descriptive, et une barre par tour montrant l'écart à la médiane.
  *
  * Sécurité : RLS owner. Lit les laps de la session via fetchSessionLaps.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact du kit. Le chiffre
+ * central animé (CountUpNumber) et les barres d'écart sont inchangés.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CountUpNumber, FadeInSection } from '@/components/motion';
@@ -20,7 +22,12 @@ import { supabase } from '@/lib/supabase';
 import { type RegularityProfile, computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatLapTime } from '@/utils/format';
 
 export default function RegulariteScreen() {
@@ -74,112 +81,64 @@ export default function RegulariteScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="RÉGULARITÉ" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   const hasContent = reg && reg.band !== null && reg.stdDevSeconds !== null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>RÉGULARITÉ</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          La constance, en chiffres.
-        </Text>
+    <Screen>
+      <AppBar title="RÉGULARITÉ" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>La constance, en chiffres.</Text>
 
         {!hasContent ? (
-          <View
-            style={{
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={[
-                typography.manifest,
-                { color: colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
-              ]}
-            >
+          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+            <Text style={s.emptyTitle}>
               Au moins deux tours sont nécessaires pour mesurer la régularité.
             </Text>
-          </View>
+          </Card>
         ) : (
           <>
             {/* Chiffre central : écart-type */}
-            <FadeInSection style={{ alignItems: 'center', marginBottom: spacing.giant }}>
+            <FadeInSection style={{ alignItems: 'center', marginVertical: theme.spacing.xxl }}>
               <CountUpNumber
                 value={reg.stdDevSeconds!}
                 duration={1000}
                 decimals={2}
                 suffix=" s"
-                style={[typography.heroNumber, { color: colors.text.primary }]}
+                style={s.hero}
               />
-              <Text
-                style={[
-                  typography.screenTitle,
-                  {
-                    color: colors.text.secondary,
-                    textAlign: 'center',
-                    fontWeight: fontWeight.light,
-                    marginTop: spacing.sm,
-                  },
-                ]}
-              >
-                {reg.band}
-              </Text>
-              <Text
-                style={{
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  marginTop: spacing.xs,
-                }}
-              >
-                écart-type sur {reg.lapCount} tours
-              </Text>
+              <Text style={s.band}>{reg.band}</Text>
+              <Text style={s.heroNote}>écart-type sur {reg.lapCount} tours</Text>
             </FadeInSection>
 
             {/* Manifeste */}
-            {reg.manifest ? (
-              <Text
-                style={[
-                  typography.manifest,
-                  {
-                    textAlign: 'center',
-                    marginBottom: spacing.huge,
-                    paddingHorizontal: spacing.md,
-                    color: colors.text.secondary,
-                  },
-                ]}
-              >
-                {reg.manifest}
-              </Text>
-            ) : null}
+            {reg.manifest ? <Text style={s.manifest}>{reg.manifest}</Text> : null}
 
             {/* Repères chiffrés */}
-            <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xxl }}>
-              <StatBox
+            <View
+              style={{
+                flexDirection: 'row',
+                gap: theme.spacing.sm,
+                marginBottom: theme.spacing.xl,
+              }}
+            >
+              <Fact
                 label="Meilleur tour"
                 value={reg.bestSeconds !== null ? formatLapTime(reg.bestSeconds) : '—'}
               />
-              <StatBox
+              <Fact
                 label="Médiane"
                 value={reg.medianSeconds !== null ? formatLapTime(reg.medianSeconds) : '—'}
               />
-              <StatBox
+              <Fact
                 label="Amplitude"
                 value={
                   reg.spreadSeconds !== null
@@ -190,86 +149,32 @@ export default function RegulariteScreen() {
             </View>
 
             {/* Écart par tour */}
-            <Text
-              style={[
-                typography.eyebrow,
-                { color: colors.text.tertiary, marginBottom: spacing.md },
-              ]}
-            >
-              ÉCART À LA MÉDIANE, TOUR PAR TOUR
-            </Text>
-            <View style={{ gap: spacing.sm }}>
-              {reg.laps.map((lap) => (
-                <LapBar
-                  key={lap.lapNumber}
-                  lapNumber={lap.lapNumber}
-                  delta={lap.deltaToMedianSeconds}
-                  maxAbsDelta={Math.max(
-                    0.1,
-                    ...reg.laps.map((l) => Math.abs(l.deltaToMedianSeconds))
-                  )}
-                />
-              ))}
+            <View style={{ gap: theme.spacing.sm }}>
+              <SectionLabel>Écart à la médiane, tour par tour</SectionLabel>
+              <Card>
+                <View style={{ gap: theme.spacing.sm }}>
+                  {reg.laps.map((lap) => (
+                    <LapBar
+                      key={lap.lapNumber}
+                      lapNumber={lap.lapNumber}
+                      delta={lap.deltaToMedianSeconds}
+                      maxAbsDelta={Math.max(
+                        0.1,
+                        ...reg.laps.map((l) => Math.abs(l.deltaToMedianSeconds))
+                      )}
+                    />
+                  ))}
+                </View>
+              </Card>
             </View>
 
-            <Text
-              style={[
-                typography.caption,
-                {
-                  marginTop: spacing.xxl,
-                  textAlign: 'center',
-                  color: colors.text.tertiary,
-                  fontStyle: 'italic',
-                  paddingHorizontal: spacing.md,
-                },
-              ]}
-            >
+            <Text style={s.doctrine}>
               Un fait statistique, pas une note. La constance vous appartient.
             </Text>
           </>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function StatBox({ label, value }: { label: string; value: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{ color: colors.text.tertiary, fontSize: fontSize.eyebrow, letterSpacing: 1 }}
-        numberOfLines={1}
-      >
-        {label.toUpperCase()}
-      </Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-          fontFamily: 'Menlo',
-          marginTop: spacing.xs,
-        }}
-      >
-        {value}
-      </Text>
-    </View>
+      </View>
+    </Screen>
   );
 }
 
@@ -291,10 +196,8 @@ function LapBar({
   const deltaLabel = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2).replace('.', ',')} s`;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-      <Text style={{ width: 28, color: colors.text.tertiary, fontSize: fontSize.caption }}>
-        T{lapNumber}
-      </Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+      <Text style={s.lapTag}>T{lapNumber}</Text>
       {/* Piste centrée */}
       <View style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
@@ -304,12 +207,12 @@ function LapBar({
                 width: `${ratio * 100}%`,
                 height: 6,
                 borderRadius: 3,
-                backgroundColor: colors.text.secondary,
+                backgroundColor: theme.palette.creamMute,
               }}
             />
           ) : null}
         </View>
-        <View style={{ width: 1, height: 18, backgroundColor: colors.border.medium }} />
+        <View style={{ width: 1, height: 18, backgroundColor: theme.palette.edge }} />
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
           {!isBelow ? (
             <View
@@ -317,23 +220,85 @@ function LapBar({
                 width: `${ratio * 100}%`,
                 height: 6,
                 borderRadius: 3,
-                backgroundColor: colors.text.secondary,
+                backgroundColor: theme.palette.creamMute,
               }}
             />
           ) : null}
         </View>
       </View>
-      <Text
-        style={{
-          width: 76,
-          textAlign: 'right',
-          color: colors.text.tertiary,
-          fontSize: fontSize.caption,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {deltaLabel}
-      </Text>
+      <Text style={s.lapDelta}>{deltaLabel}</Text>
     </View>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  hero: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.hud,
+    color: theme.palette.cream,
+    letterSpacing: -1,
+  },
+  band: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+  heroNote: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.xxl,
+  },
+  lapTag: {
+    width: 28,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  lapDelta: {
+    width: 76,
+    textAlign: 'right' as const,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  doctrine: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.xxl,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+};

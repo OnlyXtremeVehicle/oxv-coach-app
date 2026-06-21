@@ -1,5 +1,5 @@
 /**
- * Écran #17 — Progression.
+ * Écran #17 — Progression. Design V2 (charte oxv-mirror-app).
  *
  * Courbe SVG simple de la marge globale sur les N dernières sessions,
  * avec bandes de fond colorisées par zone (vert/jaune/rouge), sélecteur
@@ -11,29 +11,35 @@
  *
  * État vide pédagogique si moins de 3 sessions : on n'affiche pas la
  * courbe pour éviter une visualisation trompeuse.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Segmented/Fact du kit.
+ * Le code SVG et les calculs de la courbe sont inchangés.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Easing,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Animated, Easing, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
 
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { Segmented } from '@/ui/Segmented';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type Granularity = 'week' | 'month' | 'all';
+
+const GRAN_OPTIONS: { id: Granularity; label: string }[] = [
+  { id: 'week', label: 'Semaine' },
+  { id: 'month', label: 'Mois' },
+  { id: 'all', label: 'Tout' },
+];
 
 export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -86,26 +92,20 @@ export default function ProgressionScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="PROGRESSION" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>PROGRESSION</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Vous avancez.
-        </Text>
+    <Screen>
+      <AppBar title="PROGRESSION" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Vous avancez.</Text>
 
         {/* §3.3 — depuis la dernière session (constat neutre, vs soi) */}
         {lastDelta ? <LastSessionDelta {...lastDelta} /> : null}
@@ -114,17 +114,19 @@ export default function ProgressionScreen() {
           <EmptyState count={analyses.length} />
         ) : (
           <>
-            <GranularityPicker value={granularity} onChange={setGranularity} />
+            <View style={{ marginBottom: theme.spacing.xl }}>
+              <Segmented
+                options={GRAN_OPTIONS.map((o) => o.label)}
+                value={GRAN_OPTIONS.find((o) => o.id === granularity)!.label}
+                onChange={(label) => {
+                  const opt = GRAN_OPTIONS.find((o) => o.label === label);
+                  if (opt) setGranularity(opt.id);
+                }}
+              />
+            </View>
 
             {points.length < 2 ? (
-              <Text
-                style={[
-                  typography.caption,
-                  { marginTop: spacing.xxl, color: colors.text.tertiary, textAlign: 'center' },
-                ]}
-              >
-                Pas assez de sessions sur la période sélectionnée.
-              </Text>
+              <Text style={s.periodEmpty}>Pas assez de sessions sur la période sélectionnée.</Text>
             ) : (
               <ProgressionChart points={points} />
             )}
@@ -133,82 +135,16 @@ export default function ProgressionScreen() {
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxl, alignItems: 'center', gap: spacing.lg }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center', gap: theme.spacing.lg }}>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/(app)/stats' as never)}
           >
-            <Text
-              style={{
-                color: colors.text.secondary,
-                fontSize: fontSize.caption,
-                textDecorationLine: 'underline',
-              }}
-            >
-              Voir vos statistiques agrégées
-            </Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.link}>Voir vos statistiques agrégées</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function GranularityPicker({
-  value,
-  onChange,
-}: {
-  value: Granularity;
-  onChange: (g: Granularity) => void;
-}) {
-  const options: { id: Granularity; label: string }[] = [
-    { id: 'week', label: 'Semaine' },
-    { id: 'month', label: 'Mois' },
-    { id: 'all', label: 'Tout' },
-  ];
-
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        gap: spacing.sm,
-        marginBottom: spacing.xl,
-      }}
-    >
-      {options.map((opt) => {
-        const active = opt.id === value;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            key={opt.id}
-            onPress={() => onChange(opt.id)}
-            style={({ pressed }) => ({
-              flex: 1,
-              paddingVertical: spacing.sm,
-              borderRadius: borderRadius.md,
-              borderWidth: 1,
-              borderColor: active ? colors.accent.red : colors.border.subtle,
-              backgroundColor: active ? 'rgba(200, 16, 46, 0.10)' : 'transparent',
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: active ? colors.text.primary : colors.text.secondary,
-                fontSize: fontSize.caption,
-                fontWeight: active ? fontWeight.medium : fontWeight.regular,
-              }}
-            >
-              {opt.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+      </View>
+    </Screen>
   );
 }
 
@@ -263,26 +199,24 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
   });
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        padding: spacing.md,
-        marginBottom: spacing.xl,
-      }}
-    >
+    <Card style={{ marginBottom: theme.spacing.xl }}>
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
         {/* Bande verte (haut) */}
-        <Rect x={0} y={0} width={W} height={yYellowTop} fill={colors.margin.green} opacity={0.08} />
+        <Rect
+          x={0}
+          y={0}
+          width={W}
+          height={yYellowTop}
+          fill={theme.dataColors.accel}
+          opacity={0.08}
+        />
         {/* Bande jaune (milieu) */}
         <Rect
           x={0}
           y={yYellowTop}
           width={W}
           height={yRedTop - yYellowTop}
-          fill={colors.margin.yellow}
+          fill={theme.palette.gold}
           opacity={0.1}
         />
         {/* Bande rouge (bas) */}
@@ -291,14 +225,14 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
           y={yRedTop}
           width={W}
           height={H - yRedTop}
-          fill={colors.margin.red}
+          fill={theme.palette.red}
           opacity={0.1}
         />
 
         {/* Courbe — draw-on progressif gauche à droite (~1.2s) */}
         <AnimatedPath
           d={pathD}
-          stroke={colors.text.primary}
+          stroke={theme.palette.cream}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -314,8 +248,8 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
             cx={p.x}
             cy={p.y}
             r={3}
-            fill={colors.background.primary}
-            stroke={colors.text.primary}
+            fill={theme.palette.night}
+            stroke={theme.palette.cream}
             strokeWidth={1.5}
           />
         ))}
@@ -325,10 +259,10 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
-          marginTop: spacing.sm,
+          marginTop: theme.spacing.sm,
         }}
       >
-        <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+        <Text style={s.axis}>
           {points[0]?.sessionStartedAt
             ? new Date(points[0].sessionStartedAt).toLocaleDateString('fr-FR', {
                 day: 'numeric',
@@ -336,7 +270,7 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
               })
             : ''}
         </Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+        <Text style={s.axis}>
           {points[points.length - 1]?.sessionStartedAt
             ? new Date(points[points.length - 1].sessionStartedAt).toLocaleDateString('fr-FR', {
                 day: 'numeric',
@@ -345,72 +279,32 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
             : ''}
         </Text>
       </View>
-    </View>
+    </Card>
   );
 }
 
 function StatsGrid({ stats }: { stats: { count: number; avg: number; best: number } }) {
   return (
-    <View style={{ flexDirection: 'row', gap: spacing.md }}>
-      <StatCard label="Sessions" value={String(stats.count)} />
-      <StatCard label="Marge moyenne" value={`${Math.round(stats.avg)}%`} />
-      <StatCard label="Meilleure" value={`${Math.round(stats.best)}%`} />
-    </View>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.ultralight,
-          marginBottom: spacing.xs,
-        }}
-      >
-        {value}
-      </Text>
-      <Text style={[typography.caption, { textAlign: 'center' }]}>{label}</Text>
+    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+      <Fact label="Sessions" value={String(stats.count)} />
+      <Fact label="Marge moyenne" value={String(Math.round(stats.avg))} unit="%" />
+      <Fact label="Meilleure" value={String(Math.round(stats.best))} unit="%" />
     </View>
   );
 }
 
 function EmptyState({ count }: { count: number }) {
   return (
-    <View
-      style={{
-        marginTop: spacing.xxxl,
-        padding: spacing.xl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { textAlign: 'center', marginBottom: spacing.lg }]}>
-        Votre progression apparaîtra après 3 sessions complètes.
-      </Text>
-      <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Votre progression apparaîtra après 3 sessions complètes.</Text>
+      <Text style={s.emptyHint}>
         {count === 0
           ? 'Aucune session pour le moment.'
           : count === 1
             ? '1 session enregistrée.'
             : `${count} sessions enregistrées.`}
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -434,47 +328,31 @@ function LastSessionDelta({
   const word = stable ? 'stable' : rounded > 0 ? 'en hausse' : 'en baisse';
   const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '±';
   const accent = stable
-    ? colors.text.secondary
+    ? theme.palette.creamMute
     : rounded > 0
-      ? colors.margin.green
-      : colors.margin.yellow;
+      ? theme.dataColors.accel
+      : theme.palette.gold;
 
   return (
-    <View
+    <Card
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        marginBottom: spacing.xl,
+        marginBottom: theme.spacing.xl,
       }}
     >
-      <View style={{ flex: 1 }}>
-        <Text
-          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.xs }]}
-        >
-          DEPUIS VOTRE DERNIÈRE SESSION
-        </Text>
-        <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
+      <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+        <SectionLabel>Depuis votre dernière session</SectionLabel>
+        <Text style={[s.deltaBody, { marginTop: theme.spacing.xs }]}>
           Marge {word} · {Math.round(previous)} % → {Math.round(current)} %
         </Text>
       </View>
-      <Text
-        style={{
-          color: accent,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
+      <Text style={[s.deltaValue, { color: accent }]}>
         {stable ? '±0' : `${sign}${Math.abs(rounded)}`}
-        <Text style={{ fontSize: fontSize.caption, color: colors.text.tertiary }}> pts</Text>
+        <Text style={s.deltaUnit}> pts</Text>
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -492,3 +370,65 @@ function computeStats(analyses: RecentAnalysisRow[]): {
     best: Math.max(...margins),
   };
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  periodEmpty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xxl,
+    marginBottom: theme.spacing.xl,
+  },
+  axis: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  link: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+    textDecorationLine: 'underline' as const,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+  deltaBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+  },
+  deltaValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.value,
+    color: theme.palette.cream,
+  },
+  deltaUnit: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+};

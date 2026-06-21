@@ -9,11 +9,14 @@
  *   2. Choisir une durée (3 options)
  *   3. Tap "Créer le lien" → génère token + ouvre la sheet partage native
  *   4. Liste des liens actifs en dessous, avec bouton "Révoquer"
+ *
+ * Reskin V2 : Screen + AppBar, Segmented (durée), Card/SectionLabel/Button,
+ * typo/couleurs @/theme/v2. Logique de partage RGPD (scope, métriques cochées,
+ * création, révocation) inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, Share, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Alert, Pressable, Share, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -26,7 +29,13 @@ import {
   sanitizeIncludedMetrics,
   shareUrlFor,
 } from '@/services/sharesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { Segmented } from '@/ui/Segmented';
 import { timeAgoFr } from '@/utils/time';
 
 interface ScopeOption {
@@ -119,91 +128,54 @@ export default function PartageScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>PARTAGER</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
-          Une vue, à vos conditions.
-        </Text>
+    <Screen>
+      <AppBar title="PARTAGE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Une vue, à vos conditions.</Text>
 
-        <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>SCOPE</Text>
-        <View style={{ gap: spacing.sm, marginBottom: spacing.xl }}>
+        <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
+          <SectionLabel>SCOPE</SectionLabel>
           {SCOPES.map((opt) => {
             const active = scope === opt.id;
             return (
               <Pressable
                 accessibilityRole="button"
+                accessibilityState={{ selected: active }}
                 key={opt.id}
                 onPress={() => setScope(opt.id)}
-                style={({ pressed }) => ({
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: active ? 1 : 0.5,
-                  borderColor: active ? colors.accent.red : colors.border.subtle,
-                  backgroundColor: active ? 'rgba(200, 16, 46, 0.08)' : colors.background.secondary,
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
               >
-                <Text
+                <Card
                   style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.regular,
+                    borderColor: active ? theme.palette.edge : theme.palette.line,
+                    backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card,
                   }}
                 >
-                  {opt.label}
-                </Text>
-                <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                  {opt.description}
-                </Text>
+                  <Text style={s.scopeLabel}>{opt.label}</Text>
+                  <Text style={s.scopeDesc}>{opt.description}</Text>
+                </Card>
               </Pressable>
             );
           })}
         </View>
 
-        <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>DURÉE</Text>
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xxxl }}>
-          {DURATIONS.map((d) => {
-            const active = duration === d.days;
-            return (
-              <Pressable
-                accessibilityRole="button"
-                key={d.label}
-                onPress={() => setDuration(d.days)}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  paddingVertical: spacing.sm,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 1,
-                  borderColor: active ? colors.accent.red : colors.border.subtle,
-                  backgroundColor: active ? 'rgba(200, 16, 46, 0.10)' : 'transparent',
-                  alignItems: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: active ? colors.text.primary : colors.text.secondary,
-                    fontSize: fontSize.caption,
-                    fontWeight: active ? fontWeight.medium : fontWeight.regular,
-                  }}
-                >
-                  {d.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={{ gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
+          <SectionLabel>DURÉE</SectionLabel>
+          <Segmented
+            options={DURATIONS.map((d) => d.label)}
+            value={DURATIONS.find((d) => d.days === duration)?.label ?? DURATIONS[0].label}
+            onChange={(label) => {
+              const found = DURATIONS.find((d) => d.label === label);
+              if (found) setDuration(found.days);
+            }}
+          />
         </View>
 
-        <Text style={[typography.eyebrow, { marginBottom: spacing.xs }]}>MÉTRIQUES PARTAGÉES</Text>
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.md }]}
-        >
-          Vous ne partagez que ce que vous cochez. Rien n'est exposé par défaut.
-        </Text>
-        <View style={{ gap: spacing.sm, marginBottom: spacing.xxxl }}>
+        <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
+          <SectionLabel>MÉTRIQUES PARTAGÉES</SectionLabel>
+          <Text style={s.metricsHint}>
+            Vous ne partagez que ce que vous cochez. Rien n&apos;est exposé par défaut.
+          </Text>
           {SHAREABLE_METRICS.map((m) => {
             const on = metrics.includes(m.key);
             return (
@@ -213,92 +185,56 @@ export default function PartageScreen() {
                 accessibilityLabel={m.label}
                 key={m.key}
                 onPress={() => toggleMetric(m.key)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: spacing.md,
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: on ? 1 : 0.5,
-                  borderColor: on ? colors.accent.red : colors.border.subtle,
-                  backgroundColor: on ? 'rgba(200, 16, 46, 0.08)' : colors.background.secondary,
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
               >
-                <View
+                <Card
                   style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 4,
-                    borderWidth: 1.5,
-                    borderColor: on ? colors.accent.red : colors.border.medium,
-                    backgroundColor: on ? colors.accent.red : 'transparent',
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: theme.spacing.md,
+                    borderColor: on ? theme.palette.edge : theme.palette.line,
+                    backgroundColor: on ? 'rgba(255,255,255,0.07)' : theme.palette.card,
                   }}
-                />
-                <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
-                  {m.label}
-                </Text>
+                >
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: theme.radius.sm,
+                      borderWidth: 1.5,
+                      borderColor: on ? theme.palette.cream : theme.palette.edge,
+                      backgroundColor: on ? theme.palette.cream : 'transparent',
+                    }}
+                  />
+                  <Text style={s.metricLabel}>{m.label}</Text>
+                </Card>
               </Pressable>
             );
           })}
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: submitting || metrics.length === 0 }}
-          onPress={onCreate}
-          disabled={submitting || metrics.length === 0}
-          style={({ pressed }) => ({
-            height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.accent.red,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexDirection: 'row',
-            gap: spacing.sm,
-            marginBottom: spacing.xxl,
-            opacity: metrics.length === 0 ? 0.4 : pressed ? 0.85 : 1,
-          })}
-        >
-          {submitting ? <ActivityIndicator color={colors.text.primary} /> : null}
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-              letterSpacing: 0.5,
-            }}
-          >
-            {submitting ? 'Génération…' : 'Créer le lien'}
-          </Text>
-        </Pressable>
-
-        <Text
-          style={[typography.eyebrow, { marginBottom: spacing.md, color: colors.text.tertiary }]}
-        >
-          VOS LIENS ACTIFS
-        </Text>
-        {loading ? (
-          <ActivityIndicator color={colors.text.secondary} />
-        ) : shares.length === 0 ? (
-          <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-            Aucun lien partagé pour l'instant.
-          </Text>
-        ) : (
-          <View style={{ gap: spacing.sm }}>
-            {shares.map((link) => (
-              <ShareCard key={link.id} link={link} onRevoke={() => onRevoke(link)} />
-            ))}
-          </View>
-        )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
+        <View style={{ marginBottom: theme.spacing.xxl }}>
+          <Button
+            label={submitting ? 'Génération…' : 'Créer le lien'}
+            onPress={onCreate}
+            disabled={submitting || metrics.length === 0}
+          />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <View style={{ gap: theme.spacing.sm }}>
+          <SectionLabel>VOS LIENS ACTIFS</SectionLabel>
+          {loading ? (
+            <ActivityIndicator color={theme.palette.creamMute} />
+          ) : shares.length === 0 ? (
+            <Text style={s.emptyLinks}>Aucun lien partagé pour l&apos;instant.</Text>
+          ) : (
+            shares.map((link) => (
+              <ShareCard key={link.id} link={link} onRevoke={() => onRevoke(link)} />
+            ))
+          )}
+        </View>
+      </View>
+    </Screen>
   );
 }
 
@@ -308,57 +244,36 @@ function ShareCard({ link, onRevoke }: { link: ShareLink; onRevoke: () => void }
   const status = revoked ? 'révoqué' : expired ? 'expiré' : 'actif';
 
   return (
-    <View
-      style={{
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        opacity: revoked || expired ? 0.5 : 1,
-      }}
-    >
+    <Card style={{ opacity: revoked || expired ? 0.5 : 1 }}>
       <View
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: spacing.xs,
+          marginBottom: theme.spacing.xs,
         }}
       >
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.regular,
-          }}
-        >
-          {scopeLabel(link.scope)}
-        </Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary }]}>{status}</Text>
+        <Text style={s.shareScope}>{scopeLabel(link.scope)}</Text>
+        <Text style={s.shareStatus}>{status}</Text>
       </View>
-      <Text
-        style={{
-          color: colors.text.tertiary,
-          fontSize: fontSize.caption,
-          fontFamily: 'Menlo',
-          marginBottom: spacing.sm,
-        }}
-        numberOfLines={1}
-      >
+      <Text style={s.shareUrl} numberOfLines={1}>
         {shareUrlFor(link.token)}
       </Text>
-      <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+      <Text style={s.shareMeta}>
         Créé {timeAgoFr(new Date(link.createdAt))} · {link.viewCount} vue
         {link.viewCount > 1 ? 's' : ''} · {link.includedMetrics.length} métrique
         {link.includedMetrics.length > 1 ? 's' : ''}
       </Text>
       {!revoked && !expired ? (
-        <Pressable accessibilityRole="button" onPress={onRevoke} style={{ marginTop: spacing.sm }}>
-          <Text style={{ color: colors.system.error, fontSize: fontSize.caption }}>Révoquer</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onRevoke}
+          style={{ marginTop: theme.spacing.sm }}
+        >
+          <Text style={s.revoke}>Révoquer</Text>
         </Pressable>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
@@ -374,3 +289,71 @@ function scopeLabel(scope: ShareScope): string {
       return 'Historique complet';
   }
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xxl,
+  },
+  scopeLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  scopeDesc: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  metricsHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  metricLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  emptyLinks: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  shareScope: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  shareStatus: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  shareUrl: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.sm,
+  },
+  shareMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+  },
+  revoke: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.red,
+  },
+};

@@ -15,16 +15,20 @@
  *     en arrière-plan et l'analyse continue son chemin.
  *   - La barre de progression est animée pour rester rassurante même si
  *     l'analyse est instantanée (lecture DB rapide).
+ *
+ * Reskin V2 : Screen (non défilant) + SectionLabel, typo/couleurs @/theme/v2.
+ * Logique inchangée (progression animée, timeout de sécurité, analyse).
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { analyzeAndPersistSession } from '@/services/analyzeSessionService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 const MIN_VISIBLE_MS = 3_500;
 const SAFETY_TIMEOUT_MS = 30_000;
@@ -102,39 +106,19 @@ export default function DonneesSecuriteScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
-    >
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text
-          style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
-        >
-          PRÉSERVATION
-        </Text>
+    <Screen scroll={false}>
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: theme.spacing.lg }}>
+        <View style={{ marginBottom: theme.spacing.lg }}>
+          <SectionLabel>PRÉSERVATION</SectionLabel>
+        </View>
 
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.headline,
-            fontWeight: fontWeight.light,
-            lineHeight: fontSize.headline * 1.2,
-            marginBottom: spacing.xl,
-          }}
-        >
-          Vos données sont en sécurité.
-        </Text>
+        <Text style={styles.headline}>Vos données sont en sécurité.</Text>
 
         <ProgressBar percent={progress} />
 
-        <Text style={[typography.caption, { marginTop: spacing.md }]}>
-          {captionFor(phase, progress)}
-        </Text>
+        <Text style={styles.caption}>{captionFor(phase, progress)}</Text>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -155,7 +139,7 @@ function ProgressBar({ percent }: { percent: number }) {
     <View
       style={{
         height: 3,
-        backgroundColor: colors.background.secondary,
+        backgroundColor: theme.palette.card2,
         borderRadius: 2,
         overflow: 'hidden',
       }}
@@ -164,9 +148,27 @@ function ProgressBar({ percent }: { percent: number }) {
         style={{
           height: '100%',
           width: `${percent}%`,
-          backgroundColor: colors.accent.red,
+          backgroundColor: theme.palette.red,
         }}
       />
     </View>
   );
 }
+
+const styles = {
+  headline: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    lineHeight: theme.fontSize.h2 * 1.25,
+    color: theme.palette.cream,
+    marginBottom: theme.spacing.xl,
+  },
+  caption: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.md,
+  },
+};
