@@ -1,5 +1,5 @@
 /**
- * Écran #22 — Paddock entre runs.
+ * Écran #22 — Paddock entre runs. Design V2 (charte oxv-mirror-app).
  *
  * Pendant la session, entre deux runs (état S7 actif après un premier
  * roulage). Vue compacte du dernier run effectué + invitation à préparer
@@ -7,14 +7,22 @@
  *
  * Doctrine : *"À chaud, l'essentiel."* — pas le bilan complet, juste
  * l'indicateur principal pour ne pas surcharger entre deux tours.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button du kit, chrono en
+ * mono (voix de l'instrument). Écran d'état de flux sans retour manuel.
+ * Logique de données inchangée.
  */
 
-import { Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { useSessionStore } from '@/store/useSessionStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatChronoMs } from '@/utils/time';
 
 export default function EntreRunsScreen() {
@@ -26,69 +34,54 @@ export default function EntreRunsScreen() {
   // montre que du réel : le meilleur tour et le nombre de tours.
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <View style={{ flex: 1, padding: spacing.xl }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>ENTRE RUNS</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxxl }]}
-        >
-          À chaud, l'essentiel.
-        </Text>
+    <Screen scroll={false}>
+      <AppBar title="ENTRE LES RUNS" />
+      <View
+        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+      >
+        <Text style={s.title}>À chaud, l'essentiel.</Text>
 
-        <View
-          style={{
-            padding: spacing.xl,
-            borderRadius: borderRadius.lg,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            backgroundColor: colors.background.secondary,
-            alignItems: 'center',
-            marginBottom: spacing.xxxl,
-          }}
-        >
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>MEILLEUR TOUR</Text>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.hero,
-              fontWeight: fontWeight.ultralight,
-              marginBottom: spacing.sm,
-            }}
-          >
-            {bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}
-          </Text>
-          <Text style={[typography.caption, { textAlign: 'center', color: colors.text.tertiary }]}>
+        <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
+          <SectionLabel>Meilleur tour</SectionLabel>
+          <Text style={s.chrono}>{bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}</Text>
+          <Text style={s.note}>
             {lapCount} {lapCount > 1 ? 'tours' : 'tour'} · la marge se lit au bilan, après la
             session.
           </Text>
-        </View>
+        </Card>
 
         <View style={{ flex: 1 }} />
 
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          label="Préparer le prochain run"
           onPress={() => router.replace('/(app)/equipement')}
-          style={({ pressed }) => ({
-            height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.accent.red,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.85 : 1,
-          })}
-        >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-              letterSpacing: 0.5,
-            }}
-          >
-            Préparer le prochain run
-          </Text>
-        </Pressable>
+        />
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xxl,
+  },
+  chrono: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.hud,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  note: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+};

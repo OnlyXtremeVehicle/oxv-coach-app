@@ -6,11 +6,11 @@
  * statut. Aucun classement, aucune injonction.
  *
  * Doctrine : vouvoiement, sobre, le choix appartient au pilote.
+ * Reskin V2 : Screen + AppBar, Card/Button, logique inchangée.
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { INVITATION_STATUS_LABELS } from '@/services/roulagesLogic';
@@ -19,7 +19,11 @@ import {
   listMyInvitations,
   respondToInvitation,
 } from '@/services/roulagesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 import { formatDateTime, formatPriceCents } from '@/utils/format';
 
 export default function PilotRoulagesScreen() {
@@ -55,162 +59,118 @@ export default function PilotRoulagesScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>ROULAGES</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Vos invitations.
-        </Text>
+    <Screen>
+      <AppBar title="ROULAGES" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Vos invitations.</Text>
 
         {loading ? (
-          <ActivityIndicator color={colors.text.secondary} />
+          <ActivityIndicator color={theme.palette.creamMute} />
         ) : items.length === 0 ? (
-          <View
-            style={{
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={[typography.manifest, { color: colors.text.tertiary, textAlign: 'center' }]}
-            >
-              Aucune invitation pour l&apos;instant.
-            </Text>
-          </View>
+          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+            <Text style={s.empty}>Aucune invitation pour l&apos;instant.</Text>
+          </Card>
         ) : (
-          <View style={{ gap: spacing.md }}>
+          <View style={{ gap: theme.spacing.md }}>
             {items.map(({ invitation, roulage }) => {
               const pending = invitation.status === 'invited' && roulage.status === 'open';
               return (
-                <View
-                  key={invitation.id}
-                  style={{
-                    padding: spacing.lg,
-                    borderRadius: borderRadius.lg,
-                    borderWidth: 0.5,
-                    borderColor: colors.border.subtle,
-                    backgroundColor: colors.background.secondary,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.text.primary,
-                      fontSize: fontSize.title,
-                      fontWeight: fontWeight.light,
-                    }}
-                  >
-                    {roulage.title}
-                  </Text>
-                  <Text
-                    style={[
-                      typography.caption,
-                      { color: colors.text.tertiary, marginTop: spacing.xs },
-                    ]}
-                  >
+                <Card key={invitation.id}>
+                  <Text style={s.cardTitle}>{roulage.title}</Text>
+                  <Text style={s.meta}>
                     {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
                   </Text>
-                  {roulage.location ? (
-                    <Text
-                      style={[typography.caption, { color: colors.text.tertiary, marginTop: 2 }]}
-                    >
-                      {roulage.location}
-                    </Text>
-                  ) : null}
+                  {roulage.location ? <Text style={s.meta}>{roulage.location}</Text> : null}
                   {roulage.pricePerPilot != null ? (
-                    <Text
-                      style={{
-                        color: colors.text.secondary,
-                        fontSize: fontSize.caption,
-                        marginTop: spacing.xs,
-                      }}
-                    >
-                      {formatPriceCents(roulage.pricePerPilot)} par place
-                    </Text>
+                    <Text style={s.price}>{formatPriceCents(roulage.pricePerPilot)} par place</Text>
                   ) : null}
 
                   {roulage.status === 'cancelled' ? (
-                    <Text
+                    <Text style={s.cancelled}>Ce roulage a été annulé.</Text>
+                  ) : pending ? (
+                    <View
                       style={{
-                        color: colors.accent.red,
-                        fontSize: fontSize.caption,
-                        marginTop: spacing.md,
+                        flexDirection: 'row',
+                        gap: theme.spacing.sm,
+                        marginTop: theme.spacing.md,
                       }}
                     >
-                      Ce roulage a été annulé.
-                    </Text>
-                  ) : pending ? (
-                    <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md }}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Accepter l'invitation"
-                        disabled={busyId === invitation.id}
-                        onPress={() => respond(invitation.id, true)}
-                        style={({ pressed }) => ({
-                          flex: 1,
-                          padding: spacing.md,
-                          borderRadius: borderRadius.md,
-                          backgroundColor: colors.accent.red,
-                          alignItems: 'center',
-                          opacity: pressed ? 0.85 : 1,
-                        })}
-                      >
-                        <Text
-                          style={{
-                            color: colors.background.primary,
-                            fontSize: fontSize.caption,
-                            fontWeight: fontWeight.medium,
-                          }}
-                        >
-                          Accepter
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel="Décliner l'invitation"
-                        disabled={busyId === invitation.id}
-                        onPress={() => respond(invitation.id, false)}
-                        style={({ pressed }) => ({
-                          flex: 1,
-                          padding: spacing.md,
-                          borderRadius: borderRadius.md,
-                          borderWidth: 0.5,
-                          borderColor: colors.border.medium,
-                          alignItems: 'center',
-                          opacity: pressed ? 0.7 : 1,
-                        })}
-                      >
-                        <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-                          Décliner
-                        </Text>
-                      </Pressable>
+                      <View style={{ flex: 1 }}>
+                        <Button
+                          label="Accepter"
+                          onPress={() => respond(invitation.id, true)}
+                          disabled={busyId === invitation.id}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Button
+                          label="Décliner"
+                          variant="ghost"
+                          onPress={() => respond(invitation.id, false)}
+                          disabled={busyId === invitation.id}
+                        />
+                      </View>
                     </View>
                   ) : (
-                    <Text
-                      style={{
-                        color: colors.text.secondary,
-                        fontSize: fontSize.caption,
-                        marginTop: spacing.md,
-                      }}
-                    >
+                    <Text style={s.response}>
                       Votre réponse : {INVITATION_STATUS_LABELS[invitation.status]}
                     </Text>
                   )}
-                </View>
+                </Card>
               );
             })}
           </View>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  empty: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  cardTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  price: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.xs,
+  },
+  cancelled: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+    marginTop: theme.spacing.md,
+  },
+  response: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+};

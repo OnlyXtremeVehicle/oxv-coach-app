@@ -7,11 +7,13 @@
  *
  * Réutilise PilotPreset + TrajectoryLayer (mode speed-heatmap) déjà en
  * place. Charge les telemetry_frames de la session (RLS owner).
+ *
+ * Reskin V2 : Screen + AppBar + Card, typo/couleurs @/theme/v2. Le
+ * composant carte (PilotPreset, SVG) est conservé tel quel.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
@@ -19,7 +21,11 @@ import { type BrakingMarker } from '@/components/CircuitMap';
 import { supabase } from '@/lib/supabase';
 import { detectBrakingPoints } from '@/services/brakingPointsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -103,49 +109,28 @@ export default function HeatmapScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="CHALEUR" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   const hasContent = trajectory && trajectory.length > 1;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>CARTE DE CHALEUR</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Votre vitesse, rendue visible.
-        </Text>
+    <Screen>
+      <AppBar title="CHALEUR" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <SectionLabel>Carte de chaleur</SectionLabel>
+        <Text style={s.title}>Votre vitesse, rendue visible.</Text>
 
         {!hasContent ? (
-          <View
-            style={{
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={[
-                typography.manifest,
-                { color: colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
-              ]}
-            >
-              Pas de trace GPS pour cette session.
-            </Text>
-          </View>
+          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+            <Text style={s.emptyText}>Pas de trace GPS pour cette session.</Text>
+          </Card>
         ) : (
           <>
             <PilotPreset
@@ -162,13 +147,13 @@ export default function HeatmapScreen() {
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: spacing.lg,
-                marginTop: spacing.lg,
+                gap: theme.spacing.lg,
+                marginTop: theme.spacing.lg,
               }}
             >
-              <LegendDot color={colors.margin.red} label="Vitesse basse" />
-              <LegendDot color={colors.margin.yellow} label="Vitesse moyenne" />
-              <LegendDot color={colors.margin.green} label="Vitesse élevée" />
+              <LegendDot color={theme.palette.red} label="Vitesse basse" />
+              <LegendDot color={theme.palette.gold} label="Vitesse moyenne" />
+              <LegendDot color={theme.dataColors.accel} label="Vitesse élevée" />
             </View>
 
             {/* Légende points de freinage */}
@@ -178,8 +163,8 @@ export default function HeatmapScreen() {
                   flexDirection: 'row',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: spacing.xs,
-                  marginTop: spacing.sm,
+                  gap: theme.spacing.xs,
+                  marginTop: theme.spacing.sm,
                 }}
               >
                 <View
@@ -187,62 +172,89 @@ export default function HeatmapScreen() {
                     width: 10,
                     height: 10,
                     borderRadius: 5,
-                    backgroundColor: colors.margin.red,
+                    backgroundColor: theme.palette.red,
                     opacity: 0.7,
                   }}
                 />
-                <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-                  Cercles : zones de freinage marqué
-                </Text>
+                <Text style={s.brakingLegend}>Cercles : zones de freinage marqué</Text>
               </View>
             ) : null}
 
             {stats ? (
-              <Text
-                style={{
-                  textAlign: 'center',
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  fontFamily: 'Menlo',
-                  marginTop: spacing.md,
-                }}
-              >
+              <Text style={s.stats}>
                 {Math.round(stats.min)} – {Math.round(stats.max)} km/h
               </Text>
             ) : null}
 
-            <Text
-              style={[
-                typography.caption,
-                {
-                  marginTop: spacing.xxl,
-                  textAlign: 'center',
-                  color: colors.text.tertiary,
-                  fontStyle: 'italic',
-                  paddingHorizontal: spacing.md,
-                },
-              ]}
-            >
-              La donnée, sans un mot. À vous de la lire.
-            </Text>
+            <Text style={s.manifest}>La donnée, sans un mot. À vous de la lire.</Text>
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
       <View style={{ width: 12, height: 4, borderRadius: 2, backgroundColor: color }} />
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>{label}</Text>
+      <Text style={s.legendLabel}>{label}</Text>
     </View>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  emptyText: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  legendLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+  },
+  brakingLegend: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+  },
+  stats: {
+    textAlign: 'center' as const,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.md,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    textAlign: 'center' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.md,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};
