@@ -38,7 +38,7 @@ Toute réservation d'une Session vaut acceptation expresse des présentes CGV.
 OXV propose quatre formats de prestation, dont le détail est consultable sur oxvehicle.fr :
 
 - **Access** : journée complète, équipement de base, à partir de 250 € pour la première session, 350 € pour les suivantes
-- **Signature** : journée complète avec coaching software et télémétrie avancée, 590 €
+- **Signature** : journée complète avec restitution télémétrique avancée, 590 €
 - **Promotion** : Signature + accompagnement médias (drone, photographe professionnel, droits cédés), 890 €
 - **Heritage** : pack saison de quatre sessions, 3 500 €
 

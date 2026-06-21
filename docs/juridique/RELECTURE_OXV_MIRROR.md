@@ -111,6 +111,4 @@ pour un futur lecteur.
 | 2b | CGU titre 4.3 | « Nature des recommandations » → « Nature des observations » | 🟠 Moyenne |
 | 3 | Pacte + CGU | Moderniser « zone à explorer… » vers les 4 piliers | 🟡 Basse |
 
-**Une fois validées par Gabin** (et/ou l'avocat), ces corrections sont triviales
-à appliquer (4 remplacements de chaîne). À intégrer au brief avocat comme point
-de vigilance sur la frontière « restitution vs coaching ».
+**STATUT (2026-06-22)** : corrections **1, 2a, 2b ET 3 APPLIQUÉES** sur go fondateur — dans les `.md` source ET dans `src/legal/legalDocuments.ts` (textes affichés au pilote). Le vocabulaire « zone à explorer / observer / maintenir » est remplacé par celui des 4 piliers (signature de pilotage, régularité mesurée, carte de chaleur des vitesses). Constat vérifié au passage : le libellé localisé réellement affiché par l'app est « à creuser » (module `focusCorner`), le vocabulaire « zone à… » n'étant plus présent que dans les commentaires de doctrine. Les 5 documents restent à soumettre à l'avocat au brief comme point de vigilance sur la frontière « restitution vs coaching ».
