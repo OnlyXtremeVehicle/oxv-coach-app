@@ -89,9 +89,9 @@ L'Utilisateur reconnaît expressément que l'Application :
 - **N'est pas un instructeur ou coach diplômé** au sens du Code du sport (article L212-1) ou de la réglementation FFSA.
 - **Ne saurait remplacer** une formation au pilotage, un briefing de piste, ou un instructeur certifié.
 
-### 4.3 — Nature des recommandations
+### 4.3 — Nature des observations
 
-Les observations qualitatives produites par l'Application (formulées par exemple comme « zone à explorer », « zone à observer », « zone à maintenir ») sont :
+Les observations qualitatives produites par l'Application (formulées par exemple comme la signature de pilotage, la régularité mesurée ou la carte de chaleur des vitesses) sont :
 
 - Issues du traitement algorithmique des données passées du Pilote
 - Présentées comme support de réflexion personnelle et non comme instructions
