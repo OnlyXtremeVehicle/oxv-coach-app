@@ -48,6 +48,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Médias',
     description: 'Dépôt des photos / vidéos prises sur piste par session.',
   },
+  {
+    href: '/(admin)/routes-certification',
+    label: 'Belles routes',
+    description: 'Demandes de certification de routes à examiner.',
+  },
 ];
 
 export default function AdminHubScreen() {
