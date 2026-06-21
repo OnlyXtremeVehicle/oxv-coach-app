@@ -13,11 +13,14 @@
  *
  * Doctrine : pas d'« il faut freiner plus tard », pas de score. L'app
  * montre, le pilote interprète.
+ *
+ * Reskin V2 : Screen + AppBar + Card/SectionLabel/Button, typo/couleurs
+ * @/theme/v2. Les composants de visualisation (GGDiagram, SpeedTrace,
+ * ThrottleBrakeTrace, SVG) sont conservés tels quels.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { GGDiagram, type GGPoint } from '@/components/GGDiagram';
@@ -30,7 +33,12 @@ import {
   loadThrottleBrakePoints,
 } from '@/services/sessionTelemetryService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
 interface SessionPickerRow {
@@ -118,24 +126,19 @@ export default function TelemetryScreen() {
   }, [compareId]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>TÉLÉMÉTRIE</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-          La signature de votre conduite.
-        </Text>
-        <Text
-          style={[typography.manifest, { color: colors.text.secondary, marginBottom: spacing.xxl }]}
-        >
-          Deux lectures pour sentir comment vous avez piloté.
-        </Text>
+    <Screen>
+      <AppBar title="TÉLÉMÉTRIE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <SectionLabel>Télémétrie</SectionLabel>
+        <Text style={s.title}>La signature de votre conduite.</Text>
+        <Text style={s.manifest}>Deux lectures pour sentir comment vous avez piloté.</Text>
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.loading}>Chargement…</Text>
         ) : (
           <>
             {/* Diagramme G-G */}
-            <Section eyebrow="ENVELOPPE D'ENGAGEMENT" sublabel="Diagramme g-g">
+            <Section eyebrow="Enveloppe d'engagement" sublabel="Diagramme g-g">
               {ggPoints.length === 0 ? (
                 <EmptyText>
                   Pas de données d'accélération sur cette session. Les diagrammes apparaissent dès
@@ -147,7 +150,7 @@ export default function TelemetryScreen() {
             </Section>
 
             {/* Trace vitesse */}
-            <Section eyebrow="TRACE VITESSE" sublabel="Vitesse au long du tour">
+            <Section eyebrow="Trace vitesse" sublabel="Vitesse au long du tour">
               {trace.length < 2 ? (
                 <EmptyText>Pas de données de vitesse exploitables pour cette session.</EmptyText>
               ) : (
@@ -161,67 +164,36 @@ export default function TelemetryScreen() {
 
                   {/* CTA Comparer une session */}
                   {!comparePickerOpen && !compareId ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => setComparePickerOpen(true)}
-                      style={({ pressed }) => ({
-                        marginTop: spacing.lg,
-                        padding: spacing.md,
-                        borderRadius: borderRadius.md,
-                        borderWidth: 0.5,
-                        borderColor: colors.border.subtle,
-                        alignItems: 'center',
-                        opacity: pressed ? 0.85 : 1,
-                      })}
-                    >
-                      <Text
-                        style={{
-                          color: colors.text.primary,
-                          fontSize: fontSize.body,
-                          fontWeight: fontWeight.medium,
-                        }}
-                      >
-                        Superposer une autre session
-                      </Text>
-                    </Pressable>
+                    <View style={{ marginTop: theme.spacing.lg }}>
+                      <Button
+                        label="Superposer une autre session"
+                        variant="ghost"
+                        onPress={() => setComparePickerOpen(true)}
+                      />
+                    </View>
                   ) : null}
 
                   {compareId ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        setCompareId(null);
-                        setComparePickerOpen(false);
-                      }}
-                      style={({ pressed }) => ({
-                        marginTop: spacing.lg,
-                        padding: spacing.md,
-                        borderRadius: borderRadius.md,
-                        borderWidth: 0.5,
-                        borderColor: colors.border.subtle,
-                        alignItems: 'center',
-                        opacity: pressed ? 0.85 : 1,
-                      })}
-                    >
-                      <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                        Retirer la superposition
-                      </Text>
-                    </Pressable>
+                    <View style={{ marginTop: theme.spacing.lg }}>
+                      <Button
+                        label="Retirer la superposition"
+                        variant="ghost"
+                        onPress={() => {
+                          setCompareId(null);
+                          setComparePickerOpen(false);
+                        }}
+                      />
+                    </View>
                   ) : null}
 
                   {/* Picker session */}
                   {comparePickerOpen && !compareId ? (
-                    <View style={{ marginTop: spacing.lg, gap: spacing.xs }}>
-                      <Text
-                        style={[
-                          typography.eyebrow,
-                          { color: colors.text.tertiary, marginBottom: spacing.sm },
-                        ]}
-                      >
-                        CHOISIR LA SESSION À SUPERPOSER
-                      </Text>
+                    <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.xs }}>
+                      <View style={{ marginBottom: theme.spacing.sm }}>
+                        <SectionLabel>Choisir la session à superposer</SectionLabel>
+                      </View>
                       {compareOptions.length === 0 ? (
-                        <Text style={typography.caption}>Aucune autre session disponible.</Text>
+                        <Text style={s.caption}>Aucune autre session disponible.</Text>
                       ) : (
                         compareOptions.map((o) => (
                           <Pressable
@@ -232,22 +204,15 @@ export default function TelemetryScreen() {
                               setComparePickerOpen(false);
                             }}
                             style={({ pressed }) => ({
-                              padding: spacing.md,
-                              borderRadius: borderRadius.md,
-                              borderWidth: 0.5,
-                              borderColor: colors.border.subtle,
-                              backgroundColor: colors.background.secondary,
+                              padding: theme.spacing.md,
+                              borderRadius: theme.radius.md,
+                              borderWidth: 1,
+                              borderColor: theme.palette.line,
+                              backgroundColor: theme.palette.card2,
                               opacity: pressed ? 0.85 : 1,
                             })}
                           >
-                            <Text
-                              style={{
-                                color: colors.text.primary,
-                                fontSize: fontSize.body,
-                              }}
-                            >
-                              {formatDateShort(o.startedAt)}
-                            </Text>
+                            <Text style={s.pickerRow}>{formatDateShort(o.startedAt)}</Text>
                           </Pressable>
                         ))
                       )}
@@ -258,7 +223,7 @@ export default function TelemetryScreen() {
             </Section>
 
             {/* Throttle/Brake derived view */}
-            <Section eyebrow="ACCÉLÉRATION / FREINAGE" sublabel="Dérivé du g longitudinal">
+            <Section eyebrow="Accélération / freinage" sublabel="Dérivé du g longitudinal">
               {throttleBrake.length < 2 ? (
                 <EmptyText>
                   Pas de données d'accélération longitudinale exploitables pour cette session.
@@ -271,29 +236,21 @@ export default function TelemetryScreen() {
         )}
 
         {/* Note pédagogique sobre */}
-        <View
-          style={{
-            marginTop: spacing.xxl,
-            padding: spacing.lg,
-            borderRadius: borderRadius.md,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-          }}
-        >
-          <Text style={[typography.caption, { color: colors.text.secondary }]}>
+        <Card style={{ marginTop: theme.spacing.xxl }}>
+          <Text style={s.note}>
             Le diagramme g-g représente toutes les accélérations vécues. Un cercle plein indique que
             la voiture a exploité l'enveloppe d'adhérence à 360°. Un cercle creux indique des zones
             inexploitées. La lecture appartient au pilote ou à son coach.
           </Text>
-        </View>
+        </Card>
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -307,33 +264,75 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ marginBottom: spacing.xxxl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.xs }]}>{eyebrow}</Text>
-      {sublabel ? (
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.lg }]}
-        >
-          {sublabel}
-        </Text>
-      ) : null}
-      {children}
+    <View style={{ marginTop: theme.spacing.xxl }}>
+      <SectionLabel>{eyebrow}</SectionLabel>
+      {sublabel ? <Text style={s.sublabel}>{sublabel}</Text> : null}
+      <View style={{ marginTop: theme.spacing.lg }}>{children}</View>
     </View>
   );
 }
 
 function EmptyText({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
-      style={[
-        typography.caption,
-        {
-          color: colors.text.tertiary,
-          padding: spacing.lg,
-          textAlign: 'center',
-        },
-      ]}
-    >
-      {children}
-    </Text>
-  );
+  return <Text style={s.empty}>{children}</Text>;
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginBottom: theme.spacing.xxl,
+  },
+  loading: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  sublabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  caption: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  pickerRow: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  note: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: theme.palette.creamSoft,
+  },
+  empty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    padding: theme.spacing.lg,
+    textAlign: 'center' as const,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

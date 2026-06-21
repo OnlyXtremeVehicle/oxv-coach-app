@@ -14,11 +14,14 @@
  * V1 : contenu généré côté Edge Function Supabase `generate_debrief`
  * (à créer sem 13). En attendant, on lit `app_session_analyses.debrief_text`
  * et on fallback sur un état pédagogique si pas encore rédigé.
+ *
+ * Reskin V2 : Screen + AppBar + Card, titres Syncopate, typo/couleurs
+ * @/theme/v2. STRUCTURE PRÉSERVÉE : 3 actes + cascade FadeInSection,
+ * provenance « RÉCIT GÉNÉRÉ AUTOMATIQUEMENT », signature de fermeture.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { FadeInSection } from '@/components/motion';
@@ -26,7 +29,11 @@ import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateLong } from '@/utils/format';
 
 interface DebriefData {
@@ -109,16 +116,12 @@ export default function DebriefScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="DÉBRIEF" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
@@ -127,10 +130,10 @@ export default function DebriefScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>DEBRIEF</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
+    <Screen>
+      <AppBar title="DÉBRIEF" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>
           {formatDateLong(data.startedAt)} — {data.circuitName}
         </Text>
 
@@ -140,25 +143,16 @@ export default function DebriefScreen() {
           <View
             style={{
               alignSelf: 'flex-start',
-              paddingVertical: spacing.xs,
-              paddingHorizontal: spacing.md,
-              borderRadius: borderRadius.sm,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              marginBottom: spacing.xl,
+              paddingVertical: theme.spacing.xs,
+              paddingHorizontal: theme.spacing.md,
+              borderRadius: theme.radius.sm,
+              borderWidth: 1,
+              borderColor: theme.palette.line,
+              backgroundColor: theme.palette.card2,
+              marginBottom: theme.spacing.xl,
             }}
           >
-            <Text
-              style={{
-                color: colors.text.tertiary,
-                fontSize: fontSize.eyebrow,
-                fontFamily: 'Menlo',
-                letterSpacing: 1.5,
-              }}
-            >
-              RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE
-            </Text>
+            <Text style={s.provenance}>RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE</Text>
           </View>
         ) : null}
 
@@ -172,109 +166,74 @@ export default function DebriefScreen() {
           <Acte numero="3" titre="Préparation" body={data.preparation} />
         </FadeInSection>
 
-        <FadeInSection
-          delay={800}
-          style={{
-            marginTop: spacing.huge,
-            padding: spacing.xl,
-            borderRadius: borderRadius.lg,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            backgroundColor: colors.background.secondary,
-          }}
-        >
-          <Text
-            style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}
-          >
-            L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause.
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'Menlo',
-              fontSize: fontSize.eyebrow,
-              color: colors.text.tertiary,
-              textAlign: 'center',
-              marginTop: spacing.lg,
-              letterSpacing: 2.5,
-            }}
-          >
-            — OXV MIRROR
-          </Text>
+        <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
+          <Card style={{ paddingVertical: theme.spacing.xl }}>
+            <Text style={s.closing}>
+              L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause.
+            </Text>
+            <Text style={s.signature}>— OXV MIRROR</Text>
+          </Card>
         </FadeInSection>
 
         {!data.generated ? (
-          <Text
-            style={[
-              typography.caption,
-              { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.xl },
-            ]}
-          >
-            Le debrief littéraire personnalisé arrive sous 24 h.
-          </Text>
+          <Text style={s.pending}>Le debrief littéraire personnalisé arrive sous 24 h.</Text>
         ) : null}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
             accessibilityRole="button"
             onPressIn={() => haptics.tap()}
             onPress={() => router.back()}
           >
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function Acte({ numero, titre, body }: { numero: string; titre: string; body: string }) {
   return (
-    <View style={{ marginBottom: spacing.xxxl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.sm, color: colors.text.tertiary }]}>
+    <View style={{ marginTop: theme.spacing.xxl }}>
+      <Text style={s.acteLabel}>
         ACTE {numero} · {titre.toUpperCase()}
       </Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.bodyLarge,
-          fontWeight: fontWeight.light,
-          fontStyle: 'italic',
-          lineHeight: fontSize.bodyLarge * 1.7,
-        }}
-      >
-        {body}
-      </Text>
+      <Text style={s.acteBody}>{body}</Text>
     </View>
   );
 }
 
 function DebriefEmpty() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
+      <AppBar title="DÉBRIEF" onBack={() => router.back()} />
       <View
         style={{
           flex: 1,
-          padding: spacing.xl,
+          paddingHorizontal: theme.spacing.lg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>DEBRIEF</Text>
-        <Text style={[typography.screenTitle, { textAlign: 'center', marginBottom: spacing.xl }]}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <SectionLabel>Débrief</SectionLabel>
+        </View>
+        <Text style={[s.title, { textAlign: 'center', marginBottom: theme.spacing.xl }]}>
           Pas encore de session à raconter.
         </Text>
-        <Text style={[typography.manifest, { textAlign: 'center' }]}>
+        <Text style={[s.emptyManifest, { textAlign: 'center' }]}>
           Le récit viendra après votre première sortie.
         </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.back()}
-          style={{ marginTop: spacing.xxxl }}
+          style={{ marginTop: theme.spacing.xxl }}
         >
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+          <Text style={s.backLink}>Retour</Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -309,3 +268,73 @@ function fallbackMeta(): string {
 function fallbackPreparation(): string {
   return 'La prochaine fois, vous pourrez peut-être explorer une seule zone, à votre rythme. Une invitation, pas une consigne.';
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    lineHeight: theme.fontSize.h2 * 1.25,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  provenance: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    color: theme.palette.creamMute,
+  },
+  acteLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.sm,
+  },
+  acteBody: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.7,
+    color: theme.palette.cream,
+  },
+  closing: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  signature: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2.5,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.lg,
+  },
+  pending: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xl,
+  },
+  emptyManifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

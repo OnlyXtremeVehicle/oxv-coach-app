@@ -1,5 +1,5 @@
 /**
- * Écran #09 — Placement.
+ * Écran #09 — Placement. Design V2 (charte oxv-mirror-app).
  *
  * Dernière étape paddock avant le silence en piste. Instructions de
  * placement physique du boîtier. À l'action "C'est fait", l'app entre
@@ -8,17 +8,25 @@
  *
  * Doctrine : sous-titre rassurant *"Vous le verrez peu. Il s'occupera
  * du reste."* — pose la promesse du silence.
+ *
+ * Reskin V2 : Screen + AppBar, titres Syncopate, illustration en Card.
+ * Écran d'état de flux sans retour manuel. Le CTA reste un Pressable
+ * (indicateur de chargement pendant le démarrage de la capture). Logique
+ * de capture inchangée.
  */
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
 import { startCaptureSession } from '@/services/captureSessionService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function PlacementScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -45,115 +53,114 @@ export default function PlacementScreen() {
   }
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
-    >
-      <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text
-          style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
-        >
-          PLACEMENT
-        </Text>
+    <Screen scroll={false}>
+      <AppBar title="PLACEMENT" />
+      <View
+        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+      >
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Text style={s.eyebrow}>PLACEMENT</Text>
 
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.headline,
-            fontWeight: fontWeight.light,
-            lineHeight: fontSize.headline * 1.2,
-            marginBottom: spacing.xxl,
-          }}
-        >
-          Posez le boîtier sur le support magnétique côté passager.
-        </Text>
+          <Text style={s.headline}>Posez le boîtier sur le support magnétique côté passager.</Text>
 
-        {/* Illustration schématique simple : un rectangle qui évoque le tableau de bord */}
-        <View
-          style={{
-            height: 160,
-            borderRadius: borderRadius.lg,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            backgroundColor: colors.background.secondary,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: spacing.xxl,
-          }}
-        >
-          <View
+          {/* Illustration schématique simple : un bloc qui évoque le tableau de bord */}
+          <Card
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: borderRadius.md,
-              backgroundColor: colors.accent.red,
+              height: 160,
               alignItems: 'center',
               justifyContent: 'center',
+              marginBottom: theme.spacing.xxl,
             }}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.caption,
-                fontWeight: fontWeight.semibold,
-                letterSpacing: 1,
-              }}
-            >
-              OXV
-            </Text>
-          </View>
-          <Text style={[typography.caption, { marginTop: spacing.md }]}>Support magnétique</Text>
+            <View style={s.badge}>
+              <Text style={s.badgeTxt}>OXV</Text>
+            </View>
+            <View style={{ marginTop: theme.spacing.md }}>
+              <SectionLabel>Support magnétique</SectionLabel>
+            </View>
+          </Card>
+
+          <Text style={s.manifest}>Vous le verrez peu. Il s'occupera du reste.</Text>
+
+          {error ? <Text style={s.error}>{error}</Text> : null}
         </View>
 
-        <Text style={[typography.manifest, { color: colors.text.secondary }]}>
-          Vous le verrez peu. Il s'occupera du reste.
-        </Text>
-
-        {error ? (
-          <Text
-            style={{
-              color: colors.system.error,
-              fontSize: fontSize.caption,
-              marginTop: spacing.lg,
-            }}
-          >
-            {error}
-          </Text>
-        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          disabled={starting}
+          onPress={onStart}
+          style={({ pressed }) => [
+            s.cta,
+            starting && s.ctaDisabled,
+            (pressed || starting) && { opacity: 0.85 },
+          ]}
+        >
+          {starting ? <ActivityIndicator color="#000" /> : <Text style={s.ctaTxt}>C'est fait</Text>}
+        </Pressable>
       </View>
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={starting}
-        onPress={onStart}
-        style={({ pressed }) => ({
-          height: 52,
-          borderRadius: borderRadius.lg,
-          backgroundColor: colors.accent.red,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: spacing.xl,
-          opacity: pressed || starting ? 0.85 : 1,
-        })}
-      >
-        {starting ? (
-          <ActivityIndicator color={colors.text.primary} />
-        ) : (
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-              letterSpacing: 0.5,
-            }}
-          >
-            C'est fait
-          </Text>
-        )}
-      </Pressable>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.lg,
+  },
+  headline: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.3,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+    marginBottom: theme.spacing.xxl,
+  },
+  badge: {
+    width: 56,
+    height: 56,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.palette.red,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  badgeTxt: {
+    fontFamily: theme.fonts.bodySemi,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 1,
+    color: theme.palette.cream,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  error: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    lineHeight: theme.fontSize.body * 1.5,
+    color: theme.palette.red,
+    marginTop: theme.spacing.lg,
+  },
+  cta: {
+    borderRadius: theme.radius.md,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: theme.palette.cream,
+  },
+  ctaDisabled: { backgroundColor: '#2a2a2e' },
+  ctaTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: '#000',
+  },
+};

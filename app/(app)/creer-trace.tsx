@@ -11,11 +11,12 @@
  *
  * Attribution OBLIGATOIRE pour la source OSM : « © contributeurs OpenStreetMap ».
  * Modes « tracé manuel » et « depuis une session » : à venir (carte / frames).
+ *
+ * Reskin V2 : Screen + AppBar, Card/Segmented/Button. Logique inchangée.
  */
 
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { CircuitTrace } from '@/circuit/CircuitTrace';
@@ -26,7 +27,18 @@ import {
   type LatLon,
 } from '@/circuit/circuitGenerator';
 import { createUserCircuit, type TraceVisibility } from '@/services/userCircuitsService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { Segmented } from '@/ui/Segmented';
+
+const VISIBILITY_OPTIONS: { id: TraceVisibility; label: string }[] = [
+  { id: 'private', label: 'Privé' },
+  { id: 'submitted', label: 'Proposer à OXV' },
+];
 
 export default function CreerTraceScreen() {
   const [wayId, setWayId] = useState('');
@@ -71,187 +83,150 @@ export default function CreerTraceScreen() {
     else setError("L'enregistrement a échoué.");
   };
 
+  const visibilityLabel = VISIBILITY_OPTIONS.find((v) => v.id === visibility)?.label ?? '';
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>CARTE</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Créer un tracé
-        </Text>
+    <Screen>
+      <AppBar title="CRÉER UN TRACÉ" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Créer un tracé</Text>
 
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.sm }]}
-        >
-          Identifiant du way OpenStreetMap
-        </Text>
-        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-          <TextInput
-            value={wayId}
-            onChangeText={setWayId}
-            keyboardType="number-pad"
-            placeholder="ex. 54412766"
-            placeholderTextColor={colors.text.tertiary}
-            style={{
-              flex: 1,
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              paddingVertical: spacing.md,
-              paddingHorizontal: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.medium,
-              backgroundColor: colors.background.secondary,
-            }}
-          />
-          <Pressable
-            accessibilityRole="button"
-            disabled={loadingOsm}
-            onPress={handleLoad}
-            style={{
-              paddingHorizontal: spacing.lg,
-              justifyContent: 'center',
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.medium,
-              backgroundColor: colors.background.secondary,
-              opacity: loadingOsm ? 0.6 : 1,
-            }}
+        <Card>
+          <SectionLabel>Identifiant du way OpenStreetMap</SectionLabel>
+          <View
+            style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm }}
           >
-            {loadingOsm ? (
-              <ActivityIndicator color={colors.text.secondary} />
-            ) : (
-              <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>Charger</Text>
-            )}
-          </Pressable>
-        </View>
+            <TextInput
+              value={wayId}
+              onChangeText={setWayId}
+              keyboardType="number-pad"
+              placeholder="ex. 54412766"
+              placeholderTextColor={theme.palette.creamMute}
+              style={[s.input, { flex: 1 }]}
+            />
+            <Pressable
+              accessibilityRole="button"
+              disabled={loadingOsm}
+              onPress={handleLoad}
+              style={({ pressed }) => [
+                s.loadBtn,
+                { opacity: loadingOsm ? 0.6 : pressed ? 0.85 : 1 },
+              ]}
+            >
+              {loadingOsm ? (
+                <ActivityIndicator color={theme.palette.creamSoft} />
+              ) : (
+                <Text style={s.loadBtnTxt}>Charger</Text>
+              )}
+            </Pressable>
+          </View>
 
-        {error ? (
-          <Text
-            style={{
-              color: colors.system.error,
-              fontSize: fontSize.caption,
-              marginTop: spacing.md,
-            }}
-          >
-            {error}
-          </Text>
-        ) : null}
+          {error ? <Text style={s.error}>{error}</Text> : null}
+        </Card>
 
         {circuit ? (
-          <View style={{ marginTop: spacing.xl }}>
-            <CircuitTrace circuit={circuit} height={300} defaultLayer="geometry" />
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.md }]}
-            >
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <Card style={{ padding: 0, overflow: 'hidden' }}>
+              <CircuitTrace circuit={circuit} height={300} defaultLayer="geometry" />
+            </Card>
+            <Text style={s.attribution}>
               {(circuit.length_m / 1000).toFixed(2)} km · {circuit.corners.length} virages détectés
               · © contributeurs OpenStreetMap
             </Text>
 
-            <Text
-              style={[
-                typography.caption,
-                { color: colors.text.tertiary, marginTop: spacing.xl, marginBottom: spacing.sm },
-              ]}
-            >
-              Nom du tracé
-            </Text>
-            <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Nom du tracé"
-              placeholderTextColor={colors.text.tertiary}
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                paddingVertical: spacing.md,
-                paddingHorizontal: spacing.lg,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.border.medium,
-                backgroundColor: colors.background.secondary,
-              }}
-            />
+            <Card style={{ marginTop: theme.spacing.xl }}>
+              <SectionLabel>Nom du tracé</SectionLabel>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Nom du tracé"
+                placeholderTextColor={theme.palette.creamMute}
+                style={[s.input, { marginTop: theme.spacing.sm }]}
+              />
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
-              {(
-                [
-                  { id: 'private', label: 'Privé' },
-                  { id: 'submitted', label: 'Proposer à OXV' },
-                ] as { id: TraceVisibility; label: string }[]
-              ).map((v) => {
-                const on = v.id === visibility;
-                return (
-                  <Pressable
-                    key={v.id}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: on }}
-                    onPress={() => setVisibility(v.id)}
-                    style={{
-                      flex: 1,
-                      paddingVertical: spacing.md,
-                      borderRadius: borderRadius.md,
-                      borderWidth: 1,
-                      borderColor: on ? colors.text.secondary : colors.border.subtle,
-                      backgroundColor: on ? colors.background.secondary : 'transparent',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text
-                      style={{
-                        color: on ? colors.text.primary : colors.text.secondary,
-                        fontSize: fontSize.caption,
-                      }}
-                    >
-                      {v.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text
-              style={{
-                color: colors.text.tertiary,
-                fontSize: fontSize.caption,
-                marginTop: spacing.sm,
-              }}
-            >
-              Privé : visible de vous seul. Proposer à OXV : soumis pour référencement officiel.
-            </Text>
-
-            <Pressable
-              accessibilityRole="button"
-              disabled={saving || !name.trim()}
-              onPress={handleSave}
-              style={({ pressed }) => ({
-                marginTop: spacing.xl,
-                padding: spacing.lg,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.border.medium,
-                backgroundColor: colors.background.secondary,
-                alignItems: 'center',
-                opacity: pressed || saving || !name.trim() ? 0.6 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
-                }}
-              >
-                {saving ? 'Enregistrement…' : 'Enregistrer le tracé'}
+              <View style={{ marginTop: theme.spacing.lg }}>
+                <Segmented
+                  options={VISIBILITY_OPTIONS.map((v) => v.label)}
+                  value={visibilityLabel}
+                  onChange={(label) => {
+                    const next = VISIBILITY_OPTIONS.find((v) => v.label === label);
+                    if (next) setVisibility(next.id);
+                  }}
+                />
+              </View>
+              <Text style={s.help}>
+                Privé : visible de vous seul. Proposer à OXV : soumis pour référencement officiel.
               </Text>
-            </Pressable>
+
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <Button
+                  label={saving ? 'Enregistrement…' : 'Enregistrer le tracé'}
+                  onPress={handleSave}
+                  disabled={saving || !name.trim()}
+                />
+              </View>
+            </Card>
           </View>
         ) : null}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  input: {
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  loadBtn: {
+    paddingHorizontal: theme.spacing.lg,
+    justifyContent: 'center' as const,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+    backgroundColor: theme.palette.card2,
+  },
+  loadBtnTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
+  error: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+    marginTop: theme.spacing.md,
+  },
+  attribution: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.md,
+  },
+  help: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+};

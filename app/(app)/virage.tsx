@@ -14,11 +14,14 @@
  *
  * Bouton « Comparer ce virage » → ouvre virage-comparer.tsx avec un
  * picker pour choisir une 2e session.
+ *
+ * Reskin V2 : Screen + AppBar, Card/Button du kit, styles via @/theme/v2.
+ * La carte SVG (CircuitMap + couches) et les barres G (GForceBars) restent
+ * inchangées, comme toute la logique (chargement, couches coach, navigation).
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -40,7 +43,11 @@ import { listCoachReferencesForCorner } from '@/services/coachReferenceService';
 import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { type MarginZone, marginLabelOf, marginZoneOf } from '@/types/domain';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
 export default function VirageScreen() {
@@ -172,19 +179,18 @@ export default function VirageScreen() {
       : null;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>
-          ZOOM VIRAGE {String(corner.index).padStart(2, '0')}
-        </Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>{corner.name}</Text>
+    <Screen>
+      <AppBar title="VIRAGE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        <Text style={[s.title, { marginTop: theme.spacing.md }]}>{corner.name}</Text>
         <Text
           style={[
-            typography.caption,
+            s.zoneLabel,
             {
               color: colorForZone(zone),
-              marginTop: spacing.sm,
-              marginBottom: spacing.xl,
+              marginTop: theme.spacing.sm,
+              marginBottom: theme.spacing.xl,
             },
           ]}
         >
@@ -211,7 +217,7 @@ export default function VirageScreen() {
 
         {/* Vitesses */}
         <Section eyebrow="VITESSES">
-          <View style={{ gap: spacing.xs }}>
+          <Card>
             <StatRow
               label="À l'entrée"
               value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
@@ -227,15 +233,17 @@ export default function VirageScreen() {
             <StatRow
               label="À la sortie"
               value={stats?.exitSpeedKmh != null ? `${Math.round(stats.exitSpeedKmh)} km/h` : '—'}
+              last={deltaEntryExit === null}
             />
             {deltaEntryExit !== null ? (
               <StatRow
                 label="Écart entrée → sortie"
                 value={`${deltaEntryExit > 0 ? '+' : ''}${Math.round(deltaEntryExit)} km/h`}
                 emphasis
+                last
               />
             ) : null}
-          </View>
+          </Card>
         </Section>
 
         {/* Forces vécues */}
@@ -250,7 +258,7 @@ export default function VirageScreen() {
         {/* Trajectoire */}
         <Section eyebrow="TRAJECTOIRE">
           {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
-            <View style={{ gap: spacing.xs }}>
+            <Card>
               <StatRow
                 label="Écart latéral moyen"
                 value={`${stats.avgLateralErrorM.toFixed(1)} m`}
@@ -260,10 +268,11 @@ export default function VirageScreen() {
                 value={
                   stats?.maxLateralErrorM != null ? `${stats.maxLateralErrorM.toFixed(1)} m` : '—'
                 }
+                last
               />
-            </View>
+            </Card>
           ) : (
-            <Text style={typography.body}>
+            <Text style={s.body}>
               La trajectoire détaillée apparaîtra après votre première session enregistrée.
             </Text>
           )}
@@ -272,38 +281,14 @@ export default function VirageScreen() {
         {/* Annotations coach (si partagées) */}
         {annotations.length > 0 ? (
           <Section eyebrow={annotations.length > 1 ? 'NOTES DE VOS COACHS' : 'NOTE DE VOTRE COACH'}>
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               {annotations.map((a) => (
-                <View
-                  key={a.id}
-                  style={{
-                    padding: spacing.md,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor: colors.accent.coach,
-                    backgroundColor: colors.background.secondary,
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: colors.text.primary,
-                      fontSize: fontSize.body,
-                      fontWeight: fontWeight.light,
-                      fontStyle: 'italic',
-                      lineHeight: fontSize.body * 1.6,
-                    }}
-                  >
-                    « {a.body} »
-                  </Text>
-                  <Text
-                    style={[
-                      typography.caption,
-                      { color: colors.text.tertiary, marginTop: spacing.sm },
-                    ]}
-                  >
+                <Card key={a.id} style={{ borderColor: theme.palette.coach }}>
+                  <Text style={s.coachNote}>« {a.body} »</Text>
+                  <Text style={[s.meta, { marginTop: theme.spacing.sm }]}>
                     {formatDateShort(a.createdAt)}
                   </Text>
-                </View>
+                </Card>
               ))}
             </View>
           </Section>
@@ -314,7 +299,7 @@ export default function VirageScreen() {
           <Section
             eyebrow={coachReferences.length > 1 ? 'REPÈRES DE VOS COACHS' : 'REPÈRE DE VOTRE COACH'}
           >
-            <View style={{ gap: spacing.sm }}>
+            <View style={{ gap: theme.spacing.sm }}>
               {coachReferences.map((ref) => (
                 <CoachReferenceCard
                   key={ref.id}
@@ -327,39 +312,22 @@ export default function VirageScreen() {
         ) : null}
 
         {/* Question ouverte — doctrine */}
-        <View style={{ marginBottom: spacing.xxxl }}>
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>QUESTION</Text>
-          <Text style={[typography.manifest, { textAlign: 'center', marginVertical: spacing.lg }]}>
+        <View style={{ marginBottom: theme.spacing.xxl * 1.5, marginTop: theme.spacing.xxl }}>
+          <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>QUESTION</Text>
+          <Text style={[s.manifest, { textAlign: 'center', marginVertical: theme.spacing.lg }]}>
             Était-ce volontaire&nbsp;?
           </Text>
         </View>
 
         {/* CTA Comparaison */}
         {params.sessionId ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onCompare}
-            style={({ pressed }) => ({
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.medium,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : 1,
-              marginBottom: spacing.md,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Comparer ce virage à une autre session
-            </Text>
-          </Pressable>
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <Button
+              label="Comparer ce virage à une autre session"
+              variant="ghost"
+              onPress={onCompare}
+            />
+          </View>
         ) : null}
 
         {/* CTA Annoter (coach uniquement, et si pilotId résolu) */}
@@ -376,26 +344,9 @@ export default function VirageScreen() {
                 },
               } as never)
             }
-            style={({ pressed }) => ({
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : 1,
-              marginBottom: spacing.xl,
-            })}
+            style={({ pressed }) => [s.coachCta, { opacity: pressed ? 0.85 : 1 }]}
           >
-            <Text
-              style={{
-                color: colors.accent.coach,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Annoter ce virage
-            </Text>
+            <Text style={s.coachCtaTxt}>Annoter ce virage</Text>
           </Pressable>
         ) : null}
 
@@ -404,30 +355,32 @@ export default function VirageScreen() {
           style={{
             flexDirection: 'row',
             justifyContent: 'space-between',
-            marginTop: spacing.lg,
-            gap: spacing.md,
+            marginTop: theme.spacing.lg,
+            gap: theme.spacing.md,
           }}
         >
-          <NavBtn label="‹ Précédent" onPress={onPrev} />
-          <NavBtn label="Suivant ›" onPress={onNext} />
+          <View style={{ flex: 1 }}>
+            <Button label="‹ Précédent" variant="ghost" onPress={onPrev} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button label="Suivant ›" variant="ghost" onPress={onNext} />
+          </View>
         </View>
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Retour à la carte
-            </Text>
+            <Text style={s.back}>Retour à la carte</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: spacing.xxxl, marginTop: spacing.xxl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>{eyebrow}</Text>
+    <View style={{ marginTop: theme.spacing.xxl }}>
+      <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>{eyebrow}</Text>
       {children}
     </View>
   );
@@ -437,53 +390,26 @@ function StatRow({
   label,
   value,
   emphasis = false,
+  last = false,
 }: {
   label: string;
   value: string;
   emphasis?: boolean;
+  last?: boolean;
 }) {
   return (
     <View
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: spacing.sm,
-        borderBottomWidth: 0.5,
-        borderBottomColor: colors.border.subtle,
+        paddingVertical: theme.spacing.sm,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: theme.palette.line,
       }}
     >
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>{label}</Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: emphasis ? fontWeight.semibold : fontWeight.regular,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
+      <Text style={s.statLabel}>{label}</Text>
+      <Text style={[s.statValue, emphasis && { color: theme.palette.cream }]}>{value}</Text>
     </View>
-  );
-}
-
-function NavBtn({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => ({
-        flex: 1,
-        paddingVertical: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 1,
-        borderColor: colors.border.medium,
-        alignItems: 'center',
-        opacity: pressed ? 0.85 : 1,
-      })}
-    >
-      <Text style={{ color: colors.text.primary, fontSize: fontSize.caption }}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -500,23 +426,14 @@ function CoachReferenceCard({
       : null;
 
   return (
-    <View
-      style={{
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.accent.coach,
-        backgroundColor: colors.background.secondary,
-        gap: spacing.xs,
-      }}
-    >
+    <Card style={{ borderColor: theme.palette.coach, gap: theme.spacing.xs }}>
       {reference.brakingPointM != null ? (
-        <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+        <Text style={s.coachRefLine}>
           Point de freinage repère : {Math.round(reference.brakingPointM)} m
         </Text>
       ) : null}
       {reference.targetSpeedKmh != null ? (
-        <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
+        <Text style={s.coachRefLine}>
           Vitesse repère : {Math.round(reference.targetSpeedKmh)} km/h
           {speedCmp
             ? ` · votre apex : ${Math.round(apexKmh as number)} km/h (${
@@ -526,52 +443,139 @@ function CoachReferenceCard({
         </Text>
       ) : null}
       {reference.trajectoryNote ? (
-        <Text
-          style={{
-            color: colors.text.secondary,
-            fontSize: fontSize.caption,
-            fontStyle: 'italic',
-            lineHeight: fontSize.caption * 1.5,
-          }}
-        >
-          {reference.trajectoryNote}
-        </Text>
+        <Text style={s.coachRefNote}>{reference.trajectoryNote}</Text>
       ) : null}
-    </View>
+    </Card>
   );
 }
 
 function VirageNotFound() {
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: spacing.xl,
-      }}
-    >
-      <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>VIRAGE</Text>
-      <Text style={[typography.screenTitle, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.back()}
-        style={{ marginTop: spacing.xxxl }}
+    <Screen scroll={false}>
+      <AppBar title="VIRAGE" onBack={() => router.back()} />
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: theme.spacing.lg,
+        }}
       >
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-      </Pressable>
-    </SafeAreaView>
+        <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>VIRAGE</Text>
+        <Text style={[s.title, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.back()}
+          style={{ marginTop: theme.spacing.xxl * 1.5 }}
+        >
+          <Text style={s.back}>Retour</Text>
+        </Pressable>
+      </View>
+    </Screen>
   );
 }
 
+// Couleur de l'étiquette de marge : tons DONNÉE, jamais un rouge de verdict
+// (doctrine — le chiffre central n'est pas un jugement). Le « terrain serré »
+// reste neutre crème pour décrire sans condamner.
 function colorForZone(zone: MarginZone): string {
   switch (zone) {
     case 'green':
-      return colors.margin.green;
+      return theme.dataColors.accel;
     case 'yellow':
-      return colors.margin.yellow;
+      return theme.palette.gold;
     case 'red':
-      return colors.margin.red;
+      return theme.palette.creamMute;
   }
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+  },
+  zoneLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+  },
+  body: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.5,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+  },
+  statLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  statValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  coachNote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.body,
+    fontStyle: 'italic' as const,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.body * 1.6,
+  },
+  coachRefLine: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  coachRefNote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  coachCta: {
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.coach,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center' as const,
+    marginBottom: theme.spacing.xl,
+  },
+  coachCtaTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

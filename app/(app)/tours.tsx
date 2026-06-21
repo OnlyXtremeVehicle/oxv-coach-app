@@ -18,17 +18,22 @@
  *   - Affichage compact tabulaire
  *
  * Tap sur un tour → ouvre Télémétrie avec ce tour pré-sélectionné.
+ *
+ * Reskin V2 : Screen + AppBar, Card du kit, styles via @/theme/v2. Logique,
+ * données, navigation, useDetailLevel + toggle et états inchangés.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import type { Lap } from '@/types/telemetry';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 import { formatLapTime } from '@/utils/format';
 
 export default function ToursScreen() {
@@ -68,10 +73,11 @@ export default function ToursScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>TOUR PAR TOUR</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
+    <Screen>
+      <AppBar title="TOURS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>TOUR PAR TOUR</Text>
+        <Text style={s.title}>
           {laps.length > 0
             ? `${validLaps.length} tour${validLaps.length > 1 ? 's' : ''} valide${validLaps.length > 1 ? 's' : ''}`
             : 'Vos tours'}
@@ -82,28 +88,14 @@ export default function ToursScreen() {
           <View
             style={{
               alignItems: 'center',
-              marginTop: spacing.xl,
-              marginBottom: spacing.xxl,
-              paddingVertical: spacing.lg,
+              marginTop: theme.spacing.xl,
+              marginBottom: theme.spacing.xxl,
+              paddingVertical: theme.spacing.lg,
             }}
           >
-            <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>MEILLEUR TOUR</Text>
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: 56,
-                fontWeight: fontWeight.light,
-                fontFamily: 'Menlo',
-                marginTop: spacing.sm,
-              }}
-            >
-              {formatLapTime(bestLap.duration_seconds)}
-            </Text>
-            <Text
-              style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-            >
-              Tour {bestLap.lap_number}
-            </Text>
+            <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm }]}>MEILLEUR TOUR</Text>
+            <Text style={s.heroNumber}>{formatLapTime(bestLap.duration_seconds)}</Text>
+            <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>Tour {bestLap.lap_number}</Text>
           </View>
         ) : null}
 
@@ -113,17 +105,11 @@ export default function ToursScreen() {
             style={{
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              marginBottom: spacing.md,
+              marginBottom: theme.spacing.md,
             }}
           >
             <Pressable accessibilityRole="button" onPress={toggle}>
-              <Text
-                style={{
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  textDecorationLine: 'underline',
-                }}
-              >
+              <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
             </Pressable>
@@ -131,11 +117,11 @@ export default function ToursScreen() {
         ) : null}
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
         ) : laps.length === 0 ? (
           <EmptyState />
         ) : (
-          <View style={{ gap: spacing.xs }}>
+          <View style={{ gap: theme.spacing.xs }}>
             {laps.map((lap) => (
               <LapRow
                 key={lap.id}
@@ -158,13 +144,13 @@ export default function ToursScreen() {
           </View>
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -189,135 +175,174 @@ function LapRow({
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => ({
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: isBest ? 1 : 0.5,
-        borderColor: isBest ? colors.margin.green : colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        opacity: pressed ? 0.85 : isExcluded ? 0.5 : 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-      })}
+      style={({ pressed }) => ({ opacity: pressed ? 0.85 : isExcluded ? 0.5 : 1 })}
     >
-      {/* Badge numéro tour */}
-      <View
+      <Card
         style={{
-          width: 32,
-          height: 32,
-          borderRadius: 16,
-          backgroundColor: isBest ? colors.margin.green : colors.background.elevated,
+          borderColor: isBest ? theme.dataColors.accel : theme.palette.line,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          gap: theme.spacing.md,
         }}
       >
-        <Text
+        {/* Badge numéro tour */}
+        <View
           style={{
-            color: isBest ? colors.background.primary : colors.text.secondary,
-            fontSize: 13,
-            fontWeight: fontWeight.semibold,
+            width: 32,
+            height: 32,
+            borderRadius: 16,
+            backgroundColor: isBest ? theme.dataColors.accel : theme.palette.card2,
+            alignItems: 'center',
+            justifyContent: 'center',
           }}
         >
-          {lap.lap_number}
-        </Text>
-      </View>
-
-      {/* Temps au tour + label sobre */}
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            fontFamily: 'Menlo',
-          }}
-        >
-          {formatLapTime(lap.duration_seconds)}
-        </Text>
-        {isBest ? (
           <Text
-            style={[
-              typography.caption,
-              { color: colors.margin.green, marginTop: 2, fontWeight: fontWeight.medium },
-            ]}
+            style={{
+              fontFamily: theme.fonts.mono,
+              color: isBest ? theme.palette.night : theme.palette.creamSoft,
+              fontSize: 13,
+            }}
           >
-            Meilleur tour
+            {lap.lap_number}
           </Text>
-        ) : isExcluded ? (
-          <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: 2 }]}>
-            {lap.is_outlap ? 'Tour de sortie' : 'Tour de rentrée'}
-          </Text>
-        ) : delta !== null ? (
-          <Text
-            style={[
-              typography.caption,
-              { color: colors.text.tertiary, marginTop: 2, fontFamily: 'Menlo' },
-            ]}
-          >
-            +{delta.toFixed(2)} s
-          </Text>
-        ) : null}
+        </View>
 
-        {/* Détails techniques (mode détaillé) */}
-        {level === 'detailed' && !isExcluded ? (
-          <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
-            {lap.max_speed_kmh != null ? (
-              <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
-            ) : null}
-            {lap.max_g_lateral != null ? (
-              <Detail label="G lat" value={`${lap.max_g_lateral.toFixed(2)}`} />
-            ) : null}
-            {lap.max_g_braking != null ? (
-              <Detail label="Frein" value={`${lap.max_g_braking.toFixed(2)}`} />
-            ) : null}
-          </View>
-        ) : null}
-      </View>
+        {/* Temps au tour + label sobre */}
+        <View style={{ flex: 1 }}>
+          <Text style={s.lapTime}>{formatLapTime(lap.duration_seconds)}</Text>
+          {isBest ? (
+            <Text style={[s.lapNote, { color: theme.dataColors.accel }]}>Meilleur tour</Text>
+          ) : isExcluded ? (
+            <Text style={s.lapNote}>{lap.is_outlap ? 'Tour de sortie' : 'Tour de rentrée'}</Text>
+          ) : delta !== null ? (
+            <Text style={[s.lapNote, { fontFamily: theme.fonts.mono }]}>+{delta.toFixed(2)} s</Text>
+          ) : null}
 
-      <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
+          {/* Détails techniques (mode détaillé) */}
+          {level === 'detailed' && !isExcluded ? (
+            <View
+              style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xs }}
+            >
+              {lap.max_speed_kmh != null ? (
+                <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
+              ) : null}
+              {lap.max_g_lateral != null ? (
+                <Detail label="G lat" value={`${lap.max_g_lateral.toFixed(2)}`} />
+              ) : null}
+              {lap.max_g_braking != null ? (
+                <Detail label="Frein" value={`${lap.max_g_braking.toFixed(2)}`} />
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+
+        <Text style={s.chevron}>›</Text>
+      </Card>
     </Pressable>
   );
 }
 
 function Detail({ label, value }: { label: string; value: string }) {
   return (
-    <Text
-      style={{
-        fontSize: fontSize.eyebrow,
-        color: colors.text.tertiary,
-        letterSpacing: 1.5,
-      }}
-    >
-      <Text style={{ color: colors.text.tertiary }}>{label} </Text>
-      <Text style={{ color: colors.text.secondary, fontFamily: 'Menlo' }}>{value}</Text>
+    <Text style={s.detail}>
+      <Text style={s.detailLabel}>{label} </Text>
+      <Text style={s.detailValue}>{value}</Text>
     </Text>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun tour enregistré.
-      </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Aucun tour enregistré.</Text>
+      <Text style={s.emptyHint}>
         Les tours apparaissent dès qu'une session complète a été analysée.
       </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  heroNumber: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.hud,
+    letterSpacing: -1,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+  },
+  toggle: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+    textDecorationLine: 'underline' as const,
+  },
+  lapTime: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
+  },
+  lapNote: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  detail: {
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+  },
+  detailLabel: {
+    fontFamily: theme.fonts.mono,
+    color: theme.palette.creamMute,
+  },
+  detailValue: {
+    fontFamily: theme.fonts.mono,
+    color: theme.palette.creamSoft,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

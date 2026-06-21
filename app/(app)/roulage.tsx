@@ -1,5 +1,5 @@
 /**
- * Écran #S6 — Roulage (enregistrement en cours).
+ * Écran #S6 — Roulage (enregistrement en cours). Design V2 (charte oxv-mirror-app).
  *
  * Doctrine « silence en piste » : pendant que le véhicule bouge, aucun écran
  * n'est consulté. Cet écran est volontairement minimal — il dit au pilote de
@@ -9,17 +9,23 @@
  * Le service captureSessionService enregistre les trames en base en arrière-plan
  * tant que cet écran (l'app au premier plan) est actif. « Terminer le roulage »
  * clôt la session et bascule vers le flux de bilan (#10 → #11 → #13).
+ *
+ * Reskin V2 : couleurs et typographie portées sur @/theme/v2 (Screen + AppBar,
+ * libellés mono, manifeste Inter Light). Aucune UI ajoutée — l'écran reste
+ * volontairement nu, conformément au silence en piste. Logique de capture
+ * inchangée.
  */
 
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
 import { abortCaptureSession, stopCaptureSession } from '@/services/captureSessionService';
 import { useSessionStore } from '@/store/useSessionStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Screen } from '@/ui/Screen';
 
 export default function RoulageScreen() {
   const status = useSessionStore((s) => s.status);
@@ -52,93 +58,110 @@ export default function RoulageScreen() {
   const recording = status === 'recording';
 
   return (
-    <SafeAreaView
-      style={{ flex: 1, backgroundColor: colors.background.primary, paddingHorizontal: spacing.xl }}
-    >
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <View
-          style={{
-            width: 14,
-            height: 14,
-            borderRadius: 7,
-            backgroundColor: recording ? colors.accent.red : colors.text.tertiary,
-            marginBottom: spacing.xl,
-          }}
-        />
-        <Text
-          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.lg }]}
-        >
-          {recording ? 'ENREGISTREMENT EN COURS' : 'ENREGISTREMENT'}
-        </Text>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.headline,
-            fontWeight: fontWeight.light,
-            lineHeight: fontSize.headline * 1.2,
-            textAlign: 'center',
-            marginBottom: spacing.xl,
-          }}
-        >
-          Posez l'appareil. L'app s'occupe du reste.
-        </Text>
-        <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-          La piste est à vous.
-        </Text>
-        {lapCount > 0 ? (
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xxl }]}
-          >
-            {lapCount} tour{lapCount > 1 ? 's' : ''} enregistré{lapCount > 1 ? 's' : ''}
-          </Text>
-        ) : null}
-      </View>
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={ending}
-        onPress={onFinish}
-        style={({ pressed }) => ({
-          height: 52,
-          borderRadius: borderRadius.lg,
-          backgroundColor: colors.accent.red,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: spacing.md,
-          opacity: pressed || ending ? 0.85 : 1,
-        })}
+    <Screen scroll={false}>
+      <AppBar title="ROULAGE" />
+      <View
+        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
       >
-        {ending ? (
-          <ActivityIndicator color={colors.text.primary} />
-        ) : (
-          <Text
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <View
             style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-              letterSpacing: 0.5,
+              width: 14,
+              height: 14,
+              borderRadius: 7,
+              backgroundColor: recording ? theme.palette.red : theme.palette.creamMute,
+              marginBottom: theme.spacing.xl,
             }}
-          >
-            Terminer le roulage
-          </Text>
-        )}
-      </Pressable>
+          />
+          <Text style={s.eyebrow}>{recording ? 'ENREGISTREMENT EN COURS' : 'ENREGISTREMENT'}</Text>
+          <Text style={s.headline}>Posez l'appareil. L'app s'occupe du reste.</Text>
+          <Text style={s.manifest}>La piste est à vous.</Text>
+          {lapCount > 0 ? (
+            <Text style={s.lapCount}>
+              {lapCount} tour{lapCount > 1 ? 's' : ''} enregistré{lapCount > 1 ? 's' : ''}
+            </Text>
+          ) : null}
+        </View>
 
-      <Pressable
-        accessibilityRole="button"
-        disabled={ending}
-        onPress={onAbort}
-        style={{
-          height: 44,
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: spacing.xl,
-        }}
-      >
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-          Annuler sans enregistrer
-        </Text>
-      </Pressable>
-    </SafeAreaView>
+        <Pressable
+          accessibilityRole="button"
+          disabled={ending}
+          onPress={onFinish}
+          style={({ pressed }) => [s.finish, (pressed || ending) && { opacity: 0.85 }]}
+        >
+          {ending ? (
+            <ActivityIndicator color={theme.palette.cream} />
+          ) : (
+            <Text style={s.finishTxt}>Terminer le roulage</Text>
+          )}
+        </Pressable>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={ending}
+          onPress={onAbort}
+          style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={s.abortTxt}>Annuler sans enregistrer</Text>
+        </Pressable>
+      </View>
+    </Screen>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.lg,
+  },
+  headline: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.3,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+    textAlign: 'center' as const,
+    marginBottom: theme.spacing.xl,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  lapCount: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xxl,
+  },
+  finish: {
+    borderRadius: theme.radius.md,
+    paddingVertical: 16,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: theme.palette.red,
+    marginBottom: theme.spacing.md,
+  },
+  finishTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
+  abortTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};
