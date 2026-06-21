@@ -1,17 +1,14 @@
 /**
- * Écran Lieux & partenaires — écosystème OXV (specs v4 §08 §5.1).
+ * Écran Lieux & partenaires — écosystème OXV (specs v4 §08 §5.1). Design V2.
  *
- * Liste les lieux PUBLIÉS autour des circuits : partenaires, hébergements,
- * restaurants. Donnée publique de lieu (pas de donnée personnelle pilote).
- * Vue liste-first (robuste partout) ; la carte native viendra en surcouche.
- *
- * Doctrine : factuel, vouvoiement, pas d'emoji. État vide explicite tant
- * qu'aucun lieu n'est publié (les tables existent mais sont vides).
+ * Liste les lieux PUBLIÉS autour des circuits. Vue liste-first.
+ * Doctrine : factuel, vouvoiement, pas d'emoji. État vide explicite.
+ * Reskin V2 : Screen + AppBar, pills de filtre, Card/SectionLabel/Chip.
+ * Logique de données inchangée.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -21,10 +18,14 @@ import {
   type Place,
   type PlaceKind,
 } from '@/services/placesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Chip } from '@/ui/Chip';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 type Filter = 'all' | PlaceKind;
-const PREMIUM = '#FFB703'; // Or Doré UI (PAS l'Or Heritage --oxv-gold, réservé Heritage).
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'Tous' },
@@ -62,14 +63,12 @@ export default function LieuxScreen() {
   const groups = useMemo(() => groupPlacesByKind(visible), [visible]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>ÉCOSYSTÈME</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Lieux & partenaires
-        </Text>
+    <Screen>
+      <AppBar title="LIEUX" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Lieux & partenaires</Text>
 
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
+        <View style={s.filters}>
           {FILTERS.map((f) => {
             const on = f.id === filter;
             return (
@@ -78,90 +77,44 @@ export default function LieuxScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
                 onPress={() => setFilter(f.id)}
-                style={{
-                  paddingVertical: spacing.sm,
-                  paddingHorizontal: spacing.lg,
-                  borderRadius: borderRadius.lg,
-                  borderWidth: 1,
-                  borderColor: on ? colors.text.secondary : colors.border.subtle,
-                  backgroundColor: on ? colors.background.secondary : 'transparent',
-                }}
+                style={[s.pill, on && s.pillOn]}
+                hitSlop={6}
               >
-                <Text
-                  style={{
-                    color: on ? colors.text.primary : colors.text.secondary,
-                    fontSize: fontSize.caption,
-                  }}
-                >
-                  {f.label}
-                </Text>
+                <Text style={[s.pillT, on && s.pillTOn]}>{f.label}</Text>
               </Pressable>
             );
           })}
         </View>
 
         {loading ? (
-          <View style={{ paddingVertical: spacing.huge, alignItems: 'center' }}>
-            <ActivityIndicator color={colors.text.secondary} />
+          <View style={{ paddingVertical: theme.spacing.xxl * 2, alignItems: 'center' }}>
+            <ActivityIndicator color={theme.palette.creamMute} />
           </View>
         ) : groups.length === 0 ? (
-          <View
+          <Card
             style={{
-              marginTop: spacing.xxl,
-              padding: spacing.xxl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
               alignItems: 'center',
+              paddingVertical: theme.spacing.xxl,
+              marginTop: theme.spacing.lg,
             }}
           >
-            <Text
-              style={[
-                typography.manifest,
-                { color: colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
-              ]}
-            >
-              Aucun lieu publié pour le moment.
-            </Text>
-            <Text
-              style={{
-                marginTop: spacing.md,
-                color: colors.text.tertiary,
-                fontSize: fontSize.caption,
-                textAlign: 'center',
-              }}
-            >
+            <Text style={s.emptyTitle}>Aucun lieu publié pour le moment.</Text>
+            <Text style={s.emptyHint}>
               Les partenaires, hébergements et restaurants apparaîtront ici.
             </Text>
-          </View>
+          </Card>
         ) : (
           groups.map((g) => (
-            <View key={g.kind} style={{ marginTop: spacing.xl }}>
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.text.tertiary, marginBottom: spacing.sm },
-                ]}
-              >
-                {PLACE_KIND_LABELS[g.kind].toUpperCase()}
-              </Text>
-              <View style={{ gap: spacing.md }}>
-                {g.items.map((place) => (
-                  <PlaceCard key={place.id} place={place} />
-                ))}
-              </View>
+            <View key={g.kind} style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+              <SectionLabel>{PLACE_KIND_LABELS[g.kind]}</SectionLabel>
+              {g.items.map((place) => (
+                <PlaceCard key={place.id} place={place} />
+              ))}
             </View>
           ))
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -176,45 +129,82 @@ function PlaceCard({ place }: { place: Place }) {
       accessibilityLabel={place.name}
       disabled={!place.url}
       onPress={openUrl}
-      style={({ pressed }) => ({
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: place.isPremium ? 1 : 0.5,
-        borderColor: place.isPremium ? PREMIUM : colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        opacity: pressed && place.url ? 0.8 : 1,
-      })}
+      style={({ pressed }) => ({ opacity: pressed && place.url ? 0.8 : 1 })}
     >
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
-          }}
-        >
-          {place.name}
-        </Text>
-        {place.isOfficialPartner ? (
-          <Text
-            style={{
-              color: PREMIUM,
-              fontSize: 10,
-              letterSpacing: 1.5,
-              fontWeight: fontWeight.medium,
-            }}
-          >
-            PARTENAIRE OXV
-          </Text>
-        ) : null}
-      </View>
-      {meta ? (
-        <Text
-          style={{ color: colors.text.tertiary, fontSize: fontSize.caption, marginTop: spacing.xs }}
-        >
-          {meta}
-        </Text>
-      ) : null}
+      <Card style={place.isPremium ? { borderColor: theme.palette.gold } : undefined}>
+        <View style={s.row}>
+          <Text style={s.name}>{place.name}</Text>
+          {place.isOfficialPartner ? (
+            <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
+          ) : null}
+        </View>
+        {meta ? <Text style={s.meta}>{meta}</Text> : null}
+      </Card>
     </Pressable>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  filters: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: theme.spacing.sm },
+  pill: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: theme.palette.card2,
+    borderColor: theme.palette.line,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+  },
+  pillOn: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: theme.palette.edge },
+  pillT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  pillTOn: { color: theme.palette.cream },
+  row: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  name: {
+    flex: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+};

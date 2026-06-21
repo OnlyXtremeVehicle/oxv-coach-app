@@ -1,28 +1,30 @@
 /**
- * Écran #20 — Accueil / Hub central, 3 modes.
+ * Écran #20 — Accueil / Hub central, 3 modes. Design V2 (charte oxv-mirror-app).
  *
  *   mode "enroute"   (S5)  — "Bon trajet vers Beltoise. Coupez l'app. Je conduis."
- *   mode "countdown" (S4)  — placeholder ; le wire-up upcomingSessions
- *                            viendra en sem 8 (onboarding + paddock)
- *   mode "passive"   (autres) — greeting + card "Votre dernier bilan" si dispo
+ *   mode "countdown" (S4)  — prochaine session
+ *   mode "passive"   (autres) — greeting + dernier bilan + navigation
  *
- * Pour V1, le mode est calculé localement à partir de useAppStateStore.state.
- * En sem 7+, la centralisation passera par useUIStore.hubMode alimenté par
- * un wire-up dédié (position + sessions à venir).
+ * Reskin V2 : Screen + AppBar (Logo), titres Syncopate, Card/SectionLabel/Fact
+ * du kit. Logique inchangée (data, modes, SpaceSwitcher, déconnexion).
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
-import { Fact } from '@/components/Fact';
+import { Logo } from '@/brand/Logo';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
 interface RecentSession {
@@ -81,13 +83,10 @@ export default function HomeHubScreen() {
   const greeting = timeBasedGreeting();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView
-        contentContainerStyle={{
-          padding: spacing.xl,
-          paddingBottom: spacing.huge,
-          flexGrow: 1,
-        }}
+    <Screen>
+      <AppBar title="OXV MIRROR" leading={<Logo size={26} />} />
+      <View
+        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
       >
         {state === 'S5_approche' ? (
           <ModeEnroute />
@@ -103,16 +102,14 @@ export default function HomeHubScreen() {
           />
         )}
 
-        <View style={{ flex: 1, minHeight: spacing.xxxl }} />
+        <View style={{ flex: 1, minHeight: theme.spacing.xxl }} />
 
         <SpaceSwitcher current="pilot" />
 
         {__DEV__ ? (
           <Link href="/(app)/debug-capture" asChild>
-            <Pressable style={{ marginBottom: spacing.lg, alignItems: 'center' }}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Mode debug — capture UBX
-              </Text>
+            <Pressable style={{ marginBottom: theme.spacing.lg, alignItems: 'center' }}>
+              <Text style={styles.minorLink}>Mode debug — capture UBX</Text>
             </Pressable>
           </Link>
         ) : null}
@@ -127,35 +124,29 @@ export default function HomeHubScreen() {
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-            Se déconnecter
-          </Text>
+          <Text style={styles.minorLink}>Se déconnecter</Text>
         </Pressable>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function ModeEnroute() {
   return (
-    <View style={{ marginTop: spacing.giant }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>EN ROUTE</Text>
-      <Text style={[typography.screenTitle, { marginBottom: spacing.xl }]}>
-        Bon trajet vers Beltoise.
-      </Text>
-      <Text style={typography.manifest}>Coupez l'app. Je conduis.</Text>
+    <View style={{ marginTop: theme.spacing.xxl * 3 }}>
+      <Text style={styles.eyebrow}>EN ROUTE</Text>
+      <Text style={styles.title}>Bon trajet vers Beltoise.</Text>
+      <Text style={styles.manifest}>Coupez l'app. Je conduis.</Text>
     </View>
   );
 }
 
 function ModeCountdown({ firstName }: { firstName: string }) {
   return (
-    <View style={{ marginTop: spacing.giant }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>PROCHAINE SESSION</Text>
-      <Text style={[typography.screenTitle, { marginBottom: spacing.xl }]}>
-        {firstName ? `À bientôt, ${firstName}.` : 'À bientôt.'}
-      </Text>
-      <Text style={typography.manifest}>L'app vous tiendra au courant.</Text>
+    <View style={{ marginTop: theme.spacing.xxl * 3 }}>
+      <Text style={styles.eyebrow}>PROCHAINE SESSION</Text>
+      <Text style={styles.title}>{firstName ? `À bientôt, ${firstName}.` : 'À bientôt.'}</Text>
+      <Text style={styles.manifest}>L'app vous tiendra au courant.</Text>
     </View>
   );
 }
@@ -176,73 +167,60 @@ function ModePassive({
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
 
   return (
-    <View style={{ marginTop: spacing.huge }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV MIRROR</Text>
-      <Text style={[typography.screenTitle, { marginBottom: spacing.xxl }]}>{greetingText}</Text>
+    <View style={{ marginTop: theme.spacing.xl }}>
+      <Text style={styles.title}>{greetingText}</Text>
 
       {loading ? null : recentSession ? (
-        <Link
-          href={{
-            pathname: '/(app)/bilan',
-            params: { sessionId: recentSession.id },
-          }}
-          asChild
-        >
+        <Link href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }} asChild>
           <Pressable
-            style={({ pressed }) => ({
-              padding: spacing.xl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              opacity: pressed ? 0.85 : 1,
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1, marginTop: theme.spacing.xl })}
           >
-            <Text style={[typography.eyebrow, { marginBottom: spacing.sm }]}>
-              VOTRE DERNIER BILAN
-            </Text>
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.regular,
-                marginBottom: spacing.xs,
-              }}
-            >
-              {recentSession.circuitName ?? 'Session'}
-            </Text>
-            <Text style={typography.caption}>{timeAgoFr(recentSession.startedAt)}</Text>
-            {synthese ? (
-              <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
-                <Fact
-                  label="Marge globale"
-                  value={String(Math.round(synthese.marginGlobal))}
-                  unit="%"
-                />
-              </View>
-            ) : null}
+            <Card>
+              <SectionLabel>Votre dernier bilan</SectionLabel>
+              <Text style={styles.cardTitle}>{recentSession.circuitName ?? 'Session'}</Text>
+              <Text style={styles.cardMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+              {synthese ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    gap: theme.spacing.sm,
+                    marginTop: theme.spacing.md,
+                  }}
+                >
+                  <Fact
+                    label="Marge globale"
+                    value={String(Math.round(synthese.marginGlobal))}
+                    unit="%"
+                  />
+                </View>
+              ) : null}
+            </Card>
           </Pressable>
         </Link>
       ) : (
-        <Text style={typography.manifest}>Votre première session écrira la première ligne.</Text>
+        <Text style={[styles.manifest, { marginTop: theme.spacing.xl }]}>
+          Votre première session écrira la première ligne.
+        </Text>
       )}
 
-      {/* Hub central (#20, sitemap carte 3) — porte d'entrée vers l'app,
-          accessible SANS session. Sans ce menu, un compte neuf reste piégé
-          sur l'accueil : tous les écrans étaient derrière le bilan (donc
-          derrière une session). Vouvoiement, sobre, boîtier « Équipement ». */}
-      <View style={{ marginTop: spacing.xxxl, gap: spacing.md }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>NAVIGATION</Text>
-        <HubCard label="Mon bilan" hint="Votre dernière analyse" href="/(app)/bilan" />
-        <HubCard label="Ma progression" hint="Votre fil dans le temps" href="/(app)/progression" />
-        <HubCard label="Mes objectifs" hint="Vos repères personnels" href="/(app)/objectifs" />
-        <HubCard label="Mon équipement" hint="Connecter le boîtier" href="/(app)/equipement" />
-        <HubCard label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
-        <HubCard label="Lieux & partenaires" hint="Autour des circuits" href="/(app)/lieux" />
-        <HubCard label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
-        <HubCard label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
+      {/* Hub central (#20) — porte d'entrée vers l'app, accessible SANS session. */}
+      <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>
+        <SectionLabel>Navigation</SectionLabel>
+        <NavRow label="Mon bilan" hint="Votre dernière analyse" href="/(app)/bilan" />
+        <NavRow
+          label="Débrief présentiel"
+          hint="La séance, en détail"
+          href="/(app)/debrief-presentiel"
+        />
+        <NavRow label="Ma progression" hint="Votre fil dans le temps" href="/(app)/progression" />
+        <NavRow label="Mes objectifs" hint="Vos repères personnels" href="/(app)/objectifs" />
+        <NavRow label="Mon équipement" hint="Connecter le boîtier" href="/(app)/equipement" />
+        <NavRow label="Carte des circuits" hint="Préparer vos sorties" href="/(app)/circuits" />
+        <NavRow label="Lieux & partenaires" hint="Autour des circuits" href="/(app)/lieux" />
+        <NavRow label="Notifications" hint="À traiter, à découvrir" href="/(app)/notifications" />
+        <NavRow label="Réglages" hint="Compte, notifications, données" href="/(app)/settings" />
         {__DEV__ ? (
-          <HubCard
+          <NavRow
             label="Aperçu du tracé 3D"
             hint="Démonstration — Haute Saintonge"
             href="/(app)/debug-circuit"
@@ -253,42 +231,69 @@ function ModePassive({
   );
 }
 
-function HubCard({ label, hint, href }: { label: string; hint: string; href: string }) {
+function NavRow({ label, hint, href }: { label: string; hint: string; href: string }) {
   return (
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
-        style={({ pressed }) => ({
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingVertical: spacing.lg,
-          paddingHorizontal: spacing.xl,
-          borderRadius: borderRadius.lg,
-          borderWidth: 0.5,
-          borderColor: colors.border.subtle,
-          backgroundColor: colors.background.secondary,
-          opacity: pressed ? 0.85 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
-        <View style={{ flex: 1, paddingRight: spacing.md }}>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            {label}
-          </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-          >
-            {hint}
-          </Text>
-        </View>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
+        <Card
+          style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+            <Text style={styles.cardTitle}>{label}</Text>
+            <Text style={styles.cardMeta}>{hint}</Text>
+          </View>
+          <Text style={{ color: theme.palette.creamMute, fontSize: 18 }}>›</Text>
+        </Card>
       </Pressable>
     </Link>
   );
 }
+
+const styles = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.gold,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.lg,
+  },
+  cardTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  cardMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  minorLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};
