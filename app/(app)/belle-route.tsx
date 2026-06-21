@@ -13,7 +13,7 @@
  * « Powered by Kurviger » + © OpenStreetMap.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -60,6 +60,7 @@ export default function BelleRouteScreen() {
   const [loadingPois, setLoadingPois] = useState(true);
   const [planning, setPlanning] = useState(false);
   const [routeUnavailable, setRouteUnavailable] = useState(false);
+  const mapRef = useRef<MapView>(null);
 
   // Position de départ (géoloc, sinon Beltoise) + points de vue autour (keyless).
   useEffect(() => {
@@ -87,6 +88,21 @@ export default function BelleRouteScreen() {
       cancelled = true;
     };
   }, []);
+
+  // Recadre la carte sur le départ + les points de vue (+ le tracé si présent).
+  useEffect(() => {
+    const coords = [
+      { latitude: start.lat, longitude: start.lon },
+      ...pois.map((p) => ({ latitude: p.point.lat, longitude: p.point.lon })),
+      ...(route ? route.coordinates.map((c) => ({ latitude: c.lat, longitude: c.lon })) : []),
+    ];
+    if (coords.length > 1) {
+      mapRef.current?.fitToCoordinates(coords, {
+        edgePadding: { top: 60, right: 60, bottom: 120, left: 60 },
+        animated: true,
+      });
+    }
+  }, [pois, route, start]);
 
   async function onPlan() {
     setPlanning(true);
@@ -165,6 +181,7 @@ export default function BelleRouteScreen() {
       {/* Carte */}
       <View style={{ flex: 1 }}>
         <MapView
+          ref={mapRef}
           provider={PROVIDER_DEFAULT}
           style={{ flex: 1 }}
           initialRegion={{
@@ -215,6 +232,15 @@ export default function BelleRouteScreen() {
         >
           <Text style={s.attrT}>Powered by Kurviger · © OpenStreetMap</Text>
         </Pressable>
+
+        <View style={s.legend}>
+          {(['viewpoint', 'water', 'pass', 'peak'] as ScenicPoi['kind'][]).map((k) => (
+            <View key={k} style={s.legendItem}>
+              <View style={[s.legendDot, { backgroundColor: POI_COLOR[k] }]} />
+              <Text style={s.legendT}>{POI_LABEL[k]}</Text>
+            </View>
+          ))}
+        </View>
       </View>
 
       {/* Résumé + action */}
@@ -309,6 +335,24 @@ const s = {
     borderRadius: theme.radius.sm,
   },
   attrT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 8,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+  },
+  legend: {
+    position: 'absolute' as const,
+    top: theme.spacing.sm,
+    left: theme.spacing.sm,
+    backgroundColor: 'rgba(5,5,5,0.6)',
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  legendItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
+  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
+  legendT: {
     fontFamily: theme.fonts.mono,
     fontSize: 8,
     letterSpacing: 0.4,
