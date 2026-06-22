@@ -72,6 +72,7 @@ const NAV_TARGETS: NavTarget[] = [
   { label: 'Télémétrie', href: '/(app)/telemetry' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
   { label: 'Progression', href: '/(app)/progression' },
+  { label: 'Lectures approfondies', href: '/(app)/insights' },
 ];
 
 /**
