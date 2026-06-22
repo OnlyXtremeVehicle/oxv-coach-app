@@ -205,12 +205,14 @@ export default function VirageComparerScreen() {
             >
               <MiniCard
                 label="Session A"
+                accent={theme.palette.gold}
                 deep={deepA}
                 viewBox={viewBox}
                 cornerIndex={corner.index}
               />
               <MiniCard
                 label="Session B"
+                accent={theme.palette.cream}
                 deep={deepB}
                 viewBox={viewBox}
                 cornerIndex={corner.index}
@@ -307,11 +309,13 @@ export default function VirageComparerScreen() {
 
 function MiniCard({
   label,
+  accent,
   deep,
   viewBox,
   cornerIndex,
 }: {
   label: string;
+  accent: string;
   deep: CornerDeepDive;
   viewBox: string | undefined;
   cornerIndex: number;
@@ -326,7 +330,7 @@ function MiniCard({
 
   return (
     <Card style={{ flex: 1 }}>
-      <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm }]}>{label}</Text>
+      <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm, color: accent }]}>{label}</Text>
       <CircuitMap viewBox={viewBox} height={180} background={theme.palette.card2}>
         <TrackLayer animate={false} opacity={0.3} strokeWidth={6} />
         {trajectoryPoints ? (

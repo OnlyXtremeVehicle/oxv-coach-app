@@ -287,6 +287,7 @@ function SnapshotView(props: SnapshotProps) {
       <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}>
         <DuelColumn
           eyebrow="Vous"
+          accent={theme.palette.gold}
           marginGlobal={props.selectedMineRow?.marginGlobal ?? null}
           marginZone={props.selectedMineRow?.marginZone ?? null}
           context={
@@ -297,6 +298,7 @@ function SnapshotView(props: SnapshotProps) {
         />
         <DuelColumn
           eyebrow="Eux"
+          accent={theme.palette.cream}
           marginGlobal={props.selectedTheirsRow?.marginGlobal ?? null}
           marginZone={props.selectedTheirsRow?.marginZone ?? null}
           context={
@@ -454,8 +456,8 @@ function AggregatedView({ n, onChangeN, myStats, theirStats, loading }: Aggregat
         />
       ) : (
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <DuelStatColumn eyebrow="Vous" stats={myStats} n={n} />
-          <DuelStatColumn eyebrow="Eux" stats={theirStats} n={n} />
+          <DuelStatColumn eyebrow="Vous" accent={theme.palette.gold} stats={myStats} n={n} />
+          <DuelStatColumn eyebrow="Eux" accent={theme.palette.cream} stats={theirStats} n={n} />
         </View>
       )}
     </>
@@ -510,11 +512,13 @@ function SessionPicker({
 
 function DuelColumn({
   eyebrow,
+  accent,
   marginGlobal,
   marginZone,
   context,
 }: {
   eyebrow: string;
+  accent: string;
   marginGlobal: number | null;
   marginZone: MarginZone | null;
   context: string | null;
@@ -523,7 +527,7 @@ function DuelColumn({
   return (
     <Card style={{ flex: 1, alignItems: 'center', paddingVertical: theme.spacing.lg }}>
       <View style={{ marginBottom: theme.spacing.md }}>
-        <SectionLabel>{eyebrow}</SectionLabel>
+        <Text style={[st.sideTag, { color: accent }]}>{eyebrow}</Text>
       </View>
       {marginGlobal !== null ? (
         <>
@@ -544,17 +548,19 @@ function DuelColumn({
 
 function DuelStatColumn({
   eyebrow,
+  accent,
   stats,
   n,
 }: {
   eyebrow: string;
+  accent: string;
   stats: AggregatedStats | null;
   n: number;
 }) {
   return (
     <Card style={{ flex: 1, alignItems: 'center', paddingVertical: theme.spacing.lg }}>
       <View style={{ marginBottom: theme.spacing.md }}>
-        <SectionLabel>{eyebrow}</SectionLabel>
+        <Text style={[st.sideTag, { color: accent }]}>{eyebrow}</Text>
       </View>
       {!stats || stats.count === 0 ? (
         <Text style={st.empty}>Pas assez de sessions</Text>
@@ -663,6 +669,13 @@ const st = {
     color: theme.palette.creamMute,
   },
   pillTOn: { color: theme.palette.cream },
+  sideTag: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
   heroNumber: {
     fontFamily: theme.fonts.mono,
     fontSize: 44,

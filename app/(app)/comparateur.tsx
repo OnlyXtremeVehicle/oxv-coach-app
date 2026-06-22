@@ -136,12 +136,14 @@ export default function ComparateurScreen() {
 
             <SessionPicker
               label="Référence A"
+              accent={theme.palette.gold}
               sessions={filtered}
               selectedId={selectedA}
               onSelect={setSelectedA}
             />
             <SessionPicker
               label="Référence B"
+              accent={theme.palette.cream}
               sessions={filtered}
               selectedId={selectedB}
               onSelect={setSelectedB}
@@ -196,18 +198,20 @@ function DeltaPanel({
 
 function SessionPicker({
   label,
+  accent,
   sessions,
   selectedId,
   onSelect,
 }: {
   label: string;
+  accent: string;
   sessions: RecentAnalysisRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
   return (
     <View style={{ marginBottom: theme.spacing.xl, marginTop: theme.spacing.lg }}>
-      <SectionLabel>{label.toUpperCase()}</SectionLabel>
+      <Text style={[s.pickerEyebrow, { color: accent }]}>{label.toUpperCase()}</Text>
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
         {sessions.map((session) => {
           const active = selectedId === session.telemetrySessionId;
@@ -293,6 +297,13 @@ const s = {
     textAlign: 'center' as const,
     marginTop: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.md,
+  },
+  pickerEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
   },
   pickName: {
     fontFamily: theme.fonts.bodyMedium,
