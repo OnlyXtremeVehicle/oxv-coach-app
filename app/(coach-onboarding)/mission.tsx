@@ -43,6 +43,25 @@ export default function CoachOnboardingMissionScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl }}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
+          {[0, 1, 2].map((i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 3,
+                borderRadius: borderRadius.sm,
+                backgroundColor: i < 2 ? colors.accent.coach : colors.border.subtle,
+              }}
+            />
+          ))}
+        </View>
+        <Text
+          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
+        >
+          ÉTAPE 2 / 3
+        </Text>
+
         <Text
           style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
         >

@@ -64,6 +64,23 @@ export default function CoachPacteScreen() {
         paddingHorizontal: spacing.xl,
       }}
     >
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: borderRadius.sm,
+              backgroundColor: colors.accent.coach,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        ÉTAPE 3 / 3
+      </Text>
+
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
           style={[typography.eyebrow, { marginBottom: spacing.xxxl, color: colors.accent.coach }]}

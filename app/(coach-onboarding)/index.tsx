@@ -21,6 +21,23 @@ export default function CoachOnboardingHomeScreen() {
         paddingHorizontal: spacing.xl,
       }}
     >
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        {[0, 1, 2].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: borderRadius.sm,
+              backgroundColor: i < 1 ? colors.accent.coach : colors.border.subtle,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        ÉTAPE 1 / 3
+      </Text>
+
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
           style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.lg }]}

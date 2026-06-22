@@ -56,6 +56,23 @@ export default function PacteScreen() {
         paddingHorizontal: spacing.xl,
       }}
     >
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: borderRadius.sm,
+              backgroundColor: colors.accent.red,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        ÉTAPE 6 / 6
+      </Text>
+
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
           style={[typography.eyebrow, { marginBottom: spacing.xxxl, color: colors.text.tertiary }]}

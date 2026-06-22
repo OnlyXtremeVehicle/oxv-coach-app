@@ -28,6 +28,23 @@ export default function MethodeScreen() {
       }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xl }}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 3,
+                borderRadius: borderRadius.sm,
+                backgroundColor: i < 3 ? colors.accent.red : colors.border.subtle,
+              }}
+            />
+          ))}
+        </View>
+        <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+          ÉTAPE 3 / 6
+        </Text>
+
         <View style={{ flex: 1, justifyContent: 'center', paddingTop: spacing.xxxl }}>
           <Text
             style={[

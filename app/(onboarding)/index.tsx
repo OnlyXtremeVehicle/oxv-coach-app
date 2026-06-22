@@ -21,6 +21,23 @@ export default function AccueilPhilosophiqueScreen() {
         paddingHorizontal: spacing.xl,
       }}
     >
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: borderRadius.sm,
+              backgroundColor: i < 1 ? colors.accent.red : colors.border.subtle,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        ÉTAPE 1 / 6
+      </Text>
+
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Image
           source={require('../../assets/icon.png')}

@@ -21,6 +21,23 @@ export default function DoctrineScreen() {
         paddingHorizontal: spacing.xl,
       }}
     >
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <View
+            key={i}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: borderRadius.sm,
+              backgroundColor: i < 2 ? colors.accent.red : colors.border.subtle,
+            }}
+          />
+        ))}
+      </View>
+      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        ÉTAPE 2 / 6
+      </Text>
+
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
           style={[typography.eyebrow, { marginBottom: spacing.xxl, color: colors.text.tertiary }]}

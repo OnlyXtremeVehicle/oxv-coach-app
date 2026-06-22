@@ -56,6 +56,23 @@ export default function CguScreen() {
       }}
     >
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl, flexGrow: 1 }}>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 3,
+                borderRadius: borderRadius.sm,
+                backgroundColor: i < 5 ? colors.accent.red : colors.border.subtle,
+              }}
+            />
+          ))}
+        </View>
+        <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+          ÉTAPE 5 / 6
+        </Text>
+
         <View style={{ marginTop: spacing.xxxl }}>
           <Text
             style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
