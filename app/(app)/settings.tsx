@@ -414,7 +414,7 @@ function ToggleRow({
         disabled={disabled}
         accessibilityLabel={label}
         accessibilityHint={caption}
-        trackColor={{ false: theme.palette.line, true: theme.palette.red }}
+        trackColor={{ false: '#26262B', true: theme.palette.gold }}
         thumbColor={theme.palette.cream}
       />
     </View>
@@ -459,7 +459,7 @@ const s = {
   rowValue: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+    color: theme.palette.creamMute,
   },
   rowHint: {
     fontFamily: theme.fonts.mono,

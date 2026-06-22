@@ -106,9 +106,9 @@ const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
     marginBottom: theme.spacing.lg,
   },
   headline: {

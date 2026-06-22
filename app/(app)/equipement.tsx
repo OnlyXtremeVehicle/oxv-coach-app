@@ -138,7 +138,7 @@ export default function EquipementScreen() {
                 {connecting ? (
                   <ActivityIndicator color={theme.palette.creamMute} />
                 ) : (
-                  <Text style={{ color: theme.palette.creamMute, fontSize: 18 }}>›</Text>
+                  <Text style={{ color: theme.palette.faint, fontSize: 18 }}>›</Text>
                 )}
               </Card>
             </Pressable>
