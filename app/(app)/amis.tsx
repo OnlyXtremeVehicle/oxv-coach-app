@@ -262,8 +262,13 @@ function FriendRow({
 
   const inner = (
     <Card>
-      <Text style={s.rowName}>{displayName}</Text>
-      <Text style={s.rowMeta}>{subtitle}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowName}>{displayName}</Text>
+          <Text style={s.rowMeta}>{subtitle}</Text>
+        </View>
+        {onPress ? <Text style={s.chevron}>›</Text> : null}
+      </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
         {actions.map((a) => (
           <Pressable
@@ -335,9 +340,13 @@ const s = {
     paddingHorizontal: theme.spacing.md,
   },
   rowName: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
   },
   rowMeta: {
     fontFamily: theme.fonts.mono,

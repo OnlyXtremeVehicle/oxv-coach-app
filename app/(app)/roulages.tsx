@@ -143,7 +143,7 @@ const s = {
     textAlign: 'center' as const,
   },
   cardTitle: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h3,
     color: theme.palette.cream,
   },

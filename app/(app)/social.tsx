@@ -209,7 +209,7 @@ const s = {
     marginTop: theme.spacing.sm,
   },
   pingTitle: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
