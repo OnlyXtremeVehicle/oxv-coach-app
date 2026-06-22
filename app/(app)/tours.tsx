@@ -93,7 +93,14 @@ export default function ToursScreen() {
               paddingVertical: theme.spacing.lg,
             }}
           >
-            <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm }]}>MEILLEUR TOUR</Text>
+            <Text
+              style={[
+                s.eyebrow,
+                { color: theme.palette.creamMute, marginBottom: theme.spacing.sm },
+              ]}
+            >
+              MEILLEUR TOUR
+            </Text>
             <Text style={s.heroNumber}>{formatLapTime(bestLap.duration_seconds)}</Text>
             <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>Tour {bestLap.lap_number}</Text>
           </View>
@@ -266,9 +273,9 @@ const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
   },
   title: {
     fontFamily: theme.fonts.display,

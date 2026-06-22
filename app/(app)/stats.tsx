@@ -249,7 +249,7 @@ const s = {
     paddingVertical: theme.spacing.lg,
   },
   circuitName: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
     marginBottom: theme.spacing.sm,
