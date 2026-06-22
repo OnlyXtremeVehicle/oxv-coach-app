@@ -71,7 +71,10 @@ export default function AdminHubScreen() {
                 style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
               >
                 <Card style={{ borderColor: BRONZE }}>
-                  <Text style={s.cardTitle}>{v.label}</Text>
+                  <View style={s.cardHead}>
+                    <Text style={s.cardTitle}>{v.label}</Text>
+                    <Text style={s.cardChevron}>›</Text>
+                  </View>
                   <Text style={s.cardMeta}>{v.description}</Text>
                 </Card>
               </Pressable>
@@ -109,10 +112,19 @@ const s = {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xxl,
   },
+  cardHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+  },
   cardTitle: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  cardChevron: {
+    color: theme.palette.faint,
+    fontSize: 17,
   },
   cardMeta: {
     fontFamily: theme.fonts.body,

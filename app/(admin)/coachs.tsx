@@ -109,10 +109,15 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
     <Card style={s.row}>
       <Link href={{ pathname: '/(admin)/coachs/[id]', params: { id: coach.id } } as never} asChild>
         <Pressable style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
-          <Text style={s.name}>{fullName}</Text>
-          <Text style={s.meta}>
-            {coach.email} · {assignText}
-          </Text>
+          <View style={s.nameBlock}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>{fullName}</Text>
+              <Text style={s.meta}>
+                {coach.email} · {assignText}
+              </Text>
+            </View>
+            <Text style={s.chevron}>›</Text>
+          </View>
         </Pressable>
       </Link>
       <Pressable
@@ -179,10 +184,19 @@ const s = {
     alignItems: 'center' as const,
     gap: theme.spacing.md,
   },
+  nameBlock: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
   name: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.faint,
+    fontSize: 17,
   },
   meta: {
     fontFamily: theme.fonts.mono,
