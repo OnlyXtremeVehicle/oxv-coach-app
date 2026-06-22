@@ -24,7 +24,10 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
+import { FlowViz } from '@/components/insights/FlowViz';
 import { GGViz } from '@/components/insights/GGViz';
+import { TourIdealViz } from '@/components/insights/TourIdealViz';
+import { TransfertViz } from '@/components/insights/TransfertViz';
 import { ConstatTag, DemoBanner } from '@/components/insights/InsightCard';
 import { dimensionColor, getReading, type ReadingKey } from '@/components/insights/catalogue';
 import { theme } from '@/theme/v2';
@@ -99,9 +102,10 @@ export default function InsightDetailScreen() {
 }
 
 /**
- * Choisit la visualisation par clé. Pass A : 3 viz réelles. Les clés non
- * couvertes affichent un placeholder sobre — Pass B y branchera ses viz
- * (tour-ideal, flow, transfert) sans rien changer d'autre.
+ * Choisit la visualisation par clé. Les six lectures ont désormais leur viz
+ * réelle (Pass A : anatomie, gg, dispersion ; Pass B : tour-ideal, flow,
+ * transfert). Le placeholder reste comme garde par défaut, jamais atteint
+ * tant que les clés du catalogue sont couvertes.
  */
 function ReadingViz({ reading }: { reading: ReadingKey }) {
   switch (reading) {
@@ -111,12 +115,18 @@ function ReadingViz({ reading }: { reading: ReadingKey }) {
       return <GGViz />;
     case 'dispersion':
       return <DispersionViz />;
+    case 'tour-ideal':
+      return <TourIdealViz />;
+    case 'flow':
+      return <FlowViz />;
+    case 'transfert':
+      return <TransfertViz />;
     default:
       return <ReadingPlaceholder />;
   }
 }
 
-/** Placeholder sobre pour les lectures dont la viz arrive en Pass B. */
+/** Garde par défaut (clé non couverte) — sobre, sans donnée inventée. */
 function ReadingPlaceholder() {
   return (
     <Card style={styles.placeholder}>
