@@ -2,8 +2,9 @@
  * Écran Carte de chaleur — pilier §3.4 du cahier OXV Mirror.
  *
  * Visualisation PURE : la vitesse projetée en couleurs le long du tracé
- * réel. Rouge = vitesse basse, jaune = moyenne, vert = élevée. Zéro mot,
- * zéro note : la donnée rendue visible. « Le miroir le plus littéral. »
+ * réel. Gradient d'intensité, froid → chaud : faint (basse) → rouge (élevée).
+ * Couleur de donnée, jamais un jugement. Zéro mot, zéro note : la donnée
+ * rendue visible. « Le miroir le plus littéral. »
  *
  * Réutilise PilotPreset + TrajectoryLayer (mode speed-heatmap) déjà en
  * place. Charge les telemetry_frames de la session (RLS owner).
@@ -151,9 +152,9 @@ export default function HeatmapScreen() {
                 marginTop: theme.spacing.lg,
               }}
             >
-              <LegendDot color={theme.palette.red} label="Vitesse basse" />
+              <LegendDot color={theme.palette.faint} label="Vitesse basse" />
               <LegendDot color={theme.palette.gold} label="Vitesse moyenne" />
-              <LegendDot color={theme.dataColors.accel} label="Vitesse élevée" />
+              <LegendDot color={theme.palette.red} label="Vitesse élevée" />
             </View>
 
             {/* Légende points de freinage */}
