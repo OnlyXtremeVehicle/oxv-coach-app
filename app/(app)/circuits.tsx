@@ -151,9 +151,12 @@ function CircuitList({ circuits }: { circuits: DirectoryCircuit[] }) {
             }
             style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
-            <Card>
-              <Text style={s.circuitName}>{c.officialName ?? c.name}</Text>
-              {circuitSubtitle(c) ? <Text style={s.meta}>{circuitSubtitle(c)}</Text> : null}
+            <Card style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.circuitName}>{c.officialName ?? c.name}</Text>
+                {circuitSubtitle(c) ? <Text style={s.meta}>{circuitSubtitle(c)}</Text> : null}
+              </View>
+              <Text style={s.chevron}>›</Text>
             </Card>
           </Pressable>
         ))}
@@ -178,9 +181,13 @@ const s = {
     color: theme.palette.creamMute,
   },
   circuitName: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
   },
   meta: {
     fontFamily: theme.fonts.mono,

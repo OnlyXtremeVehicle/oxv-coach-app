@@ -137,6 +137,7 @@ function PlaceCard({ place }: { place: Place }) {
           {place.isOfficialPartner ? (
             <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
           ) : null}
+          {place.url ? <Text style={s.chevron}>›</Text> : null}
         </View>
         {meta ? <Text style={s.meta}>{meta}</Text> : null}
       </Card>
@@ -181,9 +182,13 @@ const s = {
   },
   name: {
     flex: 1,
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
   },
   meta: {
     fontFamily: theme.fonts.mono,

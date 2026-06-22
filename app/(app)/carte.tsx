@@ -24,7 +24,6 @@ import { type MarginZone } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -100,7 +99,7 @@ export default function CarteScreen() {
     <Screen>
       <AppBar title="CARTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <SectionLabel>Carte du circuit</SectionLabel>
+        <Text style={s.eyebrow}>Carte du circuit</Text>
         <Text style={s.title}>{circuit?.name ?? 'Haute Saintonge'}</Text>
 
         <PilotPreset
@@ -183,6 +182,13 @@ function colorForZone(zone: MarginZone | null | undefined): string {
 }
 
 const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
