@@ -504,6 +504,20 @@ export default function BilanScreen() {
           </Pressable>
         ) : null}
 
+        {/* CTA Carte trophée — la séance en une image partageable (vers l'extérieur) */}
+        {session?.id ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/(app)/carte-trophee?sessionId=${session.id}` as never)}
+            style={({ pressed }) => [
+              s.ctaGhost,
+              { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={s.ctaGhostTxt}>Carte à partager</Text>
+          </Pressable>
+        ) : null}
+
         {/* Transparence (charte 11) — source/méthode (T1), angles morts (T5),
             provenance du calcul (T3). Toujours visibles : la méthode et les
             limites ne sont pas une option. La provenance ne s'affiche que si la

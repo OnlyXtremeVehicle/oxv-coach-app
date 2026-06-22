@@ -73,6 +73,7 @@
     "react-native-svg": "15.2.0",
     "react-native-toast-message": "^2.2.0",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-view-shot": "3.8.0",
     "three": "^0.169.0",
     "zustand": "^5.0.13"
   },
