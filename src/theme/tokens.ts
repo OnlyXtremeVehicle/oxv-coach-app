@@ -71,14 +71,14 @@ export const fontWeight = {
 // Polices de la charte V2 (chargées dans app/_layout.tsx via @/theme/fonts).
 // Noms = familles exposées par @expo-google-fonts.
 export const fonts = {
-  display: 'Syncopate_700Bold', // titres courts (app bars, héros)
-  displayRegular: 'Syncopate_400Regular',
-  body: 'Inter_400Regular',
-  bodyLight: 'Inter_300Light',
-  bodyMedium: 'Inter_500Medium',
-  bodySemibold: 'Inter_600SemiBold',
-  mono: 'JetBrainsMono_400Regular', // chiffres = voix de l'instrument + labels
-  monoMedium: 'JetBrainsMono_500Medium',
+  display: 'Geist_600SemiBold', // titres (charte refonte Geist)
+  displayRegular: 'Geist_500Medium',
+  body: 'Geist_400Regular',
+  bodyLight: 'Geist_300Light',
+  bodyMedium: 'Geist_500Medium',
+  bodySemibold: 'Geist_600SemiBold',
+  mono: 'GeistMono_400Regular', // chiffres = voix de l'instrument + labels
+  monoMedium: 'GeistMono_500Medium',
 } as const;
 
 export const fontSize = {
