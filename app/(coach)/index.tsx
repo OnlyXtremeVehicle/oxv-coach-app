@@ -160,6 +160,12 @@ export default function CoachHubScreen() {
           {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
           <CoachLink label="Ma lecture" href="/(coach)/lecture" />
 
+          {/* Vue AR coach (E0.1) — outil du coach au bord de piste (lunettes
+              Ray-Ban Display). Preview/prototype : non publiable au public tant
+              que Meta n'a pas ouvert la GA. Le pilote roule en silence : rien
+              côté pilote. Faits uniquement. Disponible pour tout coach. */}
+          <CoachLink label="Vue AR (aperçu)" href="/(coach)/ar" />
+
           {/* Gestion des roulages — gatée par la permission manage_own_sessions
               (§8). Visible hors du bloc pilotes : un coach peut préparer un
               roulage avant d'avoir des pilotes à convier. */}
