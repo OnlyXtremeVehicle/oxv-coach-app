@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 11 — CARTE DE CHALEUR DU TRACÉ (pilier factuel)
+  Écrans RN couverts :
+    app/(app)/heatmap · carte  (+ pilier « carte de chaleur » du débrief)
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : un des quatre piliers. Le tracé est le héros, la couleur est
+            la donnée — la vitesse se lit virage par virage. Factuel :
+            montre où c'est rapide ou lent, ne dit jamais où accélérer.
+  Gradient : sombre (lent) → heritage → gold → rouge (rapide).
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Carte de chaleur</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+
+  /* Onglets métrique */
+  .tabs{display:flex;gap:7px;margin-bottom:18px}
+  .tab{flex:1;text-align:center;padding:10px;border:1px solid var(--line);border-radius:11px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);cursor:pointer}
+  .tab.on{color:var(--night);background:var(--gold);border-color:var(--gold)}
+
+  /* Tracé coloré */
+  .map{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px 12px 12px;margin-bottom:14px}
+  .map svg{width:100%;height:auto;display:block}
+  .map-c{text-align:center;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-top:4px}
+
+  /* Légende gradient */
+  .leg{display:flex;align-items:center;gap:12px;margin-bottom:22px;padding:0 4px}
+  .leg .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .leg .bar{flex:1;height:6px;border-radius:3px;
+    background:linear-gradient(90deg,#3A3A42 0%,#C4A459 42%,#FFB703 70%,#C8102E 100%)}
+
+  /* Repères factuels */
+  .marks{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:20px}
+  .mark{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .mark:last-child{border-bottom:0}
+  .mark .d{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .mark .l{flex:1;font-size:13.5px;font-weight:500}
+  .mark .l small{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px;font-weight:400;letter-spacing:.04em}
+  .mark .v{font-family:var(--mono);font-size:16px;font-weight:500}
+
+  .read{background:var(--card2);border:1px solid var(--line);border-left:2px solid var(--gold);
+    border-radius:0 14px 14px 0;padding:15px 17px}
+  .read .eyebrow{display:block;margin-bottom:9px;color:var(--gold)}
+  .read p{font-size:13.5px;line-height:1.6;color:#D7D7DB}
+  .read .tag{display:block;margin-top:11px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Pilier · tracé</span>
+          <div class="t">Carte de chaleur</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab on">Vitesse</div>
+        <div class="tab">Freinage</div>
+        <div class="tab">Régularité</div>
+      </div>
+
+      <div class="map">
+        <svg id="hm" viewBox="0 0 300 224" xmlns="http://www.w3.org/2000/svg" aria-label="Tracé en carte de chaleur">
+          <g id="track"></g>
+          <g id="deco"></g>
+        </svg>
+        <div class="map-c">Haute-Saintonge · tracé Beltoise · meilleur tour</div>
+      </div>
+
+      <div class="leg">
+        <span class="lbl">Lent</span>
+        <span class="bar"></span>
+        <span class="lbl">Rapide</span>
+      </div>
+
+      <div class="marks">
+        <div class="mark">
+          <span class="d" style="background:#C8102E"></span>
+          <span class="l">Point le plus rapide<small>Ligne du Cap</small></span>
+          <span class="v" style="color:#C8102E">182<small style="color:var(--mute)"> km/h</small></span>
+        </div>
+        <div class="mark">
+          <span class="d" style="background:#3A3A42"></span>
+          <span class="l">Point le plus lent<small>Virage 7 — La Génétouze</small></span>
+          <span class="v">68<small style="color:var(--mute)"> km/h</small></span>
+        </div>
+      </div>
+
+      <div class="read">
+        <span class="eyebrow">Ce que montre la carte</span>
+        <p>Vous portez la vitesse dans la ligne du Cap et relâchez nettement au virage 7. Le contraste rouge/sombre dessine votre rythme sur le tracé.</p>
+        <span class="tag">Un constat, pas une consigne</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>Le tracé est le héros, la couleur est la donnée.</b> La vitesse se lit spatialement, virage par virage — pas dans un tableau de chiffres.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Un des quatre piliers.</b> La carte de chaleur est un pilier factuel de la doctrine, au même rang que signature et régularité.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>Une métrique à la fois.</b> Vitesse, freinage ou régularité colorent le même tracé ; la légende et les repères suivent.</span></div>
+  </div>
+
+  <script>
+    (function(){
+      var cx=150, cy=112, N=140;
+      var pts=[], mn=Infinity, mx=-Infinity;
+      for(var i=0;i<=N;i++){
+        var t=i/N*2*Math.PI;
+        var x=cx+95*Math.cos(t)+22*Math.cos(2*t);
+        var y=cy+70*Math.sin(t)-30*Math.sin(2*t);
+        var dx=-95*Math.sin(t)-44*Math.sin(2*t);
+        var dy=70*Math.cos(t)-60*Math.cos(2*t);
+        var sp=Math.sqrt(dx*dx+dy*dy);
+        pts.push({x:x,y:y,sp:sp});
+        if(sp<mn)mn=sp; if(sp>mx)mx=sp;
+      }
+      var stops=[[0,[58,58,66]],[0.42,[196,164,89]],[0.70,[255,183,3]],[1,[200,16,46]]];
+      function hx(c){c=Math.max(0,Math.min(255,Math.round(c)));return ('0'+c.toString(16)).slice(-2);}
+      function col(v){
+        for(var k=0;k<stops.length-1;k++){
+          if(v<=stops[k+1][0]){
+            var tt=(v-stops[k][0])/(stops[k+1][0]-stops[k][0]);
+            var a=stops[k][1], b=stops[k+1][1];
+            return '#'+hx(a[0]+(b[0]-a[0])*tt)+hx(a[1]+(b[1]-a[1])*tt)+hx(a[2]+(b[2]-a[2])*tt);
+          }
+        }
+        return '#C8102E';
+      }
+      var s='';
+      for(var i=0;i<N;i++){
+        var v=(pts[i].sp-mn)/(mx-mn);
+        s+='<line x1="'+pts[i].x.toFixed(1)+'" y1="'+pts[i].y.toFixed(1)+'" x2="'+pts[i+1].x.toFixed(1)+'" y2="'+pts[i+1].y.toFixed(1)+'" stroke="'+col(v)+'" stroke-width="6" stroke-linecap="round"/>';
+      }
+      document.getElementById('track').innerHTML=s;
+      // marqueur départ : petit trait clair perpendiculaire au point de départ
+      var p0=pts[0];
+      document.getElementById('deco').innerHTML='<circle cx="'+p0.x.toFixed(1)+'" cy="'+p0.y.toFixed(1)+'" r="3.4" fill="#F8F9FA"/>';
+    })();
+  </script>
+
+</body>
+</html>

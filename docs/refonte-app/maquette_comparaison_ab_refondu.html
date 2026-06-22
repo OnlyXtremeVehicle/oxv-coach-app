@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 9 — COMPARAISON A/B (côte à côte)
+  Écrans RN couverts :
+    app/(app)/comparateur · cote-a-cote/[friendId] · virage-comparer
+    app/(coach)/comparer · comparer-pilotes
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : deux sujets en regard, factuel. On constate les écarts —
+            on ne dit jamais « faites comme l'autre ». A = gold, B = cream.
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Comparaison A/B</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+
+  /* Bandeau des deux sujets */
+  .who{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+  .sub-card{border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+  .sub-card.a{background:rgba(255,183,3,.06);border-color:#3A2E10}
+  .sub-card.b{background:rgba(248,249,250,.04)}
+  .sub-tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;margin-bottom:7px}
+  .a .sub-tag{color:var(--gold)} .b .sub-tag{color:var(--mute)}
+  .sub-nm{font-size:15px;font-weight:600;letter-spacing:-.01em}
+  .sub-mt{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:3px;letter-spacing:.04em}
+
+  /* Tracé du virage : deux trajectoires */
+  .trace{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;margin-bottom:18px}
+  .trace svg{width:100%;height:auto;display:block}
+  .trace-cap{display:flex;justify-content:center;gap:18px;margin-top:6px}
+  .lg{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--mute)}
+  .lg .sw{width:14px;height:2.5px;border-radius:2px}
+
+  /* Métriques en regard : valeur A — label — valeur B */
+  .cmp{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:20px}
+  .line{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+    padding:14px 16px;border-bottom:1px solid var(--line)}
+  .line:last-child{border-bottom:0}
+  .va{font-family:var(--mono);font-size:18px;font-weight:500;text-align:left;color:var(--mute)}
+  .vb{font-family:var(--mono);font-size:18px;font-weight:500;text-align:right;color:var(--mute)}
+  .va small,.vb small{font-size:11px;color:var(--faint)}
+  .va.win{color:var(--gold)} .vb.win{color:var(--cream)}
+  .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);padding:0 14px;text-align:center}
+
+  /* Lecture factuelle */
+  .read{background:var(--card2);border:1px solid var(--line);border-left:2px solid var(--gold);
+    border-radius:0 14px 14px 0;padding:16px 18px}
+  .read .eyebrow{display:block;margin-bottom:10px;color:var(--gold)}
+  .read p{font-size:14px;line-height:1.65;color:#D7D7DB}
+  .read .a-c{color:var(--gold);font-weight:500} .read .b-c{color:var(--cream);font-weight:500}
+  .read .tag{display:block;margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Côte à côte</span>
+          <div class="t">Comparaison</div>
+        </div>
+      </div>
+
+      <div class="who">
+        <div class="sub-card a">
+          <div class="sub-tag">A · Vous</div>
+          <div class="sub-nm">Antoine F.</div>
+          <div class="sub-mt">Tour 12 · 1:48,2</div>
+        </div>
+        <div class="sub-card b">
+          <div class="sub-tag">B</div>
+          <div class="sub-nm">Marc L.</div>
+          <div class="sub-mt">Tour 8 · 1:47,6</div>
+        </div>
+      </div>
+
+      <div class="trace">
+        <svg viewBox="0 0 280 150" xmlns="http://www.w3.org/2000/svg" aria-label="Virage comparé">
+          <!-- bords de piste -->
+          <path d="M 18 142 C 18 70, 95 28, 262 36" fill="none" stroke="#26262B" stroke-width="1.5"/>
+          <path d="M 64 142 C 64 96, 110 78, 262 80" fill="none" stroke="#26262B" stroke-width="1.5"/>
+          <!-- trajectoire B (cream, corde tôt) -->
+          <path d="M 50 142 C 54 100, 108 80, 262 66" fill="none" stroke="#F8F9FA" stroke-width="2" opacity="0.85"/>
+          <circle cx="108" cy="80" r="2.6" fill="#F8F9FA"/>
+          <!-- trajectoire A (gold, corde tard) -->
+          <path d="M 32 142 C 36 84, 165 64, 262 50" fill="none" stroke="#FFB703" stroke-width="2.2"/>
+          <circle cx="165" cy="64" r="2.8" fill="#FFB703"/>
+          <text x="150" y="138" fill="#5A5A62" font-family="'Geist Mono',monospace" font-size="8.5" letter-spacing="1.2" text-anchor="middle">VIRAGE 7 — LA GÉNÉTOUZE</text>
+        </svg>
+        <div class="trace-cap">
+          <span class="lg"><span class="sw" style="background:#FFB703"></span>Vous · corde tardive</span>
+          <span class="lg"><span class="sw" style="background:#F8F9FA"></span>Marc · corde précoce</span>
+        </div>
+      </div>
+
+      <div class="cmp">
+        <div class="line">
+          <span class="va win">0,8<small> s</small></span>
+          <span class="lbl">Régularité</span>
+          <span class="vb">1,1<small> s</small></span>
+        </div>
+        <div class="line">
+          <span class="va win">1,1<small> g</small></span>
+          <span class="lbl">Freinage</span>
+          <span class="vb">1,0<small> g</small></span>
+        </div>
+        <div class="line">
+          <span class="va">0,7<small> g</small></span>
+          <span class="lbl">Combiné</span>
+          <span class="vb win">0,9<small> g</small></span>
+        </div>
+        <div class="line">
+          <span class="va win">78<small> km/h</small></span>
+          <span class="lbl">Vmin virage</span>
+          <span class="vb">74<small> km/h</small></span>
+        </div>
+      </div>
+
+      <div class="read">
+        <span class="eyebrow">Ce que montre la comparaison</span>
+        <p><span class="a-c">Vous</span> êtes plus régulier et freinez plus fort. <span class="b-c">Marc</span> enchaîne mieux le combiné — 0,9 g contre 0,7 — en serrant la corde plus tôt.</p>
+        <span class="tag">Un constat, pas une consigne</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>Deux sujets en regard, une couleur chacun.</b> A en gold, B en cream — le bandeau, le tracé et les chiffres gardent ce codage du haut en bas.</span></div>
+    <div class="row"><span class="k">→</span><span class="v"><b>Le tracé montre le « où ».</b> Les deux trajectoires sur le même virage rendent la différence spatiale, pas seulement chiffrée.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>On constate, on ne prescrit pas.</b> La lecture décrit l'écart ; elle ne dit jamais d'imiter l'autre. La décision reste au pilote.</span></div>
+  </div>
+
+</body>
+</html>

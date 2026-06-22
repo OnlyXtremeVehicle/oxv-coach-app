@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 14 — MON COACH (côté pilote, réception des repères)
+  Écrans RN couverts :
+    app/(app)/mon-coach
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : l'autre face de la bande coach. Le pilote REÇOIT les repères
+            de son coach, marqués « de votre coach », en lecture seule.
+            La voix prescriptive vient du coach humain — jamais du miroir.
+  Symétrie : même bande rouge que l'archétype 6, vue de l'autre côté.
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Mon coach</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+
+  /* Carte coach */
+  .coachcard{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:16px 17px;margin-bottom:24px}
+  .av{width:48px;height:48px;border-radius:50%;border:1px solid #2A1418;background:rgba(200,16,46,.08);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:15px;color:var(--red);flex-shrink:0}
+  .ci{flex:1}
+  .ci .nm{font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .ci .rl{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:4px;letter-spacing:.04em}
+  .msg{width:38px;height:38px;border-radius:11px;border:1px solid var(--line);display:flex;
+    align-items:center;justify-content:center;color:var(--mute);font-size:16px;flex-shrink:0}
+
+  /* Bande coach en réception (lecture seule) */
+  .coach{background:#0E0A0B;border:1px solid #2A1418;border-left:2px solid var(--red);
+    border-radius:0 16px 16px 0;padding:18px 18px 16px;margin-bottom:20px}
+  .coach-top{display:flex;align-items:center;gap:9px;margin-bottom:5px}
+  .coach-top .dot{width:7px;height:7px;border-radius:50%;background:var(--red)}
+  .coach-eye{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red)}
+  .coach-date{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;color:var(--faint)}
+  .coach-sub{font-size:12.5px;color:var(--mute);line-height:1.5;margin-bottom:16px}
+
+  .prio{background:rgba(200,16,46,.07);border:1px solid #2A1418;border-radius:11px;padding:13px 14px;margin-bottom:14px}
+  .prio .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);display:block;margin-bottom:6px}
+  .prio .t{font-size:15px;font-weight:600}
+  .prio .d{font-size:12.5px;color:var(--mute);margin-top:4px;line-height:1.5}
+
+  .rep-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:10px}
+  .rep{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #1B1416}
+  .rep:first-of-type{border-top:1px solid #1B1416}
+  .rep .n{font-family:var(--mono);font-size:12px;color:var(--red);flex-shrink:0;padding-top:1px}
+  .rep .x{font-size:13.5px;line-height:1.55;color:#E4E4E8}
+  .rep .x b{color:var(--cream);font-weight:600}
+
+  /* Rappel doctrine */
+  .doctrine{display:flex;gap:10px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+  .doctrine .i{color:var(--faint);font-size:14px;flex-shrink:0}
+  .doctrine p{font-size:12px;line-height:1.55;color:var(--mute)}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Relation</span>
+          <div class="t">Mon coach</div>
+        </div>
+      </div>
+
+      <div class="coachcard">
+        <div class="av">JM</div>
+        <div class="ci">
+          <div class="nm">Julien M.</div>
+          <div class="rl">Votre coach · BPJEPS · depuis mars</div>
+        </div>
+        <div class="msg">✉</div>
+      </div>
+
+      <div class="coach">
+        <div class="coach-top">
+          <span class="dot"></span><span class="coach-eye">De votre coach</span>
+          <span class="coach-date">14 juin</span>
+        </div>
+        <div class="coach-sub">Ce que Julien a retenu de votre dernière session. Ce sont ses repères, pas ceux de l'app.</div>
+
+        <div class="prio">
+          <span class="k">Priorité</span>
+          <div class="t">Le combiné</div>
+          <div class="d">Freiner et tourner ensemble — l'enveloppe est creuse à 0,7 g.</div>
+        </div>
+
+        <span class="rep-label">Repères transmis</span>
+        <div class="rep"><span class="n">01</span><span class="x"><b>Virage 7</b> — retardez le lâcher de frein d'un temps avant de tourner.</span></div>
+        <div class="rep"><span class="n">02</span><span class="x">Gardez <b>1,1 g</b> au freinage jusqu'au point de corde.</span></div>
+      </div>
+
+      <div class="doctrine">
+        <span class="i">▸</span>
+        <p>Ces repères viennent de votre coach. Votre miroir, lui, ne vous dit jamais quoi faire — il vous montre.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>La voix du coach, reçue et signée.</b> Le pilote voit les repères marqués « de votre coach » — jamais confondus avec le miroir factuel.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>En lecture seule.</b> Le pilote reçoit, ne modifie pas. La prescription appartient au coach humain — c'est aussi l'enjeu juridique.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>Symétrie avec l'espace coach.</b> Même bande rouge que la maquette coach, vue de l'autre côté de la relation.</span></div>
+  </div>
+
+</body>
+</html>

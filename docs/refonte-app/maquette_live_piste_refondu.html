@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 8 — ÉCRAN LIVE EN PISTE (le silence)
+  Écrans RN couverts :
+    app/(app)/roulage (live) · entre-runs · pilotage-fini
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : SILENCE EN PISTE. Pendant le roulage, l'app n'affiche rien
+            d'exploitable — un indicateur de capture, un manifeste, une sortie.
+            « Coupez l'app, je conduis. » La donnée se lit après, au débrief.
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Écran live en piste</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:30px 24px;min-height:660px;display:flex;flex-direction:column}
+
+  /* Indicateur de capture — discret, en haut */
+  .cap{display:flex;align-items:center;gap:9px}
+  .cap .dot{width:8px;height:8px;border-radius:50%;background:var(--red);animation:pulse 1.6s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .cap .t{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--mute)}
+
+  /* Manifeste — centré, c'est tout l'écran */
+  .manifest{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .manifest .l1{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.1;color:var(--cream)}
+  .manifest .l2{font-size:34px;font-weight:600;letter-spacing:-.02em;line-height:1.1;color:var(--gold);margin-top:2px}
+  .manifest .sub{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--faint);margin-top:24px;line-height:1.7}
+
+  /* Pied — sortie, sobre */
+  .foot{margin-top:auto}
+  .meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;
+    letter-spacing:.06em;color:var(--faint);padding:14px 2px;border-top:1px solid var(--line);margin-bottom:16px}
+  .meta b{color:var(--mute);font-weight:500}
+  .end{display:block;width:100%;padding:17px;border:1px solid var(--line);border-radius:14px;
+    background:transparent;text-align:center;font-family:var(--sans);font-size:15px;font-weight:600;
+    color:var(--cream);cursor:pointer}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="cap">
+        <span class="dot"></span>
+        <span class="t">Capture en cours</span>
+      </div>
+
+      <div class="manifest">
+        <div class="l1">Coupez l'app.</div>
+        <div class="l2">Je conduis.</div>
+        <div class="sub">Tout est enregistré.<br>Vous lirez la session au retour.</div>
+      </div>
+
+      <div class="foot">
+        <div class="meta">
+          <span><b>RaceBox</b> · connecté</span>
+          <span><b>12</b> tours captés</span>
+        </div>
+        <button class="end">Terminer la session</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>L'app se tait en piste.</b> Aucune donnée exploitable affichée pendant le roulage — c'est doctrinal, pas un manque. L'anti-dashboard assumé.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Un indicateur, un manifeste, une sortie.</b> Capture active, « coupez l'app, je conduis », bouton terminer. Rien d'autre à l'écran.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>La data se lit après.</b> Tout ce qui est capté revient au débrief — jamais en distraction au volant. Sécurité avant performance.</span></div>
+  </div>
+
+</body>
+</html>

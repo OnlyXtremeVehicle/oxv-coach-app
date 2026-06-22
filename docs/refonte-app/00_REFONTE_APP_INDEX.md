@@ -8,51 +8,76 @@
 
 ## 1. Démarche
 
-Les **80 écrans** de l'application ne sont pas 80 designs distincts : ce sont **7 archétypes** déclinés. Cette refonte fige la grammaire commune au travers de 7 maquettes de référence, autonomes et auto-documentées. Chaque écran restant n'est plus qu'une application du système — déclinable en série ou généré directement en React Native à partir de ces références.
-
-Refaire toutes les pages, c'est fixer leur langage commun une fois, au lieu de redessiner la même grammaire quatre-vingts fois.
+Les **80 écrans** de l'application ne sont pas 80 designs distincts. Sept **archétypes** en couvrent la majorité ; sept **cas particuliers** sortent de la grammaire et reçoivent leur propre maquette. Au total, **14 maquettes de référence** — autonomes, auto-documentées — figent le langage de toute l'app, sans aucun écran laissé de côté. Chaque écran est une application du système, déclinable en série ou générée directement en React Native.
 
 ---
 
-## 2. Les sept maquettes de référence
+## 2. Les quatorze maquettes de référence
 
-| # | Archétype | Fichier | Écrans couverts |
-|---|-----------|---------|------------------|
-| 1 | Analyse riche | `maquette_debrief_refondu.html` | 15 écrans pilote |
-| 2 | Hub / navigation | `maquette_accueil_refondu.html` | 6 écrans pilote |
+| # | Type | Fichier | Couvre |
+|---|------|---------|--------|
+| 1 | Analyse riche | `maquette_debrief_refondu.html` | 13 écrans pilote |
+| 2 | Hub / navigation | `maquette_accueil_refondu.html` | 5 écrans pilote |
 | 3 | Insight approfondi | `maquette_insight_gg_refondu.html` | galerie + 6 lectures (post-Valence) |
-| 4 | Liste / historique | `maquette_liste_roulages_refondu.html` | 8 écrans pilote |
-| 5 | Formulaire / réglages | `maquette_reglages_refondu.html` | écrans de saisie, capture, états de flux |
-| 6 | Espace coach | `maquette_coach_pilote_refondu.html` | 15 écrans coach |
+| 4 | Liste / historique | `maquette_liste_roulages_refondu.html` | 6 écrans pilote |
+| 5 | Formulaire / réglages | `maquette_reglages_refondu.html` | 8 écrans de saisie et capture |
+| 6 | Espace coach | `maquette_coach_pilote_refondu.html` | 13 écrans coach |
 | 7 | Admin / régie | `maquette_admin_refondu.html` | 8 écrans admin |
+| 8 | Écran live en piste | `maquette_live_piste_refondu.html` | 3 écrans de flux |
+| 9 | Comparaison A/B | `maquette_comparaison_ab_refondu.html` | 5 écrans (pilote + coach) |
+| 10 | Onboarding | `maquette_onboarding_refondu.html` | 9 écrans (6 + 3) |
+| 11 | Carte de chaleur | `maquette_heatmap_refondu.html` | pilier + carte |
+| 12 | Carte de partage | `maquette_partage_refondu.html` | 3 écrans |
+| 13 | Fiche circuit | `maquette_fiche_circuit_refondu.html` | circuit détail |
+| 14 | Mon coach (pilote) | `maquette_mon_coach_refondu.html` | réception des repères |
 
 ---
 
 ## 3. Mapping intégral des 80 écrans
 
-### Archétype 1 — Analyse riche
-`debrief` · `debrief-presentiel` · `bilan` · `bilan-pret` · `signature` · `regularite` · `progression` · `virage` · `virage-comparer` · `tours` · `heatmap` · `comparateur` · `stats` · `replay` · `telemetry` · `prochaine-fois`
+Chaque écran est rangé une seule fois, sous la maquette qui le décrit le mieux.
 
-### Archétype 2 — Hub / navigation
-`index` · `paddock` · `lieux` · `carte` · `circuits` · `circuit/[id]`
+### 1 — Analyse riche
+`debrief` · `debrief-presentiel` · `bilan` · `bilan-pret` · `signature` · `regularite` · `progression` · `virage` · `tours` · `stats` · `replay` · `telemetry` · `prochaine-fois`
 
-### Archétype 3 — Insight approfondi *(écrans à construire après Valence)*
+### 2 — Hub / navigation
+`index` · `paddock` · `lieux` · `carte` · `circuits`
+
+### 3 — Insight approfondi *(à construire après Valence)*
 galerie des lectures · anatomie du freinage · diagramme G-G · transferts de charge · fluidité · dispersion · tour idéal
 
-### Archétype 4 — Liste / historique
-`roulages` · `amis` · `notifications` · `social` · `social-carte` · `objectifs` · `partage` · `share/[token]` · `session-media/[sessionId]`
+### 4 — Liste / historique
+`roulages` · `amis` · `notifications` · `social` · `objectifs` · `session-media/[sessionId]`
 
-### Archétype 5 — Formulaire / réglages / capture / états de flux
-`settings` · `equipement` · `donnees-securite` · `creer-trace` · `placement` · `mon-coach` · `cote-a-cote/[friendId]` · `legal/[doc]` · `roulage` *(live)* · `entre-runs` *(live)* · `pilotage-fini` *(transition)* · `debug-capture` · `debug-circuit`
+### 5 — Formulaire / réglages / capture
+`settings` · `equipement` · `donnees-securite` · `creer-trace` · `placement` · `legal/[doc]` · `debug-capture` · `debug-circuit`
 
-### Archétype 6 — Espace coach
-`index` · `pilote/[id]` · `annoter` · `priorites` · `reperes` · `repere/[index]` · `lecture` · `contexte` · `comparer` · `comparer-pilotes` · `gabarits` · `business` · `roulages/index` · `roulages/[id]` · `roulages/nouveau`
+### 6 — Espace coach
+`index` · `pilote/[id]` · `annoter` · `priorites` · `reperes` · `repere/[index]` · `lecture` · `contexte` · `gabarits` · `business` · `roulages/index` · `roulages/[id]` · `roulages/nouveau`
 
-### Archétype 7 — Admin / régie
+### 7 — Admin / régie
 `index` · `en-cours` · `preparation` · `coachs` · `coachs/[id]` · `circuit` · `sessions-media` · `analytique`
 
-### Parcours à part — onboarding *(6 + 3 écrans)*
-Les écrans `(onboarding)` et `(coach-onboarding)` réutilisent l'archétype 5 (saisie séquentielle). Un passage dédié pourra être maquetté si le parcours d'entrée mérite un traitement propre.
+### 8 — Écran live en piste *(silence en piste)*
+`roulage` · `entre-runs` · `pilotage-fini`
+
+### 9 — Comparaison A/B
+`comparateur` · `cote-a-cote/[friendId]` · `virage-comparer` · coach `comparer` · coach `comparer-pilotes`
+
+### 10 — Onboarding
+`(onboarding)/index` · `doctrine` · `methode` · `niveau` · `pacte` · `cgu` · `(coach-onboarding)/index` · `mission` · `pacte`
+
+### 11 — Carte de chaleur *(pilier factuel)*
+`heatmap` · `carte` (couche chaleur) · pilier « carte de chaleur » du débrief
+
+### 12 — Carte de partage
+`partage` · `share/[token]` · `social-carte`
+
+### 13 — Fiche circuit
+`circuit/[id]` (+ détail depuis lieux / circuits)
+
+### 14 — Mon coach *(côté pilote)*
+`mon-coach`
 
 ---
 
@@ -75,16 +100,24 @@ Les écrans `(onboarding)` et `(coach-onboarding)` réutilisent l'archétype 5 (
 
 ### Polices
 - **Geist** — titres et corps de texte
-- **Geist Mono** — eyebrows, données, méta (le registre HUD/télémétrie)
+- **Geist Mono** — eyebrows, données, méta (le registre HUD / télémétrie)
 
 ### Composants partagés
 - **eyebrow** — mono, 11 px, lettrage `.22em`, capitales, faint
 - **hero chiffré** — un seul chiffre dominant par écran, en mono
 - **carte** — fond `card`, filet `line`, rayon 14–18
-- **tracé / graphe central** — quand il y a de la donnée spatiale (circuit, G-G)
+- **tracé / graphe central** — circuit, G-G, carte de chaleur
 - **lecture factuelle** — bloc à filet gold + tag « un constat, pas une consigne »
 - **trois primitives de ligne** — bascule, valeur, action (tous les écrans de saisie)
-- **bande coach** — bloc rouge marqué « Espace coach », seul lieu prescriptif
+- **bande coach** — bloc rouge marqué « Espace coach » / « De votre coach », seul lieu prescriptif
+
+### Composants propres aux cas particuliers
+- **indicateur de capture** — point rouge pulsant + manifeste (écran live)
+- **barre de progression** — segments d'étape (onboarding)
+- **double colonne A/B** — codage gold (A) / cream (B), du bandeau aux chiffres
+- **gradient de chaleur** — sombre → heritage → gold → rouge, le long du tracé
+- **carte trophée** — format 4:5, logotype + chiffre + tracé + signature (partage)
+- **carte coach** — insigne initiales + rôle ; bande coach en lecture (mon coach)
 
 ### Règles non négociables
 1. **Un seul chiffre dominant** par écran. Le reste est secondaire.
@@ -99,7 +132,7 @@ Les écrans `(onboarding)` et `(coach-onboarding)` réutilisent l'archétype 5 (
 
 Chemin suggéré : **`docs/refonte-app/`**
 
-Y déposer les 7 fichiers `.html` + le présent index. Chaque maquette porte en tête un bloc de documentation reliant la maquette à ses écrans React Native cibles — la traçabilité spec → écran est dans le fichier lui-même.
+Y déposer les 14 fichiers `.html` + le présent index. Chaque maquette porte en tête un bloc de documentation reliant la maquette à ses écrans React Native cibles — la traçabilité spec → écran est dans le fichier lui-même.
 
 ---
 
@@ -126,4 +159,5 @@ Y déposer les 7 fichiers `.html` + le présent index. Chaque maquette porte en 
 - **Miroir, pas coach.** L'app montre des faits ; la décision appartient au pilote.
 - **Sécurité avant performance.** On parle de marge, pas de limite.
 - **Bande coach = seul espace prescriptif.** OXV n'est pas agréé ; le coach humain prescrit, jamais le miroir.
+- **Silence en piste.** L'app se tait au volant ; la donnée se lit au débrief.
 - **Un constat, pas une consigne.**

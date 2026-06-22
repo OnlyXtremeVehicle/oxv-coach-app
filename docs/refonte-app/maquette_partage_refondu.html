@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 12 — CARTE DE PARTAGE (l'app vers l'extérieur)
+  Écrans RN couverts :
+    app/(app)/partage · share/[token] · social-carte
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Nature : seul écran pensé pour être vu HORS de l'app (story, post).
+          Identité OXV à plein — un chiffre, un tracé, une signature.
+          Or quotidien (gold) ; l'or Heritage reste réservé aux membres Heritage.
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Carte de partage</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+
+  /* La carte trophée (aperçu partageable, format ~4:5) */
+  .card{position:relative;border-radius:20px;overflow:hidden;border:1px solid #242428;
+    background:radial-gradient(120% 80% at 50% 18%, #141318 0%, #0A0A0C 55%, #060606 100%);
+    padding:26px 24px;aspect-ratio:4/5;display:flex;flex-direction:column;margin-bottom:18px}
+
+  .c-top{display:flex;justify-content:space-between;align-items:flex-start}
+  .c-logo{font-family:var(--sans);font-weight:700;font-size:22px;letter-spacing:-.04em;color:var(--cream)}
+  .c-logo b{color:var(--red)}
+  .c-eye{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);text-align:right;line-height:1.6;padding-top:4px}
+
+  .c-trace{flex:1;display:flex;align-items:center;justify-content:center;margin:8px 0}
+  .c-trace svg{width:78%;height:auto;display:block}
+
+  .c-hero{text-align:center}
+  .c-hero .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+  .c-hero .v{font-family:var(--mono);font-size:46px;font-weight:500;letter-spacing:-.01em;line-height:1;color:var(--cream)}
+  .c-hero .circuit{font-size:14px;font-weight:600;margin-top:12px;letter-spacing:-.01em}
+  .c-hero .date{font-family:var(--mono);font-size:10px;color:var(--mute);margin-top:3px;letter-spacing:.06em}
+
+  .c-foot{text-align:center;border-top:1px solid #1A1A1E;padding-top:14px;margin-top:18px}
+  .c-foot .s{font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+
+  /* Actions de partage */
+  .acts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .act{border:1px solid var(--line);border-radius:13px;padding:15px 8px;text-align:center;cursor:pointer}
+  .act .i{font-size:18px;color:var(--cream);display:block;margin-bottom:8px}
+  .act .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  .act.primary{background:var(--gold);border-color:var(--gold)}
+  .act.primary .i,.act.primary .t{color:var(--night)}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Vers l'extérieur</span>
+          <div class="t">Partager</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="c-top">
+          <div class="c-logo">O<b>X</b>V</div>
+          <div class="c-eye">Session<br>14 juin 2026</div>
+        </div>
+
+        <div class="c-trace">
+          <svg id="ct" viewBox="0 0 240 180" xmlns="http://www.w3.org/2000/svg" aria-label="Tracé"><g id="ctrack"></g></svg>
+        </div>
+
+        <div class="c-hero">
+          <div class="lbl">Meilleur tour</div>
+          <div class="v">1:47,6</div>
+          <div class="circuit">Haute-Saintonge</div>
+          <div class="date">Tracé Beltoise · 42 tours</div>
+        </div>
+
+        <div class="c-foot">
+          <div class="s">Only Xtreme Vehicle · oxvehicle.fr</div>
+        </div>
+      </div>
+
+      <div class="acts">
+        <div class="act primary"><span class="i">↗</span><span class="t">Story</span></div>
+        <div class="act"><span class="i">↓</span><span class="t">Enregistrer</span></div>
+        <div class="act"><span class="i">⎘</span><span class="t">Lien</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>L'app sort vers l'extérieur.</b> Seul écran pensé pour être vu hors contexte — l'identité OXV y est à plein, lisible en une seconde.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Un chiffre, un tracé, une signature.</b> Le meilleur tour, la forme du circuit, la marque. Rien de superflu sur la carte.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>Or quotidien, pas Heritage.</b> Le gold porte la carte ; l'or Heritage `#C4A459` reste réservé aux cartes des membres Heritage.</span></div>
+  </div>
+
+  <script>
+    (function(){
+      var cx=120, cy=90, N=120;
+      var pts=[];
+      for(var i=0;i<=N;i++){
+        var t=i/N*2*Math.PI;
+        var x=cx+78*Math.cos(t)+18*Math.cos(2*t);
+        var y=cy+54*Math.sin(t)-24*Math.sin(2*t);
+        pts.push(x.toFixed(1)+','+y.toFixed(1));
+      }
+      document.getElementById('ctrack').innerHTML=
+        '<polyline points="'+pts.join(' ')+'" fill="none" stroke="#FFB703" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>'+
+        '<circle cx="'+pts[0].split(',')[0]+'" cy="'+pts[0].split(',')[1]+'" r="3" fill="#F8F9FA"/>';
+    })();
+  </script>
+
+</body>
+</html>
