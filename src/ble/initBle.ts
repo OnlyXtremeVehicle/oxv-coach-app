@@ -51,7 +51,26 @@ export function initBle(): void {
   });
 
   const offError = bluetoothService.onError((err) => {
-    console.warn('[OXV BLE]', err);
+    if (err) console.warn('[OXV BLE]', err);
+  });
+
+  // Suit la reconnexion auto rapide du service. Quand elle aboutit, on remet la
+  // condition 'stable' et on referme la modal ; quand elle échoue (terminal
+  // 'lost'), on bascule en 'lost' et on propose la modal paddock #25 — sans
+  // relancer le dialing du watchdog (le service a déjà épuisé ses tentatives).
+  const offReconnect = bluetoothService.onReconnectChange((rc) => {
+    if (rc.phase === 'reconnecting') {
+      if (disconnectedSince === null) disconnectedSince = Date.now();
+      useAppStateStore.getState().setCondition('bluetooth', 'reconnecting');
+    } else if (rc.phase === 'lost') {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      useAppStateStore.getState().setCondition('bluetooth', 'lost');
+      useUIStore.getState().setBleErrorModalVisible(true);
+    }
+    // 'idle' : géré par onConnectedReset sur le statut 'connected'.
   });
 
   // Rafraîchit le taux Hz dans le store toutes les secondes pendant le streaming.
@@ -61,7 +80,7 @@ export function initBle(): void {
     }
   }, 1_000);
 
-  disposers = [offStatus, offData, offError, () => clearInterval(rateTicker)];
+  disposers = [offStatus, offData, offError, offReconnect, () => clearInterval(rateTicker)];
 }
 
 export function teardownBle(): void {
@@ -92,6 +111,17 @@ function onDisconnected(): void {
   if (!lastDevice) {
     // Déconnexion volontaire ou pas de device précédent — pas de reconnect.
     useAppStateStore.getState().setCondition('bluetooth', 'unused');
+    return;
+  }
+
+  // Le service possède désormais une reconnexion auto rapide (déclenchée par
+  // device.onDisconnected). Quand elle est en cours, on la laisse mener : on
+  // reflète juste la condition 'reconnecting' SANS programmer un second
+  // dialing concurrent. Le watchdog ci-dessous reste le filet pour les cas que
+  // le service ne couvre pas (et sa modal paddock #25).
+  if (bluetoothService.isReconnecting()) {
+    if (disconnectedSince === null) disconnectedSince = Date.now();
+    useAppStateStore.getState().setCondition('bluetooth', 'reconnecting');
     return;
   }
 

@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { bluetoothService } from '@/ble/bluetoothService';
+import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import {
   getCurrentStats,
   getLastSavedUri,
@@ -54,6 +54,7 @@ export default function DebugCaptureScreen() {
   const [devices, setDevices] = useState<RaceBoxDevice[]>([]);
   const [bleError, setBleError] = useState<string | null>(null);
   const [capturing, setCapturing] = useState<boolean>(isCapturing());
+  const [reconnect, setReconnect] = useState<ReconnectState>(bluetoothService.getReconnectState());
   const [, setTick] = useState(0);
   const [lastUri, setLastUri] = useState<string | null>(getLastSavedUri());
   const [actionError, setActionError] = useState<string | null>(null);
@@ -69,11 +70,15 @@ export default function DebugCaptureScreen() {
     const offDevice = bluetoothService.onDeviceFound((d) => {
       setDevices((prev) => (prev.some((p) => p.id === d.id) ? prev : [...prev, d]));
     });
-    const offError = bluetoothService.onError(setBleError);
+    // Le service émet '' pour effacer une erreur (ex. après reconnexion) ; on
+    // normalise en null pour que la ligne « Erreur » disparaisse proprement.
+    const offError = bluetoothService.onError((err) => setBleError(err || null));
+    const offReconnect = bluetoothService.onReconnectChange(setReconnect);
     return () => {
       offStatus();
       offDevice();
       offError();
+      offReconnect();
     };
   }, []);
 
@@ -170,8 +175,14 @@ export default function DebugCaptureScreen() {
       <AppBar title="CAPTURE" subtitle="Debug / télémétrie" onBack={() => router.back()} />
       <View style={styles.body}>
         {/* Bandeau d'état dominant : sur site, l'opérateur doit lire d'un coup
-            d'œil si le boîtier est lié et si la capture tourne. */}
-        <StatusBanner bleStatus={bleStatus} connected={connected} capturing={capturing} />
+            d'œil si le boîtier est lié, si la capture tourne, et — surtout — si
+            le lien décroche (reconnexion en cours / liaison perdue). */}
+        <StatusBanner
+          bleStatus={bleStatus}
+          connected={connected}
+          capturing={capturing}
+          reconnect={reconnect}
+        />
 
         <Section label="BLE">
           <Row label="État" value={bleStatusLabel(bleStatus)} tone={statusTone(bleStatus)} />
@@ -330,7 +341,7 @@ export default function DebugCaptureScreen() {
 // ----------------------------------------------------------------------------
 
 /** Teinte sémantique d'une ligne : donnée (or), état ok/rec (vert/rouge), neutre. */
-type RowTone = 'data' | 'ok' | 'rec' | 'idle' | 'danger';
+type RowTone = 'data' | 'ok' | 'rec' | 'idle' | 'danger' | 'warn';
 
 function bleStatusLabel(status: BleStatus): string {
   switch (status) {
@@ -368,6 +379,10 @@ function toneColor(tone: RowTone): string {
       return palette.red;
     case 'danger':
       return palette.red;
+    // Ambre (or de marque) : reconnexion en cours — ni « tout va bien », ni
+    // « perdu ». Distinct du rouge terminal.
+    case 'warn':
+      return palette.gold;
     default:
       return palette.cream;
   }
@@ -375,25 +390,57 @@ function toneColor(tone: RowTone): string {
 
 /**
  * Bandeau d'état dominant en tête d'écran : un seul repère visuel pour savoir,
- * sur site, où en est le boîtier. Une pastille colorée + un mot. Pilotée par les
- * états existants (pas de nouvelle logique).
+ * sur site, où en est le boîtier. Une pastille colorée + un mot.
+ *
+ * Priorité d'affichage (du plus critique au plus calme) :
+ *   1. LIAISON PERDUE (rouge)   — reconnexion auto épuisée, terminal.
+ *   2. RECONNEXION…  (ambre)    — lien tombé, tentatives en cours (n/N).
+ *   3. EN ENREGISTREMENT (rouge)— capture nominale en cours.
+ *   4. CONNECTÉ (vert)          — boîtier lié, prêt.
+ *   5. DÉCONNECTÉ (neutre)      — repos / aucun boîtier lié.
+ *
+ * Les états 1–2 dérivent de la reconnexion auto du service (additif) ; ils sont
+ * volontairement distincts d'un repos nominal pour ne JAMAIS laisser croire, sur
+ * site, qu'on enregistre alors que le boîtier a décroché.
  */
 function StatusBanner({
   bleStatus,
   connected,
   capturing,
+  reconnect,
 }: {
   bleStatus: BleStatus;
   connected: boolean;
   capturing: boolean;
+  reconnect: ReconnectState;
 }) {
-  const tone: RowTone = capturing ? 'rec' : connected ? 'ok' : 'idle';
-  const label = capturing ? 'EN ENREGISTREMENT' : connected ? 'CONNECTÉ' : 'DÉCONNECTÉ';
-  const sub = capturing
-    ? 'Le boîtier transmet — les trames sont capturées.'
-    : connected
-      ? 'Boîtier lié. Prêt à enregistrer.'
-      : `Aucun boîtier lié (${bleStatusLabel(bleStatus)}).`;
+  let tone: RowTone;
+  let label: string;
+  let sub: string;
+
+  if (reconnect.phase === 'lost') {
+    tone = 'danger';
+    label = 'LIAISON PERDUE';
+    sub =
+      'Reconnexion impossible après plusieurs tentatives. Vérifiez le boîtier, puis relancez un scan.';
+  } else if (reconnect.phase === 'reconnecting') {
+    tone = 'warn';
+    label = 'RECONNEXION…';
+    sub = `Lien interrompu — tentative ${Math.max(reconnect.attempt, 1)}/${reconnect.maxAttempts}. La capture reprend dès le lien rétabli.`;
+  } else if (capturing) {
+    tone = 'rec';
+    label = 'EN ENREGISTREMENT';
+    sub = 'Le boîtier transmet — les trames sont capturées.';
+  } else if (connected) {
+    tone = 'ok';
+    label = 'CONNECTÉ';
+    sub = 'Boîtier lié. Prêt à enregistrer.';
+  } else {
+    tone = 'idle';
+    label = 'DÉCONNECTÉ';
+    sub = `Aucun boîtier lié (${bleStatusLabel(bleStatus)}).`;
+  }
+
   const accent = toneColor(tone);
   return (
     <Card style={{ ...styles.banner, borderColor: accent }}>
