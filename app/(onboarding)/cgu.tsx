@@ -18,6 +18,7 @@ import { router } from 'expo-router';
 
 import { acceptCguAndPrivacy } from '@/services/onboardingService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 interface Checks {
   cgu: boolean;
@@ -69,17 +70,34 @@ export default function CguScreen() {
             />
           ))}
         </View>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        <Text
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+          ]}
+        >
           ÉTAPE 5 / 6
         </Text>
 
         <View style={{ marginTop: spacing.xxxl }}>
           <Text
-            style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
+            style={[
+              typography.eyebrow,
+              {
+                fontFamily: theme.fonts.mono,
+                marginBottom: spacing.lg,
+                color: theme.palette.faint,
+              },
+            ]}
           >
             CGU ET CONFIDENTIALITÉ
           </Text>
-          <Text style={[typography.screenTitle, { marginBottom: spacing.xxl }]}>
+          <Text
+            style={[
+              typography.screenTitle,
+              { fontFamily: theme.fonts.display, marginBottom: spacing.xxl },
+            ]}
+          >
             Avant de continuer.
           </Text>
 
@@ -125,8 +143,8 @@ export default function CguScreen() {
           <Text
             style={{
               color: colors.text.primary,
+              fontFamily: theme.fonts.bodyMedium,
               fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
               letterSpacing: 0.5,
             }}
           >
@@ -185,8 +203,8 @@ function Checkbox({
         style={{
           flex: 1,
           color: colors.text.primary,
+          fontFamily: theme.fonts.bodyLight,
           fontSize: fontSize.body,
-          fontWeight: fontWeight.light,
           lineHeight: fontSize.body * 1.4,
         }}
       >

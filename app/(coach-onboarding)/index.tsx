@@ -10,7 +10,8 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function CoachOnboardingHomeScreen() {
   return (
@@ -34,13 +35,21 @@ export default function CoachOnboardingHomeScreen() {
           />
         ))}
       </View>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+      <Text
+        style={[
+          typography.eyebrow,
+          { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+        ]}
+      >
         ÉTAPE 1 / 3
       </Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
-          style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.lg }]}
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: colors.accent.coach, marginBottom: spacing.lg },
+          ]}
         >
           BIENVENUE
         </Text>
@@ -48,8 +57,8 @@ export default function CoachOnboardingHomeScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.display,
             fontSize: fontSize.display,
-            fontWeight: fontWeight.ultralight,
             lineHeight: fontSize.display * 1.15,
             marginBottom: spacing.xxxl,
           }}
@@ -60,8 +69,8 @@ export default function CoachOnboardingHomeScreen() {
         <Text
           style={{
             color: colors.text.secondary,
+            fontFamily: theme.fonts.bodyLight,
             fontSize: fontSize.bodyLarge,
-            fontWeight: fontWeight.light,
             lineHeight: fontSize.bodyLarge * 1.6,
             marginBottom: spacing.lg,
           }}
@@ -73,8 +82,8 @@ export default function CoachOnboardingHomeScreen() {
         <Text
           style={{
             color: colors.text.secondary,
+            fontFamily: theme.fonts.bodyLight,
             fontSize: fontSize.bodyLarge,
-            fontWeight: fontWeight.light,
             lineHeight: fontSize.bodyLarge * 1.6,
             marginBottom: spacing.xxxl,
           }}
@@ -99,8 +108,8 @@ export default function CoachOnboardingHomeScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyMedium,
             fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
             letterSpacing: 0.5,
           }}
         >

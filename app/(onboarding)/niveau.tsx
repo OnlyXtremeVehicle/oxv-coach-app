@@ -15,7 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { type PilotLevelChoice, setPilotLevel } from '@/services/onboardingService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 interface LevelOption {
   id: PilotLevelChoice;
@@ -80,17 +81,34 @@ export default function NiveauScreen() {
             />
           ))}
         </View>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        <Text
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+          ]}
+        >
           ÉTAPE 4 / 6
         </Text>
 
         <View style={{ marginTop: spacing.xxxl }}>
           <Text
-            style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
+            style={[
+              typography.eyebrow,
+              {
+                fontFamily: theme.fonts.mono,
+                marginBottom: spacing.lg,
+                color: theme.palette.faint,
+              },
+            ]}
           >
             NIVEAU PILOTE
           </Text>
-          <Text style={[typography.screenTitle, { marginBottom: spacing.sm }]}>
+          <Text
+            style={[
+              typography.screenTitle,
+              { fontFamily: theme.fonts.display, marginBottom: spacing.sm },
+            ]}
+          >
             Où vous situez-vous ?
           </Text>
           <Text
@@ -121,8 +139,8 @@ export default function NiveauScreen() {
                   <Text
                     style={{
                       color: colors.text.primary,
+                      fontFamily: theme.fonts.display,
                       fontSize: fontSize.title,
-                      fontWeight: fontWeight.light,
                       marginBottom: spacing.xs,
                     }}
                   >
@@ -131,6 +149,7 @@ export default function NiveauScreen() {
                   <Text
                     style={{
                       color: colors.text.secondary,
+                      fontFamily: theme.fonts.body,
                       fontSize: fontSize.body,
                     }}
                   >
@@ -161,8 +180,8 @@ export default function NiveauScreen() {
           <Text
             style={{
               color: colors.text.primary,
+              fontFamily: theme.fonts.bodyMedium,
               fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
               letterSpacing: 0.5,
             }}
           >

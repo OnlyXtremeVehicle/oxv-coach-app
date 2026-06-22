@@ -20,6 +20,7 @@ import {
   completeOnboarding,
 } from '@/services/onboardingService';
 import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function CoachPacteScreen() {
   const [committed, setCommitted] = useState(false);
@@ -77,13 +78,25 @@ export default function CoachPacteScreen() {
           />
         ))}
       </View>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+      <Text
+        style={[
+          typography.eyebrow,
+          { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+        ]}
+      >
         ÉTAPE 3 / 3
       </Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
-          style={[typography.eyebrow, { marginBottom: spacing.xxxl, color: colors.accent.coach }]}
+          style={[
+            typography.eyebrow,
+            {
+              fontFamily: theme.fonts.mono,
+              marginBottom: spacing.xxxl,
+              color: colors.accent.coach,
+            },
+          ]}
         >
           PACTE DE COACHING
         </Text>
@@ -91,8 +104,8 @@ export default function CoachPacteScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyLight,
             fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
             fontStyle: 'italic',
             lineHeight: fontSize.title * 1.6,
             marginBottom: spacing.xxxl,
@@ -104,8 +117,8 @@ export default function CoachPacteScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyLight,
             fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
             fontStyle: 'italic',
             lineHeight: fontSize.title * 1.6,
             marginBottom: spacing.giant,
@@ -153,8 +166,8 @@ export default function CoachPacteScreen() {
           <Text
             style={{
               color: colors.text.primary,
+              fontFamily: theme.fonts.body,
               fontSize: fontSize.bodyLarge,
-              fontWeight: fontWeight.regular,
             }}
           >
             Je m'engage.
@@ -182,8 +195,8 @@ export default function CoachPacteScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyMedium,
             fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
             letterSpacing: 0.5,
           }}
         >

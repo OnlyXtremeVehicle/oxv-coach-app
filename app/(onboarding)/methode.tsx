@@ -10,7 +10,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 const STEPS: { eyebrow: string; body: string }[] = [
   { eyebrow: 'VOIR', body: "Ce qui s'est passé." },
@@ -41,7 +42,12 @@ export default function MethodeScreen() {
             />
           ))}
         </View>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+        <Text
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+          ]}
+        >
           ÉTAPE 3 / 6
         </Text>
 
@@ -49,7 +55,11 @@ export default function MethodeScreen() {
           <Text
             style={[
               typography.eyebrow,
-              { marginBottom: spacing.xxxl, color: colors.text.tertiary },
+              {
+                fontFamily: theme.fonts.mono,
+                marginBottom: spacing.xxxl,
+                color: theme.palette.faint,
+              },
             ]}
           >
             LA MÉTHODE OXV
@@ -61,8 +71,8 @@ export default function MethodeScreen() {
                 <Text
                   style={{
                     color: colors.accent.red,
+                    fontFamily: theme.fonts.mono,
                     fontSize: fontSize.title,
-                    fontWeight: fontWeight.medium,
                     letterSpacing: 3,
                     marginBottom: spacing.sm,
                   }}
@@ -72,8 +82,8 @@ export default function MethodeScreen() {
                 <Text
                   style={{
                     color: colors.text.secondary,
+                    fontFamily: theme.fonts.bodyLight,
                     fontSize: fontSize.bodyLarge,
-                    fontWeight: fontWeight.light,
                   }}
                 >
                   {step.body}
@@ -85,7 +95,11 @@ export default function MethodeScreen() {
           <Text
             style={[
               typography.manifest,
-              { color: colors.text.secondary, marginBottom: spacing.xl },
+              {
+                fontFamily: theme.fonts.bodyLight,
+                color: colors.text.secondary,
+                marginBottom: spacing.xl,
+              },
             ]}
           >
             Jamais d'instruction. Toujours une observation.
@@ -107,8 +121,8 @@ export default function MethodeScreen() {
           <Text
             style={{
               color: colors.text.primary,
+              fontFamily: theme.fonts.bodyMedium,
               fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
               letterSpacing: 0.5,
             }}
           >

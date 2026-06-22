@@ -14,7 +14,8 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 const POINTS: { eyebrow: string; title: string; body: string }[] = [
   {
@@ -57,17 +58,28 @@ export default function CoachOnboardingMissionScreen() {
           ))}
         </View>
         <Text
-          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginBottom: spacing.xxl },
+          ]}
         >
           ÉTAPE 2 / 3
         </Text>
 
         <Text
-          style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, color: colors.accent.coach, marginBottom: spacing.md },
+          ]}
         >
           MISSION
         </Text>
-        <Text style={[typography.screenTitle, { marginBottom: spacing.sm }]}>
+        <Text
+          style={[
+            typography.screenTitle,
+            { fontFamily: theme.fonts.display, marginBottom: spacing.sm },
+          ]}
+        >
           Ce que vous faites ici.
         </Text>
         <Text
@@ -79,15 +91,22 @@ export default function CoachOnboardingMissionScreen() {
         {POINTS.map((point) => (
           <View key={point.eyebrow} style={{ marginBottom: spacing.xxxl }}>
             <Text
-              style={[typography.eyebrow, { marginBottom: spacing.sm, color: colors.accent.coach }]}
+              style={[
+                typography.eyebrow,
+                {
+                  fontFamily: theme.fonts.mono,
+                  marginBottom: spacing.sm,
+                  color: colors.accent.coach,
+                },
+              ]}
             >
               {point.eyebrow}
             </Text>
             <Text
               style={{
                 color: colors.text.primary,
+                fontFamily: theme.fonts.display,
                 fontSize: fontSize.title,
-                fontWeight: fontWeight.light,
                 lineHeight: fontSize.title * 1.3,
                 marginBottom: spacing.md,
               }}
@@ -97,8 +116,8 @@ export default function CoachOnboardingMissionScreen() {
             <Text
               style={{
                 color: colors.text.secondary,
+                fontFamily: theme.fonts.bodyLight,
                 fontSize: fontSize.body,
-                fontWeight: fontWeight.light,
                 lineHeight: fontSize.body * 1.6,
               }}
             >
@@ -124,8 +143,8 @@ export default function CoachOnboardingMissionScreen() {
           <Text
             style={{
               color: colors.text.primary,
+              fontFamily: theme.fonts.bodyMedium,
               fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
               letterSpacing: 0.5,
             }}
           >

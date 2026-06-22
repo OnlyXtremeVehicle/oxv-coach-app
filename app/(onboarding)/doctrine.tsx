@@ -10,7 +10,8 @@ import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function DoctrineScreen() {
   return (
@@ -34,13 +35,21 @@ export default function DoctrineScreen() {
           />
         ))}
       </View>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+      <Text
+        style={[
+          typography.eyebrow,
+          { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+        ]}
+      >
         ÉTAPE 2 / 6
       </Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text
-          style={[typography.eyebrow, { marginBottom: spacing.xxl, color: colors.text.tertiary }]}
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, marginBottom: spacing.xxl, color: theme.palette.faint },
+          ]}
         >
           DOCTRINE
         </Text>
@@ -48,8 +57,8 @@ export default function DoctrineScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.display,
             fontSize: fontSize.headline,
-            fontWeight: fontWeight.light,
             lineHeight: fontSize.headline * 1.2,
             marginBottom: spacing.xl,
           }}
@@ -64,7 +73,14 @@ export default function DoctrineScreen() {
         </View>
 
         <Text
-          style={[typography.manifest, { color: colors.text.secondary, paddingRight: spacing.lg }]}
+          style={[
+            typography.manifest,
+            {
+              fontFamily: theme.fonts.bodyLight,
+              color: colors.text.secondary,
+              paddingRight: spacing.lg,
+            },
+          ]}
         >
           Les décisions de pilotage vous appartiennent. Toujours.
         </Text>
@@ -86,8 +102,8 @@ export default function DoctrineScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyMedium,
             fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
             letterSpacing: 0.5,
           }}
         >
@@ -103,8 +119,8 @@ function DoctrineLine({ text }: { text: string }) {
     <Text
       style={{
         color: colors.text.primary,
+        fontFamily: theme.fonts.display,
         fontSize: fontSize.titleLarge,
-        fontWeight: fontWeight.ultralight,
       }}
     >
       {text}

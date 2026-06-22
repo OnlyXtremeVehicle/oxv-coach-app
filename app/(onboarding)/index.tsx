@@ -10,7 +10,8 @@ import { Image, Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function AccueilPhilosophiqueScreen() {
   return (
@@ -34,7 +35,12 @@ export default function AccueilPhilosophiqueScreen() {
           />
         ))}
       </View>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+      <Text
+        style={[
+          typography.eyebrow,
+          { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
+        ]}
+      >
         ÉTAPE 1 / 6
       </Text>
 
@@ -45,11 +51,23 @@ export default function AccueilPhilosophiqueScreen() {
           resizeMode="contain"
         />
         <Text
-          style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
+          style={[
+            typography.eyebrow,
+            { fontFamily: theme.fonts.mono, marginBottom: spacing.lg, color: theme.palette.faint },
+          ]}
         >
           OXV MIRROR
         </Text>
-        <Text style={[typography.manifest, { textAlign: 'center', paddingHorizontal: spacing.md }]}>
+        <Text
+          style={[
+            typography.manifest,
+            {
+              fontFamily: theme.fonts.bodyLight,
+              textAlign: 'center',
+              paddingHorizontal: spacing.md,
+            },
+          ]}
+        >
           Bienvenue dans le miroir.
         </Text>
       </View>
@@ -70,8 +88,8 @@ export default function AccueilPhilosophiqueScreen() {
         <Text
           style={{
             color: colors.text.primary,
+            fontFamily: theme.fonts.bodyMedium,
             fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
             letterSpacing: 0.5,
           }}
         >
