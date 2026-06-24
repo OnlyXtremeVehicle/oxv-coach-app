@@ -244,25 +244,24 @@ function ModePassive({
       {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible. */}
       {loading ? null : recentSession ? (
         <Link href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-          >
-            <View style={s.bilan}>
-              <Text style={s.bilanChevron}>›</Text>
-              <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-              <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-              <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
-              {regularity ? (
-                <View style={s.bilanStat}>
-                  <Text style={s.bilanV}>
-                    {regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
-                  </Text>
-                  <Text style={s.bilanU}>s</Text>
-                  <Text style={s.bilanL}>Régularité{'\n'}au tour</Text>
-                </View>
-              ) : null}
-            </View>
+          <Pressable accessibilityRole="button">
+            {({ pressed }) => (
+              <View style={[s.bilan, pressed && s.pressedCard]}>
+                <Text style={s.bilanChevron}>›</Text>
+                <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
+                <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
+                <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+                {regularity ? (
+                  <View style={s.bilanStat}>
+                    <Text style={s.bilanV}>
+                      {regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
+                    </Text>
+                    <Text style={s.bilanU}>s</Text>
+                    <Text style={s.bilanL}>Régularité{'\n'}au tour</Text>
+                  </View>
+                ) : null}
+              </View>
+            )}
           </Pressable>
         </Link>
       ) : (
@@ -287,7 +286,7 @@ function ModePassive({
         accessibilityRole="button"
         accessibilityState={{ expanded: showAll }}
         onPress={() => setShowAll((v) => !v)}
-        style={({ pressed }) => [s.more, { opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [s.more, pressed && s.pressedCard]}
       >
         <Text style={s.moreText}>{showAll ? 'Replier' : 'Tout le paddock'}</Text>
         <Text style={s.moreText}>{showAll ? '⌃' : '›'}</Text>
@@ -326,7 +325,7 @@ function Tile({
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
-        style={({ pressed }) => [s.tile, { opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [s.tile, pressed && s.pressedCard]}
       >
         <Text style={s.tileIcon}>{icon}</Text>
         <Text style={s.tileName}>{name}</Text>
@@ -341,7 +340,7 @@ function NavRow({ label, hint, href }: { label: string; hint: string; href: stri
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
-        style={({ pressed }) => [s.row, { opacity: pressed ? 0.85 : 1 }]}
+        style={({ pressed }) => [s.row, pressed && s.pressedCard]}
       >
         <View style={{ flex: 1, paddingRight: spacing.md }}>
           <Text style={s.rowLabel}>{label}</Text>
@@ -374,6 +373,10 @@ const s = StyleSheet.create({
   gearGlyph: { color: palette.creamMute, fontSize: 15 },
 
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+
+  // Affordance de press : la bordure s'éclaire et la surface se relève — reprend
+  // le :hover de la maquette (border-edge + lift), perdu au port RN (opacity seule).
+  pressedCard: { borderColor: palette.edge, backgroundColor: palette.card2 },
 
   eyebrow: {
     fontFamily: fonts.mono,
