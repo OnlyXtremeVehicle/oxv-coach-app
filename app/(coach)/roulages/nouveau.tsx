@@ -139,7 +139,7 @@ export default function NouveauRoulageScreen() {
             <TextInput
               value={location}
               onChangeText={setLocation}
-              placeholder="Circuit de Haute Saintonge"
+              placeholder="Nom du circuit"
               placeholderTextColor={theme.palette.creamMute}
               style={inputStyle}
               accessibilityLabel="Lieu du roulage"

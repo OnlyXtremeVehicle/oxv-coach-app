@@ -98,7 +98,7 @@ export default function DebriefScreen() {
 
       setData({
         sessionId,
-        circuitName: session.circuit_name ?? 'Beltoise',
+        circuitName: session.circuit_name ?? 'Votre circuit',
         startedAt: session.started_at ?? '',
         marginGlobal: analysis.marginGlobal,
         recit: parsed.recit || fallbackRecit(analysis.marginGlobal, profile.first_name),

@@ -100,7 +100,7 @@ export default function CarteScreen() {
       <AppBar title="CARTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>Carte du circuit</Text>
-        <Text style={s.title}>{circuit?.name ?? 'Haute Saintonge'}</Text>
+        <Text style={s.title}>{circuit?.name ?? 'Votre circuit'}</Text>
 
         <PilotPreset
           animate

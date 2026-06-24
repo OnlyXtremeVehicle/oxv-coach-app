@@ -20,7 +20,7 @@ import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 
 export default function PaddockScreen() {
-  const [circuitName, setCircuitName] = useState<string>('Circuit de Haute Saintonge');
+  const [circuitName, setCircuitName] = useState<string>('Votre circuit');
 
   useEffect(() => {
     let cancelled = false;

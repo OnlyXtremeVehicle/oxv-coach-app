@@ -30,7 +30,7 @@ const LEVELS: LevelOption[] = [
   {
     id: 'intermediaire',
     title: 'Apprivoisé',
-    description: 'Je connais Beltoise, je progresse session après session.',
+    description: 'Je connais mon circuit, je progresse session après session.',
   },
   {
     id: 'confirme',

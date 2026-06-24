@@ -289,7 +289,7 @@ export default function CoachArScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={s.sessionDate}>{formatDateLong(session.startedAt)}</Text>
                           <Text style={s.caption}>
-                            {session.circuitName ?? 'Beltoise'} · {lapStr}
+                            {session.circuitName ?? 'Circuit'} · {lapStr}
                           </Text>
                         </View>
                       </Card>

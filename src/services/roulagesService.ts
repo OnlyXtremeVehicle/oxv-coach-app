@@ -105,7 +105,7 @@ export async function createRoulage(input: RoulageInput): Promise<Roulage | null
   const payload = {
     coach_id: coachId,
     title: input.title.trim(),
-    circuit_name: input.circuitName?.trim() || 'Circuit de Haute Saintonge',
+    circuit_name: input.circuitName?.trim() || 'Circuit',
     starts_at: input.startsAt,
     ends_at: input.endsAt || null,
     location: input.location?.trim() || null,

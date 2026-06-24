@@ -136,7 +136,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
       status: 'recording',
       started_at: new Date().toISOString(),
       circuit_id: input.circuitId ?? null,
-      circuit_name: input.circuitName ?? 'Beltoise',
+      circuit_name: input.circuitName ?? 'Circuit',
       vehicle_id: input.vehicleId ?? null,
     })
     .select('id')

@@ -211,7 +211,7 @@ function SessionRow({
       <View style={{ flex: 1 }}>
         <Text style={s.sessionDate}>{dateStr}</Text>
         <Text style={[s.caption, { marginTop: theme.spacing.xs }]}>
-          {session.circuitName ?? 'Beltoise'} · {lapStr}
+          {session.circuitName ?? 'Circuit'} · {lapStr}
           {session.marginZone ? ` · ${marginLabelOf(session.marginZone)}` : ''}
         </Text>
       </View>

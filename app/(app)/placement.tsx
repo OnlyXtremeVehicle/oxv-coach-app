@@ -21,6 +21,7 @@ import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
 import { startCaptureSession } from '@/services/captureSessionService';
+import { getDefaultCircuit } from '@/services/circuitsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -41,8 +42,15 @@ export default function PlacementScreen() {
     }
     setStarting(true);
     setError(null);
+    // Rattache la session au circuit courant réel (multi-circuit) plutôt qu'à un
+    // nom en dur. Si la base ne répond pas, le service applique son repli générique.
+    const circuit = await getDefaultCircuit();
     // Démarre l'enregistrement réel (création session + écriture des trames).
-    const res = await startCaptureSession({ userId: profile.id, circuitName: 'Beltoise' });
+    const res = await startCaptureSession({
+      userId: profile.id,
+      circuitId: circuit?.id ?? null,
+      circuitName: circuit?.name ?? null,
+    });
     if (res.ok) {
       hapticSuccess();
       router.replace('/(app)/roulage');

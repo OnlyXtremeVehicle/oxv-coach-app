@@ -204,7 +204,7 @@ function ModeEnroute() {
   return (
     <View style={s.modeWrap}>
       <Text style={s.eyebrow}>En route</Text>
-      <Text style={s.modeTitle}>Bon trajet vers Beltoise.</Text>
+      <Text style={s.modeTitle}>Bon trajet.</Text>
       <Text style={s.modeManifest}>Coupez l'app. Je conduis.</Text>
     </View>
   );
