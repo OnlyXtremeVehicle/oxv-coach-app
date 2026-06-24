@@ -1,16 +1,22 @@
 /**
  * Planification d'une « belle route » (sinueuse / panoramique) — doc 09.
  *
- * Provider-agnostique : Kurviger ou GraphHopper (tous deux renvoient le format
- * de réponse GraphHopper : `paths[].points` en GeoJSON quand points_encoded=false).
- * Le provider et les clés viennent de l'environnement — AUCUNE clé en dur.
+ * Provider par défaut : GraphHopper (en direct, hosting EU). Provider-agnostique :
+ * GraphHopper ou Kurviger (tous deux renvoient le format de réponse GraphHopper :
+ * `paths[].points` en GeoJSON quand points_encoded=false). Le provider et les clés
+ * viennent de l'environnement — AUCUNE clé en dur.
+ *
+ * GraphHopper : la sinuosité RÉELLE vient d'un POST avec `custom_model` (pénalise
+ * les grands axes selon la préférence). Le GET basique ignore cette pondération,
+ * d'où le passage en POST ici. Kurviger reste en GET (fallback si on repointe le
+ * provider dessus).
  *
  * Cadre OXV (doc 09 §1) : tourisme/découverte. `curviness` est une préférence
  * de balade, pas une métrique de performance. Aucune donnée de conduite n'entre
  * ici : la pondération « belle route » vient de la GÉOMÉTRIE renvoyée par l'API.
  *
- * NB : les noms exacts de certains paramètres (sinuosité Kurviger, custom model
- * GraphHopper) sont à confirmer avec une vraie clé — le parsing de réponse est
+ * NB : les multiplicateurs exacts du custom model GraphHopper (et la sinuosité
+ * native Kurviger) sont à confirmer avec une vraie clé — le parsing de réponse est
  * défensif (optional chaining) pour ne pas casser si un champ manque.
  */
 
@@ -22,7 +28,7 @@ import type {
   ScenicRouteRequest,
 } from './types';
 
-const PROVIDER = (process.env.EXPO_PUBLIC_ROUTING_PROVIDER as RoutingProvider) || 'kurviger';
+const PROVIDER = (process.env.EXPO_PUBLIC_ROUTING_PROVIDER as RoutingProvider) || 'graphhopper';
 const KURVIGER_KEY = process.env.EXPO_PUBLIC_KURVIGER_KEY ?? '';
 const GRAPHHOPPER_KEY = process.env.EXPO_PUBLIC_GRAPHHOPPER_KEY ?? '';
 
@@ -72,6 +78,28 @@ const KURVIGER_CURVINESS: Record<Curviness, string> = {
   tres_sinueuse: '3',
 };
 
+// GraphHopper custom model : pénalise les grands axes de plus en plus selon la
+// sinuosité voulue (multiplicateurs ≤ 1 → priorité abaissée, donc évités). C'est
+// ce qui produit une sinuosité RÉELLE côté GraphHopper (POST). À confirmer avec
+// une vraie clé.
+const GH_CURVY_PRIORITY: Record<Curviness, { if: string; multiply_by: string }[]> = {
+  douce: [
+    { if: 'road_class == MOTORWAY', multiply_by: '0.2' },
+    { if: 'road_class == TRUNK', multiply_by: '0.6' },
+  ],
+  sinueuse: [
+    { if: 'road_class == MOTORWAY', multiply_by: '0.05' },
+    { if: 'road_class == TRUNK', multiply_by: '0.3' },
+    { if: 'road_class == PRIMARY', multiply_by: '0.7' },
+  ],
+  tres_sinueuse: [
+    { if: 'road_class == MOTORWAY', multiply_by: '0.02' },
+    { if: 'road_class == TRUNK', multiply_by: '0.1' },
+    { if: 'road_class == PRIMARY', multiply_by: '0.4' },
+    { if: 'road_class == SECONDARY', multiply_by: '0.8' },
+  ],
+};
+
 function pointParam(p: GeoPoint): string {
   return `${p.lat},${p.lon}`;
 }
@@ -93,18 +121,40 @@ function buildKurvigerUrl(req: ScenicRouteRequest): string {
   return `https://api.kurviger.de/v1/route?${parts.join('&')}`;
 }
 
-function buildGraphHopperUrl(req: ScenicRouteRequest): string {
-  // Sinuosité fine = custom model (POST) → phase 2. Ici : routes secondaires.
-  const parts: string[] = orderedPoints(req).map(
-    (p) => `point=${encodeURIComponent(pointParam(p))}`
-  );
-  parts.push('vehicle=car', 'points_encoded=false', 'elevation=true');
-  if (req.avoidMotorways !== false) parts.push('ch.disable=true');
-  if (GRAPHHOPPER_KEY) parts.push(`key=${encodeURIComponent(GRAPHHOPPER_KEY)}`);
-  return `https://graphhopper.com/api/1/route?${parts.join('&')}`;
+/** Corps POST GraphHopper (points_encoded=false → réponse au format GraphHopper). */
+interface GraphHopperBody {
+  /** Points en [lon, lat] (ordre attendu par GraphHopper en POST). */
+  points: [number, number][];
+  profile: 'car';
+  points_encoded: false;
+  elevation: true;
+  'ch.disable': true;
+  custom_model: { priority: { if: string; multiply_by: string }[] };
 }
 
-function parseGhResponse(json: GhResponse, provider: RoutingProvider): ScenicRoute | null {
+/**
+ * Corps de la requête POST GraphHopper (fonction PURE, testable). La sinuosité
+ * réelle vient du `custom_model.priority`. NB : en POST, GraphHopper attend les
+ * points en [lon, lat]. Défaut de sinuosité : 'sinueuse'.
+ */
+export function buildGraphHopperBody(req: ScenicRouteRequest): GraphHopperBody {
+  const curviness: Curviness = req.curviness ?? 'sinueuse';
+  return {
+    points: orderedPoints(req).map((p) => [p.lon, p.lat]),
+    profile: 'car',
+    points_encoded: false,
+    elevation: true,
+    'ch.disable': true,
+    custom_model: { priority: GH_CURVY_PRIORITY[curviness] },
+  };
+}
+
+/** URL GraphHopper (la pondération « belle route » passe par le corps POST). */
+function buildGraphHopperUrl(): string {
+  return `https://graphhopper.com/api/1/route?key=${encodeURIComponent(GRAPHHOPPER_KEY)}`;
+}
+
+export function parseGhResponse(json: GhResponse, provider: RoutingProvider): ScenicRoute | null {
   const path = json.paths?.[0];
   const raw = path?.points?.coordinates;
   if (!path || !raw || raw.length < 2) return null;
@@ -130,9 +180,15 @@ export async function planScenicRoute(req: ScenicRouteRequest): Promise<ScenicRo
     console.warn(`[routing] clé ${provider} absente (EXPO_PUBLIC_*_KEY) — routing indisponible.`);
     return null;
   }
-  const url = provider === 'kurviger' ? buildKurvigerUrl(req) : buildGraphHopperUrl(req);
   try {
-    const res = await fetch(url);
+    const res =
+      provider === 'kurviger'
+        ? await fetch(buildKurvigerUrl(req))
+        : await fetch(buildGraphHopperUrl(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(buildGraphHopperBody(req)),
+          });
     if (!res.ok) {
       console.warn(`[routing] ${provider} HTTP ${res.status}`);
       return null;
