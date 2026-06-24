@@ -1,14 +1,10 @@
 /**
- * Modal BLE error (#25 du sitemap).
+ * Modal BLE error (#25 du sitemap). Transposition gaming.
  *
- * S'affiche quand la connexion BLE a été perdue plus de 30s et que les
- * reconnect auto ont échoué. Deux choix proposés au pilote :
- *   - Reconnecter : nouvelle tentative immédiate
- *   - Continuer sans : abandon, l'app passe en mode dégradé (pas de
- *     télémétrie, mais les données déjà reçues restent)
- *
- * Doctrine : orange (pas rouge), texte rassurant ("vos données déjà
- * enregistrées sont sauvegardées"), pas de panique.
+ * S'affiche quand la connexion BLE est perdue > 30s et que les reconnect
+ * auto ont échoué. Deux choix : Reconnecter / Continuer sans.
+ * Doctrine : OR (pas rouge), texte rassurant, pas de panique.
+ * Garde-fou de rendu : silence en piste (S6_roulage). Migration legacy→v2.
  */
 
 import { useState } from 'react';
@@ -17,15 +13,14 @@ import { Modal, Pressable, Text, View } from 'react-native';
 import { abandonReconnect, manualReconnect } from '@/ble/initBle';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useUIStore } from '@/store/useUIStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 export function BleErrorModal() {
-  // Doctrine — Principe 3 « silence en piste » : pendant le roulage
-  // (S6_roulage), aucun écran/overlay ne s'affiche, quelle que soit la
-  // cause (perte BLE, timeout). Garde-fou de rendu = garantie dure,
-  // indépendante de qui a mis `bleErrorModalVisible` à true. La
-  // reconnexion automatique continue en fond ; l'état se consulte au
-  // paddock, à l'arrêt.
+  // Principe 3 « silence en piste » : pendant le roulage (S6_roulage),
+  // aucun overlay, quelle que soit la cause. La reconnexion auto continue
+  // en fond ; l'état se consulte au paddock, à l'arrêt.
   const driving = useAppStateStore((s) => s.state === 'S6_roulage');
   const visible = useUIStore((s) => s.bleErrorModalVisible) && !driving;
   const [reconnecting, setReconnecting] = useState(false);
@@ -54,26 +49,20 @@ export function BleErrorModal() {
       >
         <View
           style={{
-            backgroundColor: colors.background.elevated,
-            borderRadius: borderRadius.xl,
+            backgroundColor: palette.card2,
+            borderRadius: radius.xl,
             borderWidth: 1,
-            borderColor: colors.border.subtle,
+            borderColor: palette.line,
             padding: spacing.xxl,
             width: '100%',
             maxWidth: 420,
           }}
         >
-          <Text
-            style={[typography.eyebrow, { color: colors.system.warning, marginBottom: spacing.md }]}
-          >
-            ÉQUIPEMENT
+          <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>ÉQUIPEMENT</Text>
+          <Text style={[s.title, { marginBottom: spacing.md }]}>
+            Connexion à l&apos;équipement perdue.
           </Text>
-          <Text style={[typography.screenTitle, { marginBottom: spacing.md }]}>
-            Connexion à l'équipement perdue.
-          </Text>
-          <Text
-            style={[typography.body, { color: colors.text.secondary, marginBottom: spacing.xl }]}
-          >
+          <Text style={[s.body, { marginBottom: spacing.xl }]}>
             Vos données déjà enregistrées sont sauvegardées. Vous pouvez tenter une reconnexion ou
             continuer sans télémétrie pour cette session.
           </Text>
@@ -84,23 +73,15 @@ export function BleErrorModal() {
             disabled={reconnecting}
             style={({ pressed }) => ({
               height: 52,
-              borderRadius: borderRadius.lg,
-              backgroundColor: colors.accent.red,
+              borderRadius: radius.lg,
+              backgroundColor: palette.gold,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.85 : reconnecting ? 0.6 : 1,
               marginBottom: spacing.md,
             })}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              {reconnecting ? 'Reconnexion…' : 'Reconnecter'}
-            </Text>
+            <Text style={s.ctaPrimary}>{reconnecting ? 'Reconnexion…' : 'Reconnecter'}</Text>
           </Pressable>
 
           <Pressable
@@ -109,26 +90,37 @@ export function BleErrorModal() {
             disabled={reconnecting}
             style={({ pressed }) => ({
               height: 52,
-              borderRadius: borderRadius.lg,
+              borderRadius: radius.lg,
               borderWidth: 1,
-              borderColor: colors.border.medium,
+              borderColor: palette.edge,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.85 : 1,
             })}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.regular,
-              }}
-            >
-              Continuer sans
-            </Text>
+            <Text style={s.ctaGhost}>Continuer sans</Text>
           </Pressable>
         </View>
       </View>
     </Modal>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.gold,
+  },
+  title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
+  body: {
+    color: palette.creamSoft,
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.5,
+  },
+  ctaPrimary: { color: palette.night, fontFamily: fonts.bodyMedium, fontSize: fontSize.body },
+  ctaGhost: { color: palette.cream, fontFamily: fonts.body, fontSize: fontSize.body },
+};

@@ -1,5 +1,5 @@
 /**
- * Écran #22 — Paddock entre runs. Design V2 (charte oxv-mirror-app).
+ * Écran #22 — Paddock entre runs. Transposition gaming (cockpit factuel).
  *
  * Pendant la session, entre deux runs (état S7 actif après un premier
  * roulage). Vue compacte du dernier run effectué + invitation à préparer
@@ -8,30 +8,40 @@
  * Doctrine : *"À chaud, l'essentiel."* — pas le bilan complet, juste
  * l'indicateur principal pour ne pas surcharger entre deux tours.
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button du kit, chrono en
- * mono (voix de l'instrument). Écran d'état de flux sans retour manuel.
- * Logique de données inchangée.
+ * Gaming : le meilleur tour (seul nombre dominant) passe en boîtier cockpit
+ * (`cockpitPanel`), chrono à lueur dorée, barre de statut « vivante » (point
+ * clignotant or — la session est en cours). L'or = la donnée, jamais le
+ * jugement ; aucune marge fabriquée à chaud. Logique de données inchangée.
  */
 
-import { Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { cockpitPanel } from '@/components/insights/vizChrome';
 import { useSessionStore } from '@/store/useSessionStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { formatChronoMs } from '@/utils/time';
 
 export default function EntreRunsScreen() {
   const lapCount = useSessionStore((s) => s.lapCount);
   const bestLapMs = useSessionStore((s) => s.bestLapMs);
 
-  // Doctrine « jamais de fausse donnée » : aucune marge fabriquée à chaud.
-  // La marge composite se calcule au bilan, après la session. Ici, on ne
-  // montre que du réel : le meilleur tour et le nombre de tours.
+  // Point de statut « vivant » : la session n'est pas finie, on est entre runs.
+  const blink = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blink]);
 
   return (
     <Screen scroll={false}>
@@ -39,16 +49,19 @@ export default function EntreRunsScreen() {
       <View
         style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
       >
-        <Text style={s.title}>À chaud, l'essentiel.</Text>
+        <Text style={s.title}>À chaud, l&apos;essentiel.</Text>
 
-        <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
-          <SectionLabel>Meilleur tour</SectionLabel>
+        <View style={s.panel}>
+          <View style={s.status}>
+            <Animated.View style={[s.dotLive, { opacity: blink }]} />
+            <Text style={s.statusLabel}>Meilleur tour · à chaud</Text>
+          </View>
           <Text style={s.chrono}>{bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}</Text>
           <Text style={s.note}>
             {lapCount} {lapCount > 1 ? 'tours' : 'tour'} · la marge se lit au bilan, après la
             session.
           </Text>
-        </Card>
+        </View>
 
         <View style={{ flex: 1 }} />
 
@@ -70,10 +83,42 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xxl,
   },
+  panel: {
+    ...cockpitPanel,
+    alignItems: 'center' as const,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  status: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  dotLive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.gold,
+  },
   chrono: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.hud,
     color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },

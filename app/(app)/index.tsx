@@ -22,6 +22,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
+import { GaugeInstrument } from '@/components/instruments';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { computeRegularity } from '@/services/regularityService';
@@ -244,24 +245,35 @@ function ModePassive({
       {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible. */}
       {loading ? null : recentSession ? (
         <Link href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }} asChild>
-          <Pressable accessibilityRole="button">
-            {({ pressed }) => (
-              <View style={[s.bilan, pressed && s.pressedCard]}>
-                <Text style={s.bilanChevron}>›</Text>
-                <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-                <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-                <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          >
+            <View style={s.bilan}>
+              <Text style={s.bilanChevron}>›</Text>
+              <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
+              <View style={s.bilanRow}>
                 {regularity ? (
-                  <View style={s.bilanStat}>
-                    <Text style={s.bilanV}>
-                      {regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
-                    </Text>
-                    <Text style={s.bilanU}>s</Text>
-                    <Text style={s.bilanL}>Régularité{'\n'}au tour</Text>
-                  </View>
+                  <GaugeInstrument
+                    value={regularity.stdDevSeconds}
+                    min={0}
+                    max={Math.max(3, regularity.stdDevSeconds * 1.25)}
+                    unit="s"
+                    formatValue={(v) => v.toFixed(1).replace('.', ',')}
+                    size={104}
+                    majorTicks={4}
+                    minorPerMajor={1}
+                  />
                 ) : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
+                  <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+                  {regularity ? (
+                    <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
+                  ) : null}
+                </View>
               </View>
-            )}
+            </View>
           </Pressable>
         </Link>
       ) : (
@@ -286,7 +298,7 @@ function ModePassive({
         accessibilityRole="button"
         accessibilityState={{ expanded: showAll }}
         onPress={() => setShowAll((v) => !v)}
-        style={({ pressed }) => [s.more, pressed && s.pressedCard]}
+        style={({ pressed }) => [s.more, { opacity: pressed ? 0.85 : 1 }]}
       >
         <Text style={s.moreText}>{showAll ? 'Replier' : 'Tout le paddock'}</Text>
         <Text style={s.moreText}>{showAll ? '⌃' : '›'}</Text>
@@ -325,7 +337,7 @@ function Tile({
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
-        style={({ pressed }) => [s.tile, pressed && s.pressedCard]}
+        style={({ pressed }) => [s.tile, { opacity: pressed ? 0.85 : 1 }]}
       >
         <Text style={s.tileIcon}>{icon}</Text>
         <Text style={s.tileName}>{name}</Text>
@@ -340,7 +352,7 @@ function NavRow({ label, hint, href }: { label: string; hint: string; href: stri
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
-        style={({ pressed }) => [s.row, pressed && s.pressedCard]}
+        style={({ pressed }) => [s.row, { opacity: pressed ? 0.85 : 1 }]}
       >
         <View style={{ flex: 1, paddingRight: spacing.md }}>
           <Text style={s.rowLabel}>{label}</Text>
@@ -374,10 +386,6 @@ const s = StyleSheet.create({
 
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
-  // Affordance de press : la bordure s'éclaire et la surface se relève — reprend
-  // le :hover de la maquette (border-edge + lift), perdu au port RN (opacity seule).
-  pressedCard: { borderColor: palette.edge, backgroundColor: palette.card2 },
-
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: 11,
@@ -396,14 +404,33 @@ const s = StyleSheet.create({
 
   // Dernier bilan (carte héros — chiffre dominant unique)
   bilan: {
-    backgroundColor: palette.card,
+    backgroundColor: palette.card2,
     borderColor: palette.line,
     borderWidth: 1,
     borderRadius: radius.xl,
     paddingHorizontal: 18,
     paddingTop: 18,
-    paddingBottom: 16,
+    paddingBottom: 18,
     marginTop: spacing.xl,
+    shadowColor: palette.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+  },
+  bilanRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    marginTop: 4,
+  },
+  bilanReg: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: palette.faint,
+    marginTop: 8,
+    lineHeight: 15,
   },
   bilanChevron: { position: 'absolute', top: 14, right: 18, color: palette.faint, fontSize: 22 },
   bilanCircuit: {
@@ -463,7 +490,7 @@ const s = StyleSheet.create({
     paddingBottom: 14,
     minHeight: 92,
   },
-  tileIcon: { fontFamily: fonts.mono, fontSize: 20, color: palette.creamMute, marginBottom: 14 },
+  tileIcon: { fontFamily: fonts.mono, fontSize: 20, color: palette.gold, marginBottom: 14 },
   tileName: { fontFamily: fonts.display, fontSize: 14.5, color: palette.cream, marginBottom: 4 },
   tileHint: { fontFamily: fonts.body, fontSize: 11.5, color: palette.creamMute, lineHeight: 16 },
 

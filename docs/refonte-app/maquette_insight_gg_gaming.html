@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — INSIGHT COMBINÉ G-G · gaming v3
+  Grammaire cockpit. Spécifique : radar de traction (traction circle).
+  Anneaux gradués 0,5/1,0/1,5 g · scatter lumineux séquentiel · creux
+  d'enveloppe visible · un chiffre dominant (enveloppe exploitée).
+  Couvre : insight G-G, enveloppe, galerie insights (niveau approfondi).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Insight G-G gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(72% 42% at 50% 34%,rgba(255,183,3,.09) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 42%,transparent 54%,rgba(0,0,0,.62) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.24em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-align:right}
+  .status .rz small{display:block;color:var(--faint);font-size:9px;letter-spacing:.16em;margin-top:2px}
+
+  .radar{position:relative;width:300px;height:300px;margin:4px auto 2px}
+  .radar svg{width:100%;height:100%}
+  .grid-c{fill:none;stroke:#181820;stroke-width:1.2}
+  .grid-lim{fill:none;stroke:#2E2A22;stroke-width:1.4;stroke-dasharray:3 5}
+  .axis{stroke:#161619;stroke-width:1.2}
+  .pt{opacity:0;animation:ptin .25s ease forwards}
+  .alabel{font-family:var(--mono);font-size:8px;letter-spacing:.14em;fill:var(--faint)}
+  .glabel{font-family:var(--mono);font-size:8px;letter-spacing:.1em;fill:#3A3A40}
+  .rcore{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .rcore b{font-family:var(--mono);font-size:46px;font-weight:600;line-height:.9;color:#fff;text-shadow:0 0 26px rgba(255,183,3,.5);opacity:0;animation:popIn .6s cubic-bezier(.2,.9,.25,1.05) 1.2s forwards}
+  .rcore s{font-family:var(--mono);font-size:9px;letter-spacing:.22em;color:var(--gold);text-decoration:none;margin-top:3px;opacity:0;animation:fadeUp .5s ease 1.35s forwards}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin:14px 0 16px}
+  .st{border:1px solid var(--line);border-radius:11px;padding:11px 8px;text-align:center;background:rgba(255,255,255,.014);opacity:0;animation:fadeUp .5s ease forwards}
+  .st:nth-child(1){animation-delay:1.4s}.st:nth-child(2){animation-delay:1.48s}.st:nth-child(3){animation-delay:1.56s}
+  .st .l{font-family:var(--mono);font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .st .v{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:6px;color:#fff}
+  .st .v.go{color:var(--gold);text-shadow:0 0 12px rgba(255,183,3,.4)}
+
+  .read{border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:14px;background:rgba(255,255,255,.012);
+    font-size:12.5px;line-height:1.5;color:#C6C6CC;opacity:0;animation:fadeUp .5s ease 1.6s forwards}
+  .read b{color:var(--cream);font-weight:600}
+  .read .tag{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);display:block;margin-top:7px}
+
+  .coach{background:linear-gradient(90deg,#120A0C,#0C0809);border:1px solid #2C1418;border-left:2px solid var(--red);
+    border-radius:0 13px 13px 0;padding:13px 15px;display:flex;align-items:center;gap:12px;opacity:0;animation:fadeUp .55s ease 1.75s forwards}
+  .coach .d{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0;box-shadow:0 0 11px rgba(200,16,46,.95);animation:blink 2.4s ease-in-out infinite}
+  .coach .x{font-size:12.5px;line-height:1.45;color:#D9D9DD}
+  .coach .x b{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);display:block;margin-bottom:3px}
+
+  @keyframes ptin{to{opacity:1}}
+  @keyframes popIn{to{opacity:1;transform:scale(1)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>INSIGHT — COMBINÉ G-G</span>
+      <span class="rz">VALENCE<small>SESSION 03</small></span>
+    </div>
+
+    <div class="radar">
+      <svg viewBox="0 0 300 300">
+        <line class="axis" x1="20" y1="150" x2="280" y2="150"/>
+        <line class="axis" x1="150" y1="20" x2="150" y2="280"/>
+        <circle class="grid-c" cx="150" cy="150" r="43"/>
+        <circle class="grid-c" cx="150" cy="150" r="86"/>
+        <circle class="grid-lim" cx="150" cy="150" r="129"/>
+        <text class="alabel" x="150" y="14" text-anchor="middle">ACCÉL</text>
+        <text class="alabel" x="150" y="296" text-anchor="middle">FREIN</text>
+        <text class="alabel" x="6" y="153" text-anchor="start">G</text>
+        <text class="alabel" x="294" y="153" text-anchor="end">D</text>
+        <text class="glabel" x="155" y="66" text-anchor="start">1,0 g</text>
+        <text class="glabel" x="155" y="24" text-anchor="start">1,5 g</text>
+        <g id="pts"></g>
+      </svg>
+      <div class="rcore"><b>72%</b><s>ENVELOPPE</s></div>
+    </div>
+
+    <div class="stats">
+      <div class="st"><div class="l">G latéral</div><div class="v go">1,2 g</div></div>
+      <div class="st"><div class="l">G frein</div><div class="v go">1,3 g</div></div>
+      <div class="st"><div class="l">Relevés</div><div class="v">2 400</div></div>
+    </div>
+
+    <div class="read">
+      Un creux subsiste en haut à gauche : la transition <b>accélération – virage gauche</b> reste sous votre enveloppe. Ailleurs, le cercle est rempli.
+      <span class="tag">Un constat, pas une consigne</span>
+    </div>
+
+    <div class="coach">
+      <span class="d"></span>
+      <span class="x"><b>De votre coach</b>Travaillons la remise des gaz en sortie de gauche.</span>
+    </div>
+
+  </div></div>
+
+  <script>
+    (function(){
+      var cx=150,cy=150,R=129,K=120,s='';
+      function rnd(){return Math.random()}
+      for(var i=0;i<K;i++){
+        var ang=rnd()*Math.PI*2, rr=Math.sqrt(rnd());
+        var deg=ang*180/Math.PI;
+        var dc=Math.min(Math.abs(deg-225),360-Math.abs(deg-225)); // creux haut-gauche (~225°)
+        if(dc<48){ rr*=(dc/48)*0.65; }
+        var r=rr*R;
+        var x=(cx+r*Math.cos(ang)).toFixed(1), y=(cy+r*Math.sin(ang)).toFixed(1);
+        var edge=rr>0.78;
+        var col=edge?'#FFB703':(rr>0.5?'#C4A459':'#6E5A33');
+        var rad=edge?2.1:1.7, op=edge?0.95:0.62;
+        var glow=edge?' filter="drop-shadow(0 0 3px rgba(255,183,3,.85))"':'';
+        var delay=(0.4+rr*0.9+rnd()*0.2).toFixed(2);
+        s+='<circle class="pt" cx="'+x+'" cy="'+y+'" r="'+rad+'" fill="'+col+'" opacity="'+op+'"'+glow+' style="animation-delay:'+delay+'s"/>';
+      }
+      document.getElementById('pts').innerHTML=s;
+    })();
+  </script>
+</body></html>

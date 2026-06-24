@@ -150,7 +150,10 @@ export default function VirageComparerScreen() {
     <Screen>
       <AppBar title="COMPARER" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>COMPARER VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        <View style={s.headRow}>
+          <View style={s.headDot} />
+          <Text style={s.eyebrow}>COMPARER VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        </View>
         <Text style={[s.title, { marginTop: theme.spacing.md, marginBottom: theme.spacing.xl }]}>
           {corner.name}
         </Text>
@@ -220,7 +223,7 @@ export default function VirageComparerScreen() {
             </View>
 
             <Section eyebrow="DELTA VITESSES B − A">
-              <Card>
+              <Card style={s.dataPanel}>
                 <DeltaRow
                   label="À l'entrée"
                   a={deepA.stats?.entrySpeedKmh ?? null}
@@ -264,7 +267,7 @@ export default function VirageComparerScreen() {
             </Section>
 
             <Section eyebrow="DELTA TRAJECTOIRE">
-              <Card>
+              <Card style={s.dataPanel}>
                 <DeltaRow
                   label="Écart latéral moyen"
                   a={deepA.stats?.avgLateralErrorM ?? null}
@@ -329,7 +332,7 @@ function MiniCard({
       : null;
 
   return (
-    <Card style={{ flex: 1 }}>
+    <Card style={[s.dataPanel, { flex: 1 }]}>
       <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm, color: accent }]}>{label}</Text>
       <CircuitMap viewBox={viewBox} height={180} background={theme.palette.card2}>
         <TrackLayer animate={false} opacity={0.3} strokeWidth={6} />
@@ -344,7 +347,7 @@ function MiniCard({
           radius={16}
         />
       </CircuitMap>
-      <Text style={s.miniValue}>
+      <Text style={[s.miniValue, { color: accent }]}>
         {deep.stats?.marginPercent != null ? `${Math.round(deep.stats.marginPercent)} %` : '—'}
       </Text>
     </Card>
@@ -354,7 +357,10 @@ function MiniCard({
 function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: theme.spacing.xxl }}>
-      <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>{eyebrow}</Text>
+      <View style={[s.headRow, { marginBottom: theme.spacing.md }]}>
+        <View style={s.headDot} />
+        <Text style={s.eyebrow}>{eyebrow}</Text>
+      </View>
       {children}
     </View>
   );
@@ -403,6 +409,29 @@ const s = {
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   title: {
     fontFamily: theme.fonts.display,

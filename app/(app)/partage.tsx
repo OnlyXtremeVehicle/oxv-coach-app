@@ -36,6 +36,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 import { timeAgoFr } from '@/utils/time';
 
 interface ScopeOption {
@@ -131,6 +132,7 @@ export default function PartageScreen() {
     <Screen>
       <AppBar title="PARTAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Partage · à vos conditions" />
         <Text style={s.title}>Une vue, à vos conditions.</Text>
 
         <View style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.xl }}>
@@ -244,7 +246,7 @@ function ShareCard({ link, onRevoke }: { link: ShareLink; onRevoke: () => void }
   const status = revoked ? 'révoqué' : expired ? 'expiré' : 'actif';
 
   return (
-    <Card style={{ opacity: revoked || expired ? 0.5 : 1 }}>
+    <Card style={{ opacity: revoked || expired ? 0.5 : 1, ...cockpitHalo }}>
       <View
         style={{
           flexDirection: 'row',

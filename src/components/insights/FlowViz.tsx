@@ -2,27 +2,31 @@
  * FlowViz — Cohérence du flow (lecture N4.3).
  *
  * Maquette : docs/specs-bundle-v4/maquette_insight_N4-3_flow.html
+ * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
  * Spec     : 02_moteur_insights.md §4.3.
  *
  * La fluidité = régularité des transitions, lue dans le jerk (dérivée de
- * l'accélération). Deux courbes de jerk superposées sur un tour : le tour le
- * plus rapide est lisse, le plus haché est en dents de scie. Puis un nuage
- * fluidité × temps au tour montrant que plus c'est fluide, plus c'est rapide.
+ * l'accélération). Cockpit : barre de statut, tour le plus fluide en nombre
+ * héros (lueur dorée), trace de jerk lisse en OR à halo contre la trace hachée
+ * en ambre, puis nuage fluidité × temps montrant que plus c'est fluide, plus
+ * c'est rapide.
  *
- * DÉMO : tracés et points figés (tour rapide 1:42.8 / haché 1:45.1, 18 tours),
- * telemetry_frames vide jusqu'à Valence. Composant autonome, déterministe.
+ * DÉMO : tracés et points figés (rapide 1:42.8 / haché 1:45.1, 18 tours),
+ * telemetry_frames vide jusqu'à Valence. Composant déterministe.
  *
  * Doctrine : révèle le lien entre douceur et vitesse. Ne dit jamais « soyez
- * plus fluide ». Couleur QDI fluidité (#FFB703) pour l'insight ; rouge
- * trajectoire en contraste pour le tour haché. Aucune couleur heritage.
+ * plus fluide ». L'or est la donnée (fluidité) ; ambre pour le tour haché en
+ * contraste. Aucune couleur heritage.
  */
 
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
+import { cockpitPanel } from '@/components/insights/vizChrome';
 
-const C = theme.dataColors;
+const GOLD = theme.palette.gold;
 
 // Tour haché : dents de scie marquées (maquette N4-3).
 const JAGGED =
@@ -54,21 +58,47 @@ const SCATTER: { x: number; y: number }[] = [
 ];
 
 export function FlowViz() {
+  const blink = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blink]);
+
   return (
     <View>
-      {/* Deux traces de jerk : tour rapide (lisse) vs tour haché (dents de scie). */}
+      {/* Instrument : statut + héros + traces de jerk. */}
       <View style={styles.card}>
+        <View style={styles.status}>
+          <View style={styles.statusLeft}>
+            <Animated.View style={[styles.dotLive, { opacity: blink }]} />
+            <Text style={styles.statusLabel}>Cohérence du flow</Text>
+          </View>
+          <Text style={styles.statusRight}>JERK · 18 TOURS</Text>
+        </View>
+
+        <View style={styles.hero}>
+          <Text style={styles.heroNum}>1:42.8</Text>
+          <Text style={styles.heroLabel}>TOUR LE PLUS FLUIDE = LE PLUS RAPIDE</Text>
+        </View>
+
         <Text style={styles.cap}>Tour le plus rapide vs tour le plus haché · un tour complet</Text>
         <Svg width="100%" height={130} viewBox="0 0 320 130">
           <Line x1={0} y1={65} x2={320} y2={65} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-          {/* Tour haché — rouge trajectoire en contraste. */}
-          <Polyline points={JAGGED} fill="none" stroke="rgba(230,57,70,0.55)" strokeWidth={1.5} />
-          {/* Tour rapide — fluidité (jaune QDI). */}
-          <Polyline points={SMOOTH} fill="none" stroke={C.flow} strokeWidth={2} />
+          {/* Tour haché — ambre en contraste. */}
+          <Polyline points={JAGGED} fill="none" stroke="rgba(242,121,43,0.55)" strokeWidth={1.5} />
+          {/* Tour rapide — fluidité (or), halo puis trait net. */}
+          <Polyline points={SMOOTH} fill="none" stroke={GOLD} strokeWidth={5} opacity={0.16} />
+          <Polyline points={SMOOTH} fill="none" stroke={GOLD} strokeWidth={2} />
         </Svg>
         <View style={styles.legend}>
-          <Legend color={C.flow} label="Tour le + rapide (1:42.8)" />
-          <Legend color="rgba(230,57,70,0.6)" label="Tour le + haché (1:45.1)" />
+          <Legend color={GOLD} label="Tour le + rapide (1:42.8)" />
+          <Legend color="rgba(242,121,43,0.6)" label="Tour le + haché (1:45.1)" />
         </View>
       </View>
       <Text style={styles.hint}>↑ moins de pics = transitions plus douces</Text>
@@ -118,17 +148,12 @@ export function FlowViz() {
           />
           {/* Les 18 tours. */}
           {SCATTER.map((p, i) => (
-            <Circle key={i} cx={p.x} cy={p.y} r={3.5} fill={C.flow} />
+            <Circle key={i} cx={p.x} cy={p.y} r={3.5} fill={GOLD} opacity={0.85} />
           ))}
-          {/* Meilleur tour, le plus fluide. */}
-          <Circle cx={70} cy={48} r={5} fill="none" stroke={theme.palette.copper} strokeWidth={2} />
-          <SvgText
-            x={76}
-            y={46}
-            fill={theme.palette.copper}
-            fontFamily={theme.fonts.mono}
-            fontSize={8}
-          >
+          {/* Meilleur tour, le plus fluide — halo or. */}
+          <Circle cx={70} cy={48} r={10} fill={GOLD} opacity={0.16} />
+          <Circle cx={70} cy={48} r={5} fill="none" stroke={GOLD} strokeWidth={2} />
+          <SvgText x={78} y={46} fill={GOLD} fontFamily={theme.fonts.mono} fontSize={8}>
             1:42.8
           </SvgText>
         </Svg>
@@ -148,14 +173,62 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    borderRadius: theme.radius.lg,
-    paddingTop: theme.spacing.md,
+    ...cockpitPanel,
+    paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.sm,
+  },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
+  },
+  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  dotLive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: GOLD,
+  },
+  statusRight: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: theme.palette.faint,
+  },
+  hero: { alignItems: 'center', marginBottom: theme.spacing.lg },
+  heroNum: {
+    fontFamily: theme.fonts.monoMedium,
+    fontSize: 40,
+    lineHeight: 42,
+    letterSpacing: -0.4,
+    color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+  },
+  heroLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.6,
+    color: GOLD,
+    marginTop: 4,
+    textAlign: 'center',
   },
   cap: {
     fontFamily: theme.fonts.mono,
@@ -173,16 +246,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.palette.line,
   },
-  legw: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  sw: {
-    width: 14,
-    height: 3,
-    borderRadius: 2,
-  },
+  legw: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  sw: { width: 14, height: 3, borderRadius: 2 },
   legwText: {
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,

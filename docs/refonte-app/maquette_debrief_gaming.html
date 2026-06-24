@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — DÉBRIEF · gaming v3 (refonte complète, intensité maximale)
+  ────────────────────────────────────────────────────────────────────
+  Reconçu de zéro. Parti pris : cockpit d'hypercar.
+  - Instrument central dominant (compteur de régularité, cockpit factuel).
+  - Séquence de mise sous tension : arc qui se remplit, graduations qui
+    s'allument en balayage, trace qui se dessine, barres qui montent.
+  - Halos en couches, glow profond. École sim premium, jamais arcade.
+  Charte tenue : noir, gold/red/heritage/green, un chiffre dominant,
+  bande coach = seul espace prescriptif.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Débrief gaming v3</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{
+    --night:#040406; --cream:#F8F9FA; --mute:#9A9AA3; --faint:#54545C; --line:#1C1C20;
+    --red:#C8102E; --gold:#FFB703; --amber:#FF9500; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:
+      radial-gradient(78% 42% at 50% 30%, rgba(255,183,3,.10) 0%, transparent 60%),
+      radial-gradient(120% 70% at 50% 0%, #0E0E14 0%, #040406 62%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 26px),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7), inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;
+    background:radial-gradient(105% 78% at 50% 38%, transparent 52%, rgba(0,0,0,.62) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+
+  /* Status bar */
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;
+    opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;
+    font-weight:600;letter-spacing:.26em;color:var(--red);text-shadow:0 0 16px rgba(200,16,46,.65)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--red);
+    box-shadow:0 0 10px rgba(200,16,46,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-align:right}
+  .status .rz small{display:block;color:var(--faint);font-size:9px;letter-spacing:.16em;margin-top:2px}
+
+  /* Instrument */
+  .inst{position:relative;width:320px;height:320px;margin:0 auto}
+  .halo{position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at 50% 50%, rgba(255,183,3,.20) 0%, rgba(255,183,3,.05) 38%, transparent 64%);
+    animation:halo 4s ease-in-out infinite;will-change:transform,opacity}
+  .inst svg{position:relative;width:100%;height:100%;z-index:1}
+  .ring-rail{fill:none;stroke:#141418;stroke-width:1.5}
+  .arc-track{fill:none;stroke:#16161B;stroke-width:10}
+  .arc-fill{fill:none;stroke:url(#gfill);stroke-width:10;stroke-linecap:round;
+    filter:drop-shadow(0 0 9px rgba(255,183,3,.8));
+    stroke-dasharray:473 270;stroke-dashoffset:473;animation:fillArc 1.5s cubic-bezier(.16,.84,.3,1) .3s forwards}
+  .tick{opacity:0;animation:tickIn .28s ease forwards}
+
+  .core{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .core .cap{font-family:var(--mono);font-size:10px;letter-spacing:.3em;color:var(--faint);
+    opacity:0;animation:fadeUp .5s ease .7s forwards}
+  .core .num{font-family:var(--mono);font-weight:600;font-size:88px;line-height:.82;color:#fff;letter-spacing:-.02em;
+    text-shadow:0 0 40px rgba(255,183,3,.55), 0 0 12px rgba(255,183,3,.45);
+    opacity:0;transform:scale(.86);animation:popIn .7s cubic-bezier(.2,.9,.25,1.05) .8s forwards}
+  .core .unit{font-family:var(--mono);font-size:12px;letter-spacing:.24em;color:var(--gold);margin-top:4px;
+    text-shadow:0 0 14px rgba(255,183,3,.55);opacity:0;animation:fadeUp .5s ease 1s forwards}
+  .core .delta{margin-top:11px;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.1em;
+    color:var(--green);padding:4px 11px;border:1px solid rgba(74,222,128,.32);border-radius:20px;
+    background:rgba(74,222,128,.06);text-shadow:0 0 12px rgba(74,222,128,.5);
+    opacity:0;animation:fadeUp .5s ease 1.15s forwards}
+
+  /* Télémétrie */
+  .tele{margin:6px 2px 18px;border:1px solid var(--line);border-radius:13px;padding:11px 14px 8px;
+    background:rgba(255,255,255,.014);opacity:0;animation:fadeUp .55s ease 1.25s forwards}
+  .tele .h{display:flex;justify-content:space-between;font-family:var(--mono);font-size:9px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .tele .h b{color:var(--gold);font-weight:500}
+  .tele svg{width:100%;height:46px;display:block}
+  .tr-line{fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round;
+    filter:drop-shadow(0 0 5px rgba(255,183,3,.75));
+    stroke-dasharray:1200;stroke-dashoffset:1200;animation:draw 1.3s ease 1.4s forwards}
+
+  /* Secteurs */
+  .secs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:16px}
+  .sec{border:1px solid var(--line);border-radius:11px;padding:10px 8px 9px;background:rgba(255,255,255,.014);
+    opacity:0;animation:fadeUp .5s ease forwards}
+  .sec:nth-child(1){animation-delay:1.5s}.sec:nth-child(2){animation-delay:1.58s}.sec:nth-child(3){animation-delay:1.66s}
+  .sec .n{font-family:var(--mono);font-size:9px;letter-spacing:.18em;color:var(--faint)}
+  .sec .t{font-family:var(--mono);font-size:17px;font-weight:600;margin:5px 0 7px}
+  .sec .b{height:3px;border-radius:2px;background:#161619;overflow:hidden}
+  .sec .b i{display:block;height:100%;width:0;border-radius:2px;animation:grow 1s cubic-bezier(.2,.8,.2,1) forwards}
+  .sec:nth-child(1) .b i{animation-delay:1.7s}.sec:nth-child(2) .b i{animation-delay:1.78s}.sec:nth-child(3) .b i{animation-delay:1.86s}
+  .sec.best .t{color:var(--green);text-shadow:0 0 13px rgba(74,222,128,.5)}
+  .sec.best .b i{background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.85)}
+  .sec.good .t{color:var(--gold);text-shadow:0 0 13px rgba(255,183,3,.45)}
+  .sec.good .b i{background:var(--gold);box-shadow:0 0 9px rgba(255,183,3,.75)}
+  .sec.slow .t{color:var(--mute)}.sec.slow .b i{background:var(--faint)}
+
+  /* Piliers */
+  .pil-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:18px}
+  .pil{background:rgba(255,255,255,.018);border:1px solid var(--line);border-radius:13px;padding:13px 14px;
+    opacity:0;animation:fadeUp .5s ease forwards}
+  .pil:nth-child(1){animation-delay:1.78s}.pil:nth-child(2){animation-delay:1.86s}
+  .pil:nth-child(3){animation-delay:1.94s}.pil:nth-child(4){animation-delay:2.02s}
+  .pil .l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .pil .v{font-family:var(--mono);font-size:18px;font-weight:600;margin:7px 0 9px}
+  .pil .b{height:4px;border-radius:2px;background:#161619;overflow:hidden}
+  .pil .b i{display:block;height:100%;width:0;border-radius:2px;animation:grow 1s cubic-bezier(.2,.8,.2,1) 2s forwards}
+  .pil.g .v{color:var(--gold);text-shadow:0 0 14px rgba(255,183,3,.4)} .pil.g .b i{background:var(--gold);box-shadow:0 0 9px rgba(255,183,3,.8)}
+  .pil.v .v{color:var(--green);text-shadow:0 0 14px rgba(74,222,128,.4)} .pil.v .b i{background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.85)}
+  .pil.w .v{color:#fff} .pil.w .b i{background:var(--cream)}
+  .pil.h .v{color:var(--heritage)} .pil.h .b i{background:var(--heritage);box-shadow:0 0 9px rgba(196,164,89,.7)}
+
+  /* Coach */
+  .coach{background:linear-gradient(90deg,#120A0C 0%,#0C0809 100%);border:1px solid #2C1418;border-left:2px solid var(--red);
+    border-radius:0 13px 13px 0;padding:13px 15px;display:flex;align-items:center;gap:12px;
+    opacity:0;animation:fadeUp .55s ease 2.1s forwards}
+  .coach .d{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0;
+    box-shadow:0 0 11px rgba(200,16,46,.95);animation:blink 2.4s ease-in-out infinite}
+  .coach .x{font-size:12.5px;line-height:1.45;color:#D9D9DD}
+  .coach .x b{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);display:block;margin-bottom:3px}
+
+  @keyframes fillArc{to{stroke-dashoffset:0}}
+  @keyframes tickIn{from{opacity:0}to{opacity:1}}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes grow{to{width:var(--w)}}
+  @keyframes popIn{to{opacity:1;transform:scale(1)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes halo{0%,100%{transform:scale(.96);opacity:.7}50%{transform:scale(1.04);opacity:1}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#08080A}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #131315;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .vv{color:#BFBFC5}.note .vv b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="status">
+        <span class="lz"><i></i>DÉBRIEF</span>
+        <span class="rz">HAUTE-SAINTONGE<small>14.06 — 42 TOURS</small></span>
+      </div>
+
+      <div class="inst">
+        <div class="halo"></div>
+        <svg viewBox="0 0 320 320">
+          <defs>
+            <linearGradient id="gfill" x1="0" y1="1" x2="1" y2="0">
+              <stop offset="0%" stop-color="#C4A459"/>
+              <stop offset="55%" stop-color="#FFB703"/>
+              <stop offset="100%" stop-color="#FF9500"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-rail" cx="160" cy="160" r="144" transform="rotate(135 160 160)" stroke-dasharray="678 226"/>
+          <circle class="arc-track" cx="160" cy="160" r="118" transform="rotate(135 160 160)" stroke-dasharray="556 186"/>
+          <circle class="arc-fill"  cx="160" cy="160" r="118" transform="rotate(135 160 160)"/>
+          <g id="ticks"></g>
+        </svg>
+        <div class="core">
+          <div class="cap">RÉGULARITÉ</div>
+          <div class="num">0,8</div>
+          <div class="unit">SEC / TOUR</div>
+          <div class="delta">▲ 0,3 VS DERNIÈRE</div>
+        </div>
+      </div>
+
+      <div class="tele">
+        <div class="h"><span>TRACE — <b>G LATÉRAL</b></span><span>TOUR 12 · MAX 1,3 g</span></div>
+        <svg id="tr" viewBox="0 0 340 46" preserveAspectRatio="none"></svg>
+      </div>
+
+      <div class="secs">
+        <div class="sec best"><div class="n">S1</div><div class="t">26,4</div><div class="b"><i style="--w:92%"></i></div></div>
+        <div class="sec good"><div class="n">S2</div><div class="t">38,1</div><div class="b"><i style="--w:68%"></i></div></div>
+        <div class="sec slow"><div class="n">S3</div><div class="t">43,2</div><div class="b"><i style="--w:44%"></i></div></div>
+      </div>
+
+      <div class="pil-grid">
+        <div class="pil g"><div class="l">Signature</div><div class="v">Tardif</div><div class="b"><i style="--w:72%"></i></div></div>
+        <div class="pil v"><div class="l">Consistance</div><div class="v">87%</div><div class="b"><i style="--w:87%"></i></div></div>
+        <div class="pil w"><div class="l">Évolution</div><div class="v">+12%</div><div class="b"><i style="--w:64%"></i></div></div>
+        <div class="pil h"><div class="l">Combiné</div><div class="v">0,7 g</div><div class="b"><i style="--w:54%"></i></div></div>
+      </div>
+
+      <div class="coach">
+        <span class="d"></span>
+        <span class="x"><b>De votre coach</b>Virage 7 — retardez le lâcher de frein d'un temps.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Refonte v3 — ce qui change</h3>
+    <div class="row"><span class="k">↺</span><span class="vv"><b>Repensé de zéro.</b> L'instrument n'est plus un élément parmi d'autres : il occupe l'écran. Compteur d'hypercar, chiffre géant à halo.</span></div>
+    <div class="row"><span class="k">⚡</span><span class="vv"><b>Mise sous tension.</b> À l'ouverture, l'arc se remplit, les graduations s'allument en balayage, la trace se dessine, les barres montent. L'écran démarre comme un cockpit.</span></div>
+    <div class="row"><span class="k">→</span><span class="vv"><b>Halos en couches, glow profond.</b> Plus de présence, plus de matière — or et vert sur noir, le rouge réservé à la bande coach. Sim premium, jamais arcade.</span></div>
+    <div class="row"><span class="k">=</span><span class="vv"><b>Doctrine intacte.</b> Un seul chiffre domine. La bande coach reste le seul espace prescriptif.</span></div>
+  </div>
+
+  <script>
+    (function(){
+      var cx=160, cy=160, N=72, start=135, span=270, val=0.85;
+      var s='';
+      for(var i=0;i<=N;i++){
+        var f=i/N, a=(start+span*f)*Math.PI/180;
+        var col, w, on=true;
+        if(f<=val){ col='#FFB703'; w=2.4; }                 // atteint
+        /* redline rouge retiré — cockpit factuel, pas de zone de jugement */
+        else { col='#2A2A30'; w=1.5; on=false; }            // marge
+        var r1=on?126:129, r2=140;
+        var x1=(cx+r1*Math.cos(a)).toFixed(1), y1=(cy+r1*Math.sin(a)).toFixed(1);
+        var x2=(cx+r2*Math.cos(a)).toFixed(1), y2=(cy+r2*Math.sin(a)).toFixed(1);
+        var glow = (col==='#FFB703')?'filter="drop-shadow(0 0 3px rgba(255,183,3,.85))"'
+                 : (col==='#C8102E')?'filter="drop-shadow(0 0 4px rgba(200,16,46,.9))"':'';
+        var delay=(0.35+f*0.7).toFixed(2);
+        s+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+col+'" stroke-width="'+w+'" '+glow+
+           ' class="tick" style="animation-delay:'+delay+'s"/>';
+      }
+      document.getElementById('ticks').innerHTML=s;
+
+      var W=340,H=46,M=64,pts=[];
+      for(var j=0;j<=M;j++){
+        var t=j/M;
+        var y=H/2 - Math.sin(t*Math.PI*3.4)*12*(0.55+0.45*Math.sin(t*6.5)) - (Math.random()-0.5)*3.2;
+        pts.push((t*W).toFixed(1)+','+Math.max(4,Math.min(H-4,y)).toFixed(1));
+      }
+      document.getElementById('tr').innerHTML='<polyline class="tr-line" points="'+pts.join(' ')+'"/>';
+    })();
+  </script>
+
+</body>
+</html>

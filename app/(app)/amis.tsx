@@ -139,8 +139,11 @@ export default function AmisScreen() {
         <Text style={s.title}>Pour comparer, en miroir.</Text>
 
         {/* Bloc recherche */}
-        <Card style={{ marginBottom: theme.spacing.xxl }}>
-          <SectionLabel>AJOUTER UN AMI</SectionLabel>
+        <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
+          <View style={s.headRow}>
+            <View style={s.headDot} />
+            <SectionLabel>AJOUTER UN AMI</SectionLabel>
+          </View>
           <TextInput
             value={searchHandle}
             onChangeText={setSearchHandle}
@@ -239,7 +242,10 @@ interface ActionDef {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: theme.spacing.xxl, gap: theme.spacing.sm }}>
-      <SectionLabel>{title}</SectionLabel>
+      <View style={s.headRow}>
+        <View style={s.headDot} />
+        <SectionLabel>{title}</SectionLabel>
+      </View>
       {children}
     </View>
   );
@@ -261,7 +267,7 @@ function FriendRow({
     : timeAgoFr(new Date(entry.requestedAt));
 
   const inner = (
-    <Card>
+    <Card style={s.dataPanel}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <View style={{ flex: 1 }}>
           <Text style={s.rowName}>{displayName}</Text>
@@ -307,6 +313,29 @@ const s = {
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   input: {
     fontFamily: theme.fonts.mono,

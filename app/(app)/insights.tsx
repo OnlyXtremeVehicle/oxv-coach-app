@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 2.6,
     textTransform: 'uppercase',
-    color: theme.palette.copper,
+    color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
   },
   h1: {

@@ -18,14 +18,16 @@ import type { ReadingKey } from '@/components/insights/catalogue';
 const C = theme.dataColors;
 
 // rgba dérivées des couleurs QDI pour les remplissages discrets des zones.
-const TRAJ_FILL = 'rgba(230,57,70,0.10)';
-const TRAJ_SOFT = 'rgba(230,57,70,0.50)';
+// Ambre pilote : neutralise le rouge trajectory (#E63946 réservé marque/coach).
+const TRAJ_LINE = '#F2792B';
+const TRAJ_FILL = 'rgba(242,121,43,0.10)';
+const TRAJ_SOFT = 'rgba(242,121,43,0.50)';
 const BRAKE_FILL = 'rgba(96,165,250,0.10)';
 const BRAKE_SOFT = 'rgba(96,165,250,0.45)';
 const BRAKE_DOT = 'rgba(96,165,250,0.35)';
 const ACCEL_FILL = 'rgba(74,222,128,0.50)';
 const ACCEL_SOFT = 'rgba(96,165,250,0.50)';
-const RED_GHOST = 'rgba(230,57,70,0.40)';
+const RED_GHOST = 'rgba(242,121,43,0.40)';
 const LINE_GHOST = 'rgba(248,249,250,0.25)';
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -48,7 +50,7 @@ function AnatomieSpark() {
         stroke={theme.palette.cream}
         strokeWidth={1.5}
       />
-      <Circle cx={128} cy={27} r={2.5} fill={C.trajectory} />
+      <Circle cx={128} cy={27} r={2.5} fill={TRAJ_LINE} />
     </Frame>
   );
 }
@@ -79,7 +81,7 @@ function DispersionSpark() {
       <Path
         d="M120,18 C150,8 165,9 180,14 L300,16"
         fill="none"
-        stroke={C.trajectory}
+        stroke={TRAJ_LINE}
         strokeWidth={1.5}
       />
       <Path

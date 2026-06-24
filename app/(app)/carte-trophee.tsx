@@ -33,6 +33,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
 const SITE_URL = 'https://oxvehicle.fr';
@@ -170,9 +171,12 @@ export default function CarteTropheeScreen() {
     <Screen>
       <AppBar title="CARTE À PARTAGER" subtitle="VERS L'EXTÉRIEUR" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Prêt à partager" />
         <SectionLabel>VOTRE SÉANCE, EN UNE CARTE</SectionLabel>
 
-        <View style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl }}>
+        <View
+          style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl, ...cockpitHalo }}
+        >
           <TrophyCard
             ref={cardRef}
             bestLapLabel={data.bestLapLabel}

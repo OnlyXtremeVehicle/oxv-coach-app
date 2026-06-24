@@ -1,26 +1,28 @@
 /**
  * Écran #30 — Rejouer un tour.
  *
- * Sélecteur de tour + scrubber tactile qui balaie la fenêtre temporelle
- * du tour. Permet au pilote ou son coach d'analyser un moment précis :
- * « qu'est-ce qui s'est passé ici ? ».
+ * Carte de tracé `TrackStage` (mode `replay`, **contrôlé**) + scrubber tactile
+ * manuel : le pilote balaie la fenêtre temporelle du tour à son rythme et lit
+ * l'instant exact — « qu'est-ce qui s'est passé ici ? ».
  *
- * Mode SIMPLE : vitesse + position
- * Mode DÉTAILLÉ : ajoute G latéral / G longitudinal instantanés
+ * Mode SIMPLE : vitesse + position le long du tracé.
+ * Mode DÉTAILLÉ : ajoute G latéral / G longitudinal instantanés.
  *
- * Doctrine : pas de jugement, pas de playback automatique (sobriété).
- * Le pilote scrubbe à son rythme.
+ * Doctrine : pas de jugement, **pas de playback automatique** (sobriété). On
+ * pilote `TrackStage` par `progress` (autoplay coupé) — jamais en lecture auto.
  *
- * Reskin V2 : Screen + AppBar, Card du kit, styles via @/theme/v2. Le
- * LapScrubber (carte SVG + scrubber tactile) et toute la logique
- * (chargement des frames, useDetailLevel + toggle) restent inchangés.
+ * Gaming : `TrackStage` (tracé à halo or, tête de lecture) remplace l'ancien
+ * `LapScrubber` (carte + tokens legacy). Relevés en `Fact`. Le chargement des
+ * tours et des frames (`fetchSessionLaps` / `loadLapFrames` + `useDetailLevel`)
+ * reste inchangé.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, PanResponder, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { LapScrubber, type ScrubFrame } from '@/components/LapScrubber';
+import { TrackStage } from '@/components/CircuitMap';
+import { Fact } from '@/components/instruments';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames } from '@/services/sessionTelemetryService';
@@ -31,11 +33,21 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatLapTime } from '@/utils/format';
 
+/** Frame de rejeu (forme renvoyée par loadLapFrames). */
+interface Frame {
+  lat: number;
+  lon: number;
+  speedKmh: number;
+  gLat: number;
+  gLong: number;
+  elapsedMs: number;
+}
+
 export default function ReplayScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; lapNumber?: string }>();
   const [laps, setLaps] = useState<Lap[]>([]);
   const [selectedLap, setSelectedLap] = useState<number | null>(null);
-  const [frames, setFrames] = useState<ScrubFrame[]>([]);
+  const [frames, setFrames] = useState<Frame[]>([]);
   const [loadingLaps, setLoadingLaps] = useState(true);
   const [loadingFrames, setLoadingFrames] = useState(false);
   const { level, toggle, canToggle } = useDetailLevel();
@@ -51,7 +63,6 @@ export default function ReplayScreen() {
       .then((rows) => {
         if (cancelled) return;
         setLaps(rows);
-        // Pré-sélectionne le tour du param ou le meilleur tour
         const initial = params.lapNumber
           ? Number(params.lapNumber)
           : (rows.find((l) => l.is_best_lap)?.lap_number ??
@@ -72,7 +83,7 @@ export default function ReplayScreen() {
   // Charge les frames du tour sélectionné
   useEffect(() => {
     if (!params.sessionId || selectedLap === null) return;
-    const sessionId = params.sessionId; // narrow
+    const sessionId = params.sessionId;
     const lapNumber = selectedLap;
     let cancelled = false;
     setLoadingFrames(true);
@@ -80,11 +91,11 @@ export default function ReplayScreen() {
       if (cancelled) return;
       setFrames(
         rows.map((f) => ({
-          lat: f.lat,
-          lon: f.lon,
-          speedKmh: f.speedKmh,
-          gLat: f.gLat,
-          gLong: f.gLong,
+          lat: f.lat ?? 0,
+          lon: f.lon ?? 0,
+          speedKmh: f.speedKmh ?? 0,
+          gLat: f.gLat ?? 0,
+          gLong: f.gLong ?? 0,
           elapsedMs: f.elapsedMs,
         }))
       );
@@ -183,7 +194,7 @@ export default function ReplayScreen() {
           </View>
         ) : null}
 
-        {/* Scrubber */}
+        {/* Scène de rejeu */}
         {loadingLaps ? (
           <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
         ) : laps.length === 0 ? (
@@ -193,7 +204,7 @@ export default function ReplayScreen() {
             Chargement des frames…
           </Text>
         ) : (
-          <LapScrubber frames={frames} showGs={level === 'detailed'} mapHeight={280} />
+          <ReplayStage frames={frames} showGs={level === 'detailed'} />
         )}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
@@ -203,6 +214,93 @@ export default function ReplayScreen() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Scène de rejeu : `TrackStage` mode `replay` **contrôlé** (autoplay coupé) +
+ * scrubber tactile manuel qui pilote `progress`. Relevés instantanés en `Fact`.
+ */
+function ReplayStage({ frames, showGs }: { frames: Frame[]; showGs: boolean }) {
+  const [progress, setProgress] = useState(0);
+  const widthRef = useRef(1);
+  const total = frames.length;
+
+  // Réinitialise le curseur quand on change de tour.
+  useEffect(() => {
+    setProgress(0);
+  }, [frames]);
+
+  const trajectory = useMemo(
+    () => frames.map((f) => ({ lat: f.lat, lon: f.lon, speed: f.speedKmh })),
+    [frames]
+  );
+
+  const index = total > 1 ? Math.round(progress * (total - 1)) : 0;
+  const cur: Frame | undefined = frames[index];
+
+  const setFromX = (x: number) => {
+    const w = widthRef.current || 1;
+    setProgress(Math.max(0, Math.min(1, x / w)));
+  };
+
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => setFromX(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setFromX(e.nativeEvent.locationX),
+    })
+  ).current;
+
+  if (total === 0) {
+    return (
+      <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
+        <Text style={s.emptyTitle}>Pas de frames sur ce tour.</Text>
+        <Text style={s.emptyHint}>Choisissez un tour complet pour le rejouer.</Text>
+      </Card>
+    );
+  }
+
+  return (
+    <View>
+      {/* Tracé : TrackStage contrôlé par le scrubber (pas d'autoplay). */}
+      <TrackStage
+        mode="replay"
+        trajectory={trajectory}
+        progress={progress}
+        autoplay={false}
+        height={300}
+      />
+
+      {/* Relevés instantanés au point balayé. */}
+      <View style={s.readouts}>
+        <Fact
+          label="Vitesse"
+          value={cur ? String(Math.round(cur.speedKmh)) : '—'}
+          unit="km/h"
+          accent
+        />
+        {showGs ? (
+          <Fact label="G latéral" value={cur ? cur.gLat.toFixed(2) : '—'} unit="g" />
+        ) : null}
+        {showGs ? <Fact label="G long." value={cur ? cur.gLong.toFixed(2) : '—'} unit="g" /> : null}
+        <Fact label="Position" value={String(Math.round(progress * 100))} unit="%" />
+      </View>
+
+      {/* Scrubber tactile manuel. */}
+      <View
+        style={s.track}
+        onLayout={(e: LayoutChangeEvent) => {
+          widthRef.current = e.nativeEvent.layout.width;
+        }}
+        {...pan.panHandlers}
+      >
+        <View style={[s.trackFill, { width: `${progress * 100}%` }]} />
+        <View style={[s.trackHead, { left: `${progress * 100}%` }]} />
+      </View>
+      <Text style={s.scrubHint}>Balayez pour parcourir le tour</Text>
+    </View>
   );
 }
 
@@ -245,6 +343,50 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.creamMute,
     textDecorationLine: 'underline' as const,
+  },
+  readouts: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+  },
+  track: {
+    height: 36,
+    marginTop: theme.spacing.lg,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.palette.card2,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    justifyContent: 'center' as const,
+    overflow: 'hidden' as const,
+  },
+  trackFill: {
+    position: 'absolute' as const,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255,183,3,0.14)',
+  },
+  trackHead: {
+    position: 'absolute' as const,
+    top: 4,
+    bottom: 4,
+    width: 3,
+    marginLeft: -1.5,
+    borderRadius: 2,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  scrubHint: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
   },
   emptyTitle: {
     fontFamily: theme.fonts.bodyLight,

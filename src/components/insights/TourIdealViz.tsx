@@ -2,27 +2,30 @@
  * TourIdealViz — Tour idéal composé (lecture N3.2).
  *
  * Maquette : docs/specs-bundle-v4/maquette_insight_N3-2_tour_ideal.html
+ * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
  * Spec     : 02_moteur_insights.md §3.2.
  *
  * Assemble le meilleur micro-secteur de chaque tour en un « tour théorique »
- * (1:41.2, −1,6 s sous le meilleur tour réel), montre la provenance de chaque
- * secteur (barre composite), puis où se loge l'écart : 80 % dans le secteur 2.
- * Deux chronos en tête, barre de provenance, répartition du temps perdu.
+ * (1:41.2, −1,6 s sous le meilleur tour réel). Cockpit : barre de statut, chrono
+ * idéal en nombre héros (lueur dorée) avec le réel en référence, barre de
+ * provenance des secteurs, puis répartition du temps perdu (80 % en S2).
  *
- * DÉMO : valeurs figées de la maquette (1:42.8 / 1:41.2 ; S2 80 %), telemetry_
- * frames vide jusqu'à Valence. Composant autonome, aucune télémétrie réelle.
+ * DÉMO : valeurs figées (1:42.8 / 1:41.2 ; S2 80 %), telemetry_frames vide.
  *
  * Doctrine : constate où le temps se loge (« 80 % en S2 »). Ne dit jamais d'y
- * travailler. Couleur QDI accélération (dimension de la lecture) ; le secteur
- * qui concentre la perte sort en trajectoire (rouge = là où ça coûte). Aucune
- * couleur heritage.
+ * travailler. L'or est la donnée ; ambre pilote (#F2792B) pour le secteur qui
+ * concentre la perte. Aucune couleur heritage.
  */
 
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/theme/v2';
+import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
+const GOLD = theme.palette.gold;
+const AMBER = '#F2792B';
 
 // Deux chronos DÉMO (maquette N3-2).
 const REAL_BEST = '1:42.8';
@@ -32,62 +35,79 @@ const DELTA = '−1,6 s';
 // Provenance de chaque secteur du tour idéal (largeur = part de tour).
 interface Segment {
   sector: string;
-  /** Tour d'où vient le meilleur secteur. */
   from: string;
-  /** Part du tour (%) → largeur du segment. */
   width: number;
-  color: string;
+  accent: string;
+  tint: string;
 }
 const SEGMENTS: Segment[] = [
-  { sector: 'S1', from: 'tour 9', width: 31, color: C.accel },
-  { sector: 'S2', from: 'tour 14', width: 38, color: C.brake },
-  { sector: 'S3', from: 'tour 11', width: 31, color: C.accel },
+  { sector: 'S1', from: 'tour 9', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
+  { sector: 'S2', from: 'tour 14', width: 38, accent: C.brake, tint: 'rgba(96,165,250,0.16)' },
+  { sector: 'S3', from: 'tour 11', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
 ];
 
 // Répartition du temps perdu (où se loge l'écart de 1,6 s).
 interface Lost {
   sector: string;
-  /** Part de l'écart total (%) → largeur de barre. */
   pct: number;
-  /** Libellé « % · s ». */
   label: string;
   color: string;
-  /** Secteur dominant (la perte s'y concentre) → mis en avant. */
   hot: boolean;
 }
 const LOST: Lost[] = [
-  { sector: 'S2', pct: 80, label: '80 % · 1,28 s', color: C.trajectory, hot: true },
+  { sector: 'S2', pct: 80, label: '80 % · 1,28 s', color: AMBER, hot: true },
   { sector: 'S1', pct: 13, label: '13 % · 0,21 s', color: C.flow, hot: false },
   { sector: 'S3', pct: 7, label: '7 % · 0,11 s', color: C.flow, hot: false },
 ];
 
 export function TourIdealViz() {
+  const blink = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blink]);
+
   return (
     <View>
-      {/* Deux chronos : meilleur tour réel vs tour idéal composé. */}
-      <View style={styles.duo}>
-        <View style={styles.chrono}>
-          <Text style={styles.chronoKey}>Meilleur tour réel</Text>
-          <Text style={styles.chronoVal}>{REAL_BEST}</Text>
+      {/* Chrono idéal en héros, réel en référence. */}
+      <View style={styles.card}>
+        <View style={styles.status}>
+          <View style={styles.statusLeft}>
+            <Animated.View style={[styles.dotLive, { opacity: blink }]} />
+            <Text style={styles.statusLabel}>Tour idéal composé</Text>
+          </View>
+          <Text style={styles.statusRight}>MICRO-SECTEURS</Text>
         </View>
-        <View style={[styles.chrono, styles.chronoIdeal]}>
-          <Text style={styles.chronoKey}>Tour idéal composé</Text>
-          <Text style={[styles.chronoVal, styles.chronoValIdeal]}>{IDEAL}</Text>
+
+        <View style={styles.hero}>
+          <Text style={styles.heroNum}>{IDEAL}</Text>
+          <Text style={styles.heroLabel}>TOUR IDÉAL · {DELTA} SOUS VOTRE MEILLEUR RÉEL</Text>
+        </View>
+
+        <View style={styles.refRow}>
+          <Text style={styles.refKey}>Meilleur tour réel</Text>
+          <Text style={styles.refVal}>{REAL_BEST}</Text>
         </View>
       </View>
-      <Text style={styles.delta}>
-        En assemblant vos meilleurs secteurs : <Text style={styles.deltaEm}>{DELTA}</Text> sous
-        votre meilleur tour réel
-      </Text>
 
       {/* Barre composite : provenance de chaque secteur du tour idéal. */}
       <View style={styles.card}>
         <Text style={styles.cap}>Provenance de chaque secteur du tour idéal</Text>
         <View style={styles.secbar}>
-          {SEGMENTS.map((s) => (
-            <View key={s.sector} style={[styles.seg, { flex: s.width, backgroundColor: s.color }]}>
-              <Text style={styles.segName}>{s.sector}</Text>
-              <Text style={styles.segFrom}>{s.from}</Text>
+          {SEGMENTS.map((seg) => (
+            <View
+              key={seg.sector}
+              style={[styles.seg, { flex: seg.width, backgroundColor: seg.tint }]}
+            >
+              <View style={[styles.segAccent, { backgroundColor: seg.accent }]} />
+              <Text style={styles.segName}>{seg.sector}</Text>
+              <Text style={styles.segFrom}>{seg.from}</Text>
             </View>
           ))}
         </View>
@@ -104,7 +124,13 @@ export function TourIdealViz() {
           <View key={l.sector} style={styles.lrow}>
             <Text style={styles.lab}>{l.sector}</Text>
             <View style={styles.track}>
-              <View style={[styles.fill, { width: `${l.pct}%`, backgroundColor: l.color }]} />
+              <View
+                style={[
+                  styles.fill,
+                  { width: `${l.pct}%`, backgroundColor: l.color },
+                  l.hot && styles.fillHot,
+                ]}
+              />
             </View>
             <Text style={[styles.pct, { color: l.hot ? l.color : theme.palette.creamMute }]}>
               {l.label}
@@ -117,60 +143,82 @@ export function TourIdealViz() {
 }
 
 const styles = StyleSheet.create({
-  duo: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  chrono: {
-    flex: 1,
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    paddingVertical: theme.spacing.md,
+  card: {
+    ...cockpitPanel,
+    paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
   },
-  chronoIdeal: {
-    borderColor: 'rgba(74,222,128,0.30)',
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
   },
-  chronoKey: {
+  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  dotLive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: GOLD,
+  },
+  statusRight: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: theme.palette.faint,
+  },
+  hero: { alignItems: 'center', marginBottom: theme.spacing.md },
+  heroNum: {
+    fontFamily: theme.fonts.monoMedium,
+    fontSize: 44,
+    lineHeight: 46,
+    letterSpacing: -0.5,
+    color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  heroLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.6,
+    color: GOLD,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  refRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: theme.palette.line,
+    paddingTop: theme.spacing.md,
+  },
+  refKey: {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     color: theme.palette.creamMute,
-    marginBottom: theme.spacing.sm,
   },
-  chronoVal: {
-    fontFamily: theme.fonts.display,
-    fontSize: 26,
-    letterSpacing: -0.4,
-    color: theme.palette.cream,
-  },
-  chronoValIdeal: {
-    color: C.accel,
-  },
-  delta: {
-    textAlign: 'center',
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: 12,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.lg,
-  },
-  deltaEm: {
+  refVal: {
     fontFamily: theme.fonts.monoMedium,
-    color: theme.palette.cream,
-  },
-  card: {
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    borderRadius: theme.radius.lg,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    fontSize: 16,
+    color: theme.palette.creamSoft,
   },
   cap: {
     fontFamily: theme.fonts.mono,
@@ -182,7 +230,7 @@ const styles = StyleSheet.create({
   },
   secbar: {
     flexDirection: 'row',
-    height: 42,
+    height: 46,
     borderRadius: theme.radius.sm,
     borderColor: theme.palette.line,
     borderWidth: 1,
@@ -191,16 +239,26 @@ const styles = StyleSheet.create({
   seg: {
     alignItems: 'center',
     justifyContent: 'center',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: theme.palette.line,
+  },
+  segAccent: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2,
   },
   segName: {
     fontFamily: theme.fonts.monoMedium,
-    fontSize: 9,
-    color: 'rgba(0,0,0,0.65)',
+    fontSize: 11,
+    color: theme.palette.cream,
   },
   segFrom: {
     fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    color: 'rgba(0,0,0,0.75)',
+    fontSize: 8.5,
+    color: theme.palette.creamMute,
+    marginTop: 2,
   },
   secLegend: {
     flexDirection: 'row',
@@ -236,6 +294,12 @@ const styles = StyleSheet.create({
   fill: {
     height: '100%',
     borderRadius: theme.radius.pill,
+  },
+  fillHot: {
+    shadowColor: AMBER,
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
   },
   pct: {
     fontFamily: theme.fonts.mono,

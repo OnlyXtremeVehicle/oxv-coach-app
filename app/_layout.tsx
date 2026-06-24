@@ -20,7 +20,7 @@ import { trackEvent } from '@/services/analyticsService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAppFonts } from '@/theme/fonts';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 initSentry();
 
@@ -132,18 +132,18 @@ export default function RootLayout() {
   }, [lastNotifResponse, navState?.key]);
 
   // Garde le splash tant que les polices V2 ne sont pas chargées (évite un
-  // flash en police système avant bascule sur Syncopate/Inter/JetBrains Mono).
+  // flash en police système avant bascule sur Geist / Geist Mono).
   if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.palette.night }}>
         <SafeAreaProvider>
           <StatusBar style="light" />
           <Stack
             screenOptions={{
               headerShown: false,
-              contentStyle: { backgroundColor: colors.background.primary },
+              contentStyle: { backgroundColor: theme.palette.night },
               animation: 'fade',
             }}
           />

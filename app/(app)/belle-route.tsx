@@ -29,6 +29,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 // Repli si la géoloc est refusée : Circuit de Haute Saintonge (Beltoise).
 const BELTOISE: GeoPoint = { lat: 45.2415, lon: -0.0915 };
@@ -267,7 +268,8 @@ export default function BelleRouteScreen() {
       </View>
 
       {/* Résumé + action */}
-      <View style={s.footer}>
+      <View style={[s.footer, cockpitHalo]}>
+        <StatusLine label="Balade · découverte" />
         {route ? (
           <Text style={s.summary}>
             {Math.round(route.distanceKm)} km · {Math.round(route.durationMin)} min

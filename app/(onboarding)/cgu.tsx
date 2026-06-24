@@ -1,14 +1,9 @@
 /**
- * Écran #05 — CGU / RGPD consent.
+ * Écran #05 — CGU / RGPD. Transposition gaming (cockpit factuel).
  *
- * 3 cases à cocher, toutes obligatoires. Acceptation horodatée
- * via onboardingService.acceptCguAndPrivacy qui écrit dans users
- * (cgu_accepted_at, cgu_version, privacy_accepted_at, privacy_version).
- *
- * Les liens "Lire en entier" ouvrent les documents juridiques en plein
- * écran (à câbler en sem 10 quand on aura Settings → Légal). En V1, on
- * affiche un message d'attente — la doctrine impose au moins d'avoir
- * coché les cases, le détail est consultable plus tard.
+ * 3 cases à cocher obligatoires. Acceptation horodatée via
+ * onboardingService.acceptCguAndPrivacy. Cases cochées en OR (✓ sombre).
+ * Migration legacy→v2 achevée.
  */
 
 import { useState } from 'react';
@@ -17,8 +12,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { acceptCguAndPrivacy } from '@/services/onboardingService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
 import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+const STEP = 5;
+const TOTAL = 6;
 
 interface Checks {
   cgu: boolean;
@@ -50,56 +48,29 @@ export default function CguScreen() {
 
   return (
     <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
+      style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl, flexGrow: 1 }}>
         <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: TOTAL }).map((_, i) => (
             <View
               key={i}
               style={{
                 flex: 1,
                 height: 3,
-                borderRadius: borderRadius.sm,
-                backgroundColor: i < 5 ? colors.accent.red : colors.border.subtle,
+                borderRadius: radius.sm,
+                backgroundColor: i < STEP ? palette.gold : palette.line,
               }}
             />
           ))}
         </View>
-        <Text
-          style={[
-            typography.eyebrow,
-            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
-          ]}
-        >
-          ÉTAPE 5 / 6
+        <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+          ÉTAPE {STEP} / {TOTAL}
         </Text>
 
-        <View style={{ marginTop: spacing.xxxl }}>
-          <Text
-            style={[
-              typography.eyebrow,
-              {
-                fontFamily: theme.fonts.mono,
-                marginBottom: spacing.lg,
-                color: theme.palette.faint,
-              },
-            ]}
-          >
-            CGU ET CONFIDENTIALITÉ
-          </Text>
-          <Text
-            style={[
-              typography.screenTitle,
-              { fontFamily: theme.fonts.display, marginBottom: spacing.xxl },
-            ]}
-          >
-            Avant de continuer.
-          </Text>
+        <View style={{ marginTop: 40 }}>
+          <Text style={[s.eyebrow, { marginBottom: spacing.lg }]}>CGU ET CONFIDENTIALITÉ</Text>
+          <Text style={[s.title, { marginBottom: spacing.xxl }]}>Avant de continuer.</Text>
 
           <Checkbox
             checked={checks.cgu}
@@ -117,9 +88,7 @@ export default function CguScreen() {
             label="Je confirme avoir 18 ans révolus et un permis B valide."
           />
 
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xl }]}
-          >
+          <Text style={[s.caption, { marginTop: spacing.xl }]}>
             Les documents complets sont consultables à tout moment depuis vos paramètres.
           </Text>
         </View>
@@ -132,22 +101,15 @@ export default function CguScreen() {
           disabled={!allChecked || submitting}
           style={({ pressed }) => ({
             height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: allChecked ? colors.accent.red : colors.background.elevated,
+            borderRadius: radius.lg,
+            backgroundColor: allChecked ? palette.gold : palette.card2,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
             marginTop: spacing.xl,
           })}
         >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: fontSize.body,
-              letterSpacing: 0.5,
-            }}
-          >
+          <Text style={[s.ctaTxt, { color: allChecked ? palette.night : palette.creamMute }]}>
             {submitting ? 'Enregistrement…' : "J'accepte"}
           </Text>
         </Pressable>
@@ -181,35 +143,40 @@ function Checkbox({
         style={{
           width: 24,
           height: 24,
-          borderRadius: borderRadius.sm,
+          borderRadius: radius.sm,
           borderWidth: 1.5,
-          borderColor: checked ? colors.accent.red : colors.border.medium,
-          backgroundColor: checked ? colors.accent.red : 'transparent',
+          borderColor: checked ? palette.gold : palette.edge,
+          backgroundColor: checked ? palette.gold : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: spacing.md,
           marginTop: 2,
         }}
       >
-        {checked ? (
-          <Text
-            style={{ color: colors.text.primary, fontWeight: fontWeight.semibold, fontSize: 14 }}
-          >
-            ✓
-          </Text>
-        ) : null}
+        {checked ? <Text style={s.check}>✓</Text> : null}
       </View>
-      <Text
-        style={{
-          flex: 1,
-          color: colors.text.primary,
-          fontFamily: theme.fonts.bodyLight,
-          fontSize: fontSize.body,
-          lineHeight: fontSize.body * 1.4,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={s.checkLabel}>{label}</Text>
     </Pressable>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
+  title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
+  caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
+  check: { color: palette.night, fontFamily: fonts.bodySemi, fontSize: 14 },
+  checkLabel: {
+    flex: 1,
+    color: palette.cream,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.4,
+  },
+  ctaTxt: { fontFamily: fonts.bodyMedium, fontSize: fontSize.body, letterSpacing: 0.5 },
+};

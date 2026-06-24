@@ -99,13 +99,21 @@ function TabBar({
 
 function EmptyTab({ label }: { label: string }) {
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+    <Card style={[s.dataPanel, { alignItems: 'center', paddingVertical: theme.spacing.xxl }]}>
       <Text style={s.emptyTxt}>{label}</Text>
     </Card>
   );
 }
 
 const s = {
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h3,
@@ -127,12 +135,12 @@ const s = {
     height: 18,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: theme.palette.red,
+    backgroundColor: theme.palette.gold,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   badgeT: {
-    color: theme.palette.cream,
+    color: theme.palette.night,
     fontFamily: theme.fonts.mono,
     fontSize: 10,
   },

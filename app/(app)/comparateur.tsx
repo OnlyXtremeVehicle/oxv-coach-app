@@ -20,6 +20,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
+import { ABTrace } from '@/components/instruments';
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { marginLabelOf, marginZoneOf } from '@/types/domain';
@@ -123,6 +124,24 @@ export default function ComparateurScreen() {
         ) : (
           <>
             <DeltaPanel a={rowA} b={rowB} />
+
+            {/* Superposition factuelle A vs B (vous contre vous) : les deux tracés
+                sur le même tracé de circuit, A en or, B en neutre. Aucune mention
+                « mieux/moins bien » — on montre la divergence, on ne juge pas.
+                Zone pilote (au-dessus de la couche coach). */}
+            {selectedA && selectedB ? (
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <ABTrace
+                  sessionA={selectedA}
+                  sessionB={selectedB}
+                  labelA="Référence A"
+                  labelB="Référence B"
+                  statusLabel="VOS DEUX TOURS · SUPERPOSÉS"
+                  note="Là où vos deux lignes divergent — sans verdict."
+                  emptyMessage="La superposition de vos deux tours apparaîtra dès vos premières frames réelles."
+                />
+              </View>
+            ) : null}
 
             {/* Lecture coach (specs v4 §05 §4.3) : où le temps se loge sur le tracé
                 (perte de temps par secteur), couche comparative attribuée au coach

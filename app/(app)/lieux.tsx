@@ -24,6 +24,7 @@ import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 type Filter = 'all' | PlaceKind;
 
@@ -66,6 +67,7 @@ export default function LieuxScreen() {
     <Screen>
       <AppBar title="LIEUX" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Hébergements · tables · partenaires" />
         <Text style={s.title}>Lieux & partenaires</Text>
 
         <View style={s.filters}>
@@ -131,7 +133,9 @@ function PlaceCard({ place }: { place: Place }) {
       onPress={openUrl}
       style={({ pressed }) => ({ opacity: pressed && place.url ? 0.8 : 1 })}
     >
-      <Card style={place.isPremium ? { borderColor: theme.palette.gold } : undefined}>
+      <Card
+        style={place.isPremium ? { borderColor: theme.palette.gold, ...cockpitHalo } : cockpitHalo}
+      >
         <View style={s.row}>
           <Text style={s.name}>{place.name}</Text>
           {place.isOfficialPartner ? (

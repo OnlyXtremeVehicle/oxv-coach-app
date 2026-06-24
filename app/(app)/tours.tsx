@@ -24,11 +24,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { TrackStage } from '@/components/CircuitMap';
+import { EmptyState as DataEmptyState } from '@/components/instruments';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
+import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -103,6 +106,15 @@ export default function ToursScreen() {
             </Text>
             <Text style={s.heroNumber}>{formatLapTime(bestLap.duration_seconds)}</Text>
             <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>Tour {bestLap.lap_number}</Text>
+          </View>
+        ) : null}
+
+        {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
+            La dispersion des lignes = votre régularité de trajectoire, vue d'en
+            haut. Constat spatial, aucun jugement. */}
+        {params.sessionId && validLaps.length > 0 ? (
+          <View style={{ marginBottom: theme.spacing.xxl }}>
+            <LapsBeam sessionId={params.sessionId} laps={validLaps} />
           </View>
         ) : null}
 
@@ -269,6 +281,68 @@ function EmptyState() {
   );
 }
 
+/** Point projeté (forme attendue par TrackStage). */
+type Pt = { lat: number; lon: number; speed: number };
+
+/** Faisceau de tous les tours valides superposés (mode `beam`). Charge les
+ *  frames de chaque tour en parallèle ; on écarte les tours sans position.
+ *  Vide tant que telemetry_frames n'est pas alimentée (avant Valence). */
+function LapsBeam({ sessionId, laps }: { sessionId: string; laps: Lap[] }) {
+  const [beam, setBeam] = useState<Pt[][]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all(
+      laps.map(async (l) => {
+        const rows = await loadLapFrames(sessionId, l.lap_number);
+        return rows
+          .filter((f) => f.lat != null && f.lon != null)
+          .map((f) => ({ lat: f.lat as number, lon: f.lon as number, speed: f.speedKmh ?? 0 }));
+      })
+    )
+      .then((all) => {
+        if (cancelled) return;
+        setBeam(all.filter((t) => t.length >= 2));
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, laps]);
+
+  if (loading) {
+    return (
+      <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
+        <ActivityIndicator color={theme.palette.creamMute} />
+      </View>
+    );
+  }
+
+  if (beam.length === 0) {
+    return (
+      <DataEmptyState
+        label="Faisceau en attente"
+        message="Vos tours superposés apparaîtront dès vos premières frames réelles."
+        source="telemetry_frames"
+      />
+    );
+  }
+
+  return (
+    <TrackStage
+      mode="beam"
+      laps={beam}
+      height={300}
+      statusLabel={`FAISCEAU · ${beam.length} TOUR${beam.length > 1 ? 'S' : ''}`}
+    />
+  );
+}
+
 const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
@@ -290,6 +364,9 @@ const s = {
     fontSize: theme.fontSize.hud,
     letterSpacing: -1,
     color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
   },
   meta: {
     fontFamily: theme.fonts.mono,

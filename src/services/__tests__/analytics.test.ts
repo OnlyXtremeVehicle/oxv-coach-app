@@ -4,6 +4,13 @@
  */
 
 // Mock MMKV (indisponible en environnement Jest).
+import {
+  isAnalyticsEnabled,
+  isAnalyticsOptedOut,
+  setAnalyticsOptOut,
+  trackEvent,
+} from '../analyticsService';
+
 const store: Record<string, boolean> = {};
 jest.mock('@/lib/mmkv', () => ({
   storage: {
@@ -13,13 +20,6 @@ jest.mock('@/lib/mmkv', () => ({
     },
   },
 }));
-
-import {
-  isAnalyticsEnabled,
-  isAnalyticsOptedOut,
-  setAnalyticsOptOut,
-  trackEvent,
-} from '../analyticsService';
 
 describe('analyticsService', () => {
   const fetchMock = jest.fn(() => Promise.resolve({ ok: true } as Response));

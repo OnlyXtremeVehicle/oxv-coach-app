@@ -1,15 +1,14 @@
 /**
- * GGDiagram — diagramme g-g (« cercle d'amitié »).
+ * GGDiagram — diagramme g-g (« cercle d'amitié »). Transposition gaming.
  *
  * Affiche la signature d'engagement d'un pilote : nuage de points
  * {gLat, gLong} sur fond de cercle théorique d'adhérence. Un pilote
  * pro remplit la totalité du cercle (toutes combinaisons accel+freinage
  * + appui latéral exploitées), un amateur laisse des zones vides.
  *
- * Lecture sobre :
- *   - Quadrants : N=freinage, S=accélération, E=virage droit, O=virage gauche
- *   - Cercles concentriques : 0.5 / 1.0 / 1.5 g (par défaut max 2.0 g)
- *   - Points colorés par la vitesse (heatmap discrète) ou uniformes
+ * Cockpit factuel : nuage en OR (la donnée), anneau d'adhérence tireté
+ * doré à halo, stats en or. AUCUN code-couleur de performance (pas de
+ * heatmap rouge « vite = rouge » : le rouge est réservé marque + coach).
  *
  * Doctrine : pas de jugement « il manque ici, ajoutez là ». L'app montre
  * la forme, le pilote ou son coach interprètent.
@@ -19,14 +18,18 @@ import { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import Svg, { Circle, G, Line, Text as SvgText } from 'react-native-svg';
 
-import { colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { cockpitPanel } from '@/components/insights/vizChrome';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing } = theme;
+const GOLD = palette.gold;
 
 export interface GGPoint {
   /** g latéral (positif = droite, négatif = gauche). */
   gLat: number;
   /** g longitudinal (positif = accélération, négatif = freinage). */
   gLong: number;
-  /** Vitesse km/h, optionnelle, pour colorer le point. */
+  /** Vitesse km/h, optionnelle (non utilisée pour la couleur — cockpit factuel). */
   speedKmh?: number | null;
 }
 
@@ -36,7 +39,7 @@ export interface GGDiagramProps {
   scaleMaxG?: number;
   /** Hauteur du composant en pixels. Carré, largeur = hauteur. */
   size?: number;
-  /** Vitesse max attendue pour calibrer le heatmap. Par défaut 250. */
+  /** Conservé pour compat de signature (non utilisé — plus de heatmap vitesse). */
   speedMaxKmh?: number;
   /** Affiche les labels cardinaux (FREIN/GAUCHE/DROITE/ACCEL). Par défaut true. */
   showLabels?: boolean;
@@ -46,16 +49,12 @@ export function GGDiagram({
   points,
   scaleMaxG = 2.0,
   size = 280,
-  speedMaxKmh = 250,
   showLabels = true,
 }: GGDiagramProps) {
-  // viewBox centré sur 0,0 avec scaleMaxG comme demi-côté + une marge
   const margin = 1.15;
   const half = scaleMaxG * margin;
   const viewBox = `${-half} ${-half} ${half * 2} ${half * 2}`;
 
-  // Filtre les points hors-scale (rares mais sécurité) et calcule un alpha
-  // basé sur la densité approximative (= nombre de points)
   const visiblePoints = useMemo(
     () =>
       points.filter(
@@ -64,7 +63,6 @@ export function GGDiagram({
     [points, scaleMaxG]
   );
 
-  // Stats pour affichage en dessous
   const maxLat = useMemo(
     () => visiblePoints.reduce((m, p) => Math.max(m, Math.abs(p.gLat)), 0),
     [visiblePoints]
@@ -79,13 +77,20 @@ export function GGDiagram({
   );
 
   return (
-    <View>
-      <Svg width={size} height={size} viewBox={viewBox} style={{ alignSelf: 'center' }}>
-        {/* Quadrillage : axes */}
-        <Line x1={-half} y1={0} x2={half} y2={0} stroke={colors.border.subtle} strokeWidth={0.01} />
-        <Line x1={0} y1={-half} x2={0} y2={half} stroke={colors.border.subtle} strokeWidth={0.01} />
+    <View style={s.panel}>
+      <View style={s.status}>
+        <View style={s.dot} />
+        <Text style={s.statusLabel}>
+          {visiblePoints.length} mesures · enveloppe d&apos;adhérence
+        </Text>
+      </View>
 
-        {/* Cercles concentriques 0.5g, 1.0g, 1.5g */}
+      <Svg width={size} height={size} viewBox={viewBox} style={{ alignSelf: 'center' }}>
+        {/* Axes */}
+        <Line x1={-half} y1={0} x2={half} y2={0} stroke={palette.line} strokeWidth={0.012} />
+        <Line x1={0} y1={-half} x2={0} y2={half} stroke={palette.line} strokeWidth={0.012} />
+
+        {/* Cercles concentriques 0.5 / 1.0 / 1.5 g */}
         {[0.5, 1.0, 1.5].map((r) =>
           r <= scaleMaxG ? (
             <Circle
@@ -94,22 +99,32 @@ export function GGDiagram({
               cy={0}
               r={r}
               fill="none"
-              stroke={colors.border.subtle}
-              strokeWidth={0.01}
+              stroke={palette.line}
+              strokeWidth={0.012}
               strokeDasharray="0.05 0.05"
             />
           ) : null
         )}
 
-        {/* Cercle théorique max (limite enveloppe) */}
+        {/* Anneau d'adhérence : halo doré large + tracé net tireté */}
         <Circle
           cx={0}
           cy={0}
           r={scaleMaxG}
           fill="none"
-          stroke={colors.text.tertiary}
+          stroke={GOLD}
+          strokeWidth={0.05}
+          opacity={0.16}
+        />
+        <Circle
+          cx={0}
+          cy={0}
+          r={scaleMaxG}
+          fill="none"
+          stroke={GOLD}
           strokeWidth={0.02}
-          opacity={0.5}
+          opacity={0.6}
+          strokeDasharray="0.08 0.06"
         />
 
         {/* Labels cardinaux */}
@@ -120,8 +135,8 @@ export function GGDiagram({
               y={-half + 0.15}
               fontSize={0.12}
               textAnchor="middle"
-              fill={colors.text.tertiary}
-              fontWeight="bold"
+              fill={palette.creamMute}
+              fontFamily={fonts.mono}
             >
               FREIN
             </SvgText>
@@ -130,8 +145,8 @@ export function GGDiagram({
               y={half - 0.05}
               fontSize={0.12}
               textAnchor="middle"
-              fill={colors.text.tertiary}
-              fontWeight="bold"
+              fill={palette.creamMute}
+              fontFamily={fonts.mono}
             >
               ACCEL
             </SvgText>
@@ -140,8 +155,8 @@ export function GGDiagram({
               y={0.04}
               fontSize={0.12}
               textAnchor="start"
-              fill={colors.text.tertiary}
-              fontWeight="bold"
+              fill={palette.creamMute}
+              fontFamily={fonts.mono}
             >
               G
             </SvgText>
@@ -150,46 +165,32 @@ export function GGDiagram({
               y={0.04}
               fontSize={0.12}
               textAnchor="end"
-              fill={colors.text.tertiary}
-              fontWeight="bold"
+              fill={palette.creamMute}
+              fontFamily={fonts.mono}
             >
               D
             </SvgText>
-            {/* Repère 1g */}
-            <SvgText x={0.05} y={-1.05} fontSize={0.08} fill={colors.text.tertiary} opacity={0.7}>
+            <SvgText
+              x={0.05}
+              y={-1.05}
+              fontSize={0.08}
+              fill={palette.creamMute}
+              opacity={0.7}
+              fontFamily={fonts.mono}
+            >
               1g
             </SvgText>
           </G>
         ) : null}
 
-        {/* Points — note : Y inversé pour SVG (y positif = bas), donc on
-            stocke (gLat, -gLong) pour que ACCEL = haut visuellement.
-            En fait non : on veut FREIN en haut (convention apps coach),
-            donc on stocke (gLat, gLong) tel quel. */}
-        {visiblePoints.map((p, i) => {
-          const color = colorForSpeed(p.speedKmh, speedMaxKmh);
-          return (
-            <Circle
-              key={i}
-              cx={p.gLat}
-              cy={-p.gLong} // SVG Y inversé : -p.gLong = ACCEL en bas, FREIN en haut
-              r={0.04}
-              fill={color}
-              opacity={0.55}
-            />
-          );
-        })}
+        {/* Nuage — OR uniforme (la donnée), Y inversé pour SVG (FREIN en haut) */}
+        {visiblePoints.map((p, i) => (
+          <Circle key={i} cx={p.gLat} cy={-p.gLong} r={0.04} fill={GOLD} opacity={0.5} />
+        ))}
       </Svg>
 
-      {/* Récap chiffré sobre */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-around',
-          marginTop: spacing.lg,
-          paddingHorizontal: spacing.md,
-        }}
-      >
+      {/* Récap chiffré — valeurs en or */}
+      <View style={s.statRow}>
         <Stat label="LAT MAX" value={maxLat > 0 ? `${maxLat.toFixed(2)} g` : '—'} />
         <Stat
           label="FREIN MAX"
@@ -197,19 +198,6 @@ export function GGDiagram({
         />
         <Stat label="ACCEL MAX" value={maxAccel > 0 ? `${maxAccel.toFixed(2)} g` : '—'} />
       </View>
-
-      <Text
-        style={[
-          typography.caption,
-          {
-            color: colors.text.tertiary,
-            textAlign: 'center',
-            marginTop: spacing.md,
-          },
-        ]}
-      >
-        {visiblePoints.length} mesures · cercle = enveloppe d'adhérence
-      </Text>
     </View>
   );
 }
@@ -217,38 +205,57 @@ export function GGDiagram({
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text
-        style={{
-          fontSize: fontSize.eyebrow,
-          color: colors.text.tertiary,
-          letterSpacing: 2,
-          marginBottom: spacing.xs,
-        }}
-      >
-        {label}
-      </Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
+      <Text style={s.statLabel}>{label}</Text>
+      <Text style={s.statValue}>{value}</Text>
     </View>
   );
 }
 
-/**
- * Heatmap de vitesse — bleu (lent) → blanc (médian) → rouge (rapide).
- * Si pas de vitesse, blanc neutre.
- */
-function colorForSpeed(speed: number | null | undefined, maxKmh: number): string {
-  if (speed === null || speed === undefined) return colors.text.tertiary;
-  const t = Math.min(1, Math.max(0, speed / maxKmh));
-  if (t < 0.33) return '#4A8FCC'; // bleu lent
-  if (t < 0.66) return colors.text.primary; // blanc médian
-  return colors.accent.red; // rouge rapide
-}
+const s = {
+  panel: {
+    ...cockpitPanel,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  status: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: GOLD,
+  },
+  statRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-around' as const,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  statLabel: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    color: palette.creamMute,
+    letterSpacing: 2,
+    marginBottom: spacing.xs,
+  },
+  statValue: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.body,
+    color: GOLD,
+  },
+};

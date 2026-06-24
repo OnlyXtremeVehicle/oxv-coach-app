@@ -25,6 +25,7 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 const STATUS: Record<ScenicRouteStatus, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: theme.palette.creamMute },
@@ -90,8 +91,13 @@ export default function MesRoutesScreen() {
     <Screen>
       <AppBar title="MES BELLES ROUTES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine
+          label={`${routes.length} route${routes.length > 1 ? 's' : ''} enregistrée${routes.length > 1 ? 's' : ''}`}
+        />
         {routes.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+          <Card
+            style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl, ...cockpitHalo }}
+          >
             <Text style={s.emptyTitle}>Aucune route enregistrée.</Text>
             <Text style={s.emptyHint}>
               Depuis « Belle route », composez un itinéraire et enregistrez-le ici.
@@ -116,7 +122,7 @@ export default function MesRoutesScreen() {
                 .filter(Boolean)
                 .join(' · ');
               return (
-                <Card key={r.id}>
+                <Card key={r.id} style={cockpitHalo}>
                   <View style={s.row}>
                     <Text style={s.name}>{r.name}</Text>
                     <Chip label={st.label} dotColor={st.color} />

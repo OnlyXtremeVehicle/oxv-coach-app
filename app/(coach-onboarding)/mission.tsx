@@ -1,21 +1,20 @@
 /**
- * Onboarding coach — Écran 2/3 : votre mission.
+ * Onboarding coach — Écran 2/3 : votre mission. Transposition gaming.
  *
- * Présente sobrement les 4 points clés de la mission coach :
- *   1. Vous observez, vous n'instruisez pas
- *   2. Le pilote contrôle son consentement
- *   3. Vous voyez les données, jamais l'identité
- *   4. Vos accès sont journalisés (RGPD)
- *
- * Pas de check à cocher ici, juste de la lecture pédagogique.
+ * 4 points clés (observation / consentement / confidentialité / trace).
+ * Eyebrows de points en OR (accent cockpit), section en faint. Lecture
+ * pédagogique, pas de case à cocher. Migration legacy→v2 achevée.
  */
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
 import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+const STEP = 2;
+const TOTAL = 3;
 
 const POINTS: { eyebrow: string; title: string; body: string }[] = [
   {
@@ -42,87 +41,36 @@ const POINTS: { eyebrow: string; title: string; body: string }[] = [
 
 export default function CoachOnboardingMissionScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: palette.night }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl }}>
         <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
-          {[0, 1, 2].map((i) => (
+          {Array.from({ length: TOTAL }).map((_, i) => (
             <View
               key={i}
               style={{
                 flex: 1,
                 height: 3,
-                borderRadius: borderRadius.sm,
-                backgroundColor: i < 2 ? colors.accent.coach : colors.border.subtle,
+                borderRadius: radius.sm,
+                backgroundColor: i < STEP ? palette.gold : palette.line,
               }}
             />
           ))}
         </View>
-        <Text
-          style={[
-            typography.eyebrow,
-            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginBottom: spacing.xxl },
-          ]}
-        >
-          ÉTAPE 2 / 3
+        <Text style={[s.eyebrow, { marginBottom: spacing.xxl }]}>
+          ÉTAPE {STEP} / {TOTAL}
         </Text>
 
-        <Text
-          style={[
-            typography.eyebrow,
-            { fontFamily: theme.fonts.mono, color: colors.accent.coach, marginBottom: spacing.md },
-          ]}
-        >
-          MISSION
-        </Text>
-        <Text
-          style={[
-            typography.screenTitle,
-            { fontFamily: theme.fonts.display, marginBottom: spacing.sm },
-          ]}
-        >
-          Ce que vous faites ici.
-        </Text>
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxxl }]}
-        >
+        <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>MISSION</Text>
+        <Text style={[s.title, { marginBottom: spacing.sm }]}>Ce que vous faites ici.</Text>
+        <Text style={[s.caption, { marginBottom: 40 }]}>
           Quatre principes qui guident chaque interaction avec un pilote.
         </Text>
 
         {POINTS.map((point) => (
-          <View key={point.eyebrow} style={{ marginBottom: spacing.xxxl }}>
-            <Text
-              style={[
-                typography.eyebrow,
-                {
-                  fontFamily: theme.fonts.mono,
-                  marginBottom: spacing.sm,
-                  color: colors.accent.coach,
-                },
-              ]}
-            >
-              {point.eyebrow}
-            </Text>
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontFamily: theme.fonts.display,
-                fontSize: fontSize.title,
-                lineHeight: fontSize.title * 1.3,
-                marginBottom: spacing.md,
-              }}
-            >
-              {point.title}
-            </Text>
-            <Text
-              style={{
-                color: colors.text.secondary,
-                fontFamily: theme.fonts.bodyLight,
-                fontSize: fontSize.body,
-                lineHeight: fontSize.body * 1.6,
-              }}
-            >
-              {point.body}
-            </Text>
+          <View key={point.eyebrow} style={{ marginBottom: 40 }}>
+            <Text style={[s.pointEyebrow, { marginBottom: spacing.sm }]}>{point.eyebrow}</Text>
+            <Text style={s.pointTitle}>{point.title}</Text>
+            <Text style={s.pointBody}>{point.body}</Text>
           </View>
         ))}
       </ScrollView>
@@ -133,25 +81,54 @@ export default function CoachOnboardingMissionScreen() {
           onPress={() => router.push('/(coach-onboarding)/pacte' as never)}
           style={({ pressed }) => ({
             height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.accent.coach,
+            borderRadius: radius.lg,
+            backgroundColor: palette.gold,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: fontSize.body,
-              letterSpacing: 0.5,
-            }}
-          >
-            Continuer vers le pacte
-          </Text>
+          <Text style={s.ctaTxt}>Continuer vers le pacte</Text>
         </Pressable>
       </View>
     </SafeAreaView>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
+  pointEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.gold,
+  },
+  title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
+  caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
+  pointTitle: {
+    color: palette.cream,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    lineHeight: fontSize.h3 * 1.3,
+    marginBottom: spacing.md,
+  },
+  pointBody: {
+    color: palette.creamSoft,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.6,
+  },
+  ctaTxt: {
+    color: palette.night,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    letterSpacing: 0.5,
+  },
+};

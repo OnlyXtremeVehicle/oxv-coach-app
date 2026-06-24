@@ -265,7 +265,10 @@ function Section({
 }) {
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
-      <SectionLabel>{eyebrow}</SectionLabel>
+      <View style={s.sectionHead}>
+        <View style={s.headDot} />
+        <SectionLabel>{eyebrow}</SectionLabel>
+      </View>
       {sublabel ? <Text style={s.sublabel}>{sublabel}</Text> : null}
       <View style={{ marginTop: theme.spacing.lg }}>{children}</View>
     </View>
@@ -305,6 +308,21 @@ const s = {
     letterSpacing: 0.4,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
+  },
+  sectionHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   caption: {
     fontFamily: theme.fonts.mono,

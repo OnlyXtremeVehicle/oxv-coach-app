@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — CARTE DE CHALEUR · gaming v3
+  Grammaire cockpit. Spécifique : le tracé coloré par la vitesse.
+  Échelle thermique froid→chaud (sans rouge, réservé marque), scan
+  séquentiel des segments, légende, repères factuels.
+  Couvre : heatmap, carte (pilier carte de chaleur).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Heatmap gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(70% 40% at 50% 38%,rgba(255,183,3,.08) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 42%,transparent 54%,rgba(0,0,0,.6) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.22em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-align:right}
+
+  .map{margin:6px 0 2px}
+  .map svg{width:100%;height:260px;display:block}
+
+  .legend{display:flex;align-items:center;gap:10px;margin:8px 2px 18px;opacity:0;animation:fadeUp .5s ease 1.3s forwards}
+  .legend .lt{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);flex-shrink:0}
+  .legend .scale{flex:1;height:5px;border-radius:3px;background:linear-gradient(90deg,#353138 0%,#C4A459 42%,#FFB703 74%,#FFF3D6 100%);box-shadow:0 0 10px rgba(255,183,3,.25)}
+
+  .marks{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:6px}
+  .mk{border:1px solid var(--line);border-radius:13px;padding:13px 14px;background:rgba(255,255,255,.014);opacity:0;animation:fadeUp .5s ease forwards}
+  .mk:nth-child(1){animation-delay:1.45s}.mk:nth-child(2){animation-delay:1.55s}
+  .mk .l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)}
+  .mk .v{font-family:var(--mono);font-size:18px;font-weight:600;margin-top:7px}
+  .mk.cold .v{color:var(--heritage)} .mk.hot .v{color:#fff;text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .mk .x{font-size:11px;color:var(--mute);margin-top:3px}
+
+  @keyframes hin{to{opacity:1}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>CARTE DE CHALEUR — TRACÉ</span>
+      <span class="rz">MEILLEUR TOUR</span>
+    </div>
+
+    <div class="map">
+      <svg viewBox="0 0 320 240">
+        <path id="circuit" d="M 70,185 C 44,150 44,92 92,72 C 132,56 158,82 198,74 C 248,64 246,36 282,46 C 316,56 314,112 280,124 C 254,133 252,162 212,168 C 162,175 152,202 112,202 C 90,202 80,198 70,185 Z" fill="none" stroke="#121216" stroke-width="9"/>
+        <g id="heat"></g>
+      </svg>
+    </div>
+
+    <div class="legend">
+      <span class="lt">Lent</span>
+      <span class="scale"></span>
+      <span class="lt">Rapide</span>
+    </div>
+
+    <div class="marks">
+      <div class="mk cold"><div class="l">Virage le plus lent</div><div class="v">64 km/h</div><div class="x">Épingle — V4</div></div>
+      <div class="mk hot"><div class="l">Ligne la plus rapide</div><div class="v">198 km/h</div><div class="x">Grande droite</div></div>
+    </div>
+
+  </div></div>
+
+  <script>
+    (function(){
+      var path=document.getElementById('circuit');
+      var len=path.getTotalLength(), N=84, html='';
+      var corners=[0.06,0.2,0.33,0.48,0.62,0.78,0.9];
+      function speed(t){var s=1;for(var k=0;k<corners.length;k++){var c=corners[k];var d=Math.min(Math.abs(t-c),1-Math.abs(t-c));var dip=Math.exp(-(d*d)/(2*0.022*0.022));s=Math.min(s,1-dip*0.82);}return s;}
+      function L(a,b,f){return Math.round(a+(b-a)*f);}
+      function col(v){var st=[[0,53,49,56],[0.4,196,164,89],[0.72,255,183,3],[1,255,243,214]];for(var i=1;i<st.length;i++){if(v<=st[i][0]){var p=st[i-1],q=st[i],f=(v-p[0])/(q[0]-p[0]);return 'rgb('+L(p[1],q[1],f)+','+L(p[2],q[2],f)+','+L(p[3],q[3],f)+')';}}return 'rgb(255,243,214)';}
+      for(var i=0;i<N;i++){
+        var p0=path.getPointAtLength((i/N)*len), p1=path.getPointAtLength(((i+1)/N)*len);
+        var v=speed(i/N), c=col(v), hot=v>0.82;
+        var glow=hot?' filter="drop-shadow(0 0 5px rgba(255,214,140,.85))"':'';
+        html+='<line x1="'+p0.x.toFixed(1)+'" y1="'+p0.y.toFixed(1)+'" x2="'+p1.x.toFixed(1)+'" y2="'+p1.y.toFixed(1)+'" stroke="'+c+'" stroke-width="6.5" stroke-linecap="round"'+glow+' opacity="0" style="animation:hin .3s ease '+(0.3+i*0.011).toFixed(2)+'s forwards"/>';
+      }
+      document.getElementById('heat').innerHTML=html;
+    })();
+  </script>
+</body></html>

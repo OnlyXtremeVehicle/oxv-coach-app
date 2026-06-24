@@ -4,13 +4,13 @@
  * Mirror : « vitesse, trajectoires ET points de freinage ».
  *
  * Chaque point est un cercle dont l'opacité reflète l'intensité du
- * freinage (chute de vitesse normalisée). Couleur rouge marge (sémantique
- * « ralentissement »), sans jugement.
+ * freinage (chute de vitesse normalisée). Couleur bleue (sémantique
+ * « freinage »), sans jugement.
  */
 
 import { Circle } from 'react-native-svg';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import { projectToScene } from '../projection';
 
@@ -42,9 +42,9 @@ export function BrakingPointsLayer({ points, baseRadius = 6 }: BrakingPointsLaye
             cx={scene.x}
             cy={scene.y}
             r={radius}
-            fill={colors.margin.red}
+            fill={theme.dataColors.brake}
             fillOpacity={opacity}
-            stroke={colors.margin.red}
+            stroke={theme.dataColors.brake}
             strokeWidth={1}
             strokeOpacity={0.8}
           />

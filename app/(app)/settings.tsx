@@ -172,8 +172,11 @@ export default function SettingsScreen() {
       <AppBar title="RÉGLAGES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {/* Signature Pacte en haut */}
-        <Card style={{ marginBottom: theme.spacing.xxl }}>
-          <SectionLabel>Pacte de pilotage</SectionLabel>
+        <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
+          <View style={s.headRow}>
+            <View style={s.headDot} />
+            <SectionLabel>Pacte de pilotage</SectionLabel>
+          </View>
           <Text style={[s.manifest, { marginTop: theme.spacing.md }]}>
             L&apos;app est un miroir. Elle vous montre. Elle ne vous dirige pas.
           </Text>
@@ -325,10 +328,11 @@ export default function SettingsScreen() {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: theme.spacing.xxl }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
+      <View style={[s.headRow, { marginBottom: theme.spacing.sm }]}>
+        <View style={s.headDot} />
         <SectionLabel>{label}</SectionLabel>
       </View>
-      <Card style={{ padding: 0, overflow: 'hidden' }}>{children}</Card>
+      <Card style={[s.dataPanel, { padding: 0, overflow: 'hidden' }]}>{children}</Card>
     </View>
   );
 }
@@ -437,6 +441,29 @@ function prettyLevel(level: string | null | undefined): string {
 }
 
 const s = {
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
   manifest: {
     fontFamily: theme.fonts.bodyLight,
     fontSize: theme.fontSize.body,

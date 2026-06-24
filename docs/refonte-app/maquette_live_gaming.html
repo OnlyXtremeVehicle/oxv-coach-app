@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — LIVE EN PISTE · gaming v3 (doctrine du silence)
+  Le seul écran où le cockpit s'éteint. Grammaire inversée : pas
+  d'instrument actif, pas de glow gold. Un seul signe de vie : l'onde
+  d'enregistrement rouge. Manifeste de silence. Anti-dashboard assumé.
+  Couvre : roulage (live), entre-runs, pilotage-fini.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Live gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;min-height:620px;position:relative;overflow:hidden;border-radius:36px;display:flex;flex-direction:column;
+    background:radial-gradient(60% 40% at 50% 46%,rgba(200,16,46,.07) 0%,transparent 62%),
+      radial-gradient(120% 70% at 50% 0%,#0B0B0F 0%,#030304 64%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.012) 0 1px,transparent 1px 26px);
+    border:1px solid #141417;box-shadow:0 36px 90px rgba(0,0,0,.75)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(100% 75% at 50% 46%,transparent 44%,rgba(0,0,0,.74) 100%)}
+  .screen{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;padding:22px 22px 26px}
+
+  .top{display:flex;align-items:center;justify-content:space-between;opacity:0;animation:fade .8s ease .1s forwards}
+  .top .l{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.28em;color:var(--mute)}
+  .top .r{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;color:var(--faint)}
+
+  .center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:26px}
+  .rec{position:relative;width:140px;height:140px;display:flex;align-items:center;justify-content:center;opacity:0;animation:fade 1s ease .3s forwards}
+  .rec .wave{position:absolute;width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(200,16,46,.55);animation:wave 2.6s ease-out infinite}
+  .rec .wave:nth-child(2){animation-delay:.86s}
+  .rec .wave:nth-child(3){animation-delay:1.72s}
+  .rec .core{width:34px;height:34px;border-radius:50%;background:var(--red);box-shadow:0 0 26px rgba(200,16,46,.9),0 0 8px rgba(200,16,46,1);animation:pulse 2.6s ease-in-out infinite;z-index:1}
+
+  .clock{text-align:center;opacity:0;animation:fade 1s ease .5s forwards}
+  .clock .t{font-family:var(--mono);font-size:34px;font-weight:600;letter-spacing:.06em;color:#fff}
+  .clock .s{font-family:var(--mono);font-size:9.5px;letter-spacing:.24em;color:var(--red);margin-top:7px;text-transform:uppercase}
+
+  .manifest{text-align:center;max-width:240px;opacity:0;animation:fade 1.1s ease .8s forwards}
+  .manifest .a{font-size:23px;font-weight:600;letter-spacing:-.01em;color:var(--cream)}
+  .manifest .b{font-size:23px;font-weight:600;letter-spacing:-.01em;color:var(--faint);margin-top:2px}
+  .manifest .c{font-family:var(--mono);font-size:10px;letter-spacing:.18em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+
+  .end{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;
+    border:1px solid #2A2A30;border-radius:15px;font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);
+    background:rgba(255,255,255,.012);opacity:0;animation:fade 1s ease 1.1s forwards}
+
+  @keyframes wave{0%{transform:scale(1);opacity:.7}100%{transform:scale(3.4);opacity:0}}
+  @keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.82);opacity:.78}}
+  @keyframes fade{to{opacity:1}}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#08080A}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--red);margin-bottom:13px}
+  .note p{font-size:13px;line-height:1.55;color:#BFBFC5}.note p b{color:var(--cream)}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="top">
+      <span class="l">EN PISTE</span>
+      <span class="r">TOUR 7 · 25 Hz</span>
+    </div>
+
+    <div class="center">
+      <div class="rec">
+        <span class="wave"></span><span class="wave"></span><span class="wave"></span>
+        <span class="core"></span>
+      </div>
+      <div class="clock">
+        <div class="t">00:14:23</div>
+        <div class="s">● Capture en cours</div>
+      </div>
+      <div class="manifest">
+        <div class="a">Coupez l'app.</div>
+        <div class="b">Je conduis.</div>
+        <div class="c">Le débrief vous attend aux stands</div>
+      </div>
+    </div>
+
+    <div class="end">◼ Terminer le roulage</div>
+
+  </div></div>
+
+  <div class="note">
+    <h3>Le silence, en gaming</h3>
+    <p><b>Tous les concurrents saturent l'écran en roulant</b> — predictive, delta, live data. Ici, le cockpit s'éteint. Pas de glow, pas d'instrument, pas de chiffre à fixer. Un seul signe de vie : l'enregistrement qui pulse. Le langage gaming sert à rendre ce silence <b>volontaire et spectaculaire</b>, pas vide. C'est la doctrine, mise en scène.</p>
+  </div>
+</body></html>

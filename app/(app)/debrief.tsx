@@ -196,9 +196,12 @@ export default function DebriefScreen() {
 function Acte({ numero, titre, body }: { numero: string; titre: string; body: string }) {
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
-      <Text style={s.acteLabel}>
-        ACTE {numero} · {titre.toUpperCase()}
-      </Text>
+      <View style={s.acteHead}>
+        <View style={s.acteDot} />
+        <Text style={s.acteLabel}>
+          ACTE {numero} · {titre.toUpperCase()}
+        </Text>
+      </View>
       <Text style={s.acteBody}>{body}</Text>
     </View>
   );
@@ -285,13 +288,28 @@ const s = {
     letterSpacing: 1.5,
     color: theme.palette.creamMute,
   },
+  acteHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  acteDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
   acteLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.red,
-    marginBottom: theme.spacing.sm,
+    color: theme.palette.creamMute,
   },
   acteBody: {
     fontFamily: theme.fonts.bodyLight,

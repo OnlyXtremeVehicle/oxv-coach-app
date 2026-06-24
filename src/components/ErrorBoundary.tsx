@@ -1,12 +1,9 @@
 /**
- * ErrorBoundary global — capture les crashs JS pour ne pas montrer
- * un écran blanc au pilote.
+ * ErrorBoundary global — capture les crashs JS. Transposition gaming.
  *
- * Doctrine : message sobre, instructions claires (pas de blabla
- * technique côté pilote), bouton pour réessayer. L'erreur réelle est
- * envoyée à Sentry et loguée en console pour le debug.
- *
- * Monté au plus haut niveau dans `app/_layout.tsx`.
+ * Doctrine : message sobre, instructions claires (pas de jargon côté
+ * pilote), bouton réessayer en OR. L'erreur réelle part à Sentry.
+ * Monté au plus haut niveau dans `app/_layout.tsx`. Migration legacy→v2.
  */
 
 import { Component, type ErrorInfo, type ReactNode } from 'react';
@@ -14,7 +11,9 @@ import { Pressable, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { captureException } from '@/lib/sentry';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 interface Props {
   children: ReactNode;
@@ -54,76 +53,65 @@ export class ErrorBoundary extends Component<Props, State> {
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: colors.background.primary,
+          backgroundColor: palette.night,
           paddingHorizontal: spacing.xl,
           justifyContent: 'center',
         }}
       >
-        <Text
-          style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.lg }]}
-        >
-          IMPRÉVU
-        </Text>
-
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.headline,
-            fontWeight: fontWeight.light,
-            lineHeight: fontSize.headline * 1.2,
-            marginBottom: spacing.xl,
-          }}
-        >
-          Une pause technique.
-        </Text>
-
-        <Text
-          style={[
-            typography.manifest,
-            { color: colors.text.secondary, marginBottom: spacing.xxxl },
-          ]}
-        >
-          L'app a rencontré un imprévu. Vos données sont en sécurité.
+        <Text style={[s.eyebrow, { marginBottom: spacing.lg }]}>IMPRÉVU</Text>
+        <Text style={[s.headline, { marginBottom: spacing.xl }]}>Une pause technique.</Text>
+        <Text style={[s.manifest, { marginBottom: 40 }]}>
+          L&apos;app a rencontré un imprévu. Vos données sont en sécurité.
         </Text>
 
         <Pressable
           onPress={this.handleRetry}
           style={({ pressed }) => ({
             height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.accent.red,
+            borderRadius: radius.lg,
+            backgroundColor: palette.gold,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.medium,
-              letterSpacing: 0.5,
-            }}
-          >
-            Réessayer
-          </Text>
+          <Text style={s.ctaTxt}>Réessayer</Text>
         </Pressable>
 
         {__DEV__ && this.state.errorMessage ? (
-          <Text
-            style={[
-              typography.caption,
-              {
-                color: colors.text.tertiary,
-                marginTop: spacing.xxxl,
-                fontFamily: 'Menlo',
-              },
-            ]}
-          >
-            [DEV] {this.state.errorMessage}
-          </Text>
+          <Text style={[s.devMsg, { marginTop: 40 }]}>[DEV] {this.state.errorMessage}</Text>
         ) : null}
       </SafeAreaView>
     );
   }
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  headline: {
+    color: palette.cream,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.display,
+    lineHeight: fontSize.display * 1.2,
+  },
+  manifest: {
+    color: palette.creamSoft,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: fontSize.bodyLg * 1.6,
+  },
+  ctaTxt: {
+    color: palette.night,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    letterSpacing: 0.5,
+  },
+  devMsg: { color: palette.creamMute, fontFamily: fonts.mono, fontSize: fontSize.small },
+};

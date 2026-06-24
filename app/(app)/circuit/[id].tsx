@@ -95,7 +95,10 @@ export default function CircuitDetailScreen() {
         {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
         {hasTrace3D(circuit) ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
-            <SectionLabel>Le tracé</SectionLabel>
+            <View style={s.headRow}>
+              <View style={s.headDot} />
+              <SectionLabel>Le tracé</SectionLabel>
+            </View>
             <View style={{ marginTop: theme.spacing.md }}>
               <CircuitTraceHero height={300} defaultLayer="geometry" />
             </View>
@@ -103,16 +106,22 @@ export default function CircuitDetailScreen() {
         ) : null}
 
         <View style={{ marginTop: theme.spacing.xxl }}>
-          <SectionLabel>Autour du circuit</SectionLabel>
+          <View style={s.headRow}>
+            <View style={s.headDot} />
+            <SectionLabel>Autour du circuit</SectionLabel>
+          </View>
         </View>
 
         {groups.length === 0 ? (
           <Card
-            style={{
-              alignItems: 'center',
-              paddingVertical: theme.spacing.xxl,
-              marginTop: theme.spacing.md,
-            }}
+            style={[
+              s.dataPanel,
+              {
+                alignItems: 'center',
+                paddingVertical: theme.spacing.xxl,
+                marginTop: theme.spacing.md,
+              },
+            ]}
           >
             <Text style={s.emptyHint}>
               Les services autour de ce circuit seront référencés ici.
@@ -145,7 +154,7 @@ function ServiceCard({ service }: { service: CircuitService }) {
   };
 
   return (
-    <Card>
+    <Card style={s.dataPanel}>
       <Text style={s.serviceName}>{service.name}</Text>
       {service.organizer ? <Text style={s.serviceMeta}>{service.organizer}</Text> : null}
       {service.description ? <Text style={s.serviceBody}>{service.description}</Text> : null}
@@ -198,6 +207,29 @@ const s = {
     color: theme.palette.cream,
     lineHeight: theme.fontSize.h2 * 1.2,
     marginTop: theme.spacing.sm,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   subtitle: {
     fontFamily: theme.fonts.body,

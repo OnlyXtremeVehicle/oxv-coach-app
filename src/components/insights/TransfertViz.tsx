@@ -2,37 +2,38 @@
  * TransfertViz — Transfert de charge / vitesse de mise en appui (lecture N4.5).
  *
  * Maquette : docs/specs-bundle-v4/maquette_insight_N4-5_transfert.html
+ * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
  * Spec     : 02_moteur_insights.md §4.5.
  *
- * Pas combien de G, mais en combien de temps la masse se transfère. En entrée
- * de courbe, on lit la montée du G latéral (appui) et la vitesse de roulis
- * (gyro X) : le roulis est établi quand sa vitesse retombe à zéro. Au virage 3,
- * il se stabilise en 0,4 s ; au virage 9, en 0,7 s. Tracé + barres par virage.
+ * Pas combien de G, mais en combien de temps la masse se transfère. Cockpit :
+ * barre de statut, durée de mise en appui en nombre héros (lueur dorée), montée
+ * du G latéral (bleu) et vitesse de roulis (or à halo) avec la fenêtre de mise
+ * en charge, puis barres de durée par virage.
  *
  * DÉMO : tracé et durées figés (V3 0,4 s … V9 0,7 s), telemetry_frames vide
  * jusqu'à Valence. Composant autonome, aucune télémétrie réelle.
  *
  * Doctrine : mesure la durée de mise en charge (constat). Ne dit jamais comment
- * attaquer l'appui. Couleur QDI accélération (dimension de la lecture) pour les
- * entrées progressives et la fenêtre ; bleu freinage pour l'appui, jaune
- * fluidité pour la vitesse de roulis. Aucune couleur heritage.
+ * attaquer l'appui. L'or est la donnée (roulis, fenêtre) ; bleu freinage pour
+ * l'appui, accel/vert pour les entrées progressives. Aucune couleur heritage.
  */
 
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
+import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
+const GOLD = theme.palette.gold;
 
 // Temps de prise de roulis par virage (entrée de courbe). Largeur ∝ durée.
 interface Corner {
   corner: string;
   seconds: number;
-  /** Libellé (« 0,4 s »). */
   label: string;
   color: string;
-  /** Entrée remarquable (la plus progressive / la plus lente) → mise en avant. */
   hot: boolean;
 }
 const CORNERS: Corner[] = [
@@ -45,14 +46,39 @@ const CORNERS: Corner[] = [
 const MAX_S = 0.7;
 
 export function TransfertViz() {
+  const blink = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 1200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [blink]);
+
   return (
     <View>
-      {/* Tracé V3 : montée du G latéral + vitesse de roulis, fenêtre 0,4 s. */}
+      {/* Instrument : statut + héros + tracé d'appui. */}
       <View style={styles.card}>
-        <View style={styles.cap}>
-          <Text style={styles.capText}>Entrée virage 3 · prise de roulis</Text>
-          <Text style={[styles.capText, { color: C.accel }]}>0,4 s</Text>
+        <View style={styles.status}>
+          <View style={styles.statusLeft}>
+            <Animated.View style={[styles.dotLive, { opacity: blink }]} />
+            <Text style={styles.statusLabel}>Transfert de charge</Text>
+          </View>
+          <Text style={styles.statusRight}>ROULIS · GYRO X</Text>
         </View>
+
+        <View style={styles.hero}>
+          <Text style={styles.heroNum}>
+            0,4
+            <Text style={styles.heroUnit}> s</Text>
+          </Text>
+          <Text style={styles.heroLabel}>MISE EN APPUI · VIRAGE 3 · LA PLUS PROGRESSIVE</Text>
+        </View>
+
+        <Text style={styles.capSolo}>Entrée virage 3 · prise de roulis</Text>
         <Svg width="100%" height={130} viewBox="0 0 320 130">
           <Line x1={0} y1={100} x2={320} y2={100} stroke="rgba(255,255,255,0.10)" strokeWidth={1} />
           {/* G latéral qui monte puis plafonne (appui). */}
@@ -62,11 +88,18 @@ export function TransfertViz() {
             stroke={C.brake}
             strokeWidth={2}
           />
-          {/* Vitesse de roulis (gyro X) : pic puis retour à zéro = roulis établi. */}
+          {/* Vitesse de roulis (gyro X) — or, halo puis trait net. */}
           <Path
             d="M20,100 C50,98 70,42 95,40 C115,38 130,82 160,92 C200,99 240,99 300,99"
             fill="none"
-            stroke={C.flow}
+            stroke={GOLD}
+            strokeWidth={5}
+            opacity={0.16}
+          />
+          <Path
+            d="M20,100 C50,98 70,42 95,40 C115,38 130,82 160,92 C200,99 240,99 300,99"
+            fill="none"
+            stroke={GOLD}
             strokeWidth={2}
           />
           {/* Fenêtre de mise en charge : début d'appui → stabilisation du roulis. */}
@@ -88,14 +121,14 @@ export function TransfertViz() {
             strokeWidth={1}
             strokeDasharray="3 3"
           />
-          <Line x1={70} y1={18} x2={160} y2={18} stroke={C.accel} strokeWidth={1} />
-          <SvgText x={84} y={22} fill={C.accel} fontFamily={theme.fonts.mono} fontSize={8.5}>
+          <Line x1={70} y1={18} x2={160} y2={18} stroke={GOLD} strokeWidth={1.4} />
+          <SvgText x={84} y={22} fill={GOLD} fontFamily={theme.fonts.mono} fontSize={8.5}>
             0,4 s
           </SvgText>
         </Svg>
         <View style={styles.legend}>
           <Legend color={C.brake} label="G latéral (appui)" />
-          <Legend color={C.flow} label="Vitesse de roulis · gyro X" />
+          <Legend color={GOLD} label="Vitesse de roulis · gyro X" />
         </View>
       </View>
       <Text style={styles.hint}>
@@ -113,6 +146,7 @@ export function TransfertViz() {
                 style={[
                   styles.fill,
                   { width: `${(c.seconds / MAX_S) * 100}%`, backgroundColor: c.color },
+                  c.hot && styles.fillHot,
                 ]}
               />
             </View>
@@ -137,26 +171,61 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    borderRadius: theme.radius.lg,
-    paddingVertical: theme.spacing.md,
+    ...cockpitPanel,
+    paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
-  cap: {
+  status: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xs,
   },
-  capText: {
+  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  dotLive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: GOLD,
+    shadowColor: GOLD,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  statusLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: GOLD,
+  },
+  statusRight: {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
-    letterSpacing: 1.2,
+    letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
+  },
+  hero: { alignItems: 'center', marginBottom: theme.spacing.lg },
+  heroNum: {
+    fontFamily: theme.fonts.monoMedium,
+    fontSize: 40,
+    lineHeight: 42,
+    color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
+  },
+  heroUnit: { fontFamily: theme.fonts.mono, fontSize: 16, color: GOLD },
+  heroLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 8.5,
+    letterSpacing: 1.6,
+    color: GOLD,
+    marginTop: 4,
+    textAlign: 'center',
   },
   capSolo: {
     fontFamily: theme.fonts.mono,
@@ -174,16 +243,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: theme.palette.line,
   },
-  legw: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  sw: {
-    width: 14,
-    height: 3,
-    borderRadius: 2,
-  },
+  legw: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  sw: { width: 14, height: 3, borderRadius: 2 },
   legwText: {
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,
@@ -219,9 +280,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
     overflow: 'hidden',
   },
-  fill: {
-    height: '100%',
-    borderRadius: theme.radius.pill,
+  fill: { height: '100%', borderRadius: theme.radius.pill },
+  fillHot: {
+    shadowColor: GOLD,
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
   },
   val: {
     fontFamily: theme.fonts.mono,

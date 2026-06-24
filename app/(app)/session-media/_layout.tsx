@@ -1,13 +1,13 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function SessionMediaLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
       }}
     />

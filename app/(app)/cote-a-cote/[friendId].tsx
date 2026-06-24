@@ -28,6 +28,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { ABTrace } from '@/components/instruments';
+
 import { listRecentAnalyses, type RecentAnalysisRow } from '@/services/analysesService';
 import {
   type DuelSessionRow,
@@ -308,6 +310,24 @@ function SnapshotView(props: SnapshotProps) {
           }
         />
       </View>
+
+      {/* Superposition factuelle des deux tours (vous vs ami) : votre meilleur
+          tour en or, le sien en neutre, sur le même tracé. Partage consenti
+          entre amis acceptés (RLS telemetry_frames_select_friend) — pas de
+          gagnant, pas de classement. */}
+      {props.selectedMine && props.selectedTheirs ? (
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <ABTrace
+            sessionA={props.selectedMine}
+            sessionB={props.selectedTheirs}
+            labelA="Vous"
+            labelB="Eux"
+            statusLabel="VOS DEUX TOURS · CÔTE À CÔTE"
+            note="Vos deux lignes, côte à côte — pas de classement."
+            emptyMessage="La superposition apparaîtra dès que vos deux tours auront des frames réelles."
+          />
+        </View>
+      ) : null}
 
       {/* Comparaison virage par virage */}
       <CornerComparisonSection

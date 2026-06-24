@@ -1,7 +1,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function AuthLayout() {
   const status = useAuthStore((s) => s.status);
@@ -18,7 +18,7 @@ export default function AuthLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
       }}
     />

@@ -76,14 +76,17 @@ export default function SocialScreen() {
         ) : null}
 
         {pings.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+          <Card style={[s.dataPanel, { alignItems: 'center', paddingVertical: theme.spacing.xxl }]}>
             <Text style={s.emptyTitle}>Rien à l&apos;horizon pour l&apos;instant.</Text>
             <Text style={s.emptyHint}>Les événements et lieux OXV apparaîtront ici.</Text>
           </Card>
         ) : (
           groups.map((group) => (
             <View key={group.kind} style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-              <SectionLabel>{PING_KIND_LABELS[group.kind]}</SectionLabel>
+              <View style={s.headRow}>
+                <View style={s.headDot} />
+                <SectionLabel>{PING_KIND_LABELS[group.kind]}</SectionLabel>
+              </View>
               {group.items.map((ping) => (
                 <PingCard key={ping.id} ping={ping} />
               ))}
@@ -104,7 +107,7 @@ function PingCard({ ping }: { ping: SocialPing }) {
   };
 
   return (
-    <Card>
+    <Card style={s.dataPanel}>
       <Text style={s.pingTitle}>{ping.title}</Text>
       {ping.startsAt ? <Text style={s.pingMeta}>{formatDateLong(ping.startsAt)}</Text> : null}
       {ping.description ? <Text style={s.pingBody}>{ping.description}</Text> : null}
@@ -179,12 +182,35 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
   cta: {
     marginBottom: theme.spacing.lg,
     paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.palette.red,
+    borderColor: theme.palette.gold,
     alignItems: 'center' as const,
   },
   ctaTxt: {
@@ -192,7 +218,7 @@ const s = {
     fontSize: 11,
     letterSpacing: 1.3,
     textTransform: 'uppercase' as const,
-    color: theme.palette.red,
+    color: theme.palette.gold,
   },
   emptyTitle: {
     fontFamily: theme.fonts.bodyLight,

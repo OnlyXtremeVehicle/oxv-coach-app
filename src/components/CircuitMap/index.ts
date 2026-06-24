@@ -40,6 +40,14 @@ export { PilotPreset, type PilotPresetProps } from './presets/PilotPreset';
 export { CoachPreset, type CoachPresetProps } from './presets/CoachPreset';
 export { PublicPreset, type PublicPresetProps } from './presets/PublicPreset';
 
+// TrackStage — instrument/tracé central gaming (4 modes : beam, replay, ab, heatmap)
+export {
+  TrackStage,
+  type TrackStageProps,
+  type TrackStageMode,
+  type TrackStageHeatPoint,
+} from './TrackStage';
+
 // Projection (réutilisable hors layers — calcul d'une position sur le
 // SVG, ou viewBox zoomé sur un virage spécifique)
 export { projectToScene, getScenePoints, getCircuitViewBox, getCornerViewBox } from './projection';

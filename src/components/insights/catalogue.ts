@@ -157,7 +157,14 @@ export function getReading(key: string | undefined): ReadingDef | undefined {
   return READINGS.find((r) => r.key === key);
 }
 
-/** Couleur de donnée QDI d'une dimension. */
+/**
+ * Couleur de donnée QDI d'une dimension, côté pilote. Identique à
+ * theme.dataColors, SAUF `trajectory` : sa couleur figée (#E63946, un rouge)
+ * est réservée à la marque et à la voix du coach. On la neutralise ici en
+ * ambre, sans toucher dataColors (gelé, partagé avec le site).
+ */
+export const PILOT_TRAJECTORY_COLOR = '#F2792B';
 export function dimensionColor(dimension: QdiDimension): string {
+  if (dimension === 'trajectory') return PILOT_TRAJECTORY_COLOR;
   return theme.dataColors[dimension];
 }

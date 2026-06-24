@@ -97,7 +97,7 @@ export default function SocialCarteScreen() {
               coordinate={{ latitude: ping.lat, longitude: ping.lon }}
               title={ping.title}
               description={PING_KIND_LABELS[ping.kind]}
-              pinColor={theme.palette.red}
+              pinColor={theme.palette.gold}
             />
           ))}
         </MapView>

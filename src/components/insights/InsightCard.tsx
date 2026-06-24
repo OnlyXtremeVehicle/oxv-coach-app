@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     color: theme.palette.faint,
   },
   card: {
-    backgroundColor: theme.palette.card,
+    backgroundColor: theme.palette.card2,
     borderColor: theme.palette.line,
     borderWidth: 1,
     borderRadius: theme.radius.lg,

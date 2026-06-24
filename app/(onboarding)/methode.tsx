@@ -1,17 +1,20 @@
 /**
- * Écran #03 — Méthode.
+ * Écran #03 — Méthode. Transposition gaming (cockpit factuel).
  *
- * Trois mots verticalement empilés : VOIR / COMPRENDRE / QUESTIONNER.
- * Chacun avec une phrase de support en gris discret. Phrase manifeste
- * "Jamais d'instruction. Toujours une observation." en bas.
+ * Trois mots empilés : VOIR / COMPRENDRE / QUESTIONNER (en or, accent
+ * cockpit), chacun avec une phrase de support. Manifeste en bas.
+ * Barre de progression + CTA en or ; migration legacy→v2 achevée.
  */
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
 import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+const STEP = 3;
+const TOTAL = 6;
 
 const STEPS: { eyebrow: string; body: string }[] = [
   { eyebrow: 'VOIR', body: "Ce qui s'est passé." },
@@ -22,88 +25,39 @@ const STEPS: { eyebrow: string; body: string }[] = [
 export default function MethodeScreen() {
   return (
     <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
+      style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xl }}>
         <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
+          {Array.from({ length: TOTAL }).map((_, i) => (
             <View
               key={i}
               style={{
                 flex: 1,
                 height: 3,
-                borderRadius: borderRadius.sm,
-                backgroundColor: i < 3 ? colors.accent.red : colors.border.subtle,
+                borderRadius: radius.sm,
+                backgroundColor: i < STEP ? palette.gold : palette.line,
               }}
             />
           ))}
         </View>
-        <Text
-          style={[
-            typography.eyebrow,
-            { fontFamily: theme.fonts.mono, color: theme.palette.faint, marginTop: spacing.sm },
-          ]}
-        >
-          ÉTAPE 3 / 6
+        <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+          ÉTAPE {STEP} / {TOTAL}
         </Text>
 
-        <View style={{ flex: 1, justifyContent: 'center', paddingTop: spacing.xxxl }}>
-          <Text
-            style={[
-              typography.eyebrow,
-              {
-                fontFamily: theme.fonts.mono,
-                marginBottom: spacing.xxxl,
-                color: theme.palette.faint,
-              },
-            ]}
-          >
-            LA MÉTHODE OXV
-          </Text>
+        <View style={{ flex: 1, justifyContent: 'center', paddingTop: 40 }}>
+          <Text style={[s.eyebrow, { marginBottom: 40 }]}>LA MÉTHODE OXV</Text>
 
-          <View style={{ gap: spacing.xxxl, marginBottom: spacing.giant }}>
+          <View style={{ gap: 40, marginBottom: 56 }}>
             {STEPS.map((step) => (
               <View key={step.eyebrow}>
-                <Text
-                  style={{
-                    color: colors.accent.red,
-                    fontFamily: theme.fonts.mono,
-                    fontSize: fontSize.title,
-                    letterSpacing: 3,
-                    marginBottom: spacing.sm,
-                  }}
-                >
-                  {step.eyebrow}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.text.secondary,
-                    fontFamily: theme.fonts.bodyLight,
-                    fontSize: fontSize.bodyLarge,
-                  }}
-                >
-                  {step.body}
-                </Text>
+                <Text style={s.word}>{step.eyebrow}</Text>
+                <Text style={s.wordBody}>{step.body}</Text>
               </View>
             ))}
           </View>
 
-          <Text
-            style={[
-              typography.manifest,
-              {
-                fontFamily: theme.fonts.bodyLight,
-                color: colors.text.secondary,
-                marginBottom: spacing.xl,
-              },
-            ]}
-          >
-            Jamais d'instruction. Toujours une observation.
-          </Text>
+          <Text style={s.manifest}>Jamais d&apos;instruction. Toujours une observation.</Text>
         </View>
 
         <Pressable
@@ -111,25 +65,48 @@ export default function MethodeScreen() {
           onPress={() => router.push('/(onboarding)/niveau')}
           style={({ pressed }) => ({
             height: 52,
-            borderRadius: borderRadius.lg,
-            backgroundColor: colors.accent.red,
+            borderRadius: radius.lg,
+            backgroundColor: palette.gold,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontFamily: theme.fonts.bodyMedium,
-              fontSize: fontSize.body,
-              letterSpacing: 0.5,
-            }}
-          >
-            Suivant
-          </Text>
+          <Text style={s.ctaTxt}>Suivant</Text>
         </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
+  word: {
+    color: palette.gold,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.h2,
+    letterSpacing: 3,
+    marginBottom: spacing.sm,
+  },
+  wordBody: { color: palette.creamSoft, fontFamily: fonts.bodyLight, fontSize: fontSize.bodyLg },
+  manifest: {
+    color: palette.creamSoft,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: fontSize.bodyLg * 1.6,
+    marginBottom: spacing.xl,
+  },
+  ctaTxt: {
+    color: palette.night,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    letterSpacing: 0.5,
+  },
+};

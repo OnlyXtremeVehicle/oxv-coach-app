@@ -182,7 +182,10 @@ export default function VirageScreen() {
     <Screen>
       <AppBar title="VIRAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        <View style={s.headRow}>
+          <View style={s.headDot} />
+          <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        </View>
         <Text style={[s.title, { marginTop: theme.spacing.md }]}>{corner.name}</Text>
         <Text
           style={[
@@ -217,7 +220,7 @@ export default function VirageScreen() {
 
         {/* Vitesses */}
         <Section eyebrow="VITESSES">
-          <Card>
+          <Card style={s.dataPanel}>
             <StatRow
               label="À l'entrée"
               value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
@@ -258,7 +261,7 @@ export default function VirageScreen() {
         {/* Trajectoire */}
         <Section eyebrow="TRAJECTOIRE">
           {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
-            <Card>
+            <Card style={s.dataPanel}>
               <StatRow
                 label="Écart latéral moyen"
                 value={`${stats.avgLateralErrorM.toFixed(1)} m`}
@@ -380,7 +383,10 @@ export default function VirageScreen() {
 function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
-      <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>{eyebrow}</Text>
+      <View style={[s.headRow, { marginBottom: theme.spacing.lg }]}>
+        <View style={s.headDot} />
+        <Text style={s.eyebrow}>{eyebrow}</Text>
+      </View>
       {children}
     </View>
   );
@@ -408,7 +414,7 @@ function StatRow({
       }}
     >
       <Text style={s.statLabel}>{label}</Text>
-      <Text style={[s.statValue, emphasis && { color: theme.palette.cream }]}>{value}</Text>
+      <Text style={[s.statValue, emphasis && { color: theme.palette.gold }]}>{value}</Text>
     </View>
   );
 }
@@ -496,6 +502,29 @@ const s = {
     letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
     color: theme.palette.faint,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   title: {
     fontFamily: theme.fonts.display,

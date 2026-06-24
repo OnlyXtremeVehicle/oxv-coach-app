@@ -3,7 +3,9 @@ import { Redirect } from 'expo-router';
 
 import { isOnboardingComplete } from '@/services/onboardingService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 export default function IndexRoute() {
   const status = useAuthStore((s) => s.status);
@@ -15,12 +17,12 @@ export default function IndexRoute() {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.background.primary,
+          backgroundColor: palette.night,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <ActivityIndicator color={colors.text.secondary} />
+        <ActivityIndicator color={palette.creamSoft} />
       </View>
     );
   }
@@ -32,48 +34,35 @@ export default function IndexRoute() {
       <View
         style={{
           flex: 1,
-          backgroundColor: colors.background.primary,
+          backgroundColor: palette.night,
           alignItems: 'center',
           justifyContent: 'center',
           padding: spacing.xl,
         }}
       >
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>IMPRÉVU</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, textAlign: 'center' }]}>
+        <Text style={s.eyebrow}>IMPRÉVU</Text>
+        <Text style={[s.title, { marginTop: spacing.md, textAlign: 'center' }]}>
           Connexion impossible.
         </Text>
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.text.tertiary, marginTop: spacing.md, textAlign: 'center' },
-          ]}
-        >
+        <Text style={[s.caption, { marginTop: spacing.md, textAlign: 'center' }]}>
           Vérifiez votre réseau, puis réessayez.
         </Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => initialize()}
           style={({ pressed }) => ({
-            marginTop: spacing.xxxl,
+            marginTop: 40,
             height: 52,
             paddingHorizontal: spacing.xxl,
-            borderRadius: borderRadius.lg,
+            borderRadius: radius.lg,
             borderWidth: 1,
-            borderColor: colors.border.medium,
+            borderColor: palette.edge,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
           })}
         >
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            Réessayer
-          </Text>
+          <Text style={s.retry}>Réessayer</Text>
         </Pressable>
       </View>
     );
@@ -103,3 +92,16 @@ export default function IndexRoute() {
 
   return <Redirect href="/(app)" />;
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
+  caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
+  retry: { color: palette.cream, fontFamily: fonts.body, fontSize: fontSize.body },
+};

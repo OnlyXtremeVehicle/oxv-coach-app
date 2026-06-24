@@ -7,7 +7,7 @@ import { Circle, Text as SvgText } from 'react-native-svg';
 
 import { BELTOISE_CORNERS, type CornerTopology } from '@/lib/circuitTopology';
 import { type MarginZone } from '@/types/domain';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import { projectToScene } from '../projection';
 
@@ -75,7 +75,7 @@ function CornerMark(props: {
         cy={y}
         r={radius}
         fill={fill}
-        stroke={isSelected ? '#FFFFFF' : colors.background.primary}
+        stroke={isSelected ? theme.palette.gold : theme.palette.night}
         strokeWidth={isSelected ? 3 : 2}
       />
       {showLabel ? (
@@ -84,7 +84,7 @@ function CornerMark(props: {
           y={y + radius / 3}
           fontSize={radius}
           textAnchor="middle"
-          fill={isSelected ? '#FFFFFF' : colors.background.primary}
+          fill={theme.palette.night}
           fontWeight="bold"
         >
           {label}
@@ -100,30 +100,30 @@ function fillForCorner(
   zoneByIndex: Record<number, MarginZone> | undefined
 ): string {
   if (mode === 'neutral') {
-    return colors.text.tertiary;
+    return theme.palette.creamMute;
   }
   if (mode === 'zone') {
     const zone = zoneByIndex?.[corner.index];
-    if (!zone) return colors.text.tertiary;
+    if (!zone) return theme.palette.creamMute;
     return colorForZone(zone);
   }
   switch (corner.pace) {
     case 'slow':
-      return colors.margin.red;
+      return '#F2792B'; // ambre pilote (rouge-perf neutralisé)
     case 'medium':
-      return colors.margin.yellow;
+      return theme.dataColors.brake;
     case 'fast':
-      return colors.margin.green;
+      return theme.palette.green;
   }
 }
 
 function colorForZone(zone: MarginZone): string {
   switch (zone) {
     case 'green':
-      return colors.margin.green;
+      return theme.palette.green;
     case 'yellow':
-      return colors.margin.yellow;
+      return theme.dataColors.brake;
     case 'red':
-      return colors.margin.red;
+      return '#F2792B'; // ambre pilote (rouge-perf neutralisé)
   }
 }

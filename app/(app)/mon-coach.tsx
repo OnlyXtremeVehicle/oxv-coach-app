@@ -137,7 +137,7 @@ function CoachCard({
     : "Vous n'avez pas encore consenti";
 
   return (
-    <Card style={consented ? { borderColor: theme.palette.coach } : undefined}>
+    <Card style={[s.dataPanel, consented ? { borderColor: theme.palette.gold } : null]}>
       <View
         style={{
           flexDirection: 'row',
@@ -150,7 +150,7 @@ function CoachCard({
           <Text
             style={[
               s.coachMeta,
-              { color: consented ? theme.dataColors.accel : theme.palette.creamMute },
+              { color: consented ? theme.palette.gold : theme.palette.creamMute },
             ]}
           >
             {consentText}
@@ -162,7 +162,7 @@ function CoachCard({
         <Switch
           value={consented}
           onValueChange={onToggle}
-          trackColor={{ false: theme.palette.line, true: theme.palette.coach }}
+          trackColor={{ false: theme.palette.line, true: theme.palette.gold }}
           thumbColor={theme.palette.cream}
         />
       </View>
@@ -174,7 +174,7 @@ function CoachCard({
 
 function EmptyState() {
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+    <Card style={[s.dataPanel, { alignItems: 'center', paddingVertical: theme.spacing.xxl }]}>
       <Text style={s.emptyTitle}>Aucun coach assigné.</Text>
       <Text style={s.emptyHint}>
         Si l&apos;équipe OXV vous assigne un coach, son nom apparaîtra ici. Vous resterez libre de
@@ -186,8 +186,11 @@ function EmptyState() {
 
 function ExplainerCard() {
   return (
-    <Card style={{ marginTop: theme.spacing.xxl }}>
-      <SectionLabel>CE QUE LE COACH VOIT</SectionLabel>
+    <Card style={[s.dataPanel, { marginTop: theme.spacing.xxl }]}>
+      <View style={s.headRow}>
+        <View style={s.headDot} />
+        <SectionLabel>CE QUE LE COACH VOIT</SectionLabel>
+      </View>
       <Text style={[s.explainerBody, { marginTop: theme.spacing.sm }]}>
         Quand vous consentez, votre coach voit vos sessions, vos analyses par virage, et votre
         progression. Il ne voit jamais votre email, votre téléphone ou vos documents.
@@ -216,6 +219,29 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
     marginBottom: theme.spacing.xxl,
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   coachName: {
     fontFamily: theme.fonts.bodyMedium,

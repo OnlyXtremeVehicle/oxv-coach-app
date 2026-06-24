@@ -34,6 +34,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 const VISIBILITY_OPTIONS: { id: TraceVisibility; label: string }[] = [
   { id: 'private', label: 'Privé' },
@@ -89,9 +90,10 @@ export default function CreerTraceScreen() {
     <Screen>
       <AppBar title="CRÉER UN TRACÉ" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Depuis OpenStreetMap" />
         <Text style={s.title}>Créer un tracé</Text>
 
-        <Card>
+        <Card style={cockpitHalo}>
           <SectionLabel>Identifiant du way OpenStreetMap</SectionLabel>
           <View
             style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm }}
@@ -126,7 +128,7 @@ export default function CreerTraceScreen() {
 
         {circuit ? (
           <View style={{ marginTop: theme.spacing.xl }}>
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <Card style={{ padding: 0, overflow: 'hidden', ...cockpitHalo }}>
               <CircuitTrace circuit={circuit} height={300} defaultLayer="geometry" />
             </Card>
             <Text style={s.attribution}>
@@ -134,7 +136,7 @@ export default function CreerTraceScreen() {
               · © contributeurs OpenStreetMap
             </Text>
 
-            <Card style={{ marginTop: theme.spacing.xl }}>
+            <Card style={{ marginTop: theme.spacing.xl, ...cockpitHalo }}>
               <SectionLabel>Nom du tracé</SectionLabel>
               <TextInput
                 value={name}
