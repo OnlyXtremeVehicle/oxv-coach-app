@@ -10,15 +10,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { type CoachAnnotationTemplate, validateTemplate } from '@/services/coachCurationLogic';
@@ -27,6 +19,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -133,30 +126,24 @@ export default function CoachGabaritsScreen() {
           )}
 
           {/* Nouveau gabarit */}
-          <View style={{ marginTop: theme.spacing.xxl }}>
+          <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
             <SectionLabel>NOUVEAU GABARIT</SectionLabel>
           </View>
-          <TextInput
+          <Field
+            label="Nom du gabarit"
             value={label}
             onChangeText={setLabel}
-            placeholder="Nom (ex. Sortie de virage)"
-            placeholderTextColor={theme.palette.creamMute}
+            placeholder="Sortie de virage"
             maxLength={60}
-            accessibilityLabel="Nom du gabarit"
-            style={[s.input, { marginTop: theme.spacing.md }]}
           />
-          <TextInput
+          <Field
+            label="Texte du gabarit"
             value={body}
             onChangeText={setBody}
             placeholder="Le texte du gabarit, sobre et descriptif."
-            placeholderTextColor={theme.palette.creamMute}
             multiline
             maxLength={1000}
-            accessibilityLabel="Texte du gabarit"
-            style={[
-              s.input,
-              { minHeight: 96, textAlignVertical: 'top', marginTop: theme.spacing.md },
-            ]}
+            showCounter
           />
 
           {error ? <Text style={s.errorTxt}>{error}</Text> : null}
@@ -237,17 +224,6 @@ const s = {
     letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
     color: theme.palette.red,
-  },
-  input: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
   },
   errorTxt: {
     fontFamily: theme.fonts.mono,

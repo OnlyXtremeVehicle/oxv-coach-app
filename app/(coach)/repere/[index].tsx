@@ -10,15 +10,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { getCorner } from '@/lib/circuitTopology';
@@ -27,8 +19,8 @@ import { listMyCornerReferences, upsertCornerReference } from '@/services/coachR
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function RepereEditorScreen() {
   const params = useLocalSearchParams<{ index?: string }>();
@@ -114,18 +106,22 @@ export default function RepereEditorScreen() {
           ) : (
             <View style={{ marginTop: theme.spacing.xxl }}>
               <Field
-                label="Point de freinage repère (m)"
+                label="Point de freinage repère"
                 value={brakingPoint}
                 onChangeText={setBrakingPoint}
-                placeholder="ex. 110"
-                keyboardType="decimal-pad"
+                placeholder="110"
+                keyboardType="numeric"
+                unit="m"
+                maxLength={12}
               />
               <Field
-                label="Vitesse repère (km/h)"
+                label="Vitesse repère"
                 value={targetSpeed}
                 onChangeText={setTargetSpeed}
-                placeholder="ex. 90"
-                keyboardType="decimal-pad"
+                placeholder="90"
+                keyboardType="numeric"
+                unit="km/h"
+                maxLength={12}
               />
               <Field
                 label="Trajectoire"
@@ -133,6 +129,7 @@ export default function RepereEditorScreen() {
                 onChangeText={setTrajectoryNote}
                 placeholder="Corde tardive, large à la sortie…"
                 multiline
+                maxLength={280}
               />
 
               {error ? (
@@ -163,46 +160,6 @@ export default function RepereEditorScreen() {
   );
 }
 
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  keyboardType,
-  multiline,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder: string;
-  keyboardType?: 'decimal-pad';
-  multiline?: boolean;
-}) {
-  return (
-    <View style={{ marginBottom: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
-        <SectionLabel>{label.toUpperCase()}</SectionLabel>
-      </View>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.palette.creamMute}
-        keyboardType={keyboardType}
-        multiline={multiline}
-        maxLength={multiline ? 280 : 12}
-        accessibilityLabel={label}
-        style={[
-          s.input,
-          multiline
-            ? { minHeight: 72, textAlignVertical: 'top' as const }
-            : { textAlignVertical: 'center' as const },
-        ]}
-      />
-    </View>
-  );
-}
-
 const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
@@ -226,17 +183,6 @@ const s = {
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
-  },
-  input: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
   },
   errorTxt: {
     fontFamily: theme.fonts.mono,

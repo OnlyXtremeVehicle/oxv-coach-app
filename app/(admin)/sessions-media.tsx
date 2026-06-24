@@ -19,16 +19,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -46,6 +37,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { formatDateLong } from '@/utils/format';
 
@@ -387,16 +379,17 @@ function AdminMediaRow({
           {item.mediaType.toUpperCase()}
           {item.fileSizeBytes ? ` · ${Math.round(item.fileSizeBytes / 1024)} Ko` : ''}
         </Text>
-        <TextInput
+        <Field
+          label="Légende"
+          optional
           value={draftCaption}
           onChangeText={setDraftCaption}
           onBlur={() => {
             if (draftCaption !== (item.caption ?? '')) onCaptionChange(draftCaption);
           }}
-          placeholder="Caption optionnelle…"
-          placeholderTextColor={theme.palette.creamMute}
-          style={s.captionInput}
-          accessibilityLabel="Caption du média"
+          placeholder="Décrivez ce média"
+          helper="Enregistré automatiquement"
+          containerStyle={{ marginBottom: 0 }}
         />
         <Pressable
           accessibilityRole="button"
@@ -477,15 +470,6 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     color: theme.palette.creamMute,
-  },
-  captionInput: {
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    borderRadius: theme.radius.sm,
-    padding: theme.spacing.sm,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.cream,
   },
   deleteTxt: {
     fontFamily: theme.fonts.mono,

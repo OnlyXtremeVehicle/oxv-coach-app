@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, Switch, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -35,6 +35,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
@@ -234,12 +235,13 @@ function PilotPicker(props: {
 }) {
   return (
     <Card style={{ borderColor: BRONZE }}>
-      <TextInput
+      <Field
+        label="Rechercher un pilote"
         value={props.search}
         onChangeText={props.onSearchChange}
-        placeholder="Rechercher par nom ou email…"
-        placeholderTextColor={theme.palette.creamMute}
-        style={s.input}
+        placeholder="Nom ou email"
+        autoCapitalize="none"
+        autoCorrect={false}
       />
       {props.pilots.length === 0 ? (
         <Text style={s.centerMute}>Aucun pilote disponible.</Text>
@@ -367,17 +369,6 @@ const s = {
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: BRONZE,
-    marginBottom: theme.spacing.md,
-  },
-  input: {
-    height: 44,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
     marginBottom: theme.spacing.md,
   },
   primaryBtnTxt: {

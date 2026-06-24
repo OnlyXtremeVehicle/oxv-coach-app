@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -36,6 +36,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { timeAgoFr } from '@/utils/time';
@@ -140,19 +141,18 @@ export default function AmisScreen() {
 
         {/* Bloc recherche */}
         <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
-          <View style={s.headRow}>
+          <View style={[s.headRow, { marginBottom: theme.spacing.md }]}>
             <View style={s.headDot} />
             <SectionLabel>AJOUTER UN AMI</SectionLabel>
           </View>
-          <TextInput
+          <Field
+            label="Pseudo du pilote"
             value={searchHandle}
             onChangeText={setSearchHandle}
-            placeholder="@handle du pilote"
-            placeholderTextColor={theme.palette.creamMute}
+            placeholder="@handle"
+            helper="Le pseudo public du pilote à inviter."
             autoCapitalize="none"
             autoCorrect={false}
-            style={s.input}
-            accessibilityLabel="Handle du pilote à inviter"
           />
           <Button
             label={searching ? 'Recherche…' : 'Envoyer la demande'}
@@ -336,18 +336,6 @@ const s = {
     shadowOpacity: 0.8,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
-  },
-  input: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    borderWidth: 1,
-    borderColor: theme.palette.edge,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
   },
   empty: {
     fontFamily: theme.fonts.bodyLight,

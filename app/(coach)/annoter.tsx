@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { getCorner } from '@/lib/circuitTopology';
@@ -35,6 +35,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
@@ -196,9 +197,7 @@ export default function CoachAnnoterScreen() {
           )}
 
           {/* Formulaire */}
-          <View style={{ marginTop: theme.spacing.xxl }}>
-            <SectionLabel>{editingId ? 'MODIFIER LA NOTE' : 'NOUVELLE NOTE'}</SectionLabel>
-          </View>
+          <View style={{ marginTop: theme.spacing.xxl }} />
 
           {/* Gabarits réutilisables (§10.3c-C) — appui pour insérer. */}
           {templates.length > 0 ? (
@@ -217,17 +216,16 @@ export default function CoachAnnoterScreen() {
             </View>
           ) : null}
 
-          <TextInput
+          <Field
+            label={editingId ? 'Modifier la note' : 'Nouvelle note'}
             value={body}
             onChangeText={setBody}
             placeholder="Ce que vous avez observé sur ce virage. Sobre, descriptif, ouvert."
-            placeholderTextColor={theme.palette.creamMute}
             multiline
             numberOfLines={6}
             maxLength={1000}
-            style={s.textarea}
+            showCounter
           />
-          <Text style={s.counter}>{body.length} / 1000</Text>
 
           {/* Toggle visibilité */}
           <View
@@ -379,26 +377,6 @@ const s = {
     fontSize: 10,
     letterSpacing: 0.6,
     color: theme.palette.creamSoft,
-  },
-  textarea: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    padding: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    minHeight: 120,
-    textAlignVertical: 'top' as const,
-  },
-  counter: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
-    textAlign: 'right' as const,
-    marginTop: theme.spacing.xs,
   },
   visChip: {
     flex: 1,

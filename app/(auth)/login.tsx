@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 
 import { Logo } from '@/brand/Logo';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 
 export default function LoginScreen() {
@@ -38,33 +39,33 @@ export default function LoginScreen() {
           </View>
 
           <Card>
-            <TextInput
-              placeholder="Adresse email"
-              placeholderTextColor={theme.palette.creamMute}
+            <Field
+              label="Adresse email"
+              placeholder="vous@exemple.fr"
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="email-address"
               textContentType="emailAddress"
-              style={s.input}
+              returnKeyType="next"
               editable={!loading}
             />
 
-            <TextInput
-              placeholder="Mot de passe"
-              placeholderTextColor={theme.palette.creamMute}
+            <Field
+              label="Mot de passe"
+              placeholder="Votre mot de passe"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
               textContentType="password"
-              style={[s.input, { marginTop: theme.spacing.sm }]}
+              returnKeyType="go"
+              onSubmitEditing={onSubmit}
               editable={!loading}
+              error={error}
             />
 
-            {error ? <Text style={s.error}>{error}</Text> : null}
-
-            <View style={{ marginTop: theme.spacing.lg }}>
+            <View style={{ marginTop: theme.spacing.xs }}>
               <Button
                 label={loading ? 'Connexion…' : 'Entrer'}
                 onPress={onSubmit}
@@ -93,22 +94,5 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
-  },
-  input: {
-    height: 52,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.lg,
-    backgroundColor: theme.palette.card2,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-  },
-  error: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.red,
-    marginTop: theme.spacing.md,
   },
 };
