@@ -30,6 +30,7 @@ import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { ConstatTag, DemoBanner } from '@/components/insights/InsightCard';
 import { dimensionColor, getReading, type ReadingKey } from '@/components/insights/catalogue';
+import { FadeInSection } from '@/components/motion';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -56,39 +57,47 @@ export default function InsightDetailScreen() {
     <Screen>
       <AppBar title="LECTURE APPROFONDIE" onBack={() => router.back()} />
       <View style={styles.body}>
-        {/* Marqueur DÉMO — donnée réelle dès Valence (§5). */}
-        <DemoBanner />
+        {/* En-tête révélé en premier : marqueur DÉMO + eyebrow + titre. */}
+        <FadeInSection>
+          {/* Marqueur DÉMO — donnée réelle dès Valence (§5). */}
+          <DemoBanner />
 
-        {/* Eyebrow mono + titre Geist de la lecture. */}
-        <View style={styles.head}>
-          <View style={styles.eyebrowRow}>
-            <View style={styles.eyebrowTick} />
-            <Text style={styles.eyebrow}>{def.eyebrow}</Text>
+          {/* Eyebrow mono + titre Geist de la lecture. */}
+          <View style={styles.head}>
+            <View style={styles.eyebrowRow}>
+              <View style={styles.eyebrowTick} />
+              <Text style={styles.eyebrow}>{def.eyebrow}</Text>
+            </View>
+            <Text style={styles.title}>{def.name}</Text>
           </View>
-          <Text style={styles.title}>{def.name}</Text>
-        </View>
+        </FadeInSection>
 
-        {/* Visualisation (réelle ou placeholder). */}
-        <View style={styles.viz}>
+        {/* Visualisation (réelle ou placeholder) — révélée après l'en-tête.
+            Les viz n'animent pas leur tracé à l'entrée (seul un point de statut
+            respire) : un fondu de conteneur n'entre donc pas en conflit. */}
+        <FadeInSection delay={100} style={styles.viz}>
           <ReadingViz reading={def.key} />
-        </View>
+        </FadeInSection>
 
-        {/* Lecture factuelle — barre QDI, constat (jamais consigne). */}
-        <View style={[styles.reading, { borderLeftColor: color }]}>
-          <Text style={styles.readingText}>{def.reading}</Text>
-          <View style={{ marginTop: theme.spacing.md }}>
-            <ConstatTag />
+        {/* Lecture factuelle + traçabilité — révélées en dernier (constat). */}
+        <FadeInSection delay={200}>
+          {/* Lecture factuelle — barre QDI, constat (jamais consigne). */}
+          <View style={[styles.reading, { borderLeftColor: color }]}>
+            <Text style={styles.readingText}>{def.reading}</Text>
+            <View style={{ marginTop: theme.spacing.md }}>
+              <ConstatTag />
+            </View>
           </View>
-        </View>
 
-        {/* Traçabilité — d'où vient la donnée (pas de boîte noire). */}
-        <View style={styles.source}>
-          <Text style={styles.sourceIcon}>⊙</Text>
-          <Text style={styles.sourceText}>
-            <Text style={styles.sourceLabel}>Source : </Text>
-            {def.source}
-          </Text>
-        </View>
+          {/* Traçabilité — d'où vient la donnée (pas de boîte noire). */}
+          <View style={styles.source}>
+            <Text style={styles.sourceIcon}>⊙</Text>
+            <Text style={styles.sourceText}>
+              <Text style={styles.sourceLabel}>Source : </Text>
+              {def.source}
+            </Text>
+          </View>
+        </FadeInSection>
 
         {/* Pied doctrinal. */}
         <View style={styles.doctrine}>

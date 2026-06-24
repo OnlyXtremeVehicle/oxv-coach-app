@@ -23,6 +23,7 @@ import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { GaugeInstrument } from '@/components/instruments';
+import { FadeInSection } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { computeRegularity } from '@/services/regularityService';
@@ -239,8 +240,10 @@ function ModePassive({
   return (
     <View style={{ marginTop: spacing.md }}>
       {/* Salutation */}
-      <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Paddock</Text>
-      <Text style={s.greetTitle}>{greetingText}</Text>
+      <FadeInSection>
+        <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Paddock</Text>
+        <Text style={s.greetTitle}>{greetingText}</Text>
+      </FadeInSection>
 
       {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible. */}
       {loading ? null : recentSession ? (
@@ -281,28 +284,32 @@ function ModePassive({
       )}
 
       {/* Explorer — quatre accès essentiels en grille. */}
-      <Text style={[s.eyebrow, s.sectionLabel]}>Explorer</Text>
-      <View style={{ gap: 10 }}>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Tile {...PRIMARY[0]} />
-          <Tile {...PRIMARY[1]} />
+      <FadeInSection delay={120}>
+        <Text style={[s.eyebrow, s.sectionLabel]}>Explorer</Text>
+        <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Tile {...PRIMARY[0]} />
+            <Tile {...PRIMARY[1]} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Tile {...PRIMARY[2]} />
+            <Tile {...PRIMARY[3]} />
+          </View>
         </View>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <Tile {...PRIMARY[2]} />
-          <Tile {...PRIMARY[3]} />
-        </View>
-      </View>
+      </FadeInSection>
 
       {/* Tout le paddock — le reste de la navigation, replié. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: showAll }}
-        onPress={() => setShowAll((v) => !v)}
-        style={({ pressed }) => [s.more, { opacity: pressed ? 0.85 : 1 }]}
-      >
-        <Text style={s.moreText}>{showAll ? 'Replier' : 'Tout le paddock'}</Text>
-        <Text style={s.moreText}>{showAll ? '⌃' : '›'}</Text>
-      </Pressable>
+      <FadeInSection delay={180}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showAll }}
+          onPress={() => setShowAll((v) => !v)}
+          style={({ pressed }) => [s.more, { opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Text style={s.moreText}>{showAll ? 'Replier' : 'Tout le paddock'}</Text>
+          <Text style={s.moreText}>{showAll ? '⌃' : '›'}</Text>
+        </Pressable>
+      </FadeInSection>
 
       {showAll ? (
         <View style={{ marginTop: spacing.sm }}>

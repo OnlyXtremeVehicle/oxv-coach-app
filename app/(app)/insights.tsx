@@ -18,7 +18,6 @@
  * theme.dataColors (QDI), aucune couleur heritage.
  */
 
-import { Fragment } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
@@ -30,6 +29,7 @@ import {
   type InsightTier,
 } from '@/components/insights/catalogue';
 import { Sparkline } from '@/components/insights/sparklines';
+import { FadeInSection } from '@/components/motion';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
@@ -39,22 +39,25 @@ export default function InsightsScreen() {
     <Screen>
       <AppBar title="LECTURES APPROFONDIES" onBack={() => router.back()} />
       <View style={styles.body}>
-        {/* Héros */}
-        <View style={styles.hero}>
-          <Text style={styles.eyebrow}>Le moteur d’insights</Text>
-          <Text style={styles.h1}>Ce que vos données révèlent</Text>
-          <Text style={styles.subtitle}>
-            Six lectures, du constat direct à la signature de votre voiture. Chacune montre un fait
-            — jamais une consigne.
-          </Text>
-        </View>
+        {/* Héros + marqueur DÉMO révélés en premier (cascade douce). */}
+        <FadeInSection>
+          <View style={styles.hero}>
+            <Text style={styles.eyebrow}>Le moteur d’insights</Text>
+            <Text style={styles.h1}>Ce que vos données révèlent</Text>
+            <Text style={styles.subtitle}>
+              Six lectures, du constat direct à la signature de votre voiture. Chacune montre un
+              fait — jamais une consigne.
+            </Text>
+          </View>
 
-        {/* Marqueur DÉMO : données réelles dès Valence (§5). */}
-        <DemoBanner />
+          {/* Marqueur DÉMO : données réelles dès Valence (§5). */}
+          <DemoBanner />
+        </FadeInSection>
 
-        {/* Trois familles (tiers) avec leurs cartes. */}
-        {TIERS.map((tier) => (
-          <Fragment key={tier.id}>
+        {/* Trois familles (tiers) avec leurs cartes — chaque famille révélée
+            en cascade après l'en-tête (delays plafonnés à 4 paliers). */}
+        {TIERS.map((tier, ti) => (
+          <FadeInSection key={tier.id} delay={Math.min(ti + 1, 3) * 80}>
             <TierLabel label={tier.label} />
             {READINGS.filter((r) => r.tier === (tier.id as InsightTier)).map((r) => (
               <InsightCard
@@ -68,7 +71,7 @@ export default function InsightsScreen() {
                 <Sparkline reading={r.key} />
               </InsightCard>
             ))}
-          </Fragment>
+          </FadeInSection>
         ))}
 
         {/* Pied doctrinal — un miroir, pas un directeur. */}

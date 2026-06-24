@@ -188,9 +188,10 @@ const styles = StyleSheet.create({
     lineHeight: 46,
     letterSpacing: -0.5,
     color: theme.palette.cream,
-    textShadowColor: 'rgba(255,183,3,0.5)',
+    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
+    textShadowColor: 'rgba(255,183,3,0.34)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    textShadowRadius: 16,
   },
   heroLabel: {
     fontFamily: theme.fonts.mono,
@@ -296,8 +297,9 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.pill,
   },
   fillHot: {
+    // Lueur de donnée lisible mais sans bloom qui bave (≤ ~0.5).
     shadowColor: AMBER,
-    shadowOpacity: 0.6,
+    shadowOpacity: 0.5,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },

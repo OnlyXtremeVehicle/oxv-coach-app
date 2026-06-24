@@ -8,3 +8,4 @@
 
 export { CountUpNumber, type CountUpNumberProps } from './CountUpNumber';
 export { FadeInSection, type FadeInSectionProps } from './FadeInSection';
+export { useReduceMotion } from './useReduceMotion';

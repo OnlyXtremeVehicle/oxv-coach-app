@@ -336,9 +336,10 @@ const styles = StyleSheet.create({
     fontSize: 40,
     lineHeight: 42,
     color: theme.palette.cream,
-    textShadowColor: 'rgba(255,183,3,0.5)',
+    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
+    textShadowColor: 'rgba(255,183,3,0.34)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
+    textShadowRadius: 16,
   },
   corePct: {
     fontFamily: theme.fonts.mono,
@@ -380,7 +381,8 @@ const styles = StyleSheet.create({
   },
   statGold: {
     color: GOLD,
-    textShadowColor: 'rgba(255,183,3,0.4)',
+    // Lueur secondaire tempérée (≤ 0.36) — pas d'empilement de lueurs fortes.
+    textShadowColor: 'rgba(255,183,3,0.34)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
   },

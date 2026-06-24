@@ -22,6 +22,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
 import { TrophyCard } from '@/components/TrophyCard';
+import { FadeInSection } from '@/components/motion';
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { fetchSessionCircuitCenterline } from '@/services/circuitsService';
 import { computeRegularity } from '@/services/regularityService';
@@ -171,8 +172,12 @@ export default function CarteTropheeScreen() {
     <Screen>
       <AppBar title="CARTE À PARTAGER" subtitle="VERS L'EXTÉRIEUR" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <StatusLine label="Prêt à partager" />
-        <SectionLabel>VOTRE SÉANCE, EN UNE CARTE</SectionLabel>
+        {/* En-tête révélé en douceur. La carte elle-même (capturée en image par
+            react-native-view-shot) reste STATIQUE et hors de toute animation. */}
+        <FadeInSection delay={0}>
+          <StatusLine label="Prêt à partager" />
+          <SectionLabel>VOTRE SÉANCE, EN UNE CARTE</SectionLabel>
+        </FadeInSection>
 
         <View
           style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl, ...cockpitHalo }}
@@ -187,20 +192,23 @@ export default function CarteTropheeScreen() {
           />
         </View>
 
-        <View style={{ gap: theme.spacing.sm }}>
+        {/* Actions + note révélées après la carte (cascade 80/160). */}
+        <FadeInSection delay={80} style={{ gap: theme.spacing.sm }}>
           <Button
             label={sharing ? 'Préparation…' : 'Partager'}
             onPress={onShareImage}
             disabled={sharing}
           />
           <Button label="Lien" variant="ghost" onPress={onShareLink} />
-        </View>
+        </FadeInSection>
 
-        <Text style={s.note}>
-          {Platform.OS === 'ios'
-            ? 'La feuille de partage couvre Story et Enregistrer.'
-            : 'Partagez l’image ou enregistrez-la depuis la feuille système.'}
-        </Text>
+        <FadeInSection delay={160}>
+          <Text style={s.note}>
+            {Platform.OS === 'ios'
+              ? 'La feuille de partage couvre Story et Enregistrer.'
+              : 'Partagez l’image ou enregistrez-la depuis la feuille système.'}
+          </Text>
+        </FadeInSection>
       </View>
     </Screen>
   );

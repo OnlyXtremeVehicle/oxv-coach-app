@@ -159,14 +159,14 @@ export default function DebriefScreen() {
         <FadeInSection delay={0}>
           <Acte numero="1" titre="Récit" body={data.recit} />
         </FadeInSection>
-        <FadeInSection delay={250}>
+        <FadeInSection delay={80}>
           <Acte numero="2" titre="Méta-analyse" body={data.meta} />
         </FadeInSection>
-        <FadeInSection delay={500}>
+        <FadeInSection delay={160}>
           <Acte numero="3" titre="Préparation" body={data.preparation} />
         </FadeInSection>
 
-        <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
+        <FadeInSection delay={240} style={{ marginTop: theme.spacing.xxl }}>
           <Card style={{ paddingVertical: theme.spacing.xl }}>
             <Text style={s.closing}>
               L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause.
@@ -300,7 +300,8 @@ const s = {
     borderRadius: 3,
     backgroundColor: theme.palette.gold,
     shadowColor: theme.palette.gold,
-    shadowOpacity: 0.8,
+    // Pastille de statut : lueur tempérée ≤ 0.6 (standard halo refonte).
+    shadowOpacity: 0.6,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
   },

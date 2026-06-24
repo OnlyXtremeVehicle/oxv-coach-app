@@ -304,7 +304,7 @@ export default function BilanScreen() {
         {/* Tracé 3D en héros (specs v4 §05 §4.1) : « je me revois ». Couche par
             défaut Régularité ; géométrie = circuit officiel, couches data si la
             session porte des insights (sinon forme du circuit seule, honnête). */}
-        <FadeInSection style={{ marginTop: theme.spacing.xl }}>
+        <FadeInSection delay={0} style={{ marginTop: theme.spacing.xl }}>
           {/* Role-aware : un coach qui consulte la session d'un de ses pilotes voit
               les couches coach + l'attribution (badge or). Le pilote sur sa propre
               session voit les couches pilote. Accès déjà consenti (RLS coach). */}
@@ -316,8 +316,11 @@ export default function BilanScreen() {
 
         {/* Instrument central — la régularité (amplitude des tours) occupe l'écran,
             arc factuel sans zone de jugement. Le tour de référence reste au même
-            rang (charte 10 E2), juste sous l'arc. Le rouge n'apparaît pas ici. */}
-        <FadeInSection
+            rang (charte 10 E2), juste sous l'arc. Le rouge n'apparaît pas ici.
+            La jauge s'anime déjà (arc + centre) : on ne la réenveloppe pas ; seuls
+            ses voisins texte entrent en cascade (delay 80), pour éviter la
+            double-animation. */}
+        <View
           style={{
             alignItems: 'center',
             marginTop: theme.spacing.xxl,
@@ -337,7 +340,8 @@ export default function BilanScreen() {
             />
           ) : null}
 
-          <View
+          <FadeInSection
+            delay={80}
             style={{
               alignItems: 'center',
               marginTop: salient && salient.spreadSeconds != null ? theme.spacing.xxl : 0,
@@ -369,13 +373,13 @@ export default function BilanScreen() {
                 </Text>
               )
             ) : null}
-          </View>
-        </FadeInSection>
+          </FadeInSection>
+        </View>
 
         {/* Secteurs & trace — attente honnête : ces mesures viennent des trames du
             boîtier (telemetry_frames), vides jusqu'à la première vraie capture. On
             prépare l'emplacement, on n'invente pas la donnée (doctrine miroir). */}
-        <FadeInSection style={{ marginBottom: theme.spacing.xxl }}>
+        <FadeInSection delay={160} style={{ marginBottom: theme.spacing.xxl }}>
           <Text style={s.sectionEyebrow}>SECTEURS &amp; TRACE</Text>
           <EmptyState
             message="Les temps par secteur et la trace G apparaîtront avec les premières trames du boîtier."
@@ -386,7 +390,7 @@ export default function BilanScreen() {
         {/* Les quatre piliers — aperçu cliquable vers chaque lecture détaillée.
             Seule la consistance porte ici une mesure (issue des tours) ; les autres
             sont des portes vers leur écran (calcul sur frames / écran dédié). */}
-        <FadeInSection style={{ marginBottom: theme.spacing.xxl }}>
+        <FadeInSection delay={240} style={{ marginBottom: theme.spacing.xxl }}>
           <Text style={s.sectionEyebrow}>LES QUATRE PILIERS</Text>
           <View style={{ gap: theme.spacing.xs }}>
             <MeterBar

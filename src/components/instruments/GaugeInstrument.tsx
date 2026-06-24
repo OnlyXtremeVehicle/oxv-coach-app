@@ -281,9 +281,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     color: palette.cream,
     letterSpacing: -1,
-    textShadowColor: 'rgba(255,183,3,0.45)',
+    // Halo doré tempéré — « Ferrari minimaliste » : le chiffre rayonne sans brûler.
+    textShadowColor: 'rgba(255,183,3,0.34)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
+    textShadowRadius: 16,
   },
   unit: {
     fontFamily: fonts.mono,
