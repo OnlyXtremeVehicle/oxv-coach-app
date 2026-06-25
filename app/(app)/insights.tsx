@@ -43,7 +43,9 @@ export default function InsightsScreen() {
         <FadeInSection>
           <View style={styles.hero}>
             <Text style={styles.eyebrow}>Le moteur d’insights</Text>
-            <Text style={styles.h1}>Ce que vos données révèlent</Text>
+            <Text style={styles.h1} accessibilityRole="header">
+              Ce que vos données révèlent
+            </Text>
             <Text style={styles.subtitle}>
               Six lectures, du constat direct à la signature de votre voiture. Chacune montre un
               fait — jamais une consigne.
@@ -74,10 +76,13 @@ export default function InsightsScreen() {
           </FadeInSection>
         ))}
 
-        {/* Pied doctrinal — un miroir, pas un directeur. */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>{DOCTRINE_FOOTER}</Text>
-        </View>
+        {/* Pied doctrinal — un miroir, pas un directeur. Rejoint la cascade
+            (au lieu d'apparaître sec) en clôture, après les trois familles. */}
+        <FadeInSection delay={320}>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>{DOCTRINE_FOOTER}</Text>
+          </View>
+        </FadeInSection>
       </View>
     </Screen>
   );

@@ -45,7 +45,9 @@ export default function InsightDetailScreen() {
       <Screen scroll={false}>
         <AppBar title="LECTURE" onBack={() => router.back()} />
         <View style={styles.notFound}>
-          <Text style={styles.notFoundText}>Lecture introuvable.</Text>
+          <Text style={styles.notFoundText} accessibilityRole="header">
+            Lecture introuvable.
+          </Text>
         </View>
       </Screen>
     );
@@ -68,7 +70,9 @@ export default function InsightDetailScreen() {
               <View style={styles.eyebrowTick} />
               <Text style={styles.eyebrow}>{def.eyebrow}</Text>
             </View>
-            <Text style={styles.title}>{def.name}</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              {def.name}
+            </Text>
           </View>
         </FadeInSection>
 
@@ -89,9 +93,17 @@ export default function InsightDetailScreen() {
             </View>
           </View>
 
-          {/* Traçabilité — d'où vient la donnée (pas de boîte noire). */}
+          {/* Traçabilité — d'où vient la donnée (pas de boîte noire). Le glyphe
+              ⊙ est décoratif : masqué aux lecteurs d'écran pour ne pas annoncer
+              « opérateur point cerclé » avant le « Source : » utile. */}
           <View style={styles.source}>
-            <Text style={styles.sourceIcon}>⊙</Text>
+            <Text
+              style={styles.sourceIcon}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              ⊙
+            </Text>
             <Text style={styles.sourceText}>
               <Text style={styles.sourceLabel}>Source : </Text>
               {def.source}
