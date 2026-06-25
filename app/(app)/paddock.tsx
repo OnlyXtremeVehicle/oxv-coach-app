@@ -40,7 +40,9 @@ export default function PaddockScreen() {
       >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>BIENVENUE</Text>
-          <Text style={s.title}>Vous y êtes.</Text>
+          <Text style={s.title} accessibilityRole="header">
+            Vous y êtes.
+          </Text>
           <Text style={s.manifest}>{circuitName}.</Text>
         </View>
 

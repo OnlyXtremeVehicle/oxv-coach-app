@@ -161,6 +161,8 @@ export default function RoulageScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Terminer le roulage"
+          accessibilityState={{ disabled: ending, busy: ending }}
           disabled={ending}
           onPress={onFinish}
           style={({ pressed }) => [s.finish, (pressed || ending) && { opacity: 0.85 }]}
@@ -174,6 +176,8 @@ export default function RoulageScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Annuler sans enregistrer"
+          accessibilityState={{ disabled: ending }}
           disabled={ending}
           onPress={onAbort}
           style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}

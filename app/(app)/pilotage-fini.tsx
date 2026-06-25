@@ -57,10 +57,12 @@ export default function PilotageFiniScreen() {
         }}
       >
         <View style={s.eyebrowRow}>
-          <View style={s.dot} />
+          <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={s.eyebrow}>Pilotage clôturé</Text>
         </View>
-        <Text style={s.title}>Vous avez piloté.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Vous avez piloté.
+        </Text>
 
         {durationMin !== null || lapCount > 0 ? (
           <Text style={s.meta}>

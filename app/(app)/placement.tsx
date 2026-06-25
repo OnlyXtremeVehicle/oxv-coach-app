@@ -10,13 +10,13 @@
  * du reste."* — pose la promesse du silence.
  *
  * Reskin V2 : Screen + AppBar, titres Syncopate, illustration en Card.
- * Écran d'état de flux sans retour manuel. Le CTA reste un Pressable
- * (indicateur de chargement pendant le démarrage de la capture). Logique
- * de capture inchangée.
+ * Écran d'état de flux sans retour manuel. Le CTA passe par le Button du kit
+ * (état `loading` : libellé conservé + `busy` lecteurs d'écran) pendant le
+ * démarrage de la capture. Logique de capture inchangée.
  */
 
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
@@ -25,6 +25,7 @@ import { getDefaultCircuit } from '@/services/circuitsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
@@ -69,7 +70,9 @@ export default function PlacementScreen() {
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>PLACEMENT</Text>
 
-          <Text style={s.headline}>Posez le boîtier sur le support magnétique côté passager.</Text>
+          <Text style={s.headline} accessibilityRole="header">
+            Posez le boîtier sur le support magnétique côté passager.
+          </Text>
 
           {/* Illustration schématique simple : un bloc qui évoque le tableau de bord */}
           <Card
@@ -90,21 +93,14 @@ export default function PlacementScreen() {
 
           <Text style={s.manifest}>Vous le verrez peu. Il s'occupera du reste.</Text>
 
-          {error ? <Text style={s.error}>{error}</Text> : null}
+          {error ? (
+            <Text style={s.error} accessibilityLiveRegion="polite">
+              {error}
+            </Text>
+          ) : null}
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={starting}
-          onPress={onStart}
-          style={({ pressed }) => [
-            s.cta,
-            starting && s.ctaDisabled,
-            (pressed || starting) && { opacity: 0.85 },
-          ]}
-        >
-          {starting ? <ActivityIndicator color="#000" /> : <Text style={s.ctaTxt}>C'est fait</Text>}
-        </Pressable>
+        <Button label="C'est fait" onPress={onStart} loading={starting} />
       </View>
     </Screen>
   );
@@ -154,21 +150,5 @@ const s = {
     lineHeight: theme.fontSize.body * 1.5,
     color: theme.palette.red,
     marginTop: theme.spacing.lg,
-  },
-  cta: {
-    borderRadius: theme.radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 14,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    backgroundColor: theme.palette.cream,
-  },
-  ctaDisabled: { backgroundColor: '#2a2a2e' },
-  ctaTxt: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase' as const,
-    color: '#000',
   },
 };

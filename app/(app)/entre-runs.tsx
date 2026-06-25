@@ -49,14 +49,29 @@ export default function EntreRunsScreen() {
       <View
         style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
       >
-        <Text style={s.title}>À chaud, l&apos;essentiel.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          À chaud, l&apos;essentiel.
+        </Text>
 
         <View style={s.panel}>
           <View style={s.status}>
-            <Animated.View style={[s.dotLive, { opacity: blink }]} />
+            <Animated.View
+              style={[s.dotLive, { opacity: blink }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
             <Text style={s.statusLabel}>Meilleur tour · à chaud</Text>
           </View>
-          <Text style={s.chrono}>{bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}</Text>
+          <Text
+            style={s.chrono}
+            accessibilityLabel={
+              bestLapMs !== null
+                ? `Meilleur tour à chaud : ${formatChronoMs(bestLapMs)}`
+                : 'Meilleur tour à chaud : non disponible'
+            }
+          >
+            {bestLapMs !== null ? formatChronoMs(bestLapMs) : '—'}
+          </Text>
           <Text style={s.note}>
             {lapCount} {lapCount > 1 ? 'tours' : 'tour'} · la marge se lit au bilan, après la
             session.
