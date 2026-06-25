@@ -24,11 +24,19 @@ export default function AccueilPhilosophiqueScreen() {
     <SafeAreaView
       style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
-      {/* Barre de progression — segment actif en or */}
-      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+      {/* Barre de progression — segment actif en or. Un seul nœud a11y
+          (progressbar) ; les segments sont décoratifs. */}
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Étape ${STEP} sur ${TOTAL}`}
+        accessibilityValue={{ min: 0, max: TOTAL, now: STEP }}
+        style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}
+      >
         {Array.from({ length: TOTAL }).map((_, i) => (
           <View
             key={i}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
             style={{
               flex: 1,
               height: 3,
@@ -38,7 +46,11 @@ export default function AccueilPhilosophiqueScreen() {
           />
         ))}
       </View>
-      <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+      <Text
+        style={[s.step, { marginTop: spacing.sm }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
         ÉTAPE {STEP} / {TOTAL}
       </Text>
 
@@ -54,9 +66,11 @@ export default function AccueilPhilosophiqueScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Commencer"
         onPress={() => router.push('/(onboarding)/doctrine')}
         style={({ pressed }) => ({
-          height: 52,
+          minHeight: 52,
+          paddingVertical: spacing.md,
           borderRadius: radius.lg,
           backgroundColor: palette.gold,
           alignItems: 'center',
@@ -72,12 +86,21 @@ export default function AccueilPhilosophiqueScreen() {
 }
 
 const s = {
+  // Eyebrow décoratif (marque) — peut rester `faint`.
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: palette.faint,
+  },
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   manifest: {
     fontFamily: fonts.bodyLight,

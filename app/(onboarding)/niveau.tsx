@@ -61,10 +61,17 @@ export default function NiveauScreen() {
       style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
       <ScrollView contentContainerStyle={{ paddingBottom: spacing.xl, flexGrow: 1 }}>
-        <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Étape ${STEP} sur ${TOTAL}`}
+          accessibilityValue={{ min: 0, max: TOTAL, now: STEP }}
+          style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}
+        >
           {Array.from({ length: TOTAL }).map((_, i) => (
             <View
               key={i}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
               style={{
                 flex: 1,
                 height: 3,
@@ -74,12 +81,18 @@ export default function NiveauScreen() {
             />
           ))}
         </View>
-        <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+        <Text
+          style={[s.step, { marginTop: spacing.sm }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
           ÉTAPE {STEP} / {TOTAL}
         </Text>
 
         <View style={{ marginTop: 40 }}>
-          <Text style={[s.eyebrow, { marginBottom: spacing.lg }]}>NIVEAU PILOTE</Text>
+          <Text accessibilityRole="header" style={[s.label, { marginBottom: spacing.lg }]}>
+            NIVEAU PILOTE
+          </Text>
           <Text style={[s.title, { marginBottom: spacing.sm }]}>Où vous situez-vous ?</Text>
           <Text style={[s.caption, { marginBottom: spacing.xxl }]}>
             Cette information reste privée. Elle calibre vos analyses.
@@ -91,6 +104,8 @@ export default function NiveauScreen() {
               return (
                 <Pressable
                   accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`${level.title}. ${level.description}`}
                   key={level.id}
                   onPress={() => setSelected(level.id)}
                   style={({ pressed }) => ({
@@ -114,10 +129,13 @@ export default function NiveauScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={submitting ? 'Enregistrement en cours' : 'Continuer'}
+          accessibilityState={{ disabled: !selected || submitting, busy: submitting }}
           onPress={onContinue}
           disabled={!selected || submitting}
           style={({ pressed }) => ({
-            height: 52,
+            minHeight: 52,
+            paddingVertical: spacing.md,
             borderRadius: radius.lg,
             backgroundColor: selected ? palette.gold : palette.card2,
             alignItems: 'center',
@@ -136,12 +154,21 @@ export default function NiveauScreen() {
 }
 
 const s = {
-  eyebrow: {
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: palette.faint,
+    color: palette.creamMute,
+  },
+  // Libellé de section (info utile, sert d'en-tête) — contraste AA.
+  label: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
   caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },

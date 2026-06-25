@@ -28,10 +28,17 @@ export default function MethodeScreen() {
       style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: spacing.xl }}>
-        <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Étape ${STEP} sur ${TOTAL}`}
+          accessibilityValue={{ min: 0, max: TOTAL, now: STEP }}
+          style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}
+        >
           {Array.from({ length: TOTAL }).map((_, i) => (
             <View
               key={i}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
               style={{
                 flex: 1,
                 height: 3,
@@ -41,16 +48,26 @@ export default function MethodeScreen() {
             />
           ))}
         </View>
-        <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+        <Text
+          style={[s.step, { marginTop: spacing.sm }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
           ÉTAPE {STEP} / {TOTAL}
         </Text>
 
         <View style={{ flex: 1, justifyContent: 'center', paddingTop: 40 }}>
-          <Text style={[s.eyebrow, { marginBottom: 40 }]}>LA MÉTHODE OXV</Text>
+          <Text accessibilityRole="header" style={[s.label, { marginBottom: 40 }]}>
+            LA MÉTHODE OXV
+          </Text>
 
           <View style={{ gap: 40, marginBottom: 56 }}>
             {STEPS.map((step) => (
-              <View key={step.eyebrow}>
+              <View
+                key={step.eyebrow}
+                accessible
+                accessibilityLabel={`${step.eyebrow}. ${step.body}`}
+              >
                 <Text style={s.word}>{step.eyebrow}</Text>
                 <Text style={s.wordBody}>{step.body}</Text>
               </View>
@@ -62,9 +79,11 @@ export default function MethodeScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Suivant"
           onPress={() => router.push('/(onboarding)/niveau')}
           style={({ pressed }) => ({
-            height: 52,
+            minHeight: 52,
+            paddingVertical: spacing.md,
             borderRadius: radius.lg,
             backgroundColor: palette.gold,
             alignItems: 'center',
@@ -80,12 +99,21 @@ export default function MethodeScreen() {
 }
 
 const s = {
-  eyebrow: {
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: palette.faint,
+    color: palette.creamMute,
+  },
+  // Libellé de section (info utile, sert d'en-tête) — contraste AA.
+  label: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   word: {
     color: palette.gold,
