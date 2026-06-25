@@ -43,34 +43,64 @@ export default function CoachOnboardingMissionScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: palette.night }}>
       <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.xl }}>
-        <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}>
-          {Array.from({ length: TOTAL }).map((_, i) => (
-            <View
-              key={i}
-              style={{
-                flex: 1,
-                height: 3,
-                borderRadius: radius.sm,
-                backgroundColor: i < STEP ? palette.gold : palette.line,
-              }}
-            />
-          ))}
+        <View
+          accessibilityRole="progressbar"
+          accessibilityLabel={`Étape ${STEP} sur ${TOTAL}`}
+          accessibilityValue={{ min: 0, max: TOTAL, now: STEP }}
+          style={{ marginBottom: spacing.xxl }}
+        >
+          <View
+            style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm }}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {Array.from({ length: TOTAL }).map((_, i) => (
+              <View
+                key={i}
+                style={{
+                  flex: 1,
+                  height: 3,
+                  borderRadius: radius.sm,
+                  backgroundColor: i < STEP ? palette.gold : palette.line,
+                }}
+              />
+            ))}
+          </View>
+          <Text style={s.step} accessibilityElementsHidden importantForAccessibility="no">
+            ÉTAPE {STEP} / {TOTAL}
+          </Text>
         </View>
-        <Text style={[s.eyebrow, { marginBottom: spacing.xxl }]}>
-          ÉTAPE {STEP} / {TOTAL}
-        </Text>
 
-        <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>MISSION</Text>
-        <Text style={[s.title, { marginBottom: spacing.sm }]}>Ce que vous faites ici.</Text>
+        <Text accessibilityRole="header" style={[s.label, { marginBottom: spacing.md }]}>
+          MISSION
+        </Text>
+        <Text style={[s.title, { marginBottom: spacing.sm }]} accessibilityRole="header">
+          Ce que vous faites ici.
+        </Text>
         <Text style={[s.caption, { marginBottom: 40 }]}>
           Quatre principes qui guident chaque interaction avec un pilote.
         </Text>
 
         {POINTS.map((point) => (
-          <View key={point.eyebrow} style={{ marginBottom: 40 }}>
-            <Text style={[s.pointEyebrow, { marginBottom: spacing.sm }]}>{point.eyebrow}</Text>
-            <Text style={s.pointTitle}>{point.title}</Text>
-            <Text style={s.pointBody}>{point.body}</Text>
+          <View
+            key={point.eyebrow}
+            style={{ marginBottom: 40 }}
+            accessible
+            accessibilityLabel={`${point.eyebrow}. ${point.title} ${point.body}`}
+          >
+            <Text
+              style={[s.pointEyebrow, { marginBottom: spacing.sm }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              {point.eyebrow}
+            </Text>
+            <Text style={s.pointTitle} accessibilityElementsHidden importantForAccessibility="no">
+              {point.title}
+            </Text>
+            <Text style={s.pointBody} accessibilityElementsHidden importantForAccessibility="no">
+              {point.body}
+            </Text>
           </View>
         ))}
       </ScrollView>
@@ -78,9 +108,11 @@ export default function CoachOnboardingMissionScreen() {
       <View style={{ paddingHorizontal: spacing.xl, paddingBottom: spacing.xl }}>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Continuer vers le pacte"
           onPress={() => router.push('/(coach-onboarding)/pacte' as never)}
           style={({ pressed }) => ({
-            height: 52,
+            minHeight: 52,
+            paddingVertical: spacing.md,
             borderRadius: radius.lg,
             backgroundColor: palette.gold,
             alignItems: 'center',
@@ -96,12 +128,21 @@ export default function CoachOnboardingMissionScreen() {
 }
 
 const s = {
-  eyebrow: {
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: palette.faint,
+    color: palette.creamMute,
+  },
+  // Libellé de section (info utile, sert d'en-tête) — contraste AA.
+  label: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   pointEyebrow: {
     fontFamily: fonts.mono,

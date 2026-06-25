@@ -176,12 +176,20 @@ export default function CoachArScreen() {
         {/* En-tête + badge preview, accent coach */}
         <View style={s.headerRow}>
           <Text style={s.eyebrow}>VUE AR COACH</Text>
-          <View style={s.previewBadge}>
-            <View style={s.previewDot} />
-            <Text style={s.previewBadgeText}>APERÇU · PROTOTYPE</Text>
+          <View style={s.previewBadge} accessible accessibilityLabel="Aperçu, prototype">
+            <View style={s.previewDot} accessibilityElementsHidden importantForAccessibility="no" />
+            <Text
+              style={s.previewBadgeText}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              APERÇU · PROTOTYPE
+            </Text>
           </View>
         </View>
-        <Text style={s.title}>Vos lunettes, au bord de piste.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Vos lunettes, au bord de piste.
+        </Text>
         <Text style={s.manifest}>
           Préparez les faits que vous lirez dans vos lunettes pour la session d&apos;un pilote. Le
           pilote, lui, roule en silence : rien ne s&apos;affiche de son côté.
@@ -384,7 +392,13 @@ export default function CoachArScreen() {
         </View>
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -403,13 +417,15 @@ function StatusRow({
   tone: 'ok' | 'neutral';
 }) {
   return (
-    <View style={s.statusRow}>
+    <View style={s.statusRow} accessible accessibilityLabel={`${label} : ${value}`}>
       <View style={s.statusLeft}>
         <View
           style={[
             s.statusDot,
             { backgroundColor: tone === 'ok' ? theme.dataColors.accel : theme.palette.faint },
           ]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
         />
         <Text style={s.statusLabel}>{label}</Text>
       </View>
@@ -448,8 +464,9 @@ const s = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: theme.palette.gold,
   },
+  // Badge d'état « aperçu/prototype » = libellé → corps medium, pas mono.
   previewBadgeText: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.bodyMedium,
     fontSize: 9,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
@@ -554,10 +571,10 @@ const s = StyleSheet.create({
     fontSize: theme.fontSize.body,
     color: theme.palette.cream,
   },
+  // Valeur d'état = libellé texte (pas un chiffre) → corps, jamais mono.
   statusValue: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
     color: theme.palette.creamMute,
     textAlign: 'right',
   },
@@ -587,10 +604,10 @@ const s = StyleSheet.create({
     gap: theme.spacing.sm,
     backgroundColor: theme.palette.night,
   },
+  // Texte de chargement (libellé) → corps, pas mono.
   previewOverlayText: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
     color: theme.palette.creamMute,
   },
   previewErrorTitle: {
@@ -616,10 +633,10 @@ const s = StyleSheet.create({
     lineHeight: theme.fontSize.small * 1.6,
     color: theme.palette.creamMute,
   },
+  // Lien de retour (interactif) → corps, pas mono.
   backLink: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
   },
 });

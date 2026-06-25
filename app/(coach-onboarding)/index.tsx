@@ -21,26 +21,43 @@ export default function CoachOnboardingHomeScreen() {
     <SafeAreaView
       style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
-      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
-        {Array.from({ length: TOTAL }).map((_, i) => (
-          <View
-            key={i}
-            style={{
-              flex: 1,
-              height: 3,
-              borderRadius: radius.sm,
-              backgroundColor: i < STEP ? palette.gold : palette.line,
-            }}
-          />
-        ))}
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Étape ${STEP} sur ${TOTAL}`}
+        accessibilityValue={{ min: 0, max: TOTAL, now: STEP }}
+        style={{ paddingTop: spacing.lg }}
+      >
+        <View
+          style={{ flexDirection: 'row', gap: spacing.sm }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {Array.from({ length: TOTAL }).map((_, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 3,
+                borderRadius: radius.sm,
+                backgroundColor: i < STEP ? palette.gold : palette.line,
+              }}
+            />
+          ))}
+        </View>
+        <Text
+          style={[s.step, { marginTop: spacing.sm }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        >
+          ÉTAPE {STEP} / {TOTAL}
+        </Text>
       </View>
-      <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
-        ÉTAPE {STEP} / {TOTAL}
-      </Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text style={[s.eyebrow, { marginBottom: spacing.lg }]}>BIENVENUE</Text>
-        <Text style={[s.headline, { marginBottom: 40 }]}>Vous êtes coach OXV.</Text>
+        <Text style={[s.headline, { marginBottom: 40 }]} accessibilityRole="header">
+          Vous êtes coach OXV.
+        </Text>
 
         <Text style={[s.body, { marginBottom: spacing.lg }]}>
           Votre rôle est d&apos;accompagner les pilotes qui vous sont assignés et qui ont consenti
@@ -54,9 +71,10 @@ export default function CoachOnboardingHomeScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Continuer vers la mission"
         onPress={() => router.push('/(coach-onboarding)/mission' as never)}
         style={({ pressed }) => ({
-          height: 52,
+          minHeight: 52,
           borderRadius: radius.lg,
           backgroundColor: palette.gold,
           alignItems: 'center',
@@ -72,12 +90,21 @@ export default function CoachOnboardingHomeScreen() {
 }
 
 const s = {
+  // Eyebrow décoratif (« BIENVENUE ») — peut rester `faint`.
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: palette.faint,
+  },
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   headline: {
     color: palette.cream,

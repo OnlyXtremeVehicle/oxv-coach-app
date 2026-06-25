@@ -99,7 +99,9 @@ export default function CoachPilotDetailScreen() {
       <AppBar title="PILOTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>PILOTE SUIVI</Text>
-        <Text style={s.title}>{fullName}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {fullName}
+        </Text>
 
         {/* Priorisation du bilan (§10.3c-B) */}
         <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
@@ -127,6 +129,10 @@ export default function CoachPilotDetailScreen() {
               </SectionLabel>
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={
+                  mode === 'browse' ? 'Comparer deux sessions' : 'Annuler la comparaison'
+                }
+                hitSlop={theme.hitSlop}
                 onPress={() => {
                   setMode(mode === 'browse' ? 'compare' : 'browse');
                   setSelectedIds([]);
@@ -170,7 +176,13 @@ export default function CoachPilotDetailScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour à mes pilotes"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={{ minHeight: 44, justifyContent: 'center' }}
+          >
             <Text style={s.back}>Retour à mes pilotes</Text>
           </Pressable>
         </View>
@@ -198,6 +210,12 @@ function SessionRow({
     : '—';
   const marginStr = session.marginGlobal !== null ? `${Math.round(session.marginGlobal)} %` : '—';
 
+  // Libellé a11y consolidé : date, circuit, tours, zone de marge et marge.
+  const zoneStr = session.marginZone ? `, ${marginLabelOf(session.marginZone)}` : '';
+  const marginA11y =
+    session.marginGlobal !== null ? `, marge ${Math.round(session.marginGlobal)} %` : '';
+  const rowA11yLabel = `${dateStr}, ${session.circuitName ?? 'circuit'}, ${lapStr}${zoneStr}${marginA11y}`;
+
   const rowContent = (
     <>
       <View
@@ -223,6 +241,8 @@ function SessionRow({
     return (
       <Pressable
         accessibilityRole="checkbox"
+        accessibilityLabel={rowA11yLabel}
+        accessibilityHint="Sélectionner pour le comparatif"
         accessibilityState={{ checked: selected }}
         onPress={onToggle}
         style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
@@ -246,12 +266,13 @@ function SessionRow({
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Ouvrir le bilan du ${dateStr}`}
+        accessibilityLabel={`Ouvrir le bilan. ${rowA11yLabel}`}
         onPress={() =>
           router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
         }
         style={({ pressed }) => ({
           padding: theme.spacing.md,
+          minHeight: 44,
           opacity: pressed ? 0.85 : 1,
           flexDirection: 'row',
           alignItems: 'center',
@@ -273,6 +294,8 @@ function SessionRow({
         style={({ pressed }) => ({
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm,
+          minHeight: 44,
+          justifyContent: 'center',
           borderTopWidth: 1,
           borderTopColor: theme.palette.line,
           opacity: pressed ? 0.7 : 1,
@@ -325,10 +348,11 @@ const s = {
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
   },
+  // Libellé d'action (interactif) — corps, pas mono : le mono reste aux chiffres.
   action: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
-    letterSpacing: 1,
+    letterSpacing: 0.3,
     color: theme.palette.coach,
   },
   sessionDate: {
@@ -354,10 +378,11 @@ const s = {
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
   },
+  // Lien de retour (interactif) — corps, pas mono.
   back: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.micro,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.3,
     color: theme.palette.creamMute,
   },
 };

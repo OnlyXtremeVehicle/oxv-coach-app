@@ -61,20 +61,33 @@ export default function CoachPacteScreen() {
     <SafeAreaView
       style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
-      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}>
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Étape ${TOTAL} sur ${TOTAL}`}
+        accessibilityValue={{ min: 0, max: TOTAL, now: TOTAL }}
+        style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}
+      >
         {Array.from({ length: TOTAL }).map((_, i) => (
           <View
             key={i}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
             style={{ flex: 1, height: 3, borderRadius: radius.sm, backgroundColor: palette.gold }}
           />
         ))}
       </View>
-      <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>
+      <Text
+        style={[s.step, { marginTop: spacing.sm }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
         ÉTAPE {TOTAL} / {TOTAL}
       </Text>
 
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text style={[s.eyebrow, { marginBottom: 40 }]}>PACTE DE COACHING</Text>
+        <Text accessibilityRole="header" style={[s.label, { marginBottom: 40 }]}>
+          PACTE DE COACHING
+        </Text>
 
         <Text style={[s.manifesto, { marginBottom: 40 }]}>
           Je respecte la confidentialité du pilote, sans condition.
@@ -108,7 +121,11 @@ export default function CoachPacteScreen() {
               marginRight: spacing.md,
             }}
           >
-            {committed ? <Text style={s.check}>✓</Text> : null}
+            {committed ? (
+              <Text style={s.check} accessibilityElementsHidden importantForAccessibility="no">
+                ✓
+              </Text>
+            ) : null}
           </View>
           <Text style={s.commit}>Je m&apos;engage.</Text>
         </Pressable>
@@ -116,10 +133,13 @@ export default function CoachPacteScreen() {
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={submitting ? 'Activation en cours' : 'Activer mon compte coach'}
+        accessibilityState={{ disabled: !committed || submitting, busy: submitting }}
         onPress={onActivate}
         disabled={!committed || submitting}
         style={({ pressed }) => ({
-          height: 52,
+          minHeight: 52,
+          paddingVertical: spacing.md,
           borderRadius: radius.lg,
           backgroundColor: committed ? palette.gold : palette.card2,
           alignItems: 'center',
@@ -130,7 +150,13 @@ export default function CoachPacteScreen() {
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        {submitting ? <ActivityIndicator color={palette.night} /> : null}
+        {submitting ? (
+          <ActivityIndicator
+            color={palette.night}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : null}
         <Text style={[s.ctaTxt, { color: committed ? palette.night : palette.creamMute }]}>
           {submitting ? 'Activation…' : 'Activer mon compte coach'}
         </Text>
@@ -140,12 +166,21 @@ export default function CoachPacteScreen() {
 }
 
 const s = {
-  eyebrow: {
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: palette.faint,
+    color: palette.creamMute,
+  },
+  // Libellé de section (info utile, sert d'en-tête) — contraste AA.
+  label: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
   },
   manifesto: {
     color: palette.cream,
