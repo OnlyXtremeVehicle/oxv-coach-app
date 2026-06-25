@@ -303,12 +303,9 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
-    // Pastille de statut : lueur tempérée ≤ 0.6 (standard halo refonte).
-    shadowOpacity: 0.6,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    // Repère de structure NEUTRE (décision Gabin) : ni or (= donnée) ni rouge
+    // (= acte/marque) — un simple point gris, hors code couleur, sans lueur.
+    backgroundColor: theme.palette.creamMute,
   },
   acteLabel: {
     fontFamily: theme.fonts.mono,
