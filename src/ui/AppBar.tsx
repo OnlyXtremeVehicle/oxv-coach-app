@@ -17,7 +17,12 @@ export function AppBar({ title, subtitle, onBack, leading, trailing }: Props) {
   return (
     <View style={styles.bar}>
       {onBack ? (
-        <Pressable onPress={onBack} hitSlop={theme.hitSlop}>
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          hitSlop={17}
+        >
           <Chevron />
         </Pressable>
       ) : leading ? (
