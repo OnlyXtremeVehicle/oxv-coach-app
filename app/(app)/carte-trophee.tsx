@@ -140,8 +140,11 @@ export default function CarteTropheeScreen() {
     return (
       <Screen scroll={false}>
         <AppBar title="CARTE À PARTAGER" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+        <View style={s.center}>
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            accessibilityLabel="Préparation de la carte"
+          />
         </View>
       </Screen>
     );
@@ -151,15 +154,10 @@ export default function CarteTropheeScreen() {
     return (
       <Screen scroll={false}>
         <AppBar title="CARTE À PARTAGER" onBack={() => router.back()} />
-        <View
-          style={{
-            flex: 1,
-            paddingHorizontal: theme.spacing.lg,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={s.emptyTitle}>Aucune séance à mettre en carte.</Text>
+        <View style={s.empty}>
+          <Text style={s.emptyTitle} accessibilityRole="header">
+            Aucune séance à mettre en carte.
+          </Text>
           <Text style={s.emptyBody}>
             Ouvrez une séance depuis votre bilan pour en faire une carte.
           </Text>
@@ -192,14 +190,13 @@ export default function CarteTropheeScreen() {
           />
         </View>
 
-        {/* Actions + note révélées après la carte (cascade 80/160). */}
+        {/* Actions + note révélées après la carte (cascade 80/160). Le bouton
+            primaire passe par l'état `loading` du kit (spinner + libellé tenu +
+            `busy` a11y) pendant la capture ; le lien est neutralisé en parallèle
+            pour éviter une seconde feuille de partage concurrente. */}
         <FadeInSection delay={80} style={{ gap: theme.spacing.sm }}>
-          <Button
-            label={sharing ? 'Préparation…' : 'Partager'}
-            onPress={onShareImage}
-            disabled={sharing}
-          />
-          <Button label="Lien" variant="ghost" onPress={onShareLink} />
+          <Button label="Partager" onPress={onShareImage} loading={sharing} />
+          <Button label="Lien" variant="ghost" onPress={onShareLink} disabled={sharing} />
         </FadeInSection>
 
         <FadeInSection delay={160}>
@@ -215,6 +212,17 @@ export default function CarteTropheeScreen() {
 }
 
 const s = {
+  center: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  empty: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.lg,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
   emptyTitle: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
@@ -230,11 +238,14 @@ const s = {
     textAlign: 'center' as const,
     lineHeight: theme.fontSize.body * 1.5,
   },
+  // Note d'aide : c'est une phrase (pas un chiffre) → corps léger, pas mono.
+  // Contraste relevé de `faint` (2.98:1, sous AA) à `creamMute` (7.30:1) car ce
+  // texte porte une information que le pilote doit pouvoir lire.
   note: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    color: theme.palette.faint,
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: theme.palette.creamMute,
     textAlign: 'center' as const,
     marginTop: theme.spacing.lg,
   },
