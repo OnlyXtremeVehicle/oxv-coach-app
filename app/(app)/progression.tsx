@@ -28,7 +28,7 @@ import { Screen } from '@/ui/Screen';
 import { Segmented } from '@/ui/Segmented';
 import { formatLapTime } from '@/utils/format';
 
-const { palette, fonts, fontSize, spacing, radius } = theme;
+const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type Granularity = 'week' | 'month' | 'all';
@@ -149,7 +149,12 @@ export default function ProgressionScreen() {
             </View>
 
             {points.length < 2 ? (
-              <Text style={s.periodEmpty}>Pas assez de séances sur la période sélectionnée.</Text>
+              <View style={{ marginBottom: spacing.xl }}>
+                <EmptyState
+                  label="Période trop courte"
+                  message="Aucune séance sur la période sélectionnée. Une fenêtre plus large fait réapparaître la trajectoire."
+                />
+              </View>
             ) : (
               <ProgressionChart points={points} />
             )}
@@ -158,10 +163,13 @@ export default function ProgressionScreen() {
           </>
         )}
 
-        <View style={{ marginTop: spacing.xxl, alignItems: 'center', gap: spacing.lg }}>
+        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="link"
+            accessibilityLabel="Voir vos statistiques agrégées"
+            hitSlop={hitSlop}
             onPress={() => router.push('/(app)/stats' as never)}
+            style={({ pressed }) => [s.linkPress, pressed && { opacity: 0.6 }]}
           >
             <Text style={s.link}>Voir vos statistiques agrégées</Text>
           </Pressable>
@@ -230,8 +238,18 @@ function ProgressionChart({ points }: { points: SessionPoint[] }) {
 
   const lastIdx = xy.length - 1;
 
+  // Résumé textuel pour lecteur d'écran : un fait, pas une courbe à deviner.
+  const a11ySummary = `Meilleur tour sur ${points.length} séances, de ${formatLapTime(
+    points[0].bestSeconds
+  )} à ${formatLapTime(points[lastIdx].bestSeconds)}.`;
+
   return (
-    <View style={s.chartPanel}>
+    <View
+      style={s.chartPanel}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={a11ySummary}
+    >
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
         {/* Halo de la courbe (glow or, faible opacité) */}
         <AnimatedPath
@@ -414,20 +432,17 @@ const s = {
     paddingHorizontal: spacing.lg,
     marginBottom: spacing.xl,
   },
-  periodEmpty: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    color: palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xl,
-  },
   axis: {
     fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
+  },
+  linkPress: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing.sm,
   },
   link: {
     fontFamily: fonts.mono,

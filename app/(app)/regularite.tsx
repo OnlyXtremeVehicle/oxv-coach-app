@@ -18,7 +18,6 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { FadeInSection } from '@/components/motion';
 import { EmptyState, Fact, GaugeInstrument } from '@/components/instruments';
 import { supabase } from '@/lib/supabase';
 import { type RegularityProfile, computeRegularity } from '@/services/regularityService';
@@ -106,8 +105,10 @@ export default function RegulariteScreen() {
           />
         ) : (
           <>
-            {/* Instrument central : l'écart-type sur l'arc cockpit (factuel). */}
-            <FadeInSection style={{ alignItems: 'center', marginVertical: theme.spacing.xxl }}>
+            {/* Instrument central : l'écart-type sur l'arc cockpit (factuel).
+                Le GaugeInstrument porte déjà sa propre entrée animée : pas de
+                FadeInSection par-dessus (anti double-animation). */}
+            <View style={{ alignItems: 'center', marginVertical: theme.spacing.xxl }}>
               <GaugeInstrument
                 label="ÉCART-TYPE"
                 value={reg.stdDevSeconds!}
@@ -119,7 +120,7 @@ export default function RegulariteScreen() {
                 size={264}
               />
               <Text style={s.heroNote}>écart-type sur {reg.lapCount} tours</Text>
-            </FadeInSection>
+            </View>
 
             {/* Manifeste */}
             {reg.manifest ? <Text style={s.manifest}>{reg.manifest}</Text> : null}
@@ -195,14 +196,30 @@ function LapBar({
 }) {
   const ratio = Math.min(1, Math.abs(delta) / maxAbsDelta);
   const isBelow = delta < 0;
-  const deltaLabel = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2).replace('.', ',')} s`;
+  const magnitude = `${Math.abs(delta).toFixed(2).replace('.', ',')} s`;
+  const deltaLabel = `${delta >= 0 ? '+' : '−'}${magnitude}`;
+  // Constat factuel pour lecteur d'écran : la position situe, elle ne juge pas.
+  const side =
+    Math.abs(delta) < 0.005
+      ? 'sur la médiane'
+      : isBelow
+        ? 'sous la médiane'
+        : 'au-dessus de la médiane';
+  const a11yLabel = `Tour ${lapNumber} : ${deltaLabel}, ${side}.`;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}
+      accessible
+      accessibilityLabel={a11yLabel}
+    >
       <Text style={s.lapTag}>T{lapNumber}</Text>
       {/* Piste centrée — l'écart se lit par la position (gauche = plus rapide,
           droite = plus lent), jamais par la couleur. L'or est une donnée, neutre. */}
-      <View style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}>
+      <View
+        style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}
+        importantForAccessibility="no-hide-descendants"
+      >
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           {isBelow ? <View style={[s.lapFill, { width: `${ratio * 100}%` }]} /> : null}
         </View>
@@ -224,20 +241,6 @@ const s = {
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
-  },
-  hero: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.hud,
-    color: theme.palette.cream,
-    letterSpacing: -1,
-  },
-  band: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
   },
   heroNote: {
     fontFamily: theme.fonts.mono,
@@ -287,12 +290,5 @@ const s = {
     textAlign: 'center' as const,
     paddingHorizontal: theme.spacing.md,
     marginTop: theme.spacing.xxl,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
   },
 };

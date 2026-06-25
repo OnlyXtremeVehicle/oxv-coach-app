@@ -30,7 +30,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 
-const { palette, fonts, fontSize, spacing, radius } = theme;
+const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
 
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -137,12 +137,27 @@ export default function HeatmapScreen() {
           />
         ) : (
           <>
-            <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
+            <View
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel="Carte de chaleur de votre vitesse sur le tracé : froid pour le lent, chaud pour le rapide."
+            >
+              <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
+            </View>
 
             {/* Légende — Lent → Rapide (froid → chaud, jamais de rouge) */}
-            <View style={s.legendRow}>
+            <View
+              style={s.legendRow}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel="Intensité : de lent à rapide"
+            >
               <Text style={s.gradLabel}>Lent</Text>
-              <View style={s.gradientBar}>
+              <View
+                style={s.gradientBar}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+              >
                 <View style={[s.gradSeg, { backgroundColor: palette.faint }]} />
                 <View style={[s.gradSeg, { backgroundColor: palette.heritageGold }]} />
                 <View style={[s.gradSeg, { backgroundColor: palette.gold }]} />
@@ -172,7 +187,13 @@ export default function HeatmapScreen() {
         )}
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={hitSlop}
+            onPress={() => router.back()}
+            style={({ pressed }) => [s.backLinkPress, pressed && { opacity: 0.6 }]}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -192,7 +213,7 @@ const s = {
   },
   title: {
     fontFamily: fonts.display,
-    fontSize: fontSize.h2,
+    fontSize: fontSize.h3,
     letterSpacing: 0.5,
     color: palette.cream,
     marginTop: spacing.xs,
@@ -236,6 +257,11 @@ const s = {
     color: palette.creamMute,
     marginTop: spacing.xxl,
     paddingHorizontal: spacing.md,
+  },
+  backLinkPress: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing.lg,
   },
   backLink: {
     fontFamily: fonts.mono,

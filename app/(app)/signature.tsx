@@ -146,7 +146,11 @@ export default function SignatureScreen() {
             <View style={{ gap: theme.spacing.md }}>
               {signature.traits.map((trait, i) => (
                 <FadeInSection key={trait.key} delay={120 + i * 90}>
-                  <View style={s.traitPanel}>
+                  <View
+                    style={s.traitPanel}
+                    accessible
+                    accessibilityLabel={`${trait.label} : ${trait.value}${trait.detail ? `. ${trait.detail}` : ''}`}
+                  >
                     <Text style={s.eyebrow}>{trait.label}</Text>
                     <Text style={s.traitValue}>{trait.value}</Text>
                     {trait.detail ? <Text style={s.traitDetail}>{trait.detail}</Text> : null}
@@ -163,7 +167,12 @@ export default function SignatureScreen() {
                     <Text style={s.eyebrow}>Vos virages les plus confortables</Text>
                     <View style={{ marginTop: theme.spacing.sm }}>
                       {signature.comfortCorners.map((c) => (
-                        <View key={c.segmentIndex} style={s.cornerRow}>
+                        <View
+                          key={c.segmentIndex}
+                          style={s.cornerRow}
+                          accessible
+                          accessibilityLabel={`${c.segmentName ?? `Virage ${c.segmentIndex}`} : ${Math.round(c.marginPercent)} % de marge`}
+                        >
                           <Text style={s.cornerName}>
                             {c.segmentName ?? `Virage ${c.segmentIndex}`}
                           </Text>

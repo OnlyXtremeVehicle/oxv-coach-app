@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { cockpitPanel } from '@/components/insights/vizChrome';
@@ -80,7 +80,16 @@ export default function StatsScreen() {
               marginBottom: theme.spacing.md,
             }}
           >
-            <Pressable accessibilityRole="button" onPress={toggle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                level === 'simple' ? 'Voir les détails techniques' : 'Revenir à la vue simplifiée'
+              }
+              accessibilityState={{ expanded: level === 'detailed' }}
+              hitSlop={theme.hitSlop}
+              onPress={toggle}
+              style={({ pressed }) => [s.linkPress, pressed && { opacity: 0.6 }]}
+            >
               <Text style={s.link}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
@@ -89,7 +98,9 @@ export default function StatsScreen() {
         ) : null}
 
         {loading ? (
-          <Text style={s.loading}>Chargement…</Text>
+          <View style={s.loading}>
+            <ActivityIndicator color={theme.palette.creamMute} />
+          </View>
         ) : !stats || stats.totalSessions === 0 ? (
           <EmptyState />
         ) : (
@@ -254,6 +265,11 @@ const s = {
     color: theme.palette.creamSoft,
     marginBottom: theme.spacing.xl,
   },
+  linkPress: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: theme.spacing.sm,
+  },
   link: {
     fontFamily: theme.fonts.mono,
     fontSize: 11,
@@ -262,10 +278,8 @@ const s = {
     textDecorationLine: 'underline' as const,
   },
   loading: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
+    alignItems: 'center' as const,
+    paddingVertical: theme.spacing.xxl,
   },
   panel: {
     ...cockpitPanel,
