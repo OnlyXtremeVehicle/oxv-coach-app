@@ -52,7 +52,7 @@ export default function CoachRoulagesScreen() {
       <Screen scroll={false}>
         <AppBar title="ROULAGES" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -96,6 +96,7 @@ export default function CoachRoulagesScreen() {
           <ActivityIndicator
             color={theme.palette.creamMute}
             style={{ marginTop: theme.spacing.xl }}
+            accessibilityLabel="Chargement"
           />
         ) : roulages.length === 0 ? (
           <EmptyState />
@@ -126,7 +127,9 @@ function Header() {
   return (
     <>
       <Text style={s.eyebrow}>COACH OXV</Text>
-      <Text style={s.title}>Vos roulages.</Text>
+      <Text style={s.title} accessibilityRole="header">
+        Vos roulages.
+      </Text>
     </>
   );
 }
@@ -148,7 +151,13 @@ function RoulageCard({ roulage, muted }: { roulage: Roulage; muted?: boolean }) 
       href={{ pathname: '/(coach)/roulages/[id]', params: { id: roulage.id } } as never}
       asChild
     >
-      <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : muted ? 0.7 : 1 })}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${roulage.title}, ${formatDateTime(roulage.startsAt)}, ${roulage.circuitName}${
+          roulage.status !== 'open' ? `, ${ROULAGE_STATUS_LABELS[roulage.status]}` : ''
+        }`}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : muted ? 0.7 : 1 })}
+      >
         <Card style={muted ? undefined : { borderColor: theme.palette.coach }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
             <Text style={[s.cardTitle, { flex: 1 }]}>{roulage.title}</Text>
@@ -168,7 +177,9 @@ function RoulageCard({ roulage, muted }: { roulage: Roulage; muted?: boolean }) 
 function EmptyState() {
   return (
     <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={[s.manifest, { textAlign: 'center' }]}>Aucun roulage pour l&apos;instant.</Text>
+      <Text style={[s.manifest, { textAlign: 'center' }]} accessibilityRole="header">
+        Aucun roulage pour l&apos;instant.
+      </Text>
       <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.md }]}>
         Créez-en un pour convier vos pilotes.
       </Text>
@@ -197,12 +208,14 @@ const s = {
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
+  // Statut = libellé (mot), donc pas en mono. Micro-badge sobre, tracké.
   statusLabel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
+    marginLeft: theme.spacing.sm,
   },
   manifest: {
     fontFamily: theme.fonts.bodyLight,

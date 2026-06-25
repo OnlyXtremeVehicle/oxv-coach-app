@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
@@ -69,12 +69,15 @@ export default function CoachHubScreen() {
     <Screen>
       <AppBar title="COACH OXV" leading={<Logo size={26} />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>COACH OXV</Text>
-        <Text style={s.title}>{greeting}.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {greeting}.
+        </Text>
         <Text style={s.manifest}>Vos pilotes, à votre rythme.</Text>
 
         {loading ? (
-          <Text style={s.caption}>Chargement…</Text>
+          <View style={{ paddingVertical: theme.spacing.xl }}>
+            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
+          </View>
         ) : pilots.length === 0 ? (
           <EmptyState />
         ) : (
@@ -90,7 +93,11 @@ export default function CoachHubScreen() {
                   gap: theme.spacing.md,
                 }}
               >
-                <View style={s.alertDot} />
+                <View
+                  style={s.alertDot}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
                 <Text style={s.alertText}>
                   {summary.lastDaySessionCount === 1
                     ? '1 nouvelle session dans les dernières 24 h.'
@@ -204,6 +211,7 @@ function CoachLink({ label, href }: { label: string; href: string }) {
     <Link href={href as never} asChild>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={label}
         style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
         <Card
@@ -215,7 +223,13 @@ function CoachLink({ label, href }: { label: string; href: string }) {
           }}
         >
           <Text style={s.linkLabel}>{label}</Text>
-          <Text style={{ color: theme.palette.creamMute, fontSize: 18 }}>›</Text>
+          <Text
+            style={{ color: theme.palette.creamMute, fontSize: 18 }}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            ›
+          </Text>
         </Card>
       </Pressable>
     </Link>
@@ -237,7 +251,11 @@ function PilotCard({ pilot }: { pilot: CoachPilotRow }) {
       }
       asChild
     >
-      <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${fullName}, ${level}`}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+      >
         <Card style={{ borderColor: theme.palette.coach }}>
           <Text style={s.pilotName}>{fullName}</Text>
           <Text style={s.pilotMeta}>
@@ -258,7 +276,9 @@ function EmptyState() {
         marginTop: theme.spacing.xl,
       }}
     >
-      <Text style={s.emptyTitle}>Aucun pilote assigné pour l&apos;instant.</Text>
+      <Text style={s.emptyTitle} accessibilityRole="header">
+        Aucun pilote assigné pour l&apos;instant.
+      </Text>
       <Text style={s.emptyHint}>
         Les assignations sont gérées par l&apos;équipe OXV. Un pilote doit aussi consentir au
         coaching avant que vous voyiez ses données.
@@ -283,14 +303,6 @@ function prettyLevel(level: string | null): string {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
-    marginBottom: theme.spacing.md,
-  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
@@ -305,12 +317,6 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.lg,
-  },
-  caption: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
   },
   alertDot: {
     width: 8,
@@ -343,10 +349,8 @@ const s = {
     color: theme.palette.cream,
   },
   pilotMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },
