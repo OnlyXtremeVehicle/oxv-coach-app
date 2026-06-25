@@ -11,6 +11,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type SavedScenicRoute,
   certifyRoute,
@@ -60,7 +61,10 @@ export default function RoutesCertificationScreen() {
       <Screen scroll={false}>
         <AppBar title="CERTIFICATION" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRONZE} />
+          <ActivityIndicator
+            color={BRONZE}
+            accessibilityLabel="Chargement des demandes de certification"
+          />
         </View>
       </Screen>
     );
@@ -70,18 +74,16 @@ export default function RoutesCertificationScreen() {
     <Screen>
       <AppBar title="CERTIFICATION" subtitle="Belles routes" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>DEMANDES EN ATTENTE</Text>
+        <Text style={s.eyebrow} accessibilityRole="header">
+          DEMANDES EN ATTENTE
+        </Text>
 
         {routes.length === 0 ? (
-          <Card
-            style={{
-              alignItems: 'center',
-              paddingVertical: theme.spacing.xxl,
-              borderColor: BRONZE,
-            }}
-          >
-            <Text style={s.empty}>Aucune demande de certification en attente.</Text>
-          </Card>
+          <EmptyState
+            label="Certification"
+            message="Aucune demande de certification en attente."
+            source="scenic_routes"
+          />
         ) : (
           <View style={{ gap: theme.spacing.md }}>
             {routes.map((r) => {
@@ -100,7 +102,10 @@ export default function RoutesCertificationScreen() {
                   <View style={s.actions}>
                     <Pressable
                       accessibilityRole="button"
+                      accessibilityLabel={`Certifier la route ${r.name}`}
+                      accessibilityState={{ disabled: busy, busy }}
                       disabled={busy}
+                      hitSlop={theme.hitSlop}
                       onPress={() => act(r.id, true)}
                       style={({ pressed }) => [s.certify, { opacity: pressed || busy ? 0.6 : 1 }]}
                     >
@@ -108,7 +113,10 @@ export default function RoutesCertificationScreen() {
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
+                      accessibilityLabel={`Rejeter la route ${r.name}`}
+                      accessibilityState={{ disabled: busy, busy }}
                       disabled={busy}
+                      hitSlop={theme.hitSlop}
                       onPress={() => act(r.id, false)}
                       style={({ pressed }) => [s.reject, { opacity: pressed || busy ? 0.6 : 1 }]}
                     >
@@ -134,25 +142,18 @@ const s = {
     color: BRONZE,
     marginBottom: theme.spacing.lg,
   },
-  empty: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
   name: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
+  // Méta = libellé (mots + chiffres mêlés) → corps, jamais mono (doctrine).
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
+    lineHeight: theme.fontSize.small * 1.4,
   },
   actions: {
     flexDirection: 'row' as const,
@@ -160,31 +161,34 @@ const s = {
     marginTop: theme.spacing.md,
   },
   certify: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
     borderWidth: 1,
     borderColor: theme.dataColors.accel,
     borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
   },
+  // Libellé d'action → corps (jamais mono sur un libellé, doctrine).
   certifyT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
     color: theme.dataColors.accel,
   },
   reject: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
     borderWidth: 1,
     borderColor: theme.palette.line,
     borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
   },
   rejectT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
     color: theme.palette.creamMute,
   },
 };

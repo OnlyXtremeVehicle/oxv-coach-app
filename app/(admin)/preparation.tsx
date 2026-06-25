@@ -6,18 +6,20 @@
  * réelles à wirer avec une vraie session OXV (table `registrations`).
  *
  * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
- * rôle admin) ; le bouton de promotion garde l'accent coach. Logique
- * de données et de promotion inchangée.
+ * rôle admin) ; promotion via Button (kit) avec état loading pendant
+ * l'appel async. Logique de données et de promotion inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { EmptyState } from '@/components/instruments/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { promoteToCoach } from '@/services/coachAdminService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
@@ -37,14 +39,22 @@ interface PilotEntry {
 export default function PreparationScreen() {
   const [pilots, setPilots] = useState<PilotEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [promotingId, setPromotingId] = useState<string | null>(null);
 
   const reload = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, kyc_status, pilot_level')
       .eq('role', 'pilot')
       .order('last_name', { ascending: true })
       .limit(50);
+    if (error) {
+      setFailed(true);
+      setLoading(false);
+      return;
+    }
+    setFailed(false);
     setPilots(
       (data ?? []).map((row) => ({
         id: row.id,
@@ -71,9 +81,14 @@ export default function PreparationScreen() {
           text: 'Promouvoir',
           style: 'default',
           onPress: async () => {
-            const result = await promoteToCoach(pilot.id);
-            if (result.ok) await reload();
-            else Alert.alert('Échec', result.error ?? 'Erreur inconnue.');
+            setPromotingId(pilot.id);
+            try {
+              const result = await promoteToCoach(pilot.id);
+              if (result.ok) await reload();
+              else Alert.alert('Échec', result.error ?? 'Erreur inconnue.');
+            } finally {
+              setPromotingId(null);
+            }
           },
         },
       ]
@@ -85,40 +100,48 @@ export default function PreparationScreen() {
       <AppBar title="PRÉPARATION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ADMIN · PRÉPARATION</Text>
-        <Text style={s.title}>Pilotes ({pilots.length})</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Pilotes (<Text style={s.titleNum}>{pilots.length}</Text>)
+        </Text>
 
         {loading ? (
-          <ActivityIndicator color={BRONZE} />
+          <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement des pilotes" />
+        ) : failed ? (
+          <Card style={{ borderColor: theme.palette.line, paddingVertical: theme.spacing.xl }}>
+            <Text style={s.errorTitle}>Liste indisponible</Text>
+            <Text style={s.errorHint}>
+              La lecture des pilotes a échoué. Vérifiez la connexion, puis rouvrez cet écran.
+            </Text>
+          </Card>
         ) : pilots.length === 0 ? (
-          <Text style={s.empty}>Aucun pilote inscrit.</Text>
+          <EmptyState
+            label="Préparation"
+            message="Aucun pilote inscrit à la prochaine session."
+            source="registrations"
+          />
         ) : (
           <View style={{ gap: theme.spacing.sm }}>
             {pilots.map((p) => (
-              <Card key={p.id} style={s.row}>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.name}>{p.fullName}</Text>
-                  <Text style={s.meta}>
-                    {p.email} · niveau {p.level ?? '—'}
+              <Card key={p.id}>
+                <View style={s.row}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.name}>{p.fullName}</Text>
+                    <Text style={s.meta}>
+                      {p.email} · niveau <Text style={s.metaNum}>{p.level ?? '—'}</Text>
+                    </Text>
+                  </View>
+                  <Text style={[s.kyc, { color: kycColor(p.kycStatus) }]}>
+                    {kycLabel(p.kycStatus)}
                   </Text>
                 </View>
-                <View style={{ alignItems: 'flex-end', gap: theme.spacing.xs }}>
-                  <Text style={[s.kyc, { color: kycColor(p.kycStatus) }]}>
-                    {p.kycStatus.toUpperCase()}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
+                <View style={{ marginTop: theme.spacing.md }}>
+                  <Button
+                    label="Promouvoir en coach"
+                    variant="ghost"
+                    loading={promotingId === p.id}
+                    disabled={promotingId !== null && promotingId !== p.id}
                     onPress={() => confirmPromote(p)}
-                    style={({ pressed }) => ({
-                      paddingHorizontal: theme.spacing.sm,
-                      paddingVertical: theme.spacing.xs,
-                      borderRadius: theme.radius.sm,
-                      borderWidth: 1,
-                      borderColor: theme.palette.coach,
-                      opacity: pressed ? 0.85 : 1,
-                    })}
-                  >
-                    <Text style={s.promote}>↦ coach</Text>
-                  </Pressable>
+                  />
                 </View>
               </Card>
             ))}
@@ -142,6 +165,20 @@ function kycColor(status: string): string {
   }
 }
 
+// Libellé KYC lisible (le statut est un mot, pas un chiffre → hors mono).
+function kycLabel(status: string): string {
+  switch (status) {
+    case 'validated':
+      return 'KYC validé';
+    case 'rejected':
+      return 'KYC rejeté';
+    case 'expired':
+      return 'KYC expiré';
+    default:
+      return 'KYC en attente';
+  }
+}
+
 const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
@@ -156,14 +193,30 @@ const s = {
     fontSize: theme.fontSize.h2,
     letterSpacing: 0.5,
     color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xxl,
   },
+  titleNum: { fontFamily: theme.fonts.mono },
   row: {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    alignItems: 'flex-start' as const,
     gap: theme.spacing.md,
+  },
+  errorTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    textAlign: 'center' as const,
+  },
+  errorHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+    lineHeight: theme.fontSize.small * 1.5,
   },
   name: {
     fontFamily: theme.fonts.bodyMedium,
@@ -171,27 +224,17 @@ const s = {
     color: theme.palette.cream,
   },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
-  },
-  kyc: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 1,
-  },
-  promote: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    color: theme.palette.coach,
-  },
-  empty: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  // Niveau pilote (chiffre) en mono ; le reste de la méta reste du corps.
+  metaNum: { fontFamily: theme.fonts.mono, color: theme.palette.creamSoft },
+  // Statut KYC : mot factuel, doublé de la couleur sémantique → hors mono.
+  kyc: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.3,
   },
 };

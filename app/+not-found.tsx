@@ -20,7 +20,9 @@ export default function NotFoundScreen() {
           }}
         >
           <Text style={s.eyebrow}>404</Text>
-          <Text style={s.title}>Cet écran n&apos;existe pas.</Text>
+          <Text style={s.title} accessibilityRole="header">
+            Cet écran n&apos;existe pas.
+          </Text>
           <View style={{ marginTop: theme.spacing.xl, alignSelf: 'stretch' }}>
             <Button label="Retour à l'accueil" onPress={() => router.replace('/')} />
           </View>
