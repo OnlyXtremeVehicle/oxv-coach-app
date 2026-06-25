@@ -173,7 +173,7 @@ export default function SettingsScreen() {
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {/* Signature Pacte en haut */}
         <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
-          <View style={s.headRow}>
+          <View style={s.headRow} accessibilityRole="header">
             <View style={s.headDot} />
             <SectionLabel>Pacte de pilotage</SectionLabel>
           </View>
@@ -182,7 +182,7 @@ export default function SettingsScreen() {
           </Text>
           <Text style={s.manifest}>La piste est à vous. Les décisions aussi.</Text>
           {profile?.pact_accepted_at ? (
-            <Text style={[s.meta, { marginTop: theme.spacing.md }]}>
+            <Text style={[s.signedLine, { marginTop: theme.spacing.md }]}>
               Signé le{' '}
               {new Date(profile.pact_accepted_at).toLocaleDateString('fr-FR', {
                 day: 'numeric',
@@ -294,12 +294,14 @@ export default function SettingsScreen() {
           />
           <SettingRow
             label="Exporter mes données"
-            hint={exporting ? 'Préparation…' : 'Exporter'}
+            hint={exporting ? 'Préparation' : 'Exporter'}
+            busy={exporting}
             onPress={onExportData}
           />
           <SettingRow
             label="Supprimer mon compte"
-            hint={deleting ? 'En cours…' : 'Supprimer'}
+            hint={deleting ? 'En cours' : 'Supprimer'}
+            busy={deleting}
             onPress={onDeleteAccount}
             danger
             last
@@ -328,7 +330,7 @@ export default function SettingsScreen() {
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: theme.spacing.xxl }}>
-      <View style={[s.headRow, { marginBottom: theme.spacing.sm }]}>
+      <View style={[s.headRow, { marginBottom: theme.spacing.sm }]} accessibilityRole="header">
         <View style={s.headDot} />
         <SectionLabel>{label}</SectionLabel>
       </View>
@@ -343,6 +345,7 @@ function SettingRow({
   hint,
   onPress,
   danger = false,
+  busy = false,
   last = false,
 }: {
   label: string;
@@ -350,29 +353,40 @@ function SettingRow({
   hint?: string;
   onPress?: () => void;
   danger?: boolean;
+  busy?: boolean;
   last?: boolean;
 }) {
   const Container: React.ElementType = onPress ? Pressable : View;
+  const inert = busy || !onPress;
   return (
     <Container
-      onPress={onPress}
+      onPress={inert ? undefined : onPress}
+      disabled={onPress ? busy : undefined}
       accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityState={onPress ? { busy, disabled: busy } : undefined}
+      accessibilityLabel={onPress ? label : undefined}
       style={({ pressed }: { pressed?: boolean }) => ({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        minHeight: 48,
         paddingHorizontal: theme.spacing.md,
         paddingVertical: theme.spacing.md,
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: theme.palette.line,
-        opacity: pressed ? 0.85 : 1,
+        opacity: pressed && !inert ? 0.85 : 1,
       })}
     >
       <Text style={[s.rowLabel, danger && { color: theme.palette.red }]}>{label}</Text>
       {value ? (
         <Text style={s.rowValue}>{value}</Text>
       ) : hint ? (
-        <Text style={s.rowHint}>{hint} ›</Text>
+        <View style={s.hintRow}>
+          <Text style={[s.rowHint, danger && { color: theme.palette.red }]}>{hint}</Text>
+          {onPress && !busy ? (
+            <Text style={[s.chevron, danger && { color: theme.palette.red }]}>›</Text>
+          ) : null}
+        </View>
       ) : null}
     </Container>
   );
@@ -401,23 +415,29 @@ function ToggleRow({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
+        minHeight: 48,
         paddingVertical: theme.spacing.md,
         paddingRight: theme.spacing.md,
         paddingLeft: indented ? theme.spacing.xl : theme.spacing.md,
         borderBottomWidth: last ? 0 : 1,
         borderBottomColor: theme.palette.line,
+        opacity: disabled ? 0.5 : 1,
       }}
     >
       <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
         <Text style={s.rowLabel}>{label}</Text>
-        {caption ? <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>{caption}</Text> : null}
+        {caption ? (
+          <Text style={[s.caption, { marginTop: theme.spacing.xs }]}>{caption}</Text>
+        ) : null}
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
+        accessibilityRole="switch"
         accessibilityLabel={label}
         accessibilityHint={caption}
+        accessibilityState={{ checked: value, disabled }}
         trackColor={{ false: '#26262B', true: theme.palette.gold }}
         thumbColor={theme.palette.cream}
       />
@@ -471,11 +491,19 @@ const s = {
     lineHeight: theme.fontSize.body * 1.6,
     color: theme.palette.cream,
   },
-  meta: {
+  // Ligne « Signé le … » : porte une date → mono autorisé (voix de l'instrument).
+  signedLine: {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  // Légende sous un réglage : texte courant (libellé), pas du mono. Contraste AA.
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.45,
     color: theme.palette.creamMute,
   },
   rowLabel: {
@@ -488,10 +516,21 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
   },
+  // Renvoi de navigation (« Gérer », « Consulter ») : libellé → texte courant.
   rowHint: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
     color: theme.palette.creamMute,
+  },
+  hintRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.xs,
+  },
+  chevron: {
+    fontFamily: theme.fonts.body,
+    fontSize: 18,
+    lineHeight: 18,
+    color: theme.palette.faint,
   },
 };

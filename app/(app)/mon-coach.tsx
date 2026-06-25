@@ -80,7 +80,7 @@ export default function MonCoachScreen() {
       <Screen scroll={false}>
         <AppBar title="MON COACH" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -90,7 +90,9 @@ export default function MonCoachScreen() {
     <Screen>
       <AppBar title="MON COACH" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Le regard d&apos;un autre.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Le regard d&apos;un autre.
+        </Text>
         <Text style={s.manifest}>Vous décidez qui voit vos sessions.</Text>
 
         {activeAssignments.length === 0 ? (
@@ -109,11 +111,11 @@ export default function MonCoachScreen() {
 
         {/* Accès aux invitations de roulages (§8). Le pilote convié par un
             coach gère ici sa présence. */}
-        <Link href={'/(app)/roulages' as never} asChild>
-          <View style={{ marginTop: theme.spacing.xl }}>
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <Link href={'/(app)/roulages' as never} asChild>
             <Button label="Mes invitations aux roulages" variant="ghost" />
-          </View>
-        </Link>
+          </Link>
+        </View>
 
         <ExplainerCard />
       </View>
@@ -149,19 +151,23 @@ function CoachCard({
           <Text style={s.coachName}>{fullName}</Text>
           <Text
             style={[
-              s.coachMeta,
+              s.consentStatus,
               { color: consented ? theme.palette.gold : theme.palette.creamMute },
             ]}
           >
             {consentText}
           </Text>
-          <Text style={[s.coachMeta, { marginTop: theme.spacing.xs }]}>
+          <Text style={[s.assignedMeta, { marginTop: theme.spacing.xs }]}>
             Assigné par OXV le {formatDateLong(assignment.createdAt)}
           </Text>
         </View>
         <Switch
           value={consented}
           onValueChange={onToggle}
+          accessibilityRole="switch"
+          accessibilityLabel={`Consentement pour ${fullName}`}
+          accessibilityHint="Autorise ce coach à consulter vos sessions. Révocable à tout moment."
+          accessibilityState={{ checked: consented }}
           trackColor={{ false: theme.palette.line, true: theme.palette.gold }}
           thumbColor={theme.palette.cream}
         />
@@ -175,7 +181,9 @@ function CoachCard({
 function EmptyState() {
   return (
     <Card style={[s.dataPanel, { alignItems: 'center', paddingVertical: theme.spacing.xxl }]}>
-      <Text style={s.emptyTitle}>Aucun coach assigné.</Text>
+      <Text style={s.emptyTitle} accessibilityRole="header">
+        Aucun coach assigné.
+      </Text>
       <Text style={s.emptyHint}>
         Si l&apos;équipe OXV vous assigne un coach, son nom apparaîtra ici. Vous resterez libre de
         consentir ou non au partage de vos données.
@@ -187,7 +195,7 @@ function EmptyState() {
 function ExplainerCard() {
   return (
     <Card style={[s.dataPanel, { marginTop: theme.spacing.xxl }]}>
-      <View style={s.headRow}>
+      <View style={s.headRow} accessibilityRole="header">
         <View style={s.headDot} />
         <SectionLabel>CE QUE LE COACH VOIT</SectionLabel>
       </View>
@@ -248,10 +256,18 @@ const s = {
     fontSize: theme.fontSize.h3,
     color: theme.palette.cream,
   },
-  coachMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
+  // Statut de consentement : libellé (porte une date) → texte courant, contraste AA.
+  consentStatus: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.45,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  // Provenance de l'assignation : libellé secondaire → texte courant.
+  assignedMeta: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
   },

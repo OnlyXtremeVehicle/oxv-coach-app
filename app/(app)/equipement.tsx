@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { bluetoothService } from '@/ble/bluetoothService';
@@ -100,29 +100,37 @@ export default function EquipementScreen() {
     <Screen>
       <AppBar title="ÉQUIPEMENT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>À la recherche de votre équipement OXV Mirror…</Text>
+        <Text style={s.title} accessibilityRole="header">
+          À la recherche de votre équipement OXV Mirror…
+        </Text>
 
         {status === 'scanning' && devices.length === 0 && !error ? (
           <View
             style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.xl }}
+            accessibilityRole="text"
+            accessibilityLabel="Scan en cours"
           >
             <ActivityIndicator color={theme.palette.creamMute} />
             <Text style={[s.meta, { marginLeft: theme.spacing.md }]}>Scan en cours…</Text>
           </View>
         ) : null}
 
-        {error ? <Text style={s.error}>{error}</Text> : null}
+        {error ? (
+          <Text style={s.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+            {error}
+          </Text>
+        ) : null}
 
         <View style={{ gap: theme.spacing.sm }}>
-          {devices.map((d) => (
-            <Pressable
-              accessibilityRole="button"
-              key={d.id}
-              onPress={() => onSelect(d.id)}
-              disabled={connecting}
-              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-            >
+          {devices.map((d) => {
+            const name = d.name.replace(/^RaceBox/, 'OXV Mirror');
+            const signal = d.rssi !== null ? `Signal ${d.rssi} dBm` : 'À portée';
+            return (
               <Card
+                key={d.id}
+                onPress={() => onSelect(d.id)}
+                disabled={connecting}
+                accessibilityLabel={`${name}, ${signal}`}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -130,19 +138,17 @@ export default function EquipementScreen() {
                 }}
               >
                 <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-                  <Text style={s.deviceName}>{d.name.replace(/^RaceBox/, 'OXV Mirror')}</Text>
-                  <Text style={s.meta}>
-                    {d.rssi !== null ? `Signal ${d.rssi} dBm` : 'À portée'}
-                  </Text>
+                  <Text style={s.deviceName}>{name}</Text>
+                  <Text style={d.rssi !== null ? s.meta : s.metaText}>{signal}</Text>
                 </View>
                 {connecting ? (
                   <ActivityIndicator color={theme.palette.creamMute} />
                 ) : (
-                  <Text style={{ color: theme.palette.faint, fontSize: 18 }}>›</Text>
+                  <Text style={s.chevron}>›</Text>
                 )}
               </Card>
-            </Pressable>
-          ))}
+            );
+          })}
         </View>
 
         {error || status === 'idle' ? (
@@ -165,11 +171,19 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
   },
+  // Lecture d'instrument (RSSI) : porte un chiffre → mono.
   meta: {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  // Variante sans chiffre (« À portée ») : libellé → texte courant.
+  metaText: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },
@@ -184,5 +198,11 @@ const s = {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    fontFamily: theme.fonts.body,
+    fontSize: 18,
+    lineHeight: 18,
+    color: theme.palette.faint,
   },
 };
