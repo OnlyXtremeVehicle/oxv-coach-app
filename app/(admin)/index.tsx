@@ -5,7 +5,7 @@
  */
 
 import { Pressable, Text, View } from 'react-native';
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
@@ -60,32 +60,42 @@ export default function AdminHubScreen() {
     <Screen>
       <AppBar title="ADMIN OXV" leading={<Logo size={26} />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>ADMIN OXV</Text>
-        <Text style={s.title}>Coordination de la session</Text>
+        <Text style={s.eyebrow}>COORDINATION</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Coordination de la session
+        </Text>
 
         <View style={{ gap: theme.spacing.md }}>
           {VIEWS.map((v) => (
-            <Link key={v.href} href={v.href as never} asChild>
-              <Pressable
-                accessibilityRole="button"
-                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-              >
-                <Card style={{ borderColor: BRONZE }}>
-                  <View style={s.cardHead}>
-                    <Text style={s.cardTitle}>{v.label}</Text>
-                    <Text style={s.cardChevron}>›</Text>
-                  </View>
-                  <Text style={s.cardMeta}>{v.description}</Text>
-                </Card>
-              </Pressable>
-            </Link>
+            <Card
+              key={v.href}
+              onPress={() => router.push(v.href as never)}
+              accessibilityLabel={`${v.label}. ${v.description}`}
+              style={{ borderColor: BRONZE }}
+            >
+              <View style={s.cardHead}>
+                <Text style={s.cardTitle}>{v.label}</Text>
+                <Text style={s.cardChevron}>›</Text>
+              </View>
+              <Text style={s.cardMeta}>{v.description}</Text>
+            </Card>
           ))}
         </View>
 
         <SpaceSwitcher current="admin" />
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.replace('/(app)')}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sortir de l'admin"
+            onPress={() => router.replace('/(app)')}
+            hitSlop={theme.hitSlop}
+            style={({ pressed }) => ({
+              paddingVertical: theme.spacing.sm,
+              paddingHorizontal: theme.spacing.md,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
             <Text style={s.minorLink}>Sortir de l&apos;admin</Text>
           </Pressable>
         </View>

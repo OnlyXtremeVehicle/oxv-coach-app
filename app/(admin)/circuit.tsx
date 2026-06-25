@@ -29,6 +29,7 @@ import {
   TrackLayer,
   type CornerColorMode as ColorMode,
 } from '@/components/CircuitMap';
+import { EmptyState } from '@/components/instruments/EmptyState';
 import { BELTOISE_CORNERS, type CornerTopology } from '@/lib/circuitTopology';
 import { type SegmentAggregate, aggregateSegmentStats } from '@/services/segmentAnalysesService';
 import {
@@ -104,7 +105,9 @@ export default function CircuitInspectorScreen() {
       <AppBar title="INSPECTEUR CIRCUIT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ADMIN OXV · INSPECTEUR</Text>
-        <Text style={s.title}>{HAUTE_SAINTONGE_CIRCUIT.name}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {HAUTE_SAINTONGE_CIRCUIT.name}
+        </Text>
         <Text style={s.meta}>
           {HAUTE_SAINTONGE_TRACK.length} points GPS · {HAUTE_SAINTONGE_SEGMENTS.length} segments ·{' '}
           {HAUTE_SAINTONGE_CIRCUIT.totalLengthM} m
@@ -155,10 +158,10 @@ export default function CircuitInspectorScreen() {
         {loading ? (
           <Text style={s.note}>Chargement…</Text>
         ) : aggregates.length === 0 ? (
-          <Text style={s.note}>
-            Aucune analyse `app_segment_analyses` en base. Première session analysée : les stats
-            agrégées apparaîtront ici.
-          </Text>
+          <EmptyState
+            message="Aucune analyse de segment en base. Les statistiques agrégées apparaîtront après la première session analysée."
+            source="app_segment_analyses"
+          />
         ) : (
           <StatTable
             rows={[
@@ -243,10 +246,18 @@ function ToggleButton(props: {
 }) {
   return (
     <Pressable
-      accessibilityRole="button"
+      accessibilityRole="tab"
+      accessibilityLabel={props.label}
+      accessibilityState={{ selected: props.active, disabled: !!props.disabled }}
+      accessibilityHint={
+        props.disabled ? 'Indisponible : aucune donnée historique en base.' : undefined
+      }
       onPress={props.disabled ? undefined : props.onPress}
+      hitSlop={theme.hitSlop}
       style={({ pressed }) => ({
         flex: 1,
+        minHeight: 44,
+        justifyContent: 'center',
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.md,
         borderWidth: 1,
@@ -258,10 +269,9 @@ function ToggleButton(props: {
     >
       <Text
         style={{
-          fontFamily: theme.fonts.mono,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: 'uppercase',
+          fontFamily: theme.fonts.bodyMedium,
+          fontSize: theme.fontSize.small,
+          letterSpacing: 0.3,
           color: props.active ? theme.palette.cream : theme.palette.creamMute,
         }}
       >
@@ -348,46 +358,46 @@ function CornerRow(props: {
       : corner.pace === 'medium'
         ? 'Vitesse moyenne'
         : 'Vitesse basse';
-  const marginText =
-    aggregate?.avgMarginPercent !== null && aggregate?.avgMarginPercent !== undefined
-      ? `${aggregate.avgMarginPercent.toFixed(0)}% · ${aggregate.sessionCount} sess.`
-      : '—';
+  const margin = aggregate?.avgMarginPercent ?? null;
+  const sessions = aggregate?.sessionCount ?? 0;
+  const marginText = margin !== null ? `${margin.toFixed(0)}% · ${sessions} sess.` : '—';
+  const a11yLabel = `Virage ${corner.index}, ${corner.name}. ${paceLabel}. ${
+    margin !== null
+      ? `Marge moyenne ${margin.toFixed(0)} pour cent sur ${sessions} sessions.`
+      : 'Pas de donnée historique.'
+  }`;
 
   return (
-    <Pressable
-      accessibilityRole="button"
+    <Card
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+      accessibilityLabel={a11yLabel}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        backgroundColor: isSelected ? 'rgba(184,115,51,0.10)' : theme.palette.card,
+        borderColor: isSelected ? BRONZE : theme.palette.line,
+      }}
     >
-      <Card
+      <View
         style={{
-          flexDirection: 'row',
+          width: 28,
+          height: 28,
+          borderRadius: 14,
+          backgroundColor: paceColor(corner.pace),
           alignItems: 'center',
-          gap: theme.spacing.md,
-          backgroundColor: isSelected ? 'rgba(184,115,51,0.10)' : theme.palette.card,
-          borderColor: isSelected ? BRONZE : theme.palette.line,
+          justifyContent: 'center',
         }}
       >
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: paceColor(corner.pace),
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={s.cornerIndex}>{corner.index}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={s.cornerName}>{corner.name}</Text>
-          <Text style={s.cornerMeta}>
-            {paceLabel} · {marginText}
-          </Text>
-        </View>
-      </Card>
-    </Pressable>
+        <Text style={s.cornerIndex}>{corner.index}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.cornerName}>{corner.name}</Text>
+        <Text style={s.cornerMeta}>
+          {paceLabel} · {marginText}
+        </Text>
+      </View>
+    </Card>
   );
 }
 
