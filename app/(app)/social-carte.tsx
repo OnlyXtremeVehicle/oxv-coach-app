@@ -104,30 +104,32 @@ export default function SocialCarteScreen() {
 
         {loading ? (
           <View style={s.loadingPill}>
-            <ActivityIndicator color={theme.palette.creamSoft} size="small" />
+            <ActivityIndicator
+              color={theme.palette.creamSoft}
+              size="small"
+              accessibilityLabel="Chargement du territoire"
+            />
             <Text style={s.loadingTxt}>Chargement…</Text>
           </View>
         ) : null}
       </View>
 
       {/* Barre d'actions */}
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          paddingHorizontal: theme.spacing.lg,
-          paddingVertical: theme.spacing.md,
-        }}
-      >
+      <View style={s.actionBar}>
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Voir le territoire en liste"
+          hitSlop={theme.hitSlop}
           onPress={() => router.replace('/(app)/social' as never)}
+          style={({ pressed }) => [s.actionHit, pressed && { opacity: 0.85 }]}
         >
           <Text style={s.action}>Voir en liste</Text>
         </Pressable>
-        <Text style={s.count}>
-          {pings.length} {pings.length > 1 ? 'points' : 'point'}
+        <Text
+          style={s.count}
+          accessibilityLabel={`${pings.length} ${pings.length > 1 ? 'lieux' : 'lieu'}`}
+        >
+          <Text style={s.countNum}>{pings.length}</Text> {pings.length > 1 ? 'lieux' : 'lieu'}
         </Text>
       </View>
     </Screen>
@@ -158,23 +160,37 @@ const s = {
     gap: theme.spacing.sm,
   },
   loadingTxt: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.6,
     color: theme.palette.creamSoft,
+  },
+  actionBar: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+  },
+  actionHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   action: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamSoft,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.3,
+    color: theme.palette.cream,
   },
   count: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
+  },
+  countNum: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
   },
 };

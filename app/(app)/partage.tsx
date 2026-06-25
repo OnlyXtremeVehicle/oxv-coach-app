@@ -141,8 +141,9 @@ export default function PartageScreen() {
             const active = scope === opt.id;
             return (
               <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ selected: active }}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active, checked: active }}
+                accessibilityLabel={`${opt.label}. ${opt.description}`}
                 key={opt.id}
                 onPress={() => setScope(opt.id)}
                 style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
@@ -219,14 +220,18 @@ export default function PartageScreen() {
           <Button
             label={submitting ? 'Génération…' : 'Créer le lien'}
             onPress={onCreate}
-            disabled={submitting || metrics.length === 0}
+            loading={submitting}
+            disabled={metrics.length === 0}
           />
         </View>
 
         <View style={{ gap: theme.spacing.sm }}>
           <SectionLabel>VOS LIENS ACTIFS</SectionLabel>
           {loading ? (
-            <ActivityIndicator color={theme.palette.creamMute} />
+            <ActivityIndicator
+              color={theme.palette.creamMute}
+              accessibilityLabel="Chargement de vos liens"
+            />
           ) : shares.length === 0 ? (
             <Text style={s.emptyLinks}>Aucun lien partagé pour l&apos;instant.</Text>
           ) : (
@@ -262,15 +267,18 @@ function ShareCard({ link, onRevoke }: { link: ShareLink; onRevoke: () => void }
         {shareUrlFor(link.token)}
       </Text>
       <Text style={s.shareMeta}>
-        Créé {timeAgoFr(new Date(link.createdAt))} · {link.viewCount} vue
-        {link.viewCount > 1 ? 's' : ''} · {link.includedMetrics.length} métrique
+        Créé {timeAgoFr(new Date(link.createdAt))} ·{' '}
+        <Text style={s.shareMetaNum}>{link.viewCount}</Text> vue{link.viewCount > 1 ? 's' : ''} ·{' '}
+        <Text style={s.shareMetaNum}>{link.includedMetrics.length}</Text> métrique
         {link.includedMetrics.length > 1 ? 's' : ''}
       </Text>
       {!revoked && !expired ? (
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Révoquer ce lien"
+          hitSlop={theme.hitSlop}
           onPress={onRevoke}
-          style={{ marginTop: theme.spacing.sm }}
+          style={({ pressed }) => [s.revokeHit, pressed && { opacity: 0.7 }]}
         >
           <Text style={s.revoke}>Révoquer</Text>
         </Pressable>
@@ -334,10 +342,8 @@ const s = {
     color: theme.palette.cream,
   },
   shareStatus: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
   },
   shareUrl: {
@@ -347,15 +353,24 @@ const s = {
     marginBottom: theme.spacing.sm,
   },
   shareMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
   },
-  revoke: {
+  shareMetaNum: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
+    color: theme.palette.creamSoft,
+  },
+  revokeHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    marginTop: theme.spacing.xs,
+  },
+  revoke: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
     color: theme.palette.red,
   },
 };
