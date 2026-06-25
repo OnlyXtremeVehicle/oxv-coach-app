@@ -149,7 +149,10 @@ export default function DebriefPresentielScreen() {
           justifyContent: 'center',
         }}
       >
-        <ActivityIndicator color={theme.palette.creamMute} />
+        <ActivityIndicator
+          color={theme.palette.creamMute}
+          accessibilityLabel="Préparation du débrief"
+        />
       </SafeAreaView>
     );
   }
@@ -166,6 +169,7 @@ export default function DebriefPresentielScreen() {
         }}
       >
         <Text
+          accessibilityRole="header"
           style={{
             fontFamily: theme.fonts.bodyLight,
             fontSize: theme.fontSize.bodyLg,

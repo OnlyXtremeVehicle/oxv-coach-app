@@ -30,11 +30,15 @@ export default function LegalDocScreen() {
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {document ? (
           <>
-            <Text style={styles.screenTitle}>{document.title}</Text>
+            <Text style={styles.screenTitle} accessibilityRole="header">
+              {document.title}
+            </Text>
             {renderMarkdown(document.body)}
           </>
         ) : (
-          <Text style={styles.manifest}>Document introuvable.</Text>
+          <Text style={styles.manifest} accessibilityRole="header">
+            Document introuvable.
+          </Text>
         )}
       </View>
     </Screen>
@@ -52,19 +56,19 @@ function renderMarkdown(body: string) {
     if (t === '---' || t === '***' || t === '___') return <View key={key} style={styles.hr} />;
     if (t.startsWith('### '))
       return (
-        <Text key={key} style={styles.h3}>
+        <Text key={key} accessibilityRole="header" style={styles.h3}>
           {t.slice(4)}
         </Text>
       );
     if (t.startsWith('## '))
       return (
-        <Text key={key} style={styles.h2}>
+        <Text key={key} accessibilityRole="header" style={styles.h2}>
           {t.slice(3)}
         </Text>
       );
     if (t.startsWith('# '))
       return (
-        <Text key={key} style={styles.h1}>
+        <Text key={key} accessibilityRole="header" style={styles.h1}>
           {t.slice(2)}
         </Text>
       );

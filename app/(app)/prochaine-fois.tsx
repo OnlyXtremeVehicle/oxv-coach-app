@@ -54,7 +54,9 @@ export default function ProchaineFoisScreen() {
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {focus ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
-            <Text style={s.phrase}>{focus.phrase}</Text>
+            <Text style={s.phrase} accessibilityRole="header">
+              {focus.phrase}
+            </Text>
 
             <Text style={s.observation}>{focus.observation}</Text>
 
@@ -63,6 +65,7 @@ export default function ProchaineFoisScreen() {
                   vers un choix (doctrine miroir). */}
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Compris, revenir au bilan"
                 onPress={() => router.back()}
                 style={({ pressed }) => [s.choice, pressed && { opacity: 0.85 }]}
               >
@@ -71,6 +74,7 @@ export default function ProchaineFoisScreen() {
 
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel="Plus tard, revenir au bilan"
                 onPress={() => router.back()}
                 style={({ pressed }) => [s.choice, pressed && { opacity: 0.85 }]}
               >
@@ -91,11 +95,19 @@ export default function ProchaineFoisScreen() {
 function NoFocusState() {
   return (
     <View style={{ marginTop: theme.spacing.xxl * 2, alignItems: 'center' }}>
-      <Text style={s.calmTitle}>Confortable partout.</Text>
-      <Text style={[s.observation, { textAlign: 'center', paddingHorizontal: theme.spacing.md }]}>
-        Aucune zone ne ressort. Continuez comme ça.
+      <Text style={s.calmTitle} accessibilityRole="header">
+        Confortable partout.
       </Text>
-      <Pressable accessibilityRole="button" onPress={() => router.back()}>
+      <Text style={[s.observation, { textAlign: 'center', paddingHorizontal: theme.spacing.md }]}>
+        Aucune zone ne ressort cette fois.
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Retour au bilan"
+        onPress={() => router.back()}
+        hitSlop={theme.hitSlop}
+        style={s.backHit}
+      >
         <Text style={s.back}>Retour au bilan</Text>
       </Pressable>
     </View>
@@ -151,6 +163,11 @@ const s = {
     color: theme.dataColors.accel,
     textAlign: 'center' as const,
     marginBottom: theme.spacing.xl,
+  },
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
   },
   back: {
     fontFamily: theme.fonts.mono,
