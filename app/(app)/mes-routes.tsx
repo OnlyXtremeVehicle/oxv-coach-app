@@ -133,23 +133,23 @@ export default function MesRoutesScreen() {
                   ) : null}
                   <View style={s.actions}>
                     {canRequest ? (
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={busyId === r.id}
-                        onPress={() => onRequest(r.id)}
-                        style={({ pressed }) => [
-                          s.btn,
-                          { opacity: pressed || busyId === r.id ? 0.6 : 1 },
-                        ]}
-                      >
-                        <Text style={s.btnT}>Demander la certification</Text>
-                      </Pressable>
+                      <View style={{ flex: 1 }}>
+                        <Button
+                          label="Demander la certification"
+                          variant="ghost"
+                          onPress={() => onRequest(r.id)}
+                          disabled={busyId != null && busyId !== r.id}
+                          loading={busyId === r.id}
+                        />
+                      </View>
                     ) : null}
                     <Pressable
                       accessibilityRole="button"
-                      disabled={busyId === r.id}
+                      accessibilityLabel={`Supprimer ${r.name}`}
+                      accessibilityState={{ disabled: busyId != null }}
+                      disabled={busyId != null}
                       onPress={() => onDelete(r.id)}
-                      hitSlop={6}
+                      hitSlop={theme.hitSlop}
                     >
                       <Text style={s.delete}>Supprimer</Text>
                     </Pressable>
@@ -192,10 +192,8 @@ const s = {
     color: theme.palette.cream,
   },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },
@@ -212,23 +210,9 @@ const s = {
     gap: theme.spacing.md,
     marginTop: theme.spacing.md,
   },
-  btn: {
-    borderWidth: 1,
-    borderColor: theme.palette.gold,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  btnT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.gold,
-  },
   delete: {
     fontFamily: theme.fonts.mono,
-    fontSize: 9,
+    fontSize: 10,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,

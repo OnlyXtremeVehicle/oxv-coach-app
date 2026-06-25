@@ -80,7 +80,7 @@ export default function LieuxScreen() {
                 accessibilityState={{ selected: on }}
                 onPress={() => setFilter(f.id)}
                 style={[s.pill, on && s.pillOn]}
-                hitSlop={6}
+                hitSlop={theme.hitSlop}
               >
                 <Text style={[s.pillT, on && s.pillTOn]}>{f.label}</Text>
               </Pressable>
@@ -122,30 +122,30 @@ export default function LieuxScreen() {
 
 function PlaceCard({ place }: { place: Place }) {
   const meta = [place.category, place.city, place.priceRange].filter(Boolean).join(' · ');
-  const openUrl = () => {
-    if (place.url) Linking.openURL(place.url).catch(() => undefined);
-  };
+  const openUrl = place.url
+    ? () => {
+        if (place.url) Linking.openURL(place.url).catch(() => undefined);
+      }
+    : undefined;
   return (
-    <Pressable
-      accessibilityRole={place.url ? 'link' : 'text'}
-      accessibilityLabel={place.name}
-      disabled={!place.url}
+    <Card
       onPress={openUrl}
-      style={({ pressed }) => ({ opacity: pressed && place.url ? 0.8 : 1 })}
+      accessibilityLabel={place.name}
+      style={place.isPremium ? { borderColor: theme.palette.gold, ...cockpitHalo } : cockpitHalo}
     >
-      <Card
-        style={place.isPremium ? { borderColor: theme.palette.gold, ...cockpitHalo } : cockpitHalo}
-      >
-        <View style={s.row}>
-          <Text style={s.name}>{place.name}</Text>
-          {place.isOfficialPartner ? (
-            <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
-          ) : null}
-          {place.url ? <Text style={s.chevron}>›</Text> : null}
-        </View>
-        {meta ? <Text style={s.meta}>{meta}</Text> : null}
-      </Card>
-    </Pressable>
+      <View style={s.row}>
+        <Text style={s.name}>{place.name}</Text>
+        {place.isOfficialPartner ? (
+          <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
+        ) : null}
+        {place.url ? (
+          <Text style={s.chevron} accessibilityElementsHidden>
+            ›
+          </Text>
+        ) : null}
+      </View>
+      {meta ? <Text style={s.meta}>{meta}</Text> : null}
+    </Card>
   );
 }
 
@@ -195,10 +195,8 @@ const s = {
     fontSize: 18,
   },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },

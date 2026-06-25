@@ -86,7 +86,9 @@ export default function PilotRoulagesScreen() {
                   ) : null}
 
                   {roulage.status === 'cancelled' ? (
-                    <Text style={s.cancelled}>Ce roulage a été annulé.</Text>
+                    <Text style={s.cancelled} accessibilityRole="text">
+                      Ce roulage a été annulé.
+                    </Text>
                   ) : pending ? (
                     <View
                       style={{
@@ -99,7 +101,8 @@ export default function PilotRoulagesScreen() {
                         <Button
                           label="Accepter"
                           onPress={() => respond(invitation.id, true)}
-                          disabled={busyId === invitation.id}
+                          disabled={busyId != null && busyId !== invitation.id}
+                          loading={busyId === invitation.id}
                         />
                       </View>
                       <View style={{ flex: 1 }}>
@@ -107,12 +110,12 @@ export default function PilotRoulagesScreen() {
                           label="Décliner"
                           variant="ghost"
                           onPress={() => respond(invitation.id, false)}
-                          disabled={busyId === invitation.id}
+                          disabled={busyId != null}
                         />
                       </View>
                     </View>
                   ) : (
-                    <Text style={s.response}>
+                    <Text style={s.response} accessibilityRole="text">
                       Votre réponse : {INVITATION_STATUS_LABELS[invitation.status]}
                     </Text>
                   )}
@@ -148,15 +151,13 @@ const s = {
     color: theme.palette.cream,
   },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },
   price: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.xs,

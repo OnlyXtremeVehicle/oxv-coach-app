@@ -20,7 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
-import { type MarginZone } from '@/types/domain';
+import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
@@ -121,15 +121,22 @@ export default function CarteScreen() {
         <View style={{ gap: theme.spacing.xs }}>
           {BELTOISE_CORNERS.map((corner) => {
             const zone = margins[corner.index] ?? null;
+            const zoneLabel = zone ? marginLabelOf(zone) : null;
             return (
               <Pressable
                 accessibilityRole="button"
+                accessibilityLabel={
+                  zoneLabel
+                    ? `Virage ${corner.index}, ${corner.name}, ${zoneLabel}`
+                    : `Virage ${corner.index}, ${corner.name}`
+                }
                 key={corner.index}
                 onPress={() => onCornerTap(corner.index)}
                 style={({ pressed }) => ({
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: theme.spacing.md,
+                  minHeight: 44,
                   padding: theme.spacing.md,
                   borderRadius: theme.radius.md,
                   borderWidth: 1,
@@ -151,14 +158,21 @@ export default function CarteScreen() {
                   <Text style={s.cornerIndex}>{corner.index}</Text>
                 </View>
                 <Text style={s.cornerName}>{corner.name}</Text>
-                <Text style={s.chevron}>›</Text>
+                <Text style={s.chevron} accessibilityElementsHidden>
+                  ›
+                </Text>
               </Pressable>
             );
           })}
         </View>
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour au bilan"
+            onPress={() => router.back()}
+            hitSlop={theme.hitSlop}
+          >
             <Text style={s.backLink}>Retour au bilan</Text>
           </Pressable>
         </View>
@@ -198,9 +212,8 @@ const s = {
     marginBottom: theme.spacing.xl,
   },
   caption: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.4,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
