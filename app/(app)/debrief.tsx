@@ -182,8 +182,10 @@ export default function DebriefScreen() {
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
             accessibilityRole="button"
+            hitSlop={theme.hitSlop}
             onPressIn={() => haptics.tap()}
             onPress={() => router.back()}
+            style={s.backHit}
           >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
@@ -197,8 +199,10 @@ function Acte({ numero, titre, body }: { numero: string; titre: string; body: st
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
       <View style={s.acteHead}>
-        <View style={s.acteDot} />
-        <Text style={s.acteLabel}>
+        {/* Pastille décorative : masquée aux lecteurs d'écran. */}
+        <View style={s.acteDot} accessibilityElementsHidden importantForAccessibility="no" />
+        {/* En-tête d'acte : annoncé comme titre pour structurer la lecture. */}
+        <Text style={s.acteLabel} accessibilityRole="header">
           ACTE {numero} · {titre.toUpperCase()}
         </Text>
       </View>
@@ -230,8 +234,9 @@ function DebriefEmpty() {
         </Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl }]}
         >
           <Text style={s.backLink}>Retour</Text>
         </Pressable>
@@ -355,5 +360,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

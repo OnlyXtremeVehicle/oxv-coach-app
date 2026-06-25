@@ -51,6 +51,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import type { TelemetrySession } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
@@ -515,25 +516,22 @@ export default function BilanScreen() {
           ))}
         </View>
 
-        {/* CTA Export PDF */}
+        {/* CTA Export PDF — Button du kit : pendant l'export, spinner + libellé
+            conservé + état `busy` pour les lecteurs d'écran (non cliquable),
+            plutôt qu'une atténuation d'opacité manuelle. */}
         {session?.id ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={exporting}
-            onPress={async () => {
-              setExporting(true);
-              await exportAndShareBilanPdf({ sessionId: session.id });
-              setExporting(false);
-            }}
-            style={({ pressed }) => [
-              s.ctaPrimary,
-              { marginTop: theme.spacing.lg, opacity: pressed || exporting ? 0.6 : 1 },
-            ]}
-          >
-            <Text style={s.ctaPrimaryTxt}>
-              {exporting ? 'Préparation du PDF…' : 'Partager mon bilan en PDF'}
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <Button
+              variant="ghost"
+              label="Partager mon bilan en PDF"
+              loading={exporting}
+              onPress={async () => {
+                setExporting(true);
+                await exportAndShareBilanPdf({ sessionId: session.id });
+                setExporting(false);
+              }}
+            />
+          </View>
         ) : null}
 
         {/* CTA Côte à côte — comparer avec un copain (entre amis, pas du coaching) */}
@@ -602,7 +600,12 @@ export default function BilanScreen() {
         </FadeInSection>
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -670,8 +673,9 @@ function BilanEmpty() {
         <Text style={s.manifest}>Votre première session écrira la première ligne.</Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl * 1.5 }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour à l'accueil</Text>
         </Pressable>
@@ -689,7 +693,12 @@ function BilanError({ message }: { message: string }) {
           Le bilan n'a pas pu être chargé.
         </Text>
         <Text style={s.errorBody}>{message}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={theme.hitSlop}
+          onPress={() => router.back()}
+          style={s.backHit}
+        >
           <Text style={s.back}>Retour</Text>
         </Pressable>
       </View>
@@ -780,17 +789,6 @@ const s = {
     color: theme.palette.creamSoft,
     lineHeight: theme.fontSize.body * 1.5,
   },
-  coachCornerIndex: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.coach,
-  },
-  coachCornerName: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    flex: 1,
-  },
   coachReading: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.display,
@@ -817,21 +815,6 @@ const s = {
   chevron: {
     color: theme.palette.creamMute,
     fontSize: 18,
-  },
-  ctaPrimary: {
-    padding: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.edge,
-    backgroundColor: theme.palette.card2,
-    alignItems: 'center' as const,
-  },
-  ctaPrimaryTxt: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.cream,
   },
   ctaGhost: {
     padding: theme.spacing.lg,
@@ -879,5 +862,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };
