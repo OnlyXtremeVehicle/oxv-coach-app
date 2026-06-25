@@ -31,6 +31,7 @@ import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
+import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
@@ -178,7 +179,15 @@ export default function HomeHubScreen() {
 
         {__DEV__ ? (
           <Link href="/(app)/debug-capture" asChild>
-            <Pressable style={{ marginBottom: spacing.lg, alignItems: 'center' }}>
+            <Pressable
+              accessibilityRole="button"
+              style={{
+                minHeight: 44,
+                marginBottom: spacing.sm,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <Text style={s.footerLink}>Mode debug — capture UBX</Text>
             </Pressable>
           </Link>
@@ -245,53 +254,56 @@ function ModePassive({
         <Text style={s.greetTitle}>{greetingText}</Text>
       </FadeInSection>
 
-      {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible. */}
+      {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible.
+          Carte actionnable du kit : retour pressé + rôle bouton + cible ≥ 44 px
+          cohérents, plutôt qu'un Pressable enroulant une View. */}
       {loading ? null : recentSession ? (
         <Link href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+          <Card
+            onPress={() => {}}
+            accessibilityLabel={`Votre dernier bilan, ${recentSession.circuitName ?? 'session'}, ${timeAgoFr(
+              recentSession.startedAt
+            )}`}
+            style={s.bilan}
           >
-            <View style={s.bilan}>
-              <Text style={s.bilanChevron}>›</Text>
-              <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-              <View style={s.bilanRow}>
+            <Text style={s.bilanChevron}>›</Text>
+            <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
+            <View style={s.bilanRow}>
+              {regularity ? (
+                <GaugeInstrument
+                  value={regularity.stdDevSeconds}
+                  min={0}
+                  max={Math.max(3, regularity.stdDevSeconds * 1.25)}
+                  unit="s"
+                  formatValue={(v) => v.toFixed(1).replace('.', ',')}
+                  size={104}
+                  majorTicks={4}
+                  minorPerMajor={1}
+                />
+              ) : null}
+              <View style={{ flex: 1 }}>
+                <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
+                <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
                 {regularity ? (
-                  <GaugeInstrument
-                    value={regularity.stdDevSeconds}
-                    min={0}
-                    max={Math.max(3, regularity.stdDevSeconds * 1.25)}
-                    unit="s"
-                    formatValue={(v) => v.toFixed(1).replace('.', ',')}
-                    size={104}
-                    majorTicks={4}
-                    minorPerMajor={1}
-                  />
+                  <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
                 ) : null}
-                <View style={{ flex: 1 }}>
-                  <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-                  <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
-                  {regularity ? (
-                    <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
-                  ) : null}
-                </View>
               </View>
             </View>
-          </Pressable>
+          </Card>
         </Link>
       ) : (
         <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
       )}
 
-      {/* Explorer — quatre accès essentiels en grille. */}
+      {/* Explorer — quatre accès essentiels en grille (gouttière sur grille 8). */}
       <FadeInSection delay={120}>
         <Text style={[s.eyebrow, s.sectionLabel]}>Explorer</Text>
-        <View style={{ gap: 10 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Tile {...PRIMARY[0]} />
             <Tile {...PRIMARY[1]} />
           </View>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Tile {...PRIMARY[2]} />
             <Tile {...PRIMARY[3]} />
           </View>
@@ -393,12 +405,14 @@ const s = StyleSheet.create({
 
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
+  // Eyebrow : info utile (« Votre dernier bilan », « Explorer », mode courant).
+  // creamMute (≈ 6.4:1 sur night) pour passer WCAG AA, là où faint échouait.
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: palette.faint,
+    color: palette.creamMute,
   },
 
   greetTitle: {
@@ -409,15 +423,12 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Dernier bilan (carte héros — chiffre dominant unique)
+  // Dernier bilan (carte héros — chiffre dominant unique). Surcharge la carte du
+  // kit : carte2 + rayon xl + halo doré discret (donnée), padding sur grille.
   bilan: {
     backgroundColor: palette.card2,
-    borderColor: palette.line,
-    borderWidth: 1,
     borderRadius: radius.xl,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 18,
+    padding: spacing.lg,
     marginTop: spacing.xl,
     shadowColor: palette.gold,
     shadowOffset: { width: 0, height: 0 },
@@ -439,7 +450,13 @@ const s = StyleSheet.create({
     marginTop: 8,
     lineHeight: 15,
   },
-  bilanChevron: { position: 'absolute', top: 14, right: 18, color: palette.faint, fontSize: 22 },
+  bilanChevron: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.lg,
+    color: palette.creamMute,
+    fontSize: 22,
+  },
   bilanCircuit: {
     fontFamily: fonts.display,
     fontSize: 18,
@@ -452,27 +469,6 @@ const s = StyleSheet.create({
     letterSpacing: 0.4,
     color: palette.creamMute,
     marginTop: 5,
-  },
-  bilanStat: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
-    paddingTop: 14,
-  },
-  bilanV: { fontFamily: fonts.monoMedium, fontSize: 30, color: palette.cream },
-  bilanU: { fontFamily: fonts.mono, fontSize: 14, color: palette.creamMute },
-  bilanL: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: palette.faint,
-    marginLeft: 'auto',
-    textAlign: 'right',
-    lineHeight: 15,
   },
 
   emptyManifest: {
@@ -506,8 +502,9 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: 18,
-    padding: 13,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: palette.line,
     borderRadius: radius.lg,
