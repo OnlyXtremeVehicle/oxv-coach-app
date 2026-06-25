@@ -39,7 +39,7 @@ import {
   loadSessionSnapshot,
   logCoachView,
 } from '@/services/coachService';
-import { type MarginZone } from '@/types/domain';
+import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -389,14 +389,18 @@ function CornerRow({
   marginA: number | null;
   marginB: number | null;
 }) {
+  const deltaStr = formatDeltaPoints(marginA, marginB);
+  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. A : ${zoneLabelFr(
+    zoneA
+  )}. B : ${zoneLabelFr(zoneB)}. Écart ${deltaStr}.`;
   return (
-    <View style={s.cornerRow}>
+    <View accessible accessibilityLabel={a11yLabel} style={s.cornerRow}>
       <Text style={s.cornerIndex}>{cornerIndex}</Text>
       <Text style={s.cornerName}>{cornerName}</Text>
       <ZoneDot zone={zoneA} />
       <Text style={s.arrow}>→</Text>
       <ZoneDot zone={zoneB} />
-      <Text style={s.cornerDelta}>{formatDeltaPoints(marginA, marginB)}</Text>
+      <Text style={s.cornerDelta}>{deltaStr}</Text>
     </View>
   );
 }
@@ -437,6 +441,10 @@ function colorForZone(zone: MarginZone | null): string {
     default:
       return theme.palette.creamMute;
   }
+}
+
+function zoneLabelFr(zone: MarginZone | null): string {
+  return zone ? marginLabelOf(zone) : 'marge indisponible';
 }
 
 function formatDeltaPoints(a: number | null, b: number | null): string {

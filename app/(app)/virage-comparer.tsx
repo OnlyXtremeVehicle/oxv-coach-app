@@ -170,27 +170,25 @@ export default function VirageComparerScreen() {
               <Text style={s.meta}>Aucune autre session disponible.</Text>
             ) : (
               <View style={{ gap: theme.spacing.xs }}>
-                {options.map((o) => (
-                  <Pressable
-                    accessibilityRole="button"
-                    key={o.id}
-                    onPress={() => setSessionBId(o.id)}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                  >
+                {options.map((o) => {
+                  const when = formatDateShort(o.startedAt);
+                  const pct = o.marginGlobal !== null ? `${Math.round(o.marginGlobal)} %` : null;
+                  return (
                     <Card
+                      key={o.id}
+                      onPress={() => setSessionBId(o.id)}
+                      accessibilityLabel={`Session B du ${when}${pct ? `, marge ${pct}` : ''}.`}
                       style={{
                         flexDirection: 'row',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                       }}
                     >
-                      <Text style={s.optionDate}>{formatDateShort(o.startedAt)}</Text>
-                      <Text style={s.optionMargin}>
-                        {o.marginGlobal !== null ? `${Math.round(o.marginGlobal)} %` : '—'}
-                      </Text>
+                      <Text style={s.optionDate}>{when}</Text>
+                      <Text style={s.optionMargin}>{pct ?? '—'}</Text>
                     </Card>
-                  </Pressable>
-                ))}
+                  );
+                })}
               </View>
             )}
           </View>

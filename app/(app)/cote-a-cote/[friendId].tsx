@@ -403,8 +403,15 @@ function CornerRow({
   theirs: SegmentAnalysisRow | null;
   isLast: boolean;
 }) {
+  // Doctrine côte à côte : on situe les deux marges, sans verdict. Le libellé
+  // accessible attribue chaque côté (vous / eux) — pas de « gagnant ».
+  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. Vous : ${margePhrase(
+    mine
+  )}. Eux : ${margePhrase(theirs)}.`;
   return (
     <View
+      accessible
+      accessibilityLabel={a11yLabel}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -423,10 +430,22 @@ function CornerRow({
       </View>
 
       <SegmentMargeCell row={mine} />
-      <Text style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}>·</Text>
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}
+      >
+        ·
+      </Text>
       <SegmentMargeCell row={theirs} />
     </View>
   );
+}
+
+function margePhrase(row: SegmentAnalysisRow | null): string {
+  if (!row || row.marginPercent === null) return 'marge indisponible';
+  const pct = Math.round(row.marginPercent);
+  return row.marginZone ? `${pct} pour cent, ${marginLabelOf(row.marginZone)}` : `${pct} pour cent`;
 }
 
 function SegmentMargeCell({ row }: { row: SegmentAnalysisRow | null }) {
@@ -597,6 +616,8 @@ function DuelStatColumn({
             {stats.marginBest !== null ? `${Math.round(stats.marginBest)}%` : '—'}
           </Text>
           <View
+            accessible
+            accessibilityLabel={`Répartition des marges : ${stats.marginZoneDistribution.green} confortable, ${stats.marginZoneDistribution.yellow} à explorer, ${stats.marginZoneDistribution.red} terrain serré.`}
             style={{
               flexDirection: 'row',
               gap: theme.spacing.xs,
