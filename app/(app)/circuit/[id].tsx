@@ -87,7 +87,9 @@ export default function CircuitDetailScreen() {
     <Screen>
       <AppBar title="CIRCUIT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>{title}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {title}
+        </Text>
         {circuit && circuitSubtitle(circuit) ? (
           <Text style={s.subtitle}>{circuitSubtitle(circuit)}</Text>
         ) : null}
@@ -96,7 +98,7 @@ export default function CircuitDetailScreen() {
         {hasTrace3D(circuit) ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
             <View style={s.headRow}>
-              <View style={s.headDot} />
+              <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
               <SectionLabel>Le tracé</SectionLabel>
             </View>
             <View style={{ marginTop: theme.spacing.md }}>
@@ -107,7 +109,7 @@ export default function CircuitDetailScreen() {
 
         <View style={{ marginTop: theme.spacing.xxl }}>
           <View style={s.headRow}>
-            <View style={s.headDot} />
+            <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
             <SectionLabel>Autour du circuit</SectionLabel>
           </View>
         </View>
@@ -139,7 +141,12 @@ export default function CircuitDetailScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -180,12 +187,23 @@ function ServiceCard({ service }: { service: CircuitService }) {
   );
 }
 
+// Libellé d'accessibilité explicite par action (le texte visible reste court).
+const ACTION_A11Y: Record<string, string> = {
+  Site: 'Ouvrir le site',
+  'E-mail': 'Envoyer un e-mail',
+  Téléphone: 'Appeler',
+};
+
 function Action({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={ACTION_A11Y[label] ?? label}
+      hitSlop={theme.hitSlop}
       onPress={onPress}
       style={({ pressed }) => ({
+        minHeight: 44,
+        justifyContent: 'center',
         paddingHorizontal: theme.spacing.md,
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.sm,
@@ -281,5 +299,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

@@ -116,7 +116,7 @@ export default function ReplayScreen() {
       <AppBar title="REJOUER" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>REJOUER</Text>
-        <Text style={s.title}>
+        <Text style={s.title} accessibilityRole="header">
           {currentLap
             ? `Tour ${currentLap.lap_number}${currentLap.is_best_lap ? ' · meilleur tour' : ''}`
             : 'Sélectionnez un tour'}
@@ -142,13 +142,25 @@ export default function ReplayScreen() {
           >
             {laps.map((l) => {
               const on = selectedLap === l.lap_number;
+              const kind = l.is_best_lap
+                ? ', meilleur tour'
+                : l.is_outlap
+                  ? ', tour de sortie'
+                  : l.is_inlap
+                    ? ', tour de rentrée'
+                    : '';
               return (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ selected: on }}
+                  accessibilityLabel={`Tour ${l.lap_number}${kind}`}
+                  accessibilityHint="Sélectionne ce tour à rejouer"
+                  hitSlop={theme.hitSlop}
                   key={l.id}
                   onPress={() => setSelectedLap(l.lap_number)}
                   style={({ pressed }) => ({
+                    minHeight: 36,
+                    justifyContent: 'center',
                     paddingVertical: theme.spacing.xs,
                     paddingHorizontal: theme.spacing.md,
                     borderRadius: theme.radius.sm,
@@ -186,7 +198,13 @@ export default function ReplayScreen() {
               marginBottom: theme.spacing.md,
             }}
           >
-            <Pressable accessibilityRole="button" onPress={toggle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: level === 'detailed' }}
+              hitSlop={theme.hitSlop}
+              onPress={toggle}
+              style={s.toggleHit}
+            >
               <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
@@ -208,7 +226,12 @@ export default function ReplayScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -291,13 +314,24 @@ function ReplayStage({ frames, showGs }: { frames: Frame[]; showGs: boolean }) {
       {/* Scrubber tactile manuel. */}
       <View
         style={s.track}
+        accessibilityRole="adjustable"
+        accessibilityLabel="Position dans le tour"
+        accessibilityValue={{ now: Math.round(progress * 100), min: 0, max: 100 }}
         onLayout={(e: LayoutChangeEvent) => {
           widthRef.current = e.nativeEvent.layout.width;
         }}
         {...pan.panHandlers}
       >
-        <View style={[s.trackFill, { width: `${progress * 100}%` }]} />
-        <View style={[s.trackHead, { left: `${progress * 100}%` }]} />
+        <View
+          style={[s.trackFill, { width: `${progress * 100}%` }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+        <View
+          style={[s.trackHead, { left: `${progress * 100}%` }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
       </View>
       <Text style={s.scrubHint}>Balayez pour parcourir le tour</Text>
     </View>
@@ -344,6 +378,11 @@ const s = {
     color: theme.palette.creamMute,
     textDecorationLine: 'underline' as const,
   },
+  // Cible tactile confortable pour le lien-toggle (texte seul).
+  toggleHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+  },
   readouts: {
     flexDirection: 'row' as const,
     gap: theme.spacing.sm,
@@ -384,7 +423,8 @@ const s = {
     fontSize: 9,
     letterSpacing: 1.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    // Instruction utile (pas un eyebrow décoratif) → contraste AA : creamMute.
+    color: theme.palette.creamMute,
     textAlign: 'center' as const,
     marginTop: theme.spacing.sm,
   },
@@ -408,5 +448,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

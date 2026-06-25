@@ -80,7 +80,7 @@ export default function ToursScreen() {
       <AppBar title="TOURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>TOUR PAR TOUR</Text>
-        <Text style={s.title}>
+        <Text style={s.title} accessibilityRole="header">
           {laps.length > 0
             ? `${validLaps.length} tour${validLaps.length > 1 ? 's' : ''} valide${validLaps.length > 1 ? 's' : ''}`
             : 'Vos tours'}
@@ -104,8 +104,20 @@ export default function ToursScreen() {
             >
               MEILLEUR TOUR
             </Text>
-            <Text style={s.heroNumber}>{formatLapTime(bestLap.duration_seconds)}</Text>
-            <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>Tour {bestLap.lap_number}</Text>
+            <Text
+              style={s.heroNumber}
+              accessibilityRole="text"
+              accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${bestLap.lap_number}`}
+            >
+              {formatLapTime(bestLap.duration_seconds)}
+            </Text>
+            <Text
+              style={[s.meta, { marginTop: theme.spacing.xs }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              Tour {bestLap.lap_number}
+            </Text>
           </View>
         ) : null}
 
@@ -127,7 +139,13 @@ export default function ToursScreen() {
               marginBottom: theme.spacing.md,
             }}
           >
-            <Pressable accessibilityRole="button" onPress={toggle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: level === 'detailed' }}
+              hitSlop={theme.hitSlop}
+              onPress={toggle}
+              style={s.toggleHit}
+            >
               <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
@@ -164,7 +182,12 @@ export default function ToursScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -190,9 +213,24 @@ function LapRow({
   const delta =
     bestSeconds !== null && !isBest && !isExcluded ? lap.duration_seconds - bestSeconds : null;
 
+  const noteForA11y = isBest
+    ? 'meilleur tour'
+    : isExcluded
+      ? lap.is_outlap
+        ? 'tour de sortie'
+        : 'tour de rentrée'
+      : delta !== null
+        ? `plus ${delta.toFixed(2)} seconde${delta >= 2 ? 's' : ''}`
+        : '';
+  const a11yLabel = `Tour ${lap.lap_number}, ${formatLapTime(lap.duration_seconds)}${
+    noteForA11y ? `, ${noteForA11y}` : ''
+  }`;
+
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint="Ouvre la télémétrie de ce tour"
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.85 : isExcluded ? 0.5 : 1 })}
     >
@@ -255,7 +293,9 @@ function LapRow({
           ) : null}
         </View>
 
-        <Text style={s.chevron}>›</Text>
+        <Text style={s.chevron} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </Card>
     </Pressable>
   );
@@ -381,6 +421,11 @@ const s = {
     color: theme.palette.creamMute,
     textDecorationLine: 'underline' as const,
   },
+  // Cible tactile confortable pour le lien-toggle (texte seul).
+  toggleHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+  },
   lapTime: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.h3,
@@ -428,5 +473,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

@@ -183,10 +183,12 @@ export default function VirageScreen() {
       <AppBar title="VIRAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <View style={s.headRow}>
-          <View style={s.headDot} />
+          <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
           <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
         </View>
-        <Text style={[s.title, { marginTop: theme.spacing.md }]}>{corner.name}</Text>
+        <Text style={[s.title, { marginTop: theme.spacing.md }]} accessibilityRole="header">
+          {corner.name}
+        </Text>
         <Text
           style={[
             s.zoneLabel,
@@ -196,6 +198,11 @@ export default function VirageScreen() {
               marginBottom: theme.spacing.xl,
             },
           ]}
+          accessibilityLabel={
+            stats?.marginPercent !== null && stats?.marginPercent !== undefined
+              ? `Marge : ${marginLabelOf(zone)}, ${Math.round(stats.marginPercent)} pour cent`
+              : `Marge : ${marginLabelOf(zone)}`
+          }
         >
           {marginLabelOf(zone)}
           {stats?.marginPercent !== null && stats?.marginPercent !== undefined
@@ -316,7 +323,9 @@ export default function VirageScreen() {
 
         {/* Question ouverte — doctrine */}
         <View style={{ marginBottom: theme.spacing.xxl * 1.5, marginTop: theme.spacing.xxl }}>
-          <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>QUESTION</Text>
+          <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]} accessibilityRole="header">
+            QUESTION
+          </Text>
           <Text style={[s.manifest, { textAlign: 'center', marginVertical: theme.spacing.lg }]}>
             Était-ce volontaire&nbsp;?
           </Text>
@@ -337,6 +346,8 @@ export default function VirageScreen() {
         {isCoach && sessionPilotId ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Annoter ce virage"
+            hitSlop={theme.hitSlop}
             onPress={() =>
               router.push({
                 pathname: '/(coach)/annoter',
@@ -371,7 +382,12 @@ export default function VirageScreen() {
         </View>
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour à la carte</Text>
           </Pressable>
         </View>
@@ -384,8 +400,10 @@ function Section({ eyebrow, children }: { eyebrow: string; children: React.React
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
       <View style={[s.headRow, { marginBottom: theme.spacing.lg }]}>
-        <View style={s.headDot} />
-        <Text style={s.eyebrow}>{eyebrow}</Text>
+        <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
+        <Text style={s.eyebrow} accessibilityRole="header">
+          {eyebrow}
+        </Text>
       </View>
       {children}
     </View>
@@ -468,11 +486,14 @@ function VirageNotFound() {
         }}
       >
         <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>VIRAGE</Text>
-        <Text style={[s.title, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
+        <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">
+          Ce virage n'existe pas.
+        </Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl * 1.5 }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour</Text>
         </Pressable>
@@ -606,5 +627,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour les liens « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };
