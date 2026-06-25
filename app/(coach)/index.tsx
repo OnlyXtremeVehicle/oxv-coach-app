@@ -157,6 +157,10 @@ export default function CoachHubScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+          {/* Demandes de séance reçues (Phase 1 marketplace) — boucle de
+              réponse. Accessible à tout coach : c'est sa boîte de réception. */}
+          <CoachLink label="Demandes" href="/(coach)/demandes" />
+
           {/* Mes repères de virage (§10.3c-A) — outil pédagogique de base,
               disponible pour tout coach. */}
           <CoachLink label="Mes repères de virage" href="/(coach)/reperes" />

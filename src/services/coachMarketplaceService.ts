@@ -2,18 +2,30 @@
  * Place de marché coaching — Phase 1 (mise en relation, SANS paiement, SANS avis).
  *
  * Côté pilote : découvrir les coachs publiés, lire une fiche, demander une
- * séance, suivre ses demandes. Réf. spec :
+ * séance, suivre ses demandes, annuler une demande en attente. Côté coach :
+ * lire les demandes reçues, accepter / décliner. Réf. spec :
  * docs/specs-bundle-v4/MVP_PLACE_DE_MARCHE_COACHING.md.
  *
- * Sécurité : tout passe par les RLS Supabase (proposées dans
- * 0007_coaching_marketplace.sql) — un pilote ne lit que les fiches/créneaux
- * `is_published = true`, ne crée que ses propres demandes en `pending`. Aucune
- * donnée pilote n'est exposée par la découverte (RGPD, spec §4). Une demande
- * `pending` n'ouvre aucun accès : l'affiliation `coach_pilots` reste le seul
- * vecteur de consentement, et n'est PAS touchée ici (Phase 1).
+ * Sécurité : tout passe par les RLS Supabase (0007_coaching_marketplace.sql,
+ * appliquée en prod) :
+ *   - un pilote ne lit que les fiches/créneaux `is_published = true`, ne crée
+ *     que ses propres demandes en `pending`, et ne peut mettre à jour SA
+ *     demande QUE vers `cancelled` (`coaching_bookings_pilot_cancel`).
+ *   - un coach ne lit/répond qu'aux demandes où `coach_id = auth.uid()`
+ *     (`coaching_bookings_coach_select` / `_coach_respond`).
+ * Aucune donnée pilote n'est exposée par la découverte (RGPD, spec §4). Une
+ * demande `pending` n'ouvre aucun accès : l'affiliation `coach_pilots` reste le
+ * seul vecteur de consentement, et n'est PAS touchée ici (Phase 1).
+ *
+ * Identité du pilote côté coach : aucune policy n'autorise le coach à lire la
+ * ligne `users` d'un pilote non affilié. L'embed `pilot:users!pilot_id(...)`
+ * est donc tenté mais peut renvoyer `null` ; dans ce cas on retombe sur un
+ * libellé générique (« Pilote ») et c'est le MESSAGE qui porte la décision.
+ * Révéler le nom suppose une policy `users` à trancher (hors périmètre).
  *
  * Doctrine : pas de classement de personnes, pas de note, pas de tri « meilleur
- * coach ». Tri neutre (premium d'abord puis alphabétique), comme les lieux.
+ * coach ». Tri neutre (premium d'abord puis alphabétique), comme les lieux. Un
+ * statut est toujours doublé d'un libellé humain (cf. `bookingStatusLabel`).
  * Best-effort : en cas d'erreur on renvoie un résultat vide / défensif plutôt
  * que de faire planter l'écran.
  */
@@ -60,6 +72,39 @@ export type BookingStatus =
   | 'completed'
   | 'refunded';
 
+/**
+ * Libellé humain d'un statut de demande. Le statut n'est JAMAIS rendu par la
+ * couleur seule (doctrine + a11y) : on le double toujours de ce texte factuel,
+ * au vouvoiement, sans emoji. Phase 1 ne produit que pending/accepted/declined/
+ * cancelled ; les statuts Phase 2 (paid/completed/refunded) sont couverts pour
+ * rester exhaustif.
+ */
+export function bookingStatusLabel(status: BookingStatus): string {
+  switch (status) {
+    case 'pending':
+      return 'En attente de réponse';
+    case 'accepted':
+      return 'Acceptée';
+    case 'declined':
+      return 'Déclinée';
+    case 'cancelled':
+      return 'Annulée';
+    case 'paid':
+      return 'Réglée';
+    case 'completed':
+      return 'Terminée';
+    case 'refunded':
+      return 'Remboursée';
+    default:
+      return 'Statut inconnu';
+  }
+}
+
+/** Coach résumé pour « Mes demandes » (lu via `coach_profiles`, pas `users`). */
+export interface BookingCoachRef {
+  headline: string | null;
+}
+
 /** Demande de séance, vue côté pilote (« Mes demandes »). */
 export interface MyBooking {
   id: string;
@@ -70,6 +115,28 @@ export interface MyBooking {
   message: string | null;
   status: BookingStatus;
   createdAt: string;
+  /** Fiche du coach (nom/headline) si lisible (fiche publiée), sinon `null`. */
+  coach: BookingCoachRef | null;
+}
+
+/** Pilote résumé pour « Demandes reçues ». `null` si la RLS masque `users`. */
+export interface BookingPilotRef {
+  firstName: string | null;
+  lastName: string | null;
+}
+
+/** Demande de séance, vue côté coach (« Demandes reçues »). */
+export interface CoachBooking {
+  id: string;
+  pilotId: string;
+  availabilityId: string | null;
+  requestedStartsAt: string | null;
+  circuitName: string | null;
+  message: string | null;
+  status: BookingStatus;
+  createdAt: string;
+  /** Identité du pilote si la RLS la laisse lire, sinon `null` (→ générique). */
+  pilot: BookingPilotRef | null;
 }
 
 /** Entrée d'une demande de séance. Le pilote n'envoie qu'un message + un
@@ -224,7 +291,18 @@ export async function requestBooking(
   return { ok: true, id: data.id };
 }
 
-/** Liste les demandes du pilote courant (les plus récentes d'abord). */
+/**
+ * Liste les demandes du pilote courant (les plus récentes d'abord). La RLS
+ * `coaching_bookings_pilot_select` borne déjà à `pilot_id = auth.uid()`.
+ *
+ * Le coach est résolu via `coach_profiles` (lisible par le pilote quand la fiche
+ * est publiée — policy `coach_profiles_read_published`), JAMAIS via `users`. On
+ * fait deux requêtes plutôt qu'un embed PostgREST : `coaching_bookings` et
+ * `coach_profiles` ne partagent pas de clé étrangère directe (toutes deux
+ * pointent `users`), l'inférence d'embed n'est donc pas garantie. Le stitch en
+ * mémoire est robuste et n'expose rien de plus. Si la fiche n'est pas/plus
+ * publiée, `coach` retombe à `null` et l'écran affiche un libellé générique.
+ */
 export async function listMyBookings(): Promise<MyBooking[]> {
   const { data, error } = await supabase
     .from('coaching_bookings')
@@ -238,7 +316,25 @@ export async function listMyBookings(): Promise<MyBooking[]> {
     return [];
   }
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+
+  // Résolution des coachs : une seule requête sur les coach_id distincts. Best
+  // effort — en cas d'échec on garde les demandes, coach = null.
+  const coachIds = Array.from(new Set(rows.map((r) => r.coach_id)));
+  const headlineById = new Map<string, string | null>();
+  if (coachIds.length > 0) {
+    const { data: profiles, error: profErr } = await supabase
+      .from('coach_profiles')
+      .select('coach_id, headline')
+      .in('coach_id', coachIds);
+    if (profErr) {
+      console.warn('[OXV][marketplace] listMyBookings profiles :', profErr.message);
+    } else {
+      for (const p of profiles ?? []) headlineById.set(p.coach_id, p.headline ?? null);
+    }
+  }
+
+  return rows.map((row) => ({
     id: row.id,
     coachId: row.coach_id,
     availabilityId: row.availability_id ?? null,
@@ -247,5 +343,101 @@ export async function listMyBookings(): Promise<MyBooking[]> {
     message: row.message ?? null,
     status: row.status as BookingStatus,
     createdAt: row.created_at,
+    coach: headlineById.has(row.coach_id)
+      ? { headline: headlineById.get(row.coach_id) ?? null }
+      : null,
   }));
+}
+
+/**
+ * Liste les demandes reçues par le coach courant (les plus récentes d'abord).
+ * La RLS `coaching_bookings_coach_select` borne à `coach_id = auth.uid()`.
+ *
+ * On TENTE d'embarquer l'identité du pilote via `users` ; aucune policy ne la
+ * garantit pour un pilote non affilié, donc l'embed peut renvoyer `null`. Dans
+ * ce cas `pilot` reste `null` et l'écran affiche « Pilote » : c'est le message
+ * de la demande qui porte le contexte de décision, pas l'identité.
+ */
+export async function listCoachBookings(): Promise<CoachBooking[]> {
+  const { data, error } = await supabase
+    .from('coaching_bookings')
+    .select(
+      'id, pilot_id, availability_id, requested_starts_at, circuit_name, message, status, created_at, pilot:users!pilot_id(first_name, last_name)'
+    )
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[OXV][marketplace] listCoachBookings :', error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const joined = row.pilot as
+      | { first_name?: string | null; last_name?: string | null }
+      | { first_name?: string | null; last_name?: string | null }[]
+      | null
+      | undefined;
+    const pilot = Array.isArray(joined) ? joined[0] : joined;
+    const hasName = pilot && (pilot.first_name || pilot.last_name);
+    return {
+      id: row.id as string,
+      pilotId: row.pilot_id as string,
+      availabilityId: (row.availability_id as string | null) ?? null,
+      requestedStartsAt: (row.requested_starts_at as string | null) ?? null,
+      circuitName: (row.circuit_name as string | null) ?? null,
+      message: (row.message as string | null) ?? null,
+      status: row.status as BookingStatus,
+      createdAt: row.created_at as string,
+      pilot: hasName
+        ? { firstName: pilot.first_name ?? null, lastName: pilot.last_name ?? null }
+        : null,
+    };
+  });
+}
+
+/**
+ * Réponse du coach à une demande `pending` : `accepted` ou `declined`. La RLS
+ * `coaching_bookings_coach_respond` vérifie `coach_id = auth.uid()`. On pose
+ * aussi `responded_at = now()` (horodatage de la décision). Renvoie un résultat
+ * défensif, jamais d'exception remontée à l'écran.
+ */
+export async function respondToBooking(
+  id: string,
+  status: 'accepted' | 'declined'
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase
+    .from('coaching_bookings')
+    .update({ status, responded_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.warn('[OXV][marketplace] respondToBooking :', error.message);
+    return {
+      ok: false,
+      error: "La réponse n'a pas pu être enregistrée. Réessayez dans un instant.",
+    };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Annulation par le pilote de SA demande. La RLS `coaching_bookings_pilot_cancel`
+ * n'autorise QUE la transition vers `cancelled` ; on pose `cancelled_at = now()`.
+ * Renvoie un résultat défensif, jamais d'exception remontée à l'écran.
+ */
+export async function cancelBooking(
+  id: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase
+    .from('coaching_bookings')
+    .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.warn('[OXV][marketplace] cancelBooking :', error.message);
+    return { ok: false, error: "La demande n'a pas pu être annulée. Réessayez dans un instant." };
+  }
+
+  return { ok: true };
 }
