@@ -112,7 +112,7 @@ export function GGViz() {
         {/* Radar + nombre central superposé. */}
         <View style={styles.radarWrap}>
           <Svg width="100%" height="100%" viewBox={`0 0 ${VB} ${VB}`}>
-            {/* Axes. */}
+            {/* Axes : filets fins (le ton sombre porte la discrétion). */}
             <Line
               x1={CX}
               y1={18}
@@ -129,7 +129,7 @@ export function GGViz() {
               stroke={theme.palette.line}
               strokeWidth={1}
             />
-            {/* Cercles de grille. */}
+            {/* Cercles de grille : mêmes filets que les axes. */}
             <Circle
               cx={CX}
               cy={CY}
@@ -137,7 +137,6 @@ export function GGViz() {
               fill="none"
               stroke={theme.palette.line}
               strokeWidth={1}
-              opacity={0.7}
             />
             <Circle
               cx={CX}
@@ -146,7 +145,6 @@ export function GGViz() {
               fill="none"
               stroke={theme.palette.line}
               strokeWidth={1}
-              opacity={0.7}
             />
             {/* Cercle-limite : enveloppe max, doré tireté (donnée, pas jugement). */}
             <Circle
@@ -157,7 +155,8 @@ export function GGViz() {
               stroke={GOLD}
               strokeWidth={1.2}
               strokeDasharray="3 5"
-              opacity={0.38}
+              strokeLinecap="round"
+              opacity={0.42}
             />
 
             {/* Nuage : halo doré sur le bord, dégradé d'opacité vers le centre. */}
@@ -181,14 +180,13 @@ export function GGViz() {
               )}
             </G>
 
-            {/* Graduations g (très discrètes). */}
+            {/* Graduations g (chiffres mono, ton tertiaire discret). */}
             <SvgText
               x={CX + 5}
               y={CY - R_MID + 3}
               fill={theme.palette.faint}
               fontFamily={theme.fonts.mono}
               fontSize={7}
-              opacity={0.7}
             >
               1,0 g
             </SvgText>
@@ -198,7 +196,6 @@ export function GGViz() {
               fill={theme.palette.faint}
               fontFamily={theme.fonts.mono}
               fontSize={7}
-              opacity={0.7}
             >
               1,5 g
             </SvgText>

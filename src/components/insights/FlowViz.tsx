@@ -89,12 +89,35 @@ export function FlowViz() {
 
         <Text style={styles.cap}>Tour le plus rapide vs tour le plus haché · un tour complet</Text>
         <Svg width="100%" height={130} viewBox="0 0 320 130">
-          <Line x1={0} y1={65} x2={320} y2={65} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
-          {/* Tour haché — ambre en contraste. */}
-          <Polyline points={JAGGED} fill="none" stroke="rgba(242,121,43,0.55)" strokeWidth={1.5} />
+          {/* Ligne médiane de référence : filet fin. */}
+          <Line x1={0} y1={65} x2={320} y2={65} stroke={theme.palette.line} strokeWidth={1} />
+          {/* Tour haché — ambre en contraste (jonctions arrondies, pas du bruit). */}
+          <Polyline
+            points={JAGGED}
+            fill="none"
+            stroke="rgba(242,121,43,0.55)"
+            strokeWidth={1.5}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
           {/* Tour rapide — fluidité (or), halo puis trait net. */}
-          <Polyline points={SMOOTH} fill="none" stroke={GOLD} strokeWidth={5} opacity={0.16} />
-          <Polyline points={SMOOTH} fill="none" stroke={GOLD} strokeWidth={2} />
+          <Polyline
+            points={SMOOTH}
+            fill="none"
+            stroke={GOLD}
+            strokeWidth={5}
+            opacity={0.16}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+          <Polyline
+            points={SMOOTH}
+            fill="none"
+            stroke={GOLD}
+            strokeWidth={2}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
         </Svg>
         <View style={styles.legend}>
           <Legend color={GOLD} label="Tour le + rapide (1:42.8)" />
@@ -107,16 +130,9 @@ export function FlowViz() {
       <View style={styles.card}>
         <Text style={styles.cap}>Fluidité × temps au tour · vos 18 tours</Text>
         <Svg width="100%" height={150} viewBox="0 0 300 150">
-          {/* Axes. */}
-          <Line x1={34} y1={12} x2={34} y2={124} stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-          <Line
-            x1={34}
-            y1={124}
-            x2={288}
-            y2={124}
-            stroke="rgba(255,255,255,0.12)"
-            strokeWidth={1}
-          />
+          {/* Axes : filets fins (même grammaire que les autres viz). */}
+          <Line x1={34} y1={12} x2={34} y2={124} stroke={theme.palette.line} strokeWidth={1} />
+          <Line x1={34} y1={124} x2={288} y2={124} stroke={theme.palette.line} strokeWidth={1} />
           <SvgText
             x={10}
             y={70}
@@ -145,6 +161,7 @@ export function FlowViz() {
             stroke="rgba(255,183,3,0.40)"
             strokeWidth={2}
             strokeDasharray="4 4"
+            strokeLinecap="round"
           />
           {/* Les 18 tours. */}
           {SCATTER.map((p, i) => (
@@ -152,7 +169,15 @@ export function FlowViz() {
           ))}
           {/* Meilleur tour, le plus fluide — halo or. */}
           <Circle cx={70} cy={48} r={10} fill={GOLD} opacity={0.16} />
-          <Circle cx={70} cy={48} r={5} fill="none" stroke={GOLD} strokeWidth={2} />
+          <Circle
+            cx={70}
+            cy={48}
+            r={5}
+            fill="none"
+            stroke={GOLD}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
           <SvgText x={78} y={46} fill={GOLD} fontFamily={theme.fonts.mono} fontSize={8}>
             1:42.8
           </SvgText>

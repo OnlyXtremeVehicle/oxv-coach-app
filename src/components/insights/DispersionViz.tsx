@@ -90,10 +90,18 @@ export function DispersionViz() {
             stroke="rgba(242,121,43,0.10)"
             strokeWidth={22}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
           {/* Les tours superposés (variations fines). */}
           {TRACES.map((d, i) => (
-            <Path key={i} d={d} fill="none" stroke="rgba(248,249,250,0.26)" strokeWidth={1} />
+            <Path
+              key={i}
+              d={d}
+              fill="none"
+              stroke="rgba(248,249,250,0.24)"
+              strokeWidth={1}
+              strokeLinejoin="round"
+            />
           ))}
           {/* Trajectoire médiane — halo or puis trait net. */}
           <Path
@@ -103,6 +111,7 @@ export function DispersionViz() {
             strokeWidth={5}
             opacity={0.16}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
           <Path
             d={MEDIAN}
@@ -111,16 +120,33 @@ export function DispersionViz() {
             strokeWidth={1.8}
             opacity={0.95}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
 
           {/* Marqueur V4 (dispersion large) — halo ambre. */}
           <Circle cx={150} cy={80} r={11} fill={AMBER} opacity={0.16} />
-          <Circle cx={150} cy={80} r={5} fill="none" stroke={AMBER} strokeWidth={2} />
+          <Circle
+            cx={150}
+            cy={80}
+            r={5}
+            fill="none"
+            stroke={AMBER}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
           <SvgText x={160} y={76} fontSize={9} fill={AMBER} fontFamily={theme.fonts.mono}>
             V4 · 1,8 m
           </SvgText>
           {/* Marqueur V1 (serré). */}
-          <Circle cx={95} cy={70} r={4} fill="none" stroke={C.accel} strokeWidth={2} />
+          <Circle
+            cx={95}
+            cy={70}
+            r={4}
+            fill="none"
+            stroke={C.accel}
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
           <SvgText x={20} y={58} fontSize={9} fill={C.accel} fontFamily={theme.fonts.mono}>
             V1 · 0,3 m
           </SvgText>
@@ -132,6 +158,7 @@ export function DispersionViz() {
             y2={210}
             stroke={theme.palette.creamMute}
             strokeWidth={2}
+            strokeLinecap="round"
           />
         </Svg>
 

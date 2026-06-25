@@ -98,39 +98,23 @@ export function AnatomieViz() {
 
         {/* Profil de vitesse : courbe OR à halo sur fond de phases. */}
         <Svg width="100%" height={132} viewBox="0 0 320 132">
-          {/* Grille horizontale ténue. */}
-          <Line
-            x1={0}
-            y1={34}
-            x2={320}
-            y2={34}
-            stroke={theme.palette.line}
-            strokeWidth={1}
-            opacity={0.5}
-          />
-          <Line
-            x1={0}
-            y1={70}
-            x2={320}
-            y2={70}
-            stroke={theme.palette.line}
-            strokeWidth={1}
-            opacity={0.5}
-          />
-          <Line
-            x1={0}
-            y1={106}
-            x2={320}
-            y2={106}
-            stroke={theme.palette.line}
-            strokeWidth={1}
-            opacity={0.5}
-          />
-
           {/* Zones de fond : freinage / corde / réaccél. (teintes d'identité, ténues). */}
           <Rect x={0} y={0} width={110} height={120} fill="rgba(96,165,250,0.06)" />
           <Rect x={110} y={0} width={60} height={120} fill="rgba(242,121,43,0.07)" />
           <Rect x={170} y={0} width={150} height={120} fill="rgba(74,222,128,0.06)" />
+
+          {/* Grille horizontale : filets fins (le ton sombre porte la discrétion). */}
+          {[34, 70, 106].map((y) => (
+            <Line
+              key={y}
+              x1={0}
+              y1={y}
+              x2={320}
+              y2={y}
+              stroke={theme.palette.line}
+              strokeWidth={1}
+            />
+          ))}
 
           {/* Courbe de vitesse — halo or puis trait net. */}
           <Path
@@ -140,6 +124,7 @@ export function AnatomieViz() {
             strokeWidth={6}
             opacity={0.16}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
           <Path
             d="M6,24 C50,28 85,62 110,86 C130,102 145,102 170,90 C210,70 260,42 314,26"
@@ -148,10 +133,11 @@ export function AnatomieViz() {
             strokeWidth={2}
             opacity={0.95}
             strokeLinecap="round"
+            strokeLinejoin="round"
           />
 
           {/* Point de corde (minimum de vitesse) — halo ambre + point net. */}
-          <Circle cx={140} cy={100} r={9} fill={AMBER} opacity={0.18} />
+          <Circle cx={140} cy={100} r={9} fill={AMBER} opacity={0.16} />
           <Circle cx={140} cy={100} r={3.4} fill={AMBER} />
 
           {/* Repères de vitesse (mono). */}

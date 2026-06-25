@@ -102,6 +102,7 @@ export function GGDiagram({
               stroke={palette.line}
               strokeWidth={0.012}
               strokeDasharray="0.05 0.05"
+              strokeLinecap="round"
             />
           ) : null
         )}
@@ -125,6 +126,7 @@ export function GGDiagram({
           strokeWidth={0.02}
           opacity={0.6}
           strokeDasharray="0.08 0.06"
+          strokeLinecap="round"
         />
 
         {/* Labels cardinaux */}

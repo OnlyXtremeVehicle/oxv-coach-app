@@ -49,6 +49,8 @@ function AnatomieSpark() {
         fill="none"
         stroke={theme.palette.cream}
         strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
       <Circle cx={128} cy={27} r={2.5} fill={TRAJ_LINE} />
     </Frame>
@@ -59,7 +61,7 @@ function GGSpark() {
   // Petit nuage G-G centré : axes purs marqués, combiné creux.
   return (
     <Frame>
-      <Circle cx={150} cy={17} r={15} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+      <Circle cx={150} cy={17} r={15} fill="none" stroke={theme.palette.line} strokeWidth={1} />
       <Circle cx={150} cy={4} r={1.6} fill={BRAKE_SOFT} />
       <Circle cx={150} cy={8} r={1.6} fill={BRAKE_SOFT} />
       <Circle cx={152} cy={11} r={1.6} fill={BRAKE_SOFT} />
@@ -83,12 +85,16 @@ function DispersionSpark() {
         fill="none"
         stroke={TRAJ_LINE}
         strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
       <Path
         d="M120,18 C150,28 165,27 180,20 L300,18"
         fill="none"
         stroke={TRAJ_SOFT}
         strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Frame>
   );
@@ -112,12 +118,16 @@ function FlowSpark() {
         fill="none"
         stroke={RED_GHOST}
         strokeWidth={1}
+        strokeLinejoin="round"
+        strokeLinecap="round"
       />
       <Polyline
         points="150,17 175,14 200,19 225,13 250,18 275,15 300,17"
         fill="none"
         stroke={C.flow}
         strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
       />
     </Frame>
   );
@@ -131,12 +141,16 @@ function TransfertSpark() {
         fill="none"
         stroke={C.flow}
         strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
       <Path
         d="M10,30 C60,29 80,14 130,8 C180,4 240,6 290,6"
         fill="none"
         stroke={BRAKE_DOT}
         strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
       />
     </Frame>
   );
