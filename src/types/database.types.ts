@@ -1066,6 +1066,57 @@ export type Database = {
           },
         ]
       }
+      // NOTE: ajoutée à la main pour la Phase 1 « place de marché coaching ».
+      // À RÉGÉNÉRER (supabase gen types) après application réelle de
+      // 0007_coaching_marketplace.sql — pour l'heure cette migration est une
+      // PROPOSITION non appliquée, ce type sert au type-check du code app.
+      coach_availability: {
+        Row: {
+          capacity: number
+          circuit_name: string
+          coach_id: string
+          created_at: string
+          ends_at: string | null
+          id: string
+          notes: string | null
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          circuit_name?: string
+          coach_id: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          circuit_name?: string
+          coach_id?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_availability_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_pilots: {
         Row: {
           active: boolean
@@ -1468,6 +1519,80 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      // NOTE: ajoutée à la main pour la Phase 1 « place de marché coaching ».
+      // À RÉGÉNÉRER (supabase gen types) après application réelle de
+      // 0007_coaching_marketplace.sql — pour l'heure cette migration est une
+      // PROPOSITION non appliquée, ce type sert au type-check du code app.
+      coaching_bookings: {
+        Row: {
+          availability_id: string | null
+          cancelled_at: string | null
+          circuit_name: string | null
+          coach_id: string
+          completed_at: string | null
+          created_at: string
+          id: string
+          message: string | null
+          pilot_id: string
+          requested_starts_at: string | null
+          responded_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          availability_id?: string | null
+          cancelled_at?: string | null
+          circuit_name?: string | null
+          coach_id: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          pilot_id: string
+          requested_starts_at?: string | null
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          availability_id?: string | null
+          cancelled_at?: string | null
+          circuit_name?: string | null
+          coach_id?: string
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          pilot_id?: string
+          requested_starts_at?: string | null
+          responded_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaching_bookings_availability_id_fkey"
+            columns: ["availability_id"]
+            isOneToOne: false
+            referencedRelation: "coach_availability"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]

@@ -76,6 +76,7 @@ const SECONDARY = [
   { label: 'Mon équipement', hint: 'Connecter le boîtier', href: '/(app)/equipement' },
   { label: 'Carte des circuits', hint: 'Préparer vos sorties', href: '/(app)/circuits' },
   { label: 'Lieux & partenaires', hint: 'Autour des circuits', href: '/(app)/lieux' },
+  { label: 'Trouver un coach', hint: 'Les coachs OXV', href: '/(app)/coachs' },
   { label: 'Belle route', hint: 'Balade & points de vue', href: '/(app)/belle-route' },
   { label: 'Mes belles routes', hint: 'Vos routes enregistrées', href: '/(app)/mes-routes' },
   { label: 'Notifications', hint: 'À traiter, à découvrir', href: '/(app)/notifications' },
