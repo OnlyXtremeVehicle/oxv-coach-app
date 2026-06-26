@@ -157,6 +157,11 @@ export default function CoachHubScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+          {/* Disponibilités (Phase 1 marketplace) — côté offre : le coach ouvre
+              les créneaux que les pilotes demandent depuis sa fiche. Accessible
+              à tout coach. */}
+          <CoachLink label="Disponibilités" href="/(coach)/disponibilites" />
+
           {/* Demandes de séance reçues (Phase 1 marketplace) — boucle de
               réponse. Accessible à tout coach : c'est sa boîte de réception. */}
           <CoachLink label="Demandes" href="/(coach)/demandes" />

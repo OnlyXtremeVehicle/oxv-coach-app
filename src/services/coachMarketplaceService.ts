@@ -63,6 +63,54 @@ export interface CoachAvailabilitySlot {
   status: string;
 }
 
+/**
+ * Statut d'un créneau de disponibilité (`coach_availability.status`). `open` est
+ * le défaut posé en base ; `full` indique un créneau complet ; `closed` /
+ * `cancelled` retirent le créneau de la découverte pilote (cf. `getCoachProfile`
+ * qui ne lit que `open`/`full`).
+ */
+export type AvailabilityStatus = 'open' | 'full' | 'closed' | 'cancelled';
+
+/**
+ * Libellé humain d'un statut de créneau. Comme pour les demandes, le statut
+ * n'est JAMAIS rendu par la couleur seule (doctrine + a11y) : on le double
+ * toujours de ce texte factuel, au vouvoiement, sans emoji.
+ */
+export function availabilityStatusLabel(status: AvailabilityStatus): string {
+  switch (status) {
+    case 'open':
+      return 'Ouvert';
+    case 'full':
+      return 'Complet';
+    case 'closed':
+      return 'Fermé';
+    case 'cancelled':
+      return 'Annulé';
+    default:
+      return 'Statut inconnu';
+  }
+}
+
+/** Créneau du coach courant (lecture côté coach, « Mes disponibilités »). */
+export interface MyAvailabilitySlot {
+  id: string;
+  circuitName: string;
+  startsAt: string;
+  endsAt: string | null;
+  capacity: number;
+  status: AvailabilityStatus;
+  notes: string | null;
+}
+
+/** Entrée de création d'un créneau. `coach_id` est posé à `auth.uid()`. */
+export interface CreateAvailabilityInput {
+  circuitName: string;
+  startsAt: string;
+  endsAt?: string | null;
+  capacity: number;
+  notes?: string | null;
+}
+
 export type BookingStatus =
   | 'pending'
   | 'accepted'
@@ -437,6 +485,112 @@ export async function cancelBooking(
   if (error) {
     console.warn('[OXV][marketplace] cancelBooking :', error.message);
     return { ok: false, error: "La demande n'a pas pu être annulée. Réessayez dans un instant." };
+  }
+
+  return { ok: true };
+}
+
+/**
+ * Ouvre un créneau de disponibilité pour le coach courant. Le `coach_id` est
+ * posé à `auth.uid()` (un appel non authentifié échoue). La capacité est bornée
+ * à ≥ 1, le circuit et les notes sont nettoyés (trim → `null` si vide). Le
+ * statut initial est `open` (défaut métier). Renvoie un résultat défensif,
+ * jamais d'exception remontée à l'écran.
+ */
+export async function createAvailability(
+  input: CreateAvailabilityInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const coachId = auth.user?.id;
+  if (!coachId) {
+    return { ok: false, error: 'Vous devez être connecté pour ouvrir un créneau.' };
+  }
+
+  const circuitName = input.circuitName.trim();
+  if (!circuitName) {
+    return { ok: false, error: 'Indiquez le circuit du créneau.' };
+  }
+
+  const capacity = Math.max(1, Math.floor(input.capacity));
+  if (!Number.isFinite(capacity)) {
+    return { ok: false, error: 'La capacité doit être un nombre valide.' };
+  }
+
+  const { data, error } = await supabase
+    .from('coach_availability')
+    .insert({
+      coach_id: coachId,
+      circuit_name: circuitName,
+      starts_at: input.startsAt,
+      ends_at: input.endsAt ?? null,
+      capacity,
+      notes: input.notes?.trim() || null,
+      status: 'open',
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    console.warn('[OXV][marketplace] createAvailability :', error?.message);
+    return {
+      ok: false,
+      error: "Le créneau n'a pas pu être ouvert. Réessayez dans un instant.",
+    };
+  }
+
+  return { ok: true, id: data.id };
+}
+
+/**
+ * Liste les créneaux du coach courant, du plus proche au plus lointain (tri
+ * `starts_at` croissant). Le `coach_id = auth.uid()` est borné côté RLS ; on le
+ * filtre tout de même explicitement par robustesse. Best-effort : en cas
+ * d'erreur on renvoie une liste vide plutôt que de faire planter l'écran.
+ */
+export async function listMyAvailability(): Promise<MyAvailabilitySlot[]> {
+  const { data: auth } = await supabase.auth.getUser();
+  const coachId = auth.user?.id;
+  if (!coachId) return [];
+
+  const { data, error } = await supabase
+    .from('coach_availability')
+    .select('id, circuit_name, starts_at, ends_at, capacity, status, notes')
+    .eq('coach_id', coachId)
+    .order('starts_at', { ascending: true });
+
+  if (error) {
+    console.warn('[OXV][marketplace] listMyAvailability :', error.message);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    circuitName: row.circuit_name,
+    startsAt: row.starts_at,
+    endsAt: row.ends_at ?? null,
+    capacity: row.capacity,
+    status: row.status as AvailabilityStatus,
+    notes: row.notes ?? null,
+  }));
+}
+
+/**
+ * Met à jour le statut d'un créneau du coach courant (`open` → `closed` /
+ * `cancelled`, etc.). La RLS borne déjà à `coach_id = auth.uid()`. Renvoie un
+ * résultat défensif, jamais d'exception remontée à l'écran.
+ */
+export async function updateAvailabilityStatus(
+  id: string,
+  status: AvailabilityStatus
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.from('coach_availability').update({ status }).eq('id', id);
+
+  if (error) {
+    console.warn('[OXV][marketplace] updateAvailabilityStatus :', error.message);
+    return {
+      ok: false,
+      error: "Le créneau n'a pas pu être mis à jour. Réessayez dans un instant.",
+    };
   }
 
   return { ok: true };
