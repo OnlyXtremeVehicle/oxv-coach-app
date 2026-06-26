@@ -26,21 +26,12 @@ import {
   groupServicesByKind,
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
+import { fetchCircuitCenterline } from '@/services/circuitsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
-
-/**
- * Le tracé 3D n'est disponible que pour Haute Saintonge (seul circuit dont on a
- * la géométrie OSM, cf. fixture). Pour les autres, on n'affiche pas de tracé
- * plutôt qu'une géométrie qui ne serait pas la leur (doctrine : ne pas maquiller).
- * Géométrie par circuit = à venir avec la création de tracé (08 §5.3).
- */
-function hasTrace3D(circuit: DirectoryCircuit | null): boolean {
-  return /saintonge/i.test(circuit?.officialName ?? circuit?.name ?? '');
-}
 
 export default function CircuitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,16 +39,23 @@ export default function CircuitDetailScreen() {
 
   const [circuit, setCircuit] = useState<DirectoryCircuit | null>(null);
   const [services, setServices] = useState<CircuitService[]>([]);
+  // Tracé affiché seulement si CE circuit a une géométrie réelle (jamais maquillé).
+  const [hasTrace, setHasTrace] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     if (!circuitId) return;
-    Promise.all([fetchDirectoryCircuits(), listCircuitServices(circuitId)])
-      .then(([circuits, svcs]) => {
+    Promise.all([
+      fetchDirectoryCircuits(),
+      listCircuitServices(circuitId),
+      fetchCircuitCenterline(circuitId),
+    ])
+      .then(([circuits, svcs, centerline]) => {
         if (!cancelled) {
           setCircuit(circuits.find((c) => c.id === circuitId) ?? null);
           setServices(svcs);
+          setHasTrace(!!centerline && centerline.length > 1);
           setLoading(false);
         }
       })
@@ -95,14 +93,14 @@ export default function CircuitDetailScreen() {
         ) : null}
 
         {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
-        {hasTrace3D(circuit) ? (
+        {hasTrace ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
             <View style={s.headRow}>
               <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
               <SectionLabel>Le tracé</SectionLabel>
             </View>
             <View style={{ marginTop: theme.spacing.md }}>
-              <CircuitTraceHero height={300} defaultLayer="geometry" />
+              <CircuitTraceHero circuitId={circuitId} height={300} defaultLayer="geometry" />
             </View>
           </View>
         ) : null}

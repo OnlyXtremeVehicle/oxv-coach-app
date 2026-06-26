@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import {
+  fetchCircuitCenterline,
   fetchDefaultCircuitCenterline,
   fetchSessionCircuitCenterline,
 } from '@/services/circuitsService';
@@ -28,6 +29,8 @@ import type { SessionInsights } from './sessionInsights';
 
 export interface CircuitTraceHeroProps {
   sessionId?: string;
+  /** Circuit explicite (fiche circuit) — affiche SA géométrie, pas celle par défaut. */
+  circuitId?: string;
   height?: number;
   /** Couche affichée par défaut (selon l'écran : Régularité en 20.1, Vitesse d'apex en 20.2). */
   defaultLayer?: LayerId;
@@ -37,18 +40,22 @@ export interface CircuitTraceHeroProps {
 
 export function CircuitTraceHero({
   sessionId,
+  circuitId,
   height = 340,
   defaultLayer,
   role = 'pilot',
 }: CircuitTraceHeroProps) {
   // Repli immédiat (tracé statique) puis bascule sur la géométrie réelle de `circuits`.
+  // Priorité : géométrie de la session > circuit explicite (fiche) > circuit par défaut.
   const fallbackCircuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
   const [circuit, setCircuit] = useState(fallbackCircuit);
   useEffect(() => {
     let cancelled = false;
     const load = sessionId
       ? fetchSessionCircuitCenterline(sessionId)
-      : fetchDefaultCircuitCenterline();
+      : circuitId
+        ? fetchCircuitCenterline(circuitId)
+        : fetchDefaultCircuitCenterline();
     load
       .then((points) => {
         if (!cancelled && points) setCircuit(generateCircuit(points));
@@ -57,7 +64,7 @@ export function CircuitTraceHero({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, circuitId]);
 
   const [session, setSession] = useState<SessionInsights | null>(null);
   const [loading, setLoading] = useState<boolean>(!!sessionId);
