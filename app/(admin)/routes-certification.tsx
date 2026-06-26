@@ -160,11 +160,13 @@ const s = {
     gap: theme.spacing.md,
     marginTop: theme.spacing.md,
   },
+  // Accent d'action admin = bronze (couleur de rôle), pas une couleur de
+  // donnée détournée. Le libellé « Certifier » porte le sens.
   certify: {
     minHeight: 44,
     justifyContent: 'center' as const,
     borderWidth: 1,
-    borderColor: theme.dataColors.accel,
+    borderColor: BRONZE,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
@@ -174,7 +176,7 @@ const s = {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.5,
-    color: theme.dataColors.accel,
+    color: BRONZE,
   },
   reject: {
     minHeight: 44,

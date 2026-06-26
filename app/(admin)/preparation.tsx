@@ -25,7 +25,8 @@ import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 const BRONZE = '#B87333';
-// Couleurs sémantiques de statut KYC (factuelles, doublées d'un libellé).
+// Pastille de statut KYC : second signal seulement (le libellé porte le sens,
+// lisible AA). La couleur n'est jamais le signal unique d'un statut.
 const STATUS = { green: '#97C459', yellow: '#EF9F27', red: '#C8102E' };
 
 interface PilotEntry {
@@ -130,9 +131,14 @@ export default function PreparationScreen() {
                       {p.email} · niveau <Text style={s.metaNum}>{p.level ?? '—'}</Text>
                     </Text>
                   </View>
-                  <Text style={[s.kyc, { color: kycColor(p.kycStatus) }]}>
-                    {kycLabel(p.kycStatus)}
-                  </Text>
+                  <View style={s.kycWrap}>
+                    <View
+                      style={[s.kycDot, { backgroundColor: kycColor(p.kycStatus) }]}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                    />
+                    <Text style={s.kyc}>{kycLabel(p.kycStatus)}</Text>
+                  </View>
                 </View>
                 <View style={{ marginTop: theme.spacing.md }}>
                   <Button
@@ -231,10 +237,22 @@ const s = {
   },
   // Niveau pilote (chiffre) en mono ; le reste de la méta reste du corps.
   metaNum: { fontFamily: theme.fonts.mono, color: theme.palette.creamSoft },
-  // Statut KYC : mot factuel, doublé de la couleur sémantique → hors mono.
+  // Statut KYC : le LIBELLÉ porte le sens et reste lisible (AA) ; la couleur
+  // n'est qu'un second signal, portée par une petite pastille (hors mono).
+  kycWrap: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.xs,
+  },
+  kycDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
   kyc: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
+    color: theme.palette.creamSoft,
   },
 };

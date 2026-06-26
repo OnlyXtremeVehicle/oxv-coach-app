@@ -2,8 +2,9 @@
  * Écran #23 — Notifications. Design V2 (charte oxv-mirror-app).
  *
  * 3 tabs en haut : À traiter / À découvrir / Archives.
- * Badges rouges uniquement sur "À traiter" quand il y a des actions
- * requises (pacte modifié, KYC à compléter, etc.).
+ * Badge compteur (or = donnée) uniquement sur "À traiter" quand il y a
+ * des actions requises (pacte modifié, KYC à compléter, etc.). Le rouge
+ * est réservé à la marque/aux actes — un compteur reste une donnée.
  *
  * V1 : tabs présents avec états vides pédagogiques. Le wiring push
  * réel (expo-notifications + Supabase Edge Function) arrive en sem 11.
