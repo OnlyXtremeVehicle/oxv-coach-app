@@ -70,11 +70,12 @@ const PRIMARY = [
 // Navigation secondaire repliée derrière « Tout le paddock ». Reprend chaque
 // destination de l'ancien hub non promue en grille — rien n'est retiré.
 const SECONDARY = [
+  { label: 'Mon profil', hint: 'Niveau, véhicule, réseaux', href: '/(app)/profil' },
   { label: 'Mon bilan', hint: 'Votre dernière analyse', href: '/(app)/bilan' },
   { label: 'Débrief présentiel', hint: 'La séance, en détail', href: '/(app)/debrief-presentiel' },
   { label: 'Mes objectifs', hint: 'Vos repères personnels', href: '/(app)/objectifs' },
   { label: 'Mon équipement', hint: 'Connecter le boîtier', href: '/(app)/equipement' },
-  { label: 'Carte des circuits', hint: 'Préparer vos sorties', href: '/(app)/circuits' },
+  { label: 'La carte OXV', hint: 'Circuits, lieux et événements', href: '/(app)/circuits' },
   { label: 'Lieux & partenaires', hint: 'Autour des circuits', href: '/(app)/lieux' },
   { label: 'Trouver un coach', hint: 'Les coachs OXV', href: '/(app)/coachs' },
   { label: 'Mes demandes', hint: 'Vos demandes de séance', href: '/(app)/mes-demandes' },

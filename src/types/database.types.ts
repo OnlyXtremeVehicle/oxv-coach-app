@@ -4426,6 +4426,9 @@ export type Database = {
           emergency_contact_phone: string | null
           emergency_contact_relation: string | null
           experience_years: string | null
+          vehicle: string | null
+          socials: Json | null
+          media: Json | null
           expo_push_token: string | null
           ffsa_license: string | null
           first_name: string | null
@@ -4489,6 +4492,9 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
+          vehicle?: string | null
+          socials?: Json | null
+          media?: Json | null
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
@@ -4552,6 +4558,9 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
+          vehicle?: string | null
+          socials?: Json | null
+          media?: Json | null
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
