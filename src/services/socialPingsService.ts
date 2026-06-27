@@ -36,6 +36,7 @@ export interface SocialPing {
   facebookUrl: string | null;
   youtubeUrl: string | null;
   imageUrl: string | null;
+  isPublished: boolean;
 }
 
 interface DbRow {
@@ -56,6 +57,7 @@ interface DbRow {
   facebook_url: string | null;
   youtube_url: string | null;
   image_url: string | null;
+  is_published: boolean;
 }
 
 /** Libellés FR des types de ping (sobres, doctrine OXV). */
@@ -87,6 +89,7 @@ function mapRow(row: DbRow): SocialPing {
     facebookUrl: row.facebook_url,
     youtubeUrl: row.youtube_url,
     imageUrl: row.image_url,
+    isPublished: row.is_published,
   };
 }
 
@@ -127,4 +130,93 @@ export function groupPingsByKind(
   return order
     .map((kind) => ({ kind, items: pings.filter((p) => p.kind === kind) }))
     .filter((g) => g.items.length > 0);
+}
+
+// ─── Admin (RLS social_pings_admin_all : is_admin) ──────────────────────────
+
+/** Entrée d'édition d'un point (admin). */
+export interface UpsertPingInput {
+  id?: string | null;
+  kind: SocialPingKind;
+  title: string;
+  description: string | null;
+  lat: number;
+  lon: number;
+  address: string | null;
+  contactEmail: string | null;
+  liveUrl: string | null;
+  eventUrl: string | null;
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  youtubeUrl: string | null;
+  imageUrl: string | null;
+  startsAt: string | null;
+  isPublished: boolean;
+}
+
+/** Admin : liste TOUS les points (publiés ou non), triés par titre. */
+export async function listAllPings(): Promise<SocialPing[]> {
+  const { data, error } = await supabase
+    .from('social_pings')
+    .select('*')
+    .order('title', { ascending: true });
+  if (error || !data) {
+    if (error) console.warn('[socialPings] listAll error:', error.message);
+    return [];
+  }
+  return (data as unknown as DbRow[]).map(mapRow);
+}
+
+function toDbRow(input: UpsertPingInput): Record<string, unknown> {
+  return {
+    kind: input.kind,
+    title: input.title,
+    description: input.description,
+    lat: input.lat,
+    lon: input.lon,
+    address: input.address,
+    contact_email: input.contactEmail,
+    live_url: input.liveUrl,
+    event_url: input.eventUrl,
+    website_url: input.websiteUrl,
+    instagram_url: input.instagramUrl,
+    facebook_url: input.facebookUrl,
+    youtube_url: input.youtubeUrl,
+    image_url: input.imageUrl,
+    starts_at: input.startsAt,
+    is_published: input.isPublished,
+  };
+}
+
+/** Admin : crée (sans id) ou met à jour (avec id) un point. */
+export async function upsertPing(
+  input: UpsertPingInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  // Objet construit dynamiquement (snake_case) -> cast assumé au bord DB.
+  const row = toDbRow(input) as never;
+  if (input.id) {
+    const { error } = await supabase.from('social_pings').update(row).eq('id', input.id);
+    if (error) {
+      console.warn('[socialPings] update error:', error.message);
+      return { ok: false, error: "Le point n'a pas pu être enregistré." };
+    }
+    return { ok: true, id: input.id };
+  }
+  const { data, error } = await supabase.from('social_pings').insert(row).select('id').single();
+  if (error || !data) {
+    console.warn('[socialPings] insert error:', error?.message);
+    return { ok: false, error: "Le point n'a pas pu être créé." };
+  }
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+/** Admin : supprime un point. */
+export async function deletePing(id: string): Promise<{ ok: boolean }> {
+  const { error } = await supabase.from('social_pings').delete().eq('id', id);
+  if (error) {
+    console.warn('[socialPings] delete error:', error.message);
+    return { ok: false };
+  }
+  return { ok: true };
 }

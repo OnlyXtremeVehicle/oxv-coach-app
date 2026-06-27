@@ -53,6 +53,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Belles routes',
     description: 'Demandes de certification de routes à examiner.',
   },
+  {
+    href: '/(admin)/points-carte',
+    label: 'Points de la carte',
+    description: 'Lieux, partenaires et événements de La carte OXV.',
+  },
 ];
 
 export default function AdminHubScreen() {
