@@ -1,5 +1,6 @@
 /**
  * Écran Circuits — carte écosystème nationale (§8 étape A OXV Mirror).
+ * Design V2 (charte oxv-mirror-app).
  *
  * Annuaire des circuits de France (couche gratuite, « aimant »). Carte
  * interactive react-native-maps centrée sur la France, un marqueur par
@@ -11,18 +12,21 @@
  * circuits majeurs) — la carte affiche les circuits présents en base.
  *
  * Doctrine : visualisation factuelle, aucun classement.
+ * Reskin V2 : Screen + AppBar, Card, logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { isExpoGo } from '@/lib/runtime';
 import { type DirectoryCircuit, circuitCenter, circuitSubtitle } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits } from '@/services/ecosystemService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 
 // Centre par défaut : France métropolitaine.
 const FRANCE_REGION = {
@@ -51,73 +55,66 @@ export default function CircuitsScreen() {
 
   const expoGo = isExpoGo();
 
-  return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>OXV CIRCUITS</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.xs }]}>
-          Le track day en France.
-        </Text>
-      </View>
-
-      {loading ? (
+  if (loading) {
+    return (
+      <Screen scroll={false}>
+        <AppBar title="CIRCUITS" subtitle="Le track day en France" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={colors.text.secondary} />
+          <ActivityIndicator color={theme.palette.creamMute} />
         </View>
-      ) : expoGo ? (
-        <CircuitList circuits={circuits} />
-      ) : (
-        <View style={{ flex: 1 }}>
-          <MapView
-            provider={PROVIDER_DEFAULT}
-            style={{ flex: 1 }}
-            initialRegion={FRANCE_REGION}
-            showsPointsOfInterest={false}
-            showsCompass={false}
-            toolbarEnabled={false}
-          >
-            {circuits.map((c) => {
-              const center = circuitCenter(c);
-              if (!center) return null;
-              return (
-                <Marker
-                  key={c.id}
-                  coordinate={{ latitude: center.lat, longitude: center.lon }}
-                  title={c.officialName ?? c.name}
-                  description={circuitSubtitle(c)}
-                  pinColor={colors.accent.red}
-                  onCalloutPress={() =>
-                    router.push({
-                      pathname: '/(app)/circuit/[id]',
-                      params: { id: c.id },
-                    } as never)
-                  }
-                />
-              );
-            })}
-          </MapView>
+      </Screen>
+    );
+  }
 
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingHorizontal: spacing.xl,
-              paddingVertical: spacing.md,
-            }}
-          >
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              {circuits.length} {circuits.length > 1 ? 'circuits référencés' : 'circuit référencé'}
-            </Text>
-            <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
-            </Pressable>
-          </View>
+  if (expoGo) {
+    return (
+      <Screen scroll={false}>
+        <AppBar title="CIRCUITS" subtitle="Le track day en France" onBack={() => router.back()} />
+        <CircuitList circuits={circuits} />
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen scroll={false}>
+      <AppBar title="CIRCUITS" subtitle="Le track day en France" onBack={() => router.back()} />
+      <View style={{ flex: 1 }}>
+        <MapView
+          provider={PROVIDER_DEFAULT}
+          style={{ flex: 1 }}
+          initialRegion={FRANCE_REGION}
+          showsPointsOfInterest={false}
+          showsCompass={false}
+          toolbarEnabled={false}
+        >
+          {circuits.map((c) => {
+            const center = circuitCenter(c);
+            if (!center) return null;
+            return (
+              <Marker
+                key={c.id}
+                coordinate={{ latitude: center.lat, longitude: center.lon }}
+                title={c.officialName ?? c.name}
+                description={circuitSubtitle(c)}
+                pinColor={theme.palette.red}
+                onCalloutPress={() =>
+                  router.push({
+                    pathname: '/(app)/circuit/[id]',
+                    params: { id: c.id },
+                  } as never)
+                }
+              />
+            );
+          })}
+        </MapView>
+
+        <View style={s.footer}>
+          <Text style={s.footerCount}>
+            {circuits.length} {circuits.length > 1 ? 'circuits référencés' : 'circuit référencé'}
+          </Text>
         </View>
-      )}
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -126,17 +123,25 @@ function CircuitList({ circuits }: { circuits: DirectoryCircuit[] }) {
   if (circuits.length === 0) {
     return (
       <View
-        style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl }}
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: theme.spacing.lg,
+        }}
       >
-        <Text style={[typography.manifest, { color: colors.text.tertiary, textAlign: 'center' }]}>
-          Aucun circuit référencé pour l&apos;instant.
-        </Text>
+        <Text style={s.empty}>Aucun circuit référencé pour l&apos;instant.</Text>
       </View>
     );
   }
   return (
-    <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-      <View style={{ gap: spacing.md }}>
+    <ScrollView
+      contentContainerStyle={{
+        paddingHorizontal: theme.spacing.lg,
+        paddingBottom: theme.spacing.xxl,
+      }}
+    >
+      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
         {circuits.map((c) => (
           <Pressable
             key={c.id}
@@ -144,39 +149,52 @@ function CircuitList({ circuits }: { circuits: DirectoryCircuit[] }) {
             onPress={() =>
               router.push({ pathname: '/(app)/circuit/[id]', params: { id: c.id } } as never)
             }
-            style={({ pressed }) => ({
-              padding: spacing.lg,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              opacity: pressed ? 0.85 : 1,
-            })}
+            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.title,
-                fontWeight: fontWeight.light,
-              }}
-            >
-              {c.officialName ?? c.name}
-            </Text>
-            {circuitSubtitle(c) ? (
-              <Text
-                style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-              >
-                {circuitSubtitle(c)}
-              </Text>
-            ) : null}
+            <Card>
+              <Text style={s.circuitName}>{c.officialName ?? c.name}</Text>
+              {circuitSubtitle(c) ? <Text style={s.meta}>{circuitSubtitle(c)}</Text> : null}
+            </Card>
           </Pressable>
         ))}
-      </View>
-      <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-        </Pressable>
       </View>
     </ScrollView>
   );
 }
+
+const s = {
+  footer: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  footerCount: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  circuitName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  empty: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+};

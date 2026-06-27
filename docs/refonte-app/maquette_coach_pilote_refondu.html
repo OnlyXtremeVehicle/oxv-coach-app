@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 6 — ESPACE COACH (vue d'un pilote suivi)
+  Écrans RN couverts :
+    app/(coach)/pilote/[id]   · annoter · priorites
+    app/(coach)/reperes       · repere/[index] · lecture
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : miroir factuel (haut) + bande coach prescriptive (bas).
+            La bande coach est le SEUL espace impératif de l'app —
+            OXV n'est pas agréé ; le coach humain prescrit, jamais le miroir.
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Espace coach refondu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:24px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .ini{margin-left:auto;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:13px;color:var(--mute)}
+
+  /* ── Bloc factuel : le miroir, en lecture (même grammaire que le pilote) ── */
+  .lect-label{display:block;margin-bottom:11px}
+  .sess{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 17px 14px;margin-bottom:10px}
+  .sess-circuit{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .sess-meta{font-family:var(--mono);font-size:10.5px;color:var(--mute);margin-top:4px;letter-spacing:.04em}
+  .sess-stat{display:flex;align-items:baseline;gap:8px;margin-top:14px;border-top:1px solid var(--line);padding-top:13px}
+  .sess-stat .v{font-family:var(--mono);font-size:26px;font-weight:500}
+  .sess-stat .u{font-family:var(--mono);font-size:13px;color:var(--mute)}
+  .sess-stat .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-left:auto;text-align:right;line-height:1.5}
+
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:26px}
+  .stat{background:var(--card);padding:13px 10px;text-align:center}
+  .stat .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .stat .v{font-family:var(--mono);font-size:19px;font-weight:500;margin-top:6px}
+  .stat .v small{font-size:11px;color:var(--mute)}
+  .stat.weak .v{color:var(--heritage)}
+
+  /* ── Bande coach : la voix prescriptive, nettement séparée et marquée ── */
+  .coach{background:#0E0A0B;border:1px solid #2A1418;border-left:2px solid var(--red);
+    border-radius:0 16px 16px 0;padding:18px 18px 16px}
+  .coach-top{display:flex;align-items:center;gap:9px;margin-bottom:6px}
+  .coach-top .dot{width:7px;height:7px;border-radius:50%;background:var(--red)}
+  .coach-eye{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--red)}
+  .coach-sub{font-size:12.5px;color:var(--mute);line-height:1.5;margin-bottom:16px}
+
+  .prio{background:rgba(200,16,46,.07);border:1px solid #2A1418;border-radius:11px;padding:13px 14px;margin-bottom:14px}
+  .prio .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);display:block;margin-bottom:6px}
+  .prio .t{font-size:15px;font-weight:600}
+  .prio .d{font-size:12.5px;color:var(--mute);margin-top:4px;line-height:1.5}
+
+  .rep-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:10px}
+  .rep{display:flex;gap:11px;padding:11px 0;border-bottom:1px solid #1B1416}
+  .rep:first-of-type{border-top:1px solid #1B1416}
+  .rep .n{font-family:var(--mono);font-size:12px;color:var(--red);flex-shrink:0;padding-top:1px}
+  .rep .x{font-size:13.5px;line-height:1.55;color:#E4E4E8}
+  .rep .x b{color:var(--cream);font-weight:600}
+
+  .add{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:16px;padding:13px;
+    border:1px solid #2A1418;border-radius:11px;cursor:pointer;background:rgba(200,16,46,.05);
+    font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red)}
+
+  /* Note pédagogique */
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Pilote suivi</span>
+          <div class="t">Antoine F.</div>
+        </div>
+        <div class="ini">AF</div>
+      </div>
+
+      <!-- LE MIROIR, EN LECTURE — factuel, identique à ce que voit le pilote -->
+      <span class="eyebrow lect-label">Dernier roulage · lecture</span>
+      <div class="sess">
+        <div class="sess-circuit">Haute-Saintonge</div>
+        <div class="sess-meta">14 juin · 42 tours · Tracé Beltoise</div>
+        <div class="sess-stat">
+          <span class="v">0,8</span><span class="u">s</span>
+          <span class="l">Régularité<br>au tour</span>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="l">Latéral</div><div class="v">1,3<small> g</small></div></div>
+        <div class="stat"><div class="l">Freinage</div><div class="v">1,1<small> g</small></div></div>
+        <div class="stat weak"><div class="l">Combiné</div><div class="v">0,7<small> g</small></div></div>
+      </div>
+
+      <!-- LA BANDE COACH — prescriptive, marquée, séparée -->
+      <div class="coach">
+        <div class="coach-top"><span class="dot"></span><span class="coach-eye">Espace coach</span></div>
+        <div class="coach-sub">Ce que vous transmettez à Antoine. Lui le verra dans son espace ; son miroir, lui, reste factuel.</div>
+
+        <div class="prio">
+          <span class="k">Priorité</span>
+          <div class="t">Le combiné</div>
+          <div class="d">Freiner et tourner ensemble — l'enveloppe est creuse à 0,7 g.</div>
+        </div>
+
+        <span class="rep-label">Repères transmis</span>
+        <div class="rep"><span class="n">01</span><span class="x"><b>Virage 7</b> — retardez le lâcher de frein d'un temps avant de tourner.</span></div>
+        <div class="rep"><span class="n">02</span><span class="x">Gardez <b>1,1 g</b> au freinage jusqu'au point de corde.</span></div>
+
+        <div class="add">+ Ajouter un repère</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>Le miroir et la voix coach sont séparés à l'œil.</b> En haut, le constat factuel ; en bas, la bande coach marquée en rouge — la frontière est visuelle, immédiate.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Seul espace impératif de l'app.</b> Les verbes d'ordre — « retardez », « gardez » — n'existent que dans la bande coach. Le miroir pilote n'en contient aucun.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>Même grammaire, plus une bande.</b> Les quinze écrans coach réutilisent les cartes et chiffres du pilote ; seule s'ajoute cette bande prescriptive.</span></div>
+  </div>
+
+</body>
+</html>

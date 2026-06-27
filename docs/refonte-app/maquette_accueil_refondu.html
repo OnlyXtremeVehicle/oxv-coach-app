@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 2 — HUB / NAVIGATION (l'accueil)
+  Écrans RN couverts :
+    app/(app)/index · paddock · lieux · carte · circuits
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : le dernier bilan en porte d'entrée vers le débrief,
+            navigation hiérarchisée (4 accès, le reste replié).
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Accueil refondu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  /* Top bar */
+  .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px}
+  .logo{font-family:var(--sans);font-weight:700;font-size:20px;letter-spacing:-.04em;color:var(--cream)}
+  .logo b{color:var(--red);font-weight:700}
+  .top-ic{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:15px}
+
+  /* Greeting */
+  .greet{margin-bottom:24px}
+  .greet .eyebrow{display:block;margin-bottom:8px}
+  .greet h1{font-size:25px;font-weight:600;letter-spacing:-.02em}
+  .greet p{font-family:var(--mono);font-size:11.5px;color:var(--mute);margin-top:8px;letter-spacing:.04em}
+
+  /* Carte dernier bilan (point d'entrée vers le débrief) */
+  .bilan{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:18px 18px 16px;margin-bottom:30px;cursor:pointer;position:relative}
+  .bilan::after{content:'›';position:absolute;top:16px;right:18px;color:var(--faint);font-size:22px}
+  .bilan .eyebrow{display:block;margin-bottom:12px}
+  .bilan-circuit{font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .bilan-meta{font-family:var(--mono);font-size:11px;color:var(--mute);margin-top:5px;letter-spacing:.04em}
+  .bilan-stat{display:flex;align-items:baseline;gap:8px;margin-top:16px;
+    border-top:1px solid var(--line);padding-top:14px}
+  .bilan-stat .v{font-family:var(--mono);font-size:30px;font-weight:500;color:var(--cream)}
+  .bilan-stat .u{font-family:var(--mono);font-size:14px;color:var(--mute)}
+  .bilan-stat .l{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);margin-left:auto;text-align:right;line-height:1.5}
+
+  /* Grille d'accès */
+  .nav-label{display:block;margin-bottom:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:15px 15px 14px;position:relative;cursor:pointer;min-height:92px}
+  .tile i{font-style:normal;font-family:var(--mono);font-size:13px;color:var(--gold);
+    display:block;margin-bottom:auto}
+  .tile .ic{width:22px;height:22px;color:var(--mute);margin-bottom:14px;display:block}
+  .tile-name{font-size:14.5px;font-weight:600;margin-bottom:4px}
+  .tile-hint{font-size:11.5px;color:var(--mute);line-height:1.4}
+
+  .more{display:flex;justify-content:center;align-items:center;gap:8px;margin-top:18px;
+    padding:13px;border:1px solid var(--line);border-radius:14px;cursor:pointer;
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute)}
+
+  /* Note pédagogique */
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="top">
+        <div class="logo">O<b>X</b>V</div>
+        <div class="top-ic">⚙</div>
+      </div>
+
+      <div class="greet">
+        <span class="eyebrow">Paddock</span>
+        <h1>Bonsoir, Antoine.</h1>
+        <p>Prochaine session · Haute-Saintonge · 28 juin</p>
+      </div>
+
+      <div class="bilan">
+        <span class="eyebrow">Votre dernier bilan</span>
+        <div class="bilan-circuit">Haute-Saintonge</div>
+        <div class="bilan-meta">Tracé Beltoise · 14 juin · 42 tours</div>
+        <div class="bilan-stat">
+          <span class="v">0,8</span><span class="u">s</span>
+          <span class="l">Régularité<br>au tour</span>
+        </div>
+      </div>
+
+      <span class="eyebrow nav-label">Explorer</span>
+      <div class="grid">
+        <div class="tile">
+          <span class="ic">⟋</span>
+          <div class="tile-name">Progression</div>
+          <div class="tile-hint">Votre évolution, session après session.</div>
+        </div>
+        <div class="tile">
+          <span class="ic">⌁</span>
+          <div class="tile-name">Signature</div>
+          <div class="tile-hint">Ce qui rend votre pilotage reconnaissable.</div>
+        </div>
+        <div class="tile">
+          <span class="ic">≣</span>
+          <div class="tile-name">Mes roulages</div>
+          <div class="tile-hint">L'historique complet de vos sessions.</div>
+        </div>
+        <div class="tile">
+          <span class="ic">◎</span>
+          <div class="tile-name">Les lieux</div>
+          <div class="tile-hint">Les circuits OXV et leurs tracés.</div>
+        </div>
+      </div>
+
+      <div class="more">Tout le paddock&nbsp;&nbsp;›</div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>Le dernier bilan devient la porte d'entrée.</b> Une carte unique, mise en avant, qui mène droit au débrief — avec déjà le chiffre clé visible.</span></div>
+    <div class="row"><span class="k">−</span><span class="v"><b>La navigation est hiérarchisée.</b> Quatre accès essentiels en grille ; le reste des 40 écrans est replié derrière « Tout le paddock ».</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Même grammaire que le débrief.</b> Eyebrows mono, cartes noires, chiffres en mono, chevrons — le système est réutilisé, pas réinventé.</span></div>
+  </div>
+
+</body>
+</html>

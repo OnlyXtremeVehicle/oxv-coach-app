@@ -12,11 +12,14 @@
  *
  * Les routes #14/#15/#16/#17 référencées par les cards n'existent pas
  * encore (sem 6-7) — tap → écran +not-found pour l'instant.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact du kit, styles via
+ * @/theme/v2. Logique, données, navigation, transparence (charte 11),
+ * couches coach, tracé (CircuitTraceHero) et export PDF inchangés.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
@@ -45,7 +48,11 @@ import { type RegularityBand, computeRegularity } from '@/services/regularitySer
 import { fetchPreviousSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { TelemetrySession } from '@/types/telemetry';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
 interface NavTarget {
@@ -54,6 +61,7 @@ interface NavTarget {
 }
 
 const NAV_TARGETS: NavTarget[] = [
+  { label: 'Débrief présentiel', href: '/(app)/debrief-presentiel' },
   { label: 'Signature de pilotage', href: '/(app)/signature' },
   { label: 'Régularité', href: '/(app)/regularite' },
   { label: 'Carte du circuit', href: '/(app)/carte' },
@@ -261,16 +269,11 @@ export default function BilanScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
@@ -283,14 +286,15 @@ export default function BilanScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>BILAN DE SESSION</Text>
+    <Screen>
+      <AppBar title="BILAN" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <SectionLabel>BILAN DE SESSION</SectionLabel>
 
         {/* Fiabilité de la donnée (charte 11, T2) — affichée tôt : si la capture
             est fragile, le pilote le sait avant de lire quoi que ce soit. */}
         {insights?.data_quality ? (
-          <View style={{ marginTop: spacing.lg }}>
+          <View style={{ marginTop: theme.spacing.lg }}>
             <DataQualityBanner dataQuality={insights.data_quality} />
           </View>
         ) : null}
@@ -298,7 +302,7 @@ export default function BilanScreen() {
         {/* Tracé 3D en héros (specs v4 §05 §4.1) : « je me revois ». Couche par
             défaut Régularité ; géométrie = circuit officiel, couches data si la
             session porte des insights (sinon forme du circuit seule, honnête). */}
-        <FadeInSection style={{ marginTop: spacing.xl }}>
+        <FadeInSection style={{ marginTop: theme.spacing.xl }}>
           {/* Role-aware : un coach qui consulte la session d'un de ses pilotes voit
               les couches coach + l'attribution (badge or). Le pilote sur sa propre
               session voit les couches pilote. Accès déjà consenti (RLS coach). */}
@@ -312,75 +316,34 @@ export default function BilanScreen() {
             fil du pilote (soi contre soi). Valeur en couleur DONNÉE (crème),
             jamais un rouge de verdict (doctrine 01:69). */}
         <FadeInSection
-          style={{ alignItems: 'center', marginTop: spacing.xxxl, marginBottom: spacing.giant }}
+          style={{
+            alignItems: 'center',
+            marginTop: theme.spacing.xxl * 1.5,
+            marginBottom: theme.spacing.xxl * 1.5,
+          }}
         >
-          <Text
-            style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.lg }]}
-          >
-            VOTRE MEILLEUR TOUR
-          </Text>
-          <Text
-            style={[
-              typography.heroNumber,
-              { color: colors.text.primary, marginBottom: spacing.lg },
-            ]}
-          >
+          <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>VOTRE MEILLEUR TOUR</Text>
+          <Text style={[s.heroNumber, { marginBottom: theme.spacing.lg }]}>
             {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
           </Text>
 
           {salient ? (
             salient.prevBestSeconds != null ? (
               <>
-                <Text
-                  style={[
-                    typography.screenTitle,
-                    {
-                      color: colors.text.secondary,
-                      textAlign: 'center',
-                      fontWeight: fontWeight.light,
-                    },
-                  ]}
-                >
-                  Votre {salient.sessionsHere}ᵉ séance ici.
-                </Text>
-                <Text
-                  style={{
-                    color: colors.text.tertiary,
-                    fontSize: fontSize.body,
-                    textAlign: 'center',
-                    marginTop: spacing.sm,
-                  }}
-                >
+                <Text style={s.heroTitle}>Votre {salient.sessionsHere}ᵉ séance ici.</Text>
+                <Text style={s.heroMeta}>
                   Précédente : {formatLapTime(salient.prevBestSeconds)}
                   {salient.prevDate ? ` · ${formatDateShort(salient.prevDate)}` : ''}
                 </Text>
                 {salient.bestSeconds != null ? (
-                  <Text
-                    style={{
-                      color: colors.text.secondary,
-                      fontSize: fontSize.body,
-                      fontFamily: 'Menlo',
-                      marginTop: spacing.md,
-                    }}
-                  >
+                  <Text style={s.heroDelta}>
                     {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par rapport
                     à votre dernière venue.
                   </Text>
                 ) : null}
               </>
             ) : (
-              <Text
-                style={[
-                  typography.screenTitle,
-                  {
-                    color: colors.text.secondary,
-                    textAlign: 'center',
-                    fontWeight: fontWeight.light,
-                  },
-                ]}
-              >
-                Première séance sur ce circuit. Le fil commence ici.
-              </Text>
+              <Text style={s.heroTitle}>Première séance sur ce circuit. Le fil commence ici.</Text>
             )
           ) : null}
 
@@ -390,146 +353,75 @@ export default function BilanScreen() {
               (CLAUDE.md §5) cède ici devant l'exigence éthique d'équilibre
               vitesse / régularité, plus spécifique et plus récente. */}
           {salient && salient.spreadSeconds != null && salient.lapCount >= 2 ? (
-            <View style={{ alignItems: 'center', marginTop: spacing.giant }}>
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.text.tertiary, marginBottom: spacing.lg },
-                ]}
-              >
-                RÉGULARITÉ
-              </Text>
-              <Text
-                style={[
-                  typography.heroNumber,
-                  { color: colors.text.primary, marginBottom: spacing.lg },
-                ]}
-              >
+            <View style={{ alignItems: 'center', marginTop: theme.spacing.xxl * 1.5 }}>
+              <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>RÉGULARITÉ</Text>
+              <Text style={[s.heroNumber, { marginBottom: theme.spacing.lg }]}>
                 {salient.spreadSeconds.toFixed(1).replace('.', ',')} s
               </Text>
-              <Text
-                style={[
-                  typography.screenTitle,
-                  {
-                    color: colors.text.secondary,
-                    textAlign: 'center',
-                    fontWeight: fontWeight.light,
-                  },
-                ]}
-              >
-                L’amplitude de vos {salient.lapCount} tours.
-              </Text>
+              <Text style={s.heroTitle}>L’amplitude de vos {salient.lapCount} tours.</Text>
             </View>
           ) : null}
         </FadeInSection>
 
         {/* Contexte du coach (§10.3) — ce que le capteur ne capte pas. */}
         {contextRows.length > 0 ? (
-          <FadeInSection
-            style={{
-              marginBottom: spacing.huge,
-              padding: spacing.xl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              backgroundColor: colors.background.secondary,
-            }}
-          >
-            <Text
-              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
-            >
-              LE CONTEXTE DE VOTRE COACH
-            </Text>
-            <View style={{ gap: spacing.md }}>
-              {contextRows.map((row) => (
-                <View key={row.label}>
-                  <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                    {row.label}
-                  </Text>
-                  <Text
-                    style={{
-                      color: colors.text.primary,
-                      fontSize: fontSize.body,
-                      marginTop: 2,
-                      lineHeight: fontSize.body * 1.4,
-                    }}
-                  >
-                    {row.value}
-                  </Text>
-                </View>
-              ))}
-            </View>
+          <FadeInSection style={{ marginBottom: theme.spacing.xl }}>
+            <Card style={s.coachCard}>
+              <Text style={[s.eyebrow, s.coachEyebrow]}>LE CONTEXTE DE VOTRE COACH</Text>
+              <View style={{ gap: theme.spacing.md }}>
+                {contextRows.map((row) => (
+                  <View key={row.label}>
+                    <Text style={s.coachRowLabel}>{row.label}</Text>
+                    <Text style={s.coachRowValue}>{row.value}</Text>
+                  </View>
+                ))}
+              </View>
+            </Card>
           </FadeInSection>
         ) : null}
 
         {/* Priorisation du coach (§10.3c-B) — ordre de lecture proposé. */}
         {highlights.map((h) => (
-          <FadeInSection
-            key={h.id}
-            style={{
-              marginBottom: spacing.huge,
-              padding: spacing.xl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              backgroundColor: colors.background.secondary,
-            }}
-          >
-            <Text
-              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
-            >
-              MIS EN AVANT PAR VOTRE COACH
-            </Text>
-            {h.note ? (
-              <Text
-                style={{
-                  color: colors.text.secondary,
-                  fontSize: fontSize.body,
-                  fontStyle: 'italic',
-                  lineHeight: fontSize.body * 1.5,
-                  marginBottom: h.highlightCornerIndexes.length > 0 ? spacing.md : 0,
-                }}
-              >
-                « {h.note} »
-              </Text>
-            ) : null}
-            <View style={{ gap: spacing.sm }}>
-              {h.highlightCornerIndexes.map((idx, i) => (
-                <Pressable
-                  key={`${h.id}-${idx}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Ouvrir ${getCorner(idx)?.name ?? `virage ${idx}`}`}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(app)/virage',
-                      params: { index: String(idx), sessionId: session?.id ?? '' },
-                    } as never)
-                  }
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.md,
-                    paddingVertical: spacing.sm,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
+          <FadeInSection key={h.id} style={{ marginBottom: theme.spacing.xl }}>
+            <Card style={s.coachCard}>
+              <Text style={[s.eyebrow, s.coachEyebrow]}>MIS EN AVANT PAR VOTRE COACH</Text>
+              {h.note ? (
+                <Text
+                  style={[
+                    s.coachNote,
+                    { marginBottom: h.highlightCornerIndexes.length > 0 ? theme.spacing.md : 0 },
+                  ]}
                 >
-                  <Text
-                    style={{
-                      color: colors.accent.coach,
-                      fontSize: fontSize.body,
-                      fontWeight: fontWeight.medium,
-                      fontFamily: 'Menlo',
-                    }}
+                  « {h.note} »
+                </Text>
+              ) : null}
+              <View style={{ gap: theme.spacing.sm }}>
+                {h.highlightCornerIndexes.map((idx, i) => (
+                  <Pressable
+                    key={`${h.id}-${idx}`}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ouvrir ${getCorner(idx)?.name ?? `virage ${idx}`}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/virage',
+                        params: { index: String(idx), sessionId: session?.id ?? '' },
+                      } as never)
+                    }
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: theme.spacing.md,
+                      paddingVertical: theme.spacing.sm,
+                      opacity: pressed ? 0.7 : 1,
+                    })}
                   >
-                    {i + 1}.
-                  </Text>
-                  <Text style={{ color: colors.text.primary, fontSize: fontSize.body, flex: 1 }}>
-                    {getCorner(idx)?.name ?? `Virage ${idx}`}
-                  </Text>
-                  <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
-                </Pressable>
-              ))}
-            </View>
+                    <Text style={s.coachCornerIndex}>{i + 1}.</Text>
+                    <Text style={s.coachCornerName}>{getCorner(idx)?.name ?? `Virage ${idx}`}</Text>
+                    <Text style={s.chevron}>›</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </Card>
           </FadeInSection>
         ))}
 
@@ -539,61 +431,22 @@ export default function BilanScreen() {
           const reading = computeCoachReading(margin.breakdown, w);
           if (reading === null) return null;
           return (
-            <FadeInSection
-              key={w.coachId}
-              style={{
-                marginBottom: spacing.huge,
-                padding: spacing.xl,
-                borderRadius: borderRadius.lg,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                backgroundColor: colors.background.secondary,
-                alignItems: 'center',
-              }}
-            >
-              <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>
-                LA LECTURE DE VOTRE COACH
-              </Text>
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: 40,
-                  fontWeight: fontWeight.light,
-                  fontFamily: 'Menlo',
-                  marginTop: spacing.sm,
-                }}
-              >
-                {reading}%
-              </Text>
-              {w.note ? (
-                <Text
-                  style={{
-                    color: colors.text.secondary,
-                    fontSize: fontSize.caption,
-                    fontStyle: 'italic',
-                    textAlign: 'center',
-                    marginTop: spacing.sm,
-                    lineHeight: fontSize.caption * 1.5,
-                  }}
-                >
-                  « {w.note} »
+            <FadeInSection key={w.coachId} style={{ marginBottom: theme.spacing.xl }}>
+              <Card style={s.coachCardCentered}>
+                <Text style={[s.eyebrow, s.coachEyebrow]}>LA LECTURE DE VOTRE COACH</Text>
+                <Text style={s.coachReading}>{reading}%</Text>
+                {w.note ? (
+                  <Text style={[s.coachNote, { textAlign: 'center' }]}>« {w.note} »</Text>
+                ) : null}
+                <Text style={s.coachReadingHint}>
+                  La grille de lecture de votre coach, à côté de la marge OXV — pas à sa place.
                 </Text>
-              ) : null}
-              <Text
-                style={{
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  textAlign: 'center',
-                  marginTop: spacing.sm,
-                }}
-              >
-                La grille de lecture de votre coach, à côté de la marge OXV — pas à sa place.
-              </Text>
+              </Card>
             </FadeInSection>
           );
         })}
 
-        <View style={{ gap: spacing.md }}>
+        <View style={{ gap: theme.spacing.sm }}>
           {NAV_TARGETS.map((target, i) => (
             <FadeInSection key={target.href} delay={150 + i * 80}>
               <NavCard
@@ -614,24 +467,12 @@ export default function BilanScreen() {
               await exportAndShareBilanPdf({ sessionId: session.id });
               setExporting(false);
             }}
-            style={({ pressed }) => ({
-              marginTop: spacing.xl,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.medium,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-              opacity: pressed || exporting ? 0.6 : 1,
-            })}
+            style={({ pressed }) => [
+              s.ctaPrimary,
+              { marginTop: theme.spacing.lg, opacity: pressed || exporting ? 0.6 : 1 },
+            ]}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
+            <Text style={s.ctaPrimaryTxt}>
               {exporting ? 'Préparation du PDF…' : 'Partager mon bilan en PDF'}
             </Text>
           </Pressable>
@@ -641,25 +482,12 @@ export default function BilanScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push('/(app)/amis' as never)}
-          style={({ pressed }) => ({
-            marginTop: spacing.md,
-            padding: spacing.lg,
-            borderRadius: borderRadius.md,
-            borderWidth: 0.5,
-            borderColor: colors.border.subtle,
-            alignItems: 'center',
-            opacity: pressed ? 0.6 : 1,
-          })}
+          style={({ pressed }) => [
+            s.ctaGhost,
+            { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
+          ]}
         >
-          <Text
-            style={{
-              color: colors.text.secondary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            Comparer avec un copain
-          </Text>
+          <Text style={s.ctaGhostTxt}>Comparer avec un copain</Text>
         </Pressable>
 
         {/* CTA Souvenirs — médias OXV de la session */}
@@ -667,25 +495,12 @@ export default function BilanScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push(`/(app)/session-media/${session.id}` as never)}
-            style={({ pressed }) => ({
-              marginTop: spacing.sm,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              alignItems: 'center',
-              opacity: pressed ? 0.6 : 1,
-            })}
+            style={({ pressed }) => [
+              s.ctaGhost,
+              { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
+            ]}
           >
-            <Text
-              style={{
-                color: colors.text.secondary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.regular,
-              }}
-            >
-              Voir mes souvenirs de session
-            </Text>
+            <Text style={s.ctaGhostTxt}>Voir mes souvenirs de session</Text>
           </Pressable>
         ) : null}
 
@@ -693,7 +508,7 @@ export default function BilanScreen() {
             provenance du calcul (T3). Toujours visibles : la méthode et les
             limites ne sont pas une option. La provenance ne s'affiche que si la
             session porte des insights calculés. */}
-        <FadeInSection style={{ marginTop: spacing.xxxl }}>
+        <FadeInSection style={{ marginTop: theme.spacing.xxl * 1.5 }}>
           <SourceMethodBlock
             items={[
               'Calculé à partir des trames du boîtier (GPS et capteurs inertiels, 25 points par seconde).',
@@ -714,13 +529,13 @@ export default function BilanScreen() {
           />
         </FadeInSection>
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -754,29 +569,12 @@ function NavCard({ label, href }: { label: string; href: string }) {
       <Pressable
         accessibilityRole="button"
         onPressIn={() => haptics.tap()}
-        style={({ pressed }) => ({
-          paddingVertical: spacing.lg,
-          paddingHorizontal: spacing.xl,
-          borderRadius: borderRadius.lg,
-          borderWidth: 0.5,
-          borderColor: colors.border.subtle,
-          backgroundColor: colors.background.secondary,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          opacity: pressed ? 0.85 : 1,
-        })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.regular,
-          }}
-        >
-          {label}
-        </Text>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.body }}>›</Text>
+        <Card style={s.navCard}>
+          <Text style={s.navLabel}>{label}</Text>
+          <Text style={s.chevron}>›</Text>
+        </Card>
       </Pressable>
     </Link>
   );
@@ -784,57 +582,216 @@ function NavCard({ label, href }: { label: string; href: string }) {
 
 function BilanEmpty() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
       <View
         style={{
           flex: 1,
-          padding: spacing.xl,
+          paddingHorizontal: theme.spacing.lg,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>BILAN</Text>
-        <Text style={[typography.screenTitle, { textAlign: 'center', marginBottom: spacing.xl }]}>
+        <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>BILAN</Text>
+        <Text style={[s.emptyTitle, { marginBottom: theme.spacing.xl }]}>
           Aucune session encore.
         </Text>
-        <Text style={[typography.manifest, { textAlign: 'center', paddingHorizontal: spacing.md }]}>
-          Votre première session écrira la première ligne.
-        </Text>
+        <Text style={s.manifest}>Votre première session écrira la première ligne.</Text>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.back()}
-          style={{ marginTop: spacing.xxxl }}
+          style={{ marginTop: theme.spacing.xxl * 1.5 }}
         >
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-            Retour à l'accueil
-          </Text>
+          <Text style={s.back}>Retour à l'accueil</Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
 function BilanError({ message }: { message: string }) {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <View style={{ flex: 1, padding: spacing.xl, justifyContent: 'center' }}>
-        <Text
-          style={[typography.eyebrow, { color: colors.system.error, marginBottom: spacing.md }]}
-        >
-          ERREUR
-        </Text>
-        <Text style={[typography.screenTitle, { marginBottom: spacing.lg }]}>
+    <Screen scroll={false}>
+      <View style={{ flex: 1, paddingHorizontal: theme.spacing.lg, justifyContent: 'center' }}>
+        <Text style={[s.eyebrow, s.errorEyebrow]}>ERREUR</Text>
+        <Text style={[s.emptyTitle, { marginBottom: theme.spacing.lg }]}>
           Le bilan n'a pas pu être chargé.
         </Text>
-        <Text
-          style={[typography.body, { color: colors.text.secondary, marginBottom: spacing.xxl }]}
-        >
-          {message}
-        </Text>
+        <Text style={s.errorBody}>{message}</Text>
         <Pressable accessibilityRole="button" onPress={() => router.back()}>
-          <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+          <Text style={s.back}>Retour</Text>
         </Pressable>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  heroNumber: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.hud,
+    letterSpacing: -1,
+    color: theme.palette.cream,
+    textAlign: 'center' as const,
+  },
+  heroTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    lineHeight: theme.fontSize.h3 * 1.3,
+  },
+  heroMeta: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+  heroDelta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+  },
+  coachCard: {
+    borderColor: theme.palette.coach,
+  },
+  coachCardCentered: {
+    borderColor: theme.palette.coach,
+    alignItems: 'center' as const,
+  },
+  coachEyebrow: {
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  coachRowLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  coachRowValue: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    marginTop: 2,
+    lineHeight: theme.fontSize.body * 1.4,
+  },
+  coachNote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.body,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.5,
+  },
+  coachCornerIndex: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.coach,
+  },
+  coachCornerName: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    flex: 1,
+  },
+  coachReading: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.display,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  coachReadingHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+  navCard: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+  },
+  navLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
+  },
+  ctaPrimary: {
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center' as const,
+  },
+  ctaPrimaryTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
+  ctaGhost: {
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    alignItems: 'center' as const,
+  },
+  ctaGhostTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    textAlign: 'center' as const,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
+  },
+  errorEyebrow: {
+    color: theme.palette.red,
+    marginBottom: theme.spacing.md,
+  },
+  errorBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    marginBottom: theme.spacing.xxl,
+    lineHeight: theme.fontSize.body * 1.4,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

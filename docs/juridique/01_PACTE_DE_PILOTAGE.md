@@ -44,7 +44,7 @@ Vous êtes seul maître de votre pilotage. Cela signifie que :
 
 - Toutes les décisions de pilotage (trajectoire, freinage, accélération, gestion du risque) sont **les vôtres et les vôtres uniquement**, prises en temps réel selon votre jugement, votre expérience et les conditions réelles de la piste.
 - L'application n'intervient à aucun moment pendant que vous conduisez. Vous reconnaissez avoir compris que toute consultation des données pendant un roulage est de votre propre initiative et engage votre seule responsabilité.
-- Les recommandations qualitatives proposées par l'application après une session (telles que « zone à explorer », « zone à observer », « zone à maintenir ») sont des observations chiffrées, jamais des instructions. Vous restez libre de les suivre, de les écarter ou de les interpréter à votre manière.
+- Les observations qualitatives proposées par l'application après une session (telles que la signature de pilotage, la régularité mesurée ou la carte de chaleur des vitesses) sont des constats chiffrés, jamais des instructions. Vous restez libre de les suivre, de les écarter ou de les interpréter à votre manière.
 
 ---
 

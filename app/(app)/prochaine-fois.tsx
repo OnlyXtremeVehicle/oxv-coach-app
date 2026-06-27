@@ -13,16 +13,20 @@
  * Pas de persistance "Compris" en V1 — le bouton ferme l'écran et
  * ramène au bilan. Une colonne `acknowledged_at` viendra en V1.1
  * si vous voulez tracker le taux de lecture.
+ *
+ * Reskin V2 : Screen + AppBar, styles via @/theme/v2. Logique et textes
+ * inchangés. Poids visuel identique aux deux options (doctrine miroir).
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { type FocusCornerSelection, selectFocusCorner } from '@/services/focusCorner';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Screen } from '@/ui/Screen';
 
 export default function ProchaineFoisScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -45,143 +49,113 @@ export default function ProchaineFoisScreen() {
   }, [params.sessionId]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>LA PROCHAINE FOIS</Text>
-
+    <Screen>
+      <AppBar title="LA PROCHAINE FOIS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {focus ? (
-          <View style={{ marginTop: spacing.xxxl }}>
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.headline,
-                fontWeight: fontWeight.light,
-                lineHeight: fontSize.headline * 1.2,
-                marginBottom: spacing.xl,
-              }}
-            >
-              {focus.phrase}
-            </Text>
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <Text style={s.phrase}>{focus.phrase}</Text>
 
-            <Text
-              style={[
-                typography.manifest,
-                {
-                  marginBottom: spacing.giant,
-                },
-              ]}
-            >
-              {focus.observation}
-            </Text>
+            <Text style={s.observation}>{focus.observation}</Text>
 
-            <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
               {/* Poids visuel identique aux deux options : l'app ne pousse pas
                   vers un choix (doctrine miroir). */}
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  height: 52,
-                  borderRadius: borderRadius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border.medium,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                style={({ pressed }) => [s.choice, pressed && { opacity: 0.85 }]}
               >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.regular,
-                  }}
-                >
-                  Compris
-                </Text>
+                <Text style={s.choiceTxt}>Compris</Text>
               </Pressable>
 
               <Pressable
                 accessibilityRole="button"
                 onPress={() => router.back()}
-                style={({ pressed }) => ({
-                  flex: 1,
-                  height: 52,
-                  borderRadius: borderRadius.lg,
-                  borderWidth: 1,
-                  borderColor: colors.border.medium,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                style={({ pressed }) => [s.choice, pressed && { opacity: 0.85 }]}
               >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.regular,
-                  }}
-                >
-                  Plus tard
-                </Text>
+                <Text style={s.choiceTxt}>Plus tard</Text>
               </Pressable>
             </View>
 
-            <Text
-              style={[
-                typography.caption,
-                {
-                  fontStyle: 'italic',
-                  color: colors.text.tertiary,
-                  textAlign: 'center',
-                  marginTop: spacing.xxxl,
-                },
-              ]}
-            >
-              Une chose. Pas plus.
-            </Text>
+            <Text style={s.footnote}>Une chose. Pas plus.</Text>
           </View>
         ) : (
           <NoFocusState />
         )}
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function NoFocusState() {
   return (
-    <View
-      style={{
-        marginTop: spacing.giant,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.margin.green,
-          fontSize: fontSize.headline,
-          fontWeight: fontWeight.light,
-          textAlign: 'center',
-          marginBottom: spacing.xl,
-        }}
-      >
-        Confortable partout.
-      </Text>
-      <Text
-        style={[
-          typography.manifest,
-          { textAlign: 'center', paddingHorizontal: spacing.md, marginBottom: spacing.giant },
-        ]}
-      >
+    <View style={{ marginTop: theme.spacing.xxl * 2, alignItems: 'center' }}>
+      <Text style={s.calmTitle}>Confortable partout.</Text>
+      <Text style={[s.observation, { textAlign: 'center', paddingHorizontal: theme.spacing.md }]}>
         Aucune zone ne ressort. Continuez comme ça.
       </Text>
       <Pressable accessibilityRole="button" onPress={() => router.back()}>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-          Retour au bilan
-        </Text>
+        <Text style={s.back}>Retour au bilan</Text>
       </Pressable>
     </View>
   );
 }
+
+const s = {
+  phrase: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    lineHeight: theme.fontSize.h2 * 1.3,
+    color: theme.palette.cream,
+    marginBottom: theme.spacing.xl,
+  },
+  observation: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginBottom: theme.spacing.xxl,
+  },
+  choice: {
+    flex: 1,
+    height: 52,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  choiceTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
+  },
+  footnote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xxl,
+  },
+  calmTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.dataColors.accel,
+    textAlign: 'center' as const,
+    marginBottom: theme.spacing.xl,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

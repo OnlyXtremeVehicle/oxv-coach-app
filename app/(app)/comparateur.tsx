@@ -10,18 +10,25 @@
  * sélectionner 2, et on affiche le delta de marge composite + delta
  * chronos. La phrase signature en bas rappelle la doctrine :
  *   "Vos chronos évoluent aussi, mais ce n'est pas l'essentiel."
+ *
+ * Reskin V2 : Screen + AppBar, Segmented (modes), Card/SectionLabel, typo
+ * et couleurs @/theme/v2. Logique (sélection, delta, lecture coach) inchangée.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { marginLabelOf, marginZoneOf } from '@/types/domain';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
+import { Segmented } from '@/ui/Segmented';
 import { timeAgoFr } from '@/utils/time';
 
 type Mode = 'immediate' | 'recent' | 'progression';
@@ -30,6 +37,13 @@ const MODE_LABELS: Record<Mode, string> = {
   immediate: 'Immédiate',
   recent: 'Récente',
   progression: 'Long terme',
+};
+
+const MODES: Mode[] = ['immediate', 'recent', 'progression'];
+const MODE_BY_LABEL: Record<string, Mode> = {
+  Immédiate: 'immediate',
+  Récente: 'recent',
+  'Long terme': 'progression',
 };
 
 const MODE_WINDOW_DAYS: Record<Mode, number> = {
@@ -52,16 +66,20 @@ export default function ComparateurScreen() {
       return;
     }
     let cancelled = false;
-    listRecentAnalyses(profile.id, 100).then((rows) => {
-      if (cancelled) return;
-      setAnalyses(rows);
-      setLoading(false);
-      // Pré-sélection : les deux plus récentes
-      if (rows.length >= 2) {
-        setSelectedA(rows[1].telemetrySessionId);
-        setSelectedB(rows[0].telemetrySessionId);
-      }
-    });
+    listRecentAnalyses(profile.id, 100)
+      .then((rows) => {
+        if (cancelled) return;
+        setAnalyses(rows);
+        setLoading(false);
+        // Pré-sélection : les deux plus récentes
+        if (rows.length >= 2) {
+          setSelectedA(rows[1].telemetrySessionId);
+          setSelectedB(rows[0].telemetrySessionId);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -77,28 +95,28 @@ export default function ComparateurScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="COMPARATEUR" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>COMPARATEUR</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          Évolution
-        </Text>
+    <Screen>
+      <AppBar title="COMPARATEUR" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Évolution</Text>
 
-        <ModePicker value={mode} onChange={setMode} />
+        <View style={{ marginBottom: theme.spacing.xxl }}>
+          <Segmented
+            options={MODES.map((m) => MODE_LABELS[m])}
+            value={MODE_LABELS[mode]}
+            onChange={(label) => setMode(MODE_BY_LABEL[label])}
+          />
+        </View>
 
         {analyses.length < 2 ? (
           <EmptyState count={analyses.length} />
@@ -111,7 +129,7 @@ export default function ComparateurScreen() {
                 (badge + liseré or). Sur VOS propres tours — aucune comparaison
                 inter-pilotes ici, donc pas d'exposition de données d'un tiers. */}
             {selectedA ? (
-              <View style={{ marginTop: spacing.xl, marginBottom: spacing.xl }}>
+              <View style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
                 <CircuitTraceHero sessionId={selectedA} role="coach" defaultLayer="timeLoss" />
               </View>
             ) : null}
@@ -129,68 +147,13 @@ export default function ComparateurScreen() {
               onSelect={setSelectedB}
             />
 
-            <Text
-              style={[
-                typography.caption,
-                {
-                  color: colors.text.tertiary,
-                  fontStyle: 'italic',
-                  textAlign: 'center',
-                  marginTop: spacing.xxxl,
-                  paddingHorizontal: spacing.md,
-                },
-              ]}
-            >
-              Vos chronos évoluent aussi, mais ce n'est pas l'essentiel.
+            <Text style={s.signature}>
+              Vos chronos évoluent aussi, mais ce n&apos;est pas l&apos;essentiel.
             </Text>
           </>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function ModePicker({ value, onChange }: { value: Mode; onChange: (m: Mode) => void }) {
-  const modes: Mode[] = ['immediate', 'recent', 'progression'];
-  return (
-    <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xxl }}>
-      {modes.map((m) => {
-        const active = m === value;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            key={m}
-            onPress={() => onChange(m)}
-            style={({ pressed }) => ({
-              flex: 1,
-              paddingVertical: spacing.sm,
-              borderRadius: borderRadius.md,
-              borderWidth: 1,
-              borderColor: active ? colors.accent.red : colors.border.subtle,
-              backgroundColor: active ? 'rgba(200, 16, 46, 0.10)' : 'transparent',
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: active ? colors.text.primary : colors.text.secondary,
-                fontSize: fontSize.caption,
-                fontWeight: active ? fontWeight.medium : fontWeight.regular,
-              }}
-            >
-              {MODE_LABELS[m]}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+      </View>
+    </Screen>
   );
 }
 
@@ -202,58 +165,32 @@ function DeltaPanel({
   b: RecentAnalysisRow | undefined;
 }) {
   if (!a || !b) {
-    return (
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, marginBottom: spacing.xl, textAlign: 'center' },
-        ]}
-      >
-        Sélectionnez deux sessions pour comparer.
-      </Text>
-    );
+    return <Text style={s.deltaHint}>Sélectionnez deux sessions pour comparer.</Text>;
   }
   const deltaMargin = Number(b.marginGlobal) - Number(a.marginGlobal);
   const sign = deltaMargin > 0 ? '+' : '';
   const deltaColor =
     deltaMargin > 1
-      ? colors.margin.green
+      ? theme.dataColors.accel
       : deltaMargin < -1
-        ? colors.margin.red
-        : colors.text.secondary;
+        ? theme.palette.red
+        : theme.palette.creamSoft;
 
   const zoneB = marginZoneOf(Number(b.marginGlobal));
 
   return (
-    <View
-      style={{
-        padding: spacing.xl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        marginBottom: spacing.xl,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>DELTA MARGE</Text>
-      <Text
-        style={{
-          color: deltaColor,
-          fontSize: fontSize.hero,
-          fontWeight: fontWeight.ultralight,
-          marginBottom: spacing.sm,
-        }}
-      >
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
+      <SectionLabel>DELTA MARGE</SectionLabel>
+      <Text style={[s.deltaValue, { color: deltaColor }]}>
         {sign}
         {Math.round(deltaMargin)}%
       </Text>
-      <Text style={[typography.caption, { color: colors.text.secondary, textAlign: 'center' }]}>
+      <Text style={s.deltaDetail}>
         Référence A {Math.round(Number(a.marginGlobal))}% (
         {marginLabelOf(marginZoneOf(Number(a.marginGlobal)))}){'\n'}Référence B{' '}
         {Math.round(Number(b.marginGlobal))}% ({marginLabelOf(zoneB)})
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -269,53 +206,34 @@ function SessionPicker({
   onSelect: (id: string) => void;
 }) {
   return (
-    <View style={{ marginBottom: spacing.xl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.md, color: colors.text.tertiary }]}>
-        {label.toUpperCase()}
-      </Text>
-      <View style={{ gap: spacing.sm }}>
-        {sessions.map((s) => {
-          const active = selectedId === s.telemetrySessionId;
+    <View style={{ marginBottom: theme.spacing.xl, marginTop: theme.spacing.lg }}>
+      <SectionLabel>{label.toUpperCase()}</SectionLabel>
+      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+        {sessions.map((session) => {
+          const active = selectedId === session.telemetrySessionId;
           return (
             <Pressable
               accessibilityRole="button"
-              key={s.telemetrySessionId}
-              onPress={() => onSelect(s.telemetrySessionId)}
-              style={({ pressed }) => ({
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                borderWidth: active ? 1 : 0.5,
-                borderColor: active ? colors.accent.red : colors.border.subtle,
-                backgroundColor: active ? 'rgba(200, 16, 46, 0.08)' : colors.background.secondary,
-                opacity: pressed ? 0.85 : 1,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              })}
+              accessibilityState={{ selected: active }}
+              key={session.telemetrySessionId}
+              onPress={() => onSelect(session.telemetrySessionId)}
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
             >
-              <View>
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.regular,
-                  }}
-                >
-                  {s.circuitName ?? 'Session'}
-                </Text>
-                <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                  {timeAgoFr(new Date(s.sessionStartedAt))}
-                </Text>
-              </View>
-              <Text
+              <Card
                 style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
+                  borderColor: active ? theme.palette.edge : theme.palette.line,
+                  backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card,
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
-                {Math.round(Number(s.marginGlobal))}%
-              </Text>
+                <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+                  <Text style={s.pickName}>{session.circuitName ?? 'Session'}</Text>
+                  <Text style={s.pickMeta}>{timeAgoFr(new Date(session.sessionStartedAt))}</Text>
+                </View>
+                <Text style={s.pickValue}>{Math.round(Number(session.marginGlobal))}%</Text>
+              </Card>
             </Pressable>
           );
         })}
@@ -326,23 +244,86 @@ function SessionPicker({
 
 function EmptyState({ count }: { count: number }) {
   return (
-    <View
-      style={{
-        marginTop: spacing.xxxl,
-        padding: spacing.xl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { textAlign: 'center', marginBottom: spacing.lg }]}>
-        Comparer demande deux sessions au moins.
-      </Text>
-      <Text style={[typography.caption, { color: colors.text.tertiary }]}>
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Comparer demande deux sessions au moins.</Text>
+      <Text style={s.emptyHint}>
         {count === 0 ? 'Aucune session encore.' : '1 session enregistrée.'}
       </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xl,
+  },
+  deltaHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginBottom: theme.spacing.xl,
+  },
+  deltaValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.hud,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  deltaDetail: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+    lineHeight: theme.fontSize.small * 1.6,
+  },
+  signature: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xxl,
+    paddingHorizontal: theme.spacing.md,
+  },
+  pickName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  pickMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  pickValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.value,
+    color: theme.palette.cream,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+};

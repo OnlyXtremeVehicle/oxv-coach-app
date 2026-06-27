@@ -1,5 +1,5 @@
 /**
- * Écran #29 — Stats consolidées.
+ * Écran #29 — Stats consolidées. Design V2 (charte oxv-mirror-app).
  *
  * Agrégation de toutes les sessions du pilote :
  *   - 3 chiffres centraux : km totaux, sessions, meilleur tour all-time
@@ -14,17 +14,23 @@
  *     marge moyenne par circuit
  *
  * Doctrine : pas de classement entre pilotes, juste ses propres stats.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact du kit.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { type PilotStats, loadPilotStats } from '@/services/statsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDuration, formatLapTime } from '@/utils/format';
 
 export default function StatsScreen() {
@@ -39,11 +45,15 @@ export default function StatsScreen() {
       return;
     }
     let cancelled = false;
-    loadPilotStats(profile.id).then((s) => {
-      if (cancelled) return;
-      setStats(s);
-      setLoading(false);
-    });
+    loadPilotStats(profile.id)
+      .then((s) => {
+        if (cancelled) return;
+        setStats(s);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -55,17 +65,11 @@ export default function StatsScreen() {
   }, [stats]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>VOS STATISTIQUES</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-          L'ensemble de votre histoire.
-        </Text>
-        <Text
-          style={[typography.manifest, { color: colors.text.secondary, marginBottom: spacing.xxl }]}
-        >
-          Toutes vos sessions agrégées.
-        </Text>
+    <Screen>
+      <AppBar title="STATISTIQUES" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>L&apos;ensemble de votre histoire.</Text>
+        <Text style={s.manifest}>Toutes vos sessions agrégées.</Text>
 
         {/* Toggle simple / détaillé */}
         {canToggle ? (
@@ -73,17 +77,11 @@ export default function StatsScreen() {
             style={{
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              marginBottom: spacing.md,
+              marginBottom: theme.spacing.md,
             }}
           >
             <Pressable accessibilityRole="button" onPress={toggle}>
-              <Text
-                style={{
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  textDecorationLine: 'underline',
-                }}
-              >
+              <Text style={s.link}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
             </Pressable>
@@ -91,7 +89,7 @@ export default function StatsScreen() {
         ) : null}
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.loading}>Chargement…</Text>
         ) : !stats || stats.totalSessions === 0 ? (
           <EmptyState />
         ) : (
@@ -100,220 +98,195 @@ export default function StatsScreen() {
             <View
               style={{
                 flexDirection: 'row',
-                gap: spacing.md,
-                marginBottom: spacing.xxl,
+                gap: theme.spacing.sm,
+                marginBottom: theme.spacing.xl,
               }}
             >
-              <BigStat
+              <Fact
                 value={Math.round(stats.totalDistanceKm).toString()}
                 unit="km"
                 label="parcourus"
               />
-              <BigStat
+              <Fact
                 value={stats.totalSessions.toString()}
                 label={stats.totalSessions > 1 ? 'sessions' : 'session'}
               />
-              <BigStat value={stats.totalLaps.toString()} label="tours" />
+              <Fact value={stats.totalLaps.toString()} label="tours" />
             </View>
 
             {/* Records */}
-            <Section eyebrow="VOS RECORDS">
-              <Row
-                label="Meilleur tour"
-                value={stats.bestLapSeconds !== null ? formatLapTime(stats.bestLapSeconds) : '—'}
-                sublabel={stats.bestLapCircuitName ?? undefined}
-              />
-              {stats.maxSpeedKmh !== null ? (
-                <Row label="Vitesse max" value={`${Math.round(stats.maxSpeedKmh)} km/h`} />
-              ) : null}
-              {level === 'detailed' && stats.totalDurationSeconds > 0 ? (
+            <View style={{ marginBottom: theme.spacing.xl, gap: theme.spacing.sm }}>
+              <SectionLabel>Vos records</SectionLabel>
+              <Card>
                 <Row
-                  label="Temps total en piste"
-                  value={formatDuration(stats.totalDurationSeconds)}
+                  label="Meilleur tour"
+                  value={stats.bestLapSeconds !== null ? formatLapTime(stats.bestLapSeconds) : '—'}
+                  sublabel={stats.bestLapCircuitName ?? undefined}
                 />
-              ) : null}
-            </Section>
+                {stats.maxSpeedKmh !== null ? (
+                  <Row label="Vitesse max" value={`${Math.round(stats.maxSpeedKmh)} km/h`} />
+                ) : null}
+                {level === 'detailed' && stats.totalDurationSeconds > 0 ? (
+                  <Row
+                    label="Temps total en piste"
+                    value={formatDuration(stats.totalDurationSeconds)}
+                    last
+                  />
+                ) : null}
+              </Card>
+            </View>
 
             {/* Par circuit */}
             {circuitList.length > 0 ? (
-              <Section eyebrow="PAR CIRCUIT">
-                <View style={{ gap: spacing.xs }}>
-                  {circuitList.map((c) => (
-                    <View
-                      key={c.circuitName}
-                      style={{
-                        padding: spacing.md,
-                        borderRadius: borderRadius.md,
-                        borderWidth: 0.5,
-                        borderColor: colors.border.subtle,
-                        backgroundColor: colors.background.secondary,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          color: colors.text.primary,
-                          fontSize: fontSize.body,
-                          fontWeight: fontWeight.regular,
-                          marginBottom: spacing.xs,
-                        }}
-                      >
-                        {c.circuitName}
-                      </Text>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          flexWrap: 'wrap',
-                          gap: spacing.lg,
-                        }}
-                      >
-                        <Inline
-                          label={c.sessionCount > 1 ? 'sessions' : 'session'}
-                          value={c.sessionCount.toString()}
-                        />
-                        <Inline label="tours" value={c.lapCount.toString()} />
-                        <Inline label="km" value={Math.round(c.distanceKm).toString()} />
-                        {c.bestLapSeconds !== null ? (
-                          <Inline label="meilleur" value={formatLapTime(c.bestLapSeconds)} />
-                        ) : null}
-                        {level === 'detailed' && c.avgMarginPercent !== null ? (
-                          <Inline label="marge moy" value={`${Math.round(c.avgMarginPercent)} %`} />
-                        ) : null}
-                      </View>
+              <View style={{ marginBottom: theme.spacing.xl, gap: theme.spacing.sm }}>
+                <SectionLabel>Par circuit</SectionLabel>
+                {circuitList.map((c) => (
+                  <Card key={c.circuitName}>
+                    <Text style={s.circuitName}>{c.circuitName}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.lg }}>
+                      <Inline
+                        label={c.sessionCount > 1 ? 'sessions' : 'session'}
+                        value={c.sessionCount.toString()}
+                      />
+                      <Inline label="tours" value={c.lapCount.toString()} />
+                      <Inline label="km" value={Math.round(c.distanceKm).toString()} />
+                      {c.bestLapSeconds !== null ? (
+                        <Inline label="meilleur" value={formatLapTime(c.bestLapSeconds)} />
+                      ) : null}
+                      {level === 'detailed' && c.avgMarginPercent !== null ? (
+                        <Inline label="marge moy" value={`${Math.round(c.avgMarginPercent)} %`} />
+                      ) : null}
                     </View>
-                  ))}
-                </View>
-              </Section>
+                  </Card>
+                ))}
+              </View>
             ) : null}
           </>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
-function BigStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: 32,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-        {unit ? (
-          <Text
-            style={{
-              fontSize: fontSize.caption,
-              color: colors.text.secondary,
-              fontFamily: 'Menlo',
-            }}
-          >
-            {' '}
-            {unit}
-          </Text>
-        ) : null}
-      </Text>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginTop: spacing.xs }]}>
-        {label.toUpperCase()}
-      </Text>
-    </View>
-  );
-}
-
-function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
-  return (
-    <View style={{ marginBottom: spacing.xxl }}>
-      <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>{eyebrow}</Text>
-      {children}
-    </View>
-  );
-}
-
-function Row({ label, value, sublabel }: { label: string; value: string; sublabel?: string }) {
+function Row({
+  label,
+  value,
+  sublabel,
+  last,
+}: {
+  label: string;
+  value: string;
+  sublabel?: string;
+  last?: boolean;
+}) {
   return (
     <View
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: spacing.sm,
-        borderBottomWidth: 0.5,
-        borderBottomColor: colors.border.subtle,
+        paddingVertical: theme.spacing.sm,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: theme.palette.line,
       }}
     >
       <View>
-        <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>{label}</Text>
-        {sublabel ? (
-          <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: 2 }]}>
-            {sublabel}
-          </Text>
-        ) : null}
+        <Text style={s.rowLabel}>{label}</Text>
+        {sublabel ? <Text style={s.rowSub}>{sublabel}</Text> : null}
       </View>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
+      <Text style={s.rowValue}>{value}</Text>
     </View>
   );
 }
 
 function Inline({ label, value }: { label: string; value: string }) {
   return (
-    <Text style={{ fontSize: fontSize.caption }}>
-      <Text style={{ color: colors.text.primary, fontFamily: 'Menlo' }}>{value}</Text>
-      <Text style={{ color: colors.text.tertiary }}> {label}</Text>
+    <Text style={s.inline}>
+      <Text style={s.inlineValue}>{value}</Text>
+      <Text style={s.inlineLabel}> {label}</Text>
     </Text>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Pas encore d'historique.
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Pas encore d&apos;historique.</Text>
+      <Text style={s.emptyHint}>
+        Vos statistiques s&apos;enrichiront à chaque session sur piste.
       </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
-        Vos statistiques s'enrichiront à chaque session sur piste.
-      </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    marginBottom: theme.spacing.xl,
+  },
+  link: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+    textDecorationLine: 'underline' as const,
+  },
+  loading: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  circuitName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    marginBottom: theme.spacing.sm,
+  },
+  rowLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  rowSub: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  rowValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  inline: { fontSize: theme.fontSize.small },
+  inlineValue: { fontFamily: theme.fonts.mono, color: theme.palette.cream },
+  inlineLabel: { fontFamily: theme.fonts.body, color: theme.palette.creamMute },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.sm,
+  },
+};

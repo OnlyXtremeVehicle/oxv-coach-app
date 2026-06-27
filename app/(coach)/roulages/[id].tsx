@@ -10,11 +10,12 @@
  * assignés (coach_pilots actif).
  *
  * Doctrine : factuel, vouvoiement, aucun classement entre pilotes.
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact/Button. Logique
+ * inchangée (chargement, invitations, changement de statut).
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { type CoachPilotRow, listMyPilots } from '@/services/coachService';
@@ -33,7 +34,13 @@ import {
   removeInvitation,
   setRoulageStatus,
 } from '@/services/roulagesService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateTime, formatPriceCents } from '@/utils/format';
 
 function pilotName(p: CoachPilotRow): string {
@@ -116,41 +123,37 @@ export default function RoulageDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ActivityIndicator color={colors.text.secondary} />
-      </SafeAreaView>
+      <Screen scroll={false}>
+        <AppBar title="ROULAGE" onBack={() => router.back()} />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={theme.palette.creamMute} />
+        </View>
+      </Screen>
     );
   }
 
   if (!roulage) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: spacing.xl,
-        }}
-      >
-        <Text style={[typography.manifest, { color: colors.text.tertiary, textAlign: 'center' }]}>
-          Ce roulage est introuvable.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={{ marginTop: spacing.xl }}
+      <Screen scroll={false}>
+        <AppBar title="ROULAGE" onBack={() => router.back()} />
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: theme.spacing.lg,
+          }}
         >
-          <Text style={{ color: colors.accent.coach, fontSize: fontSize.body }}>Retour</Text>
-        </Pressable>
-      </SafeAreaView>
+          <Text style={[s.manifest, { textAlign: 'center' }]}>Ce roulage est introuvable.</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={{ marginTop: theme.spacing.xl }}
+          >
+            <Text style={s.action}>Retour</Text>
+          </Pressable>
+        </View>
+      </Screen>
     );
   }
 
@@ -158,87 +161,59 @@ export default function RoulageDetailScreen() {
   const isOpen = roulage.status === 'open';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>ROULAGE</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>{roulage.title}</Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
+    <Screen>
+      <AppBar title="ROULAGE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ROULAGE</Text>
+        <Text style={s.title}>{roulage.title}</Text>
+        <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>
           {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
           {roulage.status !== 'open' ? ` · ${ROULAGE_STATUS_LABELS[roulage.status]}` : ''}
         </Text>
 
         {roulage.location ? (
-          <Text
-            style={{ color: colors.text.secondary, fontSize: fontSize.body, marginTop: spacing.md }}
-          >
-            {roulage.location}
-          </Text>
+          <Text style={[s.body, { marginTop: theme.spacing.md }]}>{roulage.location}</Text>
         ) : null}
         {roulage.pricePerPilot != null ? (
-          <Text
-            style={{ color: colors.text.secondary, fontSize: fontSize.body, marginTop: spacing.xs }}
-          >
+          <Text style={[s.body, { marginTop: theme.spacing.xs }]}>
             {formatPriceCents(roulage.pricePerPilot)} par place
           </Text>
         ) : null}
         {roulage.notes ? (
-          <Text
-            style={{
-              color: colors.text.secondary,
-              fontSize: fontSize.caption,
-              marginTop: spacing.sm,
-              lineHeight: fontSize.caption * 1.5,
-            }}
-          >
-            {roulage.notes}
-          </Text>
+          <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>{roulage.notes}</Text>
         ) : null}
 
         {/* Récapitulatif des réponses */}
-        <View style={{ flexDirection: 'row', gap: spacing.xs, marginTop: spacing.xl }}>
-          <Stat value={summary.accepted} label="présents" />
-          <Stat value={summary.invited} label="en attente" />
-          <Stat value={places == null ? '∞' : places} label="places libres" />
+        <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
+          <Fact label="Présents" value={String(summary.accepted)} />
+          <Fact label="En attente" value={String(summary.invited)} />
+          <Fact label="Places libres" value={places == null ? '∞' : String(places)} />
         </View>
 
         {/* Pilotes invités */}
-        <Text
-          style={[
-            typography.eyebrow,
-            { color: colors.accent.coach, marginTop: spacing.xxl, marginBottom: spacing.md },
-          ]}
-        >
-          INVITÉS ({invitations.length})
-        </Text>
+        <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
+          <SectionLabel>{`Invités (${invitations.length})`}</SectionLabel>
+        </View>
         {invitations.length === 0 ? (
-          <Text style={[typography.caption, { color: colors.text.tertiary, fontStyle: 'italic' }]}>
+          <Text style={[s.caption, { fontStyle: 'italic' }]}>
             Personne n&apos;est encore convié.
           </Text>
         ) : (
-          <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             {invitations.map((inv) => {
               const p = pilotById.get(inv.pilotId);
               return (
-                <View
+                <Card
                   key={inv.id}
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: spacing.md,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor: colors.border.subtle,
-                    backgroundColor: colors.background.secondary,
                   }}
                 >
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
-                      {p ? pilotName(p) : 'Pilote'}
-                    </Text>
-                    <Text
-                      style={[typography.caption, { color: colors.text.tertiary, marginTop: 2 }]}
-                    >
+                    <Text style={s.body}>{p ? pilotName(p) : 'Pilote'}</Text>
+                    <Text style={[s.caption, { marginTop: 2 }]}>
                       {INVITATION_STATUS_LABELS[inv.status]}
                     </Text>
                   </View>
@@ -248,12 +223,10 @@ export default function RoulageDetailScreen() {
                       accessibilityLabel={`Retirer ${p ? pilotName(p) : 'ce pilote'}`}
                       onPress={() => onRemove(inv.id)}
                     >
-                      <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                        Retirer
-                      </Text>
+                      <Text style={s.mutedAction}>Retirer</Text>
                     </Pressable>
                   ) : null}
-                </View>
+                </Card>
               );
             })}
           </View>
@@ -262,22 +235,15 @@ export default function RoulageDetailScreen() {
         {/* Sélecteur de pilotes à inviter (seulement si ouvert) */}
         {isOpen ? (
           <>
-            <Text
-              style={[
-                typography.eyebrow,
-                { color: colors.accent.coach, marginTop: spacing.xxl, marginBottom: spacing.md },
-              ]}
-            >
-              CONVIER UN PILOTE
-            </Text>
+            <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
+              <SectionLabel>Convier un pilote</SectionLabel>
+            </View>
             {invitablePilots.length === 0 ? (
-              <Text
-                style={[typography.caption, { color: colors.text.tertiary, fontStyle: 'italic' }]}
-              >
+              <Text style={[s.caption, { fontStyle: 'italic' }]}>
                 Tous vos pilotes sont déjà conviés.
               </Text>
             ) : (
-              <View style={{ gap: spacing.sm }}>
+              <View style={{ gap: theme.spacing.sm }}>
                 {invitablePilots.map((p) => (
                   <Pressable
                     key={p.pilotId}
@@ -285,30 +251,19 @@ export default function RoulageDetailScreen() {
                     accessibilityLabel={`Convier ${pilotName(p)}`}
                     disabled={busy}
                     onPress={() => onInvite(p.pilotId)}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: spacing.md,
-                      borderRadius: borderRadius.md,
-                      borderWidth: 0.5,
-                      borderColor: colors.accent.coach,
-                      backgroundColor: colors.background.secondary,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
                   >
-                    <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>
-                      {pilotName(p)}
-                    </Text>
-                    <Text
+                    <Card
                       style={{
-                        color: colors.accent.coach,
-                        fontSize: fontSize.caption,
-                        fontWeight: fontWeight.medium,
+                        borderColor: theme.palette.coach,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      Convier
-                    </Text>
+                      <Text style={s.body}>{pilotName(p)}</Text>
+                      <Text style={s.action}>Convier</Text>
+                    </Card>
                   </Pressable>
                 ))}
               </View>
@@ -318,85 +273,92 @@ export default function RoulageDetailScreen() {
 
         {/* Actions roulage */}
         {isOpen ? (
-          <View style={{ marginTop: spacing.xxxl, gap: spacing.md }}>
-            <Pressable
-              accessibilityRole="button"
+          <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.md }}>
+            <Button
+              label="Clôturer le roulage"
+              variant="ghost"
               disabled={busy}
               onPress={() => onStatus('done')}
-              style={({ pressed }) => ({
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.border.medium,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-                Clôturer le roulage
-              </Text>
-            </Pressable>
+            />
             <Pressable
               accessibilityRole="button"
               disabled={busy}
               onPress={() => onStatus('cancelled')}
               style={({ pressed }) => ({
-                padding: spacing.md,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.accent.red,
+                paddingVertical: theme.spacing.md,
+                paddingHorizontal: theme.spacing.md,
+                borderRadius: theme.radius.md,
+                borderWidth: 1,
+                borderColor: theme.palette.red,
                 alignItems: 'center',
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ color: colors.accent.red, fontSize: fontSize.caption }}>
-                Annuler le roulage
-              </Text>
+              <Text style={s.dangerAction}>Annuler le roulage</Text>
             </Pressable>
           </View>
         ) : null}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.mutedAction}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
-function Stat({ value, label }: { value: number | string; label: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={[
-          typography.eyebrow,
-          { color: colors.text.tertiary, marginTop: spacing.xs, textAlign: 'center' },
-        ]}
-      >
-        {label.toUpperCase()}
-      </Text>
-    </View>
-  );
-}
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  body: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+  },
+  action: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 1,
+    color: theme.palette.coach,
+  },
+  mutedAction: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.micro,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+  dangerAction: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.micro,
+    letterSpacing: 1,
+    color: theme.palette.red,
+  },
+};

@@ -10,11 +10,13 @@
  *   - Delta neutre (« +12 pts », « -0.4 s ») sans interprétation
  *   - Le coach interprète, l'app décrit
  *   - Lecture seule, pas d'écriture
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel du kit. Accent coach =
+ * theme.palette.coach (crème neutre). Cartes SVG (CoachPreset) inchangées.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CoachPreset } from '@/components/CircuitMap';
@@ -22,7 +24,11 @@ import { FadeInSection } from '@/components/motion';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type SessionSnapshot, loadSessionSnapshot, logCoachView } from '@/services/coachService';
 import { type MarginZone } from '@/types/domain';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
 export default function CoachComparerScreen() {
@@ -77,17 +83,13 @@ export default function CoachComparerScreen() {
   }, [params.sessionA, params.sessionB, params.pilotId]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>COMPARATIF</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
-          Deux sessions, côte à côte.
-        </Text>
+    <Screen>
+      <AppBar title="COMPARATIF" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.title}>Deux sessions, côte à côte.</Text>
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.caption}>Chargement…</Text>
         ) : !snapA || !snapB ? (
           <EmptyState />
         ) : (
@@ -96,62 +98,45 @@ export default function CoachComparerScreen() {
             <View
               style={{
                 flexDirection: sideBySide ? 'row' : 'column',
-                gap: spacing.lg,
+                gap: theme.spacing.lg,
+                marginTop: theme.spacing.lg,
               }}
             >
               <FadeInSection delay={0} style={{ flex: 1 }}>
-                <SessionCard label="Session A" snap={snapA} accent={colors.accent.coach} />
+                <SessionCard label="Session A" snap={snapA} />
               </FadeInSection>
               <FadeInSection delay={350} style={{ flex: 1 }}>
-                <SessionCard label="Session B" snap={snapB} accent={colors.accent.coach} />
+                <SessionCard label="Session B" snap={snapB} />
               </FadeInSection>
             </View>
 
             {/* Delta global */}
-            <FadeInSection
-              delay={700}
-              style={{
-                marginTop: spacing.xxl,
-                padding: spacing.xl,
-                borderRadius: borderRadius.lg,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                backgroundColor: colors.background.secondary,
-              }}
-            >
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.accent.coach, marginBottom: spacing.md },
-                ]}
-              >
-                ÉCART B − A
-              </Text>
-              <DeltaLine
-                label="Marge globale"
-                deltaText={formatDeltaPoints(snapA.marginGlobal, snapB.marginGlobal)}
-              />
-              <DeltaLine
-                label="Meilleur tour"
-                deltaText={formatDeltaSeconds(snapA.bestLapSeconds, snapB.bestLapSeconds)}
-              />
-              <DeltaLine
-                label="Nombre de tours"
-                deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
-              />
+            <FadeInSection delay={700} style={{ marginTop: theme.spacing.xxl }}>
+              <Card style={{ borderColor: theme.palette.coach }}>
+                <SectionLabel>ÉCART B − A</SectionLabel>
+                <View style={{ marginTop: theme.spacing.md }}>
+                  <DeltaLine
+                    label="Marge globale"
+                    deltaText={formatDeltaPoints(snapA.marginGlobal, snapB.marginGlobal)}
+                  />
+                  <DeltaLine
+                    label="Meilleur tour"
+                    deltaText={formatDeltaSeconds(snapA.bestLapSeconds, snapB.bestLapSeconds)}
+                  />
+                  <DeltaLine
+                    label="Nombre de tours"
+                    deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
+                  />
+                </View>
+              </Card>
             </FadeInSection>
 
             {/* Delta par virage */}
-            <FadeInSection delay={900} style={{ marginTop: spacing.xxl }}>
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.accent.coach, marginBottom: spacing.md },
-                ]}
-              >
-                MARGES PAR VIRAGE
-              </Text>
-              <View style={{ gap: spacing.xs }}>
+            <FadeInSection delay={900} style={{ marginTop: theme.spacing.xxl }}>
+              <View style={{ marginBottom: theme.spacing.md }}>
+                <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
+              </View>
+              <View style={{ gap: theme.spacing.xs }}>
                 {BELTOISE_CORNERS.map((corner) => (
                   <CornerDeltaRow
                     key={corner.index}
@@ -167,106 +152,40 @@ export default function CoachComparerScreen() {
             </FadeInSection>
           </>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
-function SessionCard({
-  label,
-  snap,
-  accent,
-}: {
-  label: string;
-  snap: SessionSnapshot;
-  accent: string;
-}) {
+function SessionCard({ label, snap }: { label: string; snap: SessionSnapshot }) {
   const dateStr = formatDateShort(snap.startedAt);
   const marginStr = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
   const lapStr =
     snap.bestLapSeconds !== null ? `Meilleur tour ${formatLapTime(snap.bestLapSeconds)}` : null;
   return (
-    <View
-      style={{
-        padding: spacing.lg,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: accent,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: spacing.sm,
-        }}
-      >
+    <Card style={{ borderColor: theme.palette.coach }}>
+      <View style={s.cardHead}>
         <View>
-          <Text style={[typography.eyebrow, { color: accent }]}>{label}</Text>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-              marginTop: spacing.xs,
-            }}
-          >
-            {dateStr}
-          </Text>
+          <SectionLabel>{label}</SectionLabel>
+          <Text style={s.cardDate}>{dateStr}</Text>
         </View>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.titleLarge,
-            fontWeight: fontWeight.light,
-            fontFamily: 'Menlo',
-          }}
-        >
-          {marginStr}
-        </Text>
+        <Text style={s.cardMargin}>{marginStr}</Text>
       </View>
       <CoachPreset
         trajectory={snap.trajectory.length > 1 ? snap.trajectory : undefined}
         zoneByIndex={snap.zoneByIndex}
         height={220}
       />
-      {lapStr ? (
-        <Text style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.sm }]}>
-          {lapStr}
-        </Text>
-      ) : null}
-    </View>
+      {lapStr ? <Text style={s.lapStr}>{lapStr}</Text> : null}
+    </Card>
   );
 }
 
 function DeltaLine({ label, deltaText }: { label: string; deltaText: string }) {
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: spacing.xs,
-      }}
-    >
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.body }}>{label}</Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          fontWeight: fontWeight.medium,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {deltaText}
-      </Text>
+    <View style={s.deltaLine}>
+      <Text style={s.deltaLabel}>{label}</Text>
+      <Text style={s.deltaValue}>{deltaText}</Text>
     </View>
   );
 }
@@ -288,86 +207,35 @@ function CornerDeltaRow({
 }) {
   const deltaStr = formatDeltaPoints(marginA, marginB);
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.tertiary,
-          fontSize: fontSize.caption,
-          width: 16,
-          textAlign: 'center',
-        }}
-      >
-        {cornerIndex}
-      </Text>
-      <Text style={{ flex: 1, color: colors.text.primary, fontSize: fontSize.body }}>
-        {cornerName}
-      </Text>
+    <View style={s.cornerRow}>
+      <Text style={s.cornerIndex}>{cornerIndex}</Text>
+      <Text style={s.cornerName}>{cornerName}</Text>
       <ZoneDot zone={zoneA} />
-      <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>→</Text>
+      <Text style={s.arrow}>→</Text>
       <ZoneDot zone={zoneB} />
-      <Text
-        style={{
-          width: 64,
-          textAlign: 'right',
-          color: colors.text.primary,
-          fontSize: fontSize.caption,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {deltaStr}
-      </Text>
+      <Text style={s.cornerDelta}>{deltaStr}</Text>
     </View>
   );
 }
 
 function ZoneDot({ zone }: { zone: MarginZone | null }) {
-  return (
-    <View
-      style={{
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        backgroundColor: colorForZone(zone),
-      }}
-    />
-  );
+  return <View style={[s.zoneDot, { backgroundColor: colorForZone(zone) }]} />;
 }
 
 function EmptyState() {
   return (
-    <View
+    <Card
       style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
         alignItems: 'center',
+        paddingVertical: theme.spacing.xxl,
+        marginTop: theme.spacing.lg,
       }}
     >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Sélection incomplète.
-      </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
+      <Text style={s.emptyTitle}>Sélection incomplète.</Text>
+      <Text style={s.emptyHint}>
         Le comparatif requiert deux sessions analysées. Revenez à la liste pour les choisir.
       </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -376,12 +244,16 @@ function EmptyState() {
 // ============================================================================
 
 function colorForZone(zone: MarginZone | null): string {
-  if (!zone) return colors.text.tertiary;
-  return zone === 'green'
-    ? colors.margin.green
-    : zone === 'yellow'
-      ? colors.margin.yellow
-      : colors.margin.red;
+  switch (zone) {
+    case 'green':
+      return theme.dataColors.accel;
+    case 'yellow':
+      return theme.palette.gold;
+    case 'red':
+      return theme.palette.red;
+    default:
+      return theme.palette.creamMute;
+  }
 }
 
 function formatDeltaPoints(a: number | null, b: number | null): string {
@@ -404,3 +276,114 @@ function formatDeltaCount(a: number | null, b: number | null): string {
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
   return `${sign}${Math.abs(delta)}`;
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  cardHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.sm,
+  },
+  cardDate: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.xs,
+  },
+  cardMargin: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.value,
+    color: theme.palette.cream,
+  },
+  lapStr: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+  },
+  deltaLine: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    paddingVertical: theme.spacing.xs,
+  },
+  deltaLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  deltaValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  cornerRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  cornerIndex: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    width: 16,
+    textAlign: 'center' as const,
+  },
+  cornerName: {
+    flex: 1,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  arrow: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  cornerDelta: {
+    width: 64,
+    textAlign: 'right' as const,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.cream,
+  },
+  zoneDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+};

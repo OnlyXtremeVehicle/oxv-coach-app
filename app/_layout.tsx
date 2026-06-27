@@ -19,6 +19,7 @@ import { initSentry } from '@/lib/sentry';
 import { trackEvent } from '@/services/analyticsService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useAppFonts } from '@/theme/fonts';
 import { colors } from '@/theme/tokens';
 
 initSentry();
@@ -33,6 +34,7 @@ export default function RootLayout() {
   const profileId = useAuthStore((s) => s.profile?.id);
   const lastNotifResponse = Notifications.useLastNotificationResponse();
   const navState = useRootNavigationState();
+  const [fontsLoaded, fontError] = useAppFonts();
 
   useEffect(() => {
     console.warn(`[OXV] Runtime : ${runtimeLabel()}`);
@@ -58,10 +60,10 @@ export default function RootLayout() {
   }, [initialize]);
 
   useEffect(() => {
-    if (status !== 'idle' && status !== 'loading') {
+    if ((fontsLoaded || fontError) && status !== 'idle' && status !== 'loading') {
       SplashScreen.hideAsync().catch(() => undefined);
     }
-  }, [status]);
+  }, [status, fontsLoaded, fontError]);
 
   // Enregistre le token Expo Push après connexion réussie. Idempotent.
   // Skip en Expo Go (le token push remote n'y est pas généré, et l'app
@@ -128,6 +130,10 @@ export default function RootLayout() {
       router.push(`/(app)/cote-a-cote/${data.friendId}` as never);
     }
   }, [lastNotifResponse, navState?.key]);
+
+  // Garde le splash tant que les polices V2 ne sont pas chargées (évite un
+  // flash en police système avant bascule sur Syncopate/Inter/JetBrains Mono).
+  if (!fontsLoaded && !fontError) return null;
 
   return (
     <ErrorBoundary>

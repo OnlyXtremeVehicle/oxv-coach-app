@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 5 — FORMULAIRE / RÉGLAGES
+  Écrans RN couverts :
+    app/(app)/settings · equipement · donnees-securite
+    creer-trace · placement
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Doctrine : sections par intention ; silence en piste de premier rang ;
+            trois primitives de ligne (bascule, valeur, action).
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Réglages refondu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .nav{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+  .back{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:17px;flex-shrink:0}
+  .nav-h .eyebrow{display:block;margin-bottom:5px}
+  .nav-h .t{font-size:19px;font-weight:600;letter-spacing:-.01em}
+
+  .sec{display:block;margin:0 0 10px 2px}
+  .sec:not(:first-of-type){margin-top:22px}
+  .group{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .row{display:flex;align-items:center;gap:12px;padding:15px 16px;border-bottom:1px solid var(--line);cursor:pointer}
+  .row:last-child{border-bottom:0}
+  .row .lab{flex:1;font-size:14.5px;font-weight:500}
+  .row .sub{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:3px;letter-spacing:.04em}
+  .row .val{font-family:var(--mono);font-size:12px;color:var(--mute);letter-spacing:.04em}
+  .row .chev{color:var(--faint);font-size:18px}
+  .row.act .lab{color:var(--red)}
+
+  .sw{width:40px;height:23px;border-radius:12px;background:#26262B;position:relative;flex-shrink:0;transition:.2s}
+  .sw.on{background:var(--gold)}
+  .sw::after{content:'';position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;
+    background:var(--cream);transition:.2s}
+  .sw.on::after{left:19.5px;background:var(--night)}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row2{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row2:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="nav">
+        <div class="back">‹</div>
+        <div class="nav-h">
+          <span class="eyebrow">Compte</span>
+          <div class="t">Réglages</div>
+        </div>
+      </div>
+
+      <span class="eyebrow sec">Pilote</span>
+      <div class="group">
+        <div class="row"><div><div class="lab">Profil</div></div><span style="flex:1"></span><span class="val">Antoine F.</span><span class="chev">›</span></div>
+        <div class="row"><div class="lab">Équipement</div><span class="val">Casque · combinaison</span><span class="chev">›</span></div>
+      </div>
+
+      <span class="eyebrow sec">En piste</span>
+      <div class="group">
+        <div class="row"><div><div class="lab">Silence en piste</div><div class="sub">Aucune notification pendant le roulage</div></div><span class="sw on"></span></div>
+        <div class="row"><div class="lab">Capteur RaceBox</div><span class="val">Connecté</span><span class="chev">›</span></div>
+      </div>
+
+      <span class="eyebrow sec">Débrief</span>
+      <div class="group">
+        <div class="row"><div><div class="lab">Récit du débrief</div><div class="sub">La synthèse rédigée après session</div></div><span class="sw on"></span></div>
+        <div class="row"><div class="lab">Lectures approfondies</div><span class="sw on"></span></div>
+      </div>
+
+      <span class="eyebrow sec">Partage &amp; coach</span>
+      <div class="group">
+        <div class="row"><div class="lab">Visibilité</div><span class="val">Amis uniquement</span><span class="chev">›</span></div>
+        <div class="row"><div class="lab">Mon coach</div><span class="val">Aucun</span><span class="chev">›</span></div>
+        <div class="row"><div class="lab">Confidentialité &amp; données</div><span class="chev">›</span></div>
+      </div>
+
+      <span class="eyebrow sec">Compte</span>
+      <div class="group">
+        <div class="row act"><div class="lab">Se déconnecter</div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row2"><span class="k">−</span><span class="v"><b>Des sections, pas un mur d'options.</b> Les réglages sont groupés par intention — pilote, en piste, débrief, partage, compte.</span></div>
+    <div class="row2"><span class="k">→</span><span class="v"><b>Le silence en piste est de premier rang.</b> La doctrine « coupez l'app, je conduis » devient un réglage visible, pas une option enfouie.</span></div>
+    <div class="row2"><span class="k">≡</span><span class="v"><b>Trois primitives réutilisables.</b> Ligne à bascule, ligne à valeur, ligne d'action : tous les écrans de saisie (équipement, sécurité, tracé) s'en déduisent.</span></div>
+  </div>
+
+</body>
+</html>

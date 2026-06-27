@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
 
+import { Logo } from '@/brand/Logo';
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors, spacing, typography, borderRadius, fontWeight, fontSize } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 
 export default function LoginScreen() {
   const signIn = useAuthStore((s) => s.signIn);
@@ -22,89 +25,90 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={{ flex: 1, paddingHorizontal: spacing.xl, justifyContent: 'center' }}>
-          <Text style={[typography.eyebrow, { marginBottom: spacing.lg }]}>OXV MIRROR</Text>
-          <Text style={[typography.screenTitle, { marginBottom: spacing.huge }]}>Entrez.</Text>
+        <View style={{ flex: 1, paddingHorizontal: theme.spacing.xl, justifyContent: 'center' }}>
+          <View style={{ alignItems: 'center', marginBottom: theme.spacing.xxl }}>
+            <Logo size={56} />
+            <Text style={s.eyebrow}>OXV MIRROR</Text>
+            <Text style={s.title}>Entrez.</Text>
+          </View>
 
-          <TextInput
-            placeholder="Adresse email"
-            placeholderTextColor={colors.text.tertiary}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="email-address"
-            textContentType="emailAddress"
-            style={inputStyle}
-            editable={!loading}
-          />
+          <Card>
+            <TextInput
+              placeholder="Adresse email"
+              placeholderTextColor={theme.palette.creamMute}
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
+              textContentType="emailAddress"
+              style={s.input}
+              editable={!loading}
+            />
 
-          <TextInput
-            placeholder="Mot de passe"
-            placeholderTextColor={colors.text.tertiary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            textContentType="password"
-            style={[inputStyle, { marginTop: spacing.md }]}
-            editable={!loading}
-          />
+            <TextInput
+              placeholder="Mot de passe"
+              placeholderTextColor={theme.palette.creamMute}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              textContentType="password"
+              style={[s.input, { marginTop: theme.spacing.sm }]}
+              editable={!loading}
+            />
 
-          {error ? (
-            <Text
-              style={{
-                color: colors.system.error,
-                fontSize: fontSize.caption,
-                marginTop: spacing.md,
-              }}
-            >
-              {error}
-            </Text>
-          ) : null}
+            {error ? <Text style={s.error}>{error}</Text> : null}
 
-          <Pressable
-            accessibilityRole="button"
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            style={({ pressed }) => ({
-              marginTop: spacing.xl,
-              height: 52,
-              borderRadius: borderRadius.lg,
-              backgroundColor: canSubmit ? colors.accent.red : colors.background.elevated,
-              alignItems: 'center',
-              justifyContent: 'center',
-              opacity: pressed ? 0.85 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-                letterSpacing: 0.5,
-              }}
-            >
-              {loading ? 'Connexion…' : 'Entrer'}
-            </Text>
-          </Pressable>
+            <View style={{ marginTop: theme.spacing.lg }}>
+              <Button
+                label={loading ? 'Connexion…' : 'Entrer'}
+                onPress={onSubmit}
+                disabled={!canSubmit}
+              />
+            </View>
+          </Card>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const inputStyle = {
-  height: 52,
-  borderRadius: borderRadius.md,
-  paddingHorizontal: spacing.lg,
-  backgroundColor: colors.background.secondary,
-  borderWidth: 1,
-  borderColor: colors.border.subtle,
-  color: colors.text.primary,
-  fontSize: fontSize.body,
-} as const;
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.lg,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.display,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.sm,
+  },
+  input: {
+    height: 52,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.lg,
+    backgroundColor: theme.palette.card2,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+  },
+  error: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+    marginTop: theme.spacing.md,
+  },
+};

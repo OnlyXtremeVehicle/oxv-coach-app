@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — REFONTE DES ÉCRANS · maquette de référence
+  ────────────────────────────────────────────────────────────────────
+  Archétype 7 — ADMIN (tableau de bord régie)
+  Écrans RN couverts :
+    app/(admin)/index · en-cours · preparation
+    app/(admin)/coachs · coachs/[id] · circuit · sessions-media · analytique
+  Charte : src/theme/v2.ts + src/theme/tokens.ts  (Geist / Geist Mono)
+  Nature : back-office interne (régie OXV) — hors doctrine miroir,
+          mais strictement dans la charte (noir, mono, sobre).
+  Statut : référence figée, à transposer en React Native.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Admin refondu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap');
+  :root{
+    --night:#050505; --card:#0B0B0D; --card2:#121214; --line:#1E1E22;
+    --cream:#F8F9FA; --mute:#9A9AA3; --faint:#5A5A62;
+    --red:#C8102E; --gold:#FFB703; --heritage:#C4A459; --green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif; --mono:'Geist Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:26px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;background:var(--night);border:1px solid var(--line);
+    border-radius:34px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .screen{padding:24px 22px 30px}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+
+  .head{margin-bottom:22px}
+  .head .eyebrow{display:block;margin-bottom:6px}
+  .head .t{font-size:22px;font-weight:600;letter-spacing:-.02em}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:24px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 15px}
+  .kpi .l{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .kpi .v{font-family:var(--mono);font-size:24px;font-weight:500;margin-top:8px;display:flex;align-items:baseline;gap:5px}
+  .kpi .v small{font-size:12px;color:var(--mute)}
+  .kpi .v .j{font-size:11px;color:var(--gold);margin-left:auto}
+  .kpi.alert .v{color:var(--gold)}
+
+  .sec{display:flex;align-items:baseline;justify-content:space-between;margin:0 2px 11px}
+  .sec:not(:first-of-type){margin-top:22px}
+  .sec .all{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.08em}
+
+  /* À valider */
+  .val{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);
+    border-radius:13px;padding:13px 14px;margin-bottom:8px}
+  .val .m{flex:1;min-width:0}
+  .val .nm{font-size:14.5px;font-weight:600}
+  .val .mt{font-family:var(--mono);font-size:10px;color:var(--mute);margin-top:3px;letter-spacing:.04em}
+  .btns{display:flex;gap:7px;flex-shrink:0}
+  .b{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+    font-size:15px;border:1px solid var(--line)}
+  .b.ok{color:var(--green);border-color:#1C3326}
+  .b.no{color:var(--faint)}
+
+  /* Sessions */
+  .ses{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:14px 15px;margin-bottom:8px}
+  .ses-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:11px}
+  .ses-d{font-size:14.5px;font-weight:600}
+  .ses-c{font-family:var(--mono);font-size:10.5px;color:var(--mute);letter-spacing:.04em}
+  .bar{height:5px;background:#1A1A1E;border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--gold);border-radius:3px}
+  .ses-f{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:7px;letter-spacing:.06em}
+
+  /* Nav back-office */
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .nav4{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 15px;
+    display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+  .nav4 span{font-size:13.5px;font-weight:500}
+  .nav4 i{color:var(--faint);font-size:17px;font-style:normal}
+
+  .note{width:392px;max-width:100%;border:1px solid var(--line);border-radius:16px;padding:20px 22px;background:#0A0A0C}
+  .note h3{font-size:13px;font-weight:600;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--gold);margin-bottom:14px}
+  .note .row{display:flex;gap:12px;padding:9px 0;border-bottom:1px solid #141416;font-size:13px;line-height:1.55}
+  .note .row:last-child{border-bottom:0}
+  .note .k{color:var(--green);font-family:var(--mono);font-size:15px;flex-shrink:0}
+  .note .v{color:#BFBFC5}
+  .note .v b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+
+  <div class="device">
+    <div class="screen">
+
+      <div class="head">
+        <span class="eyebrow">Administration</span>
+        <div class="t">Régie</div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="l">Prochaine session</div>
+          <div class="v">28<small> juin</small><span class="j">J−6</span></div>
+        </div>
+        <div class="kpi">
+          <div class="l">Remplissage</div>
+          <div class="v">14<small> / 20</small></div>
+        </div>
+        <div class="kpi">
+          <div class="l">Coachs actifs</div>
+          <div class="v">3</div>
+        </div>
+        <div class="kpi alert">
+          <div class="l">À valider</div>
+          <div class="v">2</div>
+        </div>
+      </div>
+
+      <div class="sec"><span class="eyebrow">Inscriptions à valider</span><span class="all">2</span></div>
+      <div class="val">
+        <div class="m"><div class="nm">Marc Lefèvre</div><div class="mt">Signature · 28 juin · reçu il y a 2 h</div></div>
+        <div class="btns"><div class="b ok">✓</div><div class="b no">✕</div></div>
+      </div>
+      <div class="val">
+        <div class="m"><div class="nm">Claire Dumont</div><div class="mt">Access · 28 juin · reçu hier</div></div>
+        <div class="btns"><div class="b ok">✓</div><div class="b no">✕</div></div>
+      </div>
+
+      <div class="sec"><span class="eyebrow">Prochaines sessions</span><span class="all">Tout&nbsp;›</span></div>
+      <div class="ses">
+        <div class="ses-top"><span class="ses-d">28 juin · mardi</span><span class="ses-c">Haute-Saintonge</span></div>
+        <div class="bar"><i style="width:70%"></i></div>
+        <div class="ses-f">14 / 20 pilotes · 2 coachs · J. Beltoise</div>
+      </div>
+      <div class="ses">
+        <div class="ses-top"><span class="ses-d">5 juillet · mardi</span><span class="ses-c">Haute-Saintonge</span></div>
+        <div class="bar"><i style="width:35%"></i></div>
+        <div class="ses-f">7 / 20 pilotes · 1 coach · J. Beltoise</div>
+      </div>
+
+      <div class="sec"><span class="eyebrow">Gestion</span></div>
+      <div class="grid4">
+        <div class="nav4"><span>Coachs</span><i>›</i></div>
+        <div class="nav4"><span>Circuits</span><i>›</i></div>
+        <div class="nav4"><span>Médias</span><i>›</i></div>
+        <div class="nav4"><span>Analytique</span><i>›</i></div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="note">
+    <h3>Ce que cette refonte change</h3>
+    <div class="row"><span class="k">→</span><span class="v"><b>KPIs en tête, action à portée.</b> Remplissage et inscriptions à valider en premier — l'essentiel d'avant-session se lit d'un écran.</span></div>
+    <div class="row"><span class="k">=</span><span class="v"><b>Le back-office reste dans la charte.</b> Même noir, même mono, mêmes cartes — pas un thème d'admin générique plaqué par-dessus.</span></div>
+    <div class="row"><span class="k">≡</span><span class="v"><b>Tables sobres, densité maîtrisée.</b> Les huit écrans admin partagent KPI, ligne à valider, ligne de session et grille de gestion.</span></div>
+  </div>
+
+</body>
+</html>

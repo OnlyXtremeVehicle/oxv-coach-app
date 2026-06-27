@@ -10,11 +10,14 @@
  *
  * Doctrine : pas de jugement, pas de playback automatique (sobriété).
  * Le pilote scrubbe à son rythme.
+ *
+ * Reskin V2 : Screen + AppBar, Card du kit, styles via @/theme/v2. Le
+ * LapScrubber (carte SVG + scrubber tactile) et toute la logique
+ * (chargement des frames, useDetailLevel + toggle) restent inchangés.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { LapScrubber, type ScrubFrame } from '@/components/LapScrubber';
@@ -22,7 +25,10 @@ import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
 import { formatLapTime } from '@/utils/format';
 
 export default function ReplayScreen() {
@@ -41,19 +47,23 @@ export default function ReplayScreen() {
       return;
     }
     let cancelled = false;
-    fetchSessionLaps(params.sessionId).then((rows) => {
-      if (cancelled) return;
-      setLaps(rows);
-      // Pré-sélectionne le tour du param ou le meilleur tour
-      const initial = params.lapNumber
-        ? Number(params.lapNumber)
-        : (rows.find((l) => l.is_best_lap)?.lap_number ??
-          rows.find((l) => !l.is_outlap && !l.is_inlap)?.lap_number ??
-          rows[0]?.lap_number ??
-          null);
-      setSelectedLap(initial);
-      setLoadingLaps(false);
-    });
+    fetchSessionLaps(params.sessionId)
+      .then((rows) => {
+        if (cancelled) return;
+        setLaps(rows);
+        // Pré-sélectionne le tour du param ou le meilleur tour
+        const initial = params.lapNumber
+          ? Number(params.lapNumber)
+          : (rows.find((l) => l.is_best_lap)?.lap_number ??
+            rows.find((l) => !l.is_outlap && !l.is_inlap)?.lap_number ??
+            rows[0]?.lap_number ??
+            null);
+        setSelectedLap(initial);
+        setLoadingLaps(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadingLaps(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -91,18 +101,17 @@ export default function ReplayScreen() {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>REJOUER</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
+    <Screen>
+      <AppBar title="REJOUER" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>REJOUER</Text>
+        <Text style={s.title}>
           {currentLap
             ? `Tour ${currentLap.lap_number}${currentLap.is_best_lap ? ' · meilleur tour' : ''}`
             : 'Sélectionnez un tour'}
         </Text>
         {currentLap ? (
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xl }]}
-          >
+          <Text style={[s.meta, { marginBottom: theme.spacing.xl }]}>
             {formatLapTime(currentLap.duration_seconds)} ·{' '}
             {currentLap.is_outlap
               ? 'Tour de sortie'
@@ -117,44 +126,43 @@ export default function ReplayScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: spacing.lg }}
-            contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: 2 }}
+            style={{ marginBottom: theme.spacing.lg }}
+            contentContainerStyle={{ gap: theme.spacing.xs, paddingHorizontal: 2 }}
           >
-            {laps.map((l) => (
-              <Pressable
-                accessibilityRole="button"
-                key={l.id}
-                onPress={() => setSelectedLap(l.lap_number)}
-                style={({ pressed }) => ({
-                  paddingVertical: spacing.xs,
-                  paddingHorizontal: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: selectedLap === l.lap_number ? 1 : 0.5,
-                  borderColor:
-                    selectedLap === l.lap_number
+            {laps.map((l) => {
+              const on = selectedLap === l.lap_number;
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: on }}
+                  key={l.id}
+                  onPress={() => setSelectedLap(l.lap_number)}
+                  style={({ pressed }) => ({
+                    paddingVertical: theme.spacing.xs,
+                    paddingHorizontal: theme.spacing.md,
+                    borderRadius: theme.radius.sm,
+                    borderWidth: 1,
+                    borderColor: on
                       ? l.is_best_lap
-                        ? colors.margin.green
-                        : colors.text.primary
-                      : colors.border.subtle,
-                  backgroundColor:
-                    selectedLap === l.lap_number
-                      ? colors.background.elevated
-                      : colors.background.secondary,
-                  opacity: pressed ? 0.85 : l.is_outlap || l.is_inlap ? 0.6 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.caption,
-                    fontWeight: fontWeight.medium,
-                    fontFamily: 'Menlo',
-                  }}
+                        ? theme.dataColors.accel
+                        : theme.palette.edge
+                      : theme.palette.line,
+                    backgroundColor: on ? 'rgba(255,255,255,0.07)' : theme.palette.card2,
+                    opacity: pressed ? 0.85 : l.is_outlap || l.is_inlap ? 0.6 : 1,
+                  })}
                 >
-                  {l.lap_number}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.mono,
+                      color: on ? theme.palette.cream : theme.palette.creamMute,
+                      fontSize: theme.fontSize.small,
+                    }}
+                  >
+                    {l.lap_number}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
         ) : null}
 
@@ -164,17 +172,11 @@ export default function ReplayScreen() {
             style={{
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              marginBottom: spacing.md,
+              marginBottom: theme.spacing.md,
             }}
           >
             <Pressable accessibilityRole="button" onPress={toggle}>
-              <Text
-                style={{
-                  color: colors.text.tertiary,
-                  fontSize: fontSize.caption,
-                  textDecorationLine: 'underline',
-                }}
-              >
+              <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
             </Pressable>
@@ -183,50 +185,86 @@ export default function ReplayScreen() {
 
         {/* Scrubber */}
         {loadingLaps ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
         ) : laps.length === 0 ? (
           <EmptyState />
         ) : loadingFrames ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>
+          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>
             Chargement des frames…
           </Text>
         ) : (
           <LapScrubber frames={frames} showGs={level === 'detailed'} mapHeight={280} />
         )}
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
+            <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun tour à rejouer.
-      </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Aucun tour à rejouer.</Text>
+      <Text style={s.emptyHint}>
         Le replay arrive dès qu'une session contient au moins un tour complet.
       </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+  },
+  toggle: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+    textDecorationLine: 'underline' as const,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  back: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

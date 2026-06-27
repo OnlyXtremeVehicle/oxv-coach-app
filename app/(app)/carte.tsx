@@ -6,11 +6,13 @@
  * officiel + 7 virages coloriés par sa marge.
  *
  * Tap sur un virage → écran #15 Zoom virage.
+ *
+ * Reskin V2 : Screen + AppBar + Card/SectionLabel, typo/couleurs @/theme/v2.
+ * Le composant carte (PilotPreset, SVG) est conservé tel quel.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
@@ -19,7 +21,10 @@ import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { type MarginZone } from '@/types/domain';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -92,12 +97,11 @@ export default function CarteScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>CARTE DU CIRCUIT</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xl }]}>
-          {circuit?.name ?? 'Haute Saintonge'}
-        </Text>
+    <Screen>
+      <AppBar title="CARTE" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <SectionLabel>Carte du circuit</SectionLabel>
+        <Text style={s.title}>{circuit?.name ?? 'Haute Saintonge'}</Text>
 
         <PilotPreset
           animate
@@ -108,14 +112,14 @@ export default function CarteScreen() {
           height={360}
         />
 
-        <Text style={[typography.caption, { marginTop: spacing.lg, marginBottom: spacing.lg }]}>
+        <Text style={s.caption}>
           {hasMargins
             ? `${BELTOISE_CORNERS.length} virages — zoom au toucher`
             : `${BELTOISE_CORNERS.length} virages — marges par virage indisponibles pour cette session`}
         </Text>
 
         {/* Liste tappable des virages */}
-        <View style={{ gap: spacing.xs }}>
+        <View style={{ gap: theme.spacing.xs }}>
           {BELTOISE_CORNERS.map((corner) => {
             const zone = margins[corner.index] ?? null;
             return (
@@ -126,12 +130,12 @@ export default function CarteScreen() {
                 style={({ pressed }) => ({
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: spacing.md,
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.border.subtle,
-                  backgroundColor: colors.background.secondary,
+                  gap: theme.spacing.md,
+                  padding: theme.spacing.md,
+                  borderRadius: theme.radius.md,
+                  borderWidth: 1,
+                  borderColor: theme.palette.line,
+                  backgroundColor: theme.palette.card2,
                   opacity: pressed ? 0.85 : 1,
                 })}
               >
@@ -145,54 +149,75 @@ export default function CarteScreen() {
                     justifyContent: 'center',
                   }}
                 >
-                  <Text
-                    style={{
-                      color: colors.background.primary,
-                      fontSize: 13,
-                      fontWeight: fontWeight.semibold,
-                    }}
-                  >
-                    {corner.index}
-                  </Text>
+                  <Text style={s.cornerIndex}>{corner.index}</Text>
                 </View>
-                <Text
-                  style={{
-                    flex: 1,
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.regular,
-                  }}
-                >
-                  {corner.name}
-                </Text>
-                <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>›</Text>
+                <Text style={s.cornerName}>{corner.name}</Text>
+                <Text style={s.chevron}>›</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Retour au bilan
-            </Text>
+            <Text style={s.backLink}>Retour au bilan</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
 function colorForZone(zone: MarginZone | null | undefined): string {
   switch (zone) {
     case 'green':
-      return colors.margin.green;
+      return theme.dataColors.accel;
     case 'yellow':
-      return colors.margin.yellow;
+      return theme.palette.gold;
     case 'red':
-      return colors.margin.red;
+      return theme.palette.red;
     default:
       // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
-      return colors.text.tertiary;
+      return theme.palette.creamMute;
   }
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  caption: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  cornerIndex: {
+    fontFamily: theme.fonts.mono,
+    color: theme.palette.night,
+    fontSize: 13,
+  },
+  cornerName: {
+    flex: 1,
+    fontFamily: theme.fonts.body,
+    color: theme.palette.cream,
+    fontSize: theme.fontSize.body,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

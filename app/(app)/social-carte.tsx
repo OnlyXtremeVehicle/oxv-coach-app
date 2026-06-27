@@ -11,17 +11,20 @@
  * où l'on affiche un fallback renvoyant vers la liste.
  *
  * Doctrine : visualisation pure, aucune gamification.
+ * Reskin V2 : Screen + AppBar autour de la carte. MapView inchangée.
  */
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { isExpoGo } from '@/lib/runtime';
 import { type SocialPing, PING_KIND_LABELS, listSocialPings } from '@/services/socialPingsService';
-import { colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
 
 // Centre par défaut : Nouvelle-Aquitaine (cahier §7).
 const DEFAULT_REGION = {
@@ -51,35 +54,33 @@ export default function SocialCarteScreen() {
   // Expo Go : pas de module natif carte → fallback liste.
   if (isExpoGo()) {
     return (
-      <SafeAreaView
-        style={{
-          flex: 1,
-          backgroundColor: colors.background.primary,
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: spacing.xl,
-        }}
-      >
-        <Text style={[typography.manifest, { color: colors.text.tertiary, textAlign: 'center' }]}>
-          La carte n&apos;est disponible que dans l&apos;application installée.
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.replace('/(app)/social' as never)}
-          style={{ marginTop: spacing.xl }}
+      <Screen scroll={false}>
+        <AppBar title="CARTE" onBack={() => router.back()} />
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: theme.spacing.xl,
+          }}
         >
-          <Text style={{ color: colors.accent.red, fontSize: fontSize.body }}>Voir la liste</Text>
-        </Pressable>
-      </SafeAreaView>
+          <Text style={s.fallback}>
+            La carte n&apos;est disponible que dans l&apos;application installée.
+          </Text>
+          <View style={{ marginTop: theme.spacing.xl, alignSelf: 'stretch' }}>
+            <Button
+              label="Voir la liste"
+              onPress={() => router.replace('/(app)/social' as never)}
+            />
+          </View>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
-      <View style={{ paddingHorizontal: spacing.xl, paddingVertical: spacing.md }}>
-        <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>OXV SOCIAL</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.xs }]}>Le territoire OXV.</Text>
-      </View>
+    <Screen scroll={false}>
+      <AppBar title="CARTE" subtitle="Le territoire OXV" onBack={() => router.back()} />
 
       <View style={{ flex: 1 }}>
         <MapView
@@ -96,30 +97,15 @@ export default function SocialCarteScreen() {
               coordinate={{ latitude: ping.lat, longitude: ping.lon }}
               title={ping.title}
               description={PING_KIND_LABELS[ping.kind]}
-              pinColor={colors.accent.red}
+              pinColor={theme.palette.red}
             />
           ))}
         </MapView>
 
         {loading ? (
-          <View
-            style={{
-              position: 'absolute',
-              top: spacing.md,
-              alignSelf: 'center',
-              backgroundColor: colors.background.secondary,
-              paddingHorizontal: spacing.lg,
-              paddingVertical: spacing.sm,
-              borderRadius: 999,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: spacing.sm,
-            }}
-          >
-            <ActivityIndicator color={colors.text.secondary} size="small" />
-            <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-              Chargement…
-            </Text>
+          <View style={s.loadingPill}>
+            <ActivityIndicator color={theme.palette.creamSoft} size="small" />
+            <Text style={s.loadingTxt}>Chargement…</Text>
           </View>
         ) : null}
       </View>
@@ -130,22 +116,65 @@ export default function SocialCarteScreen() {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingHorizontal: spacing.xl,
-          paddingVertical: spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+          paddingVertical: theme.spacing.md,
         }}
       >
         <Pressable
           accessibilityRole="button"
           onPress={() => router.replace('/(app)/social' as never)}
         >
-          <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>
-            Voir en liste
-          </Text>
+          <Text style={s.action}>Voir en liste</Text>
         </Pressable>
-        <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
+        <Text style={s.count}>
           {pings.length} {pings.length > 1 ? 'points' : 'point'}
         </Text>
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  fallback: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+  },
+  loadingPill: {
+    position: 'absolute' as const,
+    top: theme.spacing.md,
+    alignSelf: 'center' as const,
+    backgroundColor: theme.palette.card,
+    borderColor: theme.palette.line,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.pill,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  loadingTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.6,
+    color: theme.palette.creamSoft,
+  },
+  action: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamSoft,
+  },
+  count: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+};

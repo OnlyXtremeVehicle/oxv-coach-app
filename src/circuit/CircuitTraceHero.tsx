@@ -6,14 +6,18 @@
  * la plupart des sessions n'ont pas d'insights → seule la couche « Tracé » s'affiche
  * (la forme du circuit, honnête — on ne fabrique aucune donnée).
  *
- * Géométrie : le circuit officiel unique (Haute Saintonge, fixture OSM). La table
- * `circuits` ne stocke qu'un `track_svg_path` 2D, pas les points lat/lon nécessaires
- * au ruban 3D ; la géométrie par circuit viendra avec la création de tracé (bloc 08).
+ * Géométrie : lue depuis `circuits.centerline_latlon` (table de production) et
+ * convertie en ruban via generateCircuit(). Repli immédiat sur la fixture OSM
+ * statique (Haute Saintonge) tant que la base n'a pas répondu — aucun écran vide.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import {
+  fetchDefaultCircuitCenterline,
+  fetchSessionCircuitCenterline,
+} from '@/services/circuitsService';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
 
 import { CircuitTrace } from './CircuitTrace';
@@ -37,7 +41,24 @@ export function CircuitTraceHero({
   defaultLayer,
   role = 'pilot',
 }: CircuitTraceHeroProps) {
-  const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
+  // Repli immédiat (tracé statique) puis bascule sur la géométrie réelle de `circuits`.
+  const fallbackCircuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
+  const [circuit, setCircuit] = useState(fallbackCircuit);
+  useEffect(() => {
+    let cancelled = false;
+    const load = sessionId
+      ? fetchSessionCircuitCenterline(sessionId)
+      : fetchDefaultCircuitCenterline();
+    load
+      .then((points) => {
+        if (!cancelled && points) setCircuit(generateCircuit(points));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   const [session, setSession] = useState<SessionInsights | null>(null);
   const [loading, setLoading] = useState<boolean>(!!sessionId);
 

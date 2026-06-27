@@ -68,6 +68,19 @@ export const fontWeight = {
   bold: '700',
 } as const;
 
+// Polices de la charte V2 (chargées dans app/_layout.tsx via @/theme/fonts).
+// Noms = familles exposées par @expo-google-fonts.
+export const fonts = {
+  display: 'Geist_600SemiBold', // titres (charte refonte Geist)
+  displayRegular: 'Geist_500Medium',
+  body: 'Geist_400Regular',
+  bodyLight: 'Geist_300Light',
+  bodyMedium: 'Geist_500Medium',
+  bodySemibold: 'Geist_600SemiBold',
+  mono: 'GeistMono_400Regular', // chiffres = voix de l'instrument + labels
+  monoMedium: 'GeistMono_500Medium',
+} as const;
+
 export const fontSize = {
   eyebrow: 10,
   caption: 12,
@@ -104,7 +117,7 @@ export const typography = {
     letterSpacing: letterSpacing.eyebrow,
     textTransform: 'uppercase' as const,
     color: colors.text.secondary,
-    fontFamily: 'Menlo',
+    fontFamily: fonts.mono,
   },
 
   screenTitle: {
@@ -121,6 +134,7 @@ export const typography = {
     letterSpacing: -2,
     lineHeight: fontSize.heroLarge,
     color: colors.text.primary,
+    fontFamily: fonts.mono,
   },
 
   manifest: {
@@ -129,6 +143,7 @@ export const typography = {
     fontStyle: 'italic' as const,
     lineHeight: fontSize.title * lineHeight.relaxed,
     color: 'rgba(255, 255, 255, 0.85)',
+    fontFamily: fonts.bodyLight,
   },
 
   body: {
@@ -136,12 +151,14 @@ export const typography = {
     fontWeight: fontWeight.light,
     lineHeight: fontSize.body * lineHeight.normal,
     color: colors.text.primary,
+    fontFamily: fonts.body,
   },
 
   caption: {
     fontSize: fontSize.caption,
     fontWeight: fontWeight.regular,
     color: colors.text.secondary,
+    fontFamily: fonts.body,
   },
 } as const;
 
@@ -294,6 +311,7 @@ export const layout = {
 export const tokens = {
   colors,
   fontWeight,
+  fonts,
   fontSize,
   letterSpacing,
   lineHeight,

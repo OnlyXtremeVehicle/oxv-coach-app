@@ -1,5 +1,5 @@
 /**
- * Écran #31 — Objectifs personnels du pilote.
+ * Écran #31 — Objectifs personnels du pilote. Design V2 (charte oxv-mirror-app).
  *
  * Le pilote se fixe un objectif sobre avant une session. L'app le
  * conserve, l'affiche, mais ne le juge pas. Auto-évaluation libre
@@ -12,6 +12,7 @@
  *   - Coach ne voit RIEN (espace intime du pilote, cf. migration 0023)
  *
  * Placeholder texte d'exemple sobre : « Apprivoiser l'épingle Sud. »
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel, logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,7 +25,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import {
@@ -34,7 +34,10 @@ import {
   listMyGoals,
   updateGoalStatus,
 } from '@/services/pilotGoalsService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
 export default function ObjectifsScreen() {
@@ -45,8 +48,11 @@ export default function ObjectifsScreen() {
 
   const reload = async () => {
     setLoading(true);
-    setGoals(await listMyGoals());
-    setLoading(false);
+    try {
+      setGoals(await listMyGoals());
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -71,117 +77,72 @@ export default function ObjectifsScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.text.tertiary }]}>OBJECTIFS</Text>
-          <Text
-            style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}
-          >
-            Ce que vous vous donnez.
-          </Text>
-          <Text
-            style={[
-              typography.manifest,
-              { color: colors.text.secondary, marginBottom: spacing.xxl },
-            ]}
-          >
-            Un mot. Pas une consigne.
-          </Text>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xxl,
+          }}
+        >
+          <Text style={s.eyebrow}>OBJECTIFS</Text>
+          <Text style={s.title}>Ce que vous vous donnez.</Text>
+          <Text style={s.manifest}>Un mot. Pas une consigne.</Text>
 
           {/* Objectif actif */}
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
           ) : activeGoal ? (
-            <View
-              style={{
-                padding: spacing.xl,
-                borderRadius: borderRadius.lg,
-                borderWidth: 1,
-                borderColor: colors.text.primary,
-                backgroundColor: colors.background.secondary,
-                marginBottom: spacing.xxl,
-              }}
-            >
-              <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>
-                OBJECTIF EN COURS
-              </Text>
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.bodyLarge,
-                  fontWeight: fontWeight.light,
-                  fontStyle: 'italic',
-                  lineHeight: fontSize.bodyLarge * 1.6,
-                  marginBottom: spacing.lg,
-                }}
-              >
-                « {activeGoal.body} »
-              </Text>
-              <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                Donné le {formatDateShort(activeGoal.createdAt)}
-              </Text>
+            <Card style={{ borderColor: theme.palette.edge, marginTop: theme.spacing.xxl }}>
+              <SectionLabel>Objectif en cours</SectionLabel>
+              <Text style={s.activeBody}>« {activeGoal.body} »</Text>
+              <Text style={s.meta}>Donné le {formatDateShort(activeGoal.createdAt)}</Text>
 
               {/* Boutons auto-évaluation */}
               <View
                 style={{
                   flexDirection: 'row',
-                  gap: spacing.xs,
-                  marginTop: spacing.lg,
+                  gap: theme.spacing.sm,
+                  marginTop: theme.spacing.lg,
                 }}
               >
                 <EvalBtn
                   label="Atteint"
-                  color={colors.margin.green}
+                  color={theme.dataColors.accel}
                   onPress={() => onUpdate(activeGoal.id, 'achieved')}
                 />
                 <EvalBtn
                   label="À continuer"
-                  color={colors.margin.yellow}
+                  color={theme.palette.gold}
                   onPress={() => onUpdate(activeGoal.id, 'continued')}
                 />
                 <EvalBtn
                   label="Lâché"
-                  color={colors.text.tertiary}
+                  color={theme.palette.creamMute}
                   onPress={() => onUpdate(activeGoal.id, 'abandoned')}
                 />
               </View>
-            </View>
+            </Card>
           ) : null}
 
           {/* Saisie nouvel objectif */}
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>
-            {activeGoal ? 'REMPLACER PAR' : 'PROCHAIN OBJECTIF'}
-          </Text>
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <SectionLabel>{activeGoal ? 'Remplacer par' : 'Prochain objectif'}</SectionLabel>
+          </View>
           <TextInput
             value={body}
             onChangeText={setBody}
             placeholder="Apprivoiser l'épingle Sud."
-            placeholderTextColor={colors.text.tertiary}
+            placeholderTextColor={theme.palette.creamMute}
             multiline
             numberOfLines={3}
             maxLength={200}
-            style={{
-              backgroundColor: colors.background.secondary,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              padding: spacing.md,
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              minHeight: 80,
-              textAlignVertical: 'top',
-            }}
+            style={s.input}
           />
-          <Text
-            style={[
-              typography.caption,
-              { color: colors.text.tertiary, textAlign: 'right', marginTop: spacing.xs },
-            ]}
-          >
+          <Text style={[s.meta, { textAlign: 'right', marginTop: theme.spacing.xs }]}>
             {body.length} / 200
           </Text>
 
@@ -189,87 +150,51 @@ export default function ObjectifsScreen() {
             accessibilityRole="button"
             disabled={saving || !body.trim()}
             onPress={onCreate}
-            style={({ pressed }) => ({
-              marginTop: spacing.lg,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              backgroundColor: !body.trim()
-                ? colors.background.secondary
-                : colors.background.elevated,
-              borderWidth: 0.5,
-              borderColor: !body.trim() ? colors.border.subtle : colors.text.primary,
-              alignItems: 'center',
-              opacity: pressed ? 0.85 : !body.trim() ? 0.5 : 1,
-            })}
+            style={({ pressed }) => [
+              s.submit,
+              !body.trim() ? s.submitDisabled : s.submitActive,
+              { opacity: pressed ? 0.85 : !body.trim() ? 0.5 : 1 },
+            ]}
           >
-            <Text
-              style={{
-                color: colors.text.primary,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.semibold,
-              }}
-            >
+            <Text style={s.submitTxt}>
               {activeGoal ? "Remplacer l'objectif" : 'Se donner cet objectif'}
             </Text>
           </Pressable>
 
           {/* Historique */}
           {pastGoals.length > 0 ? (
-            <View style={{ marginTop: spacing.huge }}>
-              <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>
-                CE QUE VOUS VOUS ÊTES DONNÉ
-              </Text>
-              <View style={{ gap: spacing.xs }}>
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <SectionLabel>Ce que vous vous êtes donné</SectionLabel>
+              <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
                 {pastGoals.map((g) => (
-                  <View
-                    key={g.id}
-                    style={{
-                      padding: spacing.md,
-                      borderRadius: borderRadius.md,
-                      borderWidth: 0.5,
-                      borderColor: colors.border.subtle,
-                      backgroundColor: colors.background.secondary,
-                    }}
-                  >
+                  <Card key={g.id}>
                     <View
                       style={{
                         flexDirection: 'row',
                         justifyContent: 'space-between',
-                        marginBottom: spacing.xs,
+                        marginBottom: theme.spacing.xs,
                       }}
                     >
-                      <Text style={[typography.eyebrow, { color: colorForStatus(g.status) }]}>
+                      <Text style={[s.statusTag, { color: colorForStatus(g.status) }]}>
                         {labelForStatus(g.status)}
                       </Text>
-                      <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                        {formatDateShort(g.createdAt)}
-                      </Text>
+                      <Text style={s.meta}>{formatDateShort(g.createdAt)}</Text>
                     </View>
-                    <Text
-                      style={{
-                        color: colors.text.secondary,
-                        fontSize: fontSize.body,
-                        fontStyle: 'italic',
-                      }}
-                    >
-                      « {g.body} »
-                    </Text>
-                  </View>
+                    <Text style={s.pastBody}>« {g.body} »</Text>
+                  </Card>
                 ))}
               </View>
             </View>
           ) : null}
 
-          <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
+              <Text style={s.backLink}>Retour</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -280,15 +205,23 @@ function EvalBtn({ label, color, onPress }: { label: string; color: string; onPr
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
-        paddingVertical: spacing.sm,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
+        paddingVertical: theme.spacing.sm,
+        borderRadius: theme.radius.md,
+        borderWidth: 1,
         borderColor: color,
         alignItems: 'center',
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Text style={{ color, fontSize: fontSize.caption, fontWeight: fontWeight.medium }}>
+      <Text
+        style={{
+          color,
+          fontFamily: theme.fonts.mono,
+          fontSize: 10,
+          letterSpacing: 1.2,
+          textTransform: 'uppercase',
+        }}
+      >
         {label}
       </Text>
     </Pressable>
@@ -298,13 +231,13 @@ function EvalBtn({ label, color, onPress }: { label: string; color: string; onPr
 function colorForStatus(status: GoalStatus): string {
   switch (status) {
     case 'achieved':
-      return colors.margin.green;
+      return theme.dataColors.accel;
     case 'continued':
-      return colors.margin.yellow;
+      return theme.palette.gold;
     case 'abandoned':
-      return colors.text.tertiary;
+      return theme.palette.creamMute;
     default:
-      return colors.text.primary;
+      return theme.palette.cream;
   }
 }
 
@@ -320,3 +253,99 @@ function labelForStatus(status: GoalStatus): string {
       return 'EN COURS';
   }
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+  activeBody: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  input: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    padding: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    minHeight: 80,
+    textAlignVertical: 'top' as const,
+    marginTop: theme.spacing.sm,
+  },
+  submit: {
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    alignItems: 'center' as const,
+  },
+  submitActive: {
+    backgroundColor: theme.palette.card2,
+    borderColor: theme.palette.edge,
+  },
+  submitDisabled: {
+    backgroundColor: theme.palette.card2,
+    borderColor: theme.palette.line,
+  },
+  submitTxt: {
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+  },
+  statusTag: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.3,
+    textTransform: 'uppercase' as const,
+  },
+  pastBody: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.body,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

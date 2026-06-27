@@ -5,6 +5,9 @@
  * pilote, régularité, fluidité). L'app en dérive « La lecture de votre
  * coach », présentée SÉPARÉMENT chez l'élève — jamais à la place de la marge
  * OXV. L'interprétation est portée par le coach, pas par OXV.
+ *
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, typo/couleurs
+ * @/theme/v2. Logique (pondérations, validation, upsert) inchangée.
  */
 
 import { useEffect, useState } from 'react';
@@ -17,12 +20,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 
 import { DEFAULT_READING_WEIGHTS, validateReadingWeights } from '@/services/coachReadingLogic';
 import { getMyReadingWeights, upsertReadingWeights } from '@/services/coachReadingService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachLectureScreen() {
   const [vehicle, setVehicle] = useState(String(DEFAULT_READING_WEIGHTS.wVehicle));
@@ -81,118 +87,77 @@ export default function CoachLectureScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
+    <Screen scroll={false}>
+      <AppBar title="LECTURE" onBack={() => router.back()} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-          <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>MA LECTURE</Text>
-          <Text style={[typography.screenTitle, { marginTop: spacing.md }]}>Votre grille.</Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-          >
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: theme.spacing.lg,
+            paddingBottom: theme.spacing.xxl,
+          }}
+        >
+          <Text style={[s.eyebrow, { color: theme.palette.coach }]}>MA LECTURE</Text>
+          <Text style={s.title}>Votre grille.</Text>
+          <Text style={s.manifest}>
             Pondérez ce qui compte pour vous. Vos élèves verront « La lecture de votre coach », à
             côté de la marge OXV — jamais à sa place.
           </Text>
 
           {loading ? (
-            <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
           ) : (
             <>
-              <WeightField label="Véhicule" value={vehicle} onChangeText={setVehicle} />
-              <WeightField label="Pilote" value={pilot} onChangeText={setPilot} />
-              <WeightField label="Régularité" value={regularity} onChangeText={setRegularity} />
-              <WeightField label="Fluidité" value={smoothness} onChangeText={setSmoothness} />
+              <View style={{ marginTop: theme.spacing.xxl }}>
+                <WeightField label="Véhicule" value={vehicle} onChangeText={setVehicle} />
+                <WeightField label="Pilote" value={pilot} onChangeText={setPilot} />
+                <WeightField label="Régularité" value={regularity} onChangeText={setRegularity} />
+                <WeightField label="Fluidité" value={smoothness} onChangeText={setSmoothness} />
+              </View>
 
-              <Text
-                style={[
-                  typography.eyebrow,
-                  { color: colors.text.tertiary, marginTop: spacing.md, marginBottom: spacing.sm },
-                ]}
-              >
-                NOTE (OPTIONNEL)
-              </Text>
+              <View style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.sm }}>
+                <SectionLabel>NOTE (OPTIONNEL)</SectionLabel>
+              </View>
               <TextInput
                 value={note}
                 onChangeText={setNote}
                 placeholder="Ce que votre lecture met en avant."
-                placeholderTextColor={colors.text.tertiary}
+                placeholderTextColor={theme.palette.creamMute}
                 multiline
                 maxLength={280}
                 accessibilityLabel="Note de lecture"
-                style={{
-                  borderWidth: 0.5,
-                  borderColor: colors.border.medium,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.background.secondary,
-                  padding: spacing.md,
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  minHeight: 72,
-                  textAlignVertical: 'top',
-                  marginBottom: spacing.lg,
-                }}
+                style={[s.input, { minHeight: 72, textAlignVertical: 'top' }]}
               />
 
               {error ? (
-                <Text
-                  style={{
-                    color: colors.accent.red,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  {error}
-                </Text>
+                <Text style={[s.errorTxt, { marginTop: theme.spacing.md }]}>{error}</Text>
               ) : null}
               {saved ? (
-                <Text
-                  style={{
-                    color: colors.margin.green,
-                    fontSize: fontSize.caption,
-                    marginBottom: spacing.md,
-                  }}
-                >
+                <Text style={[s.savedTxt, { marginTop: theme.spacing.md }]}>
                   Lecture enregistrée.
                 </Text>
               ) : null}
 
-              <Pressable
-                accessibilityRole="button"
-                disabled={saving}
-                onPress={onSave}
-                style={({ pressed }) => ({
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  backgroundColor: colors.accent.coach,
-                  alignItems: 'center',
-                  opacity: saving ? 0.5 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Text
-                  style={{
-                    color: colors.background.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
-                  }}
-                >
-                  {saving ? 'Enregistrement…' : 'Enregistrer'}
-                </Text>
-              </Pressable>
+              <View style={{ marginTop: theme.spacing.lg }}>
+                <Button
+                  label={saving ? 'Enregistrement…' : 'Enregistrer'}
+                  onPress={onSave}
+                  disabled={saving}
+                />
+              </View>
             </>
           )}
 
-          <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+          <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
-              <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-                Retour
-              </Text>
+              <Text style={s.backLink}>Retour</Text>
             </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -211,30 +176,97 @@ function WeightField({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: spacing.md,
+        marginBottom: theme.spacing.md,
       }}
     >
-      <Text style={{ color: colors.text.primary, fontSize: fontSize.body }}>{label}</Text>
+      <Text style={s.weightLabel}>{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         keyboardType="decimal-pad"
         maxLength={5}
         accessibilityLabel={`Pondération ${label}`}
-        style={{
-          width: 88,
-          borderWidth: 0.5,
-          borderColor: colors.border.medium,
-          borderRadius: borderRadius.md,
-          backgroundColor: colors.background.secondary,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          color: colors.text.primary,
-          fontSize: fontSize.body,
-          textAlign: 'right',
-          fontFamily: 'Menlo',
-        }}
+        style={s.weightInput}
       />
     </View>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.md,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  weightLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  weightInput: {
+    width: 88,
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    textAlign: 'right' as const,
+  },
+  input: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    color: theme.palette.cream,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+  },
+  errorTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.red,
+  },
+  savedTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.dataColors.accel,
+  },
+  backLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

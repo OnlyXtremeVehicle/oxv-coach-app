@@ -1,12 +1,21 @@
 /**
  * Vue Admin — hub avec 3 entrées Préparation / En cours / Analytique.
+ * Reskin V2 : Screen + AppBar (Logo), Card/SectionLabel du kit. Accent
+ * bronze conservé (couleur de rôle admin). Logique inchangée.
  */
 
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { Logo } from '@/brand/Logo';
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+
+// Bronze = couleur de RÔLE réservée à l'admin (doctrine). Liserés et accents.
+const BRONZE = '#B87333';
 
 const VIEWS: { href: string; label: string; description: string }[] = [
   {
@@ -39,58 +48,83 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     label: 'Médias',
     description: 'Dépôt des photos / vidéos prises sur piste par session.',
   },
+  {
+    href: '/(admin)/routes-certification',
+    label: 'Belles routes',
+    description: 'Demandes de certification de routes à examiner.',
+  },
 ];
 
 export default function AdminHubScreen() {
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.bronze }]}>ADMIN OXV</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
-          Coordination de la session
-        </Text>
+    <Screen>
+      <AppBar title="ADMIN OXV" leading={<Logo size={26} />} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN OXV</Text>
+        <Text style={s.title}>Coordination de la session</Text>
 
-        <View style={{ gap: spacing.md }}>
+        <View style={{ gap: theme.spacing.md }}>
           {VIEWS.map((v) => (
             <Link key={v.href} href={v.href as never} asChild>
               <Pressable
-                style={({ pressed }) => ({
-                  padding: spacing.xl,
-                  borderRadius: borderRadius.lg,
-                  borderWidth: 0.5,
-                  borderColor: colors.accent.bronze,
-                  backgroundColor: colors.background.secondary,
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                accessibilityRole="button"
+                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
               >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.title,
-                    fontWeight: fontWeight.light,
-                    marginBottom: spacing.xs,
-                  }}
-                >
-                  {v.label}
-                </Text>
-                <Text style={[typography.caption, { color: colors.text.secondary }]}>
-                  {v.description}
-                </Text>
+                <Card style={{ borderColor: BRONZE }}>
+                  <Text style={s.cardTitle}>{v.label}</Text>
+                  <Text style={s.cardMeta}>{v.description}</Text>
+                </Card>
               </Pressable>
             </Link>
           ))}
         </View>
 
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
+        <SpaceSwitcher current="admin" />
+
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable accessibilityRole="button" onPress={() => router.replace('/(app)')}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Sortir de l'admin
-            </Text>
+            <Text style={s.minorLink}>Sortir de l&apos;admin</Text>
           </Pressable>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xxl,
+  },
+  cardTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  cardMeta: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  minorLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

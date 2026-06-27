@@ -9,22 +9,31 @@
  *   - Pas d'instruction au coach non plus — l'app est un miroir pour lui
  *     aussi (il voit ce que le pilote vit, il interprète seul)
  *   - Lecture seule partout (pas de bouton "modifier", "noter", etc.)
+ *
+ * Reskin V2 : Screen + AppBar (Logo), Card/SectionLabel/Fact du kit. Accent
+ * coach = theme.palette.coach (crème neutre). Logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
+import { Logo } from '@/brand/Logo';
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
+import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import {
   type CoachDashboardSummary,
   type CoachPilotRow,
   listMyPilots,
   loadCoachDashboardSummary,
 } from '@/services/coachService';
-import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Fact } from '@/ui/Fact';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
 export default function CoachHubScreen() {
@@ -57,53 +66,37 @@ export default function CoachHubScreen() {
   const greeting = profile?.first_name ? `Bonjour ${profile.first_name}` : 'Bonjour';
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.coach }]}>COACH OXV</Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-          {greeting}.
-        </Text>
-        <Text
-          style={[typography.manifest, { color: colors.text.secondary, marginBottom: spacing.xxl }]}
-        >
-          Vos pilotes, à votre rythme.
-        </Text>
+    <Screen>
+      <AppBar title="COACH OXV" leading={<Logo size={26} />} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>COACH OXV</Text>
+        <Text style={s.title}>{greeting}.</Text>
+        <Text style={s.manifest}>Vos pilotes, à votre rythme.</Text>
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.caption}>Chargement…</Text>
         ) : pilots.length === 0 ? (
           <EmptyState />
         ) : (
           <>
             {/* Bandeau alerte : nouvelles sessions à voir (24h) */}
             {summary && summary.lastDaySessionCount > 0 ? (
-              <View
+              <Card
                 style={{
-                  padding: spacing.md,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.accent.coach,
-                  backgroundColor: colors.background.elevated,
-                  marginBottom: spacing.xl,
+                  borderColor: theme.palette.coach,
+                  marginTop: theme.spacing.xl,
                   flexDirection: 'row',
                   alignItems: 'center',
-                  gap: spacing.md,
+                  gap: theme.spacing.md,
                 }}
               >
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: colors.accent.coach,
-                  }}
-                />
-                <Text style={{ color: colors.text.primary, fontSize: fontSize.body, flex: 1 }}>
+                <View style={s.alertDot} />
+                <Text style={s.alertText}>
                   {summary.lastDaySessionCount === 1
                     ? '1 nouvelle session dans les dernières 24 h.'
                     : `${summary.lastDaySessionCount} nouvelles sessions dans les dernières 24 h.`}
                 </Text>
-              </View>
+              </Card>
             ) : null}
 
             {/* Stats globales sobres */}
@@ -111,19 +104,19 @@ export default function CoachHubScreen() {
               <View
                 style={{
                   flexDirection: 'row',
-                  gap: spacing.xs,
-                  marginBottom: spacing.xl,
+                  gap: theme.spacing.sm,
+                  marginTop: theme.spacing.xl,
                 }}
               >
-                <DashStat
+                <Fact
                   value={summary.pilotCount.toString()}
                   label={summary.pilotCount > 1 ? 'pilotes' : 'pilote'}
                 />
-                <DashStat
+                <Fact
                   value={summary.recentSessionCount.toString()}
                   label={`session${summary.recentSessionCount > 1 ? 's' : ''} sur ${summary.recentSessionsDays}j`}
                 />
-                <DashStat
+                <Fact
                   value={summary.sharedAnnotationCount.toString()}
                   label={`note${summary.sharedAnnotationCount > 1 ? 's' : ''} partagée${summary.sharedAnnotationCount > 1 ? 's' : ''}`}
                 />
@@ -132,28 +125,17 @@ export default function CoachHubScreen() {
 
             {/* Brouillons rappel sobre */}
             {summary && summary.draftAnnotationCount > 0 ? (
-              <Text
-                style={[
-                  typography.caption,
-                  {
-                    color: colors.text.tertiary,
-                    marginBottom: spacing.xl,
-                    fontStyle: 'italic',
-                  },
-                ]}
-              >
+              <Text style={s.draftNote}>
                 {summary.draftAnnotationCount === 1
                   ? '1 note en brouillon en attente de partage.'
                   : `${summary.draftAnnotationCount} notes en brouillon en attente de partage.`}
               </Text>
             ) : null}
 
-            <Text
-              style={[typography.eyebrow, { color: colors.accent.coach, marginBottom: spacing.md }]}
-            >
-              {pilots.length} {pilots.length === 1 ? 'PILOTE' : 'PILOTES'}
-            </Text>
-            <View style={{ gap: spacing.md }}>
+            <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>
+              <SectionLabel>
+                {`${pilots.length} ${pilots.length === 1 ? 'PILOTE' : 'PILOTES'}`}
+              </SectionLabel>
               {pilots.map((pilot) => (
                 <PilotCard key={pilot.pilotId} pilot={pilot} />
               ))}
@@ -162,180 +144,75 @@ export default function CoachHubScreen() {
             {/* CTA comparatif 2 pilotes — gaté par la permission view_pilots
                 (§8.1) et visible si au moins 2 pilotes suivis */}
             {permissions.canViewPilots && pilots.length >= 2 ? (
-              <Link href={'/(coach)/comparer-pilotes' as never} asChild>
-                <Pressable
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({
-                    marginTop: spacing.lg,
-                    padding: spacing.lg,
-                    borderRadius: borderRadius.md,
-                    borderWidth: 0.5,
-                    borderColor: colors.accent.coach,
-                    alignItems: 'center',
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      color: colors.accent.coach,
-                      fontSize: fontSize.body,
-                      fontWeight: fontWeight.medium,
-                    }}
-                  >
-                    Comparer deux pilotes
-                  </Text>
-                </Pressable>
-              </Link>
+              <CoachLink label="Comparer deux pilotes" href="/(coach)/comparer-pilotes" />
             ) : null}
           </>
         )}
 
-        {/* Mes repères de virage (§10.3c-A) — outil pédagogique de base,
-            disponible pour tout coach. */}
-        <Link href={'/(coach)/reperes' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: spacing.lg,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.accent.coach,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Mes repères de virage
-            </Text>
-          </Pressable>
-        </Link>
+        <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+          {/* Mes repères de virage (§10.3c-A) — outil pédagogique de base,
+              disponible pour tout coach. */}
+          <CoachLink label="Mes repères de virage" href="/(coach)/reperes" />
 
-        {/* Gabarits de commentaire (§10.3c-C) — confort de saisie, tout coach. */}
-        <Link href={'/(coach)/gabarits' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: spacing.md,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.accent.coach,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Mes gabarits
-            </Text>
-          </Pressable>
-        </Link>
+          {/* Gabarits de commentaire (§10.3c-C) — confort de saisie, tout coach. */}
+          <CoachLink label="Mes gabarits" href="/(coach)/gabarits" />
 
-        {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
-        <Link href={'/(coach)/lecture' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              marginTop: spacing.md,
-              padding: spacing.lg,
-              borderRadius: borderRadius.md,
-              borderWidth: 0.5,
-              borderColor: colors.accent.coach,
-              alignItems: 'center',
-              opacity: pressed ? 0.7 : 1,
-            })}
-          >
-            <Text
-              style={{
-                color: colors.accent.coach,
-                fontSize: fontSize.body,
-                fontWeight: fontWeight.medium,
-              }}
-            >
-              Ma lecture
-            </Text>
-          </Pressable>
-        </Link>
+          {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
+          <CoachLink label="Ma lecture" href="/(coach)/lecture" />
 
-        {/* Gestion des roulages — gatée par la permission manage_own_sessions
-            (§8). Visible hors du bloc pilotes : un coach peut préparer un
-            roulage avant d'avoir des pilotes à convier. */}
-        {permissions.canManageOwnSessions ? (
-          <Link href={'/(coach)/roulages' as never} asChild>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                marginTop: spacing.lg,
-                padding: spacing.lg,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.accent.coach,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
-                }}
-              >
-                Mes roulages
-              </Text>
-            </Pressable>
-          </Link>
-        ) : null}
+          {/* Gestion des roulages — gatée par la permission manage_own_sessions
+              (§8). Visible hors du bloc pilotes : un coach peut préparer un
+              roulage avant d'avoir des pilotes à convier. */}
+          {permissions.canManageOwnSessions ? (
+            <CoachLink label="Mes roulages" href="/(coach)/roulages" />
+          ) : null}
 
-        {/* Tableau de bord business — gaté par can_view_business_dashboard (§10.2). */}
-        {permissions.canViewBusinessDashboard ? (
-          <Link href={'/(coach)/business' as never} asChild>
-            <Pressable
-              accessibilityRole="button"
-              style={({ pressed }) => ({
-                marginTop: spacing.md,
-                padding: spacing.lg,
-                borderRadius: borderRadius.md,
-                borderWidth: 0.5,
-                borderColor: colors.accent.coach,
-                alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
-              })}
-            >
-              <Text
-                style={{
-                  color: colors.accent.coach,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
-                }}
-              >
-                Tableau de bord
-              </Text>
-            </Pressable>
-          </Link>
-        ) : null}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={signOut}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Se déconnecter
-            </Text>
-          </Pressable>
+          {/* Tableau de bord business — gaté par can_view_business_dashboard (§10.2). */}
+          {permissions.canViewBusinessDashboard ? (
+            <CoachLink label="Tableau de bord" href="/(coach)/business" />
+          ) : null}
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <SpaceSwitcher current="coach" />
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={signOut}
+          style={({ pressed }) => ({
+            height: 44,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: theme.spacing.lg,
+            opacity: pressed ? 0.85 : 1,
+          })}
+        >
+          <Text style={s.minorLink}>Se déconnecter</Text>
+        </Pressable>
+      </View>
+    </Screen>
+  );
+}
+
+function CoachLink({ label, href }: { label: string; href: string }) {
+  return (
+    <Link href={href as never} asChild>
+      <Pressable
+        accessibilityRole="button"
+        style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+      >
+        <Card
+          style={{
+            borderColor: theme.palette.coach,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Text style={s.linkLabel}>{label}</Text>
+          <Text style={{ color: theme.palette.creamMute, fontSize: 18 }}>›</Text>
+        </Card>
+      </Pressable>
+    </Link>
   );
 }
 
@@ -354,29 +231,13 @@ function PilotCard({ pilot }: { pilot: CoachPilotRow }) {
       }
       asChild
     >
-      <Pressable
-        style={({ pressed }) => ({
-          padding: spacing.xl,
-          borderRadius: borderRadius.lg,
-          borderWidth: 0.5,
-          borderColor: colors.accent.coach,
-          backgroundColor: colors.background.secondary,
-          opacity: pressed ? 0.85 : 1,
-        })}
-      >
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            marginBottom: spacing.xs,
-          }}
-        >
-          {fullName}
-        </Text>
-        <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-          {level} · Assigné le {formatDateShort(pilot.assignedAt)}
-        </Text>
+      <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}>
+        <Card style={{ borderColor: theme.palette.coach }}>
+          <Text style={s.pilotName}>{fullName}</Text>
+          <Text style={s.pilotMeta}>
+            {level} · Assigné le {formatDateShort(pilot.assignedAt)}
+          </Text>
+        </Card>
       </Pressable>
     </Link>
   );
@@ -384,29 +245,19 @@ function PilotCard({ pilot }: { pilot: CoachPilotRow }) {
 
 function EmptyState() {
   return (
-    <View
+    <Card
       style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
         alignItems: 'center',
+        paddingVertical: theme.spacing.xxl,
+        marginTop: theme.spacing.xl,
       }}
     >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun pilote assigné pour l'instant.
+      <Text style={s.emptyTitle}>Aucun pilote assigné pour l&apos;instant.</Text>
+      <Text style={s.emptyHint}>
+        Les assignations sont gérées par l&apos;équipe OXV. Un pilote doit aussi consentir au
+        coaching avant que vous voyiez ses données.
       </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
-        Les assignations sont gérées par l'équipe OXV. Un pilote doit aussi consentir au coaching
-        avant que vous voyiez ses données.
-      </Text>
-    </View>
+    </Card>
   );
 }
 
@@ -425,41 +276,93 @@ function prettyLevel(level: string | null): string {
   }
 }
 
-function DashStat({ value, label }: { value: string; label: string }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        padding: spacing.md,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.titleLarge,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {value}
-      </Text>
-      <Text
-        style={[
-          typography.eyebrow,
-          {
-            color: colors.text.tertiary,
-            marginTop: spacing.xs,
-            textAlign: 'center',
-          },
-        ]}
-      >
-        {label.toUpperCase()}
-      </Text>
-    </View>
-  );
-}
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
+    marginBottom: theme.spacing.md,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.25,
+  },
+  manifest: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: theme.palette.creamSoft,
+    marginTop: theme.spacing.lg,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  alertDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.palette.coach,
+  },
+  alertText: {
+    flex: 1,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  draftNote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xl,
+  },
+  linkLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  pilotName: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    letterSpacing: 0.3,
+    color: theme.palette.cream,
+  },
+  pilotMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  minorLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+};

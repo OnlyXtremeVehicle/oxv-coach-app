@@ -7,15 +7,23 @@
  * Promotion pilote → coach : depuis l'écran Préparation (bouton « ↦ coach »,
  * avec confirmation explicite Alert). Rétrogradation coach → pilote : ici
  * même, avec garde-fou (refus si le coach a des assignations actives).
+ *
+ * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
+ * rôle admin). Logique inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
 import { type CoachRow, demoteToPilot, listCoaches } from '@/services/coachAdminService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+
+// Bronze = couleur de RÔLE réservée à l'admin (doctrine).
+const BRONZE = '#B87333';
 
 export default function AdminCoachsScreen() {
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
@@ -65,41 +73,26 @@ export default function AdminCoachsScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.bronze }]}>
-          ADMIN OXV · COACHS
-        </Text>
-        <Text style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.sm }]}>
-          Les coachs
-        </Text>
-        <Text
-          style={[typography.caption, { color: colors.text.tertiary, marginBottom: spacing.xxl }]}
-        >
-          Un toucher ouvre la gestion des pilotes assignés.
-        </Text>
+    <Screen>
+      <AppBar title="COACHS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN OXV · COACHS</Text>
+        <Text style={s.title}>Les coachs</Text>
+        <Text style={s.lede}>Un toucher ouvre la gestion des pilotes assignés.</Text>
 
         {loading ? (
-          <Text style={[typography.caption, { paddingVertical: spacing.lg }]}>Chargement…</Text>
+          <Text style={s.loading}>Chargement…</Text>
         ) : coaches.length === 0 ? (
           <EmptyState />
         ) : (
-          <View style={{ gap: spacing.sm }}>
+          <View style={{ gap: theme.spacing.sm }}>
             {coaches.map((coach) => (
               <CoachCard key={coach.id} coach={coach} onDemote={() => confirmDemote(coach)} />
             ))}
           </View>
         )}
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>
-              Retour admin
-            </Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -113,32 +106,11 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
         : `${coach.activeAssignmentsCount} pilotes actifs`;
 
   return (
-    <View
-      style={{
-        padding: spacing.lg,
-        borderRadius: borderRadius.md,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: spacing.md,
-      }}
-    >
+    <Card style={s.row}>
       <Link href={{ pathname: '/(admin)/coachs/[id]', params: { id: coach.id } } as never} asChild>
         <Pressable style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.body,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            {fullName}
-          </Text>
-          <Text
-            style={[typography.caption, { color: colors.text.tertiary, marginTop: spacing.xs }]}
-          >
+          <Text style={s.name}>{fullName}</Text>
+          <Text style={s.meta}>
             {coach.email} · {assignText}
           </Text>
         </Pressable>
@@ -147,52 +119,98 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
         accessibilityRole="button"
         onPress={onDemote}
         style={({ pressed }) => ({
-          paddingHorizontal: spacing.sm,
-          paddingVertical: spacing.xs,
-          borderRadius: borderRadius.sm,
-          borderWidth: 0.5,
-          borderColor: colors.border.medium,
+          paddingHorizontal: theme.spacing.sm,
+          paddingVertical: theme.spacing.xs,
+          borderRadius: theme.radius.sm,
+          borderWidth: 1,
+          borderColor: theme.palette.edge,
           opacity: pressed ? 0.85 : coach.activeAssignmentsCount > 0 ? 0.4 : 1,
         })}
       >
-        <Text
-          style={{
-            color: colors.text.secondary,
-            fontSize: 11,
-            fontWeight: fontWeight.medium,
-          }}
-        >
-          ↤ pilote
-        </Text>
+        <Text style={s.demote}>↤ pilote</Text>
       </Pressable>
-    </View>
+    </Card>
   );
 }
 
 function EmptyState() {
   return (
-    <View
-      style={{
-        padding: spacing.xxl,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        backgroundColor: colors.background.secondary,
-        alignItems: 'center',
-      }}
-    >
-      <Text style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}>
-        Aucun coach pour l'instant.
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>Aucun coach pour l&apos;instant.</Text>
+      <Text style={s.emptyHint}>
+        Pour ajouter un coach : Dashboard Supabase → SQL → UPDATE users SET role = &apos;coach&apos;
+        WHERE id = &apos;...&apos;
       </Text>
-      <Text
-        style={[
-          typography.caption,
-          { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.md },
-        ]}
-      >
-        Pour ajouter un coach : Dashboard Supabase → SQL → UPDATE users SET role = 'coach' WHERE id
-        = '...'
-      </Text>
-    </View>
+    </Card>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+  },
+  lede: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.xxl,
+  },
+  loading: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    paddingVertical: theme.spacing.lg,
+  },
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+  },
+  name: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  demote: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: theme.palette.creamSoft,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+};

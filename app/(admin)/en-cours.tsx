@@ -5,15 +5,23 @@
  * pilotes en roulage vs paddock. V1 : structure visuelle ; le live state
  * vient des subscriptions Supabase Realtime sur `telemetry_sessions`
  * (à câbler quand on aura plusieurs équipements simultanés).
+ *
+ * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
+ * rôle admin). Logique de données inchangée.
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
+import { Screen } from '@/ui/Screen';
+
+// Bronze = couleur de RÔLE réservée à l'admin (doctrine).
+const BRONZE = '#B87333';
 
 interface LiveSession {
   id: string;
@@ -60,82 +68,40 @@ export default function EnCoursScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }}>
-      <ScrollView contentContainerStyle={{ padding: spacing.xl, paddingBottom: spacing.huge }}>
-        <Text style={[typography.eyebrow, { color: colors.accent.bronze }]}>ADMIN · EN COURS</Text>
-        <Text
-          style={[typography.screenTitle, { marginTop: spacing.md, marginBottom: spacing.xxl }]}
-        >
+    <Screen>
+      <AppBar title="EN COURS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN · EN COURS</Text>
+        <Text style={s.title}>
           {sessions.length} session{sessions.length > 1 ? 's' : ''} active
           {sessions.length > 1 ? 's' : ''}
         </Text>
 
         {loading ? (
-          <ActivityIndicator color={colors.accent.bronze} />
+          <ActivityIndicator color={BRONZE} />
         ) : sessions.length === 0 ? (
-          <View
-            style={{
-              padding: spacing.xl,
-              borderRadius: borderRadius.lg,
-              borderWidth: 0.5,
-              borderColor: colors.border.subtle,
-              backgroundColor: colors.background.secondary,
-              alignItems: 'center',
-            }}
-          >
-            <Text
-              style={[typography.manifest, { color: colors.text.secondary, textAlign: 'center' }]}
-            >
-              Aucun pilote en piste.
-            </Text>
-          </View>
+          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+            <Text style={s.emptyTitle}>Aucun pilote en piste.</Text>
+          </Card>
         ) : (
-          <View style={{ gap: spacing.sm }}>
-            {sessions.map((s) => (
-              <View
-                key={s.id}
-                style={{
-                  padding: spacing.lg,
-                  borderRadius: borderRadius.md,
-                  borderWidth: 0.5,
-                  borderColor: colors.accent.bronze,
-                  backgroundColor: colors.background.secondary,
-                }}
-              >
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.body,
-                    fontWeight: fontWeight.medium,
-                    marginBottom: spacing.xs,
-                  }}
-                >
-                  {s.pilotName}
+          <View style={{ gap: theme.spacing.sm }}>
+            {sessions.map((session) => (
+              <Card key={session.id} style={{ borderColor: BRONZE }}>
+                <Text style={s.pilotName}>{session.pilotName}</Text>
+                <Text style={s.meta}>
+                  Démarrée à {timeOnly(session.startedAt)} · {session.lapCount} tour
+                  {session.lapCount > 1 ? 's' : ''}
                 </Text>
-                <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-                  Démarrée à {timeOnly(s.startedAt)} · {s.lapCount} tour{s.lapCount > 1 ? 's' : ''}
-                </Text>
-              </View>
+              </Card>
             ))}
           </View>
         )}
 
-        <Text
-          style={[
-            typography.caption,
-            { color: colors.text.tertiary, textAlign: 'center', marginTop: spacing.xl },
-          ]}
-        >
-          Données rafraîchies à l'ouverture. Live realtime en V1.1.
+        <Text style={s.footnote}>
+          Données rafraîchies à l&apos;ouverture. Live realtime en V1.1.
         </Text>
-
-        <View style={{ marginTop: spacing.xxxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.caption }}>Retour</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }
 
@@ -149,3 +115,49 @@ function timeOnly(iso: string): string {
     return '—';
   }
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xxl,
+  },
+  pilotName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+  },
+  footnote: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xl,
+  },
+};

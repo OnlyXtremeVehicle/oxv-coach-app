@@ -1,20 +1,24 @@
 /**
- * Écran #10 — Vous avez piloté.
+ * Écran #10 — Vous avez piloté. Design V2 (charte oxv-mirror-app).
  *
  * Reconnaissance émotionnelle de la fin de session. Transition automatique
  * vers #11 après 4 secondes — pas de bouton, on respecte le rythme.
  *
  * Doctrine : utilise le passé composé ("Vous avez piloté.") pour marquer
  * l'événement, sans valorisation ni jugement.
+ *
+ * Reskin V2 : Screen (centré, sans scroll) + AppBar, titres Syncopate.
+ * Écran d'état de flux sans retour manuel. Logique de transition inchangée.
  */
 
 import { useEffect } from 'react';
 import { Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { useSessionStore } from '@/store/useSessionStore';
-import { colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Screen } from '@/ui/Screen';
 
 const TRANSITION_MS = 4_000;
 
@@ -41,35 +45,21 @@ export default function PilotageFiniScreen() {
     startedAt && endedAt ? Math.round((endedAt.getTime() - startedAt.getTime()) / 60_000) : null;
 
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
-    >
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <Text
-          style={[typography.eyebrow, { marginBottom: spacing.lg, color: colors.text.tertiary }]}
-        >
-          SESSION TERMINÉE
-        </Text>
-
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.display,
-            fontWeight: fontWeight.ultralight,
-            lineHeight: fontSize.display * 1.15,
-            textAlign: 'center',
-            marginBottom: spacing.xxl,
-          }}
-        >
-          Vous avez piloté.
-        </Text>
+    <Screen scroll={false}>
+      <AppBar title="SESSION TERMINÉE" />
+      <View
+        style={{
+          flex: 1,
+          paddingHorizontal: theme.spacing.lg,
+          paddingBottom: theme.spacing.xxl,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Text style={s.title}>Vous avez piloté.</Text>
 
         {durationMin !== null || lapCount > 0 ? (
-          <Text style={[typography.caption, { textAlign: 'center' }]}>
+          <Text style={s.meta}>
             {[
               durationMin !== null ? `${durationMin} min` : null,
               lapCount > 0 ? `${lapCount} tour${lapCount > 1 ? 's' : ''}` : null,
@@ -79,6 +69,26 @@ export default function PilotageFiniScreen() {
           </Text>
         ) : null}
       </View>
-    </SafeAreaView>
+    </Screen>
   );
 }
+
+const s = {
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.display,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    lineHeight: theme.fontSize.display * 1.15,
+    textAlign: 'center' as const,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xxl,
+  },
+};
