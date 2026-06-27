@@ -4056,6 +4056,11 @@ export type Database = {
           starts_at: string | null
           title: string
           updated_at: string
+          website_url: string | null
+          instagram_url: string | null
+          facebook_url: string | null
+          youtube_url: string | null
+          image_url: string | null
         }
         Insert: {
           address?: string | null
@@ -4077,6 +4082,11 @@ export type Database = {
           starts_at?: string | null
           title: string
           updated_at?: string
+          website_url?: string | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          youtube_url?: string | null
+          image_url?: string | null
         }
         Update: {
           address?: string | null
@@ -4098,6 +4108,11 @@ export type Database = {
           starts_at?: string | null
           title?: string
           updated_at?: string
+          website_url?: string | null
+          instagram_url?: string | null
+          facebook_url?: string | null
+          youtube_url?: string | null
+          image_url?: string | null
         }
         Relationships: [
           {

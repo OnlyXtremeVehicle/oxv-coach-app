@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
@@ -204,6 +204,14 @@ function DetailPanel({
   return (
     <Card style={s.panel}>
       <PanelHead label={PING_KIND_LABELS[p.kind]} title={p.title} onClose={onClose} />
+      {p.imageUrl ? (
+        <Image
+          source={{ uri: p.imageUrl }}
+          resizeMode="cover"
+          style={s.panelImage}
+          accessibilityLabel={`Visuel — ${p.title}`}
+        />
+      ) : null}
       {p.startsAt ? <Text style={s.panelMeta}>{formatDateLong(p.startsAt)}</Text> : null}
       {p.description ? (
         <Text style={s.panelBody} numberOfLines={3}>
@@ -212,17 +220,23 @@ function DetailPanel({
       ) : null}
       {p.address ? <Text style={s.panelAddr}>{p.address}</Text> : null}
       <View style={s.panelActions}>
-        {/* Liens adaptés au type : événement = Direct/Détails ; lieu/partenaire = Site web. */}
+        {/* Liens du point : Direct/Détails (événement), Site, réseaux, contact. */}
         {isEvent && p.liveUrl ? (
           <PanelAction label="Direct" primary onPress={() => open(p.liveUrl)} />
         ) : null}
-        {p.eventUrl ? (
-          <PanelAction
-            label={isEvent ? 'Détails' : 'Site web'}
-            primary={!isEvent}
-            onPress={() => open(p.eventUrl)}
-          />
+        {p.websiteUrl ? (
+          <PanelAction label="Site web" primary={!isEvent} onPress={() => open(p.websiteUrl)} />
         ) : null}
+        {isEvent && p.eventUrl ? (
+          <PanelAction label="Détails" onPress={() => open(p.eventUrl)} />
+        ) : null}
+        {p.instagramUrl ? (
+          <PanelAction label="Instagram" onPress={() => open(p.instagramUrl)} />
+        ) : null}
+        {p.facebookUrl ? (
+          <PanelAction label="Facebook" onPress={() => open(p.facebookUrl)} />
+        ) : null}
+        {p.youtubeUrl ? <PanelAction label="YouTube" onPress={() => open(p.youtubeUrl)} /> : null}
         {p.contactEmail ? (
           <PanelAction label="Contacter" onPress={() => open(`mailto:${p.contactEmail}`)} />
         ) : null}
@@ -345,6 +359,13 @@ const s = {
     right: theme.spacing.lg,
     bottom: theme.spacing.lg,
     backgroundColor: theme.palette.card2,
+  },
+  panelImage: {
+    width: '100%' as const,
+    height: 120,
+    borderRadius: theme.radius.sm,
+    backgroundColor: theme.palette.card,
+    marginTop: theme.spacing.md,
   },
   panelHead: {
     flexDirection: 'row' as const,

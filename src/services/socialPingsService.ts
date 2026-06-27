@@ -30,6 +30,12 @@ export interface SocialPing {
   eventUrl: string | null;
   startsAt: string | null;
   endsAt: string | null;
+  // Contenu marketing affiché au clic (migration 0013).
+  websiteUrl: string | null;
+  instagramUrl: string | null;
+  facebookUrl: string | null;
+  youtubeUrl: string | null;
+  imageUrl: string | null;
 }
 
 interface DbRow {
@@ -45,6 +51,11 @@ interface DbRow {
   event_url: string | null;
   starts_at: string | null;
   ends_at: string | null;
+  website_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  youtube_url: string | null;
+  image_url: string | null;
 }
 
 /** Libellés FR des types de ping (sobres, doctrine OXV). */
@@ -71,6 +82,11 @@ function mapRow(row: DbRow): SocialPing {
     eventUrl: row.event_url,
     startsAt: row.starts_at,
     endsAt: row.ends_at,
+    websiteUrl: row.website_url,
+    instagramUrl: row.instagram_url,
+    facebookUrl: row.facebook_url,
+    youtubeUrl: row.youtube_url,
+    imageUrl: row.image_url,
   };
 }
 
