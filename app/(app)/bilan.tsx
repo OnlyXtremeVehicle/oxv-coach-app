@@ -62,19 +62,13 @@ interface NavTarget {
   href: string;
 }
 
+// Révélation progressive (§C1) : les lectures détaillées (carte, virages, tours,
+// heatmap, replay, télémétrie, insights) vivent derrière le Data Lab — pas en
+// cartes éparses. Ici, seules les portes propres au Bilan.
 const NAV_TARGETS: NavTarget[] = [
+  { label: 'Lecture détaillée — Data Lab', href: '/(app)/data-lab' },
   { label: 'Débrief présentiel', href: '/(app)/debrief-presentiel' },
-  { label: 'Signature de pilotage', href: '/(app)/signature' },
-  { label: 'Régularité', href: '/(app)/regularite' },
-  { label: 'Carte du circuit', href: '/(app)/carte' },
-  { label: 'Carte de chaleur', href: '/(app)/heatmap' },
-  { label: 'Détails par virage', href: '/(app)/virage' },
-  { label: 'Tour par tour', href: '/(app)/tours' },
-  { label: 'Rejouer un tour', href: '/(app)/replay' },
-  { label: 'Télémétrie', href: '/(app)/telemetry' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
-  { label: 'Progression', href: '/(app)/progression' },
-  { label: 'Lectures approfondies', href: '/(app)/insights' },
 ];
 
 /**
@@ -498,15 +492,7 @@ export default function BilanScreen() {
 
         <Text style={s.sectionEyebrow}>TOUTES LES LECTURES</Text>
         <View style={{ gap: theme.spacing.sm }}>
-          {NAV_TARGETS.filter(
-            (t) =>
-              ![
-                '/(app)/signature',
-                '/(app)/regularite',
-                '/(app)/progression',
-                '/(app)/heatmap',
-              ].includes(t.href)
-          ).map((target, i) => (
+          {NAV_TARGETS.map((target, i) => (
             <FadeInSection key={target.href} delay={150 + i * 80}>
               <NavCard
                 label={target.label}
