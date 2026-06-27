@@ -35,6 +35,22 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  // Défense en profondeur : cette fonction est déclenchée par le trigger
+  // Postgres `pilot_friendships_after_insert` (pg_net), qui porte
+  // `Authorization: Bearer <edge_functions_invoke_secret>` (cf. migration 0028).
+  // On rejette tout appel dont le Bearer ne matche pas le secret, pour bloquer
+  // un POST anonyme forgé sur l'URL publique (verify_jwt=false). Si le secret
+  // n'est pas configuré côté Edge (env vide), on laisse passer pour ne pas
+  // casser les notifs (best-effort) — un WARNING signale la garde inactive.
+  const invokeSecret = Deno.env.get('EDGE_FUNCTIONS_INVOKE_SECRET');
+  if (invokeSecret) {
+    if ((req.headers.get('Authorization') ?? '') !== `Bearer ${invokeSecret}`) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+    }
+  } else {
+    console.warn('[friend-request] EDGE_FUNCTIONS_INVOKE_SECRET non configuré — garde trigger désactivée');
+  }
+
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
   const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   if (!SUPABASE_URL || !SERVICE_KEY) {

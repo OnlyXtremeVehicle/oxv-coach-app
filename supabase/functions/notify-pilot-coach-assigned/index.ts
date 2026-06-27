@@ -9,9 +9,10 @@
 // Le token Expo Push est lu depuis users.expo_push_token. Si null ou
 // si push_notif_enabled = false, on no-op silencieusement.
 //
-// Sécurité : verify_jwt = true (seul un user authentifié peut appeler).
-// L'admin n'est pas vérifié ici — la RLS sur coach_pilots côté DB l'a
-// déjà fait au moment de l'INSERT.
+// Sécurité : verify_jwt = true (cf. supabase/config.toml). Le gateway Supabase
+// exige un JWT valide → un POST anonyme est rejeté avant d'atteindre le handler.
+// L'admin n'est pas vérifié plus finement ici — la RLS sur coach_pilots côté DB
+// l'a déjà fait au moment de l'INSERT. (Symétrique : notify-coach-consent-received.)
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';

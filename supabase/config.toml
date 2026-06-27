@@ -3,21 +3,16 @@ project_id = "fouvuqkdxarjpjbqnsjq"
 [functions.cron-analyze-pending-sessions]
 verify_jwt = false
 
-# Functions appelées par des triggers DB (pg_net) avec un Bearer = secret
-# custom (edge_functions_invoke_secret), pas un JWT Supabase. Le gateway
-# rejetterait un JWT invalide → verify_jwt doit être false pour ces functions.
-# (generate-debrief-ai et send-coach-invitation restent en verify_jwt=true :
-#  appelées depuis l'app avec le JWT de l'utilisateur connecté.)
-[functions.notify-coach-consent-received]
-verify_jwt = false
-
+# --- Functions appelées par des TRIGGERS DB (pg_net) ---
+# Le Bearer porté est un secret custom (edge_functions_invoke_secret du Vault),
+# PAS un JWT Supabase. Le gateway rejetterait un JWT invalide → verify_jwt doit
+# rester false. La défense est assurée DANS le handler : chaque fonction vérifie
+# `Authorization: Bearer <EDGE_FUNCTIONS_INVOKE_SECRET>` et rejette (401) un POST
+# anonyme forgé sur l'URL publique. (Même pattern que purge-deleted-accounts.)
 [functions.notify-coach-session-analyzed]
 verify_jwt = false
 
 [functions.notify-pilot-coach-annotated]
-verify_jwt = false
-
-[functions.notify-pilot-coach-assigned]
 verify_jwt = false
 
 [functions.notify-pilot-friend-accepted]
@@ -25,3 +20,14 @@ verify_jwt = false
 
 [functions.notify-pilot-friend-request]
 verify_jwt = false
+
+# --- Functions appelées depuis l'APP (supabase.functions.invoke) ---
+# Portent le JWT de l'utilisateur connecté (admin pour assigned, pilote pour
+# consent-received). verify_jwt = true → le gateway exige un JWT Supabase valide
+# et rejette tout appel anonyme avant même d'atteindre le handler. Même posture
+# que generate-debrief-ai et send-coach-invitation.
+[functions.notify-pilot-coach-assigned]
+verify_jwt = true
+
+[functions.notify-coach-consent-received]
+verify_jwt = true

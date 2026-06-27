@@ -43,6 +43,22 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  // Défense en profondeur : cette fonction est déclenchée par le trigger
+  // Postgres `coach_annotations_notify_trigger` (pg_net), qui porte
+  // `Authorization: Bearer <edge_functions_invoke_secret>` (cf. migration 0021/0025).
+  // On rejette tout appel dont le Bearer ne matche pas le secret, pour bloquer
+  // un POST anonyme forgé sur l'URL publique (verify_jwt=false). Si le secret
+  // n'est pas configuré côté Edge (env vide), on laisse passer pour ne pas
+  // casser les notifs (best-effort) — un WARNING signale la garde inactive.
+  const invokeSecret = Deno.env.get('EDGE_FUNCTIONS_INVOKE_SECRET');
+  if (invokeSecret) {
+    if ((req.headers.get('Authorization') ?? '') !== `Bearer ${invokeSecret}`) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+    }
+  } else {
+    console.warn('[notify-coach-annotated] EDGE_FUNCTIONS_INVOKE_SECRET non configuré — garde trigger désactivée');
+  }
+
   try {
     const payload: Payload = await req.json();
 
