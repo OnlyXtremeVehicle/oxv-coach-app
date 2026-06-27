@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
@@ -20,6 +20,7 @@ import {
   listMyPilots,
   listPilotSessions,
 } from '@/services/coachService';
+import { pilotLevelLabel } from '@/services/pilotProfileService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -102,6 +103,10 @@ export default function CoachPilotDetailScreen() {
         <Text style={s.title} accessibilityRole="header">
           {fullName}
         </Text>
+
+        {/* Profil du pilote (affichage croisé) — édité par le pilote, visible
+            ici car affilié et consenti (coach_pilots_view). */}
+        {pilot ? <PilotProfileBlock pilot={pilot} /> : null}
 
         {/* Priorisation du bilan (§10.3c-B) */}
         <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
@@ -188,6 +193,59 @@ export default function CoachPilotDetailScreen() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+function PilotProfileBlock({ pilot }: { pilot: CoachPilotRow }) {
+  const rows: { label: string; value: string }[] = [];
+  if (pilot.pilotLevel) rows.push({ label: 'Niveau', value: pilotLevelLabel(pilot.pilotLevel) });
+  if (pilot.vehicle) rows.push({ label: 'Véhicule', value: pilot.vehicle });
+  if (pilot.experienceYears) rows.push({ label: 'Expérience', value: pilot.experienceYears });
+  if (pilot.ffsaLicense) rows.push({ label: 'Licence FFSA', value: pilot.ffsaLicense });
+
+  const links = (
+    [
+      ['Site web', pilot.socials.website],
+      ['Instagram', pilot.socials.instagram],
+      ['YouTube', pilot.socials.youtube],
+    ] as const
+  ).filter(([, url]) => url);
+
+  if (rows.length === 0 && links.length === 0) return null;
+
+  return (
+    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+      <SectionLabel>Profil pilote</SectionLabel>
+      {rows.map((r) => (
+        <View key={r.label} style={{ gap: 2 }}>
+          <Text style={s.profileLabel}>{r.label}</Text>
+          <Text style={s.profileValue}>{r.value}</Text>
+        </View>
+      ))}
+      {links.length > 0 ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+          {links.map(([label, url]) => (
+            <Pressable
+              key={label}
+              accessibilityRole="link"
+              accessibilityLabel={label}
+              onPress={() => url && Linking.openURL(url).catch(() => undefined)}
+              style={({ pressed }) => ({
+                minHeight: 44,
+                paddingHorizontal: theme.spacing.lg,
+                justifyContent: 'center',
+                borderRadius: theme.radius.sm,
+                borderWidth: 1,
+                borderColor: theme.palette.line,
+                opacity: pressed ? 0.8 : 1,
+              })}
+            >
+              <Text style={s.profileLink}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+    </Card>
   );
 }
 
@@ -377,6 +435,27 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
+  },
+  // Libellé de champ de profil — corps en capitales (le mono reste aux chiffres).
+  profileLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  profileValue: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  // Pastille de lien réseau — capitales mono, comme les eyebrows.
+  profileLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
   },
   // Lien de retour (interactif) — corps, pas mono.
   back: {

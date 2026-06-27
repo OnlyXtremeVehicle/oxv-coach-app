@@ -4848,12 +4848,16 @@ export type Database = {
           assigned_at: string | null
           assignment_id: string | null
           avatar_url: string | null
+          experience_years: string | null
+          ffsa_license: string | null
           first_name: string | null
           last_name: string | null
           notes: string | null
           pilot_consent_at: string | null
           pilot_id: string | null
           pilot_level: string | null
+          socials: Json | null
+          vehicle: string | null
         }
         Relationships: []
       }

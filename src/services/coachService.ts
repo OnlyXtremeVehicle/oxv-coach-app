@@ -100,6 +100,28 @@ export async function loadSessionSnapshot(sessionId: string): Promise<SessionSna
   };
 }
 
+/** Réseaux du pilote (dénormalisés en jsonb `users.socials`). */
+export interface PilotSocialsView {
+  website: string | null;
+  instagram: string | null;
+  youtube: string | null;
+}
+
+const EMPTY_PILOT_SOCIALS: PilotSocialsView = {
+  website: null,
+  instagram: null,
+  youtube: null,
+};
+
+/** Parse défensif du jsonb `socials` ; ne garde que des chaînes non vides. */
+function parsePilotSocials(raw: unknown): PilotSocialsView {
+  if (!raw || typeof raw !== 'object') return EMPTY_PILOT_SOCIALS;
+  const o = raw as Record<string, unknown>;
+  const pick = (k: string): string | null =>
+    typeof o[k] === 'string' && (o[k] as string).length > 0 ? (o[k] as string) : null;
+  return { website: pick('website'), instagram: pick('instagram'), youtube: pick('youtube') };
+}
+
 export interface CoachPilotRow {
   pilotId: string;
   firstName: string | null;
@@ -110,6 +132,12 @@ export interface CoachPilotRow {
   assignedAt: string;
   pilotConsentAt: string | null;
   notes: string | null;
+  // Profil pilote (affichage croisé) — édité par le pilote, vu par le coach
+  // affilié et consenti via coach_pilots_view.
+  experienceYears: string | null;
+  ffsaLicense: string | null;
+  vehicle: string | null;
+  socials: PilotSocialsView;
 }
 
 export interface PilotSessionSummary {
@@ -132,7 +160,7 @@ export async function listMyPilots(): Promise<CoachPilotRow[]> {
   const { data, error } = await supabase
     .from('coach_pilots_view')
     .select(
-      'pilot_id, first_name, last_name, pilot_level, avatar_url, assignment_id, assigned_at, pilot_consent_at, notes'
+      'pilot_id, first_name, last_name, pilot_level, avatar_url, assignment_id, assigned_at, pilot_consent_at, notes, experience_years, ffsa_license, vehicle, socials'
     )
     .order('assigned_at', { ascending: false });
 
@@ -150,6 +178,10 @@ export async function listMyPilots(): Promise<CoachPilotRow[]> {
     assignedAt: row.assigned_at as string,
     pilotConsentAt: (row.pilot_consent_at as string | null) ?? null,
     notes: (row.notes as string | null) ?? null,
+    experienceYears: (row.experience_years as string | null) ?? null,
+    ffsaLicense: (row.ffsa_license as string | null) ?? null,
+    vehicle: (row.vehicle as string | null) ?? null,
+    socials: parsePilotSocials(row.socials),
   }));
 }
 
