@@ -43,32 +43,17 @@ interface RecentSession {
   circuitName: string | null;
 }
 
-// Quatre accès primaires (grille « Explorer »). Écrans existants, simplement
-// remontés en porte d'entrée par la maquette du hub.
-const PRIMARY = [
-  {
-    icon: '⟋',
-    name: 'Progression',
-    hint: 'Votre évolution, session après session.',
-    href: '/(app)/progression',
-  },
-  {
-    icon: '⌁',
-    name: 'Signature',
-    hint: 'Ce qui rend votre pilotage reconnaissable.',
-    href: '/(app)/signature',
-  },
-  {
-    icon: '≣',
-    name: 'Mes roulages',
-    hint: "L'historique complet de vos sessions.",
-    href: '/(app)/roulages',
-  },
-  { icon: '◎', name: 'Les lieux', hint: 'Les circuits OXV et leurs tracés.', href: '/(app)/lieux' },
+// Raccourcis contextuels (2 max, doctrine Paddock — cf. ticket 11 B1). Les 5
+// zones vivent désormais dans la barre d'onglets (PR 1) ; ici, juste l'essentiel
+// à portée du pouce, sous l'action principale.
+const SHORTCUTS = [
+  { label: 'Ma progression', href: '/(app)/progression' },
+  { label: 'Mon coach', href: '/(app)/mon-coach' },
 ] as const;
 
-// Navigation secondaire repliée derrière « Tout le paddock ». Reprend chaque
-// destination de l'ancien hub non promue en grille — rien n'est retiré.
+// TRANSITIONNEL — « Tout le paddock » : filet de sécurité tant que les hubs de
+// zone (PR 6) ne couvrent pas toutes ces destinations. À retirer dans la PR de
+// migration (cf. 10_PLAN_MIGRATION) une fois la nav complète dans les zones.
 const SECONDARY = [
   { label: 'Mon profil', hint: 'Niveau, véhicule, réseaux', href: '/(app)/profil' },
   { label: 'Mon bilan', hint: 'Votre dernière analyse', href: '/(app)/bilan' },
@@ -298,18 +283,36 @@ function ModePassive({
         <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
       )}
 
-      {/* Explorer — quatre accès essentiels en grille (gouttière sur grille 8). */}
+      {/* Action principale contextuelle (§B1) + 2 raccourcis ghost. */}
       <FadeInSection delay={120}>
-        <Text style={[s.eyebrow, s.sectionLabel]}>Explorer</Text>
-        <View style={{ gap: spacing.sm }}>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Tile {...PRIMARY[0]} />
-            <Tile {...PRIMARY[1]} />
-          </View>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-            <Tile {...PRIMARY[2]} />
-            <Tile {...PRIMARY[3]} />
-          </View>
+        <Link
+          href={
+            (recentSession
+              ? { pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }
+              : '/(app)/session') as never
+          }
+          asChild
+        >
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [s.primaryBtn, { opacity: pressed ? 0.9 : 1 }]}
+          >
+            <Text style={s.primaryBtnText}>
+              {recentSession ? 'Découvrir mon bilan' : 'Préparer ma session'}
+            </Text>
+          </Pressable>
+        </Link>
+        <View style={s.shortcutRow}>
+          {SHORTCUTS.map((sc) => (
+            <Link key={sc.href} href={sc.href as never} asChild>
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [s.ghost, { opacity: pressed ? 0.85 : 1 }]}
+              >
+                <Text style={s.ghostText}>{sc.label}</Text>
+              </Pressable>
+            </Link>
+          ))}
         </View>
       </FadeInSection>
 
@@ -341,31 +344,6 @@ function ModePassive({
         </View>
       ) : null}
     </View>
-  );
-}
-
-function Tile({
-  icon,
-  name,
-  hint,
-  href,
-}: {
-  icon: string;
-  name: string;
-  hint: string;
-  href: string;
-}) {
-  return (
-    <Link href={href as never} asChild>
-      <Pressable
-        accessibilityRole="button"
-        style={({ pressed }) => [s.tile, { opacity: pressed ? 0.85 : 1 }]}
-      >
-        <Text style={s.tileIcon}>{icon}</Text>
-        <Text style={s.tileName}>{name}</Text>
-        <Text style={s.tileHint}>{hint}</Text>
-      </Pressable>
-    </Link>
   );
 }
 
@@ -483,22 +461,33 @@ const s = StyleSheet.create({
     marginTop: spacing.xl,
   },
 
-  sectionLabel: { marginTop: spacing.xxl, marginBottom: spacing.md },
-
-  tile: {
-    flex: 1,
-    backgroundColor: palette.card,
-    borderColor: palette.line,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    paddingHorizontal: 15,
-    paddingTop: 15,
-    paddingBottom: 14,
-    minHeight: 92,
+  // Action principale contextuelle (canon : crème pleine largeur, texte sombre).
+  primaryBtn: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    height: 54,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xxl,
   },
-  tileIcon: { fontFamily: fonts.mono, fontSize: 20, color: palette.gold, marginBottom: 14 },
-  tileName: { fontFamily: fonts.display, fontSize: 14.5, color: palette.cream, marginBottom: 4 },
-  tileHint: { fontFamily: fonts.body, fontSize: 11.5, color: palette.creamMute, lineHeight: 16 },
+  primaryBtnText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: '#050505' },
+  shortcutRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
+  ghost: {
+    flex: 1,
+    height: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+  },
+  ghostText: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+  },
 
   more: {
     flexDirection: 'row',

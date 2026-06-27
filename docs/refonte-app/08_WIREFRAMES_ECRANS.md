@@ -42,7 +42,7 @@ Chaque écran suit le **même template** (10 lignes). Aucune dérogation.
 | **Nom** | Paddock · `app/(app)/index.tsx` (réconcilie `paddock.tsx`) |
 | **Utilisateur** | Pilote |
 | **Objectif** | Qu'est-ce qui compte **maintenant** ? |
-| **Données affichées** | Salutation contextuelle (heure) · dernier bilan (`app_session_analyses` / `analysesService`) · prochaine sortie (`registrations`, `sessions`) · coach affilié (`coach_pilots_view` / `coachService`) · état équipement BLE · météo (`weather_snapshots` / `weatherService`). **Un seul chiffre** : marge globale du dernier bilan en **mini-instrument** (~80–120, cf. `04 §3`). |
+| **Données affichées** | Salutation contextuelle (heure) · dernier bilan (`app_session_analyses` / `analysesService`) · prochaine sortie (`registrations`, `sessions`) · coach affilié (`coach_pilots_view` / `coachService`) · état équipement BLE · météo (`weather_snapshots` / `weatherService`). **Un seul chiffre** : **régularité au tour** (écart-type des temps, Geist Mono — déjà en code via `computeRegularity` / `fetchSessionLaps`). **La marge globale reste réservée au Bilan** — on ne la duplique pas (décision Gabin, cf. ticket `11` B1). |
 | **Actions** | 1 action principale contextuelle (bouton primaire crème) + 2–3 raccourcis ghost max. Action selon le moment : avant → « Préparer ma session » · arrivée → « Connecter l'équipement » · après roulage → « Découvrir mon bilan » · note coach → « Lire la note » · hors événement → « Voir ma progression ». |
 | **État vide** | Aucune session : titre serif « Bienvenue. », pas de mini-instrument, action « Préparer ma session ». |
 | **État erreur** | Fetch bilan/coach échoué : carte dégradée silencieuse (on masque le bloc, pas d'alarme). Météo absente → bloc retiré, pas d'erreur affichée. |
