@@ -18,9 +18,9 @@ L'enum `user_role` (`src/types/database.types.ts:5379`, `:5581`) vaut **exacteme
 pilot · admin · coach · partner
 ```
 
-`super_admin` **n'existe pas** dans l'enum. Il est demandé dans le cadrage mais n'a **aucune** existence en base — voir §3.
+`super_admin` **n'existe pas** dans l'enum, et **n'est pas au programme** : le cadrage pose **4 comptes** (pilote, coach, admin, partenaire — `00 §2`). Le cumul de rôles passe par `users.is_admin` (§1.2), pas un 5e rôle — voir §3.
 
-`partner` est **présent dans l'enum** mais **aucune** table, helper ou policy ne s'appuie dessus aujourd'hui (aucune migration `ADD VALUE` partner dans ce dépôt ; valeur présente côté prod / types générés). C'est une coquille vide — voir §3.
+`partner` est **présent dans l'enum** ET **réellement utilisé** : la table `partners` existe (`database.types.ts:2612`), le helper `is_partner()` existe (`:5155`) et des RLS s'appuient dessus (p. ex. `social_pings`). Ce qui manque = les tables d'offres/leads + l'espace `app/(partner)` — voir §3.
 
 Le modèle est **mono-rôle** : un compte porte une seule valeur `role`. Exception assumée ci-dessous.
 
@@ -105,8 +105,8 @@ Aucune des entités ci-dessous n'existe en base. Chacune **nécessite l'accord e
 
 | Domaine | Manque réel | Rôles concernés | Statut |
 |---|---|---|---|
-| **Partenaires** | Aucune table `partners`, `partner_offers`, `partner_leads`, `partner_bookings`. `role = 'partner'` existe dans l'enum mais **aucune** RLS ne le reconnaît, **aucun** helper `is_partner()`. L'espace `app/(partner)` n'existe pas. | partner, admin | à créer — **NÉCESSITE ACCORD** |
-| **Super-admin** | Valeur absente de l'enum `user_role`. Aucun `is_super_admin()`. Le cumul admin se fait aujourd'hui via `users.is_admin` (§1.2), pas via un rôle dédié. | super_admin | à créer — **NÉCESSITE ACCORD** (et : est-ce seulement nécessaire ?) |
+| **Partenaires (offres/leads)** | La table **`partners` EXISTE** (`database.types.ts:2612` : `owner_id`, `is_published`, `is_official_partner`, `partner_type`, `circuit_id`, lat/lon) et le helper **`is_partner()` EXISTE** (`:5155`, utilisé p. ex. par les RLS de `social_pings`). Ce qui MANQUE : `partner_offers`, `partner_leads`, `partner_bookings` et l'espace `app/(partner)` (net-neuf). | partner, admin | tables offres/leads à créer — **NÉCESSITE ACCORD** |
+| **Super-admin** | Valeur absente de l'enum `user_role`. Aucun `is_super_admin()`. Le cumul admin se fait via `users.is_admin` (§1.2). **Hors périmètre** : 4 comptes au cadrage, pas de 5e rôle (`00 §2`). | — | non prévu (ne pas créer) |
 | **Passeport pilote** | Pas de table. (V1.5, `03_MVP_SCOPE.md`.) | pilot (R soi), coach (R), admin | à créer — **NÉCESSITE ACCORD** |
 | **Programmes / cycles coach** | Pas de table cycles/objectifs structurés côté coach (`pilot_goals` existe — `0023` — mais pas un programme coach complet). | coach (W), pilot (R) | à créer — **NÉCESSITE ACCORD** |
 | **Garage pilote** | `vehicles` existe (R/W propriétaire) mais pas l'entité « garage » enrichie (carnet, diagnostic). | pilot, admin | à créer — **NÉCESSITE ACCORD** |
@@ -114,7 +114,7 @@ Aucune des entités ci-dessous n'existe en base. Chacune **nécessite l'accord e
 | **Pass OXV (QR événement)** | Pas de table. (V1.5.) | pilot, admin | à créer — **NÉCESSITE ACCORD** |
 | **Qualité data / incidents (admin)** | Pas de table dédiée. | admin | à créer — **NÉCESSITE ACCORD** |
 
-Règle pour Claude Code : **n'invente aucun `is_partner()` ni `super_admin`.** Si une PR a besoin de l'espace partenaire, elle s'arrête et demande le schéma à Gabin.
+Règle pour Claude Code : **`is_partner()` et `partners` existent — utilise-les.** En revanche, **n'invente pas** `partner_offers`/`partner_leads`/`partner_bookings` ni un rôle `super_admin`. Si une PR a besoin des tables d'offres/leads partenaire, elle s'arrête et demande le schéma à Gabin.
 
 ---
 
@@ -174,6 +174,6 @@ Comportements à respecter strictement. La plupart sont **déjà garantis par la
 2. **`is_coach_of`, jamais `is_coach`** pour gater de la data pilote. `is_coach()` ne dit que « ce user est coach », pas « ce coach a le droit de voir CE pilote ».
 3. **Le consentement prime sur l'affiliation** : `active = true` ET `pilot_consent_at IS NOT NULL`. Les deux.
 4. **L'admin ne lit pas la télémétrie par défaut.** Ne pas supposer le contraire.
-5. **`partner` et `super_admin` = coquilles.** Toute fonctionnalité qui en dépend déclenche une demande d'accord (§3), pas un schéma improvisé.
+5. **`partner` est réel** (table `partners` + `is_partner()`) — seules ses tables d'offres/leads sont à créer ; **`super_admin` n'est pas prévu.** Toute table d'offres/leads partenaire déclenche une demande d'accord (§3), pas un schéma improvisé.
 6. **Base partagée site↔app** : une policy modifiée impacte oxvehicle.fr. Aucune migration / policy nouvelle sans accord explicite de Gabin (`00_PLATEFORME_OXV.md §6`).
 7. **Doctrine dans les messages d'erreur de permission** : sobre, vouvoiement, sans verbe prescriptif, sans emoji. Un refus RLS côté app se traduit par un état vide calme, pas par « accès interdit ».

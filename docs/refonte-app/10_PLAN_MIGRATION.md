@@ -15,7 +15,7 @@
 - Le hub d'accueil est **`index.tsx`** (« Hub central, 3 modes »), pas `paddock.tsx`.
 - `paddock.tsx` est en réalité l'ancien écran #07 « Vous y êtes » (arrivée circuit), titré `PADDOCK` dans son `AppBar` — **homonyme de zone, pas hub**. Ce point conditionne la fusion `index` vs `paddock` (cf. §3).
 - `SpaceSwitcher` (importé dans `index.tsx`, `current="pilot"`) gère déjà la bascule inter-espaces. La migration ne le touche pas.
-- `src/services/appMap.ts` **n'existe pas encore** : il est créé en PR 1. C'est la table de vérité du routage (zone → route canonique + alias).
+- `src/lib/appMap.ts` **existe depuis la PR 1** (commit `a4b2464`). API réelle : `Zone`, `TAB_ORDER`, `ROUTE_TO_ZONE`, `TAB_MAIN_ROUTE`, `zoneOfRoute()`, `dataLabScreens()`, `shouldShowTabBar()`. Les **alias de redirection** (dédup des doublons) n'y sont **pas encore** — ajoutés lors de la PR de migration (E3), ou gérés par `<Redirect>` par écran.
 
 ---
 
@@ -49,17 +49,21 @@ export default function SocialRedirect() {
 `appMap.ts` centralise ces correspondances pour que les redirections ne soient pas dispersées en dur dans 10 fichiers :
 
 ```ts
-// src/services/appMap.ts (créé en PR 1)
-export const ZONE_HOME = {
-  paddock: '/(app)',          // index = hub Paddock
-  session: '/(app)/equipement',
+// src/lib/appMap.ts — RÉEL (PR 1, commit a4b2464). Les onglets pointent vers les
+// HUBS de zone (pas l'écran le plus en avant) : Club → /(app)/club, où « mon
+// coach » est le 1er lien (coach affilié mis en avant DANS le hub).
+export const TAB_MAIN_ROUTE: Record<TabZone, string> = {
+  paddock: '/(app)',
+  session: '/(app)/session', // hub net-neuf
   bilan: '/(app)/bilan',
   progression: '/(app)/progression',
-  club: '/(app)/mon-coach',   // coach affilié mis en avant
+  club: '/(app)/club', // hub net-neuf
 } as const;
+// + ROUTE_TO_ZONE, zoneOfRoute(), dataLabScreens(), shouldShowTabBar() — déjà implémentés.
 
+// À AJOUTER lors de la PR de migration (E3) — N'EXISTE PAS encore :
+// table d'alias de redirection pour la dédup des doublons.
 export const ROUTE_ALIASES = {
-  '/(app)/paddock': '/(app)',       // arrivée circuit → état du hub
   '/(app)/social': '/(app)/amis',
   '/(app)/social-carte': '/(app)/carte-oxv',
   '/(app)/lieux': '/(app)/carte-oxv',

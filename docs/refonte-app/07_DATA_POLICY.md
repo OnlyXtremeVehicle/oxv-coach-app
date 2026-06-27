@@ -120,9 +120,9 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 
 **Quand.** Après session, comme le pilote. Jamais en temps réel.
 
-**À qui.** Un coach ne lit **que** les sessions des pilotes qui lui sont **affiliés et consentants**. L'accès se règle par **niveaux de consentement** (ex. : aucun / résumé / détaillé / complet) — le mécanisme de consentement et la table d'affiliation/consentement coach↔pilote **nécessitent accord** avant tout schéma. Tant que le pilote n'a pas consenti, le coach ne voit rien de sa donnée piste.
+**À qui.** Un coach ne lit **que** les sessions des pilotes qui lui sont **affiliés et consentants**. L'affiliation + consentement **BINAIRE existe déjà** : table `coach_pilots` + `pilot_consent_at`, gardés par `is_coach_of()` (cf. `05 §1.2`, `17 §0`). Seule la **granularité** (niveaux aucun / résumé / détaillé / complet — modèle binaire aujourd'hui, cf. `17 §2`) **nécessite accord**. Tant que le pilote n'a pas consenti, le coach ne voit rien de sa donnée piste.
 
-**Quoi (selon le niveau accordé).** Lecture des analyses du pilote (marge globale, segments, tours), pour annoter. L'**annotation coach** (overlay sur la data, cf. `03_MVP_SCOPE` « Notes coach sur la data ») produit le contenu de la **bande coach** rouge du Bilan pilote — table de notes coach **à définir, nécessite accord**.
+**Quoi (selon le niveau accordé).** Lecture des analyses du pilote (marge globale, segments, tours), pour annoter. L'**annotation coach** s'appuie sur la table **`coach_annotations` qui EXISTE déjà** (cf. `17 §0`) et produit le contenu de la **bande coach** rouge du Bilan pilote. Reste à faire = l'**overlay UI** des notes sur la data (pas la table) ; toute extension de `coach_annotations` **nécessite accord**.
 
 **Limites doctrinales propres au coach.**
 - La bande coach est le **seul** espace où une formulation peut orienter — et même là, on privilégie la **question ouverte** (`04_DESIGN_CANON §Bande coach` : citation Instrument Serif, eyebrow « DE VOTRE COACH »).
@@ -178,8 +178,8 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 | `app_segment_analyses` | **existe** | analyse par virage (vitesses, G estimés, dispersion, marge/zone) |
 | `app_session_analyses` | **existe** | marge globale + debrief J+1 |
 | `session_insights` | **existe** | lectures qualitatives (écriture serveur seule) |
-| Consentement / affiliation coach↔pilote | **nécessite accord** | porte les niveaux d'accès du §4 |
-| Notes / annotations coach sur la data | **nécessite accord** | alimente la bande coach du Bilan |
+| Affiliation + consentement coach↔pilote (binaire) | **existe** (`coach_pilots` + `pilot_consent_at`) | seuls les **niveaux** granulaires du §4 nécessitent accord |
+| Table d'annotations coach | **existe** (`coach_annotations`) | reste : l'overlay UI ; toute extension nécessite accord |
 | Registre équipements RaceBox | **nécessite accord** | suivi état boîtiers (§5) |
 | Marquage de « moments » par le pilote | **nécessite accord** | §1.2 |
 | Schéma partenaire (stats agrégées) | **nécessite accord** | §6 |
