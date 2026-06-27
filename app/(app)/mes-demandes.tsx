@@ -1,5 +1,5 @@
 /**
- * Écran Pilote — mes demandes de séance (Phase 1 marketplace, boucle de réponse).
+ * Écran Pilote — mes demandes de séance (marketplace, boucle de réponse + avis).
  *
  * Liste les `coaching_bookings` du pilote courant (RLS
  * `coaching_bookings_pilot_select`) : coach, créneau souhaité, statut. Le statut
@@ -7,31 +7,47 @@
  * attente, le pilote peut l'annuler (RLS `coaching_bookings_pilot_cancel`, qui
  * n'autorise QUE la transition vers `cancelled`).
  *
+ * Phase 2 : sur une demande `accepted` ou `completed`, le pilote peut laisser un
+ * avis (note 1-5 + texte) — ou le modifier s'il en a déjà un (pré-rempli). Un
+ * seul avis par coach (`coach_reviews`, UPSERT sur `coach_id,pilot_id`). On
+ * fournit son PRÉNOM (depuis `useAuthStore`) à la création, dénormalisé.
+ *
  * Le coach est résolu via `coach_profiles` (fiche publiée), jamais via `users`.
  * Si la fiche n'est plus publiée, on retombe sur un libellé générique.
  *
- * Doctrine : vouvoiement, aucun emoji, sobre/premium, aucun classement ni note.
- * Réutilise le kit (Screen, AppBar, Card, Button, SectionLabel).
+ * Doctrine : vouvoiement, aucun emoji (note en chiffres/pastilles, pas d'étoiles),
+ * sobre/premium, la note est un fait de l'avis et jamais un classement de
+ * personnes. Réutilise le kit (Screen, AppBar, Card, Button, Field, SectionLabel).
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import {
   bookingStatusLabel,
   cancelBooking,
+  createReview,
+  getMyReviewFor,
   listMyBookings,
   type MyBooking,
+  type MyReview,
 } from '@/services/coachMarketplaceService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort, formatDateTime } from '@/utils/format';
+
+/** Une demande est « notable » quand une séance a eu lieu / été actée. */
+function isReviewable(status: MyBooking['status']): boolean {
+  return status === 'accepted' || status === 'completed';
+}
 
 export default function MesDemandesScreen() {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
@@ -118,7 +134,7 @@ export default function MesDemandesScreen() {
             {treated.length > 0 ? (
               <Section title="Historique">
                 {treated.map((b) => (
-                  <BookingCard key={b.id} booking={b} muted />
+                  <BookingCard key={b.id} booking={b} muted onReviewed={reload} />
                 ))}
               </Section>
             ) : null}
@@ -139,11 +155,13 @@ function BookingCard({
   busy,
   muted,
   onCancel,
+  onReviewed,
 }: {
   booking: MyBooking;
   busy?: boolean;
   muted?: boolean;
   onCancel?: () => void;
+  onReviewed?: () => void;
 }) {
   const name = coachName(booking);
   const statusText = bookingStatusLabel(booking.status);
@@ -185,7 +203,125 @@ function BookingCard({
           <Button label="Annuler la demande" variant="ghost" loading={busy} onPress={onCancel} />
         </View>
       ) : null}
+
+      {/* Phase 2 : sur une séance actée, le pilote peut laisser/modifier un avis. */}
+      {isReviewable(booking.status) && onReviewed ? (
+        <ReviewBlock coachId={booking.coachId} bookingId={booking.id} onDone={onReviewed} />
+      ) : null}
     </Card>
+  );
+}
+
+/** Bloc « laisser / modifier un avis » sur une demande actée (Phase 2). */
+function ReviewBlock({
+  coachId,
+  bookingId,
+  onDone,
+}: {
+  coachId: string;
+  bookingId: string;
+  onDone: () => void;
+}) {
+  const firstName = useAuthStore((st) => st.profile?.first_name ?? null);
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [existing, setExisting] = useState<MyReview | null>(null);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function openForm() {
+    if (!loaded) {
+      const mine = await getMyReviewFor(coachId);
+      setExisting(mine);
+      if (mine) {
+        setRating(mine.rating);
+        setComment(mine.comment ?? '');
+      }
+      setLoaded(true);
+    }
+    setOpen(true);
+  }
+
+  async function submit() {
+    if (rating < 1) {
+      Toast.show({ type: 'error', text1: 'Choisissez une note de 1 à 5.' });
+      return;
+    }
+    setBusy(true);
+    const res = await createReview({
+      coachId,
+      bookingId,
+      rating,
+      comment,
+      pilotFirstName: firstName,
+    });
+    setBusy(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Avis enregistré.' });
+    setExisting({ id: existing?.id ?? '', rating, comment: comment.trim() || null });
+    setOpen(false);
+    onDone();
+  }
+
+  if (!open) {
+    return (
+      <View style={{ marginTop: theme.spacing.md }}>
+        <Button
+          label={existing ? 'Modifier mon avis' : 'Laisser un avis'}
+          variant="ghost"
+          onPress={openForm}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={s.reviewForm}>
+      <Text style={s.reviewLabel}>Votre note</Text>
+      <View style={s.ratingRow} accessibilityRole="radiogroup">
+        {[1, 2, 3, 4, 5].map((n) => {
+          const on = n <= rating;
+          return (
+            <Pressable
+              key={n}
+              onPress={() => setRating(n)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: rating === n }}
+              accessibilityLabel={`${n} sur 5`}
+              hitSlop={6}
+              style={[s.ratingDot, on ? s.ratingDotOn : null]}
+            >
+              <Text style={[s.ratingNum, on ? s.ratingNumOn : null]}>{n}</Text>
+            </Pressable>
+          );
+        })}
+        <Text style={s.ratingScale}>sur 5</Text>
+      </View>
+
+      <Field
+        label="Votre avis"
+        optional
+        value={comment}
+        onChangeText={setComment}
+        placeholder="Quelques mots sur la séance…"
+        multiline
+        maxLength={500}
+        showCounter
+      />
+
+      <View style={s.reviewActions}>
+        <View style={{ flex: 1 }}>
+          <Button label="Publier" loading={busy} onPress={submit} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button label="Annuler" variant="ghost" onPress={() => setOpen(false)} />
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -313,5 +449,55 @@ const s = {
     textAlign: 'center' as const,
     marginTop: theme.spacing.md,
     lineHeight: theme.fontSize.small * 1.5,
+  },
+  reviewForm: {
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+    gap: theme.spacing.md,
+  },
+  reviewLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+  },
+  ratingRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  ratingDot: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  ratingDotOn: {
+    borderColor: theme.palette.gold,
+    backgroundColor: 'rgba(255,183,3,0.12)',
+  },
+  ratingNum: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
+  },
+  ratingNumOn: {
+    color: theme.palette.gold,
+  },
+  ratingScale: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.6,
+    color: theme.palette.creamMute,
+    marginLeft: theme.spacing.xs,
+  },
+  reviewActions: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.sm,
   },
 };

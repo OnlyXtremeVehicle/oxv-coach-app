@@ -8,9 +8,10 @@
  * affichent leur statut, toujours DOUBLÉ d'un libellé humain — jamais une
  * couleur seule (doctrine + a11y).
  *
- * Identité du pilote : la RLS ne garantit pas la lecture de la ligne `users`
- * d'un pilote non affilié. Quand elle est masquée, on affiche « Pilote » et on
- * met le MESSAGE en avant : c'est lui qui porte le contexte de décision.
+ * Identité du pilote (Phase 2) : le pilote fournit son PRÉNOM à la demande, porté
+ * de façon dénormalisée par `pilot_first_name` (jamais d'accès à `users`). On
+ * l'affiche ; s'il manque (demande antérieure à la Phase 2), on retombe sur
+ * « Pilote » et le MESSAGE porte le contexte de décision.
  *
  * Doctrine : vouvoiement, aucun emoji, sobre/premium, aucun classement ni note.
  * Accent coach = `palette.coach` (neutre, ni or ni rouge décoratifs). Réutilise
@@ -138,9 +139,8 @@ export default function CoachDemandesScreen() {
 }
 
 function pilotName(booking: CoachBooking): string {
-  if (!booking.pilot) return 'Pilote';
-  const full = [booking.pilot.firstName, booking.pilot.lastName].filter(Boolean).join(' ').trim();
-  return full || 'Pilote';
+  const first = booking.pilotFirstName?.trim();
+  return first && first.length > 0 ? first : 'Pilote';
 }
 
 function BookingCard({

@@ -1,33 +1,36 @@
 /**
- * Place de marché coaching — Phase 1 (mise en relation, SANS paiement, SANS avis).
+ * Place de marché coaching — Phases 1 & 2 (mise en relation, SANS paiement).
  *
  * Côté pilote : découvrir les coachs publiés, lire une fiche, demander une
- * séance, suivre ses demandes, annuler une demande en attente. Côté coach :
- * lire les demandes reçues, accepter / décliner. Réf. spec :
+ * séance, suivre ses demandes, annuler une demande en attente, laisser un avis
+ * (Phase 2). Côté coach : lire les demandes reçues (avec le PRÉNOM du pilote,
+ * Phase 2), accepter / décliner. Réf. spec :
  * docs/specs-bundle-v4/MVP_PLACE_DE_MARCHE_COACHING.md.
  *
- * Sécurité : tout passe par les RLS Supabase (0007_coaching_marketplace.sql,
- * appliquée en prod) :
+ * Sécurité : tout passe par les RLS Supabase (0007_coaching_marketplace.sql +
+ * 0008_coaching_reviews.sql, appliquées en prod) :
  *   - un pilote ne lit que les fiches/créneaux `is_published = true`, ne crée
  *     que ses propres demandes en `pending`, et ne peut mettre à jour SA
  *     demande QUE vers `cancelled` (`coaching_bookings_pilot_cancel`).
  *   - un coach ne lit/répond qu'aux demandes où `coach_id = auth.uid()`
  *     (`coaching_bookings_coach_select` / `_coach_respond`).
+ *   - les avis d'un coach PUBLIÉ sont lisibles par tout authentifié
+ *     (`coach_reviews_select_published`) ; un pilote n'écrit QUE son avis et
+ *     seulement s'il a une séance acceptée/complétée (`coach_reviews_pilot_write`).
  * Aucune donnée pilote n'est exposée par la découverte (RGPD, spec §4). Une
  * demande `pending` n'ouvre aucun accès : l'affiliation `coach_pilots` reste le
- * seul vecteur de consentement, et n'est PAS touchée ici (Phase 1).
+ * seul vecteur de consentement, et n'est PAS touchée ici.
  *
- * Identité du pilote côté coach : aucune policy n'autorise le coach à lire la
- * ligne `users` d'un pilote non affilié. L'embed `pilot:users!pilot_id(...)`
- * est donc tenté mais peut renvoyer `null` ; dans ce cas on retombe sur un
- * libellé générique (« Pilote ») et c'est le MESSAGE qui porte la décision.
- * Révéler le nom suppose une policy `users` à trancher (hors périmètre).
+ * Identité du pilote côté coach (Phase 2) : on ne lit JAMAIS la ligne `users`
+ * d'un pilote. Le pilote fournit lui-même son prénom, DÉNORMALISÉ sur la demande
+ * (`coaching_bookings.pilot_first_name`) et sur l'avis. Le coach affiche ce
+ * prénom (repli « Pilote » s'il est absent). L'ancien embed `users` est abandonné.
  *
- * Doctrine : pas de classement de personnes, pas de note, pas de tri « meilleur
- * coach ». Tri neutre (premium d'abord puis alphabétique), comme les lieux. Un
- * statut est toujours doublé d'un libellé humain (cf. `bookingStatusLabel`).
- * Best-effort : en cas d'erreur on renvoie un résultat vide / défensif plutôt
- * que de faire planter l'écran.
+ * Doctrine : pas de classement de personnes, pas de tri « meilleur coach ». Tri
+ * neutre (alphabétique), comme les lieux. La note d'un avis est un FAIT de cet
+ * avis (jamais un palmarès de personnes) ; l'agrégat reste interne à CE coach.
+ * Un statut/une note est toujours doublé d'un libellé humain. Best-effort : en
+ * cas d'erreur on renvoie un résultat vide / défensif plutôt que de planter.
  */
 
 import { supabase } from '@/lib/supabase';
@@ -167,12 +170,6 @@ export interface MyBooking {
   coach: BookingCoachRef | null;
 }
 
-/** Pilote résumé pour « Demandes reçues ». `null` si la RLS masque `users`. */
-export interface BookingPilotRef {
-  firstName: string | null;
-  lastName: string | null;
-}
-
 /** Demande de séance, vue côté coach (« Demandes reçues »). */
 export interface CoachBooking {
   id: string;
@@ -183,8 +180,12 @@ export interface CoachBooking {
   message: string | null;
   status: BookingStatus;
   createdAt: string;
-  /** Identité du pilote si la RLS la laisse lire, sinon `null` (→ générique). */
-  pilot: BookingPilotRef | null;
+  /**
+   * Prénom dénormalisé du pilote, fourni par lui-même à la demande (Phase 2).
+   * On n'expose jamais la ligne `users` : seul ce prénom voyage. `null` si la
+   * demande est antérieure à la Phase 2 → l'écran retombe sur « Pilote ».
+   */
+  pilotFirstName: string | null;
 }
 
 /** Entrée d'une demande de séance. Le pilote n'envoie qu'un message + un
@@ -195,6 +196,50 @@ export interface RequestBookingInput {
   requestedStartsAt?: string | null;
   circuitName?: string | null;
   message?: string | null;
+  /**
+   * Prénom du pilote courant (depuis `useAuthStore` → profile.first_name).
+   * Dénormalisé sur la demande pour que le coach voie un prénom sans accès à la
+   * ligne `users` du pilote (Phase 2, décision Gabin). Optionnel et nettoyé.
+   */
+  pilotFirstName?: string | null;
+}
+
+/** Borne valide d'une note d'avis (1 à 5). */
+export type ReviewRating = 1 | 2 | 3 | 4 | 5;
+
+/** Un avis laissé par un pilote sur un coach (lecture, fiche publiée). */
+export interface CoachReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+  /** Prénom dénormalisé du pilote (fourni par lui-même), repli « Pilote ». */
+  pilotFirstName: string | null;
+  createdAt: string;
+}
+
+/** Agrégat des avis d'UN coach. Jamais comparé à d'autres coachs (doctrine). */
+export interface CoachReviewsSummary {
+  /** Moyenne des notes (1 décimale), `null` si aucun avis. */
+  average: number | null;
+  /** Nombre d'avis. */
+  count: number;
+}
+
+/** L'avis du pilote courant sur un coach (pour pré-remplir l'édition). */
+export interface MyReview {
+  id: string;
+  rating: number;
+  comment: string | null;
+}
+
+/** Entrée de création / mise à jour d'un avis. `pilot_id` est posé à
+ *  `auth.uid()` ; la note est bornée 1-5 ; le prénom est dénormalisé. */
+export interface CreateReviewInput {
+  coachId: string;
+  bookingId?: string | null;
+  rating: number;
+  comment?: string | null;
+  pilotFirstName?: string | null;
 }
 
 const COACH_PROFILE_FIELDS =
@@ -316,6 +361,8 @@ export async function requestBooking(
   }
 
   const message = input.message?.trim() || null;
+  // Prénom dénormalisé (Phase 2) : fourni par le pilote, jamais lu depuis `users`.
+  const pilotFirstName = input.pilotFirstName?.trim() || null;
 
   const { data, error } = await supabase
     .from('coaching_bookings')
@@ -326,6 +373,7 @@ export async function requestBooking(
       requested_starts_at: input.requestedStartsAt ?? null,
       circuit_name: input.circuitName?.trim() || null,
       message,
+      pilot_first_name: pilotFirstName,
       status: 'pending',
     })
     .select('id')
@@ -401,16 +449,17 @@ export async function listMyBookings(): Promise<MyBooking[]> {
  * Liste les demandes reçues par le coach courant (les plus récentes d'abord).
  * La RLS `coaching_bookings_coach_select` borne à `coach_id = auth.uid()`.
  *
- * On TENTE d'embarquer l'identité du pilote via `users` ; aucune policy ne la
- * garantit pour un pilote non affilié, donc l'embed peut renvoyer `null`. Dans
- * ce cas `pilot` reste `null` et l'écran affiche « Pilote » : c'est le message
- * de la demande qui porte le contexte de décision, pas l'identité.
+ * Identité du pilote (Phase 2) : on lit le prénom DÉNORMALISÉ porté par la
+ * demande (`pilot_first_name`), que le pilote a fourni lui-même. Aucun accès à
+ * la ligne `users` (l'ancien embed est abandonné — il revenait `null`). Si le
+ * prénom est absent (demande antérieure à la Phase 2), l'écran affiche « Pilote »
+ * et c'est le message qui porte le contexte de décision.
  */
 export async function listCoachBookings(): Promise<CoachBooking[]> {
   const { data, error } = await supabase
     .from('coaching_bookings')
     .select(
-      'id, pilot_id, availability_id, requested_starts_at, circuit_name, message, status, created_at, pilot:users!pilot_id(first_name, last_name)'
+      'id, pilot_id, availability_id, requested_starts_at, circuit_name, message, status, created_at, pilot_first_name'
     )
     .order('created_at', { ascending: false });
 
@@ -419,28 +468,17 @@ export async function listCoachBookings(): Promise<CoachBooking[]> {
     return [];
   }
 
-  return (data ?? []).map((row: Record<string, unknown>) => {
-    const joined = row.pilot as
-      | { first_name?: string | null; last_name?: string | null }
-      | { first_name?: string | null; last_name?: string | null }[]
-      | null
-      | undefined;
-    const pilot = Array.isArray(joined) ? joined[0] : joined;
-    const hasName = pilot && (pilot.first_name || pilot.last_name);
-    return {
-      id: row.id as string,
-      pilotId: row.pilot_id as string,
-      availabilityId: (row.availability_id as string | null) ?? null,
-      requestedStartsAt: (row.requested_starts_at as string | null) ?? null,
-      circuitName: (row.circuit_name as string | null) ?? null,
-      message: (row.message as string | null) ?? null,
-      status: row.status as BookingStatus,
-      createdAt: row.created_at as string,
-      pilot: hasName
-        ? { firstName: pilot.first_name ?? null, lastName: pilot.last_name ?? null }
-        : null,
-    };
-  });
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    pilotId: row.pilot_id,
+    availabilityId: row.availability_id ?? null,
+    requestedStartsAt: row.requested_starts_at ?? null,
+    circuitName: row.circuit_name ?? null,
+    message: row.message ?? null,
+    status: row.status as BookingStatus,
+    createdAt: row.created_at,
+    pilotFirstName: row.pilot_first_name?.trim() || null,
+  }));
 }
 
 /**
@@ -594,4 +632,124 @@ export async function updateAvailabilityStatus(
   }
 
   return { ok: true };
+}
+
+/** Normalise une note arbitraire en entier borné 1-5. */
+function clampRating(rating: number): ReviewRating {
+  const r = Math.round(rating);
+  if (!Number.isFinite(r)) return 1;
+  return Math.min(5, Math.max(1, r)) as ReviewRating;
+}
+
+/**
+ * Dépose ou met à jour l'avis du pilote courant sur un coach (Phase 2). Un seul
+ * avis par pilote par coach : on UPSERT sur la contrainte `coach_id,pilot_id`
+ * (l'avis est donc éditable). Le `pilot_id` est posé à `auth.uid()` ; la RLS
+ * `coach_reviews_pilot_write` vérifie en plus qu'une séance acceptée/complétée
+ * existe. La note est bornée 1-5, le commentaire et le prénom sont nettoyés.
+ * Renvoie un résultat défensif, jamais d'exception remontée à l'écran.
+ */
+export async function createReview(
+  input: CreateReviewInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const pilotId = auth.user?.id;
+  if (!pilotId) {
+    return { ok: false, error: 'Vous devez être connecté pour laisser un avis.' };
+  }
+
+  const rating = clampRating(input.rating);
+  const comment = input.comment?.trim() || null;
+  const pilotFirstName = input.pilotFirstName?.trim() || null;
+
+  const { data, error } = await supabase
+    .from('coach_reviews')
+    .upsert(
+      {
+        coach_id: input.coachId,
+        pilot_id: pilotId,
+        booking_id: input.bookingId ?? null,
+        rating,
+        comment,
+        pilot_first_name: pilotFirstName,
+      },
+      { onConflict: 'coach_id,pilot_id' }
+    )
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    console.warn('[OXV][marketplace] createReview :', error?.message);
+    return { ok: false, error: "L'avis n'a pas pu être enregistré. Réessayez dans un instant." };
+  }
+
+  return { ok: true, id: data.id };
+}
+
+/**
+ * Liste les avis d'un coach publié (les plus récents d'abord) et leur agrégat
+ * { moyenne, nombre }. La RLS `coach_reviews_select_published` borne la lecture
+ * aux fiches publiées. La moyenne est arrondie à une décimale et ne sert qu'à
+ * décrire CE coach — jamais à le classer face à d'autres (doctrine).
+ * Best-effort : en cas d'erreur on renvoie une liste vide et un agrégat nul.
+ */
+export async function listCoachReviews(
+  coachId: string
+): Promise<{ reviews: CoachReview[]; summary: CoachReviewsSummary }> {
+  const empty = { reviews: [], summary: { average: null, count: 0 } };
+
+  const { data, error } = await supabase
+    .from('coach_reviews')
+    .select('id, rating, comment, pilot_first_name, created_at')
+    .eq('coach_id', coachId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[OXV][marketplace] listCoachReviews :', error.message);
+    return empty;
+  }
+
+  const rows = data ?? [];
+  const reviews: CoachReview[] = rows.map((row) => ({
+    id: row.id,
+    rating: row.rating,
+    comment: row.comment ?? null,
+    pilotFirstName: row.pilot_first_name?.trim() || null,
+    createdAt: row.created_at,
+  }));
+
+  const count = reviews.length;
+  const average =
+    count > 0
+      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / count) * 10) / 10
+      : null;
+
+  return { reviews, summary: { average, count } };
+}
+
+/**
+ * Renvoie l'avis existant du pilote courant sur un coach (pour pré-remplir le
+ * formulaire d'édition), ou `null` s'il n'en a pas encore laissé. La RLS borne
+ * déjà à `pilot_id = auth.uid()` ; on le filtre explicitement par robustesse.
+ * Best-effort : en cas d'erreur on renvoie `null`.
+ */
+export async function getMyReviewFor(coachId: string): Promise<MyReview | null> {
+  const { data: auth } = await supabase.auth.getUser();
+  const pilotId = auth.user?.id;
+  if (!pilotId) return null;
+
+  const { data, error } = await supabase
+    .from('coach_reviews')
+    .select('id, rating, comment')
+    .eq('coach_id', coachId)
+    .eq('pilot_id', pilotId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[OXV][marketplace] getMyReviewFor :', error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  return { id: data.id, rating: data.rating, comment: data.comment ?? null };
 }

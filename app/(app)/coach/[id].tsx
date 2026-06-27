@@ -19,23 +19,34 @@ import Toast from 'react-native-toast-message';
 import {
   type CoachAvailabilitySlot,
   type CoachProfileDetail,
+  type CoachReview,
+  type CoachReviewsSummary,
   getCoachProfile,
+  listCoachReviews,
   requestBooking,
 } from '@/services/coachMarketplaceService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { formatDateTime } from '@/utils/format';
+import { formatDateShort, formatDateTime } from '@/utils/format';
 
 export default function CoachDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const coachId = params.id;
 
+  const pilotFirstName = useAuthStore((st) => st.profile?.first_name ?? null);
+
   const [profile, setProfile] = useState<CoachProfileDetail | null>(null);
   const [availability, setAvailability] = useState<CoachAvailabilitySlot[]>([]);
+  const [reviews, setReviews] = useState<CoachReview[]>([]);
+  const [reviewsSummary, setReviewsSummary] = useState<CoachReviewsSummary>({
+    average: null,
+    count: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   // Formulaire de demande.
@@ -47,13 +58,15 @@ export default function CoachDetailScreen() {
   useEffect(() => {
     if (!coachId) return;
     let cancelled = false;
-    getCoachProfile(coachId)
-      .then((res) => {
+    Promise.all([getCoachProfile(coachId), listCoachReviews(coachId)])
+      .then(([res, rev]) => {
         if (cancelled) return;
         if (res) {
           setProfile(res.profile);
           setAvailability(res.availability);
         }
+        setReviews(rev.reviews);
+        setReviewsSummary(rev.summary);
         setLoading(false);
       })
       .catch(() => {
@@ -74,6 +87,7 @@ export default function CoachDetailScreen() {
       requestedStartsAt: slot?.startsAt ?? null,
       circuitName: slot?.circuitName ?? null,
       message,
+      pilotFirstName,
     });
     setSending(false);
 
@@ -157,6 +171,9 @@ export default function CoachDetailScreen() {
           </Section>
         ) : null}
 
+        {/* Avis — agrégat de CE coach uniquement, jamais un classement. */}
+        <ReviewsSection reviews={reviews} summary={reviewsSummary} />
+
         {/* Demande de séance. */}
         <View style={{ marginTop: theme.spacing.xxl }}>
           {!formOpen ? (
@@ -239,6 +256,83 @@ function Section({ label, children }: { label: string; children: React.ReactNode
       <Text style={s.sectionLabel}>{label}</Text>
       {children}
     </View>
+  );
+}
+
+/**
+ * Note rendue en pastilles (PAS d'étoiles emoji) : `count` pastilles pleines sur
+ * 5, doublées d'un libellé chiffré porté à côté. Décoratif et muet pour les
+ * lecteurs d'écran — le sens passe par le texte « n sur 5 ».
+ */
+function RatingDots({ value }: { value: number }) {
+  const filled = Math.min(5, Math.max(0, Math.round(value)));
+  return (
+    <View style={s.dots} accessibilityElementsHidden importantForAccessibility="no">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <View key={i} style={[s.dot, i <= filled ? s.dotOn : s.dotOff]} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Section « Avis » : moyenne /5 (fait sobre, chiffre + libellé), nombre d'avis,
+ * et la liste des témoignages (prénom · note · texte · date). État vide honnête.
+ * Aucun classement inter-coachs : seulement l'agrégat de CE coach.
+ */
+function ReviewsSection({
+  reviews,
+  summary,
+}: {
+  reviews: CoachReview[];
+  summary: CoachReviewsSummary;
+}) {
+  const countLabel =
+    summary.count === 0 ? 'Aucun avis' : summary.count === 1 ? '1 avis' : `${summary.count} avis`;
+
+  return (
+    <Section label="Avis">
+      {summary.average === null ? (
+        <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
+          <Text style={s.emptyTitle}>Aucun avis pour l&apos;instant.</Text>
+          <Text style={s.emptyHint}>
+            Les pilotes accompagnés par ce coach pourront partager leur retour ici.
+          </Text>
+        </Card>
+      ) : (
+        <>
+          <View style={s.avgBlock}>
+            <View style={s.avgRow}>
+              <Text style={s.avgValue}>
+                {summary.average.toLocaleString('fr-FR', { minimumFractionDigits: 1 })}
+              </Text>
+              <Text style={s.avgScale}>sur 5</Text>
+            </View>
+            <RatingDots value={summary.average} />
+            <Text style={s.avgCount}>{countLabel}</Text>
+          </View>
+
+          <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
+            {reviews.map((r) => (
+              <Card key={r.id}>
+                <View style={s.reviewHead}>
+                  <Text style={[s.reviewName, { flex: 1 }]} numberOfLines={1}>
+                    {r.pilotFirstName?.trim() || 'Pilote'}
+                  </Text>
+                  {/* Note = fait de l'avis : chiffre (mono) doublé d'un libellé. */}
+                  <Text style={s.reviewRating} accessibilityLabel={`Note ${r.rating} sur 5`}>
+                    {r.rating}
+                    <Text style={s.reviewRatingScale}>/5</Text>
+                  </Text>
+                </View>
+                {r.comment ? <Text style={s.reviewComment}>{r.comment}</Text> : null}
+                <Text style={s.reviewDate}>{formatDateShort(r.createdAt)}</Text>
+              </Card>
+            ))}
+          </View>
+        </>
+      )}
+    </Section>
   );
 }
 
@@ -358,5 +452,81 @@ const s = {
     color: theme.palette.creamMute,
     textAlign: 'center' as const,
     marginTop: theme.spacing.sm,
+  },
+  avgBlock: {
+    marginTop: theme.spacing.sm,
+  },
+  avgRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+  },
+  avgValue: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.display,
+    color: theme.palette.cream,
+    letterSpacing: 0.5,
+  },
+  avgScale: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
+    marginLeft: theme.spacing.sm,
+    marginBottom: 4,
+  },
+  dots: {
+    flexDirection: 'row' as const,
+    gap: 5,
+    marginTop: theme.spacing.sm,
+  },
+  dot: {
+    width: 9,
+    height: 9,
+    borderRadius: 999,
+  },
+  dotOn: { backgroundColor: theme.palette.cream },
+  dotOff: { backgroundColor: theme.palette.line },
+  avgCount: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+    marginTop: theme.spacing.sm,
+  },
+  reviewHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+  },
+  reviewName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    letterSpacing: 0.2,
+  },
+  reviewRating: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
+    marginLeft: theme.spacing.sm,
+  },
+  reviewRatingScale: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  reviewComment: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.55,
+    marginTop: theme.spacing.sm,
+  },
+  reviewDate: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+    marginTop: theme.spacing.md,
   },
 };

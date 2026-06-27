@@ -1357,6 +1357,68 @@ export type Database = {
           },
         ]
       }
+      // NOTE: ajoutée à la main pour la Phase 2 « place de marché coaching »
+      // (avis + prénom pilote). Cohérente avec 0008_coaching_reviews.sql,
+      // APPLIQUÉE en prod le 2026-06-25. À RÉGÉNÉRER (supabase gen types) au
+      // prochain passage global ; pour l'heure ce type sert au type-check.
+      coach_reviews: {
+        Row: {
+          booking_id: string | null
+          coach_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          pilot_first_name: string | null
+          pilot_id: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          booking_id?: string | null
+          coach_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pilot_first_name?: string | null
+          pilot_id: string
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          booking_id?: string | null
+          coach_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          pilot_first_name?: string | null
+          pilot_id?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_reviews_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "coaching_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_roulages: {
         Row: {
           circuit_name: string
@@ -1537,6 +1599,7 @@ export type Database = {
           created_at: string
           id: string
           message: string | null
+          pilot_first_name: string | null
           pilot_id: string
           requested_starts_at: string | null
           responded_at: string | null
@@ -1552,6 +1615,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          pilot_first_name?: string | null
           pilot_id: string
           requested_starts_at?: string | null
           responded_at?: string | null
@@ -1567,6 +1631,7 @@ export type Database = {
           created_at?: string
           id?: string
           message?: string | null
+          pilot_first_name?: string | null
           pilot_id?: string
           requested_starts_at?: string | null
           responded_at?: string | null
