@@ -157,6 +157,9 @@ export default function CoachHubScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+          {/* Ma fiche coach — profil vu par les pilotes (édition + publication). */}
+          <CoachLink label="Mon profil" href="/(coach)/profil" />
+
           {/* Disponibilités (Phase 1 marketplace) — côté offre : le coach ouvre
               les créneaux que les pilotes demandent depuis sa fiche. Accessible
               à tout coach. */}
