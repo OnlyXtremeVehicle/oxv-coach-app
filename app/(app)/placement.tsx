@@ -15,13 +15,13 @@
  * démarrage de la capture. Logique de capture inchangée.
  */
 
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
 import { startCaptureSession } from '@/services/captureSessionService';
-import { getDefaultCircuit } from '@/services/circuitsService';
+import { fetchCircuits, getDefaultCircuit, type Circuit } from '@/services/circuitsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -34,6 +34,27 @@ export default function PlacementScreen() {
   const profile = useAuthStore((s) => s.profile);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [circuits, setCircuits] = useState<Circuit[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Circuits disponibles (multi-circuit) : le pilote choisit avant de lancer.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const all = await fetchCircuits();
+      if (cancelled) return;
+      const official = all.filter((c) => c.isOfficial);
+      const list = official.length > 0 ? official : all;
+      setCircuits(list);
+      const def = await getDefaultCircuit();
+      if (!cancelled) setSelectedId(def?.id ?? list[0]?.id ?? null);
+    })().catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const selected = circuits.find((c) => c.id === selectedId) ?? null;
 
   async function onStart() {
     if (starting) return;
@@ -43,9 +64,9 @@ export default function PlacementScreen() {
     }
     setStarting(true);
     setError(null);
-    // Rattache la session au circuit courant réel (multi-circuit) plutôt qu'à un
-    // nom en dur. Si la base ne répond pas, le service applique son repli générique.
-    const circuit = await getDefaultCircuit();
+    // Rattache la session au circuit CHOISI par le pilote (multi-circuit). Repli
+    // sur le circuit par défaut si la sélection n'a pas encore chargé.
+    const circuit = selected ?? (await getDefaultCircuit());
     // Démarre l'enregistrement réel (création session + écriture des trames).
     const res = await startCaptureSession({
       userId: profile.id,
@@ -69,6 +90,35 @@ export default function PlacementScreen() {
       >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>PLACEMENT</Text>
+
+          {circuits.length > 1 ? (
+            <View style={s.circuitBlock}>
+              <SectionLabel>Votre circuit</SectionLabel>
+              <View style={s.circuitRow}>
+                {circuits.map((c) => {
+                  const on = c.id === selectedId;
+                  return (
+                    <Pressable
+                      key={c.id}
+                      onPress={() => setSelectedId(c.id)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={c.name}
+                      hitSlop={6}
+                      style={[s.circuitPill, on ? s.circuitPillOn : null]}
+                    >
+                      <Text style={[s.circuitName, on ? s.circuitNameOn : null]}>{c.name}</Text>
+                      {c.lengthKm ? (
+                        <Text style={s.circuitMeta}>
+                          {c.lengthKm.toFixed(1).replace('.', ',')} km
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null}
 
           <Text style={s.headline} accessibilityRole="header">
             Posez le boîtier sur le support magnétique côté passager.
@@ -150,5 +200,43 @@ const s = {
     lineHeight: theme.fontSize.body * 1.5,
     color: theme.palette.red,
     marginTop: theme.spacing.lg,
+  },
+  circuitBlock: {
+    marginBottom: theme.spacing.xxl,
+    gap: theme.spacing.md,
+  },
+  circuitRow: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: theme.spacing.sm,
+  },
+  circuitPill: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  circuitPillOn: {
+    borderColor: theme.palette.gold,
+    backgroundColor: 'rgba(255,183,3,0.10)',
+  },
+  circuitName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
+  },
+  circuitNameOn: {
+    color: theme.palette.cream,
+  },
+  circuitMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    color: theme.palette.faint,
+    marginTop: 2,
   },
 };
