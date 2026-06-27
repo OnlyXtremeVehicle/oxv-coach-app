@@ -24,11 +24,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { TrackStage } from '@/components/CircuitMap';
+import { EmptyState as DataEmptyState } from '@/components/instruments';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
+import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -77,7 +80,7 @@ export default function ToursScreen() {
       <AppBar title="TOURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>TOUR PAR TOUR</Text>
-        <Text style={s.title}>
+        <Text style={s.title} accessibilityRole="header">
           {laps.length > 0
             ? `${validLaps.length} tour${validLaps.length > 1 ? 's' : ''} valide${validLaps.length > 1 ? 's' : ''}`
             : 'Vos tours'}
@@ -93,9 +96,37 @@ export default function ToursScreen() {
               paddingVertical: theme.spacing.lg,
             }}
           >
-            <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm }]}>MEILLEUR TOUR</Text>
-            <Text style={s.heroNumber}>{formatLapTime(bestLap.duration_seconds)}</Text>
-            <Text style={[s.meta, { marginTop: theme.spacing.xs }]}>Tour {bestLap.lap_number}</Text>
+            <Text
+              style={[
+                s.eyebrow,
+                { color: theme.palette.creamMute, marginBottom: theme.spacing.sm },
+              ]}
+            >
+              MEILLEUR TOUR
+            </Text>
+            <Text
+              style={s.heroNumber}
+              accessibilityRole="text"
+              accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${bestLap.lap_number}`}
+            >
+              {formatLapTime(bestLap.duration_seconds)}
+            </Text>
+            <Text
+              style={[s.meta, { marginTop: theme.spacing.xs }]}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            >
+              Tour {bestLap.lap_number}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
+            La dispersion des lignes = votre régularité de trajectoire, vue d'en
+            haut. Constat spatial, aucun jugement. */}
+        {params.sessionId && validLaps.length > 0 ? (
+          <View style={{ marginBottom: theme.spacing.xxl }}>
+            <LapsBeam sessionId={params.sessionId} laps={validLaps} />
           </View>
         ) : null}
 
@@ -108,7 +139,13 @@ export default function ToursScreen() {
               marginBottom: theme.spacing.md,
             }}
           >
-            <Pressable accessibilityRole="button" onPress={toggle}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: level === 'detailed' }}
+              hitSlop={theme.hitSlop}
+              onPress={toggle}
+              style={s.toggleHit}
+            >
               <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
@@ -145,7 +182,12 @@ export default function ToursScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -171,9 +213,24 @@ function LapRow({
   const delta =
     bestSeconds !== null && !isBest && !isExcluded ? lap.duration_seconds - bestSeconds : null;
 
+  const noteForA11y = isBest
+    ? 'meilleur tour'
+    : isExcluded
+      ? lap.is_outlap
+        ? 'tour de sortie'
+        : 'tour de rentrée'
+      : delta !== null
+        ? `plus ${delta.toFixed(2)} seconde${delta >= 2 ? 's' : ''}`
+        : '';
+  const a11yLabel = `Tour ${lap.lap_number}, ${formatLapTime(lap.duration_seconds)}${
+    noteForA11y ? `, ${noteForA11y}` : ''
+  }`;
+
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={a11yLabel}
+      accessibilityHint="Ouvre la télémétrie de ce tour"
       onPress={onPress}
       style={({ pressed }) => ({ opacity: pressed ? 0.85 : isExcluded ? 0.5 : 1 })}
     >
@@ -236,7 +293,9 @@ function LapRow({
           ) : null}
         </View>
 
-        <Text style={s.chevron}>›</Text>
+        <Text style={s.chevron} accessibilityElementsHidden importantForAccessibility="no">
+          ›
+        </Text>
       </Card>
     </Pressable>
   );
@@ -262,13 +321,75 @@ function EmptyState() {
   );
 }
 
+/** Point projeté (forme attendue par TrackStage). */
+type Pt = { lat: number; lon: number; speed: number };
+
+/** Faisceau de tous les tours valides superposés (mode `beam`). Charge les
+ *  frames de chaque tour en parallèle ; on écarte les tours sans position.
+ *  Vide tant que telemetry_frames n'est pas alimentée (avant Valence). */
+function LapsBeam({ sessionId, laps }: { sessionId: string; laps: Lap[] }) {
+  const [beam, setBeam] = useState<Pt[][]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all(
+      laps.map(async (l) => {
+        const rows = await loadLapFrames(sessionId, l.lap_number);
+        return rows
+          .filter((f) => f.lat != null && f.lon != null)
+          .map((f) => ({ lat: f.lat as number, lon: f.lon as number, speed: f.speedKmh ?? 0 }));
+      })
+    )
+      .then((all) => {
+        if (cancelled) return;
+        setBeam(all.filter((t) => t.length >= 2));
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, laps]);
+
+  if (loading) {
+    return (
+      <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
+        <ActivityIndicator color={theme.palette.creamMute} />
+      </View>
+    );
+  }
+
+  if (beam.length === 0) {
+    return (
+      <DataEmptyState
+        label="Faisceau en attente"
+        message="Vos tours superposés apparaîtront dès vos premières frames réelles."
+        source="telemetry_frames"
+      />
+    );
+  }
+
+  return (
+    <TrackStage
+      mode="beam"
+      laps={beam}
+      height={300}
+      statusLabel={`FAISCEAU · ${beam.length} TOUR${beam.length > 1 ? 'S' : ''}`}
+    />
+  );
+}
+
 const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
   },
   title: {
     fontFamily: theme.fonts.display,
@@ -283,6 +404,9 @@ const s = {
     fontSize: theme.fontSize.hud,
     letterSpacing: -1,
     color: theme.palette.cream,
+    textShadowColor: 'rgba(255,183,3,0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 18,
   },
   meta: {
     fontFamily: theme.fonts.mono,
@@ -296,6 +420,11 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.creamMute,
     textDecorationLine: 'underline' as const,
+  },
+  // Cible tactile confortable pour le lien-toggle (texte seul).
+  toggleHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
   },
   lapTime: {
     fontFamily: theme.fonts.mono,
@@ -344,5 +473,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

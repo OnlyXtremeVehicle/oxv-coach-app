@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — RÉGLAGES · gaming v3
+  Grammaire cockpit, registre fonctionnel : panneau de contrôle.
+  Interrupteurs HUD (on = gold glow). « Silence en piste » en premier
+  rang doctrinal (encadré, mis en valeur). Confidentialité explicite.
+  Couvre : settings, equipement, donnees-securite, creer-trace, placement.
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Réglages gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(70% 30% at 50% 16%,rgba(255,183,3,.05) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 42%,transparent 56%,rgba(0,0,0,.6) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.24em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute)}
+
+  .prime{border:1px solid rgba(255,183,3,.3);border-radius:15px;padding:15px 16px;margin-bottom:20px;background:linear-gradient(135deg,rgba(255,183,3,.07),rgba(255,255,255,.012));
+    display:flex;align-items:center;gap:13px;opacity:0;animation:fadeUp .6s ease .25s forwards}
+  .prime .pt{flex:1}
+  .prime .pt .e{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:5px}
+  .prime .pt .n{font-size:16px;font-weight:600}
+  .prime .pt .d{font-size:11.5px;color:var(--mute);margin-top:3px;line-height:1.35}
+
+  .sec{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin:6px 2px 9px;display:flex;align-items:center;gap:10px;opacity:0;animation:fadeUp .5s ease forwards}
+  .sec::after{content:'';flex:1;height:1px;background:#1A1A1E}
+  .grp{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:18px;background:rgba(255,255,255,.012);opacity:0;animation:fadeUp .5s ease forwards}
+  .li{display:flex;align-items:center;gap:12px;padding:13px 15px;border-bottom:1px solid #161619}
+  .li:last-child{border-bottom:0}
+  .li .lt{flex:1}
+  .li .lt .n{font-size:13.5px;font-weight:500}
+  .li .lt .s{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:2px;letter-spacing:.04em}
+  .li .arr{color:var(--faint);font-size:17px}
+  .li .arr.r{color:var(--red)}
+
+  .tog{width:40px;height:23px;border-radius:13px;background:#16161A;position:relative;border:1px solid #26262C;flex-shrink:0}
+  .tog.on{background:rgba(255,183,3,.16);border-color:rgba(255,183,3,.5)}
+  .tog .kn{position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;background:#4A4A52}
+  .tog.on .kn{left:19px;background:var(--gold);box-shadow:0 0 11px rgba(255,183,3,.85)}
+
+  .s1{animation-delay:.4s}.g1{animation-delay:.48s}.s2{animation-delay:.62s}.g2{animation-delay:.7s}.s3{animation-delay:.84s}.g3{animation-delay:.92s}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>RÉGLAGES</span>
+      <span class="rz">PILOTE 04</span>
+    </div>
+
+    <div class="prime">
+      <div class="pt">
+        <div class="e">Réglage de premier rang</div>
+        <div class="n">Silence en piste</div>
+        <div class="d">L'app se tait dès que vous roulez. Aucune donnée à l'écran tant que la voiture bouge.</div>
+      </div>
+      <div class="tog on"><span class="kn"></span></div>
+    </div>
+
+    <div class="sec s1">Pilotage</div>
+    <div class="grp g1">
+      <div class="li"><div class="lt"><div class="n">Capture automatique</div><div class="s">Démarre l'enregistrement seul</div></div><div class="tog on"><span class="kn"></span></div></div>
+      <div class="li"><div class="lt"><div class="n">Débrief audio</div><div class="s">Lecture vocale aux stands</div></div><div class="tog"><span class="kn"></span></div></div>
+      <div class="li"><div class="lt"><div class="n">Unités</div><div class="s">Métrique · km/h · g</div></div><span class="arr">›</span></div>
+    </div>
+
+    <div class="sec s2">Données &amp; confidentialité</div>
+    <div class="grp g2">
+      <div class="li"><div class="lt"><div class="n">Partage avec mon coach</div><div class="s">Lui seul voit vos roulages</div></div><div class="tog on"><span class="kn"></span></div></div>
+      <div class="li"><div class="lt"><div class="n">Vos données vous appartiennent</div><div class="s">Jamais revendues, jamais publiques</div></div><span class="arr">›</span></div>
+      <div class="li"><div class="lt"><div class="n">Exporter mes données</div><div class="s">Tout récupérer, à tout moment</div></div><span class="arr">›</span></div>
+    </div>
+
+    <div class="sec s3">Compte</div>
+    <div class="grp g3">
+      <div class="li"><div class="lt"><div class="n">Profil &amp; équipement</div></div><span class="arr">›</span></div>
+      <div class="li"><div class="lt"><div class="n">Capteur RaceBox</div><div class="s">Connecté · 25 Hz</div></div><span class="arr">›</span></div>
+      <div class="li"><div class="lt"><div class="n">Déconnexion</div></div><span class="arr r">›</span></div>
+    </div>
+
+  </div></div>
+</body></html>

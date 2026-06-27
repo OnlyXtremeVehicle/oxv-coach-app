@@ -1,26 +1,30 @@
 /**
- * SpeedTrace — courbe vitesse vs progression du tour.
+ * SpeedTrace — courbe vitesse vs progression du tour. Transposition gaming.
  *
- * Affiche la signature vitesse du pilote : ligne sombre qui monte et
+ * Affiche la signature vitesse du pilote : trace OR à halo qui monte et
  * descend selon les zones de freinage et de relance. Optionnellement
- * superpose un 2e tour pour comparer (gris fin).
+ * superpose un 2e tour pour comparer (cream neutre, sans verdict).
  *
- * Lecture sobre :
- *   - Axe X : progression normalisée 0..1 du tour (à terme : distance)
+ * Cockpit factuel :
+ *   - Axe X : progression normalisée 0..1 du tour
  *   - Axe Y : vitesse km/h, échelle auto
- *   - 7 lignes verticales aux apex pour situer les virages
+ *   - 7 lignes verticales aux apex pour situer les virages (sobres)
  *
- * Doctrine : pas de label sur les apex (chiffre 1..7 = trop chargé),
- * juste des tirets sobres. Le pilote sait où sont les virages.
+ * Doctrine : pas de label sur les apex, juste des tirets. Le pilote sait
+ * où sont les virages. La comparaison montre la divergence, pas un gagnant.
  */
 
 import { useMemo } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 
+import { cockpitPanel } from '@/components/insights/vizChrome';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { HAUTE_SAINTONGE_SEGMENTS } from '@/trackviz/hauteSaintonge';
-import { borderRadius, colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing } = theme;
+const GOLD = palette.gold;
 
 export interface SpeedTracePoint {
   /** Progression dans le tour, 0..1. */
@@ -30,9 +34,9 @@ export interface SpeedTracePoint {
 }
 
 export interface SpeedTraceProps {
-  /** Trace principale (couleur claire). */
+  /** Trace principale (or). */
   points: SpeedTracePoint[];
-  /** Trace comparée (gris fin). Optionnelle. */
+  /** Trace comparée (cream neutre). Optionnelle. */
   comparePoints?: SpeedTracePoint[] | null;
   /** Label de la trace principale. */
   label?: string;
@@ -57,7 +61,6 @@ export function SpeedTrace({
   const W = 340;
   const H = height;
 
-  // Calcule le min/max vitesse pour calibrer Y
   const { vMin, vMax } = useMemo(() => {
     const all = [...points, ...(comparePoints ?? [])];
     if (all.length === 0) return { vMin: 0, vMax: 200 };
@@ -67,7 +70,6 @@ export function SpeedTrace({
       if (p.speedKmh < lo) lo = p.speedKmh;
       if (p.speedKmh > hi) hi = p.speedKmh;
     }
-    // Arrondi à 10 km/h pour échelle propre
     return {
       vMin: Math.max(0, Math.floor(lo / 10) * 10 - 10),
       vMax: Math.ceil(hi / 10) * 10 + 10,
@@ -92,15 +94,13 @@ export function SpeedTrace({
   const mainPath = buildPath(points);
   const comparePath = comparePoints ? buildPath(comparePoints) : null;
 
-  // Lignes verticales aux apex des 7 virages
   const apexLines = useMemo(() => {
     return BELTOISE_CORNERS.map((c) => {
-      const seg = HAUTE_SAINTONGE_SEGMENTS.find((s) => s.order === c.index);
+      const seg = HAUTE_SAINTONGE_SEGMENTS.find((s2) => s2.order === c.index);
       return seg?.apexProgress ?? null;
     }).filter((p): p is number => p !== null);
   }, []);
 
-  // Graduations Y (3 valeurs sobres)
   const yTicks = useMemo(() => {
     const range = vMax - vMin;
     if (range <= 0) return [vMin];
@@ -109,15 +109,7 @@ export function SpeedTrace({
   }, [vMin, vMax]);
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        padding: spacing.md,
-      }}
-    >
+    <View style={s.panel}>
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
         {/* Graduations Y */}
         {yTicks.map((v) => (
@@ -127,7 +119,7 @@ export function SpeedTrace({
             y1={yFor(v)}
             x2={W - PAD_RIGHT}
             y2={yFor(v)}
-            stroke={colors.border.subtle}
+            stroke={palette.line}
             strokeWidth={0.5}
           />
         ))}
@@ -140,17 +132,17 @@ export function SpeedTrace({
             y1={PAD_TOP}
             x2={xFor(p)}
             y2={PAD_TOP + innerH}
-            stroke={colors.border.subtle}
+            stroke={palette.line}
             strokeWidth={0.5}
             strokeDasharray="2 4"
           />
         ))}
 
-        {/* Trace comparée (gris fin, derrière) */}
+        {/* Trace comparée — cream neutre, sans verdict */}
         {comparePath ? (
           <Path
             d={comparePath}
-            stroke={colors.text.tertiary}
+            stroke={palette.creamMute}
             strokeWidth={1.2}
             fill="none"
             strokeLinecap="round"
@@ -158,23 +150,33 @@ export function SpeedTrace({
           />
         ) : null}
 
-        {/* Trace principale */}
+        {/* Trace principale — OR à halo (large translucide + net) */}
         <Path
           d={mainPath}
-          stroke={colors.text.primary}
+          stroke={GOLD}
+          strokeWidth={5}
+          opacity={0.16}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d={mainPath}
+          stroke={GOLD}
           strokeWidth={1.8}
+          opacity={0.95}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
 
-        {/* Labels Y */}
+        {/* Repères Y */}
         {yTicks.map((v) => (
-          <Circle key={`${v}-c`} cx={PAD_LEFT - 4} cy={yFor(v)} r={1} fill={colors.text.tertiary} />
+          <Circle key={`${v}-c`} cx={PAD_LEFT - 4} cy={yFor(v)} r={1} fill={palette.creamMute} />
         ))}
       </Svg>
 
-      {/* Légende vMin / vMid / vMax sous le graphique */}
+      {/* Légende vMin / vMid / vMax */}
       <View
         style={{
           flexDirection: 'row',
@@ -184,7 +186,7 @@ export function SpeedTrace({
         }}
       >
         {yTicks.map((v) => (
-          <Text key={v} style={[typography.caption, { color: colors.text.tertiary }]}>
+          <Text key={v} style={s.tick}>
             {v} km/h
           </Text>
         ))}
@@ -200,8 +202,8 @@ export function SpeedTrace({
             marginTop: spacing.sm,
           }}
         >
-          <LegendDot color={colors.text.primary} label={label ?? 'Tour A'} />
-          <LegendDot color={colors.text.tertiary} label={compareLabel ?? 'Tour B'} />
+          <LegendDot color={GOLD} label={label ?? 'Cette session'} />
+          <LegendDot color={palette.creamMute} label={compareLabel ?? 'Session comparée'} />
         </View>
       ) : null}
     </View>
@@ -211,15 +213,25 @@ export function SpeedTrace({
 function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
-      <View
-        style={{
-          width: 12,
-          height: 2,
-          backgroundColor: color,
-          borderRadius: 1,
-        }}
-      />
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>{label}</Text>
+      <View style={{ width: 12, height: 2, backgroundColor: color, borderRadius: 1 }} />
+      <Text style={s.legendLabel}>{label}</Text>
     </View>
   );
 }
+
+const s = {
+  panel: {
+    ...cockpitPanel,
+    padding: spacing.md,
+  },
+  tick: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+  },
+  legendLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
+  },
+};

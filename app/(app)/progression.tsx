@@ -1,36 +1,34 @@
 /**
- * Écran #17 — Progression. Design V2 (charte oxv-mirror-app).
+ * Écran #17 — Progression. Refonte gaming « cockpit factuel » (charte v2).
  *
- * Courbe SVG simple de la marge globale sur les N dernières sessions,
- * avec bandes de fond colorisées par zone (vert/jaune/rouge), sélecteur
- * de granularité (semaine / mois / tout) et stats personnels en bas.
+ * Trajectoire FACTUELLE du meilleur tour (best_lap_seconds) séance après
+ * séance. Convention sport auto : l'axe vertical porte le temps, le rapide
+ * en bas — quand le chrono descend, la courbe descend. Soi vs soi, jamais
+ * une note : la marge globale % (ancien score) est abandonnée côté pilote.
  *
- * Doctrine : aucune comparaison avec d'autres pilotes. C'est uniquement
- * la trajectoire personnelle dans le temps. Phrase manifeste sobre
- * "Vous avancez."
+ * Doctrine : aucune comparaison avec d'autres pilotes, aucune zone de
+ * performance colorée (pas de vert/jaune/rouge). Or = donnée. Phrase
+ * manifeste sobre « Vous avancez. ».
  *
- * État vide pédagogique si moins de 3 sessions : on n'affiche pas la
- * courbe pour éviter une visualisation trompeuse.
- *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Segmented/Fact du kit.
- * Le code SVG et les calculs de la courbe sont inchangés.
+ * État vide pédagogique sous 3 séances : on n'affiche pas la courbe pour
+ * éviter une lecture trompeuse.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
 
-import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
+import { EmptyState, Fact } from '@/components/instruments';
+import { fetchAllSessions } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
-import { Fact } from '@/ui/Fact';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
+import { formatLapTime } from '@/utils/format';
 
+const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 type Granularity = 'week' | 'month' | 'all';
@@ -41,9 +39,23 @@ const GRAN_OPTIONS: { id: Granularity; label: string }[] = [
   { id: 'all', label: 'Tout' },
 ];
 
+/** Un point factuel : le meilleur tour d'une séance. */
+type SessionPoint = {
+  sessionId: string;
+  startedAt: string;
+  circuitName: string;
+  bestSeconds: number;
+};
+
+/** Delta chrono signé, en secondes (négatif = plus rapide). */
+function formatDeltaSeconds(d: number): string {
+  const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
+  return `${sign}${Math.abs(d).toFixed(1).replace('.', ',')} s`;
+}
+
 export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
-  const [analyses, setAnalyses] = useState<RecentAnalysisRow[]>([]);
+  const [sessions, setSessions] = useState<SessionPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [granularity, setGranularity] = useState<Granularity>('all');
 
@@ -53,12 +65,20 @@ export default function ProgressionScreen() {
       return;
     }
     let cancelled = false;
-    listRecentAnalyses(profile.id, 100)
+    fetchAllSessions(profile.id, { limit: 100 })
       .then((rows) => {
-        if (!cancelled) {
-          setAnalyses(rows);
-          setLoading(false);
-        }
+        if (cancelled) return;
+        // Source factuelle : sessions complétées dotées d'un meilleur tour.
+        const pts: SessionPoint[] = rows
+          .filter((r) => r.best_lap_seconds != null && Number.isFinite(r.best_lap_seconds))
+          .map((r) => ({
+            sessionId: r.id,
+            startedAt: r.started_at,
+            circuitName: r.circuit_name,
+            bestSeconds: r.best_lap_seconds as number,
+          }));
+        setSessions(pts); // déjà trié par started_at décroissant
+        setLoading(false);
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
@@ -69,33 +89,33 @@ export default function ProgressionScreen() {
   }, [profile]);
 
   const filtered = useMemo(() => {
-    if (granularity === 'all') return analyses;
+    if (granularity === 'all') return sessions;
     const cutoffDays = granularity === 'week' ? 7 : 30;
     const cutoff = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
-    return analyses.filter((a) => new Date(a.sessionStartedAt).getTime() >= cutoff);
-  }, [analyses, granularity]);
+    return sessions.filter((p) => new Date(p.startedAt).getTime() >= cutoff);
+  }, [sessions, granularity]);
 
   // Points ordonnés chronologiquement croissants pour la courbe.
   const points = useMemo(() => [...filtered].reverse(), [filtered]);
 
-  const stats = useMemo(() => computeStats(analyses), [analyses]);
+  const stats = useMemo(() => computeStats(sessions), [sessions]);
 
-  // §3.3 — cœur du pilier Évolution : cette session VS la précédente.
-  // analyses est trié décroissant (plus récente en tête).
+  // Cœur du pilier Évolution : cette séance VS la précédente (chrono réel).
+  // sessions est trié décroissant (plus récente en tête).
   const lastDelta = useMemo(() => {
-    if (analyses.length < 2) return null;
-    const current = Number(analyses[0].marginGlobal);
-    const previous = Number(analyses[1].marginGlobal);
+    if (sessions.length < 2) return null;
+    const current = sessions[0].bestSeconds;
+    const previous = sessions[1].bestSeconds;
     if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
     return { current, previous, delta: current - previous };
-  }, [analyses]);
+  }, [sessions]);
 
   if (loading) {
     return (
       <Screen scroll={false}>
         <AppBar title="PROGRESSION" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={palette.creamMute} />
         </View>
       </Screen>
     );
@@ -104,17 +124,20 @@ export default function ProgressionScreen() {
   return (
     <Screen>
       <AppBar title="PROGRESSION" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        <Text style={s.eyebrow}>Meilleur tour · séance après séance</Text>
         <Text style={s.title}>Vous avancez.</Text>
 
-        {/* §3.3 — depuis la dernière session (constat neutre, vs soi) */}
+        {/* Depuis la dernière séance — constat neutre, vs soi */}
         {lastDelta ? <LastSessionDelta {...lastDelta} /> : null}
 
-        {analyses.length < 3 ? (
-          <EmptyState count={analyses.length} />
+        {sessions.length < 3 ? (
+          <EmptyState
+            message={`Votre trajectoire apparaîtra après 3 séances complètes. ${sessions.length} enregistrée${sessions.length > 1 ? 's' : ''} pour l'instant.`}
+          />
         ) : (
           <>
-            <View style={{ marginBottom: theme.spacing.xl }}>
+            <View style={{ marginBottom: spacing.xl }}>
               <Segmented
                 options={GRAN_OPTIONS.map((o) => o.label)}
                 value={GRAN_OPTIONS.find((o) => o.id === granularity)!.label}
@@ -126,7 +149,12 @@ export default function ProgressionScreen() {
             </View>
 
             {points.length < 2 ? (
-              <Text style={s.periodEmpty}>Pas assez de sessions sur la période sélectionnée.</Text>
+              <View style={{ marginBottom: spacing.xl }}>
+                <EmptyState
+                  label="Période trop courte"
+                  message="Aucune séance sur la période sélectionnée. Une fenêtre plus large fait réapparaître la trajectoire."
+                />
+              </View>
             ) : (
               <ProgressionChart points={points} />
             )}
@@ -135,10 +163,13 @@ export default function ProgressionScreen() {
           </>
         )}
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center', gap: theme.spacing.lg }}>
+        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="link"
+            accessibilityLabel="Voir vos statistiques agrégées"
+            hitSlop={hitSlop}
             onPress={() => router.push('/(app)/stats' as never)}
+            style={({ pressed }) => [s.linkPress, pressed && { opacity: 0.6 }]}
           >
             <Text style={s.link}>Voir vos statistiques agrégées</Text>
           </Pressable>
@@ -148,19 +179,27 @@ export default function ProgressionScreen() {
   );
 }
 
-function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
+/**
+ * Courbe du meilleur tour par séance. Axe Y = temps (le rapide en bas) :
+ * une suite de chronos décroissants fait descendre la ligne. Ligne or à
+ * halo, points or, dernière séance accentuée. Aucune bande de performance.
+ */
+function ProgressionChart({ points }: { points: SessionPoint[] }) {
   const W = 320;
   const H = 180;
-  // Bandes : rouge < 15, jaune 15-30, vert > 30. En SVG Y inversé.
-  const yForMargin = (m: number) => H - (Math.max(0, Math.min(100, m)) / 100) * H;
-  const yRedTop = yForMargin(15);
-  const yYellowTop = yForMargin(30);
+
+  // Domaine vertical dérivé des données, avec marge de respiration.
+  const values = points.map((p) => p.bestSeconds);
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  const span = hi - lo || 1;
+  const pad = span * 0.18;
+  const yHi = hi + pad; // borne haute = plus lent (en haut)
+  const yLo = Math.max(0, lo - pad); // borne basse = plus rapide (en bas)
+  const yFor = (t: number) => ((yHi - t) / (yHi - yLo)) * H;
 
   const xStep = points.length > 1 ? W / (points.length - 1) : 0;
-  const xy = points.map((p, i) => ({
-    x: i * xStep,
-    y: yForMargin(Number(p.marginGlobal)),
-  }));
+  const xy = points.map((p, i) => ({ x: i * xStep, y: yFor(p.bestSeconds) }));
 
   const pathD =
     xy.length === 0
@@ -173,7 +212,6 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
 
   // Animation draw-on de la courbe (~1.2s ease-out)
   const dashOffset = useRef(new Animated.Value(1)).current;
-  // Longueur approximative de la polyline (somme des segments)
   const pathLength = useMemo(() => {
     let total = 0;
     for (let i = 1; i < xy.length; i++) {
@@ -198,41 +236,37 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
     outputRange: [0, pathLength],
   });
 
-  return (
-    <Card style={{ marginBottom: theme.spacing.xl }}>
-      <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
-        {/* Bande verte (haut) */}
-        <Rect
-          x={0}
-          y={0}
-          width={W}
-          height={yYellowTop}
-          fill={theme.dataColors.accel}
-          opacity={0.08}
-        />
-        {/* Bande jaune (milieu) */}
-        <Rect
-          x={0}
-          y={yYellowTop}
-          width={W}
-          height={yRedTop - yYellowTop}
-          fill={theme.palette.gold}
-          opacity={0.1}
-        />
-        {/* Bande rouge (bas) */}
-        <Rect
-          x={0}
-          y={yRedTop}
-          width={W}
-          height={H - yRedTop}
-          fill={theme.palette.red}
-          opacity={0.1}
-        />
+  const lastIdx = xy.length - 1;
 
-        {/* Courbe — draw-on progressif gauche à droite (~1.2s) */}
+  // Résumé textuel pour lecteur d'écran : un fait, pas une courbe à deviner.
+  const a11ySummary = `Meilleur tour sur ${points.length} séances, de ${formatLapTime(
+    points[0].bestSeconds
+  )} à ${formatLapTime(points[lastIdx].bestSeconds)}.`;
+
+  return (
+    <View
+      style={s.chartPanel}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={a11ySummary}
+    >
+      <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+        {/* Halo de la courbe (glow or, faible opacité) */}
         <AnimatedPath
           d={pathD}
-          stroke={theme.palette.cream}
+          stroke={palette.gold}
+          strokeWidth={7}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={0.16}
+          strokeDasharray={`${pathLength}`}
+          strokeDashoffset={interpolatedOffset}
+        />
+        {/* Courbe nette — draw-on progressif (~1.2s) */}
+        <AnimatedPath
+          d={pathD}
+          stroke={palette.gold}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -241,78 +275,71 @@ function ProgressionChart({ points }: { points: RecentAnalysisRow[] }) {
           strokeDashoffset={interpolatedOffset}
         />
 
-        {/* Points */}
-        {xy.map((p, i) => (
-          <Circle
-            key={i}
-            cx={p.x}
-            cy={p.y}
-            r={3}
-            fill={theme.palette.night}
-            stroke={theme.palette.cream}
-            strokeWidth={1.5}
-          />
-        ))}
+        {/* Points — dernière séance accentuée (« vous êtes ici ») */}
+        {xy.map((p, i) =>
+          i === lastIdx ? (
+            <Circle key={i} cx={p.x} cy={p.y} r={9} fill={palette.gold} opacity={0.18} />
+          ) : (
+            <Circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r={3}
+              fill={palette.night}
+              stroke={palette.gold}
+              strokeWidth={1.5}
+            />
+          )
+        )}
+        {xy[lastIdx] ? (
+          <Circle cx={xy[lastIdx].x} cy={xy[lastIdx].y} r={5} fill={palette.gold} />
+        ) : null}
       </Svg>
 
       <View
         style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
-          marginTop: theme.spacing.sm,
+          marginTop: spacing.sm,
         }}
       >
         <Text style={s.axis}>
-          {points[0]?.sessionStartedAt
-            ? new Date(points[0].sessionStartedAt).toLocaleDateString('fr-FR', {
+          {points[0]?.startedAt
+            ? new Date(points[0].startedAt).toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
               })
             : ''}
         </Text>
         <Text style={s.axis}>
-          {points[points.length - 1]?.sessionStartedAt
-            ? new Date(points[points.length - 1].sessionStartedAt).toLocaleDateString('fr-FR', {
+          {points[points.length - 1]?.startedAt
+            ? new Date(points[points.length - 1].startedAt).toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
               })
             : ''}
         </Text>
       </View>
-    </Card>
-  );
-}
-
-function StatsGrid({ stats }: { stats: { count: number; avg: number; best: number } }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-      <Fact label="Sessions" value={String(stats.count)} />
-      <Fact label="Marge moyenne" value={String(Math.round(stats.avg))} unit="%" />
-      <Fact label="Meilleure" value={String(Math.round(stats.best))} unit="%" />
     </View>
   );
 }
 
-function EmptyState({ count }: { count: number }) {
+function StatsGrid({ stats }: { stats: { count: number; best: number; median: number } }) {
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={s.emptyTitle}>Votre progression apparaîtra après 3 sessions complètes.</Text>
-      <Text style={s.emptyHint}>
-        {count === 0
-          ? 'Aucune session pour le moment.'
-          : count === 1
-            ? '1 session enregistrée.'
-            : `${count} sessions enregistrées.`}
-      </Text>
-    </Card>
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <Fact label="Séances" value={String(stats.count)} />
+      <Fact label="Meilleur tour" value={formatLapTime(stats.best)} accent />
+      <Fact label="Tour médian" value={formatLapTime(stats.median)} />
+    </View>
   );
 }
 
 /**
- * Encart « depuis la dernière session » — le cœur du pilier §3.3.
- * Constat factuel neutre : le delta de marge vs la session précédente.
- * Jamais un jugement (« mieux »/« moins bien ») — juste le signe et la
- * valeur, avec une formulation descriptive (« en hausse »/« stable »).
+ * Encart « depuis la dernière séance » — cœur du pilier Évolution.
+ * Constat factuel : le delta du meilleur tour vs la séance précédente.
+ * Jamais un jugement (« mieux »/« moins bien ») — le signe, la valeur en
+ * secondes, et une formulation descriptive (« plus rapide »/« plus lent »).
+ * Aucun rouge : une dégradation reste neutre (or), l'amélioration en vert.
  */
 function LastSessionDelta({
   current,
@@ -323,112 +350,115 @@ function LastSessionDelta({
   previous: number;
   delta: number;
 }) {
-  const rounded = Math.round(delta);
-  const stable = Math.abs(rounded) < 1;
-  const word = stable ? 'stable' : rounded > 0 ? 'en hausse' : 'en baisse';
-  const sign = rounded > 0 ? '+' : rounded < 0 ? '−' : '±';
-  const accent = stable
-    ? theme.palette.creamMute
-    : rounded > 0
-      ? theme.dataColors.accel
-      : theme.palette.gold;
+  const stable = Math.abs(delta) < 0.05;
+  const word = stable ? 'stable' : delta < 0 ? 'plus rapide' : 'plus lent';
+  const accent = stable ? palette.creamMute : delta < 0 ? palette.green : palette.gold;
 
   return (
-    <Card
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: theme.spacing.xl,
-      }}
-    >
-      <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-        <SectionLabel>Depuis votre dernière session</SectionLabel>
-        <Text style={[s.deltaBody, { marginTop: theme.spacing.xs }]}>
-          Marge {word} · {Math.round(previous)} % → {Math.round(current)} %
+    <View style={s.deltaPanel}>
+      <View style={{ flex: 1, paddingRight: spacing.md }}>
+        <Text style={s.eyebrowSmall}>Depuis votre dernière séance</Text>
+        <Text style={[s.deltaBody, { marginTop: spacing.xs }]}>
+          Meilleur tour {word} · {formatLapTime(previous)} → {formatLapTime(current)}
         </Text>
       </View>
       <Text style={[s.deltaValue, { color: accent }]}>
-        {stable ? '±0' : `${sign}${Math.abs(rounded)}`}
-        <Text style={s.deltaUnit}> pts</Text>
+        {stable ? '±0,0 s' : formatDeltaSeconds(delta)}
       </Text>
-    </Card>
+    </View>
   );
 }
 
-function computeStats(analyses: RecentAnalysisRow[]): {
+function computeStats(sessions: SessionPoint[]): {
   count: number;
-  avg: number;
   best: number;
+  median: number;
 } {
-  if (analyses.length === 0) return { count: 0, avg: 0, best: 0 };
-  const margins = analyses.map((a) => Number(a.marginGlobal));
-  const sum = margins.reduce((s, m) => s + m, 0);
-  return {
-    count: analyses.length,
-    avg: sum / analyses.length,
-    best: Math.max(...margins),
-  };
+  if (sessions.length === 0) return { count: 0, best: 0, median: 0 };
+  const times = sessions.map((p) => p.bestSeconds).sort((a, b) => a - b);
+  const best = times[0]; // le plus petit chrono = le meilleur
+  const mid = Math.floor(times.length / 2);
+  const median = times.length % 2 ? times[mid] : (times[mid - 1] + times[mid]) / 2;
+  return { count: sessions.length, best, median };
 }
 
 const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
   },
-  periodEmpty: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
-    marginBottom: theme.spacing.xl,
+  eyebrowSmall: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    letterSpacing: 0.5,
+    color: palette.cream,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  chartPanel: {
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    // halo or discret (iOS) — la donnée respire sans juger
+    shadowColor: palette.gold,
+    shadowOpacity: 0.15,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 2,
+  },
+  deltaPanel: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xl,
   },
   axis: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
+  },
+  linkPress: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing.sm,
   },
   link: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
     textDecorationLine: 'underline' as const,
   },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
-  },
   deltaBody: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
   },
   deltaValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.value,
-    color: theme.palette.cream,
-  },
-  deltaUnit: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.value,
+    color: palette.cream,
   },
 };

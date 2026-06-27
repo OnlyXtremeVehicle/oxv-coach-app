@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { contextHasContent } from '@/services/coachContextLogic';
@@ -21,8 +21,8 @@ import { getSessionContext, upsertSessionContext } from '@/services/coachSession
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachContexteScreen() {
   const params = useLocalSearchParams<{ pilotId?: string; sessionId?: string }>();
@@ -94,18 +94,21 @@ export default function CoachContexteScreen() {
                 value={pilotLevel}
                 onChangeText={setPilotLevel}
                 placeholder="Confortable, en progression, terrain serré…"
+                maxLength={280}
               />
               <Field
                 label="Objectif travaillé"
                 value={objective}
                 onChangeText={setObjective}
                 placeholder="Constance, points de référence, courbe rapide…"
+                maxLength={280}
               />
               <Field
                 label="Matériel"
                 value={equipment}
                 onChangeText={setEquipment}
                 placeholder="Véhicule, pneus, réglages utilisés…"
+                maxLength={280}
               />
               <Field
                 label="Météo vécue"
@@ -113,6 +116,7 @@ export default function CoachContexteScreen() {
                 onChangeText={setWeatherNote}
                 placeholder="Piste sèche, humide, vent, température…"
                 multiline
+                maxLength={280}
               />
 
               {saved ? <Text style={s.savedNote}>Contexte enregistré.</Text> : null}
@@ -129,38 +133,6 @@ export default function CoachContexteScreen() {
         </View>
       </KeyboardAvoidingView>
     </Screen>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  multiline,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-  placeholder: string;
-  multiline?: boolean;
-}) {
-  return (
-    <View style={{ marginBottom: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
-        <SectionLabel>{label.toUpperCase()}</SectionLabel>
-      </View>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={theme.palette.creamMute}
-        multiline={multiline}
-        maxLength={280}
-        accessibilityLabel={label}
-        style={[s.input, multiline ? s.inputMultiline : null]}
-      />
-    </View>
   );
 }
 
@@ -192,21 +164,5 @@ const s = {
     letterSpacing: 0.6,
     color: theme.dataColors.accel,
     marginBottom: theme.spacing.md,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.palette.card2,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    textAlignVertical: 'center' as const,
-  },
-  inputMultiline: {
-    minHeight: 72,
-    textAlignVertical: 'top' as const,
   },
 };

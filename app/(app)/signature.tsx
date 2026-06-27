@@ -1,5 +1,5 @@
 /**
- * Écran Signature de pilotage — pilier §3.1 du cahier OXV Mirror. Design V2.
+ * Écran Signature de pilotage — pilier §3.1 du cahier OXV Mirror.
  *
  * Un portrait factuel et neutre du style du pilote sur une session :
  * nature du freinage, engagement latéral, réaccélération, régularité,
@@ -11,8 +11,11 @@
  * Sécurité : RLS owner (la session appartient au pilote courant). Lit
  * app_segment_analyses + laps via les services existants.
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel du kit. Le tracé
- * (CircuitTraceHero) et ses couches restent inchangés.
+ * Refonte gaming « cockpit factuel » : panneaux + filets, libellés mono,
+ * primitif EmptyState honnête. Les « virages confortables » sont listés
+ * par leur nom (or Heritage = registre virage) avec leur marge chiffrée
+ * — un repère factuel, pas un classement imposé. Le tracé (CircuitTraceHero)
+ * reste inchangé.
  */
 
 import { useEffect, useState } from 'react';
@@ -21,6 +24,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { FadeInSection } from '@/components/motion';
+import { EmptyState } from '@/components/instruments';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { type PilotSignature, computeSignature } from '@/services/pilotSignatureService';
@@ -28,9 +32,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function SignatureScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -127,12 +129,10 @@ export default function SignatureScreen() {
         </FadeInSection>
 
         {!hasContent ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyTitle}>
-              Pas encore assez de données pour dessiner votre signature.
-            </Text>
-            <Text style={s.emptyHint}>Elle se précise après quelques tours analysés.</Text>
-          </Card>
+          <EmptyState
+            message="Votre signature se dessine à partir de la trace de vos tours. Elle apparaîtra après votre premier roulage analysé."
+            source="telemetry_frames · segment_analyses"
+          />
         ) : (
           <>
             {/* Manifeste */}
@@ -146,11 +146,15 @@ export default function SignatureScreen() {
             <View style={{ gap: theme.spacing.md }}>
               {signature.traits.map((trait, i) => (
                 <FadeInSection key={trait.key} delay={120 + i * 90}>
-                  <Card>
-                    <SectionLabel>{trait.label}</SectionLabel>
+                  <View
+                    style={s.traitPanel}
+                    accessible
+                    accessibilityLabel={`${trait.label} : ${trait.value}${trait.detail ? `. ${trait.detail}` : ''}`}
+                  >
+                    <Text style={s.eyebrow}>{trait.label}</Text>
                     <Text style={s.traitValue}>{trait.value}</Text>
                     {trait.detail ? <Text style={s.traitDetail}>{trait.detail}</Text> : null}
-                  </Card>
+                  </View>
                 </FadeInSection>
               ))}
             </View>
@@ -159,17 +163,15 @@ export default function SignatureScreen() {
             {signature.comfortCorners.length > 0 ? (
               <FadeInSection delay={120 + signature.traits.length * 90}>
                 <View style={{ marginTop: theme.spacing.xl }}>
-                  <Card>
-                    <SectionLabel>Vos virages les plus confortables</SectionLabel>
+                  <View style={s.cornerPanel}>
+                    <Text style={s.eyebrow}>Vos virages les plus confortables</Text>
                     <View style={{ marginTop: theme.spacing.sm }}>
                       {signature.comfortCorners.map((c) => (
                         <View
                           key={c.segmentIndex}
-                          style={{
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            paddingVertical: theme.spacing.xs,
-                          }}
+                          style={s.cornerRow}
+                          accessible
+                          accessibilityLabel={`${c.segmentName ?? `Virage ${c.segmentIndex}`} : ${Math.round(c.marginPercent)} % de marge`}
                         >
                           <Text style={s.cornerName}>
                             {c.segmentName ?? `Virage ${c.segmentIndex}`}
@@ -178,7 +180,7 @@ export default function SignatureScreen() {
                         </View>
                       ))}
                     </View>
-                  </Card>
+                  </View>
                 </View>
               </FadeInSection>
             ) : null}
@@ -227,14 +229,21 @@ const s = {
     marginTop: theme.spacing.xs,
   },
   cornerName: {
-    fontFamily: theme.fonts.body,
+    fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
+    letterSpacing: 0.5,
+    color: theme.palette.heritageGold,
+  },
+  cornerRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingVertical: theme.spacing.xs,
   },
   cornerValue: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.body,
-    color: theme.dataColors.accel,
+    color: theme.palette.cream,
   },
   doctrine: {
     fontFamily: theme.fonts.bodyLight,
@@ -245,18 +254,27 @@ const s = {
     paddingHorizontal: theme.spacing.md,
     marginTop: theme.spacing.xxl,
   },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
+  },
+  traitPanel: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+  },
+  cornerPanel: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
   },
 };

@@ -2,8 +2,9 @@
  * Écran #23 — Notifications. Design V2 (charte oxv-mirror-app).
  *
  * 3 tabs en haut : À traiter / À découvrir / Archives.
- * Badges rouges uniquement sur "À traiter" quand il y a des actions
- * requises (pacte modifié, KYC à compléter, etc.).
+ * Badge compteur (or = donnée) uniquement sur "À traiter" quand il y a
+ * des actions requises (pacte modifié, KYC à compléter, etc.). Le rouge
+ * est réservé à la marque/aux actes — un compteur reste une donnée.
  *
  * V1 : tabs présents avec états vides pédagogiques. Le wiring push
  * réel (expo-notifications + Supabase Edge Function) arrive en sem 11.
@@ -36,7 +37,9 @@ export default function NotificationsScreen() {
     <Screen>
       <AppBar title="NOTIFICATIONS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Vos messages</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Vos messages
+        </Text>
 
         <TabBar value={tab} onChange={setTab} todoBadge={unread} />
 
@@ -61,17 +64,21 @@ function TabBar({
 }) {
   const tabs: Tab[] = ['todo', 'discover', 'archive'];
   return (
-    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+    <View style={{ flexDirection: 'row', gap: theme.spacing.sm }} accessibilityRole="tablist">
       {tabs.map((t) => {
         const active = t === value;
+        const showBadge = t === 'todo' && todoBadge > 0;
+        const a11yLabel = showBadge ? `${TAB_LABELS[t]}, ${todoBadge} à traiter` : TAB_LABELS[t];
         return (
           <Pressable
-            accessibilityRole="button"
+            accessibilityRole="tab"
             accessibilityState={{ selected: active }}
+            accessibilityLabel={a11yLabel}
             key={t}
             onPress={() => onChange(t)}
             style={({ pressed }) => ({
               flex: 1,
+              minHeight: 44,
               paddingVertical: theme.spacing.sm,
               borderRadius: theme.radius.pill,
               borderWidth: 1,
@@ -85,7 +92,7 @@ function TabBar({
             })}
           >
             <Text style={[s.tabT, active && s.tabTOn]}>{TAB_LABELS[t]}</Text>
-            {t === 'todo' && todoBadge > 0 ? (
+            {showBadge ? (
               <View style={s.badge}>
                 <Text style={s.badgeT}>{todoBadge > 9 ? '9+' : todoBadge}</Text>
               </View>
@@ -99,13 +106,23 @@ function TabBar({
 
 function EmptyTab({ label }: { label: string }) {
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={s.emptyTxt}>{label}</Text>
+    <Card style={[s.dataPanel, { alignItems: 'center', paddingVertical: theme.spacing.xxl }]}>
+      <Text style={s.emptyTxt} accessibilityRole="text">
+        {label}
+      </Text>
     </Card>
   );
 }
 
 const s = {
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h3,
@@ -127,12 +144,12 @@ const s = {
     height: 18,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: theme.palette.red,
+    backgroundColor: theme.palette.gold,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
   badgeT: {
-    color: theme.palette.cream,
+    color: theme.palette.night,
     fontFamily: theme.fonts.mono,
     fontSize: 10,
   },

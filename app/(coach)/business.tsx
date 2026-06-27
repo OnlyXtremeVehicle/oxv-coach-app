@@ -62,7 +62,7 @@ export default function CoachBusinessScreen() {
       <Screen scroll={false}>
         <AppBar title="BUSINESS" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -98,6 +98,7 @@ export default function CoachBusinessScreen() {
           <ActivityIndicator
             color={theme.palette.creamMute}
             style={{ marginTop: theme.spacing.xxl }}
+            accessibilityLabel="Chargement"
           />
         ) : (
           <View style={{ marginTop: theme.spacing.xl }}>
@@ -153,7 +154,9 @@ function Header() {
   return (
     <>
       <Text style={s.eyebrow}>COACH OXV</Text>
-      <Text style={s.title}>Votre activité.</Text>
+      <Text style={s.title} accessibilityRole="header">
+        Votre activité.
+      </Text>
     </>
   );
 }

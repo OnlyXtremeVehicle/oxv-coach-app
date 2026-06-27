@@ -5,7 +5,7 @@
 
 import { Line } from 'react-native-svg';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import { getScenePoints } from '../projection';
 
@@ -18,7 +18,7 @@ export function StartArrowLayer() {
       y1={points[0].y}
       x2={points[1].x}
       y2={points[1].y}
-      stroke={colors.accent.red}
+      stroke={theme.palette.gold}
       strokeWidth={8}
       strokeLinecap="round"
     />

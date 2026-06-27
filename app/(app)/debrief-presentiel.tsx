@@ -28,7 +28,7 @@ import DebriefMirror, {
 } from '@/components/DebriefMirror';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors, fontSize, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 function deriveCondition(w?: string | null): string | undefined {
   if (!w) return undefined;
@@ -144,12 +144,15 @@ export default function DebriefPresentielScreen() {
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: colors.background.primary,
+          backgroundColor: theme.palette.night,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <ActivityIndicator color={colors.text.secondary} />
+        <ActivityIndicator
+          color={theme.palette.creamMute}
+          accessibilityLabel="Préparation du débrief"
+        />
       </SafeAreaView>
     );
   }
@@ -159,25 +162,30 @@ export default function DebriefPresentielScreen() {
       <SafeAreaView
         style={{
           flex: 1,
-          backgroundColor: colors.background.primary,
+          backgroundColor: theme.palette.night,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: spacing.xl,
+          padding: theme.spacing.xl,
         }}
       >
         <Text
-          style={[
-            typography.manifest,
-            { color: colors.text.tertiary, textAlign: 'center', fontStyle: 'italic' },
-          ]}
+          accessibilityRole="header"
+          style={{
+            fontFamily: theme.fonts.bodyLight,
+            fontSize: theme.fontSize.bodyLg,
+            fontStyle: 'italic',
+            color: theme.palette.creamSoft,
+            textAlign: 'center',
+          }}
         >
           Aucune séance à débriefer pour le moment.
         </Text>
         <Text
           style={{
-            marginTop: spacing.md,
-            color: colors.text.tertiary,
-            fontSize: fontSize.caption,
+            marginTop: theme.spacing.md,
+            color: theme.palette.creamMute,
+            fontFamily: theme.fonts.body,
+            fontSize: theme.fontSize.small,
             textAlign: 'center',
           }}
         >
@@ -188,7 +196,7 @@ export default function DebriefPresentielScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background.primary }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: theme.palette.night }} edges={['top']}>
       <DebriefMirror meta={meta} analysis={analysis} insights={insights} coach={coach} />
     </SafeAreaView>
   );

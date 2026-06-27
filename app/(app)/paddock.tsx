@@ -20,7 +20,7 @@ import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 
 export default function PaddockScreen() {
-  const [circuitName, setCircuitName] = useState<string>('Circuit de Haute Saintonge');
+  const [circuitName, setCircuitName] = useState<string>('Votre circuit');
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +40,9 @@ export default function PaddockScreen() {
       >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>BIENVENUE</Text>
-          <Text style={s.title}>Vous y êtes.</Text>
+          <Text style={s.title} accessibilityRole="header">
+            Vous y êtes.
+          </Text>
           <Text style={s.manifest}>{circuitName}.</Text>
         </View>
 
@@ -54,9 +56,9 @@ const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
     marginBottom: theme.spacing.lg,
   },
   title: {

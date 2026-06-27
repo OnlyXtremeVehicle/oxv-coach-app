@@ -40,7 +40,9 @@ export default function BilanPretScreen() {
             <SectionLabel>Bilan</SectionLabel>
           </View>
 
-          <Text style={s.title}>Votre bilan est prêt.</Text>
+          <Text style={s.title} accessibilityRole="header">
+            Votre bilan est prêt.
+          </Text>
 
           <Text style={s.manifest}>Quand vous le souhaitez.</Text>
         </View>
@@ -48,9 +50,10 @@ export default function BilanPretScreen() {
         <View style={{ gap: theme.spacing.md, marginBottom: theme.spacing.xl }}>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Découvrir votre bilan"
             onPress={onDecouvrir}
             style={({ pressed }) => ({
-              height: 52,
+              minHeight: 52,
               borderRadius: theme.radius.lg,
               backgroundColor: theme.palette.red,
               alignItems: 'center',
@@ -63,9 +66,10 @@ export default function BilanPretScreen() {
 
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Consulter plus tard"
             onPress={onPlusTard}
             style={({ pressed }) => ({
-              height: 52,
+              minHeight: 52,
               borderRadius: theme.radius.lg,
               borderWidth: 1,
               borderColor: theme.palette.edge,

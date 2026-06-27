@@ -98,7 +98,7 @@ export default function DebriefScreen() {
 
       setData({
         sessionId,
-        circuitName: session.circuit_name ?? 'Beltoise',
+        circuitName: session.circuit_name ?? 'Votre circuit',
         startedAt: session.started_at ?? '',
         marginGlobal: analysis.marginGlobal,
         recit: parsed.recit || fallbackRecit(analysis.marginGlobal, profile.first_name),
@@ -159,14 +159,14 @@ export default function DebriefScreen() {
         <FadeInSection delay={0}>
           <Acte numero="1" titre="Récit" body={data.recit} />
         </FadeInSection>
-        <FadeInSection delay={250}>
+        <FadeInSection delay={80}>
           <Acte numero="2" titre="Méta-analyse" body={data.meta} />
         </FadeInSection>
-        <FadeInSection delay={500}>
+        <FadeInSection delay={160}>
           <Acte numero="3" titre="Préparation" body={data.preparation} />
         </FadeInSection>
 
-        <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
+        <FadeInSection delay={240} style={{ marginTop: theme.spacing.xxl }}>
           <Card style={{ paddingVertical: theme.spacing.xl }}>
             <Text style={s.closing}>
               L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause.
@@ -182,8 +182,10 @@ export default function DebriefScreen() {
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
             accessibilityRole="button"
+            hitSlop={theme.hitSlop}
             onPressIn={() => haptics.tap()}
             onPress={() => router.back()}
+            style={s.backHit}
           >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
@@ -196,9 +198,14 @@ export default function DebriefScreen() {
 function Acte({ numero, titre, body }: { numero: string; titre: string; body: string }) {
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
-      <Text style={s.acteLabel}>
-        ACTE {numero} · {titre.toUpperCase()}
-      </Text>
+      <View style={s.acteHead}>
+        {/* Pastille décorative : masquée aux lecteurs d'écran. */}
+        <View style={s.acteDot} accessibilityElementsHidden importantForAccessibility="no" />
+        {/* En-tête d'acte : annoncé comme titre pour structurer la lecture. */}
+        <Text style={s.acteLabel} accessibilityRole="header">
+          ACTE {numero} · {titre.toUpperCase()}
+        </Text>
+      </View>
       <Text style={s.acteBody}>{body}</Text>
     </View>
   );
@@ -227,8 +234,9 @@ function DebriefEmpty() {
         </Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl }]}
         >
           <Text style={s.backLink}>Retour</Text>
         </Pressable>
@@ -285,13 +293,26 @@ const s = {
     letterSpacing: 1.5,
     color: theme.palette.creamMute,
   },
+  acteHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
+  acteDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    // Repère de structure NEUTRE (décision Gabin) : ni or (= donnée) ni rouge
+    // (= acte/marque) — un simple point gris, hors code couleur, sans lueur.
+    backgroundColor: theme.palette.creamMute,
+  },
   acteLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
-    marginBottom: theme.spacing.sm,
   },
   acteBody: {
     fontFamily: theme.fonts.bodyLight,
@@ -336,5 +357,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

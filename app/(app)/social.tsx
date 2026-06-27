@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type SocialPing,
   PING_KIND_LABELS,
@@ -20,6 +21,7 @@ import {
 } from '@/services/socialPingsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
@@ -28,6 +30,7 @@ import { formatDateLong } from '@/utils/format';
 export default function SocialScreen() {
   const [pings, setPings] = useState<SocialPing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -39,7 +42,10 @@ export default function SocialScreen() {
         }
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setFailed(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -51,7 +57,10 @@ export default function SocialScreen() {
       <Screen scroll={false}>
         <AppBar title="SOCIAL" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            accessibilityLabel="Chargement du territoire OXV"
+          />
         </View>
       </Screen>
     );
@@ -63,27 +72,43 @@ export default function SocialScreen() {
     <Screen>
       <AppBar title="SOCIAL" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Le territoire OXV.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Le territoire OXV.
+        </Text>
 
         {pings.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/(app)/social-carte' as never)}
-            style={({ pressed }) => [s.cta, { opacity: pressed ? 0.7 : 1 }]}
-          >
-            <Text style={s.ctaTxt}>Voir sur la carte</Text>
-          </Pressable>
+          <View style={{ marginBottom: theme.spacing.lg }}>
+            <Button
+              label="Voir sur la carte"
+              variant="ghost"
+              onPress={() => router.push('/(app)/social-carte' as never)}
+            />
+          </View>
         ) : null}
 
-        {pings.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyTitle}>Rien à l&apos;horizon pour l&apos;instant.</Text>
-            <Text style={s.emptyHint}>Les événements et lieux OXV apparaîtront ici.</Text>
-          </Card>
+        {failed ? (
+          <EmptyState
+            label="Indisponible"
+            message="Le territoire n'a pas pu être chargé. Réessayez quand votre connexion sera de retour."
+            source="social_pings"
+          />
+        ) : pings.length === 0 ? (
+          <EmptyState
+            label="À l'horizon"
+            message="Les événements et lieux OXV apparaîtront ici."
+            source="social_pings"
+          />
         ) : (
           groups.map((group) => (
             <View key={group.kind} style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-              <SectionLabel>{PING_KIND_LABELS[group.kind]}</SectionLabel>
+              <View style={s.headRow}>
+                <View
+                  style={s.headDot}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+                <SectionLabel>{PING_KIND_LABELS[group.kind]}</SectionLabel>
+              </View>
               {group.items.map((ping) => (
                 <PingCard key={ping.id} ping={ping} />
               ))}
@@ -104,7 +129,7 @@ function PingCard({ ping }: { ping: SocialPing }) {
   };
 
   return (
-    <Card>
+    <Card style={s.dataPanel}>
       <Text style={s.pingTitle}>{ping.title}</Text>
       {ping.startsAt ? <Text style={s.pingMeta}>{formatDateLong(ping.startsAt)}</Text> : null}
       {ping.description ? <Text style={s.pingBody}>{ping.description}</Text> : null}
@@ -119,13 +144,26 @@ function PingCard({ ping }: { ping: SocialPing }) {
         }}
       >
         {ping.liveUrl ? (
-          <PingAction label="Direct" onPress={() => openUrl(ping.liveUrl)} primary />
+          <PingAction
+            label="Direct"
+            accessibilityLabel={`${ping.title} — suivre en direct`}
+            onPress={() => openUrl(ping.liveUrl)}
+            primary
+          />
         ) : null}
         {ping.eventUrl ? (
-          <PingAction label="Détails" onPress={() => openUrl(ping.eventUrl)} />
+          <PingAction
+            label="Détails"
+            accessibilityLabel={`${ping.title} — voir les détails`}
+            onPress={() => openUrl(ping.eventUrl)}
+          />
         ) : null}
         {ping.contactEmail ? (
-          <PingAction label="Contacter" onPress={() => openEmail(ping.contactEmail)} />
+          <PingAction
+            label="Contacter"
+            accessibilityLabel={`${ping.title} — écrire un message`}
+            onPress={() => openEmail(ping.contactEmail)}
+          />
         ) : null}
       </View>
     </Card>
@@ -134,34 +172,39 @@ function PingCard({ ping }: { ping: SocialPing }) {
 
 function PingAction({
   label,
+  accessibilityLabel,
   onPress,
   primary,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress: () => void;
   primary?: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      hitSlop={theme.hitSlop}
       onPress={onPress}
       style={({ pressed }) => ({
-        paddingHorizontal: theme.spacing.md,
+        minHeight: 44,
+        justifyContent: 'center',
+        paddingHorizontal: theme.spacing.lg,
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.sm,
         borderWidth: primary ? 0 : 1,
         borderColor: theme.palette.edge,
         backgroundColor: primary ? theme.palette.gold : 'transparent',
-        opacity: pressed ? 0.7 : 1,
+        opacity: pressed ? 0.85 : 1,
       })}
     >
       <Text
         style={{
-          fontFamily: theme.fonts.mono,
-          fontSize: 10,
-          letterSpacing: 1.2,
-          textTransform: 'uppercase',
-          color: primary ? '#000' : theme.palette.creamMute,
+          fontFamily: theme.fonts.bodyMedium,
+          fontSize: theme.fontSize.small,
+          letterSpacing: 0.3,
+          color: primary ? '#000' : theme.palette.cream,
         }}
       >
         {label}
@@ -179,46 +222,38 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
-  cta: {
-    marginBottom: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.red,
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
     alignItems: 'center' as const,
+    gap: theme.spacing.sm,
   },
-  ctaTxt: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.red,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   pingTitle: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
   pingMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
     marginTop: theme.spacing.xs,
   },
   pingBody: {

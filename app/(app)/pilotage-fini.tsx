@@ -56,7 +56,13 @@ export default function PilotageFiniScreen() {
           alignItems: 'center',
         }}
       >
-        <Text style={s.title}>Vous avez piloté.</Text>
+        <View style={s.eyebrowRow}>
+          <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text style={s.eyebrow}>Pilotage clôturé</Text>
+        </View>
+        <Text style={s.title} accessibilityRole="header">
+          Vous avez piloté.
+        </Text>
 
         {durationMin !== null || lapCount > 0 ? (
           <Text style={s.meta}>
@@ -74,6 +80,29 @@ export default function PilotageFiniScreen() {
 }
 
 const s = {
+  eyebrowRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.gold,
+  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.display,

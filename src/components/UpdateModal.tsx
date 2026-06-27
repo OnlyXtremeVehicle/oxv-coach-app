@@ -1,19 +1,17 @@
 /**
- * Écran #27 — App update.
+ * Écran #27 — App update. Transposition gaming.
  *
- * Modal qui s'affiche à la première ouverture après détection d'une MAJ
- * disponible. 3 cards expliquent les nouveautés, 2 boutons : Mettre à
- * jour (primaire) ou Plus tard.
- *
- * Pilotée par `useUIStore.updateModalVisible`. Le check de version
- * (Expo Updates) sera câblé en sem 13 — pour V1, le modal n'apparaît
- * que si on l'active manuellement depuis le debug.
+ * Modal de MAJ disponible : 3 cartes de nouveautés, 2 boutons (Mettre à
+ * jour primaire en OR / Plus tard ghost). Eyebrows de catégorie en or.
+ * Pilotée par `useUIStore.updateModalVisible`. Migration legacy→v2.
  */
 
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { useUIStore } from '@/store/useUIStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 export interface UpdateRelease {
   version: string;
@@ -57,28 +55,18 @@ export function UpdateModal({ release = DEFAULT_RELEASE }: UpdateModalProps) {
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onLater}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.65)',
-          justifyContent: 'flex-end',
-        }}
-      >
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' }}>
         <View
           style={{
-            backgroundColor: colors.background.elevated,
-            borderTopLeftRadius: borderRadius.xxl,
-            borderTopRightRadius: borderRadius.xxl,
+            backgroundColor: palette.card2,
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
             padding: spacing.xl,
-            paddingBottom: spacing.huge,
+            paddingBottom: 40,
           }}
         >
-          <Text style={[typography.eyebrow, { marginBottom: spacing.md }]}>
-            MISE À JOUR DISPONIBLE
-          </Text>
-          <Text style={[typography.screenTitle, { marginBottom: spacing.xxl }]}>
-            Version {release.version}
-          </Text>
+          <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>MISE À JOUR DISPONIBLE</Text>
+          <Text style={[s.title, { marginBottom: spacing.xxl }]}>Version {release.version}</Text>
 
           <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ gap: spacing.md }}>
             {release.highlights.map((h, i) => (
@@ -86,31 +74,15 @@ export function UpdateModal({ release = DEFAULT_RELEASE }: UpdateModalProps) {
                 key={i}
                 style={{
                   padding: spacing.lg,
-                  borderRadius: borderRadius.lg,
+                  borderRadius: radius.lg,
                   borderWidth: 0.5,
-                  borderColor: colors.border.subtle,
-                  backgroundColor: colors.background.secondary,
+                  borderColor: palette.line,
+                  backgroundColor: palette.night,
                 }}
               >
-                <Text
-                  style={[
-                    typography.eyebrow,
-                    { color: colors.accent.red, marginBottom: spacing.xs },
-                  ]}
-                >
-                  {h.eyebrow}
-                </Text>
-                <Text
-                  style={{
-                    color: colors.text.primary,
-                    fontSize: fontSize.bodyLarge,
-                    fontWeight: fontWeight.light,
-                    marginBottom: spacing.xs,
-                  }}
-                >
-                  {h.title}
-                </Text>
-                <Text style={[typography.caption, { color: colors.text.secondary }]}>{h.body}</Text>
+                <Text style={[s.cardEyebrow, { marginBottom: spacing.xs }]}>{h.eyebrow}</Text>
+                <Text style={s.cardTitle}>{h.title}</Text>
+                <Text style={s.cardBody}>{h.body}</Text>
               </View>
             ))}
           </ScrollView>
@@ -121,45 +93,29 @@ export function UpdateModal({ release = DEFAULT_RELEASE }: UpdateModalProps) {
               onPress={onUpdate}
               style={({ pressed }) => ({
                 height: 52,
-                borderRadius: borderRadius.lg,
-                backgroundColor: colors.accent.red,
+                borderRadius: radius.lg,
+                backgroundColor: palette.gold,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.medium,
-                }}
-              >
-                Mettre à jour
-              </Text>
+              <Text style={s.ctaPrimary}>Mettre à jour</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
               onPress={onLater}
               style={({ pressed }) => ({
                 height: 52,
-                borderRadius: borderRadius.lg,
+                borderRadius: radius.lg,
                 borderWidth: 1,
-                borderColor: colors.border.medium,
+                borderColor: palette.edge,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: pressed ? 0.85 : 1,
               })}
             >
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontSize: fontSize.body,
-                  fontWeight: fontWeight.regular,
-                }}
-              >
-                Plus tard
-              </Text>
+              <Text style={s.ctaGhost}>Plus tard</Text>
             </Pressable>
           </View>
         </View>
@@ -167,3 +123,30 @@ export function UpdateModal({ release = DEFAULT_RELEASE }: UpdateModalProps) {
     </Modal>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
+  title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
+  cardEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.gold,
+  },
+  cardTitle: {
+    color: palette.cream,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.bodyLg,
+    marginBottom: spacing.xs,
+  },
+  cardBody: { color: palette.creamSoft, fontFamily: fonts.body, fontSize: fontSize.small },
+  ctaPrimary: { color: palette.night, fontFamily: fonts.bodyMedium, fontSize: fontSize.body },
+  ctaGhost: { color: palette.cream, fontFamily: fonts.body, fontSize: fontSize.body },
+};

@@ -2,14 +2,14 @@
  * Layout admin OXV — section bronze réservée au staff.
  *
  * Guard : redirige vers `(app)/` si le user n'est pas `is_admin`.
- * Toutes les sous-routes utilisent `colors.accent.bronze` comme accent
- * principal pour distinguer visuellement du mode pilote (rouge OXV).
+ * Les sous-routes portent un accent distinct du mode pilote pour
+ * repérer visuellement la section staff.
  */
 
 import { Redirect, Stack } from 'expo-router';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function AdminLayout() {
   const profile = useAuthStore((s) => s.profile);
@@ -22,7 +22,7 @@ export default function AdminLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
       }}
     />

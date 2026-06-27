@@ -24,6 +24,7 @@ import { Card } from '@/ui/Card';
 import { Chip } from '@/ui/Chip';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 type Filter = 'all' | PlaceKind;
 
@@ -66,6 +67,7 @@ export default function LieuxScreen() {
     <Screen>
       <AppBar title="LIEUX" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Hébergements · tables · partenaires" />
         <Text style={s.title}>Lieux & partenaires</Text>
 
         <View style={s.filters}>
@@ -78,7 +80,7 @@ export default function LieuxScreen() {
                 accessibilityState={{ selected: on }}
                 onPress={() => setFilter(f.id)}
                 style={[s.pill, on && s.pillOn]}
-                hitSlop={6}
+                hitSlop={theme.hitSlop}
               >
                 <Text style={[s.pillT, on && s.pillTOn]}>{f.label}</Text>
               </Pressable>
@@ -120,27 +122,30 @@ export default function LieuxScreen() {
 
 function PlaceCard({ place }: { place: Place }) {
   const meta = [place.category, place.city, place.priceRange].filter(Boolean).join(' · ');
-  const openUrl = () => {
-    if (place.url) Linking.openURL(place.url).catch(() => undefined);
-  };
+  const openUrl = place.url
+    ? () => {
+        if (place.url) Linking.openURL(place.url).catch(() => undefined);
+      }
+    : undefined;
   return (
-    <Pressable
-      accessibilityRole={place.url ? 'link' : 'text'}
-      accessibilityLabel={place.name}
-      disabled={!place.url}
+    <Card
       onPress={openUrl}
-      style={({ pressed }) => ({ opacity: pressed && place.url ? 0.8 : 1 })}
+      accessibilityLabel={place.name}
+      style={place.isPremium ? { borderColor: theme.palette.gold, ...cockpitHalo } : cockpitHalo}
     >
-      <Card style={place.isPremium ? { borderColor: theme.palette.gold } : undefined}>
-        <View style={s.row}>
-          <Text style={s.name}>{place.name}</Text>
-          {place.isOfficialPartner ? (
-            <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
-          ) : null}
-        </View>
-        {meta ? <Text style={s.meta}>{meta}</Text> : null}
-      </Card>
-    </Pressable>
+      <View style={s.row}>
+        <Text style={s.name}>{place.name}</Text>
+        {place.isOfficialPartner ? (
+          <Chip label="Partenaire OXV" dotColor={theme.palette.gold} />
+        ) : null}
+        {place.url ? (
+          <Text style={s.chevron} accessibilityElementsHidden>
+            ›
+          </Text>
+        ) : null}
+      </View>
+      {meta ? <Text style={s.meta}>{meta}</Text> : null}
+    </Card>
   );
 }
 
@@ -181,15 +186,17 @@ const s = {
   },
   name: {
     flex: 1,
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
+  },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },

@@ -5,12 +5,12 @@
  * sinueuses + points de vue autour du pilote, sur notre carte.
  *
  * V1 : les points de vue (Overpass/OSM) s'affichent SANS clé. Le calcul de
- * tracé (Kurviger via GraphHopper Directions, package moto) s'active dès que la
- * clé EXPO_PUBLIC_KURVIGER_KEY est posée. react-native-maps : build natif requis
- * (fallback en Expo Go).
+ * tracé (GraphHopper Directions + custom model pour la sinuosité réelle) s'active
+ * dès que la clé EXPO_PUBLIC_GRAPHHOPPER_KEY est posée. react-native-maps : build
+ * natif requis (fallback en Expo Go).
  *
- * Attribution obligatoire (contrat Kurviger) affichée sur l'écran de la carte :
- * « Powered by Kurviger » + © OpenStreetMap.
+ * Attribution affichée sur l'écran de la carte :
+ * « Powered by GraphHopper » + © OpenStreetMap.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -29,6 +29,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 // Repli si la géoloc est refusée : Circuit de Haute Saintonge (Beltoise).
 const BELTOISE: GeoPoint = { lat: 45.2415, lon: -0.0915 };
@@ -247,13 +248,13 @@ export default function BelleRouteScreen() {
           </View>
         ) : null}
 
-        {/* Attribution obligatoire (Kurviger + OpenStreetMap) */}
+        {/* Attribution (GraphHopper + OpenStreetMap) */}
         <Pressable
           style={s.attr}
           accessibilityRole="link"
-          onPress={() => Linking.openURL('https://kurviger.de').catch(() => undefined)}
+          onPress={() => Linking.openURL('https://www.graphhopper.com').catch(() => undefined)}
         >
-          <Text style={s.attrT}>Powered by Kurviger · © OpenStreetMap</Text>
+          <Text style={s.attrT}>Powered by GraphHopper · © OpenStreetMap</Text>
         </Pressable>
 
         <View style={s.legend}>
@@ -267,7 +268,8 @@ export default function BelleRouteScreen() {
       </View>
 
       {/* Résumé + action */}
-      <View style={s.footer}>
+      <View style={[s.footer, cockpitHalo]}>
+        <StatusLine label="Balade · découverte" />
         {route ? (
           <Text style={s.summary}>
             {Math.round(route.distanceKm)} km · {Math.round(route.durationMin)} min
@@ -276,7 +278,7 @@ export default function BelleRouteScreen() {
           </Text>
         ) : routeUnavailable ? (
           <Text style={s.summaryMute}>
-            Le calcul d&apos;itinéraire s&apos;activera une fois la clé Kurviger configurée. Les
+            Le calcul d&apos;itinéraire s&apos;activera une fois la clé GraphHopper configurée. Les
             points de vue, eux, sont déjà sur la carte.
           </Text>
         ) : (

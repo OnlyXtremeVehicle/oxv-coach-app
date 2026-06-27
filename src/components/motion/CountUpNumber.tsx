@@ -14,6 +14,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, type TextStyle } from 'react-native';
 
+import { useReduceMotion } from './useReduceMotion';
+
 export interface CountUpNumberProps {
   /** Valeur finale à afficher. */
   value: number;
@@ -37,11 +39,13 @@ export function CountUpNumber({
   decimals = 0,
   disabled = false,
 }: CountUpNumberProps) {
-  const progress = useRef(new Animated.Value(disabled ? 1 : 0)).current;
-  const [display, setDisplay] = useState<string>(disabled ? formatValue(value, decimals) : '0');
+  const reduceMotion = useReduceMotion();
+  const off = disabled || reduceMotion;
+  const progress = useRef(new Animated.Value(off ? 1 : 0)).current;
+  const [display, setDisplay] = useState<string>(off ? formatValue(value, decimals) : '0');
 
   useEffect(() => {
-    if (disabled) {
+    if (off) {
       setDisplay(formatValue(value, decimals));
       return;
     }
@@ -62,7 +66,7 @@ export function CountUpNumber({
     return () => {
       progress.removeListener(listener);
     };
-  }, [value, duration, decimals, disabled, progress]);
+  }, [value, duration, decimals, off, progress]);
 
   return (
     <Animated.Text style={style} accessibilityLabel={`${formatValue(value, decimals)}${suffix}`}>

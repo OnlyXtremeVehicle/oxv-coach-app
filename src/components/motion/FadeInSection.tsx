@@ -12,6 +12,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Animated, Easing, type ViewStyle } from 'react-native';
 
+import { useReduceMotion } from './useReduceMotion';
+
 export interface FadeInSectionProps {
   children: ReactNode;
   /** Délai avant le début de l'animation en ms. Par défaut 0. */
@@ -34,10 +36,12 @@ export function FadeInSection({
   disabled = false,
   style,
 }: FadeInSectionProps) {
-  const progress = useRef(new Animated.Value(disabled ? 1 : 0)).current;
+  const reduceMotion = useReduceMotion();
+  const off = disabled || reduceMotion;
+  const progress = useRef(new Animated.Value(off ? 1 : 0)).current;
 
   useEffect(() => {
-    if (disabled) {
+    if (off) {
       progress.setValue(1);
       return;
     }
@@ -49,7 +53,7 @@ export function FadeInSection({
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
-  }, [delay, duration, disabled, progress]);
+  }, [delay, duration, off, progress]);
 
   return (
     <Animated.View

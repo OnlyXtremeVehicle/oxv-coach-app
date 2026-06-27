@@ -105,9 +105,9 @@ export function calculateEvolution(
   const previous = previousSessions[0];
 
   // Helper safe number
-  const num = (v: any): number | null => {
+  const num = (v: unknown): number | null => {
     if (v === null || v === undefined) return null;
-    const n = typeof v === 'string' ? parseFloat(v) : v;
+    const n = typeof v === 'string' ? parseFloat(v) : Number(v);
     return isNaN(n) ? null : n;
   };
 
@@ -153,9 +153,9 @@ export async function fetchSpeedSamples(sessionId: string): Promise<SpeedSample[
   const laps = await fetchSessionLaps(sessionId);
   if (laps.length === 0) return [];
 
-  const num = (v: any): number => {
+  const num = (v: unknown): number => {
     if (v === null || v === undefined) return 0;
-    const n = typeof v === 'string' ? parseFloat(v) : v;
+    const n = typeof v === 'string' ? parseFloat(v) : Number(v);
     return isNaN(n) ? 0 : n;
   };
 
@@ -291,9 +291,9 @@ export async function fetchGlobalStats(userId: string): Promise<GlobalStats> {
     if (sessions.length === 0) return empty;
 
     // Helper safe number
-    const num = (v: any): number => {
+    const num = (v: unknown): number => {
       if (v === null || v === undefined) return 0;
-      const n = typeof v === 'string' ? parseFloat(v) : v;
+      const n = typeof v === 'string' ? parseFloat(v) : Number(v);
       return isNaN(n) ? 0 : n;
     };
 
@@ -404,7 +404,7 @@ export async function renameSession(sessionId: string, customName: string): Prom
  */
 export async function fetchUsedCircuits(
   userId: string
-): Promise<Array<{ id: string; name: string; count: number }>> {
+): Promise<{ id: string; name: string; count: number }[]> {
   try {
     const { data, error } = await supabase
       .from('telemetry_sessions')

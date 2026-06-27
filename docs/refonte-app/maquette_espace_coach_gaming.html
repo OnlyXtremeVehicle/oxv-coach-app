@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — ESPACE COACH · gaming v3
+  Vue côté COACH d'un pilote suivi. Verrouille la frontière :
+  - HAUT = miroir factuel (constats, or/cream) : ce que voit le pilote.
+  - FRONTIÈRE matérialisée (constat ↑ / consigne ↓).
+  - BAS = bande prescriptive ROUGE : seul espace impératif de l'app,
+    réservé au coach (priorité, repères, ajouter).
+  Pattern 4 : « dispersion V7 ±1,4 m » = fait (autorisé partout).
+             « retardez le freinage » = consigne (bande rouge seule).
+  Couvre : les 15 écrans coach (vue suivi pilote).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Espace coach gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(70% 32% at 50% 20%,rgba(255,183,3,.06) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 42%,transparent 56%,rgba(0,0,0,.6) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.22em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-align:right}
+
+  .ey{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+
+  .mirror{display:flex;gap:14px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.014);margin-bottom:11px;opacity:0;animation:fadeUp .6s ease .25s forwards}
+  .mini{position:relative;width:78px;height:78px;flex-shrink:0}
+  .mini svg{width:100%;height:100%}
+  .mini .mc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .mini .mc b{font-family:var(--mono);font-size:22px;font-weight:600;color:#fff;text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .mini .mc s{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--gold);text-decoration:none;margin-top:1px}
+  .mfacts{flex:1}
+  .mfacts .secrow{display:flex;gap:6px;margin-bottom:8px}
+  .mfacts .sc{flex:1;text-align:center;border:1px solid var(--line);border-radius:8px;padding:6px 2px}
+  .mfacts .sc .n{font-family:var(--mono);font-size:8px;color:var(--faint);letter-spacing:.1em}
+  .mfacts .sc .t{font-family:var(--mono);font-size:12px;font-weight:600;margin-top:2px}
+  .mfacts .sc.best .t{color:var(--green)} .mfacts .sc.good .t{color:var(--gold)} .mfacts .sc.slow .t{color:var(--mute)}
+  .mfacts .fact{font-family:var(--mono);font-size:10px;color:var(--mute);letter-spacing:.04em}
+  .mfacts .fact b{color:var(--cream)}
+  .ctag{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-bottom:18px;opacity:0;animation:fadeUp .5s ease .4s forwards}
+
+  .frontier{display:flex;align-items:center;gap:10px;margin:4px 0 18px;opacity:0;animation:fadeUp .5s ease .55s forwards}
+  .frontier .ln{flex:1;height:1px;background:repeating-linear-gradient(90deg,#2A2A30 0 5px,transparent 5px 10px)}
+  .frontier .fl{font-family:var(--mono);font-size:8px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+  .frontier .fl .up{color:var(--gold)} .frontier .fl .dn{color:var(--red)}
+
+  .cmd{border:1px solid #2C1418;border-radius:16px;overflow:hidden;background:linear-gradient(180deg,#120A0C,#0B0809);opacity:0;animation:fadeUp .6s ease .7s forwards;
+    box-shadow:0 0 30px rgba(200,16,46,.08)}
+  .cmd .ch{display:flex;align-items:center;gap:8px;padding:12px 15px;border-bottom:1px solid #2C1418}
+  .cmd .ch i{width:7px;height:7px;border-radius:50%;background:var(--red);box-shadow:0 0 11px rgba(200,16,46,.95);animation:blink 2.4s ease-in-out infinite}
+  .cmd .ch b{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--red);font-weight:600}
+  .cmd .body{padding:14px 15px}
+  .prio{border:1px solid rgba(200,16,46,.32);border-radius:11px;padding:12px 13px;margin-bottom:12px;background:rgba(200,16,46,.06)}
+  .prio .pl{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--red);margin-bottom:5px}
+  .prio .pt{font-size:14px;font-weight:600;color:#fff;line-height:1.35}
+  .reps{display:flex;flex-direction:column;gap:8px;margin-bottom:13px}
+  .rep{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;line-height:1.4;color:#D9D9DD}
+  .rep .rn{font-family:var(--mono);font-size:11px;color:var(--red);flex-shrink:0;margin-top:1px}
+  .add{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1px dashed rgba(200,16,46,.4);border-radius:11px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--red);cursor:pointer}
+  .seal{font-family:var(--mono);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);text-align:center;margin-top:12px}
+
+  @keyframes fillArc{to{stroke-dashoffset:0}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>ESPACE COACH</span>
+      <span class="rz">SUIVI — PILOTE 04</span>
+    </div>
+
+    <div class="ey">Ce que montre le miroir</div>
+    <div class="mirror">
+      <div class="mini">
+        <svg viewBox="0 0 78 78">
+          <circle cx="39" cy="39" r="31" fill="none" stroke="#18181C" stroke-width="6" transform="rotate(135 39 39)" stroke-dasharray="146 49"/>
+          <circle cx="39" cy="39" r="31" fill="none" stroke="#FFB703" stroke-width="6" stroke-linecap="round" transform="rotate(135 39 39)"
+            stroke-dasharray="124 71" stroke-dashoffset="124" style="filter:drop-shadow(0 0 5px rgba(255,183,3,.8));animation:fillArc 1.3s cubic-bezier(.16,.84,.3,1) .5s forwards"/>
+        </svg>
+        <div class="mc"><b>0,8</b><s>SEC</s></div>
+      </div>
+      <div class="mfacts">
+        <div class="secrow">
+          <div class="sc best"><div class="n">S1</div><div class="t">26,4</div></div>
+          <div class="sc good"><div class="n">S2</div><div class="t">38,1</div></div>
+          <div class="sc slow"><div class="n">S3</div><div class="t">43,2</div></div>
+        </div>
+        <div class="fact">Dispersion V7 : <b>±1,4 m</b> · Combiné max <b>0,7 g</b></div>
+      </div>
+    </div>
+    <div class="ctag">Constat — exactement ce que voit le pilote</div>
+
+    <div class="frontier">
+      <span class="ln"></span>
+      <span class="fl"><span class="up">↑ Constat</span> · <span class="dn">Consigne ↓</span></span>
+      <span class="ln"></span>
+    </div>
+
+    <div class="cmd">
+      <div class="ch"><i></i><b>Espace coach — prescriptif</b></div>
+      <div class="body">
+        <div class="prio">
+          <div class="pl">Priorité de la séance</div>
+          <div class="pt">Virage 7 — retardez le lâcher de frein d'un temps.</div>
+        </div>
+        <div class="reps">
+          <div class="rep"><span class="rn">01</span><span>Remise des gaz plus tôt en sortie de gauche.</span></div>
+          <div class="rep"><span class="rn">02</span><span>Regard porté plus loin à l'entrée du S2.</span></div>
+        </div>
+        <div class="add">＋ Ajouter un repère</div>
+        <div class="seal">Seul espace prescriptif de l'app</div>
+      </div>
+    </div>
+
+  </div></div>
+</body></html>

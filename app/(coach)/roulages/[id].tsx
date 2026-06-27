@@ -126,7 +126,7 @@ export default function RoulageDetailScreen() {
       <Screen scroll={false}>
         <AppBar title="ROULAGE" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -144,10 +144,14 @@ export default function RoulageDetailScreen() {
             paddingHorizontal: theme.spacing.lg,
           }}
         >
-          <Text style={[s.manifest, { textAlign: 'center' }]}>Ce roulage est introuvable.</Text>
+          <Text style={[s.manifest, { textAlign: 'center' }]} accessibilityRole="header">
+            Ce roulage est introuvable.
+          </Text>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Retour"
             onPress={() => router.back()}
+            hitSlop={theme.hitSlop}
             style={{ marginTop: theme.spacing.xl }}
           >
             <Text style={s.action}>Retour</Text>
@@ -165,7 +169,9 @@ export default function RoulageDetailScreen() {
       <AppBar title="ROULAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ROULAGE</Text>
-        <Text style={s.title}>{roulage.title}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {roulage.title}
+        </Text>
         <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>
           {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
           {roulage.status !== 'open' ? ` · ${ROULAGE_STATUS_LABELS[roulage.status]}` : ''}
@@ -221,7 +227,10 @@ export default function RoulageDetailScreen() {
                     <Pressable
                       accessibilityRole="button"
                       accessibilityLabel={`Retirer ${p ? pilotName(p) : 'ce pilote'}`}
+                      accessibilityState={{ disabled: busy }}
+                      disabled={busy}
                       onPress={() => onRemove(inv.id)}
+                      hitSlop={theme.hitSlop}
                     >
                       <Text style={s.mutedAction}>Retirer</Text>
                     </Pressable>
@@ -277,21 +286,25 @@ export default function RoulageDetailScreen() {
             <Button
               label="Clôturer le roulage"
               variant="ghost"
-              disabled={busy}
+              loading={busy}
               onPress={() => onStatus('done')}
             />
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Annuler le roulage"
+              accessibilityState={{ disabled: busy }}
               disabled={busy}
               onPress={() => onStatus('cancelled')}
               style={({ pressed }) => ({
+                minHeight: 44,
                 paddingVertical: theme.spacing.md,
                 paddingHorizontal: theme.spacing.md,
                 borderRadius: theme.radius.md,
                 borderWidth: 1,
                 borderColor: theme.palette.red,
                 alignItems: 'center',
-                opacity: pressed ? 0.7 : 1,
+                justifyContent: 'center',
+                opacity: busy ? 0.5 : pressed ? 0.7 : 1,
               })}
             >
               <Text style={s.dangerAction}>Annuler le roulage</Text>
@@ -300,7 +313,12 @@ export default function RoulageDetailScreen() {
         ) : null}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            onPress={() => router.back()}
+            hitSlop={theme.hitSlop}
+          >
             <Text style={s.mutedAction}>Retour</Text>
           </Pressable>
         </View>
@@ -343,22 +361,23 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
   },
+  // Actions = libellés (mots), donc pas en mono. Affordances sobres et trackées.
   action: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
-    letterSpacing: 1,
+    letterSpacing: 0.4,
     color: theme.palette.coach,
   },
   mutedAction: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.micro,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
     color: theme.palette.creamMute,
   },
   dangerAction: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.micro,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
     color: theme.palette.red,
   },
 };

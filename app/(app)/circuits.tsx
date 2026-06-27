@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
@@ -142,21 +142,27 @@ function CircuitList({ circuits }: { circuits: DirectoryCircuit[] }) {
       }}
     >
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-        {circuits.map((c) => (
-          <Pressable
-            key={c.id}
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({ pathname: '/(app)/circuit/[id]', params: { id: c.id } } as never)
-            }
-            style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-          >
-            <Card>
-              <Text style={s.circuitName}>{c.officialName ?? c.name}</Text>
-              {circuitSubtitle(c) ? <Text style={s.meta}>{circuitSubtitle(c)}</Text> : null}
+        {circuits.map((c) => {
+          const name = c.officialName ?? c.name;
+          return (
+            <Card
+              key={c.id}
+              accessibilityLabel={name}
+              onPress={() =>
+                router.push({ pathname: '/(app)/circuit/[id]', params: { id: c.id } } as never)
+              }
+              style={{ flexDirection: 'row', alignItems: 'center' }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={s.circuitName}>{name}</Text>
+                {circuitSubtitle(c) ? <Text style={s.meta}>{circuitSubtitle(c)}</Text> : null}
+              </View>
+              <Text style={s.chevron} accessibilityElementsHidden>
+                ›
+              </Text>
             </Card>
-          </Pressable>
-        ))}
+          );
+        })}
       </View>
     </ScrollView>
   );
@@ -171,22 +177,22 @@ const s = {
     paddingVertical: theme.spacing.md,
   },
   footerCount: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
   },
   circuitName: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
+  },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },

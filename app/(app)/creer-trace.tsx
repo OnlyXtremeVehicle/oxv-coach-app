@@ -16,7 +16,7 @@
  */
 
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { CircuitTrace } from '@/circuit/CircuitTrace';
@@ -31,9 +31,10 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
+import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 const VISIBILITY_OPTIONS: { id: TraceVisibility; label: string }[] = [
   { id: 'private', label: 'Privé' },
@@ -89,20 +90,20 @@ export default function CreerTraceScreen() {
     <Screen>
       <AppBar title="CRÉER UN TRACÉ" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <StatusLine label="Depuis OpenStreetMap" />
         <Text style={s.title}>Créer un tracé</Text>
 
-        <Card>
-          <SectionLabel>Identifiant du way OpenStreetMap</SectionLabel>
-          <View
-            style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.sm }}
-          >
-            <TextInput
+        <Card style={cockpitHalo}>
+          <View style={{ flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-end' }}>
+            <Field
+              label="Tracé OpenStreetMap"
               value={wayId}
               onChangeText={setWayId}
               keyboardType="number-pad"
               placeholder="ex. 54412766"
-              placeholderTextColor={theme.palette.creamMute}
-              style={[s.input, { flex: 1 }]}
+              helper="Collez l'identifiant du « way » OSM, ou laissez vide pour dessiner à la main."
+              error={error}
+              containerStyle={{ flex: 1, marginBottom: 0 }}
             />
             <Pressable
               accessibilityRole="button"
@@ -120,13 +121,11 @@ export default function CreerTraceScreen() {
               )}
             </Pressable>
           </View>
-
-          {error ? <Text style={s.error}>{error}</Text> : null}
         </Card>
 
         {circuit ? (
           <View style={{ marginTop: theme.spacing.xl }}>
-            <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <Card style={{ padding: 0, overflow: 'hidden', ...cockpitHalo }}>
               <CircuitTrace circuit={circuit} height={300} defaultLayer="geometry" />
             </Card>
             <Text style={s.attribution}>
@@ -134,14 +133,12 @@ export default function CreerTraceScreen() {
               · © contributeurs OpenStreetMap
             </Text>
 
-            <Card style={{ marginTop: theme.spacing.xl }}>
-              <SectionLabel>Nom du tracé</SectionLabel>
-              <TextInput
+            <Card style={{ marginTop: theme.spacing.xl, ...cockpitHalo }}>
+              <Field
+                label="Nom du tracé"
                 value={name}
                 onChangeText={setName}
-                placeholder="Nom du tracé"
-                placeholderTextColor={theme.palette.creamMute}
-                style={[s.input, { marginTop: theme.spacing.sm }]}
+                placeholder="Épingle Sud, boucle nord…"
               />
 
               <View style={{ marginTop: theme.spacing.lg }}>
@@ -182,18 +179,8 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
-  input: {
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
-  },
   loadBtn: {
+    minHeight: 52,
     paddingHorizontal: theme.spacing.lg,
     justifyContent: 'center' as const,
     borderRadius: theme.radius.md,
@@ -207,12 +194,6 @@ const s = {
     letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
     color: theme.palette.cream,
-  },
-  error: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.red,
-    marginTop: theme.spacing.md,
   },
   attribution: {
     fontFamily: theme.fonts.mono,

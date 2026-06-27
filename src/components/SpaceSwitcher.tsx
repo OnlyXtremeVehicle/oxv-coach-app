@@ -1,29 +1,30 @@
 /**
- * SpaceSwitcher — sélecteur d'espace réservé aux comptes cumulant les rôles.
+ * SpaceSwitcher — sélecteur d'espace pour les comptes cumulant les rôles.
+ * Transposition gaming.
  *
- * Visible UNIQUEMENT si `profile.is_admin === true` (flag booléen). Un compte
- * « admin + coach » (ex. administration@oxvehicle.fr) peut ainsi naviguer
- * entre les trois espaces ; les comptes normaux (is_admin=false) ne voient
- * jamais ce bloc — leur expérience reste mono-espace.
- *
- * On s'appuie sur les gardes existants :
- *   - (admin)/_layout : accès si profile.is_admin
- *   - (coach)/_layout : accès si role === 'coach'
- *   - (app)          : espace pilote par défaut
+ * Visible UNIQUEMENT si `profile.is_admin === true`. Un compte « admin +
+ * coach » navigue entre les trois espaces ; les comptes normaux ne voient
+ * jamais ce bloc. S'appuie sur les gardes des layouts (admin/coach/app).
+ * Migration legacy→v2 achevée.
  */
 
 import { Link } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 type Space = 'pilot' | 'coach' | 'admin';
 
+// Accents d'identité de section (navigation, PAS viz). Pilote → or (cockpit) ;
+// coach → bleu nuit « posture d'écoute » ; admin → bronze. Identités de
+// section préservées pour différencier visuellement les trois espaces.
 const TARGETS: { space: Space; label: string; href: string; color: string }[] = [
-  { space: 'pilot', label: 'Espace pilote', href: '/(app)', color: colors.accent.red },
-  { space: 'coach', label: 'Espace coach', href: '/(coach)', color: colors.accent.coach },
-  { space: 'admin', label: 'Espace admin', href: '/(admin)', color: colors.accent.bronze },
+  { space: 'pilot', label: 'Espace pilote', href: '/(app)', color: palette.gold },
+  { space: 'coach', label: 'Espace coach', href: '/(coach)', color: '#1E3A5F' },
+  { space: 'admin', label: 'Espace admin', href: '/(admin)', color: '#B87333' },
 ];
 
 export function SpaceSwitcher({ current }: { current: Space }) {
@@ -35,15 +36,13 @@ export function SpaceSwitcher({ current }: { current: Space }) {
   return (
     <View
       style={{
-        marginTop: spacing.xxxl,
+        marginTop: 40,
         paddingTop: spacing.xl,
         borderTopWidth: 0.5,
-        borderTopColor: colors.border.subtle,
+        borderTopColor: palette.line,
       }}
     >
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: spacing.md }]}>
-        CHANGER D&apos;ESPACE
-      </Text>
+      <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>CHANGER D&apos;ESPACE</Text>
       <View style={{ gap: spacing.sm }}>
         {others.map((t) => (
           <Link key={t.space} href={t.href as never} asChild>
@@ -51,7 +50,7 @@ export function SpaceSwitcher({ current }: { current: Space }) {
               accessibilityRole="button"
               style={({ pressed }) => ({
                 padding: spacing.md,
-                borderRadius: borderRadius.md,
+                borderRadius: radius.md,
                 borderWidth: 0.5,
                 borderColor: t.color,
                 alignItems: 'center',
@@ -59,7 +58,7 @@ export function SpaceSwitcher({ current }: { current: Space }) {
               })}
             >
               <Text
-                style={{ color: t.color, fontSize: fontSize.body, fontWeight: fontWeight.medium }}
+                style={{ color: t.color, fontSize: fontSize.body, fontFamily: fonts.bodyMedium }}
               >
                 {t.label}
               </Text>
@@ -70,3 +69,13 @@ export function SpaceSwitcher({ current }: { current: Space }) {
     </View>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+};

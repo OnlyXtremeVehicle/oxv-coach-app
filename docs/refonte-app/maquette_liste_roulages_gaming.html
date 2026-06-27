@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — ROULAGES / HISTORIQUE · gaming v3
+  Grammaire cockpit, registre fonctionnel : journal de bord.
+  Lignes type log de télémétrie, groupées par mois. Un chiffre dominant
+  (régularité) + tendance glow par ligne. Apparition échelonnée.
+  Couvre : roulages, amis, notifications, social, objectifs (listes).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Roulages gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(70% 30% at 50% 16%,rgba(255,183,3,.05) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 42%,transparent 56%,rgba(0,0,0,.6) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.24em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute)}
+
+  .bar{display:flex;gap:9px;margin-bottom:18px;opacity:0;animation:fadeUp .6s ease .25s forwards}
+  .bc{flex:1;border:1px solid var(--line);border-radius:12px;padding:12px 13px;background:rgba(255,255,255,.014)}
+  .bc .v{font-family:var(--mono);font-size:22px;font-weight:600;color:#fff}
+  .bc .v.go{color:var(--gold);text-shadow:0 0 14px rgba(255,183,3,.35)}
+  .bc .l{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-top:5px}
+
+  .month{font-family:var(--mono);font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);margin:6px 2px 9px;display:flex;align-items:center;gap:10px}
+  .month::after{content:'';flex:1;height:1px;background:#1A1A1E}
+
+  .row{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:12px;margin-bottom:7px;background:rgba(255,255,255,.012);opacity:0;animation:fadeUp .45s ease forwards}
+  .row .dt{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--cream);width:42px;flex-shrink:0}
+  .row .ci{flex:1;min-width:0}
+  .row .ci .cn{font-size:13px;font-weight:500}
+  .row .ci .cl{font-family:var(--mono);font-size:9px;letter-spacing:.08em;color:var(--faint);margin-top:2px}
+  .row .rg{text-align:right;flex-shrink:0}
+  .row .rg .rv{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--gold);text-shadow:0 0 12px rgba(255,183,3,.3)}
+  .row .rg .rt{font-family:var(--mono);font-size:9px;letter-spacing:.06em;margin-top:2px}
+  .row .rg .rt.up{color:var(--green)} .row .rg .rt.dn{color:var(--red)}
+  .row .chev{color:var(--faint);font-size:18px;flex-shrink:0}
+
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+  .r1{animation-delay:.4s}.r2{animation-delay:.48s}.r3{animation-delay:.6s}.r4{animation-delay:.68s}.r5{animation-delay:.76s}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>ROULAGES</span>
+      <span class="rz">HISTORIQUE</span>
+    </div>
+
+    <div class="bar">
+      <div class="bc"><div class="v">42</div><div class="l">Roulages</div></div>
+      <div class="bc"><div class="v go">0,8 s</div><div class="l">Régularité</div></div>
+      <div class="bc"><div class="v">1:32.4</div><div class="l">Meilleur tour</div></div>
+    </div>
+
+    <div class="month">Juin 2026</div>
+    <div class="row r1">
+      <span class="dt">14.06</span>
+      <span class="ci"><div class="cn">Haute-Saintonge</div><div class="cl">42 tours · Tracé Beltoise</div></span>
+      <span class="rg"><div class="rv">0,8 s</div><div class="rt up">▲ 0,3</div></span>
+      <span class="chev">›</span>
+    </div>
+    <div class="row r2">
+      <span class="dt">02.06</span>
+      <span class="ci"><div class="cn">Haute-Saintonge</div><div class="cl">38 tours · Tracé Beltoise</div></span>
+      <span class="rg"><div class="rv">1,1 s</div><div class="rt dn">▼ 0,2</div></span>
+      <span class="chev">›</span>
+    </div>
+
+    <div class="month">Mai 2026</div>
+    <div class="row r3">
+      <span class="dt">18.05</span>
+      <span class="ci"><div class="cn">Valence</div><div class="cl">44 tours · Session 03</div></span>
+      <span class="rg"><div class="rv">0,9 s</div><div class="rt up">▲ 0,4</div></span>
+      <span class="chev">›</span>
+    </div>
+    <div class="row r4">
+      <span class="dt">11.05</span>
+      <span class="ci"><div class="cn">Valence</div><div class="cl">36 tours · Session 02</div></span>
+      <span class="rg"><div class="rv">1,3 s</div><div class="rt up">▲ 0,1</div></span>
+      <span class="chev">›</span>
+    </div>
+    <div class="row r5">
+      <span class="dt">04.05</span>
+      <span class="ci"><div class="cn">Haute-Saintonge</div><div class="cl">40 tours · Tracé Beltoise</div></span>
+      <span class="rg"><div class="rv">1,4 s</div><div class="rt dn">▼ 0,3</div></span>
+      <span class="chev">›</span>
+    </div>
+
+  </div></div>
+</body></html>

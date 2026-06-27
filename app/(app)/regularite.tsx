@@ -9,15 +9,16 @@
  *
  * Sécurité : RLS owner. Lit les laps de la session via fetchSessionLaps.
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Fact du kit. Le chiffre
- * central animé (CountUpNumber) et les barres d'écart sont inchangés.
+ * Reskin gaming : l'écart-type est porté par l'arc cockpit (GaugeInstrument),
+ * les repères par Fact, l'état vide par EmptyState, les barres d'écart en or à
+ * halo. Logique de calcul (computeRegularity) inchangée.
  */
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CountUpNumber, FadeInSection } from '@/components/motion';
+import { EmptyState, Fact, GaugeInstrument } from '@/components/instruments';
 import { supabase } from '@/lib/supabase';
 import { type RegularityProfile, computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -25,7 +26,6 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
-import { Fact } from '@/ui/Fact';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatLapTime } from '@/utils/format';
@@ -99,25 +99,28 @@ export default function RegulariteScreen() {
         <Text style={s.title}>La constance, en chiffres.</Text>
 
         {!hasContent ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyTitle}>
-              Au moins deux tours sont nécessaires pour mesurer la régularité.
-            </Text>
-          </Card>
+          <EmptyState
+            message="Au moins deux tours sont nécessaires pour mesurer la régularité."
+            source="laps"
+          />
         ) : (
           <>
-            {/* Chiffre central : écart-type */}
-            <FadeInSection style={{ alignItems: 'center', marginVertical: theme.spacing.xxl }}>
-              <CountUpNumber
+            {/* Instrument central : l'écart-type sur l'arc cockpit (factuel).
+                Le GaugeInstrument porte déjà sa propre entrée animée : pas de
+                FadeInSection par-dessus (anti double-animation). */}
+            <View style={{ alignItems: 'center', marginVertical: theme.spacing.xxl }}>
+              <GaugeInstrument
+                label="ÉCART-TYPE"
                 value={reg.stdDevSeconds!}
-                duration={1000}
-                decimals={2}
-                suffix=" s"
-                style={s.hero}
+                min={0}
+                max={Math.max(1, reg.stdDevSeconds! * 1.4)}
+                unit="s"
+                formatValue={(v) => v.toFixed(2).replace('.', ',')}
+                caption={reg.band ?? undefined}
+                size={264}
               />
-              <Text style={s.band}>{reg.band}</Text>
               <Text style={s.heroNote}>écart-type sur {reg.lapCount} tours</Text>
-            </FadeInSection>
+            </View>
 
             {/* Manifeste */}
             {reg.manifest ? <Text style={s.manifest}>{reg.manifest}</Text> : null}
@@ -193,37 +196,36 @@ function LapBar({
 }) {
   const ratio = Math.min(1, Math.abs(delta) / maxAbsDelta);
   const isBelow = delta < 0;
-  const deltaLabel = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2).replace('.', ',')} s`;
+  const magnitude = `${Math.abs(delta).toFixed(2).replace('.', ',')} s`;
+  const deltaLabel = `${delta >= 0 ? '+' : '−'}${magnitude}`;
+  // Constat factuel pour lecteur d'écran : la position situe, elle ne juge pas.
+  const side =
+    Math.abs(delta) < 0.005
+      ? 'sur la médiane'
+      : isBelow
+        ? 'sous la médiane'
+        : 'au-dessus de la médiane';
+  const a11yLabel = `Tour ${lapNumber} : ${deltaLabel}, ${side}.`;
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}>
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm }}
+      accessible
+      accessibilityLabel={a11yLabel}
+    >
       <Text style={s.lapTag}>T{lapNumber}</Text>
-      {/* Piste centrée */}
-      <View style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}>
+      {/* Piste centrée — l'écart se lit par la position (gauche = plus rapide,
+          droite = plus lent), jamais par la couleur. L'or est une donnée, neutre. */}
+      <View
+        style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}
+        importantForAccessibility="no-hide-descendants"
+      >
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
-          {isBelow ? (
-            <View
-              style={{
-                width: `${ratio * 100}%`,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: theme.palette.creamMute,
-              }}
-            />
-          ) : null}
+          {isBelow ? <View style={[s.lapFill, { width: `${ratio * 100}%` }]} /> : null}
         </View>
-        <View style={{ width: 1, height: 18, backgroundColor: theme.palette.edge }} />
+        <View style={{ width: 1, height: 18, backgroundColor: theme.palette.line }} />
         <View style={{ flex: 1, alignItems: 'flex-start' }}>
-          {!isBelow ? (
-            <View
-              style={{
-                width: `${ratio * 100}%`,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: theme.palette.creamMute,
-              }}
-            />
-          ) : null}
+          {!isBelow ? <View style={[s.lapFill, { width: `${ratio * 100}%` }]} /> : null}
         </View>
       </View>
       <Text style={s.lapDelta}>{deltaLabel}</Text>
@@ -239,20 +241,6 @@ const s = {
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
-  },
-  hero: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.hud,
-    color: theme.palette.cream,
-    letterSpacing: -1,
-  },
-  band: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
   },
   heroNote: {
     fontFamily: theme.fonts.mono,
@@ -285,6 +273,15 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
   },
+  lapFill: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+  },
   doctrine: {
     fontFamily: theme.fonts.bodyLight,
     fontSize: theme.fontSize.small,
@@ -293,12 +290,5 @@ const s = {
     textAlign: 'center' as const,
     paddingHorizontal: theme.spacing.md,
     marginTop: theme.spacing.xxl,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
   },
 };

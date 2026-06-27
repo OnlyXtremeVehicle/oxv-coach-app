@@ -112,11 +112,15 @@ export default function DonneesSecuriteScreen() {
           <SectionLabel>PRÉSERVATION</SectionLabel>
         </View>
 
-        <Text style={styles.headline}>Vos données sont en sécurité.</Text>
+        <Text style={styles.headline} accessibilityRole="header">
+          Vos données sont en sécurité.
+        </Text>
 
         <ProgressBar percent={progress} />
 
-        <Text style={styles.caption}>{captionFor(phase, progress)}</Text>
+        <Text style={styles.caption} accessibilityLiveRegion="polite">
+          {captionFor(phase, progress)}
+        </Text>
       </View>
     </Screen>
   );
@@ -135,8 +139,11 @@ function waitUntilMinVisible(startedAt: number): Promise<void> {
 }
 
 function ProgressBar({ percent }: { percent: number }) {
+  const now = Math.round(percent);
   return (
     <View
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now }}
       style={{
         height: 3,
         backgroundColor: theme.palette.card2,
@@ -148,7 +155,9 @@ function ProgressBar({ percent }: { percent: number }) {
         style={{
           height: '100%',
           width: `${percent}%`,
-          backgroundColor: theme.palette.red,
+          // Progression de préservation/lecture = donnée positive (or),
+          // pas un compte à rebours de suppression (le rouge = acte).
+          backgroundColor: theme.palette.gold,
         }}
       />
     </View>

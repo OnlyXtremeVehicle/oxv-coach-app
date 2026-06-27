@@ -11,15 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
@@ -28,6 +20,7 @@ import { getMyHighlightForPilot, upsertHighlight } from '@/services/coachCuratio
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -125,19 +118,17 @@ export default function CoachPrioritesScreen() {
                 })}
               </View>
 
-              <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.sm }}>
-                <SectionLabel>NOTE D&apos;INTRODUCTION (OPTIONNEL)</SectionLabel>
+              <View style={{ marginTop: theme.spacing.xxl }}>
+                <Field
+                  label="Note d'introduction"
+                  optional
+                  value={note}
+                  onChangeText={setNote}
+                  placeholder="Un mot pour orienter la lecture du bilan."
+                  multiline
+                  maxLength={280}
+                />
               </View>
-              <TextInput
-                value={note}
-                onChangeText={setNote}
-                placeholder="Un mot pour orienter la lecture du bilan."
-                placeholderTextColor={theme.palette.creamMute}
-                multiline
-                maxLength={280}
-                accessibilityLabel="Note d'introduction"
-                style={[s.input, { minHeight: 88, textAlignVertical: 'top' }]}
-              />
 
               {saved ? (
                 <Text style={[s.savedTxt, { marginTop: theme.spacing.md }]}>
@@ -216,17 +207,6 @@ const s = {
     color: theme.palette.creamMute,
   },
   pillTOn: { color: theme.palette.cream },
-  input: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-  },
   savedTxt: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,

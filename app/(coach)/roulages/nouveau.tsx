@@ -11,7 +11,7 @@
  */
 
 import { useState } from 'react';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -20,8 +20,8 @@ import { createRoulage } from '@/services/roulagesService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateTime } from '@/utils/format';
 
 function defaultStart(): Date {
@@ -118,69 +118,52 @@ export default function NouveauRoulageScreen() {
         <Text style={s.title}>Un roulage à vous.</Text>
 
         <View style={{ marginTop: theme.spacing.xl }}>
-          <Field label="Titre">
-            <TextInput
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Journée piste, séance privée…"
-              placeholderTextColor={theme.palette.creamMute}
-              style={inputStyle}
-              accessibilityLabel="Titre du roulage"
-            />
-          </Field>
+          <Field
+            label="Titre"
+            value={title}
+            onChangeText={setTitle}
+            placeholder="Journée piste, séance privée…"
+          />
 
-          <Field label="Date et heure">
-            <Pressable accessibilityRole="button" onPress={openPicker} style={inputStyle}>
-              <Text style={s.inputText}>{formatDateTime(startsAt.toISOString())}</Text>
-            </Pressable>
-          </Field>
+          <DateField label="Date et heure" onPress={openPicker}>
+            {formatDateTime(startsAt.toISOString())}
+          </DateField>
 
-          <Field label="Lieu (optionnel)">
-            <TextInput
-              value={location}
-              onChangeText={setLocation}
-              placeholder="Circuit de Haute Saintonge"
-              placeholderTextColor={theme.palette.creamMute}
-              style={inputStyle}
-              accessibilityLabel="Lieu du roulage"
-            />
-          </Field>
+          <Field
+            label="Lieu"
+            optional
+            value={location}
+            onChangeText={setLocation}
+            placeholder="Nom du circuit"
+          />
 
-          <Field label="Places (optionnel)">
-            <TextInput
-              value={maxPilots}
-              onChangeText={setMaxPilots}
-              placeholder="Sans limite"
-              placeholderTextColor={theme.palette.creamMute}
-              keyboardType="number-pad"
-              style={inputStyle}
-              accessibilityLabel="Nombre de places"
-            />
-          </Field>
+          <Field
+            label="Places"
+            optional
+            value={maxPilots}
+            onChangeText={setMaxPilots}
+            placeholder="Sans limite"
+            keyboardType="number-pad"
+          />
 
-          <Field label="Prix par place en euros (optionnel)">
-            <TextInput
-              value={price}
-              onChangeText={setPrice}
-              placeholder="Gratuit"
-              placeholderTextColor={theme.palette.creamMute}
-              keyboardType="decimal-pad"
-              style={inputStyle}
-              accessibilityLabel="Prix par place en euros"
-            />
-          </Field>
+          <Field
+            label="Prix par place"
+            optional
+            value={price}
+            onChangeText={setPrice}
+            placeholder="Gratuit"
+            keyboardType="decimal-pad"
+            unit="€"
+          />
 
-          <Field label="Notes (optionnel)">
-            <TextInput
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="Informations pratiques pour vos pilotes."
-              placeholderTextColor={theme.palette.creamMute}
-              multiline
-              style={[inputStyle, { minHeight: 88, textAlignVertical: 'top' }]}
-              accessibilityLabel="Notes du roulage"
-            />
-          </Field>
+          <Field
+            label="Notes"
+            optional
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Informations pratiques pour vos pilotes."
+            multiline
+          />
 
           {error ? <Text style={s.error}>{error}</Text> : null}
 
@@ -210,25 +193,31 @@ export default function NouveauRoulageScreen() {
   );
 }
 
-const inputStyle = {
-  borderWidth: 1,
-  borderColor: theme.palette.line,
-  borderRadius: theme.radius.md,
-  backgroundColor: theme.palette.card2,
-  paddingHorizontal: theme.spacing.md,
-  paddingVertical: theme.spacing.md,
-  color: theme.palette.cream,
-  fontFamily: theme.fonts.body,
-  fontSize: theme.fontSize.body,
-} as const;
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/**
+ * Sélecteur date/heure présenté comme un champ : libellé lisible (même langage
+ * que `Field`) collé à une zone pressable. Le picker n'est pas un TextInput,
+ * d'où ce petit wrapper dédié plutôt que le `Field` partagé.
+ */
+function DateField({
+  label,
+  onPress,
+  children,
+}: {
+  label: string;
+  onPress: () => void;
+  children: string;
+}) {
   return (
     <View style={{ marginBottom: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
-        <SectionLabel>{label}</SectionLabel>
-      </View>
-      {children}
+      <Text style={s.fieldLabel}>{label}</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        onPress={onPress}
+        style={s.dateBox}
+      >
+        <Text style={s.inputText}>{children}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -249,9 +238,26 @@ const s = {
     color: theme.palette.cream,
     lineHeight: theme.fontSize.h2 * 1.25,
   },
+  fieldLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
+    letterSpacing: 0.2,
+    marginBottom: theme.spacing.xs,
+  },
+  dateBox: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    borderRadius: theme.radius.md,
+    backgroundColor: theme.palette.card2,
+    paddingHorizontal: theme.spacing.md,
+    minHeight: 52,
+  },
   inputText: {
     fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
+    fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
   error: {

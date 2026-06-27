@@ -26,21 +26,12 @@ import {
   groupServicesByKind,
 } from '@/services/ecosystemLogic';
 import { fetchDirectoryCircuits, listCircuitServices } from '@/services/ecosystemService';
+import { fetchCircuitCenterline } from '@/services/circuitsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
-
-/**
- * Le tracé 3D n'est disponible que pour Haute Saintonge (seul circuit dont on a
- * la géométrie OSM, cf. fixture). Pour les autres, on n'affiche pas de tracé
- * plutôt qu'une géométrie qui ne serait pas la leur (doctrine : ne pas maquiller).
- * Géométrie par circuit = à venir avec la création de tracé (08 §5.3).
- */
-function hasTrace3D(circuit: DirectoryCircuit | null): boolean {
-  return /saintonge/i.test(circuit?.officialName ?? circuit?.name ?? '');
-}
 
 export default function CircuitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -48,16 +39,23 @@ export default function CircuitDetailScreen() {
 
   const [circuit, setCircuit] = useState<DirectoryCircuit | null>(null);
   const [services, setServices] = useState<CircuitService[]>([]);
+  // Tracé affiché seulement si CE circuit a une géométrie réelle (jamais maquillé).
+  const [hasTrace, setHasTrace] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     if (!circuitId) return;
-    Promise.all([fetchDirectoryCircuits(), listCircuitServices(circuitId)])
-      .then(([circuits, svcs]) => {
+    Promise.all([
+      fetchDirectoryCircuits(),
+      listCircuitServices(circuitId),
+      fetchCircuitCenterline(circuitId),
+    ])
+      .then(([circuits, svcs, centerline]) => {
         if (!cancelled) {
           setCircuit(circuits.find((c) => c.id === circuitId) ?? null);
           setServices(svcs);
+          setHasTrace(!!centerline && centerline.length > 1);
           setLoading(false);
         }
       })
@@ -87,32 +85,43 @@ export default function CircuitDetailScreen() {
     <Screen>
       <AppBar title="CIRCUIT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>{title}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {title}
+        </Text>
         {circuit && circuitSubtitle(circuit) ? (
           <Text style={s.subtitle}>{circuitSubtitle(circuit)}</Text>
         ) : null}
 
         {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
-        {hasTrace3D(circuit) ? (
+        {hasTrace ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
-            <SectionLabel>Le tracé</SectionLabel>
+            <View style={s.headRow}>
+              <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
+              <SectionLabel>Le tracé</SectionLabel>
+            </View>
             <View style={{ marginTop: theme.spacing.md }}>
-              <CircuitTraceHero height={300} defaultLayer="geometry" />
+              <CircuitTraceHero circuitId={circuitId} height={300} defaultLayer="geometry" />
             </View>
           </View>
         ) : null}
 
         <View style={{ marginTop: theme.spacing.xxl }}>
-          <SectionLabel>Autour du circuit</SectionLabel>
+          <View style={s.headRow}>
+            <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
+            <SectionLabel>Autour du circuit</SectionLabel>
+          </View>
         </View>
 
         {groups.length === 0 ? (
           <Card
-            style={{
-              alignItems: 'center',
-              paddingVertical: theme.spacing.xxl,
-              marginTop: theme.spacing.md,
-            }}
+            style={[
+              s.dataPanel,
+              {
+                alignItems: 'center',
+                paddingVertical: theme.spacing.xxl,
+                marginTop: theme.spacing.md,
+              },
+            ]}
           >
             <Text style={s.emptyHint}>
               Les services autour de ce circuit seront référencés ici.
@@ -130,7 +139,12 @@ export default function CircuitDetailScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -145,7 +159,7 @@ function ServiceCard({ service }: { service: CircuitService }) {
   };
 
   return (
-    <Card>
+    <Card style={s.dataPanel}>
       <Text style={s.serviceName}>{service.name}</Text>
       {service.organizer ? <Text style={s.serviceMeta}>{service.organizer}</Text> : null}
       {service.description ? <Text style={s.serviceBody}>{service.description}</Text> : null}
@@ -171,12 +185,23 @@ function ServiceCard({ service }: { service: CircuitService }) {
   );
 }
 
+// Libellé d'accessibilité explicite par action (le texte visible reste court).
+const ACTION_A11Y: Record<string, string> = {
+  Site: 'Ouvrir le site',
+  'E-mail': 'Envoyer un e-mail',
+  Téléphone: 'Appeler',
+};
+
 function Action({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={ACTION_A11Y[label] ?? label}
+      hitSlop={theme.hitSlop}
       onPress={onPress}
       style={({ pressed }) => ({
+        minHeight: 44,
+        justifyContent: 'center',
         paddingHorizontal: theme.spacing.md,
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.sm,
@@ -198,6 +223,29 @@ const s = {
     color: theme.palette.cream,
     lineHeight: theme.fontSize.h2 * 1.2,
     marginTop: theme.spacing.sm,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   subtitle: {
     fontFamily: theme.fonts.body,
@@ -249,5 +297,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

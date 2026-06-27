@@ -48,7 +48,9 @@ export default function CoachReperesScreen() {
       <AppBar title="REPÈRES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={[s.eyebrow, { color: theme.palette.coach }]}>MES REPÈRES</Text>
-        <Text style={s.title}>Vos repères.</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Vos repères.
+        </Text>
         <Text style={s.manifest}>
           Vos repères par virage, superposés à la donnée de vos élèves. Des repères, jamais des
           consignes.
@@ -56,7 +58,7 @@ export default function CoachReperesScreen() {
 
         {loading ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
-            <ActivityIndicator color={theme.palette.creamMute} />
+            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
           </View>
         ) : (
           <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.xxl }}>
@@ -67,7 +69,7 @@ export default function CoachReperesScreen() {
                 <Pressable
                   key={corner.index}
                   accessibilityRole="button"
-                  accessibilityLabel={`Repère du ${corner.name}`}
+                  accessibilityLabel={`${corner.name}, repère ${filled ? 'à modifier' : 'à ajouter'}`}
                   onPress={() =>
                     router.push({
                       pathname: '/(coach)/repere/[index]',
@@ -86,7 +88,9 @@ export default function CoachReperesScreen() {
                   >
                     <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
                       <Text style={s.cornerName}>
-                        {String(corner.index).padStart(2, '0')} · {corner.name}
+                        <Text style={s.cornerIndex}>{String(corner.index).padStart(2, '0')}</Text>
+                        {'  '}
+                        {corner.name}
                       </Text>
                       {filled && ref ? (
                         <Text style={s.cornerSummary}>{summarizeReference(ref)}</Text>
@@ -108,7 +112,12 @@ export default function CoachReperesScreen() {
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            onPress={() => router.back()}
+            hitSlop={theme.hitSlop}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -155,17 +164,24 @@ const s = {
     fontSize: theme.fontSize.body,
     color: theme.palette.cream,
   },
-  cornerSummary: {
+  // Numéro de virage = registre référence (heritageGold), en mono (chiffre).
+  cornerIndex: {
     fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.heritageGold,
+  },
+  cornerSummary: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
+    lineHeight: theme.fontSize.small * 1.4,
   },
+  // Action = libellé (mot), donc pas en mono. Affordance sobre et trackée.
   action: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
     textTransform: 'uppercase' as const,
   },
   backLink: {

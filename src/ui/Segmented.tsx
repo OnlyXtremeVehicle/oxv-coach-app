@@ -1,19 +1,32 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { theme } from '@/theme/v2';
 
-type Props = { options: string[]; value: string; onChange: (v: string) => void };
+type Props = {
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+  /** Désactive le sélecteur entier (atténué + non cliquable). Optionnel. */
+  disabled?: boolean;
+};
 
-export function Segmented({ options, value, onChange }: Props) {
+export function Segmented({ options, value, onChange, disabled }: Props) {
   return (
-    <View style={styles.seg}>
+    <View style={[styles.seg, disabled && styles.segDisabled]}>
       {options.map((o) => {
         const on = o === value;
         return (
           <Pressable
             key={o}
-            onPress={() => onChange(o)}
-            style={[styles.btn, on && styles.on]}
-            hitSlop={6}
+            onPress={disabled ? undefined : () => onChange(o)}
+            disabled={disabled}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on, disabled: !!disabled }}
+            style={({ pressed }) => [
+              styles.btn,
+              on && styles.on,
+              pressed && !disabled && styles.pressed,
+            ]}
+            hitSlop={theme.hitSlop}
           >
             <Text style={[styles.t, on && styles.tOn]}>{o}</Text>
           </Pressable>
@@ -32,8 +45,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignSelf: 'flex-start',
   },
-  btn: { paddingVertical: 6, paddingHorizontal: 10 },
+  segDisabled: { opacity: 0.4 },
+  // Pastille volontairement compacte ; la cible tactile est étendue par le
+  // hitSlop (≈ +16 px) pour rester confortable sans grossir le visuel.
+  btn: { paddingVertical: theme.spacing.sm - 2, paddingHorizontal: theme.spacing.md - 2 },
   on: { backgroundColor: 'rgba(255,255,255,0.07)' },
+  pressed: { opacity: 0.7 },
   t: {
     fontFamily: theme.fonts.mono,
     fontSize: 8,

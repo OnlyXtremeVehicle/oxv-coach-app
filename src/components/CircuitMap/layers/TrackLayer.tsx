@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 import { Path } from 'react-native-svg';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import { getScenePoints } from '../projection';
 
@@ -32,7 +32,7 @@ export interface TrackLayerProps {
 
 export function TrackLayer({
   animate = false,
-  color = colors.text.secondary,
+  color = theme.palette.creamSoft,
   strokeWidth = 4,
   opacity = 0.4,
 }: TrackLayerProps) {

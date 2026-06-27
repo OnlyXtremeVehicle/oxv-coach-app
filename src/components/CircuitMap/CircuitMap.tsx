@@ -14,7 +14,7 @@ import { type ReactNode, memo } from 'react';
 import { View } from 'react-native';
 import Svg from 'react-native-svg';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import { getCircuitViewBox } from './projection';
 
@@ -38,7 +38,7 @@ export interface CircuitMapProps {
 export const CircuitMap = memo(function CircuitMap({
   children,
   height = 320,
-  background = colors.background.secondary,
+  background = theme.palette.card2,
   borderRadius = 12,
   viewBox: viewBoxOverride,
 }: CircuitMapProps) {

@@ -10,7 +10,7 @@ export function Screen({
   scroll?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  const Body: any = scroll ? ScrollView : View;
+  const Body: React.ElementType = scroll ? ScrollView : View;
   return (
     <View style={{ flex: 1, backgroundColor: theme.palette.night, paddingTop: insets.top }}>
       <Body

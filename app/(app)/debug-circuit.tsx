@@ -14,6 +14,9 @@ import { CircuitTrace } from '@/circuit/CircuitTrace';
 import { generateCircuit } from '@/circuit/circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
 import { DEMO_SESSION_INSIGHTS } from '@/circuit/sessionInsights';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing } = theme;
 
 export default function DebugCircuitScreen() {
   const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
@@ -36,27 +39,36 @@ export default function DebugCircuitScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#050505' },
-  hud: { position: 'absolute', top: 0, left: 0, padding: 24 },
+  root: { flex: 1, backgroundColor: palette.night },
+  hud: { position: 'absolute', top: 0, left: 0, padding: spacing.xl },
   eyebrow: {
-    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 3,
-    color: '#A1A1AA',
-    fontVariant: ['small-caps'],
+    textTransform: 'uppercase',
+    color: palette.faint,
   },
   title: {
-    fontSize: 22,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
     letterSpacing: 2,
-    color: '#F8F9FA',
+    color: palette.cream,
     marginTop: 6,
     textTransform: 'uppercase',
   },
-  meta: { marginTop: 10, fontSize: 12, color: '#A1A1AA' },
+  meta: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
   attribution: {
     position: 'absolute',
-    bottom: 20,
-    left: 24,
-    fontSize: 10,
-    color: '#A1A1AA',
+    bottom: spacing.xl,
+    left: spacing.xl,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.micro,
+    color: palette.faint,
   },
 });

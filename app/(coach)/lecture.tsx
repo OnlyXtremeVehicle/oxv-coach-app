@@ -11,15 +11,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { DEFAULT_READING_WEIGHTS, validateReadingWeights } from '@/services/coachReadingLogic';
@@ -27,8 +19,8 @@ import { getMyReadingWeights, upsertReadingWeights } from '@/services/coachReadi
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 
 export default function CoachLectureScreen() {
   const [vehicle, setVehicle] = useState(String(DEFAULT_READING_WEIGHTS.wVehicle));
@@ -111,24 +103,48 @@ export default function CoachLectureScreen() {
           ) : (
             <>
               <View style={{ marginTop: theme.spacing.xxl }}>
-                <WeightField label="Véhicule" value={vehicle} onChangeText={setVehicle} />
-                <WeightField label="Pilote" value={pilot} onChangeText={setPilot} />
-                <WeightField label="Régularité" value={regularity} onChangeText={setRegularity} />
-                <WeightField label="Fluidité" value={smoothness} onChangeText={setSmoothness} />
+                <Field
+                  label="Véhicule"
+                  value={vehicle}
+                  onChangeText={setVehicle}
+                  keyboardType="numeric"
+                  maxLength={5}
+                  helper="Poids relatif, 0 ou plus. Les quatre sont normalisés entre eux."
+                />
+                <Field
+                  label="Pilote"
+                  value={pilot}
+                  onChangeText={setPilot}
+                  keyboardType="numeric"
+                  maxLength={5}
+                  helper="Poids relatif, 0 ou plus."
+                />
+                <Field
+                  label="Régularité"
+                  value={regularity}
+                  onChangeText={setRegularity}
+                  keyboardType="numeric"
+                  maxLength={5}
+                  helper="Poids relatif, 0 ou plus."
+                />
+                <Field
+                  label="Fluidité"
+                  value={smoothness}
+                  onChangeText={setSmoothness}
+                  keyboardType="numeric"
+                  maxLength={5}
+                  helper="Poids relatif, 0 ou plus."
+                />
               </View>
 
-              <View style={{ marginTop: theme.spacing.md, marginBottom: theme.spacing.sm }}>
-                <SectionLabel>NOTE (OPTIONNEL)</SectionLabel>
-              </View>
-              <TextInput
+              <Field
+                label="Note"
+                optional
                 value={note}
                 onChangeText={setNote}
                 placeholder="Ce que votre lecture met en avant."
-                placeholderTextColor={theme.palette.creamMute}
                 multiline
                 maxLength={280}
-                accessibilityLabel="Note de lecture"
-                style={[s.input, { minHeight: 72, textAlignVertical: 'top' }]}
               />
 
               {error ? (
@@ -158,37 +174,6 @@ export default function CoachLectureScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
-  );
-}
-
-function WeightField({
-  label,
-  value,
-  onChangeText,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (t: string) => void;
-}) {
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginBottom: theme.spacing.md,
-      }}
-    >
-      <Text style={s.weightLabel}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        keyboardType="decimal-pad"
-        maxLength={5}
-        accessibilityLabel={`Pondération ${label}`}
-        style={s.weightInput}
-      />
-    </View>
   );
 }
 
@@ -223,35 +208,6 @@ const s = {
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
-  },
-  weightLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-  },
-  weightInput: {
-    width: 88,
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    textAlign: 'right' as const,
-  },
-  input: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
   },
   errorTxt: {
     fontFamily: theme.fonts.mono,

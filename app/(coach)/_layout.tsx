@@ -2,15 +2,14 @@
  * Layout coach OXV — section bleu nuit réservée aux coachs.
  *
  * Guard : redirige vers /(app) si le user n'est pas role='coach'.
- * Toutes les sous-routes utilisent `colors.accent.coach` (#1E3A5F) comme
- * accent principal pour distinguer visuellement du mode pilote (rouge)
- * et du mode admin (bronze).
+ * Les sous-routes portent un accent distinct pour repérer visuellement
+ * la section coach.
  */
 
 import { Redirect, Stack } from 'expo-router';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function CoachLayout() {
   const profile = useAuthStore((s) => s.profile);
@@ -24,7 +23,7 @@ export default function CoachLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
       }}
     />

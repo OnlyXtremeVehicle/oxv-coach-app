@@ -70,7 +70,10 @@ export default function SharedProgressionScreen() {
       <Screen scroll={false}>
         <AppBar title="PROGRESSION PARTAGÉE" />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            accessibilityLabel="Chargement du partage"
+          />
         </View>
       </Screen>
     );
@@ -82,16 +85,21 @@ export default function SharedProgressionScreen() {
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {!share ? (
           <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-            <Text style={[s.screenTitle, { textAlign: 'center', marginBottom: theme.spacing.md }]}>
+            <Text
+              accessibilityRole="header"
+              style={[s.screenTitle, { textAlign: 'center', marginBottom: theme.spacing.md }]}
+            >
               Partage terminé.
             </Text>
             <Text style={s.manifest}>
-              Ce lien n'est plus accessible — révoqué, expiré, ou inconnu.
+              Ce lien n&apos;est plus accessible — révoqué, expiré, ou inconnu.
             </Text>
           </View>
         ) : (
           <>
-            <Text style={s.screenTitle}>{SCOPE_LABELS[share.scope] ?? 'Progression'}</Text>
+            <Text style={s.screenTitle} accessibilityRole="header">
+              {SCOPE_LABELS[share.scope] ?? 'Progression'}
+            </Text>
             <Text style={s.subtitle}>
               {share.expiresAt
                 ? `Accessible jusqu'au ${new Date(share.expiresAt).toLocaleDateString('fr-FR')}`
@@ -103,7 +111,7 @@ export default function SharedProgressionScreen() {
             </View>
             {share.includedMetrics.length === 0 ? (
               <Text style={[s.subtitle, { marginTop: theme.spacing.md }]}>
-                Aucune métrique n'a été incluse dans ce partage.
+                Aucune métrique n&apos;a été incluse dans ce partage.
               </Text>
             ) : (
               <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
@@ -115,12 +123,18 @@ export default function SharedProgressionScreen() {
               </View>
             )}
 
-            <Text style={s.note}>Vous ne voyez que ce que ce pilote a choisi d'exposer.</Text>
+            <Text style={s.note}>Vous ne voyez que ce que ce pilote a choisi d&apos;exposer.</Text>
           </>
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={({ pressed }) => [s.backHit, pressed && { opacity: 0.7 }]}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -167,10 +181,14 @@ const s = {
     paddingHorizontal: theme.spacing.md,
     textAlign: 'center' as const,
   },
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: theme.spacing.lg,
+  },
   backLink: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
   },
 };

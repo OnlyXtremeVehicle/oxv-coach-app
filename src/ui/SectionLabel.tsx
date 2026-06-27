@@ -8,8 +8,8 @@ const styles = StyleSheet.create({
   t: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
   },
 });

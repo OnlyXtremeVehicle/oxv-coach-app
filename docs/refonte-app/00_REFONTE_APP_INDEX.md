@@ -1,129 +1,128 @@
-# OXV Mirror — Refonte des écrans · Index de référence
+# OXV Mirror — Refonte gaming v3 · Index du dossier
 
-> Document d'entrée du dossier `docs/refonte-app/`.
-> Charte : `src/theme/v2.ts` + `src/theme/tokens.ts` — polices Geist / Geist Mono.
-> Doctrine : l'app est un miroir. Elle montre, elle ne dirige pas.
+> Refonte **strictement visuelle** des 80 écrans de l'app, dans le langage **« cockpit d'hypercar »** (école sim premium : Gran Turismo 7 / F1 — jamais arcade).
+> 14 maquettes HTML autonomes = 14 archétypes. Chaque écran réel se range sous l'une d'elles.
+> Le mètre-étalon est `maquette_debrief_gaming.html` : tous les autres écrans s'y alignent.
 
 ---
 
 ## 1. Démarche
 
-Les **80 écrans** de l'application ne sont pas 80 designs distincts : ce sont **7 archétypes** déclinés. Cette refonte fige la grammaire commune au travers de 7 maquettes de référence, autonomes et auto-documentées. Chaque écran restant n'est plus qu'une application du système — déclinable en série ou généré directement en React Native à partir de ces références.
+Les 80 écrans ne sont pas dessinés un à un (redondant) mais ramenés à **14 grammaires**. La doctrine, la palette et le vocabulaire OXV ne bougent pas : le gaming intensifie le **traitement** (instruments, glow, mise sous tension), pas le fond.
 
-Refaire toutes les pages, c'est fixer leur langage commun une fois, au lieu de redessiner la même grammaire quatre-vingts fois.
-
----
-
-## 2. Les sept maquettes de référence
-
-| # | Archétype | Fichier | Écrans couverts |
-|---|-----------|---------|------------------|
-| 1 | Analyse riche | `maquette_debrief_refondu.html` | 15 écrans pilote |
-| 2 | Hub / navigation | `maquette_accueil_refondu.html` | 6 écrans pilote |
-| 3 | Insight approfondi | `maquette_insight_gg_refondu.html` | galerie + 6 lectures (post-Valence) |
-| 4 | Liste / historique | `maquette_liste_roulages_refondu.html` | 8 écrans pilote |
-| 5 | Formulaire / réglages | `maquette_reglages_refondu.html` | écrans de saisie, capture, états de flux |
-| 6 | Espace coach | `maquette_coach_pilote_refondu.html` | 15 écrans coach |
-| 7 | Admin / régie | `maquette_admin_refondu.html` | 8 écrans admin |
+Principe directeur : **pas plus de texte ni plus de couleurs — plus d'instrument.** Un seul chiffre domine chaque écran. La bande coach reste le seul espace prescriptif.
 
 ---
 
-## 3. Mapping intégral des 80 écrans
+## 2. Grammaire gaming (système de design)
 
-### Archétype 1 — Analyse riche
-`debrief` · `debrief-presentiel` · `bilan` · `bilan-pret` · `signature` · `regularite` · `progression` · `virage` · `virage-comparer` · `tours` · `heatmap` · `comparateur` · `stats` · `replay` · `telemetry` · `prochaine-fois`
+Tout fichier reprend la même base. Les valeurs ci-dessous sont **normatives**.
 
-### Archétype 2 — Hub / navigation
-`index` · `paddock` · `lieux` · `carte` · `circuits` · `circuit/[id]`
+### Fond cockpit
+```
+background:
+  radial-gradient(halo gold diffus, centré sur l'instrument)   /* présence */
+  radial-gradient(dégradé sombre #0E0E14 → #040406)            /* profondeur */
+  grille HUD (repeating-linear-gradient, opacité .016–.018, pas 26px)
++ ::after vignette radiale (assombrit les bords)
+```
 
-### Archétype 3 — Insight approfondi *(écrans à construire après Valence)*
-galerie des lectures · anatomie du freinage · diagramme G-G · transferts de charge · fluidité · dispersion · tour idéal
+### Tokens (inchangés)
+| token | hex | usage |
+|---|---|---|
+| night / fond | `#040406`–`#0E0E14` | fond cockpit |
+| line | `#1C1C20` | bordures |
+| cream | `#F8F9FA` | texte primaire |
+| mute / faint | `#9A9AA3` / `#54545C` | texte secondaire / labels |
+| **gold** | **`#FFB703`** | **données quotidiennes** (chiffre dominant, jauges, traces) |
+| **heritage** | **`#C4A459`** | **tier Heritage UNIQUEMENT** + virage signature. Jamais ailleurs. |
+| **red** | **`#C8102E`** | **marque + bande coach (prescriptif) UNIQUEMENT** |
+| green | `#4ADE80` | tendance positive, secteur le plus fort |
+| polices | Geist / Geist Mono | mono pour tous les chiffres et labels HUD |
 
-### Archétype 4 — Liste / historique
-`roulages` · `amis` · `notifications` · `social` · `social-carte` · `objectifs` · `partage` · `share/[token]` · `session-media/[sessionId]`
+### Composants de la grammaire
+- **Status bar HUD** : pastille pulsante + label mono `letter-spacing:.24em` UPPERCASE + méta à droite.
+- **Instrument central** (écrans data) : arc gradué (270°) en **or** + ticks (compteur) + **repère heritageGold** optionnel (record, étalon) + chiffre géant à halo. **Cockpit factuel : aucune zone vert/jaune/rouge de jugement, pas de redline rouge** — le rouge reste réservé marque + bande coach. Implémenté par le composant `GaugeInstrument` (`src/components/instruments/`). Arc = `stroke-dasharray` + `rotate(135°)`.
+- **Secteurs F1** : S1/S2/S3 colorés (vert = le plus fort, gold = correct, faint = plus lent) + barre de remplissage.
+- **Trace de télémétrie** : sparkline lumineux (`drop-shadow` gold) qui se dessine.
+- **Barres lumineuses** : jauges horizontales (`box-shadow` couleur) pour piliers, KPIs, remplissages.
+- **Bande coach** : panneau rouge bordé, marqué « De votre coach » / « Espace coach ». Seul lieu impératif.
 
-### Archétype 5 — Formulaire / réglages / capture / états de flux
-`settings` · `equipement` · `donnees-securite` · `creer-trace` · `placement` · `mon-coach` · `cote-a-cote/[friendId]` · `legal/[doc]` · `roulage` *(live)* · `entre-runs` *(live)* · `pilotage-fini` *(transition)* · `debug-capture` · `debug-circuit`
+### Mise sous tension (séquence d'animation)
+À l'ouverture, l'écran « démarre » par couches échelonnées :
+| effet | keyframe | cible |
+|---|---|---|
+| arc qui se remplit | `fillArc` (dashoffset → 0) | jauge centrale |
+| ticks en balayage | `tickIn` opacity + delay `i*0.01s` | graduations |
+| trace qui se dessine | `draw` (dashoffset → 0) | sparkline, trajectoires, tracé circuit |
+| barres qui montent | `grow` (width → var(--w)) | piliers, secteurs, KPIs |
+| chiffre qui surgit | `popIn` (scale .9→1 + opacity) | chiffre dominant |
+| blocs qui apparaissent | `fadeUp` / `fadeDown` + delays | sections |
+| halo qui pulse | `halo`, `blink` (boucle) | présence, indicateurs REC |
 
-### Archétype 6 — Espace coach
-`index` · `pilote/[id]` · `annoter` · `priorites` · `reperes` · `repere/[index]` · `lecture` · `contexte` · `comparer` · `comparer-pilotes` · `gabarits` · `business` · `roulages/index` · `roulages/[id]` · `roulages/nouveau`
-
-### Archétype 7 — Admin / régie
-`index` · `en-cours` · `preparation` · `coachs` · `coachs/[id]` · `circuit` · `sessions-media` · `analytique`
-
-### Parcours à part — onboarding *(6 + 3 écrans)*
-Les écrans `(onboarding)` et `(coach-onboarding)` réutilisent l'archétype 5 (saisie séquentielle). Un passage dédié pourra être maquetté si le parcours d'entrée mérite un traitement propre.
-
----
-
-## 4. Système de design
-
-### Tokens couleur — source `src/theme/v2.ts`
-| Rôle | Token | Hex |
-|------|-------|-----|
-| Fond | night | `#050505` |
-| Carte | card | `#0B0B0D` |
-| Carte 2 | card2 | `#121214` |
-| Filet | line | `#1E1E22` |
-| Texte | cream | `#F8F9FA` |
-| Texte secondaire | mute | `#9A9AA3` |
-| Texte tertiaire | faint | `#5A5A62` |
-| Marque | red | `#C8102E` |
-| Quotidien / données | gold | `#FFB703` |
-| Virage / Heritage | heritageGold | `#C4A459` |
-| Tendance positive | green | `#4ADE80` |
-
-### Polices
-- **Geist** — titres et corps de texte
-- **Geist Mono** — eyebrows, données, méta (le registre HUD/télémétrie)
-
-### Composants partagés
-- **eyebrow** — mono, 11 px, lettrage `.22em`, capitales, faint
-- **hero chiffré** — un seul chiffre dominant par écran, en mono
-- **carte** — fond `card`, filet `line`, rayon 14–18
-- **tracé / graphe central** — quand il y a de la donnée spatiale (circuit, G-G)
-- **lecture factuelle** — bloc à filet gold + tag « un constat, pas une consigne »
-- **trois primitives de ligne** — bascule, valeur, action (tous les écrans de saisie)
-- **bande coach** — bloc rouge marqué « Espace coach », seul lieu prescriptif
-
-### Règles non négociables
-1. **Un seul chiffre dominant** par écran. Le reste est secondaire.
-2. **Couleurs strictement codées** : gold = quotidien, heritage = virage et offre Heritage uniquement, rouge = marque, vert = tendance. Jamais d'or décoratif hors Heritage.
-3. **Côté pilote : factuel exclusivement.** Aucun impératif, aucune prescription.
-4. **Le prescriptif est cantonné à la bande coach.** Verbes d'ordre interdits partout ailleurs.
-5. **Silence en piste.** Aucune sollicitation pendant le roulage.
+### Glow
+`filter:drop-shadow(0 0 Npx rgba(token,alpha))` sur les éléments SVG, `text-shadow` sur les chiffres. Réservé aux éléments porteurs (chiffre dominant, arc, trace, indicateurs). Jamais décoratif partout.
 
 ---
 
-## 5. Dépôt
+## 3. Les 14 maquettes
 
-Chemin suggéré : **`docs/refonte-app/`**
-
-Y déposer les 7 fichiers `.html` + le présent index. Chaque maquette porte en tête un bloc de documentation reliant la maquette à ses écrans React Native cibles — la traçabilité spec → écran est dans le fichier lui-même.
-
----
-
-## 6. Transposition React Native
-
-À exécuter par Claude Code, sur le dépôt à jour. Pour chaque écran :
-
-1. **Lire** la maquette de référence de son archétype + les tokens existants (`src/theme/v2.ts`, `tokens.ts`) + l'écran RN actuel.
-2. **Réécrire** la présentation en appliquant la grammaire de la maquette (composants, hiérarchie, chiffre dominant unique).
-3. **Ne pas toucher** la logique de données — services, hooks, requêtes Supabase restent inchangés. La refonte est strictement visuelle.
-4. **Réutiliser** les composants existants déjà conformes (`CircuitTraceHero`, etc.) plutôt que les réécrire.
-
-**Ordre conseillé :** un écran par archétype d'abord (le plus simple), validé sur device, puis déclinaison des autres écrans du même archétype en série.
-
-**Garde-fous :**
-- Ne jamais réintroduire de langage prescriptif côté pilote.
-- Respecter les couleurs codées (§4).
-- Vérifier chaque libellé contre le vocabulaire figé : QDI, marges, Cap, Trajectoire, Anticipation, Visée, Plongée, combiné, adhérence.
+| # | Fichier | Archétype | Spécificité gaming |
+|---|---|---|---|
+| 01 | `maquette_debrief_gaming.html` | **Analyse riche** (mètre-étalon) | Instrument central + redline + secteurs + trace + piliers, séquence complète |
+| 02 | `maquette_accueil_gaming.html` | **Hub / navigation** | Menu de cockpit : hero à mini-instrument + tuiles HUD |
+| 03 | `maquette_insight_gg_gaming.html` | **Insight approfondi** | Radar de traction (anneaux gradués, scatter qui s'allume, creux d'enveloppe) |
+| 04 | `maquette_live_gaming.html` | **Live en piste** | Doctrine du silence : cockpit éteint, onde d'enregistrement seule |
+| 05 | `maquette_comparaison_ab_gaming.html` | **Comparaison A/B** | Duel : trajectoires superposées qui se dessinent, barres divergentes |
+| 06 | `maquette_heatmap_gaming.html` | **Carte de chaleur** | Tracé coloré par la vitesse (froid→chaud), scan séquentiel |
+| 07 | `maquette_fiche_circuit_gaming.html` | **Fiche circuit** | Tracé hero qui se dessine, virage signature heritage, sessions |
+| 08 | `maquette_espace_coach_gaming.html` | **Espace coach** | Miroir factuel + **frontière constat/consigne visible** + bande prescriptive |
+| 09 | `maquette_mon_coach_gaming.html` | **Mon coach** | Réception lecture seule, rappel de doctrine (symétrie avec 08) |
+| 10 | `maquette_liste_roulages_gaming.html` | **Liste / historique** | Journal de bord, un chiffre + tendance par ligne |
+| 11 | `maquette_reglages_gaming.html` | **Formulaire / réglages** | Interrupteurs HUD, « Silence en piste » en premier rang |
+| 12 | `maquette_admin_gaming.html` | **Admin / régie** | Poste de commande : KPIs lumineux, file d'inscriptions, sessions |
+| 13 | `maquette_onboarding_gaming.html` | **Onboarding** | Étape doctrine, barre segmentée, titre dominant |
+| 14 | `maquette_partage_gaming.html` | **Carte de partage** | Carte trophée 4:5, or quotidien (jamais heritage) |
 
 ---
 
-## 7. Doctrine préservée
+## 4. Mapping des 80 écrans → archétypes
 
-- **Miroir, pas coach.** L'app montre des faits ; la décision appartient au pilote.
-- **Sécurité avant performance.** On parle de marge, pas de limite.
-- **Bande coach = seul espace prescriptif.** OXV n'est pas agréé ; le coach humain prescrit, jamais le miroir.
-- **Un constat, pas une consigne.**
+**Pilote (44)**
+- *Analyse riche (01)* : debrief, signature, regularite, progression, virage, tours, stats, replay, telemetry, bilan, prochaine-fois
+- *Hub (02)* : index, paddock, lieux, carte, circuits
+- *Insight (03)* : insight G-G, enveloppe, galerie insights
+- *Live (04)* : roulage, entre-runs, pilotage-fini
+- *Comparaison (05)* : comparateur, cote-a-cote, virage-comparer
+- *Heatmap (06)* : heatmap, carte (pilier)
+- *Fiche circuit (07)* : circuit/[id]
+- *Mon coach (09)* : mon-coach
+- *Liste (10)* : roulages, amis, notifications, social, objectifs
+- *Réglages (11)* : settings, equipement, donnees-securite, creer-trace, placement
+- *Partage (14)* : partage, share/[token], social-carte
+
+**Coach (15)** → *Espace coach (08)* + *Comparaison (05)* (comparer-pilotes) : toutes les vues de suivi pilote, annotation, objectifs, comparaison.
+
+**Admin (8)** → *Admin / régie (12)* : dashboard, inscriptions, sessions, pilotes, circuits, articles, gestion.
+
+**Onboarding (6 + coach 3)** → *Onboarding (13)* : index, doctrine, methode, niveau, pacte, cgu + coach-onboarding (index, mission, pacte).
+
+---
+
+## 5. Règles non négociables (doctrine)
+
+1. **Un seul chiffre domine** par écran. Le reste est contexte.
+2. **Silence en piste** : l'écran live ne montre aucune donnée tant que la voiture roule.
+3. **Bande coach = seul espace prescriptif.** Verbes d'ordre, causalité, orientation : uniquement là, en rouge, marqué.
+4. **Frontière constat/consigne.** Partout ailleurs = constats factuels (mesures, écarts : « dispersion V7 ±1,4 m »). Jamais « vous perdez 0,3 s parce que… ».
+5. **Heritage `#C4A459` réservé** au tier Heritage + virage signature. La carte de partage quotidienne utilise le gold `#FFB703`.
+6. **Le faucon est un totem interne.** Jamais nommé dans le contenu client.
+
+---
+
+## 6. Dépôt & transposition
+
+- Destination dépôt : `docs/refonte-app-gaming/` (extraire l'archive ici).
+- Transposition React Native : suivre `PROMPT_TRANSPOSITION_RN_GAMING.md`.
+- Ordre conseillé : Débrief (étalon) → Hub → Liste → Insight → Comparaison → Heatmap → Fiche circuit → Réglages → Onboarding → Partage → Espace coach → Mon coach → Admin → Live.
+- Un commit par archétype.

@@ -77,7 +77,9 @@ export default function AdminCoachsScreen() {
       <AppBar title="COACHS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ADMIN OXV · COACHS</Text>
-        <Text style={s.title}>Les coachs</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Les coachs
+        </Text>
         <Text style={s.lede}>Un toucher ouvre la gestion des pilotes assignés.</Text>
 
         {loading ? (
@@ -105,29 +107,46 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
         ? '1 pilote actif'
         : `${coach.activeAssignmentsCount} pilotes actifs`;
 
+  const blocked = coach.activeAssignmentsCount > 0;
+
   return (
     <Card style={s.row}>
       <Link href={{ pathname: '/(admin)/coachs/[id]', params: { id: coach.id } } as never} asChild>
-        <Pressable style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}>
-          <Text style={s.name}>{fullName}</Text>
-          <Text style={s.meta}>
-            {coach.email} · {assignText}
-          </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${fullName}, ${assignText}. Ouvrir la gestion des pilotes assignés.`}
+          hitSlop={theme.hitSlop}
+          style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.85 : 1 })}
+        >
+          <View style={s.nameBlock}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name}>{fullName}</Text>
+              <Text style={s.meta}>
+                {coach.email} · {assignText}
+              </Text>
+            </View>
+            <Text style={s.chevron}>›</Text>
+          </View>
         </Pressable>
       </Link>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Rétrograder ${fullName} en pilote`}
+        accessibilityHint={blocked ? 'Indisponible : ce coach a des pilotes actifs.' : undefined}
+        accessibilityState={{ disabled: blocked }}
         onPress={onDemote}
+        hitSlop={theme.hitSlop}
         style={({ pressed }) => ({
-          paddingHorizontal: theme.spacing.sm,
-          paddingVertical: theme.spacing.xs,
+          minHeight: 44,
+          justifyContent: 'center',
+          paddingHorizontal: theme.spacing.md,
           borderRadius: theme.radius.sm,
           borderWidth: 1,
           borderColor: theme.palette.edge,
-          opacity: pressed ? 0.85 : coach.activeAssignmentsCount > 0 ? 0.4 : 1,
+          opacity: pressed ? 0.85 : blocked ? 0.4 : 1,
         })}
       >
-        <Text style={s.demote}>↤ pilote</Text>
+        <Text style={s.demote}>Rétrograder</Text>
       </Pressable>
     </Card>
   );
@@ -179,10 +198,19 @@ const s = {
     alignItems: 'center' as const,
     gap: theme.spacing.md,
   },
+  nameBlock: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
   name: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.faint,
+    fontSize: 17,
   },
   meta: {
     fontFamily: theme.fonts.mono,
@@ -193,9 +221,9 @@ const s = {
     marginTop: theme.spacing.xs,
   },
   demote: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1,
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.3,
     color: theme.palette.creamSoft,
   },
   emptyTitle: {

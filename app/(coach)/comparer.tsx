@@ -23,7 +23,7 @@ import { CoachPreset } from '@/components/CircuitMap';
 import { FadeInSection } from '@/components/motion';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type SessionSnapshot, loadSessionSnapshot, logCoachView } from '@/services/coachService';
-import { type MarginZone } from '@/types/domain';
+import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -206,8 +206,13 @@ function CornerDeltaRow({
   marginB: number | null;
 }) {
   const deltaStr = formatDeltaPoints(marginA, marginB);
+  // Les pastilles couleur restent décoratives pour l'œil ; on les double d'un
+  // libellé accessible (zone A → zone B + écart) pour le lecteur d'écran.
+  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. ${zoneLabelFr(zoneA)} vers ${zoneLabelFr(
+    zoneB
+  )}. Écart ${deltaStr}.`;
   return (
-    <View style={s.cornerRow}>
+    <View accessible accessibilityLabel={a11yLabel} style={s.cornerRow}>
       <Text style={s.cornerIndex}>{cornerIndex}</Text>
       <Text style={s.cornerName}>{cornerName}</Text>
       <ZoneDot zone={zoneA} />
@@ -254,6 +259,10 @@ function colorForZone(zone: MarginZone | null): string {
     default:
       return theme.palette.creamMute;
   }
+}
+
+function zoneLabelFr(zone: MarginZone | null): string {
+  return zone ? marginLabelOf(zone) : 'marge indisponible';
 }
 
 function formatDeltaPoints(a: number | null, b: number | null): string {

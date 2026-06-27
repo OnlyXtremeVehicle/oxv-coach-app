@@ -16,15 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import {
@@ -36,6 +28,7 @@ import {
 } from '@/services/pilotGoalsService';
 import { theme } from '@/theme/v2';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
@@ -130,21 +123,17 @@ export default function ObjectifsScreen() {
 
           {/* Saisie nouvel objectif */}
           <View style={{ marginTop: theme.spacing.xxl }}>
-            <SectionLabel>{activeGoal ? 'Remplacer par' : 'Prochain objectif'}</SectionLabel>
+            <Field
+              label={activeGoal ? 'Remplacer par' : 'Prochain objectif'}
+              value={body}
+              onChangeText={setBody}
+              placeholder="Apprivoiser l'épingle Sud."
+              multiline
+              numberOfLines={3}
+              maxLength={200}
+              showCounter
+            />
           </View>
-          <TextInput
-            value={body}
-            onChangeText={setBody}
-            placeholder="Apprivoiser l'épingle Sud."
-            placeholderTextColor={theme.palette.creamMute}
-            multiline
-            numberOfLines={3}
-            maxLength={200}
-            style={s.input}
-          />
-          <Text style={[s.meta, { textAlign: 'right', marginTop: theme.spacing.xs }]}>
-            {body.length} / 200
-          </Text>
 
           <Pressable
             accessibilityRole="button"
@@ -258,9 +247,9 @@ const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
@@ -294,19 +283,6 @@ const s = {
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
-  },
-  input: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    padding: theme.spacing.md,
-    color: theme.palette.cream,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    minHeight: 80,
-    textAlignVertical: 'top' as const,
-    marginTop: theme.spacing.sm,
   },
   submit: {
     marginTop: theme.spacing.lg,

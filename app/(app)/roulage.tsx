@@ -1,23 +1,22 @@
 /**
- * Écran #S6 — Roulage (enregistrement en cours). Design V2 (charte oxv-mirror-app).
+ * Écran #S6 — Roulage (enregistrement en cours).
+ * Refonte gaming « cockpit factuel » (charte v2) — doctrine du silence.
  *
- * Doctrine « silence en piste » : pendant que le véhicule bouge, aucun écran
- * n'est consulté. Cet écran est volontairement minimal — il dit au pilote de
- * poser l'appareil, et n'offre qu'une action : terminer le roulage une fois
- * rentré au paddock. Aucune donnée live clignotante.
+ * « Silence en piste » : pendant que le véhicule roule, aucun écran n'est
+ * consulté. Le cockpit s'éteint — pas d'instrument, pas de chiffre à fixer.
+ * Un seul signe de vie : l'enregistrement qui pulse (onde concentrique rouge).
+ * Le langage gaming rend ce silence volontaire, pas vide.
  *
- * Le service captureSessionService enregistre les trames en base en arrière-plan
- * tant que cet écran (l'app au premier plan) est actif. « Terminer le roulage »
- * clôt la session et bascule vers le flux de bilan (#10 → #11 → #13).
+ * Le rouge est ici légitime : c'est le signal d'enregistrement (REC), pas
+ * une donnée de performance. Le service captureSessionService écrit les
+ * trames en base en arrière-plan tant que l'app est au premier plan.
+ * « Terminer le roulage » clôt la session et bascule vers le flux de bilan.
  *
- * Reskin V2 : couleurs et typographie portées sur @/theme/v2 (Screen + AppBar,
- * libellés mono, manifeste Inter Light). Aucune UI ajoutée — l'écran reste
- * volontairement nu, conformément au silence en piste. Logique de capture
- * inchangée.
+ * Logique de capture inchangée. Pas de chrono défilant : rien à fixer.
  */
 
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Easing, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
@@ -26,6 +25,87 @@ import { useSessionStore } from '@/store/useSessionStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+
+/** Onde d'enregistrement : cœur pulsant + ondes concentriques (REC). */
+function RecordingPulse({ active }: { active: boolean }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  const w1 = useRef(new Animated.Value(0)).current;
+  const w2 = useRef(new Animated.Value(0)).current;
+  const w3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!active) return;
+
+    const corePulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1300,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    corePulse.start();
+
+    const waveVals = [w1, w2, w3];
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const loops: Animated.CompositeAnimation[] = [];
+    waveVals.forEach((v, i) => {
+      // Décalage initial échelonné → onde continue.
+      const t = setTimeout(() => {
+        const lp = Animated.loop(
+          Animated.timing(v, {
+            toValue: 1,
+            duration: 2600,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          })
+        );
+        loops.push(lp);
+        lp.start();
+      }, i * 867);
+      timers.push(t);
+    });
+
+    return () => {
+      corePulse.stop();
+      timers.forEach(clearTimeout);
+      loops.forEach((l) => l.stop());
+      [pulse, w1, w2, w3].forEach((v) => v.setValue(0));
+    };
+  }, [active, pulse, w1, w2, w3]);
+
+  if (!active) {
+    return <View style={s.coreStatic} />;
+  }
+
+  const coreScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.82] });
+  const coreOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 0.78] });
+  const waveStyle = (v: Animated.Value) => ({
+    transform: [{ scale: v.interpolate({ inputRange: [0, 1], outputRange: [1, 3.4] }) }],
+    opacity: v.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] }),
+  });
+
+  return (
+    <View style={s.recBox}>
+      <Animated.View style={[s.wave, waveStyle(w1)]} />
+      <Animated.View style={[s.wave, waveStyle(w2)]} />
+      <Animated.View style={[s.wave, waveStyle(w3)]} />
+      <Animated.View
+        style={[s.core, { transform: [{ scale: coreScale }], opacity: coreOpacity }]}
+      />
+    </View>
+  );
+}
 
 export default function RoulageScreen() {
   const status = useSessionStore((s) => s.status);
@@ -60,37 +140,35 @@ export default function RoulageScreen() {
   return (
     <Screen scroll={false}>
       <AppBar title="ROULAGE" />
-      <View
-        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
-      >
+      <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* Bandeau sobre — état + cadence d'échantillonnage */}
+        <View style={s.topRow}>
+          <Text style={s.topLabel}>EN PISTE</Text>
+          <Text style={s.topLabel}>{recording ? `TOUR ${lapCount} · 25 Hz` : '25 Hz'}</Text>
+        </View>
+
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <View
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: 7,
-              backgroundColor: recording ? theme.palette.red : theme.palette.creamMute,
-              marginBottom: theme.spacing.xl,
-            }}
-          />
-          <Text style={s.eyebrow}>{recording ? 'ENREGISTREMENT EN COURS' : 'ENREGISTREMENT'}</Text>
-          <Text style={s.headline}>Posez l'appareil. L'app s'occupe du reste.</Text>
+          <RecordingPulse active={recording} />
+
+          <Text style={s.capture}>
+            <Text style={{ color: recording ? palette.red : palette.creamMute }}>● </Text>
+            {recording ? 'Capture en cours' : 'En attente'}
+          </Text>
+
+          <Text style={s.headline}>Posez l&apos;appareil. L&apos;app s&apos;occupe du reste.</Text>
           <Text style={s.manifest}>La piste est à vous.</Text>
-          {lapCount > 0 ? (
-            <Text style={s.lapCount}>
-              {lapCount} tour{lapCount > 1 ? 's' : ''} enregistré{lapCount > 1 ? 's' : ''}
-            </Text>
-          ) : null}
         </View>
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Terminer le roulage"
+          accessibilityState={{ disabled: ending, busy: ending }}
           disabled={ending}
           onPress={onFinish}
           style={({ pressed }) => [s.finish, (pressed || ending) && { opacity: 0.85 }]}
         >
           {ending ? (
-            <ActivityIndicator color={theme.palette.cream} />
+            <ActivityIndicator color={palette.cream} />
           ) : (
             <Text style={s.finishTxt}>Terminer le roulage</Text>
           )}
@@ -98,6 +176,8 @@ export default function RoulageScreen() {
 
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel="Annuler sans enregistrer"
+          accessibilityState={{ disabled: ending }}
           disabled={ending}
           onPress={onAbort}
           style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
@@ -110,58 +190,95 @@ export default function RoulageScreen() {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+  topRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingTop: spacing.md,
+  },
+  topLabel: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.5,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginBottom: theme.spacing.lg,
+    color: palette.creamMute,
+  },
+  recBox: {
+    width: 140,
+    height: 140,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: spacing.xl,
+  },
+  wave: {
+    position: 'absolute' as const,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: palette.red,
+  },
+  core: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.red,
+    shadowColor: palette.red,
+    shadowOpacity: 0.9,
+    shadowRadius: 26,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  coreStatic: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: palette.creamMute,
+    marginBottom: spacing.xl,
+  },
+  capture: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 1,
+    color: palette.creamMute,
+    marginBottom: spacing.xl,
   },
   headline: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
     letterSpacing: 0.3,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
+    color: palette.cream,
+    lineHeight: fontSize.h2 * 1.25,
     textAlign: 'center' as const,
-    marginBottom: theme.spacing.xl,
+    marginBottom: spacing.lg,
   },
   manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.bodyLg,
     fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
+    lineHeight: fontSize.bodyLg * 1.6,
+    color: palette.creamSoft,
     textAlign: 'center' as const,
   },
-  lapCount: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xxl,
-  },
   finish: {
-    borderRadius: theme.radius.md,
+    borderRadius: radius.md,
     paddingVertical: 16,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    backgroundColor: theme.palette.red,
-    marginBottom: theme.spacing.md,
+    backgroundColor: palette.red,
+    marginBottom: spacing.md,
   },
   finishTxt: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.cream,
+    color: palette.cream,
   },
   abortTxt: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
 };

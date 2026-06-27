@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 /**
  * Stack onboarding : flux strictement linéaire. Le retour par geste est
@@ -12,7 +12,7 @@ export default function OnboardingLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
         gestureEnabled: false,
       }}

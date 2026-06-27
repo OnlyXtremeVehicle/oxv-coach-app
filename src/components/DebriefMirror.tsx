@@ -12,7 +12,7 @@
 // s'affiche en état « en attente de la télémétrie RaceBox », avec le nom du champ source.
 //
 // Dépendances : react, react-native, react-native-svg. (Pas de Reanimated : Animated natif suffit.)
-// Police : mappé sur les polices réellement chargées par oxv-app (mono = Menlo, display/body = système).
+// Police : mappé sur Geist (display/mono), comme le thème v2 (src/theme/v2.ts).
 //
 // Composant vendored (livré clé en main). Deux règles désactivées au niveau fichier,
 // par intention et non par négligence (cf. « pas de any sauf cas exceptionnel justifié ») :
@@ -30,25 +30,25 @@ import Svg, { Path, Circle } from 'react-native-svg';
 export const C = {
   night: '#050505',
   card: '#0B0B0D',
-  card2: '#141416',
+  card2: '#121214',
   cream: '#F8F9FA',
-  soft: '#E5E5EA',
+  soft: '#E5E5E5',
   mute: '#9A9AA3',
-  grey: '#7A7A82',
+  grey: '#5A5A62',
   line: 'rgba(255,255,255,0.09)',
   edge: 'rgba(255,255,255,0.18)',
-  red: '#C8102E',
-  copper: '#B87333',
-  gold: '#C4A459',
+  red: '#C8102E', // RÉSERVÉ : marque + bande coach + REC
+  brake: '#60A5FA', // dimension freinage (jamais le rouge)
+  copper: '#B87333', // hérité — neutralisé dans les usages (coach→red, data→gold, neutre→mute)
+  gold: '#FFB703', // OR = donnée (cockpit) — plus l'or Heritage #C4A459
   green: '#4ADE80',
 };
-// oxv-app ne charge pas Syncopate/Inter/JetBrains : on mappe sur ses polices réelles
-// (mono = Menlo comme tokens.ts ; display/body = police système). Si ces familles sont
-// chargées plus tard (charte site), remettre 'Syncopate'/'Inter'/'JetBrainsMono'.
+// Aligné sur le thème v2 : Geist (display/body) + GeistMono (chiffres), les familles
+// réellement chargées par l'app. Cohérent avec src/theme/v2.ts.
 export const F: { display?: string; body?: string; mono?: string } = {
-  display: undefined,
-  body: undefined,
-  mono: 'Menlo',
+  display: 'Geist_600SemiBold',
+  body: 'Geist_400Regular',
+  mono: 'GeistMono_400Regular',
 };
 
 /* ============================ TYPES (contrats) ============================ */
@@ -186,7 +186,7 @@ const fmtLap = (s?: number | null) => {
   const r = s - m * 60;
   return `${m}:${r.toFixed(3).padStart(6, '0')}`;
 };
-const PHASE_COLOR: Record<string, string> = { a: C.green, b: C.red, c: C.grey };
+const PHASE_COLOR: Record<string, string> = { a: C.green, b: C.brake, c: C.grey };
 
 function parseActs(text?: string | null) {
   const out = { act1: '', act2: '', act3: '', sign: 'Un constat, pas une consigne.' };
@@ -273,7 +273,7 @@ function useReveal(delay = 0) {
 }
 const AnimatedBar: React.FC<{ pct: number; color?: string; delay?: number; h?: number }> = ({
   pct,
-  color = C.copper,
+  color = C.gold,
   delay = 0,
   h = 6,
 }) => {
@@ -399,12 +399,12 @@ const TrackMini: React.FC<{
               cy={points[mi][1]}
               r={3}
               fill={C.cream}
-              stroke={C.red}
+              stroke={C.gold}
             />
           )
       )}
-      <Circle cx={45} cy={165} r={3.6} fill={C.red} />
-      <ACircle cx={cx as any} cy={cy as any} r={4.5} fill={C.red} />
+      <Circle cx={45} cy={165} r={3.6} fill={C.gold} />
+      <ACircle cx={cx as any} cy={cy as any} r={4.5} fill={C.gold} />
     </Svg>
   );
 };
@@ -412,11 +412,11 @@ const TrackMini: React.FC<{
 /* ============================ PETITS BLOCS UI ============================ */
 const Eyebrow: React.FC<{ children: React.ReactNode; color?: string }> = ({
   children,
-  color = C.copper,
+  color = C.gold,
 }) => <Text style={[s.eyebrow, { color }]}>{children}</Text>;
 const Source: React.FC<{ field: string; live?: boolean }> = ({ field, live = true }) => (
   <View style={s.sourceRow}>
-    <View style={[s.dot, { backgroundColor: live ? C.green : C.copper }]} />
+    <View style={[s.dot, { backgroundColor: live ? C.green : C.mute }]} />
     <Text style={s.sourceTxt}>
       {live ? 'Champ réel : ' : 'Champ : '}
       <Text style={{ color: C.soft }}>{field}</Text>
@@ -456,7 +456,7 @@ const ModuleCard: React.FC<{
   <View style={s.subcard}>
     <View style={s.subTitleRow}>
       <Text style={s.subTitle}>{title}</Text>
-      <Text style={[s.badge, !filled && { color: C.copper, borderColor: 'rgba(184,115,51,0.4)' }]}>
+      <Text style={[s.badge, !filled && { color: C.mute, borderColor: 'rgba(154,154,163,0.4)' }]}>
         {badge}
       </Text>
     </View>
@@ -626,11 +626,11 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
             <>
               <View style={s.splitLab}>
                 <Text style={{ color: C.soft, fontSize: 11 }}>Voiture {Math.round(mVeh)}%</Text>
-                <Text style={{ color: C.red, fontSize: 11 }}>Vous {Math.round(mPil)}%</Text>
+                <Text style={{ color: C.gold, fontSize: 11 }}>Vous {Math.round(mPil)}%</Text>
               </View>
               <View style={s.splitTrack}>
                 <View style={{ width: `${mVeh}%`, backgroundColor: 'rgba(255,255,255,0.16)' }} />
-                <View style={{ width: `${mPil}%`, backgroundColor: C.red }} />
+                <View style={{ width: `${mPil}%`, backgroundColor: C.gold }} />
               </View>
               <HowTo>
                 Plus la part « Vous » est grande, plus il vous reste de marge à prendre.
@@ -662,7 +662,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
                   </View>
                   <View style={s.legendRow}>
                     <Legend c={C.green} t="Accélère" />
-                    <Legend c={C.red} t="Freine" />
+                    <Legend c={C.brake} t="Freine" />
                     <Legend c={C.grey} t="Roue libre" />
                   </View>
                   <Fact
@@ -868,7 +868,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
             </Text>
             <View style={s.twin}>
               <View style={s.twinCol}>
-                <Text style={[s.twinPc, { color: C.copper }]}>{coach.precisionBefore}%</Text>
+                <Text style={[s.twinPc, { color: C.red }]}>{coach.precisionBefore}%</Text>
                 <Text style={s.twinLab}>AVANT</Text>
               </View>
               <Text style={s.arrow}>→</Text>
@@ -886,7 +886,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
       <View style={s.foot}>
         <Text style={s.footTxt}>Les faits sont à vous. L'interprétation appartient au coach.</Text>
         {modState && modState !== 'ok' && (
-          <Text style={[s.footTxt, { color: C.copper, marginTop: 6 }]}>
+          <Text style={[s.footTxt, { color: C.mute, marginTop: 6 }]}>
             Modules RaceBox :{' '}
             {modState === 'no_frames' ? 'en attente de la première télémétrie' : modState}.
           </Text>
@@ -954,7 +954,7 @@ const BasculeDial: React.FC = () => {
 const s = StyleSheet.create({
   screen: { backgroundColor: C.card, flex: 1 },
   head: { padding: 20, borderBottomWidth: 1, borderBottomColor: C.line },
-  eyebrow: { fontFamily: F.mono, fontSize: 9, letterSpacing: 2, color: C.copper },
+  eyebrow: { fontFamily: F.mono, fontSize: 9, letterSpacing: 2, color: C.gold },
   title: { fontFamily: F.display, fontSize: 22, color: C.cream, marginTop: 8, letterSpacing: 0.5 },
   meta: { fontFamily: F.mono, fontSize: 11, color: C.mute, marginTop: 4 },
   precis: {
@@ -1003,7 +1003,7 @@ const s = StyleSheet.create({
     marginTop: 11,
     alignItems: 'flex-start',
   },
-  howtoL: { fontFamily: F.mono, fontSize: 8.5, letterSpacing: 1, color: C.copper, paddingTop: 1 },
+  howtoL: { fontFamily: F.mono, fontSize: 8.5, letterSpacing: 1, color: C.mute, paddingTop: 1 },
   howtoS: { flex: 1, fontSize: 11.5, color: C.soft, lineHeight: 17 },
 
   fact: {
@@ -1047,8 +1047,8 @@ const s = StyleSheet.create({
     fontFamily: F.mono,
     fontSize: 8,
     letterSpacing: 0.6,
-    color: C.copper,
-    borderColor: 'rgba(184,115,51,0.4)',
+    color: C.mute,
+    borderColor: 'rgba(154,154,163,0.4)',
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 7,
@@ -1105,14 +1105,14 @@ const s = StyleSheet.create({
     top: -3,
     width: 2,
     height: 14,
-    backgroundColor: C.red,
+    backgroundColor: C.gold,
     marginLeft: -2,
   },
   ggDelta: { fontSize: 10.5, color: C.mute, marginTop: 6 },
   ggGrid: { flexDirection: 'row', gap: 10, marginTop: 10 },
 
   dial: { height: 84, alignItems: 'center', justifyContent: 'center', marginVertical: 6 },
-  dialLine: { width: 96, height: 2.5, backgroundColor: C.red, borderRadius: 2 },
+  dialLine: { width: 96, height: 2.5, backgroundColor: C.gold, borderRadius: 2 },
   dialHub: { position: 'absolute', width: 6, height: 6, borderRadius: 3, backgroundColor: C.cream },
 
   signoff: { alignItems: 'center', paddingVertical: 22 },
@@ -1127,8 +1127,8 @@ const s = StyleSheet.create({
   signS: { fontFamily: F.mono, fontSize: 9, color: C.mute, letterSpacing: 1.5, marginTop: 9 },
 
   coach: {
-    backgroundColor: 'rgba(184,115,51,0.08)',
-    borderColor: 'rgba(184,115,51,0.45)',
+    backgroundColor: 'rgba(200,16,46,0.08)',
+    borderColor: 'rgba(200,16,46,0.45)',
     borderWidth: 1,
     borderRadius: 18,
     margin: 18,
@@ -1139,30 +1139,30 @@ const s = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: C.copper,
+    backgroundColor: C.red,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarTxt: { color: '#1a1206', fontFamily: F.display, fontSize: 13 },
+  avatarTxt: { color: C.cream, fontFamily: F.display, fontSize: 13 },
   coachName: { color: C.cream, fontSize: 13.5, fontWeight: '600' },
   coachRole: { color: C.mute, fontFamily: F.mono, fontSize: 9, letterSpacing: 0.6, marginTop: 2 },
   coachUtil: { fontSize: 12.5, color: C.soft, lineHeight: 20, marginTop: 12 },
   pri: {
     paddingVertical: 11,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(184,115,51,0.25)',
+    borderTopColor: 'rgba(200,16,46,0.25)',
     marginTop: 6,
     flexDirection: 'row',
     gap: 9,
   },
-  priTag: { fontFamily: F.mono, fontSize: 9, color: C.copper, letterSpacing: 0.6 },
+  priTag: { fontFamily: F.mono, fontSize: 9, color: C.red, letterSpacing: 0.6 },
   priTx: { flex: 1, fontSize: 12.5, color: C.soft, lineHeight: 18 },
   audio: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     alignSelf: 'flex-start',
-    borderColor: 'rgba(184,115,51,0.45)',
+    borderColor: 'rgba(200,16,46,0.45)',
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: 12,
@@ -1173,17 +1173,17 @@ const s = StyleSheet.create({
     width: 0,
     height: 0,
     borderLeftWidth: 7,
-    borderLeftColor: C.copper,
+    borderLeftColor: C.red,
     borderTopWidth: 5,
     borderTopColor: 'transparent',
     borderBottomWidth: 5,
     borderBottomColor: 'transparent',
   },
-  audioTxt: { fontFamily: F.mono, fontSize: 10, letterSpacing: 0.5, color: C.copper },
+  audioTxt: { fontFamily: F.mono, fontSize: 10, letterSpacing: 0.5, color: C.red },
   lift: {
     marginTop: 15,
     backgroundColor: 'rgba(0,0,0,0.25)',
-    borderColor: 'rgba(184,115,51,0.25)',
+    borderColor: 'rgba(200,16,46,0.25)',
     borderWidth: 1,
     borderRadius: 13,
     padding: 13,
@@ -1193,7 +1193,7 @@ const s = StyleSheet.create({
   twinCol: { alignItems: 'center' },
   twinPc: { fontFamily: F.mono, fontSize: 22 },
   twinLab: { fontFamily: F.mono, fontSize: 9, color: C.mute, marginTop: 6, letterSpacing: 0.6 },
-  arrow: { color: C.copper, fontSize: 18 },
+  arrow: { color: C.red, fontSize: 18 },
 
   foot: { padding: 18, alignItems: 'center' },
   footTxt: { fontSize: 10.5, color: C.mute, textAlign: 'center', lineHeight: 16 },

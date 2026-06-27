@@ -31,6 +31,7 @@ import {
   SourceMethodBlock,
 } from '@/components/InsightTransparency';
 import { FadeInSection } from '@/components/motion';
+import { CoachBand, EmptyState, GaugeInstrument, MeterBar } from '@/components/instruments';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
@@ -50,6 +51,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import type { TelemetrySession } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
@@ -72,6 +74,7 @@ const NAV_TARGETS: NavTarget[] = [
   { label: 'Télémétrie', href: '/(app)/telemetry' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
   { label: 'Progression', href: '/(app)/progression' },
+  { label: 'Lectures approfondies', href: '/(app)/insights' },
 ];
 
 /**
@@ -302,7 +305,7 @@ export default function BilanScreen() {
         {/* Tracé 3D en héros (specs v4 §05 §4.1) : « je me revois ». Couche par
             défaut Régularité ; géométrie = circuit officiel, couches data si la
             session porte des insights (sinon forme du circuit seule, honnête). */}
-        <FadeInSection style={{ marginTop: theme.spacing.xl }}>
+        <FadeInSection delay={0} style={{ marginTop: theme.spacing.xl }}>
           {/* Role-aware : un coach qui consulte la session d'un de ses pilotes voit
               les couches coach + l'attribution (badge or). Le pilote sur sa propre
               session voit les couches pilote. Accès déjà consenti (RLS coach). */}
@@ -312,55 +315,126 @@ export default function BilanScreen() {
           />
         </FadeInSection>
 
-        {/* Héros « Le Sillage » — le fait saillant de la séance, situé dans le
-            fil du pilote (soi contre soi). Valeur en couleur DONNÉE (crème),
-            jamais un rouge de verdict (doctrine 01:69). */}
-        <FadeInSection
+        {/* Instrument central — la régularité (amplitude des tours) occupe l'écran,
+            arc factuel sans zone de jugement. Le tour de référence reste au même
+            rang (charte 10 E2), juste sous l'arc. Le rouge n'apparaît pas ici.
+            La jauge s'anime déjà (arc + centre) : on ne la réenveloppe pas ; seuls
+            ses voisins texte entrent en cascade (delay 80), pour éviter la
+            double-animation. */}
+        <View
           style={{
             alignItems: 'center',
-            marginTop: theme.spacing.xxl * 1.5,
-            marginBottom: theme.spacing.xxl * 1.5,
+            marginTop: theme.spacing.xxl,
+            marginBottom: theme.spacing.xxl,
           }}
         >
-          <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>VOTRE MEILLEUR TOUR</Text>
-          <Text style={[s.heroNumber, { marginBottom: theme.spacing.lg }]}>
-            {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
-          </Text>
-
-          {salient ? (
-            salient.prevBestSeconds != null ? (
-              <>
-                <Text style={s.heroTitle}>Votre {salient.sessionsHere}ᵉ séance ici.</Text>
-                <Text style={s.heroMeta}>
-                  Précédente : {formatLapTime(salient.prevBestSeconds)}
-                  {salient.prevDate ? ` · ${formatDateShort(salient.prevDate)}` : ''}
-                </Text>
-                {salient.bestSeconds != null ? (
-                  <Text style={s.heroDelta}>
-                    {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par rapport
-                    à votre dernière venue.
-                  </Text>
-                ) : null}
-              </>
-            ) : (
-              <Text style={s.heroTitle}>Première séance sur ce circuit. Le fil commence ici.</Text>
-            )
-          ) : null}
-
-          {/* Régularité au même rang que le chrono (charte 10, E2) : le temps au
-              tour ne doit jamais être le seul chiffre dominant. Même style
-              heroNumber → prominence égale. La doctrine « un seul chiffre »
-              (CLAUDE.md §5) cède ici devant l'exigence éthique d'équilibre
-              vitesse / régularité, plus spécifique et plus récente. */}
           {salient && salient.spreadSeconds != null && salient.lapCount >= 2 ? (
-            <View style={{ alignItems: 'center', marginTop: theme.spacing.xxl * 1.5 }}>
-              <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>RÉGULARITÉ</Text>
-              <Text style={[s.heroNumber, { marginBottom: theme.spacing.lg }]}>
-                {salient.spreadSeconds.toFixed(1).replace('.', ',')} s
-              </Text>
-              <Text style={s.heroTitle}>L’amplitude de vos {salient.lapCount} tours.</Text>
-            </View>
+            <GaugeInstrument
+              label="RÉGULARITÉ"
+              value={salient.spreadSeconds}
+              min={0}
+              max={Math.max(3, salient.spreadSeconds * 1.25)}
+              unit="s / tour"
+              formatValue={(v) => v.toFixed(1).replace('.', ',')}
+              caption={`${salient.lapCount} tours`}
+              size={264}
+            />
           ) : null}
+
+          <FadeInSection
+            delay={80}
+            style={{
+              alignItems: 'center',
+              marginTop: salient && salient.spreadSeconds != null ? theme.spacing.xxl : 0,
+            }}
+          >
+            <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>VOTRE MEILLEUR TOUR</Text>
+            <Text style={[s.heroNumber, { marginBottom: theme.spacing.md }]}>
+              {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
+            </Text>
+
+            {salient ? (
+              salient.prevBestSeconds != null ? (
+                <>
+                  <Text style={s.heroTitle}>Votre {salient.sessionsHere}ᵉ séance ici.</Text>
+                  <Text style={s.heroMeta}>
+                    Précédente : {formatLapTime(salient.prevBestSeconds)}
+                    {salient.prevDate ? ` · ${formatDateShort(salient.prevDate)}` : ''}
+                  </Text>
+                  {salient.bestSeconds != null ? (
+                    <Text style={s.heroDelta}>
+                      {formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)} par
+                      rapport à votre dernière venue.
+                    </Text>
+                  ) : null}
+                </>
+              ) : (
+                <Text style={s.heroTitle}>
+                  Première séance sur ce circuit. Le fil commence ici.
+                </Text>
+              )
+            ) : null}
+          </FadeInSection>
+        </View>
+
+        {/* Secteurs & trace — attente honnête : ces mesures viennent des trames du
+            boîtier (telemetry_frames), vides jusqu'à la première vraie capture. On
+            prépare l'emplacement, on n'invente pas la donnée (doctrine miroir). */}
+        <FadeInSection delay={160} style={{ marginBottom: theme.spacing.xxl }}>
+          <Text style={s.sectionEyebrow}>SECTEURS &amp; TRACE</Text>
+          <EmptyState
+            message="Les temps par secteur et la trace G apparaîtront avec les premières trames du boîtier."
+            source="telemetry_frames"
+          />
+        </FadeInSection>
+
+        {/* Les quatre piliers — aperçu cliquable vers chaque lecture détaillée.
+            Seule la consistance porte ici une mesure (issue des tours) ; les autres
+            sont des portes vers leur écran (calcul sur frames / écran dédié). */}
+        <FadeInSection delay={240} style={{ marginBottom: theme.spacing.xxl }}>
+          <Text style={s.sectionEyebrow}>LES QUATRE PILIERS</Text>
+          <View style={{ gap: theme.spacing.xs }}>
+            <MeterBar
+              label="Signature"
+              value="À explorer"
+              fillPct={0}
+              tone="heritage"
+              onPress={() => router.push(`/(app)/signature?sessionId=${session.id}` as never)}
+            />
+            <MeterBar
+              label="Consistance"
+              value={
+                salient && salient.spreadSeconds != null
+                  ? `${Math.round(Math.max(0, 100 - (salient.spreadSeconds / 3) * 100))} %`
+                  : '—'
+              }
+              fillPct={
+                salient && salient.spreadSeconds != null
+                  ? Math.max(0, 100 - (salient.spreadSeconds / 3) * 100)
+                  : 0
+              }
+              tone="green"
+              onPress={() => router.push(`/(app)/regularite?sessionId=${session.id}` as never)}
+            />
+            <MeterBar
+              label="Évolution"
+              value={
+                salient && salient.prevBestSeconds != null && salient.bestSeconds != null
+                  ? formatDeltaSeconds(salient.bestSeconds - salient.prevBestSeconds)
+                  : 'Première séance'
+              }
+              fillPct={0}
+              tone="gold"
+              onPress={() => router.push(`/(app)/progression?sessionId=${session.id}` as never)}
+            />
+            <MeterBar
+              label="Combiné"
+              value="À explorer"
+              fillPct={0}
+              tone="gold"
+              onPress={() => router.push(`/(app)/heatmap?sessionId=${session.id}` as never)}
+            />
+          </View>
         </FadeInSection>
 
         {/* Contexte du coach (§10.3) — ce que le capteur ne capte pas. */}
@@ -380,48 +454,24 @@ export default function BilanScreen() {
           </FadeInSection>
         ) : null}
 
-        {/* Priorisation du coach (§10.3c-B) — ordre de lecture proposé. */}
+        {/* Priorisation du coach (§10.3c-B) — la voix du coach, seul espace
+            prescriptif, dans la bande rouge. Les virages restent cliquables. */}
         {highlights.map((h) => (
           <FadeInSection key={h.id} style={{ marginBottom: theme.spacing.xl }}>
-            <Card style={s.coachCard}>
-              <Text style={[s.eyebrow, s.coachEyebrow]}>MIS EN AVANT PAR VOTRE COACH</Text>
-              {h.note ? (
-                <Text
-                  style={[
-                    s.coachNote,
-                    { marginBottom: h.highlightCornerIndexes.length > 0 ? theme.spacing.md : 0 },
-                  ]}
-                >
-                  « {h.note} »
-                </Text>
-              ) : null}
-              <View style={{ gap: theme.spacing.sm }}>
-                {h.highlightCornerIndexes.map((idx, i) => (
-                  <Pressable
-                    key={`${h.id}-${idx}`}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Ouvrir ${getCorner(idx)?.name ?? `virage ${idx}`}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/(app)/virage',
-                        params: { index: String(idx), sessionId: session?.id ?? '' },
-                      } as never)
-                    }
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: theme.spacing.md,
-                      paddingVertical: theme.spacing.sm,
-                      opacity: pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <Text style={s.coachCornerIndex}>{i + 1}.</Text>
-                    <Text style={s.coachCornerName}>{getCorner(idx)?.name ?? `Virage ${idx}`}</Text>
-                    <Text style={s.chevron}>›</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </Card>
+            <CoachBand
+              title="Mis en avant par votre coach"
+              items={[
+                ...(h.note ? [{ text: `« ${h.note} »` }] : []),
+                ...h.highlightCornerIndexes.map((idx) => ({
+                  text: getCorner(idx)?.name ?? `Virage ${idx}`,
+                  onPress: () =>
+                    router.push({
+                      pathname: '/(app)/virage',
+                      params: { index: String(idx), sessionId: session?.id ?? '' },
+                    } as never),
+                })),
+              ]}
+            />
           </FadeInSection>
         ))}
 
@@ -446,8 +496,17 @@ export default function BilanScreen() {
           );
         })}
 
+        <Text style={s.sectionEyebrow}>TOUTES LES LECTURES</Text>
         <View style={{ gap: theme.spacing.sm }}>
-          {NAV_TARGETS.map((target, i) => (
+          {NAV_TARGETS.filter(
+            (t) =>
+              ![
+                '/(app)/signature',
+                '/(app)/regularite',
+                '/(app)/progression',
+                '/(app)/heatmap',
+              ].includes(t.href)
+          ).map((target, i) => (
             <FadeInSection key={target.href} delay={150 + i * 80}>
               <NavCard
                 label={target.label}
@@ -457,25 +516,22 @@ export default function BilanScreen() {
           ))}
         </View>
 
-        {/* CTA Export PDF */}
+        {/* CTA Export PDF — Button du kit : pendant l'export, spinner + libellé
+            conservé + état `busy` pour les lecteurs d'écran (non cliquable),
+            plutôt qu'une atténuation d'opacité manuelle. */}
         {session?.id ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={exporting}
-            onPress={async () => {
-              setExporting(true);
-              await exportAndShareBilanPdf({ sessionId: session.id });
-              setExporting(false);
-            }}
-            style={({ pressed }) => [
-              s.ctaPrimary,
-              { marginTop: theme.spacing.lg, opacity: pressed || exporting ? 0.6 : 1 },
-            ]}
-          >
-            <Text style={s.ctaPrimaryTxt}>
-              {exporting ? 'Préparation du PDF…' : 'Partager mon bilan en PDF'}
-            </Text>
-          </Pressable>
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <Button
+              variant="ghost"
+              label="Partager mon bilan en PDF"
+              loading={exporting}
+              onPress={async () => {
+                setExporting(true);
+                await exportAndShareBilanPdf({ sessionId: session.id });
+                setExporting(false);
+              }}
+            />
+          </View>
         ) : null}
 
         {/* CTA Côte à côte — comparer avec un copain (entre amis, pas du coaching) */}
@@ -501,6 +557,20 @@ export default function BilanScreen() {
             ]}
           >
             <Text style={s.ctaGhostTxt}>Voir mes souvenirs de session</Text>
+          </Pressable>
+        ) : null}
+
+        {/* CTA Carte trophée — la séance en une image partageable (vers l'extérieur) */}
+        {session?.id ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/(app)/carte-trophee?sessionId=${session.id}` as never)}
+            style={({ pressed }) => [
+              s.ctaGhost,
+              { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={s.ctaGhostTxt}>Carte à partager</Text>
           </Pressable>
         ) : null}
 
@@ -530,7 +600,12 @@ export default function BilanScreen() {
         </FadeInSection>
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -598,8 +673,9 @@ function BilanEmpty() {
         <Text style={s.manifest}>Votre première session écrira la première ligne.</Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl * 1.5 }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour à l'accueil</Text>
         </Pressable>
@@ -617,7 +693,12 @@ function BilanError({ message }: { message: string }) {
           Le bilan n'a pas pu être chargé.
         </Text>
         <Text style={s.errorBody}>{message}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={theme.hitSlop}
+          onPress={() => router.back()}
+          style={s.backHit}
+        >
           <Text style={s.back}>Retour</Text>
         </Pressable>
       </View>
@@ -632,6 +713,14 @@ const s = {
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
+  },
+  sectionEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.md,
   },
   heroNumber: {
     fontFamily: theme.fonts.mono,
@@ -663,14 +752,20 @@ const s = {
     marginTop: theme.spacing.md,
   },
   coachCard: {
-    borderColor: theme.palette.coach,
+    borderColor: '#2C1418',
+    borderLeftColor: theme.palette.red,
+    borderLeftWidth: 2,
+    backgroundColor: '#140809',
   },
   coachCardCentered: {
-    borderColor: theme.palette.coach,
+    borderColor: '#2C1418',
+    borderLeftColor: theme.palette.red,
+    borderLeftWidth: 2,
+    backgroundColor: '#140809',
     alignItems: 'center' as const,
   },
   coachEyebrow: {
-    color: theme.palette.coach,
+    color: theme.palette.red,
     marginBottom: theme.spacing.md,
   },
   coachRowLabel: {
@@ -693,17 +788,6 @@ const s = {
     fontStyle: 'italic' as const,
     color: theme.palette.creamSoft,
     lineHeight: theme.fontSize.body * 1.5,
-  },
-  coachCornerIndex: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.coach,
-  },
-  coachCornerName: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    flex: 1,
   },
   coachReading: {
     fontFamily: theme.fonts.mono,
@@ -731,21 +815,6 @@ const s = {
   chevron: {
     color: theme.palette.creamMute,
     fontSize: 18,
-  },
-  ctaPrimary: {
-    padding: theme.spacing.lg,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.edge,
-    backgroundColor: theme.palette.card2,
-    alignItems: 'center' as const,
-  },
-  ctaPrimaryTxt: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.cream,
   },
   ctaGhost: {
     padding: theme.spacing.lg,
@@ -793,5 +862,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour le lien « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

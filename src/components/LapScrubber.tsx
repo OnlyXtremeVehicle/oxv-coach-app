@@ -1,19 +1,15 @@
 /**
  * LapScrubber — slider tactile pour rejouer un tour frame par frame.
+ * Transposition gaming (cockpit factuel).
  *
- * UI sobre :
- *   - Mini-carte du circuit avec un point qui matérialise la position
- *     courante (cercle blanc + halo coloré par la vitesse)
- *   - Barre horizontale (tap pour seek)
- *   - Boutons ‹ ›‹ pour avancer / reculer d'1 frame
- *   - 3 chiffres en bas : vitesse, g latéral, g longitudinal
- *   - Progression dans le tour en % (sobre)
+ *   - Mini-carte avec un point de position (cream) + halo coloré par la vitesse
+ *   - Barre horizontale OR (tap pour seek), curseur or
+ *   - Boutons ‹ › pour avancer/reculer
+ *   - Readouts mono : vitesse, g latéral, g longitudinal, progression %
  *
- * Mode SIMPLE (pilote particulier) : juste vitesse + position
- * Mode DÉTAILLÉ (coach / admin / pilote détaillé) : ajoute les g
- *
- * Pas de play/pause auto en V1 (volontaire — le pilote scrubbe à son
- * rythme pour analyser). À ajouter si demandé.
+ * Mode SIMPLE (pilote) : vitesse + position. Mode DÉTAILLÉ : ajoute les g.
+ * Pas de play/pause auto en V1 (le pilote scrubbe à son rythme).
+ * Migration legacy→v2 achevée.
  */
 
 import { useMemo, useState } from 'react';
@@ -26,9 +22,11 @@ import {
   TrajectoryLayer,
   projectToScene,
 } from '@/components/CircuitMap';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 import Svg, { Circle } from 'react-native-svg';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 export interface ScrubFrame {
   lat: number | null;
@@ -87,16 +85,14 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
       <View
         style={{
           padding: spacing.xxl,
-          borderRadius: borderRadius.lg,
+          borderRadius: radius.lg,
           borderWidth: 0.5,
-          borderColor: colors.border.subtle,
-          backgroundColor: colors.background.secondary,
+          borderColor: palette.line,
+          backgroundColor: palette.card2,
           alignItems: 'center',
         }}
       >
-        <Text style={[typography.caption, { color: colors.text.tertiary }]}>
-          Pas de frames télémétriques sur ce tour.
-        </Text>
+        <Text style={s.caption}>Pas de frames télémétriques sur ce tour.</Text>
       </View>
     );
   }
@@ -112,7 +108,7 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
         <CornersLayer colorMode="neutral" showLabels radius={10} />
         {currentScenePoint ? (
           <>
-            {/* Halo */}
+            {/* Halo coloré par la vitesse */}
             <Circle
               cx={currentScenePoint.x}
               cy={currentScenePoint.y}
@@ -120,13 +116,13 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
               fill={haloColor(current.speedKmh)}
               opacity={0.25}
             />
-            {/* Point principal */}
+            {/* Point principal (cream, neutre — le halo porte la donnée) */}
             <Circle
               cx={currentScenePoint.x}
               cy={currentScenePoint.y}
               r={8}
-              fill={colors.text.primary}
-              stroke={colors.background.primary}
+              fill={palette.cream}
+              stroke={palette.night}
               strokeWidth={2}
             />
           </>
@@ -140,8 +136,8 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
           justifyContent: 'space-around',
           marginTop: spacing.lg,
           paddingVertical: spacing.md,
-          backgroundColor: colors.background.secondary,
-          borderRadius: borderRadius.md,
+          backgroundColor: palette.card2,
+          borderRadius: radius.md,
         }}
       >
         <Readout
@@ -176,11 +172,11 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
           <View
             style={{
               height: 4,
-              backgroundColor: colors.background.elevated,
+              backgroundColor: palette.card2,
               borderRadius: 2,
             }}
           />
-          {/* Remplissage */}
+          {/* Remplissage — or (progression active) */}
           <View
             style={{
               position: 'absolute',
@@ -188,11 +184,11 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
               left: 0,
               height: 4,
               width: `${progress * 100}%`,
-              backgroundColor: colors.text.primary,
+              backgroundColor: palette.gold,
               borderRadius: 2,
             }}
           />
-          {/* Curseur */}
+          {/* Curseur — or, anneau night */}
           <View
             style={{
               position: 'absolute',
@@ -201,9 +197,9 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
               width: 20,
               height: 20,
               borderRadius: 10,
-              backgroundColor: colors.text.primary,
+              backgroundColor: palette.gold,
               borderWidth: 2,
-              borderColor: colors.background.primary,
+              borderColor: palette.night,
             }}
           />
         </Pressable>
@@ -218,14 +214,7 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
         >
           <StepBtn label="‹‹ 10" onPress={() => setIndex((i) => Math.max(0, i - 10))} />
           <StepBtn label="‹ 1" onPress={() => setIndex((i) => Math.max(0, i - 1))} />
-          <Text
-            style={{
-              color: colors.text.tertiary,
-              fontSize: fontSize.caption,
-              fontFamily: 'Menlo',
-              alignSelf: 'center',
-            }}
-          >
+          <Text style={[s.index, { alignSelf: 'center' }]}>
             {safeIndex + 1} / {total}
           </Text>
           <StepBtn label="1 ›" onPress={() => setIndex((i) => Math.min(total - 1, i + 1))} />
@@ -239,30 +228,10 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
 function Readout({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <View style={{ alignItems: 'center' }}>
-      <Text style={[typography.eyebrow, { color: colors.text.tertiary, marginBottom: 4 }]}>
-        {label}
-      </Text>
-      <Text
-        style={{
-          color: colors.text.primary,
-          fontSize: fontSize.title,
-          fontWeight: fontWeight.light,
-          fontFamily: 'Menlo',
-        }}
-      >
+      <Text style={[s.eyebrow, { marginBottom: 4 }]}>{label}</Text>
+      <Text style={s.readoutValue}>
         {value}
-        {unit ? (
-          <Text
-            style={{
-              fontSize: fontSize.caption,
-              color: colors.text.tertiary,
-              fontFamily: 'Menlo',
-            }}
-          >
-            {' '}
-            {unit}
-          </Text>
-        ) : null}
+        {unit ? <Text style={s.readoutUnit}> {unit}</Text> : null}
       </Text>
     </View>
   );
@@ -276,35 +245,27 @@ function StepBtn({ label, onPress }: { label: string; onPress: () => void }) {
       style={({ pressed }) => ({
         paddingVertical: spacing.xs,
         paddingHorizontal: spacing.md,
-        borderRadius: borderRadius.md,
+        borderRadius: radius.md,
         borderWidth: 0.5,
-        borderColor: colors.border.subtle,
+        borderColor: palette.line,
         opacity: pressed ? 0.5 : 1,
       })}
     >
-      <Text
-        style={{
-          color: colors.text.secondary,
-          fontSize: fontSize.caption,
-          fontFamily: 'Menlo',
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={s.stepLabel}>{label}</Text>
     </Pressable>
   );
 }
 
 function haloColor(speed: number | null): string {
-  if (speed === null) return colors.text.tertiary;
-  if (speed < 80) return '#4A8FCC'; // bleu lent
-  if (speed < 140) return colors.text.primary;
-  return colors.accent.red;
+  if (speed === null) return palette.creamMute;
+  if (speed < 80) return theme.dataColors.brake; // bleu lent
+  if (speed < 140) return palette.cream; // neutre
+  return '#F2792B'; // ambre pilote (rouge-perf neutralisé) — vitesse haute
 }
 
 /**
- * Wrapper sortir Svg pour le SVG racine — ce composant ajoute un Svg pour
- * pouvoir afficher Circle dehors d'un layer CircuitMap.
+ * Wrapper Svg racine — ajoute un Svg pour afficher Circle hors d'un layer
+ * CircuitMap.
  */
 export function PositionMarker({
   scenePoint,
@@ -328,10 +289,25 @@ export function PositionMarker({
         cx={scenePoint.x}
         cy={scenePoint.y}
         r={8}
-        fill={colors.text.primary}
-        stroke={colors.background.primary}
+        fill={palette.cream}
+        stroke={palette.night}
         strokeWidth={2}
       />
     </Svg>
   );
 }
+
+const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  readoutValue: { color: palette.cream, fontSize: fontSize.value, fontFamily: fonts.mono },
+  readoutUnit: { color: palette.creamMute, fontSize: fontSize.small, fontFamily: fonts.mono },
+  caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
+  index: { color: palette.creamMute, fontSize: fontSize.small, fontFamily: fonts.mono },
+  stepLabel: { color: palette.creamSoft, fontSize: fontSize.small, fontFamily: fonts.mono },
+};

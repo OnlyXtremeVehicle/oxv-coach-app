@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — ONBOARDING (étape doctrine) · gaming v3
+  Grammaire cockpit, registre intro : épuré, typographie dominante.
+  Pose la doctrine du miroir AVANT toute donnée. Barre segmentée,
+  titre fort, trois points fondateurs. Mise sous tension légère.
+  Couvre : les 6+3 écrans onboarding (index, doctrine, methode, niveau,
+           pacte, cgu + coach-onboarding).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Onboarding gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;min-height:640px;position:relative;overflow:hidden;border-radius:36px;display:flex;flex-direction:column;
+    background:radial-gradient(80% 44% at 50% 36%,rgba(255,183,3,.10) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.016) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 40%,transparent 52%,rgba(0,0,0,.62) 100%)}
+  .screen{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;padding:24px 24px 26px}
+
+  .prog{display:flex;gap:6px;margin-bottom:8px;opacity:0;animation:fade .6s ease .1s forwards}
+  .prog span{flex:1;height:3px;border-radius:2px;background:#1C1C22}
+  .prog span.on{background:var(--gold);box-shadow:0 0 9px rgba(255,183,3,.8)}
+  .step{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);opacity:0;animation:fade .6s ease .2s forwards}
+
+  .mid{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .head{margin-bottom:30px}
+  .head h1{font-size:40px;font-weight:700;line-height:1.02;letter-spacing:-.03em;opacity:0;transform:scale(.92);animation:popIn .8s cubic-bezier(.2,.9,.25,1.05) .35s forwards}
+  .head h1 em{font-style:normal;color:var(--gold);text-shadow:0 0 34px rgba(255,183,3,.45)}
+  .head .sub{font-size:15px;color:var(--mute);margin-top:14px;line-height:1.45;opacity:0;animation:fadeUp .6s ease .6s forwards}
+
+  .points{display:flex;flex-direction:column;gap:16px}
+  .pt{display:flex;gap:14px;align-items:flex-start;opacity:0;animation:fadeUp .5s ease forwards}
+  .pt:nth-child(1){animation-delay:.8s}.pt:nth-child(2){animation-delay:.92s}.pt:nth-child(3){animation-delay:1.04s}
+  .pt .ix{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--gold);width:20px;flex-shrink:0;margin-top:2px;text-shadow:0 0 10px rgba(255,183,3,.4)}
+  .pt .tx{font-size:14px;line-height:1.4;color:#D7D7DB}
+  .pt .tx b{color:var(--cream);font-weight:600;display:block;margin-bottom:1px}
+
+  .cta{margin-top:auto;display:flex;align-items:center;justify-content:center;gap:10px;padding:17px;border-radius:14px;
+    background:linear-gradient(135deg,#FFB703,#FF9500);color:#1a1206;font-weight:700;font-size:15px;letter-spacing:.01em;
+    box-shadow:0 0 26px rgba(255,183,3,.35);opacity:0;animation:fadeUp .6s ease 1.2s forwards;cursor:pointer}
+
+  @keyframes fade{to{opacity:1}}
+  @keyframes popIn{to{opacity:1;transform:scale(1)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="prog">
+      <span class="on"></span><span class="on"></span><span></span><span></span><span></span><span></span>
+    </div>
+    <div class="step">Étape 2 — Doctrine</div>
+
+    <div class="mid">
+      <div class="head">
+        <h1>Cette app<br>est un <em>miroir</em>.</h1>
+        <div class="sub">Elle vous montre. Elle ne vous dirige pas.</div>
+      </div>
+
+      <div class="points">
+        <div class="pt"><span class="ix">01</span><span class="tx"><b>Elle montre vos chiffres.</b>Des constats, jamais des consignes. Vous lisez, vous décidez.</span></div>
+        <div class="pt"><span class="ix">02</span><span class="tx"><b>La sécurité avant la performance.</b>On parle de marge, jamais de limite à dépasser.</span></div>
+        <div class="pt"><span class="ix">03</span><span class="tx"><b>Le silence en piste.</b>Tant que vous roulez, l'écran se tait. Le débrief attend les stands.</span></div>
+      </div>
+    </div>
+
+    <div class="cta">J'ai compris →</div>
+
+  </div></div>
+</body></html>

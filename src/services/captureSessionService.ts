@@ -21,7 +21,7 @@
  * trames). iTOW est stocké pour un ordonnancement plus robuste ultérieur.
  */
 
-import { bluetoothService } from '@/ble/bluetoothService';
+import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import { startCapture, stopCapture } from '@/ble/captureMode';
 import {
   type RecordedLap,
@@ -48,6 +48,46 @@ export const BELTOISE_FINISH = { lat: 45.6004, lon: -0.141, radiusM: 40 };
 const FLUSH_EVERY_FRAMES = 50;
 const FLUSH_INTERVAL_MS = 4_000;
 
+/**
+ * État de la capture vis-à-vis du lien BLE, distinct du statut Supabase de la
+ * session. Permet à l'UI de capture de ne JAMAIS laisser croire qu'on enregistre
+ * alors que le boîtier a décroché :
+ *
+ *   - `recording`   : lien stable, trames en arrivée.
+ *   - `interrupted` : lien tombé, reconnexion auto en cours (capture en pause).
+ *   - `lost`        : reconnexion épuisée — capture finalisée proprement.
+ *   - `idle`        : aucune capture active.
+ */
+export type CaptureLinkStatus = 'idle' | 'recording' | 'interrupted' | 'lost';
+
+type CaptureLinkListener = (status: CaptureLinkStatus) => void;
+
+let linkStatus: CaptureLinkStatus = 'idle';
+const linkListeners: CaptureLinkListener[] = [];
+
+/**
+ * S'abonne au statut de lien de la capture (recording/interrupted/lost/idle).
+ * Émet l'état courant à l'abonnement. Rendu disponible pour l'écran de capture.
+ */
+export function onCaptureLinkStatus(listener: CaptureLinkListener): () => void {
+  linkListeners.push(listener);
+  listener(linkStatus);
+  return () => {
+    const i = linkListeners.indexOf(listener);
+    if (i >= 0) linkListeners.splice(i, 1);
+  };
+}
+
+export function getCaptureLinkStatus(): CaptureLinkStatus {
+  return linkStatus;
+}
+
+function setLinkStatus(next: CaptureLinkStatus): void {
+  if (linkStatus === next) return;
+  linkStatus = next;
+  for (const l of linkListeners) l(next);
+}
+
 interface CaptureState {
   sessionId: string;
   userId: string;
@@ -58,6 +98,8 @@ interface CaptureState {
   lastElapsed: number;
   maxima: SessionMaxima;
   unsubData: () => void;
+  /** Désabonnement du suivi de reconnexion BLE (interruption/lost). */
+  unsubReconnect: () => void;
   timer: ReturnType<typeof setInterval> | null;
   flushing: boolean;
   flushPromise: Promise<void> | null;
@@ -94,7 +136,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
       status: 'recording',
       started_at: new Date().toISOString(),
       circuit_id: input.circuitId ?? null,
-      circuit_name: input.circuitName ?? 'Beltoise',
+      circuit_name: input.circuitName ?? 'Circuit',
       vehicle_id: input.vehicleId ?? null,
     })
     .select('id')
@@ -118,11 +160,13 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     lastElapsed: 0,
     maxima: { ...EMPTY_MAXIMA },
     unsubData: () => undefined,
+    unsubReconnect: () => undefined,
     timer: null,
     flushing: false,
     flushPromise: null,
   };
   current = state;
+  setLinkStatus('recording');
 
   // Filet de sécurité : capture .ubx brute locale (jamais bloquant).
   try {
@@ -160,7 +204,62 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   });
   state.timer = setInterval(() => void flush(state), FLUSH_INTERVAL_MS);
 
+  // Suit la reconnexion BLE pour ne jamais compter contre un lien mort en
+  // silence : on met la capture en pause pendant les tentatives, on reprend à
+  // la reconnexion, et on finalise proprement si la liaison est perdue.
+  state.unsubReconnect = bluetoothService.onReconnectChange((rc: ReconnectState) => {
+    if (current !== state) return;
+    handleReconnect(state, rc);
+  });
+
   return { ok: true, sessionId };
+}
+
+/**
+ * Réagit aux phases de reconnexion BLE pendant une capture active.
+ *
+ *   - `reconnecting` : lien tombé → capture « interrompue », compteurs live en
+ *     pause (les trames ne tombent plus, on ne fige pas l'UI en « enregistre »).
+ *   - `idle` revenant alors qu'on était interrompu → lien rétabli, on reprend.
+ *   - `lost` : reconnexion épuisée → on finalise la capture proprement (flush +
+ *     agrégats) sans rester sur un état figé.
+ */
+function handleReconnect(state: CaptureState, rc: ReconnectState): void {
+  if (rc.phase === 'reconnecting') {
+    if (linkStatus !== 'interrupted') {
+      setLinkStatus('interrupted');
+      useSessionStore.getState().pauseSession();
+    }
+  } else if (rc.phase === 'idle') {
+    if (linkStatus === 'interrupted') {
+      setLinkStatus('recording');
+      useSessionStore.getState().resumeSession();
+    }
+  } else if (rc.phase === 'lost') {
+    // Terminal : on stoppe la capture proprement (best-effort, non bloquant).
+    setLinkStatus('lost');
+    void finalizeOnLostLink();
+  }
+}
+
+/**
+ * Finalise la capture après une perte définitive de liaison : réutilise le
+ * chemin d'arrêt normal (flush final, persistance tours, agrégats, status
+ * 'completed', upload .ubx), puis garde le statut de lien sur `lost` pour que
+ * l'UI affiche un terminal clair (et non un faux « en enregistrement »).
+ */
+async function finalizeOnLostLink(): Promise<void> {
+  if (!current) return;
+  try {
+    await stopCaptureSession();
+  } catch (e) {
+    console.warn(
+      '[OXV][capture] finalisation après liaison perdue KO :',
+      e instanceof Error ? e.message : e
+    );
+  }
+  // stopCaptureSession remet le statut à 'idle' ; on rétablit 'lost' pour l'UI.
+  setLinkStatus('lost');
 }
 
 /**
@@ -244,9 +343,14 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   const state = current;
   current = null;
   if (!state) return { ok: false, error: 'Aucune capture active.' };
+  // Capture terminée : retour au statut de lien neutre (un arrêt sur liaison
+  // perdue rétablira 'lost' après coup, cf. finalizeOnLostLink).
+  setLinkStatus('idle');
 
-  // 1. Stoppe l'arrivée de nouvelles trames + le timer, puis flush final complet.
+  // 1. Stoppe l'arrivée de nouvelles trames + le timer + le suivi reconnexion,
+  //    puis flush final complet.
   state.unsubData();
+  state.unsubReconnect();
   if (state.timer) clearInterval(state.timer);
   await drain(state);
 
@@ -310,7 +414,9 @@ export async function abortCaptureSession(): Promise<void> {
   const state = current;
   current = null;
   if (!state) return;
+  setLinkStatus('idle');
   state.unsubData();
+  state.unsubReconnect();
   if (state.timer) clearInterval(state.timer);
   // Attend un flush éventuellement en vol pour ne pas écrire après l'abandon.
   if (state.flushPromise) {

@@ -16,7 +16,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -36,6 +36,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { timeAgoFr } from '@/utils/time';
@@ -139,17 +140,19 @@ export default function AmisScreen() {
         <Text style={s.title}>Pour comparer, en miroir.</Text>
 
         {/* Bloc recherche */}
-        <Card style={{ marginBottom: theme.spacing.xxl }}>
-          <SectionLabel>AJOUTER UN AMI</SectionLabel>
-          <TextInput
+        <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
+          <View style={[s.headRow, { marginBottom: theme.spacing.md }]}>
+            <View style={s.headDot} />
+            <SectionLabel>AJOUTER UN AMI</SectionLabel>
+          </View>
+          <Field
+            label="Pseudo du pilote"
             value={searchHandle}
             onChangeText={setSearchHandle}
-            placeholder="@handle du pilote"
-            placeholderTextColor={theme.palette.creamMute}
+            placeholder="@handle"
+            helper="Le pseudo public du pilote à inviter."
             autoCapitalize="none"
             autoCorrect={false}
-            style={s.input}
-            accessibilityLabel="Handle du pilote à inviter"
           />
           <Button
             label={searching ? 'Recherche…' : 'Envoyer la demande'}
@@ -239,7 +242,10 @@ interface ActionDef {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <View style={{ marginBottom: theme.spacing.xxl, gap: theme.spacing.sm }}>
-      <SectionLabel>{title}</SectionLabel>
+      <View style={s.headRow}>
+        <View style={s.headDot} />
+        <SectionLabel>{title}</SectionLabel>
+      </View>
       {children}
     </View>
   );
@@ -261,9 +267,14 @@ function FriendRow({
     : timeAgoFr(new Date(entry.requestedAt));
 
   const inner = (
-    <Card>
-      <Text style={s.rowName}>{displayName}</Text>
-      <Text style={s.rowMeta}>{subtitle}</Text>
+    <Card style={s.dataPanel}>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowName}>{displayName}</Text>
+          <Text style={s.rowMeta}>{subtitle}</Text>
+        </View>
+        {onPress ? <Text style={s.chevron}>›</Text> : null}
+      </View>
       <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
         {actions.map((a) => (
           <Pressable
@@ -303,17 +314,28 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xl,
   },
-  input: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    borderWidth: 1,
-    borderColor: theme.palette.edge,
-    borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
   },
   empty: {
     fontFamily: theme.fonts.bodyLight,
@@ -335,9 +357,13 @@ const s = {
     paddingHorizontal: theme.spacing.md,
   },
   rowName: {
-    fontFamily: theme.fonts.bodyMedium,
+    fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  chevron: {
+    color: theme.palette.creamMute,
+    fontSize: 18,
   },
   rowMeta: {
     fontFamily: theme.fonts.mono,

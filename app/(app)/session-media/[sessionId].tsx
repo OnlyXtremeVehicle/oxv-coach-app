@@ -10,8 +10,8 @@
  *
  * Sécurité : RLS DB + RLS Storage filtrent automatiquement. Si le pilote
  * n'a pas accès, le fetch retourne [].
- * Reskin V2 : Screen + AppBar, Card pour l'état vide. La grille et le
- * lecteur plein écran (Modal) sont inchangés.
+ * Reskin V2 : Screen + AppBar, EmptyState honnête pour l'absence de média.
+ * La grille et le lecteur plein écran (Modal) sont inchangés.
  */
 
 import { useEffect, useState } from 'react';
@@ -27,10 +27,10 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { EmptyState } from '@/components/instruments/EmptyState';
 import { type SessionMediaItem, listSessionMedia } from '@/services/sessionMediaService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -67,7 +67,10 @@ export default function SessionMediaScreen() {
       <Screen scroll={false}>
         <AppBar title="SOUVENIRS" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator
+            color={theme.palette.creamMute}
+            accessibilityLabel="Chargement de vos médias"
+          />
         </View>
       </Screen>
     );
@@ -77,15 +80,16 @@ export default function SessionMediaScreen() {
     <Screen>
       <AppBar title="SOUVENIRS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Vos médias de session</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Vos médias de session
+        </Text>
 
         {media.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyTitle}>Pas encore de souvenirs pour cette session.</Text>
-            <Text style={s.emptyHint}>
-              Les médias sont ajoutés par OXV après la journée de roulage.
-            </Text>
-          </Card>
+          <EmptyState
+            label="Souvenirs"
+            message="Pas encore de souvenirs pour cette session. Les médias sont ajoutés par OXV après la journée de roulage."
+            source="session_media"
+          />
         ) : (
           <View
             style={{
@@ -94,14 +98,25 @@ export default function SessionMediaScreen() {
               gap: GRID_GUTTER,
             }}
           >
-            {media.map((item) => (
-              <MediaTile key={item.id} item={item} onPress={() => setSelected(item)} />
+            {media.map((item, index) => (
+              <MediaTile
+                key={item.id}
+                item={item}
+                index={index}
+                onPress={() => setSelected(item)}
+              />
             ))}
           </View>
         )}
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={({ pressed }) => [s.backHit, pressed && { opacity: 0.7 }]}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -114,10 +129,21 @@ export default function SessionMediaScreen() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => void }) {
+function MediaTile({
+  item,
+  index,
+  onPress,
+}: {
+  item: SessionMediaItem;
+  index: number;
+  onPress: () => void;
+}) {
+  const kind = item.mediaType === 'video' ? 'Vidéo' : 'Photo';
+  const label = item.caption ? `${kind} ${index + 1} : ${item.caption}` : `${kind} ${index + 1}`;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={label}
       onPress={onPress}
       style={({ pressed }) => ({
         width: TILE_SIZE,
@@ -135,6 +161,8 @@ function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => v
           source={{ uri: item.signedUrl }}
           style={{ width: '100%', height: '100%' }}
           resizeMode="cover"
+          accessibilityElementsHidden
+          importantForAccessibility="no"
         />
       ) : (
         <View
@@ -144,16 +172,24 @@ function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => v
             justifyContent: 'center',
           }}
         >
-          <Text style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}>—</Text>
+          <Text
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}
+          >
+            —
+          </Text>
         </View>
       )}
       {item.mediaType === 'video' ? (
         <View
+          accessibilityElementsHidden
+          importantForAccessibility="no"
           style={{
             position: 'absolute',
             bottom: theme.spacing.xs,
             right: theme.spacing.xs,
-            paddingHorizontal: theme.spacing.xs,
+            paddingHorizontal: theme.spacing.sm,
             paddingVertical: 2,
             borderRadius: theme.radius.sm,
             backgroundColor: 'rgba(0,0,0,0.6)',
@@ -161,11 +197,10 @@ function MediaTile({ item, onPress }: { item: SessionMediaItem; onPress: () => v
         >
           <Text
             style={{
-              fontFamily: theme.fonts.mono,
+              fontFamily: theme.fonts.bodyMedium,
               color: theme.palette.cream,
               fontSize: theme.fontSize.eyebrow,
-              letterSpacing: 1,
-              textTransform: 'uppercase',
+              letterSpacing: 0.3,
             }}
           >
             Vidéo
@@ -192,6 +227,7 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
     <Modal visible animationType="fade" transparent onRequestClose={onClose}>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="Fermer"
         onPress={onClose}
         style={{
           flex: 1,
@@ -208,22 +244,24 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
             </Text>
             <Pressable
               accessibilityRole="button"
+              accessibilityLabel="Lire la vidéo"
               onPress={handleVideoOpen}
               style={({ pressed }) => ({
+                minHeight: 48,
+                justifyContent: 'center',
                 paddingHorizontal: theme.spacing.xl,
                 paddingVertical: theme.spacing.lg,
                 borderRadius: theme.radius.md,
                 backgroundColor: theme.palette.red,
-                opacity: pressed ? 0.7 : 1,
+                opacity: pressed ? 0.85 : 1,
               })}
             >
               <Text
                 style={{
-                  fontFamily: theme.fonts.mono,
+                  fontFamily: theme.fonts.bodyMedium,
                   color: theme.palette.cream,
-                  fontSize: 11,
-                  letterSpacing: 1.4,
-                  textTransform: 'uppercase',
+                  fontSize: theme.fontSize.body,
+                  letterSpacing: 0.3,
                 }}
               >
                 Lire la vidéo
@@ -233,6 +271,7 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
         ) : item.signedUrl ? (
           <Image
             source={{ uri: item.signedUrl }}
+            accessibilityLabel={item.caption ?? 'Photo de session'}
             style={{
               width: SCREEN_WIDTH - 2 * theme.spacing.lg,
               height: SCREEN_WIDTH - 2 * theme.spacing.lg,
@@ -255,13 +294,13 @@ function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose:
           </Text>
         ) : null}
         <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no"
           style={{
-            fontFamily: theme.fonts.mono,
+            fontFamily: theme.fonts.body,
             marginTop: theme.spacing.xxl,
             color: theme.palette.creamMute,
-            fontSize: theme.fontSize.eyebrow,
-            letterSpacing: 1.5,
-            textTransform: 'uppercase',
+            fontSize: theme.fontSize.small,
           }}
         >
           Toucher pour fermer
@@ -280,24 +319,14 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.lg,
   },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: theme.spacing.lg,
   },
   backLink: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
   },
 };

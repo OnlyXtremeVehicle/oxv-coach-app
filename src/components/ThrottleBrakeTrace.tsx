@@ -1,26 +1,30 @@
 /**
- * ThrottleBrakeTrace — courbe Throttle/Brake vs progression du tour.
+ * ThrottleBrakeTrace — courbe Throttle/Brake vs progression. Transposition gaming.
  *
  * Visualisation dérivée du g longitudinal (g_force_y RaceBox) :
  *   - g_long > 0  → accélération → throttle (vert vers le haut)
- *   - g_long < 0  → freinage → brake (rouge vers le bas)
+ *   - g_long < 0  → freinage → brake (BLEU vers le bas)
  *
- * Lecture sobre : barre centrale 0g, courbe verte au-dessus, rouge en
- * dessous, échelle Y auto. C'est une approximation (pas un capteur
- * pédale réel) mais suffisant pour visualiser les zones de freinage
- * et de relance d'un tour.
+ * Cockpit factuel : code-couleur par DIMENSION (accel vert / freinage bleu),
+ * jamais de rouge de performance (rouge réservé marque + bande coach).
+ * Barre centrale 0g, courbes au-dessus / en dessous, échelle Y auto.
  *
  * Doctrine : aucun jugement (« freinez plus tard »). On montre,
  * le pilote/coach interprètent.
  */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 
+import { cockpitPanel } from '@/components/insights/vizChrome';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { HAUTE_SAINTONGE_SEGMENTS } from '@/trackviz/hauteSaintonge';
-import { borderRadius, colors, fontSize, spacing } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, dataColors } = theme;
+const ACCEL = palette.green;
+const BRAKE = dataColors.brake;
 
 export interface ThrottleBrakePoint {
   /** Progression dans le tour, 0..1. */
@@ -53,45 +57,42 @@ export function ThrottleBrakeTrace({
   const innerH = H - PAD_TOP - PAD_BOTTOM;
   const midY = PAD_TOP + innerH / 2;
 
-  const xFor = (progress: number) => PAD_LEFT + progress * innerW;
-  // g positif = vers le haut, g négatif = vers le bas (axe inversé SVG)
-  const yFor = (g: number) => midY - (g / scaleMaxG) * (innerH / 2);
+  const xFor = useCallback((progress: number) => PAD_LEFT + progress * innerW, [innerW]);
+  const yFor = useCallback(
+    (g: number) => midY - (g / scaleMaxG) * (innerH / 2),
+    [midY, scaleMaxG, innerH]
+  );
 
-  // Sépare en segments accel (positif) et brake (négatif) pour colorer
-  // différemment chaque zone. Si on traçait un seul path on perdrait
-  // la distinction visuelle des transitions.
-  const accelPath = useMemo(() => buildSegmentedPath(points, 'accel', xFor, yFor), [points]);
-  const brakePath = useMemo(() => buildSegmentedPath(points, 'brake', xFor, yFor), [points]);
+  const accelPath = useMemo(
+    () => buildSegmentedPath(points, 'accel', xFor, yFor),
+    [points, xFor, yFor]
+  );
+  const brakePath = useMemo(
+    () => buildSegmentedPath(points, 'brake', xFor, yFor),
+    [points, xFor, yFor]
+  );
 
   const apexLines = useMemo(
     () =>
       BELTOISE_CORNERS.map((c) => {
-        const seg = HAUTE_SAINTONGE_SEGMENTS.find((s) => s.order === c.index);
+        const seg = HAUTE_SAINTONGE_SEGMENTS.find((s2) => s2.order === c.index);
         return seg?.apexProgress ?? null;
       }).filter((p): p is number => p !== null),
     []
   );
 
   return (
-    <View
-      style={{
-        backgroundColor: colors.background.secondary,
-        borderRadius: borderRadius.lg,
-        borderWidth: 0.5,
-        borderColor: colors.border.subtle,
-        padding: spacing.md,
-      }}
-    >
+    <View style={s.panel}>
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
         {/* Bandeaux fond accel (haut) et brake (bas) — discrets */}
         <Path
           d={`M ${PAD_LEFT} ${PAD_TOP} L ${W - PAD_RIGHT} ${PAD_TOP} L ${W - PAD_RIGHT} ${midY} L ${PAD_LEFT} ${midY} Z`}
-          fill={colors.margin.green}
+          fill={ACCEL}
           opacity={0.05}
         />
         <Path
           d={`M ${PAD_LEFT} ${midY} L ${W - PAD_RIGHT} ${midY} L ${W - PAD_RIGHT} ${PAD_TOP + innerH} L ${PAD_LEFT} ${PAD_TOP + innerH} Z`}
-          fill={colors.accent.red}
+          fill={BRAKE}
           opacity={0.05}
         />
 
@@ -101,7 +102,7 @@ export function ThrottleBrakeTrace({
           y1={midY}
           x2={W - PAD_RIGHT}
           y2={midY}
-          stroke={colors.border.medium}
+          stroke={palette.edge}
           strokeWidth={0.5}
         />
 
@@ -113,17 +114,17 @@ export function ThrottleBrakeTrace({
             y1={PAD_TOP}
             x2={xFor(p)}
             y2={PAD_TOP + innerH}
-            stroke={colors.border.subtle}
+            stroke={palette.line}
             strokeWidth={0.5}
             strokeDasharray="2 4"
           />
         ))}
 
-        {/* Courbes accel (vert) + brake (rouge) */}
+        {/* Courbes accel (vert) + brake (bleu) */}
         {brakePath ? (
           <Path
             d={brakePath}
-            stroke={colors.accent.red}
+            stroke={BRAKE}
             strokeWidth={1.8}
             fill="none"
             strokeLinecap="round"
@@ -133,7 +134,7 @@ export function ThrottleBrakeTrace({
         {accelPath ? (
           <Path
             d={accelPath}
-            stroke={colors.margin.green}
+            stroke={ACCEL}
             strokeWidth={1.8}
             fill="none"
             strokeLinecap="round"
@@ -151,18 +152,13 @@ export function ThrottleBrakeTrace({
           paddingHorizontal: spacing.xs,
         }}
       >
-        <LegendDot color={colors.margin.green} label="Accélération" />
-        <LegendDot color={colors.accent.red} label="Freinage" />
+        <LegendDot color={ACCEL} label="Accélération" />
+        <LegendDot color={BRAKE} label="Freinage" />
       </View>
     </View>
   );
 }
 
-/**
- * Trace une courbe en clippant aux zones où le point est du bon signe
- * (positif pour 'accel', négatif pour 'brake'). Les points de l'autre
- * signe deviennent des trous (split en sous-paths).
- */
 function buildSegmentedPath(
   points: ThrottleBrakePoint[],
   kind: 'accel' | 'brake',
@@ -183,7 +179,6 @@ function buildSegmentedPath(
       current.push(`${cmd} ${xFor(p.progress).toFixed(1)},${yFor(p.gLong).toFixed(1)}`);
       inSegment = true;
     } else if (inSegment) {
-      // Close current sub-path à 0g pour transition propre
       current.push(`L ${xFor(p.progress).toFixed(1)},${yFor(0).toFixed(1)}`);
       subPaths.push(current.join(' '));
       current = [];
@@ -198,7 +193,19 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
       <View style={{ width: 12, height: 2, backgroundColor: color, borderRadius: 1 }} />
-      <Text style={{ color: colors.text.secondary, fontSize: fontSize.caption }}>{label}</Text>
+      <Text style={s.legendLabel}>{label}</Text>
     </View>
   );
 }
+
+const s = {
+  panel: {
+    ...cockpitPanel,
+    padding: spacing.md,
+  },
+  legendLabel: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
+  },
+};

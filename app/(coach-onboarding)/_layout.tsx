@@ -10,7 +10,7 @@
 import { Redirect, Stack } from 'expo-router';
 
 import { useAuthStore } from '@/store/useAuthStore';
-import { colors } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
 
 export default function CoachOnboardingLayout() {
   const profile = useAuthStore((s) => s.profile);
@@ -24,7 +24,7 @@ export default function CoachOnboardingLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.background.primary },
+        contentStyle: { backgroundColor: theme.palette.night },
         animation: 'fade',
         gestureEnabled: false,
       }}

@@ -1,38 +1,42 @@
 /**
  * Écran Carte de chaleur — pilier §3.4 du cahier OXV Mirror.
+ * Refonte gaming « cockpit factuel » (charte v2).
  *
- * Visualisation PURE : la vitesse projetée en couleurs le long du tracé
- * réel. Rouge = vitesse basse, jaune = moyenne, vert = élevée. Zéro mot,
- * zéro note : la donnée rendue visible. « Le miroir le plus littéral. »
+ * Branche TrackStage (mode 'heatmap'), le composant maître de tracé : la
+ * vitesse du roulage devient une chaleur le long du circuit, froid → chaud
+ * (faint → or Heritage → or), JAMAIS de rouge (réservé marque + coach).
+ * Deux faits encadrent la carte : le virage le plus lent, la ligne la plus
+ * rapide. Conforme à la maquette `maquette_heatmap_gaming.html`.
  *
- * Réutilise PilotPreset + TrajectoryLayer (mode speed-heatmap) déjà en
- * place. Charge les telemetry_frames de la session (RLS owner).
- *
- * Reskin V2 : Screen + AppBar + Card, typo/couleurs @/theme/v2. Le
- * composant carte (PilotPreset, SVG) est conservé tel quel.
+ * Source : telemetry_frames de la session (RLS owner). Les points de
+ * freinage de l'ancienne version sont retirés (la maquette ne les montre
+ * pas — la carte se concentre sur la vitesse). Tant que les frames sont
+ * absentes, `EmptyState` honnête : aucune fausse donnée.
  */
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
-import { type BrakingMarker } from '@/components/CircuitMap';
+import {
+  TrackStage,
+  type TrackStageHeatPoint,
+  type TrajectoryPoint,
+} from '@/components/CircuitMap';
+import { EmptyState, Fact } from '@/components/instruments';
 import { supabase } from '@/lib/supabase';
-import { detectBrakingPoints } from '@/services/brakingPointsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
+
+const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
 
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
   const params = useLocalSearchParams<{ sessionId?: string }>();
 
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
-  const [brakingPoints, setBrakingPoints] = useState<BrakingMarker[]>([]);
   const [stats, setStats] = useState<{ min: number; max: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -84,17 +88,9 @@ export default function HeatmapScreen() {
 
       if (points.length > 1) {
         setTrajectory(points);
-        // Pilier §3.4 : points de freinage projetés sur le tracé.
-        setBrakingPoints(
-          detectBrakingPoints(points).map((bp) => ({
-            lat: bp.lat,
-            lon: bp.lon,
-            intensity: bp.intensity,
-          }))
-        );
         const speeds = points
           .map((p) => p.speed)
-          .filter((s): s is number => typeof s === 'number' && Number.isFinite(s));
+          .filter((sp): sp is number => typeof sp === 'number' && Number.isFinite(sp));
         if (speeds.length > 0) {
           setStats({ min: Math.min(...speeds), max: Math.max(...speeds) });
         }
@@ -112,7 +108,7 @@ export default function HeatmapScreen() {
       <Screen scroll={false}>
         <AppBar title="CHALEUR" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+          <ActivityIndicator color={palette.creamMute} />
         </View>
       </Screen>
     );
@@ -120,78 +116,84 @@ export default function HeatmapScreen() {
 
   const hasContent = trajectory && trajectory.length > 1;
 
+  // Vitesse → intensité de chaleur (TrackStage normalise en interne).
+  const heatPoints: TrackStageHeatPoint[] = (trajectory ?? []).map((p) => ({
+    lat: p.lat,
+    lon: p.lon,
+    intensity: p.speed,
+  }));
+
   return (
     <Screen>
       <AppBar title="CHALEUR" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <SectionLabel>Carte de chaleur</SectionLabel>
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        <Text style={s.eyebrow}>Carte de chaleur · tracé</Text>
         <Text style={s.title}>Votre vitesse, rendue visible.</Text>
 
         {!hasContent ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyText}>Pas de trace GPS pour cette session.</Text>
-          </Card>
+          <EmptyState
+            message="La carte de chaleur se dessine à partir de la trace GPS de vos tours. Elle apparaîtra après votre premier roulage."
+            source="telemetry_frames"
+          />
         ) : (
           <>
-            <PilotPreset
-              animate
-              trajectory={trajectory ?? undefined}
-              trajectoryColorMode="speed-heatmap"
-              brakingPoints={brakingPoints}
-              height={400}
-            />
-
-            {/* Légende vitesse */}
             <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: theme.spacing.lg,
-                marginTop: theme.spacing.lg,
-              }}
+              accessible
+              accessibilityRole="image"
+              accessibilityLabel="Carte de chaleur de votre vitesse sur le tracé : froid pour le lent, chaud pour le rapide."
             >
-              <LegendDot color={theme.palette.red} label="Vitesse basse" />
-              <LegendDot color={theme.palette.gold} label="Vitesse moyenne" />
-              <LegendDot color={theme.dataColors.accel} label="Vitesse élevée" />
+              <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
             </View>
 
-            {/* Légende points de freinage */}
-            {brakingPoints.length > 0 ? (
+            {/* Légende — Lent → Rapide (froid → chaud, jamais de rouge) */}
+            <View
+              style={s.legendRow}
+              accessible
+              accessibilityRole="text"
+              accessibilityLabel="Intensité : de lent à rapide"
+            >
+              <Text style={s.gradLabel}>Lent</Text>
               <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: theme.spacing.xs,
-                  marginTop: theme.spacing.sm,
-                }}
+                style={s.gradientBar}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
               >
-                <View
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor: theme.palette.red,
-                    opacity: 0.7,
-                  }}
-                />
-                <Text style={s.brakingLegend}>Cercles : zones de freinage marqué</Text>
+                <View style={[s.gradSeg, { backgroundColor: palette.faint }]} />
+                <View style={[s.gradSeg, { backgroundColor: palette.heritageGold }]} />
+                <View style={[s.gradSeg, { backgroundColor: palette.gold }]} />
               </View>
-            ) : null}
+              <Text style={s.gradLabel}>Rapide</Text>
+            </View>
 
+            {/* Deux faits de vitesse (cf. maquette) */}
             {stats ? (
-              <Text style={s.stats}>
-                {Math.round(stats.min)} – {Math.round(stats.max)} km/h
-              </Text>
+              <View style={s.factsRow}>
+                <Fact
+                  label="Virage le plus lent"
+                  value={String(Math.round(stats.min))}
+                  unit="km/h"
+                />
+                <Fact
+                  label="Ligne la plus rapide"
+                  value={String(Math.round(stats.max))}
+                  unit="km/h"
+                  accent
+                />
+              </View>
             ) : null}
 
             <Text style={s.manifest}>La donnée, sans un mot. À vous de la lire.</Text>
           </>
         )}
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={hitSlop}
+            onPress={() => router.back()}
+            style={({ pressed }) => [s.backLinkPress, pressed && { opacity: 0.6 }]}
+          >
             <Text style={s.backLink}>Retour</Text>
           </Pressable>
         </View>
@@ -200,61 +202,71 @@ export default function HeatmapScreen() {
   );
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs }}>
-      <View style={{ width: 12, height: 4, borderRadius: 2, backgroundColor: color }} />
-      <Text style={s.legendLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const s = {
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
   title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
     letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+    color: palette.cream,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xl,
   },
-  emptyText: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
+  legendRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
   },
-  legendLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+  gradientBar: {
+    flexDirection: 'row' as const,
+    width: 140,
+    height: 6,
+    borderRadius: radius.pill,
+    overflow: 'hidden' as const,
   },
-  brakingLegend: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+  gradSeg: {
+    flex: 1,
+    height: 6,
   },
-  stats: {
-    textAlign: 'center' as const,
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.md,
+  gradLabel: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  factsRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
   },
   manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
     fontStyle: 'italic' as const,
     textAlign: 'center' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.md,
+    color: palette.creamMute,
+    marginTop: spacing.xxl,
+    paddingHorizontal: spacing.md,
+  },
+  backLinkPress: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    paddingHorizontal: spacing.lg,
   },
   backLink: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
 };

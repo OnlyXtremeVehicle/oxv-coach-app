@@ -182,8 +182,13 @@ export default function VirageScreen() {
     <Screen>
       <AppBar title="VIRAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
-        <Text style={[s.title, { marginTop: theme.spacing.md }]}>{corner.name}</Text>
+        <View style={s.headRow}>
+          <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
+          <Text style={s.eyebrow}>ZOOM VIRAGE {String(corner.index).padStart(2, '0')}</Text>
+        </View>
+        <Text style={[s.title, { marginTop: theme.spacing.md }]} accessibilityRole="header">
+          {corner.name}
+        </Text>
         <Text
           style={[
             s.zoneLabel,
@@ -193,6 +198,11 @@ export default function VirageScreen() {
               marginBottom: theme.spacing.xl,
             },
           ]}
+          accessibilityLabel={
+            stats?.marginPercent !== null && stats?.marginPercent !== undefined
+              ? `Marge : ${marginLabelOf(zone)}, ${Math.round(stats.marginPercent)} pour cent`
+              : `Marge : ${marginLabelOf(zone)}`
+          }
         >
           {marginLabelOf(zone)}
           {stats?.marginPercent !== null && stats?.marginPercent !== undefined
@@ -217,7 +227,7 @@ export default function VirageScreen() {
 
         {/* Vitesses */}
         <Section eyebrow="VITESSES">
-          <Card>
+          <Card style={s.dataPanel}>
             <StatRow
               label="À l'entrée"
               value={stats?.entrySpeedKmh != null ? `${Math.round(stats.entrySpeedKmh)} km/h` : '—'}
@@ -258,7 +268,7 @@ export default function VirageScreen() {
         {/* Trajectoire */}
         <Section eyebrow="TRAJECTOIRE">
           {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
-            <Card>
+            <Card style={s.dataPanel}>
               <StatRow
                 label="Écart latéral moyen"
                 value={`${stats.avgLateralErrorM.toFixed(1)} m`}
@@ -313,7 +323,9 @@ export default function VirageScreen() {
 
         {/* Question ouverte — doctrine */}
         <View style={{ marginBottom: theme.spacing.xxl * 1.5, marginTop: theme.spacing.xxl }}>
-          <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>QUESTION</Text>
+          <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]} accessibilityRole="header">
+            QUESTION
+          </Text>
           <Text style={[s.manifest, { textAlign: 'center', marginVertical: theme.spacing.lg }]}>
             Était-ce volontaire&nbsp;?
           </Text>
@@ -334,6 +346,8 @@ export default function VirageScreen() {
         {isCoach && sessionPilotId ? (
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Annoter ce virage"
+            hitSlop={theme.hitSlop}
             onPress={() =>
               router.push({
                 pathname: '/(coach)/annoter',
@@ -368,7 +382,12 @@ export default function VirageScreen() {
         </View>
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour à la carte</Text>
           </Pressable>
         </View>
@@ -380,7 +399,12 @@ export default function VirageScreen() {
 function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
   return (
     <View style={{ marginTop: theme.spacing.xxl }}>
-      <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>{eyebrow}</Text>
+      <View style={[s.headRow, { marginBottom: theme.spacing.lg }]}>
+        <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
+        <Text style={s.eyebrow} accessibilityRole="header">
+          {eyebrow}
+        </Text>
+      </View>
       {children}
     </View>
   );
@@ -408,7 +432,7 @@ function StatRow({
       }}
     >
       <Text style={s.statLabel}>{label}</Text>
-      <Text style={[s.statValue, emphasis && { color: theme.palette.cream }]}>{value}</Text>
+      <Text style={[s.statValue, emphasis && { color: theme.palette.gold }]}>{value}</Text>
     </View>
   );
 }
@@ -462,11 +486,14 @@ function VirageNotFound() {
         }}
       >
         <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>VIRAGE</Text>
-        <Text style={[s.title, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
+        <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">
+          Ce virage n'existe pas.
+        </Text>
         <Pressable
           accessibilityRole="button"
+          hitSlop={theme.hitSlop}
           onPress={() => router.back()}
-          style={{ marginTop: theme.spacing.xxl * 1.5 }}
+          style={[s.backHit, { marginTop: theme.spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour</Text>
         </Pressable>
@@ -493,9 +520,32 @@ const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+    letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  headDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.8,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  dataPanel: {
+    backgroundColor: theme.palette.card2,
+    shadowColor: theme.palette.gold,
+    shadowOpacity: 0.07,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
   },
   title: {
     fontFamily: theme.fonts.display,
@@ -577,5 +627,11 @@ const s = {
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  // Cible tactile confortable pour les liens « Retour » (texte seul).
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

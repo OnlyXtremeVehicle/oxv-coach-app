@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════════════
+  OXV MIRROR — ACCUEIL / HUB · gaming v3
+  Grammaire : cockpit (halo+grille+vignette), status HUD, mise sous tension.
+  Spécifique hub : hero « dernier débrief » à mini-instrument + tuiles HUD.
+  Couvre : index, paddock, lieux, carte, circuits (navigation).
+  ════════════════════════════════════════════════════════════════════
+-->
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OXV Mirror — Hub gaming</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap');
+  :root{--cream:#F8F9FA;--mute:#9A9AA3;--faint:#54545C;--line:#1C1C20;
+    --red:#C8102E;--gold:#FFB703;--heritage:#C4A459;--green:#4ADE80;
+    --sans:'Geist',system-ui,sans-serif;--mono:'Geist Mono',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#000;color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 16px 64px;min-height:100vh}
+  .device{width:392px;max-width:100%;position:relative;overflow:hidden;border-radius:36px;
+    background:radial-gradient(78% 38% at 50% 18%,rgba(255,183,3,.08) 0%,transparent 60%),
+      radial-gradient(120% 70% at 50% 0%,#0E0E14 0%,#040406 62%),
+      repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px),
+      repeating-linear-gradient(90deg,rgba(255,255,255,.018) 0 1px,transparent 1px 26px);
+    border:1px solid #161619;box-shadow:0 36px 90px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.04)}
+  .device::after{content:'';position:absolute;inset:0;pointer-events:none;z-index:3;background:radial-gradient(105% 80% at 50% 40%,transparent 56%,rgba(0,0,0,.6) 100%)}
+  .screen{position:relative;z-index:2;padding:20px 20px 26px}
+  .status{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;opacity:0;animation:fadeDown .6s ease .05s forwards}
+  .status .lz{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.26em;color:var(--gold);text-shadow:0 0 16px rgba(255,183,3,.5)}
+  .status .lz i{width:6px;height:6px;border-radius:50%;background:var(--gold);box-shadow:0 0 10px rgba(255,183,3,.9);animation:blink 2.4s ease-in-out infinite}
+  .status .rz{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--mute);text-align:right}
+  .status .rz small{display:block;color:var(--faint);font-size:9px;letter-spacing:.16em;margin-top:2px}
+
+  .hero{position:relative;display:flex;align-items:center;gap:16px;padding:16px 18px;margin-bottom:14px;
+    border:1px solid #242428;border-radius:18px;background:linear-gradient(135deg,rgba(255,183,3,.05),rgba(255,255,255,.012));
+    opacity:0;animation:fadeUp .6s ease .25s forwards;cursor:pointer}
+  .hero .mini{position:relative;width:82px;height:82px;flex-shrink:0}
+  .hero .mini svg{width:100%;height:100%}
+  .hero .mini .mc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .hero .mini .mc b{font-family:var(--mono);font-size:24px;font-weight:600;color:#fff;text-shadow:0 0 18px rgba(255,183,3,.5)}
+  .hero .mini .mc s{font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--gold);text-decoration:none;margin-top:1px}
+  .hero .ht{flex:1;min-width:0}
+  .hero .ht .e{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+  .hero .ht .m{font-size:18px;font-weight:600;margin:5px 0 3px;letter-spacing:-.01em}
+  .hero .ht .d{font-family:var(--mono);font-size:10.5px;color:var(--mute);letter-spacing:.08em}
+  .hero .chev{color:var(--faint);font-size:22px;flex-shrink:0}
+
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+  .tile{position:relative;border:1px solid var(--line);border-radius:15px;padding:15px 16px 14px;overflow:hidden;
+    background:rgba(255,255,255,.016);opacity:0;animation:fadeUp .5s ease forwards}
+  .tile:nth-child(1){animation-delay:.45s}.tile:nth-child(2){animation-delay:.53s}
+  .tile:nth-child(3){animation-delay:.61s}.tile:nth-child(4){animation-delay:.69s}
+  .tile .tl{font-family:var(--mono);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+  .tile .tv{font-family:var(--mono);font-size:30px;font-weight:600;line-height:1;margin:11px 0 9px;color:#fff}
+  .tile .tb{height:3px;border-radius:2px;background:#161619;overflow:hidden}
+  .tile .tb i{display:block;height:100%;width:0;border-radius:2px;animation:grow 1s cubic-bezier(.2,.8,.2,1) forwards}
+  .tile:nth-child(1) .tb i{animation-delay:.7s}.tile:nth-child(2) .tb i{animation-delay:.78s}
+  .tile:nth-child(3) .tb i{animation-delay:.86s}.tile:nth-child(4) .tb i{animation-delay:.94s}
+  .tile.g .tv{text-shadow:0 0 16px rgba(255,183,3,.35)} .tile.g .tb i{background:var(--gold);box-shadow:0 0 9px rgba(255,183,3,.8)}
+  .tile.v .tv{text-shadow:0 0 16px rgba(74,222,128,.35)} .tile.v .tb i{background:var(--green);box-shadow:0 0 9px rgba(74,222,128,.85)}
+  .tile.r .tb i{background:var(--red);box-shadow:0 0 9px rgba(200,16,46,.8)}
+  .tile.h .tb i{background:var(--heritage);box-shadow:0 0 9px rgba(196,164,89,.7)}
+  .tile .ic{position:absolute;top:14px;right:15px;font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+  .foot{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px;border:1px solid var(--line);border-radius:14px;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);
+    background:rgba(255,255,255,.012);opacity:0;animation:fadeUp .5s ease 1s forwards;cursor:pointer}
+  .foot b{color:var(--gold)}
+
+  @keyframes fillArc{to{stroke-dashoffset:0}}
+  @keyframes grow{to{width:var(--w)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+</style></head>
+<body>
+  <div class="device"><div class="screen">
+
+    <div class="status">
+      <span class="lz"><i></i>PADDOCK</span>
+      <span class="rz">BONSOIR, PILOTE<small>HAUTE-SAINTONGE</small></span>
+    </div>
+
+    <div class="hero">
+      <div class="mini">
+        <svg viewBox="0 0 82 82">
+          <circle cx="41" cy="41" r="33" fill="none" stroke="#18181C" stroke-width="6" transform="rotate(135 41 41)" stroke-dasharray="155 52"/>
+          <circle cx="41" cy="41" r="33" fill="none" stroke="#FFB703" stroke-width="6" stroke-linecap="round" transform="rotate(135 41 41)"
+            stroke-dasharray="132 75" stroke-dashoffset="132" style="filter:drop-shadow(0 0 5px rgba(255,183,3,.8));animation:fillArc 1.3s cubic-bezier(.16,.84,.3,1) .5s forwards"/>
+        </svg>
+        <div class="mc"><b>0,8</b><s>SEC</s></div>
+      </div>
+      <div class="ht">
+        <div class="e">Dernier débrief</div>
+        <div class="m">Régularité retrouvée</div>
+        <div class="d">14.06 · 42 TOURS · ▲ 0,3 s</div>
+      </div>
+      <div class="chev">›</div>
+    </div>
+
+    <div class="tiles">
+      <div class="tile g"><span class="ic">↗</span><div class="tl">Roulages</div><div class="tv">42</div><div class="tb"><i style="--w:100%"></i></div></div>
+      <div class="tile v"><span class="ic">↗</span><div class="tl">Progression</div><div class="tv">+12%</div><div class="tb"><i style="--w:64%"></i></div></div>
+      <div class="tile r"><span class="ic">●</span><div class="tl">Mon coach</div><div class="tv">Actif</div><div class="tb"><i style="--w:80%"></i></div></div>
+      <div class="tile h"><span class="ic">↗</span><div class="tl">Circuits</div><div class="tv">1</div><div class="tb"><i style="--w:30%"></i></div></div>
+    </div>
+
+    <div class="foot"><b>◳</b> Tout le paddock</div>
+
+  </div></div>
+</body></html>

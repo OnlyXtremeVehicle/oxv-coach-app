@@ -16,10 +16,11 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
+import { ABTrace } from '@/components/instruments';
 import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { marginLabelOf, marginZoneOf } from '@/types/domain';
@@ -124,6 +125,24 @@ export default function ComparateurScreen() {
           <>
             <DeltaPanel a={rowA} b={rowB} />
 
+            {/* Superposition factuelle A vs B (vous contre vous) : les deux tracés
+                sur le même tracé de circuit, A en or, B en neutre. Aucune mention
+                « mieux/moins bien » — on montre la divergence, on ne juge pas.
+                Zone pilote (au-dessus de la couche coach). */}
+            {selectedA && selectedB ? (
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <ABTrace
+                  sessionA={selectedA}
+                  sessionB={selectedB}
+                  labelA="Référence A"
+                  labelB="Référence B"
+                  statusLabel="VOS DEUX TOURS · SUPERPOSÉS"
+                  note="Là où vos deux lignes divergent — sans verdict."
+                  emptyMessage="La superposition de vos deux tours apparaîtra dès vos premières frames réelles."
+                />
+              </View>
+            ) : null}
+
             {/* Lecture coach (specs v4 §05 §4.3) : où le temps se loge sur le tracé
                 (perte de temps par secteur), couche comparative attribuée au coach
                 (badge + liseré or). Sur VOS propres tours — aucune comparaison
@@ -136,12 +155,14 @@ export default function ComparateurScreen() {
 
             <SessionPicker
               label="Référence A"
+              accent={theme.palette.gold}
               sessions={filtered}
               selectedId={selectedA}
               onSelect={setSelectedA}
             />
             <SessionPicker
               label="Référence B"
+              accent={theme.palette.cream}
               sessions={filtered}
               selectedId={selectedB}
               onSelect={setSelectedB}
@@ -165,30 +186,33 @@ function DeltaPanel({
   b: RecentAnalysisRow | undefined;
 }) {
   if (!a || !b) {
-    return <Text style={s.deltaHint}>Sélectionnez deux sessions pour comparer.</Text>;
+    return <Text style={s.deltaHint}>Choisissez deux références à situer.</Text>;
   }
   const deltaMargin = Number(b.marginGlobal) - Number(a.marginGlobal);
-  const sign = deltaMargin > 0 ? '+' : '';
-  const deltaColor =
-    deltaMargin > 1
-      ? theme.dataColors.accel
-      : deltaMargin < -1
-        ? theme.palette.red
-        : theme.palette.creamSoft;
-
+  // Doctrine comparaison : le signe situe l'écart (fait), la couleur ne juge
+  // pas. Pas de vert « mieux » / rouge « moins bien » — un écart neutre, en or
+  // de donnée comme le reste de l'écran.
+  const sign = deltaMargin > 0 ? '+' : deltaMargin < 0 ? '−' : '±';
+  const marginA = Math.round(Number(a.marginGlobal));
+  const marginB = Math.round(Number(b.marginGlobal));
+  const zoneA = marginZoneOf(Number(a.marginGlobal));
   const zoneB = marginZoneOf(Number(b.marginGlobal));
 
   return (
     <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
-      <SectionLabel>DELTA MARGE</SectionLabel>
-      <Text style={[s.deltaValue, { color: deltaColor }]}>
+      <SectionLabel>ÉCART DE MARGE</SectionLabel>
+      <Text
+        accessibilityLabel={`Écart de marge entre les deux références : ${sign}${Math.abs(
+          Math.round(deltaMargin)
+        )} pour cent.`}
+        style={[s.deltaValue, { color: theme.palette.gold }]}
+      >
         {sign}
-        {Math.round(deltaMargin)}%
+        {Math.abs(Math.round(deltaMargin))}%
       </Text>
       <Text style={s.deltaDetail}>
-        Référence A {Math.round(Number(a.marginGlobal))}% (
-        {marginLabelOf(marginZoneOf(Number(a.marginGlobal)))}){'\n'}Référence B{' '}
-        {Math.round(Number(b.marginGlobal))}% ({marginLabelOf(zoneB)})
+        Référence A {marginA}% ({marginLabelOf(zoneA)}){'\n'}Référence B {marginB}% (
+        {marginLabelOf(zoneB)})
       </Text>
     </Card>
   );
@@ -196,45 +220,47 @@ function DeltaPanel({
 
 function SessionPicker({
   label,
+  accent,
   sessions,
   selectedId,
   onSelect,
 }: {
   label: string;
+  accent: string;
   sessions: RecentAnalysisRow[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
   return (
     <View style={{ marginBottom: theme.spacing.xl, marginTop: theme.spacing.lg }}>
-      <SectionLabel>{label.toUpperCase()}</SectionLabel>
+      <Text style={[s.pickerEyebrow, { color: accent }]}>{label.toUpperCase()}</Text>
       <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
         {sessions.map((session) => {
           const active = selectedId === session.telemetrySessionId;
+          const name = session.circuitName ?? 'Session';
+          const when = timeAgoFr(new Date(session.sessionStartedAt));
+          const pct = Math.round(Number(session.marginGlobal));
           return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
+            <Card
               key={session.telemetrySessionId}
               onPress={() => onSelect(session.telemetrySessionId)}
-              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+              accessibilityLabel={`${label} : ${name}, ${when}, marge ${pct} pour cent.${
+                active ? ' Sélectionnée.' : ''
+              }`}
+              style={{
+                borderColor: active ? theme.palette.edge : theme.palette.line,
+                backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card,
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
             >
-              <Card
-                style={{
-                  borderColor: active ? theme.palette.edge : theme.palette.line,
-                  backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card,
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-                  <Text style={s.pickName}>{session.circuitName ?? 'Session'}</Text>
-                  <Text style={s.pickMeta}>{timeAgoFr(new Date(session.sessionStartedAt))}</Text>
-                </View>
-                <Text style={s.pickValue}>{Math.round(Number(session.marginGlobal))}%</Text>
-              </Card>
-            </Pressable>
+              <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+                <Text style={s.pickName}>{name}</Text>
+                <Text style={s.pickMeta}>{when}</Text>
+              </View>
+              <Text style={s.pickValue}>{pct}%</Text>
+            </Card>
           );
         })}
       </View>
@@ -294,15 +320,21 @@ const s = {
     marginTop: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.md,
   },
+  pickerEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+  },
   pickName: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
   pickMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 0.6,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },

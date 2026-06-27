@@ -163,7 +163,7 @@ export async function analyzeAndPersistSession(
   // ── Marge globale (depuis laps + session) ────────────────────────────────
   let marginGlobal: number | null = null;
   let computedFirstName: string | null = null;
-  let computedCircuitName = 'Beltoise';
+  let computedCircuitName = 'Circuit';
   let computedStartedAt = new Date().toISOString();
   let computedBestLap: number | null = null;
   let computedLapCount = 0;
@@ -188,7 +188,7 @@ export async function analyzeAndPersistSession(
       marginGlobal = result.marginGlobal;
       computedVehicle = result.marginVehicle;
       computedPilot = result.marginPilot;
-      computedCircuitName = session.circuit_name ?? 'Beltoise';
+      computedCircuitName = session.circuit_name ?? 'Circuit';
       computedStartedAt = session.started_at;
       computedBestLap = session.best_lap_seconds ?? null;
       computedLapCount = laps.filter((l) => !l.is_outlap && !l.is_inlap).length;

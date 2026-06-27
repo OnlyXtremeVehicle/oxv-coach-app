@@ -17,6 +17,7 @@ export interface Circuit {
   id: string;
   name: string;
   isOfficial: boolean;
+  isDefault: boolean;
   finishLineLat: number;
   finishLineLon: number;
   finishLineRadiusM: number;
@@ -41,7 +42,7 @@ export async function fetchCircuits(forceRefresh = false): Promise<Circuit[]> {
   const { data, error } = await supabase
     .from('circuits')
     .select(
-      'id, name, is_official, finish_line_lat, finish_line_lon, finish_line_radius_m, finish_line_heading, length_km, turns_count, track_svg_path, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon'
+      'id, name, is_official, is_default, finish_line_lat, finish_line_lon, finish_line_radius_m, finish_line_heading, length_km, turns_count, track_svg_path, bbox_min_lat, bbox_max_lat, bbox_min_lon, bbox_max_lon'
     )
     .order('is_official', { ascending: false })
     .order('name');
@@ -55,6 +56,7 @@ export async function fetchCircuits(forceRefresh = false): Promise<Circuit[]> {
     id: row.id,
     name: row.name ?? '',
     isOfficial: row.is_official ?? false,
+    isDefault: row.is_default ?? false,
     finishLineLat: Number(row.finish_line_lat ?? 0),
     finishLineLon: Number(row.finish_line_lon ?? 0),
     finishLineRadiusM: Number(row.finish_line_radius_m ?? 30),
@@ -79,6 +81,9 @@ export async function fetchCircuits(forceRefresh = false): Promise<Circuit[]> {
 export async function getDefaultCircuit(): Promise<Circuit | null> {
   const all = await fetchCircuits();
   return (
+    // Le circuit explicitement marqué par défaut prime (sinon l'ajout d'un
+    // circuit officiel trié avant « Haute Saintonge » détournerait le défaut).
+    all.find((c) => c.isOfficial && c.isDefault) ??
     all.find((c) => c.isOfficial && !c.name.toUpperCase().includes('BACKUP')) ??
     all.find((c) => c.isOfficial) ??
     all[0] ??

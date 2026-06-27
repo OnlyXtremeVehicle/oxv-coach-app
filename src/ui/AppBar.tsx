@@ -17,7 +17,12 @@ export function AppBar({ title, subtitle, onBack, leading, trailing }: Props) {
   return (
     <View style={styles.bar}>
       {onBack ? (
-        <Pressable onPress={onBack} hitSlop={theme.hitSlop}>
+        <Pressable
+          onPress={onBack}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          hitSlop={17}
+        >
           <Chevron />
         </Pressable>
       ) : leading ? (
@@ -27,7 +32,9 @@ export function AppBar({ title, subtitle, onBack, leading, trailing }: Props) {
         <Text style={styles.title}>{title}</Text>
         {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
       </View>
-      {trailing ?? <Text style={styles.dots}>···</Text>}
+      {/* Slot droit : vide par défaut (plus de faux bouton « ··· »). Les écrans
+          qui ont une vraie action de droite la passent via `trailing`. */}
+      {trailing ?? null}
     </View>
   );
 }
@@ -62,5 +69,4 @@ const styles = StyleSheet.create({
     color: theme.palette.creamMute,
     marginTop: 3,
   },
-  dots: { color: theme.palette.creamMute, fontSize: 19 },
 });

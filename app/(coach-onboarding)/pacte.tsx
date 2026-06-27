@@ -1,12 +1,10 @@
 /**
- * Onboarding coach — Écran 3/3 : Pacte de coaching.
+ * Onboarding coach — Écran 3/3 : Pacte de coaching. Transposition gaming.
  *
- * Signature du pacte de coaching (distinct du pacte de pilotage).
- * Fond noir, deux phrases-manifestes du coach, case à cocher
- * "Je m'engage", bouton "Activer mon compte coach".
- *
- * Cohérence avec docs/juridique/06_PACTE_DE_COACHING.md (versionné en
- * COACH_PACT_VERSION).
+ * Signature du pacte de coaching (distinct du pacte de pilotage). Fond
+ * noir, deux phrases-manifestes (cream italic, sobre), case « Je m'engage »,
+ * bouton « Activer mon compte coach ». Barre/case/CTA en OR.
+ * Cohérence docs/juridique/06_PACTE_DE_COACHING.md (COACH_PACT_VERSION).
  */
 
 import { useState } from 'react';
@@ -19,7 +17,10 @@ import {
   acceptCoachPact,
   completeOnboarding,
 } from '@/services/onboardingService';
-import { borderRadius, colors, fontSize, fontWeight, spacing, typography } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+const TOTAL = 3;
 
 export default function CoachPacteScreen() {
   const [committed, setCommitted] = useState(false);
@@ -58,43 +59,42 @@ export default function CoachPacteScreen() {
 
   return (
     <SafeAreaView
-      style={{
-        flex: 1,
-        backgroundColor: colors.background.primary,
-        paddingHorizontal: spacing.xl,
-      }}
+      style={{ flex: 1, backgroundColor: palette.night, paddingHorizontal: spacing.xl }}
     >
+      <View
+        accessibilityRole="progressbar"
+        accessibilityLabel={`Étape ${TOTAL} sur ${TOTAL}`}
+        accessibilityValue={{ min: 0, max: TOTAL, now: TOTAL }}
+        style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.lg }}
+      >
+        {Array.from({ length: TOTAL }).map((_, i) => (
+          <View
+            key={i}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+            style={{ flex: 1, height: 3, borderRadius: radius.sm, backgroundColor: palette.gold }}
+          />
+        ))}
+      </View>
+      <Text
+        style={[s.step, { marginTop: spacing.sm }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        ÉTAPE {TOTAL} / {TOTAL}
+      </Text>
+
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <Text
-          style={[typography.eyebrow, { marginBottom: spacing.xxxl, color: colors.accent.coach }]}
-        >
+        <Text accessibilityRole="header" style={[s.label, { marginBottom: 40 }]}>
           PACTE DE COACHING
         </Text>
 
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            fontStyle: 'italic',
-            lineHeight: fontSize.title * 1.6,
-            marginBottom: spacing.xxxl,
-          }}
-        >
+        <Text style={[s.manifesto, { marginBottom: 40 }]}>
           Je respecte la confidentialité du pilote, sans condition.
         </Text>
 
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.title,
-            fontWeight: fontWeight.light,
-            fontStyle: 'italic',
-            lineHeight: fontSize.title * 1.6,
-            marginBottom: spacing.giant,
-          }}
-        >
-          Je n'instruis pas. Je propose un regard.
+        <Text style={[s.manifesto, { marginBottom: 56 }]}>
+          Je n&apos;instruis pas. Je propose un regard.
         </Text>
 
         <Pressable
@@ -112,47 +112,36 @@ export default function CoachPacteScreen() {
             style={{
               width: 28,
               height: 28,
-              borderRadius: borderRadius.sm,
+              borderRadius: radius.sm,
               borderWidth: 1.5,
-              borderColor: committed ? colors.accent.coach : colors.border.medium,
-              backgroundColor: committed ? colors.accent.coach : 'transparent',
+              borderColor: committed ? palette.gold : palette.edge,
+              backgroundColor: committed ? palette.gold : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: spacing.md,
             }}
           >
             {committed ? (
-              <Text
-                style={{
-                  color: colors.text.primary,
-                  fontWeight: fontWeight.semibold,
-                  fontSize: 16,
-                }}
-              >
+              <Text style={s.check} accessibilityElementsHidden importantForAccessibility="no">
                 ✓
               </Text>
             ) : null}
           </View>
-          <Text
-            style={{
-              color: colors.text.primary,
-              fontSize: fontSize.bodyLarge,
-              fontWeight: fontWeight.regular,
-            }}
-          >
-            Je m'engage.
-          </Text>
+          <Text style={s.commit}>Je m&apos;engage.</Text>
         </Pressable>
       </View>
 
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={submitting ? 'Activation en cours' : 'Activer mon compte coach'}
+        accessibilityState={{ disabled: !committed || submitting, busy: submitting }}
         onPress={onActivate}
         disabled={!committed || submitting}
         style={({ pressed }) => ({
-          height: 52,
-          borderRadius: borderRadius.lg,
-          backgroundColor: committed ? colors.accent.coach : colors.background.elevated,
+          minHeight: 52,
+          paddingVertical: spacing.md,
+          borderRadius: radius.lg,
+          backgroundColor: committed ? palette.gold : palette.card2,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
@@ -161,18 +150,46 @@ export default function CoachPacteScreen() {
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        {submitting ? <ActivityIndicator color={colors.text.primary} /> : null}
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
-            letterSpacing: 0.5,
-          }}
-        >
+        {submitting ? (
+          <ActivityIndicator
+            color={palette.night}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : null}
+        <Text style={[s.ctaTxt, { color: committed ? palette.night : palette.creamMute }]}>
           {submitting ? 'Activation…' : 'Activer mon compte coach'}
         </Text>
       </Pressable>
     </SafeAreaView>
   );
 }
+
+const s = {
+  // Indicateur d'étape (info utile) — contraste AA.
+  step: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  // Libellé de section (info utile, sert d'en-tête) — contraste AA.
+  label: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  manifesto: {
+    color: palette.cream,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.h2,
+    fontStyle: 'italic' as const,
+    lineHeight: fontSize.h2 * 1.6,
+  },
+  check: { color: palette.night, fontFamily: fonts.bodySemi, fontSize: 16 },
+  commit: { color: palette.cream, fontFamily: fonts.body, fontSize: fontSize.bodyLg },
+  ctaTxt: { fontFamily: fonts.bodyMedium, fontSize: fontSize.body, letterSpacing: 0.5 },
+};

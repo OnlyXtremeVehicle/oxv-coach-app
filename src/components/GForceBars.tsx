@@ -1,23 +1,28 @@
 /**
  * GForceBars — visualisation sobre des accélérations vécues sur un virage.
+ * Transposition gaming (cockpit factuel).
  *
  * Trois barres horizontales (latéral, freinage, accélération) avec la
  * valeur numérique alignée à droite. Échelle commune (0 à 2.0 g par
  * défaut) pour comparer visuellement les 3 axes d'un coup d'œil.
  *
- * Doctrine : pas de gauge circulaire criarde façon cockpit F1. Juste
- * une lecture claire qui dit « voici ce que la voiture a vécu » sans
- * juger.
+ * Code-couleur par DIMENSION, jamais de rouge de performance (rouge
+ * réservé marque + bande coach + REC) : latéral = or, freinage = bleu,
+ * accélération = vert. La valeur reprend la teinte de sa barre (identité
+ * instrument), la comparaison reste en cream neutre.
  *
- * Utilisé sur l'écran #15 Zoom virage. Le coach et le pilote pro
- * lisent les g comme indicateur d'engagement ; le particulier voit
- * « gros chiffre = c'était engagé ici » sans avoir besoin de comprendre
- * la physique.
+ * Doctrine : pas de gauge circulaire criarde façon cockpit F1. Juste
+ * une lecture claire qui dit « voici ce que la voiture a vécu » sans juger.
  */
 
 import { View, Text } from 'react-native';
 
-import { colors, fontSize, fontWeight, spacing } from '@/theme/tokens';
+import { theme } from '@/theme/v2';
+
+const { palette, fonts, fontSize, spacing, dataColors } = theme;
+const LAT = palette.gold;
+const BRAKE = dataColors.brake;
+const ACCEL = dataColors.accel;
 
 export interface GForceBarsProps {
   /** G latéral max (positif). */
@@ -52,7 +57,7 @@ export function GForceBars({
         compareValue={compare?.lateralG ?? null}
         compareLabel={compare?.label}
         scaleMaxG={scaleMaxG}
-        color={colors.accent.red}
+        color={LAT}
       />
       <Bar
         label="Freinage"
@@ -60,7 +65,7 @@ export function GForceBars({
         compareValue={compare?.brakingG ?? null}
         compareLabel={compare?.label}
         scaleMaxG={scaleMaxG}
-        color={colors.margin.yellow}
+        color={BRAKE}
       />
       <Bar
         label="Accélération"
@@ -68,7 +73,7 @@ export function GForceBars({
         compareValue={compare?.accelG ?? null}
         compareLabel={compare?.label}
         scaleMaxG={scaleMaxG}
-        color={colors.margin.green}
+        color={ACCEL}
       />
     </View>
   );
@@ -96,29 +101,14 @@ function Bar({
   return (
     <View>
       <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginBottom: spacing.xs,
-        }}
+        style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.xs }}
       >
         <Text
-          style={{
-            color: colors.text.secondary,
-            fontSize: fontSize.caption,
-            fontWeight: fontWeight.regular,
-          }}
+          style={{ color: palette.creamSoft, fontFamily: fonts.body, fontSize: fontSize.small }}
         >
           {label}
         </Text>
-        <Text
-          style={{
-            color: colors.text.primary,
-            fontSize: fontSize.body,
-            fontWeight: fontWeight.medium,
-            fontFamily: 'Menlo',
-          }}
-        >
+        <Text style={{ color, fontFamily: fonts.mono, fontSize: fontSize.body }}>
           {value !== null ? `${value.toFixed(2)} g` : '—'}
         </Text>
       </View>
@@ -127,40 +117,33 @@ function Bar({
       <View
         style={{
           height: 8,
-          backgroundColor: colors.background.elevated,
+          backgroundColor: palette.edge,
           borderRadius: 4,
           overflow: 'hidden',
           flexDirection: 'row',
         }}
       >
-        {/* Barre principale */}
-        <View
-          style={{
-            width: `${pct}%`,
-            backgroundColor: color,
-            borderRadius: 4,
-          }}
-        />
+        <View style={{ width: `${pct}%`, backgroundColor: color, borderRadius: 4 }} />
       </View>
 
-      {/* Barre comparée (session B) sous la principale */}
+      {/* Barre comparée (session B) — cream neutre, sans verdict */}
       {comparePct !== null ? (
         <View style={{ marginTop: spacing.xs }}>
-          <View
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              marginBottom: 2,
-            }}
-          >
-            <Text style={{ color: colors.text.tertiary, fontSize: fontSize.eyebrow }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 2 }}>
+            <Text
+              style={{
+                color: palette.creamMute,
+                fontFamily: fonts.mono,
+                fontSize: fontSize.eyebrow,
+              }}
+            >
               {compareLabel ?? 'Comparée'}
             </Text>
             <Text
               style={{
-                color: colors.text.tertiary,
+                color: palette.creamMute,
+                fontFamily: fonts.mono,
                 fontSize: fontSize.eyebrow,
-                fontFamily: 'Menlo',
               }}
             >
               {compareValue !== null ? `${compareValue.toFixed(2)} g` : '—'}
@@ -169,7 +152,7 @@ function Bar({
           <View
             style={{
               height: 4,
-              backgroundColor: colors.background.elevated,
+              backgroundColor: palette.edge,
               borderRadius: 2,
               overflow: 'hidden',
             }}
@@ -177,7 +160,7 @@ function Bar({
             <View
               style={{
                 width: `${comparePct}%`,
-                backgroundColor: colors.text.tertiary,
+                backgroundColor: palette.creamMute,
                 borderRadius: 2,
               }}
             />
