@@ -75,7 +75,7 @@ const SECONDARY = [
   { label: 'Débrief présentiel', hint: 'La séance, en détail', href: '/(app)/debrief-presentiel' },
   { label: 'Mes objectifs', hint: 'Vos repères personnels', href: '/(app)/objectifs' },
   { label: 'Mon équipement', hint: 'Connecter le boîtier', href: '/(app)/equipement' },
-  { label: 'La carte OXV', hint: 'Circuits, lieux et événements', href: '/(app)/circuits' },
+  { label: 'La carte OXV', hint: 'Circuits, lieux et événements', href: '/(app)/carte-oxv' },
   { label: 'Lieux & partenaires', hint: 'Autour des circuits', href: '/(app)/lieux' },
   { label: 'Trouver un coach', hint: 'Les coachs OXV', href: '/(app)/coachs' },
   { label: 'Mes demandes', hint: 'Vos demandes de séance', href: '/(app)/mes-demandes' },
