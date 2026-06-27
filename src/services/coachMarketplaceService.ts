@@ -34,6 +34,11 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import {
+  type CoachMediaView,
+  parseCoachMedia,
+  withCoachMediaUrls,
+} from '@/services/coachMediaService';
 
 /** Carte coach pour l'écran de découverte (donnée publique, fiche publiée). */
 export interface CoachListing {
@@ -53,6 +58,8 @@ export interface CoachProfileDetail extends CoachListing {
   websiteUrl: string | null;
   instagramUrl: string | null;
   youtubeUrl: string | null;
+  /** Vitrine média (photos/vidéos) — visible par le pilote, jamais une donnée. */
+  media: CoachMediaView[];
 }
 
 /** Créneau ouvert par un coach (lecture côté pilote). */
@@ -298,7 +305,7 @@ export async function getCoachProfile(coachId: string): Promise<{
   const [profileRes, availabilityRes] = await Promise.all([
     supabase
       .from('coach_profiles')
-      .select(`${COACH_PROFILE_FIELDS}, palmares, website_url, instagram_url, youtube_url`)
+      .select(`${COACH_PROFILE_FIELDS}, palmares, website_url, instagram_url, youtube_url, media`)
       .eq('coach_id', coachId)
       .eq('is_published', true)
       .maybeSingle(),
@@ -324,6 +331,7 @@ export async function getCoachProfile(coachId: string): Promise<{
     websiteUrl: row.website_url ?? null,
     instagramUrl: row.instagram_url ?? null,
     youtubeUrl: row.youtube_url ?? null,
+    media: withCoachMediaUrls(parseCoachMedia(row.media)),
   };
 
   if (availabilityRes.error) {

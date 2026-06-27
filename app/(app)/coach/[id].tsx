@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -213,6 +213,72 @@ export default function CoachDetailScreen() {
                 ) : null
               )}
             </View>
+          </Section>
+        ) : null}
+
+        {/* Vitrine média du coach — visible par le pilote, jamais une donnée. */}
+        {profile.media.length > 0 ? (
+          <Section label="Médias">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: theme.spacing.sm }}
+            >
+              {profile.media.map((m) =>
+                m.type === 'photo' ? (
+                  <Pressable
+                    key={m.id}
+                    accessibilityRole="image"
+                    accessibilityLabel="Photo du coach"
+                    onPress={() => Linking.openURL(m.url).catch(() => undefined)}
+                    style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+                  >
+                    <Image
+                      source={{ uri: m.url }}
+                      resizeMode="cover"
+                      style={{
+                        width: 140,
+                        height: 140,
+                        borderRadius: theme.radius.md,
+                        borderWidth: 1,
+                        borderColor: theme.palette.line,
+                        backgroundColor: theme.palette.card2,
+                      }}
+                    />
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    key={m.id}
+                    accessibilityRole="button"
+                    accessibilityLabel="Ouvrir la vidéo"
+                    onPress={() => Linking.openURL(m.url).catch(() => undefined)}
+                    style={({ pressed }) => ({
+                      width: 140,
+                      height: 140,
+                      borderRadius: theme.radius.md,
+                      borderWidth: 1,
+                      borderColor: theme.palette.line,
+                      backgroundColor: theme.palette.card2,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: pressed ? 0.85 : 1,
+                    })}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: theme.fonts.mono,
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase' as const,
+                        color: theme.palette.creamMute,
+                      }}
+                    >
+                      Vidéo
+                    </Text>
+                  </Pressable>
+                )
+              )}
+            </ScrollView>
           </Section>
         ) : null}
 
