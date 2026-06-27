@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -168,6 +168,51 @@ export default function CoachDetailScreen() {
         {profile.specialties.length > 0 ? (
           <Section label="Spécialités">
             <Text style={s.meta}>{profile.specialties.join(' · ')}</Text>
+          </Section>
+        ) : null}
+
+        {/* Réseaux du coach — le pilote peut le retrouver hors application. */}
+        {profile.websiteUrl || profile.instagramUrl || profile.youtubeUrl ? (
+          <Section label="Liens">
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+              {(
+                [
+                  ['Site web', profile.websiteUrl],
+                  ['Instagram', profile.instagramUrl],
+                  ['YouTube', profile.youtubeUrl],
+                ] as const
+              ).map(([label, url]) =>
+                url ? (
+                  <Pressable
+                    key={label}
+                    accessibilityRole="link"
+                    accessibilityLabel={label}
+                    onPress={() => Linking.openURL(url).catch(() => undefined)}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      paddingHorizontal: theme.spacing.lg,
+                      justifyContent: 'center',
+                      borderRadius: theme.radius.sm,
+                      borderWidth: 1,
+                      borderColor: theme.palette.edge,
+                      opacity: pressed ? 0.8 : 1,
+                    })}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: theme.fonts.mono,
+                        fontSize: 11,
+                        letterSpacing: 1.2,
+                        textTransform: 'uppercase' as const,
+                        color: theme.palette.creamMute,
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                ) : null
+              )}
+            </View>
           </Section>
         ) : null}
 
