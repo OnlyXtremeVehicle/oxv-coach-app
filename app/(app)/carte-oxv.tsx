@@ -10,8 +10,10 @@
  * Doctrine : visualisation sobre, aucune gamification, aucun classement. Couleurs
  * codées : or = circuits OXV (donnée) ; crème = points du territoire.
  *
- * NB : les lieux du répertoire `places` n'ont pas (encore) de coordonnées en base
- * — ils apparaîtront ici dès qu'on leur ajoutera lat/lon (incrément suivant).
+ * Les lieux / partenaires / événements vivent dans `social_pings` (déjà
+ * géolocalisés, RLS membres validés). Le panneau adapte ses liens au type :
+ * « Site web » pour un partenaire ou un lieu, « Direct » / « Détails » pour un
+ * événement.
  */
 
 import { useEffect, useState } from 'react';
@@ -198,6 +200,7 @@ function DetailPanel({
   }
 
   const p = selected.ping;
+  const isEvent = p.kind === 'event_oxv' || p.kind === 'event_partner' || p.kind === 'soiree';
   return (
     <Card style={s.panel}>
       <PanelHead label={PING_KIND_LABELS[p.kind]} title={p.title} onClose={onClose} />
@@ -209,8 +212,17 @@ function DetailPanel({
       ) : null}
       {p.address ? <Text style={s.panelAddr}>{p.address}</Text> : null}
       <View style={s.panelActions}>
-        {p.liveUrl ? <PanelAction label="Direct" primary onPress={() => open(p.liveUrl)} /> : null}
-        {p.eventUrl ? <PanelAction label="Détails" onPress={() => open(p.eventUrl)} /> : null}
+        {/* Liens adaptés au type : événement = Direct/Détails ; lieu/partenaire = Site web. */}
+        {isEvent && p.liveUrl ? (
+          <PanelAction label="Direct" primary onPress={() => open(p.liveUrl)} />
+        ) : null}
+        {p.eventUrl ? (
+          <PanelAction
+            label={isEvent ? 'Détails' : 'Site web'}
+            primary={!isEvent}
+            onPress={() => open(p.eventUrl)}
+          />
+        ) : null}
         {p.contactEmail ? (
           <PanelAction label="Contacter" onPress={() => open(`mailto:${p.contactEmail}`)} />
         ) : null}
