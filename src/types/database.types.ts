@@ -4852,6 +4852,7 @@ export type Database = {
           ffsa_license: string | null
           first_name: string | null
           last_name: string | null
+          media: Json | null
           notes: string | null
           pilot_consent_at: string | null
           pilot_id: string | null

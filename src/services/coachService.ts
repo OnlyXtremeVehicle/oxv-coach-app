@@ -14,6 +14,7 @@
 import { supabase } from '@/lib/supabase';
 import { type MarginZone } from '@/types/domain';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
+import { type PilotMediaItem, parsePilotMedia } from '@/services/pilotMediaService';
 
 export interface SessionSnapshot {
   sessionId: string;
@@ -138,6 +139,8 @@ export interface CoachPilotRow {
   ffsaLicense: string | null;
   vehicle: string | null;
   socials: PilotSocialsView;
+  /** Médias privés du pilote (chemins) ; à signer via signPilotMedia pour l'affichage. */
+  media: PilotMediaItem[];
 }
 
 export interface PilotSessionSummary {
@@ -160,7 +163,7 @@ export async function listMyPilots(): Promise<CoachPilotRow[]> {
   const { data, error } = await supabase
     .from('coach_pilots_view')
     .select(
-      'pilot_id, first_name, last_name, pilot_level, avatar_url, assignment_id, assigned_at, pilot_consent_at, notes, experience_years, ffsa_license, vehicle, socials'
+      'pilot_id, first_name, last_name, pilot_level, avatar_url, assignment_id, assigned_at, pilot_consent_at, notes, experience_years, ffsa_license, vehicle, socials, media'
     )
     .order('assigned_at', { ascending: false });
 
@@ -182,6 +185,7 @@ export async function listMyPilots(): Promise<CoachPilotRow[]> {
     ffsaLicense: (row.ffsa_license as string | null) ?? null,
     vehicle: (row.vehicle as string | null) ?? null,
     socials: parsePilotSocials(row.socials),
+    media: parsePilotMedia(row.media),
   }));
 }
 

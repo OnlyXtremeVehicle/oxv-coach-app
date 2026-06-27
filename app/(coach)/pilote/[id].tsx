@@ -10,7 +10,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
@@ -21,6 +21,7 @@ import {
   listPilotSessions,
 } from '@/services/coachService';
 import { pilotLevelLabel } from '@/services/pilotProfileService';
+import { signPilotMedia, type PilotMediaView } from '@/services/pilotMediaService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -42,6 +43,7 @@ export default function CoachPilotDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<Mode>('browse');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [pilotMedia, setPilotMedia] = useState<PilotMediaView[]>([]);
 
   const toggleSelected = (sessionId: string) => {
     setSelectedIds((prev) => {
@@ -77,6 +79,12 @@ export default function CoachPilotDetailScreen() {
         if (cancelled) return;
         const found = pilots.find((p) => p.pilotId === params.id) ?? null;
         setPilot(found);
+        // Signe les médias du pilote (bucket privé ; is_coach_of autorise le coach).
+        if (found && found.media.length > 0) {
+          signPilotMedia(found.media).then((m) => {
+            if (!cancelled) setPilotMedia(m);
+          });
+        }
 
         // Charge les sessions (filtré par RLS via telemetry_sessions_coach_select)
         const sess = await listPilotSessions(params.id);
@@ -107,6 +115,7 @@ export default function CoachPilotDetailScreen() {
         {/* Profil du pilote (affichage croisé) — édité par le pilote, visible
             ici car affilié et consenti (coach_pilots_view). */}
         {pilot ? <PilotProfileBlock pilot={pilot} /> : null}
+        {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
 
         {/* Priorisation du bilan (§10.3c-B) */}
         <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
@@ -245,6 +254,47 @@ function PilotProfileBlock({ pilot }: { pilot: CoachPilotRow }) {
           ))}
         </View>
       ) : null}
+    </Card>
+  );
+}
+
+function PilotMediaBlock({ media }: { media: PilotMediaView[] }) {
+  return (
+    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+      <SectionLabel>Médias</SectionLabel>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: theme.spacing.sm }}
+      >
+        {media.map((m) =>
+          m.type === 'photo' && m.signedUrl ? (
+            <Pressable
+              key={m.id}
+              accessibilityRole="image"
+              accessibilityLabel="Photo du pilote"
+              onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
+              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+            >
+              <Image source={{ uri: m.signedUrl }} resizeMode="cover" style={s.mediaThumb} />
+            </Pressable>
+          ) : (
+            <Pressable
+              key={m.id}
+              accessibilityRole="button"
+              accessibilityLabel={m.type === 'video' ? 'Ouvrir la vidéo' : 'Photo'}
+              onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
+              style={({ pressed }) => [
+                s.mediaThumb,
+                s.mediaCenter,
+                { opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
+            </Pressable>
+          )
+        )}
+      </ScrollView>
     </Card>
   );
 }
@@ -462,6 +512,22 @@ const s = {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
+    color: theme.palette.creamMute,
+  },
+  mediaThumb: {
+    width: 140,
+    height: 140,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  mediaCenter: { alignItems: 'center' as const, justifyContent: 'center' as const },
+  mediaTileT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
   },
 };

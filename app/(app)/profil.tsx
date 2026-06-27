@@ -1,14 +1,14 @@
 /**
  * Écran Pilote — Mon profil (niveau, expérience, licence, véhicule, réseaux).
  *
- * Le pilote édite sa propre ligne `users` (RLS self-update). C'est ce que son
- * coach affilié verra (affichage côté coach = incrément suivant). Média
- * photo/vidéo : upload à venir. Doctrine : sobre, vouvoiement, factuel ; le
- * vocabulaire de niveau est figé (« Apprivoisé » pour intermédiaire).
+ * Le pilote édite sa propre ligne `users` (RLS self-update) et ses médias
+ * (bucket privé `pilot-media`, URLs signées). C'est ce que son coach affilié
+ * voit. Doctrine : sobre, vouvoiement, factuel ; le vocabulaire de niveau est
+ * figé (« Apprivoisé » pour intermédiaire).
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -17,6 +17,13 @@ import {
   getMyPilotProfile,
   updateMyPilotProfile,
 } from '@/services/pilotProfileService';
+import {
+  addMyPilotMedia,
+  type PilotMediaType,
+  type PilotMediaView,
+  listMyPilotMedia,
+  removeMyPilotMedia,
+} from '@/services/pilotMediaService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -35,11 +42,16 @@ export default function PilotProfileScreen() {
   const [website, setWebsite] = useState('');
   const [instagram, setInstagram] = useState('');
   const [youtube, setYoutube] = useState('');
+  const [media, setMedia] = useState<PilotMediaView[]>([]);
+  const [mediaBusy, setMediaBusy] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
+      listMyPilotMedia().then((m) => {
+        if (!cancelled) setMedia(m);
+      });
       getMyPilotProfile()
         .then((p) => {
           if (cancelled) return;
@@ -76,6 +88,30 @@ export default function PilotProfileScreen() {
       return;
     }
     Toast.show({ type: 'success', text1: 'Profil enregistré.' });
+  }
+
+  async function onAddMedia(type: PilotMediaType) {
+    setMediaBusy(true);
+    const res = await addMyPilotMedia(type);
+    setMediaBusy(false);
+    if (res.ok) {
+      setMedia(res.items);
+      Toast.show({
+        type: 'success',
+        text1: type === 'video' ? 'Vidéo ajoutée.' : 'Photo ajoutée.',
+      });
+    } else if (!('cancelled' in res)) {
+      Toast.show({ type: 'error', text1: res.error });
+    }
+  }
+
+  async function onRemoveMedia(id: string) {
+    const res = await removeMyPilotMedia(id);
+    if (res.ok) {
+      setMedia(res.items);
+    } else {
+      Toast.show({ type: 'error', text1: res.error });
+    }
   }
 
   if (loading) {
@@ -184,8 +220,77 @@ export default function PilotProfileScreen() {
           </View>
         </View>
 
-        <View style={s.mediaNote}>
-          <Text style={s.mediaNoteT}>Photos et vidéos : bientôt disponibles ici.</Text>
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <SectionLabel>Médias</SectionLabel>
+          <Text style={s.mediaHint}>
+            Photos et vidéos de votre profil, visibles par votre coach.
+          </Text>
+
+          {media.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginTop: theme.spacing.md }}
+              contentContainerStyle={{ gap: theme.spacing.sm }}
+            >
+              {media.map((m) => (
+                <View key={m.id} style={s.mediaTile}>
+                  {m.type === 'photo' && m.signedUrl ? (
+                    <Image
+                      source={{ uri: m.signedUrl }}
+                      style={s.mediaThumb}
+                      resizeMode="cover"
+                      accessibilityLabel="Photo du profil"
+                    />
+                  ) : (
+                    <View style={[s.mediaThumb, s.mediaCenter]}>
+                      <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
+                    </View>
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Retirer ce média"
+                    hitSlop={6}
+                    onPress={() => onRemoveMedia(m.id)}
+                    style={s.mediaRemove}
+                  >
+                    <Text style={s.mediaRemoveT}>Retirer</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
+          )}
+
+          <View style={s.mediaActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter une photo"
+              disabled={mediaBusy}
+              onPress={() => onAddMedia('photo')}
+              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+            >
+              <Text style={s.mediaBtnT}>Ajouter une photo</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter une vidéo"
+              disabled={mediaBusy}
+              onPress={() => onAddMedia('video')}
+              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+            >
+              <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
+            </Pressable>
+          </View>
+
+          {mediaBusy ? (
+            <ActivityIndicator
+              color={theme.palette.creamMute}
+              style={{ marginTop: theme.spacing.md }}
+              accessibilityLabel="Envoi du média en cours"
+            />
+          ) : null}
         </View>
 
         <View style={{ marginTop: theme.spacing.xl }}>
@@ -231,19 +336,65 @@ const s = {
     color: theme.palette.creamMute,
   },
   pillTOn: { color: theme.palette.cream },
-  mediaNote: {
-    marginTop: theme.spacing.xl,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
+  mediaHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: theme.spacing.xs,
+  },
+  mediaEmpty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.faint,
+    marginTop: theme.spacing.md,
+  },
+  mediaTile: { width: 120 },
+  mediaThumb: {
+    width: 120,
+    height: 120,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.palette.line,
     backgroundColor: theme.palette.card2,
   },
-  mediaNoteT: {
-    fontFamily: theme.fonts.body,
+  mediaCenter: { alignItems: 'center' as const, justifyContent: 'center' as const },
+  mediaTileT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  mediaRemove: {
+    minHeight: 36,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginTop: theme.spacing.xs,
+  },
+  mediaRemoveT: {
+    fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
+  },
+  mediaActions: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg,
+  },
+  mediaBtn: {
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+    justifyContent: 'center' as const,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.gold,
+  },
+  mediaBtnT: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.3,
+    color: theme.palette.gold,
   },
 };
