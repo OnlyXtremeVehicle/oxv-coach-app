@@ -19,9 +19,9 @@ const LINKS: { label: string; hint: string; href: string }[] = [
   { label: 'Notifications', hint: 'À traiter, à découvrir', href: '/(app)/notifications' },
   { label: 'Réglages', hint: "Préférences de l'application", href: '/(app)/settings' },
   {
-    label: 'Données & confidentialité',
-    hint: 'Export, suppression, documents légaux',
-    href: '/(app)/donnees-securite',
+    label: 'Consentements & données',
+    hint: 'Vos choix, export, suppression',
+    href: '/(app)/consentements',
   },
 ];
 

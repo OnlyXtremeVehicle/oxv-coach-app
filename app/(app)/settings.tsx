@@ -19,6 +19,7 @@ import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { supabase } from '@/lib/supabase';
 import { requestAccountDeletion } from '@/services/accountService';
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from '@/services/analyticsService';
+import { setAiDebriefConsent, setCoachAiConsent } from '@/services/consentService';
 import { exportAndShareMyData } from '@/services/dataExportService';
 import { type NotifChannel, readNotifPref, writeNotifPref } from '@/services/notifPreferencesLogic';
 import { cancelAllOxvNotifications } from '@/services/pushNotificationsService';
@@ -102,10 +103,7 @@ export default function SettingsScreen() {
   async function toggleAiDebrief(next: boolean) {
     if (!profile?.id) return;
     setAiDebriefEnabled(next);
-    await supabase
-      .from('users')
-      .update({ ai_debrief_enabled: next } as never)
-      .eq('id', profile.id);
+    await setAiDebriefConsent(profile.id, next);
   }
 
   // Assistant IA du coach (C-1) : opt-in explicite. Autorise SON coach à
@@ -114,10 +112,7 @@ export default function SettingsScreen() {
   async function toggleCoachAi(next: boolean) {
     if (!profile?.id) return;
     setCoachAiEnabled(next);
-    await supabase
-      .from('users')
-      .update({ coach_ai_enabled: next } as never)
-      .eq('id', profile.id);
+    await setCoachAiConsent(profile.id, next);
   }
 
   // Granularité notifs (D5) : écrit la préférence par canal dans le JSONB,
@@ -313,6 +308,11 @@ export default function SettingsScreen() {
 
         {/* Données */}
         <Section label="Données">
+          <SettingRow
+            label="Centre de consentement"
+            hint="Tout voir"
+            onPress={() => router.push('/(app)/consentements' as never)}
+          />
           <ToggleRow
             label="Mesure d'audience"
             caption="Statistiques anonymes d'usage. Aucune donnée personnelle, aucun cookie."
