@@ -137,6 +137,22 @@ export async function listMyLeads(partnerId: string): Promise<PartnerLead[]> {
   });
 }
 
+/** Met à jour le statut d'un lead (suivi commercial). RLS : owns_partner_account. */
+export async function setLeadStatus(
+  id: string,
+  status: LeadStatus
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('partner_leads')
+    .update({ status } as never)
+    .eq('id', id);
+  if (error) {
+    console.warn('[OXV][partner] setLeadStatus :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
 export interface UpsertOfferInput {
   id: string | null;
   partnerId: string;

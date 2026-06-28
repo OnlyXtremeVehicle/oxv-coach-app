@@ -127,6 +127,17 @@ export default function PartnerHubScreen() {
                 <Text style={s.cardHint}>Créer et publier vos offres.</Text>
               </Card>
               <Card
+                onPress={() => router.push('/(partner)/leads' as never)}
+                accessibilityLabel={`Mes leads. ${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} de contact.`}
+              >
+                <Text style={s.cardTitle}>Mes leads</Text>
+                <Text style={s.cardHint}>
+                  {newLeads > 0
+                    ? `${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} à suivre.`
+                    : 'Les demandes de contact des pilotes.'}
+                </Text>
+              </Card>
+              <Card
                 onPress={() => router.push('/(partner)/rapports' as never)}
                 accessibilityLabel="Mes rapports. Les rapports d'événement partagés par OXV."
               >
