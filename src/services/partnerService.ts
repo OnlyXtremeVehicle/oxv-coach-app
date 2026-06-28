@@ -296,3 +296,69 @@ export async function requestPartnerContact(input: {
   }
   return { ok: true };
 }
+
+// ============================================================================
+// Côté admin — validation des comptes + supervision des leads (F4)
+// ============================================================================
+
+/** Tous les comptes partenaires, tout statut confondu (RLS is_admin). */
+export async function listAllPartnerAccounts(): Promise<PartnerAccount[]> {
+  const { data, error } = await supabase
+    .from('partner_accounts')
+    .select(
+      'id, profile_id, display_name, type, description, logo_url, contact_email, contact_policy, status'
+    )
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('[OXV][partner] listAllPartnerAccounts :', error.message);
+    return [];
+  }
+  return (data ?? []).map((r0) => {
+    const r = r0 as Record<string, unknown>;
+    return {
+      id: r.id as string,
+      profileId: r.profile_id as string,
+      displayName: r.display_name as string,
+      type: r.type as string,
+      description: (r.description as string | null) ?? null,
+      logoUrl: (r.logo_url as string | null) ?? null,
+      contactEmail: (r.contact_email as string | null) ?? null,
+      contactPolicy: (r.contact_policy as string | null) ?? null,
+      status: r.status as PartnerStatus,
+    };
+  });
+}
+
+/** Change le statut d'un compte partenaire (validation). Admin only (trigger garde). */
+export async function setPartnerStatus(
+  id: string,
+  status: PartnerStatus
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('partner_accounts').update({ status }).eq('id', id);
+  if (error) {
+    console.warn('[OXV][partner] setPartnerStatus :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Compte des leads par statut (supervision admin). */
+export async function countLeadsByStatus(): Promise<Record<LeadStatus, number>> {
+  const counts: Record<LeadStatus, number> = {
+    new: 0,
+    contacted: 0,
+    booked: 0,
+    lost: 0,
+    archived: 0,
+  };
+  const { data, error } = await supabase.from('partner_leads').select('status');
+  if (error) {
+    console.warn('[OXV][partner] countLeadsByStatus :', error.message);
+    return counts;
+  }
+  for (const r0 of data ?? []) {
+    const status = (r0 as { status: LeadStatus }).status;
+    if (status in counts) counts[status] += 1;
+  }
+  return counts;
+}

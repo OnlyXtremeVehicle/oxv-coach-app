@@ -95,8 +95,9 @@ l'alpha** (P1/P2, cohérent backlog §19).
 > **PR-F1 livré** (décision Gabin : marketplace complète + dashboard RN, sans encaissement) :
 > tables `partner_accounts`/`partner_offers`/`partner_leads` (migration `0017`, RLS stricte +
 > lead consenti), espace `(partner)/` + guard `role='partner'` + dashboard + tests RLS positifs/négatifs.
-> Reste : **F2** offres CRUD · **F3** pilote « demander contact » · **F4** validation admin + suivi leads.
-> Détail : [pr-14-partner-foundation.md](../../roadmap/rapports/pr-14-partner-foundation.md).
+> **F2/F3/F4 livrés** : offres CRUD partenaire · pilote « demander contact » (lead consenti) · validation
+> admin + supervision leads. **Boucle marketplace complète** (sans encaissement in-app).
+> Détail : [pr-14](../../roadmap/rapports/pr-14-partner-foundation.md) · [pr-15](../../roadmap/rapports/pr-15-partner-offers.md) · [pr-16](../../roadmap/rapports/pr-16-partner-pilot-lead.md) · [pr-17](../../roadmap/rapports/pr-17-partner-admin.md).
 
 
 - **Existe** : enum `user_role` inclut `'partner'` + helper `is_partner()` ; annuaire écosystème fonctionnel

@@ -49,6 +49,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Assignations coach ↔ pilote, gestion des consentements.',
   },
   {
+    href: '/(admin)/partenaires',
+    label: 'Partenaires',
+    description: 'Valider les comptes partenaires, superviser les leads.',
+  },
+  {
     href: '/(admin)/sessions-media',
     label: 'Médias',
     description: 'Dépôt des photos / vidéos prises sur piste par session.',
