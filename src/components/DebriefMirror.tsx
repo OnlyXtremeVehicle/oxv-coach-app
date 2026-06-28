@@ -26,6 +26,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, Animated, Easing } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 
+import { guardDebriefActs } from '../services/debriefRenderGuard';
+
 /* ============================ THÈME ============================ */
 export const C = {
   night: '#050505',
@@ -480,7 +482,12 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
   trackPoints,
 }) => {
   const track = trackPoints && trackPoints.length >= 3 ? trackPoints : DEFAULT_TRACK;
-  const acts = useMemo(() => parseActs(analysis?.debrief_text), [analysis?.debrief_text]);
+  // Garde-fou de RENDU (T-1) : un acte non conforme est blanchi avant affichage
+  // (l'écran retombe alors sur son texte d'attente neutre). Cf. debriefRenderGuard.
+  const acts = useMemo(
+    () => guardDebriefActs(parseActs(analysis?.debrief_text)),
+    [analysis?.debrief_text]
+  );
 
   const dq = insights?.data_quality;
   const pctValid = n(dq?.pct_valid, 0);
