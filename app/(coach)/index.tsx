@@ -190,6 +190,10 @@ export default function CoachHubScreen() {
               coach. Filtrage doctrinal serveur, consentement pilote requis. */}
           <CoachLink label="Assistant IA" href="/(coach)/assistant" />
 
+          {/* Programmes adaptatifs (C-2) — cycles qualitatifs authorés par le
+              coach pour un pilote de niveau 'programme'. L'app n'adapte jamais. */}
+          <CoachLink label="Programmes" href="/(coach)/cycles" />
+
           {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
           <CoachLink label="Ma lecture" href="/(coach)/lecture" />
 

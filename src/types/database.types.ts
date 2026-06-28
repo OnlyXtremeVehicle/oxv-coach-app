@@ -2001,6 +2001,50 @@ export type Database = {
         }
         Relationships: []
       }
+      cycle_steps: {
+        Row: {
+          corner_indexes: number[]
+          created_at: string
+          cycle_id: string
+          focus: string
+          id: string
+          note: string | null
+          position: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          corner_indexes?: number[]
+          created_at?: string
+          cycle_id: string
+          focus: string
+          id?: string
+          note?: string | null
+          position?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          corner_indexes?: number[]
+          created_at?: string
+          cycle_id?: string
+          focus?: string
+          id?: string
+          note?: string | null
+          position?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cycle_steps_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "pilot_development_cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_quality_reports: {
         Row: {
           created_at: string
@@ -3622,6 +3666,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pilot_development_cycles: {
+        Row: {
+          closed_at: string | null
+          coach_id: string
+          created_at: string
+          id: string
+          intention: string | null
+          is_shared: boolean
+          pilot_id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          closed_at?: string | null
+          coach_id: string
+          created_at?: string
+          id?: string
+          intention?: string | null
+          is_shared?: boolean
+          pilot_id: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          closed_at?: string | null
+          coach_id?: string
+          created_at?: string
+          id?: string
+          intention?: string | null
+          is_shared?: boolean
+          pilot_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       pilot_friendships: {
         Row: {
@@ -6181,6 +6264,7 @@ export type Database = {
           vehicle_model: string
         }[]
       }
+      corner_indexes_valid: { Args: { idx: number[] }; Returns: boolean }
       generate_oxv_reference: { Args: never; Returns: string }
       get_or_create_my_affiliation_code: { Args: never; Returns: string }
       get_session_private_client: {
@@ -6215,7 +6299,9 @@ export type Database = {
       is_detailed_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
       is_my_coach: { Args: { coach_uuid: string }; Returns: boolean }
       is_partner: { Args: never; Returns: boolean }
+      is_prescriptive: { Args: { txt: string }; Returns: boolean }
       is_pro_pilot: { Args: never; Returns: boolean }
+      is_program_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
       is_subscription_current: {
         Args: {
           p_scope: Database["public"]["Enums"]["subscription_scope"]

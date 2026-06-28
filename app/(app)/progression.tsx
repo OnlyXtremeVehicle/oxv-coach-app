@@ -51,6 +51,7 @@ const PROGRESSION_VIEWS: { label: string; hint: string; href: string }[] = [
   { label: 'Constance', hint: 'Votre régularité, tour après tour', href: '/(app)/regularite' },
   { label: 'Comparateur', hint: 'Vous contre vous, jamais les autres', href: '/(app)/comparateur' },
   { label: 'Carnet', hint: 'Vos notes libres, séance après séance', href: '/(app)/carnet' },
+  { label: 'Programme', hint: 'Ce que votre coach a partagé', href: '/(app)/programme' },
   { label: 'Historique', hint: 'Toutes vos séances', href: '/(app)/roulages' },
 ];
 
