@@ -40,7 +40,13 @@ export async function setPilotLevel(level: PilotLevelChoice): Promise<boolean> {
   return true;
 }
 
-export async function acceptCguAndPrivacy(): Promise<boolean> {
+/**
+ * Enregistre l'acceptation CGU/confidentialité + le consentement (opt-in
+ * EXPLICITE) au débrief enrichi par IA. `aiDebriefConsent=false` par défaut :
+ * aucun transfert vers OpenAI (US) tant que le pilote ne l'a pas autorisé ici.
+ * Désactivable/réactivable ensuite dans les réglages.
+ */
+export async function acceptCguAndPrivacy(aiDebriefConsent = false): Promise<boolean> {
   const userId = useAuthStore.getState().user?.id;
   if (!userId) return false;
 
@@ -52,6 +58,7 @@ export async function acceptCguAndPrivacy(): Promise<boolean> {
       cgu_version: CGU_VERSION,
       privacy_accepted_at: now,
       privacy_version: PRIVACY_VERSION,
+      ai_debrief_enabled: aiDebriefConsent,
     })
     .eq('id', userId);
 

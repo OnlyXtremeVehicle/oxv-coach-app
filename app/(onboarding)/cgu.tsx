@@ -22,10 +22,16 @@ interface Checks {
   cgu: boolean;
   privacy: boolean;
   age: boolean;
+  aiDebrief: boolean;
 }
 
 export default function CguScreen() {
-  const [checks, setChecks] = useState<Checks>({ cgu: false, privacy: false, age: false });
+  const [checks, setChecks] = useState<Checks>({
+    cgu: false,
+    privacy: false,
+    age: false,
+    aiDebrief: false,
+  });
   const [submitting, setSubmitting] = useState(false);
 
   const allChecked = checks.cgu && checks.privacy && checks.age;
@@ -37,7 +43,7 @@ export default function CguScreen() {
   const onContinue = async () => {
     if (!allChecked || submitting) return;
     setSubmitting(true);
-    const ok = await acceptCguAndPrivacy();
+    const ok = await acceptCguAndPrivacy(checks.aiDebrief);
     setSubmitting(false);
     if (!ok) {
       Alert.alert('Acceptation non enregistrée', 'Réessayez quand votre connexion sera de retour.');
@@ -99,6 +105,15 @@ export default function CguScreen() {
             checked={checks.age}
             onToggle={() => toggle('age')}
             label="Je confirme avoir 18 ans révolus et un permis B valide."
+          />
+
+          <Text style={[s.optional, { marginTop: spacing.xl, marginBottom: spacing.xs }]}>
+            OPTIONNEL
+          </Text>
+          <Checkbox
+            checked={checks.aiDebrief}
+            onToggle={() => toggle('aiDebrief')}
+            label="J'autorise le débrief enrichi par une IA (transfert de données non nominatives hors UE). Sans cela, votre débrief reste rédigé localement. Modifiable à tout moment."
           />
 
           <Text style={[s.caption, { marginTop: spacing.xl }]}>
@@ -199,6 +214,13 @@ const s = {
   },
   title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
   caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
+  optional: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
   check: { color: palette.night, fontFamily: fonts.bodySemi, fontSize: 14 },
   checkLabel: {
     flex: 1,
