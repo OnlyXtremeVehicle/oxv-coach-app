@@ -109,7 +109,6 @@ function RecordingPulse({ active }: { active: boolean }) {
 
 export default function RoulageScreen() {
   const status = useSessionStore((s) => s.status);
-  const lapCount = useSessionStore((s) => s.lapCount);
   const [ending, setEnding] = useState(false);
 
   async function onFinish() {
@@ -141,22 +140,13 @@ export default function RoulageScreen() {
     <Screen scroll={false}>
       <AppBar title="ROULAGE" />
       <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Bandeau sobre — état + cadence d'échantillonnage */}
-        <View style={s.topRow}>
-          <Text style={s.topLabel}>EN PISTE</Text>
-          <Text style={s.topLabel}>{recording ? `TOUR ${lapCount} · 25 Hz` : '25 Hz'}</Text>
-        </View>
-
+        {/* En piste — doctrine du silence (canon §6) : voyant REC qui pulse, trois
+            fragments éditoriaux. AUCUNE donnée, AUCUN chrono, AUCUN tour affiché. */}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <RecordingPulse active={recording} />
-
-          <Text style={s.capture}>
-            <Text style={{ color: recording ? palette.red : palette.creamMute }}>● </Text>
-            {recording ? 'Capture en cours' : 'En attente'}
-          </Text>
-
-          <Text style={s.headline}>Posez l&apos;appareil. L&apos;app s&apos;occupe du reste.</Text>
-          <Text style={s.manifest}>La piste est à vous.</Text>
+          <Text style={s.enPiste}>EN PISTE</Text>
+          <Text style={s.manifest}>L&apos;app s&apos;efface.</Text>
+          <Text style={s.silence}>Aucun écran. Aucun son. Conduisez.</Text>
         </View>
 
         <Pressable
@@ -190,19 +180,6 @@ export default function RoulageScreen() {
 }
 
 const s = {
-  topRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    paddingTop: spacing.md,
-  },
-  topLabel: {
-    fontFamily: fonts.mono,
-    fontSize: fontSize.eyebrow,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
-  },
   recBox: {
     width: 140,
     height: 140,
@@ -236,21 +213,21 @@ const s = {
     backgroundColor: palette.creamMute,
     marginBottom: spacing.xl,
   },
-  capture: {
+  enPiste: {
+    fontFamily: fonts.mono,
+    fontSize: 13,
+    letterSpacing: 5,
+    textTransform: 'uppercase' as const,
+    color: palette.red,
+    marginBottom: spacing.lg,
+  },
+  silence: {
     fontFamily: fonts.mono,
     fontSize: fontSize.small,
     letterSpacing: 1,
-    color: palette.creamMute,
-    marginBottom: spacing.xl,
-  },
-  headline: {
-    fontFamily: fonts.display,
-    fontSize: fontSize.h2,
-    letterSpacing: 0.3,
-    color: palette.cream,
-    lineHeight: fontSize.h2 * 1.25,
+    color: palette.faint,
     textAlign: 'center' as const,
-    marginBottom: spacing.lg,
+    marginTop: spacing.lg,
   },
   manifest: {
     fontFamily: fonts.bodyLight,
