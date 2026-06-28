@@ -4657,6 +4657,102 @@ export type Database = {
           },
         ]
       }
+      support_messages: {
+        Row: {
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          is_admin: boolean
+          ticket_id: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          ticket_id: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          is_admin?: boolean
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          category: Database["public"]["Enums"]["support_ticket_category"]
+          created_at: string
+          device_id: string | null
+          id: string
+          priority: Database["public"]["Enums"]["support_ticket_priority"]
+          session_id: string | null
+          status: Database["public"]["Enums"]["support_ticket_status"]
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["support_ticket_category"]
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["support_ticket_priority"]
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["support_ticket_status"]
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["support_ticket_category"]
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          priority?: Database["public"]["Enums"]["support_ticket_priority"]
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["support_ticket_status"]
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "support_tickets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "support_tickets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       telemetry_frames: {
         Row: {
           altitude_m: number | null
@@ -5632,6 +5728,7 @@ export type Database = {
       is_detailed_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
       is_my_coach: { Args: { coach_uuid: string }; Returns: boolean }
       is_partner: { Args: never; Returns: boolean }
+      is_pro_pilot: { Args: never; Returns: boolean }
       is_subscription_current: {
         Args: {
           p_scope: Database["public"]["Enums"]["subscription_scope"]
@@ -5857,6 +5954,19 @@ export type Database = {
         | "archived"
       subscription_scope: "coach" | "pilot"
       subscription_status: "active" | "past_due" | "canceled"
+      support_ticket_category:
+        | "equipement"
+        | "bilan"
+        | "data"
+        | "coach"
+        | "rgpd"
+      support_ticket_priority: "p0" | "p1" | "p2" | "p3"
+      support_ticket_status:
+        | "nouveau"
+        | "ouvert"
+        | "en_cours"
+        | "resolu"
+        | "ferme"
       user_role: "pilot" | "admin" | "coach" | "partner" | "pro_pilot"
       weather_status_enum: "pending" | "confirmed" | "postponed"
     }
@@ -6060,6 +6170,15 @@ export const Constants = {
       ],
       subscription_scope: ["coach", "pilot"],
       subscription_status: ["active", "past_due", "canceled"],
+      support_ticket_category: ["equipement", "bilan", "data", "coach", "rgpd"],
+      support_ticket_priority: ["p0", "p1", "p2", "p3"],
+      support_ticket_status: [
+        "nouveau",
+        "ouvert",
+        "en_cours",
+        "resolu",
+        "ferme",
+      ],
       user_role: ["pilot", "admin", "coach", "partner", "pro_pilot"],
       weather_status_enum: ["pending", "confirmed", "postponed"],
     },
