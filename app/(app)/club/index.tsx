@@ -6,12 +6,11 @@
  * proéminent (affiliation mise en avant). Aucun réseau social généraliste.
  * Doctrine : sobre, vouvoiement, pas d'emoji.
  *
- * NB fusions (revue adversariale PR 7, cf. `roadmap/rapports/pr-07-fusions.md`) :
- * `social` n'est PAS un doublon d'`amis` (social = liste `social_pings` + actions ;
- * amis = amitiés) — NE PAS rediriger. `social-carte` et `lieux` → `carte-oxv`
- * demandent un MERGE de contenu (vue liste, filtres, tables `partners/lodgings/
- * restaurants`), pas un `<Redirect>` aveugle ; `lieux` touche en plus un schéma
- * non tranché → accord Gabin requis. Aucune redirection appliquée.
+ * Fusion territoire (FAIT, décision Gabin 2026-06, cf.
+ * `roadmap/rapports/pr-08-fusion-carte-oxv.md`) : « La carte OXV » (`carte-oxv`)
+ * est l'écran UNIQUE du territoire (carte + liste, source `social_pings`).
+ * `social`, `social-carte` et `lieux` sont désormais des coquilles `<Redirect>`
+ * vers lui ; le modèle `places` est déprécié. `amis` reste distinct (amitiés).
  */
 
 import { router } from 'expo-router';

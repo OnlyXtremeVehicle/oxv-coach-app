@@ -1,5 +1,11 @@
 # Rapport — Fusions de doublons (revue adversariale)
 
+> **RÉSOLU EN PR 8** (décision Gabin 2026-06) : `social-carte` + `lieux` + `social`
+> → coquilles `<Redirect>` vers `carte-oxv` (écran unique carte + liste) ; modèle
+> `places` déprécié. La cible de `social` est bien `carte-oxv` (PAS `amis`). Voir
+> [pr-08-fusion-carte-oxv.md](pr-08-fusion-carte-oxv.md). Le contenu ci-dessous
+> reste l'état au moment de la revue (0 redirect, 2 décisions en attente).
+
 > Audit en parallèle (3 agents) + **revue adversariale** de chaque verdict
 > (consigne : par défaut « merge d'abord » au moindre doute, ne jamais perdre une
 > vue liste en redirigeant à l'aveugle).

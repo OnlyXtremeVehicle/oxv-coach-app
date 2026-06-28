@@ -1,10 +1,15 @@
 /**
- * Lieux de l'écosystème OXV (specs v4 §08) : partenaires, hébergements, restaurants.
+ * @deprecated DÉCISION GABIN 2026-06 — le modèle `places`
+ * (partners/lodgings/restaurants, tables vides en prod) est déprécié au profit
+ * de `social_pings`. La découverte du territoire vit dans `carte-oxv` (écran
+ * unique carte + liste) ; `lieux.tsx` est une coquille `<Redirect>`. Plus aucun
+ * écran ne consomme ce service — seul `placesService.test.ts` le référence
+ * encore. Suppression définitive planifiée dans `10_PLAN_MIGRATION` (blast
+ * radius nul). Voir `roadmap/rapports/pr-08-fusion-carte-oxv.md`.
  *
+ * Lieux de l'écosystème OXV (specs v4 §08) : partenaires, hébergements, restaurants.
  * Lecture seule des lignes PUBLIÉES (`is_published = true`) — donnée publique de
- * lieu, pas de donnée personnelle pilote (pas de gate RGPD). Les tables existent
- * en prod (vides pour l'instant) ; un état vide explicite est attendu (doctrine :
- * ne jamais maquiller l'absence).
+ * lieu, pas de donnée personnelle pilote (pas de gate RGPD).
  */
 
 import { supabase } from '@/lib/supabase';

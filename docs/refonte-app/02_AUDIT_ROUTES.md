@@ -42,10 +42,10 @@
 | `coach/[id]` | Club | GARDER | Fiche coach |
 | `mes-demandes` | Club | GARDER | Demandes de coaching |
 | `amis` | Club | GARDER | Communauté |
-| `social` | Club | FUSIONNER | Avec `amis` / Club |
-| `social-carte` | Club | FUSIONNER | Avec `carte-oxv` (doublon carte) |
-| `carte-oxv` | Club | GARDER | **La carte OXV** (lieux/partenaires/événements) |
-| `lieux` | Club | FUSIONNER | Avec `carte-oxv` |
+| `social` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (devient sa vue Liste). PAS `amis`. |
+| `social-carte` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (vue Carte) |
+| `carte-oxv` | Club | GARDER | **La carte OXV** — écran UNIQUE du territoire (carte + liste) |
+| `lieux` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` ; modèle `places` déprécié |
 | `circuits` | Bilan/Club | GARDER | Liste circuits |
 | `circuit/[id]` | Bilan/Club | GARDER | Fiche circuit |
 | `belle-route` | Club | REPORTER | Belles routes (V1.5) |
@@ -66,8 +66,7 @@
 
 - `index` vs `paddock` → un seul Paddock.
 - `bilan` vs `insights` vs `stats` vs `heatmap` → Bilan + sous-vues Data Lab, pas d'entrées parallèles.
-- `carte-oxv` vs `social-carte` vs `lieux` → une seule **La carte OXV**.
-- `social` vs `amis` → un seul espace communauté dans Club.
+- `carte-oxv` vs `social-carte` vs `lieux` vs `social` → une seule **La carte OXV** (carte + liste, source `social_pings`). FAIT (PR 8). `social` rejoint `carte-oxv` (sa vue Liste), **pas** `amis`.
 - `coachs` vs `mon-coach` → découverte vs affiliation (rôles distincts, à garder séparés mais cohérents).
 - `roulages` vs `roulage` → historique (pluriel) ≠ étape de session (singulier).
 

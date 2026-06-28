@@ -39,10 +39,10 @@ Six étapes, alignées sur PR 1–7. Chaque étape est livrable seule et révers
 Pour chaque doublon retiré de l'UI mais encore atteignable par URL, le fichier de route est réduit à :
 
 ```tsx
-// app/(app)/social.tsx — coquille de compat (E5). À supprimer en E6.
+// app/(app)/social.tsx — coquille de compat (FAIT en PR 8). À supprimer plus tard.
 import { Redirect } from 'expo-router';
 export default function SocialRedirect() {
-  return <Redirect href="/(app)/amis" />; // cible canonique : Club › Communauté
+  return <Redirect href="/(app)/carte-oxv" />; // cible canonique : La carte OXV (territoire)
 }
 ```
 
@@ -64,7 +64,7 @@ export const TAB_MAIN_ROUTE: Record<TabZone, string> = {
 // À AJOUTER lors de la PR de migration (E3) — N'EXISTE PAS encore :
 // table d'alias de redirection pour la dédup des doublons.
 export const ROUTE_ALIASES = {
-  '/(app)/social': '/(app)/amis',
+  '/(app)/social': '/(app)/carte-oxv', // corrigé PR 8 : social = vue Liste du territoire (PAS amis)
   '/(app)/social-carte': '/(app)/carte-oxv',
   '/(app)/lieux': '/(app)/carte-oxv',
   '/(app)/stats': '/(app)/progression',
@@ -98,8 +98,8 @@ Issus de `02_AUDIT_ROUTES.md §Doublons`. Décision **DROP franc** (memo doctrin
 | # | Doublon | Cible canonique | Décision | Traité en | Note de grounding |
 |---|---|---|---|---|---|
 | D1 | `index` vs `paddock` | `index` (hub) | **Garder les deux distincts**, pas de fusion | PR 2 | `paddock.tsx` ≠ hub : c'est l'écran « Vous y êtes » (arrivée circuit). Devient un **état du hub Paddock** ou un sous-écran. `paddock` → alias vers `index` une fois l'état intégré. |
-| D2 | `carte-oxv` vs `social-carte` vs `lieux` | `carte-oxv` | **Fusionner** vers une seule « La carte OXV » | PR 6 (Club) | `social-carte` et `lieux` → coquilles `<Redirect href="/(app)/carte-oxv">` |
-| D3 | `social` vs `amis` | `amis` | **Fusionner** vers Communauté (Club) | PR 6 (Club) | `social` → coquille vers `amis` |
+| D2 | `carte-oxv` vs `social-carte` vs `lieux` | `carte-oxv` | **Fusionner** vers une seule « La carte OXV » (carte + liste) | **PR 8 (FAIT)** | `social-carte` et `lieux` → coquilles `<Redirect href="/(app)/carte-oxv">`. Modèle `places` déprécié (décision Gabin 2026-06). |
+| D3 | `social` (liste `social_pings`) | `carte-oxv` | **Fusionner** : la liste devient la vue Liste de « La carte OXV » | **PR 8 (FAIT)** | Revue adversariale : `social` n'est **PAS** un doublon d'`amis` (amitiés). Décision Gabin 2026-06 : `social` → coquille vers `carte-oxv` (et non `amis`). |
 | D4 | `bilan` vs `insights` vs `stats` vs `heatmap` | `bilan` (hub) + Data Lab | **Pas d'entrées parallèles** : sous-vues au toucher | PR 3 (Bilan) | `stats` est un cas mixte : fusionne côté **Progression** (cf. D6). `insights`/`heatmap` restent vivants comme sous-vues Data Lab, on retire seulement leurs liens directs. |
 | D5 | `coachs` vs `mon-coach` | les **deux** gardés | **Ne PAS fusionner** | PR 6 (Club) | Rôles distincts : `mon-coach` = affiliation (mise en avant) ; `coachs` = découverte/marketplace. Cohérence de nav, pas dédup. |
 | D6 | `roulages` vs `roulage` | les **deux** gardés | **Ne PAS fusionner** | PR 5 (Progression) | Homonymes trompeurs : `roulages` (pluriel) = historique/carnet → Progression ; `roulage` (singulier) = étape « en piste » → Session. Aucun changement de route, lever l'ambiguïté par le rangement. |
@@ -110,8 +110,9 @@ Issus de `02_AUDIT_ROUTES.md §Doublons`. Décision **DROP franc** (memo doctrin
 1. **PR 2 — Paddock** : D1 (intégrer l'état arrivée, aliaser `paddock`).
 2. **PR 3 — Bilan** : D4 (ranger `insights`/`heatmap`/`telemetry` sous Data Lab, couper les liens directs).
 3. **PR 5 — Progression** : D6 (clarifier `roulages`≠`roulage`), D7 (`stats`→`progression`).
-4. **PR 6 — Club** : D2 (`carte-oxv` absorbe `social-carte`+`lieux`), D3 (`amis` absorbe `social`), D5 (laisser `coachs`/`mon-coach` séparés mais reliés).
-5. **PR 7 — Polish** : suppression des coquilles devenues silencieuses + masquage `debug-capture`/`debug-circuit` hors prod.
+4. **PR 6 — Club** : D5 (laisser `coachs`/`mon-coach` séparés mais reliés).
+5. **PR 7 — Polish** : réalignement canon (cf. `pr-07-polish.md`).
+6. **PR 8 — Fusion territoire (FAIT)** : D2 (`carte-oxv` absorbe `social-carte`+`lieux`) **et** D3 (`carte-oxv` absorbe `social`, pas `amis`) — décision Gabin 2026-06, modèle `places` déprécié. Suppression définitive des 3 coquilles + `placesService` planifiée ultérieurement (blast radius nul).
 
 ---
 
