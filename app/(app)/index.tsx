@@ -210,45 +210,56 @@ function ModePassive({
       </FadeInSection>
 
       {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible.
-          Carte actionnable du kit : retour pressé + rôle bouton + cible ≥ 44 px
-          cohérents, plutôt qu'un Pressable enroulant une View. */}
-      {loading ? null : recentSession ? (
-        <Link href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }} asChild>
-          <Card
-            onPress={() => {}}
-            accessibilityLabel={`Votre dernier bilan, ${recentSession.circuitName ?? 'session'}, ${timeAgoFr(
-              recentSession.startedAt
-            )}`}
-            style={s.bilan}
-          >
-            <Text style={s.bilanChevron}>›</Text>
+          Entre dans la chorégraphie d'apparition (greeting → bilan → action).
+          Pendant le chargement : squelette calme plutôt qu'un saut de mise en page. */}
+      <FadeInSection delay={60}>
+        {loading ? (
+          <View style={s.bilanSkeleton} accessibilityLabel="Chargement de votre dernier bilan">
             <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-            <View style={s.bilanRow}>
-              {regularity ? (
-                <GaugeInstrument
-                  value={regularity.stdDevSeconds}
-                  min={0}
-                  max={Math.max(3, regularity.stdDevSeconds * 1.25)}
-                  unit="s"
-                  formatValue={(v) => v.toFixed(1).replace('.', ',')}
-                  size={104}
-                  majorTicks={4}
-                  minorPerMajor={1}
-                />
-              ) : null}
-              <View style={{ flex: 1 }}>
-                <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-                <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+            <View style={s.skelLineWide} />
+            <View style={[s.skelLine, { marginTop: spacing.sm }]} />
+          </View>
+        ) : recentSession ? (
+          <Link
+            href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }}
+            asChild
+          >
+            <Card
+              onPress={() => {}}
+              accessibilityLabel={`Votre dernier bilan, ${recentSession.circuitName ?? 'session'}, ${timeAgoFr(
+                recentSession.startedAt
+              )}`}
+              style={s.bilan}
+            >
+              <Text style={s.bilanChevron}>›</Text>
+              <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
+              <View style={s.bilanRow}>
                 {regularity ? (
-                  <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
+                  <GaugeInstrument
+                    value={regularity.stdDevSeconds}
+                    min={0}
+                    max={Math.max(3, regularity.stdDevSeconds * 1.25)}
+                    unit="s"
+                    formatValue={(v) => v.toFixed(1).replace('.', ',')}
+                    size={104}
+                    majorTicks={4}
+                    minorPerMajor={1}
+                  />
                 ) : null}
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
+                  <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+                  {regularity ? (
+                    <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          </Card>
-        </Link>
-      ) : (
-        <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
-      )}
+            </Card>
+          </Link>
+        ) : (
+          <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
+        )}
+      </FadeInSection>
 
       {/* Action principale contextuelle (§B1) + 2 raccourcis ghost. */}
       <FadeInSection delay={120}>
@@ -338,10 +349,22 @@ const s = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    color: palette.faint,
+    // creamMute (et non faint) : ce libellé porte une donnée (régularité) — lisible AA.
+    color: palette.creamMute,
     marginTop: 8,
     lineHeight: 15,
   },
+  // Squelette de chargement du dernier bilan : réserve l'espace, calme, sans saut.
+  bilanSkeleton: {
+    backgroundColor: palette.card2,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginTop: spacing.xl,
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  skelLineWide: { height: 18, width: '55%', borderRadius: 6, backgroundColor: palette.line },
+  skelLine: { height: 12, width: '35%', borderRadius: 6, backgroundColor: palette.line },
   bilanChevron: {
     position: 'absolute',
     top: spacing.md,
