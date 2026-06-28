@@ -19,6 +19,9 @@ module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: ['**/__tests__/**/*.test.ts'],
+  // Ignore les copies de tests dans les worktrees git éphémères (.claude/worktrees/*)
+  // créés par les agents en arrière-plan : sinon jest exécute les mêmes suites en double.
+  testPathIgnorePatterns: ['/node_modules/', '/\\.claude/worktrees/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
