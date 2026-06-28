@@ -12,12 +12,14 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState, Fact } from '@/components/instruments';
+import { DriverAvatar } from '@/components/signature/DriverAvatar';
 import { RadarEmpreinte } from '@/components/signature/RadarEmpreinte';
 import { type Passport, loadPassport } from '@/services/passportService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
 
 function prettyLevel(level: string | null | undefined): string {
   switch (level) {
@@ -69,19 +71,27 @@ export default function PasseportScreen() {
   const since = memberSinceLabel(passport?.memberSince ?? null);
   const name = profile?.first_name?.trim() || 'Pilote';
   const hasData = (passport?.stats.totalSessions ?? 0) > 0;
+  const circuits = passport
+    ? Object.values(passport.stats.byCircuit).sort((a, b) => b.sessionCount - a.sessionCount)
+    : [];
 
   return (
     <Screen>
       <AppBar title="PASSEPORT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>IDENTITÉ PISTE</Text>
-        <Text style={s.title} accessibilityRole="header">
-          {name}.
-        </Text>
-        <Text style={s.sub}>
-          {prettyLevel(profile?.pilot_level)}
-          {since ? ` · membre depuis ${since}` : ''}
-        </Text>
+        <View style={s.headRow}>
+          {hasData && passport ? <DriverAvatar axes={passport.signature.axes} size={56} /> : null}
+          <View style={{ flex: 1 }}>
+            <Text style={s.eyebrow}>IDENTITÉ PISTE</Text>
+            <Text style={s.title} accessibilityRole="header">
+              {name}.
+            </Text>
+            <Text style={s.sub}>
+              {prettyLevel(profile?.pilot_level)}
+              {since ? ` · membre depuis ${since}` : ''}
+            </Text>
+          </View>
+        </View>
 
         {loading ? (
           <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
@@ -123,6 +133,22 @@ export default function PasseportScreen() {
               />
             </View>
 
+            {/* Carnet de circuits (PR-63) : où vous avez roulé. Le plus familier
+                en tête (séances), jamais un classement de performance. */}
+            {circuits.length > 0 ? (
+              <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>
+                <SectionLabel>Vos circuits</SectionLabel>
+                {circuits.map((c) => (
+                  <View key={c.circuitName} style={s.circuitRow}>
+                    <Text style={s.circuitName}>{c.circuitName}</Text>
+                    <Text style={s.circuitMeta}>
+                      {c.sessionCount} séance{c.sessionCount > 1 ? 's' : ''} · {c.lapCount} tours
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
             <Text style={s.doctrine}>Votre identité, telle que mesurée. Pas un rang.</Text>
           </>
         )}
@@ -153,6 +179,31 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
+  },
+  headRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+  },
+  circuitRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.palette.line,
+  },
+  circuitName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+    flex: 1,
+  },
+  circuitMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
   },
   manifest: {
     fontFamily: theme.fonts.bodyLight,
