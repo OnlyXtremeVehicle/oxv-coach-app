@@ -2505,6 +2505,177 @@ export type Database = {
           },
         ]
       }
+      event_registrations: {
+        Row: {
+          checked_in_at: string | null
+          checked_in_by: string | null
+          created_at: string
+          event_id: string
+          id: string
+          pilot_id: string
+          status: Database["public"]["Enums"]["event_registration_status"]
+          updated_at: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          created_at?: string
+          event_id: string
+          id?: string
+          pilot_id: string
+          status?: Database["public"]["Enums"]["event_registration_status"]
+          updated_at?: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          checked_in_by?: string | null
+          created_at?: string
+          event_id?: string
+          id?: string
+          pilot_id?: string
+          status?: Database["public"]["Enums"]["event_registration_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "event_registrations_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "event_registrations_checked_in_by_fkey"
+            columns: ["checked_in_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "event_registrations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "event_registrations_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          briefing_at: string | null
+          created_at: string
+          created_by: string | null
+          current_pilots: number
+          description: string | null
+          ends_at: string
+          event_type: string
+          id: string
+          internal_notes: string | null
+          location_address: string | null
+          location_coordinates: unknown
+          location_name: string
+          max_pilots: number
+          name: string
+          pricing: Json
+          slug: string
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          briefing_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_pilots?: number
+          description?: string | null
+          ends_at: string
+          event_type?: string
+          id?: string
+          internal_notes?: string | null
+          location_address?: string | null
+          location_coordinates?: unknown
+          location_name: string
+          max_pilots?: number
+          name: string
+          pricing?: Json
+          slug: string
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          briefing_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_pilots?: number
+          description?: string | null
+          ends_at?: string
+          event_type?: string
+          id?: string
+          internal_notes?: string | null
+          location_address?: string | null
+          location_coordinates?: unknown
+          location_name?: string
+          max_pilots?: number
+          name?: string
+          pricing?: Json
+          slug?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       heritage_packs: {
         Row: {
           id: string
@@ -4864,6 +5035,7 @@ export type Database = {
           distance_km: number | null
           duration_seconds: number | null
           ended_at: string | null
+          event_id: string | null
           id: string
           lap_count: number | null
           max_g_lateral: number | null
@@ -4893,6 +5065,7 @@ export type Database = {
           distance_km?: number | null
           duration_seconds?: number | null
           ended_at?: string | null
+          event_id?: string | null
           id?: string
           lap_count?: number | null
           max_g_lateral?: number | null
@@ -4922,6 +5095,7 @@ export type Database = {
           distance_km?: number | null
           duration_seconds?: number | null
           ended_at?: string | null
+          event_id?: string | null
           id?: string
           lap_count?: number | null
           max_g_lateral?: number | null
@@ -4946,6 +5120,13 @@ export type Database = {
             columns: ["circuit_id"]
             isOneToOne: false
             referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_sessions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
           {
@@ -5905,6 +6086,11 @@ export type Database = {
         | "expired"
         | "cancelled"
       email_status_enum: "sent" | "delivered" | "bounced" | "opened"
+      event_registration_status:
+        | "registered"
+        | "checked_in"
+        | "cancelled"
+        | "no_show"
       heritage_pack_status_enum: "active" | "completed" | "expired"
       insurance_option_enum: "personal" | "oxv"
       kyc_status_enum: "pending" | "validated" | "rejected" | "expired"
@@ -6116,6 +6302,12 @@ export const Constants = {
         "cancelled",
       ],
       email_status_enum: ["sent", "delivered", "bounced", "opened"],
+      event_registration_status: [
+        "registered",
+        "checked_in",
+        "cancelled",
+        "no_show",
+      ],
       heritage_pack_status_enum: ["active", "completed", "expired"],
       insurance_option_enum: ["personal", "oxv"],
       kyc_status_enum: ["pending", "validated", "rejected", "expired"],
