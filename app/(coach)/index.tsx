@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
@@ -129,6 +129,16 @@ export default function CoachHubScreen() {
                 />
               </View>
             ) : null}
+
+            {/* File de lecture — sessions à lire en priorité (§6.2) */}
+            <Card
+              onPress={() => router.push('/(coach)/file-lecture' as never)}
+              accessibilityLabel="File de lecture. Les sessions de vos pilotes à lire en priorité."
+              style={{ marginTop: theme.spacing.xl, borderColor: theme.palette.coach }}
+            >
+              <Text style={s.queueTitle}>File de lecture</Text>
+              <Text style={s.queueHint}>Les sessions de vos pilotes, à lire en priorité.</Text>
+            </Card>
 
             {/* Brouillons rappel sobre */}
             {summary && summary.draftAnnotationCount > 0 ? (
@@ -335,6 +345,17 @@ const s = {
     height: 8,
     borderRadius: 4,
     backgroundColor: theme.palette.coach,
+  },
+  queueTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  queueHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
   },
   alertText: {
     flex: 1,

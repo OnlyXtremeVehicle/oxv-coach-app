@@ -8,11 +8,13 @@
  * vouvoiement, pas d'emoji.
  */
 
+import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
+import { type DataLabSessionView, getDataLabSessionView } from '@/services/dataLabService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -33,6 +35,20 @@ const LABELS: Record<string, { label: string; hint: string }> = {
 export default function DataLabScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sid = params.sessionId ?? '';
+  const [view, setView] = useState<DataLabSessionView | null>(null);
+
+  useEffect(() => {
+    if (!sid) return;
+    let cancelled = false;
+    getDataLabSessionView(sid)
+      .then((v) => {
+        if (!cancelled) setView(v);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sid]);
 
   return (
     <Screen>
@@ -47,9 +63,16 @@ export default function DataLabScreen() {
           reste.
         </Text>
 
+        {view?.emptyReason ? (
+          <View style={s.banner}>
+            <Text style={s.bannerText}>{view.emptyReason}</Text>
+          </View>
+        ) : null}
+
         <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
           {dataLabScreens().map((screen) => {
             const meta = LABELS[screen] ?? { label: screen, hint: '' };
+            const available = !view || screenHasData(screen, view);
             return (
               <Card
                 key={screen}
@@ -63,6 +86,9 @@ export default function DataLabScreen() {
               >
                 <Text style={s.cardTitle}>{meta.label}</Text>
                 {meta.hint ? <Text style={s.cardHint}>{meta.hint}</Text> : null}
+                {view && !available ? (
+                  <Text style={s.noData}>Pas de données pour cette session</Text>
+                ) : null}
               </Card>
             );
           })}
@@ -70,6 +96,25 @@ export default function DataLabScreen() {
       </View>
     </Screen>
   );
+}
+
+/** Une couche a-t-elle de la matière pour cette session ? (annotation honnête, non bloquante). */
+function screenHasData(screen: string, v: DataLabSessionView): boolean {
+  switch (screen) {
+    case 'carte':
+      return v.frameCount > 0 || v.cornerCount > 0;
+    case 'virage':
+    case 'virage-comparer':
+      return v.cornerCount > 0;
+    case 'tours':
+      return v.validLapCount > 0;
+    case 'heatmap':
+    case 'replay':
+    case 'telemetry':
+      return v.frameCount > 0;
+    default:
+      return true;
+  }
 }
 
 const s = {
@@ -106,5 +151,26 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
+  },
+  banner: {
+    marginTop: theme.spacing.lg,
+    padding: theme.spacing.md,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card,
+  },
+  bannerText: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  noData: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10.5,
+    letterSpacing: 0.5,
+    color: theme.palette.faint,
+    marginTop: theme.spacing.sm,
   },
 };

@@ -68,8 +68,8 @@ l'alpha** (P1/P2, cohérent backlog §19).
 | **Audit changement de rôle** — **FAIT (PR-A')** | trigger `trg_audit_user_role_change` → `admin_audit` (migration `0015`) | — | — | — |
 | **Admin Qualité Data** — **FAIT (PR-D)** | écran `qualite-data` + `adminQualityService` (détection dérivée) + table `data_quality_reports` (migration `0016`) | Reste : notif admin « Anomalie data » ; `data_anomaly_rate` mesurable une fois des reports créés | — | — |
 | **Tables `devices` + `device_assignments`** — **FAIT (PR-D)** | tables créées + `source_device_id` (migration `0016`) | Reste : écran Équipements (CRUD/affectations) — ébauche, tables prêtes | — | — |
-| **`dataLabService` (orchestrateur)** | `data-lab.tsx` = index de nav ; services sous-jacents présents | Pas d'agrégateur `DataLabSessionView` ; workspace unifié §4.2 éclaté ; heatmap n'a qu'1 couche (critère V1 « ≥3 couches activables » non rempli) | M | non |
-| **File de lecture coach §6.2** | hub « Mes pilotes » + compteur 24h ; `pilote/[id]` liste sessions | Pas de queue priorisée (lu/non-lu, filtres anomalie/média) — **seul écran central coach manquant** ; côté pilote, pas d'historique de sessions à relire (hub « Piste » absent) | M | non |
+| **`dataLabService` (orchestrateur)** — **FAIT (PR-E)** | agrégateur `getDataLabSessionView` + `dataLabLogic` (pur, testé) ; `data-lab.tsx` affiche état vide honnête + disponibilité par couche | Reste : workspace unifié (graphes synchronisés sur une même vue) — refinement build | — | non |
+| **File de lecture coach §6.2** — **FAIT (PR-E)** | écran `(coach)/file-lecture` (À lire / déjà lues, dérivé des annotations) + lien hub coach | Reste : filtres anomalie/média, deep-link session, hub « Piste » pilote | — | non |
 | **`coachAccessService`** | contrôle d'accès 100% en RLS | Pas de service `{accessLevel, allowed}` testable au niveau code (couplé à P0-2) | S | non |
 
 ---

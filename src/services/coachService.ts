@@ -155,6 +155,62 @@ export interface PilotSessionSummary {
   marginZone: 'green' | 'yellow' | 'red' | null;
 }
 
+export interface ReadingQueueEntry {
+  sessionId: string;
+  pilotId: string;
+  pilotName: string;
+  circuitName: string | null;
+  startedAt: string;
+  /** Le coach a-t-il déjà annoté cette session ? (proxy « lue »). */
+  annotated: boolean;
+}
+
+/**
+ * File de lecture coach (§6.2) : toutes les sessions lisibles (RLS = pilotes
+ * consentis), marquées « à lire » tant que le coach ne les a pas annotées. Une
+ * seule requête sessions (ni N+1, ni log d'accès par pilote). Tri : non lues
+ * d'abord, puis les plus récentes.
+ */
+export async function loadReadingQueue(): Promise<ReadingQueueEntry[]> {
+  const [pilots, sessionsRes, annRes] = await Promise.all([
+    listMyPilots(),
+    supabase
+      .from('telemetry_sessions')
+      .select('id, user_id, started_at, circuit_name')
+      .order('started_at', { ascending: false })
+      .limit(200),
+    supabase.from('coach_annotations').select('telemetry_session_id'),
+  ]);
+
+  const nameById = new Map<string, string>(
+    pilots.map((p) => [p.pilotId, [p.firstName, p.lastName].filter(Boolean).join(' ') || 'Pilote'])
+  );
+  const annotated = new Set(
+    (annRes.data ?? [])
+      .map((a) => (a as { telemetry_session_id: string | null }).telemetry_session_id)
+      .filter((x): x is string => Boolean(x))
+  );
+
+  const entries: ReadingQueueEntry[] = (sessionsRes.data ?? [])
+    .map(
+      (s) => s as { id: string; user_id: string; started_at: string; circuit_name: string | null }
+    )
+    .filter((row) => nameById.has(row.user_id))
+    .map((row) => ({
+      sessionId: row.id,
+      pilotId: row.user_id,
+      pilotName: nameById.get(row.user_id) ?? 'Pilote',
+      circuitName: row.circuit_name ?? null,
+      startedAt: row.started_at,
+      annotated: annotated.has(row.id),
+    }));
+
+  entries.sort((a, b) =>
+    a.annotated !== b.annotated ? (a.annotated ? 1 : -1) : b.startedAt.localeCompare(a.startedAt)
+  );
+  return entries;
+}
+
 /**
  * Liste les pilotes assignés au coach courant, déjà filtrés par RLS sur
  * `coach_pilots_view` (only consented, only active).
