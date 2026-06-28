@@ -29,6 +29,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'État Bluetooth en temps réel pendant la session.',
   },
   {
+    href: '/(admin)/evenements',
+    label: 'Événements',
+    description: 'Créer et gérer les événements (balade, test, partenaire) + inscriptions.',
+  },
+  {
     href: '/(admin)/qualite-data',
     label: 'Qualité data',
     description: 'Sessions à surveiller : frames manquantes, analyse absente, débrief non généré.',
