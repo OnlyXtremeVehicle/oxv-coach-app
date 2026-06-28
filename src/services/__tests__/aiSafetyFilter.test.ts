@@ -39,6 +39,39 @@ describe('aiSafetyFilter — lexique verrouillé', () => {
   });
 });
 
+describe('aiSafetyFilter — anti-divergence avec le garde-fou edge', () => {
+  // Termes scannés côté serveur par supabase/functions/generate-debrief-ai
+  // (FORBIDDEN_PATTERNS). Le filtre app DOIT être au moins aussi strict : si
+  // l'edge bannit un terme, le filtre app le bannit aussi. Ce test échoue si
+  // les deux listes divergent (un terme edge cesserait d'être couvert ici).
+  const EDGE_FORBIDDEN = [
+    'freinez',
+    'accélérez',
+    'ouvrez les gaz',
+    'tracez',
+    'évitez',
+    'poussez',
+    'corrigez',
+    'améliorez',
+    'optimisez',
+    'gagnez',
+    'il faut',
+    'vous devez',
+    'vous devriez',
+    'vous pouvez',
+    'tu dois',
+    'tu peux',
+    'je vous conseille',
+    'je vous recommande',
+  ];
+
+  for (const term of EDGE_FORBIDDEN) {
+    it(`couvre le terme edge : "${term}"`, () => {
+      expect(isDoctrineSafe(`Phrase de test : ${term} la corde.`)).toBe(false);
+    });
+  }
+});
+
 describe('aiSafetyFilter — tournures prescriptives bloquées', () => {
   // Les six exemples interdits cités noir sur blanc dans CLAUDE.md.
   const DOCTRINE_FORBIDDEN: string[] = [

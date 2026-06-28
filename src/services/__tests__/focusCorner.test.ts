@@ -9,29 +9,17 @@ import { isDoctrineSafe } from '../aiSafetyFilter';
 import { safeFocusPhrase, selectExplicitFocusCorner, selectFocusCorner } from '../focusCorner';
 import type { MarginZone } from '@/types/domain';
 
-const FORBIDDEN_VERBS = [
-  'freinez',
-  'accélérez',
-  'ouvrez les gaz',
-  'tracez',
-  'évitez',
-  'il faut',
-  'vous devez',
-  // Conseils reformulés en groupe nominal / question : interdits côté
-  // pilote (frontière fait/cause, Pattern 4). Le scanner CI lexical ne les
-  // voit pas car la chaîne est générée par ce service, pas écrite en dur
-  // dans un .tsx — ce test EST le garde-fou.
-  'repère de freinage',
-  'repère de corde',
-  'patience à la corde',
-  'plus tôt',
-  'plus tard',
-];
+// Source UNIQUE du lexique proscrit : le filtre doctrinal (T-1). On y ajoute
+// deux extras de CONTEXTE focusCorner (comparatifs directifs « plus tôt / plus
+// tard »), volontairement hors du filtre général car trop sujets aux faux
+// positifs en prose descriptive, mais proscrits dans une phrase de focus.
+const CONTEXT_EXTRAS = ['plus tôt', 'plus tard'];
 
 function expectNonDirective(phrase: string): void {
+  expect(isDoctrineSafe(phrase)).toBe(true);
   const lower = phrase.toLowerCase();
-  for (const verb of FORBIDDEN_VERBS) {
-    expect(lower).not.toContain(verb);
+  for (const x of CONTEXT_EXTRAS) {
+    expect(lower).not.toContain(x);
   }
 }
 

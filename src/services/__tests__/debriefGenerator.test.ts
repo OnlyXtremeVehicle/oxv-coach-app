@@ -14,29 +14,10 @@ import { generateDebrief, generateSafeDebrief } from '../debriefGenerator';
 import type { SegmentAnalysisRow } from '../segmentAnalysesService';
 import type { MarginZone } from '@/types/domain';
 
-// Liste alignée avec le test focusCorner — toute évolution doctrinale
-// doit être appliquée des deux côtés.
-const FORBIDDEN_VERBS = [
-  'freinez',
-  'freine ',
-  'accélérez',
-  'accélère ',
-  'ouvrez les gaz',
-  'tracez',
-  'évitez',
-  'il faut',
-  'vous devez',
-  'vous devriez',
-  'tu dois',
-  'tu peux',
-  'pousse',
-];
-
+// Source UNIQUE du lexique proscrit : le filtre doctrinal (T-1). Plus de liste
+// dupliquée ici — toute évolution se fait dans aiSafetyFilter (+ son snapshot).
 function expectNonDirective(text: string): void {
-  const lower = text.toLowerCase();
-  for (const verb of FORBIDDEN_VERBS) {
-    expect(lower).not.toContain(verb);
-  }
+  expect(isDoctrineSafe(text)).toBe(true);
 }
 
 function makeSegment(

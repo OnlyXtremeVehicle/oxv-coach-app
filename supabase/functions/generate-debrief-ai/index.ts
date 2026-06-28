@@ -45,10 +45,12 @@ const MODEL = 'gpt-4o-mini';
 
 // ---------------------------------------------------------------------------
 // Garde-fou : verbes/expressions interdits dans le texte généré.
-// Aligné sur scripts/check-doctrine.ts (catégorie verbes de pilotage +
-// prescriptions). On ne garde QUE les patterns pertinents pour un debrief
-// (pas les termes anglais UI tap/swipe ni les jugements bravo qui visent
-// l'interface). Tout ce qui ORDONNE ou CONSEILLE est banni.
+// SOURCE CANONIQUE = src/services/aiSafetyFilter.ts (filtre app). Cette liste
+// Deno en est le miroir serveur (runtimes distincts → pas d'import partagé).
+// Anti-divergence : le test app `aiSafetyFilter.test.ts` (describe « anti-
+// divergence avec le garde-fou edge ») vérifie que le filtre app couvre CHAQUE
+// terme ci-dessous. Si vous ajoutez un terme ici, ajoutez-le aussi au filtre
+// app et à ce test. Tout ce qui ORDONNE ou CONSEILLE est banni.
 // ---------------------------------------------------------------------------
 const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
   { re: /\bfreinez\b/i, label: 'freinez' },

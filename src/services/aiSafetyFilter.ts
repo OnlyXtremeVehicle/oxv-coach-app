@@ -66,6 +66,11 @@ const PROSCRIBED: readonly (readonly [string, ProscriptionCategory])[] = [
   ['ouvrez les gaz', 'imperatif_pilotage'],
   ['coupez les gaz', 'imperatif_pilotage'],
   ['mettez les gaz', 'imperatif_pilotage'],
+  // — Prescriptions de performance (alignées sur le garde-fou edge) —
+  ['corrigez', 'imperatif_pilotage'],
+  ['ameliorez', 'imperatif_pilotage'],
+  ['optimisez', 'imperatif_pilotage'],
+  ['gagnez', 'imperatif_pilotage'],
   // — Obligations / conseils prescriptifs —
   ['il faut', 'obligation'],
   ['il faudrait', 'obligation'],
@@ -81,6 +86,8 @@ const PROSCRIBED: readonly (readonly [string, ProscriptionCategory])[] = [
   ['essaie de', 'obligation'],
   ['pensez a', 'obligation'],
   ['veillez a', 'obligation'],
+  ['je vous conseille', 'obligation'],
+  ['je vous recommande', 'obligation'],
   // — Interdictions —
   ['evitez', 'interdiction'],
   ['evite', 'interdiction'],

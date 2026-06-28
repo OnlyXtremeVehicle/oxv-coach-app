@@ -7,8 +7,16 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
     "term": "patience a la corde",
   },
   {
+    "category": "obligation",
+    "term": "je vous recommande",
+  },
+  {
     "category": "conseil_deguise",
     "term": "repere de freinage",
+  },
+  {
+    "category": "obligation",
+    "term": "je vous conseille",
   },
   {
     "category": "conseil_deguise",
@@ -83,6 +91,14 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
     "term": "redressez",
   },
   {
+    "category": "imperatif_pilotage",
+    "term": "ameliorez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "optimisez",
+  },
+  {
     "category": "obligation",
     "term": "il faudra",
   },
@@ -105,6 +121,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "imperatif_pilotage",
     "term": "relachez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "corrigez",
   },
   {
     "category": "obligation",
@@ -173,6 +193,10 @@ exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapsho
   {
     "category": "imperatif_pilotage",
     "term": "serrez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "gagnez",
   },
   {
     "category": "interdiction",
