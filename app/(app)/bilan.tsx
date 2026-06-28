@@ -36,6 +36,7 @@ import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
 import { OxvEvent } from '@/services/analyticsEvents';
+import { computeDataConfidence } from '@/services/dataConfidenceLogic';
 import { type DemoBanner, demoBannerForEventType } from '@/services/eventContextLogic';
 import { getEventLite } from '@/services/eventsService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
@@ -307,6 +308,26 @@ export default function BilanScreen() {
     return <BilanEmpty />;
   }
 
+  // Data Confidence Score (T-2) — niveau de confiance de lecture, dérivé de la
+  // qualité des trames. Null tant qu'il n'y a pas de trame (état d'attente).
+  const dq = insights?.data_quality;
+  const confidence = computeDataConfidence(
+    dq
+      ? {
+          pctValid: dq.pct_valid,
+          framesUsed: dq.frames_used,
+          cornersDetected: dq.corners_detected,
+          lapsValid: dq.laps_detected,
+        }
+      : null
+  );
+  const confidenceColor =
+    confidence?.level === 'complete'
+      ? theme.palette.green
+      : confidence?.level === 'partial'
+        ? theme.palette.creamMute
+        : theme.palette.faint;
+
   return (
     <Screen>
       <AppBar title="BILAN" onBack={() => router.back()} />
@@ -319,6 +340,19 @@ export default function BilanScreen() {
           <View style={s.demoBanner}>
             <Text style={s.demoTitle}>{demoBanner.title}</Text>
             <Text style={s.demoBody}>{demoBanner.body}</Text>
+          </View>
+        ) : null}
+
+        {/* Confiance de lecture (T-2) — niveau qualitatif honnête + raisons. */}
+        {confidence ? (
+          <View style={s.confidence}>
+            <View style={[s.confidenceDot, { backgroundColor: confidenceColor }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.confidenceLabel}>{confidence.label}</Text>
+              {confidence.reasons.length > 0 ? (
+                <Text style={s.confidenceReasons}>{confidence.reasons.join(' · ')}</Text>
+              ) : null}
+            </View>
           </View>
         ) : null}
 
@@ -762,6 +796,32 @@ const s = {
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
     marginTop: theme.spacing.xs,
+  },
+  // Confiance de lecture (T-2) — neutre, sans or ni rouge ; le point code le niveau.
+  confidence: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+  },
+  confidenceDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  confidenceLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+  },
+  confidenceReasons: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+    lineHeight: theme.fontSize.small * 1.4,
   },
   heroNumber: {
     fontFamily: theme.fonts.mono,
