@@ -39,7 +39,7 @@ import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 import { OxvEvent } from './analyticsEvents';
 import { computeMargin } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
-import { generateDebrief } from './debriefGenerator';
+import { generateSafeDebrief } from './debriefGenerator';
 import { scheduleDebriefNotification } from './pushNotificationsService';
 import { listSegmentAnalysesForSession, upsertSegmentAnalyses } from './segmentAnalysesService';
 import { fetchSessionLaps } from './sessionsService';
@@ -224,7 +224,10 @@ export async function analyzeAndPersistSession(
         // Fallback local — toujours doctrinal, juste moins riche narrativement
         console.warn('[OXV] OpenAI debrief KO, fallback local :', aiError.message);
         const segments = await listSegmentAnalysesForSession(input.telemetrySessionId);
-        const debrief = generateDebrief({
+        // Garde-fou doctrinal (T-1) : aucune tournure prescriptive n'atteint
+        // debrief_text. En cas de violation (ex. nom de segment piégé), le
+        // débrief est dégradé proprement plutôt que publié.
+        const debrief = generateSafeDebrief({
           firstName: computedFirstName,
           circuitName: computedCircuitName,
           sessionStartedAt: computedStartedAt,
@@ -237,7 +240,11 @@ export async function analyzeAndPersistSession(
           segments,
         });
         await updateDebriefText(input.telemetrySessionId, debrief.text);
-        notes.push('Debrief J+1 généré (fallback local).');
+        notes.push(
+          debrief.safety === 'clean'
+            ? 'Debrief J+1 généré (fallback local).'
+            : `Debrief J+1 généré (fallback local, garde-fou doctrinal : ${debrief.safety}).`
+        );
       }
 
       // Programmation de la notif locale J+1. Best-effort.

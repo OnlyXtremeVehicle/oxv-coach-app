@@ -20,6 +20,7 @@
 
 import { type MarginZone, marginZoneOf } from '@/types/domain';
 
+import { isDoctrineSafe } from './aiSafetyFilter';
 import type { SegmentAnalysisRow } from './segmentAnalysesService';
 
 export interface DebriefInput {
@@ -66,6 +67,56 @@ export function generateDebrief(input: DebriefInput): DebriefOutput {
     preparation,
     text: [recit, meta, preparation].join('\n---\n'),
   };
+}
+
+// ============================================================================
+// Garde-fou doctrinal (T-1) — aucune tournure prescriptive ne sort
+// ============================================================================
+
+export interface SafeDebriefOutput extends DebriefOutput {
+  /**
+   * Niveau de repli déclenché par le garde-fou doctrinal :
+   *   - `clean`             : sortie nominale, déjà conforme ;
+   *   - `stripped-segments` : le détail segment a été retiré (un nom de virage
+   *      issu de la DB portait une tournure proscrite) ;
+   *   - `generic`           : filet ultime, débrief générique constant.
+   */
+  safety: 'clean' | 'stripped-segments' | 'generic';
+}
+
+/**
+ * Débrief générique GARANTI conforme — filet de dernier recours si même la
+ * version sans segments échoue au filtre (vecteur résiduel : un prénom portant
+ * une tournure proscrite). Sans prénom ni détail, 100 % statique et descriptif.
+ */
+const GENERIC_SAFE_DEBRIEF: DebriefOutput = (() => {
+  const recit =
+    'Votre session est enregistrée. Les données sont là, prêtes à être relues à tête reposée.';
+  const meta =
+    "La progression se construit dans le temps long. Chaque sortie s'ajoute à la précédente.";
+  const preparation =
+    'La prochaine fois, vous pourrez observer une zone à votre rythme. Une invitation, pas une consigne.';
+  return { recit, meta, preparation, text: [recit, meta, preparation].join('\n---\n') };
+})();
+
+/**
+ * Variante SÛRE de `generateDebrief` : garantit qu'aucune tournure prescriptive
+ * n'atteint `debrief_text`. Le générateur V1 est statique et testé conforme,
+ * mais il injecte des noms de segments issus de la DB — vecteur réaliste de
+ * fuite. En cas de violation, on dégrade proprement (retrait du détail segment,
+ * puis débrief générique) plutôt que de publier un texte non conforme.
+ *
+ * C'est le garde-fou de DERNIER recours, complémentaire de la validation
+ * humaine côté coach — jamais un substitut. Voir `aiSafetyFilter`.
+ */
+export function generateSafeDebrief(input: DebriefInput): SafeDebriefOutput {
+  const full = generateDebrief(input);
+  if (isDoctrineSafe(full.text)) return { ...full, safety: 'clean' };
+
+  const noSeg = generateDebrief({ ...input, segments: [] });
+  if (isDoctrineSafe(noSeg.text)) return { ...noSeg, safety: 'stripped-segments' };
+
+  return { ...GENERIC_SAFE_DEBRIEF, safety: 'generic' };
 }
 
 // ============================================================================

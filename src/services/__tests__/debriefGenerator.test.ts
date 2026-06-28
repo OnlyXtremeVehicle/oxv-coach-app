@@ -9,7 +9,8 @@
  *   - Cas équilibre vehicle/pilot
  */
 
-import { generateDebrief } from '../debriefGenerator';
+import { isDoctrineSafe } from '../aiSafetyFilter';
+import { generateDebrief, generateSafeDebrief } from '../debriefGenerator';
 import type { SegmentAnalysisRow } from '../segmentAnalysesService';
 import type { MarginZone } from '@/types/domain';
 
@@ -188,6 +189,32 @@ describe('generateDebrief — équilibre vehicle/pilot', () => {
       marginPilot: 60,
     });
     expect(out.meta.toLowerCase()).toContain('pilote');
+  });
+});
+
+describe('generateSafeDebrief — garde-fou doctrinal (T-1)', () => {
+  it('laisse passer une sortie nominale (safety=clean) et reste conforme', () => {
+    const out = generateSafeDebrief(baseInput);
+    expect(out.safety).toBe('clean');
+    expect(isDoctrineSafe(out.text)).toBe(true);
+    // Identique au générateur nominal quand rien n'est piégé.
+    expect(out.text).toBe(generateDebrief(baseInput).text);
+  });
+
+  it('retire le détail segment quand un nom de virage porte une tournure proscrite', () => {
+    const piege = makeSegment(3, 12, 1.15, 'Freinez plus tôt');
+    const out = generateSafeDebrief({ ...baseInput, segments: [piege] });
+    expect(out.safety).toBe('stripped-segments');
+    expect(isDoctrineSafe(out.text)).toBe(true);
+    expect(out.text.toLowerCase()).not.toContain('freinez');
+  });
+
+  it('retombe sur le débrief générique conforme si même la version sans segment échoue', () => {
+    // Vecteur résiduel : un prénom portant une tournure proscrite.
+    const out = generateSafeDebrief({ ...baseInput, firstName: 'Freinez', segments: [] });
+    expect(out.safety).toBe('generic');
+    expect(isDoctrineSafe(out.text)).toBe(true);
+    expect(out.text.split('\n---\n').length).toBe(3);
   });
 });
 
