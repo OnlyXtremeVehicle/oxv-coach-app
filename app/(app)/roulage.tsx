@@ -20,7 +20,13 @@ import { ActivityIndicator, Animated, Easing, Pressable, Text, View } from 'reac
 import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
-import { abortCaptureSession, stopCaptureSession } from '@/services/captureSessionService';
+import { captureLinkMessage } from '@/services/captureLinkStatusLogic';
+import {
+  abortCaptureSession,
+  onCaptureLinkStatus,
+  stopCaptureSession,
+  type CaptureLinkStatus,
+} from '@/services/captureSessionService';
 import { useSessionStore } from '@/store/useSessionStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -110,6 +116,11 @@ function RecordingPulse({ active }: { active: boolean }) {
 export default function RoulageScreen() {
   const status = useSessionStore((s) => s.status);
   const [ending, setEnding] = useState(false);
+  // Statut du lien BLE de la capture (recording/interrupted/lost). Affiché
+  // honnêtement : on ne laisse jamais croire qu'on enregistre si le boîtier a
+  // décroché (PR-08). onCaptureLinkStatus émet l'état courant à l'abonnement.
+  const [linkStatus, setLinkStatus] = useState<CaptureLinkStatus>('recording');
+  useEffect(() => onCaptureLinkStatus(setLinkStatus), []);
 
   async function onFinish() {
     if (ending) return;
@@ -135,18 +146,31 @@ export default function RoulageScreen() {
   }
 
   const recording = status === 'recording';
+  // Message honnête de lien (null = nominal → on garde l'écran de silence).
+  const linkMsg = captureLinkMessage(linkStatus);
 
   return (
     <Screen scroll={false}>
       <AppBar title="ROULAGE" />
       <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         {/* En piste — doctrine du silence (canon §6) : voyant REC qui pulse, trois
-            fragments éditoriaux. AUCUNE donnée, AUCUN chrono, AUCUN tour affiché. */}
+            fragments éditoriaux. AUCUNE donnée, AUCUN chrono, AUCUN tour affiché.
+            Exception d'HONNÊTETÉ : si le lien BLE décroche, on le DIT (sans rouge,
+            le rouge restant réservé au REC actif). */}
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <RecordingPulse active={recording} />
-          <Text style={s.enPiste}>EN PISTE</Text>
-          <Text style={s.manifest}>L&apos;app s&apos;efface.</Text>
-          <Text style={s.silence}>Aucun écran. Aucun son. Conduisez.</Text>
+          {linkMsg ? (
+            <>
+              <Text style={[s.enPiste, { color: palette.creamMute }]}>{linkMsg.title}</Text>
+              <Text style={s.silence}>{linkMsg.sub}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.enPiste}>EN PISTE</Text>
+              <Text style={s.manifest}>L&apos;app s&apos;efface.</Text>
+              <Text style={s.silence}>Aucun écran. Aucun son. Conduisez.</Text>
+            </>
+          )}
         </View>
 
         <Pressable
