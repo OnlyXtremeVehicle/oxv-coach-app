@@ -1,0 +1,190 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`aiSafetyFilter — lexique verrouillé le catalogue est stable (snapshot) 1`] = `
+[
+  {
+    "category": "conseil_deguise",
+    "term": "patience a la corde",
+  },
+  {
+    "category": "conseil_deguise",
+    "term": "repere de freinage",
+  },
+  {
+    "category": "conseil_deguise",
+    "term": "repere de corde",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "contre-braquez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "ouvrez les gaz",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "coupez les gaz",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "mettez les gaz",
+  },
+  {
+    "category": "obligation",
+    "term": "vous auriez du",
+  },
+  {
+    "category": "conseil_deguise",
+    "term": "point de corde",
+  },
+  {
+    "category": "obligation",
+    "term": "vous devriez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "ralentissez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "positionnez",
+  },
+  {
+    "category": "obligation",
+    "term": "il faudrait",
+  },
+  {
+    "category": "obligation",
+    "term": "vous pouvez",
+  },
+  {
+    "category": "obligation",
+    "term": "vous devez",
+  },
+  {
+    "category": "obligation",
+    "term": "tu devrais",
+  },
+  {
+    "category": "obligation",
+    "term": "essayez de",
+  },
+  {
+    "category": "interdiction",
+    "term": "arretez de",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "accelerez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "redressez",
+  },
+  {
+    "category": "obligation",
+    "term": "il faudra",
+  },
+  {
+    "category": "obligation",
+    "term": "essaie de",
+  },
+  {
+    "category": "obligation",
+    "term": "veillez a",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "accelere",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "ralentis",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "relachez",
+  },
+  {
+    "category": "obligation",
+    "term": "pensez a",
+  },
+  {
+    "category": "interdiction",
+    "term": "abstenez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "freinez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "tournez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "braquez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "appuyez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "poussez",
+  },
+  {
+    "category": "obligation",
+    "term": "il faut",
+  },
+  {
+    "category": "obligation",
+    "term": "tu dois",
+  },
+  {
+    "category": "obligation",
+    "term": "tu peux",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "freine",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "tracez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "lachez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "pousse",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "prenez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "gardez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "serrez",
+  },
+  {
+    "category": "interdiction",
+    "term": "evitez",
+  },
+  {
+    "category": "imperatif_pilotage",
+    "term": "visez",
+  },
+  {
+    "category": "interdiction",
+    "term": "evite",
+  },
+]
+`;
