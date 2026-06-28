@@ -5,7 +5,8 @@
  * Valide aussi la formulation non-directive (verbes interdits absents).
  */
 
-import { selectExplicitFocusCorner, selectFocusCorner } from '../focusCorner';
+import { isDoctrineSafe } from '../aiSafetyFilter';
+import { safeFocusPhrase, selectExplicitFocusCorner, selectFocusCorner } from '../focusCorner';
 import type { MarginZone } from '@/types/domain';
 
 const FORBIDDEN_VERBS = [
@@ -103,6 +104,27 @@ describe('selectFocusCorner', () => {
     const sel = selectFocusCorner(margins);
     // Virage 7 = "La ramenée" depuis refactor sem 16
     expect(sel!.phrase).toContain('La ramenée');
+  });
+});
+
+describe('safeFocusPhrase — garde-fou doctrinal (T-1)', () => {
+  it('garde la phrase nommée quand le nom du virage est conforme', () => {
+    const p = safeFocusPhrase('La ramenée', 'red');
+    expect(p).toBe('La ramenée a été serré.');
+    expect(isDoctrineSafe(p)).toBe(true);
+  });
+
+  it('retombe sur une variante neutre si le nom du virage porte une tournure proscrite', () => {
+    const p = safeFocusPhrase('Freinez', 'red');
+    expect(p).toBe('Cette zone a été serrée.');
+    expect(p.toLowerCase()).not.toContain('freinez');
+    expect(isDoctrineSafe(p)).toBe(true);
+  });
+
+  it('neutralise aussi un nom piégé en zone jaune', () => {
+    const p = safeFocusPhrase('Évitez la corde', 'yellow');
+    expect(p.toLowerCase()).not.toContain('évitez');
+    expect(isDoctrineSafe(p)).toBe(true);
   });
 });
 

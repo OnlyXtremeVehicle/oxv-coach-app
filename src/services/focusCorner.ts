@@ -13,6 +13,8 @@
 import { BELTOISE_CORNERS, type CornerTopology, getCorner } from '@/lib/circuitTopology';
 import type { MarginZone } from '@/types/domain';
 
+import { isDoctrineSafe } from './aiSafetyFilter';
+
 export interface FocusCornerSelection {
   corner: CornerTopology;
   zone: MarginZone;
@@ -87,13 +89,12 @@ function buildSelection(
     corner,
     zone,
     estimatedMargin,
-    phrase: buildPhrase(corner, zone),
+    phrase: safeFocusPhrase(corner.name, zone),
     observation: buildObservation(zone, estimatedMargin),
   };
 }
 
-function buildPhrase(corner: CornerTopology, zone: MarginZone): string {
-  const name = corner.name;
+function rawPhrase(name: string, zone: MarginZone): string {
   switch (zone) {
     case 'red':
       return `${name} a été serré.`;
@@ -103,6 +104,29 @@ function buildPhrase(corner: CornerTopology, zone: MarginZone): string {
       // En théorie on n'arrive jamais ici (selectFocusCorner skip les verts).
       return `${name}.`;
   }
+}
+
+/** Variante neutre, sans nommer le virage (filet du garde-fou doctrinal). */
+function neutralPhrase(zone: MarginZone): string {
+  switch (zone) {
+    case 'red':
+      return 'Cette zone a été serrée.';
+    case 'yellow':
+      return 'Une zone vous tend les bras.';
+    case 'green':
+      return 'Une zone à observer.';
+  }
+}
+
+/**
+ * Phrase manifeste SÛRE (T-1). Le nom du virage est injecté dans la phrase :
+ * s'il porte une tournure proscrite, on retombe sur une variante neutre qui ne
+ * le nomme pas, plutôt que d'afficher une formulation non conforme. Exporté
+ * pour test.
+ */
+export function safeFocusPhrase(cornerName: string, zone: MarginZone): string {
+  const phrase = rawPhrase(cornerName, zone);
+  return isDoctrineSafe(phrase) ? phrase : neutralPhrase(zone);
 }
 
 /**
