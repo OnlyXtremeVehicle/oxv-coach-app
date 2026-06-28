@@ -707,6 +707,67 @@ export type Database = {
           },
         ]
       }
+      coach_availability: {
+        Row: {
+          capacity: number
+          circuit_name: string
+          coach_id: string
+          created_at: string
+          ends_at: string | null
+          id: string
+          notes: string | null
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          circuit_name?: string
+          coach_id: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          circuit_name?: string
+          coach_id?: string
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          notes?: string | null
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_availability_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_availability_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_availability_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_corner_reference: {
         Row: {
           braking_point_m: number | null
@@ -1066,57 +1127,6 @@ export type Database = {
           },
         ]
       }
-      // NOTE: ajoutée à la main pour la Phase 1 « place de marché coaching ».
-      // À RÉGÉNÉRER (supabase gen types) après application réelle de
-      // 0007_coaching_marketplace.sql — pour l'heure cette migration est une
-      // PROPOSITION non appliquée, ce type sert au type-check du code app.
-      coach_availability: {
-        Row: {
-          capacity: number
-          circuit_name: string
-          coach_id: string
-          created_at: string
-          ends_at: string | null
-          id: string
-          notes: string | null
-          starts_at: string
-          status: string
-          updated_at: string
-        }
-        Insert: {
-          capacity?: number
-          circuit_name?: string
-          coach_id: string
-          created_at?: string
-          ends_at?: string | null
-          id?: string
-          notes?: string | null
-          starts_at: string
-          status?: string
-          updated_at?: string
-        }
-        Update: {
-          capacity?: number
-          circuit_name?: string
-          coach_id?: string
-          created_at?: string
-          ends_at?: string | null
-          id?: string
-          notes?: string | null
-          starts_at?: string
-          status?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coach_availability_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       coach_pilots: {
         Row: {
           active: boolean
@@ -1360,10 +1370,6 @@ export type Database = {
           },
         ]
       }
-      // NOTE: ajoutée à la main pour la Phase 2 « place de marché coaching »
-      // (avis + prénom pilote). Cohérente avec 0008_coaching_reviews.sql,
-      // APPLIQUÉE en prod le 2026-06-25. À RÉGÉNÉRER (supabase gen types) au
-      // prochain passage global ; pour l'heure ce type sert au type-check.
       coach_reviews: {
         Row: {
           booking_id: string | null
@@ -1410,8 +1416,36 @@ export type Database = {
             foreignKeyName: "coach_reviews_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_reviews_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "coach_reviews_pilot_id_fkey"
@@ -1588,10 +1622,6 @@ export type Database = {
           },
         ]
       }
-      // NOTE: ajoutée à la main pour la Phase 1 « place de marché coaching ».
-      // À RÉGÉNÉRER (supabase gen types) après application réelle de
-      // 0007_coaching_marketplace.sql — pour l'heure cette migration est une
-      // PROPOSITION non appliquée, ce type sert au type-check du code app.
       coaching_bookings: {
         Row: {
           availability_id: string | null
@@ -1653,8 +1683,36 @@ export type Database = {
             foreignKeyName: "coaching_bookings_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coaching_bookings_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
           },
           {
             foreignKeyName: "coaching_bookings_pilot_id_fkey"
@@ -1791,6 +1849,78 @@ export type Database = {
           target_date?: string | null
         }
         Relationships: []
+      }
+      data_quality_reports: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          owner_admin_id: string | null
+          session_id: string
+          severity: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          owner_admin_id?: string | null
+          session_id: string
+          severity?: string
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          owner_admin_id?: string | null
+          session_id?: string
+          severity?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_quality_reports_owner_admin_id_fkey"
+            columns: ["owner_admin_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "data_quality_reports_owner_admin_id_fkey"
+            columns: ["owner_admin_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "data_quality_reports_owner_admin_id_fkey"
+            columns: ["owner_admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_quality_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "data_quality_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       demandes_inscription: {
         Row: {
@@ -1954,6 +2084,139 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      device_assignments: {
+        Row: {
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          device_id: string
+          event_id: string | null
+          id: string
+          pilot_id: string | null
+          session_id: string | null
+        }
+        Insert: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          device_id: string
+          event_id?: string | null
+          id?: string
+          pilot_id?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          device_id?: string
+          event_id?: string | null
+          id?: string
+          pilot_id?: string | null
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "device_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "device_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_assignments_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_assignments_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "device_assignments_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "device_assignments_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_assignments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "device_assignments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      devices: {
+        Row: {
+          battery_status: string | null
+          created_at: string
+          health_status: string
+          id: string
+          label: string
+          notes: string | null
+          serial: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          battery_status?: string | null
+          created_at?: string
+          health_status?: string
+          id?: string
+          label: string
+          notes?: string | null
+          serial?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          battery_status?: string | null
+          created_at?: string
+          health_status?: string
+          id?: string
+          label?: string
+          notes?: string | null
+          serial?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -4047,7 +4310,10 @@ export type Database = {
           description: string | null
           ends_at: string | null
           event_url: string | null
+          facebook_url: string | null
           id: string
+          image_url: string | null
+          instagram_url: string | null
           is_published: boolean
           kind: string
           lat: number
@@ -4060,10 +4326,7 @@ export type Database = {
           title: string
           updated_at: string
           website_url: string | null
-          instagram_url: string | null
-          facebook_url: string | null
           youtube_url: string | null
-          image_url: string | null
         }
         Insert: {
           address?: string | null
@@ -4073,7 +4336,10 @@ export type Database = {
           description?: string | null
           ends_at?: string | null
           event_url?: string | null
+          facebook_url?: string | null
           id?: string
+          image_url?: string | null
+          instagram_url?: string | null
           is_published?: boolean
           kind: string
           lat: number
@@ -4086,10 +4352,7 @@ export type Database = {
           title: string
           updated_at?: string
           website_url?: string | null
-          instagram_url?: string | null
-          facebook_url?: string | null
           youtube_url?: string | null
-          image_url?: string | null
         }
         Update: {
           address?: string | null
@@ -4099,7 +4362,10 @@ export type Database = {
           description?: string | null
           ends_at?: string | null
           event_url?: string | null
+          facebook_url?: string | null
           id?: string
+          image_url?: string | null
+          instagram_url?: string | null
           is_published?: boolean
           kind?: string
           lat?: number
@@ -4112,10 +4378,7 @@ export type Database = {
           title?: string
           updated_at?: string
           website_url?: string | null
-          instagram_url?: string | null
-          facebook_url?: string | null
           youtube_url?: string | null
-          image_url?: string | null
         }
         Relationships: [
           {
@@ -4321,6 +4584,7 @@ export type Database = {
           name: string | null
           notes: string | null
           raw_data_url: string | null
+          source_device_id: string | null
           started_at: string
           status: string
           total_frames: number | null
@@ -4349,6 +4613,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           raw_data_url?: string | null
+          source_device_id?: string | null
           started_at?: string
           status?: string
           total_frames?: number | null
@@ -4377,6 +4642,7 @@ export type Database = {
           name?: string | null
           notes?: string | null
           raw_data_url?: string | null
+          source_device_id?: string | null
           started_at?: string
           status?: string
           total_frames?: number | null
@@ -4392,6 +4658,13 @@ export type Database = {
             columns: ["circuit_id"]
             isOneToOne: false
             referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "telemetry_sessions_source_device_id_fkey"
+            columns: ["source_device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
             referencedColumns: ["id"]
           },
           {
@@ -4444,9 +4717,6 @@ export type Database = {
           emergency_contact_phone: string | null
           emergency_contact_relation: string | null
           experience_years: string | null
-          vehicle: string | null
-          socials: Json | null
-          media: Json | null
           expo_push_token: string | null
           ffsa_license: string | null
           first_name: string | null
@@ -4458,6 +4728,7 @@ export type Database = {
           last_login_at: string | null
           last_name: string | null
           livery: Json | null
+          media: Json | null
           medical_notes: string | null
           notif_newsletter: boolean | null
           notif_offers: boolean | null
@@ -4477,12 +4748,14 @@ export type Database = {
           ritual_jminus2_enabled: boolean
           ritual_jminus7_enabled: boolean
           role: Database["public"]["Enums"]["user_role"] | null
+          socials: Json | null
           stripe_customer_id: string | null
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
           two_factor_enabled: boolean | null
           updated_at: string | null
+          vehicle: string | null
         }
         Insert: {
           accepts_marketing?: boolean | null
@@ -4510,9 +4783,6 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
-          vehicle?: string | null
-          socials?: Json | null
-          media?: Json | null
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
@@ -4524,6 +4794,7 @@ export type Database = {
           last_login_at?: string | null
           last_name?: string | null
           livery?: Json | null
+          media?: Json | null
           medical_notes?: string | null
           notif_newsletter?: boolean | null
           notif_offers?: boolean | null
@@ -4543,12 +4814,14 @@ export type Database = {
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
+          socials?: Json | null
           stripe_customer_id?: string | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
+          vehicle?: string | null
         }
         Update: {
           accepts_marketing?: boolean | null
@@ -4576,9 +4849,6 @@ export type Database = {
           emergency_contact_phone?: string | null
           emergency_contact_relation?: string | null
           experience_years?: string | null
-          vehicle?: string | null
-          socials?: Json | null
-          media?: Json | null
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
@@ -4590,6 +4860,7 @@ export type Database = {
           last_login_at?: string | null
           last_name?: string | null
           livery?: Json | null
+          media?: Json | null
           medical_notes?: string | null
           notif_newsletter?: boolean | null
           notif_offers?: boolean | null
@@ -4609,12 +4880,14 @@ export type Database = {
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
+          socials?: Json | null
           stripe_customer_id?: string | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
+          vehicle?: string | null
         }
         Relationships: [
           {
@@ -5151,9 +5424,20 @@ export type Database = {
           share_scope: string
         }[]
       }
+      get_shared_progression_values: {
+        Args: { p_token: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          included_metrics: Json
+          metric_values: Json
+          share_scope: string
+        }[]
+      }
       is_admin: { Args: never; Returns: boolean }
       is_coach: { Args: never; Returns: boolean }
       is_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
+      is_detailed_coach_of: { Args: { pilot_uuid: string }; Returns: boolean }
       is_my_coach: { Args: { coach_uuid: string }; Returns: boolean }
       is_partner: { Args: never; Returns: boolean }
       is_subscription_current: {
