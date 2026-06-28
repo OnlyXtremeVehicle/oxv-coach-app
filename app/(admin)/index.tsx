@@ -34,6 +34,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Sessions à surveiller : frames manquantes, analyse absente, débrief non généré.',
   },
   {
+    href: '/(admin)/support',
+    label: 'Support',
+    description: 'Demandes des pilotes : P0 en tête, statut, priorité, réponse.',
+  },
+  {
     href: '/(admin)/analytique',
     label: 'Analytique',
     description: 'Métriques globales post-session, export.',
