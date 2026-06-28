@@ -126,6 +126,13 @@ export default function PartnerHubScreen() {
                 <Text style={s.cardTitle}>Mes offres</Text>
                 <Text style={s.cardHint}>Créer et publier vos offres.</Text>
               </Card>
+              <Card
+                onPress={() => router.push('/(partner)/rapports' as never)}
+                accessibilityLabel="Mes rapports. Les rapports d'événement partagés par OXV."
+              >
+                <Text style={s.cardTitle}>Mes rapports</Text>
+                <Text style={s.cardHint}>Les bilans d&apos;événement partagés par OXV.</Text>
+              </Card>
             </View>
 
             {myEvents.length > 0 ? (

@@ -406,6 +406,84 @@ export type Database = {
         }
         Relationships: []
       }
+      b2b_event_reports: {
+        Row: {
+          checked_in_count: number
+          conclusion: string | null
+          event_id: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          media_summary: string | null
+          partner_id: string
+          registered_count: number
+          status: Database["public"]["Enums"]["b2b_report_status"]
+          updated_at: string
+        }
+        Insert: {
+          checked_in_count?: number
+          conclusion?: string | null
+          event_id: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          media_summary?: string | null
+          partner_id: string
+          registered_count?: number
+          status?: Database["public"]["Enums"]["b2b_report_status"]
+          updated_at?: string
+        }
+        Update: {
+          checked_in_count?: number
+          conclusion?: string | null
+          event_id?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          media_summary?: string | null
+          partner_id?: string
+          registered_count?: number
+          status?: Database["public"]["Enums"]["b2b_report_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_event_reports_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "b2b_event_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "b2b_event_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "b2b_event_reports_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "b2b_event_reports_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circuit_services: {
         Row: {
           address: string | null
@@ -6109,6 +6187,7 @@ export type Database = {
     Enums: {
       affiliation_initiator: "coach" | "pilot"
       affiliation_status: "pending" | "active" | "declined" | "ended"
+      b2b_report_status: "draft" | "shared"
       coach_access_level: "lecture_simple" | "lecture_detaillee" | "programme"
       community_visibility: "private" | "anonymous_only" | "nominative"
       document_status_enum: "pending" | "validated" | "rejected" | "expired"
@@ -6324,6 +6403,7 @@ export const Constants = {
     Enums: {
       affiliation_initiator: ["coach", "pilot"],
       affiliation_status: ["pending", "active", "declined", "ended"],
+      b2b_report_status: ["draft", "shared"],
       coach_access_level: ["lecture_simple", "lecture_detaillee", "programme"],
       community_visibility: ["private", "anonymous_only", "nominative"],
       document_status_enum: ["pending", "validated", "rejected", "expired"],

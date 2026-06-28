@@ -216,6 +216,20 @@ export default function AdminEventDetailScreen() {
                   <Text style={s.removeTxt}>Retirer</Text>
                 </Pressable>
               </View>
+              <Pressable
+                onPress={() =>
+                  router.push({
+                    pathname: '/(admin)/b2b-rapport',
+                    params: { eventId: id, partnerId: p.partnerId },
+                  } as never)
+                }
+                accessibilityRole="button"
+                accessibilityLabel={`Rapport B2B pour ${p.partnerName}`}
+                hitSlop={6}
+                style={s.reportLink}
+              >
+                <Text style={s.reportLinkTxt}>Rapport B2B ›</Text>
+              </Pressable>
             </Card>
           ))}
           {available.filter((a) => !partners.some((p) => p.partnerId === a.id)).length > 0 ? (
@@ -366,5 +380,16 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
+  },
+  reportLink: {
+    marginTop: theme.spacing.sm,
+    alignSelf: 'flex-start' as const,
+  },
+  reportLinkTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
   },
 };
