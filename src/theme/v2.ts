@@ -2,24 +2,28 @@
 // Polices Geist / Geist Mono (chargées dans app/_layout.tsx via @/theme/fonts).
 // Couleurs strictement codées : gold = quotidien/données, heritageGold = virage +
 // offre Heritage, red = marque, green = tendance positive.
+// Aligné sur `docs/refonte-app/04_DESIGN_CANON §1` (PR 7). Valeurs exactes.
 export const palette = {
-  night: '#050505', // fond
+  night: '#050505', // fond base
   nightCard: '#121214',
-  card: '#0B0B0D', // cartes
+  card: '#0B0B0D', // cartes (canon vise rgba(255,255,255,0.025) — surface translucide, migrée au build)
   card2: '#121214', // cartes secondaires / pills
-  cream: '#F8F9FA', // texte
+  cream: '#F8F9FA', // texte primaire
   creamSoft: '#E5E5E5',
-  creamMute: '#9A9AA3', // texte secondaire
-  faint: '#5A5A62', // texte tertiaire (eyebrows, méta discrète)
+  secondary: '#C9C9CE', // texte secondaire (canon)
+  creamMute: '#9A9AA3', // texte muted
+  eyebrow: '#6E6E76', // eyebrows / sur-titres (canon — distinct de faint)
+  faint: '#54545C', // texte tertiaire / inactif
   legend: '#B4B4BC',
-  line: '#1E1E22', // filets
+  line: '#1C1C20', // filets / bordure ligne
+  cardBorderProminent: '#232326', // bordure carte hero
+  separator: '#161618', // séparateur interne / ligne de liste
   edge: 'rgba(255,255,255,0.20)',
-  gold: '#FFB703', // quotidien + données
-  copper: '#FFC93C', // traînées G-G UNIQUEMENT
-  red: '#C8102E', // rouge de marque (insigne, bande coach)
+  gold: '#FFB703', // DONNÉE uniquement (jauge, chiffre, points, barres)
+  red: '#C8102E', // rouge coach / REC (insigne, bande coach)
   heritageGold: '#C4A459', // Heritage STRICT + registre référence (numéros de virage)
-  green: '#4ADE80', // tendance positive
-  coach: '#E5E5E5', // repère coach neutre (la bande coach utilise red)
+  green: '#97C459', // tendance positive / état connecté
+  coach: '#E6E6E8', // citation coach (bande coach utilise red)
 } as const;
 
 // Couleurs de donnée (piliers / vues). Toujours doublées d'un libellé.
@@ -31,9 +35,9 @@ export const dataColors = {
   regularity: '#C084FC',
 } as const;
 
-// Familles de polices = noms exposés par @expo-google-fonts (Geist).
+// Familles de polices = noms exposés par @expo-google-fonts (Geist + Instrument Serif).
 export const fonts = {
-  display: 'Geist_600SemiBold', // titres
+  display: 'Geist_600SemiBold', // titres (sans)
   displayReg: 'Geist_500Medium',
   body: 'Geist_400Regular',
   bodyLight: 'Geist_300Light',
@@ -41,6 +45,8 @@ export const fonts = {
   bodySemi: 'Geist_600SemiBold',
   mono: 'GeistMono_400Regular', // CHIFFRES = voix de l'instrument
   monoMedium: 'GeistMono_500Medium',
+  serif: 'InstrumentSerif_400Regular', // touches éditoriales (titres hero, dates) — JAMAIS un chiffre
+  serifItalic: 'InstrumentSerif_400Regular_Italic', // mot qualitatif du bilan, citation coach
 } as const;
 
 export const fontSize = {
@@ -53,6 +59,7 @@ export const fontSize = {
   h2: 21,
   value: 25,
   display: 28,
+  serifTitle: 44, // grand titre hero serif (line-height 1) — canon §2
   hud: 62,
 } as const;
 

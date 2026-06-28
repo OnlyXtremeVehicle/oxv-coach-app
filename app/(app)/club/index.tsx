@@ -3,9 +3,15 @@
  * carte OXV, communauté.
  *
  * PR 1 : hub minimal vers les écrans existants. « Mon coach » est le plus
- * proéminent (affiliation mise en avant). Les fusions de doublons (social→amis,
- * social-carte/lieux→carte-oxv) se font en PR de migration. Aucun réseau social
- * généraliste. Doctrine : sobre, vouvoiement, pas d'emoji.
+ * proéminent (affiliation mise en avant). Aucun réseau social généraliste.
+ * Doctrine : sobre, vouvoiement, pas d'emoji.
+ *
+ * NB fusions (revue adversariale PR 7, cf. `roadmap/rapports/pr-07-fusions.md`) :
+ * `social` n'est PAS un doublon d'`amis` (social = liste `social_pings` + actions ;
+ * amis = amitiés) — NE PAS rediriger. `social-carte` et `lieux` → `carte-oxv`
+ * demandent un MERGE de contenu (vue liste, filtres, tables `partners/lodgings/
+ * restaurants`), pas un `<Redirect>` aveugle ; `lieux` touche en plus un schéma
+ * non tranché → accord Gabin requis. Aucune redirection appliquée.
  */
 
 import { router } from 'expo-router';
