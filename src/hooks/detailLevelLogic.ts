@@ -5,7 +5,7 @@
 
 export type DetailLevel = 'simple' | 'detailed';
 
-type Role = 'pilot' | 'coach' | 'admin' | 'partner' | null | undefined;
+type Role = 'pilot' | 'coach' | 'admin' | 'partner' | 'pro_pilot' | null | undefined;
 
 /**
  * Coach et admin ont le mode détaillé par défaut (besoin pro des chiffres

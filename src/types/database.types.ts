@@ -5857,7 +5857,7 @@ export type Database = {
         | "archived"
       subscription_scope: "coach" | "pilot"
       subscription_status: "active" | "past_due" | "canceled"
-      user_role: "pilot" | "admin" | "coach" | "partner"
+      user_role: "pilot" | "admin" | "coach" | "partner" | "pro_pilot"
       weather_status_enum: "pending" | "confirmed" | "postponed"
     }
     CompositeTypes: {
@@ -6060,7 +6060,7 @@ export const Constants = {
       ],
       subscription_scope: ["coach", "pilot"],
       subscription_status: ["active", "past_due", "canceled"],
-      user_role: ["pilot", "admin", "coach", "partner"],
+      user_role: ["pilot", "admin", "coach", "partner", "pro_pilot"],
       weather_status_enum: ["pending", "confirmed", "postponed"],
     },
   },

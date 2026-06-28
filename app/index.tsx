@@ -96,6 +96,9 @@ export default function IndexRoute() {
   if (profile.role === 'partner') {
     return <Redirect href={'/(partner)' as never} />;
   }
+  if (profile.role === 'pro_pilot') {
+    return <Redirect href={'/(pro)' as never} />;
+  }
 
   return <Redirect href="/(app)" />;
 }
