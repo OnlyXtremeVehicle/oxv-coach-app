@@ -20,6 +20,7 @@ import { Screen } from '@/ui/Screen';
 const INTRO = "L'app capture en silence. Elle vous parle après la session, jamais pendant.";
 
 const STEPS: { label: string; hint: string; href: string }[] = [
+  { label: 'Préparation', hint: 'Conditions, check-list, intention', href: '/(app)/preparation' },
   { label: 'Équipement', hint: 'Jumeler le boîtier OXV', href: '/(app)/equipement' },
   { label: 'Placement', hint: 'Où poser le boîtier', href: '/(app)/placement' },
   { label: 'En piste', hint: "L'app s'efface pendant le roulage", href: '/(app)/roulage' },
@@ -42,7 +43,7 @@ export default function SessionHubScreen() {
       ? { label: 'Reprendre le roulage', href: '/(app)/roulage' }
       : state === 'S5_approche'
         ? { label: "Connecter l'équipement", href: '/(app)/equipement' }
-        : { label: 'Préparer ma session', href: '/(app)/equipement' };
+        : { label: 'Préparer ma session', href: '/(app)/preparation' };
 
   return (
     <Screen>
