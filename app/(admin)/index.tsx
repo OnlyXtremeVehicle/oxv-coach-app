@@ -19,6 +19,11 @@ const BRONZE = '#B87333';
 
 const VIEWS: { href: string; label: string; description: string }[] = [
   {
+    href: '/(admin)/tour-controle',
+    label: 'Tour de contrôle',
+    description: 'La journée en cours : événements, présences, sessions, à surveiller.',
+  },
+  {
     href: '/(admin)/preparation',
     label: 'Préparation',
     description: 'Affectations équipement, vérifications avant session.',
