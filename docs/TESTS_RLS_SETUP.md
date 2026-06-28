@@ -1,134 +1,92 @@
-# Tests RLS coach — Setup & exécution
+# Tests RLS — Setup & exécution
 
-> Tests d'intégration automatisés qui vérifient les Row-Level Security policies
-> Supabase du périmètre coach (sessions, annotations).
+> Tests d'intégration qui vérifient les Row-Level Security policies Supabase de
+> tout le périmètre (coach, pilote, partenaire, admin, modération). Filet de
+> sécurité RGPD : ils valident qu'aucun rôle ne voit ce qu'il ne doit pas voir.
 
-## Objectif
+## État actuel
 
-Garantir qu'un coach ne peut PAS accéder aux données d'un pilote qu'il ne suit pas, et que la consentement du pilote est strictement respecté. Ces tests sont un **filet de sécurité RGPD** : ils tournent en CI à chaque PR qui touche aux RLS ou aux services coach.
+- **16 fichiers de tests RLS** dans `src/__tests__/rls/` (+ `setup.ts`).
+- **CI déjà câblée** : `.github/workflows/check.yml` a un job dédié **`tests RLS`**
+  qui exécute la suite si les secrets sont présents, et reste vert (avec un message)
+  sinon. Les tests tournent aussi, skippés en silence, dans le job principal.
+- **Par défaut : SKIP.** Sans `TEST_SUPABASE_URL` + `TEST_SUPABASE_SERVICE_KEY`, les
+  suites sont `describe.skip` — la CI standard tourne sans secret Supabase.
+- Script local dédié : **`npm run test:rls`** (= `jest src/__tests__/rls --runInBand`).
 
-## Architecture
+> ⚠️ Ces tests ne peuvent PAS être exécutés par un assistant : ils ont besoin de la
+> clé **service_role** d'une branche de test (création d'utilisateurs via l'API
+> admin), que le MCP Supabase n'expose jamais. La provision ci-dessous est manuelle.
 
-```
-src/__tests__/rls/
-├── setup.ts                       ← helpers (createTestUser, assignCoachToPilot…)
-├── coachSessionsRLS.test.ts       ← policies telemetry_sessions coach
-└── coachAnnotationsRLS.test.ts    ← policies coach_annotations
-```
+## Fichiers (16)
 
-Les tests utilisent **Jest** (déjà setup), pas Vitest, pour rester cohérents avec l'existant.
+| Fichier | Périmètre |
+|---|---|
+| `setup.ts` | Helpers (createTestUser, assignCoachToPilot, userClient, adminClient…) |
+| `coachSessionsRLS` / `coachAnnotationsRLS` / `coachGradedAccessRLS` | Accès coach gradué (sessions, annotations, niveaux) |
+| `coachAiRLS` | Assistant IA coach (brouillons, anti-auto-validation, garde-fou) |
+| `developmentCyclesRLS` | Programmes adaptatifs (niveau `programme`, re-scan au partage) |
+| `pilotNotesRLS` | Carnet pilote (own-row, partage opt-in par note) |
+| `signatureSnapshotsRLS` | Empreinte consolidée (own-row, partage opt-in) |
+| `vehicleSetupsRLS` | Garage (réglages, own-row dérivé du véhicule) |
+| `supportRLS` | Support tickets (pilote/admin) |
+| `moderationRLS` | Modération (signaleur confidentiel, review admin-only, trigger intégrité) |
+| `eventsRLS` / `eventPartnersRLS` / `b2bReportRLS` | Événements, partenaires d'événement, rapports B2B |
+| `partnerRLS` / `pilotFriendshipsRLS` / `adminTablesRLS` / `roleMatrixRLS` | Partenaires, amitiés, tables admin, matrice rôle×télémétrie (règle cardinale §148) |
 
-## Comportement par défaut : SKIP
-
-Si les variables d'environnement Supabase test ne sont pas définies, les tests sont **skippés silencieusement** (via `describe.skip`) :
-
-```
-RLS — coach access to pilot sessions
-  ↓
-  (5 tests skipped — TEST_SUPABASE_URL manquant)
-```
-
-Cela permet à la CI standard de tourner sans avoir besoin de secrets Supabase.
-
-## Activer les tests RLS
+## Activer les tests (provision manuelle — Gabin)
 
 ### 1. Créer une Supabase Branch de test
 
-Sur le Dashboard Supabase du projet OXV :
-1. Onglet **Branches** > **Create branch** > nommer `ci-rls-tests`
-2. Cocher « copy data » non (on veut une DB vide)
-3. Attendre que la branche soit prête (~30 s)
+Dashboard Supabase du projet OXV (`fouvuqkdxarjpjbqnsjq`) :
+1. Onglet **Branches** → **Create branch** → nom `ci-rls-tests` (sans copie des données).
+2. La branche applique automatiquement **toutes les migrations** (jusqu'à `0029`).
+3. Récupérer, côté **Settings → API** de la branche :
+   - **Project URL** (`https://<branch-ref>.supabase.co`)
+   - **anon key**
+   - **service_role key** (⚠️ SECRET — ne jamais committer)
 
-Récupérer côté UI :
-- **Project URL** (ex `https://abcd1234.supabase.co`)
-- **anon key** (Settings > API)
-- **service_role key** (Settings > API — ⚠️ **SECRET**)
+### 2. Exécuter en local
 
-### 2. Appliquer les migrations sur la branche
-
-```bash
-# Avec supabase CLI lié à la branche ci-rls-tests
-supabase link --project-ref <branch-ref>
-supabase db push
-```
-
-Vérifier que les migrations 0016 (coach_pilots + RLS) et 0020 (coach_annotations) sont bien appliquées :
-
-```sql
-SELECT * FROM supabase_migrations.schema_migrations
-ORDER BY version DESC;
-```
-
-### 3. Définir les variables d'environnement
-
-#### En local
-
-Créer `.env.test.local` (NON commité, dans `.gitignore`) :
+Créer `.env.test.local` (déjà couvert par `.gitignore`) :
 
 ```bash
-TEST_SUPABASE_URL=https://abcd1234.supabase.co
-TEST_SUPABASE_ANON_KEY=eyJhbGc...
-TEST_SUPABASE_SERVICE_KEY=eyJhbGc...
+TEST_SUPABASE_URL=https://<branch-ref>.supabase.co
+TEST_SUPABASE_ANON_KEY=eyJ...
+TEST_SUPABASE_SERVICE_KEY=eyJ...
 ```
 
-Lancer les tests :
-
 ```bash
-# Source l'env puis lance Jest
 set -a; source .env.test.local; set +a
-npm test src/__tests__/rls
+npm run test:rls
 ```
 
-#### En CI GitHub Actions
+### 3. Activer en CI
 
-Dans le repo GitHub :
-1. **Settings > Secrets and variables > Actions**
-2. Ajouter 3 secrets :
-   - `TEST_SUPABASE_URL`
-   - `TEST_SUPABASE_ANON_KEY`
-   - `TEST_SUPABASE_SERVICE_KEY`
+Repo GitHub → **Settings → Secrets and variables → Actions** → ajouter :
+`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_KEY`.
 
-Le workflow CI lit automatiquement ces secrets et les expose à Jest via `env:` (voir `.github/workflows/ci.yml`).
-
-## Scénarios couverts (12 tests)
-
-### Sessions (5 tests)
-
-- ✅ Coach non-assigné ne voit pas les sessions d'un pilote
-- ✅ Coach assigné mais pilote **non-consentant** ne voit pas
-- ✅ Coach assigné + pilote consentant VOIT les sessions
-- ✅ Coach ne peut PAS UPDATE une session d'un pilote suivi
-- ✅ Pilote autre ne voit pas les sessions d'un autre pilote
-
-### Annotations (6 tests)
-
-- ✅ Coach assigné peut INSERT une annotation partagée
-- ✅ Coach non-assigné ne peut PAS INSERT (RLS WITH CHECK)
-- ✅ Pilote voit les annotations `visibility='shared'` de ses coachs
-- ✅ Pilote ne voit PAS les annotations `private` (brouillons)
-- ✅ Pilote ne voit PAS les annotations soft-deleted
-- ✅ Coach B ne voit pas les annotations du coach A sur le même pilote
+Le job **`tests RLS`** de `check.yml` les lit automatiquement et exécute la suite à
+chaque push/PR. Sans les secrets, il reste vert avec une notice.
 
 ## Précautions
 
-- **Toujours utiliser une branch ci-rls-tests**, JAMAIS le projet de prod
-- Les helpers `createTestUser` génèrent des emails uniques (`rls-test-<role>-<timestamp>@oxv.test`) pour éviter les collisions entre runs
-- `cleanupTestUsers` est exécuté en `afterAll` même si un test fail (best-effort)
-- Si un test crashe en plein milieu, certains users peuvent rester. Nettoyer manuellement :
+- **Toujours une branche de test, JAMAIS la prod** : les tests créent/suppriment des
+  comptes (`rls-test-<role>-<timestamp>@oxv.test`).
+- `cleanupTestUsers` tourne en `afterAll` (best-effort). En cas de crash, nettoyer :
   ```sql
   DELETE FROM auth.users WHERE email LIKE '%@oxv.test';
   ```
+- `--runInBand` (script `test:rls`) sérialise les suites pour éviter les collisions
+  d'utilisateurs entre fichiers.
 
 ## Quand re-exécuter
 
-Obligatoirement quand on modifie :
-- Une migration de RLS (`supabase/migrations/00XX_*rls*.sql`)
-- `is_coach_of()` ou autre fonction SECURITY DEFINER
-- Le service coachAnnotationsService
-- Le service coachService
-
-Recommandé sur chaque PR touchant le périmètre coach (annotations, sessions, etc.).
+Obligatoire dès qu'on modifie : une migration RLS, une fonction SECURITY DEFINER
+(`is_coach_of`, `is_detailed_coach_of`, `is_program_coach_of`, `is_admin`,
+`coach_ai_consent`…), ou un service touchant un périmètre couvert ci-dessus.
 
 ## Note doctrine
 
-Ces tests ne vérifient pas l'UX ou la doctrine, uniquement la sécurité technique. Le contrôle doctrinal reste manuel + le scanner `scripts/check-doctrine.ts`.
+Ces tests vérifient la sécurité technique, pas l'UX ni la doctrine. Le contrôle
+doctrinal reste `scripts/check-doctrine.ts` + revue manuelle.

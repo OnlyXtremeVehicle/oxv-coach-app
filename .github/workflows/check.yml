@@ -58,3 +58,38 @@ jobs:
 
       - name: Scan accessibilité (Pressables sans accessibilityRole)
         run: npx tsx scripts/check-accessibility.ts --strict
+
+  rls:
+    name: tests RLS (Supabase branch de test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+        env:
+          EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
+
+      # Job VISIBLE et dédié : on voit clairement si les tests RLS tournent.
+      # Sans les secrets (branche de test), le job reste vert et l'explique.
+      # Pour les activer : provisionner les 3 secrets (voir docs/TESTS_RLS_SETUP.md).
+      - name: Tests RLS (réels si secrets présents)
+        run: |
+          if [ -z "$TEST_SUPABASE_URL" ]; then
+            echo "::notice::TEST_SUPABASE_URL absent — tests RLS NON exécutés. Provisionner les 3 secrets (docs/TESTS_RLS_SETUP.md)."
+            exit 0
+          fi
+          npm run test:rls -- --ci --reporters=default
+        env:
+          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+          TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
