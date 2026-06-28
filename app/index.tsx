@@ -80,6 +80,10 @@ export default function IndexRoute() {
     if (profile?.role === 'coach') {
       return <Redirect href={'/(coach-onboarding)' as never} />;
     }
+    // Le partenaire ne passe pas l'onboarding pilote : il rejoint son espace.
+    if (profile?.role === 'partner') {
+      return <Redirect href={'/(partner)' as never} />;
+    }
     return <Redirect href="/(onboarding)" />;
   }
 
@@ -88,6 +92,9 @@ export default function IndexRoute() {
   //  - admin/pilot → flux pilote standard (admin a accès en plus à /(admin))
   if (profile.role === 'coach') {
     return <Redirect href={'/(coach)' as never} />;
+  }
+  if (profile.role === 'partner') {
+    return <Redirect href={'/(partner)' as never} />;
   }
 
   return <Redirect href="/(app)" />;

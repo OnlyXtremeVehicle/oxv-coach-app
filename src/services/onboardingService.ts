@@ -154,7 +154,7 @@ export function isOnboardingComplete(profile: {
   pact_accepted_at: string | null;
   coach_pact_accepted_at?: string | null;
   cgu_accepted_at: string | null;
-  role?: 'pilot' | 'admin' | 'coach';
+  role?: 'pilot' | 'admin' | 'coach' | 'partner';
 }): boolean {
   const baseSigned = Boolean(profile.profile_completed_at && profile.cgu_accepted_at);
   if (!baseSigned) return false;

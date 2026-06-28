@@ -2875,6 +2875,198 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_accounts: {
+        Row: {
+          contact_email: string | null
+          contact_policy: string | null
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          logo_url: string | null
+          profile_id: string
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_policy?: string | null
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          logo_url?: string | null
+          profile_id: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_policy?: string | null
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          logo_url?: string | null
+          profile_id?: string
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "partner_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "partner_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_leads: {
+        Row: {
+          channel: string
+          consent_at: string
+          consent_contact: boolean
+          created_at: string
+          event_id: string | null
+          id: string
+          notes: string | null
+          offer_id: string | null
+          partner_id: string
+          pilot_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          consent_at?: string
+          consent_contact?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          offer_id?: string | null
+          partner_id: string
+          pilot_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          consent_at?: string
+          consent_contact?: boolean
+          created_at?: string
+          event_id?: string | null
+          id?: string
+          notes?: string | null
+          offer_id?: string | null
+          partner_id?: string
+          pilot_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_leads_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "partner_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_leads_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_leads_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "partner_leads_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "partner_leads_pilot_id_fkey"
+            columns: ["pilot_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_offers: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_id: string | null
+          id: string
+          partner_id: string
+          price_eur: number | null
+          quota: number | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_id?: string | null
+          id?: string
+          partner_id: string
+          price_eur?: number | null
+          quota?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_id?: string | null
+          id?: string
+          partner_id?: string
+          price_eur?: number | null
+          quota?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_offers_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partners: {
         Row: {
           address: string | null
@@ -5518,6 +5710,7 @@ export type Database = {
           series: Json
         }[]
       }
+      owns_partner_account: { Args: { account: string }; Returns: boolean }
       oxv_get_secret: { Args: { secret_name: string }; Returns: string }
       oxv_is_admin: { Args: never; Returns: boolean }
       pilot_sessions_for_coach: {

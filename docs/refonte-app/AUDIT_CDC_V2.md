@@ -90,7 +90,14 @@ l'alpha** (P1/P2, cohérent backlog §19).
 
 ---
 
-## Le plus gros manque structurel — Espace Partenaire  *(P1/P2, L, schéma — DÉCISION PRODUIT)*
+## Le plus gros manque structurel — Espace Partenaire  *(FONDATION FAITE — PR-F1)*
+
+> **PR-F1 livré** (décision Gabin : marketplace complète + dashboard RN, sans encaissement) :
+> tables `partner_accounts`/`partner_offers`/`partner_leads` (migration `0017`, RLS stricte +
+> lead consenti), espace `(partner)/` + guard `role='partner'` + dashboard + tests RLS positifs/négatifs.
+> Reste : **F2** offres CRUD · **F3** pilote « demander contact » · **F4** validation admin + suivi leads.
+> Détail : [pr-14-partner-foundation.md](../../roadmap/rapports/pr-14-partner-foundation.md).
+
 
 - **Existe** : enum `user_role` inclut `'partner'` + helper `is_partner()` ; annuaire écosystème fonctionnel
   (`circuit_services` + `ecosystemService` + zone Club + `carte-oxv`) ; règle d'or « partenaire ne voit jamais

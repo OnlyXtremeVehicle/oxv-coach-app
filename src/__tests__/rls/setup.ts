@@ -59,7 +59,7 @@ export interface TestUser {
   id: string;
   email: string;
   password: string;
-  role: 'pilot' | 'coach' | 'admin';
+  role: 'pilot' | 'coach' | 'admin' | 'partner';
 }
 
 /**
@@ -67,7 +67,9 @@ export interface TestUser {
  * Insère aussi la ligne `users` correspondante (trigger Supabase Auth
  * ne le fait pas automatiquement pour les projets OXV).
  */
-export async function createTestUser(role: 'pilot' | 'coach' | 'admin'): Promise<TestUser> {
+export async function createTestUser(
+  role: 'pilot' | 'coach' | 'admin' | 'partner'
+): Promise<TestUser> {
   const admin = adminClient();
   const email = `rls-test-${role}-${Date.now()}-${Math.floor(Math.random() * 10000)}@oxv.test`;
   const password = `T3st-${Math.random().toString(36).slice(2)}-${Date.now()}`;

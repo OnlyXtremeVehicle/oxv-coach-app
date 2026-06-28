@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 
-export type UserRole = 'pilot' | 'admin' | 'coach';
+export type UserRole = 'pilot' | 'admin' | 'coach' | 'partner';
 
 type UserProfile = {
   id: string;
