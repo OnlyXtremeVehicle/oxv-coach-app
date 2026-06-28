@@ -3256,6 +3256,74 @@ export type Database = {
           },
         ]
       }
+      moderation_report_reviews: {
+        Row: {
+          report_id: string
+          resolution: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          report_id: string
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          report_id?: string
+          resolution?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "moderation_report_reviews_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: true
+            referencedRelation: "moderation_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      moderation_reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: Database["public"]["Enums"]["moderation_reason"]
+          reporter_id: string
+          status: Database["public"]["Enums"]["moderation_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["moderation_target_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["moderation_reason"]
+          reporter_id: string
+          status?: Database["public"]["Enums"]["moderation_status"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["moderation_target_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["moderation_reason"]
+          reporter_id?: string
+          status?: Database["public"]["Enums"]["moderation_status"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["moderation_target_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notif_throttle_log: {
         Row: {
           id: number
@@ -6547,6 +6615,14 @@ export type Database = {
         | "video_drone"
         | "video_embedded"
         | "telemetry_report"
+      moderation_reason:
+        | "contenu_illicite"
+        | "spam"
+        | "usurpation"
+        | "inapproprie"
+        | "autre"
+      moderation_status: "nouveau" | "en_cours" | "resolu" | "rejete"
+      moderation_target_type: "coach_review" | "partner_offer"
       objective_direction: "below" | "above" | "reach"
       objective_metric:
         | "regularity"
@@ -6767,6 +6843,15 @@ export const Constants = {
         "video_embedded",
         "telemetry_report",
       ],
+      moderation_reason: [
+        "contenu_illicite",
+        "spam",
+        "usurpation",
+        "inapproprie",
+        "autre",
+      ],
+      moderation_status: ["nouveau", "en_cours", "resolu", "rejete"],
+      moderation_target_type: ["coach_review", "partner_offer"],
       objective_direction: ["below", "above", "reach"],
       objective_metric: [
         "regularity",

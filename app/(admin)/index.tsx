@@ -49,6 +49,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Demandes des pilotes : P0 en tête, statut, priorité, réponse.',
   },
   {
+    href: '/(admin)/moderation',
+    label: 'Modération',
+    description: 'Signalements communautaires : prendre en charge, résoudre, rejeter.',
+  },
+  {
     href: '/(admin)/analytique',
     label: 'Analytique',
     description: 'Métriques globales post-session, export.',

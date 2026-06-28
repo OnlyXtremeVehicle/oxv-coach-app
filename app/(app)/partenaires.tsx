@@ -14,6 +14,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import { ReportButton } from '@/components/ReportButton';
 import * as haptics from '@/lib/haptics';
 import {
   type MarketplacePartner,
@@ -126,9 +127,12 @@ export default function PartenairesScreen() {
                           <Text style={s.offerTitle} numberOfLines={1}>
                             {o.title}
                           </Text>
-                          {o.priceEur != null ? (
-                            <Text style={s.offerPrice}>{o.priceEur} €</Text>
-                          ) : null}
+                          <View style={s.offerTrailing}>
+                            {o.priceEur != null ? (
+                              <Text style={s.offerPrice}>{o.priceEur} €</Text>
+                            ) : null}
+                            <ReportButton targetType="partner_offer" targetId={o.id} />
+                          </View>
                         </View>
                       ))}
                     </View>
@@ -207,6 +211,11 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamSoft,
     flex: 1,
+  },
+  offerTrailing: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
   },
   offerPrice: {
     fontFamily: theme.fonts.mono,

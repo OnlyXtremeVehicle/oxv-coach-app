@@ -25,6 +25,7 @@ import {
   listCoachReviews,
   requestBooking,
 } from '@/services/coachMarketplaceService';
+import { ReportButton } from '@/components/ReportButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -437,7 +438,10 @@ function ReviewsSection({
                   </Text>
                 </View>
                 {r.comment ? <Text style={s.reviewComment}>{r.comment}</Text> : null}
-                <Text style={s.reviewDate}>{formatDateShort(r.createdAt)}</Text>
+                <View style={s.reviewFooter}>
+                  <Text style={s.reviewDate}>{formatDateShort(r.createdAt)}</Text>
+                  <ReportButton targetType="coach_review" targetId={r.id} />
+                </View>
               </Card>
             ))}
           </View>
@@ -638,6 +642,11 @@ const s = {
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
     color: theme.palette.faint,
+  },
+  reviewFooter: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
     marginTop: theme.spacing.md,
   },
 };
