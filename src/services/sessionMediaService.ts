@@ -109,6 +109,34 @@ export async function listSessionMedia(telemetrySessionId: string): Promise<Sess
 }
 
 /**
+ * Galerie pilote (PR-67) : TOUS les médias du pilote courant, toutes séances
+ * confondues, du plus récent au plus ancien. RLS own-row (pilot_user_id =
+ * auth.uid(), deleted_at null). Utilise l'index idx_session_media_pilot. Chaque
+ * entrée porte une signedUrl (15 min).
+ */
+export async function listAllPilotMedia(): Promise<SessionMediaItem[]> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('session_media')
+    .select('*')
+    .eq('pilot_user_id', uid)
+    .is('deleted_at', null)
+    .order('uploaded_at', { ascending: false });
+
+  if (error || !data) {
+    if (error) console.warn('[sessionMedia] listAll error:', error.message);
+    return [];
+  }
+  const rows = (data as unknown as DbRow[]).map(mapRow);
+  return Promise.all(
+    rows.map(async (row) => ({ ...row, signedUrl: await getSignedUrlFor(row.storagePath) }))
+  );
+}
+
+/**
  * Génère une URL signée pour afficher un média (lecture).
  * Retourne null en cas d'erreur (ex: storage object supprimé manuellement).
  */

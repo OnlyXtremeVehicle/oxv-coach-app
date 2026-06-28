@@ -36,6 +36,7 @@ const LINKS: { label: string; hint: string; href: string }[] = [
     href: '/(app)/partenaires',
   },
   { label: 'Communauté', hint: 'Vos comparaisons consenties', href: '/(app)/amis' },
+  { label: 'Mes souvenirs', hint: 'Vos photos et vidéos OXV', href: '/(app)/galerie' },
   { label: 'Belles routes', hint: 'Balades et points de vue', href: '/(app)/belle-route' },
 ];
 
