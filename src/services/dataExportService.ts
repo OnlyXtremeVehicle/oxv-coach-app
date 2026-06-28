@@ -137,6 +137,63 @@ async function collectMyData(userId: string, exportedAtIso: string): Promise<Exp
   };
 }
 
+/** Échappe une valeur pour CSV (RFC 4180 : guillemets si virgule/quote/saut). */
+function csvCell(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function rowsToCsv(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return '';
+  const cols = Object.keys(rows[0]);
+  const header = cols.join(',');
+  const body = rows.map((r) => cols.map((c) => csvCell(r[c])).join(',')).join('\n');
+  return `${header}\n${body}`;
+}
+
+/**
+ * Export CSV des trames BRUTES d'une session (souveraineté data, anti-lock-in —
+ * PR-66). Complète l'export JSON (qui exclut les trames pour leur volume) : ici
+ * le pilote récupère la donnée la plus brute du boîtier, lisible par n'importe quel
+ * tableur, sans dépendre d'OXV. Paginé (les trames dépassent la limite de 1000).
+ */
+export async function exportSessionFramesCsv(sessionId: string): Promise<ExportResult> {
+  try {
+    const PAGE = 1000;
+    const all: Record<string, unknown>[] = [];
+    for (let from = 0; from <= 200000; from += PAGE) {
+      const { data, error } = await supabase
+        .from('telemetry_frames')
+        .select('*')
+        .eq('session_id', sessionId)
+        .order('elapsed_ms', { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) return { ok: false, error: error.message };
+      const batch = (data ?? []) as Record<string, unknown>[];
+      all.push(...batch);
+      if (batch.length < PAGE) break;
+    }
+    if (all.length === 0) return { ok: false, error: 'Aucune trame brute pour cette session.' };
+
+    const csv = rowsToCsv(all);
+    const uri = `${FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? ''}oxv-trames-${sessionId.slice(0, 8)}.csv`;
+    await FileSystem.writeAsStringAsync(uri, csv, { encoding: FileSystem.EncodingType.UTF8 });
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(uri, {
+        mimeType: 'text/csv',
+        dialogTitle: 'Mes trames brutes OXV (CSV)',
+        UTI: 'public.comma-separated-values-text',
+      });
+    }
+    return { ok: true, sessionCount: 1 };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.warn('[OXV][export-csv] :', message);
+    return { ok: false, error: message };
+  }
+}
+
 /**
  * Rassemble les données du pilote, écrit un JSON et ouvre la share sheet.
  */

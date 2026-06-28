@@ -16,8 +16,10 @@ import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTranspar
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
 import { type DataLabSessionView, getDataLabSessionView } from '@/services/dataLabService';
+import { exportSessionFramesCsv } from '@/services/dataExportService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
@@ -37,6 +39,14 @@ export default function DataLabScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sid = params.sessionId ?? '';
   const [view, setView] = useState<DataLabSessionView | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function onExportCsv() {
+    if (!sid || exporting) return;
+    setExporting(true);
+    await exportSessionFramesCsv(sid);
+    setExporting(false);
+  }
 
   useEffect(() => {
     if (!sid) return;
@@ -112,6 +122,23 @@ export default function DataLabScreen() {
             ]}
           />
         </View>
+
+        {/* Souveraineté data (PR-66) : récupérer la donnée la plus brute du boîtier,
+            lisible par n'importe quel tableur, sans dépendre d'OXV (anti-lock-in). */}
+        {sid ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <Button
+              label="Exporter les données brutes (CSV)"
+              variant="ghost"
+              loading={exporting}
+              onPress={onExportCsv}
+            />
+            <Text style={s.exportHint}>
+              Les trames du boîtier (25 points/seconde) de cette séance. Vos données vous
+              appartiennent.
+            </Text>
+          </View>
+        ) : null}
       </View>
     </Screen>
   );
@@ -190,6 +217,13 @@ const s = {
     fontSize: 10.5,
     letterSpacing: 0.5,
     color: theme.palette.faint,
+    marginTop: theme.spacing.sm,
+  },
+  exportHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
     marginTop: theme.spacing.sm,
   },
 };
