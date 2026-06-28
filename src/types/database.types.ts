@@ -3764,6 +3764,51 @@ export type Database = {
           },
         ]
       }
+      pilot_notes: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          session_id: string | null
+          shared_with_coach: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          shared_with_coach?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          shared_with_coach?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "pilot_notes_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pilot_sheets: {
         Row: {
           created_at: string

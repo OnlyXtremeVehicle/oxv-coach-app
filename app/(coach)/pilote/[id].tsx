@@ -21,6 +21,7 @@ import {
   listPilotSessions,
 } from '@/services/coachService';
 import { pilotLevelLabel } from '@/services/pilotProfileService';
+import { type PilotNote, listSharedNotesForPilot } from '@/services/pilotNotesService';
 import { signPilotMedia, type PilotMediaView } from '@/services/pilotMediaService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
@@ -44,6 +45,7 @@ export default function CoachPilotDetailScreen() {
   const [mode, setMode] = useState<Mode>('browse');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pilotMedia, setPilotMedia] = useState<PilotMediaView[]>([]);
+  const [sharedNotes, setSharedNotes] = useState<PilotNote[]>([]);
 
   const toggleSelected = (sessionId: string) => {
     setSelectedIds((prev) => {
@@ -90,6 +92,12 @@ export default function CoachPilotDetailScreen() {
         const sess = await listPilotSessions(params.id);
         if (cancelled) return;
         setSessions(sess);
+
+        // Carnet : uniquement les notes que le pilote a explicitement partagées
+        // (RLS pilot_notes_coach_select). Lecture seule, accès journalisé.
+        const shared = await listSharedNotesForPilot(params.id);
+        if (cancelled) return;
+        setSharedNotes(shared);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -116,6 +124,7 @@ export default function CoachPilotDetailScreen() {
             ici car affilié et consenti (coach_pilots_view). */}
         {pilot ? <PilotProfileBlock pilot={pilot} /> : null}
         {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
+        {sharedNotes.length > 0 ? <SharedNotesBlock notes={sharedNotes} /> : null}
 
         {/* Priorisation du bilan (§10.3c-B) */}
         <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
@@ -295,6 +304,25 @@ function PilotMediaBlock({ media }: { media: PilotMediaView[] }) {
           )
         )}
       </ScrollView>
+    </Card>
+  );
+}
+
+/**
+ * Carnet partagé — notes que le pilote a explicitement partagées (lecture seule).
+ * Le coach observe, il ne répond pas (la note du pilote est SON espace). Doctrine :
+ * aucune interprétation, aucun jugement affiché ici.
+ */
+function SharedNotesBlock({ notes }: { notes: PilotNote[] }) {
+  return (
+    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+      <SectionLabel>Carnet partagé</SectionLabel>
+      {notes.map((n) => (
+        <View key={n.id} style={{ gap: theme.spacing.xs }}>
+          <Text style={s.sharedNoteDate}>{formatDateLong(n.createdAt)}</Text>
+          <Text style={s.sharedNoteBody}>{n.body}</Text>
+        </View>
+      ))}
     </Card>
   );
 }
@@ -484,6 +512,20 @@ const s = {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  // Carnet partagé (lecture seule coach) — date en mono (voix de l'instrument).
+  sharedNoteDate: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  sharedNoteBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.cream,
     lineHeight: theme.fontSize.small * 1.5,
   },
   // Libellé de champ de profil — corps en capitales (le mono reste aux chiffres).

@@ -679,6 +679,21 @@ export default function BilanScreen() {
           </Pressable>
         ) : null}
 
+        {/* CTA Carnet — noter son ressenti (le LIEN séance est pré-rempli, jamais
+            le texte ; l'app ne suggère rien). */}
+        {session?.id ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push(`/(app)/carnet?sessionId=${session.id}` as never)}
+            style={({ pressed }) => [
+              s.ctaGhost,
+              { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
+            ]}
+          >
+            <Text style={s.ctaGhostTxt}>Noter mon ressenti</Text>
+          </Pressable>
+        ) : null}
+
         {/* Transparence (charte 11) — source/méthode (T1), angles morts (T5),
             provenance du calcul (T3). Toujours visibles : la méthode et les
             limites ne sont pas une option. La provenance ne s'affiche que si la
