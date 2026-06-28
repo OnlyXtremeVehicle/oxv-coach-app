@@ -26,6 +26,7 @@ import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
+import { AccountButton } from '@/ui/AccountButton';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
@@ -107,20 +108,10 @@ export default function HomeHubScreen() {
 
   return (
     <Screen>
-      {/* En-tête racine : insigne de marque + accès réglages (maquette : logo + ⚙). */}
+      {/* En-tête racine : insigne de marque (gauche) + accès Compte (droite). */}
       <View style={s.top}>
         <Logo size={26} />
-        {/* Cast : route (app)/compte net-neuve, les typed routes Expo se régénèrent au build. */}
-        <Link href={'/(app)/compte' as never} asChild>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Compte"
-            hitSlop={theme.hitSlop}
-            style={s.gear}
-          >
-            <Text style={s.gearGlyph}>⚙</Text>
-          </Pressable>
-        </Link>
+        <AccountButton />
       </View>
 
       <View style={s.body}>
@@ -304,17 +295,6 @@ const s = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  gear: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: palette.line,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gearGlyph: { color: palette.creamMute, fontSize: 15 },
-
   body: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
 
   // Eyebrow : info utile (« Votre dernier bilan », « Explorer », mode courant).

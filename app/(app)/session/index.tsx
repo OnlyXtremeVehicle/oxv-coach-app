@@ -12,6 +12,7 @@ import { Pressable, Text, View } from 'react-native';
 
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { theme } from '@/theme/v2';
+import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
@@ -45,7 +46,7 @@ export default function SessionHubScreen() {
 
   return (
     <Screen>
-      <AppBar title="SESSION" />
+      <AppBar title="SESSION" trailing={<AccountButton />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE SORTIE</Text>
         <Text style={s.title} accessibilityRole="header">

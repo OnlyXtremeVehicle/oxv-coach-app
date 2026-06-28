@@ -23,6 +23,7 @@ import { EmptyState, Fact } from '@/components/instruments';
 import { fetchAllSessions } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
+import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
@@ -129,7 +130,7 @@ export default function ProgressionScreen() {
   if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="PROGRESSION" onBack={() => router.back()} />
+        <AppBar title="PROGRESSION" onBack={() => router.back()} trailing={<AccountButton />} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={palette.creamMute} />
         </View>

@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { theme } from '@/theme/v2';
+import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
@@ -41,7 +42,7 @@ const LINKS: { label: string; hint: string; href: string }[] = [
 export default function ClubHubScreen() {
   return (
     <Screen>
-      <AppBar title="CLUB" />
+      <AppBar title="CLUB" trailing={<AccountButton />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE ÉCOSYSTÈME</Text>
         <Text style={s.title} accessibilityRole="header">

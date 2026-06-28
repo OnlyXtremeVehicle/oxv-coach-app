@@ -56,6 +56,7 @@ import { fetchPreviousSessions, fetchSessionLaps } from '@/services/sessionsServ
 import { useAuthStore } from '@/store/useAuthStore';
 import type { TelemetrySession } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
+import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -366,7 +367,7 @@ export default function BilanScreen() {
 
   return (
     <Screen>
-      <AppBar title="BILAN" onBack={() => router.back()} />
+      <AppBar title="BILAN" onBack={() => router.back()} trailing={<AccountButton />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <SectionLabel>BILAN DE SESSION</SectionLabel>
 
