@@ -15,6 +15,8 @@
     "lint:fix": "eslint --fix \"src/**/*.{ts,tsx}\" \"app/**/*.{ts,tsx}\"",
     "format": "prettier --write \"src/**/*.{ts,tsx,json}\" \"app/**/*.{ts,tsx,json}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json}\" \"app/**/*.{ts,tsx,json}\"",
+    "doctrine": "npx --yes tsx scripts/check-doctrine.ts",
+    "doctrine:a11y": "npx --yes tsx scripts/check-accessibility.ts --strict",
     "build:ios:dev": "eas build --platform ios --profile development",
     "build:ios:preview": "eas build --platform ios --profile preview",
     "build:ios:prod": "eas build --platform ios --profile production",

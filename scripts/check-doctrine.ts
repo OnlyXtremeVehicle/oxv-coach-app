@@ -76,9 +76,14 @@ const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
   // Catégorie 6 : NOMS de jugement (fiche 10 §C — garde-langage bien-être). On
   // décrit des faits, jamais une note sur la personne ou sa performance.
   // Exclus volontairement : « échec » (alertes techniques légitimes) et
-  // « faible » (usage factuel : « dispersion faible »). « lent » → préférer
-  // « vitesse basse ».
-  { pattern: /\blent\b/gi, verb: 'lent (→ « vitesse basse »)' },
+  // « faible » (usage factuel : « dispersion faible »). « lent/rapide » NU est
+  // factuel (dégradé de vitesse, antonyme neutre) et AUTORISÉ ; seul le JUGEMENT
+  // « trop lent » est proscrit (fiche 09 §C : « Trop lent au 3 » → « Vitesse mini
+  // au virage 3 »). Viser « lent » nu cassait aussi sur l'accent (« ré-vèlent »).
+  {
+    pattern: /\btrop\s+lent(?:e|es|s)?\b/gi,
+    verb: 'trop lent (→ « vitesse mini/basse », fiche 09 §C)',
+  },
   { pattern: /\bmauvais(?:e)?\b/gi, verb: 'mauvais' },
   { pattern: /\bmédiocre\b/gi, verb: 'médiocre' },
   { pattern: /\bdécevant(?:e)?\b/gi, verb: 'décevant' },
