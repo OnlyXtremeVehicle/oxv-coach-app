@@ -47,8 +47,26 @@ export interface ComfortCorner {
   marginPercent: number;
 }
 
+/** Les 5 axes de l'empreinte (maquette 20.2). Évocateurs mais FACTUELS. */
+export type SignatureAxisKey = 'cap' | 'visee' | 'plongee' | 'trajectoire' | 'anticipation';
+
+/**
+ * Un axe du radar empreinte. `value` est une POSITION normalisée 0–1 (silhouette),
+ * PAS une note — chaque axe est adossé à une mesure réelle (`detail`). `value` est
+ * `null` quand la donnée est absente : on ne fabrique jamais une fausse valeur (le
+ * radar marque alors « donnée à venir » sur cet axe).
+ */
+export interface SignatureAxis {
+  key: SignatureAxisKey;
+  label: string;
+  value: number | null;
+  detail: string | null;
+}
+
 export interface PilotSignature {
   traits: SignatureTrait[];
+  /** Empreinte 5 axes (radar). Silhouette factuelle, pas un score. */
+  axes: SignatureAxis[];
   /** Les virages où la marge est la plus haute (= les plus confortables). */
   comfortCorners: ComfortCorner[];
   /** Nombre de segments de type virage exploités pour le calcul. */
@@ -150,6 +168,93 @@ function regularityTrait(lapTimesSeconds: number[]): SignatureTrait | null {
   };
 }
 
+function clamp01(x: number): number {
+  return Math.max(0, Math.min(1, x));
+}
+
+/** Position normalisée 0–1 d'une mesure dans une plage factuelle (silhouette, pas note). */
+function norm(v: number | null, min: number, max: number): number | null {
+  if (v === null || max <= min) return null;
+  return clamp01((v - min) / (max - min));
+}
+
+function fmtG(v: number): string {
+  return v.toFixed(2).replace('.', ',');
+}
+
+/**
+ * Les 5 axes de l'empreinte (maquette 20.2), chacun adossé à une MESURE RÉELLE
+ * dérivée des segments. Plages neutres = échelle de la silhouette, jamais un
+ * « idéal » à atteindre. Donnée absente → `value: null` (jamais inventée).
+ *
+ *   - Cap          : engagement latéral (G latéral max moyen)
+ *   - Visée        : reproductibilité des entrées (faible écart des vitesses d'entrée)
+ *   - Plongée      : intensité du freinage (G de frein max moyen)
+ *   - Trajectoire  : vitesse portée (rapport vitesse d'apex / vitesse d'entrée)
+ *   - Anticipation : précocité de la réaccélération (rapport sortie / apex)
+ */
+function computeAxes(turns: SignatureSegmentInput[]): SignatureAxis[] {
+  const latMean = avg(turns.map((t) => t.maxGLateral).filter((g): g is number => g !== null));
+  const brkMean = avg(turns.map((t) => t.maxGBraking).filter((g): g is number => g !== null));
+  const reaccel = avg(
+    turns
+      .map((t) =>
+        t.apexSpeedKmh && t.exitSpeedKmh && t.apexSpeedKmh > 0
+          ? t.exitSpeedKmh / t.apexSpeedKmh
+          : null
+      )
+      .filter((r): r is number => r !== null)
+  );
+  const carry = avg(
+    turns
+      .map((t) =>
+        t.entrySpeedKmh && t.apexSpeedKmh && t.entrySpeedKmh > 0
+          ? t.apexSpeedKmh / t.entrySpeedKmh
+          : null
+      )
+      .filter((r): r is number => r !== null)
+  );
+  const entrySpeeds = turns.map((t) => t.entrySpeedKmh).filter((v): v is number => v !== null);
+  const entryMean = avg(entrySpeeds);
+  const entrySd = stdDev(entrySpeeds);
+  // Visée : 1 = entrées très reproductibles, 0 = très dispersées (CV plafonné à 25 %).
+  const visee =
+    entryMean && entryMean > 0 && entrySd !== null ? clamp01(1 - entrySd / entryMean / 0.25) : null;
+
+  return [
+    {
+      key: 'cap',
+      label: 'Cap',
+      value: norm(latMean, 0.5, 1.3),
+      detail: latMean !== null ? `${fmtG(latMean)} g latéral` : null,
+    },
+    {
+      key: 'visee',
+      label: 'Visée',
+      value: visee,
+      detail: entrySd !== null ? `entrées à ±${entrySd.toFixed(1).replace('.', ',')} km/h` : null,
+    },
+    {
+      key: 'plongee',
+      label: 'Plongée',
+      value: norm(brkMean, 0.4, 1.2),
+      detail: brkMean !== null ? `${fmtG(brkMean)} g de frein` : null,
+    },
+    {
+      key: 'trajectoire',
+      label: 'Trajectoire',
+      value: norm(carry, 0.6, 0.92),
+      detail: carry !== null ? `apex à ${Math.round(carry * 100)} % de l'entrée` : null,
+    },
+    {
+      key: 'anticipation',
+      label: 'Anticipation',
+      value: norm(reaccel, 1.0, 1.35),
+      detail: reaccel !== null ? `sortie +${Math.round((reaccel - 1) * 100)} %` : null,
+    },
+  ];
+}
+
 /**
  * Construit la signature de pilotage à partir des segments d'une session
  * (ou agrégés sur plusieurs) et des temps de tour.
@@ -180,6 +285,7 @@ export function computeSignature(input: {
 
   return {
     traits,
+    axes: computeAxes(turns),
     comfortCorners,
     turnSampleCount: turns.length,
     manifest: buildManifest(traits),

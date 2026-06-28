@@ -24,6 +24,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { FadeInSection } from '@/components/motion';
+import { RadarEmpreinte } from '@/components/signature/RadarEmpreinte';
 import { EmptyState } from '@/components/instruments';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -142,7 +143,14 @@ export default function SignatureScreen() {
               </FadeInSection>
             ) : null}
 
-            {/* Traits */}
+            {/* Empreinte radar — le visuel dominant (silhouette factuelle 5 axes) */}
+            <FadeInSection delay={80}>
+              <View style={{ marginBottom: theme.spacing.xl }}>
+                <RadarEmpreinte axes={signature.axes} />
+              </View>
+            </FadeInSection>
+
+            {/* Traits — le détail mesuré sous la silhouette */}
             <View style={{ gap: theme.spacing.md }}>
               {signature.traits.map((trait, i) => (
                 <FadeInSection key={trait.key} delay={120 + i * 90}>
