@@ -36,6 +36,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   '': 'paddock',
   index: 'paddock',
   paddock: 'paddock',
+  'pass-oxv': 'paddock',
   // Session (flux de capture)
   session: 'session',
   equipement: 'session',

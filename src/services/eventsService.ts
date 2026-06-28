@@ -290,3 +290,96 @@ export async function setRegistrationStatus(
     .eq('id', registrationId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }
+
+// ============================================================================
+// Pilote — Pass OXV (PR-27, sans QR)
+// ============================================================================
+
+export interface PassEvent {
+  id: string;
+  name: string;
+  eventType: EventType;
+  status: EventStatus;
+  locationName: string;
+  locationAddress: string | null;
+  startsAt: string;
+  endsAt: string;
+  briefingAt: string | null;
+  description: string | null;
+}
+
+const PASS_EVENT_COLS =
+  'id, name, event_type, status, location_name, location_address, starts_at, ends_at, briefing_at, description';
+
+function mapPassEvent(r: Record<string, unknown>): PassEvent {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    eventType: r.event_type as EventType,
+    status: r.status as EventStatus,
+    locationName: r.location_name as string,
+    locationAddress: (r.location_address as string | null) ?? null,
+    startsAt: r.starts_at as string,
+    endsAt: r.ends_at as string,
+    briefingAt: (r.briefing_at as string | null) ?? null,
+    description: (r.description as string | null) ?? null,
+  };
+}
+
+export interface MyRegistration {
+  registrationId: string;
+  status: RegistrationStatus;
+  event: PassEvent | null;
+}
+
+/** Mes inscriptions (RLS own) + l'événement rattaché (selon visibilité RLS). */
+export async function listMyRegistrations(): Promise<MyRegistration[]> {
+  const { data, error } = await supabase
+    .from('event_registrations')
+    .select(`id, status, events!event_registrations_event_id_fkey(${PASS_EVENT_COLS})`)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('[OXV][pilot][events] listMyRegistrations :', error.message);
+    return [];
+  }
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const joined = row.events as Record<string, unknown> | Record<string, unknown>[] | null;
+    const evt = Array.isArray(joined) ? joined[0] : joined;
+    return {
+      registrationId: row.id as string,
+      status: row.status as RegistrationStatus,
+      event: evt ? mapPassEvent(evt) : null,
+    };
+  });
+}
+
+/** Événements ouverts à l'inscription (publics). */
+export async function listOpenEvents(): Promise<PassEvent[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select(PASS_EVENT_COLS)
+    .eq('status', 'public')
+    .order('starts_at', { ascending: true })
+    .limit(50);
+  if (error) {
+    console.warn('[OXV][pilot][events] listOpenEvents :', error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => mapPassEvent(r as Record<string, unknown>));
+}
+
+/** Le pilote s'inscrit à un événement (statut `registered`). */
+export async function registerForEvent(eventId: string): Promise<MutationResult> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Session expirée. Reconnectez-vous.' };
+  const { error } = await supabase
+    .from('event_registrations')
+    .insert({ event_id: eventId, pilot_id: uid } as never);
+  if (error) {
+    // Violation d'unicité = déjà inscrit.
+    if (error.code === '23505') return { ok: false, error: 'Vous êtes déjà inscrit.' };
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
