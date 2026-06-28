@@ -89,6 +89,12 @@
         }
       ],
       [
+        "expo-camera",
+        {
+          "cameraPermission": "OXV utilise l'appareil photo pour scanner les codes de présence aux événements."
+        }
+      ],
+      [
         "expo-secure-store",
         {
           "faceIDPermission": "OXV utilise Face ID pour sécuriser votre compte."

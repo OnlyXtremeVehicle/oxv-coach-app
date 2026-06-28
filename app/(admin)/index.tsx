@@ -34,6 +34,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Créer et gérer les événements (balade, test, partenaire) + inscriptions.',
   },
   {
+    href: '/(admin)/scan-checkin',
+    label: 'Scan présence',
+    description: 'Pointer les arrivées en scannant le code de présence du Pass OXV.',
+  },
+  {
     href: '/(admin)/qualite-data',
     label: 'Qualité data',
     description: 'Sessions à surveiller : frames manquantes, analyse absente, débrief non généré.',
