@@ -24,6 +24,11 @@ import { SectionLabel } from '@/ui/SectionLabel';
 
 const TOOLS: { label: string; hint: string; href: string }[] = [
   {
+    label: 'Bibliothèque de séances',
+    hint: 'Retrouver une séance par circuit et période',
+    href: '/(pro)/bibliotheque',
+  },
+  {
     label: 'Comparer deux séances',
     hint: 'Côte à côte, fait par fait',
     href: '/(app)/comparateur',

@@ -51,6 +51,8 @@ export const PRO_ROUTE_TO_ZONE: Record<string, ProTabZone> = {
   '': 'pro-paddock',
   index: 'pro-paddock',
   performance: 'pro-performance',
+  // Sous-écran de Performance (recherche de séances) — surligne l'onglet Performance.
+  bibliotheque: 'pro-performance',
   media: 'pro-media',
   equipe: 'pro-equipe',
   partage: 'pro-partage',
