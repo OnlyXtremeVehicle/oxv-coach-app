@@ -16,11 +16,11 @@ EmptyState honnêtes, télémétrie jamais exposée au partenaire par *deny-by-d
 
 **Deux bloqueurs P0** (doctrine / sécurité) empêchent la sortie d'alpha, plus **un jalon** dépendant du terrain :
 
-| # | Bloqueur | DoD | Effort | Schéma | Accord Gabin |
-|---|---|---|---|---|---|
-| **P0-1** | Silence en piste non garanti (handler de notif) | §30.3 / Principe 3 | **S** | non | non |
-| **P0-2** | Contrat de lecture coach aplati + tests RLS 3/60 | §30.2 / §6 / §23 | S→M | **oui (si gradué)** | **oui** |
-| **Jalon** | Build preview iOS+Android + test terrain bout-en-bout | §30.8-9 | — | non | dépend de Valence |
+| # | Bloqueur | DoD | Statut |
+|---|---|---|---|
+| **P0-1** | Silence en piste non garanti (handler de notif) | §30.3 / Principe 3 | **FERMÉ** — PR-A (`315ba93`), cf. [pr-09](../../roadmap/rapports/pr-09-coach-graded-access.md) |
+| **P0-2** | Contrat de lecture coach aplati + tests RLS 3/60 | §30.2 / §6 / §23 | **CŒUR FERMÉ** — PR-B (gradué, migration `0014`). Reste P1 : étendre la matrice de tests RLS |
+| **Jalon** | Build preview iOS+Android + test terrain bout-en-bout | §30.8-9 | dépend de Valence (non codable) |
 
 > **Réserve transverse** : `telemetry_frames = 0` en prod → toute la profondeur Data Lab tourne en
 > **mode DÉMO** jusqu'à la première capture à Valence. La chaîne complète n'est pas validable avant.

@@ -15,15 +15,18 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
 import {
+  type CoachAccessLevel,
   type MyCoachAssignment,
+  COACH_ACCESS_LEVELS,
   giveConsent,
   listMyCoaches,
   revokeConsent,
+  setConsentLevel,
 } from '@/services/pilotConsentService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -64,11 +67,24 @@ export default function MonCoachScreen() {
   }, []);
 
   async function onToggle(assignment: MyCoachAssignment, next: boolean) {
-    const result = next ? await giveConsent(assignment.id) : await revokeConsent(assignment.id);
+    // À l'acceptation : on consent au niveau le plus restreint (sessions seules) ;
+    // le pilote ouvre davantage via le sélecteur ci-dessous (§6/§23, privacy-first).
+    const result = next
+      ? await giveConsent(assignment.id, 'lecture_simple')
+      : await revokeConsent(assignment.id);
     if (result.ok) {
       // Confirmation tactile : un consentement RGPD mérite un retour clair
       if (next) haptics.success();
       else haptics.tap();
+      await reload();
+    }
+  }
+
+  async function onSetLevel(assignment: MyCoachAssignment, level: CoachAccessLevel) {
+    if (level === assignment.level) return;
+    const result = await setConsentLevel(assignment.id, level);
+    if (result.ok) {
+      haptics.tap();
       await reload();
     }
   }
@@ -104,6 +120,7 @@ export default function MonCoachScreen() {
                 key={assignment.id}
                 assignment={assignment}
                 onToggle={(next) => onToggle(assignment, next)}
+                onSetLevel={(level) => onSetLevel(assignment, level)}
               />
             ))}
           </View>
@@ -126,9 +143,11 @@ export default function MonCoachScreen() {
 function CoachCard({
   assignment,
   onToggle,
+  onSetLevel,
 }: {
   assignment: MyCoachAssignment;
   onToggle: (next: boolean) => void;
+  onSetLevel: (level: CoachAccessLevel) => void;
 }) {
   const fullName =
     [assignment.coachFirstName, assignment.coachLastName].filter(Boolean).join(' ') ||
@@ -173,6 +192,34 @@ function CoachCard({
         />
       </View>
 
+      {consented ? (
+        <View style={s.levelBlock}>
+          <Text style={s.levelLabel}>NIVEAU D’ACCÈS</Text>
+          {COACH_ACCESS_LEVELS.map((lvl) => {
+            const on = assignment.level === lvl.value;
+            return (
+              <Pressable
+                key={lvl.value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                accessibilityLabel={`${lvl.label}. ${lvl.hint}`}
+                hitSlop={theme.hitSlop}
+                onPress={() => onSetLevel(lvl.value)}
+                style={[s.levelOption, on ? s.levelOptionOn : null]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.levelOptTitle, on ? { color: theme.palette.cream } : null]}>
+                    {lvl.label}
+                  </Text>
+                  <Text style={s.levelOptHint}>{lvl.hint}</Text>
+                </View>
+                <View style={[s.radio, on ? s.radioOn : null]} />
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+
       {assignment.notes ? <Text style={s.coachNotes}>{assignment.notes}</Text> : null}
     </Card>
   );
@@ -200,8 +247,8 @@ function ExplainerCard() {
         <SectionLabel>CE QUE LE COACH VOIT</SectionLabel>
       </View>
       <Text style={[s.explainerBody, { marginTop: theme.spacing.sm }]}>
-        Quand vous consentez, votre coach voit vos sessions, vos analyses par virage, et votre
-        progression. Il ne voit jamais votre email, votre téléphone ou vos documents.
+        Vous choisissez le niveau : vos sessions et bilans seuls, ou en plus votre donnée détaillée
+        (virages, données brutes). Il ne voit jamais votre email, votre téléphone ou vos documents.
       </Text>
       <Text style={[s.explainerBody, { marginTop: theme.spacing.md }]}>
         Vous pouvez retirer votre accord à tout moment. Le coach cessera immédiatement de voir vos
@@ -282,6 +329,53 @@ const s = {
     borderTopWidth: 1,
     borderTopColor: theme.palette.line,
   },
+  // Sélecteur de niveau d'accès (§6/§23). Neutre : gris/crème, aucun or.
+  levelBlock: {
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+    gap: theme.spacing.sm,
+  },
+  levelLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.eyebrow,
+  },
+  levelOption: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+    minHeight: 56,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+  },
+  levelOptionOn: { backgroundColor: theme.palette.card, borderColor: theme.palette.edge },
+  levelOptTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.creamMute,
+  },
+  levelOptHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.4,
+    marginTop: 2,
+  },
+  radio: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: theme.palette.faint,
+  },
+  radioOn: { borderColor: theme.palette.cream, backgroundColor: theme.palette.cream },
   emptyTitle: {
     fontFamily: theme.fonts.bodyLight,
     fontSize: theme.fontSize.bodyLg,

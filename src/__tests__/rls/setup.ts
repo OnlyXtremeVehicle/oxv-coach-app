@@ -106,12 +106,14 @@ export async function createTestUser(role: 'pilot' | 'coach' | 'admin'): Promise
 
 /**
  * Crée une assignation coach-pilot dans `coach_pilots`. Si `consented`,
- * remplit aussi `pilot_consent_at`.
+ * remplit aussi `pilot_consent_at`. `level` fixe le niveau de lecture gradué
+ * (§6/§23) — par défaut `lecture_detaillee` (accès complet, comportement legacy).
  */
 export async function assignCoachToPilot(
   coachId: string,
   pilotId: string,
-  consented: boolean
+  consented: boolean,
+  level: 'lecture_simple' | 'lecture_detaillee' | 'programme' = 'lecture_detaillee'
 ): Promise<string> {
   const admin = adminClient();
   const { data, error } = (await admin
@@ -121,11 +123,30 @@ export async function assignCoachToPilot(
       pilot_id: pilotId,
       pilot_consent_at: consented ? new Date().toISOString() : null,
       active: true,
+      level,
     } as never)
     .select('id')
     .single()) as unknown as { data: { id: string } | null; error: { message: string } | null };
   if (error || !data) throw new Error(`assignCoachToPilot failed: ${error?.message ?? 'no data'}`);
   return data.id;
+}
+
+/** Insère une frame télémétrie minimale pour une session (donnée DÉTAILLÉE). */
+export async function createTestFrame(sessionId: string): Promise<void> {
+  const admin = adminClient();
+  const { error } = await admin
+    .from('telemetry_frames')
+    .insert({ session_id: sessionId, elapsed_ms: 0 } as never);
+  if (error) throw new Error(`createTestFrame failed: ${error.message}`);
+}
+
+/** Insère une analyse de segment (virage) minimale pour une session/pilote (donnée DÉTAILLÉE). */
+export async function createTestSegmentAnalysis(sessionId: string, pilotId: string): Promise<void> {
+  const admin = adminClient();
+  const { error } = await admin
+    .from('app_segment_analyses')
+    .insert({ telemetry_session_id: sessionId, user_id: pilotId, segment_index: 0 } as never);
+  if (error) throw new Error(`createTestSegmentAnalysis failed: ${error.message}`);
 }
 
 /**

@@ -1127,6 +1127,7 @@ export type Database = {
           created_by: string | null
           id: string
           initiated_by: Database["public"]["Enums"]["affiliation_initiator"]
+          level: Database["public"]["Enums"]["coach_access_level"]
           notes: string | null
           pilot_consent_at: string | null
           pilot_id: string
@@ -1141,6 +1142,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           initiated_by?: Database["public"]["Enums"]["affiliation_initiator"]
+          level?: Database["public"]["Enums"]["coach_access_level"]
           notes?: string | null
           pilot_consent_at?: string | null
           pilot_id: string
@@ -1155,6 +1157,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           initiated_by?: Database["public"]["Enums"]["affiliation_initiator"]
+          level?: Database["public"]["Enums"]["coach_access_level"]
           notes?: string | null
           pilot_consent_at?: string | null
           pilot_id?: string
@@ -5312,6 +5315,7 @@ export type Database = {
     Enums: {
       affiliation_initiator: "coach" | "pilot"
       affiliation_status: "pending" | "active" | "declined" | "ended"
+      coach_access_level: "lecture_simple" | "lecture_detaillee" | "programme"
       community_visibility: "private" | "anonymous_only" | "nominative"
       document_status_enum: "pending" | "validated" | "rejected" | "expired"
       document_type_enum:
@@ -5507,6 +5511,7 @@ export const Constants = {
     Enums: {
       affiliation_initiator: ["coach", "pilot"],
       affiliation_status: ["pending", "active", "declined", "ended"],
+      coach_access_level: ["lecture_simple", "lecture_detaillee", "programme"],
       community_visibility: ["private", "anonymous_only", "nominative"],
       document_status_enum: ["pending", "validated", "rejected", "expired"],
       document_type_enum: [
