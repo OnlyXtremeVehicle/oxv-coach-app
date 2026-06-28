@@ -59,7 +59,8 @@ export default function ProPilotHubScreen() {
 
         <Card style={{ marginTop: theme.spacing.xl }}>
           <Text style={s.note}>
-            Jumeau numérique et exports avancés arrivent dans votre espace pro.
+            Votre empreinte consolidée se lit dans Ma signature, séance après séance. Les exports
+            avancés arrivent dans votre espace pro.
           </Text>
         </Card>
 

@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
@@ -29,6 +29,12 @@ import { EmptyState } from '@/components/instruments';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { type PilotSignature, computeSignature } from '@/services/pilotSignatureService';
+import {
+  type SignatureSnapshot,
+  listMySnapshots,
+  setSnapshotShared,
+  upsertSnapshotForSession,
+} from '@/services/pilotSignatureSnapshotService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
@@ -42,6 +48,8 @@ export default function SignatureScreen() {
   const [signature, setSignature] = useState<PilotSignature | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  // Empreinte consolidée : la mémoire descriptive du miroir, séance après séance.
+  const [snapshots, setSnapshots] = useState<SignatureSnapshot[]>([]);
 
   useEffect(() => {
     if (!profile) {
@@ -97,12 +105,37 @@ export default function SignatureScreen() {
       });
       setSignature(sig);
       setLoading(false);
+
+      // Fige l'empreinte de cette séance (mémoire du miroir) puis charge la
+      // tendance descriptive des dernières séances. Best effort : n'affecte pas
+      // l'affichage de la signature courante.
+      if (sig.traits.length > 0) {
+        await upsertSnapshotForSession(resolvedId);
+        if (cancelled) return;
+        const snaps = await listMySnapshots(8);
+        if (!cancelled) setSnapshots(snaps);
+      }
     })();
 
     return () => {
       cancelled = true;
     };
   }, [profile, params.sessionId]);
+
+  async function onToggleShare(snap: SignatureSnapshot, next: boolean) {
+    setSnapshots((prev) =>
+      prev.map((s) => (s.id === snap.id ? { ...s, sharedWithCoach: next } : s))
+    );
+    const res = await setSnapshotShared(snap.id, next);
+    if (!res.ok) setSnapshots(await listMySnapshots(8));
+  }
+
+  function snapDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  }
+  function traitValue(snap: SignatureSnapshot, key: string): string | null {
+    return snap.traits.find((t) => t.key === key)?.value ?? null;
+  }
 
   if (loading) {
     return (
@@ -189,6 +222,48 @@ export default function SignatureScreen() {
                       ))}
                     </View>
                   </View>
+                </View>
+              </FadeInSection>
+            ) : null}
+
+            {/* Empreinte dans le temps — la mémoire descriptive du miroir. Des
+                constats juxtaposés, JAMAIS une flèche ni une courbe de progression
+                (la seule courbe temporelle reste le best-lap de Progression). */}
+            {snapshots.length >= 2 ? (
+              <FadeInSection delay={140 + signature.traits.length * 90}>
+                <View style={{ marginTop: theme.spacing.xxl }}>
+                  <Text style={s.eyebrow}>Votre empreinte dans le temps</Text>
+                  <View style={{ marginTop: theme.spacing.sm, gap: theme.spacing.sm }}>
+                    {snapshots.map((snap) => {
+                      const braking = traitValue(snap, 'braking');
+                      const lateral = traitValue(snap, 'lateral');
+                      return (
+                        <View key={snap.id} style={s.snapPanel}>
+                          <Text style={s.snapDate}>{snapDate(snap.computedAt)}</Text>
+                          <Text style={s.snapLine}>
+                            Tours {snap.regularityBand ?? '—'}
+                            {braking ? ` · freinage ${braking}` : ''}
+                            {lateral ? ` · engagement ${lateral}` : ''}
+                          </Text>
+                          <View style={s.snapShareRow}>
+                            <Text style={s.snapShareLabel}>Partagée avec mon coach</Text>
+                            <Switch
+                              value={snap.sharedWithCoach}
+                              onValueChange={(v) => onToggleShare(snap, v)}
+                              accessibilityRole="switch"
+                              accessibilityLabel="Partager cette empreinte avec mon coach"
+                              accessibilityState={{ checked: snap.sharedWithCoach }}
+                              trackColor={{ false: '#26262B', true: theme.palette.gold }}
+                              thumbColor={theme.palette.cream}
+                            />
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                  <Text style={s.snapFootnote}>
+                    Des constats, séance après séance — pas une note d&apos;évolution.
+                  </Text>
                 </View>
               </FadeInSection>
             ) : null}
@@ -284,5 +359,47 @@ const s = {
     borderColor: theme.palette.line,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
+  },
+  snapPanel: {
+    backgroundColor: theme.palette.card2,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: theme.spacing.xs,
+  },
+  snapDate: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  snapLine: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  snapShareRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+    paddingTop: theme.spacing.sm,
+    marginTop: theme.spacing.xs,
+  },
+  snapShareLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+  },
+  snapFootnote: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
   },
 };

@@ -22,6 +22,10 @@ import {
 } from '@/services/coachService';
 import { pilotLevelLabel } from '@/services/pilotProfileService';
 import { type PilotNote, listSharedNotesForPilot } from '@/services/pilotNotesService';
+import {
+  type SignatureSnapshot,
+  listSharedSnapshotsForPilot,
+} from '@/services/pilotSignatureSnapshotService';
 import { signPilotMedia, type PilotMediaView } from '@/services/pilotMediaService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
@@ -46,6 +50,7 @@ export default function CoachPilotDetailScreen() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pilotMedia, setPilotMedia] = useState<PilotMediaView[]>([]);
   const [sharedNotes, setSharedNotes] = useState<PilotNote[]>([]);
+  const [sharedSnapshots, setSharedSnapshots] = useState<SignatureSnapshot[]>([]);
 
   const toggleSelected = (sessionId: string) => {
     setSelectedIds((prev) => {
@@ -98,6 +103,12 @@ export default function CoachPilotDetailScreen() {
         const shared = await listSharedNotesForPilot(params.id);
         if (cancelled) return;
         setSharedNotes(shared);
+
+        // Empreinte consolidée : uniquement les snapshots que le pilote a
+        // explicitement partagés (RLS). Lecture seule, accès journalisé.
+        const snaps = await listSharedSnapshotsForPilot(params.id);
+        if (cancelled) return;
+        setSharedSnapshots(snaps);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -125,6 +136,7 @@ export default function CoachPilotDetailScreen() {
         {pilot ? <PilotProfileBlock pilot={pilot} /> : null}
         {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
         {sharedNotes.length > 0 ? <SharedNotesBlock notes={sharedNotes} /> : null}
+        {sharedSnapshots.length > 0 ? <SharedSnapshotsBlock snapshots={sharedSnapshots} /> : null}
 
         {/* Priorisation du bilan (§10.3c-B) */}
         <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
@@ -323,6 +335,39 @@ function SharedNotesBlock({ notes }: { notes: PilotNote[] }) {
           <Text style={s.sharedNoteBody}>{n.body}</Text>
         </View>
       ))}
+    </Card>
+  );
+}
+
+/**
+ * Empreinte partagée — snapshots de signature que le pilote a partagés (lecture
+ * seule). Des constats descriptifs consolidés, jamais un score ni une cible.
+ */
+function SharedSnapshotsBlock({ snapshots }: { snapshots: SignatureSnapshot[] }) {
+  const traitValue = (snap: SignatureSnapshot, key: string) =>
+    snap.traits.find((t) => t.key === key)?.value ?? null;
+  return (
+    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+      <SectionLabel>Empreinte partagée</SectionLabel>
+      {snapshots.map((snap) => {
+        const braking = traitValue(snap, 'braking');
+        const lateral = traitValue(snap, 'lateral');
+        return (
+          <View key={snap.id} style={{ gap: theme.spacing.xs }}>
+            <Text style={s.sharedNoteDate}>
+              {new Date(snap.computedAt).toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'short',
+              })}
+            </Text>
+            <Text style={s.sharedNoteBody}>
+              Tours {snap.regularityBand ?? '—'}
+              {braking ? ` · freinage ${braking}` : ''}
+              {lateral ? ` · engagement ${lateral}` : ''}
+            </Text>
+          </View>
+        );
+      })}
     </Card>
   );
 }

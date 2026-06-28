@@ -4017,6 +4017,60 @@ export type Database = {
           },
         ]
       }
+      pilot_signature_snapshots: {
+        Row: {
+          axes: Json
+          computed_at: string
+          created_at: string
+          id: string
+          regularity_band: string | null
+          session_id: string | null
+          shared_with_coach: boolean
+          traits: Json
+          turn_sample_count: number
+          user_id: string
+        }
+        Insert: {
+          axes?: Json
+          computed_at?: string
+          created_at?: string
+          id?: string
+          regularity_band?: string | null
+          session_id?: string | null
+          shared_with_coach?: boolean
+          traits?: Json
+          turn_sample_count?: number
+          user_id: string
+        }
+        Update: {
+          axes?: Json
+          computed_at?: string
+          created_at?: string
+          id?: string
+          regularity_band?: string | null
+          session_id?: string | null
+          shared_with_coach?: boolean
+          traits?: Json
+          turn_sample_count?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_signature_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "pilot_signature_snapshots_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ping_rsvps: {
         Row: {
           created_at: string
