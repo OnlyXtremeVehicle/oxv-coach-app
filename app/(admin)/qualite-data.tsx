@@ -138,7 +138,17 @@ export default function QualiteDataScreen() {
             {anomalies.map((a) => {
               const tracked = trackedSessionIds.has(a.sessionId);
               return (
-                <Card key={a.sessionId} style={{ borderColor: SEVERITY_COLOR[worst(a.anomalies)] }}>
+                <Card
+                  key={a.sessionId}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(admin)/analyse-session/[id]',
+                      params: { id: a.sessionId },
+                    } as never)
+                  }
+                  accessibilityLabel={`Analyser ${a.sessionName || a.circuitName || 'la session'}. Diagnostic et relance.`}
+                  style={{ borderColor: SEVERITY_COLOR[worst(a.anomalies)] }}
+                >
                   <Text style={s.sessionName}>
                     {a.sessionName || a.circuitName || 'Session'} · {formatDateShort(a.startedAt)}
                   </Text>
