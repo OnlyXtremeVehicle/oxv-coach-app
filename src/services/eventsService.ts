@@ -383,3 +383,109 @@ export async function registerForEvent(eventId: string): Promise<MutationResult>
   }
   return { ok: true };
 }
+
+// ============================================================================
+// Partenaires présents à un événement (PR-37)
+// ============================================================================
+
+export type EventPartnerStatus = 'invited' | 'confirmed' | 'declined';
+
+export interface EventPartnerRow {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  status: EventPartnerStatus;
+}
+
+/** Partenaires rattachés à un événement (admin), avec nom. */
+export async function listEventPartners(eventId: string): Promise<EventPartnerRow[]> {
+  const { data, error } = await supabase
+    .from('event_partners')
+    .select('id, partner_id, status, partner_accounts!event_partners_partner_id_fkey(display_name)')
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true });
+  if (error) {
+    console.warn('[OXV][admin][events] listEventPartners :', error.message);
+    return [];
+  }
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const joined = row.partner_accounts as
+      | { display_name?: string }
+      | { display_name?: string }[]
+      | null;
+    const p = Array.isArray(joined) ? joined[0] : joined;
+    return {
+      id: row.id as string,
+      partnerId: row.partner_id as string,
+      partnerName: p?.display_name ?? '—',
+      status: row.status as EventPartnerStatus,
+    };
+  });
+}
+
+export interface PartnerOption {
+  id: string;
+  displayName: string;
+}
+
+/** Comptes partenaires disponibles à rattacher (admin). */
+export async function listPartnersForAttach(): Promise<PartnerOption[]> {
+  const { data, error } = await supabase
+    .from('partner_accounts')
+    .select('id, display_name')
+    .order('display_name', { ascending: true })
+    .limit(200);
+  if (error) {
+    console.warn('[OXV][admin][events] listPartnersForAttach :', error.message);
+    return [];
+  }
+  return (data ?? []).map((r) => {
+    const o = r as Record<string, unknown>;
+    return { id: o.id as string, displayName: (o.display_name as string) ?? '—' };
+  });
+}
+
+/** Rattache un partenaire à un événement (admin). */
+export async function addEventPartner(eventId: string, partnerId: string): Promise<MutationResult> {
+  const { error } = await supabase
+    .from('event_partners')
+    .insert({ event_id: eventId, partner_id: partnerId } as never);
+  if (error) {
+    if (error.code === '23505') return { ok: false, error: 'Déjà rattaché.' };
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Détache un partenaire (admin). */
+export async function removeEventPartner(id: string): Promise<MutationResult> {
+  const { error } = await supabase.from('event_partners').delete().eq('id', id);
+  return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+export interface MyEventPartnership {
+  id: string;
+  status: EventPartnerStatus;
+  event: PassEvent | null;
+}
+
+/** Mes présences événement (côté partenaire ; RLS owns_partner_account). */
+export async function listMyEventPartnerships(): Promise<MyEventPartnership[]> {
+  const { data, error } = await supabase
+    .from('event_partners')
+    .select(`id, status, events!event_partners_event_id_fkey(${PASS_EVENT_COLS})`)
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.warn('[OXV][partner][events] listMyEventPartnerships :', error.message);
+    return [];
+  }
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const joined = row.events as Record<string, unknown> | Record<string, unknown>[] | null;
+    const evt = Array.isArray(joined) ? joined[0] : joined;
+    return {
+      id: row.id as string,
+      status: row.status as EventPartnerStatus,
+      event: evt ? mapPassEvent(evt) : null,
+    };
+  });
+}

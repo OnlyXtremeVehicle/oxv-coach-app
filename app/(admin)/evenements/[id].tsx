@@ -12,11 +12,17 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   EVENT_STATUSES,
   type AdminEvent,
+  type EventPartnerRow,
   type EventRegistrationRow,
   type EventStatus,
+  type PartnerOption,
+  addEventPartner,
   eventTypeLabel,
   getEvent,
+  listEventPartners,
   listEventRegistrations,
+  listPartnersForAttach,
+  removeEventPartner,
   setRegistrationStatus,
   updateEvent,
 } from '@/services/eventsService';
@@ -40,6 +46,8 @@ export default function AdminEventDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [event, setEvent] = useState<AdminEvent | null>(null);
   const [regs, setRegs] = useState<EventRegistrationRow[]>([]);
+  const [partners, setPartners] = useState<EventPartnerRow[]>([]);
+  const [available, setAvailable] = useState<PartnerOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -47,10 +55,17 @@ export default function AdminEventDetailScreen() {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
-    Promise.all([getEvent(id), listEventRegistrations(id)]).then(([e, r]) => {
+    Promise.all([
+      getEvent(id),
+      listEventRegistrations(id),
+      listEventPartners(id),
+      listPartnersForAttach(),
+    ]).then(([e, r, p, a]) => {
       if (!cancelled) {
         setEvent(e);
         setRegs(r);
+        setPartners(p);
+        setAvailable(a);
         setLoading(false);
       }
     });
@@ -73,6 +88,22 @@ export default function AdminEventDetailScreen() {
     if (busy) return;
     setBusy(true);
     await setRegistrationStatus(regId, 'checked_in');
+    setBusy(false);
+    reload();
+  }
+
+  async function onAddPartner(partnerId: string) {
+    if (!id || busy) return;
+    setBusy(true);
+    await addEventPartner(id, partnerId);
+    setBusy(false);
+    reload();
+  }
+
+  async function onRemovePartner(rowId: string) {
+    if (busy) return;
+    setBusy(true);
+    await removeEventPartner(rowId);
     setBusy(false);
     reload();
   }
@@ -166,6 +197,49 @@ export default function AdminEventDetailScreen() {
               </Card>
             ))
           )}
+        </View>
+
+        {/* Partenaires présents */}
+        <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+          <SectionLabel>{`Partenaires (${partners.length})`}</SectionLabel>
+          {partners.map((p) => (
+            <Card key={p.id}>
+              <View style={s.regTop}>
+                <Text style={s.regName}>{p.partnerName}</Text>
+                <Pressable
+                  onPress={() => onRemovePartner(p.id)}
+                  disabled={busy}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Retirer ${p.partnerName}`}
+                  hitSlop={6}
+                >
+                  <Text style={s.removeTxt}>Retirer</Text>
+                </Pressable>
+              </View>
+            </Card>
+          ))}
+          {available.filter((a) => !partners.some((p) => p.partnerId === a.id)).length > 0 ? (
+            <>
+              <Text style={s.attachLabel}>Rattacher un partenaire</Text>
+              <View style={s.pills}>
+                {available
+                  .filter((a) => !partners.some((p) => p.partnerId === a.id))
+                  .map((a) => (
+                    <Pressable
+                      key={a.id}
+                      onPress={() => onAddPartner(a.id)}
+                      disabled={busy}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Rattacher ${a.displayName}`}
+                      hitSlop={6}
+                      style={s.pill}
+                    >
+                      <Text style={s.pillTxt}>+ {a.displayName}</Text>
+                    </Pressable>
+                  ))}
+              </View>
+            </>
+          ) : null}
         </View>
       </View>
     </Screen>
@@ -279,5 +353,18 @@ const s = {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.body,
     color: theme.palette.creamMute,
+  },
+  removeTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  attachLabel: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
   },
 };

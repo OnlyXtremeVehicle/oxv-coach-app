@@ -14,6 +14,11 @@ import { router } from 'expo-router';
 import { Logo } from '@/brand/Logo';
 import { EmptyState } from '@/components/instruments/EmptyState';
 import {
+  type MyEventPartnership,
+  eventTypeLabel,
+  listMyEventPartnerships,
+} from '@/services/eventsService';
+import {
   type PartnerAccount,
   type PartnerLead,
   type PartnerOffer,
@@ -39,6 +44,7 @@ export default function PartnerHubScreen() {
   const [account, setAccount] = useState<PartnerAccount | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
   const [leads, setLeads] = useState<PartnerLead[]>([]);
+  const [myEvents, setMyEvents] = useState<MyEventPartnership[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -48,10 +54,15 @@ export default function PartnerHubScreen() {
       if (cancelled) return;
       setAccount(acc);
       if (acc) {
-        const [o, l] = await Promise.all([listMyOffers(acc.id), listMyLeads(acc.id)]);
+        const [o, l, ev] = await Promise.all([
+          listMyOffers(acc.id),
+          listMyLeads(acc.id),
+          listMyEventPartnerships(),
+        ]);
         if (cancelled) return;
         setOffers(o);
         setLeads(l);
+        setMyEvents(ev);
       }
       setLoading(false);
     })().catch(() => {
@@ -116,6 +127,22 @@ export default function PartnerHubScreen() {
                 <Text style={s.cardHint}>Créer et publier vos offres.</Text>
               </Card>
             </View>
+
+            {myEvents.length > 0 ? (
+              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+                <Text style={s.eyebrow}>MES ÉVÉNEMENTS</Text>
+                {myEvents.map((m) =>
+                  m.event ? (
+                    <Card key={m.id}>
+                      <Text style={s.cardTitle}>{m.event.name}</Text>
+                      <Text style={s.cardHint}>
+                        {eventTypeLabel(m.event.eventType)} · {m.event.locationName}
+                      </Text>
+                    </Card>
+                  ) : null
+                )}
+              </View>
+            ) : null}
             {/* Suivi des leads (F4) à venir. */}
           </>
         ) : (

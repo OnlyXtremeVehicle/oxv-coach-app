@@ -2505,6 +2505,45 @@ export type Database = {
           },
         ]
       }
+      event_partners: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          partner_id: string
+          status: Database["public"]["Enums"]["event_partner_status"]
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          partner_id: string
+          status?: Database["public"]["Enums"]["event_partner_status"]
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          partner_id?: string
+          status?: Database["public"]["Enums"]["event_partner_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_partners_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_partners_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partner_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_registrations: {
         Row: {
           checked_in_at: string | null
@@ -6086,6 +6125,7 @@ export type Database = {
         | "expired"
         | "cancelled"
       email_status_enum: "sent" | "delivered" | "bounced" | "opened"
+      event_partner_status: "invited" | "confirmed" | "declined"
       event_registration_status:
         | "registered"
         | "checked_in"
@@ -6302,6 +6342,7 @@ export const Constants = {
         "cancelled",
       ],
       email_status_enum: ["sent", "delivered", "bounced", "opened"],
+      event_partner_status: ["invited", "confirmed", "declined"],
       event_registration_status: [
         "registered",
         "checked_in",
