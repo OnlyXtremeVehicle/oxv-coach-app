@@ -32,6 +32,7 @@ import {
   notificationBehaviorForState,
   readNotifPref,
 } from '@/services/notifPreferencesLogic';
+import { NOTIF_COPY } from '@/services/notifCopy';
 import { useAppStateStore } from '@/store/useAppStateStore';
 
 // Configuration globale du handler — comment réagir quand une notif arrive
@@ -157,8 +158,8 @@ export async function scheduleDebriefNotification(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Votre debrief est prêt.',
-        body: 'Une lecture posée vous attend, quand vous le souhaitez.',
+        title: NOTIF_COPY.debrief.title,
+        body: NOTIF_COPY.debrief.body,
         data: { type: 'debrief', sessionId: input.sessionId },
       },
       trigger: {
@@ -202,8 +203,8 @@ export async function scheduleSessionReminder(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Demain, vous roulez.',
-        body: 'Vérifiez votre équipement à tête reposée. L’app sera prête.',
+        title: NOTIF_COPY.sessionReminder.title,
+        body: NOTIF_COPY.sessionReminder.body,
         data: { type: 'session_reminder', sessionOxvId: input.sessionOxvId },
       },
       trigger: {
