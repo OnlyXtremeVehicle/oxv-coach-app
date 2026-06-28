@@ -36,6 +36,8 @@ import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
 import { OxvEvent } from '@/services/analyticsEvents';
+import { type DemoBanner, demoBannerForEventType } from '@/services/eventContextLogic';
+import { getEventLite } from '@/services/eventsService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import { getCorner } from '@/lib/circuitTopology';
 import { buildContextRows } from '@/services/coachContextLogic';
@@ -110,6 +112,7 @@ export default function BilanScreen() {
   const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
   const [salient, setSalient] = useState<SalientFact | null>(null);
   const [insights, setInsights] = useState<SessionInsights | null>(null);
+  const [demoBanner, setDemoBanner] = useState<DemoBanner | null>(null);
 
   useEffect(() => {
     OxvEvent.bilanOuvert(); // KPI bilan_open_rate (§27)
@@ -194,6 +197,23 @@ export default function BilanScreen() {
       cancelled = true;
     };
   }, [session?.id]);
+
+  // Bandeau « mode démo » (PR-20b) : honnêteté quand la capture relève d'un
+  // événement HORS circuit (event_type != 'session'). Dérivé, pas de colonne.
+  useEffect(() => {
+    const eventId = session?.event_id;
+    if (!eventId) {
+      setDemoBanner(null);
+      return;
+    }
+    let cancelled = false;
+    getEventLite(eventId).then((evt) => {
+      if (!cancelled) setDemoBanner(demoBannerForEventType(evt?.eventType ?? null));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.event_id]);
 
   // Contexte coach (§10.3) sur cette session — affiché si le coach en a posé.
   useEffect(() => {
@@ -292,6 +312,15 @@ export default function BilanScreen() {
       <AppBar title="BILAN" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <SectionLabel>BILAN DE SESSION</SectionLabel>
+
+        {/* Mode démo (PR-20b) — événement hors circuit : on prévient honnêtement
+            que les analyses ne sont pas comparables. Sobre (ni or ni rouge). */}
+        {demoBanner ? (
+          <View style={s.demoBanner}>
+            <Text style={s.demoTitle}>{demoBanner.title}</Text>
+            <Text style={s.demoBody}>{demoBanner.body}</Text>
+          </View>
+        ) : null}
 
         {/* Fiabilité de la donnée (charte 11, T2) — affichée tôt : si la capture
             est fragile, le pilote le sait avant de lire quoi que ce soit. */}
@@ -712,6 +741,27 @@ const s = {
     textTransform: 'uppercase' as const,
     color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
+  },
+  // Bandeau « mode démo » (PR-20b) : neutre, ni or ni rouge.
+  demoBanner: {
+    marginTop: theme.spacing.lg,
+    padding: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    backgroundColor: theme.palette.card2,
+  },
+  demoTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  demoBody: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: theme.spacing.xs,
   },
   heroNumber: {
     fontFamily: theme.fonts.mono,

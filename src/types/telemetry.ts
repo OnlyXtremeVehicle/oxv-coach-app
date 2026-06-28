@@ -87,6 +87,8 @@ export interface TelemetrySession {
   name: string | null;
   circuit_id: string | null;
   circuit_name: string;
+  /** Événement rattaché (migration 0021), si la capture relève d'un événement. */
+  event_id: string | null;
   vehicle_id: string | null;
   weather: string | null;
   notes: string | null;
