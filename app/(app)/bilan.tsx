@@ -30,6 +30,7 @@ import {
   ProvenanceLine,
   SourceMethodBlock,
 } from '@/components/InsightTransparency';
+import { DataConfidenceBanner } from '@/components/DataConfidenceBanner';
 import { FadeInSection } from '@/components/motion';
 import { CoachBand, EmptyState, GaugeInstrument, MeterBar } from '@/components/instruments';
 import * as haptics from '@/lib/haptics';
@@ -358,13 +359,6 @@ export default function BilanScreen() {
         }
       : null
   );
-  const confidenceColor =
-    confidence?.level === 'complete'
-      ? theme.palette.green
-      : confidence?.level === 'partial'
-        ? theme.palette.creamMute
-        : theme.palette.faint;
-
   return (
     <Screen>
       <AppBar title="BILAN" onBack={() => router.back()} trailing={<AccountButton />} />
@@ -381,17 +375,7 @@ export default function BilanScreen() {
         ) : null}
 
         {/* Confiance de lecture (T-2) — niveau qualitatif honnête + raisons. */}
-        {confidence ? (
-          <View style={s.confidence}>
-            <View style={[s.confidenceDot, { backgroundColor: confidenceColor }]} />
-            <View style={{ flex: 1 }}>
-              <Text style={s.confidenceLabel}>{confidence.label}</Text>
-              {confidence.reasons.length > 0 ? (
-                <Text style={s.confidenceReasons}>{confidence.reasons.join(' · ')}</Text>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
+        <DataConfidenceBanner confidence={confidence} />
 
         {/* Fiabilité de la donnée (charte 11, T2) — affichée tôt : si la capture
             est fragile, le pilote le sait avant de lire quoi que ce soit. */}
@@ -865,31 +849,6 @@ const s = {
     marginTop: theme.spacing.xs,
   },
   // Confiance de lecture (T-2) — neutre, sans or ni rouge ; le point code le niveau.
-  confidence: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-  },
-  confidenceDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  confidenceLabel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-  },
-  confidenceReasons: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: 2,
-    lineHeight: theme.fontSize.small * 1.4,
-  },
   kmTitle: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.body,

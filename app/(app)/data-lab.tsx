@@ -12,11 +12,14 @@ import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 
+import { DataConfidenceBanner } from '@/components/DataConfidenceBanner';
 import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTransparency';
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
+import { type DataConfidence, computeDataConfidence } from '@/services/dataConfidenceLogic';
 import { type DataLabSessionView, getDataLabSessionView } from '@/services/dataLabService';
 import { exportSessionFramesCsv } from '@/services/dataExportService';
+import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -39,6 +42,7 @@ export default function DataLabScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sid = params.sessionId ?? '';
   const [view, setView] = useState<DataLabSessionView | null>(null);
+  const [confidence, setConfidence] = useState<DataConfidence | null>(null);
   const [exporting, setExporting] = useState(false);
 
   async function onExportCsv() {
@@ -54,6 +58,26 @@ export default function DataLabScreen() {
     getDataLabSessionView(sid)
       .then((v) => {
         if (!cancelled) setView(v);
+      })
+      .catch(() => undefined);
+    // Confiance de lecture (PR-53) — même source et même calcul que le Bilan,
+    // pour une vérité affichée identique aux deux endroits.
+    fetchSessionInsights(sid)
+      .then((ins) => {
+        if (cancelled) return;
+        const dq = ins?.data_quality;
+        setConfidence(
+          computeDataConfidence(
+            dq
+              ? {
+                  pctValid: dq.pct_valid,
+                  framesUsed: dq.frames_used,
+                  cornersDetected: dq.corners_detected,
+                  lapsValid: dq.laps_detected,
+                }
+              : null
+          )
+        );
       })
       .catch(() => undefined);
     return () => {
@@ -79,6 +103,10 @@ export default function DataLabScreen() {
             <Text style={s.bannerText}>{view.emptyReason}</Text>
           </View>
         ) : null}
+
+        {/* Confiance de lecture (T-2, PR-53) — la solidité de la donnée AVANT
+            d'ouvrir les couches. Honnête, descriptif, jamais un jugement. */}
+        <DataConfidenceBanner confidence={confidence} />
 
         <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
           {dataLabScreens().map((screen) => {
