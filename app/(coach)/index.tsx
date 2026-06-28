@@ -186,6 +186,10 @@ export default function CoachHubScreen() {
           {/* Gabarits de commentaire (§10.3c-C) — confort de saisie, tout coach. */}
           <CoachLink label="Mes gabarits" href="/(coach)/gabarits" />
 
+          {/* Assistant IA (C-1) — pré-rédige une observation, validée par le
+              coach. Filtrage doctrinal serveur, consentement pilote requis. */}
+          <CoachLink label="Assistant IA" href="/(coach)/assistant" />
+
           {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
           <CoachLink label="Ma lecture" href="/(coach)/lecture" />
 

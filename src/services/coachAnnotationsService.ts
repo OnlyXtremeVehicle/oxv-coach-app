@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { isDoctrineSafe } from '@/services/aiSafetyFilter';
 import { OxvEvent } from '@/services/analyticsEvents';
 
 export type AnnotationVisibility = 'private' | 'shared';
@@ -21,6 +22,8 @@ export interface CoachAnnotation {
   cornerIndex: number;
   body: string;
   visibility: AnnotationVisibility;
+  /** Observation pré-rédigée par l'assistant IA puis validée par le coach. */
+  aiAssisted: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +36,7 @@ interface RawRow {
   corner_index: number;
   body: string;
   visibility: AnnotationVisibility;
+  ai_assisted: boolean | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -47,6 +51,7 @@ function mapRow(row: RawRow): CoachAnnotation {
     cornerIndex: row.corner_index,
     body: row.body,
     visibility: row.visibility,
+    aiAssisted: row.ai_assisted === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -136,6 +141,14 @@ export async function createAnnotation(
     return null;
   }
 
+  // Garde-fou doctrinal app (UX) : une note PARTAGÉE ne peut pas être prescriptive.
+  // Le rempart réel est le trigger en base (0026) ; ici on évite l'aller-retour.
+  const visibility = input.visibility ?? 'shared';
+  if (visibility === 'shared' && !isDoctrineSafe(input.body)) {
+    console.warn('[OXV][annotations] create : note partagée non conforme (doctrine)');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('coach_annotations')
     .insert({
@@ -144,7 +157,7 @@ export async function createAnnotation(
       telemetry_session_id: input.telemetrySessionId ?? null,
       corner_index: input.cornerIndex,
       body: input.body.trim(),
-      visibility: input.visibility ?? 'shared',
+      visibility,
     })
     .select('*')
     .single();
@@ -164,6 +177,13 @@ export async function updateAnnotation(
   const update: { body?: string; visibility?: AnnotationVisibility } = {};
   if (patch.body !== undefined) update.body = patch.body.trim();
   if (patch.visibility !== undefined) update.visibility = patch.visibility;
+
+  // Garde-fou doctrinal app (UX) : si la note devient/reste partagée avec un
+  // nouveau corps, il ne peut pas être prescriptif. Le trigger DB reste le rempart.
+  if (patch.visibility !== 'private' && patch.body !== undefined && !isDoctrineSafe(patch.body)) {
+    console.warn('[OXV][annotations] update : note partagée non conforme (doctrine)');
+    return false;
+  }
 
   const { error } = await supabase.from('coach_annotations').update(update).eq('id', id);
 

@@ -297,6 +297,7 @@ export default function VirageScreen() {
                   <Text style={s.coachNote}>« {a.body} »</Text>
                   <Text style={[s.meta, { marginTop: theme.spacing.sm }]}>
                     {formatDateShort(a.createdAt)}
+                    {a.aiAssisted ? ' · Assistée par IA, validée par votre coach' : ''}
                   </Text>
                 </Card>
               ))}

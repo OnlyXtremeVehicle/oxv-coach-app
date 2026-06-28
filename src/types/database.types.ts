@@ -673,6 +673,76 @@ export type Database = {
           },
         ]
       }
+      coach_ai_drafts: {
+        Row: {
+          coach_id: string
+          corner_index: number
+          created_at: string
+          generated_text: string
+          id: string
+          model_version: string | null
+          pilot_id: string
+          provenance: string
+          resulting_annotation_id: string | null
+          status: string
+          telemetry_session_id: string | null
+          updated_at: string
+          validated_at: string | null
+        }
+        Insert: {
+          coach_id: string
+          corner_index: number
+          created_at?: string
+          generated_text: string
+          id?: string
+          model_version?: string | null
+          pilot_id: string
+          provenance?: string
+          resulting_annotation_id?: string | null
+          status?: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Update: {
+          coach_id?: string
+          corner_index?: number
+          created_at?: string
+          generated_text?: string
+          id?: string
+          model_version?: string | null
+          pilot_id?: string
+          provenance?: string
+          resulting_annotation_id?: string | null
+          status?: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+          validated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_ai_drafts_resulting_annotation_id_fkey"
+            columns: ["resulting_annotation_id"]
+            isOneToOne: false
+            referencedRelation: "coach_annotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_ai_drafts_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "coach_ai_drafts_telemetry_session_id_fkey"
+            columns: ["telemetry_session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_annotation_template: {
         Row: {
           body: string
@@ -724,6 +794,7 @@ export type Database = {
       }
       coach_annotations: {
         Row: {
+          ai_assisted: boolean
           audio_url: string | null
           body: string
           coach_id: string
@@ -739,6 +810,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          ai_assisted?: boolean
           audio_url?: string | null
           body: string
           coach_id: string
@@ -754,6 +826,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          ai_assisted?: boolean
           audio_url?: string | null
           body?: string
           coach_id?: string
@@ -5336,6 +5409,7 @@ export type Database = {
           blood_type: string | null
           cgu_accepted_at: string | null
           cgu_version: string | null
+          coach_ai_enabled: boolean
           coach_pact_accepted_at: string | null
           coach_pact_version: string | null
           community_visibility: Database["public"]["Enums"]["community_visibility"]
@@ -5402,6 +5476,7 @@ export type Database = {
           blood_type?: string | null
           cgu_accepted_at?: string | null
           cgu_version?: string | null
+          coach_ai_enabled?: boolean
           coach_pact_accepted_at?: string | null
           coach_pact_version?: string | null
           community_visibility?: Database["public"]["Enums"]["community_visibility"]
@@ -5468,6 +5543,7 @@ export type Database = {
           blood_type?: string | null
           cgu_accepted_at?: string | null
           cgu_version?: string | null
+          coach_ai_enabled?: boolean
           coach_pact_accepted_at?: string | null
           coach_pact_version?: string | null
           community_visibility?: Database["public"]["Enums"]["community_visibility"]
@@ -6068,6 +6144,7 @@ export type Database = {
       }
       cleanup_old_notif_logs: { Args: never; Returns: number }
       cleanup_old_telemetry_frames: { Args: never; Returns: number }
+      coach_ai_consent: { Args: { pilot_uuid: string }; Returns: boolean }
       coach_has_permission: {
         Args: { coach_uuid: string; permission_name: string }
         Returns: boolean

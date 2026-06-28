@@ -72,6 +72,45 @@ describe('aiSafetyFilter — anti-divergence avec le garde-fou edge', () => {
   }
 });
 
+describe('aiSafetyFilter — anti-divergence avec le garde-fou coach (SQL + edges)', () => {
+  // Le trigger SQL public.coach_annotation_doctrine_guard (migration 0026) et les
+  // edges coach-ai-draft / coach-ai-validate scannent ce MÊME lexique avant
+  // qu'une note partagée ou un brouillon validé n'atteigne le pilote. Le filtre
+  // app doit couvrir chaque terme : ce test échoue si la liste SQL/edge diverge.
+  const COACH_GUARD_TERMS = [
+    'freinez',
+    'accélérez',
+    'ouvrez les gaz',
+    'tracez',
+    'évitez',
+    'poussez',
+    'corrigez',
+    'améliorez',
+    'optimisez',
+    'gagnez',
+    'il faut',
+    'vous devez',
+    'vous devriez',
+    'vous pouvez',
+    'tu dois',
+    'tu peux',
+    'je vous conseille',
+    'je vous recommande',
+  ];
+
+  for (const term of COACH_GUARD_TERMS) {
+    it(`couvre le terme du garde coach : "${term}"`, () => {
+      expect(isDoctrineSafe(`Sur ce virage, ${term} la corde.`)).toBe(false);
+    });
+  }
+
+  it('laisse passer une observation coach descriptive', () => {
+    expect(isDoctrineSafe('Le terrain le plus serré de la séance. Était-ce volontaire ?')).toBe(
+      true
+    );
+  });
+});
+
 describe('aiSafetyFilter — tournures prescriptives bloquées', () => {
   // Les six exemples interdits cités noir sur blanc dans CLAUDE.md.
   const DOCTRINE_FORBIDDEN: string[] = [

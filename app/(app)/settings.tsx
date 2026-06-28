@@ -40,6 +40,8 @@ export default function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState<boolean>(true);
   // Débrief assisté par IA (OpenAI, US) : actif sauf opt-out (S5). Défaut-ON.
   const [aiDebriefEnabled, setAiDebriefEnabled] = useState<boolean>(true);
+  // Assistant IA du coach (C-1) : opt-in explicite, défaut OFF (fail-closed).
+  const [coachAiEnabled, setCoachAiEnabled] = useState<boolean>(false);
   // Préférences de notification fines (D5), JSONB brut (préserve les clés tierces).
   const [notifPrefs, setNotifPrefs] = useState<Record<string, unknown>>({});
   // Mesure d'audience anonyme : activée sauf opt-out explicite (§9).
@@ -59,17 +61,21 @@ export default function SettingsScreen() {
     (async () => {
       const { data } = await supabase
         .from('users')
-        .select('push_notif_enabled, ai_debrief_enabled, notification_preferences')
+        .select(
+          'push_notif_enabled, ai_debrief_enabled, coach_ai_enabled, notification_preferences'
+        )
         .eq('id', profile.id)
         .maybeSingle();
       if (cancelled) return;
       const row = data as {
         push_notif_enabled?: boolean | null;
         ai_debrief_enabled?: boolean | null;
+        coach_ai_enabled?: boolean | null;
         notification_preferences?: unknown;
       } | null;
       setPushEnabled(row?.push_notif_enabled !== false);
       setAiDebriefEnabled(row?.ai_debrief_enabled !== false);
+      setCoachAiEnabled(row?.coach_ai_enabled === true);
       setNotifPrefs(
         row?.notification_preferences && typeof row.notification_preferences === 'object'
           ? (row.notification_preferences as Record<string, unknown>)
@@ -99,6 +105,18 @@ export default function SettingsScreen() {
     await supabase
       .from('users')
       .update({ ai_debrief_enabled: next } as never)
+      .eq('id', profile.id);
+  }
+
+  // Assistant IA du coach (C-1) : opt-in explicite. Autorise SON coach à
+  // déclencher une pré-rédaction IA (transfert hors-UE) sur ses données. Le
+  // gate réel est côté serveur (coach_ai_consent) ; ici on enregistre le choix.
+  async function toggleCoachAi(next: boolean) {
+    if (!profile?.id) return;
+    setCoachAiEnabled(next);
+    await supabase
+      .from('users')
+      .update({ coach_ai_enabled: next } as never)
       .eq('id', profile.id);
   }
 
@@ -306,6 +324,12 @@ export default function SettingsScreen() {
             caption="Le récit du debrief J+1 est rédigé par une IA (OpenAI, hors UE) à partir de données non nominatives. Désactivé : le debrief est rédigé localement."
             value={aiDebriefEnabled}
             onValueChange={toggleAiDebrief}
+          />
+          <ToggleRow
+            label="Assistant IA de mon coach"
+            caption="Autorise votre coach à pré-rédiger ses observations avec une IA (OpenAI, hors UE) à partir de vos données non nominatives. Chaque observation est relue et validée par votre coach. Désactivé par défaut."
+            value={coachAiEnabled}
+            onValueChange={toggleCoachAi}
           />
           <SettingRow
             label="Exporter mes données"
