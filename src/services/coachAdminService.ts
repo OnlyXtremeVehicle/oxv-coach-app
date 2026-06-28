@@ -241,6 +241,10 @@ export async function sendCoachInvitation(input: {
 /**
  * Promeut un user (role='pilot') en coach (role='coach').
  * Action réversible via demoteToPilot.
+ *
+ * Tracé : le changement de rôle est audité en base par le trigger
+ * `trg_audit_user_role_change` → `admin_audit` (action `role_changed`,
+ * metadata.changed_by = admin). Aucun appel applicatif requis (§10.1 cas 4).
  */
 export async function promoteToCoach(userId: string): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase.from('users').update({ role: 'coach' }).eq('id', userId);
