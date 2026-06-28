@@ -11,6 +11,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { OxvEvent } from '@/services/analyticsEvents';
 import { enqueueAction } from '@/services/offlineQueue';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -139,6 +140,7 @@ export async function completeOnboarding(): Promise<boolean> {
     return false;
   }
   await useAuthStore.getState().refreshProfile();
+  OxvEvent.onboardingTermine(); // KPI activation_pilote (§27)
   return true;
 }
 

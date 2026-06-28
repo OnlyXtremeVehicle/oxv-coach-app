@@ -35,6 +35,7 @@ import { CoachBand, EmptyState, GaugeInstrument, MeterBar } from '@/components/i
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
+import { OxvEvent } from '@/services/analyticsEvents';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import { getCorner } from '@/lib/circuitTopology';
 import { buildContextRows } from '@/services/coachContextLogic';
@@ -109,6 +110,10 @@ export default function BilanScreen() {
   const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
   const [salient, setSalient] = useState<SalientFact | null>(null);
   const [insights, setInsights] = useState<SessionInsights | null>(null);
+
+  useEffect(() => {
+    OxvEvent.bilanOuvert(); // KPI bilan_open_rate (§27)
+  }, []);
 
   useEffect(() => {
     if (!profile) {

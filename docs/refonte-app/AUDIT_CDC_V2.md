@@ -64,7 +64,7 @@ l'alpha** (P1/P2, cohérent backlog §19).
 
 | Item | Existe déjà | Manque | Effort | Schéma |
 |---|---|---|---|---|
-| **Instrumentation KPI §27** | `analyticsService.trackEvent` (Plausible, RGPD, opt-out) appelé **1 seule fois** (`app_ouverte`) | Aucun des 10 KPI instrumenté → objectifs alpha (>70% activation, >85% capture, >80% bilan) **non mesurables** | M | non |
+| **Instrumentation KPI §27** — **FAIT (PR-C)** | `OxvEvent` catalogue + 6 events câblés (`onboarding_termine`, `capture_reussie/echouee`, `bilan_ouvert`, `datalab_couche_ouverte`, `coach_consentement_donne`, `coach_note_envoyee`) | Reste : config `EXPO_PUBLIC_PLAUSIBLE_DOMAIN` (sinon no-op) ; `data_anomaly_rate`/`partner_lead_rate` attendent leurs tables | — | non |
 | **Audit changement de rôle** *(remonté de `later`, critique)* | trigger `coach_audit_log` existe (modèle réutilisable) | `promoteToCoach/demoteToPilot` mutent `users.role` **sans écrire dans `admin_audit`** (`coachAdminService.ts` L281, « à câbler V1.1 ») → §10.1 cas 4 non garanti | **S** | oui (trigger) |
 | **Admin Qualité Data** | admin OK sur 3 axes (preparation/en-cours/analytique) | Écran `qualite-data`, `adminQualityService`, table `data_quality_reports` **absents** ; pas de détection d'anomalie ni notif admin ; KPI `data_anomaly_rate` non mesurable (§30.7) | M | **oui** |
 | **Tables `devices` + `device_assignments`** | affectation implicite (texte libre « OXV-A47 prêt ») | Tables **absentes** ; `telemetry_sessions` sans `source_device_id` → bloque Admin Équipements, check-in Operations, bloc Équipement du Pass OXV | M | **oui** |

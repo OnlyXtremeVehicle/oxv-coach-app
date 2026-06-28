@@ -9,6 +9,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { OxvEvent } from '@/services/analyticsEvents';
 
 export type AnnotationVisibility = 'private' | 'shared';
 
@@ -152,6 +153,7 @@ export async function createAnnotation(
     console.warn('[OXV][annotations] create :', error?.message ?? 'no data');
     return null;
   }
+  OxvEvent.coachNoteEnvoyee(); // KPI coach_note_delivery (§27)
   return mapRow(data as unknown as RawRow);
 }
 

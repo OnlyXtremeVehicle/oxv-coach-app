@@ -12,6 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 
 import { dataLabScreens } from '@/lib/appMap';
+import { OxvEvent } from '@/services/analyticsEvents';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -52,11 +53,12 @@ export default function DataLabScreen() {
             return (
               <Card
                 key={screen}
-                onPress={() =>
+                onPress={() => {
+                  OxvEvent.datalabCoucheOuverte(screen);
                   router.push(
                     (sid ? `/(app)/${screen}?sessionId=${sid}` : `/(app)/${screen}`) as never
-                  )
-                }
+                  );
+                }}
                 accessibilityLabel={`${meta.label}. ${meta.hint}`}
               >
                 <Text style={s.cardTitle}>{meta.label}</Text>

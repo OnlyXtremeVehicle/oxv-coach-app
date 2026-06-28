@@ -14,6 +14,7 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import { OxvEvent } from '@/services/analyticsEvents';
 
 /** Niveau de lecture accordé par le pilote (§6/§23), du plus restreint au plus ouvert. */
 export type CoachAccessLevel = 'lecture_simple' | 'lecture_detaillee' | 'programme';
@@ -141,6 +142,7 @@ export async function giveConsent(
       });
   }
 
+  OxvEvent.coachConsentementDonne(level); // KPI coach_share_rate (§27)
   return { ok: true };
 }
 

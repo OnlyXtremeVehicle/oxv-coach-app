@@ -36,6 +36,7 @@ import { analyzeTrackVizSession } from '@/trackviz/analysis';
 import type { TrackVizRecordingSample } from '@/trackviz/types';
 import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
+import { OxvEvent } from './analyticsEvents';
 import { computeMargin } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
 import { generateDebrief } from './debriefGenerator';
@@ -250,8 +251,14 @@ export async function analyzeAndPersistSession(
     }
   }
 
+  const ok = segmentsPersisted > 0 || marginGlobal !== null;
+  // KPI session_capture_success (§27) — `source` est catégoriel (none/ubx_local/
+  // telemetry_frames), aucune donnée personnelle.
+  if (ok) OxvEvent.captureReussie({ source, segments: segmentsPersisted });
+  else OxvEvent.captureEchouee(source);
+
   return {
-    ok: segmentsPersisted > 0 || marginGlobal !== null,
+    ok,
     source,
     sampleCount: samples.length,
     segmentsPersisted,
