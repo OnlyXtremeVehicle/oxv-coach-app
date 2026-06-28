@@ -134,10 +134,11 @@ export default function HomeHubScreen() {
       {/* En-tête racine : insigne de marque + accès réglages (maquette : logo + ⚙). */}
       <View style={s.top}>
         <Logo size={26} />
-        <Link href="/(app)/settings" asChild>
+        {/* Cast : route (app)/compte net-neuve, les typed routes Expo se régénèrent au build. */}
+        <Link href={'/(app)/compte' as never} asChild>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Réglages"
+            accessibilityLabel="Compte"
             hitSlop={theme.hitSlop}
             style={s.gear}
           >
