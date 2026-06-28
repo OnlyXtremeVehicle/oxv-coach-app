@@ -42,7 +42,12 @@ import {
   updateMaxima,
 } from './captureFrameMapping';
 
-/** Ligne d'arrivée Beltoise (Circuit de Haute Saintonge) — défaut Valence. */
+/**
+ * Repli de DERNIER recours si l'appelant ne fournit pas la ligne d'arrivée du
+ * circuit. Ces coordonnées ne correspondent à aucun circuit réel : si on retombe
+ * dessus, les tours ne seront PAS comptés. Le flux normal passe `input.finishLine`
+ * (cf. `placement.tsx` + `captureFinishLineFor`).
+ */
 export const BELTOISE_FINISH = { lat: 45.6004, lon: -0.141, radiusM: 40 };
 
 const FLUSH_EVERY_FRAMES = 50;
@@ -149,6 +154,12 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   const sessionId = (data as { id: string }).id;
   const startMs = Date.now();
   const finish = input.finishLine ?? BELTOISE_FINISH;
+  if (!input.finishLine) {
+    console.warn(
+      "[OXV] startCaptureSession sans ligne d'arrivée du circuit — repli par défaut ; " +
+        'les tours risquent de ne pas être détectés. Passer circuit.finishLine.'
+    );
+  }
 
   const state: CaptureState = {
     sessionId,

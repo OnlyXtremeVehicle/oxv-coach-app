@@ -21,6 +21,7 @@ import { router } from 'expo-router';
 
 import { success as hapticSuccess } from '@/lib/haptics';
 import { startCaptureSession } from '@/services/captureSessionService';
+import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
 import { fetchCircuits, getDefaultCircuit, type Circuit } from '@/services/circuitsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
@@ -68,10 +69,15 @@ export default function PlacementScreen() {
     // sur le circuit par défaut si la sélection n'a pas encore chargé.
     const circuit = selected ?? (await getDefaultCircuit());
     // Démarre l'enregistrement réel (création session + écriture des trames).
+    // On passe la ligne d'arrivée DU CIRCUIT CHOISI → sinon la détection de tours
+    // retombe sur un défaut codé en dur (aucun tour compté sur Haute Saintonge /
+    // Charente). `captureFinishLineFor` renvoie undefined si la ligne n'est pas
+    // renseignée (jamais une fausse ligne).
     const res = await startCaptureSession({
       userId: profile.id,
       circuitId: circuit?.id ?? null,
       circuitName: circuit?.name ?? null,
+      finishLine: captureFinishLineFor(circuit),
     });
     if (res.ok) {
       hapticSuccess();
