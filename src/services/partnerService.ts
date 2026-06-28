@@ -136,3 +136,45 @@ export async function listMyLeads(partnerId: string): Promise<PartnerLead[]> {
     };
   });
 }
+
+export interface UpsertOfferInput {
+  id: string | null;
+  partnerId: string;
+  title: string;
+  description: string | null;
+  priceEur: number | null;
+  quota: number | null;
+  status: OfferStatus;
+}
+
+/** Crée (id null) ou met à jour une offre du partenaire. RLS : owns_partner_account. */
+export async function upsertOffer(
+  input: UpsertOfferInput
+): Promise<{ ok: boolean; error?: string }> {
+  const row = {
+    partner_id: input.partnerId,
+    title: input.title,
+    description: input.description,
+    price_eur: input.priceEur,
+    quota: input.quota,
+    status: input.status,
+  };
+  const { error } = input.id
+    ? await supabase.from('partner_offers').update(row).eq('id', input.id)
+    : await supabase.from('partner_offers').insert(row);
+  if (error) {
+    console.warn('[OXV][partner] upsertOffer :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Supprime une offre du partenaire. RLS : owns_partner_account ou admin. */
+export async function deleteOffer(id: string): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase.from('partner_offers').delete().eq('id', id);
+  if (error) {
+    console.warn('[OXV][partner] deleteOffer :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}

@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { EmptyState } from '@/components/instruments/EmptyState';
@@ -106,7 +107,16 @@ export default function PartnerHubScreen() {
               </Card>
             ) : null}
 
-            {/* Offres (F2) et leads (F4) arrivent dans les prochaines tranches. */}
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
+              <Card
+                onPress={() => router.push('/(partner)/offres' as never)}
+                accessibilityLabel="Mes offres. Créer et publier vos offres."
+              >
+                <Text style={s.cardTitle}>Mes offres</Text>
+                <Text style={s.cardHint}>Créer et publier vos offres.</Text>
+              </Card>
+            </View>
+            {/* Suivi des leads (F4) à venir. */}
           </>
         ) : (
           <View style={{ marginTop: theme.spacing.xl }}>
@@ -159,6 +169,17 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
+  },
+  cardTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  cardHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
   },
   minorLink: {
     fontFamily: theme.fonts.mono,
