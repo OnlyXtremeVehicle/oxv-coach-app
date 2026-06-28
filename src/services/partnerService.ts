@@ -178,3 +178,121 @@ export async function deleteOffer(id: string): Promise<{ ok: boolean; error?: st
   }
   return { ok: true };
 }
+
+// ============================================================================
+// Côté pilote — découverte des partenaires validés + demande de contact (F3)
+// ============================================================================
+
+export interface MarketplacePartner {
+  id: string;
+  displayName: string;
+  type: string;
+  description: string | null;
+  logoUrl: string | null;
+  offers: PartnerOffer[];
+}
+
+/** Partenaires VALIDÉS et leurs offres PUBLIÉES (vue pilote, via RLS). */
+export async function listMarketplace(): Promise<MarketplacePartner[]> {
+  const [accRes, offRes] = await Promise.all([
+    supabase
+      .from('partner_accounts')
+      .select('id, display_name, type, description, logo_url')
+      .eq('status', 'validated')
+      .order('display_name', { ascending: true }),
+    supabase
+      .from('partner_offers')
+      .select('id, partner_id, title, description, price_eur, quota, status')
+      .eq('status', 'published'),
+  ]);
+  if (accRes.error) console.warn('[OXV][partner] listMarketplace accounts :', accRes.error.message);
+  if (offRes.error) console.warn('[OXV][partner] listMarketplace offers :', offRes.error.message);
+
+  const offersByPartner = new Map<string, PartnerOffer[]>();
+  for (const o0 of offRes.data ?? []) {
+    const o = o0 as Record<string, unknown>;
+    const offer: PartnerOffer = {
+      id: o.id as string,
+      partnerId: o.partner_id as string,
+      title: o.title as string,
+      description: (o.description as string | null) ?? null,
+      priceEur: (o.price_eur as number | null) ?? null,
+      quota: (o.quota as number | null) ?? null,
+      status: o.status as OfferStatus,
+    };
+    const arr = offersByPartner.get(offer.partnerId) ?? [];
+    arr.push(offer);
+    offersByPartner.set(offer.partnerId, arr);
+  }
+
+  return (accRes.data ?? []).map((a0) => {
+    const a = a0 as Record<string, unknown>;
+    const id = a.id as string;
+    return {
+      id,
+      displayName: a.display_name as string,
+      type: a.type as string,
+      description: (a.description as string | null) ?? null,
+      logoUrl: (a.logo_url as string | null) ?? null,
+      offers: offersByPartner.get(id) ?? [],
+    };
+  });
+}
+
+/** Leads du pilote courant (pour savoir s'il a déjà demandé un contact). */
+export async function listMyPilotLeads(): Promise<PartnerLead[]> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return [];
+  const { data, error } = await supabase
+    .from('partner_leads')
+    .select(
+      'id, partner_id, pilot_id, offer_id, consent_contact, consent_at, channel, status, notes, created_at'
+    )
+    .eq('pilot_id', uid);
+  if (error) {
+    console.warn('[OXV][partner] listMyPilotLeads :', error.message);
+    return [];
+  }
+  return (data ?? []).map((r0) => {
+    const r = r0 as Record<string, unknown>;
+    return {
+      id: r.id as string,
+      partnerId: r.partner_id as string,
+      pilotId: r.pilot_id as string,
+      offerId: (r.offer_id as string | null) ?? null,
+      consentContact: Boolean(r.consent_contact),
+      consentAt: r.consent_at as string,
+      channel: r.channel as string,
+      status: r.status as LeadStatus,
+      notes: (r.notes as string | null) ?? null,
+      createdAt: r.created_at as string,
+    };
+  });
+}
+
+/**
+ * Le pilote demande à être contacté par un partenaire — lead CONSENTI (§8.1).
+ * `consent_contact = true` est exigé par la RLS ; `consent_at` est horodaté par
+ * défaut. À n'appeler qu'après un consentement EXPLICITE du pilote (confirmation).
+ */
+export async function requestPartnerContact(input: {
+  partnerId: string;
+  offerId?: string | null;
+}): Promise<{ ok: boolean; error?: string }> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Non connecté.' };
+  const { error } = await supabase.from('partner_leads').insert({
+    partner_id: input.partnerId,
+    pilot_id: uid,
+    offer_id: input.offerId ?? null,
+    consent_contact: true,
+    channel: 'app_oxv',
+  });
+  if (error) {
+    console.warn('[OXV][partner] requestPartnerContact :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}

@@ -84,6 +84,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   social: 'club',
   'social-carte': 'club',
   'carte-oxv': 'club',
+  partenaires: 'club',
   lieux: 'club',
   'cote-a-cote': 'club',
   'belle-route': 'club',

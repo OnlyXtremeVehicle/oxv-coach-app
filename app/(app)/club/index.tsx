@@ -29,6 +29,11 @@ const LINKS: { label: string; hint: string; href: string }[] = [
   { label: 'Découvrir un coach', hint: 'Les coachs OXV', href: '/(app)/coachs' },
   { label: 'Mes demandes', hint: 'Vos demandes de séance', href: '/(app)/mes-demandes' },
   { label: 'La carte OXV', hint: 'Lieux, partenaires et événements', href: '/(app)/carte-oxv' },
+  {
+    label: 'Partenaires',
+    hint: 'Offres et services autour de vos sorties',
+    href: '/(app)/partenaires',
+  },
   { label: 'Communauté', hint: 'Vos comparaisons consenties', href: '/(app)/amis' },
   { label: 'Belles routes', hint: 'Balades et points de vue', href: '/(app)/belle-route' },
 ];
