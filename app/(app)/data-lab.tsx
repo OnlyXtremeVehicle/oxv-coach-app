@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
 
+import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTransparency';
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
 import { type DataLabSessionView, getDataLabSessionView } from '@/services/dataLabService';
@@ -92,6 +93,24 @@ export default function DataLabScreen() {
               </Card>
             );
           })}
+        </View>
+
+        {/* Transparence (charte 11 §T1/T5, obligatoire) : source/méthode + limites,
+            pour cadrer toute la lecture détaillée comme descriptive, jamais un verdict. */}
+        <View style={{ marginTop: theme.spacing.xxl }}>
+          <SourceMethodBlock
+            items={[
+              'Chaque couche est calculée à partir des trames de votre boîtier — votre séance, rien d’autre.',
+              'Les virages et les tours sont des estimations dérivées du tracé, pas une vérité du circuit.',
+            ]}
+          />
+          <BlindspotsBlock
+            items={[
+              'L’app montre ce qui s’est passé. Elle ne dit jamais ce qu’il fallait faire.',
+              'Elle ignore vos intentions, la trajectoire que vous visiez, votre ressenti.',
+              'Aucune couche n’est une note ni un classement.',
+            ]}
+          />
         </View>
       </View>
     </Screen>

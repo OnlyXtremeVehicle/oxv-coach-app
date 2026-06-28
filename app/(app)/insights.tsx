@@ -29,6 +29,7 @@ import {
   type InsightTier,
 } from '@/components/insights/catalogue';
 import { Sparkline } from '@/components/insights/sparklines';
+import { BlindspotsBlock } from '@/components/InsightTransparency';
 import { FadeInSection } from '@/components/motion';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -75,6 +76,18 @@ export default function InsightsScreen() {
             ))}
           </FadeInSection>
         ))}
+
+        {/* Transparence T5 (charte 11, obligatoire) : « Ce que l'app ne dira jamais »
+            — les limites explicites, avant le pied doctrinal. */}
+        <FadeInSection delay={300}>
+          <BlindspotsBlock
+            items={[
+              'Ces lectures décrivent vos données. Elles ne vous disent pas quoi faire.',
+              'L’app ignore vos intentions et la trajectoire que vous visiez.',
+              'Aucune lecture n’est une note, un score ni un classement.',
+            ]}
+          />
+        </FadeInSection>
 
         {/* Pied doctrinal — un miroir, pas un directeur. Rejoint la cascade
             (au lieu d'apparaître sec) en clôture, après les trois familles. */}

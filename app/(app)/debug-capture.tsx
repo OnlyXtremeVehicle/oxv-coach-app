@@ -14,7 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 
 import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import {
@@ -50,6 +50,12 @@ const BELTOISE_FINISH = {
 };
 
 export default function DebugCaptureScreen() {
+  // Écran de debug (BLE/capture) : inaccessible en production (deep-link inclus).
+  if (!__DEV__) return <Redirect href={'/(app)' as never} />;
+  return <DebugCaptureScreenInner />;
+}
+
+function DebugCaptureScreenInner() {
   const [bleStatus, setBleStatus] = useState<BleStatus>(bluetoothService.getStatus());
   const [devices, setDevices] = useState<RaceBoxDevice[]>([]);
   const [bleError, setBleError] = useState<string | null>(null);

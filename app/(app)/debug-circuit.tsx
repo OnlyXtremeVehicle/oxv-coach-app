@@ -9,6 +9,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
 
 import { CircuitTrace } from '@/circuit/CircuitTrace';
 import { generateCircuit } from '@/circuit/circuitGenerator';
@@ -19,6 +20,12 @@ import { theme } from '@/theme/v2';
 const { palette, fonts, fontSize, spacing } = theme;
 
 export default function DebugCircuitScreen() {
+  // Écran de debug : inaccessible en production (deep-link inclus).
+  if (!__DEV__) return <Redirect href={'/(app)' as never} />;
+  return <DebugCircuitScreenInner />;
+}
+
+function DebugCircuitScreenInner() {
   const circuit = useMemo(() => generateCircuit(HAUTE_SAINTONGE_POINTS), []);
 
   return (
