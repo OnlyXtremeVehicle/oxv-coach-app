@@ -1,4 +1,34 @@
-import { ROUTE_TO_ZONE, TAB_ORDER, dataLabScreens, shouldShowTabBar, zoneOfRoute } from '../appMap';
+import * as fs from 'fs';
+import * as path from 'path';
+
+import {
+  ROUTE_TO_ZONE,
+  TAB_MAIN_ROUTE,
+  TAB_ORDER,
+  dataLabScreens,
+  shouldShowTabBar,
+  zoneOfRoute,
+} from '../appMap';
+
+/** Segments de route RÉELS sous app/(app) (fichiers .tsx + dossiers), hors système. */
+function realRouteSegments(): string[] {
+  const dir = path.join(process.cwd(), 'app', '(app)');
+  const out = new Set<string>();
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const name = e.isDirectory() ? e.name : e.name.replace(/\.tsx$/, '');
+    if (!e.isDirectory() && !e.name.endsWith('.tsx')) continue;
+    if (name === '_layout' || name === '+not-found') continue;
+    if (name.startsWith('[') || name.startsWith('(')) continue;
+    if (name === 'index') continue; // l'index correspond à '' (paddock)
+    out.add(name);
+  }
+  return [...out];
+}
+
+// Routes volontairement HORS zones d'onglets : debug (gated __DEV__), médias de
+// session, vue de partage publique (deep-link). Documentées ici pour que le test
+// reste un garde-fou contre les VRAIES orphelines (ex. un nouvel écran oublié).
+const UNMAPPED_ALLOWLIST = new Set(['debug-capture', 'debug-circuit', 'session-media', 'share']);
 
 describe('appMap', () => {
   it('TAB_ORDER est exact et dans l’ordre verrouillé', () => {
@@ -48,5 +78,32 @@ describe('appMap', () => {
     expect(shouldShowTabBar('/equipement', 'S5_approche')).toBe(false);
     expect(shouldShowTabBar('/bilan', 'S8_atterrissage')).toBe(true);
     expect(shouldShowTabBar('/', 'S1_decouverte')).toBe(true);
+  });
+});
+
+describe('appMap — cohérence avec les routes réelles', () => {
+  const real = realRouteSegments();
+
+  it('chaque écran (app) est mappé à une zone (pas d’orpheline)', () => {
+    const orphans = real.filter((seg) => !(seg in ROUTE_TO_ZONE) && !UNMAPPED_ALLOWLIST.has(seg));
+    expect(orphans).toEqual([]);
+  });
+
+  it('aucune entrée appMap ne pointe vers une route inexistante', () => {
+    const realSet = new Set(real);
+    const dangling = Object.keys(ROUTE_TO_ZONE).filter(
+      (seg) => seg !== '' && seg !== 'index' && !realSet.has(seg)
+    );
+    expect(dangling).toEqual([]);
+  });
+
+  it('chaque onglet pointe vers une route racine existante', () => {
+    const realSet = new Set(real);
+    for (const [tab, route] of Object.entries(TAB_MAIN_ROUTE)) {
+      const seg = route.replace('/(app)', '').replace(/^\/+/, '');
+      // paddock = index ('/(app)' → ''), les autres ont un segment réel.
+      if (tab === 'paddock') expect(seg).toBe('');
+      else expect(realSet.has(seg)).toBe(true);
+    }
   });
 });

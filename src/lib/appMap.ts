@@ -91,8 +91,10 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   'mes-routes': 'club',
   'creer-trace': 'club',
   // Compte (icône, pas un onglet)
+  compte: 'compte',
   profil: 'compte',
   settings: 'compte',
+  support: 'compte',
   notifications: 'compte',
   'donnees-securite': 'compte',
   legal: 'compte',
