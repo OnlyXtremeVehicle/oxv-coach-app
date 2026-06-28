@@ -73,6 +73,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   objectifs: 'progression',
   carnet: 'progression',
   programme: 'progression',
+  passeport: 'progression',
   roulages: 'progression',
   // Club
   club: 'club',

@@ -45,6 +45,11 @@ const GRAN_OPTIONS: { id: Granularity; label: string }[] = [
 // et « Historique » n'étaient atteignables depuis aucun autre hub.
 const PROGRESSION_VIEWS: { label: string; hint: string; href: string }[] = [
   {
+    label: 'Passeport',
+    hint: 'Votre identité de pilote, cumulée',
+    href: '/(app)/passeport',
+  },
+  {
     label: 'Signature',
     hint: 'Ce qui rend votre pilotage reconnaissable',
     href: '/(app)/signature',

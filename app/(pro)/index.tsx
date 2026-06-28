@@ -21,6 +21,7 @@ import { Screen } from '@/ui/Screen';
 const TOOLS: { label: string; hint: string; href: string }[] = [
   { label: 'Mon bilan', hint: 'La lecture de votre dernière session', href: '/(app)/bilan' },
   { label: 'Data Lab', hint: 'Relire une session en profondeur', href: '/(app)/data-lab' },
+  { label: 'Mon passeport', hint: 'Votre identité de pilote, cumulée', href: '/(app)/passeport' },
   { label: 'Ma signature', hint: 'Votre empreinte de pilotage', href: '/(app)/signature' },
   { label: 'Ma progression', hint: 'Vos tendances dans le temps', href: '/(app)/progression' },
   { label: 'Mon garage', hint: 'Vos véhicules et leurs réglages', href: '/(app)/garage' },
