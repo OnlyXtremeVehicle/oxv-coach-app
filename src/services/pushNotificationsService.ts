@@ -9,9 +9,10 @@
  *     pilotes qui n'ouvriront pas l'app entre temps).
  *
  * Contraintes doctrinales :
- *   - **Silence en piste** : aucune notif programmée pendant un état
- *     S5-S8 (roulage). C'est l'appelant qui décide ; le service ne sait
- *     pas l'état pilote.
+ *   - **Silence en piste** (Principe 3) : en `S6_roulage`, le handler de
+ *     premier plan supprime toute notif (bannière + son + badge) en consultant
+ *     l'état pilote du store (`notificationBehaviorForState`). Les notifs
+ *     locales (debrief J+1, veille) visent par construction le hors-piste.
  *   - **Ton** : titre court + corps factuel, jamais directif.
  *   - **Opt-in** : si `users.push_notif_enabled = false`, aucune notif
  *     n'est programmée. Le pilote peut couper depuis #24 Settings.
@@ -26,17 +27,19 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 
 import { supabase } from '@/lib/supabase';
-import { type NotifChannel, readNotifPref } from '@/services/notifPreferencesLogic';
+import {
+  type NotifChannel,
+  notificationBehaviorForState,
+  readNotifPref,
+} from '@/services/notifPreferencesLogic';
+import { useAppStateStore } from '@/store/useAppStateStore';
 
 // Configuration globale du handler — comment réagir quand une notif arrive
-// alors que l'app est au premier plan. V1 : on AFFICHE la bannière, mais
-// sans son (doctrine sobriété).
+// alors que l'app est au premier plan. Hors piste : bannière sans son (sobriété).
+// **En piste (`S6_roulage`) : silence total** (Principe 3) — on consulte l'état
+// pilote du store (lecture impérative `getState`, le handler n'est pas un hook).
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async () => notificationBehaviorForState(useAppStateStore.getState().state),
 });
 
 const DEBRIEF_CHANNEL_ID = 'debrief';

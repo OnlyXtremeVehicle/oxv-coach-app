@@ -12,7 +12,32 @@
  * Pur (sans React Native ni Supabase) → testable sous ts-jest.
  */
 
+import type { PilotState } from '@/types/state';
+
 export type NotifChannel = 'debrief' | 'reminder';
+
+/** Comportement d'affichage d'une notif reçue au premier plan. */
+export interface NotifForegroundBehavior {
+  shouldShowAlert: boolean;
+  shouldPlaySound: boolean;
+  shouldSetBadge: boolean;
+}
+
+/**
+ * Principe 3 — **silence en piste**. Pendant le roulage (`S6_roulage`, véhicule
+ * en mouvement), une notification reçue au premier plan ne s'affiche pas, ne
+ * joue aucun son et ne pose aucun badge — y compris un push distant (coach,
+ * ami). Hors roulage : bannière sans son (sobriété). C'est le garde-fou que le
+ * handler ne tenait pas (il affichait tout, sans consulter l'état pilote).
+ */
+export function notificationBehaviorForState(state: PilotState): NotifForegroundBehavior {
+  const driving = state === 'S6_roulage';
+  return {
+    shouldShowAlert: !driving,
+    shouldPlaySound: false,
+    shouldSetBadge: !driving,
+  };
+}
 
 /** Lit l'état d'un canal depuis le JSONB brut. Absent/non-bool → actif (défaut-ON). */
 export function readNotifPref(raw: unknown, channel: NotifChannel): boolean {

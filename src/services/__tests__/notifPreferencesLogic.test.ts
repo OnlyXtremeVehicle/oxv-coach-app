@@ -1,4 +1,8 @@
-import { readNotifPref, writeNotifPref } from '../notifPreferencesLogic';
+import {
+  notificationBehaviorForState,
+  readNotifPref,
+  writeNotifPref,
+} from '../notifPreferencesLogic';
 
 describe('notifPreferencesLogic (D5)', () => {
   describe('readNotifPref — défaut-ON', () => {
@@ -16,6 +20,24 @@ describe('notifPreferencesLogic (D5)', () => {
     it('renvoie true pour les autres valeurs (true, non-bool)', () => {
       expect(readNotifPref({ debrief: true }, 'debrief')).toBe(true);
       expect(readNotifPref({ debrief: 'x' }, 'debrief')).toBe(true);
+    });
+  });
+
+  describe('notificationBehaviorForState — silence en piste (Principe 3)', () => {
+    it('supprime tout affichage pendant le roulage (S6_roulage)', () => {
+      const b = notificationBehaviorForState('S6_roulage');
+      expect(b.shouldShowAlert).toBe(false);
+      expect(b.shouldPlaySound).toBe(false);
+      expect(b.shouldSetBadge).toBe(false);
+    });
+
+    it('affiche la bannière (sans son) hors roulage', () => {
+      for (const state of ['S5_approche', 'S7_paddock', 'S8_atterrissage'] as const) {
+        const b = notificationBehaviorForState(state);
+        expect(b.shouldShowAlert).toBe(true);
+        expect(b.shouldSetBadge).toBe(true);
+        expect(b.shouldPlaySound).toBe(false); // sobriété : jamais de son
+      }
     });
   });
 
