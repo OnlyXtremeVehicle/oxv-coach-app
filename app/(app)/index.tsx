@@ -3,18 +3,13 @@
  *
  *   mode "enroute"   (S5)  — silence en piste : « Coupez l'app. Je conduis. »
  *   mode "countdown" (S4)  — prochaine session
- *   mode "passive"   (autres) — greeting + dernier bilan (porte d'entrée du débrief)
- *                              + 4 accès en grille + « Tout le paddock » replié
+ *   mode "passive"   (autres) — greeting + dernier bilan + 1 action principale
+ *                              contextuelle + 2 raccourcis (PR 2). La liste
+ *                              « Tout le paddock » a été retirée (PR migration) :
+ *                              la nav vit dans les 5 zones + le hub Compte (icône).
  *
- * Refonte STRICTEMENT visuelle : grammaire de maquette_accueil_refondu.html
- * (eyebrow mono faint, un chiffre dominant en mono, cartes à filet, grille
- * d'accès hiérarchisée). Logique inchangée : data, modes, SpaceSwitcher,
- * déconnexion. Aucune destination de navigation retirée — le reste de l'ancien
- * hub est replié derrière « Tout le paddock ».
- *
- * Chiffre héros = régularité au tour (écart-type, fait factuel) plutôt que la
- * marge globale (score jugeant), conformément à la maquette. Réutilise les
- * services existants computeRegularity + fetchSessionLaps (cf. regularite.tsx).
+ * Chiffre héros = régularité au tour (écart-type, fait factuel), pas la marge
+ * globale (réservée au Bilan). Réutilise computeRegularity + fetchSessionLaps.
  */
 
 import { useEffect, useState } from 'react';
@@ -49,25 +44,6 @@ interface RecentSession {
 const SHORTCUTS = [
   { label: 'Ma progression', href: '/(app)/progression' },
   { label: 'Mon coach', href: '/(app)/mon-coach' },
-] as const;
-
-// TRANSITIONNEL — « Tout le paddock » : filet de sécurité tant que les hubs de
-// zone (PR 6) ne couvrent pas toutes ces destinations. À retirer dans la PR de
-// migration (cf. 10_PLAN_MIGRATION) une fois la nav complète dans les zones.
-const SECONDARY = [
-  { label: 'Mon profil', hint: 'Niveau, véhicule, réseaux', href: '/(app)/profil' },
-  { label: 'Mon bilan', hint: 'Votre dernière analyse', href: '/(app)/bilan' },
-  { label: 'Débrief présentiel', hint: 'La séance, en détail', href: '/(app)/debrief-presentiel' },
-  { label: 'Mes objectifs', hint: 'Vos repères personnels', href: '/(app)/objectifs' },
-  { label: 'Mon équipement', hint: 'Connecter le boîtier', href: '/(app)/equipement' },
-  { label: 'La carte OXV', hint: 'Circuits, lieux et événements', href: '/(app)/carte-oxv' },
-  { label: 'Lieux & partenaires', hint: 'Autour des circuits', href: '/(app)/lieux' },
-  { label: 'Trouver un coach', hint: 'Les coachs OXV', href: '/(app)/coachs' },
-  { label: 'Mes demandes', hint: 'Vos demandes de séance', href: '/(app)/mes-demandes' },
-  { label: 'Belle route', hint: 'Balade & points de vue', href: '/(app)/belle-route' },
-  { label: 'Mes belles routes', hint: 'Vos routes enregistrées', href: '/(app)/mes-routes' },
-  { label: 'Notifications', hint: 'À traiter, à découvrir', href: '/(app)/notifications' },
-  { label: 'Réglages', hint: 'Compte, notifications, données', href: '/(app)/settings' },
 ] as const;
 
 export default function HomeHubScreen() {
@@ -232,7 +208,6 @@ function ModePassive({
   regularity: { stdDevSeconds: number; lapCount: number } | null;
   loading: boolean;
 }) {
-  const [showAll, setShowAll] = useState(false);
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
 
   return (
@@ -316,52 +291,7 @@ function ModePassive({
           ))}
         </View>
       </FadeInSection>
-
-      {/* Tout le paddock — le reste de la navigation, replié. */}
-      <FadeInSection delay={180}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showAll }}
-          onPress={() => setShowAll((v) => !v)}
-          style={({ pressed }) => [s.more, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text style={s.moreText}>{showAll ? 'Replier' : 'Tout le paddock'}</Text>
-          <Text style={s.moreText}>{showAll ? '⌃' : '›'}</Text>
-        </Pressable>
-      </FadeInSection>
-
-      {showAll ? (
-        <View style={{ marginTop: spacing.sm }}>
-          {SECONDARY.map((item) => (
-            <NavRow key={item.href} label={item.label} hint={item.hint} href={item.href} />
-          ))}
-          {__DEV__ ? (
-            <NavRow
-              label="Aperçu du tracé 3D"
-              hint="Démonstration — Haute Saintonge"
-              href="/(app)/debug-circuit"
-            />
-          ) : null}
-        </View>
-      ) : null}
     </View>
-  );
-}
-
-function NavRow({ label, hint, href }: { label: string; hint: string; href: string }) {
-  return (
-    <Link href={href as never} asChild>
-      <Pressable
-        accessibilityRole="button"
-        style={({ pressed }) => [s.row, { opacity: pressed ? 0.85 : 1 }]}
-      >
-        <View style={{ flex: 1, paddingRight: spacing.md }}>
-          <Text style={s.rowLabel}>{label}</Text>
-          <Text style={s.rowHint}>{hint}</Text>
-        </View>
-        <Text style={s.rowChevron}>›</Text>
-      </Pressable>
-    </Link>
   );
 }
 
@@ -489,49 +419,6 @@ const s = StyleSheet.create({
     textTransform: 'uppercase',
     color: palette.creamMute,
   },
-
-  more: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    padding: spacing.md,
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: radius.lg,
-  },
-  moreText: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: palette.creamMute,
-  },
-
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: palette.card,
-    borderColor: palette.line,
-    borderWidth: 1,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    marginTop: spacing.sm,
-  },
-  rowLabel: { fontFamily: fonts.display, fontSize: 14.5, color: palette.cream },
-  rowHint: {
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: palette.creamMute,
-    marginTop: 3,
-  },
-  rowChevron: { color: palette.creamMute, fontSize: 18 },
 
   // Modes de flux (S5 silence en piste / S4 prochaine session)
   modeWrap: { marginTop: spacing.xxl * 2 },
