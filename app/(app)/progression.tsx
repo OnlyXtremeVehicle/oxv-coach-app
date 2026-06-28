@@ -24,6 +24,7 @@ import { fetchAllSessions } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { Segmented } from '@/ui/Segmented';
 import { formatLapTime } from '@/utils/format';
@@ -37,6 +38,19 @@ const GRAN_OPTIONS: { id: Granularity; label: string }[] = [
   { id: 'week', label: 'Semaine' },
   { id: 'month', label: 'Mois' },
   { id: 'all', label: 'Tout' },
+];
+
+// Sous-vues de la zone Progression (PR 5) — accès depuis le hub. « Comparateur »
+// et « Historique » n'étaient atteignables depuis aucun autre hub.
+const PROGRESSION_VIEWS: { label: string; hint: string; href: string }[] = [
+  {
+    label: 'Signature',
+    hint: 'Ce qui rend votre pilotage reconnaissable',
+    href: '/(app)/signature',
+  },
+  { label: 'Constance', hint: 'Votre régularité, tour après tour', href: '/(app)/regularite' },
+  { label: 'Comparateur', hint: 'Vous contre vous, jamais les autres', href: '/(app)/comparateur' },
+  { label: 'Historique', hint: 'Toutes vos séances', href: '/(app)/roulages' },
 ];
 
 /** Un point factuel : le meilleur tour d'une séance. */
@@ -162,6 +176,23 @@ export default function ProgressionScreen() {
             <StatsGrid stats={stats} />
           </>
         )}
+
+        {/* Vos lectures — sous-vues de la zone Progression (PR 5). */}
+        <Text style={[s.eyebrow, { marginTop: spacing.xxl, marginBottom: spacing.md }]}>
+          VOS LECTURES
+        </Text>
+        <View style={{ gap: spacing.sm }}>
+          {PROGRESSION_VIEWS.map((v) => (
+            <Card
+              key={v.href}
+              onPress={() => router.push(v.href as never)}
+              accessibilityLabel={`${v.label}. ${v.hint}`}
+            >
+              <Text style={s.navLabel}>{v.label}</Text>
+              <Text style={s.navHint}>{v.hint}</Text>
+            </Card>
+          ))}
+        </View>
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
           <Pressable
@@ -405,6 +436,17 @@ const s = {
     color: palette.cream,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
+  },
+  navLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+  },
+  navHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
   },
   chartPanel: {
     backgroundColor: palette.card2,
