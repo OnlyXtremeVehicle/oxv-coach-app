@@ -23,6 +23,7 @@ const TOOLS: { label: string; hint: string; href: string }[] = [
   { label: 'Data Lab', hint: 'Relire une session en profondeur', href: '/(app)/data-lab' },
   { label: 'Ma signature', hint: 'Votre empreinte de pilotage', href: '/(app)/signature' },
   { label: 'Ma progression', hint: 'Vos tendances dans le temps', href: '/(app)/progression' },
+  { label: 'Mon garage', hint: 'Vos véhicules et leurs réglages', href: '/(app)/garage' },
 ];
 
 export default function ProPilotHubScreen() {
@@ -58,7 +59,7 @@ export default function ProPilotHubScreen() {
 
         <Card style={{ marginTop: theme.spacing.xl }}>
           <Text style={s.note}>
-            Garage enrichi, jumeau numérique et exports avancés arrivent dans votre espace pro.
+            Jumeau numérique et exports avancés arrivent dans votre espace pro.
           </Text>
         </Card>
 

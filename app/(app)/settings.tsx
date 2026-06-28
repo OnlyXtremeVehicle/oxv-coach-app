@@ -219,6 +219,11 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/pass-oxv' as never)}
           />
           <SettingRow
+            label="Garage"
+            hint="Ouvrir"
+            onPress={() => router.push('/(app)/garage' as never)}
+          />
+          <SettingRow
             label="Aide & support"
             hint="Ouvrir"
             onPress={() => router.push('/(app)/support' as never)}

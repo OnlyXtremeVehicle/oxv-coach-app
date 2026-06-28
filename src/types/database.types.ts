@@ -5520,6 +5520,73 @@ export type Database = {
           },
         ]
       }
+      vehicle_setups: {
+        Row: {
+          brakes: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pressure_front_end: number | null
+          pressure_front_start: number | null
+          pressure_rear_end: number | null
+          pressure_rear_start: number | null
+          recorded_at: string
+          session_id: string | null
+          tires: string | null
+          vehicle_id: string
+        }
+        Insert: {
+          brakes?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pressure_front_end?: number | null
+          pressure_front_start?: number | null
+          pressure_rear_end?: number | null
+          pressure_rear_start?: number | null
+          recorded_at?: string
+          session_id?: string | null
+          tires?: string | null
+          vehicle_id: string
+        }
+        Update: {
+          brakes?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pressure_front_end?: number | null
+          pressure_front_start?: number | null
+          pressure_rear_end?: number | null
+          pressure_rear_start?: number | null
+          recorded_at?: string
+          session_id?: string | null
+          tires?: string | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicle_setups_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "day_rollups"
+            referencedColumns: ["best_session_id"]
+          },
+          {
+            foreignKeyName: "vehicle_setups_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicle_setups_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vehicles: {
         Row: {
           brand: string
