@@ -49,6 +49,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Topologie du circuit, virages, heatmap historique des marges.',
   },
   {
+    href: '/(admin)/utilisateurs',
+    label: 'Utilisateurs',
+    description: 'Annuaire, rôle (audité), suspension, consentements.',
+  },
+  {
     href: '/(admin)/coachs',
     label: 'Coachs',
     description: 'Assignations coach ↔ pilote, gestion des consentements.',
