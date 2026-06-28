@@ -39,6 +39,8 @@ import { OxvEvent } from '@/services/analyticsEvents';
 import { computeDataConfidence } from '@/services/dataConfidenceLogic';
 import { type DemoBanner, demoBannerForEventType } from '@/services/eventContextLogic';
 import { getEventLite } from '@/services/eventsService';
+import { type KeyMoment, computeKeyMoments } from '@/services/keyMomentsLogic';
+import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import { getCorner } from '@/lib/circuitTopology';
 import { buildContextRows } from '@/services/coachContextLogic';
@@ -114,6 +116,7 @@ export default function BilanScreen() {
   const [salient, setSalient] = useState<SalientFact | null>(null);
   const [insights, setInsights] = useState<SessionInsights | null>(null);
   const [demoBanner, setDemoBanner] = useState<DemoBanner | null>(null);
+  const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
 
   useEffect(() => {
     OxvEvent.bilanOuvert(); // KPI bilan_open_rate (§27)
@@ -194,6 +197,39 @@ export default function BilanScreen() {
     fetchSessionInsights(session.id).then((row) => {
       if (!cancelled) setInsights(row);
     });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.id]);
+
+  // OXV Key Moments (T-3) — moments factuels saillants (tour de référence,
+  // passage le plus engagé, plus grand écart), dérivés des tours + segments.
+  useEffect(() => {
+    if (!session?.id) return;
+    const sessionId = session.id;
+    let cancelled = false;
+    (async () => {
+      const [laps, segments] = await Promise.all([
+        fetchSessionLaps(sessionId),
+        listSegmentAnalysesForSession(sessionId),
+      ]);
+      if (cancelled) return;
+      setKeyMoments(
+        computeKeyMoments({
+          laps: laps.map((l) => ({
+            lapNumber: l.lap_number,
+            durationSeconds: l.duration_seconds,
+            isOutlap: l.is_outlap,
+            isInlap: l.is_inlap,
+          })),
+          segments: segments.map((sg) => ({
+            segmentIndex: sg.segmentIndex,
+            segmentName: sg.segmentName,
+            maxGLateral: sg.maxGLateral,
+          })),
+        })
+      );
+    })().catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -558,6 +594,21 @@ export default function BilanScreen() {
           );
         })}
 
+        {/* OXV Key Moments (T-3) — faits saillants de la séance, jamais des consignes. */}
+        {keyMoments.length > 0 ? (
+          <FadeInSection style={{ marginBottom: theme.spacing.xxl }}>
+            <Text style={s.sectionEyebrow}>MOMENTS DE LA SÉANCE</Text>
+            <View style={{ gap: theme.spacing.sm }}>
+              {keyMoments.map((m) => (
+                <Card key={m.key}>
+                  <Text style={s.kmTitle}>{m.title}</Text>
+                  <Text style={s.kmFact}>{m.fact}</Text>
+                </Card>
+              ))}
+            </View>
+          </FadeInSection>
+        ) : null}
+
         <Text style={s.sectionEyebrow}>TOUTES LES LECTURES</Text>
         <View style={{ gap: theme.spacing.sm }}>
           {NAV_TARGETS.map((target, i) => (
@@ -821,6 +872,18 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: 2,
+    lineHeight: theme.fontSize.small * 1.4,
+  },
+  kmTitle: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  kmFact: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
     lineHeight: theme.fontSize.small * 1.4,
   },
   heroNumber: {
