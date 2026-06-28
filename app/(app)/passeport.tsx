@@ -18,6 +18,7 @@ import { type Passport, loadPassport } from '@/services/passportService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -148,6 +149,15 @@ export default function PasseportScreen() {
                 ))}
               </View>
             ) : null}
+
+            {/* Carte de licence partageable (PR-65) — insigne factuel vers l'extérieur. */}
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <Button
+                label="Partager ma carte de licence"
+                variant="ghost"
+                onPress={() => router.push('/(app)/carte-licence' as never)}
+              />
+            </View>
 
             <Text style={s.doctrine}>Votre identité, telle que mesurée. Pas un rang.</Text>
           </>
