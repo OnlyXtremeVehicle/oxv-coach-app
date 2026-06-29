@@ -9,8 +9,8 @@
  * Fusion territoire (FAIT, décision Gabin 2026-06, cf.
  * `roadmap/rapports/pr-08-fusion-carte-oxv.md`) : « La carte OXV » (`carte-oxv`)
  * est l'écran UNIQUE du territoire (carte + liste, source `social_pings`).
- * `social`, `social-carte` et `lieux` sont désormais des coquilles `<Redirect>`
- * vers lui ; le modèle `places` est déprécié. `amis` reste distinct (amitiés).
+ * Les anciennes routes `social` / `social-carte` / `lieux` ont été SUPPRIMÉES
+ * (PR-86) ; le modèle `places` est déprécié. `amis` reste distinct (amitiés).
  */
 
 import { router } from 'expo-router';

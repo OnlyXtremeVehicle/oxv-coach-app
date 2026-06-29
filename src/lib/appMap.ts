@@ -86,14 +86,11 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   coach: 'club',
   'mes-demandes': 'club',
   amis: 'club',
-  // Territoire fusionné : `carte-oxv` est l'écran unique (carte + liste) ;
-  // `social` / `social-carte` / `lieux` sont des coquilles <Redirect> vers lui
-  // (zone 'club' conservée pour un surlignage correct sur deep-link/legacy).
-  social: 'club',
-  'social-carte': 'club',
+  // Territoire fusionné : `carte-oxv` est l'écran unique (carte + liste). Les
+  // anciennes coquilles `social` / `social-carte` / `lieux` ont été SUPPRIMÉES
+  // (PR-86, nettoyage E6 post-bascule — plus aucune navigation ne les vise).
   'carte-oxv': 'club',
   partenaires: 'club',
-  lieux: 'club',
   'cote-a-cote': 'club',
   'belle-route': 'club',
   'mes-routes': 'club',

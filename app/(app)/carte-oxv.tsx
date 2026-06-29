@@ -1,10 +1,10 @@
 /**
  * Écran « La carte OXV » — écran UNIQUE du territoire OXV (carte + liste).
  *
- * Fusion (décision Gabin 2026-06) : `social`, `social-carte` et `lieux` sont
- * désormais des coquilles `<Redirect>` vers cet écran ; le modèle `places`
- * (partners/lodgings/restaurants, tables vides) est déprécié au profit de
- * `social_pings`. Voir `roadmap/rapports/pr-08-fusion-carte-oxv.md`.
+ * Fusion (décision Gabin 2026-06) : les anciennes routes `social` /
+ * `social-carte` / `lieux` ont été SUPPRIMÉES (PR-86) au profit de cet écran ;
+ * le modèle `places` (partners/lodgings/restaurants, tables vides) est déprécié
+ * au profit de `social_pings`. Voir `roadmap/rapports/pr-08-fusion-carte-oxv.md`.
  *
  * Deux vues via un bascule sobre : « Carte » (MapView, marqueurs circuits +
  * points du territoire, panneau « marketing au clic ») et « Liste » (points
