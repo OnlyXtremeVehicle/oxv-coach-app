@@ -36,11 +36,10 @@ lectures approfondies. Conforme à la décision d'implémentation. **Rien à fai
 Le test devient rouge si une future migration ou un futur écran introduit l'un de
 ces artefacts → on refuse le merge plutôt que de laisser filer.
 
-> **À l'attention de Gabin** — les RPC `community_circuit_leaderboard` /
-> `community_model_observatory` sont des surfaces compétitives dormantes dans la
-> base. Décision à prendre : les **supprimer** (migration, recommandé si non
-> prévues) ou les **garder en quarantaine documentée**. Tant qu'elles existent, le
-> garde ci-dessus les surveille.
+> **Décision Gabin 2026-06-29 : SUPPRIMÉES.** Les RPC
+> `community_circuit_leaderboard` / `community_model_observatory` ont été
+> `DROP`-ées (migration `drop_competitive_rpcs`). Le garde a basculé : il vérifie
+> désormais qu'elles ne **réapparaissent** ni dans le schéma ni dans l'app (4/4).
 
 ## PR-49 — Rétention / purge des trames → VÉRIFIÉ ; 2 résiduels = décision Gabin
 
@@ -52,21 +51,16 @@ Présent :
 - **Politique interne** documentée (`docs/refonte-app/07_DATA_POLICY.md`) :
   rétention ~1 saison (fenêtre glissante 12 mois).
 
-Résiduels (NON faits ici, volontairement) :
-1. **Planification pg_cron absente.** La fonction n'est jamais appelée
-   automatiquement. **Je ne l'auto-planifie pas** : c'est un job **destructif
-   récurrent** (suppression de données pilote) — l'activation relève d'une décision
-   ops explicite de Gabin. Snippet prêt à appliquer (Dashboard → SQL) :
-
-   ```sql
-   select cron.schedule(
-     'cleanup-telemetry-frames', '30 3 * * *',
-     $$ select public.cleanup_old_telemetry_frames(); $$
-   );
-   ```
-2. **Copie publique de rétention.** La politique de confidentialité ne mentionne
-   pas explicitement la durée de conservation des trames brutes. Ajout = texte
-   **juridique** → validation Gabin requise (cf. CLAUDE.md).
+Résiduels — **tous résolus le 2026-06-29 (accord Gabin)** :
+1. **Planification pg_cron** → FAIT. Migration `schedule_telemetry_frames_purge` :
+   `cron.schedule('cleanup-telemetry-frames', '30 3 * * *', …)`. Vérifié : job
+   actif. La purge des trames > 12 mois tourne désormais quotidiennement.
+2. **Copie publique de rétention** → DÉJÀ EN PLACE (le « gap » signalé par l'agent
+   était une erreur de lecture). La politique de confidentialité §6 documente déjà :
+   « Données télémétriques brutes (trames du boîtier) — **12 mois (environ une
+   saison)** », analyses dérivées conservées pendant la vie du compte, suppression
+   définitive en fin de durée. **Parfaitement cohérent** avec le cron. Aucun texte
+   juridique à modifier.
 
 ## PR-65b — Empreinte de saison → BÂTI (finalement, plutôt que reporté)
 
