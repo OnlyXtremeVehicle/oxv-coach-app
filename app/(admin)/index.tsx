@@ -69,6 +69,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Kill-switch distant et version minimale de l’application.',
   },
   {
+    href: '/(admin)/feature-flags',
+    label: 'Feature flags',
+    description: 'Activer / désactiver des fonctionnalités, versions d’algos.',
+  },
+  {
     href: '/(admin)/circuit',
     label: 'Inspecteur circuit',
     description: 'Topologie du circuit, virages, heatmap historique des marges.',
