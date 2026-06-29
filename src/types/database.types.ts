@@ -66,6 +66,90 @@ export type Database = {
           },
         ]
       }
+      ambassador_profiles: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          since: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          since?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          since?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      app_config: {
+        Row: {
+          id: boolean
+          maintenance_message: string | null
+          maintenance_mode: boolean
+          min_supported_version: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: boolean
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          min_supported_version?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: boolean
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          min_supported_version?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      app_feature_flags: {
+        Row: {
+          description: string | null
+          enabled: boolean
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json | null
+        }
+        Insert: {
+          description?: string | null
+          enabled?: boolean
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json | null
+        }
+        Update: {
+          description?: string | null
+          enabled?: boolean
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json | null
+        }
+        Relationships: []
+      }
       app_progression_shares: {
         Row: {
           created_at: string
@@ -3355,6 +3439,8 @@ export type Database = {
           created_at: string
           description: string | null
           display_name: string
+          documents: Json | null
+          geo_zone: string | null
           id: string
           logo_url: string | null
           profile_id: string
@@ -3368,6 +3454,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name: string
+          documents?: Json | null
+          geo_zone?: string | null
           id?: string
           logo_url?: string | null
           profile_id: string
@@ -3381,6 +3469,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name?: string
+          documents?: Json | null
+          geo_zone?: string | null
           id?: string
           logo_url?: string | null
           profile_id?: string
@@ -3495,40 +3585,52 @@ export type Database = {
       }
       partner_offers: {
         Row: {
+          category: string | null
+          conditions: string | null
           created_at: string
           description: string | null
           event_id: string | null
           id: string
+          image_url: string | null
           partner_id: string
           price_eur: number | null
           quota: number | null
           status: string
           title: string
           updated_at: string
+          valid_until: string | null
         }
         Insert: {
+          category?: string | null
+          conditions?: string | null
           created_at?: string
           description?: string | null
           event_id?: string | null
           id?: string
+          image_url?: string | null
           partner_id: string
           price_eur?: number | null
           quota?: number | null
           status?: string
           title: string
           updated_at?: string
+          valid_until?: string | null
         }
         Update: {
+          category?: string | null
+          conditions?: string | null
           created_at?: string
           description?: string | null
           event_id?: string | null
           id?: string
+          image_url?: string | null
           partner_id?: string
           price_eur?: number | null
           quota?: number | null
           status?: string
           title?: string
           updated_at?: string
+          valid_until?: string | null
         }
         Relationships: [
           {
@@ -4216,6 +4318,51 @@ export type Database = {
           price_first_session_cents?: number
           price_subsequent_cents?: number
           season?: string
+        }
+        Relationships: []
+      }
+      pro_team_members: {
+        Row: {
+          accepted_at: string | null
+          access_level: string
+          created_at: string
+          id: string
+          invited_at: string
+          member_email: string | null
+          member_name: string | null
+          member_user_id: string | null
+          pro_user_id: string
+          revoked_at: string | null
+          role_label: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          access_level?: string
+          created_at?: string
+          id?: string
+          invited_at?: string
+          member_email?: string | null
+          member_name?: string | null
+          member_user_id?: string | null
+          pro_user_id: string
+          revoked_at?: string | null
+          role_label?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          access_level?: string
+          created_at?: string
+          id?: string
+          invited_at?: string
+          member_email?: string | null
+          member_name?: string | null
+          member_user_id?: string | null
+          pro_user_id?: string
+          revoked_at?: string | null
+          role_label?: string
+          updated_at?: string
         }
         Relationships: []
       }
