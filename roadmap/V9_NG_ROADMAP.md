@@ -22,6 +22,8 @@
   **ExportWatermark** (méthode gravée dans l'image : « lecture OXV, pas un chrono
   officiel ») + **MethodLimitBlock** sur l'écran de partage (`504da8a`).
 - Axe 4 (entamé) — **ConsentSwitchRow** canonique (`0322d1e`).
+- Axe 5 **COMPLET** — **Paddock NG** : action principale contextuelle par état
+  pilote (`dce7ef6`, S8→Trace, S9→débrief, S7→Pass, S4→préparer), non destructif.
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
   Principe 3) : aucune vibration en S6_roulage.
 
@@ -31,12 +33,14 @@ silence notifications (handler `notificationBehaviorForState` coupe déjà
 bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
 TrophyCard→captureRef→partage).
 
-**Axes 1, 2, 3 COMPLETS.** Reste, par nature gated ou polish :
-- **Paddock NG hero contextuel** (Axe 5) : front door → aval avant. Dernier gros
-  item de valeur.
-- **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
+**Axes 1, 2, 3, 5 COMPLETS ; Axe 4 entamé.** Tous les livrables signature V9
+sont posés. Reste, par nature gated ou polish :
+- **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP
+  schéma (décision Gabin), débloquent Coach AI Assistant + métriques device/média.
 - **Axe 4** : reste des formalisations §17 (DRY interne, faible valeur) ; passes
-  a11y / FlashList (diffuses).
+  a11y / FlashList (diffuses, optimisation prématurée avant données réelles).
+- Physiquement gated : build EAS (quota), validation capture RaceBox réelle
+  (Valence) — hors-code, planning Gabin.
 
 ## Lecture honnête de la matrice
 
