@@ -527,7 +527,7 @@ function VirageNotFound() {
 function colorForZone(zone: MarginZone): string {
   switch (zone) {
     case 'green':
-      return theme.dataColors.accel;
+      return theme.palette.green;
     case 'yellow':
       return theme.palette.gold;
     case 'red':

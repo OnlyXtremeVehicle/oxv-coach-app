@@ -223,11 +223,13 @@ export default function CarteScreen() {
 function colorForZone(zone: MarginZone | null | undefined): string {
   switch (zone) {
     case 'green':
-      return theme.dataColors.accel;
+      return theme.palette.green;
     case 'yellow':
       return theme.palette.gold;
     case 'red':
-      return theme.palette.red;
+      // Rouge de marque interdit sur une donnée : ambre pilote (canon, cf.
+      // CornersLayer / marginZoneExportColor).
+      return '#F2792B';
     default:
       // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
       return theme.palette.creamMute;

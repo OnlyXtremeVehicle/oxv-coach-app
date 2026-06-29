@@ -39,7 +39,9 @@ import { formatDateLong } from '@/utils/format';
 type Mode = 'browse' | 'compare';
 
 // Couleurs de zone de marge (donnée, toujours doublée du libellé marginLabelOf).
-const ZONE_COLORS = { green: '#97C459', yellow: '#EF9F27', red: theme.palette.red } as const;
+// Rouge de marge neutralisé en ambre pilote (#F2792B) : le rouge de marque ne
+// code jamais une donnée de perf (canon).
+const ZONE_COLORS = { green: '#97C459', yellow: '#EF9F27', red: '#F2792B' } as const;
 
 export default function CoachPilotDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();

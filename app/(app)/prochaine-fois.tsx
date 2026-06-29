@@ -160,7 +160,8 @@ const s = {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
     letterSpacing: 0.5,
-    color: theme.dataColors.accel,
+    // Crème neutre : un titre décrit, il ne porte pas un verdict vert (canon).
+    color: theme.palette.cream,
     textAlign: 'center' as const,
     marginBottom: theme.spacing.xl,
   },

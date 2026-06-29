@@ -220,7 +220,7 @@ function EvalBtn({ label, color, onPress }: { label: string; color: string; onPr
 function colorForStatus(status: GoalStatus): string {
   switch (status) {
     case 'achieved':
-      return theme.dataColors.accel;
+      return theme.palette.green; // vert canon (#97C459), jamais l'accel hors-canon
     case 'continued':
       return theme.palette.gold;
     case 'abandoned':

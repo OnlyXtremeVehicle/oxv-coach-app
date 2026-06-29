@@ -46,7 +46,9 @@ import { Screen } from '@/ui/Screen';
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 const BRONZE = '#B87333';
 // Couleurs de donnée (zones de marge / pace) — toujours doublées d'un libellé.
-const ZONE = { green: '#97C459', yellow: '#EF9F27', red: '#C8102E' };
+// Rouge neutralisé en ambre pilote : le rouge de marque ne code jamais de
+// donnée de perf (canon).
+const ZONE = { green: '#97C459', yellow: '#EF9F27', red: '#F2792B' };
 
 export default function CircuitInspectorScreen() {
   const [selected, setSelected] = useState<number | null>(null);

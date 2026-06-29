@@ -433,11 +433,11 @@ function EmptyPilots({ count }: { count: number }) {
 function colorForZone(zone: MarginZone | null): string {
   switch (zone) {
     case 'green':
-      return theme.dataColors.accel;
+      return theme.palette.green;
     case 'yellow':
       return theme.palette.gold;
     case 'red':
-      return theme.palette.red;
+      return '#F2792B'; // ambre pilote : rouge de marque interdit sur une donnée (canon)
     default:
       return theme.palette.creamMute;
   }

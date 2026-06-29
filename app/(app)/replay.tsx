@@ -167,7 +167,7 @@ export default function ReplayScreen() {
                     borderWidth: 1,
                     borderColor: on
                       ? l.is_best_lap
-                        ? theme.dataColors.accel
+                        ? theme.palette.gold // tour de référence = donnée (or), jamais un vert de verdict
                         : theme.palette.edge
                       : theme.palette.line,
                     backgroundColor: on ? 'rgba(255,255,255,0.07)' : theme.palette.card2,
