@@ -36,9 +36,10 @@ TrophyCard→captureRef→partage).
 
 **Axes 1, 2, 3, 5 COMPLETS ; Axe 4 entamé ; Coach AI fondation posée.** Tous les
 livrables signature V9 sont en place. Reste :
-- **Coach AI — UI** (slices ultérieures, décision Gabin « fondation seule ») :
-  AIReviewBanner, file de lecture (coach_queue), validation suggestion→annotation,
-  + Edge Function de génération/filtre. Le schéma est appliqué (`018bb42`).
+- **Coach AI — UI** (en slices) : ✅ file de lecture sur `coach_queue` (statut
+  persistant, `0a7ce92`). Reste : **AIReviewBanner** + validation
+  suggestion→annotation ; **Edge Function** génération + filtre de sûreté
+  (infra : clé IA serveur + deploy). Schéma appliqué (`018bb42`).
 - **Tables** `device_health_logs`, `media_exports` : STOP schéma si on veut les
   métriques device/média (pas demandé).
 - **Polish** (faible valeur, confirmé Gabin) : reste §17, a11y, FlashList
