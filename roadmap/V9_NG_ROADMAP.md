@@ -18,6 +18,10 @@
   **LapTimeline** frise de régularité (`a7c682d`, marche sans frames ; a corrigé
   un vert de jugement hors canon), **CornerPanel** aperçu virage en feuille basse
   (`8b9a2ce`, Modal+Animated, non destructif). SVG existant, sans dépendance native.
+- Axe 3 **COMPLET** — OXV Moment : l'export `carte-trophee` existait ; ajouté le
+  **ExportWatermark** (méthode gravée dans l'image : « lecture OXV, pas un chrono
+  officiel ») + **MethodLimitBlock** sur l'écran de partage (`504da8a`).
+- Axe 4 (entamé) — **ConsentSwitchRow** canonique (`0322d1e`).
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
   Principe 3) : aucune vibration en S6_roulage.
 
@@ -27,12 +31,12 @@ silence notifications (handler `notificationBehaviorForState` coupe déjà
 bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
 TrophyCard→captureRef→partage).
 
-**Axes 1 & 2 COMPLETS.** Reste, par nature gated ou polish :
-- **OXV Moment watermark** (Axe 3) : sortant → aval avant.
-- **Paddock NG hero contextuel** (Axe 5) : front door → aval avant.
+**Axes 1, 2, 3 COMPLETS.** Reste, par nature gated ou polish :
+- **Paddock NG hero contextuel** (Axe 5) : front door → aval avant. Dernier gros
+  item de valeur.
 - **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
-- **Axe 4** formalisation composants §17 (DRY interne, zéro-décision, faible
-  valeur) ; passes a11y / FlashList (diffuses).
+- **Axe 4** : reste des formalisations §17 (DRY interne, faible valeur) ; passes
+  a11y / FlashList (diffuses).
 
 ## Lecture honnête de la matrice
 
