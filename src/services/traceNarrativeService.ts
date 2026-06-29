@@ -16,7 +16,7 @@ import type { TelemetrySession } from '@/types/telemetry';
 import { computeDataConfidence } from './dataConfidenceLogic';
 import { getIntentionForSession, type SessionIntention } from './intentionsService';
 import { computeKeyMoments } from './keyMomentsLogic';
-import { listMyNotes } from './pilotNotesService';
+import { listMyNotes, type PilotNote } from './pilotNotesService';
 import { computeRegularity } from './regularityService';
 import { listSegmentAnalysesForSession } from './segmentAnalysesService';
 import { fetchSessionInsights } from './sessionInsightsService';
@@ -28,6 +28,8 @@ export interface TraceOfDayResult {
   trace: TraceOfDay;
   /** L'intention posée avant la séance, à juxtaposer (le pilote conclut). */
   intention: SessionIntention | null;
+  /** Le ressenti écrit après la séance (note de carnet liée), s'il existe. */
+  ressenti: PilotNote | null;
 }
 
 /** Session cible : celle passée en param, sinon la dernière séance terminée. */
@@ -109,12 +111,13 @@ export async function loadTraceOfDay(
     sessionsHere = previous.length + 1;
   }
 
-  // Ressenti : une note de carnet rattachée à cette séance existe-t-elle ?
-  let hasRessenti = false;
+  // Ressenti : la note de carnet rattachée à cette séance (le « après »).
+  let ressenti: PilotNote | null = null;
   if (isOwner) {
     const notes = await listMyNotes();
-    hasRessenti = notes.some((n) => n.sessionId === session.id);
+    ressenti = notes.find((n) => n.sessionId === session.id) ?? null;
   }
+  const hasRessenti = ressenti != null;
 
   const trace = assembleTraceOfDay({
     circuitName: session.circuit_name || null,
@@ -128,5 +131,5 @@ export async function loadTraceOfDay(
     sessionsHere,
   });
 
-  return { session, trace, intention };
+  return { session, trace, intention, ressenti };
 }

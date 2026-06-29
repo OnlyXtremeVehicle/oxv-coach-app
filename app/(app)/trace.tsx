@@ -68,7 +68,7 @@ export default function TraceScreen() {
     return <TraceEmpty />;
   }
 
-  const { session, trace, intention } = data;
+  const { session, trace, intention, ressenti } = data;
   const sessionId = session.id;
   const dateLabel = session.started_at ? formatDateShort(session.started_at) : null;
   const meta = [trace.circuitName, dateLabel].filter(Boolean).join(' · ');
@@ -116,6 +116,18 @@ export default function TraceScreen() {
             <Text style={s.sectionEyebrow}>VOTRE INTENTION, AVANT</Text>
             <Card>
               <Text style={s.intentionBody}>« {intention.body} »</Text>
+            </Card>
+          </FadeInSection>
+        ) : null}
+
+        {/* Ressenti — vos mots après la séance (note de carnet liée). L'autre
+            versant de l'arc : intention avant, ressenti après. L'app montre,
+            ne juge pas l'écart. */}
+        {ressenti ? (
+          <FadeInSection delay={170} style={{ marginTop: theme.spacing.xl }}>
+            <Text style={s.sectionEyebrow}>VOTRE RESSENTI, APRÈS</Text>
+            <Card>
+              <Text style={s.intentionBody}>« {ressenti.body} »</Text>
             </Card>
           </FadeInSection>
         ) : null}
