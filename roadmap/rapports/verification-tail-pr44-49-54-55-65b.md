@@ -68,24 +68,25 @@ Résiduels (NON faits ici, volontairement) :
    pas explicitement la durée de conservation des trames brutes. Ajout = texte
    **juridique** → validation Gabin requise (cf. CLAUDE.md).
 
-## PR-65b — Empreinte de saison → REPORT DOCUMENTÉ (backlog : « ou report documenté »)
+## PR-65b — Empreinte de saison → BÂTI (finalement, plutôt que reporté)
 
-Non implémenté comme agrégat **saisonnier** distinct. Couvert partiellement par :
-- **Passeport** (`app/(app)/passeport.tsx`) — identité cumulée sur les 6 séances
-  récentes (fenêtre glissante), radar Empreinte.
-- **Signature** — signature par séance + historique des snapshots.
+Initialement documenté comme report ; bâti dans la même session puisque faisable
+**zéro-schéma**. `app/(app)/empreinte-saison.tsx` (zone Progression) : résumé
+factuel de l'**année civile en cours**, dérivé de `fetchAllSessions(fromDate =
+1er janvier)` — aucune table saisonnière.
+- MetricHero : séances de la saison (chiffre dominant).
+- FactRow : circuits, tours, distance, mois actifs.
+- TimelineEvolution : cadence mois par mois (12 barres, or = donnée).
+- Doctrine : « Votre saison, telle que mesurée. Pas un palmarès. »
+- Accès depuis le Passeport (« Voir mon empreinte de saison ») ; appMap
+  `empreinte-saison → progression`.
 
-Manque (spec `70_identite_avatar.md §70.3`) : un résumé **par saison/année civile**
-(MetricHero « 14 séances · 5 circuits », timeline d'évolution, FactRow). Faisable
-**zéro-schéma** (dérivé de `telemetry_sessions` filtrées par année + signature),
-sans nouvelle table. Le backlog V6 autorise explicitement « agrégat saisonnier
-**ou report documenté** » → **reporté**, à bâtir en tranche dédiée (effort M).
-Aucune donnée fabriquée entre-temps.
+Le Passeport (cumul, fenêtre glissante 6 séances) et l'Empreinte de saison
+(année civile) sont désormais deux tranches identitaires complémentaires.
 
 ---
 
 ### Bilan
 - Clos vérifiés : **PR-54**, **PR-55**.
-- Bâti : **PR-44** (garde doctrinal).
+- Bâtis : **PR-44** (garde doctrinal), **PR-65b** (empreinte de saison).
 - Vérifié + résiduels Gabin : **PR-49** (planification destructive + copie juridique).
-- Reporté documenté : **PR-65b**.

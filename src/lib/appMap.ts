@@ -75,6 +75,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   carnet: 'progression',
   programme: 'progression',
   passeport: 'progression',
+  'empreinte-saison': 'progression',
   'carte-licence': 'progression',
   roulages: 'progression',
   // Club

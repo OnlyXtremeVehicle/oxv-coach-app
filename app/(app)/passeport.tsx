@@ -150,8 +150,17 @@ export default function PasseportScreen() {
               </View>
             ) : null}
 
-            {/* Carte de licence partageable (PR-65) — insigne factuel vers l'extérieur. */}
+            {/* Empreinte de saison (PR-65b) — la tranche de l'année en cours. */}
             <View style={{ marginTop: theme.spacing.xxl }}>
+              <Button
+                label="Voir mon empreinte de saison"
+                variant="ghost"
+                onPress={() => router.push('/(app)/empreinte-saison' as never)}
+              />
+            </View>
+
+            {/* Carte de licence partageable (PR-65) — insigne factuel vers l'extérieur. */}
+            <View style={{ marginTop: theme.spacing.sm }}>
               <Button
                 label="Partager ma carte de licence"
                 variant="ghost"
