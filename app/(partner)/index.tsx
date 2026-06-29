@@ -144,6 +144,13 @@ export default function PartnerHubScreen() {
                 <Text style={s.cardTitle}>Mes rapports</Text>
                 <Text style={s.cardHint}>Les bilans d&apos;événement partagés par OXV.</Text>
               </Card>
+              <Card
+                onPress={() => router.push('/(partner)/facturation' as never)}
+                accessibilityLabel="Facturation. Paiement et résiliation de votre compte."
+              >
+                <Text style={s.cardTitle}>Facturation</Text>
+                <Text style={s.cardHint}>Paiement et résiliation, en toute clarté.</Text>
+              </Card>
             </View>
 
             {myEvents.length > 0 ? (
