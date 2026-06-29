@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { AIReviewBanner } from '@/components/AIReviewBanner';
 import {
   type CoachPilotRow,
   type PilotSessionSummary,
@@ -233,10 +234,7 @@ export default function CoachAssistantScreen() {
         {/* 4. Relecture / validation */}
         {draftId ? (
           <Card style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-            <View style={s.badgeRow}>
-              <View style={s.badgeDot} />
-              <Text style={s.badge}>Suggestion IA — à relire</Text>
-            </View>
+            <AIReviewBanner />
             <Field
               label="Observation (éditable)"
               value={draftText}
@@ -306,23 +304,5 @@ const s = {
     color: theme.palette.red,
     marginTop: theme.spacing.lg,
     lineHeight: theme.fontSize.small * 1.5,
-  },
-  badgeRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.sm,
-  },
-  badgeDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.palette.coach,
-  },
-  badge: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
   },
 };
