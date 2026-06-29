@@ -7,6 +7,31 @@
 > (147 livrables). Après filtrage des faux négatifs (voir ci-dessous), le vrai
 > reste tient en **5 axes**.
 
+## Progrès — nuit du 28→29 juin
+
+**Livré + commité (gates vertes, jest 473 passed) :**
+- Axe 1 — **Trace du jour** (`6cb3206`), **Saison narrée** (`f1ae3da`),
+  **OXVPromiseBlock** (`2f792be`). Axe 1 complet **sauf Intention** (gated).
+- Axe 2 — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`), sur le SVG
+  existant, sans dépendance native.
+- Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
+  Principe 3) : aucune vibration en S6_roulage.
+
+**Faux négatifs CONFIRMÉS (déjà faits, ne pas refaire) :** Passeport
+(RadarEmpreinte = signature, carte-licence exportable, lien empreinte) ;
+silence notifications (handler `notificationBehaviorForState` coupe déjà
+bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
+TrophyCard→captureRef→partage).
+
+**Reste — gated sur décision/aval Gabin :**
+- **Intention** : créer la table `session_intentions` (approche validée,
+  DDL en attente du « go » d'application) → puis IntentionCard + juxtaposition.
+- **OXV Moment watermark** (Axe 3) : sortant → aval avant.
+- **Paddock NG hero contextuel** (Axe 5) : front door → aval avant.
+- **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
+- **Reste Axe 2** : LapTimeline (scrubber) + CornerPanel (bottom-sheet) —
+  chantiers plus lourds, zéro-décision, à enchaîner.
+
 ## Lecture honnête de la matrice
 
 **Faux négatifs (déjà faits, mal nommés par l'audit)** — la *fonction* existe,
