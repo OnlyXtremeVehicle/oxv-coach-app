@@ -75,6 +75,7 @@ interface NavTarget {
 // cartes éparses. Ici, seules les portes propres au Bilan.
 const NAV_TARGETS: NavTarget[] = [
   { label: 'Lecture détaillée — Data Lab', href: '/(app)/data-lab' },
+  { label: 'Conditions & ressenti', href: '/(app)/conditions' },
   { label: 'Débrief présentiel', href: '/(app)/debrief-presentiel' },
   { label: 'La prochaine fois', href: '/(app)/prochaine-fois' },
 ];

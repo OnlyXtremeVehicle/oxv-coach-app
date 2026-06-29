@@ -82,6 +82,36 @@ export async function addDevice(input: {
   return { ok: true };
 }
 
+export interface EventDeviceAssignment {
+  id: string;
+  deviceLabel: string;
+  deviceSerial: string | null;
+  assignedAt: string;
+}
+
+/** Boîtiers affectés à un événement donné (PR-23). Admin-only. */
+export async function listAssignmentsForEvent(eventId: string): Promise<EventDeviceAssignment[]> {
+  const { data, error } = await supabase
+    .from('device_assignments')
+    .select('id, assigned_at, devices(label, serial)')
+    .eq('event_id', eventId)
+    .order('assigned_at', { ascending: false });
+  if (error) {
+    console.warn('[OXV][admin] listAssignmentsForEvent :', error.message);
+    return [];
+  }
+  return (data ?? []).map((r0) => {
+    const r = r0 as Record<string, unknown>;
+    const d = r.devices as { label?: string | null; serial?: string | null } | null;
+    return {
+      id: r.id as string,
+      deviceLabel: (d?.label as string | null) ?? 'Boîtier',
+      deviceSerial: (d?.serial as string | null) ?? null,
+      assignedAt: r.assigned_at as string,
+    };
+  });
+}
+
 export async function setDeviceHealth(
   id: string,
   health: DeviceHealth

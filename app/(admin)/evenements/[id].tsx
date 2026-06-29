@@ -26,6 +26,10 @@ import {
   setRegistrationStatus,
   updateEvent,
 } from '@/services/eventsService';
+import {
+  type EventDeviceAssignment,
+  listAssignmentsForEvent,
+} from '@/services/adminDevicesService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -48,6 +52,7 @@ export default function AdminEventDetailScreen() {
   const [regs, setRegs] = useState<EventRegistrationRow[]>([]);
   const [partners, setPartners] = useState<EventPartnerRow[]>([]);
   const [available, setAvailable] = useState<PartnerOption[]>([]);
+  const [devices, setDevices] = useState<EventDeviceAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -60,12 +65,14 @@ export default function AdminEventDetailScreen() {
       listEventRegistrations(id),
       listEventPartners(id),
       listPartnersForAttach(),
-    ]).then(([e, r, p, a]) => {
+      listAssignmentsForEvent(id),
+    ]).then(([e, r, p, a, d]) => {
       if (!cancelled) {
         setEvent(e);
         setRegs(r);
         setPartners(p);
         setAvailable(a);
+        setDevices(d);
         setLoading(false);
       }
     });
@@ -255,6 +262,25 @@ export default function AdminEventDetailScreen() {
             </>
           ) : null}
         </View>
+
+        {/* Boîtiers affectés (PR-23). Lecture seule : l'affectation se fait au
+            roulage. Un boîtier est un équipement, aucune donnée pilote. */}
+        <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+          <SectionLabel>{`Boîtiers (${devices.length})`}</SectionLabel>
+          {devices.length === 0 ? (
+            <Text style={s.attachLabel}>Aucun boîtier affecté à cet événement.</Text>
+          ) : (
+            devices.map((d) => (
+              <Card key={d.id}>
+                <Text style={s.regName}>{d.deviceLabel}</Text>
+                <Text style={s.deviceMeta}>
+                  {d.deviceSerial ? `${d.deviceSerial} · ` : ''}
+                  {formatDateShort(d.assignedAt)}
+                </Text>
+              </Card>
+            ))
+          )}
+        </View>
       </View>
     </Screen>
   );
@@ -380,6 +406,12 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
+  },
+  deviceMeta: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
   },
   reportLink: {
     marginTop: theme.spacing.sm,

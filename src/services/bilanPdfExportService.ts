@@ -20,6 +20,7 @@ import * as Sharing from 'expo-sharing';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { getSegmentAnalysis } from '@/services/segmentAnalysesService';
+import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { supabase } from '@/lib/supabase';
 import type { MarginZone } from '@/types/domain';
 import { formatDateLong, formatLapTime } from '@/utils/format';
@@ -297,8 +298,9 @@ function buildBilanHtml(data: BilanHtmlData): string {
 }
 
 function colorForZone(zone: MarginZone | null): string {
-  if (!zone) return 'rgba(255,255,255,0.35)';
-  return zone === 'green' ? '#97C459' : zone === 'yellow' ? '#EF9F27' : '#C8102E';
+  // Doctrine PR-69 : delegue au garde-fou central — le rouge de marque ne code
+  // jamais une zone de perf (la zone serree sort en ambre, pas en #C8102E).
+  return marginZoneExportColor(zone);
 }
 
 function labelForZone(zone: MarginZone | null): string {
