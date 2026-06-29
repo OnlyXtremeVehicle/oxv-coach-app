@@ -1,12 +1,18 @@
 # Schéma — Coach AI Assistant (V9 §14)
 
-> **STATUT : APPLIQUÉ en prod le 29/06** (migration
-> `20260629140000_coach_ai_assistant_foundation`, advisors propres). Décisions
-> Gabin : appliquer tel quel ; **`coach_queue` = TABLE** avec statut de lecture
-> explicite (pas la vue) ; périmètre V1 = **fondation seule** (UI coach en slices
-> ultérieures). Défauts d'infra retenus : génération + filtre en Edge Function +
-> Claude ; rétention 12 mois (cron à ajouter). Calqué sur `coach_annotations`
-> 0020 / `session_intentions` / `is_coach_of` / `service_role`.
+> **CORRECTION 29/06.** Découverte APRÈS application : le Coach AI Assistant
+> existait déjà en prod — table **`coach_ai_drafts`** + edge functions
+> **`coach-ai-draft` / `coach-ai-validate`** déployées + écran `assistant.tsx`
+> (génération, filtre doctrinal serveur, validation humaine). Mon
+> `coach_ai_suggestions` faisait DOUBLON → **supprimé** (migration
+> `20260629150000`, table vide). On GARDE :
+> - **`coach_queue`** (file de lecture à statut persistant) — réellement neuf,
+>   en service (écran `file-lecture`, commit `0a7ce92`).
+> - **`ai_safety_reviews`** — dormant, conservé pour un futur journal de sûreté
+>   (à câbler dans les edge functions plus tard).
+>
+> Le DDL `coach_ai_suggestions` ci-dessous est conservé pour mémoire mais N'EST
+> PLUS appliqué.
 
 ## Cadrage doctrinal (non négociable)
 

@@ -4126,51 +4126,6 @@ export type Database = {
         }
         Relationships: []
       }
-      coach_ai_suggestions: {
-        Row: {
-          body: string
-          coach_id: string
-          corner_index: number | null
-          created_at: string
-          id: string
-          model_version: string | null
-          pilot_id: string
-          resulting_annotation_id: string | null
-          safety_review_id: string | null
-          status: string
-          telemetry_session_id: string | null
-          updated_at: string
-        }
-        Insert: {
-          body: string
-          coach_id: string
-          corner_index?: number | null
-          created_at?: string
-          id?: string
-          model_version?: string | null
-          pilot_id: string
-          resulting_annotation_id?: string | null
-          safety_review_id?: string | null
-          status?: string
-          telemetry_session_id?: string | null
-          updated_at?: string
-        }
-        Update: {
-          body?: string
-          coach_id?: string
-          corner_index?: number | null
-          created_at?: string
-          id?: string
-          model_version?: string | null
-          pilot_id?: string
-          resulting_annotation_id?: string | null
-          safety_review_id?: string | null
-          status?: string
-          telemetry_session_id?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       coach_queue: {
         Row: {
           coach_id: string
