@@ -11,14 +11,16 @@
  * Le composant carte (PilotPreset, SVG) est conservé tel quel.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { LayerToggle } from '@/components/LayerToggle';
 import { supabase } from '@/lib/supabase';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
+import { buildMapLayers, defaultActiveLayer, type MapLayerKey } from '@/services/mapLayersLogic';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
@@ -31,6 +33,7 @@ export default function CarteScreen() {
   const [liveMargins, setLiveMargins] = useState<Record<number, MarginZone> | null>(null);
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [selectedCorner, setSelectedCorner] = useState<number | null>(null);
+  const [pickedLayer, setPickedLayer] = useState<MapLayerKey | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +87,19 @@ export default function CarteScreen() {
   const margins = liveMargins ?? {};
   const hasMargins = Object.keys(margins).length > 0;
 
+  // Couches du tracé (Data Lab NG) — disponibilité honnête : la Vitesse attend
+  // les trames du boîtier, les Marges attendent l'analyse. Couche par défaut =
+  // la plus riche disponible, tant que le pilote n'a pas choisi.
+  const hasTrajectory = (trajectory?.length ?? 0) > 1;
+  const hasSpeed = trajectory?.some((p) => typeof p.speed === 'number') ?? false;
+  const layers = useMemo(
+    () => buildMapLayers({ hasTrajectory, hasSpeed, hasMargins }),
+    [hasTrajectory, hasSpeed, hasMargins]
+  );
+  const activeLayer = pickedLayer ?? defaultActiveLayer(layers);
+  const trajectoryColorMode = activeLayer === 'vitesse' ? 'speed-heatmap' : 'uniform';
+  const zoneByIndex = activeLayer === 'marges' ? margins : undefined;
+
   const onCornerTap = (index: number) => {
     setSelectedCorner(index);
     router.push({
@@ -105,11 +121,16 @@ export default function CarteScreen() {
         <PilotPreset
           animate
           trajectory={trajectory ?? undefined}
-          trajectoryColorMode="uniform"
-          zoneByIndex={margins}
+          trajectoryColorMode={trajectoryColorMode}
+          zoneByIndex={zoneByIndex}
           selectedIndex={selectedCorner}
           height={360}
         />
+
+        {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
+        <View style={{ marginTop: theme.spacing.lg }}>
+          <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
+        </View>
 
         <Text style={s.caption}>
           {hasMargins
