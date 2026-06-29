@@ -134,6 +134,13 @@ export default function PartnerHubScreen() {
                 <Text style={s.cardHint}>Créer et publier vos offres.</Text>
               </Card>
               <Card
+                onPress={() => router.push('/(partner)/performance' as never)}
+                accessibilityLabel="Performance. Vos demandes et offres en chiffres."
+              >
+                <Text style={s.cardTitle}>Performance</Text>
+                <Text style={s.cardHint}>Vos demandes et offres en chiffres.</Text>
+              </Card>
+              <Card
                 onPress={() => router.push('/(partner)/leads' as never)}
                 accessibilityLabel={`Mes leads. ${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} de contact.`}
               >
