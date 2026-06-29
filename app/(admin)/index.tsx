@@ -64,6 +64,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Métriques globales post-session, export.',
   },
   {
+    href: '/(admin)/maintenance',
+    label: 'Maintenance',
+    description: 'Kill-switch distant et version minimale de l’application.',
+  },
+  {
     href: '/(admin)/circuit',
     label: 'Inspecteur circuit',
     description: 'Topologie du circuit, virages, heatmap historique des marges.',

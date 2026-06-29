@@ -10,6 +10,7 @@ import { initBle, teardownBle } from '@/ble/initBle';
 import { initFlic, teardownFlic } from '@/ble/initFlic';
 import { BleErrorModal } from '@/components/BleErrorModal';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { MaintenanceGate } from '@/components/MaintenanceGate';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { UpdateModal } from '@/components/UpdateModal';
 import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
@@ -156,6 +157,7 @@ export default function RootLayout() {
           <OfflineBanner />
           <BleErrorModal />
           <UpdateModal />
+          <MaintenanceGate />
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
