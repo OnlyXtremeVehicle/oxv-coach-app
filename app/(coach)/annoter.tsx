@@ -29,6 +29,13 @@ import {
   listMyAnnotationsForCorner,
   updateAnnotation,
 } from '@/services/coachAnnotationsService';
+import {
+  attachAudioToAnnotation,
+  requestRecordingPermission,
+  startRecording,
+  stopRecording,
+} from '@/services/coachAudioService';
+import { type Audio } from 'expo-av';
 import { type CoachAnnotationTemplate } from '@/services/coachCurationLogic';
 import { listMyTemplates } from '@/services/coachCurationService';
 import { theme } from '@/theme/v2';
@@ -56,6 +63,9 @@ export default function CoachAnnoterScreen() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
+  // Note vocale (PR-59) — l'enregistrement requiert expo-av (build natif).
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,23 +98,42 @@ export default function CoachAnnoterScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.pilotId, cornerIndex, params.sessionId]);
 
+  async function onToggleRecord() {
+    if (recording) {
+      const uri = await stopRecording(recording);
+      setRecording(null);
+      setRecordedUri(uri);
+      return;
+    }
+    const ok = await requestRecordingPermission();
+    if (!ok) return;
+    const rec = await startRecording();
+    if (rec) {
+      setRecordedUri(null);
+      setRecording(rec);
+    }
+  }
+
   const onSave = async () => {
     if (!params.pilotId || !body.trim()) return;
     setSaving(true);
     if (editingId) {
       await updateAnnotation(editingId, { body, visibility });
+      if (recordedUri) await attachAudioToAnnotation(editingId, recordedUri);
     } else {
-      await createAnnotation({
+      const created = await createAnnotation({
         pilotId: params.pilotId,
         cornerIndex,
         telemetrySessionId: params.sessionId ?? null,
         body,
         visibility,
       });
+      if (created && recordedUri) await attachAudioToAnnotation(created.id, recordedUri);
     }
     setBody('');
     setVisibility('shared');
     setEditingId(null);
+    setRecordedUri(null);
     await reload();
     setSaving(false);
   };
@@ -242,6 +271,43 @@ export default function CoachAnnoterScreen() {
               onPress={() => setVisibility('private')}
             />
           </View>
+
+          {/* Note vocale (PR-59) — enregistrement via expo-av (build natif). */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              recording ? 'Arrêter l’enregistrement' : 'Enregistrer une note vocale'
+            }
+            onPress={onToggleRecord}
+            style={({ pressed }) => [
+              {
+                marginTop: theme.spacing.lg,
+                minHeight: 44,
+                justifyContent: 'center',
+                paddingHorizontal: theme.spacing.md,
+                borderRadius: theme.radius.sm,
+                borderWidth: 1,
+                borderColor: recording ? theme.palette.red : theme.palette.coach,
+              },
+              pressed && { opacity: 0.8 },
+            ]}
+          >
+            <Text
+              style={{
+                fontFamily: theme.fonts.mono,
+                fontSize: 11,
+                letterSpacing: 0.8,
+                textTransform: 'uppercase',
+                color: recording ? theme.palette.red : theme.palette.coach,
+              }}
+            >
+              {recording
+                ? 'Arrêter l’enregistrement'
+                : recordedUri
+                  ? 'Note vocale prête · réenregistrer'
+                  : 'Enregistrer une note vocale'}
+            </Text>
+          </Pressable>
 
           {/* Boutons */}
           <View

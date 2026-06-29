@@ -38,6 +38,7 @@ import {
   type CoachAnnotation,
   listVisibleAnnotationsForCorner,
 } from '@/services/coachAnnotationsService';
+import { getAnnotationAudioUrl } from '@/services/coachAudioService';
 import { type CoachCornerReference, compareSpeedToReference } from '@/services/coachReferenceLogic';
 import { listCoachReferencesForCorner } from '@/services/coachReferenceService';
 import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
@@ -301,7 +302,11 @@ export default function VirageScreen() {
                       accessibilityLabel="Écouter la note vocale de votre coach"
                       hitSlop={6}
                       onPress={() => {
-                        if (a.audioUrl) Linking.openURL(a.audioUrl).catch(() => undefined);
+                        const path = a.audioUrl;
+                        if (!path) return;
+                        getAnnotationAudioUrl(path).then((url) => {
+                          if (url) Linking.openURL(url).catch(() => undefined);
+                        });
                       }}
                       style={({ pressed }) => [s.voiceNote, pressed && { opacity: 0.8 }]}
                     >
