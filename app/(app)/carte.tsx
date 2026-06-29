@@ -16,6 +16,7 @@ import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { CornerPanel, type CornerPanelData } from '@/components/CornerPanel';
 import { LayerToggle } from '@/components/LayerToggle';
 import { supabase } from '@/lib/supabase';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
@@ -34,6 +35,7 @@ export default function CarteScreen() {
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [selectedCorner, setSelectedCorner] = useState<number | null>(null);
   const [pickedLayer, setPickedLayer] = useState<MapLayerKey | null>(null);
+  const [panelCorner, setPanelCorner] = useState<CornerPanelData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,8 +102,17 @@ export default function CarteScreen() {
   const trajectoryColorMode = activeLayer === 'vitesse' ? 'speed-heatmap' : 'uniform';
   const zoneByIndex = activeLayer === 'marges' ? margins : undefined;
 
+  // Tap virage → aperçu en feuille basse (CornerPanel). Non destructif : le
+  // détail plein écran reste accessible depuis le panneau (openCornerDetail).
   const onCornerTap = (index: number) => {
     setSelectedCorner(index);
+    const name = BELTOISE_CORNERS.find((c) => c.index === index)?.name ?? `Virage ${index}`;
+    const zone = margins[index] ?? null;
+    setPanelCorner({ index, name, zoneLabel: zone ? marginLabelOf(zone) : null });
+  };
+
+  const openCornerDetail = (index: number) => {
+    setPanelCorner(null);
     router.push({
       pathname: '/(app)/virage',
       params: {
@@ -198,6 +209,13 @@ export default function CarteScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Aperçu virage en feuille basse — superposé, n'altère pas le flux. */}
+      <CornerPanel
+        corner={panelCorner}
+        onClose={() => setPanelCorner(null)}
+        onOpenDetail={openCornerDetail}
+      />
     </Screen>
   );
 }
