@@ -21,7 +21,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -295,6 +295,19 @@ export default function VirageScreen() {
               {annotations.map((a) => (
                 <Card key={a.id} style={{ borderColor: theme.palette.coach }}>
                   <Text style={s.coachNote}>« {a.body} »</Text>
+                  {a.audioUrl ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Écouter la note vocale de votre coach"
+                      hitSlop={6}
+                      onPress={() => {
+                        if (a.audioUrl) Linking.openURL(a.audioUrl).catch(() => undefined);
+                      }}
+                      style={({ pressed }) => [s.voiceNote, pressed && { opacity: 0.8 }]}
+                    >
+                      <Text style={s.voiceNoteText}>Écouter la note vocale</Text>
+                    </Pressable>
+                  ) : null}
                   <Text style={[s.meta, { marginTop: theme.spacing.sm }]}>
                     {formatDateShort(a.createdAt)}
                     {a.aiAssisted ? ' · Assistée par IA, validée par votre coach' : ''}
@@ -594,6 +607,23 @@ const s = {
     fontStyle: 'italic' as const,
     color: theme.palette.cream,
     lineHeight: theme.fontSize.body * 1.6,
+  },
+  voiceNote: {
+    marginTop: theme.spacing.md,
+    alignSelf: 'flex-start' as const,
+    minHeight: 40,
+    justifyContent: 'center' as const,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.palette.coach,
+  },
+  voiceNoteText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.coach,
   },
   coachRefLine: {
     fontFamily: theme.fonts.body,

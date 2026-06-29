@@ -24,6 +24,12 @@ export interface CoachAnnotation {
   visibility: AnnotationVisibility;
   /** Observation pré-rédigée par l'assistant IA puis validée par le coach. */
   aiAssisted: boolean;
+  /**
+   * Note vocale attachée (PR-59) — URL du fichier audio dans le bucket coach.
+   * `null` tant qu'aucun audio n'est joint. La lecture passe par cette URL ;
+   * l'ENREGISTREMENT nécessite un module natif (expo-av) à brancher au build.
+   */
+  audioUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +43,7 @@ interface RawRow {
   body: string;
   visibility: AnnotationVisibility;
   ai_assisted: boolean | null;
+  audio_url: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -52,6 +59,7 @@ function mapRow(row: RawRow): CoachAnnotation {
     body: row.body,
     visibility: row.visibility,
     aiAssisted: row.ai_assisted === true,
+    audioUrl: row.audio_url ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
