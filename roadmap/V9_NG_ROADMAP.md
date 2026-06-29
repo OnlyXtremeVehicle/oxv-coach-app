@@ -9,9 +9,11 @@
 
 ## Progrès — nuit du 28→29 juin
 
-**Livré + commité (gates vertes, jest 473 passed) :**
-- Axe 1 — **Trace du jour** (`6cb3206`), **Saison narrée** (`f1ae3da`),
-  **OXVPromiseBlock** (`2f792be`). Axe 1 complet **sauf Intention** (gated).
+**Livré + commité (gates vertes, jest 481 passed) :**
+- Axe 1 **COMPLET** — **Trace du jour** (`6cb3206`), **Saison narrée**
+  (`f1ae3da`), **OXVPromiseBlock** (`2f792be`), **Intention de séance**
+  (`88629f4`, table `session_intentions` en prod + saisie/rattachement/
+  juxtaposition ; 2 bugs medium corrigés par vérif adversariale).
 - Axe 2 — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`), sur le SVG
   existant, sans dépendance native.
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
@@ -24,8 +26,6 @@ bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
 TrophyCard→captureRef→partage).
 
 **Reste — gated sur décision/aval Gabin :**
-- **Intention** : créer la table `session_intentions` (approche validée,
-  DDL en attente du « go » d'application) → puis IntentionCard + juxtaposition.
 - **OXV Moment watermark** (Axe 3) : sortant → aval avant.
 - **Paddock NG hero contextuel** (Axe 5) : front door → aval avant.
 - **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
