@@ -1,34 +1,51 @@
 /**
- * Coach — File de lecture (§6.2).
+ * Coach — File de lecture (V9 §14, sur `coach_queue`).
  *
- * Les sessions des pilotes consentis, priorisées : « à lire » tant que le coach
- * ne les a pas annotées, puis « déjà lues ». Un tap ouvre la fiche du pilote
- * (ses sessions). Lecture seule, pas d'injonction au coach. Accent coach neutre.
+ * Les sessions des pilotes consentis, avec un statut de lecture EXPLICITE et
+ * persistant : à lire / lues / archivées (filtrable, marquable). Un tap ouvre la
+ * fiche du pilote. Lecture seule côté pilote — rien de ceci ne lui est exposé.
+ * « À votre rythme » : la file aide le coach, elle ne le presse pas. Accent
+ * coach neutre, vouvoiement, pas d'emoji.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
-import { type ReadingQueueEntry, loadReadingQueue } from '@/services/coachService';
+import * as haptics from '@/lib/haptics';
+import { groupQueue, type QueueItem, type QueueStatus } from '@/services/coachQueueLogic';
+import { loadCoachQueue, setQueueStatus } from '@/services/coachQueueService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
+const FILTERS: { key: QueueStatus; label: string }[] = [
+  { key: 'unread', label: 'À lire' },
+  { key: 'read', label: 'Lues' },
+  { key: 'archived', label: 'Archivées' },
+];
+
+const EMPTY: Record<QueueStatus, string> = {
+  unread: 'Rien à lire pour l’instant. Les séances de vos pilotes apparaîtront ici.',
+  read: 'Aucune séance lue pour l’instant.',
+  archived: 'Aucune séance archivée.',
+};
+
 export default function FileLectureScreen() {
-  const [entries, setEntries] = useState<ReadingQueueEntry[]>([]);
+  const [items, setItems] = useState<QueueItem[]>([]);
+  const [filter, setFilter] = useState<QueueStatus>('unread');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const reload = useCallback(() => {
     let cancelled = false;
-    loadReadingQueue()
-      .then((e) => {
+    setLoading(true);
+    loadCoachQueue()
+      .then((rows) => {
         if (!cancelled) {
-          setEntries(e);
+          setItems(rows);
           setLoading(false);
         }
       })
@@ -40,19 +57,22 @@ export default function FileLectureScreen() {
     };
   }, []);
 
-  const toRead = entries.filter((e) => !e.annotated);
-  const read = entries.filter((e) => e.annotated);
+  useFocusEffect(reload);
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="FILE DE LECTURE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  const mark = useCallback(
+    (item: QueueItem, status: QueueStatus) => {
+      haptics.tap();
+      // Optimiste : reflète tout de suite, recharge en cas d'échec.
+      setItems((prev) => prev.map((i) => (i.sessionId === item.sessionId ? { ...i, status } : i)));
+      setQueueStatus({ sessionId: item.sessionId, pilotId: item.pilotId, status }).then((res) => {
+        if (!res.ok) reload();
+      });
+    },
+    [reload]
+  );
+
+  const groups = groupQueue(items);
+  const active = groups[filter];
 
   return (
     <Screen>
@@ -63,61 +83,102 @@ export default function FileLectureScreen() {
           Votre file de lecture.
         </Text>
 
-        {entries.length === 0 ? (
-          <EmptyState
-            label="Rien à lire"
-            message="Les sessions de vos pilotes apparaîtront ici."
-            source="telemetry_sessions"
-          />
-        ) : (
-          <>
-            {toRead.length > 0 ? (
-              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-                <SectionLabel>{`À LIRE — ${toRead.length}`}</SectionLabel>
-                {toRead.map((e) => (
-                  <QueueRow key={e.sessionId} entry={e} unread />
-                ))}
-              </View>
-            ) : null}
+        {/* Filtres + compteurs. */}
+        <View style={s.filterRow} accessibilityRole="tablist">
+          {FILTERS.map((f) => {
+            const isActive = f.key === filter;
+            return (
+              <Pressable
+                key={f.key}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`${f.label}, ${groups.counts[f.key]}`}
+                onPress={() => setFilter(f.key)}
+                style={[s.chip, isActive ? s.chipActive : null]}
+              >
+                <Text style={[s.chipLabel, isActive ? s.chipLabelActive : null]}>
+                  {f.label} · {groups.counts[f.key]}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-            {read.length > 0 ? (
-              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-                <SectionLabel>DÉJÀ LUES</SectionLabel>
-                {read.map((e) => (
-                  <QueueRow key={e.sessionId} entry={e} />
-                ))}
-              </View>
-            ) : null}
-          </>
+        {loading ? (
+          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
+            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
+          </View>
+        ) : active.length === 0 ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <EmptyState label="Rien ici" message={EMPTY[filter]} source="telemetry_sessions" />
+          </View>
+        ) : (
+          <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+            {active.map((item) => (
+              <QueueRow key={item.sessionId} item={item} onMark={mark} />
+            ))}
+          </View>
         )}
       </View>
     </Screen>
   );
 }
 
-function QueueRow({ entry, unread }: { entry: ReadingQueueEntry; unread?: boolean }) {
-  const meta = [entry.circuitName, formatDateShort(entry.startedAt)].filter(Boolean).join(' · ');
+function QueueRow({
+  item,
+  onMark,
+}: {
+  item: QueueItem;
+  onMark: (item: QueueItem, status: QueueStatus) => void;
+}) {
+  const meta = [item.circuitName, formatDateShort(item.startedAt)].filter(Boolean).join(' · ');
+
+  return (
+    <Card>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${item.pilotName}. ${meta}. Ouvrir la fiche.`}
+        onPress={() =>
+          router.push({ pathname: '/(coach)/pilote/[id]', params: { id: item.pilotId } } as never)
+        }
+        style={({ pressed }) => [s.row, pressed && { opacity: 0.85 }]}
+      >
+        {item.status === 'unread' ? (
+          <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" />
+        ) : null}
+        <View style={{ flex: 1 }}>
+          <Text style={s.pilot}>{item.pilotName}</Text>
+          {meta ? <Text style={s.meta}>{meta}</Text> : null}
+        </View>
+        <Text style={s.chevron}>›</Text>
+      </Pressable>
+
+      {/* Marquage — actions sobres selon le statut courant. */}
+      <View style={s.actions}>
+        {item.status !== 'read' ? (
+          <RowAction label="Marquer lue" onPress={() => onMark(item, 'read')} />
+        ) : null}
+        {item.status !== 'unread' ? (
+          <RowAction label="À relire" onPress={() => onMark(item, 'unread')} />
+        ) : null}
+        {item.status !== 'archived' ? (
+          <RowAction label="Archiver" onPress={() => onMark(item, 'archived')} />
+        ) : null}
+      </View>
+    </Card>
+  );
+}
+
+function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${entry.pilotName}. ${meta}.${unread ? ' À lire.' : ''}`}
-      onPress={() =>
-        router.push({ pathname: '/(coach)/pilote/[id]', params: { id: entry.pilotId } } as never)
-      }
-      style={({ pressed }) => [pressed && { opacity: 0.85 }]}
+      accessibilityLabel={label}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [s.action, pressed && { opacity: 0.6 }]}
     >
-      <Card>
-        <View style={s.row}>
-          {unread ? (
-            <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" />
-          ) : null}
-          <View style={{ flex: 1 }}>
-            <Text style={s.pilot}>{entry.pilotName}</Text>
-            {meta ? <Text style={s.meta}>{meta}</Text> : null}
-          </View>
-          <Text style={s.chevron}>›</Text>
-        </View>
-      </Card>
+      <Text style={s.actionText}>{label}</Text>
     </Pressable>
   );
 }
@@ -139,6 +200,35 @@ const s = {
     lineHeight: theme.fontSize.h2 * 1.25,
     marginTop: theme.spacing.md,
   },
+  filterRow: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.xl,
+  },
+  chip: {
+    flex: 1,
+    minHeight: 40,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  chipActive: {
+    borderColor: theme.palette.coach,
+    backgroundColor: theme.palette.card2,
+  },
+  chipLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10.5,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
+  chipLabelActive: {
+    color: theme.palette.cream,
+  },
   row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: theme.spacing.md },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.palette.coach },
   pilot: {
@@ -153,4 +243,20 @@ const s = {
     marginTop: theme.spacing.xs,
   },
   chevron: { color: theme.palette.faint, fontSize: 17 },
+  actions: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.lg,
+    marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+  },
+  action: { minHeight: 32, justifyContent: 'center' as const },
+  actionText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10.5,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.creamMute,
+  },
 };
