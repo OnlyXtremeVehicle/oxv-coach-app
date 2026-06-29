@@ -90,14 +90,30 @@ export async function loadMyPartnerAccount(): Promise<PartnerAccount | null> {
   };
 }
 
-/** Met à jour la fiche du partenaire courant (zone, description). RLS owns_partner. */
+/** Un document de la fiche partenaire (lien externe — PR-31, sans bucket). */
+export interface PartnerDocument {
+  label: string;
+  url: string;
+}
+
+/** Parse défensivement la colonne `documents` (jsonb) en liste de liens. */
+export function parsePartnerDocuments(raw: unknown): PartnerDocument[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((d): d is { label?: unknown; url?: unknown } => typeof d === 'object' && d !== null)
+    .map((d) => ({ label: String(d.label ?? ''), url: String(d.url ?? '') }))
+    .filter((d) => d.url.length > 0);
+}
+
+/** Met à jour la fiche du partenaire courant (zone, description, documents). RLS owns_partner. */
 export async function updateMyPartnerAccount(
   id: string,
-  patch: { geoZone?: string | null; description?: string | null }
+  patch: { geoZone?: string | null; description?: string | null; documents?: PartnerDocument[] }
 ): Promise<{ ok: boolean; error?: string }> {
   const row: Record<string, unknown> = {};
   if (patch.geoZone !== undefined) row.geo_zone = patch.geoZone;
   if (patch.description !== undefined) row.description = patch.description;
+  if (patch.documents !== undefined) row.documents = patch.documents;
   const { error } = await supabase
     .from('partner_accounts')
     .update(row as never)

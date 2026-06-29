@@ -12,9 +12,12 @@ import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import { Pressable } from 'react-native';
 import {
   type PartnerAccount,
+  type PartnerDocument,
   loadMyPartnerAccount,
+  parsePartnerDocuments,
   updateMyPartnerAccount,
 } from '@/services/partnerService';
 import { theme } from '@/theme/v2';
@@ -30,6 +33,9 @@ export default function PartnerProfilScreen() {
   const [loading, setLoading] = useState(true);
   const [geoZone, setGeoZone] = useState('');
   const [description, setDescription] = useState('');
+  const [docs, setDocs] = useState<PartnerDocument[]>([]);
+  const [docLabel, setDocLabel] = useState('');
+  const [docUrl, setDocUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
@@ -41,6 +47,7 @@ export default function PartnerProfilScreen() {
           setAccount(acc);
           setGeoZone(acc?.geoZone ?? '');
           setDescription(acc?.description ?? '');
+          setDocs(parsePartnerDocuments(acc?.documents));
           setLoading(false);
         }
       })
@@ -66,6 +73,32 @@ export default function PartnerProfilScreen() {
       type: res.ok ? 'success' : 'error',
       text1: res.ok ? 'Fiche enregistrée.' : (res.error ?? 'Échec.'),
     });
+  }
+
+  async function saveDocs(next: PartnerDocument[]) {
+    if (!account) return;
+    setDocs(next);
+    const res = await updateMyPartnerAccount(account.id, { documents: next });
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: 'Échec de l’enregistrement du document.' });
+      reload();
+    }
+  }
+
+  function onAddDoc() {
+    const url = docUrl.trim();
+    if (!url) {
+      Toast.show({ type: 'error', text1: 'L’adresse du document est requise.' });
+      return;
+    }
+    const label = docLabel.trim() || url;
+    setDocLabel('');
+    setDocUrl('');
+    void saveDocs([...docs, { label, url }]);
+  }
+
+  function onRemoveDoc(i: number) {
+    void saveDocs(docs.filter((_, j) => j !== i));
   }
 
   if (loading) {
@@ -128,6 +161,63 @@ export default function PartnerProfilScreen() {
                 <Button label="Enregistrer ma fiche" loading={saving} onPress={onSave} />
               </View>
             </View>
+
+            {/* Documents (PR-31) — liens vers vos documents (plaquette, conditions…).
+                Liens externes, sans hébergement de fichier côté OXV pour l'instant. */}
+            <View style={{ marginTop: theme.spacing.xl }}>
+              <SectionLabel>Documents</SectionLabel>
+              {docs.length > 0 ? (
+                <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+                  {docs.map((d, i) => (
+                    <Card key={`${d.url}-${i}`}>
+                      <View style={s.docRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.docLabel} numberOfLines={1}>
+                            {d.label}
+                          </Text>
+                          <Text style={s.docUrl} numberOfLines={1}>
+                            {d.url}
+                          </Text>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Retirer ${d.label}`}
+                          hitSlop={6}
+                          onPress={() => onRemoveDoc(i)}
+                          style={({ pressed }) => [s.removeBtn, pressed && { opacity: 0.8 }]}
+                        >
+                          <Text style={s.removeT}>Retirer</Text>
+                        </Pressable>
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              ) : (
+                <Text style={s.note}>Aucun document pour l’instant.</Text>
+              )}
+              <View style={{ marginTop: theme.spacing.md }}>
+                <Field
+                  label="Intitulé"
+                  optional
+                  value={docLabel}
+                  onChangeText={setDocLabel}
+                  placeholder="Ex. Plaquette 2026"
+                  maxLength={80}
+                />
+                <Field
+                  label="Adresse (URL)"
+                  optional
+                  value={docUrl}
+                  onChangeText={setDocUrl}
+                  placeholder="https://…"
+                  autoCapitalize="none"
+                  keyboardType="url"
+                />
+                <View style={{ marginTop: theme.spacing.sm }}>
+                  <Button label="Ajouter le document" variant="ghost" onPress={onAddDoc} />
+                </View>
+              </View>
+            </View>
           </>
         )}
       </View>
@@ -143,6 +233,38 @@ const s = {
     textTransform: 'uppercase' as const,
     color: theme.palette.faint,
     marginTop: theme.spacing.sm,
+  },
+  docRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+  },
+  docLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.cream,
+  },
+  docUrl: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.3,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  removeBtn: {
+    minHeight: 36,
+    paddingHorizontal: theme.spacing.md,
+    justifyContent: 'center' as const,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: theme.palette.edge,
+  },
+  removeT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.red,
   },
   title: {
     fontFamily: theme.fonts.display,
