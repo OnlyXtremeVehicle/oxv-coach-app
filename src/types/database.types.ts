@@ -6364,28 +6364,6 @@ export type Database = {
           public_handle: string
         }[]
       }
-      community_circuit_leaderboard: {
-        Args: { p_circuit_id: string; p_limit?: number }
-        Returns: {
-          best_lap_s: number
-          condition_context: string
-          display_name: string
-          is_self: boolean
-          pilot_id: string
-          rank: number
-          vehicle_context: string
-        }[]
-      }
-      community_model_observatory: {
-        Args: { p_circuit_id: string }
-        Returns: {
-          best_lap_s: number
-          condition_context: string
-          median_lap_s: number
-          n_pilots: number
-          vehicle_model: string
-        }[]
-      }
       corner_indexes_valid: { Args: { idx: number[] }; Returns: boolean }
       generate_oxv_reference: { Args: never; Returns: string }
       get_or_create_my_affiliation_code: { Args: never; Returns: string }

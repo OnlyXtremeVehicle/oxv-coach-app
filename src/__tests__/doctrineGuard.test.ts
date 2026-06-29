@@ -14,9 +14,11 @@
  *   - D7 (design honnête, pas d'addiction) : aucun artefact de feed infini /
  *     d'optimisation du temps passé.
  *
- * Cas connu mis en quarantaine : les RPC `community_circuit_leaderboard` et
- * `community_model_observatory` EXISTENT en base (signature TypeScript) mais ne
- * sont JAMAIS appelées par l'app. Le premier test garantit qu'elles le restent.
+ * Historique : les RPC `community_circuit_leaderboard` et
+ * `community_model_observatory` (qui renvoyaient un classement entre pilotes) ont
+ * été SUPPRIMÉES en base le 2026-06-29 (décision Gabin, migration
+ * `drop_competitive_rpcs`). Les tests ci-dessous garantissent qu'elles ne
+ * réapparaissent ni dans le schéma ni dans le code applicatif.
  */
 
 import * as fs from 'fs';
@@ -24,8 +26,8 @@ import * as path from 'path';
 
 const ROOT = process.cwd();
 
-/** RPC compétitives présentes en base mais interdites de surface applicative (E1). */
-const QUARANTINED_RPCS = ['community_circuit_leaderboard', 'community_model_observatory'];
+/** RPC de classement supprimées : interdites de retour (schéma + app). */
+const FORBIDDEN_RPCS = ['community_circuit_leaderboard', 'community_model_observatory'];
 
 /** Jetons de schéma proscrits : jugement composite (T6) + addiction (D7). */
 const FORBIDDEN_SCHEMA_TOKENS = [
@@ -42,7 +44,7 @@ const FORBIDDEN_SCHEMA_TOKENS = [
   'streak_count',
 ];
 
-/** Noms de TABLE compétitive proscrits (E1). Les RPC ne sont pas concernées ici. */
+/** Noms de TABLE compétitive proscrits (E1). */
 const FORBIDDEN_TABLE_TOKENS = [
   'leaderboards',
   'rankings',
@@ -81,7 +83,7 @@ describe('doctrine guard (PR-44 — l’éthique peut échouer)', () => {
     const offenders: string[] = [];
     for (const f of [...appFiles, ...srcFiles]) {
       const text = fs.readFileSync(f, 'utf8');
-      for (const rpc of QUARANTINED_RPCS) {
+      for (const rpc of FORBIDDEN_RPCS) {
         if (text.includes(rpc)) offenders.push(`${path.relative(ROOT, f)} → ${rpc}`);
       }
     }
@@ -96,20 +98,14 @@ describe('doctrine guard (PR-44 — l’éthique peut échouer)', () => {
 
   it('E1 — aucune table de classement / streak / badge entre pilotes', () => {
     const schema = readSchema();
-    // Une table est une clé indentée de 6 espaces sous `Tables:`. Les RPC
-    // (`community_circuit_leaderboard`) ne matchent pas ces noms exacts.
+    // Une table est une clé indentée de 6 espaces sous `Tables:`.
     const found = FORBIDDEN_TABLE_TOKENS.filter((t) => new RegExp(`\\n {6}${t}: \\{`).test(schema));
     expect(found).toEqual([]);
   });
 
-  it('les RPC compétitives connues sont bien encore en quarantaine (signature présente, non surfacée)', () => {
-    // Garantit que la liste de quarantaine reste alignée sur la réalité du
-    // schéma : si une RPC quarantaine disparaît, on le saura (et on nettoiera
-    // la garde). Si une nouvelle RPC compétitive apparaît, l'auteur doit
-    // l'ajouter ici en conscience.
+  it('E1 — les RPC de classement supprimées ne sont pas réapparues dans le schéma', () => {
     const schema = readSchema();
-    for (const rpc of QUARANTINED_RPCS) {
-      expect(schema.includes(rpc)).toBe(true);
-    }
+    const reappeared = FORBIDDEN_RPCS.filter((rpc) => schema.includes(rpc));
+    expect(reappeared).toEqual([]);
   });
 });
