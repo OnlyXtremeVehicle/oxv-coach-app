@@ -34,6 +34,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'État Bluetooth en temps réel pendant la session.',
   },
   {
+    href: '/(admin)/devices',
+    label: 'Boîtiers',
+    description: 'Parc de boîtiers OXV, état de santé, affectations.',
+  },
+  {
     href: '/(admin)/evenements',
     label: 'Événements',
     description: 'Créer et gérer les événements (balade, test, partenaire) + inscriptions.',

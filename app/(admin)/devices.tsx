@@ -1,0 +1,235 @@
+/**
+ * Admin — Boîtiers (parc + affectations, PR-25).
+ *
+ * Gère le parc de boîtiers OXV (RaceBox) : ajout, état de santé, et volume
+ * d'affectations par boîtier. Admin-only (RLS is_admin). Un boîtier est un
+ * équipement — aucune donnée pilote. Bronze = rôle admin. Doctrine : sobre,
+ * vouvoiement, pas d'emoji.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
+
+import { EmptyState } from '@/components/instruments/EmptyState';
+import * as haptics from '@/lib/haptics';
+import {
+  type AdminDevice,
+  addDevice,
+  listDevices,
+  setDeviceHealth,
+} from '@/services/adminDevicesService';
+import { theme } from '@/theme/v2';
+import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
+import { Field } from '@/ui/Field';
+import { Screen } from '@/ui/Screen';
+import { SectionLabel } from '@/ui/SectionLabel';
+
+const BRONZE = '#B87333';
+
+function healthLabel(h: string): string {
+  if (h === 'ok') return 'Opérationnel';
+  if (h === 'maintenance') return 'En maintenance';
+  return h;
+}
+
+export default function AdminDevicesScreen() {
+  const [devices, setDevices] = useState<AdminDevice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [label, setLabel] = useState('');
+  const [serial, setSerial] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const reload = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    listDevices().then((d) => {
+      if (!cancelled) {
+        setDevices(d);
+        setLoading(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(reload, [reload]);
+
+  async function onAdd() {
+    if (!label.trim()) {
+      Toast.show({ type: 'error', text1: 'Le nom du boîtier est requis.' });
+      return;
+    }
+    setSaving(true);
+    const res = await addDevice({ label, serial, type: 'racebox' });
+    setSaving(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error ?? 'Ajout impossible.' });
+      return;
+    }
+    haptics.success();
+    setLabel('');
+    setSerial('');
+    reload();
+  }
+
+  async function onToggleHealth(d: AdminDevice) {
+    const next = d.healthStatus === 'ok' ? 'maintenance' : 'ok';
+    const res = await setDeviceHealth(d.id, next);
+    if (res.ok) {
+      haptics.tap();
+      reload();
+    } else {
+      Toast.show({ type: 'error', text1: 'Mise à jour impossible.' });
+    }
+  }
+
+  return (
+    <Screen>
+      <AppBar title="BOÎTIERS" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <Text style={s.eyebrow}>ADMIN · PARC</Text>
+        <Text style={s.title} accessibilityRole="header">
+          Boîtiers OXV
+        </Text>
+
+        {/* Ajouter un boîtier. */}
+        <View style={{ marginTop: theme.spacing.lg }}>
+          <SectionLabel>Ajouter</SectionLabel>
+          <Field label="Nom" value={label} onChangeText={setLabel} placeholder="Ex. RaceBox 03" />
+          <Field
+            label="Numéro de série"
+            optional
+            value={serial}
+            onChangeText={setSerial}
+            placeholder="Ex. RB-XXXX"
+            autoCapitalize="characters"
+          />
+          <View style={{ marginTop: theme.spacing.md }}>
+            <Button label="Ajouter au parc" loading={saving} onPress={onAdd} />
+          </View>
+        </View>
+
+        {/* Parc. */}
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <SectionLabel>Le parc</SectionLabel>
+          {loading ? (
+            <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
+              <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement" />
+            </View>
+          ) : devices.length === 0 ? (
+            <View style={{ marginTop: theme.spacing.sm }}>
+              <EmptyState
+                label="Parc vide"
+                message="Ajoutez votre premier boîtier ci-dessus."
+                source="devices"
+              />
+            </View>
+          ) : (
+            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+              {devices.map((d) => {
+                const ok = d.healthStatus === 'ok';
+                return (
+                  <Card key={d.id}>
+                    <View style={s.rowBetween}>
+                      <Text style={s.deviceLabel} numberOfLines={1}>
+                        {d.label}
+                      </Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`État : ${healthLabel(d.healthStatus)}. Basculer.`}
+                        hitSlop={6}
+                        onPress={() => onToggleHealth(d)}
+                        style={({ pressed }) => [s.healthPill, pressed && { opacity: 0.8 }]}
+                      >
+                        <View
+                          style={[s.dot, { backgroundColor: ok ? theme.palette.green : BRONZE }]}
+                          accessibilityElementsHidden
+                          importantForAccessibility="no"
+                        />
+                        <Text style={s.healthText}>{healthLabel(d.healthStatus)}</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={s.deviceMeta}>
+                      {d.serial ? `${d.serial} · ` : ''}
+                      {d.type}
+                      {d.batteryStatus ? ` · ${d.batteryStatus}` : ''}
+                    </Text>
+                    <Text style={s.deviceAssign}>
+                      {d.assignmentCount} affectation{d.assignmentCount > 1 ? 's' : ''}
+                    </Text>
+                  </Card>
+                );
+              })}
+            </View>
+          )}
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+const s = {
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: BRONZE,
+    marginTop: theme.spacing.sm,
+  },
+  title: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.md,
+  },
+  rowBetween: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: theme.spacing.sm,
+  },
+  deviceLabel: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    flex: 1,
+  },
+  healthPill: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    minHeight: 36,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+  },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  healthText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: theme.palette.creamMute,
+  },
+  deviceMeta: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+  deviceAssign: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: theme.palette.faint,
+    marginTop: theme.spacing.xs,
+  },
+};
