@@ -30,6 +30,7 @@ import {
   stopLapDetection,
 } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
+import { attachPendingIntentionToSession } from '@/services/intentionsService';
 import { uploadTelemetryFile } from '@/services/telemetryStorage';
 import { useSessionStore } from '@/store/useSessionStore';
 import type { RaceBoxData } from '@/types/telemetry';
@@ -152,6 +153,13 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   }
 
   const sessionId = (data as { id: string }).id;
+
+  // Rattache l'intention posée en préparation (V9) à cette séance — best-effort,
+  // non bloquant : l'intention est facultative et ne doit jamais retarder la
+  // capture ni la faire échouer. Non filtré par circuit (la prépa et le
+  // lancement peuvent dériver le circuit différemment) ; borné par la fraîcheur.
+  void attachPendingIntentionToSession({ sessionId }).catch(() => undefined);
+
   const startMs = Date.now();
   const finish = input.finishLine ?? BELTOISE_FINISH;
   if (!input.finishLine) {

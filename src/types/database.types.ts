@@ -4090,6 +4090,54 @@ export type Database = {
           },
         ]
       }
+      session_intentions: {
+        Row: {
+          body: string
+          circuit_id: string | null
+          created_at: string
+          id: string
+          session_id: string | null
+          shared_with_coach: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          circuit_id?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          shared_with_coach?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          circuit_id?: string | null
+          created_at?: string
+          id?: string
+          session_id?: string | null
+          shared_with_coach?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_intentions_circuit_id_fkey"
+            columns: ["circuit_id"]
+            isOneToOne: false
+            referencedRelation: "circuits"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_intentions_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pilot_notes: {
         Row: {
           body: string

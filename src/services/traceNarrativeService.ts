@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import type { TelemetrySession } from '@/types/telemetry';
 
 import { computeDataConfidence } from './dataConfidenceLogic';
+import { getIntentionForSession, type SessionIntention } from './intentionsService';
 import { computeKeyMoments } from './keyMomentsLogic';
 import { listMyNotes } from './pilotNotesService';
 import { computeRegularity } from './regularityService';
@@ -25,6 +26,8 @@ import { assembleTraceOfDay, type TraceOfDay } from './traceNarrativeLogic';
 export interface TraceOfDayResult {
   session: TelemetrySession;
   trace: TraceOfDay;
+  /** L'intention posée avant la séance, à juxtaposer (le pilote conclut). */
+  intention: SessionIntention | null;
 }
 
 /** Session cible : celle passée en param, sinon la dernière séance terminée. */
@@ -58,10 +61,11 @@ export async function loadTraceOfDay(
   const session = await loadSession(userId, sessionId);
   if (!session) return null;
 
-  const [laps, segments, insights] = await Promise.all([
+  const [laps, segments, insights, intention] = await Promise.all([
     fetchSessionLaps(session.id),
     listSegmentAnalysesForSession(session.id),
     fetchSessionInsights(session.id),
+    getIntentionForSession(session.id),
   ]);
 
   const reg = computeRegularity(
@@ -124,5 +128,5 @@ export async function loadTraceOfDay(
     sessionsHere,
   });
 
-  return { session, trace };
+  return { session, trace, intention };
 }

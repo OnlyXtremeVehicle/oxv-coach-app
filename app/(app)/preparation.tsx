@@ -15,6 +15,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { IntentionCard } from '@/components/IntentionCard';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import {
   type WeatherData,
@@ -167,15 +168,12 @@ export default function PreparationScreen() {
           </Card>
         </View>
 
-        {/* Intention — question ouverte. La réponse appartient au pilote. */}
+        {/* Intention — question ouverte, saisie libre. La réponse appartient au
+            pilote ; l'app ne suggère rien. Rattachée à la séance à sa création,
+            pour juxtaposer plus tard intention et trace (le pilote conclut). */}
         <View style={s.section}>
           <Text style={s.sectionLabel}>INTENTION</Text>
-          <Card style={{ marginTop: theme.spacing.sm }}>
-            <Text style={s.question}>Qu’aimeriez-vous explorer aujourd’hui ?</Text>
-            <Text style={s.muted}>
-              Gardez-la pour vous. La piste est à vous, les décisions aussi.
-            </Text>
-          </Card>
+          <IntentionCard circuitId={circuit?.id ?? null} />
           <Card
             onPress={() => router.push('/(app)/objectifs' as never)}
             accessibilityLabel="Vos objectifs. Ce que vous avez choisi de suivre."

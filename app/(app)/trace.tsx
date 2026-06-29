@@ -68,7 +68,7 @@ export default function TraceScreen() {
     return <TraceEmpty />;
   }
 
-  const { session, trace } = data;
+  const { session, trace, intention } = data;
   const sessionId = session.id;
   const dateLabel = session.started_at ? formatDateShort(session.started_at) : null;
   const meta = [trace.circuitName, dateLabel].filter(Boolean).join(' · ');
@@ -108,6 +108,17 @@ export default function TraceScreen() {
         <FadeInSection delay={120} style={{ marginTop: theme.spacing.xxl }}>
           <Text style={s.narrative}>{trace.narrative}</Text>
         </FadeInSection>
+
+        {/* Intention — ce que vous vouliez explorer, juxtaposé à la trace. Le
+            pilote rapproche les deux ; l'app n'évalue pas l'écart. */}
+        {intention ? (
+          <FadeInSection delay={150} style={{ marginTop: theme.spacing.xxl }}>
+            <Text style={s.sectionEyebrow}>VOTRE INTENTION, AVANT</Text>
+            <Card>
+              <Text style={s.intentionBody}>« {intention.body} »</Text>
+            </Card>
+          </FadeInSection>
+        ) : null}
 
         {/* Le moment que la trace retient — un fait saillant, pas une consigne. */}
         {trace.highlight ? (
@@ -303,6 +314,13 @@ const s = {
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
     lineHeight: theme.fontSize.small * 1.4,
+  },
+  intentionBody: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.body,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.5,
   },
   cta: {
     minHeight: 52,
