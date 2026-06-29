@@ -89,6 +89,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Valider les comptes partenaires, superviser les leads.',
   },
   {
+    href: '/(admin)/ambassadeurs',
+    label: 'Ambassadeurs',
+    description: 'Candidatures ambassadeur : activer, révoquer.',
+  },
+  {
     href: '/(admin)/sessions-media',
     label: 'Médias',
     description: 'Dépôt des photos / vidéos prises sur piste par session.',

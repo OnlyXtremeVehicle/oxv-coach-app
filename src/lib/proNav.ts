@@ -50,6 +50,8 @@ export const PRO_TAB_LABEL: Record<ProTabZone, string> = {
 export const PRO_ROUTE_TO_ZONE: Record<string, ProTabZone> = {
   '': 'pro-paddock',
   index: 'pro-paddock',
+  // Sous-ecran du Paddock pro (candidature ambassadeur).
+  ambassadeur: 'pro-paddock',
   performance: 'pro-performance',
   // Sous-écran de Performance (recherche de séances) — surligne l'onglet Performance.
   bibliotheque: 'pro-performance',

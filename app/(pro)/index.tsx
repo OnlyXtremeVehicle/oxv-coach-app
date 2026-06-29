@@ -32,6 +32,7 @@ const TOOLS: { label: string; hint: string; href: string }[] = [
   { label: 'Mon passeport', hint: 'Votre identité de pilote, cumulée', href: '/(app)/passeport' },
   { label: 'Ma signature', hint: 'Votre empreinte de pilotage', href: '/(app)/signature' },
   { label: 'Mon garage', hint: 'Vos véhicules et leurs réglages', href: '/(app)/garage' },
+  { label: 'Ambassadeur OXV', hint: 'Porter les couleurs OXV', href: '/(pro)/ambassadeur' },
 ];
 
 interface LastSession {
