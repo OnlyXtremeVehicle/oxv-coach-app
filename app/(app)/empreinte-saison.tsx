@@ -12,6 +12,8 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState, Fact } from '@/components/instruments';
+import { StoryMilestone } from '@/components/StoryMilestone';
+import { buildSeasonStory } from '@/services/seasonStoryLogic';
 import { fetchAllSessions } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { type TelemetrySession } from '@/types/telemetry';
@@ -19,37 +21,82 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { formatDateShort } from '@/utils/format';
 
 const MONTH_INITIALS = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+const MONTH_NAMES = [
+  'Janvier',
+  'Février',
+  'Mars',
+  'Avril',
+  'Mai',
+  'Juin',
+  'Juillet',
+  'Août',
+  'Septembre',
+  'Octobre',
+  'Novembre',
+  'Décembre',
+];
+
+interface SeasonMoment {
+  dateLabel: string;
+  circuit: string | null;
+}
 
 interface SeasonSummary {
   year: number;
   sessions: number;
   circuits: number;
+  vehicles: number;
   laps: number;
   distanceKm: number;
   perMonth: number[]; // 12 entrées, index 0 = janvier
+  firstSession: SeasonMoment | null;
+  lastSession: SeasonMoment | null;
+  busiestMonth: { monthLabel: string; count: number } | null;
 }
 
 function summarize(rows: TelemetrySession[], year: number): SeasonSummary {
   const perMonth = new Array(12).fill(0) as number[];
   const circuitNames = new Set<string>();
+  const vehicleIds = new Set<string>();
   let laps = 0;
   let distanceKm = 0;
   for (const r of rows) {
     const d = new Date(r.started_at);
     if (!Number.isNaN(d.getTime())) perMonth[d.getMonth()] += 1;
     if (r.circuit_name) circuitNames.add(r.circuit_name);
+    if (r.vehicle_id) vehicleIds.add(r.vehicle_id);
     laps += r.lap_count ?? 0;
     distanceKm += r.distance_km ?? 0;
   }
+
+  // Fil chronologique : première et dernière séance datées de la saison.
+  const dated = rows
+    .filter((r) => !Number.isNaN(new Date(r.started_at).getTime()))
+    .sort((a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime());
+  const first = dated[0] ?? null;
+  const last = dated.length > 0 ? dated[dated.length - 1] : null;
+  const moment = (r: TelemetrySession | null): SeasonMoment | null =>
+    r ? { dateLabel: formatDateShort(r.started_at), circuit: r.circuit_name || null } : null;
+
+  // Mois le plus dense (mesure de soi, pas un rang).
+  const maxCount = Math.max(0, ...perMonth);
+  const busiestMonth =
+    maxCount > 0 ? { monthLabel: MONTH_NAMES[perMonth.indexOf(maxCount)], count: maxCount } : null;
+
   return {
     year,
     sessions: rows.length,
     circuits: circuitNames.size,
+    vehicles: vehicleIds.size,
     laps,
     distanceKm,
     perMonth,
+    firstSession: moment(first),
+    lastSession: moment(last),
+    busiestMonth,
   };
 }
 
@@ -87,6 +134,16 @@ export default function EmpreinteSaisonScreen() {
 
   const hasData = (summary?.sessions ?? 0) > 0;
   const maxMonth = summary ? Math.max(1, ...summary.perMonth) : 1;
+  const story = summary
+    ? buildSeasonStory({
+        sessions: summary.sessions,
+        circuits: summary.circuits,
+        vehicles: summary.vehicles,
+        firstSession: summary.firstSession,
+        lastSession: summary.lastSession,
+        busiestMonth: summary.busiestMonth,
+      })
+    : [];
 
   return (
     <Screen>
@@ -154,6 +211,19 @@ export default function EmpreinteSaisonScreen() {
                 ))}
               </View>
             </View>
+
+            {/* Les jalons — les moments qui marquent le fil de la saison. Des
+                faits situés (soi contre soi), jamais un palmarès. */}
+            {story.length > 0 ? (
+              <View style={{ marginTop: theme.spacing.xxl }}>
+                <SectionLabel>Les jalons</SectionLabel>
+                <View style={{ marginTop: theme.spacing.lg }}>
+                  {story.map((m, i) => (
+                    <StoryMilestone key={m.key} milestone={m} last={i === story.length - 1} />
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
             <Text style={s.doctrine}>Votre saison, telle que mesurée. Pas un palmarès.</Text>
           </>
