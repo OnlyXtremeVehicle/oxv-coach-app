@@ -4090,6 +4090,117 @@ export type Database = {
           },
         ]
       }
+      ai_safety_reviews: {
+        Row: {
+          created_at: string
+          id: string
+          input_excerpt: string | null
+          model_version: string | null
+          output_excerpt: string | null
+          pilot_id: string | null
+          reasons: string[] | null
+          telemetry_session_id: string | null
+          verdict: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          input_excerpt?: string | null
+          model_version?: string | null
+          output_excerpt?: string | null
+          pilot_id?: string | null
+          reasons?: string[] | null
+          telemetry_session_id?: string | null
+          verdict: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          input_excerpt?: string | null
+          model_version?: string | null
+          output_excerpt?: string | null
+          pilot_id?: string | null
+          reasons?: string[] | null
+          telemetry_session_id?: string | null
+          verdict?: string
+        }
+        Relationships: []
+      }
+      coach_ai_suggestions: {
+        Row: {
+          body: string
+          coach_id: string
+          corner_index: number | null
+          created_at: string
+          id: string
+          model_version: string | null
+          pilot_id: string
+          resulting_annotation_id: string | null
+          safety_review_id: string | null
+          status: string
+          telemetry_session_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          coach_id: string
+          corner_index?: number | null
+          created_at?: string
+          id?: string
+          model_version?: string | null
+          pilot_id: string
+          resulting_annotation_id?: string | null
+          safety_review_id?: string | null
+          status?: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          coach_id?: string
+          corner_index?: number | null
+          created_at?: string
+          id?: string
+          model_version?: string | null
+          pilot_id?: string
+          resulting_annotation_id?: string | null
+          safety_review_id?: string | null
+          status?: string
+          telemetry_session_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      coach_queue: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          pilot_id: string
+          status: string
+          telemetry_session_id: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          pilot_id: string
+          status?: string
+          telemetry_session_id: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          pilot_id?: string
+          status?: string
+          telemetry_session_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       session_intentions: {
         Row: {
           body: string

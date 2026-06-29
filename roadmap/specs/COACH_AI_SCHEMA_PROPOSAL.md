@@ -1,9 +1,12 @@
-# Proposition de schéma — Coach AI Assistant (V9 §14)
+# Schéma — Coach AI Assistant (V9 §14)
 
-> **STATUT : PROPOSITION — STOP.** Rien n'est appliqué. J'attends ton « OK
-> applique » (ou tes ajustements) avant tout `apply_migration`. Calqué sur les
-> patterns existants (`coach_annotations` 0020, `session_intentions`,
-> `is_coach_of`, rôle `service_role` pour le travail serveur).
+> **STATUT : APPLIQUÉ en prod le 29/06** (migration
+> `20260629140000_coach_ai_assistant_foundation`, advisors propres). Décisions
+> Gabin : appliquer tel quel ; **`coach_queue` = TABLE** avec statut de lecture
+> explicite (pas la vue) ; périmètre V1 = **fondation seule** (UI coach en slices
+> ultérieures). Défauts d'infra retenus : génération + filtre en Edge Function +
+> Claude ; rétention 12 mois (cron à ajouter). Calqué sur `coach_annotations`
+> 0020 / `session_intentions` / `is_coach_of` / `service_role`.
 
 ## Cadrage doctrinal (non négociable)
 
@@ -115,33 +118,29 @@ using (exists (select 1 from public.users where id = auth.uid() and is_admin = t
 
 ---
 
-## Table 3 — `coach_queue` : **VUE**, pas une table
+## Table 3 — `coach_queue` (TABLE, décision Gabin)
 
-La « file de lecture intelligente » est DÉRIVÉE (séances des pilotes suivis,
-non encore lues). Proposée en **vue** `security_invoker` (respecte la RLS sous-
-jacente de `telemetry_sessions` + `coach_pilots`) plutôt qu'en table — zéro état
-nouveau. « Non lue » = aucune `coach_annotation` du coach sur la séance.
+File de lecture coach avec **statut de lecture explicite et persistant** : un
+statut `unread`/`read`/`archived` par coach et par séance, marquable manuellement
+(multi-coach). Own-row coach (`is_coach_of`) + admin audit. Upsert applicatif
+possible ; l'enfilement serveur (trigger à la complétion de séance, en
+`service_role`) viendra avec l'UI.
 
 ```sql
-create or replace view public.coach_queue
-with (security_invoker = on) as
-select
-  s.id              as telemetry_session_id,
-  cp.pilot_id,
-  cp.coach_id,
-  s.circuit_name,
-  s.started_at,
-  not exists (
-    select 1 from public.coach_annotations a
-    where a.telemetry_session_id = s.id and a.coach_id = cp.coach_id and a.deleted_at is null
-  )                 as unread
-from public.coach_pilots cp
-join public.telemetry_sessions s on s.user_id = cp.pilot_id
-where cp.active and cp.pilot_consent_at is not null and s.status = 'completed';
+create table public.coach_queue (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users (id) on delete cascade,
+  pilot_id uuid not null references auth.users (id) on delete cascade,
+  telemetry_session_id uuid not null references public.telemetry_sessions (id) on delete cascade,
+  status text not null default 'unread' check (status in ('unread','read','archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (coach_id, telemetry_session_id)
+);
+-- + trigger updated_at, RLS coach own-row (is_coach_of) + admin select.
 ```
 
-> Filtres (anomalie qualité, priorité) : ajoutables en phase 2 si tu valides la
-> base. La vue n'introduit aucune écriture ni donnée nouvelle.
+> Filtres (anomalie qualité, priorité) : colonnes/flags ajoutables en phase 2.
 
 ---
 
