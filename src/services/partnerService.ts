@@ -26,6 +26,8 @@ export interface PartnerAccount {
   contactEmail: string | null;
   contactPolicy: string | null;
   status: PartnerStatus;
+  geoZone: string | null;
+  documents: unknown;
 }
 
 export interface PartnerOffer {
@@ -36,6 +38,10 @@ export interface PartnerOffer {
   priceEur: number | null;
   quota: number | null;
   status: OfferStatus;
+  category: string | null;
+  validUntil: string | null;
+  conditions: string | null;
+  imageUrl: string | null;
 }
 
 export interface PartnerLead {
@@ -60,7 +66,7 @@ export async function loadMyPartnerAccount(): Promise<PartnerAccount | null> {
   const { data, error } = await supabase
     .from('partner_accounts')
     .select(
-      'id, profile_id, display_name, type, description, logo_url, contact_email, contact_policy, status'
+      'id, profile_id, display_name, type, description, logo_url, contact_email, contact_policy, status, geo_zone, documents'
     )
     .eq('profile_id', uid)
     .maybeSingle();
@@ -79,14 +85,37 @@ export async function loadMyPartnerAccount(): Promise<PartnerAccount | null> {
     contactEmail: (r.contact_email as string | null) ?? null,
     contactPolicy: (r.contact_policy as string | null) ?? null,
     status: r.status as PartnerStatus,
+    geoZone: (r.geo_zone as string | null) ?? null,
+    documents: r.documents ?? null,
   };
+}
+
+/** Met à jour la fiche du partenaire courant (zone, description). RLS owns_partner. */
+export async function updateMyPartnerAccount(
+  id: string,
+  patch: { geoZone?: string | null; description?: string | null }
+): Promise<{ ok: boolean; error?: string }> {
+  const row: Record<string, unknown> = {};
+  if (patch.geoZone !== undefined) row.geo_zone = patch.geoZone;
+  if (patch.description !== undefined) row.description = patch.description;
+  const { error } = await supabase
+    .from('partner_accounts')
+    .update(row as never)
+    .eq('id', id);
+  if (error) {
+    console.warn('[OXV][partner] updateMyPartnerAccount :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }
 
 /** Offres du partenaire (toutes : draft/published/archived). */
 export async function listMyOffers(partnerId: string): Promise<PartnerOffer[]> {
   const { data, error } = await supabase
     .from('partner_offers')
-    .select('id, partner_id, title, description, price_eur, quota, status')
+    .select(
+      'id, partner_id, title, description, price_eur, quota, status, category, valid_until, conditions, image_url'
+    )
     .eq('partner_id', partnerId)
     .order('created_at', { ascending: false });
   if (error) {
@@ -103,6 +132,10 @@ export async function listMyOffers(partnerId: string): Promise<PartnerOffer[]> {
       priceEur: (r.price_eur as number | null) ?? null,
       quota: (r.quota as number | null) ?? null,
       status: r.status as OfferStatus,
+      category: (r.category as string | null) ?? null,
+      validUntil: (r.valid_until as string | null) ?? null,
+      conditions: (r.conditions as string | null) ?? null,
+      imageUrl: (r.image_url as string | null) ?? null,
     };
   });
 }
@@ -161,6 +194,10 @@ export interface UpsertOfferInput {
   priceEur: number | null;
   quota: number | null;
   status: OfferStatus;
+  category: string | null;
+  validUntil: string | null;
+  conditions: string | null;
+  imageUrl: string | null;
 }
 
 /** Crée (id null) ou met à jour une offre du partenaire. RLS : owns_partner_account. */
@@ -174,6 +211,10 @@ export async function upsertOffer(
     price_eur: input.priceEur,
     quota: input.quota,
     status: input.status,
+    category: input.category,
+    valid_until: input.validUntil,
+    conditions: input.conditions,
+    image_url: input.imageUrl,
   };
   const { error } = input.id
     ? await supabase.from('partner_offers').update(row).eq('id', input.id)
@@ -218,7 +259,9 @@ export async function listMarketplace(): Promise<MarketplacePartner[]> {
       .order('display_name', { ascending: true }),
     supabase
       .from('partner_offers')
-      .select('id, partner_id, title, description, price_eur, quota, status')
+      .select(
+        'id, partner_id, title, description, price_eur, quota, status, category, valid_until, conditions, image_url'
+      )
       .eq('status', 'published'),
   ]);
   if (accRes.error) console.warn('[OXV][partner] listMarketplace accounts :', accRes.error.message);
@@ -235,6 +278,10 @@ export async function listMarketplace(): Promise<MarketplacePartner[]> {
       priceEur: (o.price_eur as number | null) ?? null,
       quota: (o.quota as number | null) ?? null,
       status: o.status as OfferStatus,
+      category: (o.category as string | null) ?? null,
+      validUntil: (o.valid_until as string | null) ?? null,
+      conditions: (o.conditions as string | null) ?? null,
+      imageUrl: (o.image_url as string | null) ?? null,
     };
     const arr = offersByPartner.get(offer.partnerId) ?? [];
     arr.push(offer);
@@ -322,7 +369,7 @@ export async function listAllPartnerAccounts(): Promise<PartnerAccount[]> {
   const { data, error } = await supabase
     .from('partner_accounts')
     .select(
-      'id, profile_id, display_name, type, description, logo_url, contact_email, contact_policy, status'
+      'id, profile_id, display_name, type, description, logo_url, contact_email, contact_policy, status, geo_zone, documents'
     )
     .order('created_at', { ascending: false });
   if (error) {
@@ -341,6 +388,8 @@ export async function listAllPartnerAccounts(): Promise<PartnerAccount[]> {
       contactEmail: (r.contact_email as string | null) ?? null,
       contactPolicy: (r.contact_policy as string | null) ?? null,
       status: r.status as PartnerStatus,
+      geoZone: (r.geo_zone as string | null) ?? null,
+      documents: r.documents ?? null,
     };
   });
 }

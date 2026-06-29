@@ -120,6 +120,13 @@ export default function PartnerHubScreen() {
 
             <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
               <Card
+                onPress={() => router.push('/(partner)/profil' as never)}
+                accessibilityLabel="Ma fiche. Zone desservie et description."
+              >
+                <Text style={s.cardTitle}>Ma fiche</Text>
+                <Text style={s.cardHint}>Votre zone et votre description.</Text>
+              </Card>
+              <Card
                 onPress={() => router.push('/(partner)/offres' as never)}
                 accessibilityLabel="Mes offres. Créer et publier vos offres."
               >

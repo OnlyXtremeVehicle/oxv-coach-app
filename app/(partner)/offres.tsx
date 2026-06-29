@@ -41,6 +41,10 @@ interface Draft {
   priceEur: string;
   quota: string;
   status: OfferStatus;
+  category: string;
+  validUntil: string;
+  conditions: string;
+  imageUrl: string;
 }
 
 const EMPTY_DRAFT: Draft = {
@@ -50,6 +54,10 @@ const EMPTY_DRAFT: Draft = {
   priceEur: '',
   quota: '',
   status: 'draft',
+  category: '',
+  validUntil: '',
+  conditions: '',
+  imageUrl: '',
 };
 
 function draftFromOffer(o: PartnerOffer): Draft {
@@ -60,6 +68,10 @@ function draftFromOffer(o: PartnerOffer): Draft {
     priceEur: o.priceEur != null ? String(o.priceEur) : '',
     quota: o.quota != null ? String(o.quota) : '',
     status: o.status,
+    category: o.category ?? '',
+    validUntil: o.validUntil ? o.validUntil.slice(0, 10) : '',
+    conditions: o.conditions ?? '',
+    imageUrl: o.imageUrl ?? '',
   };
 }
 
@@ -110,6 +122,11 @@ export default function PartnerOffersScreen() {
       Toast.show({ type: 'error', text1: 'Le quota doit être un nombre.' });
       return;
     }
+    const validUntil = draft.validUntil.trim();
+    if (validUntil && !/^\d{4}-\d{2}-\d{2}$/.test(validUntil)) {
+      Toast.show({ type: 'error', text1: 'La date doit être au format AAAA-MM-JJ.' });
+      return;
+    }
     const input: UpsertOfferInput = {
       id: draft.id,
       partnerId,
@@ -118,6 +135,10 @@ export default function PartnerOffersScreen() {
       priceEur: priceEur != null ? Math.round(priceEur) : null,
       quota: quota != null ? Math.round(quota) : null,
       status: draft.status,
+      category: draft.category.trim() ? draft.category.trim() : null,
+      validUntil: validUntil ? `${validUntil}T00:00:00Z` : null,
+      conditions: draft.conditions.trim() ? draft.conditions.trim() : null,
+      imageUrl: draft.imageUrl.trim() ? draft.imageUrl.trim() : null,
     };
     setSaving(true);
     const res = await upsertOffer(input);
@@ -170,6 +191,41 @@ export default function PartnerOffersScreen() {
               placeholder="Quelques mots sur l’offre…"
               multiline
               maxLength={600}
+            />
+            <Field
+              label="Catégorie"
+              optional
+              value={draft.category}
+              onChangeText={(v) => update({ category: v })}
+              placeholder="Ex. Photo, hébergement, équipement…"
+              maxLength={60}
+            />
+            <Field
+              label="Valable jusqu’au"
+              optional
+              value={draft.validUntil}
+              onChangeText={(v) => update({ validUntil: v })}
+              placeholder="AAAA-MM-JJ"
+              autoCapitalize="none"
+              helper="Laisser vide si sans limite."
+            />
+            <Field
+              label="Conditions"
+              optional
+              value={draft.conditions}
+              onChangeText={(v) => update({ conditions: v })}
+              placeholder="Conditions de l’offre…"
+              multiline
+              maxLength={400}
+            />
+            <Field
+              label="Image (URL)"
+              optional
+              value={draft.imageUrl}
+              onChangeText={(v) => update({ imageUrl: v })}
+              placeholder="https://…"
+              autoCapitalize="none"
+              keyboardType="url"
             />
             <View style={s.twoCol}>
               <View style={{ flex: 1 }}>
