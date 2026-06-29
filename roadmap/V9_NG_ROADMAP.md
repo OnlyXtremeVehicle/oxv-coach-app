@@ -14,8 +14,10 @@
   (`f1ae3da`), **OXVPromiseBlock** (`2f792be`), **Intention de séance**
   (`88629f4`, table `session_intentions` en prod + saisie/rattachement/
   juxtaposition ; 2 bugs medium corrigés par vérif adversariale).
-- Axe 2 — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`), sur le SVG
-  existant, sans dépendance native.
+- Axe 2 — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`) +
+  **LapTimeline** frise de régularité (`a7c682d`, marche sans frames ; a révélé
+  et corrigé un vert de jugement hors canon sur le meilleur tour). SVG existant,
+  sans dépendance native.
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
   Principe 3) : aucune vibration en S6_roulage.
 
@@ -29,8 +31,8 @@ TrophyCard→captureRef→partage).
 - **OXV Moment watermark** (Axe 3) : sortant → aval avant.
 - **Paddock NG hero contextuel** (Axe 5) : front door → aval avant.
 - **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
-- **Reste Axe 2** : LapTimeline (scrubber) + CornerPanel (bottom-sheet) —
-  chantiers plus lourds, zéro-décision, à enchaîner.
+- **Reste Axe 2** : CornerPanel (détail virage en bottom-sheet) — zéro-décision,
+  à enchaîner (pas de lib bottom-sheet installée → approche Modal/Reanimated).
 
 ## Lecture honnête de la matrice
 
