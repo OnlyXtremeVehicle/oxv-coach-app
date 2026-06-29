@@ -48,6 +48,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   'bilan-pret': 'session',
   // Bilan + sous-vues Data Lab
   bilan: 'bilan',
+  trace: 'bilan',
   'data-lab': 'bilan',
   conditions: 'bilan',
   carte: 'bilan',

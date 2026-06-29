@@ -22,10 +22,11 @@ export default function BilanPretScreen() {
 
   const onDecouvrir = () => {
     hapticConfirm();
-    router.replace({
-      pathname: '/(app)/bilan',
-      params: params.sessionId ? { sessionId: params.sessionId } : {},
-    });
+    // Entrée par la Trace du jour (V9 §6) : la lecture narrative posée précède
+    // l'analyse détaillée du Bilan, accessible depuis la Trace.
+    router.replace(
+      (params.sessionId ? `/(app)/trace?sessionId=${params.sessionId}` : '/(app)/trace') as never
+    );
   };
 
   const onPlusTard = () => {
