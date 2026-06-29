@@ -21,6 +21,7 @@ import { GaugeInstrument } from '@/components/instruments';
 import { FadeInSection } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
+import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
@@ -106,6 +107,14 @@ export default function HomeHubScreen() {
   const firstName = profile?.first_name ?? '';
   const greeting = timeBasedGreeting();
 
+  // Action principale contextuelle (Paddock NG) : une seule, choisie selon
+  // l'état pilote. « En 5 s, le pilote sait quoi faire. »
+  const action = decidePaddockAction({
+    state,
+    hasRecentSession: !!recentSession,
+    recentSessionId: recentSession?.id ?? null,
+  });
+
   return (
     <Screen>
       {/* En-tête racine : insigne de marque (gauche) + accès Compte (droite). */}
@@ -118,7 +127,7 @@ export default function HomeHubScreen() {
         {state === 'S5_approche' ? (
           <ModeEnroute />
         ) : state === 'S4_anticipation' ? (
-          <ModeCountdown firstName={firstName} />
+          <ModeCountdown firstName={firstName} action={action} />
         ) : (
           <ModePassive
             greeting={greeting}
@@ -126,6 +135,7 @@ export default function HomeHubScreen() {
             recentSession={recentSession}
             regularity={regularity}
             loading={loading}
+            action={action}
           />
         )}
 
@@ -176,12 +186,25 @@ function ModeEnroute() {
   );
 }
 
-function ModeCountdown({ firstName }: { firstName: string }) {
+function ModeCountdown({ firstName, action }: { firstName: string; action: PaddockAction | null }) {
   return (
     <View style={s.modeWrap}>
       <Text style={s.eyebrow}>Prochaine session</Text>
       <Text style={s.modeTitle}>{firstName ? `À bientôt, ${firstName}.` : 'À bientôt.'}</Text>
       <Text style={s.modeManifest}>L'app vous tiendra au courant.</Text>
+      {action ? (
+        <Link href={action.href as never} asChild>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              s.primaryBtn,
+              { marginTop: spacing.xl, opacity: pressed ? 0.9 : 1 },
+            ]}
+          >
+            <Text style={s.primaryBtnText}>{action.label}</Text>
+          </Pressable>
+        </Link>
+      ) : null}
     </View>
   );
 }
@@ -192,12 +215,14 @@ function ModePassive({
   recentSession,
   regularity,
   loading,
+  action,
 }: {
   greeting: string;
   firstName: string;
   recentSession: RecentSession | null;
   regularity: { stdDevSeconds: number; lapCount: number } | null;
   loading: boolean;
+  action: PaddockAction | null;
 }) {
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
 
@@ -261,25 +286,24 @@ function ModePassive({
         )}
       </FadeInSection>
 
-      {/* Action principale contextuelle (§B1) + 2 raccourcis ghost. */}
+      {/* Action principale contextuelle (Paddock NG, §7) + 2 raccourcis ghost.
+          Le hint situe le moment (factuel) ; l'action s'adapte à l'état pilote. */}
       <FadeInSection delay={120}>
-        <Link
-          href={
-            (recentSession
-              ? { pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }
-              : '/(app)/session') as never
-          }
-          asChild
-        >
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [s.primaryBtn, { opacity: pressed ? 0.9 : 1 }]}
-          >
-            <Text style={s.primaryBtnText}>
-              {recentSession ? 'Découvrir mon bilan' : 'Préparer ma session'}
-            </Text>
-          </Pressable>
-        </Link>
+        {action?.hint ? <Text style={s.actionHint}>{action.hint}</Text> : null}
+        {action ? (
+          <Link href={action.href as never} asChild>
+            <Pressable
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                s.primaryBtn,
+                action.hint ? { marginTop: spacing.md } : null,
+                { opacity: pressed ? 0.9 : 1 },
+              ]}
+            >
+              <Text style={s.primaryBtnText}>{action.label}</Text>
+            </Pressable>
+          </Link>
+        ) : null}
         <View style={s.shortcutRow}>
           {SHORTCUTS.map((sc) => (
             <Link key={sc.href} href={sc.href as never} asChild>
@@ -405,6 +429,16 @@ const s = StyleSheet.create({
     marginTop: spacing.xxl,
   },
   primaryBtnText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: '#050505' },
+  // Hint contextuel (Paddock NG) : situe le moment, calme et factuel. Light
+  // italic, jamais une consigne.
+  actionHint: {
+    fontFamily: fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamSoft,
+    marginTop: spacing.xxl,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
   shortcutRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
   ghost: {
     flex: 1,
