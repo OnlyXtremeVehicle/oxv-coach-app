@@ -21,6 +21,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
+import { MethodLimitBlock } from '@/components/MethodLimitBlock';
 import { TrophyCard } from '@/components/TrophyCard';
 import { FadeInSection } from '@/components/motion';
 import type { LatLon } from '@/circuit/circuitGenerator';
@@ -189,6 +190,11 @@ export default function CarteTropheeScreen() {
             tracePoints={data.tracePoints}
           />
         </View>
+
+        {/* Portée honnête de l'image, AVANT le geste de partage (V9 §17). */}
+        <FadeInSection delay={60} style={{ marginBottom: theme.spacing.lg }}>
+          <MethodLimitBlock />
+        </FadeInSection>
 
         {/* Actions + note révélées après la carte (cascade 80/160). Le bouton
             primaire passe par l'état `loading` du kit (spinner + libellé tenu +

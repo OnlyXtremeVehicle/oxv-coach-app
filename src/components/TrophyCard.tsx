@@ -22,6 +22,7 @@ import Svg, { Circle, Polyline } from 'react-native-svg';
 
 import { type Circuit, generateCircuit, type LatLon } from '@/circuit/circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
+import { ExportWatermark } from '@/components/ExportWatermark';
 import { theme } from '@/theme/v2';
 
 const TRACE_VIEWBOX = 240;
@@ -125,9 +126,8 @@ export const TrophyCard = forwardRef<View, TrophyCardProps>(function TrophyCard(
         <Text style={s.heroSub}>{subLabel}</Text>
       </View>
 
-      <View style={s.foot}>
-        <Text style={s.footText}>ONLY XTREME VEHICLE · OXVEHICLE.FR</Text>
-      </View>
+      {/* Signature + méthode, gravées dans l'image (voyagent avec le partage). */}
+      <ExportWatermark />
     </View>
   );
 });
@@ -201,18 +201,5 @@ const s = StyleSheet.create({
     letterSpacing: 0.6,
     color: theme.palette.creamMute,
     marginTop: 3,
-  },
-  foot: {
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#1A1A1E',
-    paddingTop: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-  },
-  footText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 2.2,
-    color: theme.palette.faint,
   },
 });
