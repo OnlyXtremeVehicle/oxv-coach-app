@@ -34,14 +34,16 @@ silence notifications (handler `notificationBehaviorForState` coupe déjà
 bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
 TrophyCard→captureRef→partage).
 
-**Axes 1, 2, 3, 5 COMPLETS ; Axe 4 entamé.** Tous les livrables signature V9
-sont posés. Reste, par nature gated ou polish :
-- **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP
-  schéma (décision Gabin), débloquent Coach AI Assistant + métriques device/média.
-- **Axe 4** : reste des formalisations §17 (DRY interne, faible valeur) ; passes
-  a11y / FlashList (diffuses, optimisation prématurée avant données réelles).
-- Physiquement gated : build EAS (quota), validation capture RaceBox réelle
-  (Valence) — hors-code, planning Gabin.
+**Axes 1, 2, 3, 5 COMPLETS ; Axe 4 entamé ; Coach AI fondation posée.** Tous les
+livrables signature V9 sont en place. Reste :
+- **Coach AI — UI** (slices ultérieures, décision Gabin « fondation seule ») :
+  AIReviewBanner, file de lecture (coach_queue), validation suggestion→annotation,
+  + Edge Function de génération/filtre. Le schéma est appliqué (`018bb42`).
+- **Tables** `device_health_logs`, `media_exports` : STOP schéma si on veut les
+  métriques device/média (pas demandé).
+- **Polish** (faible valeur, confirmé Gabin) : reste §17, a11y, FlashList
+  (prématuré avant données réelles).
+- Physiquement gated : build EAS (quota), capture RaceBox réelle (Valence).
 
 ## Lecture honnête de la matrice
 
