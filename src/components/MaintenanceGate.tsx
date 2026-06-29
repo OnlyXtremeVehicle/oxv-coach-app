@@ -71,6 +71,7 @@ const s = StyleSheet.create({
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
     letterSpacing: 0.5,
+    lineHeight: theme.fontSize.h2 * 1.25,
     color: theme.palette.cream,
     textAlign: 'center',
     marginTop: theme.spacing.md,
