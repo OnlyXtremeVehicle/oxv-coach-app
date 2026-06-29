@@ -25,7 +25,8 @@
 - Axe 5 **COMPLET** — **Paddock NG** : action principale contextuelle par état
   pilote (`dce7ef6`, S8→Trace, S9→débrief, S7→Pass, S4→préparer), non destructif.
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
-  Principe 3) : aucune vibration en S6_roulage.
+  Principe 3) ; **passe canon couleur** (`a43bb93`) : 16 rouges-de-marque /
+  verts-hors-canon sur des données de marge neutralisés (audit adversarial).
 
 **Faux négatifs CONFIRMÉS (déjà faits, ne pas refaire) :** Passeport
 (RadarEmpreinte = signature, carte-licence exportable, lien empreinte) ;
