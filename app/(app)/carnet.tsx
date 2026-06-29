@@ -13,9 +13,10 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Alert, Switch, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
+import { ConsentSwitchRow } from '@/components/ConsentSwitchRow';
 import { EmptyState } from '@/components/instruments';
 import {
   type PilotNote,
@@ -154,18 +155,13 @@ export default function CarnetScreen() {
                 <Text style={s.date}>{fmtDate(note.createdAt)}</Text>
                 <Text style={s.body}>{note.body}</Text>
 
-                <View style={s.shareRow}>
-                  <Text style={s.shareLabel}>Partagée avec mon coach</Text>
-                  <Switch
-                    value={note.sharedWithCoach}
-                    onValueChange={(v) => onToggleShare(note, v)}
-                    accessibilityRole="switch"
-                    accessibilityLabel="Partager cette note avec mon coach"
-                    accessibilityState={{ checked: note.sharedWithCoach }}
-                    trackColor={{ false: '#26262B', true: theme.palette.gold }}
-                    thumbColor={theme.palette.cream}
-                  />
-                </View>
+                <ConsentSwitchRow
+                  label="Partagée avec mon coach"
+                  value={note.sharedWithCoach}
+                  onValueChange={(v) => onToggleShare(note, v)}
+                  accessibilityLabel="Partager cette note avec mon coach"
+                  style={s.shareRow}
+                />
 
                 <View style={s.actions}>
                   <Button label="Modifier" variant="ghost" onPress={() => onEdit(note)} />
@@ -216,19 +212,9 @@ const s = {
     lineHeight: theme.fontSize.body * 1.5,
   },
   shareRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
     borderTopWidth: 1,
     borderTopColor: theme.palette.line,
     paddingTop: theme.spacing.sm,
-  },
-  shareLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    flex: 1,
-    paddingRight: theme.spacing.md,
   },
   actions: {
     flexDirection: 'row' as const,

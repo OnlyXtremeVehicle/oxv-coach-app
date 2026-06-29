@@ -12,8 +12,9 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Switch, Text, TextInput, View } from 'react-native';
+import { Text, TextInput } from 'react-native';
 
+import { ConsentSwitchRow } from '@/components/ConsentSwitchRow';
 import * as haptics from '@/lib/haptics';
 import {
   getPendingIntention,
@@ -78,22 +79,17 @@ export function IntentionCard({ circuitId }: { circuitId: string | null }) {
         maxLength={2000}
       />
 
-      <View style={s.shareRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.shareLabel}>Partager avec mon coach</Text>
-          <Text style={s.shareHint}>Lecture seule. Révocable à tout moment.</Text>
-        </View>
-        <Switch
-          value={shared}
-          onValueChange={(v) => {
-            setShared(v);
-            if (save === 'saved') setSave('idle');
-          }}
-          trackColor={{ false: theme.palette.line, true: theme.palette.edge }}
-          thumbColor={theme.palette.cream}
-          accessibilityLabel="Partager cette intention avec mon coach"
-        />
-      </View>
+      <ConsentSwitchRow
+        label="Partager avec mon coach"
+        hint="Lecture seule. Révocable à tout moment."
+        value={shared}
+        onValueChange={(v) => {
+          setShared(v);
+          if (save === 'saved') setSave('idle');
+        }}
+        accessibilityLabel="Partager cette intention avec mon coach"
+        style={{ marginTop: theme.spacing.lg }}
+      />
 
       <Text
         accessibilityRole="button"
@@ -138,23 +134,6 @@ const s = {
     fontSize: theme.fontSize.body,
     color: theme.palette.cream,
     textAlignVertical: 'top' as const,
-  },
-  shareRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.lg,
-  },
-  shareLabel: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-  },
-  shareHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: 2,
   },
   save: {
     marginTop: theme.spacing.lg,
