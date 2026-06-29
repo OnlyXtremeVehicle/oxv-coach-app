@@ -10,7 +10,8 @@
  *
  * Mode SIMPLE (pilote particulier par défaut) :
  *   - Temps au tour en grand
- *   - Delta coloré (vert = meilleur, neutre sinon)
+ *   - Tour de référence marqué en OR (donnée/repère, jamais un vert « bon ») ;
+ *     delta neutre pour les autres tours
  *   - Label « Meilleur tour » plutôt qu'une étoile
  *
  * Mode DÉTAILLÉ (coach, admin, ou pilote curieux après toggle) :
@@ -28,8 +29,10 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { TrackStage } from '@/components/CircuitMap';
+import { LapTimeline } from '@/components/LapTimeline';
 import { EmptyState as DataEmptyState } from '@/components/instruments';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
+import { buildLapTimeline } from '@/services/lapTimelineLogic';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
@@ -65,12 +68,20 @@ export default function ToursScreen() {
     };
   }, [params.sessionId]);
 
+  const [selectedLap, setSelectedLap] = useState<number | null>(null);
   const validLaps = useMemo(() => laps.filter((l) => !l.is_outlap && !l.is_inlap), [laps]);
   const bestLap = useMemo(
     () =>
       validLaps.reduce<Lap | null>(
         (best, l) => (best === null || l.duration_seconds < best.duration_seconds ? l : best),
         null
+      ),
+    [validLaps]
+  );
+  const timeline = useMemo(
+    () =>
+      buildLapTimeline(
+        validLaps.map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }))
       ),
     [validLaps]
   );
@@ -121,6 +132,27 @@ export default function ToursScreen() {
           </View>
         ) : null}
 
+        {/* Frise de régularité — l'écart de chaque tour au médian. Sort des durées
+            de tour (table laps) : lisible AVANT toute frame du boîtier, là où le
+            faisceau reste en attente. Au toucher : sélection liée à la liste. */}
+        {!loading && validLaps.length >= 2 ? (
+          <View style={{ marginBottom: theme.spacing.xxl }}>
+            <Text
+              style={[
+                s.eyebrow,
+                { color: theme.palette.creamMute, marginBottom: theme.spacing.md },
+              ]}
+            >
+              RÉGULARITÉ, TOUR PAR TOUR
+            </Text>
+            <LapTimeline
+              model={timeline}
+              selectedLapNumber={selectedLap}
+              onSelect={(n) => setSelectedLap((cur) => (cur === n ? null : n))}
+            />
+          </View>
+        ) : null}
+
         {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
             La dispersion des lignes = votre régularité de trajectoire, vue d'en
             haut. Constat spatial, aucun jugement. */}
@@ -164,6 +196,7 @@ export default function ToursScreen() {
                 key={lap.id}
                 lap={lap}
                 isBest={bestLap?.id === lap.id}
+                isSelected={selectedLap === lap.lap_number}
                 bestSeconds={bestLap?.duration_seconds ?? null}
                 level={level}
                 onPress={() => {
@@ -199,12 +232,14 @@ export default function ToursScreen() {
 function LapRow({
   lap,
   isBest,
+  isSelected,
   bestSeconds,
   level,
   onPress,
 }: {
   lap: Lap;
   isBest: boolean;
+  isSelected?: boolean;
   bestSeconds: number | null;
   level: 'simple' | 'detailed';
   onPress: () => void;
@@ -236,7 +271,11 @@ function LapRow({
     >
       <Card
         style={{
-          borderColor: isBest ? theme.dataColors.accel : theme.palette.line,
+          borderColor: isBest
+            ? theme.palette.gold
+            : isSelected
+              ? theme.palette.edge
+              : theme.palette.line,
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.md,
@@ -248,7 +287,7 @@ function LapRow({
             width: 32,
             height: 32,
             borderRadius: 16,
-            backgroundColor: isBest ? theme.dataColors.accel : theme.palette.card2,
+            backgroundColor: isBest ? theme.palette.gold : theme.palette.card2,
             alignItems: 'center',
             justifyContent: 'center',
           }}
@@ -268,7 +307,7 @@ function LapRow({
         <View style={{ flex: 1 }}>
           <Text style={s.lapTime}>{formatLapTime(lap.duration_seconds)}</Text>
           {isBest ? (
-            <Text style={[s.lapNote, { color: theme.dataColors.accel }]}>Meilleur tour</Text>
+            <Text style={[s.lapNote, { color: theme.palette.gold }]}>Meilleur tour</Text>
           ) : isExcluded ? (
             <Text style={s.lapNote}>{lap.is_outlap ? 'Tour de sortie' : 'Tour de rentrée'}</Text>
           ) : delta !== null ? (
