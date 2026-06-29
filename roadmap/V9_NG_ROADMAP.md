@@ -36,10 +36,12 @@ TrophyCard→captureRef→partage).
 
 **Axes 1, 2, 3, 5 COMPLETS ; Axe 4 entamé ; Coach AI fondation posée.** Tous les
 livrables signature V9 sont en place. Reste :
-- **Coach AI — UI** (en slices) : ✅ file de lecture sur `coach_queue` (statut
-  persistant, `0a7ce92`). Reste : **AIReviewBanner** + validation
-  suggestion→annotation ; **Edge Function** génération + filtre de sûreté
-  (infra : clé IA serveur + deploy). Schéma appliqué (`018bb42`).
+- **Coach AI** : ⚠️ DÉJÀ bâti avant la session (`coach_ai_drafts` + edge
+  functions `coach-ai-draft`/`validate` + `assistant.tsx`). Ajouts session :
+  ✅ file de lecture `coach_queue` (`0a7ce92`) + ✅ `AIReviewBanner` §17
+  (`97daa62`). `coach_ai_suggestions` (doublon) supprimé (`cf3f19a`) ;
+  `ai_safety_reviews` gardée dormante. Reste éventuel : câbler un journal de
+  sûreté dans les edge ; passer l'IA d'OpenAI à Claude (si voulu).
 - **Tables** `device_health_logs`, `media_exports` : STOP schéma si on veut les
   métriques device/média (pas demandé).
 - **Polish** (faible valeur, confirmé Gabin) : reste §17, a11y, FlashList
