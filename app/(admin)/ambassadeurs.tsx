@@ -30,7 +30,6 @@ const STATUS_LABEL: Record<AmbassadorStatus, string> = {
   active: 'Actif',
   revoked: 'Révoqué',
 };
-const RANK: Record<AmbassadorStatus, number> = { pending: 0, active: 1, revoked: 2 };
 
 export default function AdminAmbassadeursScreen() {
   const [rows, setRows] = useState<AdminAmbassador[]>([]);
@@ -41,8 +40,10 @@ export default function AdminAmbassadeursScreen() {
     let cancelled = false;
     setLoading(true);
     listAmbassadors().then((r) => {
+      // Ordre d'arrivée (created_at desc, depuis la requête). Pas de tri par statut :
+      // un rôle factuel, jamais une hiérarchie.
       if (!cancelled) {
-        setRows([...r].sort((a, b) => RANK[a.status] - RANK[b.status]));
+        setRows(r);
         setLoading(false);
       }
     });

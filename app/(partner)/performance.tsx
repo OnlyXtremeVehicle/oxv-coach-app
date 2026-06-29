@@ -151,7 +151,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
     marginTop: theme.spacing.sm,
   },
   title: {

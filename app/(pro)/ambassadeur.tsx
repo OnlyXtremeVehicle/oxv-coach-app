@@ -49,13 +49,17 @@ export default function ProAmbassadeurScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    loadMyAmbassador().then((p) => {
-      if (!cancelled) {
-        setProfile(p);
-        setBio(p?.bio ?? '');
-        setLoading(false);
-      }
-    });
+    loadMyAmbassador()
+      .then((p) => {
+        if (!cancelled) {
+          setProfile(p);
+          setBio(p?.bio ?? '');
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };

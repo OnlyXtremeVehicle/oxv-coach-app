@@ -35,14 +35,18 @@ export default function PartnerProfilScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    loadMyPartnerAccount().then((acc) => {
-      if (!cancelled) {
-        setAccount(acc);
-        setGeoZone(acc?.geoZone ?? '');
-        setDescription(acc?.description ?? '');
-        setLoading(false);
-      }
-    });
+    loadMyPartnerAccount()
+      .then((acc) => {
+        if (!cancelled) {
+          setAccount(acc);
+          setGeoZone(acc?.geoZone ?? '');
+          setDescription(acc?.description ?? '');
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -137,7 +141,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: theme.palette.faint,
     marginTop: theme.spacing.sm,
   },
   title: {
