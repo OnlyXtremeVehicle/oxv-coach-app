@@ -16,6 +16,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { FadeInSection } from '@/components/motion';
+import { OXVPromiseBlock } from '@/components/OXVPromiseBlock';
 import * as haptics from '@/lib/haptics';
 import { loadTraceOfDay, type TraceOfDayResult } from '@/services/traceNarrativeService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -145,7 +146,12 @@ export default function TraceScreen() {
           />
         </FadeInSection>
 
-        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
+        {/* La promesse — rappelée à l'endroit même où l'on lit sa donnée. */}
+        <FadeInSection delay={300} style={{ marginTop: theme.spacing.xxl * 1.5 }}>
+          <OXVPromiseBlock />
+        </FadeInSection>
+
+        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
             accessibilityRole="button"
             hitSlop={theme.hitSlop}
