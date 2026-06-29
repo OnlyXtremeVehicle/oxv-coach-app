@@ -14,10 +14,10 @@
   (`f1ae3da`), **OXVPromiseBlock** (`2f792be`), **Intention de séance**
   (`88629f4`, table `session_intentions` en prod + saisie/rattachement/
   juxtaposition ; 2 bugs medium corrigés par vérif adversariale).
-- Axe 2 — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`) +
-  **LapTimeline** frise de régularité (`a7c682d`, marche sans frames ; a révélé
-  et corrigé un vert de jugement hors canon sur le meilleur tour). SVG existant,
-  sans dépendance native.
+- Axe 2 **COMPLET** — **LayerToggle** couches Tracé/Vitesse/Marges (`0f6d682`),
+  **LapTimeline** frise de régularité (`a7c682d`, marche sans frames ; a corrigé
+  un vert de jugement hors canon), **CornerPanel** aperçu virage en feuille basse
+  (`8b9a2ce`, Modal+Animated, non destructif). SVG existant, sans dépendance native.
 - Doctrine — **garde-fou silence en piste** sur l'haptique (`9f1f3f0`,
   Principe 3) : aucune vibration en S6_roulage.
 
@@ -27,12 +27,12 @@ silence notifications (handler `notificationBehaviorForState` coupe déjà
 bannière/son/badge en S6) ; OXV Moment cœur (`carte-trophee` :
 TrophyCard→captureRef→partage).
 
-**Reste — gated sur décision/aval Gabin :**
+**Axes 1 & 2 COMPLETS.** Reste, par nature gated ou polish :
 - **OXV Moment watermark** (Axe 3) : sortant → aval avant.
 - **Paddock NG hero contextuel** (Axe 5) : front door → aval avant.
 - **Tables** `device_health_logs`, `media_exports`, `coach_*` (Coach AI) : STOP.
-- **Reste Axe 2** : CornerPanel (détail virage en bottom-sheet) — zéro-décision,
-  à enchaîner (pas de lib bottom-sheet installée → approche Modal/Reanimated).
+- **Axe 4** formalisation composants §17 (DRY interne, zéro-décision, faible
+  valeur) ; passes a11y / FlashList (diffuses).
 
 ## Lecture honnête de la matrice
 
