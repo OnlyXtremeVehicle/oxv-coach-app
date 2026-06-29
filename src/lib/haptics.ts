@@ -14,27 +14,37 @@
 import * as Haptics from 'expo-haptics';
 
 import { isExpoGo } from './runtime';
+import { isSilenced } from './silence';
+
+/**
+ * Coupe-circuit commun. En piste (`S6_roulage`), AUCUNE vibration ne se
+ * déclenche, où qu'elle soit appelée (BLE perdu, fin de run…) — silence en
+ * piste, Principe 3. Hors piste, on no-op aussi sous Expo Go.
+ */
+function muted(): boolean {
+  return isSilenced() || isExpoGo();
+}
 
 /** Tap léger — pour les actions secondaires (toggle, nav). */
 export function tap(): void {
-  if (isExpoGo()) return;
+  if (muted()) return;
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
 }
 
 /** Confirmation — pour les CTA primaires (Découvrir, Démarrer, Continuer). */
 export function confirm(): void {
-  if (isExpoGo()) return;
+  if (muted()) return;
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
 }
 
 /** Réussite — pour les transitions de jalons (fin de session OK, etc.). */
 export function success(): void {
-  if (isExpoGo()) return;
+  if (muted()) return;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
 }
 
 /** Alerte — pour les modals d'erreur (BLE lost, etc.). */
 export function warning(): void {
-  if (isExpoGo()) return;
+  if (muted()) return;
   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
 }

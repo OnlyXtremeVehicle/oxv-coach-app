@@ -221,6 +221,16 @@ export function isScreenValid(screenId: ScreenId, state: PilotState): boolean {
   return VALID_SCREENS_BY_STATE[state].includes(screenId);
 }
 
+/**
+ * Sommes-nous en « silence en piste » (Principe 3) ? Vrai pendant le roulage :
+ * le véhicule bouge, l'équipement enregistre, l'app se tait — aucun écran,
+ * aucune notif, aucune vibration. Pur, testable ; câblé au drapeau runtime
+ * `@/lib/silence` par la state machine.
+ */
+export function isSilentState(state: PilotState): boolean {
+  return state === 'S6_roulage';
+}
+
 // ============================================================
 // DÉTERMINATION D'ÉTAT (fonction pure)
 // ============================================================

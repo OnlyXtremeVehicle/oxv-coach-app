@@ -12,6 +12,7 @@
 
 import { create } from 'zustand';
 
+import { setSilenceMode } from '@/lib/silence';
 import {
   AppContext,
   Conditions,
@@ -23,6 +24,7 @@ import {
   SessionRef,
   determineState,
   isScreenValid,
+  isSilentState,
 } from '@/types/state';
 
 interface AppStateStore {
@@ -104,10 +106,17 @@ export const useAppStateStore = create<AppStateStore>((set, get) => ({
       now: new Date(),
     };
     const next = determineState(ctx);
+    // Silence en piste (Principe 3) : on pose le drapeau runtime à chaque
+    // recalcul, pour que les primitives bas niveau (haptique) se taisent dès
+    // l'entrée en roulage, où qu'elles soient appelées.
+    setSilenceMode(isSilentState(next));
     if (next !== s.state) set({ state: next });
   },
 
-  reset: () => set({ ...initialState }),
+  reset: () => {
+    setSilenceMode(false);
+    set({ ...initialState });
+  },
 
   canShowScreen: (screen) => isScreenValid(screen, get().state),
 }));
