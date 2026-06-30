@@ -23,6 +23,7 @@ export const palette = {
   red: '#C8102E', // rouge coach / REC (insigne, bande coach)
   heritageGold: '#C4A459', // Heritage STRICT + registre référence (numéros de virage)
   green: '#97C459', // tendance positive / état connecté
+  pilotAmber: '#F2792B', // marge serrée / trajectoire pilote : AMBRE qui neutralise le rouge de marque sur la DONNÉE de perf (jamais `red`). Source unique du fix canon — cf. marginZoneColorLogic, CircuitMap colorForZone.
   coach: '#E6E6E8', // citation coach (bande coach utilise red)
 } as const;
 

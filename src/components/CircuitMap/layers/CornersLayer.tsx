@@ -109,7 +109,7 @@ function fillForCorner(
   }
   switch (corner.pace) {
     case 'slow':
-      return '#F2792B'; // ambre pilote (rouge-perf neutralisé)
+      return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
     case 'medium':
       return theme.dataColors.brake;
     case 'fast':
@@ -124,6 +124,6 @@ function colorForZone(zone: MarginZone): string {
     case 'yellow':
       return theme.dataColors.brake;
     case 'red':
-      return '#F2792B'; // ambre pilote (rouge-perf neutralisé)
+      return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
   }
 }

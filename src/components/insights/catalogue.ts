@@ -163,7 +163,7 @@ export function getReading(key: string | undefined): ReadingDef | undefined {
  * est réservée à la marque et à la voix du coach. On la neutralise ici en
  * ambre, sans toucher dataColors (gelé, partagé avec le site).
  */
-export const PILOT_TRAJECTORY_COLOR = '#F2792B';
+export const PILOT_TRAJECTORY_COLOR = theme.palette.pilotAmber;
 export function dimensionColor(dimension: QdiDimension): string {
   if (dimension === 'trajectory') return PILOT_TRAJECTORY_COLOR;
   return theme.dataColors[dimension];

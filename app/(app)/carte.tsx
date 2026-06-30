@@ -229,7 +229,7 @@ function colorForZone(zone: MarginZone | null | undefined): string {
     case 'red':
       // Rouge de marque interdit sur une donnée : ambre pilote (canon, cf.
       // CornersLayer / marginZoneExportColor).
-      return '#F2792B';
+      return theme.palette.pilotAmber;
     default:
       // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
       return theme.palette.creamMute;

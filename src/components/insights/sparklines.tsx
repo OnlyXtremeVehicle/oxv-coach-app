@@ -19,7 +19,7 @@ const C = theme.dataColors;
 
 // rgba dérivées des couleurs QDI pour les remplissages discrets des zones.
 // Ambre pilote : neutralise le rouge trajectory (#E63946 réservé marque/coach).
-const TRAJ_LINE = '#F2792B';
+const TRAJ_LINE = theme.palette.pilotAmber;
 const TRAJ_FILL = 'rgba(242,121,43,0.10)';
 const TRAJ_SOFT = 'rgba(242,121,43,0.50)';
 const BRAKE_FILL = 'rgba(96,165,250,0.10)';

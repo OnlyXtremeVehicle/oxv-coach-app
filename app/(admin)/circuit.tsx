@@ -48,7 +48,7 @@ const BRONZE = '#B87333';
 // Couleurs de donnée (zones de marge / pace) — toujours doublées d'un libellé.
 // Rouge neutralisé en ambre pilote : le rouge de marque ne code jamais de
 // donnée de perf (canon).
-const ZONE = { green: '#97C459', yellow: '#EF9F27', red: '#F2792B' };
+const ZONE = { green: '#97C459', yellow: '#EF9F27', red: theme.palette.pilotAmber };
 
 export default function CircuitInspectorScreen() {
   const [selected, setSelected] = useState<number | null>(null);

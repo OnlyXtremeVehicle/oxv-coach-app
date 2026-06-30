@@ -7,6 +7,8 @@
  * (cf. CircuitMap colorForZone). Pur et testé pour verrouiller l'invariant.
  */
 
+import { palette } from '@/theme/v2';
+
 export type ZoneLike = 'green' | 'yellow' | 'red' | null;
 
 /** Rouge de marque OXV — interdit sur une donnée de perf. */
@@ -14,8 +16,8 @@ export const BRAND_RED = '#C8102E';
 
 export function marginZoneExportColor(zone: ZoneLike): string {
   if (!zone) return 'rgba(255,255,255,0.35)';
-  if (zone === 'green') return '#97C459';
+  if (zone === 'green') return palette.green;
   if (zone === 'yellow') return '#EF9F27';
   // 'red' (terrain serré) : ambre pilote, rouge-perf neutralisé (doctrine).
-  return '#F2792B';
+  return palette.pilotAmber;
 }

@@ -14,7 +14,7 @@
 import { theme } from '@/theme/v2';
 
 /** Ambre pilote — remplace le rouge trajectory dans les vizs. */
-export const PILOT_AMBER = '#F2792B';
+export const PILOT_AMBER = theme.palette.pilotAmber;
 
 /**
  * Boîtier d'instrument : matière card2, filet, et halo or léger. À étaler dans

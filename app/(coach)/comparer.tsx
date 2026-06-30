@@ -255,7 +255,7 @@ function colorForZone(zone: MarginZone | null): string {
     case 'yellow':
       return theme.palette.gold;
     case 'red':
-      return '#F2792B'; // ambre pilote : rouge de marque interdit sur une donnée (canon)
+      return theme.palette.pilotAmber; // ambre pilote : rouge de marque interdit sur une donnée (canon)
     default:
       return theme.palette.creamMute;
   }

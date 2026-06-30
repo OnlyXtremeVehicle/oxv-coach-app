@@ -260,7 +260,7 @@ function haloColor(speed: number | null): string {
   if (speed === null) return palette.creamMute;
   if (speed < 80) return theme.dataColors.brake; // bleu lent
   if (speed < 140) return palette.cream; // neutre
-  return '#F2792B'; // ambre pilote (rouge-perf neutralisé) — vitesse haute
+  return palette.pilotAmber; // ambre pilote (rouge-perf neutralisé) — vitesse haute
 }
 
 /**

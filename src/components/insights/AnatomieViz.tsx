@@ -23,7 +23,7 @@ import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
 const GOLD = theme.palette.gold;
-const AMBER = '#F2792B';
+const AMBER = theme.palette.pilotAmber;
 
 interface Phase {
   color: string;

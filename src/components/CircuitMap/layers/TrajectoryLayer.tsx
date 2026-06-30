@@ -86,7 +86,7 @@ export function TrajectoryLayer({
               ? theme.palette.creamMute
               : ratio < 0.75
                 ? theme.palette.gold
-                : '#F2792B';
+                : theme.palette.pilotAmber;
         return (
           <Polyline
             key={i}

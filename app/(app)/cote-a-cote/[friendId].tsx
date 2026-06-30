@@ -59,7 +59,7 @@ import { formatDateShort } from '@/utils/format';
 const MARGIN_COLORS = {
   green: '#97C459',
   yellow: '#EF9F27',
-  red: '#F2792B', // ambre pilote : rouge de marque interdit sur une donnée (canon)
+  red: theme.palette.pilotAmber, // ambre pilote : rouge de marque interdit sur une donnée (canon)
 } as const;
 
 type Mode = 'snapshot' | 'aggregated';
