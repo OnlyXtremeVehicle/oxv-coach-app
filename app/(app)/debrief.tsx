@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTransparency';
 import { FadeInSection } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
@@ -165,6 +166,27 @@ export default function DebriefScreen() {
         <FadeInSection delay={160}>
           <Acte numero="3" titre="Préparation" body={data.preparation} />
         </FadeInSection>
+
+        {/* Source / méthode / limites du récit IA (charte 11, T1/T5). Une sortie
+            générative s'accompagne de ce qu'elle peut — et ne peut pas — dire ;
+            pas seulement d'une pastille « généré ». Affiché quand le texte est
+            réellement issu du modèle. */}
+        {data.generated ? (
+          <FadeInSection delay={200} style={{ marginTop: theme.spacing.xxl }}>
+            <SourceMethodBlock
+              items={[
+                'Ce récit est rédigé par un modèle de langage à partir des mesures de votre séance — pas par une personne.',
+                'Il met en mots ce que les données montrent : une lecture, jamais un verdict ni une consigne.',
+              ]}
+            />
+            <BlindspotsBlock
+              items={[
+                'Il ne connaît ni vos intentions, ni la trajectoire que vous visiez, ni votre ressenti.',
+                'Un récit généré peut simplifier ou lisser ; votre séance reste plus riche que son résumé.',
+              ]}
+            />
+          </FadeInSection>
+        ) : null}
 
         <FadeInSection delay={240} style={{ marginTop: theme.spacing.xxl }}>
           <Card style={{ paddingVertical: theme.spacing.xl }}>
