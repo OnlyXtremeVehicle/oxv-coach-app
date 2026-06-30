@@ -4156,6 +4156,63 @@ export type Database = {
         }
         Relationships: []
       }
+      device_health_logs: {
+        Row: {
+          battery_status: string | null
+          device_id: string
+          health_status: string | null
+          id: string
+          recorded_at: string
+          rssi: number | null
+          source: string | null
+        }
+        Insert: {
+          battery_status?: string | null
+          device_id: string
+          health_status?: string | null
+          id?: string
+          recorded_at?: string
+          rssi?: number | null
+          source?: string | null
+        }
+        Update: {
+          battery_status?: string | null
+          device_id?: string
+          health_status?: string | null
+          id?: string
+          recorded_at?: string
+          rssi?: number | null
+          source?: string | null
+        }
+        Relationships: []
+      }
+      media_exports: {
+        Row: {
+          created_at: string
+          export_type: string
+          id: string
+          session_media_id: string | null
+          telemetry_session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          export_type: string
+          id?: string
+          session_media_id?: string | null
+          telemetry_session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          export_type?: string
+          id?: string
+          session_media_id?: string | null
+          telemetry_session_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       session_intentions: {
         Row: {
           body: string
