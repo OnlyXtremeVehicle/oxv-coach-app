@@ -20,7 +20,7 @@ import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import type { CanvasLayer, CanvasTrajectoryPoint } from '@/components/DataLabCanvas';
 import { EmptyState } from '@/components/instruments';
 import { isExpoGo } from '@/lib/runtime';
-import { supabase } from '@/lib/supabase';
+import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
@@ -67,25 +67,11 @@ export default function DataLabCanvasScreen() {
     if (!params.sessionId) return;
     const sessionId = params.sessionId; // narrow avant closure async
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('telemetry_frames')
-        .select('latitude, longitude, speed_kmh')
-        .eq('session_id', sessionId)
-        .order('elapsed_ms', { ascending: true })
-        .limit(1000);
-      if (cancelled || !data) return;
-      const points: CanvasTrajectoryPoint[] = (
-        data as { latitude: number | null; longitude: number | null; speed_kmh: number | null }[]
-      )
-        .filter((p) => p.latitude !== null && p.longitude !== null)
-        .map((p) => ({
-          lat: Number(p.latitude),
-          lon: Number(p.longitude),
-          speed: p.speed_kmh !== null ? Number(p.speed_kmh) : null,
-        }));
-      if (points.length > 1) setTrajectory(points);
-    })();
+    loadSessionTrajectory(sessionId)
+      .then((points) => {
+        if (!cancelled && points.length > 1) setTrajectory(points);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };

@@ -11,6 +11,11 @@
  */
 
 import { supabase } from '@/lib/supabase';
+import {
+  mapFramesToTrajectory,
+  type TrajectoryFramePoint,
+  type TrajectoryFrameRow,
+} from '@/services/trajectoryLogic';
 
 export interface SessionFrame {
   elapsedMs: number;
@@ -33,6 +38,26 @@ export interface SessionFrame {
  * à fréquence variable). Pour des sessions plus longues, paginer en
  * augmentant `limit` ou en ajoutant un downsample côté serveur.
  */
+/**
+ * Trajectoire GPS d'une séance (lat / lon / vitesse), pour la carte et la Vue
+ * unifiée. Source UNIQUE de la requête trajectoire — supprime la copie inline
+ * qui vivait dans `carte.tsx` et `data-lab-canvas.tsx` (risque de divergence).
+ * Filtrage/conversion délégués à `mapFramesToTrajectory` (pur, testé).
+ */
+export async function loadSessionTrajectory(
+  sessionId: string,
+  limit = 1000
+): Promise<TrajectoryFramePoint[]> {
+  const { data } = await supabase
+    .from('telemetry_frames')
+    .select('latitude, longitude, speed_kmh')
+    .eq('session_id', sessionId)
+    .order('elapsed_ms', { ascending: true })
+    .limit(limit);
+  if (!data) return [];
+  return mapFramesToTrajectory(data as TrajectoryFrameRow[]);
+}
+
 export async function loadSessionFrames(sessionId: string, limit = 5000): Promise<SessionFrame[]> {
   const { data, error } = await supabase
     .from('telemetry_frames')

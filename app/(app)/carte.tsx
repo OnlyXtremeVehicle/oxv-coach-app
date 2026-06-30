@@ -18,11 +18,11 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { CornerPanel, type CornerPanelData } from '@/components/CornerPanel';
 import { LayerToggle } from '@/components/LayerToggle';
-import { supabase } from '@/lib/supabase';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { buildMapLayers, defaultActiveLayer, type MapLayerKey } from '@/services/mapLayersLogic';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
+import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -57,27 +57,13 @@ export default function CarteScreen() {
       if (!cancelled && res) setLiveMargins(res.zones);
     });
 
-    // Charge les premiers 1000 frames de la session pour la trajectoire
-    // (downsampling implicite : sufficient pour rendu SVG fluide)
-    (async () => {
-      const { data } = await supabase
-        .from('telemetry_frames')
-        .select('latitude, longitude, speed_kmh')
-        .eq('session_id', sessionId)
-        .order('elapsed_ms', { ascending: true })
-        .limit(1000);
-      if (cancelled || !data) return;
-      const points: TrajectoryPoint[] = (
-        data as { latitude: number | null; longitude: number | null; speed_kmh: number | null }[]
-      )
-        .filter((p) => p.latitude !== null && p.longitude !== null)
-        .map((p) => ({
-          lat: Number(p.latitude),
-          lon: Number(p.longitude),
-          speed: p.speed_kmh !== null ? Number(p.speed_kmh) : null,
-        }));
-      if (points.length > 1) setTrajectory(points);
-    })();
+    // Trajectoire GPS (~1000 frames) via la source unique partagée avec la Vue
+    // unifiée — plus de requête inline dupliquée.
+    loadSessionTrajectory(sessionId)
+      .then((points) => {
+        if (!cancelled && points.length > 1) setTrajectory(points);
+      })
+      .catch(() => undefined);
 
     return () => {
       cancelled = true;
