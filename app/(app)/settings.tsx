@@ -237,6 +237,11 @@ export default function SettingsScreen() {
             onPress={() => router.push('/(app)/garage' as never)}
           />
           <SettingRow
+            label="Mon boîtier"
+            hint="État"
+            onPress={() => router.push('/(app)/mon-equipement' as never)}
+          />
+          <SettingRow
             label="Aide & support"
             hint="Ouvrir"
             onPress={() => router.push('/(app)/support' as never)}

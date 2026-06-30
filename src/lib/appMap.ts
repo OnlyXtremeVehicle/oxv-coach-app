@@ -101,6 +101,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   compte: 'compte',
   profil: 'compte',
   settings: 'compte',
+  'mon-equipement': 'compte',
   consentements: 'compte',
   garage: 'compte',
   support: 'compte',
