@@ -26,16 +26,24 @@ import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 
 /**
- * Charge DataLabCanvas hors Expo Go uniquement. Le require() n'est exécuté que
- * si l'on n'est pas dans Expo Go → le module Skia n'est jamais évalué dans
- * l'aperçu. Typé via `typeof import` (type-only, n'évalue rien).
+ * Charge les composants Skia (canvas + chart) hors Expo Go uniquement. Les
+ * require() ne s'exécutent que si l'on n'est pas dans Expo Go → les modules
+ * Skia ne sont jamais évalués dans l'aperçu. Typés via `typeof import`
+ * (type-only, n'évalue rien).
  */
-function loadCanvas(): typeof import('@/components/DataLabCanvas').DataLabCanvas | null {
+type SkiaModules = {
+  Canvas: typeof import('@/components/DataLabCanvas').DataLabCanvas;
+  Chart: typeof import('@/components/PerfChart').PerfChart;
+};
+function loadSkia(): SkiaModules | null {
   if (isExpoGo()) return null;
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod =
+  const canvas =
     require('../../src/components/DataLabCanvas') as typeof import('@/components/DataLabCanvas');
-  return mod.DataLabCanvas;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const chart =
+    require('../../src/components/PerfChart') as typeof import('@/components/PerfChart');
+  return { Canvas: canvas.DataLabCanvas, Chart: chart.PerfChart };
 }
 
 const LAYERS: { key: CanvasLayer; label: string }[] = [
@@ -49,8 +57,11 @@ export default function DataLabCanvasScreen() {
   const [trajectory, setTrajectory] = useState<CanvasTrajectoryPoint[] | null>(null);
   const [layer, setLayer] = useState<CanvasLayer>('trace');
 
-  // Composant Skia (ou null en Expo Go). Mémoïsé : require une seule fois.
-  const Canvas = useMemo(loadCanvas, []);
+  // Composants Skia (ou null en Expo Go). Mémoïsés : require une seule fois.
+  const skia = useMemo(loadSkia, []);
+  const SkiaCanvas = skia?.Canvas ?? null;
+  const SkiaChart = skia?.Chart ?? null;
+  const hasSpeed = trajectory?.some((p) => typeof p.speed === 'number') ?? false;
 
   useEffect(() => {
     if (!params.sessionId) return;
@@ -113,8 +124,8 @@ export default function DataLabCanvasScreen() {
         </View>
 
         <View style={[s.canvasWrap, { minHeight: canvasSize }]}>
-          {Canvas ? (
-            <Canvas
+          {SkiaCanvas ? (
+            <SkiaCanvas
               trajectory={trajectory ?? undefined}
               layer={layer}
               width={canvasSize}
@@ -128,10 +139,20 @@ export default function DataLabCanvasScreen() {
           )}
         </View>
 
-        {Canvas && !trajectory ? (
+        {SkiaCanvas && !trajectory ? (
           <Text style={s.muted}>
             Sans trames de boîtier pour cette séance, seule la forme du circuit s’affiche.
           </Text>
+        ) : null}
+
+        {SkiaChart && hasSpeed && trajectory ? (
+          <View style={s.chartBlock}>
+            <Text style={s.chartLabel}>PROFIL DE VITESSE</Text>
+            <SkiaChart trajectory={trajectory} width={canvasSize} height={120} />
+            <Text style={s.chartHint}>
+              Votre vitesse au fil de la séance. Une lecture, pas un classement.
+            </Text>
+          </View>
         ) : null}
       </View>
     </Screen>
@@ -201,5 +222,23 @@ const s = {
     lineHeight: theme.fontSize.small * 1.5,
     marginTop: theme.spacing.lg,
     textAlign: 'center' as const,
+  },
+  chartBlock: {
+    marginTop: theme.spacing.xxl,
+  },
+  chartLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.faint,
+    marginBottom: theme.spacing.md,
+  },
+  chartHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: theme.spacing.sm,
   },
 };
