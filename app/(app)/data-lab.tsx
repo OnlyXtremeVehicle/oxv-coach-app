@@ -133,6 +133,21 @@ export default function DataLabScreen() {
           })}
         </View>
 
+        {/* Vue unifiée (Skia, aperçu technique) — un seul canvas tracé + trajectoire.
+            Distincte des couches standard : à valider sur un build (rendu natif). */}
+        <Card
+          style={{ marginTop: theme.spacing.sm }}
+          onPress={() =>
+            router.push(
+              (sid ? `/(app)/data-lab-canvas?sessionId=${sid}` : '/(app)/data-lab-canvas') as never
+            )
+          }
+          accessibilityLabel="Vue unifiée. Le tracé et votre trajectoire sur une même vue."
+        >
+          <Text style={s.cardTitle}>Vue unifiée</Text>
+          <Text style={s.cardHint}>Le tracé et votre trajectoire, d’un seul tenant</Text>
+        </Card>
+
         {/* Transparence (charte 11 §T1/T5, obligatoire) : source/méthode + limites,
             pour cadrer toute la lecture détaillée comme descriptive, jamais un verdict. */}
         <View style={{ marginTop: theme.spacing.xxl }}>

@@ -50,6 +50,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   bilan: 'bilan',
   trace: 'bilan',
   'data-lab': 'bilan',
+  'data-lab-canvas': 'bilan',
   conditions: 'bilan',
   carte: 'bilan',
   virage: 'bilan',
