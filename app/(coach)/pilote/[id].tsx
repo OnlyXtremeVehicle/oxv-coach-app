@@ -464,28 +464,40 @@ function SessionRow({
       >
         {rowContent}
       </Pressable>
-      {/* Saisie du contexte coach (§10.3) sur cette session */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Ajouter le contexte de cette séance"
-        onPress={() =>
-          router.push({
-            pathname: '/(coach)/contexte',
-            params: { pilotId: pilotId ?? '', sessionId: session.id },
-          } as never)
-        }
-        style={({ pressed }) => ({
-          paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.sm,
-          minHeight: 44,
-          justifyContent: 'center',
-          borderTopWidth: 1,
-          borderTopColor: theme.palette.line,
-          opacity: pressed ? 0.7 : 1,
-        })}
-      >
-        <Text style={s.action}>Contexte de séance</Text>
-      </Pressable>
+      {/* Lecture enrichie (§10.3) : depuis la séance, le coach pose le CONTEXTE
+          et ANNOTE directement — la boucle lire → annoter, sans détour. */}
+      <View style={s.sessionActions}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ajouter le contexte de cette séance"
+          onPress={() =>
+            router.push({
+              pathname: '/(coach)/contexte',
+              params: { pilotId: pilotId ?? '', sessionId: session.id },
+            } as never)
+          }
+          style={({ pressed }) => [s.sessionAction, pressed && { opacity: 0.7 }]}
+        >
+          <Text style={s.action}>Contexte</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Annoter cette séance"
+          onPress={() =>
+            router.push({
+              pathname: '/(coach)/annoter',
+              params: { pilotId: pilotId ?? '', sessionId: session.id },
+            } as never)
+          }
+          style={({ pressed }) => [
+            s.sessionAction,
+            s.sessionActionDivider,
+            pressed && { opacity: 0.7 },
+          ]}
+        >
+          <Text style={s.action}>Annoter</Text>
+        </Pressable>
+      </View>
     </Card>
   );
 }
@@ -542,6 +554,23 @@ const s = {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  sessionActions: {
+    flexDirection: 'row' as const,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+  },
+  sessionAction: {
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  sessionActionDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: theme.palette.line,
   },
   sessionValue: {
     fontFamily: theme.fonts.mono,
