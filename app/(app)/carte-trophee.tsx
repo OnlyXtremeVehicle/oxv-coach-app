@@ -26,6 +26,7 @@ import { TrophyCard } from '@/components/TrophyCard';
 import { FadeInSection } from '@/components/motion';
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { fetchSessionCircuitCenterline } from '@/services/circuitsService';
+import { logMediaExport } from '@/services/mediaExportsService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { supabase } from '@/lib/supabase';
@@ -117,6 +118,8 @@ export default function CarteTropheeScreen() {
           dialogTitle: 'Partager ma carte OXV',
           UTI: 'public.png',
         });
+        // Journal d'export (OXV Moment) — best-effort, jamais bloquant.
+        void logMediaExport({ exportType: 'image', telemetrySessionId: params.sessionId ?? null });
       }
     } catch {
       // Feuille fermée ou capture impossible : rien à remonter au pilote.
@@ -132,6 +135,7 @@ export default function CarteTropheeScreen() {
         url: SITE_URL,
         title: 'OXV Mirror',
       });
+      void logMediaExport({ exportType: 'link', telemetrySessionId: params.sessionId ?? null });
     } catch {
       // L'utilisateur a fermé la feuille — pas d'erreur à remonter.
     }
