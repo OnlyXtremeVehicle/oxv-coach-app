@@ -4,7 +4,7 @@
  * Maquette : docs/refonte-app/maquette_insight_gg_gaming.html (étalon cockpit riche).
  * Spec     : 02_moteur_insights.md §2.2.
  *
- * Cockpit : barre de statut (or mono + point vivant), radar gradué avec cercle-
+ * Cockpit : barre de statut (mono neutre + point vivant), radar gradué avec cercle-
  * limite d'enveloppe doré tireté, nuage de points dont le BORD s'allume en or
  * (halo) et le combiné se creuse (la signature « grip sur les axes purs »), et
  * un nombre central — le taux de remplissage de l'enveloppe — à lueur dorée.
@@ -296,18 +296,14 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: GOLD,
-    shadowColor: GOLD,
-    shadowOpacity: 0.9,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: theme.palette.creamMute,
   },
   statusLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: GOLD,
+    color: theme.palette.creamMute,
   },
   statusRight: {
     fontFamily: theme.fonts.mono,
@@ -347,7 +343,8 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,
     letterSpacing: 2.4,
-    color: GOLD,
+    // Label d'instrument sous le chiffre : faint, l'or reste à la donnée.
+    color: theme.palette.faint,
     marginTop: 2,
   },
   stats: {

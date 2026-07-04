@@ -104,12 +104,12 @@ export default function ObjectifsScreen() {
               >
                 <EvalBtn
                   label="Atteint"
-                  color={theme.dataColors.accel}
+                  color={theme.palette.green}
                   onPress={() => onUpdate(activeGoal.id, 'achieved')}
                 />
                 <EvalBtn
                   label="À continuer"
-                  color={theme.palette.gold}
+                  color={theme.palette.cream}
                   onPress={() => onUpdate(activeGoal.id, 'continued')}
                 />
                 <EvalBtn
@@ -222,7 +222,7 @@ function colorForStatus(status: GoalStatus): string {
     case 'achieved':
       return theme.palette.green; // vert canon (#97C459), jamais l'accel hors-canon
     case 'continued':
-      return theme.palette.gold;
+      return theme.palette.creamMute; // or réservé aux données — statut en neutre
     case 'abandoned':
       return theme.palette.creamMute;
     default:

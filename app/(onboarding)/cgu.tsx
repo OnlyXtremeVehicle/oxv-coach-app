@@ -2,7 +2,7 @@
  * Écran #05 — CGU / RGPD. Transposition gaming (cockpit factuel).
  *
  * 3 cases à cocher obligatoires. Acceptation horodatée via
- * onboardingService.acceptCguAndPrivacy. Cases cochées en OR (✓ sombre).
+ * onboardingService.acceptCguAndPrivacy. Cases cochées en crème (✓ sombre).
  * Migration legacy→v2 achevée.
  */
 
@@ -133,7 +133,7 @@ export default function CguScreen() {
             minHeight: 52,
             paddingVertical: spacing.md,
             borderRadius: radius.lg,
-            backgroundColor: allChecked ? palette.gold : palette.card2,
+            backgroundColor: allChecked ? palette.cream : palette.card2,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
@@ -176,8 +176,8 @@ function Checkbox({
           height: 24,
           borderRadius: radius.sm,
           borderWidth: 1.5,
-          borderColor: checked ? palette.gold : palette.edge,
-          backgroundColor: checked ? palette.gold : 'transparent',
+          borderColor: checked ? palette.cream : palette.edge,
+          backgroundColor: checked ? palette.cream : 'transparent',
           alignItems: 'center',
           justifyContent: 'center',
           marginRight: spacing.md,

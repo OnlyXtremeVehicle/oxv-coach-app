@@ -253,7 +253,7 @@ const s = {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
     letterSpacing: 0.5,
-    color: '#0B0B0D',
+    color: theme.palette.card, // texte sombre sur le fond blanc du QR (même valeur que card)
     marginTop: theme.spacing.sm,
     textAlign: 'center' as const,
     maxWidth: 160,

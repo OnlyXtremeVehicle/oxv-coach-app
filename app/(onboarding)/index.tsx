@@ -5,8 +5,9 @@
  * Insigne, manifeste minimal, bouton Commencer. Pas de bouton « passer » :
  * l'onboarding est complet ou rien.
  *
- * Cockpit : barre de progression et CTA en OR (accent actif), texte sombre
- * sur l'or. Migration legacy→v2 achevée (thème @/theme/v2 exclusif).
+ * Cockpit : barre de progression en OR (donnée d'avancement) ; CTA primaire
+ * canon (fond crème, texte nuit). Migration legacy→v2 achevée (thème
+ * @/theme/v2 exclusif).
  */
 
 import { Image, Pressable, Text, View } from 'react-native';
@@ -72,7 +73,7 @@ export default function AccueilPhilosophiqueScreen() {
           minHeight: 52,
           paddingVertical: spacing.md,
           borderRadius: radius.lg,
-          backgroundColor: palette.gold,
+          backgroundColor: palette.cream,
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: spacing.xl,

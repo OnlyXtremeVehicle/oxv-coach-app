@@ -27,7 +27,7 @@ import { Screen } from '@/ui/Screen';
 const BRONZE = '#B87333';
 // Pastille de statut KYC : second signal seulement (le libellé porte le sens,
 // lisible AA). La couleur n'est jamais le signal unique d'un statut.
-const STATUS = { green: '#97C459', yellow: '#EF9F27', red: '#C8102E' };
+const STATUS = { green: theme.palette.green, yellow: '#EF9F27', red: theme.palette.red };
 
 interface PilotEntry {
   id: string;

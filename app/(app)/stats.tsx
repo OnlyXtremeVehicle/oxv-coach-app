@@ -120,8 +120,9 @@ export default function StatsScreen() {
                 <StatCell
                   value={stats.totalSessions.toString()}
                   label={stats.totalSessions > 1 ? 'sessions' : 'session'}
+                  secondary
                 />
-                <StatCell value={stats.totalLaps.toString()} label="tours" />
+                <StatCell value={stats.totalLaps.toString()} label="tours" secondary />
               </View>
             </View>
 
@@ -184,10 +185,20 @@ export default function StatsScreen() {
   );
 }
 
-function StatCell({ value, unit, label }: { value: string; unit?: string; label: string }) {
+function StatCell({
+  value,
+  unit,
+  label,
+  secondary,
+}: {
+  value: string;
+  unit?: string;
+  label: string;
+  secondary?: boolean;
+}) {
   return (
     <View style={s.cell}>
-      <Text style={s.cellValue}>
+      <Text style={[s.cellValue, secondary ? s.cellValueSecondary : null]}>
         {value}
         {unit ? <Text style={s.cellUnit}> {unit}</Text> : null}
       </Text>
@@ -296,18 +307,14 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: GOLD,
-    shadowColor: GOLD,
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: theme.palette.creamMute,
   },
   statusLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: GOLD,
+    color: theme.palette.creamMute,
   },
   statRow: {
     flexDirection: 'row' as const,
@@ -325,6 +332,11 @@ const s = {
     textShadowColor: 'rgba(255,183,3,0.4)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
+  },
+  // R4 : un seul chiffre dominant (km) — les agrégats secondaires sont dégradés
+  cellValueSecondary: {
+    fontSize: theme.fontSize.value,
+    color: theme.palette.creamSoft,
   },
   cellUnit: {
     fontFamily: theme.fonts.mono,

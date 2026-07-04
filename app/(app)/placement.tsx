@@ -227,8 +227,9 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   circuitPillOn: {
-    borderColor: theme.palette.gold,
-    backgroundColor: 'rgba(255,183,3,0.10)',
+    // Sélection sans or (canon : or = donnée uniquement) — pattern boxOn.
+    borderColor: theme.palette.edge,
+    backgroundColor: theme.palette.card,
   },
   circuitName: {
     fontFamily: theme.fonts.bodyMedium,

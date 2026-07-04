@@ -577,8 +577,9 @@ const s = {
   },
   avgValue: {
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.display,
-    color: theme.palette.cream,
+    // Chiffre secondaire : ne rivalise pas avec le tarif (chiffre dominant unique de l'écran)
+    fontSize: theme.fontSize.value,
+    color: theme.palette.creamSoft,
     letterSpacing: 0.5,
   },
   avgScale: {

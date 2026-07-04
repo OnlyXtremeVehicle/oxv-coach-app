@@ -165,7 +165,8 @@ const s = {
   cancelled: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.red,
+    // Rouge réservé marque/REC/coach — la phrase porte déjà l'information.
+    color: theme.palette.creamMute,
     marginTop: theme.spacing.md,
   },
   response: {

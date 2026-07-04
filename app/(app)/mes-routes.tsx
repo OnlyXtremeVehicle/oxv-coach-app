@@ -29,9 +29,9 @@ import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
 const STATUS: Record<ScenicRouteStatus, { label: string; color: string }> = {
   draft: { label: 'Brouillon', color: theme.palette.creamMute },
-  pending_review: { label: 'En revue OXV', color: theme.palette.gold },
+  pending_review: { label: 'En revue OXV', color: theme.palette.creamMute },
   certified: { label: 'Certifiée OXV', color: theme.dataColors.accel },
-  rejected: { label: 'Non retenue', color: theme.palette.red },
+  rejected: { label: 'Non retenue', color: theme.palette.faint },
 };
 
 export default function MesRoutesScreen() {

@@ -251,7 +251,8 @@ const s = {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 1.2,
-    color: theme.palette.green,
+    // Métadonnée de récence/affectation, pas un état connecté : neutre.
+    color: theme.palette.creamMute,
     marginTop: 2,
   },
   chevron: {

@@ -223,7 +223,7 @@ function ToggleRow({
         accessibilityLabel={label}
         accessibilityHint={caption}
         accessibilityState={{ checked: value }}
-        trackColor={{ false: '#26262B', true: theme.palette.gold }}
+        trackColor={{ false: '#26262B', true: theme.palette.green }}
         thumbColor={theme.palette.cream}
       />
     </View>

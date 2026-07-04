@@ -10,7 +10,7 @@
  *
  * Gaming : le meilleur tour (seul nombre dominant) passe en boîtier cockpit
  * (`cockpitPanel`), chrono à lueur dorée, barre de statut « vivante » (point
- * clignotant or — la session est en cours). L'or = la donnée, jamais le
+ * clignotant neutre — la session est en cours). L'or = la donnée, jamais le
  * jugement ; aucune marge fabriquée à chaud. Logique de données inchangée.
  */
 
@@ -114,11 +114,8 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
-    shadowOpacity: 0.9,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    // Voyant d'état neutre : l'or reste réservé à la donnée (le chrono).
+    backgroundColor: theme.palette.creamMute,
   },
   statusLabel: {
     fontFamily: theme.fonts.mono,

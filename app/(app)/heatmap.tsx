@@ -4,7 +4,7 @@
  *
  * Branche TrackStage (mode 'heatmap'), le composant maître de tracé : la
  * vitesse du roulage devient une chaleur le long du circuit, froid → chaud
- * (faint → or Heritage → or), JAMAIS de rouge (réservé marque + coach).
+ * (faint → or translucide → or), JAMAIS de rouge (réservé marque + coach).
  * Deux faits encadrent la carte : le virage le plus lent, la ligne la plus
  * rapide. Conforme à la maquette `maquette_heatmap_gaming.html`.
  *
@@ -159,7 +159,8 @@ export default function HeatmapScreen() {
                 importantForAccessibility="no-hide-descendants"
               >
                 <View style={[s.gradSeg, { backgroundColor: palette.faint }]} />
-                <View style={[s.gradSeg, { backgroundColor: palette.heritageGold }]} />
+                {/* Cran tiède : or donnée translucide (heritageGold réservé au tier Heritage) */}
+                <View style={[s.gradSeg, { backgroundColor: 'rgba(255,183,3,0.45)' }]} />
                 <View style={[s.gradSeg, { backgroundColor: palette.gold }]} />
               </View>
               <Text style={s.gradLabel}>Rapide</Text>

@@ -44,7 +44,7 @@ const DISTANCES = [50, 100, 150];
 const POI_COLOR: Record<ScenicPoi['kind'], string> = {
   viewpoint: theme.palette.gold,
   water: theme.dataColors.brake,
-  pass: theme.palette.red,
+  pass: theme.dataColors.regularity, // rouge de marque interdit hors REC/coach — couleur de donnée non réservée
   peak: theme.palette.creamSoft,
 };
 const POI_LABEL: Record<ScenicPoi['kind'], string> = {

@@ -316,7 +316,7 @@ const s = {
   },
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    shadowColor: '#000',
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
@@ -331,11 +331,8 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    // Repère de structure neutre — or réservé à la donnée (canon R1).
+    backgroundColor: theme.palette.creamMute,
   },
   empty: {
     fontFamily: theme.fonts.bodyLight,

@@ -4,7 +4,7 @@
  * 4 cartes sélectionnables. Le niveau choisi est écrit dans
  * users.pilot_level via onboardingService.setPilotLevel, puis CGU.
  * Doctrine : ce niveau n'est PAS visible aux autres pilotes ; il calibre
- * les seuils internes. État sélectionné en OR (accent cockpit).
+ * les seuils internes. État sélectionné : bord edge + fond card (canon).
  */
 
 import { useState } from 'react';
@@ -112,8 +112,8 @@ export default function NiveauScreen() {
                     padding: spacing.lg,
                     borderRadius: radius.lg,
                     borderWidth: active ? 1 : 0.5,
-                    borderColor: active ? palette.gold : palette.line,
-                    backgroundColor: active ? 'rgba(255,183,3,0.08)' : palette.card2,
+                    borderColor: active ? palette.edge : palette.line,
+                    backgroundColor: active ? palette.card : palette.card2,
                     opacity: pressed ? 0.85 : 1,
                   })}
                 >
@@ -137,7 +137,7 @@ export default function NiveauScreen() {
             minHeight: 52,
             paddingVertical: spacing.md,
             borderRadius: radius.lg,
-            backgroundColor: selected ? palette.gold : palette.card2,
+            backgroundColor: selected ? palette.cream : palette.card2,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,

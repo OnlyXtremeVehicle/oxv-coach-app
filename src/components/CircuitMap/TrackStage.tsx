@@ -225,7 +225,7 @@ function GlowSpine({
   );
 }
 
-/** Carte de chaleur SANS rouge : froid (faint) → tiède (heritageGold) → chaud (or). */
+/** Carte de chaleur SANS rouge : froid (faint) → tiède (or translucide) → chaud (or). */
 function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) {
   if (points.length < 2) return null;
   const vals = points
@@ -239,7 +239,8 @@ function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) 
         const a = projectToScene(p);
         const b = projectToScene(next);
         const r = max > 0 ? ((p.intensity ?? 0) + (next.intensity ?? 0)) / 2 / max : 0;
-        const c = r < 0.34 ? palette.faint : r < 0.67 ? palette.heritageGold : palette.gold;
+        // Cran tiède : or donnée translucide — heritageGold réservé au tier Heritage.
+        const c = r < 0.34 ? palette.faint : r < 0.67 ? 'rgba(255,183,3,0.45)' : palette.gold;
         return (
           <Polyline
             key={i}

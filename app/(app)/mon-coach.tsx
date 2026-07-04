@@ -158,7 +158,7 @@ function CoachCard({
     : "Vous n'avez pas encore consenti";
 
   return (
-    <Card style={[s.dataPanel, consented ? { borderColor: theme.palette.gold } : null]}>
+    <Card style={[s.dataPanel, consented ? { borderColor: theme.palette.edge } : null]}>
       <View
         style={{
           flexDirection: 'row',
@@ -171,7 +171,7 @@ function CoachCard({
           <Text
             style={[
               s.consentStatus,
-              { color: consented ? theme.palette.gold : theme.palette.creamMute },
+              { color: consented ? theme.palette.cream : theme.palette.creamMute },
             ]}
           >
             {consentText}
@@ -187,7 +187,7 @@ function CoachCard({
           accessibilityLabel={`Consentement pour ${fullName}`}
           accessibilityHint="Autorise ce coach à consulter vos sessions. Révocable à tout moment."
           accessibilityState={{ checked: consented }}
-          trackColor={{ false: theme.palette.line, true: theme.palette.gold }}
+          trackColor={{ false: theme.palette.line, true: theme.palette.green }}
           thumbColor={theme.palette.cream}
         />
       </View>

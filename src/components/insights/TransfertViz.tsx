@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: GOLD,
+    color: theme.palette.creamMute,
   },
   statusRight: {
     fontFamily: theme.fonts.mono,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,
     letterSpacing: 1.6,
-    color: GOLD,
+    color: theme.palette.creamMute,
     marginTop: 4,
     textAlign: 'center',
   },

@@ -474,14 +474,14 @@ const s = StyleSheet.create({
 
   // Action principale contextuelle (canon : crème pleine largeur, texte sombre).
   primaryBtn: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: palette.cream,
     borderRadius: 16,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: spacing.xxl,
   },
-  primaryBtnText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: '#050505' },
+  primaryBtnText: { fontFamily: fonts.bodyMedium, fontSize: 15, color: palette.night },
   // Hint contextuel (Paddock NG) : situe le moment, calme et factuel. Light
   // italic, jamais une consigne.
   actionHint: {

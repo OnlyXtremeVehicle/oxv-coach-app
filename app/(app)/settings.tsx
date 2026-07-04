@@ -482,7 +482,7 @@ function ToggleRow({
         accessibilityLabel={label}
         accessibilityHint={caption}
         accessibilityState={{ checked: value, disabled }}
-        trackColor={{ false: '#26262B', true: theme.palette.gold }}
+        trackColor={{ false: '#26262B', true: theme.palette.green }}
         thumbColor={theme.palette.cream}
       />
     </View>
@@ -522,11 +522,7 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: theme.palette.creamMute,
   },
   manifest: {
     fontFamily: theme.fonts.bodyLight,

@@ -114,7 +114,7 @@ const s = {
   },
   // Action principale contextuelle (canon : crème pleine largeur, texte sombre).
   primaryBtn: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: theme.palette.cream,
     borderRadius: 16,
     height: 54,
     alignItems: 'center' as const,
@@ -124,7 +124,7 @@ const s = {
   primaryBtnText: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: 15,
-    color: '#050505',
+    color: theme.palette.night,
   },
   cardTitle: {
     fontFamily: theme.fonts.bodyMedium,

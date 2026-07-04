@@ -3,7 +3,7 @@
  *
  * Pose la philosophie OXV en quatre phrases empilées. Sobriété
  * typographique, vouvoiement, « miroir pas coach » en clair.
- * Barre de progression + CTA en or ; migration legacy→v2 achevée.
+ * Barre de progression + CTA cream (canon §4) ; migration legacy→v2 achevée.
  */
 
 import { Pressable, Text, View } from 'react-native';
@@ -72,7 +72,7 @@ export default function DoctrineScreen() {
           minHeight: 52,
           paddingVertical: spacing.md,
           borderRadius: radius.lg,
-          backgroundColor: palette.gold,
+          backgroundColor: palette.cream,
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: spacing.xl,

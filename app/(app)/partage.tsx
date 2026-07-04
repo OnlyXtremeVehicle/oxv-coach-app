@@ -371,6 +371,7 @@ const s = {
   revoke: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
-    color: theme.palette.red,
+    // Destructif sans rouge de marque : la confirmation est portée par l'Alert système.
+    color: theme.palette.creamMute,
   },
 };

@@ -96,7 +96,7 @@ export default function CircuitsScreen() {
                 coordinate={{ latitude: center.lat, longitude: center.lon }}
                 title={c.officialName ?? c.name}
                 description={circuitSubtitle(c)}
-                pinColor={theme.palette.red}
+                pinColor={theme.palette.cream}
                 onCalloutPress={() =>
                   router.push({
                     pathname: '/(app)/circuit/[id]',

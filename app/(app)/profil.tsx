@@ -329,7 +329,7 @@ const s = {
     borderColor: theme.palette.line,
     backgroundColor: theme.palette.card2,
   },
-  pillOn: { borderColor: theme.palette.gold, backgroundColor: 'rgba(255,183,3,0.10)' },
+  pillOn: { borderColor: theme.palette.edge, backgroundColor: theme.palette.card },
   pillT: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.body,
@@ -389,12 +389,12 @@ const s = {
     justifyContent: 'center' as const,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.palette.gold,
+    borderColor: theme.palette.edge,
   },
   mediaBtnT: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
-    color: theme.palette.gold,
+    color: theme.palette.cream,
   },
 };

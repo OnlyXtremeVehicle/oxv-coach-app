@@ -257,8 +257,8 @@ const s = {
     marginTop: theme.spacing.xl,
   },
   hero: {
-    fontFamily: theme.fonts.display,
-    fontSize: 56,
+    fontFamily: theme.fonts.monoMedium, // chiffre = voix de l'instrument (canon)
+    fontSize: theme.fontSize.hud,
     letterSpacing: -1,
     color: theme.palette.cream,
   },

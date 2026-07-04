@@ -27,23 +27,26 @@ import { View, Text, ScrollView, StyleSheet, Animated, Easing } from 'react-nati
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import { guardDebriefActs } from '../services/debriefRenderGuard';
+import { dataColors, palette } from '@/theme/v2';
 
 /* ============================ THÈME ============================ */
+// Mappé sur les tokens theme/v2 (R2) ; seuls grey/copper et les rgba locaux
+// n'ont pas d'équivalent exact dans la palette.
 export const C = {
-  night: '#050505',
-  card: '#0B0B0D',
-  card2: '#121214',
-  cream: '#F8F9FA',
-  soft: '#E5E5E5',
-  mute: '#9A9AA3',
+  night: palette.night,
+  card: palette.card,
+  card2: palette.card2,
+  cream: palette.cream,
+  soft: palette.creamSoft,
+  mute: palette.creamMute,
   grey: '#5A5A62',
   line: 'rgba(255,255,255,0.09)',
   edge: 'rgba(255,255,255,0.18)',
-  red: '#C8102E', // RÉSERVÉ : marque + bande coach + REC
-  brake: '#60A5FA', // dimension freinage (jamais le rouge)
+  red: palette.red, // RÉSERVÉ : marque + bande coach + REC
+  brake: dataColors.brake, // dimension freinage (jamais le rouge)
   copper: '#B87333', // hérité — neutralisé dans les usages (coach→red, data→gold, neutre→mute)
-  gold: '#FFB703', // OR = donnée (cockpit) — plus l'or Heritage #C4A459
-  green: '#4ADE80',
+  gold: palette.gold, // OR = donnée (cockpit) — plus l'or Heritage #C4A459
+  green: dataColors.accel,
 };
 // Aligné sur le thème v2 : Geist (display/body) + GeistMono (chiffres), les familles
 // réellement chargées par l'app. Cohérent avec src/theme/v2.ts.

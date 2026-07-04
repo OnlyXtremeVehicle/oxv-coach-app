@@ -229,23 +229,15 @@ const s = {
     alignItems: 'center' as const,
     gap: theme.spacing.sm,
   },
+  // Repère de structure neutre (canon : or = donnée uniquement, jamais décor).
   headDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
-    shadowOpacity: 0.8,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: theme.palette.creamMute,
   },
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
-    shadowOpacity: 0.07,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
   },
   subtitle: {
     fontFamily: theme.fonts.body,

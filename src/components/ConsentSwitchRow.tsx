@@ -40,7 +40,7 @@ export function ConsentSwitchRow({
         accessibilityRole="switch"
         accessibilityLabel={accessibilityLabel ?? label}
         accessibilityState={{ checked: value }}
-        trackColor={{ false: '#26262B', true: theme.palette.gold }}
+        trackColor={{ false: '#26262B', true: theme.palette.green }}
         thumbColor={theme.palette.cream}
       />
     </View>

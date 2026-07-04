@@ -3,7 +3,7 @@
  *
  * LA signature manifeste. Fond noir, les deux phrases-clés en grand
  * (cream italic — cœur doctrinal, sobre), une case « Je m'engage »,
- * bouton « Activer OXV Mirror ». Barre/case/CTA en OR.
+ * bouton « Activer OXV Mirror ». Case/CTA en crème (canon bouton primaire).
  * À l'acceptation : acceptPact + completeOnboarding, puis router.replace.
  * Cohérence docs/juridique/01_PACTE_DE_PILOTAGE.md (PACT_VERSION).
  */
@@ -102,8 +102,8 @@ export default function PacteScreen() {
               height: 28,
               borderRadius: radius.sm,
               borderWidth: 1.5,
-              borderColor: committed ? palette.gold : palette.edge,
-              backgroundColor: committed ? palette.gold : 'transparent',
+              borderColor: committed ? palette.cream : palette.edge,
+              backgroundColor: committed ? palette.cream : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: spacing.md,
@@ -129,7 +129,7 @@ export default function PacteScreen() {
           minHeight: 52,
           paddingVertical: spacing.md,
           borderRadius: radius.lg,
-          backgroundColor: committed ? palette.gold : palette.card2,
+          backgroundColor: committed ? palette.cream : palette.card2,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',

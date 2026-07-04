@@ -1,9 +1,9 @@
 /**
  * Écran #03 — Méthode. Transposition gaming (cockpit factuel).
  *
- * Trois mots empilés : VOIR / COMPRENDRE / QUESTIONNER (en or, accent
- * cockpit), chacun avec une phrase de support. Manifeste en bas.
- * Barre de progression + CTA en or ; migration legacy→v2 achevée.
+ * Trois mots empilés : VOIR / COMPRENDRE / QUESTIONNER (titres en creamSoft,
+ * l'or reste réservé à la donnée), chacun avec une phrase de support.
+ * Manifeste en bas. CTA primaire canon (crème/nuit) ; migration legacy→v2 achevée.
  */
 
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -85,7 +85,7 @@ export default function MethodeScreen() {
             minHeight: 52,
             paddingVertical: spacing.md,
             borderRadius: radius.lg,
-            backgroundColor: palette.gold,
+            backgroundColor: palette.cream,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
@@ -116,7 +116,7 @@ const s = {
     color: palette.creamMute,
   },
   word: {
-    color: palette.gold,
+    color: palette.creamSoft,
     fontFamily: fonts.mono,
     fontSize: fontSize.h2,
     letterSpacing: 3,

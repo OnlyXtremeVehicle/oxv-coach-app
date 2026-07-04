@@ -56,7 +56,7 @@ export default function BilanPretScreen() {
             style={({ pressed }) => ({
               minHeight: 52,
               borderRadius: theme.radius.lg,
-              backgroundColor: theme.palette.red,
+              backgroundColor: theme.palette.cream,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.85 : 1,
@@ -108,7 +108,7 @@ const s = {
     fontSize: 11,
     letterSpacing: 1.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.cream,
+    color: theme.palette.night,
   },
   ctaGhost: {
     fontFamily: theme.fonts.mono,

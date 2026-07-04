@@ -24,7 +24,6 @@ import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
-const GOLD = theme.palette.gold;
 const AMBER = theme.palette.pilotAmber;
 
 // Deux chronos DÉMO (maquette N3-2).
@@ -161,18 +160,14 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: GOLD,
-    shadowColor: GOLD,
-    shadowOpacity: 0.9,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    backgroundColor: theme.palette.creamMute,
   },
   statusLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: GOLD,
+    color: theme.palette.creamMute,
   },
   statusRight: {
     fontFamily: theme.fonts.mono,
@@ -197,7 +192,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,
     letterSpacing: 1.6,
-    color: GOLD,
+    color: theme.palette.faint,
     marginTop: 4,
     textAlign: 'center',
   },

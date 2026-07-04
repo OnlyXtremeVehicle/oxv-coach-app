@@ -53,11 +53,11 @@ import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
 import { formatDateShort } from '@/utils/format';
 
-// Couleurs sémantiques des zones de marge (vert/jaune/rouge). Conservées à
-// l'identique : ce sont des couleurs de donnée doublées d'un libellé, sans
-// équivalent dans la palette V2 générique.
+// Couleurs sémantiques des zones de marge (vert/jaune/rouge) : couleurs de
+// donnée doublées d'un libellé. Le vert est le token canon ; le jaune n'a pas
+// d'équivalent exact dans la palette V2.
 const MARGIN_COLORS = {
-  green: '#97C459',
+  green: theme.palette.green,
   yellow: '#EF9F27',
   red: theme.palette.pilotAmber, // ambre pilote : rouge de marque interdit sur une donnée (canon)
 } as const;
