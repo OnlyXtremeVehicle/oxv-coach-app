@@ -125,9 +125,13 @@ et services `eventsService`/`adminAnalytics`/`dataExport`/`b2bReport`.
 | Repo site (18) | pair-app ✓, validate-inscription, admin-review-inscription, compute-session-insights-**v3**, detect-circuit-corners, geocode, send-booking-confirmation, send-payment-confirmed, notify-admin-lead, send-contact-ack, send-application-ack, generate-invoice, eligibility-reminders, feedback-request, newsletter-push, resend_webhook, ritual_dispatcher, ritual_dryrun | déployées, sources côté site |
 
 - ✅ **`pair-app` est déployée** → le lot M3 (appairage) peut se câbler tout de suite.
-- ⚠️ **`compute-session-insights` ET `compute-session-insights-v3` coexistent.**
-  Clarifier laquelle fait foi avant M1 (le cron appelle laquelle ?) — risque de
-  pipeline divergent.
+- ✅ **Doublon `compute-session-insights` vs `-v3` — TRANCHÉ côté app (04/07).**
+  Toutes les invocations de l'app (`analyzeSessionService`,
+  `adminSessionDiagnosticService`) utilisent `compute-session-insights` ;
+  **aucune n'appelle `-v3`**. Le cron ne fait pas d'insights (calcul régularité/
+  lissage inline). `-v3` est la version du SITE. Côté app : cohérent, pas de
+  pipeline divergent. Reste une question de **convergence cross-repo** (le site
+  doit-il migrer sur la même ? décision hors app).
 - Les fonctions M-IA à retirer sont bien identifiées (3 : draft, validate,
   generate-debrief-ai — la 3ᵉ remplacée, pas supprimée sans successeur).
 
