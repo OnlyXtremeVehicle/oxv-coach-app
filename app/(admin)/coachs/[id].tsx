@@ -41,7 +41,7 @@ import { formatDateShort } from '@/utils/format';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 const BRONZE = '#B87333';
-const CONSENT_GREEN = '#97C459';
+const CONSENT_GREEN = theme.palette.green;
 
 export default function AdminCoachDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();

@@ -198,7 +198,7 @@ export default function CoachCycleDetailScreen() {
                       accessibilityRole="switch"
                       accessibilityLabel="Marquer l'axe atteint"
                       accessibilityState={{ checked: step.status === 'atteint' }}
-                      trackColor={{ false: '#26262B', true: theme.palette.gold }}
+                      trackColor={{ false: '#26262B', true: theme.palette.green }}
                       thumbColor={theme.palette.cream}
                     />
                   </View>

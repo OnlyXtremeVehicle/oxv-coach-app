@@ -72,7 +72,7 @@ export default function CoachPacteScreen() {
             key={i}
             accessibilityElementsHidden
             importantForAccessibility="no"
-            style={{ flex: 1, height: 3, borderRadius: radius.sm, backgroundColor: palette.gold }}
+            style={{ flex: 1, height: 3, borderRadius: radius.sm, backgroundColor: palette.cream }}
           />
         ))}
       </View>
@@ -114,8 +114,8 @@ export default function CoachPacteScreen() {
               height: 28,
               borderRadius: radius.sm,
               borderWidth: 1.5,
-              borderColor: committed ? palette.gold : palette.edge,
-              backgroundColor: committed ? palette.gold : 'transparent',
+              borderColor: committed ? palette.cream : palette.edge,
+              backgroundColor: committed ? palette.cream : 'transparent',
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: spacing.md,
@@ -141,7 +141,7 @@ export default function CoachPacteScreen() {
           minHeight: 52,
           paddingVertical: spacing.md,
           borderRadius: radius.lg,
-          backgroundColor: committed ? palette.gold : palette.card2,
+          backgroundColor: committed ? palette.cream : palette.card2,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',

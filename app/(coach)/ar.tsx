@@ -462,7 +462,7 @@ const s = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
+    backgroundColor: theme.palette.creamMute,
   },
   // Badge d'état « aperçu/prototype » = libellé → corps medium, pas mono.
   previewBadgeText: {

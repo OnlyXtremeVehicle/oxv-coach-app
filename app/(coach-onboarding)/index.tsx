@@ -39,7 +39,7 @@ export default function CoachOnboardingHomeScreen() {
                 flex: 1,
                 height: 3,
                 borderRadius: radius.sm,
-                backgroundColor: i < STEP ? palette.gold : palette.line,
+                backgroundColor: i < STEP ? palette.cream : palette.line,
               }}
             />
           ))}
@@ -76,7 +76,7 @@ export default function CoachOnboardingHomeScreen() {
         style={({ pressed }) => ({
           minHeight: 52,
           borderRadius: radius.lg,
-          backgroundColor: palette.gold,
+          backgroundColor: palette.cream,
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: spacing.xl,

@@ -405,10 +405,6 @@ const s = StyleSheet.create({
     borderRadius: radius.xl,
     padding: spacing.lg,
     marginTop: spacing.xl,
-    shadowColor: palette.gold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
   },
   bilanRow: {
     flexDirection: 'row',

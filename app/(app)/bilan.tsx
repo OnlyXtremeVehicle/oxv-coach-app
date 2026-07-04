@@ -987,7 +987,9 @@ const s = {
     paddingHorizontal: theme.spacing.md,
   },
   errorEyebrow: {
-    color: theme.palette.red,
+    // Rouge réservé marque/REC (canon) : l'erreur reste lisible via son libellé
+    // « ERREUR » + le corps ; l'eyebrow passe en neutre.
+    color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
   },
   errorBody: {

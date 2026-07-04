@@ -61,7 +61,7 @@ export default function CoachOnboardingMissionScreen() {
                   flex: 1,
                   height: 3,
                   borderRadius: radius.sm,
-                  backgroundColor: i < STEP ? palette.gold : palette.line,
+                  backgroundColor: i < STEP ? palette.cream : palette.line,
                 }}
               />
             ))}
@@ -114,7 +114,7 @@ export default function CoachOnboardingMissionScreen() {
             minHeight: 52,
             paddingVertical: spacing.md,
             borderRadius: radius.lg,
-            backgroundColor: palette.gold,
+            backgroundColor: palette.cream,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
@@ -149,7 +149,7 @@ const s = {
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: palette.gold,
+    color: palette.creamMute,
   },
   title: { color: palette.cream, fontFamily: fonts.display, fontSize: fontSize.h2 },
   caption: { color: palette.creamMute, fontFamily: fonts.body, fontSize: fontSize.small },
