@@ -40,6 +40,7 @@ import { OxvEvent } from './analyticsEvents';
 import { computeMargin } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
 import { generateSafeDebrief } from './debriefGenerator';
+import { computeAndPersistQdi } from './qdiService';
 import { scheduleDebriefNotification } from './pushNotificationsService';
 import { listSegmentAnalysesForSession, upsertSegmentAnalyses } from './segmentAnalysesService';
 import { fetchSessionLaps } from './sessionsService';
@@ -204,6 +205,21 @@ export async function analyzeAndPersistSession(
     }
   } catch (e) {
     notes.push(`Marge globale KO : ${errMsg(e)}`);
+  }
+
+  // ── QDI 5 branches (Lot M1, décision fondateur 2026-07-04) ──────────────
+  // APRÈS upsertAnalysis : le QDI est un UPDATE de la ligne
+  // app_session_analyses — au premier calcul d'une session, la ligne n'existe
+  // qu'une fois la marge persistée (sinon 0 ligne touchée, QDI perdu).
+  // Best-effort : ne bloque jamais le bilan ; une branche sans données
+  // suffisantes reste null (honnêteté).
+  try {
+    const qdi = await computeAndPersistQdi(input.telemetrySessionId);
+    notes.push(
+      qdi ? `QDI calculé (${qdi.algoVersion}).` : 'QDI non calculé (données insuffisantes).'
+    );
+  } catch (e) {
+    notes.push(`QDI KO : ${errMsg(e)}`);
   }
 
   // ── Debrief J+1 généré (OpenAI d'abord, fallback local sinon) ──────────

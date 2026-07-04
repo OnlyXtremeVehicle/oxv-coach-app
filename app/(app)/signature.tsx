@@ -23,9 +23,18 @@ import { ActivityIndicator, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
+import { SourceMethodBlock } from '@/components/InsightTransparency';
+import { QdiRadar } from '@/components/QdiRadar';
 import { FadeInSection } from '@/components/motion';
-import { RadarEmpreinte } from '@/components/signature/RadarEmpreinte';
 import { EmptyState } from '@/components/instruments';
+import {
+  getQdiAccessLevel,
+  getQdiForSession,
+  getQdiReference,
+  type QdiAccessLevel,
+  type QdiRecord,
+} from '@/services/qdiService';
+import { type QdiBranches } from '@/services/qdiLogic';
 import { listSegmentAnalysesForSession } from '@/services/segmentAnalysesService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { type PilotSignature, computeSignature } from '@/services/pilotSignatureService';
@@ -50,6 +59,13 @@ export default function SignatureScreen() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   // Empreinte consolidée : la mémoire descriptive du miroir, séance après séance.
   const [snapshots, setSnapshots] = useState<SignatureSnapshot[]>([]);
+  // QDI 5 branches (M1) — LE radar, self-only.
+  const [qdi, setQdi] = useState<QdiRecord | null>(null);
+  const [qdiReference, setQdiReference] = useState<{
+    branches: QdiBranches;
+    sessions: number;
+  } | null>(null);
+  const [qdiAccess, setQdiAccess] = useState<QdiAccessLevel>('full');
 
   useEffect(() => {
     if (!profile) {
@@ -57,6 +73,10 @@ export default function SignatureScreen() {
       return;
     }
     let cancelled = false;
+    // Reset QDI au changement de session : sinon, si le fetch de la nouvelle
+    // session échoue, le radar de la PRÉCÉDENTE resterait affiché (périmé).
+    setQdi(null);
+    setQdiReference(null);
 
     (async () => {
       // Résout la session cible (param ou dernière complétée)
@@ -83,6 +103,22 @@ export default function SignatureScreen() {
         fetchSessionLaps(resolvedId),
       ]);
       if (cancelled) return;
+
+      // QDI + référence self-only + niveau d'offre — best-effort, en parallèle
+      // du reste de l'écran (une erreur laisse l'état vide honnête).
+      (async () => {
+        const [record, access] = await Promise.all([
+          getQdiForSession(resolvedId),
+          getQdiAccessLevel(profile.id),
+        ]);
+        if (cancelled) return;
+        setQdi(record);
+        setQdiAccess(access);
+        if (record) {
+          const ref = await getQdiReference(profile.id, record.reference.circuit, resolvedId);
+          if (!cancelled) setQdiReference(ref);
+        }
+      })().catch(() => undefined);
 
       // Temps de tour valides uniquement (pas outlap/inlap)
       const lapTimesSeconds = laps
@@ -176,10 +212,34 @@ export default function SignatureScreen() {
               </FadeInSection>
             ) : null}
 
-            {/* Empreinte radar — le visuel dominant (silhouette factuelle 5 axes) */}
+            {/* Radar QDI 5 branches — LE radar de l'app (M1, absorbe l'ancienne
+                empreinte, décision fondateur 2026-07-04). Self-only : référence
+                = médiane de VOS sessions. Access = forme seule ; Signature/
+                Heritage = valeurs par branche. */}
             <FadeInSection delay={80}>
+              <View style={{ marginBottom: theme.spacing.md }}>
+                {qdi ? (
+                  <QdiRadar
+                    current={qdi}
+                    reference={qdiReference?.branches ?? null}
+                    referenceSessions={qdiReference?.sessions}
+                    detail={qdiAccess === 'full'}
+                  />
+                ) : (
+                  <EmptyState
+                    label="QDI en préparation"
+                    message="Le calcul des cinq branches suit l'analyse de la session. Revenez après le bilan."
+                  />
+                )}
+              </View>
               <View style={{ marginBottom: theme.spacing.xl }}>
-                <RadarEmpreinte axes={signature.axes} />
+                <SourceMethodBlock
+                  items={[
+                    'Cinq branches calculées par un algorithme déterministe versionné, depuis le GPS et la centrale inertielle du boîtier (25 Hz).',
+                    'Le boîtier ne mesure ni le volant ni les pédales : Fluidité, Freinage et Accélération lisent les accélérations subies par le véhicule — les conséquences, pas les gestes.',
+                    'La référence est votre propre historique sur ce circuit. Jamais un autre pilote, jamais un classement.',
+                  ]}
+                />
               </View>
             </FadeInSection>
 
