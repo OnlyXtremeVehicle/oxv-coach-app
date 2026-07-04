@@ -6,6 +6,12 @@
  * la référence du radar est la médiane des dernières sessions DU PILOTE sur le
  * même circuit — jamais un autre pilote, jamais de classement.
  *
+ * Lecture par des tiers CONSENTIS (décision fondateur 2026-07-04, « assumer ») :
+ * la colonne qdi hérite des policies SELECT existantes de la table — un coach
+ * consenti ou un AMI accepté (double consentement) peut lire les branches d'un
+ * pilote. Assumé : le consentement mutuel prime ; l'app n'affiche pour autant
+ * aucun comparatif inter-pilotes ni classement.
+ *
  * Gating offres (prompt v2) : Signature/Heritage = radar + détail des
  * branches ; Access = radar seul. Le niveau se lit sur les inscriptions du
  * site (`registrations.offer_type`, RLS own). Sans aucune inscription (compte
@@ -86,6 +92,23 @@ export async function getQdiForSession(sessionId: string): Promise<QdiRecord | n
     .maybeSingle();
   const qdi = (data as { qdi?: QdiRecord | null } | null)?.qdi;
   return qdi ?? null;
+}
+
+/**
+ * QDI d'une session, avec RECALCUL PARESSEUX : si l'analyse existe mais que le
+ * qdi manque (session rattrapée par le cron serveur, qui ne calcule pas le
+ * QDI ; ou ancienne session d'avant la migration), on le calcule et on le
+ * persiste à la lecture. Le pilote propriétaire est le seul à pouvoir écrire
+ * (RLS own-row) — pour un lecteur consenti, le calcul est simplement ignoré.
+ */
+export async function getOrComputeQdiForSession(sessionId: string): Promise<QdiRecord | null> {
+  const existing = await getQdiForSession(sessionId);
+  if (existing) return existing;
+  try {
+    return await computeAndPersistQdi(sessionId);
+  } catch {
+    return null;
+  }
 }
 
 /**

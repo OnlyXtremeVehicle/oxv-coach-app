@@ -28,8 +28,8 @@ import { QdiRadar } from '@/components/QdiRadar';
 import { FadeInSection } from '@/components/motion';
 import { EmptyState } from '@/components/instruments';
 import {
+  getOrComputeQdiForSession,
   getQdiAccessLevel,
-  getQdiForSession,
   getQdiReference,
   type QdiAccessLevel,
   type QdiRecord,
@@ -107,8 +107,10 @@ export default function SignatureScreen() {
       // QDI + référence self-only + niveau d'offre — best-effort, en parallèle
       // du reste de l'écran (une erreur laisse l'état vide honnête).
       (async () => {
+        // Recalcul paresseux : couvre les sessions rattrapées par le cron
+        // serveur (qui ne calcule pas le QDI) et les sessions pré-migration.
         const [record, access] = await Promise.all([
-          getQdiForSession(resolvedId),
+          getOrComputeQdiForSession(resolvedId),
           getQdiAccessLevel(profile.id),
         ]);
         if (cancelled) return;

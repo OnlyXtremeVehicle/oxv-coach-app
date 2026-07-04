@@ -95,3 +95,7 @@ s'appuie sur l'infra notifications existante. Le rapport EST l'écran Bilan/QDI
   quel dans le bloc méthode. Piste matérielle en parallèle : test d'un dongle
   OBD-II BLE (~120 €) à Valence pour mesurer ce que les CAN clients exposent ;
   si concluant, bascule proxy → mesure directe par bump d'`algo_version`.
+- ✅ Q4 (post-vérif adversariale) — **Exposition amis ASSUMÉE** : un ami accepté
+  (double consentement) peut lire les branches via l'API ; l'app n'affiche
+  aucun comparatif inter-pilotes. Couverture cron : recalcul PARESSEUX à la
+  lecture (`getOrComputeQdiForSession`) plutôt que porter le moteur en Deno.
