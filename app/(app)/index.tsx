@@ -22,6 +22,8 @@ import { FadeInSection } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
+import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
+import { getQdiForSession } from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
@@ -58,6 +60,10 @@ export default function HomeHubScreen() {
     null
   );
   const [loading, setLoading] = useState(true);
+  // Hub M7.0 : statut du boîtier affecté + disponibilité du radar QDI —
+  // best-effort, le hub vit sans.
+  const [myDevice, setMyDevice] = useState<MyDevice | null>(null);
+  const [qdiReady, setQdiReady] = useState(false);
 
   useEffect(() => {
     if (!profile) {
@@ -65,6 +71,12 @@ export default function HomeHubScreen() {
       return;
     }
     let cancelled = false;
+
+    getMyAssignedDevice()
+      .then((d) => {
+        if (!cancelled) setMyDevice(d);
+      })
+      .catch(() => undefined);
 
     (async () => {
       const { data, error } = await supabase
@@ -83,6 +95,12 @@ export default function HomeHubScreen() {
           startedAt: new Date(data.started_at),
           circuitName: data.circuit_name,
         });
+        // Radar QDI de cette session (lecture seule — le calcul vit ailleurs).
+        getQdiForSession(data.id)
+          .then((q) => {
+            if (!cancelled) setQdiReady(Boolean(q));
+          })
+          .catch(() => undefined);
         // Régularité au tour (écart-type) — même chaîne que l'écran Régularité.
         const laps = await fetchSessionLaps(data.id);
         if (!cancelled) {
@@ -136,6 +154,8 @@ export default function HomeHubScreen() {
             regularity={regularity}
             loading={loading}
             action={action}
+            myDevice={myDevice}
+            qdiReady={qdiReady}
           />
         )}
 
@@ -216,6 +236,8 @@ function ModePassive({
   regularity,
   loading,
   action,
+  myDevice,
+  qdiReady,
 }: {
   greeting: string;
   firstName: string;
@@ -223,6 +245,8 @@ function ModePassive({
   regularity: { stdDevSeconds: number; lapCount: number } | null;
   loading: boolean;
   action: PaddockAction | null;
+  myDevice: MyDevice | null;
+  qdiReady: boolean;
 }) {
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
 
@@ -277,6 +301,7 @@ function ModePassive({
                   {regularity ? (
                     <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
                   ) : null}
+                  {qdiReady ? <Text style={s.bilanReg}>Radar QDI prêt</Text> : null}
                 </View>
               </View>
             </Card>
@@ -317,6 +342,29 @@ function ModePassive({
           ))}
         </View>
       </FadeInSection>
+
+      {/* Statut équipement (hub M7.0) — uniquement si un boîtier est affecté.
+          Information, pas une action : les 3 actions visibles restent
+          l'action principale + les 2 raccourcis. */}
+      {myDevice ? (
+        <FadeInSection delay={180}>
+          <Link href={'/(app)/mon-equipement' as never} asChild>
+            <Card
+              onPress={() => {}}
+              accessibilityLabel={`Votre boîtier ${myDevice.alias ?? myDevice.label}, état ${myDevice.healthStatus ?? 'inconnu'}`}
+              style={{ marginTop: spacing.lg }}
+            >
+              <Text style={[s.eyebrow, { marginBottom: spacing.xs }]}>Votre boîtier</Text>
+              <Text style={s.deviceLine}>
+                {myDevice.alias ?? myDevice.label}
+                {[myDevice.batteryStatus, myDevice.healthStatus].filter(Boolean).length > 0
+                  ? ` · ${[myDevice.batteryStatus, myDevice.healthStatus].filter(Boolean).join(' · ')}`
+                  : ''}
+              </Text>
+            </Card>
+          </Link>
+        </FadeInSection>
+      ) : null}
     </View>
   );
 }
@@ -377,6 +425,11 @@ const s = StyleSheet.create({
     color: palette.creamMute,
     marginTop: 8,
     lineHeight: 15,
+  },
+  deviceLine: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 15,
+    color: palette.creamSoft,
   },
   // Squelette de chargement du dernier bilan : réserve l'espace, calme, sans saut.
   bilanSkeleton: {
