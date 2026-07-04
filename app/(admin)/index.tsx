@@ -49,6 +49,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Pointer les arrivées en scannant le code de présence du Pass OXV.',
   },
   {
+    href: '/(admin)/presences',
+    label: 'Présences jour J',
+    description: 'Pointer les inscrits des sessions du jour (indicateurs site, avis J+1, médias).',
+  },
+  {
     href: '/(admin)/qualite-data',
     label: 'Qualité data',
     description: 'Sessions à surveiller : frames manquantes, analyse absente, débrief non généré.',

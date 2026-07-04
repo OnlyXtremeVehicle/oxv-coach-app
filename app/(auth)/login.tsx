@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -73,6 +74,18 @@ export default function LoginScreen() {
               />
             </View>
           </Card>
+
+          {/* Appairage site → app (M3) : le compte créé sur oxvehicle.fr se lie
+              par un code court, sans retaper de mot de passe. */}
+          <Pressable
+            onPress={() => router.push('/(auth)/lier' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Lier mon compte avec un code du site"
+            style={{ alignItems: 'center', marginTop: theme.spacing.xl, minHeight: 44 }}
+            disabled={loading}
+          >
+            <Text style={s.altLink}>Lier mon compte avec un code du site</Text>
+          </Pressable>
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -94,5 +107,10 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
+  },
+  altLink: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamSoft,
   },
 };
