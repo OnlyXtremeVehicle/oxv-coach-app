@@ -44,42 +44,111 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 const MODEL = 'gpt-4o-mini';
 
 // ---------------------------------------------------------------------------
-// Garde-fou : verbes/expressions interdits dans le texte généré.
+// Garde-fou : lexique proscrit COMPLET (décision fondateur 2026-07-04 : l'IA
+// débriefe mais ne coache jamais — le filtre serveur porte donc le lexique
+// intégral, pas un sous-ensemble).
 // SOURCE CANONIQUE = src/services/aiSafetyFilter.ts (filtre app). Cette liste
-// Deno en est le miroir serveur (runtimes distincts → pas d'import partagé).
-// Anti-divergence : le test app `aiSafetyFilter.test.ts` (describe « anti-
-// divergence avec le garde-fou edge ») vérifie que le filtre app couvre CHAQUE
-// terme ci-dessous. Si vous ajoutez un terme ici, ajoutez-le aussi au filtre
-// app et à ce test. Tout ce qui ORDONNE ou CONSEILLE est banni.
+// Deno en est le miroir serveur (runtimes distincts → pas d'import partagé),
+// en formes NORMALISÉES (minuscule, sans accent) — le matching normalise le
+// texte de la même façon, donc « Accélérez » comme « accelerez » sont pris.
+// Anti-divergence : le test app `aiSafetyFilter.test.ts` (describe « parité
+// edge ») lit CE fichier et vérifie que chaque terme du lexique app y figure.
+// Si vous ajoutez un terme au filtre app, ajoutez-le ici et redéployez.
 // ---------------------------------------------------------------------------
-const FORBIDDEN_PATTERNS: { re: RegExp; label: string }[] = [
-  { re: /\bfreinez\b/i, label: 'freinez' },
-  { re: /\baccélérez\b/i, label: 'accélérez' },
-  { re: /\bouvrez les gaz\b/i, label: 'ouvrez les gaz' },
-  { re: /\btracez\b/i, label: 'tracez' },
-  { re: /\bévitez\b/i, label: 'évitez' },
-  { re: /\bpoussez\b/i, label: 'poussez' },
-  { re: /\bcorrigez\b/i, label: 'corrigez' },
-  { re: /\baméliorez\b/i, label: 'améliorez' },
-  { re: /\boptimisez\b/i, label: 'optimisez' },
-  { re: /\bgagnez\b/i, label: 'gagnez' },
-  { re: /\bil faut\b/i, label: 'il faut' },
-  { re: /\bvous devez\b/i, label: 'vous devez' },
-  { re: /\bvous devriez\b/i, label: 'vous devriez' },
-  { re: /\bvous pouvez\b/i, label: 'vous pouvez' },
-  { re: /\btu dois\b/i, label: 'tu dois' },
-  { re: /\btu peux\b/i, label: 'tu peux' },
-  { re: /\bje vous conseille\b/i, label: 'je vous conseille' },
-  { re: /\bje vous recommande\b/i, label: 'je vous recommande' },
+const FORBIDDEN_TERMS: readonly string[] = [
+  // — Impératifs de pilotage —
+  'freinez',
+  'freine',
+  'accelerez',
+  'accelere',
+  'ralentissez',
+  'ralentis',
+  'tournez',
+  'braquez',
+  'contre-braquez',
+  'visez',
+  'tracez',
+  'redressez',
+  'positionnez',
+  'appuyez',
+  'relachez',
+  'lachez',
+  'poussez',
+  'pousse',
+  'prenez',
+  'gardez',
+  'serrez',
+  'ouvrez les gaz',
+  'coupez les gaz',
+  'mettez les gaz',
+  // — Prescriptions de performance —
+  'corrigez',
+  'ameliorez',
+  'optimisez',
+  'gagnez',
+  // — Obligations / conseils prescriptifs —
+  'il faut',
+  'il faudrait',
+  'il faudra',
+  'vous devez',
+  'vous devriez',
+  'vous auriez du',
+  'tu dois',
+  'tu devrais',
+  'tu peux',
+  'vous pouvez',
+  'essayez de',
+  'essaie de',
+  'pensez a',
+  'veillez a',
+  'je vous conseille',
+  'je vous recommande',
+  // — Interdictions —
+  'evitez',
+  'evite',
+  'abstenez',
+  'arretez de',
+  // — Conseils déguisés en groupe nominal —
+  'repere de freinage',
+  'repere de corde',
+  'point de corde',
+  'patience a la corde',
 ];
 
-/** Retourne la liste des verbes interdits trouvés dans le texte (vide = propre). */
+/**
+ * Normalise comme le filtre app : minuscule, accents retirés (NFD), apostrophes
+ * unifiées, espaces compactés — rend `\b` fiable sur les formes normalisées.
+ */
+function normalizeForScan(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[‘’ʼ′]/g, "'")
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+const FORBIDDEN_COMBINED = new RegExp(
+  '\\b(' +
+    [...FORBIDDEN_TERMS]
+      .sort((a, b) => b.length - a.length)
+      .map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|') +
+    ')\\b',
+  'g'
+);
+
+/** Retourne la liste des termes interdits trouvés dans le texte (vide = propre). */
 function findForbiddenVerbs(text: string): string[] {
-  const found: string[] = [];
-  for (const { re, label } of FORBIDDEN_PATTERNS) {
-    if (re.test(text)) found.push(label);
+  const normalized = normalizeForScan(text);
+  const found = new Set<string>();
+  FORBIDDEN_COMBINED.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = FORBIDDEN_COMBINED.exec(normalized)) !== null) {
+    found.add(m[1]);
+    if (FORBIDDEN_COMBINED.lastIndex === m.index) FORBIDDEN_COMBINED.lastIndex++;
   }
-  return found;
+  return [...found];
 }
 
 Deno.serve(async (req: Request) => {

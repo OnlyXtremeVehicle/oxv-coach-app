@@ -39,37 +39,30 @@ describe('aiSafetyFilter — lexique verrouillé', () => {
   });
 });
 
-describe('aiSafetyFilter — anti-divergence avec le garde-fou edge', () => {
-  // Termes scannés côté serveur par supabase/functions/generate-debrief-ai
-  // (FORBIDDEN_PATTERNS). Le filtre app DOIT être au moins aussi strict : si
-  // l'edge bannit un terme, le filtre app le bannit aussi. Ce test échoue si
-  // les deux listes divergent (un terme edge cesserait d'être couvert ici).
-  const EDGE_FORBIDDEN = [
-    'freinez',
-    'accélérez',
-    'ouvrez les gaz',
-    'tracez',
-    'évitez',
-    'poussez',
-    'corrigez',
-    'améliorez',
-    'optimisez',
-    'gagnez',
-    'il faut',
-    'vous devez',
-    'vous devriez',
-    'vous pouvez',
-    'tu dois',
-    'tu peux',
-    'je vous conseille',
-    'je vous recommande',
-  ];
+describe('aiSafetyFilter — PARITÉ avec le garde-fou edge (décision 2026-07-04)', () => {
+  // L'IA débriefe mais ne coache jamais : le filtre serveur du débrief pilote
+  // (supabase/functions/generate-debrief-ai, FORBIDDEN_TERMS) doit porter le
+  // lexique INTÉGRAL du filtre app — pas un sous-ensemble. Ce test lit le
+  // fichier edge et vérifie que CHAQUE terme du lexique app y figure. Il
+  // échoue si un terme est ajouté au filtre app sans être porté côté serveur.
+  const fs = require('fs') as typeof import('fs');
+  const path = require('path') as typeof import('path');
+  const edgeSource = fs.readFileSync(
+    path.join(__dirname, '../../../supabase/functions/generate-debrief-ai/index.ts'),
+    'utf8'
+  );
 
-  for (const term of EDGE_FORBIDDEN) {
-    it(`couvre le terme edge : "${term}"`, () => {
-      expect(isDoctrineSafe(`Phrase de test : ${term} la corde.`)).toBe(false);
+  for (const { term } of DOCTRINE_PROSCRIBED_TERMS) {
+    it(`le garde-fou edge porte le terme : "${term}"`, () => {
+      expect(edgeSource.includes(`'${term}'`)).toBe(true);
     });
   }
+
+  it("le filtre app bloque chaque terme qu'il déclare (cohérence interne)", () => {
+    for (const { term } of DOCTRINE_PROSCRIBED_TERMS) {
+      expect(isDoctrineSafe(`Phrase de test : ${term} la corde.`)).toBe(false);
+    }
+  });
 });
 
 describe('aiSafetyFilter — anti-divergence avec le garde-fou coach (SQL + edges)', () => {

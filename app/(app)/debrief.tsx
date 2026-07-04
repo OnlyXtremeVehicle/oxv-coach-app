@@ -28,6 +28,7 @@ import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTranspar
 import { FadeInSection } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
+import { isDoctrineSafe } from '@/services/aiSafetyFilter';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
@@ -94,7 +95,14 @@ export default function DebriefScreen() {
         return;
       }
 
-      const debriefText = analysis.debriefText ?? '';
+      // Ceinture d'affichage (décision 2026-07-04 : l'IA débriefe, ne coache
+      // jamais). Le texte généré est déjà filtré côté serveur — mais si un
+      // texte prescriptif persistait malgré tout (ancienne génération, faille
+      // serveur), on le REFUSE ici et on retombe sur les gabarits descriptifs
+      // maîtrisés. Fail-closed au dernier mètre : rien de prescriptif ne
+      // s'affiche, jamais.
+      const rawDebriefText = analysis.debriefText ?? '';
+      const debriefText = rawDebriefText && isDoctrineSafe(rawDebriefText) ? rawDebriefText : '';
       const parsed = parseDebrief(debriefText);
 
       setData({

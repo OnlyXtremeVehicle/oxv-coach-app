@@ -48,21 +48,30 @@ Tout est câblé prod (23/23), y compris disponibilités, cycles, gabarits,
 repères, pondérations de lecture, roulages tarifés (gating permissions),
 business dashboard (gating `can_view_business_dashboard`).
 
-### Inventaire Coach IA (périmètre exact du lot M-IA)
+### Inventaire IA — AMENDÉ (décision fondateur orale du 2026-07-04, remplace le
+### retrait total du prompt v2 : « on garde l'IA si elle ne coache pas mais débriefe »)
 
-| Artefact | Chemin | Sort M-IA |
-|----------|--------|-----------|
-| Écran assistant | `app/(coach)/assistant.tsx` | retirer |
-| Service | `src/services/coachAiService.ts` | retirer |
-| Filtre doctrinal | `src/services/aiSafetyFilter.ts` + tests + snapshot | retirer (réutiliser le lexique dans check-doctrine si utile) |
-| Bandeau | `src/components/AIReviewBanner.tsx` | retirer |
-| Edge fns | `coach-ai-draft` (v2), `coach-ai-validate` (v2) — DÉPLOYÉES | retirer du déploiement + du repo |
-| Edge fn | `generate-debrief-ai` (v16) — DÉPLOYÉE, sert le débrief PILOTE | REMPLACER par bilan déterministe |
-| Table | `coach_ai_drafts` | archiver puis drop (ACCORD requis) |
-| Table | `ai_safety_reviews` (dormante, 0 usage app) | archiver puis drop (ACCORD requis) |
-| Table | `coach_queue` | **CONSERVER** — file de lecture humaine (`file-lecture.tsx`), aucune dépendance IA |
-| Colonne | `coach_annotations.ai_assisted` | conserver la table ; colonne à neutraliser (défaut false, plus jamais écrite true) |
-| Écran | `app/(coach)/file-lecture.tsx` | conserver (humain) |
+Périmètre décidé : **débrief pilote + assistant coach conservés**. Repli en cas
+de rejet doctrinal : **bilan déterministe** (fail-closed). Le lot M-IA devient
+un lot de VERROUILLAGE (fait, cf. commit associé) :
+
+| Artefact | Chemin | Sort (amendé) |
+|----------|--------|----------------|
+| Écran assistant | `app/(coach)/assistant.tsx` | **conservé** (brouillons validés par le coach humain) |
+| Service | `src/services/coachAiService.ts` | conservé |
+| Filtre doctrinal | `src/services/aiSafetyFilter.ts` (~55 termes normalisés) | conservé — source canonique du lexique |
+| Bandeau | `src/components/AIReviewBanner.tsx` | conservé |
+| Edge fns | `coach-ai-draft`, `coach-ai-validate` | conservées (filtre serveur + validation humaine) |
+| Edge fn | `generate-debrief-ai` | **conservée et DURCIE** : lexique intégral porté côté serveur (18 → ~55 termes, matching normalisé sans accents), scan sortie + retry + 422 fail-closed inchangés |
+| Repli | `debriefGenerator.generateSafeDebrief` | confirmé : toute erreur/rejet edge → bilan déterministe |
+| Ceinture d'affichage | `app/(app)/debrief.tsx` | AJOUTÉE : `isDoctrineSafe` re-filtre le texte persisté avant affichage — rien de prescriptif ne s'affiche, même si un ancien texte non conforme traînait en base |
+| Test de parité | `aiSafetyFilter.test.ts` | AJOUTÉ : lit le fichier edge et impose que chaque terme du lexique app y figure |
+| Tables | `coach_ai_drafts`, `ai_safety_reviews`, `coach_queue` | toutes conservées (plus aucun drop au programme) |
+| Provenance pilote | `debrief.tsx` | déjà en place (« RÉCIT GÉNÉRÉ AUTOMATIQUEMENT » + blocs source/limites) |
+| Opt-out RGPD | `users.ai_debrief_enabled` | déjà en place (403 serveur → repli local) |
+
+La frontière doctrinale reste absolue : l'IA **décrit des faits**, ne conseille
+JAMAIS ; le conseil est le monopole des coachs humains externes.
 
 Écrans disponibilités/cycles/gabarits : **câblés et fonctionnels** (tables
 `coach_availability_slots`, `development_cycles(+steps)`,
