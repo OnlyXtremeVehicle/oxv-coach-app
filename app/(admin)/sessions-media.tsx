@@ -68,6 +68,9 @@ export default function AdminSessionsMediaScreen() {
   const profile = useAuthStore((s) => s.profile);
 
   const [sessions, setSessions] = useState<SessionOption[]>([]);
+  // Indicateur « médias livrés / en attente » par session (M1.2) : la promesse
+  // client (banque photo/vidéo) se surveille ici, session par session.
+  const [mediaCounts, setMediaCounts] = useState<Record<string, number>>({});
   const [selectedSession, setSelectedSession] = useState<SessionOption | null>(null);
   const [media, setMedia] = useState<SessionMediaItem[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -101,6 +104,22 @@ export default function AdminSessionsMediaScreen() {
         }))
       );
       setLoadingSessions(false);
+
+      // Comptage des médias livrés (non supprimés) pour ces sessions.
+      const ids = (data as unknown as SessionRow[]).map((r) => r.id);
+      if (ids.length > 0) {
+        const { data: rows } = await supabase
+          .from('session_media')
+          .select('telemetry_session_id')
+          .in('telemetry_session_id', ids)
+          .is('deleted_at', null);
+        if (cancelled) return;
+        const counts: Record<string, number> = {};
+        for (const row of (rows ?? []) as { telemetry_session_id: string }[]) {
+          counts[row.telemetry_session_id] = (counts[row.telemetry_session_id] ?? 0) + 1;
+        }
+        setMediaCounts(counts);
+      }
     })();
     return () => {
       cancelled = true;
@@ -255,6 +274,18 @@ export default function AdminSessionsMediaScreen() {
                     </Text>
                     <Text style={s.sessionDate}>
                       {session.startedAt ? formatDateLong(session.startedAt) : '—'}
+                    </Text>
+                    <Text
+                      style={[
+                        s.sessionDate,
+                        (mediaCounts[session.id] ?? 0) > 0
+                          ? { color: BRONZE }
+                          : { color: theme.palette.faint },
+                      ]}
+                    >
+                      {(mediaCounts[session.id] ?? 0) > 0
+                        ? `${mediaCounts[session.id]} média${mediaCounts[session.id] > 1 ? 's' : ''}`
+                        : 'En attente'}
                     </Text>
                   </Pressable>
                 );
