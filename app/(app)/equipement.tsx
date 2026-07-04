@@ -13,9 +13,11 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 import { bluetoothService } from '@/ble/bluetoothService';
 import { requestBlePermissions } from '@/ble/permissions';
+import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -24,12 +26,36 @@ import { Screen } from '@/ui/Screen';
 import type { BleStatus, RaceBoxDevice } from '@/types/telemetry';
 
 const SCAN_TIMEOUT_MS = 30_000;
+/** Mémoire du dernier boîtier appairé (M7.2) — id BLE local, non sensible. */
+const LAST_DEVICE_KEY = 'oxv.lastPairedDeviceId';
 
 export default function EquipementScreen() {
   const [status, setStatus] = useState<BleStatus>(bluetoothService.getStatus());
   const [devices, setDevices] = useState<RaceBoxDevice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [connecting, setConnecting] = useState(false);
+  // Flotte (M7.2) : boîtier affecté au pilote (alias résolu par serial) +
+  // dernier boîtier appairé — les deux best-effort, l'écran marche sans.
+  const [myDevice, setMyDevice] = useState<MyDevice | null>(null);
+  const [lastPairedId, setLastPairedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMyAssignedDevice()
+      .then((d) => {
+        if (!cancelled) setMyDevice(d);
+      })
+      .catch(() => undefined);
+    SecureStore.getItemAsync(LAST_DEVICE_KEY)
+      .then((v) => {
+        if (!cancelled) setLastPairedId(v);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const offStatus = bluetoothService.onStatusChange(setStatus);
@@ -44,12 +70,15 @@ export default function EquipementScreen() {
     };
   }, []);
 
-  // Auto-redirect vers #09 dès qu'on est connecté
+  // Auto-redirect vers #09 dès qu'on est connecté (+ mémorise le boîtier)
   useEffect(() => {
     if (status === 'connected') {
+      if (selectedId) {
+        SecureStore.setItemAsync(LAST_DEVICE_KEY, selectedId).catch(() => undefined);
+      }
       router.replace('/(app)/placement');
     }
-  }, [status]);
+  }, [status, selectedId]);
 
   // Démarrer le scan au mount
   useEffect(() => {
@@ -84,11 +113,22 @@ export default function EquipementScreen() {
 
   const onSelect = async (deviceId: string) => {
     setConnecting(true);
+    setSelectedId(deviceId);
     setError(null);
     bluetoothService.stopScan();
     await bluetoothService.connect(deviceId);
     setConnecting(false);
   };
+
+  // Résolution flotte : le boîtier AFFECTÉ au pilote est reconnu par son
+  // serial contenu dans le nom BLE d'usine (« RaceBox Mini S 1234567890 »).
+  const isMine = (d: RaceBoxDevice) =>
+    Boolean(myDevice?.serial && d.name.toLowerCase().includes(myDevice.serial.toLowerCase()));
+  // Ordre : mon boîtier d'abord, puis le dernier appairé, puis les autres.
+  const orderedDevices = [...devices].sort((a, b) => {
+    const rank = (d: RaceBoxDevice) => (isMine(d) ? 0 : d.id === lastPairedId ? 1 : 2);
+    return rank(a) - rank(b);
+  });
 
   const onRescan = () => {
     setError(null);
@@ -122,15 +162,22 @@ export default function EquipementScreen() {
         ) : null}
 
         <View style={{ gap: theme.spacing.sm }}>
-          {devices.map((d) => {
-            const name = d.name.replace(/^RaceBox/, 'OXV Mirror');
+          {orderedDevices.map((d) => {
+            const factoryName = d.name.replace(/^RaceBox/, 'OXV Mirror');
+            const mine = isMine(d);
+            // Alias flotte en premier (M7.2), nom d'usine en secondaire.
+            const name = mine && myDevice?.alias ? myDevice.alias : factoryName;
+            const badge = mine ? 'Votre boîtier' : d.id === lastPairedId ? 'Dernier utilisé' : null;
             const signal = d.rssi !== null ? `Signal ${d.rssi} dBm` : 'À portée';
+            const secondary = [mine && myDevice?.alias ? factoryName : null, signal]
+              .filter(Boolean)
+              .join(' · ');
             return (
               <Card
                 key={d.id}
                 onPress={() => onSelect(d.id)}
                 disabled={connecting}
-                accessibilityLabel={`${name}, ${signal}`}
+                accessibilityLabel={`${name}${badge ? `, ${badge}` : ''}, ${signal}`}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
@@ -139,7 +186,8 @@ export default function EquipementScreen() {
               >
                 <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
                   <Text style={s.deviceName}>{name}</Text>
-                  <Text style={d.rssi !== null ? s.meta : s.metaText}>{signal}</Text>
+                  {badge ? <Text style={s.badge}>{badge.toUpperCase()}</Text> : null}
+                  <Text style={d.rssi !== null ? s.meta : s.metaText}>{secondary}</Text>
                 </View>
                 {connecting ? (
                   <ActivityIndicator color={theme.palette.creamMute} />
@@ -198,6 +246,13 @@ const s = {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
+  },
+  badge: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.2,
+    color: theme.palette.green,
+    marginTop: 2,
   },
   chevron: {
     fontFamily: theme.fonts.body,

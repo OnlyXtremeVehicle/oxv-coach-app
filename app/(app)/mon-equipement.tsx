@@ -79,7 +79,7 @@ export default function MonEquipementScreen() {
         ) : (
           <>
             <Card style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-              <Text style={s.deviceLabel}>{device.label}</Text>
+              <Text style={s.deviceLabel}>{device.alias ?? device.label}</Text>
               {device.type || device.serial ? (
                 <Text style={s.deviceMeta}>
                   {[device.type, device.serial ? `N° ${device.serial}` : null]

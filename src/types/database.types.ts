@@ -2463,8 +2463,10 @@ export type Database = {
       }
       devices: {
         Row: {
+          alias: string | null
           battery_status: string | null
           created_at: string
+          fleet_number: number | null
           health_status: string
           id: string
           label: string
@@ -2474,8 +2476,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          alias?: string | null
           battery_status?: string | null
           created_at?: string
+          fleet_number?: number | null
           health_status?: string
           id?: string
           label: string
@@ -2485,8 +2489,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          alias?: string | null
           battery_status?: string | null
           created_at?: string
+          fleet_number?: number | null
           health_status?: string
           id?: string
           label?: string

@@ -13,6 +13,10 @@ export type DeviceHealth = 'ok' | 'maintenance' | string;
 export interface AdminDevice {
   id: string;
   label: string;
+  /** Alias lisible jour J (M7.2) — « OXV 07 » plutôt que le nom BLE d'usine. */
+  alias: string | null;
+  /** Numéro de flotte (étiquette physique alignée sur l'alias). */
+  fleetNumber: number | null;
   serial: string | null;
   type: string;
   healthStatus: DeviceHealth;
@@ -26,7 +30,7 @@ export interface AdminDevice {
 export async function listDevices(): Promise<AdminDevice[]> {
   const { data, error } = await supabase
     .from('devices')
-    .select('id, label, serial, type, health_status, battery_status, notes')
+    .select('id, label, alias, fleet_number, serial, type, health_status, battery_status, notes')
     .order('label', { ascending: true });
   if (error) {
     console.warn('[OXV][admin] listDevices :', error.message);
@@ -53,6 +57,8 @@ export async function listDevices(): Promise<AdminDevice[]> {
     return {
       id,
       label: (r.label as string) ?? '',
+      alias: (r.alias as string | null) ?? null,
+      fleetNumber: (r.fleet_number as number | null) ?? null,
       serial: (r.serial as string | null) ?? null,
       type: (r.type as string) ?? '',
       healthStatus: (r.health_status as string) ?? 'ok',
@@ -110,6 +116,23 @@ export async function listAssignmentsForEvent(eventId: string): Promise<EventDev
       assignedAt: r.assigned_at as string,
     };
   });
+}
+
+/** Renomme un boîtier pour le jour J (M7.2) : alias + numéro de flotte. */
+export async function setDeviceIdentity(
+  id: string,
+  alias: string,
+  fleetNumber: number | null
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('devices')
+    .update({ alias: alias.trim() || null, fleet_number: fleetNumber } as never)
+    .eq('id', id);
+  if (error) {
+    console.warn('[OXV][admin] setDeviceIdentity :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }
 
 export async function setDeviceHealth(

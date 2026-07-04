@@ -10,6 +10,9 @@ import { supabase } from '@/lib/supabase';
 export interface MyDevice {
   deviceId: string;
   label: string;
+  /** Alias flotte jour J (M7.2), ex. « OXV 07 » — affiché avant le nom d'usine. */
+  alias: string | null;
+  fleetNumber: number | null;
   type: string | null;
   serial: string | null;
   batteryStatus: string | null;
@@ -37,13 +40,15 @@ export async function getMyAssignedDevice(): Promise<MyDevice | null> {
 
   const { data: dev } = await supabase
     .from('devices')
-    .select('id, label, type, serial, battery_status, health_status')
+    .select('id, label, alias, fleet_number, type, serial, battery_status, health_status')
     .eq('id', a.device_id)
     .maybeSingle();
   if (!dev) return null;
   const d = dev as {
     id: string;
     label: string | null;
+    alias: string | null;
+    fleet_number: number | null;
     type: string | null;
     serial: string | null;
     battery_status: string | null;
@@ -52,6 +57,8 @@ export async function getMyAssignedDevice(): Promise<MyDevice | null> {
   return {
     deviceId: d.id,
     label: d.label ?? 'Boîtier',
+    alias: d.alias,
+    fleetNumber: d.fleet_number,
     type: d.type,
     serial: d.serial,
     batteryStatus: d.battery_status,

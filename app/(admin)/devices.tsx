@@ -19,6 +19,7 @@ import {
   addDevice,
   listDevices,
   setDeviceHealth,
+  setDeviceIdentity,
 } from '@/services/adminDevicesService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -42,6 +43,27 @@ export default function AdminDevicesScreen() {
   const [label, setLabel] = useState('');
   const [serial, setSerial] = useState('');
   const [saving, setSaving] = useState(false);
+  // Renommage flotte (M7.2)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editAlias, setEditAlias] = useState('');
+  const [editFleet, setEditFleet] = useState('');
+  const [savingIdentity, setSavingIdentity] = useState(false);
+
+  const onSaveIdentity = async (d: AdminDevice) => {
+    if (savingIdentity) return;
+    setSavingIdentity(true);
+    const fleet = editFleet.trim() === '' ? null : Number(editFleet);
+    const res = await setDeviceIdentity(d.id, editAlias, fleet);
+    if (res.ok) {
+      setDevices((prev) =>
+        prev.map((x) =>
+          x.id === d.id ? { ...x, alias: editAlias.trim() || null, fleetNumber: fleet } : x
+        )
+      );
+      setEditingId(null);
+    }
+    setSavingIdentity(false);
+  };
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -133,11 +155,12 @@ export default function AdminDevicesScreen() {
             <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
               {devices.map((d) => {
                 const ok = d.healthStatus === 'ok';
+                const editing = editingId === d.id;
                 return (
                   <Card key={d.id}>
                     <View style={s.rowBetween}>
                       <Text style={s.deviceLabel} numberOfLines={1}>
-                        {d.label}
+                        {d.alias ? `${d.alias} · ${d.label}` : d.label}
                       </Text>
                       <Pressable
                         accessibilityRole="button"
@@ -161,7 +184,58 @@ export default function AdminDevicesScreen() {
                     </Text>
                     <Text style={s.deviceAssign}>
                       {d.assignmentCount} affectation{d.assignmentCount > 1 ? 's' : ''}
+                      {d.fleetNumber != null ? ` · flotte n° ${d.fleetNumber}` : ''}
                     </Text>
+
+                    {/* Renommage flotte (M7.2) : alias lisible jour J + n° aligné
+                        sur l'étiquette physique du boîtier. */}
+                    {editing ? (
+                      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+                        <Field
+                          label="Alias jour J"
+                          value={editAlias}
+                          onChangeText={setEditAlias}
+                          placeholder="Ex. OXV 07"
+                        />
+                        <Field
+                          label="Numéro de flotte"
+                          value={editFleet}
+                          onChangeText={(v) => setEditFleet(v.replace(/[^0-9]/g, ''))}
+                          placeholder="Ex. 7"
+                          keyboardType="number-pad"
+                        />
+                        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                          <View style={{ flex: 1 }}>
+                            <Button
+                              label="Enregistrer"
+                              onPress={() => onSaveIdentity(d)}
+                              disabled={savingIdentity}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Button
+                              label="Annuler"
+                              variant="ghost"
+                              onPress={() => setEditingId(null)}
+                              disabled={savingIdentity}
+                            />
+                          </View>
+                        </View>
+                      </View>
+                    ) : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Renommer ${d.alias ?? d.label}`}
+                        onPress={() => {
+                          setEditingId(d.id);
+                          setEditAlias(d.alias ?? '');
+                          setEditFleet(d.fleetNumber != null ? String(d.fleetNumber) : '');
+                        }}
+                        style={{ marginTop: theme.spacing.sm, minHeight: 32 }}
+                      >
+                        <Text style={s.renameLink}>Renommer (alias jour J)</Text>
+                      </Pressable>
+                    )}
                   </Card>
                 );
               })}
@@ -231,5 +305,10 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.faint,
     marginTop: theme.spacing.xs,
+  },
+  renameLink: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
   },
 };
