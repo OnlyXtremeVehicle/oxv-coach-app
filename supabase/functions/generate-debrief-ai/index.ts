@@ -23,11 +23,11 @@
 //   - Réglage opt-out : si users.ai_debrief_enabled = false, on n'appelle pas
 //     OpenAI (403) ; l'app pilote retombe sur le générateur local descriptif.
 //
-// GARDE-FOU DOCTRINAL (cahier OXV Mirror §11 : "debrief IA strictement
-// descriptif, jamais prescriptif"). Le prompt ne suffit pas — un LLM peut
-// déraper. On scanne donc la SORTIE générée :
+// GARDE-FOU DOCTRINAL (décision fondateur 2026-07-04 : l'IA débriefe mais ne
+// coache JAMAIS — "debrief IA strictement descriptif, jamais prescriptif").
+// Le prompt ne suffit pas — un LLM peut déraper. On scanne donc la SORTIE :
 //   1. Génération GPT
-//   2. Scan des verbes interdits sur le texte produit
+//   2. Scan du lexique proscrit sur le texte produit
 //   3. Si violation → 1 retry avec consigne renforcée listant les fautes
 //   4. Si encore en faute → on REFUSE de persister (422), l'app pilote
 //      fallback sur le générateur local descriptif (maîtrisé, sûr)
@@ -235,7 +235,7 @@ Deno.serve(async (req: Request) => {
 Doctrine NON NÉGOCIABLE (toute violation rend le texte inutilisable) :
 - Vouvoiement systématique.
 - STRICTEMENT DESCRIPTIF : énonce des faits mesurés. Jamais de prescription, de conseil, de recommandation, de correction.
-- AUCUN verbe directif ni d'incitation. Interdits absolus : "freinez", "accélérez", "ouvrez les gaz", "tracez", "évitez", "poussez", "corrigez", "améliorez", "optimisez", "gagnez", "il faut", "vous devez", "vous devriez", "vous pouvez", "tu dois", "tu peux", "je vous conseille", "je vous recommande".
+- AUCUN verbe directif ni d'incitation. Interdits absolus : "freinez", "accélérez", "ouvrez les gaz", "tracez", "évitez", "poussez", "corrigez", "améliorez", "optimisez", "gagnez", "il faut", "vous devez", "vous devriez", "vous pouvez", "tu dois", "tu peux", "je vous conseille", "je vous recommande", ainsi que tout impératif de conduite (tournez, braquez, serrez, prenez, gardez, visez, appuyez, relâchez).
 - AUCUN score, AUCUN classement, AUCUNE comparaison avec d'autres pilotes.
 - L'app est un MIROIR. Elle montre. Elle ne dirige pas.
 - Ton sobre, posé, premium "Ferrari sec" : pas d'emoji, pas d'exclamation, phrases courtes.
