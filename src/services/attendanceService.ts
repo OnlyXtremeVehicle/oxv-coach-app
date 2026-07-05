@@ -30,6 +30,8 @@ export interface AttendanceSession {
   format: string | null;
   isPrivate: boolean;
   privateClientName: string | null;
+  /** Circuit de la journée (M6) — nom résolu, null si non renseigné. */
+  circuitName: string | null;
   registrations: AttendanceRegistration[];
 }
 
@@ -46,10 +48,21 @@ export async function listTodayAttendance(): Promise<AttendanceSession[]> {
 
   const { data: sessions, error: sessionsError } = await supabase
     .from('sessions')
-    .select('id, date, start_time, end_time, format, is_private, private_client_name')
+    .select('id, date, start_time, end_time, format, is_private, private_client_name, circuit_id')
     .eq('date', dayIso)
     .order('start_time', { ascending: true });
   if (sessionsError || !sessions || sessions.length === 0) return [];
+
+  // Résout le nom du circuit de chaque journée (M6), une requête groupée.
+  const circuitIds = [...new Set(sessions.map((s) => s.circuit_id).filter(Boolean))] as string[];
+  const circuitNames = new Map<string, string>();
+  if (circuitIds.length > 0) {
+    const { data: circuits } = await supabase
+      .from('circuits')
+      .select('id, name')
+      .in('id', circuitIds);
+    for (const c of circuits ?? []) circuitNames.set(c.id, c.name);
+  }
 
   const sessionIds = sessions.map((s) => s.id);
   const { data: regs } = await supabase
@@ -80,6 +93,7 @@ export async function listTodayAttendance(): Promise<AttendanceSession[]> {
     format: s.format,
     isPrivate: Boolean(s.is_private),
     privateClientName: s.private_client_name,
+    circuitName: s.circuit_id ? (circuitNames.get(s.circuit_id) ?? null) : null,
     registrations: (regs ?? [])
       .filter((r) => r.session_id === s.id)
       .map((r) => ({

@@ -5361,6 +5361,7 @@ export type Database = {
           capacity_morning: number | null
           capacity_promotion: number | null
           capacity_signature: number | null
+          circuit_id: string | null
           created_at: string | null
           date: string
           end_time: string | null
@@ -5385,6 +5386,7 @@ export type Database = {
           capacity_morning?: number | null
           capacity_promotion?: number | null
           capacity_signature?: number | null
+          circuit_id?: string | null
           created_at?: string | null
           date: string
           end_time?: string | null
@@ -5409,6 +5411,7 @@ export type Database = {
           capacity_morning?: number | null
           capacity_promotion?: number | null
           capacity_signature?: number | null
+          circuit_id?: string | null
           created_at?: string | null
           date?: string
           end_time?: string | null

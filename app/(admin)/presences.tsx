@@ -103,12 +103,15 @@ export default function AdminPresencesScreen() {
                   : (session.format ?? 'Session')}
               </Text>
               <Text style={s.sessionMeta}>
-                {[session.startTime?.slice(0, 5), session.endTime?.slice(0, 5)]
+                {[
+                  [session.startTime?.slice(0, 5), session.endTime?.slice(0, 5)]
+                    .filter(Boolean)
+                    .join(' – ') || session.date,
+                  session.circuitName,
+                  `${session.registrations.length} inscrit${session.registrations.length > 1 ? 's' : ''}`,
+                ]
                   .filter(Boolean)
-                  .join(' – ') || session.date}
-                {' · '}
-                {session.registrations.length} inscrit
-                {session.registrations.length > 1 ? 's' : ''}
+                  .join(' · ')}
               </Text>
 
               {session.registrations.length === 0 ? (
