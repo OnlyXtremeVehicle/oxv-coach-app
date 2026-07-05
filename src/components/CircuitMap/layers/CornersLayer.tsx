@@ -111,7 +111,7 @@ function fillForCorner(
     case 'slow':
       return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
     case 'medium':
-      return theme.dataColors.brake;
+      return '#EF9F27'; // jaune de marge (aligné sur l'export) — PAS le rouge freinage
     case 'fast':
       return theme.palette.green;
   }
@@ -122,7 +122,7 @@ function colorForZone(zone: MarginZone): string {
     case 'green':
       return theme.palette.green;
     case 'yellow':
-      return theme.dataColors.brake;
+      return '#EF9F27'; // jaune de marge (aligné sur l'export) — PAS le rouge freinage
     case 'red':
       return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
   }

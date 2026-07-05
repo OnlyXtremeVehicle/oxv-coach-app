@@ -28,10 +28,15 @@ export const palette = {
 } as const;
 
 // Couleurs de donnée (piliers / vues). Toujours doublées d'un libellé.
+// Décision fondateur 2026-07-04 : le FREINAGE prend le rouge de DONNÉE #E63946
+// (convention télémétrie : freinage rouge / accélération verte). Ce rouge de
+// donnée est DISTINCT du rouge de marque #C8102E (REC/insigne) — cf.
+// REGLES_COULEUR.md. La trajectoire (qui portait ce corail) passe à l'ambre
+// pilote, sa couleur d'affichage réelle depuis le fix canon PR-69.
 export const dataColors = {
-  trajectory: '#E63946',
+  trajectory: '#F2792B', // = pilotAmber (trajectoire pilote, jamais le rouge)
   flow: '#FFB703',
-  brake: '#60A5FA',
+  brake: '#E63946', // FREINAGE = rouge de donnée (≠ rouge de marque #C8102E)
   accel: '#4ADE80',
   regularity: '#C084FC',
 } as const;

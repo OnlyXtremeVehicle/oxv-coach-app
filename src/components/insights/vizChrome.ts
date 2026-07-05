@@ -6,9 +6,10 @@
  * Ce module centralise ce boîtier et la couleur ambre pilote, pour que les
  * six vizs parlent la même langue sans dupliquer les valeurs.
  *
- * Doctrine : l'or est la donnée (neutre). Le rouge figé de la dimension
- * trajectory (#E63946) est réservé à la marque et à la voix du coach ; côté
- * pilote on le neutralise en ambre. dataColors reste gelé (partagé avec le site).
+ * Doctrine : l'or est la donnée (neutre). Le rouge de donnée #E63946 code le
+ * FREINAGE (convention télémétrie, décision 2026-07-04) — distinct du rouge de
+ * MARQUE #C8102E (REC/insigne). La trajectoire pilote est en ambre. dataColors
+ * partagé avec le site (à mirrorer côté site pour cohérence cross-plateforme).
  */
 
 import { theme } from '@/theme/v2';

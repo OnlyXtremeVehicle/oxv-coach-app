@@ -99,7 +99,7 @@ export function AnatomieViz() {
         {/* Profil de vitesse : courbe OR à halo sur fond de phases. */}
         <Svg width="100%" height={132} viewBox="0 0 320 132">
           {/* Zones de fond : freinage / corde / réaccél. (teintes d'identité, ténues). */}
-          <Rect x={0} y={0} width={110} height={120} fill="rgba(96,165,250,0.06)" />
+          <Rect x={0} y={0} width={110} height={120} fill="rgba(230,57,70,0.06)" />
           <Rect x={110} y={0} width={60} height={120} fill="rgba(242,121,43,0.07)" />
           <Rect x={170} y={0} width={150} height={120} fill="rgba(74,222,128,0.06)" />
 

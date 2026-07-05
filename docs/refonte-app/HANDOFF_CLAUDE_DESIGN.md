@@ -68,10 +68,10 @@
 ### Couleurs — données (dataColors, doublées d'un libellé)
 | Token | Hex | Sens |
 |-------|-----|------|
-| trajectory | `#E63946` | réservé marque/coach → côté pilote neutralisé en pilotAmber |
+| trajectory | `#F2792B` | = ambre pilote (trajectoire, jamais un rouge) |
 | flow | `#FFB703` | fluidité |
-| brake | `#60A5FA` | freinage (bleu) |
-| accel | `#4ADE80` | accélération (vert vif — pilier Accélération) |
+| **brake** | **`#E63946`** | **freinage = rouge de donnée** (≠ rouge de marque `#C8102E`) |
+| accel | `#4ADE80` | accélération (vert vif) |
 | regularity | `#C084FC` | régularité (violet) |
 
 ### Typographie
@@ -301,7 +301,7 @@ value 25 · display 28 · **serifTitle 44** (titre hero serif) · **hud 62** (gr
 - Marge serrée = ambre `#F2792B` (jamais rouge). Numéros de virage = heritageGold.
 
 ### 6.5 Détail virage (`virage.tsx`) — A5
-- Zoom sur un virage : **3 phases** — Freinage (bleu `#60A5FA`) / Corde (ambre) / Réaccél. (vert `#4ADE80`).
+- Zoom sur un virage : **3 phases** — Freinage (**rouge de donnée `#E63946`**) / Corde (ambre) / Réaccél. (vert `#4ADE80`).
 - Chiffre héros : **vitesse à la corde** (le minimum, signature du virage).
 - Courbe de vitesse OR à halo + point de corde ambre.
 

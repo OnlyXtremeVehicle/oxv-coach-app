@@ -258,7 +258,7 @@ function StepBtn({ label, onPress }: { label: string; onPress: () => void }) {
 
 function haloColor(speed: number | null): string {
   if (speed === null) return palette.creamMute;
-  if (speed < 80) return theme.dataColors.brake; // bleu lent
+  if (speed < 80) return '#60A5FA'; // bleu = vitesse basse (échelle de vitesse, pas le freinage)
   if (speed < 140) return palette.cream; // neutre
   return palette.pilotAmber; // ambre pilote (rouge-perf neutralisé) — vitesse haute
 }

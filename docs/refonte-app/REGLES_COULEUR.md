@@ -5,7 +5,7 @@
 
 ## Les 4 lois (priment sur tout)
 1. **L'or ne colore QUE de la donnée** (chiffre, jauge, courbe, barre, point de mesure). Jamais bouton, onglet, voyant, halo décoratif, titre.
-2. **Le rouge de marque ne colore QUE la marque et l'enregistrement** (insigne, bande coach, point REC). Jamais une donnée de perf, un statut, un bouton.
+2. **Le rouge de MARQUE `#C8102E` ne colore QUE la marque et l'enregistrement** (insigne, bande coach, point REC). Jamais un statut, un bouton, une marge. **Exception donnée (2026-07-04)** : un **rouge de DONNÉE `#E63946`, distinct**, est autorisé pour le **freinage** (convention télémétrie : freinage rouge / accélération verte). La marge serrée reste en **ambre**, jamais en rouge.
 3. **Un seul grand chiffre dominant par écran.**
 4. **Fond toujours sombre** (base Noir Abysse `#050505`).
 
@@ -40,7 +40,7 @@
 | Couleur | Hex | UNIQUEMENT pour | INTERDIT |
 |---|---|---|---|
 | **gold** | `#FFB703` | la DONNÉE : valeur de jauge, chiffre central, courbe, barre, point, halo *sur la valeur seule* | boutons, onglets, voyants, halos de conteneur, titres, sélections, switches |
-| **red** | `#C8102E` | insigne/logo, bande coach, point REC | données de perf, statuts, boutons, pins, erreurs, CTA |
+| **red (marque)** | `#C8102E` | insigne/logo, bande coach, point REC | données de perf, statuts, boutons, pins, marges, CTA |
 | **heritageGold** | `#C4A459` | offre Heritage + numéros de virage | reste du branding, données courantes |
 | **green** | `#97C459` | tendance positive, état connecté, **switch ON**, auto-éval « atteint » | verdict de performance, donnée neutre |
 | **pilotAmber** | `#F2792B` | marge serrée (rouge de perf neutralisé), trajectoire pilote, phase corde | la marque, fond d'écran |
@@ -50,11 +50,14 @@
 ## Couleurs de donnée (5 piliers — toujours + libellé)
 | Pilier | Token | Hex | Emploi |
 |---|---|---|---|
-| Trajectoire | trajectory | `#E63946` | réservé marque/coach → pilote = **pilotAmber** |
+| Trajectoire | trajectory | `#F2792B` | = **ambre pilote** (jamais un rouge) |
 | Fluidité | flow | `#FFB703` | courbe fluidité (= l'or) |
-| Freinage | brake | `#60A5FA` | phase freinage (bleu) |
+| **Freinage** | brake | **`#E63946`** | **rouge de donnée** (≠ rouge de marque `#C8102E`) |
 | Accélération | accel | `#4ADE80` | phase réaccél. (vert vif) |
 | Régularité | regularity | `#C084FC` | donnée régularité (violet) |
+
+> Le **bleu `#60A5FA`** n'est plus un pilier ; il reste une couleur locale pour
+> l'**eau** (POI Belle Route) et la **vitesse basse** (échelle du scrubber).
 
 ## Table de décision (« j'ai X → »)
 | J'ai… | Couleur |
@@ -67,8 +70,10 @@
 | case cochée | fond **cream**, coche **night** |
 | switch ON | piste **green** |
 | voyant / point de statut | **creamMute** neutre · **green** connecté · **red** REC |
-| point d'enregistrement en piste | **red** |
-| marge serrée / zone engagée | **pilotAmber** (jamais rouge) |
+| point d'enregistrement en piste | **red (marque)** `#C8102E` |
+| **phase de freinage** (données, vizs, branche QDI) | **`#E63946`** (rouge de donnée) |
+| phase d'accélération | **accel** `#4ADE80` (vert) |
+| marge serrée / zone engagée | **pilotAmber** `#F2792B` (jamais rouge) |
 | numéro de virage | **heritageGold** |
 | offre Heritage | **heritageGold** |
 | sur-titre / eyebrow | **faint** (mono, majuscule) |

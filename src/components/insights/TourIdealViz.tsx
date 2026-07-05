@@ -41,7 +41,7 @@ interface Segment {
 }
 const SEGMENTS: Segment[] = [
   { sector: 'S1', from: 'tour 9', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
-  { sector: 'S2', from: 'tour 14', width: 38, accent: C.brake, tint: 'rgba(96,165,250,0.16)' },
+  { sector: 'S2', from: 'tour 14', width: 38, accent: C.brake, tint: 'rgba(230,57,70,0.16)' },
   { sector: 'S3', from: 'tour 11', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
 ];
 

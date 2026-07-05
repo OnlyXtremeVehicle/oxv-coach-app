@@ -18,15 +18,15 @@ import type { ReadingKey } from '@/components/insights/catalogue';
 const C = theme.dataColors;
 
 // rgba dérivées des couleurs QDI pour les remplissages discrets des zones.
-// Ambre pilote : neutralise le rouge trajectory (#E63946 réservé marque/coach).
+// Ambre pilote = trajectoire ; le rouge de donnée #E63946 = FREINAGE (≠ marque).
 const TRAJ_LINE = theme.palette.pilotAmber;
 const TRAJ_FILL = 'rgba(242,121,43,0.10)';
 const TRAJ_SOFT = 'rgba(242,121,43,0.50)';
-const BRAKE_FILL = 'rgba(96,165,250,0.10)';
-const BRAKE_SOFT = 'rgba(96,165,250,0.45)';
-const BRAKE_DOT = 'rgba(96,165,250,0.35)';
+const BRAKE_FILL = 'rgba(230,57,70,0.10)'; // freinage = rouge de donnée
+const BRAKE_SOFT = 'rgba(230,57,70,0.45)';
+const BRAKE_DOT = 'rgba(230,57,70,0.35)';
 const ACCEL_FILL = 'rgba(74,222,128,0.50)';
-const ACCEL_SOFT = 'rgba(96,165,250,0.50)';
+const ACCEL_SOFT = 'rgba(74,222,128,0.50)'; // accélération = vert (corrige un bleu résiduel)
 const RED_GHOST = 'rgba(242,121,43,0.40)';
 const LINE_GHOST = 'rgba(248,249,250,0.25)';
 

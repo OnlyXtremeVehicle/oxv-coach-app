@@ -43,7 +43,7 @@ const DISTANCES = [50, 100, 150];
 
 const POI_COLOR: Record<ScenicPoi['kind'], string> = {
   viewpoint: theme.palette.gold,
-  water: theme.dataColors.brake,
+  water: '#60A5FA', // bleu = eau (catégorie POI ; le freinage a pris le rouge de donnée)
   pass: theme.dataColors.regularity, // rouge de marque interdit hors REC/coach — couleur de donnée non réservée
   peak: theme.palette.creamSoft,
 };
