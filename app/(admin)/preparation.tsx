@@ -24,7 +24,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 // Pastille de statut KYC : second signal seulement (le libellé porte le sens,
 // lisible AA). La couleur n'est jamais le signal unique d'un statut.
 const STATUS = { green: theme.palette.green, yellow: '#EF9F27', red: theme.palette.red };
@@ -106,7 +107,7 @@ export default function PreparationScreen() {
         </Text>
 
         {loading ? (
-          <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement des pilotes" />
+          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement des pilotes" />
         ) : failed ? (
           <Card style={{ borderColor: theme.palette.line, paddingVertical: theme.spacing.xl }}>
             <Text style={s.errorTitle}>Liste indisponible</Text>
@@ -191,7 +192,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

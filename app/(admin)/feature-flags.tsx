@@ -27,7 +27,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function FeatureFlagsScreen() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
@@ -127,7 +128,7 @@ export default function FeatureFlagsScreen() {
           <SectionLabel>Drapeaux existants</SectionLabel>
           {loading ? (
             <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement" />
+              <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
             </View>
           ) : flags.length === 0 ? (
             <View style={{ marginTop: theme.spacing.sm }}>
@@ -151,7 +152,7 @@ export default function FeatureFlagsScreen() {
                       onValueChange={(v) => onToggle(f, v)}
                       accessibilityRole="switch"
                       accessibilityLabel={f.key}
-                      trackColor={{ false: '#26262B', true: BRONZE }}
+                      trackColor={{ false: '#26262B', true: ADMIN }}
                       thumbColor={theme.palette.cream}
                     />
                   </View>
@@ -180,7 +181,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

@@ -30,12 +30,13 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 type Tone = 'ok' | 'warn' | 'crit';
 const TONE_COLOR: Record<Tone, string> = {
   ok: theme.palette.creamMute,
-  warn: BRONZE,
+  warn: ADMIN,
   crit: theme.palette.red,
 };
 
@@ -218,7 +219,7 @@ function Row({
         </View>
       </View>
       <Text
-        style={[s.rowValue, { color: TONE_COLOR[tone] === BRONZE ? BRONZE : theme.palette.cream }]}
+        style={[s.rowValue, { color: TONE_COLOR[tone] === ADMIN ? ADMIN : theme.palette.cream }]}
       >
         {value}
       </Text>
@@ -268,7 +269,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

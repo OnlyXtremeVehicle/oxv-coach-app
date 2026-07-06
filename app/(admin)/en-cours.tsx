@@ -22,7 +22,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 interface LiveSession {
   id: string;
@@ -85,7 +86,7 @@ export default function EnCoursScreen() {
         </Text>
 
         {loading ? (
-          <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement des sessions en cours" />
+          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement des sessions en cours" />
         ) : failed ? (
           <Card style={{ borderColor: theme.palette.line, paddingVertical: theme.spacing.xl }}>
             <Text style={s.errorTitle}>Suivi indisponible</Text>
@@ -102,7 +103,7 @@ export default function EnCoursScreen() {
         ) : (
           <View style={{ gap: theme.spacing.sm }}>
             {sessions.map((session) => (
-              <Card key={session.id} style={{ borderColor: BRONZE }}>
+              <Card key={session.id} style={{ borderColor: ADMIN }}>
                 <Text style={s.pilotName}>{session.pilotName}</Text>
                 <Text style={s.meta}>
                   Départ <Text style={s.metaNum}>{timeOnly(session.startedAt)}</Text> ·{' '}
@@ -139,7 +140,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

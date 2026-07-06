@@ -22,7 +22,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function MaintenanceScreen() {
   const [loading, setLoading] = useState(true);
@@ -72,7 +73,7 @@ export default function MaintenanceScreen() {
       <Screen scroll={false}>
         <AppBar title="MAINTENANCE" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement" />
+          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -151,7 +152,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

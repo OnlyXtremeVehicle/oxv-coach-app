@@ -14,17 +14,17 @@ import { Pressable, Text, View } from 'react-native';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 
-const { palette, fonts, fontSize, spacing, radius } = theme;
+const { palette, roleColors, fonts, fontSize, spacing, radius } = theme;
 
 type Space = 'pilot' | 'coach' | 'admin';
 
-// Accents d'identité de section (navigation, PAS viz). Pilote → or (cockpit) ;
-// coach → bleu nuit « posture d'écoute » ; admin → bronze. Identités de
-// section préservées pour différencier visuellement les trois espaces.
+// Accents d'identité de section (navigation, PAS viz). Couleurs d'identité de
+// rôle canoniques (roleColors, décision fondateur 2026-07-06) : pilote neutre
+// (jamais l'or), coach rouge de marque, admin cyan.
 const TARGETS: { space: Space; label: string; href: string; color: string }[] = [
-  { space: 'pilot', label: 'Espace pilote', href: '/(app)', color: palette.gold },
-  { space: 'coach', label: 'Espace coach', href: '/(coach)', color: '#1E3A5F' },
-  { space: 'admin', label: 'Espace admin', href: '/(admin)', color: '#B87333' },
+  { space: 'pilot', label: 'Espace pilote', href: '/(app)', color: roleColors.pilot },
+  { space: 'coach', label: 'Espace coach', href: '/(coach)', color: roleColors.coach },
+  { space: 'admin', label: 'Espace admin', href: '/(admin)', color: roleColors.admin },
 ];
 
 export function SpaceSwitcher({ current }: { current: Space }) {

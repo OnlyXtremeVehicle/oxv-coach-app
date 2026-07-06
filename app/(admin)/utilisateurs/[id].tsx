@@ -28,7 +28,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 function fmt(iso: string | null): string {
   if (!iso) return '—';
@@ -279,7 +280,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   pillOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   pillTxt: {

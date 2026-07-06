@@ -31,10 +31,11 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 const SEVERITY_COLOR: Record<Severity, string> = {
   critical: theme.palette.red,
-  warning: BRONZE,
+  warning: ADMIN,
   info: theme.palette.creamMute,
 };
 const SEVERITY_RANK: Record<Severity, number> = { info: 0, warning: 1, critical: 2 };
@@ -215,7 +216,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

@@ -15,7 +15,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine). Liserés et accents.
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const VIEWS: { href: string; label: string; description: string }[] = [
   {
@@ -141,7 +142,7 @@ export default function AdminHubScreen() {
               key={v.href}
               onPress={() => router.push(v.href as never)}
               accessibilityLabel={`${v.label}. ${v.description}`}
-              style={{ borderColor: BRONZE }}
+              style={{ borderColor: ADMIN }}
             >
               <View style={s.cardHead}>
                 <Text style={s.cardTitle}>{v.label}</Text>
@@ -180,7 +181,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

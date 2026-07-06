@@ -25,7 +25,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const STATUS_LABELS: Record<SupportStatus, string> = {
   nouveau: 'Nouveau',
@@ -37,7 +38,7 @@ const STATUS_LABELS: Record<SupportStatus, string> = {
 
 const PRIORITY_COLOR: Record<SupportPriority, string> = {
   p0: theme.palette.red,
-  p1: BRONZE,
+  p1: ADMIN,
   p2: theme.palette.creamMute,
   p3: theme.palette.faint,
 };
@@ -71,7 +72,7 @@ export default function AdminSupportScreen() {
     <Screen>
       <AppBar title="SUPPORT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={[s.eyebrow, { color: BRONZE }]}>FILE DE SUPPORT</Text>
+        <Text style={[s.eyebrow, { color: ADMIN }]}>FILE DE SUPPORT</Text>
         <Text style={s.title} accessibilityRole="header">
           Les demandes.
         </Text>
@@ -139,7 +140,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -166,7 +167,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   filterOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   filterTxt: {

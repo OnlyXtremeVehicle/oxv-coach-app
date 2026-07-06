@@ -23,7 +23,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function AdminCoachsScreen() {
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
@@ -170,7 +171,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

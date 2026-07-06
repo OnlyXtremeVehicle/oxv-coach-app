@@ -19,7 +19,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function AnalytiqueScreen() {
   const [data, setData] = useState<BusinessAnalytics | null>(null);
@@ -51,7 +52,7 @@ export default function AnalytiqueScreen() {
       <Screen scroll={false}>
         <AppBar title="ANALYTIQUE" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement" />
+          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -78,7 +79,7 @@ export default function AnalytiqueScreen() {
             {/* Chiffre dominant unique : le volume de séances. */}
             <Card
               style={{
-                borderColor: BRONZE,
+                borderColor: ADMIN,
                 alignItems: 'center',
                 paddingVertical: theme.spacing.xxl,
               }}
@@ -145,7 +146,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {

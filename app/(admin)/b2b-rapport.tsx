@@ -26,7 +26,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function AdminB2BReportScreen() {
   const { eventId, partnerId } = useLocalSearchParams<{ eventId: string; partnerId: string }>();
@@ -112,7 +113,7 @@ export default function AdminB2BReportScreen() {
           gap: theme.spacing.lg,
         }}
       >
-        <Text style={[s.eyebrow, { color: BRONZE }]}>PARTICIPATION (FIGÉE)</Text>
+        <Text style={[s.eyebrow, { color: ADMIN }]}>PARTICIPATION (FIGÉE)</Text>
         <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
           <Fact value={report.registeredCount.toString()} label="inscrits" />
           <Fact value={report.checkedInCount.toString()} label="présents" />
@@ -187,7 +188,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
   },
   pills: {
     flexDirection: 'row' as const,
@@ -205,7 +206,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   pillOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   pillTxt: {

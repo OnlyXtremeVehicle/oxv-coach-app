@@ -42,7 +42,8 @@ import { Screen } from '@/ui/Screen';
 import { formatDateLong } from '@/utils/format';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 interface SessionOption {
   id: string;
@@ -236,7 +237,7 @@ export default function AdminSessionsMediaScreen() {
         {/* Sélecteur session */}
         <Text style={s.sectionLabel}>1. CHOISIR UNE SESSION</Text>
         {loadingSessions ? (
-          <ActivityIndicator color={BRONZE} />
+          <ActivityIndicator color={ADMIN} />
         ) : sessions.length === 0 ? (
           <Text style={s.empty}>Aucune session complétée trouvée.</Text>
         ) : (
@@ -263,7 +264,7 @@ export default function AdminSessionsMediaScreen() {
                       paddingVertical: theme.spacing.sm,
                       borderRadius: theme.radius.md,
                       borderWidth: 1,
-                      borderColor: active ? BRONZE : theme.palette.line,
+                      borderColor: active ? ADMIN : theme.palette.line,
                       backgroundColor: active ? 'rgba(184,115,51,0.10)' : theme.palette.card2,
                       maxWidth: 220,
                       opacity: pressed ? 0.85 : 1,
@@ -279,7 +280,7 @@ export default function AdminSessionsMediaScreen() {
                       style={[
                         s.sessionDate,
                         (mediaCounts[session.id] ?? 0) > 0
-                          ? { color: BRONZE }
+                          ? { color: ADMIN }
                           : { color: theme.palette.faint },
                       ]}
                     >
@@ -314,7 +315,7 @@ export default function AdminSessionsMediaScreen() {
                   flex: 1,
                   padding: theme.spacing.md,
                   borderRadius: theme.radius.md,
-                  backgroundColor: BRONZE,
+                  backgroundColor: ADMIN,
                   alignItems: 'center',
                   opacity: pressed || uploading ? 0.6 : 1,
                 })}
@@ -340,7 +341,7 @@ export default function AdminSessionsMediaScreen() {
             </View>
 
             {loadingMedia ? (
-              <ActivityIndicator color={BRONZE} />
+              <ActivityIndicator color={ADMIN} />
             ) : media.length === 0 ? (
               <Text style={s.empty}>Aucun média pour cette session. Ajoutez-en ci-dessus.</Text>
             ) : (
@@ -445,7 +446,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -461,7 +462,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginBottom: theme.spacing.sm,
   },
   sessionName: {

@@ -27,7 +27,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const LINKS: { href: string; label: string; hint: string }[] = [
   { href: '/(admin)/en-cours', label: 'En cours', hint: 'État Bluetooth en temps réel' },
@@ -141,7 +142,7 @@ export default function TourControleScreen() {
                 key={l.href}
                 onPress={() => router.push(l.href as never)}
                 accessibilityLabel={`${l.label}. ${l.hint}`}
-                style={{ borderColor: BRONZE }}
+                style={{ borderColor: ADMIN }}
               >
                 <View style={s.linkHead}>
                   <Text style={s.linkLabel}>{l.label}</Text>
@@ -165,7 +166,7 @@ function EventRow({ item }: { item: ControlTowerEvent }) {
         router.push({ pathname: '/(admin)/evenements/[id]', params: { id: event.id } } as never)
       }
       accessibilityLabel={`${event.name}. ${checkedIn} sur ${registered} pointés.`}
-      style={{ borderColor: ongoing ? BRONZE : theme.palette.line }}
+      style={{ borderColor: ongoing ? ADMIN : theme.palette.line }}
     >
       <View style={s.eventHead}>
         <Text style={s.eventName} numberOfLines={1}>
@@ -198,7 +199,7 @@ function Fact({
 }) {
   return (
     <View style={s.fact}>
-      <Text style={[s.factValue, tone === 'warn' ? { color: BRONZE } : null]}>{value}</Text>
+      <Text style={[s.factValue, tone === 'warn' ? { color: ADMIN } : null]}>{value}</Text>
       <Text style={s.factLabel}>{label}</Text>
     </View>
   );
@@ -210,7 +211,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -281,7 +282,7 @@ const s = {
     fontFamily: theme.fonts.mono,
     fontSize: 9,
     letterSpacing: 1.2,
-    color: BRONZE,
+    color: ADMIN,
   },
   eventMeta: {
     fontFamily: theme.fonts.body,

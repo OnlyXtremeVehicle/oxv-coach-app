@@ -23,7 +23,8 @@ import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function RoutesCertificationScreen() {
   const [routes, setRoutes] = useState<SavedScenicRoute[]>([]);
@@ -62,7 +63,7 @@ export default function RoutesCertificationScreen() {
         <AppBar title="CERTIFICATION" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator
-            color={BRONZE}
+            color={ADMIN}
             accessibilityLabel="Chargement des demandes de certification"
           />
         </View>
@@ -96,7 +97,7 @@ export default function RoutesCertificationScreen() {
                 .join(' · ');
               const busy = busyId === r.id;
               return (
-                <Card key={r.id} style={{ borderColor: BRONZE }}>
+                <Card key={r.id} style={{ borderColor: ADMIN }}>
                   <Text style={s.name}>{r.name}</Text>
                   {meta ? <Text style={s.meta}>{meta}</Text> : null}
                   <View style={s.actions}>
@@ -139,7 +140,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginBottom: theme.spacing.lg,
   },
   name: {
@@ -166,7 +167,7 @@ const s = {
     minHeight: 44,
     justifyContent: 'center' as const,
     borderWidth: 1,
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     borderRadius: theme.radius.md,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
@@ -176,7 +177,7 @@ const s = {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.5,
-    color: BRONZE,
+    color: ADMIN,
   },
   reject: {
     minHeight: 44,

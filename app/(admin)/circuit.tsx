@@ -44,7 +44,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 // Couleurs de donnée (zones de marge / pace) — toujours doublées d'un libellé.
 // Rouge neutralisé en ambre pilote : le rouge de marque ne code jamais de
 // donnée de perf (canon).
@@ -263,7 +264,7 @@ function ToggleButton(props: {
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.md,
         borderWidth: 1,
-        borderColor: props.active ? BRONZE : theme.palette.line,
+        borderColor: props.active ? ADMIN : theme.palette.line,
         backgroundColor: props.active ? 'rgba(184,115,51,0.10)' : 'transparent',
         alignItems: 'center',
         opacity: props.disabled ? 0.4 : pressed ? 0.85 : 1,
@@ -378,7 +379,7 @@ function CornerRow(props: {
         alignItems: 'center',
         gap: theme.spacing.md,
         backgroundColor: isSelected ? 'rgba(184,115,51,0.10)' : theme.palette.card,
-        borderColor: isSelected ? BRONZE : theme.palette.line,
+        borderColor: isSelected ? ADMIN : theme.palette.line,
       }}
     >
       <View
@@ -523,7 +524,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -547,7 +548,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.xxl,
     marginBottom: theme.spacing.md,
   },

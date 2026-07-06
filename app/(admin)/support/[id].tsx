@@ -26,7 +26,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const STATUSES: SupportStatus[] = ['nouveau', 'ouvert', 'en_cours', 'resolu', 'ferme'];
 const STATUS_LABELS: Record<SupportStatus, string> = {
@@ -117,7 +118,7 @@ export default function AdminSupportThreadScreen() {
           <Text style={s.muted}>{loading ? 'Chargement…' : 'Demande introuvable.'}</Text>
         ) : (
           <>
-            <Text style={[s.cat, { color: BRONZE }]}>{categoryLabel(thread.ticket.category)}</Text>
+            <Text style={[s.cat, { color: ADMIN }]}>{categoryLabel(thread.ticket.category)}</Text>
             <Text style={s.subject} accessibilityRole="header">
               {thread.ticket.subject}
             </Text>
@@ -215,7 +216,7 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   subject: {
@@ -241,7 +242,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   pillOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   pillTxt: {

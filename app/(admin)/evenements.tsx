@@ -23,7 +23,8 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function AdminEventsScreen() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -49,7 +50,7 @@ export default function AdminEventsScreen() {
     <Screen>
       <AppBar title="ÉVÉNEMENTS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={[s.eyebrow, { color: BRONZE }]}>COORDINATION</Text>
+        <Text style={[s.eyebrow, { color: ADMIN }]}>COORDINATION</Text>
         <Text style={s.title} accessibilityRole="header">
           Les événements.
         </Text>
@@ -98,7 +99,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -120,7 +121,7 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
   },
   status: {
     fontFamily: theme.fonts.mono,

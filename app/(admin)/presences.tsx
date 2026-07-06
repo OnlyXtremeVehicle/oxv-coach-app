@@ -25,7 +25,8 @@ import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 export default function AdminPresencesScreen() {
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
@@ -168,7 +169,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -235,7 +236,7 @@ const s = {
     justifyContent: 'center' as const,
   },
   togglePresent: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   toggleText: {
@@ -245,6 +246,6 @@ const s = {
     color: theme.palette.creamMute,
   },
   toggleTextPresent: {
-    color: BRONZE,
+    color: ADMIN,
   },
 };

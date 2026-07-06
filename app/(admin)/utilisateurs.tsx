@@ -18,7 +18,8 @@ import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 function fullName(u: AdminUser): string {
   const n = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
@@ -61,7 +62,7 @@ export default function AdminUsersScreen() {
     <Screen>
       <AppBar title="UTILISATEURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={[s.eyebrow, { color: BRONZE }]}>ANNUAIRE</Text>
+        <Text style={[s.eyebrow, { color: ADMIN }]}>ANNUAIRE</Text>
         <Text style={s.title} accessibilityRole="header">
           Les comptes.
         </Text>
@@ -145,7 +146,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -173,7 +174,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   pillOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   pillTxt: {
@@ -202,7 +203,7 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
   },
   email: {
     fontFamily: theme.fonts.body,

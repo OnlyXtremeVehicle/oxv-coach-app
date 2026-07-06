@@ -40,7 +40,8 @@ import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 const CONSENT_GREEN = theme.palette.green;
 
 export default function AdminCoachDetailScreen() {
@@ -179,7 +180,7 @@ export default function AdminCoachDetailScreen() {
             style={({ pressed }) => ({
               height: 48,
               borderRadius: theme.radius.md,
-              backgroundColor: BRONZE,
+              backgroundColor: ADMIN,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.85 : 1,
@@ -234,7 +235,7 @@ function PilotPicker(props: {
   onSelect: (pilotId: string) => void;
 }) {
   return (
-    <Card style={{ borderColor: BRONZE }}>
+    <Card style={{ borderColor: ADMIN }}>
       <Field
         label="Rechercher un pilote"
         value={props.search}
@@ -290,7 +291,7 @@ function AssignmentCard(props: {
     : 'Pas encore consenti';
 
   return (
-    <Card style={{ borderColor: assignment.active ? BRONZE : theme.palette.line }}>
+    <Card style={{ borderColor: assignment.active ? ADMIN : theme.palette.line }}>
       <View
         style={{
           flexDirection: 'row',
@@ -313,7 +314,7 @@ function AssignmentCard(props: {
         <Switch
           value={assignment.active}
           onValueChange={props.onToggleActive}
-          trackColor={{ false: theme.palette.line, true: BRONZE }}
+          trackColor={{ false: theme.palette.line, true: ADMIN }}
           thumbColor={theme.palette.cream}
         />
       </View>
@@ -346,7 +347,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -368,7 +369,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginBottom: theme.spacing.md,
   },
   primaryBtnTxt: {

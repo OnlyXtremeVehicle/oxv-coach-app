@@ -37,7 +37,8 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort } from '@/utils/format';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const REG_STATUS_LABEL: Record<string, string> = {
   registered: 'Inscrit',
@@ -130,7 +131,7 @@ export default function AdminEventDetailScreen() {
     <Screen>
       <AppBar title="ÉVÉNEMENT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={[s.type, { color: BRONZE }]}>{eventTypeLabel(event.eventType)}</Text>
+        <Text style={[s.type, { color: ADMIN }]}>{eventTypeLabel(event.eventType)}</Text>
         <Text style={s.name} accessibilityRole="header">
           {event.name}
         </Text>
@@ -292,7 +293,7 @@ const s = {
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   name: {
@@ -345,7 +346,7 @@ const s = {
     backgroundColor: theme.palette.card2,
   },
   pillOn: {
-    borderColor: BRONZE,
+    borderColor: ADMIN,
     backgroundColor: 'rgba(184,115,51,0.12)',
   },
   pillTxt: {
@@ -380,7 +381,7 @@ const s = {
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderColor: BRONZE,
+    borderColor: ADMIN,
   },
   checkinTxt: {
     fontFamily: theme.fonts.mono,
@@ -422,6 +423,6 @@ const s = {
     fontSize: 10,
     letterSpacing: 0.8,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
   },
 };

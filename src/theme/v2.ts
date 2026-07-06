@@ -60,6 +60,19 @@ export const fonts = {
   serifItalic: 'InstrumentSerif_400Regular_Italic', // mot qualitatif du bilan, citation coach
 } as const;
 
+// Couleurs d'IDENTITÉ DE RÔLE (navigation, badges, hubs — jamais de la donnée).
+// Décision fondateur 2026-07-06 : on adopte les couleurs des maquettes Claude
+// Design. Le pilote reste NEUTRE (crème) — jamais l'or, réservé à la donnée
+// (SPEC_BUILD §5 « couleur d'identité par rôle, jamais l'or »). Le coach porte le
+// rouge de marque (coach = marque OXV) ; partenaire = bleu ; admin = cyan.
+export const roleColors = {
+  pilot: '#F8F9FA', // crème (= palette.cream) : identité neutre du pilote
+  coach: '#C8102E', // rouge de marque (= palette.red)
+  partner: '#5B8DEF', // bleu partenaire
+  admin: '#22D3EE', // cyan admin (remplace le bronze #B87333)
+} as const;
+export type RoleKey = keyof typeof roleColors;
+
 export const fontSize = {
   eyebrow: 11,
   micro: 11,
@@ -85,6 +98,7 @@ export const hitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
 export const theme = {
   palette,
   dataColors,
+  roleColors,
   fonts,
   fontSize,
   spacing,

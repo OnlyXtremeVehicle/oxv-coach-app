@@ -32,7 +32,8 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
 // Bronze = couleur de RÔLE admin (doctrine).
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 const KIND_ORDER: SocialPingKind[] = [
   'event_oxv',
@@ -453,7 +454,7 @@ export default function AdminCartePointsScreen() {
                 accessibilityLabel={`${p.title}. ${PING_KIND_LABELS[p.kind]}. ${
                   p.isPublished ? 'Publié' : 'Masqué'
                 }`}
-                style={{ borderColor: BRONZE }}
+                style={{ borderColor: ADMIN }}
               >
                 <View style={s.rowBetween}>
                   <Text style={s.cardTitle} numberOfLines={1}>
@@ -480,7 +481,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   h1: {
@@ -507,7 +508,7 @@ const s = {
     borderColor: theme.palette.line,
     backgroundColor: theme.palette.card2,
   },
-  pillOn: { borderColor: BRONZE, backgroundColor: 'rgba(184,115,51,0.12)' },
+  pillOn: { borderColor: ADMIN, backgroundColor: 'rgba(184,115,51,0.12)' },
   pillT: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
@@ -548,7 +549,7 @@ const s = {
     textTransform: 'uppercase' as const,
     color: theme.palette.faint,
   },
-  statusOn: { color: BRONZE },
+  statusOn: { color: ADMIN },
   cardMeta: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,

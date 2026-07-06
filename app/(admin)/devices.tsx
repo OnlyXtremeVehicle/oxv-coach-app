@@ -29,7 +29,8 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
-const BRONZE = '#B87333';
+// Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
+const ADMIN = '#22D3EE';
 
 function healthLabel(h: string): string {
   if (h === 'ok') return 'Opérationnel';
@@ -141,7 +142,7 @@ export default function AdminDevicesScreen() {
           <SectionLabel>Le parc</SectionLabel>
           {loading ? (
             <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={BRONZE} accessibilityLabel="Chargement" />
+              <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
             </View>
           ) : devices.length === 0 ? (
             <View style={{ marginTop: theme.spacing.sm }}>
@@ -170,7 +171,7 @@ export default function AdminDevicesScreen() {
                         style={({ pressed }) => [s.healthPill, pressed && { opacity: 0.8 }]}
                       >
                         <View
-                          style={[s.dot, { backgroundColor: ok ? theme.palette.green : BRONZE }]}
+                          style={[s.dot, { backgroundColor: ok ? theme.palette.green : ADMIN }]}
                           accessibilityElementsHidden
                           importantForAccessibility="no"
                         />
@@ -253,7 +254,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: BRONZE,
+    color: ADMIN,
     marginTop: theme.spacing.sm,
   },
   title: {
