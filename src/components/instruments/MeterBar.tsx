@@ -33,6 +33,16 @@ export interface MeterBarProps {
   tone?: MeterTone;
   /** Ligne secondaire optionnelle sous la barre. */
   caption?: string;
+  /**
+   * Repère « médiane » (0..100) sur la piste — la référence self-only du pilote.
+   * Tick neutre. Additif : sans valeur, aucun repère.
+   */
+  medianPct?: number;
+  /**
+   * Repère « record » (0..100) sur la piste — le meilleur de la référence.
+   * Tick heritageGold (registre de référence, canon). Additif.
+   */
+  recordPct?: number;
   /** Rend la ligne cliquable (navigation vers l'écran du pilier). */
   onPress?: () => void;
   animate?: boolean;
@@ -52,12 +62,15 @@ export function MeterBar({
   fillPct,
   tone = 'gold',
   caption,
+  medianPct,
+  recordPct,
   onPress,
   animate = true,
   delay = 0,
 }: MeterBarProps) {
   const color = TONE_COLOR[tone];
   const pct = Math.max(0, Math.min(100, fillPct));
+  const clampPct = (v: number) => Math.max(0, Math.min(100, v));
 
   const [trackW, setTrackW] = useState(0);
   const grow = useRef(new Animated.Value(animate ? 0 : 1)).current;
@@ -103,6 +116,28 @@ export function MeterBar({
             },
           ]}
         />
+        {/* Repères self-only : médiane (neutre) + record (heritage = référence).
+            Rendus une fois la piste mesurée, sans animation (points fixes). */}
+        {trackW > 0 && typeof medianPct === 'number' ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              styles.tick,
+              { left: (trackW * clampPct(medianPct)) / 100, backgroundColor: palette.creamMute },
+            ]}
+          />
+        ) : null}
+        {trackW > 0 && typeof recordPct === 'number' ? (
+          <View
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[
+              styles.tick,
+              { left: (trackW * clampPct(recordPct)) / 100, backgroundColor: palette.heritageGold },
+            ]}
+          />
+        ) : null}
       </View>
 
       {caption ? <Text style={styles.caption}>{caption}</Text> : null}
@@ -172,6 +207,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 5,
+  },
+  // Repère vertical fin (médiane / record) posé sur la piste.
+  tick: {
+    position: 'absolute',
+    top: -1.5,
+    width: 1.5,
+    height: 8,
+    borderRadius: 1,
   },
   caption: {
     fontFamily: fonts.mono,
