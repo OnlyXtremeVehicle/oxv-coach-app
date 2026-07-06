@@ -114,8 +114,61 @@
 6. **Monétisation — construire derrière un feature flag, INACTIF.** Rien
    n'encaisse avant le SIRET ; le flux est prêt le jour de l'activation.
 
-## 6. Construit depuis
-- **P0 (cœur) — Smart Flagging factuel** : `coachTriageLogic` (pur, testé) +
-  `coachTriageService` — classe les virages par déficit de marge (le plus serré
-  en tête) pour orienter le débriefing. FAIT seul (C3). L'UI viendra avec la
-  refonte Claude Design.
+## 6. Construit / en cours
+- **P0 (cœur) — Smart Flagging factuel** ✅ : `coachTriageLogic` (pur, testé) +
+  `coachTriageService` + `coachStudioService.getStudioSession` (agrégation
+  triage + QDI + marges + moments-clés). FAIT seul (C3). UI avec la refonte.
+- **P1 — Débriefing 2.0** : backend PRÊT (le triage donne le cornerIndex,
+  `annoter` l'accepte, l'assistant IA suggère la cause validée coach). Reste =
+  câblage UI (avec la refonte).
+- **P4 — Console factuelle** ✅ : `coachConsoleService` + `coachConsoleLogic`
+  (pur, testé) — statut par pilote + tendance vs SA propre séance. Aucun rang (C1).
+- **P5 — Vidéo/HUD/live** : BLOQUÉ (caméra, matériel HUD, architecture streaming
+  absente). À rouvrir quand les dépendances physiques existent.
+
+## 7. STOP-schéma — propositions P2 & P3 (à valider, RIEN appliqué)
+
+Constat : `payments`/`invoices`/`generate-invoice` existent mais sont liés aux
+INSCRIPTIONS (track day), pas aux prestations coach ; `coaching_bookings` n'a ni
+montant ni paiement. Donc :
+
+### P2 — Monétisation coach (additif, derrière feature flag, INACTIF avant SIRET)
+```sql
+-- Prestation coach facturable, greffée sur le booking existant.
+alter table public.coaching_bookings
+  add column if not exists amount_cents integer,
+  add column if not exists billing_status text default 'none'
+    check (billing_status in ('none','quote','paid','refunded')),
+  add column if not exists payment_id uuid references public.payments(id);
+-- Un paiement peut concerner une prestation coach (aujourd'hui : inscription/heritage).
+alter table public.payments
+  add column if not exists coaching_booking_id uuid references public.coaching_bookings(id);
+-- Feature flag : tout le flux reste INACTIF tant qu'il n'est pas activé (post-SIRET).
+insert into public.app_feature_flags (key, enabled, description)
+  values ('coach_billing', false, 'Facturation prestation coach in-app (post-SIRET)')
+  on conflict (key) do nothing;
+```
+⚠ Touche le cœur paiement (partagé site). À valider + coordonner site.
+
+### P3 — Waivers e-sign (table neuve — nécessite le TEXTE JURIDIQUE)
+```sql
+create table if not exists public.waivers (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id),      -- le pilote signataire
+  collected_by uuid references auth.users(id),          -- le coach/admin qui recueille
+  document_key text not null,                           -- ex. 'decharge_responsabilite'
+  document_version text not null,                       -- version du texte signé
+  signed_at timestamptz not null default now(),
+  signature_path text,                                  -- image de signature (bucket privé)
+  evidence jsonb,                                        -- ip/user-agent (preuve)
+  created_at timestamptz not null default now()
+);
+alter table public.waivers enable row level security;
+create policy waivers_owner_select on public.waivers for select using (user_id = auth.uid());
+create policy waivers_collector_select on public.waivers for select using (collected_by = auth.uid());
+create policy waivers_admin_all on public.waivers for all using (is_admin());
+create policy waivers_insert_self_or_collector on public.waivers for insert
+  with check (user_id = auth.uid() or collected_by = auth.uid());
+```
+⚠ **Dépendance légale** : le contenu de la décharge + son versionnage doivent
+être fournis/validés par le fondateur avant toute mise en service.
