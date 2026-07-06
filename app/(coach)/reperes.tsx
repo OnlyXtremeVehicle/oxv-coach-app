@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
@@ -22,26 +22,38 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachReperesScreen() {
   const [byIndex, setByIndex] = useState<Map<number, CoachCornerReference>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      listMyCornerReferences().then((rows) => {
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    listMyCornerReferences()
+      .then((rows) => {
         if (!cancelled) {
           setByIndex(new Map(rows.map((r) => [r.cornerIndex, r])));
           setLoading(false);
         }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useFocusEffect(load);
+
+  const listState: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
   return (
     <Screen>
@@ -56,60 +68,63 @@ export default function CoachReperesScreen() {
           consignes.
         </Text>
 
-        {loading ? (
-          <View style={{ marginTop: theme.spacing.xxl }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : (
-          <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.xxl }}>
-            {BELTOISE_CORNERS.map((corner) => {
-              const ref = byIndex.get(corner.index);
-              const filled = ref ? referenceHasContent(ref) : false;
-              return (
-                <Pressable
-                  key={corner.index}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${corner.name}, repère ${filled ? 'à modifier' : 'à ajouter'}`}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(coach)/repere/[index]',
-                      params: { index: String(corner.index) },
-                    } as never)
-                  }
-                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                >
-                  <Card
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      borderColor: filled ? theme.palette.coach : theme.palette.line,
-                    }}
+        <View style={{ marginTop: theme.spacing.xxl }}>
+          <StateWrapper
+            state={listState}
+            skeletonLines={5}
+            errorCause="Vos repères n'ont pas pu être chargés."
+            onRetry={load}
+          >
+            <View style={{ gap: theme.spacing.md }}>
+              {BELTOISE_CORNERS.map((corner) => {
+                const ref = byIndex.get(corner.index);
+                const filled = ref ? referenceHasContent(ref) : false;
+                return (
+                  <Pressable
+                    key={corner.index}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${corner.name}, repère ${filled ? 'à modifier' : 'à ajouter'}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(coach)/repere/[index]',
+                        params: { index: String(corner.index) },
+                      } as never)
+                    }
+                    style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                   >
-                    <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-                      <Text style={s.cornerName}>
-                        <Text style={s.cornerIndex}>{String(corner.index).padStart(2, '0')}</Text>
-                        {'  '}
-                        {corner.name}
-                      </Text>
-                      {filled && ref ? (
-                        <Text style={s.cornerSummary}>{summarizeReference(ref)}</Text>
-                      ) : null}
-                    </View>
-                    <Text
-                      style={[
-                        s.action,
-                        { color: filled ? theme.palette.coach : theme.palette.creamMute },
-                      ]}
+                    <Card
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderColor: filled ? theme.palette.coach : theme.palette.line,
+                      }}
                     >
-                      {filled ? 'Modifier' : 'Ajouter'}
-                    </Text>
-                  </Card>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+                      <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+                        <Text style={s.cornerName}>
+                          <Text style={s.cornerIndex}>{String(corner.index).padStart(2, '0')}</Text>
+                          {'  '}
+                          {corner.name}
+                        </Text>
+                        {filled && ref ? (
+                          <Text style={s.cornerSummary}>{summarizeReference(ref)}</Text>
+                        ) : null}
+                      </View>
+                      <Text
+                        style={[
+                          s.action,
+                          { color: filled ? theme.palette.coach : theme.palette.creamMute },
+                        ]}
+                      >
+                        {filled ? 'Modifier' : 'Ajouter'}
+                      </Text>
+                    </Card>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </StateWrapper>
+        </View>
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable

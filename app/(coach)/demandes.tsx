@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -35,11 +35,13 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort, formatDateTime } from '@/utils/format';
 
 export default function CoachDemandesScreen() {
   const [bookings, setBookings] = useState<CoachBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   // Identifiant de la demande en cours de réponse (verrouille SES boutons).
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -49,25 +51,37 @@ export default function CoachDemandesScreen() {
     setLoading(false);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      listCoachBookings()
-        .then((rows) => {
-          if (!cancelled) {
-            setBookings(rows);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+  const load = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    listCoachBookings()
+      .then((rows) => {
+        if (!cancelled) {
+          setBookings(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useFocusEffect(load);
+
+  const listState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : bookings.length === 0
+        ? 'empty'
+        : 'nominal';
 
   async function onRespond(id: string, status: 'accepted' | 'declined') {
     setBusyId(id);
@@ -102,37 +116,36 @@ export default function CoachDemandesScreen() {
           hors application.
         </Text>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl * 2, alignItems: 'center' }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : bookings.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {pending.length > 0 ? (
-              <Section title="En attente">
-                {pending.map((b) => (
-                  <BookingCard
-                    key={b.id}
-                    booking={b}
-                    busy={busyId === b.id}
-                    onAccept={() => onRespond(b.id, 'accepted')}
-                    onDecline={() => onRespond(b.id, 'declined')}
-                  />
-                ))}
-              </Section>
-            ) : null}
+        <StateWrapper
+          state={listState}
+          skeletonLines={4}
+          emptyLabel="Aucune demande"
+          emptyMessage="Les pilotes qui consultent votre fiche peuvent vous adresser une demande. Elle apparaîtra ici."
+          errorCause="Vos demandes n'ont pas pu être chargées."
+          onRetry={load}
+        >
+          {pending.length > 0 ? (
+            <Section title="En attente">
+              {pending.map((b) => (
+                <BookingCard
+                  key={b.id}
+                  booking={b}
+                  busy={busyId === b.id}
+                  onAccept={() => onRespond(b.id, 'accepted')}
+                  onDecline={() => onRespond(b.id, 'declined')}
+                />
+              ))}
+            </Section>
+          ) : null}
 
-            {treated.length > 0 ? (
-              <Section title="Traitées">
-                {treated.map((b) => (
-                  <BookingCard key={b.id} booking={b} muted />
-                ))}
-              </Section>
-            ) : null}
-          </>
-        )}
+          {treated.length > 0 ? (
+            <Section title="Traitées">
+              {treated.map((b) => (
+                <BookingCard key={b.id} booking={b} muted />
+              ))}
+            </Section>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -219,26 +232,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </View>
       <View style={{ gap: theme.spacing.md }}>{children}</View>
     </View>
-  );
-}
-
-function EmptyState() {
-  return (
-    <Card
-      style={{
-        alignItems: 'center',
-        paddingVertical: theme.spacing.xxl,
-        marginTop: theme.spacing.xl,
-      }}
-    >
-      <Text style={s.emptyTitle} accessibilityRole="header">
-        Aucune demande pour l&apos;instant.
-      </Text>
-      <Text style={s.emptyHint}>
-        Les pilotes qui consultent votre fiche peuvent vous adresser une demande. Elle apparaîtra
-        ici.
-      </Text>
-    </Card>
   );
 }
 
@@ -333,20 +326,5 @@ const s = {
     flexDirection: 'row' as const,
     gap: theme.spacing.sm,
     marginTop: theme.spacing.lg,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
   },
 };
