@@ -17,7 +17,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
-import { GaugeInstrument } from '@/components/instruments';
 import { FadeInSection } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +30,8 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AccountButton } from '@/ui/AccountButton';
 import { Card } from '@/ui/Card';
+import { CockpitPanel } from '@/ui/CockpitPanel';
+import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
@@ -273,38 +274,43 @@ function ModePassive({
             href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }}
             asChild
           >
-            <Card
-              onPress={() => {}}
+            <Pressable
+              accessibilityRole="button"
               accessibilityLabel={`Votre dernier bilan, ${recentSession.circuitName ?? 'session'}, ${timeAgoFr(
                 recentSession.startedAt
               )}`}
-              style={s.bilan}
+              style={({ pressed }) => ({ marginTop: spacing.xl, opacity: pressed ? 0.92 : 1 })}
             >
-              <Text style={s.bilanChevron}>›</Text>
-              <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-              <View style={s.bilanRow}>
-                {regularity ? (
-                  <GaugeInstrument
-                    value={regularity.stdDevSeconds}
-                    min={0}
-                    max={Math.max(3, regularity.stdDevSeconds * 1.25)}
-                    unit="s"
-                    formatValue={(v) => v.toFixed(1).replace('.', ',')}
-                    size={104}
-                    majorTicks={4}
-                    minorPerMajor={1}
-                  />
-                ) : null}
-                <View style={{ flex: 1 }}>
-                  <Text style={s.bilanCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-                  <Text style={s.bilanMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
-                  {regularity ? (
-                    <Text style={s.bilanReg}>Régularité au tour · {regularity.lapCount} tours</Text>
-                  ) : null}
-                  {qdiReady ? <Text style={s.bilanReg}>Radar QDI prêt</Text> : null}
+              <CockpitPanel>
+                {/* Contexte : point de donnée + séance + nombre de tours */}
+                <View style={s.heroHead}>
+                  <View style={s.heroDot} />
+                  <Text style={s.heroEyebrow} numberOfLines={1}>
+                    Dernier bilan · {recentSession.circuitName ?? 'Session'}
+                  </Text>
+                  <View style={{ flex: 1 }} />
+                  {regularity ? <Text style={s.heroTours}>{regularity.lapCount} TOURS</Text> : null}
                 </View>
-              </View>
-            </Card>
+
+                {/* Chiffre roi = régularité au tour (fait, T6-conforme). */}
+                {regularity ? (
+                  <KingNumber
+                    value={regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
+                    unit="s"
+                    label="Régularité"
+                  />
+                ) : (
+                  <Text style={s.heroCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
+                )}
+
+                <View style={s.heroFoot}>
+                  <Text style={s.heroMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
+                  <View style={{ flex: 1 }} />
+                  {qdiReady ? <Text style={s.heroMeta}>Radar QDI prêt</Text> : null}
+                  <Text style={s.heroOpen}>Ouvrir ›</Text>
+                </View>
+              </CockpitPanel>
+            </Pressable>
           </Link>
         ) : (
           <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
@@ -398,29 +404,52 @@ const s = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Dernier bilan (carte héros — chiffre dominant unique). Surcharge la carte du
-  // kit : carte2 + rayon xl + halo doré discret (donnée), padding sur grille.
-  bilan: {
-    backgroundColor: palette.card2,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginTop: spacing.xl,
-  },
-  bilanRow: {
+  // Dernier bilan (panneau cockpit héros — chiffre dominant unique, refonte NG).
+  // Ligne de contexte : point de donnée + séance + nb de tours.
+  heroHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.lg,
-    marginTop: 4,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
-  bilanReg: {
+  heroDot: { width: 6, height: 6, borderRadius: 2, backgroundColor: palette.creamMute },
+  heroEyebrow: {
     fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.2,
+    fontSize: 11,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
-    // creamMute (et non faint) : ce libellé porte une donnée (régularité) — lisible AA.
     color: palette.creamMute,
-    marginTop: 8,
-    lineHeight: 15,
+    flexShrink: 1,
+  },
+  heroTours: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.5,
+    color: palette.faint,
+  },
+  heroCircuit: {
+    fontFamily: fonts.display,
+    fontSize: 22,
+    letterSpacing: -0.3,
+    color: palette.cream,
+  },
+  heroFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  heroMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+  },
+  heroOpen: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: palette.creamSoft,
   },
   deviceLine: {
     fontFamily: fonts.bodyMedium,
@@ -438,26 +467,6 @@ const s = StyleSheet.create({
   },
   skelLineWide: { height: 18, width: '55%', borderRadius: 6, backgroundColor: palette.line },
   skelLine: { height: 12, width: '35%', borderRadius: 6, backgroundColor: palette.line },
-  bilanChevron: {
-    position: 'absolute',
-    top: spacing.md,
-    right: spacing.lg,
-    color: palette.creamMute,
-    fontSize: 22,
-  },
-  bilanCircuit: {
-    fontFamily: fonts.display,
-    fontSize: 18,
-    letterSpacing: -0.2,
-    color: palette.cream,
-  },
-  bilanMeta: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    color: palette.creamMute,
-    marginTop: 5,
-  },
 
   emptyManifest: {
     fontFamily: fonts.bodyLight,

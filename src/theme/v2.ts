@@ -75,7 +75,9 @@ export const fontSize = {
 } as const;
 
 export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 22, xxl: 28 } as const;
-export const radius = { sm: 10, md: 12, lg: 14, xl: 18, pill: 999 } as const;
+// `hud` (6px) = angle d'instrument des panneaux cockpit NG (refonte) — plus sec
+// que les cartes web arrondies. Cf. CockpitPanel, GUIDE_INTEGRATION §2.
+export const radius = { hud: 6, sm: 10, md: 12, lg: 14, xl: 18, pill: 999 } as const;
 export const motion = { fast: 160, base: 240, slow: 420, reveal: 640 } as const;
 export const easing = [0.22, 1, 0.36, 1] as const;
 export const hitSlop = { top: 8, bottom: 8, left: 8, right: 8 } as const;
