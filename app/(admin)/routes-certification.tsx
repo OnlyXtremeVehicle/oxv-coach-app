@@ -7,11 +7,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type SavedScenicRoute,
   certifyRoute,
@@ -21,7 +20,9 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -29,11 +30,16 @@ const ADMIN = '#22D3EE';
 export default function RoutesCertificationScreen() {
   const [routes, setRoutes] = useState<SavedScenicRoute[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
+    setLoading(true);
+    setError(false);
     try {
       setRoutes(await listPendingCertification());
+    } catch {
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -57,35 +63,34 @@ export default function RoutesCertificationScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="CERTIFICATION" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator
-            color={ADMIN}
-            accessibilityLabel="Chargement des demandes de certification"
-          />
-        </View>
-      </Screen>
-    );
-  }
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : routes.length === 0
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="CERTIFICATION" subtitle="Belles routes" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow} accessibilityRole="header">
           DEMANDES EN ATTENTE
         </Text>
 
-        {routes.length === 0 ? (
-          <EmptyState
-            label="Certification"
-            message="Aucune demande de certification en attente."
-            source="scenic_routes"
-          />
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Certification"
+          emptyMessage="Aucune demande de certification en attente."
+          emptySource="scenic_routes"
+          errorCause="La liste des demandes n'a pas pu être chargée."
+          onRetry={reload}
+        >
           <View style={{ gap: theme.spacing.md }}>
             {routes.map((r) => {
               const meta = [
@@ -128,7 +133,7 @@ export default function RoutesCertificationScreen() {
               );
             })}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );

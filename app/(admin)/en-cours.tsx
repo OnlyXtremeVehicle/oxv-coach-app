@@ -11,15 +11,16 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -38,9 +39,12 @@ export default function EnCoursScreen() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setFailed(false);
     (async () => {
       const { data, error } = await supabase
         .from('telemetry_sessions')
@@ -73,34 +77,37 @@ export default function EnCoursScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
+
+  const state: ScreenState = loading
+    ? 'loading'
+    : failed
+      ? 'error'
+      : sessions.length === 0
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="EN COURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN · EN COURS</Text>
         <Text style={s.title} accessibilityRole="header">
           {sessions.length} session{sessions.length > 1 ? 's' : ''} active
           {sessions.length > 1 ? 's' : ''}
         </Text>
 
-        {loading ? (
-          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement des sessions en cours" />
-        ) : failed ? (
-          <Card style={{ borderColor: theme.palette.line, paddingVertical: theme.spacing.xl }}>
-            <Text style={s.errorTitle}>Suivi indisponible</Text>
-            <Text style={s.errorHint}>
-              La lecture des sessions a échoué. Vérifiez la connexion, puis rouvrez cet écran.
-            </Text>
-          </Card>
-        ) : sessions.length === 0 ? (
-          <EmptyState
-            label="En piste"
-            message="Aucun pilote en roulage pour le moment."
-            source="telemetry_sessions"
-          />
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="En piste"
+          emptyMessage="Aucun pilote en roulage pour le moment."
+          errorCause="La lecture des sessions n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <View style={{ gap: theme.spacing.sm }}>
             {sessions.map((session) => (
               <Card key={session.id} style={{ borderColor: ADMIN }}>
@@ -113,7 +120,7 @@ export default function EnCoursScreen() {
               </Card>
             ))}
           </View>
-        )}
+        </StateWrapper>
 
         <Text style={s.footnote}>
           Données rafraîchies à l&apos;ouverture. Suivi temps réel en V1.1.
@@ -151,20 +158,6 @@ const s = {
     lineHeight: theme.fontSize.h2 * 1.25,
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xxl,
-  },
-  errorTitle: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
-    textAlign: 'center' as const,
-  },
-  errorHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
-    lineHeight: theme.fontSize.small * 1.5,
   },
   pilotName: {
     fontFamily: theme.fonts.bodyMedium,

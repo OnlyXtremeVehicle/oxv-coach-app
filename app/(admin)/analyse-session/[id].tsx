@@ -14,7 +14,6 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import {
   type SessionDiagnostic,
@@ -26,8 +25,10 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -44,6 +45,7 @@ export default function AnalyseSessionScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [diag, setDiag] = useState<SessionDiagnostic | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
@@ -51,9 +53,16 @@ export default function AnalyseSessionScreen() {
       setLoading(false);
       return;
     }
-    const d = await loadSessionDiagnostic(id);
-    setDiag(d);
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      const d = await loadSessionDiagnostic(id);
+      setDiag(d);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
 
   useEffect(() => {
@@ -72,121 +81,120 @@ export default function AnalyseSessionScreen() {
     [reload]
   );
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="ANALYSE SESSION" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
-
-  if (!diag) {
-    return (
-      <Screen>
-        <AppBar title="ANALYSE SESSION" onBack={() => router.back()} />
-        <View style={{ paddingHorizontal: theme.spacing.lg }}>
-          <EmptyState
-            label="Session introuvable"
-            message="Cette session n'existe pas ou n'est pas accessible."
-            source="telemetry_sessions"
-          />
-        </View>
-      </Screen>
-    );
-  }
-
-  const noFrames = diag.totalFrames == null || diag.totalFrames === 0;
+  const noFrames = diag != null && (diag.totalFrames == null || diag.totalFrames === 0);
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : diag == null
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="ANALYSE SESSION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>DIAGNOSTIC</Text>
-        <Text style={s.title} accessibilityRole="header">
-          {diag.name || diag.circuitName || 'Session'}
-        </Text>
-        <Text style={s.meta}>
-          {diag.circuitName ?? 'Circuit inconnu'} · {formatDateShort(diag.startedAt)} ·{' '}
-          {diag.status}
-        </Text>
-
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <SectionLabel>ÉTAT DU PIPELINE</SectionLabel>
-          <Card style={{ marginTop: theme.spacing.sm }}>
-            <Row
-              label="Frames reçues"
-              value={diag.totalFrames != null ? String(diag.totalFrames) : '—'}
-              tone={noFrames ? 'crit' : 'ok'}
-            />
-            <Row label="Tours détectés" value={String(diag.lapCount)} tone="ok" />
-            <Row
-              label="Segments analysés"
-              value={String(diag.segmentCount)}
-              tone={diag.segmentCount === 0 ? 'warn' : 'ok'}
-            />
-            <Row
-              label="Marge globale"
-              value={
-                diag.hasAnalysis && diag.marginGlobal != null
-                  ? `${Math.round(diag.marginGlobal)}% · ${diag.marginZone ?? '—'}`
-                  : 'absente'
-              }
-              tone={diag.hasAnalysis ? 'ok' : 'warn'}
-              sub={
-                diag.hasAnalysis
-                  ? `${diag.algoVersion ?? 'algo ?'} · ${
-                      diag.computedAt ? formatDateShort(diag.computedAt) : '—'
-                    }`
-                  : undefined
-              }
-            />
-            <Row
-              label="Débrief"
-              value={diag.hasDebrief ? `${diag.debriefChars} car.` : 'non généré'}
-              tone={diag.hasDebrief ? 'ok' : 'warn'}
-            />
-            <Row
-              label="Lectures (insights)"
-              value={String(diag.insightCount)}
-              tone={diag.insightCount === 0 ? 'warn' : 'ok'}
-              last
-            />
-          </Card>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
         </View>
 
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <SectionLabel>RELANCER LE PIPELINE</SectionLabel>
-          <Text style={s.hint}>
-            Les relances sont exécutées côté serveur. Aucune donnée pilote n’est réécrite depuis cet
-            appareil.
-          </Text>
-          <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-            <Action
-              label="Recalculer les lectures"
-              hint="session_insights (serveur)"
-              busy={busy === 'insights'}
-              disabled={busy != null}
-              onPress={() => run('insights', () => relaunchInsights(diag.sessionId))}
-            />
-            <Action
-              label="Régénérer le débrief"
-              hint="generate-debrief-ai · garde-fou doctrinal"
-              busy={busy === 'debrief'}
-              disabled={busy != null}
-              onPress={() => run('debrief', () => relaunchDebrief(diag.sessionId))}
-            />
-            <Action
-              label="Relancer l’analyse en attente"
-              hint="balayage des marges (lot)"
-              busy={busy === 'pending'}
-              disabled={busy != null}
-              onPress={() => run('pending', () => relaunchPendingAnalysis())}
-            />
-          </View>
-        </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Session introuvable"
+          emptyMessage="Cette session n'existe pas ou n'est pas accessible."
+          emptySource="telemetry_sessions"
+          errorCause="Le diagnostic de la session n'a pas pu être chargé."
+          onRetry={reload}
+        >
+          {diag ? (
+            <>
+              <Text style={s.eyebrow}>DIAGNOSTIC</Text>
+              <Text style={s.title} accessibilityRole="header">
+                {diag.name || diag.circuitName || 'Session'}
+              </Text>
+              <Text style={s.meta}>
+                {diag.circuitName ?? 'Circuit inconnu'} · {formatDateShort(diag.startedAt)} ·{' '}
+                {diag.status}
+              </Text>
+
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <SectionLabel>ÉTAT DU PIPELINE</SectionLabel>
+                <Card style={{ marginTop: theme.spacing.sm }}>
+                  <Row
+                    label="Frames reçues"
+                    value={diag.totalFrames != null ? String(diag.totalFrames) : '—'}
+                    tone={noFrames ? 'crit' : 'ok'}
+                  />
+                  <Row label="Tours détectés" value={String(diag.lapCount)} tone="ok" />
+                  <Row
+                    label="Segments analysés"
+                    value={String(diag.segmentCount)}
+                    tone={diag.segmentCount === 0 ? 'warn' : 'ok'}
+                  />
+                  <Row
+                    label="Marge globale"
+                    value={
+                      diag.hasAnalysis && diag.marginGlobal != null
+                        ? `${Math.round(diag.marginGlobal)}% · ${diag.marginZone ?? '—'}`
+                        : 'absente'
+                    }
+                    tone={diag.hasAnalysis ? 'ok' : 'warn'}
+                    sub={
+                      diag.hasAnalysis
+                        ? `${diag.algoVersion ?? 'algo ?'} · ${
+                            diag.computedAt ? formatDateShort(diag.computedAt) : '—'
+                          }`
+                        : undefined
+                    }
+                  />
+                  <Row
+                    label="Débrief"
+                    value={diag.hasDebrief ? `${diag.debriefChars} car.` : 'non généré'}
+                    tone={diag.hasDebrief ? 'ok' : 'warn'}
+                  />
+                  <Row
+                    label="Lectures (insights)"
+                    value={String(diag.insightCount)}
+                    tone={diag.insightCount === 0 ? 'warn' : 'ok'}
+                    last
+                  />
+                </Card>
+              </View>
+
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <SectionLabel>RELANCER LE PIPELINE</SectionLabel>
+                <Text style={s.hint}>
+                  Les relances sont exécutées côté serveur. Aucune donnée pilote n’est réécrite
+                  depuis cet appareil.
+                </Text>
+                <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+                  <Action
+                    label="Recalculer les lectures"
+                    hint="session_insights (serveur)"
+                    busy={busy === 'insights'}
+                    disabled={busy != null}
+                    onPress={() => run('insights', () => relaunchInsights(diag.sessionId))}
+                  />
+                  <Action
+                    label="Régénérer le débrief"
+                    hint="generate-debrief-ai · garde-fou doctrinal"
+                    busy={busy === 'debrief'}
+                    disabled={busy != null}
+                    onPress={() => run('debrief', () => relaunchDebrief(diag.sessionId))}
+                  />
+                  <Action
+                    label="Relancer l’analyse en attente"
+                    hint="balayage des marges (lot)"
+                    busy={busy === 'pending'}
+                    disabled={busy != null}
+                    onPress={() => run('pending', () => relaunchPendingAnalysis())}
+                  />
+                </View>
+              </View>
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );

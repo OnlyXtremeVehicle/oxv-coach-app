@@ -38,6 +38,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { formatDateLong } from '@/utils/format';
 
@@ -231,6 +232,9 @@ export default function AdminSessionsMediaScreen() {
     <Screen>
       <AppBar title="MÉDIAS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN OXV</Text>
         <Text style={s.title}>Médias par session</Text>
 

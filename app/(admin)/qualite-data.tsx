@@ -10,10 +10,9 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import {
   type QualityReport,
@@ -27,8 +26,10 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -98,21 +99,21 @@ export default function QualiteDataScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="QUALITÉ DATA" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  const state: ScreenState = loading
+    ? 'loading'
+    : failed
+      ? 'error'
+      : anomalies.length === 0
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="QUALITÉ DATA" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>FIABILITÉ</Text>
         <Text style={s.title} accessibilityRole="header">
           À surveiller
@@ -122,19 +123,15 @@ export default function QualiteDataScreen() {
           {anomalies.length > 1 ? 's' : ''} avec une anomalie détectée.
         </Text>
 
-        {failed ? (
-          <EmptyState
-            label="Indisponible"
-            message="Les anomalies n'ont pas pu être chargées."
-            source="telemetry_sessions"
-          />
-        ) : anomalies.length === 0 ? (
-          <EmptyState
-            label="Tout est propre"
-            message="Aucune anomalie détectée sur les sessions récentes."
-            source="telemetry_sessions"
-          />
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Tout est propre"
+          emptyMessage="Aucune anomalie détectée sur les sessions récentes."
+          emptySource="telemetry_sessions"
+          errorCause="Les anomalies n'ont pas pu être chargées."
+          onRetry={reload}
+        >
           <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
             {anomalies.map((a) => {
               const tracked = trackedSessionIds.has(a.sessionId);
@@ -181,7 +178,7 @@ export default function QualiteDataScreen() {
               );
             })}
           </View>
-        )}
+        </StateWrapper>
 
         {openReports.length > 0 ? (
           <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>

@@ -7,11 +7,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import {
   type AdminAmbassador,
@@ -22,7 +21,9 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -35,19 +36,28 @@ const STATUS_LABEL: Record<AmbassadorStatus, string> = {
 export default function AdminAmbassadeursScreen() {
   const [rows, setRows] = useState<AdminAmbassador[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listAmbassadors().then((r) => {
-      // Ordre d'arrivée (created_at desc, depuis la requête). Pas de tri par statut :
-      // un rôle factuel, jamais une hiérarchie.
-      if (!cancelled) {
-        setRows(r);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listAmbassadors()
+      .then((r) => {
+        // Ordre d'arrivée (created_at desc, depuis la requête). Pas de tri par statut :
+        // un rôle factuel, jamais une hiérarchie.
+        if (!cancelled) {
+          setRows(r);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -67,28 +77,35 @@ export default function AdminAmbassadeursScreen() {
     }
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : rows.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="AMBASSADEURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN · COMMUNAUTÉ</Text>
         <Text style={s.title} accessibilityRole="header">
           Candidatures
         </Text>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
-            <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
-          </View>
-        ) : rows.length === 0 ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState
-              label="Aucune candidature"
-              message="Les candidatures ambassadeur apparaîtront ici."
-              source="ambassador_profiles"
-            />
-          </View>
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucune candidature"
+          emptyMessage="Les candidatures ambassadeur apparaîtront ici."
+          emptySource="ambassador_profiles"
+          errorCause="La liste des candidatures n'a pas pu être chargée."
+          onRetry={reload}
+        >
           <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.lg }}>
             {rows.map((a) => (
               <Card
@@ -137,7 +154,7 @@ export default function AdminAmbassadeursScreen() {
               </Card>
             ))}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );

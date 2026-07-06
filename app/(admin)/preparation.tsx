@@ -11,17 +11,18 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { supabase } from '@/lib/supabase';
 import { promoteToCoach } from '@/services/coachAdminService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -45,6 +46,8 @@ export default function PreparationScreen() {
   const [promotingId, setPromotingId] = useState<string | null>(null);
 
   const reload = async () => {
+    setLoading(true);
+    setFailed(false);
     const { data, error } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, kyc_status, pilot_level')
@@ -97,31 +100,34 @@ export default function PreparationScreen() {
     );
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : failed
+      ? 'error'
+      : pilots.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="PRÉPARATION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN · PRÉPARATION</Text>
         <Text style={s.title} accessibilityRole="header">
           Pilotes (<Text style={s.titleNum}>{pilots.length}</Text>)
         </Text>
 
-        {loading ? (
-          <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement des pilotes" />
-        ) : failed ? (
-          <Card style={{ borderColor: theme.palette.line, paddingVertical: theme.spacing.xl }}>
-            <Text style={s.errorTitle}>Liste indisponible</Text>
-            <Text style={s.errorHint}>
-              La lecture des pilotes a échoué. Vérifiez la connexion, puis rouvrez cet écran.
-            </Text>
-          </Card>
-        ) : pilots.length === 0 ? (
-          <EmptyState
-            label="Préparation"
-            message="Aucun pilote inscrit à la prochaine session."
-            source="registrations"
-          />
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Préparation"
+          emptyMessage="Aucun pilote inscrit à la prochaine session."
+          errorCause="La liste des pilotes n'a pas pu être chargée."
+          onRetry={reload}
+        >
           <View style={{ gap: theme.spacing.sm }}>
             {pilots.map((p) => (
               <Card key={p.id}>
@@ -153,7 +159,7 @@ export default function PreparationScreen() {
               </Card>
             ))}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -210,20 +216,6 @@ const s = {
     justifyContent: 'space-between' as const,
     alignItems: 'flex-start' as const,
     gap: theme.spacing.md,
-  },
-  errorTitle: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
-    textAlign: 'center' as const,
-  },
-  errorHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
-    lineHeight: theme.fontSize.small * 1.5,
   },
   name: {
     fontFamily: theme.fonts.bodyMedium,

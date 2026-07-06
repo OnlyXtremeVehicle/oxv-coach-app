@@ -7,11 +7,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Switch, Text, View } from 'react-native';
+import { Pressable, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import {
   type FeatureFlag,
@@ -24,8 +23,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -33,6 +34,7 @@ const ADMIN = '#22D3EE';
 export default function FeatureFlagsScreen() {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [newKey, setNewKey] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [saving, setSaving] = useState(false);
@@ -40,12 +42,20 @@ export default function FeatureFlagsScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listFlags().then((f) => {
-      if (!cancelled) {
-        setFlags(f);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listFlags()
+      .then((f) => {
+        if (!cancelled) {
+          setFlags(f);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -91,10 +101,21 @@ export default function FeatureFlagsScreen() {
     }
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : flags.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="FEATURE FLAGS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN · SYSTÈME</Text>
         <Text style={s.title} accessibilityRole="header">
           Drapeaux
@@ -126,19 +147,14 @@ export default function FeatureFlagsScreen() {
         {/* Liste. */}
         <View style={{ marginTop: theme.spacing.xl }}>
           <SectionLabel>Drapeaux existants</SectionLabel>
-          {loading ? (
-            <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
-            </View>
-          ) : flags.length === 0 ? (
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <EmptyState
-                label="Aucun drapeau"
-                message="Créez votre premier drapeau ci-dessus."
-                source="app_feature_flags"
-              />
-            </View>
-          ) : (
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            emptyLabel="Aucun drapeau"
+            emptyMessage="Créez votre premier drapeau ci-dessus."
+            errorCause="La liste des drapeaux n'a pas pu être chargée."
+            onRetry={reload}
+          >
             <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
               {flags.map((f) => (
                 <Card key={f.key}>
@@ -168,7 +184,7 @@ export default function FeatureFlagsScreen() {
                 </Card>
               ))}
             </View>
-          )}
+          </StateWrapper>
         </View>
       </View>
     </Screen>

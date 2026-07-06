@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -28,8 +28,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Bronze = couleur de RÔLE admin (doctrine).
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -109,17 +111,22 @@ function draftFromPing(p: SocialPing): Draft {
 export default function AdminCartePointsScreen() {
   const [pings, setPings] = useState<SocialPing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null); // null = vue liste
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
     setLoading(true);
+    setError(false);
     listAllPings()
       .then((list) => {
         setPings(list);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
   }, []);
 
   useFocusEffect(
@@ -425,10 +432,21 @@ export default function AdminCartePointsScreen() {
   }
 
   // ── Vue liste ──
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : pings.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="POINTS DE LA CARTE" onBack={() => router.back()} />
       <View style={s.body}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>LA CARTE OXV</Text>
         <Text style={s.h1} accessibilityRole="header">
           Lieux, partenaires & événements
@@ -438,14 +456,14 @@ export default function AdminCartePointsScreen() {
           <Button label="Nouveau point" onPress={() => setDraft({ ...EMPTY_DRAFT })} />
         </View>
 
-        {loading ? (
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        ) : pings.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucun point pour l&apos;instant.</Text>
-            <Text style={s.emptyH}>Créez le premier avec « Nouveau point ».</Text>
-          </Card>
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun point pour l'instant."
+          emptyMessage="Créez le premier avec « Nouveau point »."
+          errorCause="La liste des points n'a pas pu être chargée."
+          onRetry={reload}
+        >
           <View style={{ gap: theme.spacing.sm }}>
             {pings.map((p) => (
               <Card
@@ -468,7 +486,7 @@ export default function AdminCartePointsScreen() {
               </Card>
             ))}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -555,19 +573,5 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
-  },
-  emptyT: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
-  emptyH: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
   },
 };

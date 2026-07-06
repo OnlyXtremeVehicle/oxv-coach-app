@@ -14,7 +14,6 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments';
 import {
   listTodayAttendance,
   setAttendance,
@@ -23,7 +22,9 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -31,11 +32,13 @@ const ADMIN = '#22D3EE';
 export default function AdminPresencesScreen() {
   const [sessions, setSessions] = useState<AttendanceSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    setError(false);
     listTodayAttendance()
       .then((rows) => {
         if (cancelled) return;
@@ -43,7 +46,10 @@ export default function AdminPresencesScreen() {
         setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -71,10 +77,21 @@ export default function AdminPresencesScreen() {
     setBusyId(null);
   };
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : sessions.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="PRÉSENCES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>JOUR J</Text>
         <Text style={s.title} accessibilityRole="header">
           Pointage des inscrits.
@@ -84,19 +101,15 @@ export default function AdminPresencesScreen() {
           livraison des médias.
         </Text>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : sessions.length === 0 ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState
-              label="Aucune session aujourd'hui"
-              message="Les sessions du jour et leurs inscrits apparaîtront ici."
-            />
-          </View>
-        ) : (
-          sessions.map((session) => (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucune session aujourd'hui"
+          emptyMessage="Les sessions du jour et leurs inscrits apparaîtront ici."
+          errorCause="La liste des présences n’a pas pu être chargée."
+          onRetry={reload}
+        >
+          {sessions.map((session) => (
             <Card key={session.id} style={{ marginTop: theme.spacing.lg }}>
               <Text style={s.sessionTitle}>
                 {session.isPrivate
@@ -156,8 +169,8 @@ export default function AdminPresencesScreen() {
                 </View>
               )}
             </Card>
-          ))
-        )}
+          ))}
+        </StateWrapper>
       </View>
     </Screen>
   );

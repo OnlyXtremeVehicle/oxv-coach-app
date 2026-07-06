@@ -12,6 +12,7 @@ import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine). Liserés et accents.
@@ -131,6 +132,9 @@ export default function AdminHubScreen() {
     <Screen>
       <AppBar title="ADMIN OXV" leading={<Logo size={26} />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>COORDINATION</Text>
         <Text style={s.title} accessibilityRole="header">
           Coordination de la session

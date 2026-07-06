@@ -8,11 +8,10 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import {
   type AdminDevice,
@@ -26,8 +25,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -41,6 +42,7 @@ function healthLabel(h: string): string {
 export default function AdminDevicesScreen() {
   const [devices, setDevices] = useState<AdminDevice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [label, setLabel] = useState('');
   const [serial, setSerial] = useState('');
   const [saving, setSaving] = useState(false);
@@ -69,12 +71,20 @@ export default function AdminDevicesScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listDevices().then((d) => {
-      if (!cancelled) {
-        setDevices(d);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listDevices()
+      .then((d) => {
+        if (!cancelled) {
+          setDevices(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -111,10 +121,21 @@ export default function AdminDevicesScreen() {
     }
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : devices.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="BOÎTIERS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN · PARC</Text>
         <Text style={s.title} accessibilityRole="header">
           Boîtiers OXV
@@ -140,108 +161,106 @@ export default function AdminDevicesScreen() {
         {/* Parc. */}
         <View style={{ marginTop: theme.spacing.xl }}>
           <SectionLabel>Le parc</SectionLabel>
-          {loading ? (
-            <View style={{ paddingVertical: theme.spacing.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={ADMIN} accessibilityLabel="Chargement" />
-            </View>
-          ) : devices.length === 0 ? (
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <EmptyState
-                label="Parc vide"
-                message="Ajoutez votre premier boîtier ci-dessus."
-                source="devices"
-              />
-            </View>
-          ) : (
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-              {devices.map((d) => {
-                const ok = d.healthStatus === 'ok';
-                const editing = editingId === d.id;
-                return (
-                  <Card key={d.id}>
-                    <View style={s.rowBetween}>
-                      <Text style={s.deviceLabel} numberOfLines={1}>
-                        {d.alias ? `${d.alias} · ${d.label}` : d.label}
+          <View style={{ marginTop: theme.spacing.sm }}>
+            <StateWrapper
+              state={state}
+              skeletonLines={5}
+              emptyLabel="Parc vide"
+              emptyMessage="Ajoutez votre premier boîtier ci-dessus."
+              emptySource="devices"
+              errorCause="Le parc n'a pas pu être chargé."
+              onRetry={reload}
+            >
+              <View style={{ gap: theme.spacing.sm }}>
+                {devices.map((d) => {
+                  const ok = d.healthStatus === 'ok';
+                  const editing = editingId === d.id;
+                  return (
+                    <Card key={d.id}>
+                      <View style={s.rowBetween}>
+                        <Text style={s.deviceLabel} numberOfLines={1}>
+                          {d.alias ? `${d.alias} · ${d.label}` : d.label}
+                        </Text>
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`État : ${healthLabel(d.healthStatus)}. Basculer.`}
+                          hitSlop={6}
+                          onPress={() => onToggleHealth(d)}
+                          style={({ pressed }) => [s.healthPill, pressed && { opacity: 0.8 }]}
+                        >
+                          <View
+                            style={[s.dot, { backgroundColor: ok ? theme.palette.green : ADMIN }]}
+                            accessibilityElementsHidden
+                            importantForAccessibility="no"
+                          />
+                          <Text style={s.healthText}>{healthLabel(d.healthStatus)}</Text>
+                        </Pressable>
+                      </View>
+                      <Text style={s.deviceMeta}>
+                        {d.serial ? `${d.serial} · ` : ''}
+                        {d.type}
+                        {d.batteryStatus ? ` · ${d.batteryStatus}` : ''}
                       </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`État : ${healthLabel(d.healthStatus)}. Basculer.`}
-                        hitSlop={6}
-                        onPress={() => onToggleHealth(d)}
-                        style={({ pressed }) => [s.healthPill, pressed && { opacity: 0.8 }]}
-                      >
-                        <View
-                          style={[s.dot, { backgroundColor: ok ? theme.palette.green : ADMIN }]}
-                          accessibilityElementsHidden
-                          importantForAccessibility="no"
-                        />
-                        <Text style={s.healthText}>{healthLabel(d.healthStatus)}</Text>
-                      </Pressable>
-                    </View>
-                    <Text style={s.deviceMeta}>
-                      {d.serial ? `${d.serial} · ` : ''}
-                      {d.type}
-                      {d.batteryStatus ? ` · ${d.batteryStatus}` : ''}
-                    </Text>
-                    <Text style={s.deviceAssign}>
-                      {d.assignmentCount} affectation{d.assignmentCount > 1 ? 's' : ''}
-                      {d.fleetNumber != null ? ` · flotte n° ${d.fleetNumber}` : ''}
-                    </Text>
+                      <Text style={s.deviceAssign}>
+                        {d.assignmentCount} affectation{d.assignmentCount > 1 ? 's' : ''}
+                        {d.fleetNumber != null ? ` · flotte n° ${d.fleetNumber}` : ''}
+                      </Text>
 
-                    {/* Renommage flotte (M7.2) : alias lisible jour J + n° aligné
+                      {/* Renommage flotte (M7.2) : alias lisible jour J + n° aligné
                         sur l'étiquette physique du boîtier. */}
-                    {editing ? (
-                      <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
-                        <Field
-                          label="Alias jour J"
-                          value={editAlias}
-                          onChangeText={setEditAlias}
-                          placeholder="Ex. OXV 07"
-                        />
-                        <Field
-                          label="Numéro de flotte"
-                          value={editFleet}
-                          onChangeText={(v) => setEditFleet(v.replace(/[^0-9]/g, ''))}
-                          placeholder="Ex. 7"
-                          keyboardType="number-pad"
-                        />
-                        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-                          <View style={{ flex: 1 }}>
-                            <Button
-                              label="Enregistrer"
-                              onPress={() => onSaveIdentity(d)}
-                              disabled={savingIdentity}
-                            />
-                          </View>
-                          <View style={{ flex: 1 }}>
-                            <Button
-                              label="Annuler"
-                              variant="ghost"
-                              onPress={() => setEditingId(null)}
-                              disabled={savingIdentity}
-                            />
+                      {editing ? (
+                        <View style={{ marginTop: theme.spacing.md, gap: theme.spacing.sm }}>
+                          <Field
+                            label="Alias jour J"
+                            value={editAlias}
+                            onChangeText={setEditAlias}
+                            placeholder="Ex. OXV 07"
+                          />
+                          <Field
+                            label="Numéro de flotte"
+                            value={editFleet}
+                            onChangeText={(v) => setEditFleet(v.replace(/[^0-9]/g, ''))}
+                            placeholder="Ex. 7"
+                            keyboardType="number-pad"
+                          />
+                          <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                            <View style={{ flex: 1 }}>
+                              <Button
+                                label="Enregistrer"
+                                onPress={() => onSaveIdentity(d)}
+                                disabled={savingIdentity}
+                              />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                              <Button
+                                label="Annuler"
+                                variant="ghost"
+                                onPress={() => setEditingId(null)}
+                                disabled={savingIdentity}
+                              />
+                            </View>
                           </View>
                         </View>
-                      </View>
-                    ) : (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Renommer ${d.alias ?? d.label}`}
-                        onPress={() => {
-                          setEditingId(d.id);
-                          setEditAlias(d.alias ?? '');
-                          setEditFleet(d.fleetNumber != null ? String(d.fleetNumber) : '');
-                        }}
-                        style={{ marginTop: theme.spacing.sm, minHeight: 32 }}
-                      >
-                        <Text style={s.renameLink}>Renommer (alias jour J)</Text>
-                      </Pressable>
-                    )}
-                  </Card>
-                );
-              })}
-            </View>
-          )}
+                      ) : (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Renommer ${d.alias ?? d.label}`}
+                          onPress={() => {
+                            setEditingId(d.id);
+                            setEditAlias(d.alias ?? '');
+                            setEditFleet(d.fleetNumber != null ? String(d.fleetNumber) : '');
+                          }}
+                          style={{ marginTop: theme.spacing.sm, minHeight: 32 }}
+                        >
+                          <Text style={s.renameLink}>Renommer (alias jour J)</Text>
+                        </Pressable>
+                      )}
+                    </Card>
+                  );
+                })}
+              </View>
+            </StateWrapper>
+          </View>
         </View>
       </View>
     </Screen>

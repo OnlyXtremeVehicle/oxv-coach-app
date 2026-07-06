@@ -11,7 +11,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
@@ -24,8 +24,10 @@ import { eventStatusLabel, eventTypeLabel } from '@/services/eventsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -51,108 +53,121 @@ function timeWindow(startsAt: string, endsAt: string): string {
 export default function TourControleScreen() {
   const [data, setData] = useState<ControlTower | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      loadControlTower(new Date())
-        .then((d) => {
-          if (!cancelled) {
-            setData(d);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+  const reload = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    loadControlTower(new Date())
+      .then((d) => {
+        if (!cancelled) {
+          setData(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="TOUR DE CONTRÔLE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  useFocusEffect(reload);
 
   const ct = data;
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : !ct || (ct.todayEvents.length === 0 && ct.expectedPilots === 0)
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="TOUR DE CONTRÔLE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>AUJOURD’HUI</Text>
-        <Text style={s.title} accessibilityRole="header">
-          La journée en cours
-        </Text>
-
-        {/* Chiffre dominant : pilotes attendus aujourd'hui. */}
-        <View style={s.heroRow}>
-          <Text style={s.hero}>{ct?.expectedPilots ?? 0}</Text>
-          <Text style={s.heroLabel}>
-            {(ct?.expectedPilots ?? 0) > 1 ? 'pilotes attendus' : 'pilote attendu'}
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Journée calme"
+          emptyMessage="Aucune activité opérationnelle aujourd'hui."
+          errorCause="Le tour de contrôle n'a pas pu être chargé."
+          onRetry={reload}
+        >
+          <Text style={s.eyebrow}>AUJOURD’HUI</Text>
+          <Text style={s.title} accessibilityRole="header">
+            La journée en cours
           </Text>
-        </View>
 
-        {/* Comptes secondaires. */}
-        <View style={s.factsRow}>
-          <Fact value={String(ct?.checkedInPilots ?? 0)} label="pointés" />
-          <Fact value={String(ct?.sessionsToday ?? 0)} label="sessions du jour" />
-          <Fact
-            value={String(ct?.anomaliesCount ?? 0)}
-            label="à surveiller"
-            tone={(ct?.anomaliesCount ?? 0) > 0 ? 'warn' : 'ok'}
-          />
-        </View>
+          {/* Chiffre dominant : pilotes attendus aujourd'hui. */}
+          <View style={s.heroRow}>
+            <Text style={s.hero}>{ct?.expectedPilots ?? 0}</Text>
+            <Text style={s.heroLabel}>
+              {(ct?.expectedPilots ?? 0) > 1 ? 'pilotes attendus' : 'pilote attendu'}
+            </Text>
+          </View>
 
-        {/* Événements du jour. */}
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <SectionLabel>ÉVÉNEMENTS DU JOUR</SectionLabel>
-          {!ct || ct.todayEvents.length === 0 ? (
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <EmptyState
-                label="Journée calme"
-                message="Aucun événement actif aujourd'hui."
-                source="events"
-              />
-            </View>
-          ) : (
+          {/* Comptes secondaires. */}
+          <View style={s.factsRow}>
+            <Fact value={String(ct?.checkedInPilots ?? 0)} label="pointés" />
+            <Fact value={String(ct?.sessionsToday ?? 0)} label="sessions du jour" />
+            <Fact
+              value={String(ct?.anomaliesCount ?? 0)}
+              label="à surveiller"
+              tone={(ct?.anomaliesCount ?? 0) > 0 ? 'warn' : 'ok'}
+            />
+          </View>
+
+          {/* Événements du jour. */}
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <SectionLabel>ÉVÉNEMENTS DU JOUR</SectionLabel>
+            {!ct || ct.todayEvents.length === 0 ? (
+              <View style={{ marginTop: theme.spacing.sm }}>
+                <EmptyState
+                  label="Journée calme"
+                  message="Aucun événement actif aujourd'hui."
+                  source="events"
+                />
+              </View>
+            ) : (
+              <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+                {ct.todayEvents.map((e) => (
+                  <EventRow key={e.event.id} item={e} />
+                ))}
+              </View>
+            )}
+          </View>
+
+          {/* Accès rapides. */}
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <SectionLabel>OUTILS DU JOUR</SectionLabel>
             <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-              {ct.todayEvents.map((e) => (
-                <EventRow key={e.event.id} item={e} />
+              {LINKS.map((l) => (
+                <Card
+                  key={l.href}
+                  onPress={() => router.push(l.href as never)}
+                  accessibilityLabel={`${l.label}. ${l.hint}`}
+                  style={{ borderColor: ADMIN }}
+                >
+                  <View style={s.linkHead}>
+                    <Text style={s.linkLabel}>{l.label}</Text>
+                    <Text style={s.linkChevron}>›</Text>
+                  </View>
+                  <Text style={s.linkHint}>{l.hint}</Text>
+                </Card>
               ))}
             </View>
-          )}
-        </View>
-
-        {/* Accès rapides. */}
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <SectionLabel>OUTILS DU JOUR</SectionLabel>
-          <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-            {LINKS.map((l) => (
-              <Card
-                key={l.href}
-                onPress={() => router.push(l.href as never)}
-                accessibilityLabel={`${l.label}. ${l.hint}`}
-                style={{ borderColor: ADMIN }}
-              >
-                <View style={s.linkHead}>
-                  <Text style={s.linkLabel}>{l.label}</Text>
-                  <Text style={s.linkChevron}>›</Text>
-                </View>
-                <Text style={s.linkHint}>{l.hint}</Text>
-              </Card>
-            ))}
           </View>
-        </View>
+        </StateWrapper>
       </View>
     </Screen>
   );
