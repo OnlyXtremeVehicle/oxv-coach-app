@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -26,8 +26,10 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const STATUS_LABEL: Record<LeadStatus, string> = {
   new: 'Nouveau',
@@ -77,12 +79,14 @@ export default function PartnerLeadsScreen() {
   const [leads, setLeads] = useState<PartnerLead[]>([]);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [filter, setFilter] = useState<LeadStatus | 'all'>('all');
   const [selected, setSelected] = useState<PartnerLead | null>(null);
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
     setLoading(true);
+    setError(false);
     loadMyPartnerAccount()
       .then(async (acc) => {
         if (!acc) {
@@ -96,6 +100,7 @@ export default function PartnerLeadsScreen() {
         setLeads(l);
         setOffers(o);
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -114,6 +119,11 @@ export default function PartnerLeadsScreen() {
     () => (filter === 'all' ? leads : leads.filter((l) => l.status === filter)),
     [leads, filter]
   );
+
+  // loading / error / nominal — les états « aucune donnée » restent distincts
+  // (pas de compte partenaire vs aucune demande vs filtre vide), gérés dans le
+  // contenu nominal, car chacun porte un message honnête différent.
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
   async function onSetStatus(status: LeadStatus) {
     if (!selected || status === selected.status) return;
@@ -193,6 +203,9 @@ export default function PartnerLeadsScreen() {
     <Screen>
       <AppBar title="MES LEADS" onBack={() => router.back()} />
       <View style={s.body}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
         <Text style={s.h1} accessibilityRole="header">
           Vos demandes
         </Text>
@@ -222,50 +235,55 @@ export default function PartnerLeadsScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        ) : !partnerId ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucun compte partenaire.</Text>
-            <Text style={s.emptyH}>Contactez l’équipe OXV pour activer votre compte.</Text>
-          </Card>
-        ) : leads.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucune demande pour l’instant.</Text>
-            <Text style={s.emptyH}>
-              Les demandes des pilotes intéressés par vos offres apparaîtront ici.
-            </Text>
-          </Card>
-        ) : visible.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucune demande dans ce filtre.</Text>
-          </Card>
-        ) : (
-          <View style={{ gap: theme.spacing.sm }}>
-            {visible.map((l) => {
-              const title = offerTitle(l.offerId);
-              return (
-                <Card
-                  key={l.id}
-                  onPress={() => setSelected(l)}
-                  accessibilityLabel={`${title ?? 'Demande de contact'}. ${STATUS_LABEL[l.status]}.`}
-                >
-                  <View style={s.rowBetween}>
-                    <Text style={s.cardTitle} numberOfLines={1}>
-                      {title ?? 'Demande de contact'}
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          errorCause="La liste de vos demandes n’a pas pu être chargée."
+          onRetry={reload}
+        >
+          {!partnerId ? (
+            <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+              <Text style={s.emptyT}>Aucun compte partenaire.</Text>
+              <Text style={s.emptyH}>Contactez l’équipe OXV pour activer votre compte.</Text>
+            </Card>
+          ) : leads.length === 0 ? (
+            <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+              <Text style={s.emptyT}>Aucune demande pour l’instant.</Text>
+              <Text style={s.emptyH}>
+                Les demandes des pilotes intéressés par vos offres apparaîtront ici.
+              </Text>
+            </Card>
+          ) : visible.length === 0 ? (
+            <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+              <Text style={s.emptyT}>Aucune demande dans ce filtre.</Text>
+            </Card>
+          ) : (
+            <View style={{ gap: theme.spacing.sm }}>
+              {visible.map((l) => {
+                const title = offerTitle(l.offerId);
+                return (
+                  <Card
+                    key={l.id}
+                    onPress={() => setSelected(l)}
+                    accessibilityLabel={`${title ?? 'Demande de contact'}. ${STATUS_LABEL[l.status]}.`}
+                  >
+                    <View style={s.rowBetween}>
+                      <Text style={s.cardTitle} numberOfLines={1}>
+                        {title ?? 'Demande de contact'}
+                      </Text>
+                      <Text style={[s.status, l.status === 'new' ? s.statusOn : null]}>
+                        {STATUS_LABEL[l.status].toUpperCase()}
+                      </Text>
+                    </View>
+                    <Text style={s.cardMeta}>
+                      {channelLabel(l.channel)} · {formatDate(l.createdAt)}
                     </Text>
-                    <Text style={[s.status, l.status === 'new' ? s.statusOn : null]}>
-                      {STATUS_LABEL[l.status].toUpperCase()}
-                    </Text>
-                  </View>
-                  <Text style={s.cardMeta}>
-                    {channelLabel(l.channel)} · {formatDate(l.createdAt)}
-                  </Text>
-                </Card>
-              );
-            })}
-          </View>
-        )}
+                  </Card>
+                );
+              })}
+            </View>
+          )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -278,7 +296,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
   },
   h1: {

@@ -7,11 +7,10 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { Pressable } from 'react-native';
 import {
   type PartnerAccount,
@@ -25,12 +24,16 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function PartnerProfilScreen() {
   const [account, setAccount] = useState<PartnerAccount | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [geoZone, setGeoZone] = useState('');
   const [description, setDescription] = useState('');
   const [docs, setDocs] = useState<PartnerDocument[]>([]);
@@ -41,6 +44,7 @@ export default function PartnerProfilScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    setError(false);
     loadMyPartnerAccount()
       .then((acc) => {
         if (!cancelled) {
@@ -52,14 +56,20 @@ export default function PartnerProfilScreen() {
         }
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   useFocusEffect(reload);
+
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : !account ? 'empty' : 'nominal';
 
   async function onSave() {
     if (!account || saving) return;
@@ -101,34 +111,26 @@ export default function PartnerProfilScreen() {
     void saveDocs(docs.filter((_, j) => j !== i));
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="MA FICHE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
-
   return (
     <Screen>
       <AppBar title="MA FICHE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        {!account ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState
-              label="Aucun compte partenaire"
-              message="Aucun compte partenaire n'est rattaché à cet utilisateur."
-              source="partner_accounts"
-            />
-          </View>
-        ) : (
+        <View style={{ marginBottom: theme.spacing.md, marginTop: theme.spacing.sm }}>
+          <RoleBadge role="partner" />
+        </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun compte partenaire"
+          emptyMessage="Aucun compte partenaire n'est rattaché à cet utilisateur."
+          emptySource="partner_accounts"
+          errorCause="Votre fiche n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <>
             <Text style={s.eyebrow}>VOTRE FICHE</Text>
             <Text style={s.title} accessibilityRole="header">
-              {account.displayName}
+              {account?.displayName}
             </Text>
 
             <Card style={{ marginTop: theme.spacing.lg }}>
@@ -219,7 +221,7 @@ export default function PartnerProfilScreen() {
               </View>
             </View>
           </>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -231,8 +233,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.sm,
+    color: theme.palette.creamMute,
   },
   docRow: {
     flexDirection: 'row' as const,

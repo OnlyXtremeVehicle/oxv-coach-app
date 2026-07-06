@@ -14,6 +14,7 @@ import { router } from 'expo-router';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 
 export default function PartnerFacturationScreen() {
@@ -21,6 +22,9 @@ export default function PartnerFacturationScreen() {
     <Screen>
       <AppBar title="FACTURATION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
         <Text style={s.eyebrow}>VOTRE COMPTE</Text>
         <Text style={s.title} accessibilityRole="header">
           Rien à régler ici.

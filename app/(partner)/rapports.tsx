@@ -16,6 +16,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 
 export default function PartnerReportsScreen() {
@@ -42,6 +43,9 @@ export default function PartnerReportsScreen() {
     <Screen>
       <AppBar title="MES RAPPORTS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
         <Text style={s.eyebrow}>RAPPORTS B2B</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos événements.

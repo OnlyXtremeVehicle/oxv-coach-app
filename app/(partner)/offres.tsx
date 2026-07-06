@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -25,8 +25,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const STATUS_OPTIONS: { v: OfferStatus; label: string }[] = [
   { v: 'draft', label: 'Brouillon' },
@@ -79,11 +81,13 @@ export default function PartnerOffersScreen() {
   const [partnerId, setPartnerId] = useState<string | null>(null);
   const [offers, setOffers] = useState<PartnerOffer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(() => {
     setLoading(true);
+    setError(false);
     loadMyPartnerAccount()
       .then(async (acc) => {
         if (!acc) {
@@ -94,6 +98,7 @@ export default function PartnerOffersScreen() {
         setPartnerId(acc.id);
         setOffers(await listMyOffers(acc.id));
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -171,6 +176,9 @@ export default function PartnerOffersScreen() {
       <Screen>
         <AppBar title="OFFRE" onBack={() => setDraft(null)} />
         <View style={s.body}>
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="partner" />
+          </View>
           <Text style={s.h1} accessibilityRole="header">
             {draft.id ? 'Modifier l’offre' : 'Nouvelle offre'}
           </Text>
@@ -299,10 +307,21 @@ export default function PartnerOffersScreen() {
   }
 
   // ── Vue liste ──
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : partnerId && offers.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="MES OFFRES" onBack={() => router.back()} />
       <View style={s.body}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
         <Text style={s.h1} accessibilityRole="header">
           Vos offres
         </Text>
@@ -313,39 +332,41 @@ export default function PartnerOffersScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        ) : !partnerId ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucun compte partenaire.</Text>
-            <Text style={s.emptyH}>Contactez l’équipe OXV pour activer votre compte.</Text>
-          </Card>
-        ) : offers.length === 0 ? (
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyT}>Aucune offre pour l’instant.</Text>
-            <Text style={s.emptyH}>Créez la première avec « Nouvelle offre ».</Text>
-          </Card>
-        ) : (
-          <View style={{ gap: theme.spacing.sm }}>
-            {offers.map((o) => (
-              <Card
-                key={o.id}
-                onPress={() => setDraft(draftFromOffer(o))}
-                accessibilityLabel={`${o.title}. ${o.status}.`}
-              >
-                <View style={s.rowBetween}>
-                  <Text style={s.cardTitle} numberOfLines={1}>
-                    {o.title}
-                  </Text>
-                  <Text style={[s.status, o.status === 'published' ? s.statusOn : null]}>
-                    {o.status.toUpperCase()}
-                  </Text>
-                </View>
-                {o.priceEur != null ? <Text style={s.cardMeta}>{o.priceEur} €</Text> : null}
-              </Card>
-            ))}
-          </View>
-        )}
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucune offre pour l’instant"
+          emptyMessage="Créez la première avec « Nouvelle offre »."
+          errorCause="La liste de vos offres n’a pas pu être chargée."
+          onRetry={reload}
+        >
+          {!partnerId ? (
+            <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+              <Text style={s.emptyT}>Aucun compte partenaire.</Text>
+              <Text style={s.emptyH}>Contactez l’équipe OXV pour activer votre compte.</Text>
+            </Card>
+          ) : (
+            <View style={{ gap: theme.spacing.sm }}>
+              {offers.map((o) => (
+                <Card
+                  key={o.id}
+                  onPress={() => setDraft(draftFromOffer(o))}
+                  accessibilityLabel={`${o.title}. ${o.status}.`}
+                >
+                  <View style={s.rowBetween}>
+                    <Text style={s.cardTitle} numberOfLines={1}>
+                      {o.title}
+                    </Text>
+                    <Text style={[s.status, o.status === 'published' ? s.statusOn : null]}>
+                      {o.status.toUpperCase()}
+                    </Text>
+                  </View>
+                  {o.priceEur != null ? <Text style={s.cardMeta}>{o.priceEur} €</Text> : null}
+                </Card>
+              ))}
+            </View>
+          )}
+        </StateWrapper>
       </View>
     </Screen>
   );

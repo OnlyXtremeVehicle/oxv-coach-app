@@ -8,10 +8,9 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type LeadStatus,
   listMyLeads,
@@ -21,8 +20,10 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 interface PartnerPerf {
   leadsTotal: number;
@@ -44,10 +45,13 @@ export default function PartnerPerformanceScreen() {
   const [perf, setPerf] = useState<PartnerPerf | null>(null);
   const [hasAccount, setHasAccount] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    setError(false);
     loadMyPartnerAccount()
       .then(async (acc) => {
         if (cancelled) return;
@@ -75,71 +79,85 @@ export default function PartnerPerformanceScreen() {
         setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+    // reloadKey pilote la reprise manuelle (bouton Réessayer).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reloadKey]);
 
   useFocusEffect(reload);
+
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : !hasAccount || !perf
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="PERFORMANCE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
         <Text style={s.eyebrow}>VOTRE ACTIVITÉ</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos demandes, en chiffres.
         </Text>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : !hasAccount || !perf ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState
-              label="Aucun compte partenaire"
-              message="Aucun compte partenaire n'est rattaché à cet utilisateur."
-              source="partner_accounts"
-            />
-          </View>
-        ) : (
-          <>
-            {/* Chiffre dominant : total des demandes. */}
-            <View style={s.heroRow}>
-              <Text style={s.hero}>{perf.leadsTotal}</Text>
-              <Text style={s.heroLabel}>
-                demande{perf.leadsTotal > 1 ? 's' : ''} reçue{perf.leadsTotal > 1 ? 's' : ''}
-              </Text>
-            </View>
-            <Text style={s.subline}>
-              {perf.offersPublished} offre{perf.offersPublished > 1 ? 's' : ''} publiée
-              {perf.offersPublished > 1 ? 's' : ''} · {perf.offersTotal} au total
-            </Text>
-
-            {/* Suivi des demandes par statut. */}
-            <View style={{ marginTop: theme.spacing.xl }}>
-              <SectionLabel>Suivi des demandes</SectionLabel>
-              <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
-                {STATUS_ORDER.map((st) => (
-                  <Card key={st}>
-                    <View style={s.rowBetween}>
-                      <Text style={s.statusLabel}>{STATUS_LABEL[st]}</Text>
-                      <Text style={s.statusValue}>{perf.byStatus[st]}</Text>
-                    </View>
-                  </Card>
-                ))}
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun compte partenaire"
+          emptyMessage="Aucun compte partenaire n'est rattaché à cet utilisateur."
+          emptySource="partner_accounts"
+          errorCause="Votre activité n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
+          {perf ? (
+            <>
+              {/* Chiffre dominant : total des demandes. */}
+              <View style={s.heroRow}>
+                <Text style={s.hero}>{perf.leadsTotal}</Text>
+                <Text style={s.heroLabel}>
+                  demande{perf.leadsTotal > 1 ? 's' : ''} reçue{perf.leadsTotal > 1 ? 's' : ''}
+                </Text>
               </View>
-            </View>
+              <Text style={s.subline}>
+                {perf.offersPublished} offre{perf.offersPublished > 1 ? 's' : ''} publiée
+                {perf.offersPublished > 1 ? 's' : ''} · {perf.offersTotal} au total
+              </Text>
 
-            <Text style={s.note}>
-              Des volumes issus de vos propres demandes et offres. Aucune donnée pilote, aucun
-              classement entre partenaires.
-            </Text>
-          </>
-        )}
+              {/* Suivi des demandes par statut. */}
+              <View style={{ marginTop: theme.spacing.xl }}>
+                <SectionLabel>Suivi des demandes</SectionLabel>
+                <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+                  {STATUS_ORDER.map((st) => (
+                    <Card key={st}>
+                      <View style={s.rowBetween}>
+                        <Text style={s.statusLabel}>{STATUS_LABEL[st]}</Text>
+                        <Text style={s.statusValue}>{perf.byStatus[st]}</Text>
+                      </View>
+                    </Card>
+                  ))}
+                </View>
+              </View>
+
+              <Text style={s.note}>
+                Des volumes issus de vos propres demandes et offres. Aucune donnée pilote, aucun
+                classement entre partenaires.
+              </Text>
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -151,7 +169,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
   },
   title: {
