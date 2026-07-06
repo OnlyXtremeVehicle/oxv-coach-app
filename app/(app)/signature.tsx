@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Switch, Text, View } from 'react-native';
+import { Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
@@ -48,7 +48,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper } from '@/ui/StateWrapper';
 
 export default function SignatureScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -56,6 +58,8 @@ export default function SignatureScreen() {
 
   const [signature, setSignature] = useState<PilotSignature | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [sessionId, setSessionId] = useState<string | null>(null);
   // Empreinte consolidée : la mémoire descriptive du miroir, séance après séance.
   const [snapshots, setSnapshots] = useState<SignatureSnapshot[]>([]);
@@ -77,6 +81,8 @@ export default function SignatureScreen() {
     // session échoue, le radar de la PRÉCÉDENTE resterait affiché (périmé).
     setQdi(null);
     setQdiReference(null);
+    setLoading(true);
+    setError(false);
 
     (async () => {
       // Résout la session cible (param ou dernière complétée)
@@ -153,12 +159,19 @@ export default function SignatureScreen() {
         const snaps = await listMySnapshots(8);
         if (!cancelled) setSnapshots(snaps);
       }
-    })();
+    })().catch(() => {
+      // Échec de lecture : état d'erreur honnête avec reprise, plutôt qu'un
+      // écran figé sur le chargement.
+      if (!cancelled) {
+        setError(true);
+        setLoading(false);
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [profile, params.sessionId]);
+  }, [profile, params.sessionId, reloadKey]);
 
   async function onToggleShare(snap: SignatureSnapshot, next: boolean) {
     setSnapshots((prev) =>
@@ -175,12 +188,19 @@ export default function SignatureScreen() {
     return snap.traits.find((t) => t.key === key)?.value ?? null;
   }
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <Screen scroll={false}>
+      <Screen>
         <AppBar title="SIGNATURE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+        <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl }}>
+          <StateWrapper
+            state={error ? 'error' : 'loading'}
+            skeletonLines={5}
+            errorCause="Votre signature n'a pas pu être chargée."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
+            {null}
+          </StateWrapper>
         </View>
       </Screen>
     );
@@ -221,12 +241,14 @@ export default function SignatureScreen() {
             <FadeInSection delay={80}>
               <View style={{ marginBottom: theme.spacing.md }}>
                 {qdi ? (
-                  <QdiRadar
-                    current={qdi}
-                    reference={qdiReference?.branches ?? null}
-                    referenceSessions={qdiReference?.sessions}
-                    detail={qdiAccess === 'full'}
-                  />
+                  <CockpitPanel>
+                    <QdiRadar
+                      current={qdi}
+                      reference={qdiReference?.branches ?? null}
+                      referenceSessions={qdiReference?.sessions}
+                      detail={qdiAccess === 'full'}
+                    />
+                  </CockpitPanel>
                 ) : (
                   <EmptyState
                     label="QDI en préparation"
@@ -315,7 +337,7 @@ export default function SignatureScreen() {
                               accessibilityRole="switch"
                               accessibilityLabel="Partager cette empreinte avec mon coach"
                               accessibilityState={{ checked: snap.sharedWithCoach }}
-                              trackColor={{ false: '#26262B', true: theme.palette.gold }}
+                              trackColor={{ false: '#26262B', true: theme.palette.green }}
                               thumbColor={theme.palette.cream}
                             />
                           </View>
