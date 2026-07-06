@@ -111,8 +111,10 @@
    sensibles sans base légale. *(défaut appliqué)*
 5. **C5 — Équilibre par proxy lacet assumé.** Pas d'« angle volant » (capteur
    absent) ; estimation lacet vs attendu, dite dans le bloc méthode. *(défaut appliqué)*
-6. **Monétisation — construire derrière un feature flag, INACTIF.** Rien
-   n'encaisse avant le SIRET ; le flux est prêt le jour de l'activation.
+6. **Monétisation coach — paiement DIRECT au coach, HORS OXV (2026-07-04).**
+   OXV n'encaisse ni ne facture la prestation (pas d'intermédiaire de paiement).
+   L'app = outil de suivi (montant + statut réglé + lien de paiement du coach).
+   Rému OXV côté coach = abonnement SaaS. Le SIRET OXV ne bloque pas cette part.
 
 ## 6. Construit / en cours
 - **P0 (cœur) — Smart Flagging factuel** ✅ : `coachTriageLogic` (pur, testé) +
@@ -132,23 +134,34 @@ Constat : `payments`/`invoices`/`generate-invoice` existent mais sont liés aux
 INSCRIPTIONS (track day), pas aux prestations coach ; `coaching_bookings` n'a ni
 montant ni paiement. Donc :
 
-### P2 — Monétisation coach (additif, derrière feature flag, INACTIF avant SIRET)
+### P2 — Prestation coach : MODÈLE CORRIGÉ (2026-07-04, décision fondateur)
+> **Le paiement de la prestation va DIRECTEMENT au coach — il NE passe PAS par
+> OXV.** OXV n'est ni encaisseur, ni facturier, ni intermédiaire de paiement de
+> la prestation (on évite le statut réglementé de prestataire de paiement). La
+> rémunération d'OXV côté coach reste l'ABONNEMENT SaaS (450 €/saison), qui, lui,
+> passe par nous. Le SIRET OXV ne bloque donc PAS la prestation coach (c'est la
+> structure du COACH qui facture son pilote).
+
+Conséquence : PAS de lien vers `payments`/`invoices` OXV, PAS de génération de
+facture OXV pour la prestation. L'app est un **outil de suivi** pour le coach,
+pas un canal de paiement. Schéma minimal (additif) :
 ```sql
--- Prestation coach facturable, greffée sur le booking existant.
+-- Suivi de la prestation par le COACH (montant pour SON usage, statut qu'IL gère).
 alter table public.coaching_bookings
-  add column if not exists amount_cents integer,
+  add column if not exists amount_cents integer,           -- prix convenu (tracking coach)
   add column if not exists billing_status text default 'none'
-    check (billing_status in ('none','quote','paid','refunded')),
-  add column if not exists payment_id uuid references public.payments(id);
--- Un paiement peut concerner une prestation coach (aujourd'hui : inscription/heritage).
-alter table public.payments
-  add column if not exists coaching_booking_id uuid references public.coaching_bookings(id);
--- Feature flag : tout le flux reste INACTIF tant qu'il n'est pas activé (post-SIRET).
-insert into public.app_feature_flags (key, enabled, description)
-  values ('coach_billing', false, 'Facturation prestation coach in-app (post-SIRET)')
-  on conflict (key) do nothing;
+    check (billing_status in ('none','quote','settled'));  -- 'settled' = coach a été payé (hors app)
+-- Lien de paiement PROPRE au coach (Lydia/Stripe/PayPal…), sur son profil.
+alter table public.coach_profiles
+  add column if not exists payment_link text;
 ```
-⚠ Touche le cœur paiement (partagé site). À valider + coordonner site.
+- Le pilote paie via le **lien propre du coach** (ou tout moyen hors app) ; le
+  coach marque `settled`. Aucun flux d'argent ne transite par OXV.
+- **À TRANCHER (question fondateur)** : l'app aide-t-elle le coach à éditer SA
+  propre facture (coach = vendeur, sa structure), ou reste-t-elle hors facturation
+  (le coach facture avec ses propres outils) ?
+- Ne touche PAS `payments`/`invoices` (réservés inscriptions/abonnements OXV). Pas
+  de coordination site paiement requise.
 
 ### P3 — Waivers e-sign (table neuve — nécessite le TEXTE JURIDIQUE)
 ```sql
