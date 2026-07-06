@@ -27,6 +27,7 @@ import {
   listMyPilots,
   loadCoachDashboardSummary,
 } from '@/services/coachService';
+import { isFlagEnabled } from '@/services/featureFlagsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -47,6 +48,21 @@ export default function CoachHubScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Facturation gatée par le flag coach_billing (INACTIF jusqu'au SIRET) : le
+  // lien reste caché tant que le flag est off, plutôt qu'un « bientôt » visible.
+  const [billingOn, setBillingOn] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    isFlagEnabled('coach_billing')
+      .then((on) => {
+        if (!cancelled) setBillingOn(on);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +233,10 @@ export default function CoachHubScreen() {
 
           {/* Ma lecture (§10.3c-D) — pondérations du coach, tout coach. */}
           <CoachLink label="Ma lecture" href="/(coach)/lecture" />
+
+          {/* Facturation (P2) — aide à établir SES factures (émetteur = coach,
+              paiement direct). Gatée par coach_billing : cachée jusqu'au SIRET. */}
+          {billingOn ? <CoachLink label="Facturation" href="/(coach)/facturation" /> : null}
 
           {/* Vue AR coach (E0.1) — outil du coach au bord de piste (lunettes
               Ray-Ban Display). Preview/prototype : non publiable au public tant

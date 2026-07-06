@@ -103,6 +103,45 @@ export async function updateMyBillingProfile(
   return error ? { ok: false, error: error.message } : { ok: true };
 }
 
+export interface CoachInvoiceSummary {
+  id: string;
+  number: string;
+  issuedAt: string;
+  serviceDate: string | null;
+  amountTotalCents: number;
+  pilotId: string | null;
+}
+
+interface InvoiceRow {
+  id: string;
+  number: string;
+  issued_at: string;
+  service_date: string | null;
+  amount_total: number;
+  pilot_id: string | null;
+}
+
+/** Factures émises par le coach courant (les siennes seulement, RLS). */
+export async function listMyInvoices(limit = 30): Promise<CoachInvoiceSummary[]> {
+  const coachId = await currentCoachId();
+  if (!coachId) return [];
+  const { data } = await supabase
+    .from('coach_invoices')
+    .select('id, number, issued_at, service_date, amount_total, pilot_id')
+    .eq('coach_id', coachId)
+    .order('issued_at', { ascending: false })
+    .limit(limit);
+  const rows = (data as unknown as InvoiceRow[] | null) ?? [];
+  return rows.map((r) => ({
+    id: r.id,
+    number: r.number,
+    issuedAt: r.issued_at,
+    serviceDate: r.service_date ?? null,
+    amountTotalCents: r.amount_total,
+    pilotId: r.pilot_id ?? null,
+  }));
+}
+
 export interface InvoiceLine {
   label: string;
   quantity: number;
