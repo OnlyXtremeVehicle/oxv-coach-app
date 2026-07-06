@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvbreathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvdash{to{stroke-dashoffset:-24}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; overflow:hidden; color:#F8F9FA; font-family:'Rajdhani',sans-serif; background:radial-gradient(90% 60% at 50% 32%, #101015 0%, #050505 70%);">
+
+      <!-- MAP full-bleed (pinch / pan) -->
+      <div onPointerDown="{{ onPtrDown }}" onPointerMove="{{ onPtrMove }}" onPointerUp="{{ onPtrUp }}" onPointerCancel="{{ onPtrUp }}" onWheel="{{ onWheel }}" style="position:absolute; inset:0; touch-action:none; overflow:hidden; cursor:grab;">
+        <div style="width:100%; height:100%; transform-origin:0 0; transform:{{ mapTransform }};">{{ track }}</div>
+      </div>
+
+      <!-- Top gradient scrim -->
+      <div style="position:absolute; top:0; left:0; right:0; height:150px; background:linear-gradient(180deg,#050505 0%,#050505cc 40%,transparent 100%); pointer-events:none;"></div>
+
+      <!-- AppBar -->
+      <div style="position:absolute; top:56px; left:16px; right:16px; height:34px; display:flex; align-items:center; justify-content:center;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">CIRCUIT</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#9A9AA3;">VALENCE</div>
+      </div>
+
+      <!-- Meta chip -->
+      <div style="position:absolute; top:100px; left:16px; display:flex; align-items:center; gap:8px; padding:7px 11px; border-radius:4px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(6px);">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#C4A459;">18 VIRAGES</div>
+        <div style="width:1px; height:10px; background:#232326;"></div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#9A9AA3;">4,05 km</div>
+      </div>
+
+      <!-- LAYER TOGGLES -->
+      <div style="position:absolute; top:100px; right:16px; display:flex; flex-direction:column; gap:7px;">
+        <sc-for list="{{ layers }}" as="ly" hint-placeholder-count="3">
+          <div onClick="{{ ly.onClick }}" style="display:flex; align-items:center; gap:8px; padding:8px 11px; border-radius:4px; background:{{ ly.bg }}; border:{{ ly.border }}; backdrop-filter:blur(6px); cursor:pointer; min-width:118px;">
+            <div style="width:9px; height:9px; border-radius:2px; background:{{ ly.dot }}; box-shadow:{{ ly.dotGlow }};"></div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; letter-spacing:1px; color:{{ ly.text }};">{{ ly.label }}</div>
+            <div style="flex:1;"></div>
+            <div style="width:16px; height:16px; border-radius:3px; border:1px solid {{ ly.checkBorder }}; background:{{ ly.checkBg }}; display:flex; align-items:center; justify-content:center;">
+              <sc-if value="{{ ly.on }}" hint-placeholder-val="{{ true }}"><svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.3 6 8 1" stroke="#050505" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Legend (speed layer) -->
+      <sc-if value="{{ showSpeedLegend }}">
+        <div style="position:absolute; bottom:{{ legendBottom }}; left:16px; display:flex; flex-direction:column; gap:6px; padding:10px 12px; border-radius:4px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(6px); transition:bottom 340ms cubic-bezier(.22,1,.36,1);">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">VITESSE</div>
+          <div style="width:150px; height:7px; border-radius:999px; background:linear-gradient(90deg,#60A5FA,#F2792B,#FFB703);"></div>
+          <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;"><span>90</span><span>km/h</span><span>240</span></div>
+        </div>
+      </sc-if>
+
+      <!-- Zoom controls -->
+      <div style="position:absolute; right:16px; bottom:{{ legendBottom }}; display:flex; flex-direction:column; align-items:flex-end; gap:8px; transition:bottom 340ms cubic-bezier(.22,1,.36,1);">
+        <sc-if value="{{ showReset }}">
+          <div onClick="{{ resetZoom }}" style="display:flex; align-items:center; gap:6px; padding:7px 11px; border-radius:4px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(6px); cursor:pointer;">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 5V2.5H5M9.5 7v2.5H7M2.5 2.5l2.5 2.5M9.5 9.5L7 7" stroke="#9A9AA3" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#C9C9CE;">RESET</div>
+          </div>
+        </sc-if>
+        <div style="padding:6px 10px; border-radius:4px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(6px); font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#FFB703;">{{ zoomLabel }}</div>
+      </div>
+
+      <!-- Hint -->
+      <sc-if value="{{ showHint }}">
+        <div style="position:absolute; bottom:38px; left:50%; transform:translateX(-50%); padding:8px 14px; border-radius:999px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(6px); pointer-events:none;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#9A9AA3;">{{ hintText }}</div>
+        </div>
+      </sc-if>
+
+      <!-- CORNER PANEL (bottom sheet) -->
+      <div style="position:absolute; left:0; right:0; bottom:0; transform:translateY({{ sheetY }}); transition:transform 380ms cubic-bezier(.22,1,.36,1);">
+        <div style="margin:0 10px 10px; border-radius:10px 10px 12px 12px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #2a2a30; box-shadow:0 -12px 40px rgba(0,0,0,0.55);">
+          <div style="display:flex; justify-content:center; padding:8px 0 4px;"><div style="width:38px; height:4px; border-radius:999px; background:#2e2e34;"></div></div>
+          <div style="padding:6px 16px 20px; display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div style="width:46px; height:46px; border-radius:6px; border:1px solid #C4A45944; background:#0B0B0D; display:flex; align-items:center; justify-content:center;">
+                <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:20px; color:#C4A459;">{{ selNum }}</div>
+              </div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; letter-spacing:.3px; color:#F8F9FA;">{{ selName }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#6E6E76;">{{ selType }}</div>
+              </div>
+              <div onClick="{{ closeSheet }}" style="width:30px; height:30px; border-radius:999px; border:1px solid #232326; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1l-8 8" stroke="#9A9AA3" stroke-width="1.4" stroke-linecap="round"></path></svg>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+              <div style="flex:1; border-radius:6px; padding:12px; background:#0B0B0D; border:1px solid #1C1C20; display:flex; flex-direction:column; gap:5px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">VITESSE CORDE</div>
+                <div style="display:flex; align-items:baseline; gap:3px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:30px; color:#FFB703; line-height:0.9; text-shadow:0 0 16px rgba(255,183,3,0.3);">{{ selApex }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">km/h</div>
+                </div>
+              </div>
+              <div style="flex:1; border-radius:6px; padding:12px; background:#0B0B0D; border:1px solid #1C1C20; display:flex; flex-direction:column; gap:5px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">MARGE À LA CORDE</div>
+                <div style="display:flex; align-items:baseline; gap:3px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:30px; color:{{ selMarginColor }}; line-height:0.9;">{{ selMargin }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">m</div>
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:8px; padding:11px 13px; border-radius:6px; background:#0B0B0D; border:1px solid #1C1C20; cursor:pointer;">
+              <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#E6E6E8;">Ouvrir le détail du virage</div>
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#9A9AA3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 },
+  &quot;startLayer&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;trace&quot;, &quot;options&quot;: [&quot;trace&quot;, &quot;speed&quot;, &quot;margin&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Aperçu&quot; }
+}">
+class Component extends DCLogic {
+  state = { layer: 'trace', selected: null, mounted: false, scale: 1, tx: 0, ty: 0 };
+  ptrs = new Map();
+
+  // Centered closed loop in a 360x760 viewBox, generated for balance
+  makePts = () => {
+    const cx = 182, cy = 398, rx = 116, ry = 212, K = 22, out = [];
+    const wob = [1.04, 0.96, 1.08, 0.80, 0.98, 1.12, 0.90, 0.76, 1.06, 0.98, 1.10, 0.84, 1.0, 1.14, 0.88, 0.80, 1.08, 0.98, 1.06, 0.88, 1.0, 0.90];
+    for (let k = 0; k < K; k++) {
+      const a = -Math.PI / 2 + (k / K) * 2 * Math.PI;
+      const w = wob[k % wob.length];
+      out.push([cx + Math.cos(a) * rx * w, cy + Math.sin(a) * ry * w]);
+    }
+    return out;
+  };
+  PTS = this.makePts();
+
+  CORNERS = [
+    { i: 2,  n: 1,  name: 'Courbe amont',   type: 'DROITE RAPIDE · 4ᵉ', apex: 182, margin: '0,4' },
+    { i: 5,  n: 4,  name: 'Épingle Nord',   type: 'GAUCHE SERRÉE · 2ᵉ',  apex: 96,  margin: '0,2' },
+    { i: 8,  n: 6,  name: 'Enchaînement',   type: 'GAUCHE-DROITE · 3ᵉ',  apex: 128, margin: '0,7' },
+    { i: 11, n: 9,  name: 'Virage aveugle', type: 'DROITE · 3ᵉ',         apex: 118, margin: '0,3' },
+    { i: 14, n: 12, name: 'Grande courbe',  type: 'GAUCHE LONGUE · 4ᵉ',  apex: 156, margin: '1,1' },
+    { i: 17, n: 14, name: 'Relance Sud',    type: 'DROITE · 3ᵉ',         apex: 138, margin: '0,6' },
+    { i: 20, n: 16, name: 'Esse final',     type: 'DROITE-GAUCHE · 3ᵉ',  apex: 132, margin: '0,5' },
+  ];
+
+  componentDidMount() {
+    requestAnimationFrame(() => this.setState({ mounted: true }));
+    this._fb = setTimeout(() => this.setState({ mounted: true }), 260);
+  }
+  componentWillUnmount() { clearTimeout(this._fb); }
+
+  // ---- pinch / pan / wheel gestures ----
+  clampPan(tx, ty, scale) {
+    const W = this._w || 360, H = this._h || 760;
+    const minx = W - W * scale, miny = H - H * scale;
+    return { tx: Math.min(0, Math.max(minx, tx)), ty: Math.min(0, Math.max(miny, ty)), scale };
+  }
+
+  zoomAround(cx, cy, ratio) {
+    this.setState((s) => {
+      const ns = Math.max(1, Math.min(5, s.scale * ratio));
+      const f = ns / s.scale;
+      let tx = cx - (cx - s.tx) * f, ty = cy - (cy - s.ty) * f;
+      if (ns <= 1.001) { tx = 0; ty = 0; }
+      return this.clampPan(tx, ty, ns);
+    });
+  }
+
+  onPtrDown = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    this._w = r.width; this._h = r.height;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {}
+    this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    this._panLast = { x: e.clientX, y: e.clientY };
+    this._pinchDist = null;
+    this._moved = 0;
+  };
+
+  onPtrMove = (e) => {
+    if (!this.ptrs.has(e.pointerId)) return;
+    this.ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const r = e.currentTarget.getBoundingClientRect();
+    const pts = [...this.ptrs.values()];
+    if (pts.length >= 2) {
+      const [a, b] = pts;
+      const dist = Math.hypot(a.x - b.x, a.y - b.y);
+      const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+      if (this._pinchDist != null && this._pinchDist > 0) this.zoomAround(mx, my, dist / this._pinchDist);
+      this._pinchDist = dist;
+      this._panLast = null;
+      this._moved += 20;
+    } else if (this._panLast) {
+      const dx = e.clientX - this._panLast.x, dy = e.clientY - this._panLast.y;
+      this._moved += Math.abs(dx) + Math.abs(dy);
+      this.setState((s) => (s.scale > 1.001 ? this.clampPan(s.tx + dx, s.ty + dy, s.scale) : s));
+      this._panLast = { x: e.clientX, y: e.clientY };
+    }
+  };
+
+  onPtrUp = (e) => {
+    this.ptrs.delete(e.pointerId);
+    if (this.ptrs.size < 2) this._pinchDist = null;
+    if (this.ptrs.size === 1) { const p = [...this.ptrs.values()][0]; this._panLast = { x: p.x, y: p.y }; }
+    else if (this.ptrs.size === 0) this._panLast = null;
+  };
+
+  onWheel = (e) => {
+    if (e.preventDefault) e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    this._w = r.width; this._h = r.height;
+    this.zoomAround(e.clientX - r.left, e.clientY - r.top, e.deltaY < 0 ? 1.12 : 1 / 1.12);
+  };
+
+  resetZoom = () => this.setState({ scale: 1, tx: 0, ty: 0 });
+
+  // Catmull-Rom closed spline sampled into points
+  sample(step) {
+    const P = this.PTS, n = P.length, out = [];
+    for (let i = 0; i < n; i++) {
+      const p0 = P[(i - 1 + n) % n], p1 = P[i], p2 = P[(i + 1) % n], p3 = P[(i + 2) % n];
+      for (let t = 0; t < 1; t += step) {
+        const t2 = t * t, t3 = t2 * t;
+        const x = 0.5 * ((2 * p1[0]) + (-p0[0] + p2[0]) * t + (2 * p0[0] - 5 * p1[0] + 4 * p2[0] - p3[0]) * t2 + (-p0[0] + 3 * p1[0] - 3 * p2[0] + p3[0]) * t3);
+        const y = 0.5 * ((2 * p1[1]) + (-p0[1] + p2[1]) * t + (2 * p0[1] - 5 * p1[1] + 4 * p2[1] - p3[1]) * t2 + (-p0[1] + 3 * p1[1] - 3 * p2[1] + p3[1]) * t3);
+        out.push([x, y]);
+      }
+    }
+    out.push(out[0]);
+    return out;
+  }
+
+  cornerXY(idx) {
+    // position of a waypoint on the sampled spline (approx = the waypoint itself)
+    return this.PTS[idx];
+  }
+
+  buildTrack() {
+    const h = React.createElement;
+    const pts = this.sample(0.08);
+    const dPath = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ') + ' Z';
+    const on = this.state.mounted, layer = this.state.layer, sel = this.state.selected, scale = this.state.scale;
+    const zoomed = scale >= 2.2;
+
+    const kids = [];
+
+    // base wide track bed
+    kids.push(h('path', { key: 'bed', d: dPath, fill: 'none', stroke: '#1a1a1e', strokeWidth: 16, strokeLinejoin: 'round', strokeLinecap: 'round' }));
+    kids.push(h('path', { key: 'bed2', d: dPath, fill: 'none', stroke: '#0d0d10', strokeWidth: 11, strokeLinejoin: 'round', strokeLinecap: 'round' }));
+
+    if (layer === 'speed') {
+      // color segments by local curvature → speed
+      const N = pts.length;
+      for (let i = 0; i < N - 1; i += 2) {
+        const a = pts[Math.max(0, i - 3)], b = pts[i], c = pts[Math.min(N - 1, i + 3)];
+        const ang = Math.abs(Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(b[1] - a[1], b[0] - a[0]));
+        const curv = Math.min(1, (ang > Math.PI ? 2 * Math.PI - ang : ang) / 0.9);
+        const col = curv > 0.6 ? '#60A5FA' : curv > 0.3 ? '#F2792B' : '#FFB703';
+        kids.push(h('path', { key: 'sp' + i, d: `M${pts[i][0].toFixed(1)} ${pts[i][1].toFixed(1)} L${pts[i + 1][0].toFixed(1)} ${pts[i + 1][1].toFixed(1)}`, stroke: col, strokeWidth: 6, strokeLinecap: 'round', opacity: on ? 0.95 : 0, style: { transition: `opacity 400ms ease ${i * 1.2}ms` } }));
+      }
+    } else {
+      // trace layer: gold racing line
+      kids.push(h('path', {
+        key: 'line', d: dPath, fill: 'none', stroke: '#FFB703', strokeWidth: 3, strokeLinejoin: 'round', strokeLinecap: 'round',
+        pathLength: 1, strokeDasharray: 1, strokeDashoffset: on ? 0 : 1,
+        style: { filter: 'drop-shadow(0 0 4px rgba(255,183,3,0.5))', transition: 'stroke-dashoffset 1800ms cubic-bezier(.22,1,.36,1)' },
+      }));
+      // start/finish line
+      const s = this.PTS[0];
+      kids.push(h('rect', { key: 'sf', x: s[0] - 9, y: s[1] - 2, width: 18, height: 4, fill: '#F8F9FA', opacity: 0.9, transform: `rotate(24 ${s[0]} ${s[1]})` }));
+    }
+
+    // margin layer: amber rings sized by tightness
+    if (layer === 'margin') {
+      this.CORNERS.forEach((c) => {
+        const [x, y] = this.cornerXY(c.i);
+        const tight = parseFloat(c.margin.replace(',', '.'));
+        const r = 6 + (1.2 - Math.min(1.2, tight)) * 10;
+        kids.push(h('circle', { key: 'mg' + c.n, cx: x, cy: y, r, fill: '#F2792B', opacity: on ? (tight < 0.5 ? 0.34 : 0.16) : 0, style: { transition: 'opacity 400ms ease' } }));
+        kids.push(h('circle', { key: 'mgc' + c.n, cx: x, cy: y, r: 3, fill: '#F2792B' }));
+      });
+    }
+
+    // EXACT APEX (corde) — revealed when zoomed in
+    if (zoomed) {
+      this.CORNERS.forEach((c) => {
+        const [x, y] = this.cornerXY(c.i);
+        // inward normal (toward loop centre) to mark the exact clipping point
+        const nx = 182 - x, ny = 398 - y, nl = Math.hypot(nx, ny) || 1;
+        const ix = x + (nx / nl) * 4.5, iy = y + (ny / nl) * 4.5;
+        kids.push(h('g', { key: 'ap' + c.n, style: { opacity: 0.95 } },
+          h('line', { x1: x, y1: y, x2: ix, y2: iy, stroke: '#FFB703', strokeWidth: 0.8, opacity: 0.6 }),
+          h('circle', { cx: ix, cy: iy, r: 2.4, fill: '#FFB703', stroke: '#050505', strokeWidth: 0.7 }),
+          h('text', { x: ix, y: iy - 5, fill: '#FFB703', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, fontSize: 4.2, textAnchor: 'middle', style: { pointerEvents: 'none' } }, 'CORDE ' + c.apex),
+        ));
+      });
+    }
+
+    // corner markers (always) + numbers heritageGold
+    this.CORNERS.forEach((c) => {
+      const [x, y] = this.cornerXY(c.i);
+      const active = sel === c.n;
+      const R = zoomed ? 6 : 11, FS = zoomed ? 5.5 : 10;
+      kids.push(h('g', { key: 'cn' + c.n, style: { cursor: 'pointer', opacity: on ? 1 : 0, transition: 'opacity 300ms ease 300ms' }, onClick: () => { if ((this._moved || 0) > 8) return; this.setState({ selected: c.n }); } },
+        active ? h('circle', { cx: x, cy: y, r: R + 4, fill: 'none', stroke: '#C4A459', strokeWidth: 1.4, strokeDasharray: '3 3' }) : null,
+        h('circle', { cx: x, cy: y, r: R, fill: active ? '#C4A459' : '#0B0B0D', stroke: '#C4A459', strokeWidth: 1.4 }),
+        h('text', { x, y: y + 0.5, fill: active ? '#050505' : '#C4A459', fontFamily: '"JetBrains Mono", monospace', fontWeight: 700, fontSize: FS, textAnchor: 'middle', dominantBaseline: 'central', style: { pointerEvents: 'none' } }, String(c.n)),
+      ));
+    });
+
+    return h('svg', { viewBox: '0 0 360 760', width: '100%', height: '100%', preserveAspectRatio: 'xMidYMid meet', style: { display: 'block' } }, ...kids);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const LAYERS = [
+      { key: 'trace',  label: 'Tracé',   dot: '#FFB703' },
+      { key: 'speed',  label: 'Vitesse', dot: '#F2792B' },
+      { key: 'margin', label: 'Marges',  dot: '#F2792B' },
+    ];
+    const sel = this.CORNERS.find(c => c.n === st.selected);
+    const marginNum = sel ? parseFloat(sel.margin.replace(',', '.')) : 1;
+
+    return {
+      isDark: true,
+      track: this.buildTrack(),
+      back: () => {},
+      onPtrDown: this.onPtrDown, onPtrMove: this.onPtrMove, onPtrUp: this.onPtrUp, onWheel: this.onWheel,
+      mapTransform: `translate(${st.tx}px, ${st.ty}px) scale(${st.scale})`,
+      zoomLabel: st.scale <= 1.001 ? '1:1' : st.scale.toFixed(1) + '×',
+      showReset: st.scale > 1.001,
+      resetZoom: this.resetZoom,
+      hintText: st.scale > 1.001 ? 'Glissez pour déplacer · pincez pour zoomer' : 'Pincez pour zoomer · touchez un virage',
+      layers: LAYERS.map(l => {
+        const on = st.layer === l.key;
+        return {
+          label: l.label, on,
+          onClick: () => this.setState({ layer: l.key }),
+          bg: on ? '#0B0B0Dee' : '#0B0B0Daa',
+          border: on ? '1px solid ' + l.dot + '66' : '1px solid #232326',
+          dot: l.dot, dotGlow: on ? '0 0 8px ' + l.dot + '88' : 'none',
+          text: on ? '#F8F9FA' : '#9A9AA3',
+          checkBorder: on ? l.dot : '#3a3a42',
+          checkBg: on ? l.dot : 'transparent',
+        };
+      }),
+      showSpeedLegend: st.layer === 'speed',
+      legendBottom: st.selected != null ? '250px' : '38px',
+      showHint: st.selected == null,
+      sheetY: st.selected != null ? '0px' : '110%',
+      selNum: sel ? String(sel.n) : '',
+      selName: sel ? sel.name : '',
+      selType: sel ? sel.type : '',
+      selApex: sel ? String(sel.apex) : '',
+      selMargin: sel ? sel.margin : '',
+      selMarginColor: marginNum < 0.5 ? '#F2792B' : '#E6E6E8',
+      closeSheet: () => this.setState({ selected: null }),
+    };
+  }
+}
+</script>
+</body>
+</html>

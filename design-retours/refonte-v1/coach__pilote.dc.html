@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilotes.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">PILOTE</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <!-- pilot identity -->
+      <div style="display:flex; align-items:center; gap:13px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="width:52px; height:52px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:16px; color:#C4A459;">VL</div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+          <div style="font-family:'Instrument Serif',serif; font-size:26px; line-height:1; color:#F8F9FA;">Valentin L.</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#6E6E76;">VALENCE · DERNIÈRE SÉANCE IL Y A 2 J</div>
+        </div>
+      </div>
+
+      <!-- PILOT MIRROR (neutral, read-only) -->
+      <div style="border-radius:6px; padding:16px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; align-items:center; gap:16px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="display:flex; align-items:flex-end; gap:6px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:52px; line-height:0.8; color:#FFB703; text-shadow:0 0 22px rgba(255,183,3,0.3);">73</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#54545C; padding-bottom:6px;">QDI</div>
+        </div>
+        <div style="width:1px; height:44px; background:#1C1C20;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:7px;">
+          <div style="display:flex; justify-content:space-between;"><span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#9A9AA3;">MEILLEUR TOUR</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#E6E6E8;">1:24.6</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#9A9AA3;">RÉGULARITÉ</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#E6E6E8;">0,34 s</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#9A9AA3;">POINT FAIBLE</span><span style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#60A5FA;">FREINAGE</span></div>
+        </div>
+      </div>
+
+      <!-- COACH BAND — visually separated, red accent, serif italic -->
+      <div style="position:relative; border-radius:6px; padding:15px 16px 15px 18px; background:#12080a; border:1px solid #C8102E33; overflow:hidden; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:4px; background:#C8102E;"></div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="width:22px; height:22px; border-radius:999px; background:#C8102E; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:9px; font-weight:700; color:#fff;">MB</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1.5px; color:#C8102E;">NOTE DU COACH</div>
+          <div style="flex:1;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:#8a4a52;">BROUILLON</div>
+        </div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:16px; line-height:1.35; color:#F2D9DD;">Sur V07, tu freines 3 m trop tôt — on récupère la corde avant la sortie. Concentre-toi là dessus la prochaine fois.</div>
+      </div>
+
+      <!-- Sessions list -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 180ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">SÉANCES</div>
+        <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 13px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#E6E6E8;">{{ s.circuit }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:#6E6E76;">{{ s.meta }}</div>
+            </div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:17px; color:#FFB703;">{{ s.qdi }}</div>
+            <div style="width:6px; height:6px; border-radius:999px; background:{{ s.dot }};"></div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Primary CTA -->
+      <a href="coach__annoter.dc.html">
+        <div style="display:flex; align-items:center; gap:8px; padding:13px 15px; border-radius:5px; background:#C8102E; cursor:pointer;">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M11.5 2.5l2 2L6 12l-3 1 1-3z" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"></path></svg>
+          <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:.5px; color:#fff;">Annoter la séance</div>
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+      </a>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: true,
+      sessions: [
+        { circuit: 'Valence', meta: '12 JUIL · 34 TOURS · 3 SÉANCES', qdi: 73, dot: '#C8102E' },
+        { circuit: 'Lédenon', meta: '28 JUIN · 22 TOURS', qdi: 70, dot: '#97C459' },
+        { circuit: 'Haute Saintonge', meta: '14 JUIN · 30 TOURS', qdi: 68, dot: '#97C459' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

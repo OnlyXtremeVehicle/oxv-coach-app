@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvbt{0%,100%{opacity:.4}50%{opacity:1}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilotes.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">MATÉRIEL</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">PARC · 4 BOÎTIERS · 2 HUD</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:24px; line-height:1.05; color:#F8F9FA;">Assigner le matériel.</div>
+      </div>
+
+      <!-- device park -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">BOÎTIERS D'ACQUISITION</div>
+        <sc-for list="{{ devices }}" as="d" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 13px; border-radius:6px; border:{{ d.border }}; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:34px; height:34px; border-radius:6px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="10" height="12" rx="2" stroke="{{ d.iconColor }}" stroke-width="1.3"></rect><circle cx="8" cy="9" r="2" stroke="{{ d.iconColor }}" stroke-width="1.2"></circle></svg>
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#F8F9FA;">{{ d.name }}</div>
+                <sc-if value="{{ d.bt }}"><div style="width:5px; height:5px; border-radius:999px; background:#60A5FA; animation:oxvbt 1.4s ease-in-out infinite;"></div></sc-if>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:#6E6E76;">{{ d.assign }}</div>
+            </div>
+            <!-- battery -->
+            <div style="display:flex; align-items:center; gap:5px;">
+              <div style="width:22px; height:11px; border-radius:2px; border:1px solid {{ d.battColor }}; position:relative; padding:1px;">
+                <div style="height:100%; width:{{ d.battW }}; background:{{ d.battColor }}; border-radius:1px;"></div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:{{ d.battColor }};">{{ d.batt }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Waivers -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 140ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">DÉCHARGES DE RESPONSABILITÉ</div>
+        <sc-for list="{{ waivers }}" as="w" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px 13px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:24px; height:24px; border-radius:5px; border:1px solid {{ w.ring }}; background:{{ w.box }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <sc-if value="{{ w.signed }}" hint-placeholder-val="{{ true }}"><svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L4 7.5 10 1" stroke="#050505" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></sc-if>
+            </div>
+            <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:{{ w.textColor }};">{{ w.name }}</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:{{ w.stColor }};">{{ w.status }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    const D = [
+      { name: 'RaceBox #01', assign: 'ASSIGNÉ · VALENTIN L.', bt: true, batt: 84, active: true },
+      { name: 'RaceBox #02', assign: 'ASSIGNÉ · SOFIA R.', bt: true, batt: 61, active: true },
+      { name: 'RaceBox #03', assign: 'LIBRE · TOUCHER POUR ASSIGNER', bt: false, batt: 22, active: false },
+      { name: 'HUD Balise #A', assign: 'ASSIGNÉ · VALENTIN L.', bt: true, batt: 47, active: true },
+    ];
+    const batteryColor = (b) => b > 50 ? '#97C459' : b > 25 ? '#F2792B' : '#C8102E';
+    const W = [
+      { name: 'Valentin L.', status: 'SIGNÉE', signed: true },
+      { name: 'Sofia R.', status: 'SIGNÉE', signed: true },
+      { name: 'Marc D.', status: 'À SIGNER', signed: false },
+    ];
+    return {
+      isDark: true,
+      devices: D.map(d => ({
+        name: d.name, assign: d.assign, bt: d.bt, batt: d.batt + '%', battW: d.batt + '%',
+        battColor: batteryColor(d.batt),
+        iconColor: d.active ? '#F8F9FA' : '#54545C',
+        border: d.active ? '1px solid #1C1C20' : '1px solid #1C1C20',
+      })),
+      waivers: W.map(w => ({
+        name: w.name, signed: w.signed,
+        status: w.status,
+        ring: w.signed ? '#97C459' : '#F2792B',
+        box: w.signed ? '#97C459' : 'transparent',
+        textColor: w.signed ? '#E6E6E8' : '#F8F9FA',
+        stColor: w.signed ? '#97C459' : '#F2792B',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

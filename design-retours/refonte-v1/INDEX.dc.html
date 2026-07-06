@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#050505;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .cell:hover{border-color:var(--hc)!important;background:#111116!important;}
+  </style>
+</helmet>
+<div style="min-height:100vh; background:radial-gradient(90% 55% at 50% -5%, #101015 0%, #050505 55%); color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:52px 40px 90px;">
+  <div style="max-width:1160px; margin:0 auto; display:flex; flex-direction:column; gap:30px;">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; border-bottom:1px solid #1C1C20; padding-bottom:26px;">
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:4px; color:#F8F9FA;">OXV<span style="color:#54545C;">MIRROR</span></div>
+          <div style="width:1px; height:13px; background:#232326;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:#6E6E76;">SOMMAIRE DU PROJET</div>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:56px; letter-spacing:1px; line-height:0.9; color:#F8F9FA;">TOUS LES ÉCRANS</div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; color:#9A9AA3;">L'écosystème OXV Mirror complet — 4 rôles, 46 écrans, 4 galeries, 3 documents.</div>
+      </div>
+      <div style="display:flex; gap:22px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:32px; color:#FFB703; line-height:1;">46</div><div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">ÉCRANS</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:32px; color:#F8F9FA; line-height:1;">4</div><div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">RÔLES</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:32px; color:#F8F9FA; line-height:1;">3</div><div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">DOCS</div></div>
+      </div>
+    </div>
+
+    <!-- DOCUMENTS -->
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <div style="display:flex; align-items:center; gap:10px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13px; letter-spacing:2px; color:#9A9AA3;">DOCUMENTATION</div><div style="flex:1; height:1px; background:#1C1C20;"></div></div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;">
+        <sc-for list="{{ docs }}" as="d" hint-placeholder-count="3">
+          <a href="{{ d.href }}"><div class="cell" style="--hc:#C4A459; border-radius:8px; border:1px solid #232326; background:#0B0B0D; padding:16px; display:flex; flex-direction:column; gap:8px; transition:all 160ms;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C4A459;">{{ d.tag }}</div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; color:#F8F9FA;">{{ d.name }}</div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:12.5px; line-height:1.4; color:#9A9AA3;">{{ d.desc }}</div>
+          </div></a>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- ROLES -->
+    <sc-for list="{{ roles }}" as="r" hint-placeholder-count="4">
+      <div style="display:flex; flex-direction:column; gap:13px; animation:oxvrise 600ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:11px; height:11px; border-radius:3px; background:{{ r.color }}; box-shadow:0 0 10px {{ r.glow }};"></div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:20px; letter-spacing:1px; color:#F8F9FA;">{{ r.name }}</div>
+          <a href="{{ r.gallery }}" style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:{{ r.color }}; border:1px solid {{ r.border }}; border-radius:4px; padding:4px 9px;">GALERIE ↗</a>
+          <div style="flex:1; height:1px; background:#1C1C20;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#54545C;">{{ r.count }} ÉCRANS</div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:9px;">
+          <sc-for list="{{ r.screens }}" as="s" hint-placeholder-count="8">
+            <a href="{{ s.href }}"><div class="cell" style="--hc:{{ r.color }}; border-radius:7px; border:1px solid #1C1C20; background:linear-gradient(180deg,#111114 0%,#0a0a0d 100%); padding:12px 13px; display:flex; flex-direction:column; gap:4px; min-height:70px; transition:all 160ms;">
+              <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14.5px; color:#F8F9FA; line-height:1.05;">{{ s.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:{{ r.color }}; border:1px solid {{ r.border }}; border-radius:3px; padding:1px 4px; flex-shrink:0;">{{ s.arch }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.3px; color:#54545C;">{{ s.file }}</div>
+            </div></a>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+
+    <div style="display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#54545C; margin-top:6px;">
+      <div style="width:9px; height:3px; border-radius:2px; background:#FFB703;"></div> Cliquez une carte pour ouvrir l'écran jouable · l'or reste réservé à la donnée de performance.
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 1200, &quot;height&quot;: 1400 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      docs: [
+        { tag: 'MAP', name: 'Carte de l\u2019écosystème', desc: 'Fonctionnalités & flux inter-rôles — qui ouvre quoi, ce qui circule entre espaces.', href: 'CARTE_ECOSYSTEME.dc.html' },
+        { tag: 'BUILD', name: 'Spécification de build', desc: '46 écrans → route .tsx, archétype, données, viz Skia, navigation, états. Pour Claude Code.', href: 'SPEC_BUILD.dc.html' },
+        { tag: 'STYLE', name: 'Guide d\u2019intégration', desc: 'Tokens, fonts, doctrine, kit de composants, traduction Skia, navigation.', href: 'GUIDE_INTEGRATION.dc.html' },
+      ],
+      roles: [
+        { name: 'PILOTE', color: '#FFB703', glow: '#FFB70366', border: '#FFB70344', gallery: 'role__pilote.dc.html', count: 10, screens: [
+          { name: 'Paddock', arch: 'A1', file: 'app__paddock', href: 'app__paddock.dc.html' },
+          { name: 'Signature / QDI', arch: 'A2', file: 'app__signature', href: 'app__signature.dc.html' },
+          { name: 'Bilan', arch: 'A2', file: 'app__bilan', href: 'app__bilan.dc.html' },
+          { name: 'Data Lab', arch: 'A3', file: 'app__data-lab', href: 'app__data-lab.dc.html' },
+          { name: 'Carte circuit', arch: 'A4', file: 'app__carte', href: 'app__carte.dc.html' },
+          { name: 'Détail virage', arch: 'A5', file: 'app__virage', href: 'app__virage.dc.html' },
+          { name: 'Comparer virage', arch: 'A6', file: 'app__virage-comparer', href: 'app__virage-comparer.dc.html' },
+          { name: 'Tour par tour', arch: 'A5', file: 'app__tours', href: 'app__tours.dc.html' },
+          { name: 'Progression', arch: 'A1', file: 'app__progression', href: 'app__progression.dc.html' },
+          { name: 'Vue pilote', arch: 'A4', file: 'app__replay', href: 'app__replay.dc.html' },
+        ] },
+        { name: 'COACH', color: '#C8102E', glow: '#C8102E66', border: '#C8102E55', gallery: 'role__coach.dc.html', count: 22, screens: [
+          { name: 'Poste de pilotage', arch: 'A1', file: 'coach__home', href: 'coach__home.dc.html' },
+          { name: 'Pilotes', arch: 'A9', file: 'coach__pilotes', href: 'coach__pilotes.dc.html' },
+          { name: 'Détail pilote', arch: 'A11', file: 'coach__pilote', href: 'coach__pilote.dc.html' },
+          { name: 'CRM fiche', arch: 'A11', file: 'coach__crm', href: 'coach__crm.dc.html' },
+          { name: 'File de lecture', arch: 'A9', file: 'coach__file', href: 'coach__file.dc.html' },
+          { name: 'Direction course', arch: 'A9', file: 'coach__direction', href: 'coach__direction.dc.html' },
+          { name: 'Matériel + décharges', arch: 'A8', file: 'coach__materiel', href: 'coach__materiel.dc.html' },
+          { name: 'Contexte séance', arch: 'A8', file: 'coach__contexte', href: 'coach__contexte.dc.html' },
+          { name: 'Facturation', arch: 'A11', file: 'coach__facturation', href: 'coach__facturation.dc.html' },
+          { name: 'Studio télémétrie', arch: 'A6', file: 'coach__studio', href: 'coach__studio.dc.html' },
+          { name: 'Triage IA', arch: 'A3', file: 'coach__triage', href: 'coach__triage.dc.html' },
+          { name: 'Annoter', arch: 'A11', file: 'coach__annoter', href: 'coach__annoter.dc.html' },
+          { name: 'Comparer séances', arch: 'A6', file: 'coach__comparer', href: 'coach__comparer.dc.html' },
+          { name: 'Priorités', arch: 'A11', file: 'coach__priorites', href: 'coach__priorites.dc.html' },
+          { name: 'Plan', arch: 'A11', file: 'coach__plan', href: 'coach__plan.dc.html' },
+          { name: 'Repères', arch: 'A9', file: 'coach__reperes', href: 'coach__reperes.dc.html' },
+          { name: 'Suivi objectifs', arch: 'A2', file: 'coach__suivi', href: 'coach__suivi.dc.html' },
+          { name: 'Débrief', arch: 'A11', file: 'coach__debrief', href: 'coach__debrief.dc.html' },
+          { name: 'Rapport PDF', arch: 'A7', file: 'coach__rapport', href: 'coach__rapport.dc.html' },
+          { name: 'Calendrier', arch: 'A9', file: 'coach__calendrier', href: 'coach__calendrier.dc.html' },
+          { name: 'Profil (édition)', arch: 'A8', file: 'coach__profil-edit', href: 'coach__profil-edit.dc.html' },
+          { name: 'Vitrine publique', arch: 'A7', file: 'coach__vitrine', href: 'coach__vitrine.dc.html' },
+        ] },
+        { name: 'PARTENAIRE', color: '#2A6FDB', glow: '#2A6FDB66', border: '#2A6FDB55', gallery: 'role__partenaire.dc.html', count: 10, screens: [
+          { name: 'Accueil pro', arch: 'A1', file: 'partenaire__home', href: 'partenaire__home.dc.html' },
+          { name: 'Marketplace', arch: 'A3', file: 'partenaire__marketplace', href: 'partenaire__marketplace.dc.html' },
+          { name: 'Fiche partenaire', arch: 'A7', file: 'partenaire__fiche', href: 'partenaire__fiche.dc.html' },
+          { name: 'Réservations', arch: 'A9', file: 'partenaire__reservations', href: 'partenaire__reservations.dc.html' },
+          { name: 'Offres', arch: 'A9', file: 'partenaire__offres', href: 'partenaire__offres.dc.html' },
+          { name: 'Événements', arch: 'A9', file: 'partenaire__evenements', href: 'partenaire__evenements.dc.html' },
+          { name: 'Devis', arch: 'A11', file: 'partenaire__devis', href: 'partenaire__devis.dc.html' },
+          { name: 'Facturation', arch: 'A11', file: 'partenaire__facturation', href: 'partenaire__facturation.dc.html' },
+          { name: 'Statistiques', arch: 'A2', file: 'partenaire__stats', href: 'partenaire__stats.dc.html' },
+          { name: 'Éditer vitrine', arch: 'A8', file: 'partenaire__vitrine-edit', href: 'partenaire__vitrine-edit.dc.html' },
+        ] },
+        { name: 'ADMIN', color: '#17B3B3', glow: '#17B3B366', border: '#17B3B355', gallery: 'role__admin.dc.html', count: 4, screens: [
+          { name: 'Tour de contrôle', arch: 'A1', file: 'admin__home', href: 'admin__home.dc.html' },
+          { name: 'Utilisateurs', arch: 'A9', file: 'admin__utilisateurs', href: 'admin__utilisateurs.dc.html' },
+          { name: 'Modération', arch: 'A11', file: 'admin__moderation', href: 'admin__moderation.dc.html' },
+          { name: 'Revenus', arch: 'A2', file: 'admin__revenus', href: 'admin__revenus.dc.html' },
+        ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #0e1014 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="partenaire__home.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">DEVIS</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#5B8DEF; border:1px solid #5B8DEF55; border-radius:3px; padding:2px 6px;">PARTENAIRE</div>
+      </div>
+
+      <!-- client -->
+      <div style="display:flex; align-items:center; gap:12px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="width:44px; height:44px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:13px; color:#C4A459;">VL</div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:17px; color:#F8F9FA;">Valentin L.</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:#6E6E76;">CAYMAN GT4 · SETUP CHÂSSIS · URGENT</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#5B8DEF; border:1px solid #5B8DEF55; border-radius:3px; padding:3px 6px;">NOUVEAU</div>
+      </div>
+
+      <!-- request message -->
+      <div style="display:flex; flex-direction:column; gap:8px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="align-self:flex-start; max-width:80%; padding:12px 14px; border-radius:12px 12px 12px 4px; background:#131316; border:1px solid #1C1C20;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13.5px; line-height:1.4; color:#E6E6E8;">Bonjour, je roule au Castellet dans 10 jours. La voiture sous-vire à l'appui, il me faudrait un setup avant. Possible ?</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C; margin-top:5px;">HIER · 18:42</div>
+        </div>
+      </div>
+
+      <!-- quote builder -->
+      <div style="display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11px; letter-spacing:2px; color:#54545C;">VOTRE DEVIS</div>
+        <div style="border-radius:8px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; overflow:hidden;">
+          <sc-for list="{{ lines }}" as="l" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid #1C1C20;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:1px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13.5px; color:#F8F9FA;">{{ l.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;">{{ l.meta }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:#E6E6E8;">{{ l.price }} €</div>
+            </div>
+          </sc-for>
+          <div style="display:flex; align-items:center; gap:8px; padding:11px 14px;">
+            <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="#5B8DEF" stroke-width="1.4" stroke-linecap="round"></path></svg>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; color:#5B8DEF;">Ajouter une ligne</div>
+          </div>
+        </div>
+        <!-- total -->
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:14px; border-radius:8px; background:#0a0e14; border:1px solid #5B8DEF33;">
+          <div style="display:flex; flex-direction:column; gap:1px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">TOTAL TTC · DÉLAI 4 JOURS</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;">ACOMPTE 30% À LA RÉSERVATION</div>
+          </div>
+          <div style="display:flex; align-items:baseline; gap:3px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:32px; color:#FFB703; line-height:0.9;">560</div><div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#54545C;">€</div></div>
+        </div>
+      </div>
+
+      <!-- actions -->
+      <div style="display:flex; gap:11px; margin-top:2px;">
+        <div style="flex:1; padding:13px; border-radius:8px; border:1px solid #232326; background:transparent; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#9A9AA3;">Message</div>
+        <div style="flex:2; padding:13px; border-radius:8px; background:#5B8DEF; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:#050505;">Envoyer le devis</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: true,
+      lines: [
+        { name: 'Setup châssis piste', meta: 'GÉOMÉTRIE + AMORTISSEURS', price: '380' },
+        { name: 'Contrôle sous-virage', meta: 'BARRE AV · RÉGLAGE', price: '90' },
+        { name: 'Essai de validation', meta: '30 MIN · RELEVÉ DATA', price: '90' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

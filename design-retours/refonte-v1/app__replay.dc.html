@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <script src="./track_saintonge.js"></script>
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvbreathe{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; overflow:hidden; color:#F8F9FA; font-family:'Rajdhani',sans-serif; background:#050505;">
+
+      <!-- Ambient reactive backdrop -->
+      <div style="position:absolute; inset:0; background:radial-gradient(80% 55% at 50% 40%, {{ ambientA }} 0%, transparent 70%); transition:background 600ms ease; pointer-events:none;"></div>
+      <div style="position:absolute; inset:0; background:radial-gradient(120% 90% at 50% 120%, {{ ambientB }} 0%, transparent 55%); transition:background 600ms ease; pointer-events:none;"></div>
+
+      <!-- POV CANVAS -->
+      <canvas ref="{{ canvasRef }}" style="position:absolute; inset:0; width:100%; height:100%; display:block;"></canvas>
+
+      <!-- Top scrim -->
+      <div style="position:absolute; top:0; left:0; right:0; height:130px; background:linear-gradient(180deg,#050505 0%,#050505aa 45%,transparent 100%); pointer-events:none;"></div>
+      <!-- Bottom scrim -->
+      <div style="position:absolute; bottom:0; left:0; right:0; height:300px; background:linear-gradient(0deg,#050505 0%,#050505ee 30%,#050505aa 55%,transparent 100%); pointer-events:none;"></div>
+
+      <!-- AppBar -->
+      <div style="position:absolute; top:56px; left:16px; right:16px; height:34px; display:flex; align-items:center; justify-content:center;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:1px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA; line-height:1;">VUE PILOTE</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:1.5px; color:#6E6E76;">HAUTE SAINTONGE · 1905 m</div>
+        </div>
+        <div style="position:absolute; right:0; display:flex; align-items:center; gap:6px;">
+          <div style="width:6px; height:6px; border-radius:2px; background:{{ actColor }}; box-shadow:0 0 8px {{ actColor }}; transition:background 300ms ease;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:{{ actColor }}; transition:color 300ms ease; min-width:64px;">{{ actLabel }}</div>
+        </div>
+      </div>
+
+      <!-- Upcoming corner callout -->
+      <div style="position:absolute; top:102px; left:16px; display:flex; align-items:center; gap:9px; padding:7px 12px; border-radius:5px; background:#0B0B0Dcc; border:1px solid #232326; backdrop-filter:blur(8px);">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#54545C;">SECTEUR</div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:#F8F9FA; line-height:1;">{{ sector }}</div>
+      </div>
+
+      <!-- HUD cluster (bottom, above map) -->
+      <div style="position:absolute; bottom:196px; left:16px; right:16px; display:flex; align-items:flex-end; justify-content:space-between; pointer-events:none;">
+        <div style="display:flex; align-items:flex-end; gap:6px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:60px; line-height:0.78; color:#FFB703; text-shadow:0 0 24px rgba(255,183,3,0.4); font-variant-numeric:tabular-nums;">{{ speed }}</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#9A9AA3; padding-bottom:7px;">km/h</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:11px;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">RAPPORT</div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; line-height:0.8; color:#F8F9FA;">{{ gear }}</div>
+          </div>
+          <div style="width:7px; height:56px; border-radius:999px; background:#161618; position:relative; overflow:hidden;">
+            <div style="position:absolute; left:0; right:0; bottom:0; height:{{ throttlePct }}; background:{{ actColor }}; border-radius:999px; transition:height 140ms linear, background 300ms ease;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INTERACTIVE CIRCUIT MAP (drag to move) -->
+      <div style="position:absolute; bottom:66px; left:16px; right:16px; display:flex; gap:12px; align-items:flex-end;">
+        <div style="flex:1; border-radius:8px; background:#0B0B0Dd9; border:1px solid #232326; backdrop-filter:blur(8px); padding:10px 12px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#6E6E76;">GLISSEZ SUR LE TRACÉ POUR VOUS DÉPLACER</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:{{ actColor }}; transition:color 300ms ease;">{{ posM }} m</div>
+          </div>
+          <div onPointerDown="{{ mapDown }}" onPointerMove="{{ mapMove }}" onPointerUp="{{ mapUp }}" onPointerCancel="{{ mapUp }}" style="touch-action:none; cursor:grab;">
+            <svg viewBox="0 0 100 100" width="100%" height="112" style="display:block; overflow:visible;">
+              <sc-for list="{{ mapSegs }}" as="sg" hint-placeholder-count="60">
+                <path d="{{ sg.d }}" fill="none" stroke="{{ sg.c }}" stroke-width="{{ sg.w }}" stroke-linecap="round" stroke-linejoin="round" opacity="{{ sg.o }}"></path>
+              </sc-for>
+              <circle cx="{{ dotX }}" cy="{{ dotY }}" r="4.6" fill="{{ actColor }}" opacity="0.28"></circle>
+              <circle cx="{{ dotX }}" cy="{{ dotY }}" r="2.6" fill="{{ actColor }}" stroke="#050505" stroke-width="1"></circle>
+            </svg>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px; align-items:center;">
+          <div onClick="{{ togglePlay }}" style="width:44px; height:44px; border-radius:999px; background:#FFB703; display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 0 18px rgba(255,183,3,0.35);">
+            <sc-if value="{{ playing }}" hint-placeholder-val="{{ true }}"><svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="1" y="1" width="3.4" height="12" rx="1" fill="#050505"></rect><rect x="7.6" y="1" width="3.4" height="12" rx="1" fill="#050505"></rect></svg></sc-if>
+            <sc-if value="{{ paused }}"><svg width="13" height="14" viewBox="0 0 13 14" fill="none"><path d="M2 1.5v11l9-5.5z" fill="#050505"></path></svg></sc-if>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#9A9AA3;">{{ lapPct }}</div>
+        </div>
+      </div>
+
+      <!-- Action legend -->
+      <div style="position:absolute; bottom:30px; left:16px; right:16px; display:flex; gap:14px; justify-content:center;">
+        <sc-for list="{{ legend }}" as="lg" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:5px;">
+            <div style="width:9px; height:3px; border-radius:2px; background:{{ lg.c }};"></div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#9A9AA3;">{{ lg.t }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 }
+}">
+class Component extends DCLogic {
+  state = { playing: false, speed: 0, gear: 1, throttle: 0.4, actLabel: 'PLEIN GAZ', actKey: 'flat', sector: 'S1', posM: 0, lapPct: 0, dotIdx: 0 };
+  setCanvas = (el) => { this._cvEl = el; if (el) this.resize(); };
+
+  ACT = { brake: '#60A5FA', apex: '#F2792B', accel: '#4ADE80', flat: '#FFB703' };
+  ACT_LABEL = { brake: 'FREINAGE', apex: 'CORDE', accel: 'RÉACCÉL.', flat: 'PLEIN GAZ' };
+
+  SEG_LEN = 200; ROAD_W = 1050; CAM_H = 1000; CAM_DEPTH = 0.86; DRAW = 150;
+
+  constructor(props) {
+    super(props);
+    const T = (typeof window !== 'undefined' && window.SAINTONGE_TRACK) ? window.SAINTONGE_TRACK : null;
+    this.T = T;
+    if (T) {
+      this.N = T.N;
+      this.segs = [];
+      for (let i = 0; i < T.N; i++) {
+        this.segs.push({ index: i, curve: Math.max(-7, Math.min(7, T.drive[i] * 17)), speed: T.kmh[i], action: T.action[i] });
+      }
+      // smoothed racing-line offset (hug inside)
+      for (let i = 0; i < T.N; i++) {
+        let a = 0; for (let k = -4; k <= 4; k++) a += this.segs[(i + k + T.N) % T.N].curve;
+        this.segs[i].linePos = Math.max(-0.72, Math.min(0.72, (a / 9) * 0.1));
+      }
+      this.trackLength = this.N * this.SEG_LEN;
+      this.segMeters = T.lengthM / this.N;
+      this.worldPerMeter = this.SEG_LEN / this.segMeters;
+      this.buildMapSegs();
+    }
+    this._pos = 0; this._spd = 80; this._amb = [255, 183, 3];
+  }
+
+  buildMapSegs() {
+    const m = this.T.map, N = this.N, out = [];
+    for (let i = 0; i < N; i++) {
+      const a = m[i], b = m[(i + 1) % N];
+      // skip the long start/finish join (open trace)
+      if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 14) continue;
+      out.push({ d: `M${a[0]} ${a[1]} L${b[0]} ${b[1]}`, c: this.ACT[this.segs[i].action], w: 2.4, o: 0.92, i });
+    }
+    this.mapSegs = out;
+  }
+
+  componentDidMount() {
+    if (!this.T) { this._retry = setTimeout(() => { this.T = window.SAINTONGE_TRACK; if (this.T) { this.constructor.prototype.constructor.call(this, this.props); this.forceUpdate(); } }, 120); }
+    this._last = performance.now(); this._hud = 0;
+    this.resize();
+    this._loop = (now) => {
+      const dt = Math.min(0.05, (now - this._last) / 1000); this._last = now;
+      if (!this._cw || !this._ch) { this.resize(); if (!this._cw) { this._raf = requestAnimationFrame(this._loop); return; } }
+      if (this.segs) {
+        const base = Math.floor(this._pos / this.SEG_LEN) % this.N;
+        const target = this.segs[base].speed;
+        this._spd += (target - this._spd) * Math.min(1, dt * 2.4);
+        if (this.state.playing && !this._dragging) {
+          this._pos = (this._pos + (this._spd / 3.6) * this.worldPerMeter * dt) % this.trackLength;
+        }
+        this.draw();
+        this._hud += dt;
+        if (this._hud > 0.08) { this.updateHud(base); this._hud = 0; }
+      }
+      this._raf = requestAnimationFrame(this._loop);
+    };
+    this._raf = requestAnimationFrame(this._loop);
+    this._onResize = () => this.resize(); window.addEventListener('resize', this._onResize);
+  }
+  componentWillUnmount() { cancelAnimationFrame(this._raf); clearTimeout(this._retry); window.removeEventListener('resize', this._onResize); }
+
+  resize() {
+    const cv = this._cvEl; if (!cv) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const w = cv.clientWidth || 390, h = cv.clientHeight || 760;
+    cv.width = w * dpr; cv.height = h * dpr;
+    cv.getContext('2d').setTransform(dpr, 0, 0, dpr, 0, 0);
+    this._cw = w; this._ch = h;
+  }
+
+  updateHud(base) {
+    const seg = this.segs[base];
+    const spd = Math.round(this._spd);
+    const gear = Math.max(1, Math.min(6, Math.floor(spd / 40) + 1));
+    const accel = this._spd >= seg.speed - 4;
+    const lp = this._pos / this.trackLength;
+    const sector = 'S' + (1 + Math.floor(lp * 3));
+    this.setState({
+      speed: spd, gear, throttle: accel ? 0.85 : 0.25,
+      actKey: seg.action, actLabel: this.ACT_LABEL[seg.action],
+      sector, posM: Math.round(lp * this.T.lengthM), lapPct: lp, dotIdx: base,
+    });
+  }
+
+  project(p, camX, camY, camZ) {
+    const cz = p.wz - camZ; const sc = this.CAM_DEPTH / cz;
+    return { x: (this._cw / 2) + (sc * (p.wx - camX) * this._cw / 2), y: (this._ch / 2) + (sc * camY * this._ch / 2), w: sc * this.ROAD_W * this._cw / 2, cz };
+  }
+
+  quad(ctx, x1, y1, x2, y2, x3, y3, x4, y4, color) {
+    ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.lineTo(x3, y3); ctx.lineTo(x4, y4); ctx.closePath(); ctx.fill();
+  }
+
+  hex2rgb(h) { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
+
+  draw() {
+    const cv = this._cvEl; if (!cv || !this._cw || !this._ch) return;
+    const ctx = cv.getContext('2d'); const W = this._cw, H = this._ch;
+    const base = Math.floor(this._pos / this.SEG_LEN) % this.N;
+    // ease ambient toward current action color
+    const tgt = this.hex2rgb(this.ACT[this.segs[base].action]);
+    for (let i = 0; i < 3; i++) this._amb[i] += (tgt[i] - this._amb[i]) * 0.06;
+    const A = this._amb.map(v => Math.round(v));
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+    sky.addColorStop(0, '#0c0d13'); sky.addColorStop(1, '#070709');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+    // ambient horizon glow in action color
+    const hg = ctx.createRadialGradient(W / 2, H * 0.44, 0, W / 2, H * 0.44, W * 0.7);
+    hg.addColorStop(0, `rgba(${A[0]},${A[1]},${A[2]},0.10)`); hg.addColorStop(1, 'transparent');
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H * 0.66);
+
+    const playerX = this.segs[base].linePos * this.ROAD_W;
+    const basePercent = (this._pos % this.SEG_LEN) / this.SEG_LEN;
+    let maxy = H, x = 0, dx = -(this.segs[base].curve * basePercent);
+
+    for (let n = 0; n < this.DRAW; n++) {
+      const idx = (base + n) % this.N; const seg = this.segs[idx];
+      const looped = base + n >= this.N;
+      const camZ = this._pos - (looped ? this.trackLength : 0);
+      const z1 = (base + n) * this.SEG_LEN, z2 = (base + n + 1) * this.SEG_LEN;
+      const p1 = this.project({ wx: 0, wz: z1 }, playerX - x, this.CAM_H, camZ);
+      const p2 = this.project({ wx: 0, wz: z2 }, playerX - x - dx, this.CAM_H, camZ);
+      x += dx; dx += seg.curve;
+      if (p1.cz <= this.CAM_DEPTH || p2.y >= p1.y || p2.y >= maxy) continue;
+
+      const grp = Math.floor(idx / 3) % 2;
+      const grass = grp ? '#0a0b0d' : '#0c0d11';
+      const road = grp ? '#1a1b20' : '#171820';
+      const col = this.ACT[seg.action];
+
+      ctx.fillStyle = grass; ctx.fillRect(0, p2.y, W, p1.y - p2.y);
+      this.quad(ctx, p1.x - p1.w, p1.y, p1.x + p1.w, p1.y, p2.x + p2.w, p2.y, p2.x - p2.w, p2.y, road);
+      // rumbles tinted by action
+      const r1 = p1.w * 0.13, r2 = p2.w * 0.13;
+      this.quad(ctx, p1.x - p1.w - r1, p1.y, p1.x - p1.w, p1.y, p2.x - p2.w, p2.y, p2.x - p2.w - r2, p2.y, col);
+      this.quad(ctx, p1.x + p1.w, p1.y, p1.x + p1.w + r1, p1.y, p2.x + p2.w + r2, p2.y, p2.x + p2.w, p2.y, col);
+      // racing line colored by action
+      const lp = seg.linePos, lx1 = p1.x + p1.w * lp, lx2 = p2.x + p2.w * lp, lw1 = p1.w * 0.06, lw2 = p2.w * 0.06;
+      ctx.save(); ctx.shadowColor = col; ctx.shadowBlur = 9;
+      this.quad(ctx, lx1 - lw1, p1.y, lx1 + lw1, p1.y, lx2 + lw2, p2.y, lx2 - lw2, p2.y, col);
+      ctx.restore();
+      maxy = p2.y;
+    }
+    this.drawCockpit(ctx, W, H);
+  }
+
+  drawCockpit(ctx, W, H) {
+    ctx.save();
+    const g = ctx.createLinearGradient(0, H * 0.8, 0, H);
+    g.addColorStop(0, 'rgba(5,5,6,0)'); g.addColorStop(0.5, 'rgba(5,5,6,0.72)'); g.addColorStop(1, '#050506');
+    ctx.fillStyle = g; ctx.fillRect(0, H * 0.78, W, H * 0.22);
+    const cx = W / 2, cy = H * 1.14, r = W * 0.64;
+    ctx.strokeStyle = '#0f0f13'; ctx.lineWidth = 26; ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI * 1.17, Math.PI * 1.83); ctx.stroke();
+    ctx.strokeStyle = '#1c1c22'; ctx.lineWidth = 9; ctx.beginPath(); ctx.arc(cx, cy, r, Math.PI * 1.17, Math.PI * 1.83); ctx.stroke();
+    ctx.fillStyle = '#FFB703'; ctx.beginPath(); ctx.arc(cx, cy - r, 4.5, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  seekToMap(e) {
+    if (!this.T) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const mxp = (e.clientX - r.left) / r.width * 100, myp = (e.clientY - r.top) / r.height * 100;
+    let bi = 0, bd = Infinity;
+    for (let i = 0; i < this.N; i++) { const p = this.T.map[i]; const d = (p[0] - mxp) ** 2 + (p[1] - myp) ** 2; if (d < bd) { bd = d; bi = i; } }
+    this._pos = bi * this.SEG_LEN;
+    this.updateHud(bi);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const dot = (this.T && this.T.map[st.dotIdx]) ? this.T.map[st.dotIdx] : [50, 50];
+    const col = this.ACT[st.actKey] || '#FFB703';
+    const rgb = this.hex2rgb(col);
+    return {
+      isDark: true,
+      canvasRef: this.setCanvas,
+      back: () => {},
+      playing: st.playing, paused: !st.playing,
+      togglePlay: () => this.setState(s => ({ playing: !s.playing })),
+      speed: String(st.speed), gear: String(st.gear), throttlePct: Math.round(st.throttle * 100) + '%',
+      actColor: col, actLabel: st.actLabel, sector: st.sector,
+      posM: String(st.posM), lapPct: (st.lapPct * 100).toFixed(0) + '%',
+      ambientA: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.09)`,
+      ambientB: `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0.13)`,
+      mapSegs: this.mapSegs || [],
+      dotX: dot[0], dotY: dot[1],
+      mapDown: (e) => { this._dragging = true; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (x) {} this.seekToMap(e); },
+      mapMove: (e) => { if (this._dragging) this.seekToMap(e); },
+      mapUp: () => { this._dragging = false; },
+      legend: [
+        { c: '#60A5FA', t: 'FREINAGE' }, { c: '#F2792B', t: 'CORDE' }, { c: '#4ADE80', t: 'RÉACCÉL.' }, { c: '#FFB703', t: 'PLEIN GAZ' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

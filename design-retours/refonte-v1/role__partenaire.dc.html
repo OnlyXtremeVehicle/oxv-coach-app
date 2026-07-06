@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#050505;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100vh; background:radial-gradient(90% 60% at 50% -5%, #0b111c 0%, #050505 55%); color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:48px 40px 80px;">
+  <div style="max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:34px;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; border-bottom:1px solid #1C1C20; padding-bottom:24px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; letter-spacing:3px; color:#54545C;">OXV MIRROR</div>
+          <div style="width:1px; height:12px; background:#232326;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:#5B8DEF;">ESPACE PARTENAIRE</div>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:52px; letter-spacing:2px; line-height:0.9; color:#F8F9FA;">RÔLE PARTENAIRE</div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; color:#9A9AA3;">Le réseau pro : les pros publient leurs services, les pilotes réservent — vitrine, offres, devis, planning.</div>
+      </div>
+      <div style="display:flex; gap:26px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#5B8DEF; line-height:1;">10</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">ÉCRANS</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#F8F9FA; line-height:1;">2</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">FACES</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+      <sc-for list="{{ screens }}" as="s" hint-placeholder-count="10">
+        <a href="{{ s.href }}">
+          <div style="border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); overflow:hidden; animation:oxvrise 600ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="height:150px; position:relative; background:radial-gradient(80% 90% at 50% 0%, #10141c 0%, #0a0a0d 70%); display:flex; align-items:center; justify-content:center; border-bottom:1px solid #1C1C20; overflow:hidden;">
+              <div style="position:absolute; top:10px; left:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; top:10px; right:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; left:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; right:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              {{ s.preview }}
+            </div>
+            <div style="padding:15px 16px; display:flex; align-items:center; gap:12px;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; letter-spacing:.3px; color:#F8F9FA;">{{ s.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#6E6E76;">{{ s.meta }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:{{ s.faceColor }}; border:1px solid {{ s.faceBorder }}; border-radius:3px; padding:3px 7px;">{{ s.face }}</div>
+            </div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#54545C;">
+      <div style="width:9px; height:3px; border-radius:2px; background:#5B8DEF;"></div> Le bleu identifie l'espace partenaire, distinct du coach (rouge) et du pilote (or).
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 640 } }">
+class Component extends DCLogic {
+  glyph(kind) {
+    const h = React.createElement;
+    const svg = (kids) => h('svg', { width: 132, height: 96, viewBox: '0 0 132 96', fill: 'none', style: { overflow: 'visible' } }, ...kids);
+    switch (kind) {
+      case 'market': return svg([20, 44, 68].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 18, height: 18, rx: 4, fill: 'none', stroke: '#232326' }),
+        h('circle', { cx: 31, cy: y + 9, r: 3, fill: ['#5B8DEF', '#4ADE80', '#F2792B'][i] }),
+        h('rect', { x: 48, y: y + 4, width: 44, height: 5, rx: 2, fill: '#232326' }),
+        h('text', { x: 110, y: y + 12, fill: '#FFB703', fontFamily: '"JetBrains Mono"', fontSize: 8, textAnchor: 'end' }, '★' + ['4,8', '4,7', '4,6'][i]))));
+      case 'store': return svg([
+        h('path', { key: 1, d: 'M20 40l4-14h84l4 14', stroke: '#232326', strokeWidth: 2, strokeLinejoin: 'round', fill: 'none' }),
+        h('rect', { key: 2, x: 20, y: 40, width: 92, height: 40, fill: '#0d0e14', stroke: '#5B8DEF44' }),
+        h('rect', { key: 3, x: 52, y: 54, width: 28, height: 26, fill: 'none', stroke: '#5B8DEF' })]);
+      case 'dash': return svg([
+        h('rect', { key: 1, x: 20, y: 18, width: 40, height: 26, rx: 4, fill: 'none', stroke: '#232326' }),
+        h('text', { key: 2, x: 26, y: 36, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 15 }, '7340'),
+        h('rect', { key: 3, x: 66, y: 18, width: 46, height: 26, rx: 4, fill: 'none', stroke: '#232326' }),
+        ...[52, 66].map((y, i) => h('rect', { key: 'r' + i, x: 20, y, width: 92, height: 12, rx: 3, fill: 'none', stroke: '#5B8DEF33' }))]);
+      case 'catalog': return svg([18, 42, 66].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 88, height: 18, rx: 3, fill: 'none', stroke: '#232326' }),
+        h('rect', { x: 28, y: y + 6, width: 14, height: 7, rx: 3, fill: i < 2 ? '#97C459' : '#232326' }),
+        h('text', { x: 104, y: y + 12, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 12, textAnchor: 'end' }, ['380', '650', '90'][i]))));
+      case 'calendar': return svg([
+        h('rect', { key: 1, x: 22, y: 16, width: 88, height: 66, rx: 4, fill: 'none', stroke: '#232326' }),
+        h('line', { key: 2, x1: 22, y1: 32, x2: 110, y2: 32, stroke: '#232326' }),
+        ...[40, 54, 68].map((y, i) => h('g', { key: 'e' + i },
+          h('circle', { cx: 32, cy: y, r: 3, fill: ['#97C459', '#97C459', '#F2792B'][i] }),
+          h('rect', { x: 42, y: y - 3, width: 58, height: 6, rx: 2, fill: '#232326' })))]);
+      case 'quote': return svg([
+        h('rect', { key: 1, x: 20, y: 16, width: 60, height: 22, rx: '4 4 4 1', fill: '#131316', stroke: '#232326' }),
+        h('rect', { key: 2, x: 28, y: 24, width: 44, height: 5, rx: 2, fill: '#232326' }),
+        ...[48, 62].map((y, i) => h('g', { key: 'l' + i },
+          h('rect', { x: 20, y, width: 60, height: 5, rx: 2, fill: '#232326' }),
+          h('text', { x: 110, y: y + 5, fill: '#E6E6E8', fontFamily: '"JetBrains Mono"', fontSize: 8, textAnchor: 'end' }, ['380', '90'][i]))),
+        h('text', { key: 5, x: 110, y: 30, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 15, textAnchor: 'end' }, '560')]);
+      case 'stats': return svg([
+        h('text', { key: 1, x: 22, y: 34, fill: '#5B8DEF', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 22 }, '18%'),
+        ...Array.from({ length: 16 }).map((_, i) => { const hh = 6 + Math.abs(Math.sin(i) * 22); return h('rect', { key: 'b' + i, x: 20 + i * 6, y: 78 - hh, width: 4, height: hh, rx: 1, fill: i >= 12 ? '#5B8DEF' : '#232630' }); })]);
+      case 'event': return svg([
+        h('rect', { key: 1, x: 20, y: 16, width: 92, height: 40, rx: 4, fill: '#0d0e14', stroke: '#5B8DEF33' }),
+        h('rect', { key: 2, x: 26, y: 22, width: 34, height: 6, rx: 2, fill: '#5B8DEF' }),
+        h('rect', { key: 3, x: 20, y: 64, width: 44, height: 14, rx: 3, fill: 'none', stroke: '#232326' }),
+        h('rect', { key: 4, x: 68, y: 64, width: 44, height: 14, rx: 3, fill: 'none', stroke: '#232326' })]);
+      case 'edit': return svg([
+        h('rect', { key: 1, x: 20, y: 16, width: 92, height: 26, rx: 4, fill: '#0d0d10', stroke: '#232326' }),
+        h('path', { key: 2, d: 'M42 24l6-6M30 29l16-16 4 4-16 16-5 1z', stroke: '#5B8DEF', strokeWidth: 1.5, fill: 'none', strokeLinejoin: 'round' }),
+        h('rect', { key: 3, x: 20, y: 50, width: 92, height: 8, rx: 3, fill: '#232326' }),
+        h('rect', { key: 4, x: 20, y: 66, width: 64, height: 8, rx: 3, fill: '#1a1a1e' })]);
+      case 'billing': return svg([
+        h('text', { key: 1, x: 20, y: 40, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 24 }, '7340'),
+        h('text', { key: 2, x: 92, y: 40, fill: '#54545C', fontFamily: '"JetBrains Mono"', fontSize: 11 }, '€'),
+        ...[54, 68].map((y, i) => h('g', { key: 'r' + i },
+          h('circle', { cx: 26, cy: y + 3, r: 3, fill: ['#97C459', '#F2792B'][i] }),
+          h('rect', { x: 36, y, width: 42, height: 6, rx: 2, fill: '#232326' }),
+          h('text', { x: 110, y: y + 6, fill: '#E6E6E8', fontFamily: '"JetBrains Mono"', fontSize: 8, textAnchor: 'end' }, ['90€', '650€'][i])))]);
+      default: return svg([]);
+    }
+  }
+  renderVals() {
+    const S = [
+      { name: 'Marketplace', meta: 'ANNUAIRE · RÉSEAU OXV', face: 'PILOTE', kind: 'market', faceColor: '#FFB703', href: 'partenaire__marketplace.dc.html' },
+      { name: 'Fiche partenaire', meta: 'STOREFRONT · AVIS · DEVIS', face: 'PILOTE', kind: 'store', faceColor: '#FFB703', href: 'partenaire__fiche.dc.html' },
+      { name: 'Tableau de bord', meta: 'DEVIS · CA · VUES', face: 'PRO', kind: 'dash', faceColor: '#5B8DEF', href: 'partenaire__home.dc.html' },
+      { name: 'Mes offres', meta: 'CATALOGUE · TARIFS', face: 'PRO', kind: 'catalog', faceColor: '#5B8DEF', href: 'partenaire__offres.dc.html' },
+      { name: 'Réservations', meta: 'PLANNING ATELIER', face: 'PRO', kind: 'calendar', faceColor: '#5B8DEF', href: 'partenaire__reservations.dc.html' },
+      { name: 'Devis', meta: 'CHAT + LIGNES → ENVOI', face: 'PRO', kind: 'quote', faceColor: '#5B8DEF', href: 'partenaire__devis.dc.html' },
+      { name: 'Statistiques', meta: 'CONVERSION · FUNNEL · SOURCES', face: 'PRO', kind: 'stats', faceColor: '#5B8DEF', href: 'partenaire__stats.dc.html' },
+      { name: 'Événements', meta: 'TRACKDAYS · INSCRIPTIONS', face: 'PRO', kind: 'event', faceColor: '#5B8DEF', href: 'partenaire__evenements.dc.html' },
+      { name: 'Éditer la vitrine', meta: 'PHOTOS · HISTOIRE · BADGES', face: 'PRO', kind: 'edit', faceColor: '#5B8DEF', href: 'partenaire__vitrine-edit.dc.html' },
+      { name: 'Facturation', meta: 'FACTURES · ACOMPTES · CA', face: 'PRO', kind: 'billing', faceColor: '#5B8DEF', href: 'partenaire__facturation.dc.html' },
+    ];
+    return { isDark: true, screens: S.map(s => ({ ...s, preview: this.glyph(s.kind), faceBorder: s.faceColor + '55' })) };
+  }
+}
+</script>
+</body>
+</html>

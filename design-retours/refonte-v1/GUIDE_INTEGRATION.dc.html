@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#4a4a52;}
+    doc-page:not(:defined){visibility:hidden;}
+    .h1{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:30px;letter-spacing:1px;color:#0d0d12;margin:0;}
+    .h2{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;letter-spacing:1.5px;color:#0d0d12;margin:0 0 10px;padding-bottom:7px;border-bottom:2px solid #0d0d12;}
+    .h3{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:15px;letter-spacing:.5px;color:#111;margin:0 0 3px;}
+    .ey{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:#8a6d1f;text-transform:uppercase;}
+    .p{font-family:'Newsreader',serif;font-size:13.5px;line-height:1.5;color:#26262c;margin:0 0 8px;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+    .tk{font-family:'JetBrains Mono',monospace;font-size:11px;background:#f0efe9;border:1px solid #dcdbd2;border-radius:3px;padding:1px 5px;color:#33332c;white-space:nowrap;}
+    table{border-collapse:collapse;width:100%;margin:4px 0 10px;}
+    th{font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:.8px;text-transform:uppercase;color:#77776e;text-align:left;padding:5px 8px;border-bottom:1.5px solid #cfceC4;}
+    td{font-family:'Newsreader',serif;font-size:12px;line-height:1.4;color:#26262c;padding:6px 8px;border-bottom:1px solid #e6e5dd;vertical-align:top;}
+    td .mono{font-size:10.5px;}
+    .sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:middle;margin-right:5px;border:1px solid rgba(0,0,0,.15);}
+    ul{margin:2px 0 10px;padding-left:18px;}
+    li{font-family:'Newsreader',serif;font-size:12.5px;line-height:1.5;color:#26262c;margin-bottom:3px;}
+    .card{background:#faf9f4;border:1px solid #e2e1d6;border-radius:7px;padding:13px 15px;margin:0 0 11px;break-inside:avoid;}
+    .flag{background:#fff6e8;border:1px solid #f0d9a8;border-left:4px solid #d99b1c;border-radius:5px;padding:12px 15px;margin:0 0 12px;}
+    .chk li{list-style:none;position:relative;padding-left:22px;}
+    .chk li::before{content:'';position:absolute;left:0;top:3px;width:12px;height:12px;border:1.5px solid #b0af9f;border-radius:3px;}
+  </style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.7in" hint-size="820px,1060px">
+
+  <div slot="header" style="display:flex;align-items:center;justify-content:space-between;padding:0 2px 6px;border-bottom:1px solid #e0dfd5;">
+    <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:3px;color:#0d0d12;">OXV MIRROR</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:1px;color:#9a9990;">GUIDE D'INTÉGRATION · REFONTE NG</span>
+  </div>
+
+  <div style="margin-bottom:6px;">
+    <div class="ey">Refonte visuelle · HTML → React Native</div>
+    <h1 class="h1">Guide d'intégration des écrans</h1>
+    <p class="p" style="font-size:14px;color:#44444a;margin-top:6px;">Six écrans livrés en HTML autonome. Chacun est une <strong>référence visuelle</strong> d'un écran de l'app : tu ne recodes que le rendu, la logique (données, navigation, RLS, doctrine) reste intacte. Ce guide donne, écran par écran, la cible <span class="mono" style="font-size:11px;">.tsx</span>, les tokens, le kit de composants, la traduction Skia, les états et le câblage de navigation.</p>
+  </div>
+
+  <div style="margin:14px 0 4px;"><h2 class="h2">1 · Les fichiers livrés</h2></div>
+  <table>
+    <thead><tr><th>Fichier HTML</th><th>Écran cible</th><th>Fichier RN</th><th>Arch.</th><th>Chiffre roi</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">app__signature</td><td>Signature / QDI</td><td class="mono">signature.tsx</td><td class="mono">A2</td><td>QDI composite <strong>73</strong></td></tr>
+      <tr><td class="mono">app__virage</td><td>Détail virage</td><td class="mono">virage.tsx</td><td class="mono">A5</td><td>Vitesse corde <strong>118</strong></td></tr>
+      <tr><td class="mono">app__bilan</td><td>Bilan</td><td class="mono">bilan.tsx</td><td class="mono">A2</td><td>Écart-type <strong>0,34 s</strong></td></tr>
+      <tr><td class="mono">app__data-lab</td><td>Data Lab</td><td class="mono">data-lab.tsx</td><td class="mono">A3</td><td>—</td></tr>
+      <tr><td class="mono">app__carte</td><td>Carte circuit</td><td class="mono">carte.tsx</td><td class="mono">A4</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <p class="p">L'archétype <span class="mono" style="font-size:11px;">A4</span> de la carte se réutilise tel quel pour <span class="mono" style="font-size:11px;">data-lab-canvas</span> (Skia), <span class="mono" style="font-size:11px;">heatmap</span> et <span class="mono" style="font-size:11px;">replay</span> ; <span class="mono" style="font-size:11px;">A2</span> pour <span class="mono" style="font-size:11px;">debrief / trace / régularité / analytique</span>.</p>
+
+  <div style="margin:16px 0 4px;"><h2 class="h2">2 · Écarts assumés vs handoff d'origine</h2></div>
+  <div class="flag">
+    <div class="h3" style="color:#7a5510;">À valider avant réintégration</div>
+    <ul style="margin-bottom:0;">
+      <li><strong>Typographie changée</strong> (sur ta demande) : <strong>Rajdhani</strong> pour titres + chiffres héros, <strong>JetBrains Mono</strong> pour données/labels, au lieu de Geist / Geist Mono. <em>Instrument Serif conservé</em> pour la ligne-miroir et l'éditorial. → Ajouter les 2 familles via <span class="mono" style="font-size:11px;">expo-font</span>. Si tu refuses, le mapping reste identique, seule la police retombe sur Geist.</li>
+      <li><strong>Radius technique</strong> : cartes passées à 6px (langage HUD) au lieu du <span class="tk">xl</span> arrondi. Choix esthétique nouvelle-génération.</li>
+      <li><strong>Palette par pilier/phase</strong> appliquée (§4). Le Freinage utilise le <strong>rouge-donnée <span class="mono" style="font-size:11px;">#E63946</span></strong> comme couleur de pilier — distinct du rouge-marque <span class="mono" style="font-size:11px;">#C8102E</span> (REC / coach), qui n'est jamais employé ici.</li>
+    </ul>
+  </div>
+
+  <div style="margin:16px 0 4px;"><h2 class="h2">3 · Tokens à câbler</h2></div>
+  <table>
+    <thead><tr><th>Rôle</th><th>Valeur</th><th>Token cible</th></tr></thead>
+    <tbody>
+      <tr><td>Fond écran (Noir Abysse)</td><td><span class="sw" style="background:#050505;"></span><span class="mono">#050505</span></td><td class="mono">night</td></tr>
+      <tr><td>Surface carte (dégradé)</td><td><span class="sw" style="background:#121214;"></span><span class="mono">#121214 → #0b0b0e</span></td><td class="mono">card2</td></tr>
+      <tr><td>Filet / séparateur</td><td><span class="sw" style="background:#1C1C20;"></span><span class="mono">#1C1C20</span></td><td class="mono">line</td></tr>
+      <tr><td>Bordure active / sélection</td><td><span class="sw" style="background:#232326;"></span><span class="mono">#232326 · rgba(255,255,255,.2)</span></td><td class="mono">edge</td></tr>
+      <tr><td><strong>Or — DONNÉE uniquement</strong></td><td><span class="sw" style="background:#FFB703;"></span><span class="mono">#FFB703</span></td><td class="mono">gold</td></tr>
+      <tr><td>Texte crème</td><td><span class="sw" style="background:#F8F9FA;"></span><span class="mono">#F8F9FA</span></td><td class="mono">cream</td></tr>
+      <tr><td>Neutre / réf. médiane</td><td><span class="sw" style="background:#9A9AA3;"></span><span class="mono">#9A9AA3</span></td><td class="mono">creamMute</td></tr>
+      <tr><td>Faint (eyebrows, axes)</td><td><span class="sw" style="background:#54545C;"></span><span class="mono">#54545C</span></td><td class="mono">faint</td></tr>
+      <tr><td>Vert (tendance +, connecté)</td><td><span class="sw" style="background:#97C459;"></span><span class="mono">#97C459</span></td><td class="mono">green</td></tr>
+      <tr><td>Numéros de virage</td><td><span class="sw" style="background:#C4A459;"></span><span class="mono">#C4A459</span></td><td class="mono">heritageGold</td></tr>
+      <tr><td>Rouge-marque (REC / coach)</td><td><span class="sw" style="background:#C8102E;"></span><span class="mono">#C8102E</span></td><td class="mono">red</td></tr>
+    </tbody>
+  </table>
+  <p class="p" style="margin-bottom:3px;"><strong>Piliers QDI</strong> (radar, barres, détail) :
+    <span class="tk"><span class="sw" style="background:#F2792B;width:8px;height:8px;"></span>Trajectoire #F2792B</span>
+    <span class="tk"><span class="sw" style="background:#FFB703;width:8px;height:8px;"></span>Fluidité #FFB703</span>
+    <span class="tk"><span class="sw" style="background:#E63946;width:8px;height:8px;"></span>Freinage #E63946</span>
+    <span class="tk"><span class="sw" style="background:#4ADE80;width:8px;height:8px;"></span>Accél. #4ADE80</span>
+    <span class="tk"><span class="sw" style="background:#C084FC;width:8px;height:8px;"></span>Régularité #C084FC</span>
+  </p>
+  <p class="p"><strong>Phases de virage</strong> (détail virage) :
+    <span class="tk"><span class="sw" style="background:#60A5FA;width:8px;height:8px;"></span>Freinage #60A5FA</span>
+    <span class="tk"><span class="sw" style="background:#F2792B;width:8px;height:8px;"></span>Corde #F2792B</span>
+    <span class="tk"><span class="sw" style="background:#4ADE80;width:8px;height:8px;"></span>Réaccél. #4ADE80</span>
+  </p>
+
+  <div style="margin:16px 0 4px;"><h2 class="h2">4 · Écran par écran</h2></div>
+
+  <div class="card">
+    <div class="ey">A2 · signature.tsx</div>
+    <div class="h3">Signature / QDI</div>
+    <p class="p"><strong>Roi</strong> : QDI composite <span class="mono" style="font-size:11px;">73/100</span> en or, dans un tachymètre HUD (arc 270° gradué). <strong>Kit</strong> : AppBar · Cockpit panel · <strong>QdiRadar</strong> recoloré par pilier · MeterBar (barres piliers) · SectionLabel.</p>
+    <p class="p"><strong>Viz → Skia</strong> : jauge = <span class="mono" style="font-size:11px;">Path.addArc</span> + trim piloté par un <span class="mono" style="font-size:11px;">progress</span> Reanimated ; radar = polygone Skia (fill or translucide + stroke), réf. médiane en <span class="mono" style="font-size:11px;">DashPathEffect</span>, réf. record en liseré clair ; barres = <span class="mono" style="font-size:11px;">Rect</span> animés.</p>
+    <p class="p"><strong>Interactions</strong> : tap pilier → accordéon (grandeur mesurée + écart au record) ; toggles Médiane / Record. <strong>États</strong> : nominal · vide · chargement · hors-ligne. <strong>Nav</strong> : depuis le hub Progression ; retour AppBar.</p>
+  </div>
+
+  <div class="card">
+    <div class="ey">A5 · virage.tsx</div>
+    <div class="h3">Détail virage</div>
+    <p class="p"><strong>Roi</strong> : vitesse à la corde <span class="mono" style="font-size:11px;">118 km/h</span> en or (minimum du profil). Numéro de virage en <span class="mono" style="font-size:11px;">heritageGold</span>. <strong>Kit</strong> : AppBar · Cockpit panel · MeterBar.</p>
+    <p class="p"><strong>Viz → Skia</strong> : profil de vitesse = <span class="mono" style="font-size:11px;">Path</span> lissé qui se dessine (clip progressif) ; halo = <span class="mono" style="font-size:11px;">Paint.maskFilter blur</span> ; aire = gradient vertical ; 3 bandes de phase = <span class="mono" style="font-size:11px;">Rect</span> translucides bleu/ambre/vert ; point de corde ambre pulsant.</p>
+    <p class="p"><strong>Interactions</strong> : tap phase → cadrage de la bande + détail. <strong>Nav</strong> : ouvert depuis la feuille basse de <span class="mono" style="font-size:11px;">carte.tsx</span> et depuis Data Lab.</p>
+  </div>
+
+  <div class="card">
+    <div class="ey">A2 · bilan.tsx</div>
+    <div class="h3">Bilan <span style="font-family:'Newsreader',serif;font-weight:400;font-size:12px;color:#7a5510;font-style:italic;">— arbitrage ⚠ tranché</span></div>
+    <p class="p"><strong>Décision</strong> : la <strong>jauge de régularité domine</strong> (écart-type <span class="mono" style="font-size:11px;">0,34 s</span>, GaugeInstrument plein format) ; le <strong>meilleur tour</strong> passe en carte secondaire (chrono mono, plus petit) — un seul grand chiffre roi. <strong>Kit</strong> : GaugeInstrument · Card · bande de dispersion (MeterBar signée).</p>
+    <p class="p"><strong>Viz → Skia</strong> : dispersion tour-à-tour = barres <span class="mono" style="font-size:11px;">Rect</span> signées autour du zéro + bande ±σ or. <strong>Transparence</strong> : bloc source / angles morts obligatoire en bas. <strong>États</strong> : 4.</p>
+  </div>
+
+  <div class="card">
+    <div class="ey">A3 · data-lab.tsx</div>
+    <div class="h3">Data Lab</div>
+    <p class="p"><strong>Structure</strong> : bannière <strong>confiance de lecture</strong> en tête (barre verte + métriques), puis index neutre de 7 vues — <strong>titres en crème, jamais or</strong>. Badge <span class="mono" style="font-size:11px;">PAS DE DONNÉES</span> sur les vues vides (désactivées). Action <strong>Export CSV</strong> dans l'AppBar (bouton ghost). <strong>Kit</strong> : AppBar+action · Card lignes · Pastille de statut.</p>
+    <p class="p"><strong>Nav</strong> : chaque ligne route vers sa vue — <span class="mono" style="font-size:10.5px;">unifiée→data-lab-canvas · carte · virage · tours · signature · comparer · heatmap</span>. Vues sans donnée : non cliquables.</p>
+  </div>
+
+  <div class="card">
+    <div class="ey">A4 · carte.tsx</div>
+    <div class="h3">Carte circuit</div>
+    <p class="p"><strong>Structure</strong> : tracé plein cadre. 3 couches activables (<strong>LayerToggle</strong>) : Tracé · Vitesse · Marges. Tap virage → <strong>CornerPanel</strong> (feuille basse : n° heritageGold, vitesse corde or, marge à la corde). Marge serrée = <strong>ambre</strong> <span class="mono" style="font-size:11px;">#F2792B</span>, jamais rouge.</p>
+    <p class="p"><strong>Viz → Skia</strong> : ruban = <span class="mono" style="font-size:11px;">Path</span> Catmull-Rom (lit large + ligne de course or) ; couche Vitesse = segments colorés par courbure (bleu→ambre→or) ; couche Marges = <span class="mono" style="font-size:11px;">Circle</span> ambre dimensionnés par serrage ; start/finish = <span class="mono" style="font-size:11px;">Rect</span> ; marqueurs = Circle + n° heritageGold. <strong>Nav</strong> : CornerPanel « Ouvrir le détail » → <span class="mono" style="font-size:11px;">virage.tsx</span>.</p>
+  </div>
+
+  <div style="margin:16px 0 4px;"><h2 class="h2">5 · Pattern d'animation</h2></div>
+  <p class="p">Côté HTML, chaque entrée est animée (chiffres qui comptent 0→valeur, jauges/tracés qui se dessinent, barres qui se remplissent) via <span class="mono" style="font-size:11px;">requestAnimationFrame</span>, doublé d'un <strong>repli <span class="mono" style="font-size:11px;">setTimeout</span></strong> qui fixe l'état final même si l'onglet est en arrière-plan (rAF y est gelé). <strong>En RN, ce repli est inutile</strong> : utilise un <span class="mono" style="font-size:11px;">useSharedValue(0)</span> + <span class="mono" style="font-size:11px;">withTiming(1, {duration:1150})</span> dans un <span class="mono" style="font-size:11px;">useEffect</span> de montage. L'état au repos = la valeur finale ; l'animation n'est qu'un plus, non bloquant.</p>
+
+  <div style="margin:16px 0 4px;"><h2 class="h2">6 · Checklist doctrine à repasser</h2></div>
+  <ul class="chk">
+    <li>Or = donnée uniquement (jauge, chiffre, points, barres, courbe) — jamais décor.</li>
+    <li>Un seul grand chiffre roi par écran.</li>
+    <li>Rouge-pilier <span class="mono" style="font-size:11px;">#E63946</span> ≠ rouge-marque <span class="mono" style="font-size:11px;">#C8102E</span> ; aucun rouge sur une perf globale.</li>
+    <li>Pastilles de statut et eyebrows jamais or ; Instrument Serif jamais un chiffre.</li>
+    <li>EmptyState doux, jamais culpabilisant ; bloc méthode / transparence présent sur les écrans data.</li>
+    <li>Références (médiane, record) self-only — jamais un autre pilote.</li>
+    <li>Fonts Rajdhani + JetBrains Mono ajoutées, ou repli Geist validé.</li>
+  </ul>
+
+</x-import>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">COMPARER</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <!-- session pickers -->
+      <div style="display:flex; align-items:center; gap:8px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="flex:1; padding:10px 12px; border-radius:6px; border:1px solid #232326; background:#0B0B0D; display:flex; flex-direction:column; gap:2px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#54545C;">SÉANCE A</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#9A9AA3;">28 juin · Lédenon</div>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#54545C;">→</div>
+        <div style="flex:1; padding:10px 12px; border-radius:6px; border:1px solid #FFB70344; background:#0B0B0D; display:flex; flex-direction:column; gap:2px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#54545C;">SÉANCE B</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#F8F9FA;">12 juil · Valence</div>
+        </div>
+      </div>
+
+      <!-- QDI delta hero -->
+      <div style="border-radius:6px; padding:16px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #232326; display:flex; align-items:center; justify-content:center; gap:16px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#9A9AA3; line-height:0.9;">70</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">QDI · A</div>
+        </div>
+        <svg width="30" height="14" viewBox="0 0 30 14" fill="none"><path d="M2 7h22m0 0l-5-4m5 4l-5 4" stroke="#97C459" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:2px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:50px; color:#FFB703; line-height:0.85; text-shadow:0 0 22px rgba(255,183,3,0.3);">73</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">QDI · B</div>
+        </div>
+        <div style="width:1px; height:40px; background:#1C1C20;"></div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; color:#97C459;">+3</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">PROGRÈS</div>
+        </div>
+      </div>
+
+      <!-- pillar deltas -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">PAR PILIER · A → B</div>
+        <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="5">
+          <div style="display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:8px; height:8px; border-radius:2px; background:{{ p.color }}; flex-shrink:0;"></div>
+            <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#E6E6E8;">{{ p.name }}</div>
+            <div style="position:relative; width:80px; height:6px; border-radius:999px; background:#161618;">
+              <div style="position:absolute; left:0; top:0; bottom:0; width:{{ p.aW }}; background:#3a3a42; border-radius:999px;"></div>
+              <div style="position:absolute; left:0; top:0; bottom:0; width:{{ p.bW }}; background:{{ p.color }}; border-radius:999px;"></div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:{{ p.deltaColor }}; min-width:30px; text-align:right;">{{ p.delta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="position:relative; border-radius:6px; padding:15px 16px 15px 18px; background:#12080a; border:1px solid #C8102E33; overflow:hidden; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 180ms both;">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:4px; background:#C8102E;"></div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:15.5px; line-height:1.35; color:#F2D9DD;">Le freinage progresse fort (+7) — le plan a payé. Reste la régularité, encore à la traîne. On garde le cap.</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    const P = [
+      { name: 'Trajectoire', color: '#F2792B', a: 68, b: 72 },
+      { name: 'Fluidité', color: '#FFB703', a: 76, b: 81 },
+      { name: 'Freinage', color: '#E63946', a: 57, b: 64 },
+      { name: 'Accélération', color: '#4ADE80', a: 74, b: 77 },
+      { name: 'Régularité', color: '#C084FC', a: 66, b: 69 },
+    ];
+    return {
+      isDark: true,
+      pillars: P.map(p => {
+        const d = p.b - p.a;
+        return { name: p.name, color: p.color, aW: p.a + '%', bW: p.b + '%', delta: (d >= 0 ? '+' : '') + d, deltaColor: d > 0 ? '#97C459' : '#9A9AA3' };
+      }),
+    };
+  }
+}
+</script>
+</body>
+</html>

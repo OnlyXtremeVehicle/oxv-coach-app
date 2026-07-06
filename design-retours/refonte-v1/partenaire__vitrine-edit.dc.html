@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    image-slot{--is-bg:#0d0d10;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #0e1014 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="partenaire__home.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">MA VITRINE</div>
+        <a href="partenaire__fiche.dc.html" style="position:absolute; right:0;"><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#5B8DEF; border:1px solid #5B8DEF55; border-radius:3px; padding:4px 8px;">APERÇU</div></a>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:8px; border:1px solid #97C45933; background:#0a0f0a; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="width:7px; height:7px; border-radius:999px; background:#97C459; box-shadow:0 0 8px #97C459;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:1px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; color:#97C459;">Fiche en ligne</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;">VISIBLE DANS LA MARKETPLACE · 312 VUES / MOIS</div>
+        </div>
+        <div style="width:42px; height:22px; border-radius:999px; background:#97C459; position:relative;"><div style="position:absolute; right:2px; top:2px; width:18px; height:18px; border-radius:999px; background:#050505;"></div></div>
+      </div>
+
+      <!-- media -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11px; letter-spacing:2px; color:#54545C;">PHOTOS DE L'ATELIER</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+          <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="pv-1" shape="rounded" radius="8" placeholder="Couverture" style="width:100%; aspect-ratio:1; grid-column:span 2; grid-row:span 2;" hint-size="66%,150px"></x-import>
+          <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="pv-2" shape="rounded" radius="8" placeholder="+" style="width:100%; aspect-ratio:1;" hint-size="33%,72px"></x-import>
+          <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="pv-3" shape="rounded" radius="8" placeholder="+" style="width:100%; aspect-ratio:1;" hint-size="33%,72px"></x-import>
+        </div>
+      </div>
+
+      <!-- fields -->
+      <div style="display:flex; flex-direction:column; gap:11px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <sc-for list="{{ fields }}" as="f" hint-placeholder-count="2">
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11px; letter-spacing:1.5px; color:#54545C;">{{ f.label }}</div>
+              <svg width="11" height="9" viewBox="0 0 11 9" fill="none"><path d="M1 4.5L4 7.5 10 1" stroke="#97C459" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+            <div style="border-radius:8px; padding:13px; border:1px solid #232326; background:#0B0B0D;">
+              <div style="font-family:{{ f.font }}; font-size:{{ f.size }}; line-height:1.4; color:{{ f.color }};">{{ f.value }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- badges -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 180ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:11px; letter-spacing:2px; color:#54545C;">BADGES DE CONFIANCE</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ badges }}" as="b" hint-placeholder-count="4">
+            <div style="display:flex; align-items:center; gap:6px; padding:9px 12px; border-radius:999px; border:{{ b.border }}; background:{{ b.bg }};">
+              <div style="width:6px; height:6px; border-radius:999px; background:{{ b.dot }};"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12.5px; color:{{ b.color }};">{{ b.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:11px; margin-top:2px;">
+        <div style="flex:1; padding:13px; border-radius:8px; border:1px solid #232326; background:transparent; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#9A9AA3;">Enregistrer</div>
+        <div style="flex:1; padding:13px; border-radius:8px; background:#F8F9FA; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; color:#050505;">Publier</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: true,
+      fields: [
+        { label: 'NOM & SPÉCIALITÉ', value: 'Atelier RS Motorsport · Préparation GT', font: "'Rajdhani',sans-serif", size: '14px', color: '#F8F9FA' },
+        { label: 'DESCRIPTION', value: 'Spécialiste de la préparation piste sur Porsche et BMW M depuis 15 ans. Setup châssis, révision compétition, accompagnement trackday.', font: "'Rajdhani',sans-serif", size: '13px', color: '#9A9AA3' },
+      ],
+      badges: [
+        { label: 'Certifié OXV', on: true }, { label: 'Répond en 2 h', on: true }, { label: 'Garantie 12 mois', on: true }, { label: '+ Ajouter', on: false },
+      ].map(b => ({
+        label: b.label,
+        border: b.on ? '1px solid rgba(255,255,255,0.2)' : '1px dashed #232326',
+        bg: b.on ? '#0B0B0D' : 'transparent',
+        dot: b.on ? '#97C459' : '#54545C',
+        color: b.on ? '#E6E6E8' : '#6E6E76',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

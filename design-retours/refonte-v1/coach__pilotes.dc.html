@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- AppBar (coach identity) -->
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-shrink:0; height:34px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px; letter-spacing:2px; color:#F8F9FA;">OXV</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+        </div>
+        <div style="width:34px; height:34px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#C8102E;">MB</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">ESPACE COACH · 6 PILOTES</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:29px; line-height:1.04; color:#F8F9FA;">Vos pilotes.</div>
+      </div>
+
+      <!-- filter row -->
+      <div style="display:flex; gap:8px;">
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.2); background:#0B0B0D; font-family:'JetBrains Mono',monospace; font-size:10px; color:#F8F9FA;">TOUS</div>
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid #1C1C20; background:transparent; font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">À LIRE · 3</div>
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid #1C1C20; background:transparent; font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">ANNOTÉS</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <sc-for list="{{ pilots }}" as="p" hint-placeholder-count="6">
+          <a href="{{ p.href }}">
+            <div style="display:flex; align-items:center; gap:13px; padding:13px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+              <div style="width:42px; height:42px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:13px; color:#C4A459; flex-shrink:0;">{{ p.initials }}</div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:16px; color:#F8F9FA;">{{ p.name }}</div>
+                  <div style="width:6px; height:6px; border-radius:999px; background:{{ p.dot }};"></div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.3px; color:#6E6E76;">{{ p.meta }}</div>
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:20px; color:#FFB703; line-height:1;">{{ p.qdi }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ p.tagColor }}; border:1px solid {{ p.tagBorder }}; border-radius:3px; padding:2px 5px;">{{ p.tag }}</div>
+              </div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    const P = [
+      { name: 'Valentin L.', initials: 'VL', meta: 'VALENCE · IL Y A 2 J · 34 TOURS', qdi: 73, dot: '#C8102E', tag: 'À LIRE', href: 'coach__pilote.dc.html' },
+      { name: 'Sofia R.', initials: 'SR', meta: 'LÉDENON · IL Y A 3 J · 28 TOURS', qdi: 78, dot: '#C8102E', tag: 'À LIRE', href: 'coach__pilote.dc.html' },
+      { name: 'Marc D.', initials: 'MD', meta: 'HAUTE SAINTONGE · IL Y A 4 J', qdi: 69, dot: '#C8102E', tag: 'À LIRE', href: 'coach__pilote.dc.html' },
+      { name: 'Ana P.', initials: 'AP', meta: 'VALENCE · IL Y A 6 J · ANNOTÉ', qdi: 81, dot: '#97C459', tag: 'ANNOTÉ', href: 'coach__pilote.dc.html' },
+      { name: 'Théo B.', initials: 'TB', meta: 'LÉDENON · IL Y A 8 J · ANNOTÉ', qdi: 66, dot: '#97C459', tag: 'ANNOTÉ', href: 'coach__pilote.dc.html' },
+      { name: 'Nina F.', initials: 'NF', meta: 'AUCUNE SÉANCE RÉCENTE', qdi: 71, dot: '#54545C', tag: 'INACTIF', href: 'coach__pilote.dc.html' },
+    ];
+    return {
+      isDark: true,
+      pilots: P.map(p => ({
+        ...p,
+        tagColor: p.tag === 'À LIRE' ? '#C8102E' : p.tag === 'ANNOTÉ' ? '#97C459' : '#6E6E76',
+        tagBorder: p.tag === 'À LIRE' ? '#C8102E55' : p.tag === 'ANNOTÉ' ? '#97C45955' : '#232326',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

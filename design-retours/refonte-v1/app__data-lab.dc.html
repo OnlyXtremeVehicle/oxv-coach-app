@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvbreathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvsheen{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 44px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- AppBar -->
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">DATA LAB</div>
+        <div onClick="{{ exportCsv }}" style="position:absolute; right:0; display:flex; align-items:center; gap:5px; padding:6px 9px; border-radius:4px; border:1px solid #232326; background:#0B0B0D; cursor:pointer;">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v7M6 8L3.5 5.5M6 8l2.5-2.5M2 10.5h8" stroke="#9A9AA3" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#9A9AA3;">CSV</div>
+        </div>
+      </div>
+
+      <!-- CONFIDENCE BANNER -->
+      <div style="position:relative; border-radius:6px; padding:16px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #232326; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="position:absolute; top:8px; left:8px; width:12px; height:12px; border-top:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+        <div style="position:absolute; top:8px; right:8px; width:12px; height:12px; border-top:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+        <div style="position:absolute; bottom:8px; left:8px; width:12px; height:12px; border-bottom:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+        <div style="position:absolute; bottom:8px; right:8px; width:12px; height:12px; border-bottom:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <div style="width:6px; height:6px; border-radius:999px; background:#97C459; animation:oxvbreathe 2.6s ease-in-out infinite;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#97C459;">CONFIANCE DE LECTURE · SOLIDE</div>
+        </div>
+
+        <div style="position:relative; height:9px; border-radius:999px; background:#161618; overflow:hidden; margin-bottom:12px;">
+          <div style="position:absolute; left:0; top:0; bottom:0; width:{{ confPct }}; background:linear-gradient(90deg,#4ADE80,#97C459); border-radius:999px; transition:width 900ms cubic-bezier(.22,1,.36,1);"></div>
+          <div style="position:absolute; top:0; bottom:0; left:0; width:40px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent); animation:oxvsheen 2.6s ease-in-out infinite;"></div>
+        </div>
+
+        <div style="display:flex; gap:0;">
+          <sc-for list="{{ confMetrics }}" as="m" hint-placeholder-count="3">
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; border-left:{{ m.divider }}; padding-left:{{ m.pad }};">
+              <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:19px; color:#E6E6E8;">{{ m.value }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">{{ m.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- VIEWS INDEX -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:0 4px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">VUES D'ANALYSE</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#54545C;">{{ readyCount }}/7 PRÊTES</div>
+        </div>
+
+        <sc-for list="{{ views }}" as="v" hint-placeholder-count="7">
+          <div onClick="{{ v.onClick }}" style="display:flex; align-items:center; gap:13px; padding:13px; border-radius:6px; border:1px solid #1C1C20; background:{{ v.bg }}; cursor:{{ v.cursor }}; opacity:{{ v.opacity }}; transition:border-color 200ms ease;">
+            <div style="width:44px; height:44px; border-radius:5px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              {{ v.glyph }}
+            </div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:16px; letter-spacing:.3px; color:#E6E6E8;">{{ v.name }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.3px; color:#6E6E76;">{{ v.meta }}</div>
+            </div>
+            <sc-if value="{{ v.hasData }}" hint-placeholder-val="{{ true }}">
+              <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#54545C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </sc-if>
+            <sc-if value="{{ v.noData }}">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C; border:1px solid #232326; border-radius:3px; padding:3px 6px; white-space:nowrap;">PAS DE DONNÉES</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- FOOTER NOTE -->
+      <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 220ms both;">
+        <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#6E6E76;">À PROPOS DE CES VUES</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13.5px; line-height:1.45; color:#9A9AA3;">Chaque vue dérive du même jeu GPS 10 Hz + IMU de la séance. Les vues « pas de données » attendent un passage propre sur le secteur concerné. L'export CSV livre les tours bruts, horodatés, pour votre propre analyse.</div>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 }
+}">
+class Component extends DCLogic {
+  state = { mounted: false };
+
+  VIEWS = [
+    { key: 'unifiee',  name: 'Vue unifiée',        meta: 'TRACÉ + VITESSE + MARGES · SKIA', accent: '#FFB703', kind: 'trace',  data: true },
+    { key: 'carte',    name: 'Carte circuit',      meta: '3 COUCHES ACTIVABLES',            accent: '#C4A459', kind: 'map',    data: true },
+    { key: 'virage',   name: 'Détail virage',      meta: '18 VIRAGES · VITESSE CORDE',      accent: '#F2792B', kind: 'corner', data: true },
+    { key: 'tours',    name: 'Tour par tour',      meta: '34 TOURS · CHRONO',               accent: '#FFB703', kind: 'bars',   data: true },
+    { key: 'signature',name: 'Signature / QDI',    meta: 'RADAR 5 PILIERS',                 accent: '#C084FC', kind: 'radar',  data: true },
+    { key: 'compare',  name: 'Comparer virage',    meta: 'A/B · DELTA',                     accent: '#60A5FA', kind: 'delta',  data: false },
+    { key: 'heatmap',  name: 'Carte de chaleur',   meta: 'VITESSE PAR SECTEUR',             accent: '#E63946', kind: 'heat',   data: false },
+  ];
+
+  CONF = [
+    { value: '34',   label: 'TOURS PROPRES' },
+    { value: '3',    label: 'SÉANCES' },
+    { value: '±0,05', label: 'MARGE (s)' },
+  ];
+
+  componentDidMount() {
+    requestAnimationFrame(() => this.setState({ mounted: true }));
+    this._fb = setTimeout(() => this.setState({ mounted: true }), 260);
+  }
+  componentWillUnmount() { clearTimeout(this._fb); }
+
+  glyph(kind, accent) {
+    const h = React.createElement;
+    const svg = (children) => h('svg', { width: 26, height: 26, viewBox: '0 0 26 26', fill: 'none' }, ...children);
+    switch (kind) {
+      case 'trace': return svg([h('path', { key: 1, d: 'M2 18 C7 18 8 6 13 6 S19 20 24 20', stroke: accent, strokeWidth: 1.6, strokeLinecap: 'round' })]);
+      case 'map': return svg([h('path', { key: 1, d: 'M4 13 C4 6 10 4 13 8 C16 4 22 6 22 13 C22 19 13 23 13 23 C13 23 4 19 4 13Z', stroke: accent, strokeWidth: 1.5 }), h('circle', { key: 2, cx: 13, cy: 12, r: 2.4, fill: accent })]);
+      case 'corner': return svg([h('path', { key: 1, d: 'M5 22 C5 10 5 5 20 5', stroke: accent, strokeWidth: 1.8, strokeLinecap: 'round' }), h('circle', { key: 2, cx: 8, cy: 15, r: 2.2, fill: accent })]);
+      case 'bars': return svg([[6, 14], [11, 8], [16, 11], [21, 5]].map((b, i) => h('line', { key: i, x1: b[0], y1: 22, x2: b[0], y2: b[1], stroke: accent, strokeWidth: 2.4, strokeLinecap: 'round' })));
+      case 'radar': return svg([h('polygon', { key: 1, points: '13,3 22,10 18,21 8,21 4,10', fill: 'none', stroke: '#2e2e34', strokeWidth: 1 }), h('polygon', { key: 2, points: '13,7 19,11 16,18 10,17 8,11', fill: accent + '33', stroke: accent, strokeWidth: 1.4 })]);
+      case 'delta': return svg([h('path', { key: 1, d: 'M3 17 C7 17 8 9 12 9', stroke: '#6E6E76', strokeWidth: 1.5, strokeLinecap: 'round' }), h('path', { key: 2, d: 'M3 20 C8 20 9 13 14 13 S22 8 24 8', stroke: accent, strokeWidth: 1.6, strokeLinecap: 'round' })]);
+      case 'heat': return svg([5, 6, 19].flatMap(cx => [6, 13, 20].map(cy => [cx, cy])).map((c, i) => h('rect', { key: i, x: c[0] - 1, y: c[1] - 1, width: 5.5, height: 5.5, rx: 1, fill: accent, opacity: [0.25, 0.55, 0.9, 0.4, 0.85, 0.6, 0.7, 0.35, 0.5][i] })));
+      default: return svg([]);
+    }
+  }
+
+  renderVals() {
+    const readyCount = this.VIEWS.filter(v => v.data).length;
+    const views = this.VIEWS.map((v, i) => ({
+      name: v.name, meta: v.meta,
+      glyph: this.glyph(v.kind, v.accent),
+      hasData: v.data, noData: !v.data,
+      bg: v.data ? 'rgba(17,17,20,0.7)' : 'rgba(12,12,14,0.5)',
+      opacity: v.data ? '1' : '0.62',
+      cursor: v.data ? 'pointer' : 'default',
+      onClick: () => {},
+    }));
+
+    return {
+      isDark: true,
+      back: () => {},
+      exportCsv: () => {},
+      confPct: '82%',
+      confMetrics: this.CONF.map((m, i) => ({
+        value: m.value, label: m.label,
+        divider: i === 0 ? 'none' : '1px solid #1C1C20',
+        pad: i === 0 ? '0' : '14px',
+      })),
+      readyCount: String(readyCount),
+      views,
+    };
+  }
+}
+</script>
+</body>
+</html>

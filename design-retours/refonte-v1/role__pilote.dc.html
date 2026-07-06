@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#050505;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100vh; background:radial-gradient(90% 60% at 50% -5%, #101015 0%, #050505 55%); color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:48px 40px 80px;">
+  <div style="max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:34px;">
+
+    <!-- Header -->
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; border-bottom:1px solid #1C1C20; padding-bottom:24px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; letter-spacing:3px; color:#54545C;">OXV MIRROR</div>
+          <div style="width:1px; height:12px; background:#232326;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:#6E6E76;">ESPACE PILOTE</div>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:52px; letter-spacing:2px; line-height:0.9; color:#F8F9FA;">RÔLE PILOTE</div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; color:#9A9AA3;">Le parcours d'analyse du pilote — du paddock à la caméra embarquée.</div>
+      </div>
+      <div style="display:flex; gap:26px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#FFB703; line-height:1;">10</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">ÉCRANS</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#F8F9FA; line-height:1;">6</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">ARCHÉTYPES</div></div>
+      </div>
+    </div>
+
+    <!-- Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+      <sc-for list="{{ screens }}" as="s" hint-placeholder-count="10">
+        <a href="{{ s.href }}">
+          <div style="border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); overflow:hidden; animation:oxvrise 600ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="height:150px; position:relative; background:radial-gradient(80% 90% at 50% 0%, #16161b 0%, #0a0a0d 70%); display:flex; align-items:center; justify-content:center; border-bottom:1px solid #1C1C20; overflow:hidden;">
+              <div style="position:absolute; top:10px; left:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; top:10px; right:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; left:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; right:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              {{ s.preview }}
+            </div>
+            <div style="padding:15px 16px; display:flex; align-items:center; gap:12px;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; letter-spacing:.3px; color:#F8F9FA;">{{ s.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#6E6E76;">{{ s.meta }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#9A9AA3; border:1px solid #232326; border-radius:3px; padding:3px 7px;">{{ s.arch }}</div>
+            </div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#54545C;">
+      <div style="width:9px; height:3px; border-radius:2px; background:#FFB703;"></div> Cliquez une carte pour ouvrir l'écran jouable.
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 900 } }">
+class Component extends DCLogic {
+  glyph(kind) {
+    const h = React.createElement;
+    const svg = (vb, kids) => h('svg', { width: 132, height: 96, viewBox: vb, fill: 'none', style: { overflow: 'visible' } }, ...kids);
+    switch (kind) {
+      case 'hub': return svg('0 0 132 96', [
+        h('rect', { key: 1, x: 20, y: 16, width: 92, height: 34, rx: 4, fill: 'none', stroke: '#232326' }),
+        h('text', { key: 2, x: 30, y: 40, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 22 }, '73'),
+        h('rect', { key: 3, x: 20, y: 58, width: 44, height: 20, rx: 3, fill: '#F8F9FA' }),
+        h('rect', { key: 4, x: 68, y: 58, width: 44, height: 20, rx: 3, fill: 'none', stroke: '#232326' }),
+      ]);
+      case 'radar': return svg('0 0 132 96', [
+        h('polygon', { key: 1, points: '66,14 104,42 90,86 42,86 28,42', fill: 'none', stroke: '#232326' }),
+        h('polygon', { key: 2, points: '66,30 92,48 82,74 50,72 42,48', fill: 'rgba(255,183,3,0.14)', stroke: '#FFB703', strokeWidth: 2 }),
+      ]);
+      case 'gauge': return svg('0 0 132 96', [
+        h('path', { key: 1, d: 'M30 78 A34 34 0 1 1 102 78', fill: 'none', stroke: '#232326', strokeWidth: 7, strokeLinecap: 'round' }),
+        h('path', { key: 2, d: 'M30 78 A34 34 0 0 1 66 44', fill: 'none', stroke: '#FFB703', strokeWidth: 7, strokeLinecap: 'round' }),
+        h('text', { key: 3, x: 66, y: 66, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 22, textAnchor: 'middle' }, '0,34'),
+      ]);
+      case 'bars': return svg('0 0 132 96', [30, 52, 74].flatMap((y, i) => [
+        h('rect', { key: 'a' + i, x: 24, y, width: 84, height: 5, rx: 2, fill: '#161618' }),
+        h('rect', { key: 'b' + i, x: 24, y, width: [60, 44, 72][i], height: 5, rx: 2, fill: ['#F2792B', '#E63946', '#4ADE80'][i] }),
+      ]));
+      case 'map': return svg('0 0 132 96', [
+        h('path', { key: 1, d: 'M40 78 C20 56 34 22 60 26 C86 30 104 44 96 66 C90 82 56 84 52 62', fill: 'none', stroke: '#FFB703', strokeWidth: 2.4, strokeLinecap: 'round' }),
+        h('circle', { key: 2, cx: 60, cy: 26, r: 4, fill: '#0B0B0D', stroke: '#C4A459', strokeWidth: 1.4 }),
+      ]);
+      case 'trace': return svg('0 0 132 96', [
+        h('path', { key: 1, d: 'M18 30 C40 30 44 76 66 76 S94 34 114 34', fill: 'none', stroke: '#FFB703', strokeWidth: 2.4, strokeLinecap: 'round', style: { filter: 'drop-shadow(0 0 4px rgba(255,183,3,0.4))' } }),
+        h('circle', { key: 2, cx: 66, cy: 76, r: 3.4, fill: '#F2792B' }),
+      ]);
+      case 'delta': return svg('0 0 132 96', [
+        h('path', { key: 1, d: 'M22 34 C40 34 44 68 60 68', stroke: '#9A9AA3', strokeWidth: 2, strokeDasharray: '4 3', strokeLinecap: 'round' }),
+        h('path', { key: 2, d: 'M22 40 C42 40 46 74 64 74 S96 40 110 40', stroke: '#FFB703', strokeWidth: 2.2, strokeLinecap: 'round' }),
+      ]);
+      case 'list': return svg('0 0 132 96', [22, 40, 58, 76].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 60, height: 5, rx: 2, fill: i === 2 ? '#FFB703' : '#232326' }),
+        h('rect', { x: 90, y: y - 1, width: 20, height: 7, rx: 2, fill: i === 2 ? 'rgba(255,183,3,0.2)' : 'transparent' }),
+      )));
+      case 'trend': return svg('0 0 132 96', [
+        h('path', { key: 1, d: 'M22 74 L44 66 L62 58 L80 60 L98 44 L112 34', fill: 'none', stroke: '#FFB703', strokeWidth: 2.2, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+        h('circle', { key: 2, cx: 112, cy: 34, r: 3.4, fill: '#FFB703' }),
+      ]);
+      case 'pov': return svg('0 0 132 96', [
+        h('polygon', { key: 1, points: '52,30 80,30 118,88 14,88', fill: '#141419' }),
+        h('path', { key: 2, d: 'M62,30 L50,88', stroke: '#4ADE80', strokeWidth: 3, strokeLinecap: 'round' }),
+        h('path', { key: 3, d: 'M70,30 L84,88', stroke: '#60A5FA', strokeWidth: 3, strokeLinecap: 'round' }),
+        h('path', { key: 4, d: 'M66,30 L66,88', stroke: '#FFB703', strokeWidth: 2, strokeLinecap: 'round' }),
+      ]);
+      default: return svg('0 0 132 96', []);
+    }
+  }
+  renderVals() {
+    const S = [
+      { name: 'Paddock', meta: 'ACCUEIL · DERNIER BILAN', arch: 'A1', kind: 'hub', href: 'app__paddock.dc.html' },
+      { name: 'Signature / QDI', meta: 'RADAR 5 PILIERS', arch: 'A2', kind: 'radar', href: 'app__signature.dc.html' },
+      { name: 'Bilan', meta: 'JAUGE RÉGULARITÉ', arch: 'A2', kind: 'gauge', href: 'app__bilan.dc.html' },
+      { name: 'Data Lab', meta: 'INDEX DES VUES', arch: 'A3', kind: 'bars', href: 'app__data-lab.dc.html' },
+      { name: 'Carte circuit', meta: 'TRACÉ · 3 COUCHES', arch: 'A4', kind: 'map', href: 'app__carte.dc.html' },
+      { name: 'Détail virage', meta: 'VITESSE CORDE · 3 PHASES', arch: 'A5', kind: 'trace', href: 'app__virage.dc.html' },
+      { name: 'Comparer virage', meta: 'A/B · DELTA', arch: 'A6', kind: 'delta', href: 'app__virage-comparer.dc.html' },
+      { name: 'Tour par tour', meta: 'CHRONOS · MEILLEUR TOUR', arch: 'A5', kind: 'list', href: 'app__tours.dc.html' },
+      { name: 'Progression', meta: 'QDI · 5 SOUS-VUES', arch: 'A1', kind: 'trend', href: 'app__progression.dc.html' },
+      { name: 'Vue pilote', meta: 'CAMÉRA EMBARQUÉE · SAINTONGE', arch: 'A4', kind: 'pov', href: 'app__replay.dc.html' },
+    ];
+    return { isDark: true, screens: S.map(s => ({ ...s, preview: this.glyph(s.kind) })) };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="app__paddock.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; text-decoration:none;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="display:flex; align-items:baseline; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:4px; color:#F8F9FA;">COMPARER</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:14px; color:#C4A459;">V07</div>
+        </div>
+      </div>
+
+      <!-- Session pills -->
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="flex:1; display:flex; align-items:center; gap:7px; padding:8px 11px; border-radius:5px; border:1px solid #FFB70344; background:#0B0B0D;">
+          <div style="width:8px; height:2px; background:#FFB703;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#E6E6E8;">CETTE SÉANCE</div>
+        </div>
+        <div style="flex:1; display:flex; align-items:center; gap:7px; padding:8px 11px; border-radius:5px; border:1px solid #232326; background:#0B0B0D;">
+          <div style="width:8px; height:2px; background:#9A9AA3;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:.5px; color:#9A9AA3;">RECORD DE SOI</div>
+        </div>
+      </div>
+
+      <!-- Overlaid speed traces -->
+      <div style="position:relative; border-radius:6px; padding:14px 12px 12px; overflow:hidden; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <div style="width:6px; height:6px; border-radius:999px; background:#9A9AA3;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#9A9AA3;">PROFILS SUPERPOSÉS</div>
+          <div style="flex:1;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#54545C;">km/h × m</div>
+        </div>
+        {{ traces }}
+      </div>
+
+      <!-- DELTA center -->
+      <div style="display:flex; align-items:center; justify-content:center; gap:14px; padding:14px; border-radius:6px; border:1px solid #232326; background:linear-gradient(180deg,#101013 0%,#0a0a0c 100%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 80ms both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1.5px; color:#6E6E76;">DELTA CORDE</div>
+        <div style="display:flex; align-items:baseline; gap:5px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:40px; line-height:0.85; color:#E6E6E8;">−3</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#6E6E76;">km/h</div>
+        </div>
+        <div style="width:1px; height:32px; background:#232326;"></div>
+        <div style="display:flex; align-items:baseline; gap:5px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:40px; line-height:0.85; color:#E6E6E8;">+0,2</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#6E6E76;">s</div>
+        </div>
+      </div>
+
+      <!-- Two symmetric columns -->
+      <div style="display:flex; gap:11px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+        <sc-for list="{{ cols }}" as="col" hint-placeholder-count="2">
+          <div style="flex:1; border-radius:6px; padding:14px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid {{ col.border }}; display:flex; flex-direction:column; gap:12px;">
+            <div style="display:flex; align-items:center; gap:7px;">
+              <div style="width:10px; height:3px; border-radius:2px; background:{{ col.color }};"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:1px; color:#C9C9CE;">{{ col.label }}</div>
+            </div>
+            <sc-for list="{{ col.rows }}" as="r" hint-placeholder-count="3">
+              <div style="display:flex; flex-direction:column; gap:3px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">{{ r.k }}</div>
+                <div style="display:flex; align-items:baseline; gap:3px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; color:{{ r.color }}; line-height:0.9;">{{ r.v }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#6E6E76;">{{ r.u }}</div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%);">
+        <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; line-height:1.35; color:#E6E6E8;">Sur ce virage, votre record freinait 3 m plus tard et gardait 3 km/h de plus à la corde. Le gain est là, pas dans la sortie.</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  speedAt(t, apex, entry, exitv) {
+    const ease = (x) => 1 - Math.pow(1 - x, 2);
+    if (t < 0.30) { const p = t / 0.30; return entry - (entry - apex) * ease(p); }
+    if (t < 0.46) return apex;
+    const p = (t - 0.46) / 0.54; return apex + (exitv - apex) * ease(p);
+  }
+  buildTraces() {
+    const h = React.createElement;
+    const W = 328, H = 150, padL = 8, padR = 8, top = 10, bot = 22;
+    const plotW = W - padL - padR, plotH = H - top - bot, sMax = 216, sMin = 90;
+    const X = (t) => padL + t * plotW, Y = (s) => top + (sMax - s) / (sMax - sMin) * plotH;
+    const line = (apex, entry, exitv) => { const N = 48, p = []; for (let i = 0; i <= N; i++) { const t = i / N; p.push([X(t), Y(this.speedAt(t, apex, entry, exitv))]); } return p.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' '); };
+    const grid = [120, 160, 200].map(s => h('line', { key: s, x1: padL, y1: Y(s), x2: W - padR, y2: Y(s), stroke: '#161618', strokeWidth: 1 }));
+    const rec = h('path', { key: 'rec', d: line(121, 210, 176), fill: 'none', stroke: '#9A9AA3', strokeWidth: 1.6, strokeDasharray: '4 3', strokeLinecap: 'round', strokeLinejoin: 'round' });
+    const cur = h('path', { key: 'cur', d: line(118, 208, 178), fill: 'none', stroke: '#FFB703', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { filter: 'drop-shadow(0 0 4px rgba(255,183,3,0.4))' } });
+    const apexR = h('circle', { key: 'ar', cx: X(0.38), cy: Y(121), r: 2.6, fill: '#9A9AA3' });
+    const apexC = h('circle', { key: 'ac', cx: X(0.38), cy: Y(118), r: 3, fill: '#F2792B', stroke: '#050505', strokeWidth: 1 });
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block', overflow: 'visible' } }, ...grid, rec, cur, apexR, apexC);
+  }
+  renderVals() {
+    return {
+      isDark: true,
+      traces: this.buildTraces(),
+      cols: [
+        { label: 'CETTE SÉANCE', color: '#FFB703', border: 'rgba(255,183,3,0.35)', rows: [
+          { k: 'VITESSE CORDE', v: '118', u: 'km/h', color: '#FFB703' },
+          { k: 'FREINAGE', v: '−18', u: 'm', color: '#E6E6E8' },
+          { k: 'G SORTIE', v: '0,96', u: 'g', color: '#E6E6E8' },
+        ] },
+        { label: 'RECORD DE SOI', color: '#9A9AA3', border: '#232326', rows: [
+          { k: 'VITESSE CORDE', v: '121', u: 'km/h', color: '#C9C9CE' },
+          { k: 'FREINAGE', v: '−15', u: 'm', color: '#C9C9CE' },
+          { k: 'G SORTIE', v: '0,97', u: 'g', color: '#C9C9CE' },
+        ] },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

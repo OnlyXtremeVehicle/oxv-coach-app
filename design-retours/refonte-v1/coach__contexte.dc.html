@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:18px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">CONTEXTE</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <div style="font-family:'Instrument Serif',serif; font-size:26px; line-height:1.05; color:#F8F9FA; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">Cadrer la séance de Valentin.</div>
+
+      <!-- Niveau -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">NIVEAU DU PILOTE</div>
+        <div style="display:flex; gap:8px;">
+          <sc-for list="{{ levels }}" as="l" hint-placeholder-count="4">
+            <div style="flex:1; padding:11px 6px; border-radius:5px; text-align:center; border:{{ l.border }}; background:{{ l.bg }}; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; color:{{ l.color }};">{{ l.t }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- Objectif -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">OBJECTIF PRINCIPAL</div>
+        <sc-for list="{{ goals }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; padding:13px; border-radius:6px; border:{{ g.border }}; background:{{ g.bg }};">
+            <div style="width:20px; height:20px; border-radius:999px; border:1px solid {{ g.ring }}; display:flex; align-items:center; justify-content:center;">
+              <div style="width:10px; height:10px; border-radius:999px; background:{{ g.fill }};"></div>
+            </div>
+            <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:{{ g.textColor }};">{{ g.t }}</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:#6E6E76;">{{ g.meta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Conditions -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 180ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">CONDITIONS DE PISTE</div>
+        <div style="display:flex; gap:8px;">
+          <sc-for list="{{ conds }}" as="c" hint-placeholder-count="3">
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 6px; border-radius:6px; border:{{ c.border }}; background:{{ c.bg }};">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; color:{{ c.color }};">{{ c.t }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;">{{ c.m }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="padding:13px; border-radius:5px; background:#F8F9FA; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:#050505; margin-top:2px;">Enregistrer le contexte</div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  on(sel) { return { border: '1px solid rgba(255,255,255,0.22)', bg: '#0B0B0D', color: '#F8F9FA' }; }
+  off() { return { border: '1px solid #1C1C20', bg: 'transparent', color: '#9A9AA3' }; }
+  renderVals() {
+    const lv = ['Découverte', 'Confirmé', 'Expert', 'Compét.'];
+    const levels = lv.map((t, i) => ({ t, ...(i === 1 ? this.on() : this.off()) }));
+    const goals = [
+      { t: 'Régularité', meta: 'ÉCART-TYPE', sel: true },
+      { t: 'Vitesse de passage', meta: 'CORDE', sel: false },
+      { t: 'Trajectoires', meta: 'LIGNE', sel: false },
+    ].map(g => ({
+      t: g.t, meta: g.meta,
+      border: g.sel ? '1px solid rgba(255,255,255,0.22)' : '1px solid #1C1C20',
+      bg: g.sel ? '#0B0B0D' : 'transparent',
+      ring: g.sel ? '#F8F9FA' : '#3a3a42',
+      fill: g.sel ? '#F8F9FA' : 'transparent',
+      textColor: g.sel ? '#F8F9FA' : '#C9C9CE',
+    }));
+    const cd = [{ t: 'Sec', m: '24°C', sel: true }, { t: 'Humide', m: 'PLUIE', sel: false }, { t: 'Froid', m: '<12°C', sel: false }];
+    const conds = cd.map(c => ({ t: c.t, m: c.m, ...(c.sel ? this.on() : this.off()) }));
+    return { isDark: true, levels, goals, conds };
+  }
+}
+</script>
+</body>
+</html>

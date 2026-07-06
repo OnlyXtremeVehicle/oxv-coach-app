@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    image-slot{--is-bg:#0d0d10;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #0e1014 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-shrink:0; height:34px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <a href="app__paddock.dc.html" style="width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">PARTENAIRES</div>
+        </div>
+        <div style="width:34px; height:34px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="#9A9AA3" stroke-width="1.4"></circle><path d="M10.5 10.5L14 14" stroke="#9A9AA3" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">RÉSEAU OXV · VALENCE & ENVIRONS</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:27px; line-height:1.05; color:#F8F9FA;">L'écosystème du pilote.</div>
+      </div>
+
+      <!-- category filters -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+          <div style="padding:7px 12px; border-radius:999px; border:{{ c.border }}; background:{{ c.bg }}; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12.5px; color:{{ c.color }};">{{ c.label }}</div>
+        </sc-for>
+      </div>
+
+      <!-- featured partner -->
+      <a href="partenaire__fiche.dc.html">
+        <div style="position:relative; border-radius:10px; overflow:hidden; border:1px solid #232326; height:180px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 60ms both;">
+          <x-import component-from-global-scope="image-slot" from="./image-slot.js" id="mk-featured" shape="rect" placeholder="Photo partenaire vedette" style="position:absolute; inset:0; width:100%; height:100%;" hint-size="100%,180px"></x-import>
+          <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(5,5,5,0.1) 0%, rgba(5,5,5,0.95) 100%); pointer-events:none;"></div>
+          <div style="position:absolute; top:12px; left:12px; font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:1px; color:#050505; background:#FFB703; padding:3px 8px; border-radius:4px;">PARTENAIRE VEDETTE</div>
+          <div style="position:absolute; bottom:14px; left:14px; right:14px; display:flex; align-items:flex-end; justify-content:space-between; gap:10px;">
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <div style="font-family:'Instrument Serif',serif; font-size:22px; line-height:1; color:#F8F9FA;">Atelier RS Motorsport</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:#C4A459;">PRÉPARATION GT · 8 KM · ★ 4,9</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#F8F9FA; border:1px solid #F8F9FA55; border-radius:999px; padding:6px 11px; background:#0B0B0D99;">Voir</div>
+          </div>
+        </div>
+      </a>
+
+      <!-- partner list -->
+      <div style="display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <sc-for list="{{ partners }}" as="p" hint-placeholder-count="5">
+          <a href="partenaire__fiche.dc.html">
+            <div style="display:flex; align-items:center; gap:13px; padding:12px; border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+              <div style="width:46px; height:46px; border-radius:8px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:{{ p.iconColor }};">{{ p.icon }}</div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA;">{{ p.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:#6E6E76;">{{ p.meta }}</div>
+              </div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#FFB703;">★ {{ p.rating }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">{{ p.dist }}</div>
+              </div>
+            </div>
+          </a>
+        </sc-for>
+      </div>
+
+      <!-- become partner CTA -->
+      <a href="partenaire__home.dc.html">
+        <div style="display:flex; align-items:center; gap:11px; padding:14px; border-radius:8px; border:1px dashed #2e6fd633; background:#0a0e14;">
+          <div style="width:34px; height:34px; border-radius:8px; background:#2e6fd622; display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#5B8DEF" stroke-width="1.5" stroke-linecap="round"></path></svg></div>
+          <div style="flex:1; display:flex; flex-direction:column; gap:1px;">
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#F8F9FA;">Vous êtes un pro ?</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#6E6E76;">REJOIGNEZ LE RÉSEAU OXV</div>
+          </div>
+          <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#5B8DEF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+      </a>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  pIcon(kind, color) {
+    const h = React.createElement, c = color;
+    const s = (kids) => h('svg', { width: 22, height: 22, viewBox: '0 0 24 24', fill: 'none' }, ...kids);
+    const p = (d, ex) => h('path', Object.assign({ d, stroke: c, strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }, ex || {}));
+    switch (kind) {
+      case 'garage': return s([p('M4 20V10l8-5 8 5v10'), p('M4 20h16M8 20v-5h8v5')]);
+      case 'tire': return s([h('circle', { cx: 12, cy: 12, r: 8, stroke: c, strokeWidth: 1.5 }), h('circle', { cx: 12, cy: 12, r: 3, stroke: c, strokeWidth: 1.5 })]);
+      case 'circuit': return s([p('M6 19C3 13 6 6 11 6s6 8 3 12-7 4-8 0')]);
+      case 'gear': return s([p('M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7z'), p('M12 2v3M12 19v3M2 12h3M19 12h3')]);
+      case 'school': return s([p('M12 4l9 4-9 4-9-4z'), p('M6 10v4c0 1.5 3 3 6 3s6-1.5 6-3v-4')]);
+      default: return s([]);
+    }
+  }
+  renderVals() {
+    const CATS = [ { key: 'all', label: 'Tous', on: true }, { key: 'prep', label: 'Préparateurs' }, { key: 'tire', label: 'Pneus' }, { key: 'circuit', label: 'Circuits' }, { key: 'school', label: 'Écoles' } ];
+    const P = [
+      { name: 'Pneus Sprint 26', meta: 'MONTAGE · GÉOMÉTRIE · 3 KM', icon: 'tire', color: '#5B8DEF', rating: '4,8', dist: '3 KM' },
+      { name: 'Circuit de Valence', meta: 'TRACKDAYS · LOCATION · 12 KM', icon: 'circuit', color: '#4ADE80', rating: '4,7', dist: '12 KM' },
+      { name: 'Garage Latour', meta: 'ENTRETIEN · SETUP · 5 KM', icon: 'garage', color: '#F2792B', rating: '4,6', dist: '5 KM' },
+      { name: 'École de pilotage Sud', meta: 'STAGES · PERMIS PISTE · 18 KM', icon: 'school', color: '#C084FC', rating: '4,9', dist: '18 KM' },
+      { name: 'DynoTune Performance', meta: 'BANC DE PUISSANCE · 22 KM', icon: 'gear', color: '#FFB703', rating: '4,5', dist: '22 KM' },
+    ];
+    return {
+      isDark: true,
+      cats: CATS.map(c => ({ label: c.label, border: c.on ? '1px solid rgba(255,255,255,0.2)' : '1px solid #1C1C20', bg: c.on ? '#0B0B0D' : 'transparent', color: c.on ? '#F8F9FA' : '#6E6E76' })),
+      partners: P.map(p => ({ name: p.name, meta: p.meta, rating: p.rating, dist: p.dist, icon: this.pIcon(p.icon, p.color), iconColor: p.color })),
+    };
+  }
+}
+</script>
+</body>
+</html>

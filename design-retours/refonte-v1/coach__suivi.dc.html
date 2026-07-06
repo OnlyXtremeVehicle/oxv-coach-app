@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">SUIVI</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">VALENTIN L. · 6 SÉANCES</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:26px; line-height:1.05; color:#F8F9FA;">Les objectifs tiennent-ils dans le temps ?</div>
+      </div>
+
+      <!-- objective tracker cards -->
+      <div style="display:flex; flex-direction:column; gap:11px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 100ms both;">
+        <sc-for list="{{ objectives }}" as="o" hint-placeholder-count="3">
+          <div style="border-radius:6px; padding:15px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:11px;">
+            <div style="display:flex; align-items:center; gap:9px;">
+              <div style="width:8px; height:8px; border-radius:2px; background:{{ o.color }};"></div>
+              <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA;">{{ o.name }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ o.statusColor }}; border:1px solid {{ o.statusBorder }}; border-radius:3px; padding:2px 6px;">{{ o.status }}</div>
+            </div>
+            <div style="display:flex; align-items:flex-end; gap:10px;">
+              <div style="width:130px;">{{ o.spark }}</div>
+              <div style="flex:1; display:flex; flex-direction:column; gap:1px; align-items:flex-end;">
+                <div style="display:flex; align-items:baseline; gap:3px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:26px; color:{{ o.color }}; line-height:0.9;">{{ o.value }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#6E6E76;">{{ o.unit }}</div>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#6E6E76;">cible {{ o.target }}</div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%);">
+        <div style="width:3px; border-radius:999px; background:#C8102E; flex-shrink:0;"></div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13px; line-height:1.45; color:#9A9AA3;">2 objectifs sur 3 atteints et tenus sur les 2 dernières séances. La régularité régresse — à remettre en priorité au prochain plan.</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  spark(vals, color, up) {
+    const h = React.createElement, W = 130, H = 40, p = 4;
+    const lo = Math.min(...vals), hi = Math.max(...vals), rng = (hi - lo) || 1;
+    const X = (i) => p + i * (W - 2 * p) / (vals.length - 1);
+    const Y = (v) => p + (1 - (v - lo) / rng) * (H - 2 * p);
+    const pts = vals.map((v, i) => [X(i), Y(up ? v : -v + lo + hi)]);
+    const d = pts.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' ');
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block' } },
+      h('path', { d, fill: 'none', stroke: color, strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+      h('circle', { cx: pts[pts.length - 1][0], cy: pts[pts.length - 1][1], r: 3, fill: color, stroke: '#050505', strokeWidth: 1 }),
+    );
+  }
+  renderVals() {
+    return {
+      isDark: true,
+      objectives: [
+        { name: 'Freinage V07', color: '#60A5FA', status: 'ATTEINT', ok: true, value: '64', unit: '/100', target: '62', spark: this.spark([52, 55, 57, 60, 62, 64], '#60A5FA', true) },
+        { name: 'Vitesse corde V04', color: '#F2792B', status: 'ATTEINT', ok: true, value: '118', unit: 'km/h', target: '116', spark: this.spark([112, 114, 113, 116, 117, 118], '#F2792B', true) },
+        { name: 'Régularité', color: '#C084FC', status: 'À REVOIR', ok: false, value: '0,34', unit: 's', target: '0,30', spark: this.spark([0.31, 0.30, 0.33, 0.32, 0.35, 0.34], '#C084FC', false) },
+      ].map(o => ({
+        ...o,
+        statusColor: o.ok ? '#97C459' : '#F2792B',
+        statusBorder: o.ok ? '#97C45955' : '#F2792B55',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

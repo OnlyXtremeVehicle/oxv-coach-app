@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvlive{0%,100%{opacity:1}50%{opacity:.3}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #14090b 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:18px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- top bar -->
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-shrink:0; height:32px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px; letter-spacing:2px; color:#F8F9FA;">OXV</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+        </div>
+        <a href="coach__profil-edit.dc.html"><div style="width:32px; height:32px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#C8102E;">MB</div></a>
+      </div>
+
+      <!-- greeting + tab switch -->
+      <div style="display:flex; flex-direction:column; gap:12px; animation:oxvrise 560ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">POSTE DE PILOTAGE · DIM. 6 JUIL.</div>
+          <div style="font-family:'Instrument Serif',serif; font-size:27px; line-height:1.05; color:#F8F9FA;">{{ headline }}</div>
+        </div>
+        <div style="display:flex; gap:6px; padding:4px; border-radius:10px; background:#0B0B0D; border:1px solid #1C1C20;">
+          <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="3">
+            <div onClick="{{ tb.onClick }}" style="flex:1; text-align:center; padding:8px 4px; border-radius:7px; background:{{ tb.bg }}; cursor:pointer; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12.5px; letter-spacing:.3px; color:{{ tb.color }};">{{ tb.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- ===== TAB: À TRAITER ===== -->
+      <sc-if value="{{ isTodo }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <!-- summary strip -->
+          <div style="display:flex; gap:9px;">
+            <div style="flex:1; border-radius:8px; padding:13px; background:linear-gradient(180deg,#1a0e10 0%,#0b0b0e 100%); border:1px solid #C8102E33; display:flex; flex-direction:column; gap:3px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:32px; color:#F8F9FA; line-height:0.85;">{{ pendingCount }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#9A9AA3;">ACTIONS EN ATTENTE</div>
+            </div>
+            <a href="coach__facturation.dc.html" style="flex:1;"><div style="border-radius:8px; padding:13px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:3px;">
+              <div style="display:flex; align-items:baseline; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:26px; color:#FFB703; line-height:0.9;">500</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#54545C;">€</div></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#9A9AA3;">À ENCAISSER</div>
+            </div></a>
+          </div>
+
+          <!-- unified action feed -->
+          <div style="display:flex; flex-direction:column; gap:9px;">
+            <sc-for list="{{ feed }}" as="it" hint-placeholder-count="6">
+              <a href="{{ it.href }}">
+                <div style="display:flex; align-items:center; gap:12px; padding:13px; border-radius:8px; border:1px solid {{ it.border }}; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+                  <div style="width:34px; height:34px; border-radius:8px; background:{{ it.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">{{ it.icon }}</div>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;">
+                    <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA; line-height:1.1;">{{ it.title }}</div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.3px; color:#6E6E76;">{{ it.meta }}</div>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ it.tagColor }}; border:1px solid {{ it.tagBorder }}; border-radius:3px; padding:3px 6px; flex-shrink:0;">{{ it.tag }}</div>
+                </div>
+              </a>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ===== TAB: PILOTES ===== -->
+      <sc-if value="{{ isPilots }}">
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <sc-for list="{{ pilots }}" as="p" hint-placeholder-count="5">
+            <a href="coach__pilote.dc.html">
+              <div style="display:flex; align-items:center; gap:13px; padding:13px; border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+                <div style="width:40px; height:40px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:#C4A459; flex-shrink:0;">{{ p.initials }}</div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:3px; min-width:0;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA;">{{ p.name }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.3px; color:{{ p.pendColor }};">{{ p.pending }}</div>
+                </div>
+                <div style="width:56px;">{{ p.spark }}</div>
+                <div style="display:flex; flex-direction:column; align-items:flex-end; gap:1px;">
+                  <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:20px; color:#FFB703; line-height:1;">{{ p.qdi }}</div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#97C459;">{{ p.trend }}</div>
+                </div>
+              </div>
+            </a>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- ===== TAB: OUTILS ===== -->
+      <sc-if value="{{ isTools }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="4">
+            <div style="display:flex; flex-direction:column; gap:9px;">
+              <div style="display:flex; align-items:center; gap:9px; padding:0 2px;">
+                <div style="width:7px; height:7px; border-radius:2px; background:{{ g.color }};"></div>
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12px; letter-spacing:1.5px; color:#F8F9FA;">{{ g.title }}</div>
+                <div style="flex:1; height:1px; background:#1C1C20;"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <sc-for list="{{ g.items }}" as="t" hint-placeholder-count="4">
+                  <a href="{{ t.href }}">
+                    <div style="display:flex; align-items:center; gap:9px; padding:11px 12px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+                      <div style="width:6px; height:6px; border-radius:999px; background:{{ g.color }}; flex-shrink:0;"></div>
+                      <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13px; color:#E6E6E8; line-height:1.1;">{{ t.name }}</div>
+                    </div>
+                  </a>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  state = { tab: 'todo' };
+
+  ic(kind, color) {
+    const h = React.createElement, c = color || '#F8F9FA';
+    const s = (kids) => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none' }, ...kids);
+    const p = (d, ex) => h('path', Object.assign({ d, stroke: c, strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }, ex || {}));
+    switch (kind) {
+      case 'read': return s([p('M3 4h10M3 8h10M3 12h6')]);
+      case 'plan': return s([p('M3 3h10v10H3z'), p('M5.5 8l1.5 1.5L10.5 6')]);
+      case 'billing': return s([p('M2 4h12v8H2z'), p('M2 7h12')]);
+      case 'waiver': return s([p('M4 2h6l3 3v9H4z'), p('M6 9l1.5 1.5L11 7')]);
+      case 'target': return s([h('circle', { cx: 8, cy: 8, r: 5.5, stroke: c, strokeWidth: 1.4 }), h('circle', { cx: 8, cy: 8, r: 1.6, fill: c })]);
+      case 'gear': return s([p('M8 5.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z'), p('M8 1v2M8 13v2M1 8h2M13 8h2')]);
+      default: return s([p('M3 8h10')]);
+    }
+  }
+  spark(vals, color) {
+    const h = React.createElement, W = 56, H = 24, p = 3;
+    const lo = Math.min(...vals), hi = Math.max(...vals), r = (hi - lo) || 1;
+    const X = i => p + i * (W - 2 * p) / (vals.length - 1), Y = v => p + (1 - (v - lo) / r) * (H - 2 * p);
+    const d = vals.map((v, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ' ' + Y(v).toFixed(1)).join(' ');
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block' } },
+      h('path', { d, fill: 'none', stroke: color, strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+      h('circle', { cx: X(vals.length - 1), cy: Y(vals[vals.length - 1]), r: 2, fill: color }));
+  }
+
+  renderVals() {
+    const tab = this.state.tab;
+    const TABS = [ { key: 'todo', label: 'À traiter' }, { key: 'pilots', label: 'Pilotes' }, { key: 'tools', label: 'Outils' } ];
+    const feed = [
+      { title: 'Séance de Sofia R. à lire', meta: 'LÉDENON · 11 JUIL · 28 TOURS', tag: 'À LIRE', kind: 'read', accent: '#C8102E', href: 'coach__pilote.dc.html' },
+      { title: 'Séance de Marc D. à lire', meta: 'HAUTE SAINTONGE · 10 JUIL', tag: 'À LIRE', kind: 'read', accent: '#C8102E', href: 'coach__pilote.dc.html' },
+      { title: 'Plan de Valentin L. à envoyer', meta: 'BROUILLON · FREINAGE V07', tag: 'BROUILLON', kind: 'plan', accent: '#FFB703', href: 'coach__plan.dc.html' },
+      { title: 'Décharge de Marc D. à signer', meta: 'AVANT ROULAGE', tag: 'SIGNER', kind: 'waiver', accent: '#F2792B', href: 'coach__materiel.dc.html' },
+      { title: 'Facture Marc D. en attente', meta: 'FA-2026-069 · 500 €', tag: '500 €', kind: 'billing', accent: '#F2792B', href: 'coach__facturation.dc.html' },
+      { title: 'Régularité de Valentin à revoir', meta: 'OBJECTIF EN RÉGRESSION', tag: 'SUIVI', kind: 'target', accent: '#C084FC', href: 'coach__suivi.dc.html' },
+    ];
+    const pilots = [
+      { initials: 'VL', name: 'Valentin L.', pending: 'PLAN À ENVOYER · OBJECTIF À REVOIR', pend: true, qdi: 73, trend: '+3', vals: [65, 67, 69, 68, 71, 73] },
+      { initials: 'SR', name: 'Sofia R.', pending: 'SÉANCE À LIRE', pend: true, qdi: 78, trend: '+2', vals: [72, 74, 73, 76, 77, 78] },
+      { initials: 'MD', name: 'Marc D.', pending: 'À LIRE · DÉCHARGE · FACTURE', pend: true, qdi: 69, trend: '+1', vals: [66, 65, 68, 67, 68, 69] },
+      { initials: 'AP', name: 'Ana P.', pending: 'À JOUR', pend: false, qdi: 81, trend: '+4', vals: [74, 76, 77, 79, 80, 81] },
+      { initials: 'TB', name: 'Théo B.', pending: 'À JOUR', pend: false, qdi: 66, trend: '+2', vals: [61, 62, 64, 63, 65, 66] },
+    ];
+    const groups = [
+      { title: 'ANALYSE', color: '#C8102E', items: [ { name: 'Triage IA', href: 'coach__triage.dc.html' }, { name: 'Studio télémétrique', href: 'coach__studio.dc.html' }, { name: 'Comparer séances', href: 'coach__comparer.dc.html' }, { name: 'Direction live', href: 'coach__direction.dc.html' } ] },
+      { title: 'PÉDAGOGIE', color: '#FFB703', items: [ { name: 'Annoter', href: 'coach__annoter.dc.html' }, { name: 'Débrief vidéo', href: 'coach__debrief.dc.html' }, { name: 'Priorités', href: 'coach__priorites.dc.html' }, { name: 'Plan', href: 'coach__plan.dc.html' }, { name: 'Repères', href: 'coach__reperes.dc.html' }, { name: 'Contexte', href: 'coach__contexte.dc.html' } ] },
+      { title: 'SUIVI', color: '#C084FC', items: [ { name: 'Fiche pilote (CRM)', href: 'coach__crm.dc.html' }, { name: 'Suivi d\u2019objectifs', href: 'coach__suivi.dc.html' }, { name: 'File de lecture', href: 'coach__file.dc.html' }, { name: 'Calendrier', href: 'coach__calendrier.dc.html' } ] },
+      { title: 'GESTION', color: '#97C459', items: [ { name: 'Facturation', href: 'coach__facturation.dc.html' }, { name: 'Matériel & décharges', href: 'coach__materiel.dc.html' }, { name: 'Rapport PDF', href: 'coach__rapport.dc.html' }, { name: 'Mon profil public', href: 'coach__profil-edit.dc.html' } ] },
+      { title: 'VITRINE', color: '#C4A459', items: [ { name: 'Aperçu vitrine', href: 'coach__vitrine.dc.html' }, { name: 'Éditer le profil', href: 'coach__profil-edit.dc.html' }, { name: 'Galerie du rôle (21)', href: 'role__coach.dc.html' } ] },
+    ];
+    const headlines = { todo: '6 choses à traiter.', pilots: 'Vos 5 pilotes.', tools: 'Tout l\u2019espace coach.' };
+    return {
+      isDark: true,
+      headline: headlines[tab],
+      tabs: TABS.map(t => ({ label: t.label, onClick: () => this.setState({ tab: t.key }), bg: tab === t.key ? '#1a1a1e' : 'transparent', color: tab === t.key ? '#F8F9FA' : '#6E6E76' })),
+      isTodo: tab === 'todo', isPilots: tab === 'pilots', isTools: tab === 'tools',
+      pendingCount: String(feed.length),
+      feed: feed.map(f => ({ title: f.title, meta: f.meta, tag: f.tag, href: f.href, icon: this.ic(f.kind, f.accent), iconBg: f.accent + '22', border: f.accent === '#C8102E' ? '#C8102E33' : '#1C1C20', tagColor: f.accent, tagBorder: f.accent + '55' })),
+      pilots: pilots.map(p => ({ initials: p.initials, name: p.name, pending: p.pending, pendColor: p.pend ? '#F2792B' : '#97C459', qdi: String(p.qdi), trend: p.trend, spark: this.spark(p.vals, p.pend ? '#FFB703' : '#97C459') })),
+      groups,
+    };
+  }
+}
+</script>
+</body>
+</html>

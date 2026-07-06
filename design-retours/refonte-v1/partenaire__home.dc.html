@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #0e1014 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:18px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-shrink:0; height:32px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:16px; letter-spacing:2px; color:#F8F9FA;">OXV</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#5B8DEF; border:1px solid #5B8DEF55; border-radius:3px; padding:2px 6px;">PARTENAIRE</div>
+        </div>
+        <a href="partenaire__fiche.dc.html"><div style="width:32px; height:32px; border-radius:8px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:10px; color:#5B8DEF;">RS</div></a>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:2px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">ATELIER RS MOTORSPORT · CE MOIS</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:27px; line-height:1.05; color:#F8F9FA;">4 devis en attente.</div>
+      </div>
+
+      <!-- KPIs -->
+      <div style="display:flex; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 40ms both;">
+        <div style="flex:1; border-radius:8px; padding:13px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:3px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">CA · MOIS</div>
+          <div style="display:flex; align-items:baseline; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:24px; color:#FFB703; line-height:0.9;">7 340</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#54545C;">€</div></div>
+        </div>
+        <div style="flex:1; border-radius:8px; padding:13px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:3px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">FICHE VUE</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:24px; color:#F8F9FA; line-height:0.9;">312</div>
+        </div>
+        <div style="flex:1; border-radius:8px; padding:13px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:3px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">NOTE</div>
+          <div style="display:flex; align-items:baseline; gap:3px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:24px; color:#FFB703; line-height:0.9;">4,9</div><div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">★</div></div>
+        </div>
+      </div>
+
+      <!-- Demandes de devis -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 100ms both;">
+        <div style="display:flex; align-items:center; gap:8px; padding:0 2px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12px; letter-spacing:1.5px; color:#F8F9FA;">DEMANDES DE DEVIS</div>
+          <div style="width:18px; height:18px; border-radius:999px; background:#5B8DEF; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:9px; color:#050505;">4</div>
+          <div style="flex:1;"></div>
+        </div>
+        <sc-for list="{{ quotes }}" as="q" hint-placeholder-count="4">
+          <div style="display:flex; align-items:center; gap:12px; padding:13px; border-radius:8px; border:{{ q.border }}; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:38px; height:38px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:#C4A459; flex-shrink:0;">{{ q.initials }}</div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#F8F9FA;">{{ q.name }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.3px; color:#6E6E76;">{{ q.service }}</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ q.tagColor }}; border:1px solid {{ q.tagBorder }}; border-radius:3px; padding:3px 6px;">{{ q.tag }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- Tools grid -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:12px; letter-spacing:1.5px; color:#54545C; padding:0 2px;">GÉRER MON ESPACE</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:9px;">
+          <sc-for list="{{ tools }}" as="t" hint-placeholder-count="4">
+            <a href="{{ t.href }}">
+              <div style="display:flex; align-items:center; gap:10px; padding:13px; border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); min-height:56px;">
+                <div style="width:30px; height:30px; border-radius:7px; background:#5B8DEF1a; display:flex; align-items:center; justify-content:center; flex-shrink:0; color:#5B8DEF;">{{ t.icon }}</div>
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:13.5px; color:#F8F9FA; line-height:1.1;">{{ t.name }}</div>
+              </div>
+            </a>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  tIcon(kind) {
+    const h = React.createElement;
+    const s = (kids) => h('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none' }, ...kids);
+    const p = (d, ex) => h('path', Object.assign({ d, stroke: '#5B8DEF', strokeWidth: 1.4, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }, ex || {}));
+    switch (kind) {
+      case 'store': return s([p('M2 6l1-3h10l1 3M3 6v7h10V6M3 6h10')]);
+      case 'catalog': return s([p('M3 3h10v10H3z'), p('M6 6h4M6 9h4')]);
+      case 'calendar': return s([p('M3 4h10v9H3z'), p('M3 7h10M6 2v3M10 2v3')]);
+      case 'star': return s([p('M8 2l1.8 3.6 4 .6-2.9 2.8.7 4L8 11.6 4.4 13.1l.7-4L2.2 6.2l4-.6z')]);
+      default: return s([p('M3 8h10')]);
+    }
+  }
+  renderVals() {
+    const Q = [
+      { initials: 'VL', name: 'Valentin L.', service: 'SETUP CHÂSSIS · URGENT', tag: 'NOUVEAU', st: 'new' },
+      { initials: 'SR', name: 'Sofia R.', service: 'ACCOMPAGNEMENT TRACKDAY', tag: 'NOUVEAU', st: 'new' },
+      { initials: 'MD', name: 'Marc D.', service: 'RÉVISION COMPÉTITION', tag: 'RELANCE', st: 'wait' },
+      { initials: 'AP', name: 'Ana P.', service: 'GÉOMÉTRIE', tag: 'DEVIS ENVOYÉ', st: 'sent' },
+    ];
+    const map = {
+      new: { tagColor: '#5B8DEF', tagBorder: '#5B8DEF55', border: '1px solid #5B8DEF33', href: 'partenaire__devis.dc.html' },
+      wait: { tagColor: '#F2792B', tagBorder: '#F2792B55', border: '1px solid #1C1C20', href: 'partenaire__devis.dc.html' },
+      sent: { tagColor: '#97C459', tagBorder: '#97C45955', border: '1px solid #1C1C20', href: 'partenaire__devis.dc.html' },
+    };
+    return {
+      isDark: true,
+      quotes: Q.map(q => ({ ...q, ...map[q.st] })),
+      tools: [
+        { name: 'Mes offres', icon: this.tIcon('catalog'), href: 'partenaire__offres.dc.html' },
+        { name: 'Réservations', icon: this.tIcon('calendar'), href: 'partenaire__reservations.dc.html' },
+        { name: 'Statistiques', icon: this.tIcon('star'), href: 'partenaire__stats.dc.html' },
+        { name: 'Événements', icon: this.tIcon('calendar'), href: 'partenaire__evenements.dc.html' },
+        { name: 'Éditer vitrine', icon: this.tIcon('store'), href: 'partenaire__vitrine-edit.dc.html' },
+        { name: 'Facturation', icon: this.tIcon('catalog'), href: 'partenaire__facturation.dc.html' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

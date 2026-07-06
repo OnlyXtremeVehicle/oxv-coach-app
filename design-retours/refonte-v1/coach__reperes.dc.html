@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">REPÈRES</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">VALENCE · 8 REPÈRES PARTAGÉS</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:26px; line-height:1.05; color:#F8F9FA;">Vos points de référence.</div>
+      </div>
+
+      <div style="display:flex; gap:8px;">
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid rgba(255,255,255,0.2); background:#0B0B0D; font-family:'JetBrains Mono',monospace; font-size:10px; color:#F8F9FA;">TOUS</div>
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid #1C1C20; background:transparent; font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">FREINAGE</div>
+        <div style="padding:7px 12px; border-radius:999px; border:1px solid #1C1C20; background:transparent; font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">CORDE</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <sc-for list="{{ marks }}" as="m" hint-placeholder-count="5">
+          <div style="border-radius:6px; padding:13px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); display:flex; flex-direction:column; gap:9px;">
+            <div style="display:flex; align-items:center; gap:11px;">
+              <div style="width:28px; height:28px; border-radius:5px; border:1px solid #C4A45955; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:11px; color:#C4A459; flex-shrink:0;">{{ m.corner }}</div>
+              <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA;">{{ m.corner_name }}</div>
+              <div style="display:flex; align-items:center; gap:5px;">
+                <div style="width:8px; height:8px; border-radius:2px; background:{{ m.color }};"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:{{ m.color }};">{{ m.type }}</div>
+              </div>
+            </div>
+            <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:14.5px; line-height:1.32; color:#C9C9CE; padding-left:39px;">{{ m.note }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding:13px; border-radius:5px; border:1px dashed #232326; background:transparent; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#9A9AA3;">+ Nouveau repère</div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: true,
+      marks: [
+        { corner: '07', corner_name: 'Virage aveugle', type: 'FREINAGE', color: '#60A5FA', note: "Freine au 2ᵉ panneau, pas au 1er — il reste de la piste." },
+        { corner: '04', corner_name: 'Épingle Nord', type: 'CORDE', color: '#F2792B', note: "Vise la bosse au vertex, tourne tard et serre." },
+        { corner: '12', corner_name: 'Grande courbe', type: 'RÉACCÉL', color: '#4ADE80', note: "Plein gaz dès que le volant se déverrouille." },
+        { corner: '01', corner_name: 'Courbe amont', type: 'TRAJECT.', color: '#F2792B', note: "Large à l'entrée, laisse filer vers l'extérieur en sortie." },
+        { corner: '14', corner_name: 'Relance Sud', type: 'FREINAGE', color: '#60A5FA', note: "Petit point de freinage, surtout ne pas bloquer l'avant." },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

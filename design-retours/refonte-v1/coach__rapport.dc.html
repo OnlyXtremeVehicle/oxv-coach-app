@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#4a4a52;}
+    doc-page:not(:defined){visibility:hidden;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+  </style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="a4" margin="0.55in" hint-size="820px,1160px">
+
+  <div slot="header" style="display:flex;align-items:center;justify-content:space-between;padding:0 2px 7px;border-bottom:1px solid #1C1C20;">
+    <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:12px;letter-spacing:3px;color:#050505;">OXV MIRROR</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:1px;color:#8a8a80;">RAPPORT DE PERFORMANCE</span>
+  </div>
+
+  <div style="background:#0a0a0c; margin:-2px -2px 20px; padding:26px 26px 22px; border-radius:8px; color:#F8F9FA; position:relative; overflow:hidden;">
+    <div style="position:absolute; top:14px; right:14px; font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:1px; color:#54545C;">FA-2026-071 · SOLDÉE</div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:2px; color:#9A9AA3; margin-bottom:6px;">HAUTE SAINTONGE · 6 JUILLET 2026</div>
+    <div style="display:flex; align-items:flex-end; gap:18px;">
+      <div style="display:flex; flex-direction:column; gap:3px;">
+        <div style="font-family:'Instrument Serif',serif; font-size:30px; line-height:1; color:#F8F9FA;">Valentin L.</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#6E6E76;">COACH · MARC B. · JOURNÉE COMPLÈTE</div>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex; align-items:flex-end; gap:6px;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:64px; line-height:0.78; color:#FFB703; text-shadow:0 0 24px rgba(255,183,3,0.4);">73</div>
+        <div style="display:flex; flex-direction:column; gap:2px; padding-bottom:8px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#54545C;">/100</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#97C459;">+8 saison</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- key data grid -->
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px;">
+    <sc-for list="{{ kpis }}" as="k" hint-placeholder-count="4">
+      <div style="border:1px solid #e2e1d6; border-radius:6px; padding:12px; display:flex; flex-direction:column; gap:4px; background:#faf9f4;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:7.5px; letter-spacing:.5px; color:#9a9990;">{{ k.label }}</div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:22px; color:#0d0d12; line-height:1;">{{ k.value }}</div>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:{{ k.trendColor }};">{{ k.trend }}</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- pillars + progress -->
+  <div style="display:flex; gap:24px; margin-bottom:20px;">
+    <div style="flex:1;">
+      <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13px; letter-spacing:1.5px; color:#0d0d12; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #0d0d12;">QDI PAR PILIER</div>
+      <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="5">
+        <div style="display:flex; align-items:center; gap:9px; margin-bottom:9px;">
+          <div style="width:8px; height:8px; border-radius:2px; background:{{ p.color }};"></div>
+          <div style="width:82px; font-family:'Rajdhani',sans-serif; font-weight:500; font-size:12px; color:#26262c;">{{ p.name }}</div>
+          <div style="flex:1; height:6px; border-radius:999px; background:#ecebe3; position:relative;"><div style="position:absolute; left:0; top:0; bottom:0; width:{{ p.w }}; background:{{ p.color }}; border-radius:999px;"></div></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#0d0d12; min-width:20px; text-align:right;">{{ p.v }}</div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="width:200px;">
+      <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:13px; letter-spacing:1.5px; color:#0d0d12; margin-bottom:10px; padding-bottom:6px; border-bottom:2px solid #0d0d12;">VIRAGES TRAVAILLÉS</div>
+      <sc-for list="{{ worked }}" as="w" hint-placeholder-count="3">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="width:22px; height:22px; border-radius:4px; border:1px solid #cfceC4; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:10px; color:#8a6d1f;">{{ w.n }}</div>
+          <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:500; font-size:11px; color:#26262c;">{{ w.name }}</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#1f7a3d;">{{ w.gain }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <!-- coach verdict -->
+  <div style="border-left:4px solid #C8102E; background:#fbf3f4; border-radius:0 6px 6px 0; padding:14px 16px; margin-bottom:18px;">
+    <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1.5px; color:#C8102E; margin-bottom:6px;">BILAN DU COACH</div>
+    <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:16px; line-height:1.4; color:#26262c;">Belle journée de progrès : le freinage de V07 a payé (+0,5 s) et le QDI grimpe de 8 points sur la saison. Prochain chantier — la régularité, encore trop dispersée. On garde le cap au prochain trackday.</div>
+  </div>
+
+  <!-- footer: invoice + actions -->
+  <div style="display:flex; align-items:center; justify-content:space-between; padding-top:14px; border-top:1px solid #e0dfd5;">
+    <div style="display:flex; gap:22px;">
+      <div style="display:flex; flex-direction:column; gap:1px;"><span style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#9a9990;">PRESTATION</span><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#0d0d12;">450 €</span></div>
+      <div style="display:flex; flex-direction:column; gap:1px;"><span style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#9a9990;">STATUT</span><span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#1f7a3d;">SOLDÉE</span></div>
+    </div>
+    <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#9a9990;">Généré automatiquement · OXV Mirror</div>
+  </div>
+
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 820, &quot;height&quot;: 1160 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: false,
+      kpis: [
+        { label: 'MEILLEUR TOUR', value: '1:24.6', trend: '−0,3 s', trendColor: '#1f7a3d' },
+        { label: 'RÉGULARITÉ σ', value: '0,34 s', trend: 'À TRAVAILLER', trendColor: '#b5651d' },
+        { label: 'TOURS', value: '34', trend: '3 SESSIONS', trendColor: '#9a9990' },
+        { label: 'PIC G', value: '1,32 g', trend: 'ENVELOPPE OK', trendColor: '#1f7a3d' },
+      ],
+      pillars: [
+        { name: 'Trajectoire', color: '#F2792B', v: 72, w: '72%' },
+        { name: 'Fluidité', color: '#E0A21B', v: 81, w: '81%' },
+        { name: 'Freinage', color: '#E63946', v: 64, w: '64%' },
+        { name: 'Accélération', color: '#4ADE80', v: 77, w: '77%' },
+        { name: 'Régularité', color: '#C084FC', v: 69, w: '69%' },
+      ],
+      worked: [
+        { n: '07', name: 'Virage aveugle', gain: '+0,5 s' },
+        { n: '04', name: 'Épingle Nord', gain: '+0,4 s' },
+        { n: '12', name: 'Grande courbe', gain: '+0,3 s' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvpulse{0%,100%{opacity:.30}50%{opacity:.8}}
+    @keyframes oxvspin{to{transform:rotate(360deg)}}
+    @keyframes oxvbreathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvflick{0%,100%{opacity:1}50%{opacity:.55}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 44px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- AppBar -->
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">SIGNATURE</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">VLC · 12.07</div>
+      </div>
+
+      <sc-if value="{{ isNominal }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <!-- HERO GAUGE — HUD framed -->
+          <div style="position:relative; border-radius:6px; padding:20px 18px 20px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #232326; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 40px rgba(0,0,0,0.45); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="position:absolute; top:8px; left:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; top:8px; right:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; left:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; right:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+            <div style="position:absolute; top:-30%; left:50%; transform:translateX(-50%); width:70%; height:60%; background:radial-gradient(circle, rgba(255,183,3,0.10) 0%, transparent 70%); pointer-events:none;"></div>
+
+            <div style="position:relative; display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+              <div style="width:6px; height:6px; border-radius:999px; background:#97C459; animation:oxvbreathe 2.6s ease-in-out infinite;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#97C459;">LECTURE SOLIDE</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">34 TOURS · 3 SÉ.</div>
+            </div>
+
+            <div style="position:relative; width:100%; max-width:290px; margin:0 auto; aspect-ratio:1;">
+              {{ gauge }}
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:82px; line-height:0.82; color:#FFB703; text-shadow:0 0 30px rgba(255,183,3,0.4); font-variant-numeric:tabular-nums;">{{ dispValue }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#54545C; margin-top:2px;">/ 100</div>
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:3px; color:#6E6E76; margin-top:3px;">QDI COMPOSITE</div>
+              </div>
+            </div>
+
+            <div style="position:relative; display:flex; justify-content:center; gap:10px; margin-top:2px;">
+              <div style="display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:4px; background:#0B0B0D; border:1px solid #1C1C20;">
+                <div style="width:8px; height:2px; background:#F8F9FA;"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#C9C9CE; white-space:nowrap;">−4 <span style="color:#54545C;">RECORD</span></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:4px; background:#0B0B0D; border:1px solid #1C1C20;">
+                <div style="width:8px; height:2px; background:#9A9AA3;"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#97C459; white-space:nowrap;">+3 <span style="color:#54545C;">MÉDIANE</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Serif mirror line -->
+          <div style="font-family:'Instrument Serif',serif; font-size:23px; line-height:1.16; color:#E6E6E8; padding:0 2px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 80ms both;">Fluide et posée. Le freinage garde encore de la marge sur votre record.</div>
+
+          <!-- RADAR -->
+          <div style="position:relative; border-radius:6px; padding:16px; overflow:hidden; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+              <div style="width:6px; height:6px; border-radius:999px; background:#9A9AA3;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#9A9AA3;">ANATOMIE · 5 PILIERS</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; color:#54545C;">0–100</div>
+            </div>
+
+            <div>{{ radar }}</div>
+
+            <div style="display:flex; align-items:center; gap:9px; justify-content:center; flex-wrap:wrap; margin-top:8px;">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <div style="width:16px; height:2px; background:#FFB703; border-radius:2px;"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#E5E5E5;">SESSION</div>
+              </div>
+              <div onClick="{{ medianToggle }}" style="display:flex; align-items:center; gap:7px; cursor:pointer; padding:5px 10px; border-radius:4px; border:{{ medianBorder }}; background:#0B0B0D;">
+                <svg width="16" height="2"><line x1="0" y1="1" x2="16" y2="1" stroke="#9A9AA3" stroke-width="1.4" stroke-dasharray="3 3"></line></svg>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:{{ medianTextColor }};">MÉDIANE</div>
+              </div>
+              <div onClick="{{ recordToggle }}" style="display:flex; align-items:center; gap:7px; cursor:pointer; padding:5px 10px; border-radius:4px; border:{{ recordBorder }}; background:#0B0B0D;">
+                <svg width="16" height="2"><line x1="0" y1="1" x2="16" y2="1" stroke="#F8F9FA" stroke-width="1.6"></line></svg>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:{{ recordTextColor }};">RECORD</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- PILLAR CHANNELS -->
+          <div style="display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 240ms both;">
+            <div style="display:flex; justify-content:space-between; padding:0 4px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">CANAUX · GRANDEUR MESURÉE</div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">SCORE</div>
+            </div>
+            <sc-for list="{{ branches }}" as="branch" hint-placeholder-count="5">
+              <div onClick="{{ branch.onSelect }}" style="border-radius:6px; border:{{ branch.rowBorder }}; background:{{ branch.rowBg }}; cursor:pointer; overflow:hidden; transition:border-color 240ms ease, background 240ms ease;">
+                <div style="display:flex; flex-direction:column; gap:9px; padding:12px 13px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:8px; height:8px; border-radius:2px; background:{{ branch.color }}; box-shadow:0 0 8px {{ branch.glow }};"></div>
+                    <div style="flex:1; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:16px; letter-spacing:.5px; color:{{ branch.nameColor }};">{{ branch.name }}</div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:11.5px; color:#C9C9CE;">{{ branch.metricVal }} <span style="color:#6E6E76;">{{ branch.unit }}</span></div>
+                    <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:18px; color:{{ branch.nameColor }}; min-width:26px; text-align:right;">{{ branch.value }}</div>
+                    <div style="width:14px; display:flex; align-items:center; justify-content:center; transform:{{ branch.chev }}; transition:transform 260ms cubic-bezier(.22,1,.36,1);">
+                      <svg width="7" height="12" viewBox="0 0 7 12" fill="none"><path d="M1 1l5 5-5 5" stroke="#54545C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                    </div>
+                  </div>
+                  <div style="position:relative; height:6px; border-radius:999px; background:#161618;">
+                    <div style="position:absolute; left:0; top:0; bottom:0; width:{{ branch.fillPct }}; background:{{ branch.color }}; border-radius:999px; box-shadow:0 0 8px {{ branch.glow }}; transition:width 950ms cubic-bezier(.22,1,.36,1); transition-delay:{{ branch.fillDelay }};"></div>
+                    <div style="position:absolute; left:{{ branch.medPct }}; top:-2px; bottom:-2px; width:1.5px; background:#9A9AA3; opacity:.7;"></div>
+                    <div style="position:absolute; left:{{ branch.recPct }}; top:-3px; bottom:-3px; width:2px; background:#F8F9FA;"></div>
+                  </div>
+                </div>
+                <div style="max-height:{{ branch.openMax }}; opacity:{{ branch.openOpacity }}; overflow:hidden; transition:max-height 340ms cubic-bezier(.22,1,.36,1), opacity 300ms ease;">
+                  <div style="padding:2px 13px 14px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="height:1px; background:#1C1C20;"></div>
+                    <div style="display:flex; align-items:flex-end; gap:6px;">
+                      <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:{{ branch.color }}; line-height:0.85; text-shadow:0 0 18px {{ branch.glow }};">{{ branch.metricVal }}</div>
+                      <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#6E6E76; padding-bottom:4px;">{{ branch.unit }}</div>
+                      <div style="flex:1;"></div>
+                      <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#9A9AA3; text-align:right; padding-bottom:3px;">MÉD {{ branch.median }} · REC {{ branch.record }}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <div style="flex:1; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#54545C;">{{ branch.metric }}</div>
+                      <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#9A9AA3;">{{ branch.gapText }}</div>
+                    </div>
+                    <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; line-height:1.32; color:#E6E6E8;">{{ branch.note }}</div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- METHOD -->
+          <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 320ms both;">
+            <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#6E6E76;">MÉTHODE & TRANSPARENCE</div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13.5px; line-height:1.45; color:#9A9AA3;">Scores proxy dérivés du GPS 10 Hz + IMU, sans capteur dédié — les grandeurs (g, s, m) sont mesurées, les scores 0–100 en sont l'agrégat calibré. Médiane et record agrègent vos séances uniquement, jamais un autre pilote. Une branche sans donnée est ramenée au centre et notée « — ».</div>
+            </div>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:20px;">
+          <svg width="120" height="116" viewBox="0 0 160 156"><polygon points="80,14 140.9,58.2 117.6,129.8 42.4,129.8 19.1,58.2" fill="none" stroke="#1C1C20" stroke-width="1.4"></polygon><polygon points="80,50 111,72 99.3,108 60.7,108 49,72" fill="none" stroke="#1C1C20" stroke-width="1.4"></polygon></svg>
+          <div style="font-family:'Instrument Serif',serif; font-size:23px; color:#F8F9FA;">Pas encore de signature</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Elle se dessine dès votre première séance analysée, et se précise séance après séance. Rien à faire pour l'instant.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoading }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;">
+          <svg width="150" height="145" viewBox="0 0 160 156" style="animation:oxvpulse 1.6s ease-in-out infinite;"><polygon points="80,14 140.9,58.2 117.6,129.8 42.4,129.8 19.1,58.2" fill="none" stroke="#232326" stroke-width="1.4"></polygon><polygon points="80,50 111,72 99.3,108 60.7,108 49,72" fill="none" stroke="#232326" stroke-width="1.4"></polygon><line x1="80" y1="78" x2="80" y2="14" stroke="#232326"></line><line x1="80" y1="78" x2="140.9" y2="58.2" stroke="#232326"></line><line x1="80" y1="78" x2="117.6" y2="129.8" stroke="#232326"></line><line x1="80" y1="78" x2="42.4" y2="129.8" stroke="#232326"></line><line x1="80" y1="78" x2="19.1" y2="58.2" stroke="#232326"></line></svg>
+          <div style="display:flex; flex-direction:column; gap:8px; width:60%; align-items:center;">
+            <div style="height:8px; width:100%; border-radius:4px; background:#161618; animation:oxvpulse 1.6s ease-in-out infinite;"></div>
+            <div style="height:8px; width:70%; border-radius:4px; background:#161618; animation:oxvpulse 1.6s .2s ease-in-out infinite;"></div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#54545C;">AGRÉGATION DE 3 SÉANCES</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOffline }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:20px;">
+          <svg width="110" height="106" viewBox="0 0 160 156" style="opacity:.45;"><polygon points="80,14 140.9,58.2 117.6,129.8 42.4,129.8 19.1,58.2" fill="none" stroke="#1C1C20" stroke-width="1.4"></polygon><polygon points="80,38 122.6,64.7 106.3,115.2 53.7,115.2 37.4,64.7" fill="none" stroke="#54545C" stroke-width="1.4" stroke-dasharray="3 4"></polygon></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#6E6E76;">HORS-LIGNE</div>
+          <div style="font-family:'Instrument Serif',serif; font-size:21px; color:#F8F9FA;">Signature non actualisée</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Dernière lecture le 12 juil. Reconnectez-vous pour recalculer.</div>
+        </div>
+      </sc-if>
+
+      <!-- States preview control -->
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">APERÇU DES ÉTATS</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ states }}" as="st" hint-placeholder-count="4">
+            <div onClick="{{ st.onClick }}" style="padding:7px 12px; border-radius:4px; border:{{ st.border }}; background:{{ st.bg }}; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:{{ st.color }};">{{ st.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 },
+  &quot;startState&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;nominal&quot;, &quot;options&quot;: [&quot;nominal&quot;, &quot;empty&quot;, &quot;loading&quot;, &quot;offline&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Aperçu&quot; },
+  &quot;medianDefault&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Aperçu&quot; }
+}">
+class Component extends DCLogic {
+  state = { selected: 2, showMedian: true, showRecord: true, view: 'nominal', anim: 0, mounted: false };
+
+  COMPOSITE = 73;
+
+  BRANCHES = [
+    { name: 'Trajectoire',  color: '#F2792B', v: 72, m: 68, r: 80, metric: 'Écart médian à la corde', val: '0,62', unit: 'm',    note: "Vos trajectoires suivent votre référence, sans à-coups." },
+    { name: 'Fluidité',     color: '#FFB703', v: 81, m: 74, r: 85, metric: 'Douceur des inputs (jerk)', val: '2,4',  unit: 'm/s³', note: "Vos enchaînements sont plus liés que d'ordinaire — c'est votre point fort du jour." },
+    { name: 'Freinage',     color: '#E63946', v: 64, m: 70, r: 83, metric: 'Décélération pic',          val: '1,14', unit: 'g',    note: "Vos freinages arrivent tôt et restent nettement en retrait de votre record." },
+    { name: 'Accélération', color: '#4ADE80', v: 77, m: 71, r: 82, metric: 'G moyen en sortie',         val: '0,96', unit: 'g',    note: "Vos réaccélérations sont franches dès la corde passée." },
+    { name: 'Régularité',   color: '#C084FC', v: 69, m: 66, r: 78, metric: 'Écart-type par tour',       val: '0,34', unit: 's',    note: "Vos tours se ressemblent d'un passage à l'autre." },
+  ];
+
+  STATES = [
+    { key: 'nominal', label: 'NOMINAL' },
+    { key: 'empty',   label: 'VIDE' },
+    { key: 'loading', label: 'CHARGEMENT' },
+    { key: 'offline', label: 'HORS-LIGNE' },
+  ];
+
+  glow(hex) { return hex.replace(')', '')?.length ? hex + '66' : hex; }
+
+  componentDidMount() {
+    const v = this.props.startState;
+    if (v && v !== this.state.view) this.setState({ view: v });
+    if (this.props.medianDefault === false) this.setState({ showMedian: false });
+    requestAnimationFrame(() => this.setState({ mounted: true }));
+    const dur = 1150, t0 = performance.now(), ease = (x) => 1 - Math.pow(1 - x, 3);
+    const tick = (now) => {
+      if (this._done) return;
+      const p = Math.min(1, (now - t0) / dur);
+      this.setState({ anim: ease(p) });
+      if (p < 1) this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+    this._fb = setTimeout(() => { this._done = true; this.setState({ anim: 1, mounted: true }); }, dur + 120);
+  }
+  componentWillUnmount() { cancelAnimationFrame(this._raf); clearTimeout(this._fb); }
+
+  buildGauge(frac) {
+    const h = React.createElement;
+    const cx = 120, cy = 120, R = 92, A0 = 135, SW = 270;
+    const P = (f, r) => { const d = (A0 + f * SW) * Math.PI / 180; return [cx + r * Math.cos(d), cy + r * Math.sin(d)]; };
+    const [sx, sy] = P(0, R), [ex, ey] = P(1, R);
+    const arc = `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${R} ${R} 0 1 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+
+    const track = h('path', { key: 'trk', d: arc, fill: 'none', stroke: '#17171b', strokeWidth: 9, strokeLinecap: 'round' });
+
+    const ticks = [];
+    for (let k = 0; k <= 20; k++) {
+      const f = k / 20, major = k % 5 === 0;
+      const [x1, y1] = P(f, R - 8), [x2, y2] = P(f, major ? R - 17 : R - 13);
+      ticks.push(h('line', { key: 't' + k, x1, y1, x2, y2, stroke: major ? '#5a5a62' : '#2e2e34', strokeWidth: major ? 1.4 : 1 }));
+    }
+
+    const notch = (f, color, w, key) => { const [x1, y1] = P(f, R - 6), [x2, y2] = P(f, R + 8); return h('line', { key, x1, y1, x2, y2, stroke: color, strokeWidth: w, strokeLinecap: 'round' }); };
+    const med = this.state.showMedian ? notch(0.70, '#9A9AA3', 1.6, 'med') : null;
+    const rec = this.state.showRecord ? notch(0.77, '#F8F9FA', 2, 'rec') : null;
+
+    const progress = h('path', {
+      key: 'prg', d: arc, fill: 'none', stroke: '#FFB703', strokeWidth: 9, strokeLinecap: 'round',
+      pathLength: 100, strokeDasharray: `${frac.toFixed(2)} 100`,
+      style: { filter: 'drop-shadow(0 0 6px rgba(255,183,3,0.6))' },
+    });
+
+    const [lx0, ly0] = P(0, R + 17), [lx1, ly1] = P(1, R + 17);
+    const l0 = h('text', { key: 'l0', x: lx0, y: ly0, fill: '#54545C', fontFamily: '"JetBrains Mono", monospace', fontSize: 9, textAnchor: 'middle', dominantBaseline: 'middle' }, '0');
+    const l100 = h('text', { key: 'l100', x: lx1, y: ly1, fill: '#54545C', fontFamily: '"JetBrains Mono", monospace', fontSize: 9, textAnchor: 'middle', dominantBaseline: 'middle' }, '100');
+
+    return h('svg', { viewBox: '0 0 240 240', width: '100%', height: '100%', style: { display: 'block', overflow: 'visible' } },
+      track, ...ticks, med, rec, progress, l0, l100);
+  }
+
+  buildRadar() {
+    const h = React.createElement;
+    const B = this.BRANCHES, n = B.length;
+    const cx = 150, cy = 150, R = 108;
+    const ang = (i) => (-90 + i * (360 / n)) * Math.PI / 180;
+    const pt = (i, val) => [cx + (R * val / 100) * Math.cos(ang(i)), cy + (R * val / 100) * Math.sin(ang(i))];
+    const poly = (vals) => vals.map((v, i) => pt(i, v).map(x => x.toFixed(1)).join(',')).join(' ');
+    const sel = this.state.selected, on = this.state.mounted;
+
+    const rings = [20, 40, 60, 80, 100].map((rv, k) => h('polygon', {
+      key: 'r' + k, points: B.map((_, i) => pt(i, rv).map(x => x.toFixed(1)).join(',')).join(' '),
+      fill: 'none', stroke: rv === 100 ? '#2a2a30' : '#18181c', strokeWidth: 1,
+    }));
+
+    const axes = B.map((_, i) => { const [x, y] = pt(i, 100); return h('line', { key: 'a' + i, x1: cx, y1: cy, x2: x, y2: y, stroke: '#1C1C20', strokeWidth: 1 }); });
+
+    const [wx1, wy1] = [cx, cy - 122];
+    const wa = (-90 + 42) * Math.PI / 180; const wx2 = cx + 122 * Math.cos(wa), wy2 = cy + 122 * Math.sin(wa);
+    const sweep = h('g', { key: 'sw', style: { transformBox: 'view-box', transformOrigin: '150px 150px', animation: 'oxvspin 5.5s linear infinite' } },
+      h('polygon', { points: `${cx},${cy} ${wx1},${wy1} ${wx2.toFixed(1)},${wy2.toFixed(1)}`, fill: 'rgba(255,255,255,0.05)' }),
+      h('line', { x1: cx, y1: cy, x2: wx1, y2: wy1, stroke: 'rgba(255,255,255,0.18)', strokeWidth: 1.4 }),
+    );
+
+    let highlight = null;
+    if (sel != null) { const [x, y] = pt(sel, 100); highlight = h('line', { key: 'hl', x1: cx, y1: cy, x2: x, y2: y, stroke: 'rgba(255,255,255,0.18)', strokeWidth: 1.5 }); }
+
+    const record = this.state.showRecord ? h('polygon', {
+      key: 'rec', points: poly(B.map(b => b.r)), fill: 'none', stroke: 'rgba(248,249,250,0.34)', strokeWidth: 1.2, strokeLinejoin: 'round',
+      style: { opacity: on ? 1 : 0, transition: 'opacity 500ms ease 500ms' },
+    }) : null;
+
+    const median = this.state.showMedian ? h('polygon', {
+      key: 'med', points: poly(B.map(b => b.m)), fill: 'none', stroke: '#9A9AA3', strokeWidth: 1.3, strokeDasharray: '3 4', strokeLinejoin: 'round',
+      style: { opacity: on ? 0.85 : 0, transition: 'opacity 500ms ease 400ms' },
+    }) : null;
+
+    const session = h('polygon', {
+      key: 'ses', points: poly(B.map(b => b.v)), fill: '#FFB703', stroke: '#FFB703', strokeWidth: 2, strokeLinejoin: 'round',
+      pathLength: 1, strokeDasharray: 1, strokeDashoffset: on ? 0 : 1,
+      style: { fillOpacity: on ? 0.12 : 0, transition: 'stroke-dashoffset 1000ms cubic-bezier(.22,1,.36,1), fill-opacity 700ms ease 500ms' },
+    });
+
+    const dots = B.map((b, i) => {
+      const [x, y] = pt(i, b.v); const act = i === sel;
+      return h('g', { key: 'd' + i, style: { opacity: on ? 1 : 0, transform: on ? 'scale(1)' : 'scale(0)', transformBox: 'fill-box', transformOrigin: 'center', transition: `opacity 300ms ease ${700 + i * 70}ms, transform 400ms cubic-bezier(.34,1.56,.64,1) ${700 + i * 70}ms` } },
+        h('circle', { cx: x, cy: y, r: act ? 8 : 5, fill: b.color, fillOpacity: 0.18 }),
+        h('circle', { cx: x, cy: y, r: act ? 4 : 3, fill: b.color, stroke: '#050505', strokeWidth: 1 }),
+      );
+    });
+
+    const labels = B.map((b, i) => {
+      const [x, y] = pt(i, 100); const lx = cx + (x - cx) * 1.2, ly = cy + (y - cy) * 1.2; const act = i === sel;
+      return h('text', { key: 'l' + i, x: lx, y: ly, fill: act ? b.color : '#6E6E76', fontFamily: '"JetBrains Mono", monospace', fontSize: 9, letterSpacing: 0.5, fontWeight: act ? 700 : 400, textAnchor: 'middle', dominantBaseline: 'middle', style: { cursor: 'pointer' }, onClick: () => this.setState({ selected: i }) }, b.name.slice(0, 3).toUpperCase());
+    });
+
+    return h('svg', { viewBox: '0 0 300 300', width: '100%', style: { display: 'block', overflow: 'visible' } },
+      ...rings, ...axes, sweep, highlight, record, median, session, ...dots, ...labels);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const branches = this.BRANCHES.map((b, i) => {
+      const d = b.v - b.m; const on = i === st.selected; const gap = b.r - b.v;
+      return {
+        name: b.name, value: String(b.v), median: String(b.m), record: String(b.r),
+        color: b.color, glow: b.color + '55',
+        metricVal: b.val, unit: b.unit, metric: b.metric, note: b.note,
+        gapText: gap > 0 ? '+' + gap + ' POUR ÉGALER LE RECORD' : 'RECORD ÉGALÉ',
+        fillPct: st.mounted ? b.v + '%' : '0%', medPct: b.m + '%', recPct: b.r + '%', fillDelay: (i * 70) + 'ms',
+        chev: on ? 'rotate(90deg)' : 'rotate(0deg)',
+        openMax: on ? '220px' : '0px', openOpacity: on ? '1' : '0',
+        rowBg: on ? '#0B0B0D' : 'rgba(17,17,20,0.6)',
+        rowBorder: on ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+        nameColor: on ? '#F8F9FA' : '#C9C9CE',
+        onSelect: () => this.setState(s => ({ selected: s.selected === i ? null : i })),
+      };
+    });
+
+    return {
+      isDark: true,
+      gauge: this.buildGauge(this.COMPOSITE * st.anim),
+      dispValue: String(Math.round(this.COMPOSITE * st.anim)),
+      radar: this.buildRadar(),
+      branches,
+      back: () => {},
+      isNominal: st.view === 'nominal',
+      isEmpty: st.view === 'empty',
+      isLoading: st.view === 'loading',
+      isOffline: st.view === 'offline',
+      medianToggle: () => this.setState(s => ({ showMedian: !s.showMedian })),
+      medianBorder: st.showMedian ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+      medianTextColor: st.showMedian ? '#E5E5E5' : '#54545C',
+      recordToggle: () => this.setState(s => ({ showRecord: !s.showRecord })),
+      recordBorder: st.showRecord ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+      recordTextColor: st.showRecord ? '#E5E5E5' : '#54545C',
+      states: this.STATES.map(s => ({
+        label: s.label, onClick: () => this.setState({ view: s.key }),
+        border: s.key === st.view ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+        bg: s.key === st.view ? '#0B0B0D' : 'transparent',
+        color: s.key === st.view ? '#F8F9FA' : '#6E6E76',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

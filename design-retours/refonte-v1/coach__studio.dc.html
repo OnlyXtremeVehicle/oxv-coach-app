@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvrec{0%,100%{opacity:1}50%{opacity:.35}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:15px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="display:flex; align-items:baseline; gap:7px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">STUDIO</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">25 Hz</div>
+        </div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <!-- Superposition traces (pilot vs reference) -->
+      <div style="border-radius:8px; padding:14px 12px 10px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #232326; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#9A9AA3;">SUPERPOSITION · VITESSE</div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; align-items:center; gap:5px;"><div style="width:12px; height:2px; background:#FFB703;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#9A9AA3;">PILOTE</span></div>
+          <div style="display:flex; align-items:center; gap:5px;"><div style="width:12px; height:2px; background:#60A5FA;"></div><span style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#9A9AA3;">RÉF.</span></div>
+        </div>
+        {{ overlay }}
+        <!-- delta strip -->
+        <div style="margin-top:4px;">{{ deltaStrip }}</div>
+      </div>
+
+      <!-- G-G friction circle + steer/yaw channel -->
+      <div style="display:flex; gap:12px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 80ms both;">
+        <div style="flex:1; border-radius:8px; padding:12px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #232326; display:flex; flex-direction:column; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:10px; letter-spacing:1.5px; color:#9A9AA3;">DIAGRAMME G-G</div>
+          {{ ggDiagram }}
+          <div style="display:flex; justify-content:space-between;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">ENVELOPPE</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#FFB703;">1,32 g</div>
+          </div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:12px;">
+          <div style="border-radius:8px; padding:12px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #232326; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#54545C;">ÉQUILIBRE CHÂSSIS</div>
+            <div style="display:flex; align-items:baseline; gap:4px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:26px; color:#F2792B; line-height:0.9;">SUR</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">virage</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:#6E6E76; line-height:1.4;">Braquage &gt; lacet en sortie V07 — la technique, pas la voiture.</div>
+          </div>
+          <div style="border-radius:8px; padding:12px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #232326; display:flex; flex-direction:column; gap:5px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#54545C;">FREINAGE DÉGRESSIF</div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <div style="flex:1; height:5px; border-radius:999px; background:#161618; position:relative;"><div style="position:absolute; left:0; top:0; bottom:0; width:72%; background:#60A5FA; border-radius:999px;"></div></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#60A5FA;">72%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split-screen video/data -->
+      <div style="border-radius:8px; overflow:hidden; border:1px solid #232326; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+        <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:#0B0B0D; border-bottom:1px solid #1C1C20;">
+          <div style="width:6px; height:6px; border-radius:999px; background:#C8102E; animation:oxvrec 1s ease-in-out infinite;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:1.5px; color:#9A9AA3;">SPLIT VIDÉO · DATA SYNCHRO</div>
+          <div style="flex:1;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#C4A459;">V07 · 0:12</div>
+        </div>
+        <div style="display:flex; height:104px;">
+          <div style="flex:1; position:relative; background:radial-gradient(90% 90% at 50% 25%, #16171d 0%, #08080b 75%); border-right:1px solid #1C1C20;">
+            <svg viewBox="0 0 150 104" width="100%" height="100%" style="display:block;"><polygon points="58,34 92,34 138,100 12,100" fill="#111218"></polygon><path d="M70,34 L34,100 M80,34 L116,100" stroke="#60A5FA" stroke-width="3" stroke-linecap="round"></path><path d="M75,34 L75,100" stroke="#FFB703" stroke-width="2" stroke-linecap="round"></path></svg>
+            <div style="position:absolute; bottom:8px; left:10px; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:20px; color:#FFB703; line-height:1;">118</div>
+          </div>
+          <div style="flex:1; position:relative; background:#0a0a0d; display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 150 104" width="100%" height="100%" style="display:block;"><line x1="10" y1="52" x2="140" y2="52" stroke="#161618"></line><path d="M12 30 C40 30 44 78 66 78 S110 40 138 40" fill="none" stroke="#FFB703" stroke-width="2" stroke-linecap="round"></path><line x1="66" y1="14" x2="66" y2="94" stroke="#C8102E" stroke-width="1.4" stroke-dasharray="3 3"></line></svg>
+            <div style="position:absolute; top:8px; right:10px; font-family:'JetBrains Mono',monospace; font-size:8px; color:#C8102E;">ANOMALIE</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QDI auto -->
+      <div style="display:flex; align-items:center; gap:12px; padding:14px; border-radius:8px; background:#12080a; border:1px solid #C8102E33; position:relative; overflow:hidden; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 220ms both;">
+        <div style="position:absolute; left:0; top:0; bottom:0; width:4px; background:#C8102E;"></div>
+        <div style="display:flex; align-items:flex-end; gap:5px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:44px; color:#FFB703; line-height:0.8; text-shadow:0 0 22px rgba(255,183,3,0.35);">73</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#8a4a52; padding-bottom:5px;">QDI AUTO</div>
+        </div>
+        <div style="flex:1; font-family:'Instrument Serif',serif; font-style:italic; font-size:14px; line-height:1.32; color:#F2D9DD;">Généré sur le run — prêt pour le débrief.</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  spd(t, apex, entry, exitv) {
+    const e = (x) => 1 - Math.pow(1 - x, 2);
+    if (t < 0.30) return entry - (entry - apex) * e(t / 0.30);
+    if (t < 0.46) return apex;
+    return apex + (exitv - apex) * e((t - 0.46) / 0.54);
+  }
+  buildOverlay() {
+    const h = React.createElement, W = 330, H = 96, pad = 8, top = 8, bot = 10;
+    const sMax = 216, sMin = 90;
+    const X = (t) => pad + t * (W - 2 * pad), Y = (s) => top + (sMax - s) / (sMax - sMin) * (H - top - bot);
+    const line = (a, en, ex) => { const N = 48, p = []; for (let i = 0; i <= N; i++) { const t = i / N; p.push([X(t), Y(this.spd(t, a, en, ex))]); } return p.map((q, i) => (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1)).join(' '); };
+    const grid = [120, 160, 200].map(s => h('line', { key: s, x1: pad, y1: Y(s), x2: W - pad, y2: Y(s), stroke: '#161618', strokeWidth: 1 }));
+    const ref = h('path', { key: 'r', d: line(121, 210, 178), fill: 'none', stroke: '#60A5FA', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round', opacity: 0.9 });
+    const pil = h('path', { key: 'p', d: line(118, 208, 176), fill: 'none', stroke: '#FFB703', strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round', style: { filter: 'drop-shadow(0 0 4px rgba(255,183,3,0.4))' } });
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block', overflow: 'visible' } }, ...grid, ref, pil);
+  }
+  buildDeltaStrip() {
+    const h = React.createElement, W = 330, H = 20, pad = 8;
+    const bars = [];
+    for (let i = 0; i < 42; i++) {
+      const t = i / 42; const d = (this.spd(t, 118, 208, 176) - this.spd(t, 121, 210, 178));
+      const hgt = Math.min(8, Math.abs(d) * 1.6);
+      const up = d >= 0;
+      bars.push(h('rect', { key: i, x: pad + t * (W - 2 * pad), y: up ? H / 2 - hgt : H / 2, width: 5, height: hgt, fill: up ? '#97C459' : '#F2792B', opacity: 0.8 }));
+    }
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block' } }, h('line', { x1: pad, y1: H / 2, x2: W - pad, y2: H / 2, stroke: '#232326' }), ...bars);
+  }
+  buildGG() {
+    const h = React.createElement, S = 120, c = S / 2, R = 48;
+    const rings = [1, 0.66, 0.33].map((r, i) => h('circle', { key: 'r' + i, cx: c, cy: c, r: R * r, fill: 'none', stroke: i === 0 ? '#3a3a42' : '#1c1c22', strokeWidth: 1 }));
+    const cross = [h('line', { key: 'x', x1: c - R, y1: c, x2: c + R, y2: c, stroke: '#1c1c22' }), h('line', { key: 'y', x1: c, y1: c - R, x2: c, y2: c + R, stroke: '#1c1c22' })];
+    // scatter of g-points (braking = -y, accel = +y, lateral = x)
+    const pts = [];
+    for (let i = 0; i < 90; i++) {
+      const ang = i * 0.61, rad = (0.55 + 0.4 * Math.abs(Math.sin(i * 0.9))) * R;
+      const x = c + Math.cos(ang) * rad * 0.92, y = c + Math.sin(ang) * rad * 0.92;
+      pts.push(h('circle', { key: 'p' + i, cx: x, cy: y, r: 1.5, fill: '#FFB703', opacity: 0.6 }));
+    }
+    const labels = [
+      h('text', { key: 'b', x: c, y: c + R + 8, fill: '#54545C', fontFamily: '"JetBrains Mono"', fontSize: 6, textAnchor: 'middle' }, 'FREIN'),
+      h('text', { key: 'a', x: c, y: c - R - 3, fill: '#54545C', fontFamily: '"JetBrains Mono"', fontSize: 6, textAnchor: 'middle' }, 'ACCÉL'),
+    ];
+    return h('svg', { viewBox: `0 0 ${S} ${S}`, width: '100%', style: { display: 'block', overflow: 'visible' } }, ...rings, ...cross, ...pts, ...labels);
+  }
+  renderVals() {
+    return { isDark: true, overlay: this.buildOverlay(), deltaStrip: this.buildDeltaStrip(), ggDiagram: this.buildGG() };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#050505;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100vh; background:radial-gradient(90% 60% at 50% -5%, #08141a 0%, #050505 55%); color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:48px 40px 80px;">
+  <div style="max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:34px;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; border-bottom:1px solid #1C1C20; padding-bottom:24px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; letter-spacing:3px; color:#54545C;">OXV MIRROR</div>
+          <div style="width:1px; height:12px; background:#232326;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:#22D3EE;">ESPACE ADMIN</div>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:52px; letter-spacing:2px; line-height:0.9; color:#F8F9FA;">RÔLE ADMIN</div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; color:#9A9AA3;">La tour de contrôle : superviser la plateforme, valider les pros, modérer, suivre les revenus et la santé data.</div>
+      </div>
+      <div style="display:flex; gap:26px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#22D3EE; line-height:1;">5</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">ÉCRANS</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#F8F9FA; line-height:1;">3</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">RÔLES SUPERVISÉS</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+      <sc-for list="{{ screens }}" as="s" hint-placeholder-count="5">
+        <a href="{{ s.href }}">
+          <div style="border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); overflow:hidden; animation:oxvrise 600ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="height:150px; position:relative; background:radial-gradient(80% 90% at 50% 0%, #0c161c 0%, #0a0a0d 70%); display:flex; align-items:center; justify-content:center; border-bottom:1px solid #1C1C20; overflow:hidden;">
+              <div style="position:absolute; top:10px; left:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; top:10px; right:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; left:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; right:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              {{ s.preview }}
+            </div>
+            <div style="padding:15px 16px; display:flex; align-items:center; gap:12px;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; letter-spacing:.3px; color:#F8F9FA;">{{ s.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#6E6E76;">{{ s.meta }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#22D3EE; border:1px solid #22D3EE55; border-radius:3px; padding:3px 7px;">{{ s.arch }}</div>
+            </div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#54545C;">
+      <div style="width:9px; height:3px; border-radius:2px; background:#22D3EE;"></div> Le cyan identifie l'admin — au-dessus des trois rôles : pilote (or), coach (rouge), partenaire (bleu).
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 640 } }">
+class Component extends DCLogic {
+  glyph(kind) {
+    const h = React.createElement;
+    const svg = (kids) => h('svg', { width: 132, height: 96, viewBox: '0 0 132 96', fill: 'none', style: { overflow: 'visible' } }, ...kids);
+    switch (kind) {
+      case 'tower': return svg([
+        h('text', { key: 1, x: 22, y: 34, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 22 }, '128k'),
+        ...Array.from({ length: 18 }).map((_, i) => { const hh = 6 + Math.abs(Math.sin(i * 0.6) * 24); return h('rect', { key: 'b' + i, x: 20 + i * 6, y: 80 - hh, width: 4, height: hh, rx: 1, fill: i >= 14 ? '#FFB703' : '#2a2f33' }); })]);
+      case 'users': return svg([20, 44, 68].map((y, i) => h('g', { key: i },
+        h('circle', { cx: 30, cy: y + 6, r: 7, fill: 'none', stroke: '#232326' }),
+        h('circle', { cx: 42, cy: y + 6, r: 2.5, fill: ['#FFB703', '#C8102E', '#5B8DEF'][i] }),
+        h('rect', { x: 52, y: y + 2, width: 40, height: 5, rx: 2, fill: '#232326' }),
+        h('circle', { cx: 106, cy: y + 5, r: 3, fill: ['#97C459', '#F2792B', '#C8102E'][i] }))));
+      case 'moderate': return svg([
+        h('path', { key: 1, d: 'M66 12l30 10v14c0 18-14 28-30 36-16-8-30-18-30-36V22z', fill: 'none', stroke: '#22D3EE55', strokeWidth: 2 }),
+        h('path', { key: 2, d: 'M54 44l8 8 18-18', stroke: '#97C459', strokeWidth: 3, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' })]);
+      case 'revenue': return svg([
+        h('text', { key: 1, x: 22, y: 32, fill: '#22D3EE', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 20 }, '19,2k'),
+        h('path', { key: 2, d: 'M20 74 L38 66 L54 60 L72 50 L92 42 L112 30', fill: 'none', stroke: '#22D3EE', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('circle', { key: 3, cx: 112, cy: 30, r: 3, fill: '#22D3EE' })]);
+      case 'health': return svg([
+        h('path', { key: 1, d: 'M18 48h20l6-16 10 32 8-24 6 8h46', stroke: '#97C459', strokeWidth: 2, fill: 'none', strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('text', { key: 2, x: 66, y: 76, fill: '#54545C', fontFamily: '"JetBrains Mono"', fontSize: 8, textAnchor: 'middle' }, '99,9% UPTIME')]);
+      default: return svg([]);
+    }
+  }
+  renderVals() {
+    const S = [
+      { name: 'Tour de contrôle', meta: 'GMV · POPULATION · SANTÉ', arch: 'HUB', kind: 'tower', href: 'admin__home.dc.html' },
+      { name: 'Utilisateurs', meta: 'ANNUAIRE · 3 RÔLES · STATUT', arch: 'A9', kind: 'users', href: 'admin__utilisateurs.dc.html' },
+      { name: 'Modération', meta: 'VALIDATION PROS · AVIS', arch: 'A11', kind: 'moderate', href: 'admin__moderation.dc.html' },
+      { name: 'Revenus', meta: 'COMMISSION · SPLIT · TOP', arch: 'A2', kind: 'revenue', href: 'admin__revenus.dc.html' },
+      { name: 'Santé data', meta: 'SYNCHRO · BOÎTIERS · LATENCE', arch: 'A3', kind: 'health', href: 'admin__home.dc.html' },
+    ];
+    return { isDark: true, screens: S.map(s => ({ ...s, preview: this.glyph(s.kind) })) };
+  }
+}
+</script>
+</body>
+</html>

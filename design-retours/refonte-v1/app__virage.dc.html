@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvpulse{0%,100%{opacity:.30}50%{opacity:.8}}
+    @keyframes oxvbreathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvping{0%{transform:scale(1);opacity:.6}80%,100%{transform:scale(2.6);opacity:0}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 44px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- AppBar -->
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="display:flex; align-items:baseline; gap:8px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">VIRAGE</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:15px; color:#C4A459;">07</div>
+        </div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">VLC · S3</div>
+      </div>
+
+      <sc-if value="{{ isNominal }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <!-- HERO — apex speed -->
+          <div style="position:relative; border-radius:6px; padding:18px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #232326; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 40px rgba(0,0,0,0.45); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="position:absolute; top:8px; left:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; top:8px; right:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; left:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; right:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <div style="width:6px; height:6px; border-radius:2px; background:#F2792B; box-shadow:0 0 8px #F2792B88;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#9A9AA3;">VITESSE À LA CORDE</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">GAUCHE · 2ᵉ</div>
+            </div>
+
+            <div style="display:flex; align-items:flex-end; gap:10px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:76px; line-height:0.8; color:#FFB703; text-shadow:0 0 30px rgba(255,183,3,0.4); font-variant-numeric:tabular-nums;">118</div>
+              <div style="display:flex; flex-direction:column; gap:5px; padding-bottom:8px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#9A9AA3;">km/h</div>
+                <div style="display:flex; gap:6px;">
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#C9C9CE; white-space:nowrap;">−3 <span style="color:#54545C;">REC 121</span></div>
+                </div>
+              </div>
+              <div style="flex:1;"></div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; padding-bottom:6px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#54545C;">RAYON</div>
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:20px; color:#E6E6E8;">42<span style="font-size:12px; color:#6E6E76;"> m</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SPEED TRACE -->
+          <div style="position:relative; border-radius:6px; padding:14px 12px 12px; overflow:hidden; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; box-shadow:inset 0 1px 0 rgba(255,255,255,0.04); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 100ms both;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; padding:0 2px;">
+              <div style="width:6px; height:6px; border-radius:999px; background:#9A9AA3;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#9A9AA3;">PROFIL DE VITESSE</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">km/h × m</div>
+            </div>
+            <div>{{ trace }}</div>
+          </div>
+
+          <!-- 3 PHASES -->
+          <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 200ms both;">
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">DÉCOMPOSITION · 3 PHASES</div>
+            <sc-for list="{{ phases }}" as="ph" hint-placeholder-count="3">
+              <div onClick="{{ ph.onSelect }}" style="border-radius:6px; border:{{ ph.rowBorder }}; background:{{ ph.rowBg }}; cursor:pointer; overflow:hidden; transition:border-color 220ms ease, background 220ms ease;">
+                <div style="display:flex; align-items:center; gap:12px; padding:13px;">
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:3px; width:30px;">
+                    <div style="width:10px; height:10px; border-radius:2px; background:{{ ph.color }}; box-shadow:0 0 8px {{ ph.glow }};"></div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:#54545C;">{{ ph.tag }}</div>
+                  </div>
+                  <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:16px; letter-spacing:.5px; color:{{ ph.nameColor }};">{{ ph.name }}</div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#6E6E76;">{{ ph.metricLabel }}</div>
+                  </div>
+                  <div style="display:flex; align-items:baseline; gap:4px;">
+                    <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:24px; color:{{ ph.color }}; text-shadow:0 0 14px {{ ph.glow }};">{{ ph.metricVal }}</div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">{{ ph.unit }}</div>
+                  </div>
+                </div>
+                <div style="max-height:{{ ph.openMax }}; opacity:{{ ph.openOpacity }}; overflow:hidden; transition:max-height 320ms cubic-bezier(.22,1,.36,1), opacity 280ms ease;">
+                  <div style="padding:0 13px 13px 55px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="height:1px; background:#1C1C20;"></div>
+                    <div style="display:flex; gap:16px;">
+                      <div style="display:flex; flex-direction:column; gap:2px;">
+                        <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">POSITION</div>
+                        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#C9C9CE;">{{ ph.pos }}</div>
+                      </div>
+                      <div style="display:flex; flex-direction:column; gap:2px;">
+                        <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.5px; color:#54545C;">vs RECORD</div>
+                        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; color:#9A9AA3;">{{ ph.vsRec }}</div>
+                      </div>
+                    </div>
+                    <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:14.5px; line-height:1.3; color:#E6E6E8;">{{ ph.note }}</div>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+
+          <!-- METHOD -->
+          <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 300ms both;">
+            <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#6E6E76;">MÉTHODE & TRANSPARENCE</div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13.5px; line-height:1.45; color:#9A9AA3;">Profil reconstruit depuis le GPS 10 Hz + IMU sur ce virage, moyenné sur vos 6 meilleurs passages. La vitesse à la corde est le minimum du profil — signature du virage. Le record agrège vos séances uniquement, jamais un autre pilote.</div>
+            </div>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:20px;">
+          <svg width="150" height="90" viewBox="0 0 200 120"><path d="M8 20 C 50 20, 60 96, 100 96 S 150 30, 192 30" fill="none" stroke="#1C1C20" stroke-width="2" stroke-linecap="round"></path></svg>
+          <div style="font-family:'Instrument Serif',serif; font-size:23px; color:#F8F9FA;">Virage pas encore analysé</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Il apparaît dès qu'un passage propre est capté sur ce secteur.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoading }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;">
+          <svg width="180" height="100" viewBox="0 0 200 120" style="animation:oxvpulse 1.6s ease-in-out infinite;"><path d="M8 20 C 50 20, 60 96, 100 96 S 150 30, 192 30" fill="none" stroke="#232326" stroke-width="2.5" stroke-linecap="round"></path></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#54545C;">RECONSTRUCTION DU PROFIL</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOffline }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:20px;">
+          <svg width="150" height="90" viewBox="0 0 200 120" style="opacity:.45;"><path d="M8 20 C 50 20, 60 96, 100 96 S 150 30, 192 30" fill="none" stroke="#54545C" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 5"></path></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#6E6E76;">HORS-LIGNE</div>
+          <div style="font-family:'Instrument Serif',serif; font-size:21px; color:#F8F9FA;">Profil non actualisé</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Dernière lecture le 12 juil. Reconnectez-vous pour recalculer.</div>
+        </div>
+      </sc-if>
+
+      <!-- States preview control -->
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">APERÇU DES ÉTATS</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ states }}" as="st" hint-placeholder-count="4">
+            <div onClick="{{ st.onClick }}" style="padding:7px 12px; border-radius:4px; border:{{ st.border }}; background:{{ st.bg }}; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:{{ st.color }};">{{ st.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 },
+  &quot;startState&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;nominal&quot;, &quot;options&quot;: [&quot;nominal&quot;, &quot;empty&quot;, &quot;loading&quot;, &quot;offline&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Aperçu&quot; }
+}">
+class Component extends DCLogic {
+  state = { selected: 1, view: 'nominal', mounted: false };
+
+  PHASES = [
+    { key: 'brake', name: 'Freinage',  tag: 'PH1', color: '#60A5FA', metricLabel: 'Décélération pic', metricVal: '1,14', unit: 'g',    pos: '−92 → −18 m', vsRec: '3 m plus tôt',  note: "Vous freinez tôt et fort — il reste de la marge pour retarder le point d'appui." },
+    { key: 'apex',  name: 'Corde',     tag: 'PH2', color: '#F2792B', metricLabel: 'Vitesse minimale', metricVal: '118',  unit: 'km/h', pos: 'apex à +4 m',   vsRec: '−3 km/h',      note: "Le point le plus lent du virage — trois km/h sous votre record de passage." },
+    { key: 'accel', name: 'Réaccél.',  tag: 'PH3', color: '#4ADE80', metricLabel: 'G moyen en sortie', metricVal: '0,96', unit: 'g',    pos: '+4 → +70 m',    vsRec: 'plein gaz égal', note: "Réaccélération franche dès la corde passée — c'est votre point fort sur ce virage." },
+  ];
+
+  STATES = [
+    { key: 'nominal', label: 'NOMINAL' },
+    { key: 'empty',   label: 'VIDE' },
+    { key: 'loading', label: 'CHARGEMENT' },
+    { key: 'offline', label: 'HORS-LIGNE' },
+  ];
+
+  componentDidMount() {
+    const v = this.props.startState;
+    if (v && v !== this.state.view) this.setState({ view: v });
+    requestAnimationFrame(() => this.setState({ mounted: true }));
+    // Fallback: setTimeout fires even when the tab is hidden (rAF does not).
+    this._fb = setTimeout(() => this.setState({ mounted: true }), 260);
+  }
+  componentWillUnmount() { clearTimeout(this._fb); }
+
+  speedAt(t) {
+    const ease = (x) => 1 - Math.pow(1 - x, 2);
+    if (t < 0.30) { const p = t / 0.30; return 208 - (208 - 118) * ease(p); }
+    if (t < 0.46) { const p = (t - 0.30) / 0.16; return 118 + Math.sin(p * Math.PI) * -2; }
+    const p = (t - 0.46) / 0.54; return 118 + (178 - 118) * ease(p);
+  }
+
+  buildTrace() {
+    const h = React.createElement;
+    const W = 328, H = 208, padL = 10, padR = 10, top = 12, bot = 28;
+    const plotW = W - padL - padR, plotH = H - top - bot;
+    const sMax = 216, sMin = 96;
+    const X = (t) => padL + t * plotW;
+    const Y = (s) => top + (sMax - s) / (sMax - sMin) * plotH;
+
+    const N = 64, pts = [];
+    for (let i = 0; i <= N; i++) { const t = i / N; pts.push([X(t), Y(this.speedAt(t))]); }
+    const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+    const area = line + ` L ${X(1).toFixed(1)} ${(top + plotH).toFixed(1)} L ${X(0).toFixed(1)} ${(top + plotH).toFixed(1)} Z`;
+
+    // phase bands
+    const bands = [
+      { x0: 0, x1: 0.30, c: 'rgba(96,165,250,0.09)' },
+      { x0: 0.30, x1: 0.46, c: 'rgba(242,121,43,0.10)' },
+      { x0: 0.46, x1: 1.0, c: 'rgba(74,222,128,0.08)' },
+    ].map((b, i) => h('rect', { key: 'b' + i, x: X(b.x0), y: top, width: X(b.x1) - X(b.x0), height: plotH, fill: b.c }));
+
+    const sel = this.state.selected;
+    const selBand = [[0, 0.30], [0.30, 0.46], [0.46, 1.0]][sel];
+    const selRect = h('rect', { key: 'selb', x: X(selBand[0]), y: top, width: X(selBand[1]) - X(selBand[0]), height: plotH, fill: 'none', stroke: this.PHASES[sel].color, strokeWidth: 1, strokeDasharray: '2 3', opacity: 0.6 });
+
+    // grid
+    const grid = [];
+    for (let s = 120; s <= 200; s += 40) grid.push(h('line', { key: 'g' + s, x1: padL, y1: Y(s), x2: W - padR, y2: Y(s), stroke: '#161618', strokeWidth: 1 }));
+    const ylabels = [120, 160, 200].map((s) => h('text', { key: 'yl' + s, x: padL + 2, y: Y(s) - 3, fill: '#3f3f46', fontFamily: '"JetBrains Mono", monospace', fontSize: 8 }, String(s)));
+
+    // x phase labels
+    const xl = [
+      { t: 0.15, s: 'FREINAGE', c: '#60A5FA' },
+      { t: 0.38, s: 'CORDE', c: '#F2792B' },
+      { t: 0.73, s: 'RÉACCÉL', c: '#4ADE80' },
+    ].map((l, i) => h('text', { key: 'xl' + i, x: X(l.t), y: H - 10, fill: l.c, fontFamily: '"JetBrains Mono", monospace', fontSize: 8, letterSpacing: 0.5, textAnchor: 'middle', opacity: 0.85 }, l.s));
+
+    const on = this.state.mounted;
+    const areaEl = h('path', { key: 'area', d: area, fill: 'url(#tracegrad)', opacity: on ? 1 : 0, style: { transition: 'opacity 700ms ease 400ms' } });
+    const lineEl = h('path', {
+      key: 'line', d: line, fill: 'none', stroke: '#FFB703', strokeWidth: 2.4, strokeLinecap: 'round', strokeLinejoin: 'round',
+      pathLength: 1, strokeDasharray: 1, strokeDashoffset: on ? 0 : 1,
+      style: { filter: 'drop-shadow(0 0 5px rgba(255,183,3,0.55))', transition: 'stroke-dashoffset 1200ms cubic-bezier(.22,1,.36,1)' },
+    });
+
+    // apex marker
+    let apexT = 0.30; let apexMin = 999;
+    for (let i = 0; i <= N; i++) { const t = i / N, s = this.speedAt(t); if (s < apexMin) { apexMin = s; apexT = t; } }
+    const ax = X(apexT), ay = Y(apexMin);
+    const apex = h('g', { key: 'apex', opacity: on ? 1 : 0, style: { transition: 'opacity 400ms ease 1100ms' } },
+      h('line', { x1: ax, y1: ay, x2: ax, y2: top + plotH, stroke: '#F2792B', strokeWidth: 1, strokeDasharray: '2 3', opacity: 0.5 }),
+      h('circle', { cx: ax, cy: ay, r: 9, fill: '#F2792B', opacity: 0.25, style: { transformBox: 'fill-box', transformOrigin: 'center', animation: 'oxvping 2.4s ease-out infinite' } }),
+      h('circle', { cx: ax, cy: ay, r: 4, fill: '#F2792B', stroke: '#050505', strokeWidth: 1.5 }),
+      h('text', { x: ax, y: ay - 14, fill: '#FFB703', fontFamily: '"Rajdhani", sans-serif', fontWeight: 700, fontSize: 14, textAnchor: 'middle' }, '118'),
+    );
+
+    const defs = h('defs', { key: 'defs' }, h('linearGradient', { id: 'tracegrad', x1: 0, y1: 0, x2: 0, y2: 1 },
+      h('stop', { offset: '0%', stopColor: '#FFB703', stopOpacity: 0.18 }),
+      h('stop', { offset: '100%', stopColor: '#FFB703', stopOpacity: 0 }),
+    ));
+
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block', overflow: 'visible' } },
+      defs, ...bands, selRect, ...grid, ...ylabels, areaEl, lineEl, apex, ...xl);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const phases = this.PHASES.map((p, i) => {
+      const on = i === st.selected;
+      return {
+        name: p.name, tag: p.tag, color: p.color, glow: p.color + '55',
+        metricLabel: p.metricLabel, metricVal: p.metricVal, unit: p.unit,
+        pos: p.pos, vsRec: p.vsRec, note: p.note,
+        rowBg: on ? '#0B0B0D' : 'rgba(17,17,20,0.6)',
+        rowBorder: on ? '1px solid ' + p.color + '66' : '1px solid #1C1C20',
+        nameColor: on ? '#F8F9FA' : '#C9C9CE',
+        openMax: on ? '200px' : '0px', openOpacity: on ? '1' : '0',
+        onSelect: () => this.setState(s => ({ selected: s.selected === i ? i : i })),
+      };
+    });
+
+    return {
+      isDark: true,
+      trace: this.buildTrace(),
+      phases,
+      back: () => {},
+      isNominal: st.view === 'nominal',
+      isEmpty: st.view === 'empty',
+      isLoading: st.view === 'loading',
+      isOffline: st.view === 'offline',
+      states: this.STATES.map(s => ({
+        label: s.label, onClick: () => this.setState({ view: s.key }),
+        border: s.key === st.view ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+        bg: s.key === st.view ? '#0B0B0D' : 'transparent',
+        color: s.key === st.view ? '#F8F9FA' : '#6E6E76',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

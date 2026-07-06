@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#4a4a52;}
+    doc-page:not(:defined){visibility:hidden;}
+    .h1{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:29px;letter-spacing:1px;color:#0d0d12;margin:0;}
+    .h2{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:18px;letter-spacing:1px;color:#0d0d12;margin:0 0 8px;padding-bottom:6px;border-bottom:2px solid #0d0d12;}
+    .h3{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:14px;letter-spacing:.5px;color:#111;margin:0 0 4px;}
+    .ey{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:#8a6d1f;text-transform:uppercase;}
+    .p{font-family:'Newsreader',serif;font-size:12.5px;line-height:1.5;color:#26262c;margin:0 0 7px;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+    .tk{font-family:'JetBrains Mono',monospace;font-size:10px;background:#f0efe9;border:1px solid #dcdbd2;border-radius:3px;padding:1px 5px;color:#33332c;white-space:nowrap;}
+    table{border-collapse:collapse;width:100%;margin:4px 0 10px;}
+    th{font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.6px;text-transform:uppercase;color:#77776e;text-align:left;padding:5px 6px;border-bottom:1.5px solid #cfceC4;}
+    td{font-family:'Newsreader',serif;font-size:11px;line-height:1.38;color:#26262c;padding:5px 6px;border-bottom:1px solid #e6e5dd;vertical-align:top;}
+    td .mono{font-size:9.5px;}
+    .sw{display:inline-block;width:9px;height:9px;border-radius:2px;vertical-align:middle;margin-right:4px;border:1px solid rgba(0,0,0,.15);}
+    ul{margin:2px 0 9px;padding-left:16px;}
+    li{font-family:'Newsreader',serif;font-size:12px;line-height:1.5;color:#26262c;margin-bottom:3px;}
+    .card{background:#faf9f4;border:1px solid #e2e1d6;border-radius:7px;padding:12px 14px;margin:0 0 10px;break-inside:avoid;}
+    .rolebar{display:flex;align-items:center;gap:8px;margin:14px 0 6px;break-after:avoid;}
+    .dot{width:12px;height:12px;border-radius:3px;}
+    .chk li{list-style:none;position:relative;padding-left:20px;}
+    .chk li::before{content:'';position:absolute;left:0;top:3px;width:11px;height:11px;border:1.5px solid #b0af9f;border-radius:3px;}
+  </style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.6in" hint-size="820px,1060px">
+
+  <div slot="header" style="display:flex;align-items:center;justify-content:space-between;padding:0 2px 6px;border-bottom:1px solid #e0dfd5;">
+    <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:3px;color:#0d0d12;">OXV MIRROR</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:1px;color:#9a9990;">SPÉCIFICATION DE BUILD · POUR CLAUDE CODE</span>
+  </div>
+
+  <div style="margin-bottom:12px;">
+    <div class="ey">Handoff développement · 46 écrans</div>
+    <h1 class="h1">Spécification de build</h1>
+    <p class="p" style="font-size:13.5px;color:#44444a;margin-top:6px;">Inventaire complet des écrans OXV à implémenter en React Native. Chaque écran HTML livré est une <strong>référence visuelle</strong> ; ce document donne pour chacun sa cible <span class="mono" style="font-size:10.5px;">.tsx</span>, son archétype, le chiffre roi, les données à brancher, la traduction data-viz vers Skia, la navigation et les états. Les tokens, fonts et la doctrine sont dans le <span class="mono" style="font-size:10.5px;">GUIDE_INTEGRATION</span> ; ne pas les redéfinir ici.</p>
+  </div>
+
+  <!-- GLOBAL -->
+  <div style="margin:6px 0 4px;"><h2 class="h2">0 · Socle technique</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+    <div class="card" style="margin:0;">
+      <div class="h3">Stack</div>
+      <p class="p" style="margin:0;">Expo (React Native) · <span class="tk">expo-router</span> (routes = arborescence fichiers) · <span class="tk">@shopify/react-native-skia</span> (toute la data-viz) · <span class="tk">react-native-reanimated</span> (animations) · <span class="tk">react-native-gesture-handler</span> (pinch/pan/scrub) · <span class="tk">expo-font</span> (Rajdhani, JetBrains Mono, Instrument Serif).</p>
+    </div>
+    <div class="card" style="margin:0;">
+      <div class="h3">Conventions</div>
+      <p class="p" style="margin:0;">1 écran = 1 route <span class="tk">.tsx</span>. Préfixe fichier = espace (<span class="mono" style="font-size:10px;">app/ coach/ partenaire/ admin/</span>). Composants partagés dans <span class="mono" style="font-size:10px;">components/</span>. Rendu = pur affichage ; données via hooks/store. Animations non bloquantes (état au repos = valeur finale).</p>
+    </div>
+  </div>
+  <p class="p"><strong>Archétypes</strong> (gabarits réutilisables) : <span class="tk">A1</span> hub d'accueil · <span class="tk">A2</span> instrument+détail · <span class="tk">A3</span> index de vues · <span class="tk">A4</span> canvas plein cadre · <span class="tk">A5</span> profil/trace · <span class="tk">A6</span> comparateur A/B · <span class="tk">A8</span> formulaire · <span class="tk">A9</span> liste/annuaire · <span class="tk">A11</span> annotation/action coach.</p>
+  <p class="p"><strong>Composants partagés à créer d'abord :</strong> <span class="tk">&lt;AppBar&gt;</span> · <span class="tk">&lt;CockpitPanel&gt;</span> (corner brackets) · <span class="tk">&lt;KingNumber&gt;</span> (grand chiffre or) · <span class="tk">&lt;MeterBar&gt;</span> · <span class="tk">&lt;QdiRadar&gt;</span> (Skia) · <span class="tk">&lt;SpeedTrace&gt;</span> (Skia) · <span class="tk">&lt;StatusPill&gt;</span> · <span class="tk">&lt;RoleBadge&gt;</span> · <span class="tk">&lt;CoachBand&gt;</span> (rouge) · <span class="tk">&lt;StateWrapper&gt;</span> (nominal/vide/chargement/hors-ligne/erreur).</p>
+
+  <!-- PILOTE -->
+  <div class="rolebar"><span class="dot" style="background:#FFB703;"></span><h2 class="h2" style="border:none;margin:0;padding:0;">1 · Espace Pilote <span class="mono" style="font-size:11px;color:#8a6d1f;">— app/</span></h2></div>
+  <table>
+    <thead><tr><th style="width:15%;">Écran</th><th style="width:16%;">Route .tsx</th><th style="width:5%;">Arch</th><th style="width:30%;">Données à brancher</th><th style="width:34%;">Viz → Skia · Navigation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Paddock</b></td><td class="mono">app/index</td><td class="mono">A1</td><td>Dernière séance : QDI, delta médiane, mot qualitatif, nb tours.</td><td>Chiffre roi or. → Bilan, Signature, Data Lab, Vue pilote, Carte.</td></tr>
+      <tr><td><b>Signature / QDI</b></td><td class="mono">app/signature</td><td class="mono">A2</td><td>5 piliers (valeur, médiane, record), notes.</td><td>Radar Skia + jauge arc. Tap pilier → accordéon. Toggles médiane/record.</td></tr>
+      <tr><td><b>Bilan</b></td><td class="mono">app/bilan</td><td class="mono">A2</td><td>Écart-type, meilleur tour, dispersion tour/tour.</td><td>Jauge régularité (roi) + barres ±σ. Bloc transparence.</td></tr>
+      <tr><td><b>Data Lab</b></td><td class="mono">app/data-lab</td><td class="mono">A3</td><td>Confiance de lecture, 7 vues (dispo/vide), export CSV.</td><td>Index neutre (titres crème). Lignes → vues. Vides désactivées.</td></tr>
+      <tr><td><b>Carte circuit</b></td><td class="mono">app/carte</td><td class="mono">A4</td><td>Tracé (GeoJSON), vitesse & marge par virage.</td><td>Ruban Skia, 3 couches, pinch/pan, corde exacte. Tap virage → feuille → Détail.</td></tr>
+      <tr><td><b>Détail virage</b></td><td class="mono">app/virage/[id]</td><td class="mono">A5</td><td>Profil vitesse, 3 phases (position, écart record).</td><td>Trace Skia + halo, bandes phase. Tap phase → cadrage.</td></tr>
+      <tr><td><b>Comparer virage</b></td><td class="mono">app/virage/comparer</td><td class="mono">A6</td><td>2 profils (séance vs record), deltas.</td><td>Traces superposées + delta au centre. Colonnes symétriques.</td></tr>
+      <tr><td><b>Tour par tour</b></td><td class="mono">app/tours</td><td class="mono">A5</td><td>34 chronos, meilleur, théorique, exclusions.</td><td>Scatter + liste barres (best or, fenêtre vert).</td></tr>
+      <tr><td><b>Progression</b></td><td class="mono">app/progression</td><td class="mono">A1</td><td>QDI 8 séances, meilleur, 5 sous-vues.</td><td>Courbe tendance Skia. → 5 sous-vues.</td></tr>
+      <tr><td><b>Vue pilote</b></td><td class="mono">app/replay</td><td class="mono">A4</td><td>Tracé + vitesse/action par point (pré-calc).</td><td>POV pseudo-3D Skia, ligne colorée par action, fond ambiant réactif, scrub sur tracé.</td></tr>
+    </tbody>
+  </table>
+  <p class="p" style="margin-bottom:2px;"><b>Reçus du coach</b> (lecture seule côté pilote) : plan/focus target, repères par virage, rapport PDF. Prévoir une entrée « Consignes du coach » sur le Paddock.</p>
+
+  <!-- COACH -->
+  <div class="rolebar"><span class="dot" style="background:#C8102E;"></span><h2 class="h2" style="border:none;margin:0;padding:0;">2 · Espace Coach <span class="mono" style="font-size:11px;color:#a3283a;">— coach/</span></h2></div>
+  <table>
+    <thead><tr><th style="width:15%;">Écran</th><th style="width:16%;">Route .tsx</th><th style="width:5%;">Arch</th><th style="width:30%;">Données à brancher</th><th style="width:34%;">Viz → Skia · Navigation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Poste de pilotage</b></td><td class="mono">coach/index</td><td class="mono">A1</td><td>File « à traiter » (état des modules), pilotes, outils.</td><td>3 onglets. File unique de suivi. → tout module.</td></tr>
+      <tr><td><b>Pilotes</b></td><td class="mono">coach/pilotes</td><td class="mono">A9</td><td>Liste pilotes, statut lecture, QDI, filtres.</td><td>Liste. → Détail pilote.</td></tr>
+      <tr><td><b>Détail pilote</b></td><td class="mono">coach/pilote/[id]</td><td class="mono">A11</td><td>Miroir pilote + note coach, séances.</td><td>Miroir neutre + <b>bande coach rouge</b>. → Annoter.</td></tr>
+      <tr><td><b>CRM</b></td><td class="mono">coach/crm/[id]</td><td class="mono">A9</td><td>Historique, évolution QDI saison, réglages véhicule, notes privées/psycho.</td><td>Fiche + timeline. Section privée cachée au pilote.</td></tr>
+      <tr><td><b>Studio télémétrique</b></td><td class="mono">coach/studio</td><td class="mono">A2</td><td>Tours superposés, G-G, freinage/accél/braquage, survirage.</td><td>Diagramme G-G Skia + traces superposées + split vidéo/data.</td></tr>
+      <tr><td><b>Triage IA</b></td><td class="mono">coach/triage</td><td class="mono">A11</td><td>3 virages à plus forte perte QDI + cause.</td><td>Smart flagging. → Studio / Annoter sur virage ciblé.</td></tr>
+      <tr><td><b>Annoter</b></td><td class="mono">coach/annoter</td><td class="mono">A11</td><td>Virage ciblé, note texte, mémo vocal.</td><td>Mini-trace + note serif + audio (REC). → envoi pilote.</td></tr>
+      <tr><td><b>Comparer séances</b></td><td class="mono">coach/comparer</td><td class="mono">A6</td><td>2 séances, QDI + delta par pilier.</td><td>QDI A→B + barres piliers.</td></tr>
+      <tr><td><b>Priorités</b></td><td class="mono">coach/priorites</td><td class="mono">A11</td><td>Virages à travailler, gain estimé/virage.</td><td>Liste réordonnable. → Assigner.</td></tr>
+      <tr><td><b>Contexte séance</b></td><td class="mono">coach/contexte</td><td class="mono">A8</td><td>Niveau, objectif, conditions piste.</td><td>Formulaire. → enregistre le cadrage.</td></tr>
+      <tr><td><b>Plan</b></td><td class="mono">coach/plan</td><td class="mono">A11</td><td>Objectifs assignés, cible QDI, échéance.</td><td>Checklist + cible. → focus target au pilote.</td></tr>
+      <tr><td><b>Repères</b></td><td class="mono">coach/reperes</td><td class="mono">A9</td><td>Bibliothèque de points de référence/virage.</td><td>Liste par virage. Partage pilote.</td></tr>
+      <tr><td><b>Suivi objectifs</b></td><td class="mono">coach/suivi</td><td class="mono">A2</td><td>Cibles dans le temps (atteint/à revoir).</td><td>Sparkline par objectif.</td></tr>
+      <tr><td><b>Débrief</b></td><td class="mono">coach/debrief</td><td class="mono">A2</td><td>Synthèse conjointe pilote/coach.</td><td>Vue tablette. Traces + note.</td></tr>
+      <tr><td><b>Direction course</b></td><td class="mono">coach/direction</td><td class="mono">A9</td><td>Leaderboard live, statut piste/stand, tours, QDI live, broadcast.</td><td>Live board. Broadcast multi-pilotes.</td></tr>
+      <tr><td><b>Matériel</b></td><td class="mono">coach/materiel</td><td class="mono">A9</td><td>Boîtiers/HUD, batteries, assignation BLE, décharges.</td><td>Parc matériel + signature waiver in-app.</td></tr>
+      <tr><td><b>Facturation</b></td><td class="mono">coach/facturation</td><td class="mono">A11</td><td>Déverrouillage session, devis, paiement in-app, tarifs.</td><td>Déclenche l'acquisition data. Demande de paiement côté pilote.</td></tr>
+      <tr><td><b>Calendrier</b></td><td class="mono">coach/calendrier</td><td class="mono">A9</td><td>Séances planifiées, disponibilités.</td><td>Agenda. → Contexte/Plan.</td></tr>
+      <tr><td><b>Rapport PDF</b></td><td class="mono">coach/rapport</td><td class="mono">A2</td><td>QDI final, datas clés, bilan coach, facture soldée.</td><td>Génération PDF (expo-print). Envoi pilote.</td></tr>
+      <tr><td><b>Profil public (édit.)</b></td><td class="mono">coach/profil-edit</td><td class="mono">A8</td><td>Histoire, expérience, services, tarifs, médias, réseaux, résultats.</td><td>Éditeur → publie la vitrine.</td></tr>
+      <tr><td><b>Vitrine (vue pilote)</b></td><td class="mono">coach/vitrine/[id]</td><td class="mono">A5</td><td>Le profil publié, CTA réservation.</td><td>Vue publique. → réservation/paiement.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- PARTENAIRE -->
+  <div class="rolebar"><span class="dot" style="background:#2A6FDB;"></span><h2 class="h2" style="border:none;margin:0;padding:0;">3 · Espace Partenaire <span class="mono" style="font-size:11px;color:#2c5896;">— partenaire/</span></h2></div>
+  <table>
+    <thead><tr><th style="width:16%;">Écran</th><th style="width:18%;">Route .tsx</th><th style="width:5%;">Arch</th><th style="width:28%;">Données à brancher</th><th style="width:33%;">Navigation / notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Marketplace</b></td><td class="mono">partenaire/marketplace</td><td class="mono">A9</td><td>Offres/circuits/écoles, filtres.</td><td>Côté pilote. → Fiche.</td></tr>
+      <tr><td><b>Fiche partenaire</b></td><td class="mono">partenaire/fiche/[id]</td><td class="mono">A5</td><td>Présentation, offres, avis, médias.</td><td>Côté pilote. → réservation.</td></tr>
+      <tr><td><b>Accueil pro</b></td><td class="mono">partenaire/index</td><td class="mono">A1</td><td>Activité, prochaines résa, revenus.</td><td>Hub pro. → tout.</td></tr>
+      <tr><td><b>Réservations</b></td><td class="mono">partenaire/reservations</td><td class="mono">A9</td><td>Demandes, statut, planning.</td><td>→ Devis.</td></tr>
+      <tr><td><b>Offres</b></td><td class="mono">partenaire/offres</td><td class="mono">A9</td><td>Catalogue d'offres, prix, dispo.</td><td>Édition offres.</td></tr>
+      <tr><td><b>Événements</b></td><td class="mono">partenaire/evenements</td><td class="mono">A9</td><td>Trackdays, jauge, inscriptions.</td><td>Gestion événements.</td></tr>
+      <tr><td><b>Devis</b></td><td class="mono">partenaire/devis</td><td class="mono">A11</td><td>Lignes, montants, envoi.</td><td>→ Facturation.</td></tr>
+      <tr><td><b>Facturation</b></td><td class="mono">partenaire/facturation</td><td class="mono">A9</td><td>Factures, statut paiement, commission OXV.</td><td>Édition/relance.</td></tr>
+      <tr><td><b>Statistiques</b></td><td class="mono">partenaire/stats</td><td class="mono">A2</td><td>CA, taux de remplissage, tendance.</td><td>Graphes Skia.</td></tr>
+      <tr><td><b>Éditer vitrine</b></td><td class="mono">partenaire/vitrine-edit</td><td class="mono">A8</td><td>Présentation publique, médias, offres mises en avant.</td><td>→ publie la fiche.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ADMIN -->
+  <div class="rolebar"><span class="dot" style="background:#17B3B3;"></span><h2 class="h2" style="border:none;margin:0;padding:0;">4 · Espace Admin <span class="mono" style="font-size:11px;color:#1a7a7a;">— admin/</span></h2></div>
+  <table>
+    <thead><tr><th style="width:16%;">Écran</th><th style="width:18%;">Route .tsx</th><th style="width:5%;">Arch</th><th style="width:28%;">Données à brancher</th><th style="width:33%;">Navigation / notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Tour de contrôle</b></td><td class="mono">admin/index</td><td class="mono">A1</td><td>GMV, commission, population, file à traiter, santé data.</td><td>Hub. → Utilisateurs, Modération, Revenus.</td></tr>
+      <tr><td><b>Utilisateurs</b></td><td class="mono">admin/utilisateurs</td><td class="mono">A9</td><td>Annuaire 3 rôles, statut (actif/à valider/signalé).</td><td>Filtre + recherche. → fiche.</td></tr>
+      <tr><td><b>Modération</b></td><td class="mono">admin/moderation</td><td class="mono">A11</td><td>Validation coach (KYC/certif/assurance), avis signalés.</td><td>Checklist. Valider/suspendre → change statut coach/partenaire.</td></tr>
+      <tr><td><b>Revenus</b></td><td class="mono">admin/revenus</td><td class="mono">A2</td><td>Commission, tendance, répartition par rôle, top contributeurs.</td><td>Graphes Skia.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- STATES + CHECKLIST -->
+  <div style="margin:12px 0 4px;"><h2 class="h2">5 · États & doctrine à repasser sur chaque écran data</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div>
+      <div class="h3">5 états obligatoires</div>
+      <ul>
+        <li><b>Nominal</b> — données réelles.</li>
+        <li><b>Vide</b> — EmptyState doux, jamais culpabilisant.</li>
+        <li><b>Chargement</b> — squelette calme (jamais spinner nu).</li>
+        <li><b>Hors-ligne</b> — dernière lecture datée + reconnexion.</li>
+        <li><b>Erreur</b> — cause + action de reprise.</li>
+      </ul>
+    </div>
+    <div>
+      <div class="h3">Checklist doctrine</div>
+      <ul class="chk">
+        <li>Or = donnée · un seul chiffre roi/écran.</li>
+        <li>Couleur d'identité par rôle (jamais l'or).</li>
+        <li>Bande coach rouge séparée du miroir.</li>
+        <li>Piliers/phases : palette fixe (voir guide).</li>
+        <li>Références self-only, méthode/transparence visible.</li>
+        <li>Animations non bloquantes (Reanimated).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="margin-top:6px;padding:11px 14px;background:#faf9f4;border:1px solid #e2e1d6;border-radius:7px;break-inside:avoid;">
+    <div class="ey">Ordre de build conseillé</div>
+    <p class="p" style="margin:6px 0 0;">① Composants partagés + tokens/fonts → ② Espace Pilote (le miroir, base de tout) → ③ Espace Coach (workflow séance : contexte→facturation→triage→studio→plan→rapport) → ④ Partenaire → ⑤ Admin. Les écrans HTML de référence sont dans le projet, un par ligne des tables ci-dessus (<span class="mono" style="font-size:10px;">app__ / coach__ / partenaire__ / admin__</span>).</p>
+  </div>
+
+</x-import>
+</x-dc>
+</body>
+</html>

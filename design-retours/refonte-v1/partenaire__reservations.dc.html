@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #0e1014 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="partenaire__home.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">RÉSERVATIONS</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#5B8DEF; border:1px solid #5B8DEF55; border-radius:3px; padding:2px 6px;">PARTENAIRE</div>
+      </div>
+
+      <!-- week strip -->
+      <div style="display:flex; gap:6px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <sc-for list="{{ week }}" as="d" hint-placeholder-count="7">
+          <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:9px 2px; border-radius:8px; border:{{ d.border }}; background:{{ d.bg }};">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:7.5px; color:#54545C;">{{ d.dow }}</div>
+            <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:{{ d.numColor }};">{{ d.num }}</div>
+            <sc-if value="{{ d.hasEvent }}"><div style="width:4px; height:4px; border-radius:999px; background:#5B8DEF;"></div></sc-if>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:3px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 40ms both;">
+        <div style="font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:2px; color:#6E6E76;">MERCREDI 9 JUIL · 3 INTERVENTIONS</div>
+        <div style="font-family:'Instrument Serif',serif; font-size:24px; line-height:1.05; color:#F8F9FA;">Le planning de l'atelier.</div>
+      </div>
+
+      <!-- timeline -->
+      <div style="display:flex; flex-direction:column; gap:0; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 100ms both;">
+        <sc-for list="{{ slots }}" as="s" hint-placeholder-count="4">
+          <div style="display:flex; gap:12px;">
+            <div style="display:flex; flex-direction:column; align-items:flex-end; width:44px; flex-shrink:0; padding-top:2px;">
+              <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#C9C9CE;">{{ s.time }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; color:#54545C;">{{ s.dur }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center; width:14px; flex-shrink:0;">
+              <div style="width:10px; height:10px; border-radius:999px; border:2px solid {{ s.dot }}; background:#050505; margin-top:3px;"></div>
+              <sc-if value="{{ s.hasLine }}" hint-placeholder-val="{{ true }}"><div style="flex:1; width:2px; background:#1C1C20; min-height:40px;"></div></sc-if>
+            </div>
+            <div style="flex:1; padding-bottom:16px;">
+              <div style="border-radius:8px; padding:13px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid {{ s.border }};">
+                <div style="display:flex; align-items:center; gap:9px;">
+                  <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:15px; color:#F8F9FA;">{{ s.service }}</div>
+                    <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; color:#6E6E76;">{{ s.client }}</div>
+                  </div>
+                  <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ s.tagColor }}; border:1px solid {{ s.tagBorder }}; border-radius:3px; padding:3px 6px;">{{ s.tag }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    const W = [
+      { dow: 'L', num: 7, ev: false }, { dow: 'M', num: 8, ev: true }, { dow: 'M', num: 9, ev: true, today: true },
+      { dow: 'J', num: 10, ev: false }, { dow: 'V', num: 11, ev: true }, { dow: 'S', num: 12, ev: false }, { dow: 'D', num: 13, ev: false },
+    ];
+    const S = [
+      { time: '09:00', dur: '2 H', service: 'Setup châssis piste', client: 'VALENTIN L. · CAYMAN GT4', tag: 'CONFIRMÉ', st: 'ok' },
+      { time: '11:30', dur: '1 H', service: 'Diagnostic électronique', client: 'ANA P. · M2 COMPÉT.', tag: 'CONFIRMÉ', st: 'ok' },
+      { time: '14:00', dur: '3 H', service: 'Révision compétition', client: 'MARC D. · 911 GT3', tag: 'À CONFIRMER', st: 'wait' },
+    ];
+    const map = { ok: { dot: '#97C459', tagColor: '#97C459', tagBorder: '#97C45955', border: '#1C1C20' }, wait: { dot: '#F2792B', tagColor: '#F2792B', tagBorder: '#F2792B55', border: '#F2792B33' } };
+    return {
+      isDark: true,
+      week: W.map(d => ({ dow: d.dow, num: String(d.num), hasEvent: d.ev, border: d.today ? '1px solid rgba(91,141,239,0.5)' : '1px solid #1C1C20', bg: d.today ? '#0a0e14' : 'transparent', numColor: d.today ? '#5B8DEF' : '#C9C9CE' })),
+      slots: S.map((s, i) => ({ time: s.time, dur: s.dur, service: s.service, client: s.client, tag: s.tag, hasLine: i < S.length - 1, ...map[s.st] })),
+    };
+  }
+}
+</script>
+</body>
+</html>

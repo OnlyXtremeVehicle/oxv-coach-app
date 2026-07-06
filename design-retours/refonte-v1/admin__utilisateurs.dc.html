@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #08141a 0%, #08080a 55%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="admin__home.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;"><svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg></a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">UTILISATEURS</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#22D3EE; border:1px solid #22D3EE55; border-radius:3px; padding:2px 6px;">ADMIN</div>
+      </div>
+
+      <!-- search -->
+      <div style="display:flex; align-items:center; gap:9px; padding:11px 13px; border-radius:8px; border:1px solid #1C1C20; background:#0B0B0D; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="#54545C" stroke-width="1.4"></circle><path d="M10.5 10.5L14 14" stroke="#54545C" stroke-width="1.4" stroke-linecap="round"></path></svg>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:14px; color:#54545C;">Rechercher un utilisateur…</div>
+      </div>
+
+      <!-- role filter -->
+      <div style="display:flex; gap:8px;">
+        <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4">
+          <div style="padding:7px 12px; border-radius:999px; border:{{ f.border }}; background:{{ f.bg }}; font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12.5px; color:{{ f.color }};">{{ f.label }}</div>
+        </sc-for>
+      </div>
+
+      <!-- user list -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 100ms both;">
+        <sc-for list="{{ users }}" as="u" hint-placeholder-count="7">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px; border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:40px; height:40px; border-radius:999px; border:1px solid #232326; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-size:12px; color:{{ u.roleColor }}; flex-shrink:0;">{{ u.initials }}</div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px; min-width:0;">
+              <div style="display:flex; align-items:center; gap:7px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#F8F9FA;">{{ u.name }}</div>
+                <div style="width:6px; height:6px; border-radius:2px; background:{{ u.roleColor }};"></div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.3px; color:#6E6E76;">{{ u.meta }}</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:8px; letter-spacing:.5px; color:{{ u.stColor }}; border:1px solid {{ u.stBorder }}; border-radius:3px; padding:3px 6px;">{{ u.status }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    const RC = { pilote: '#FFB703', coach: '#C8102E', partenaire: '#5B8DEF' };
+    const U = [
+      { initials: 'VL', name: 'Valentin L.', meta: 'PILOTE · 14 SÉANCES · VALENCE', role: 'pilote', status: 'ACTIF', st: 'ok' },
+      { initials: 'MB', name: 'Marc Berthier', meta: 'COACH · 40 PILOTES · CERTIFIÉ', role: 'coach', status: 'ACTIF', st: 'ok' },
+      { initials: 'RS', name: 'Atelier RS Motorsport', meta: 'PARTENAIRE · PRÉPARATEUR GT', role: 'partenaire', status: 'ACTIF', st: 'ok' },
+      { initials: 'JD', name: 'Julie D.', meta: 'COACH · EN COURS DE VALIDATION', role: 'coach', status: 'À VALIDER', st: 'pending' },
+      { initials: 'SP', name: 'Sprint Pneus', meta: 'PARTENAIRE · SIRET À CONTRÔLER', role: 'partenaire', status: 'À VALIDER', st: 'pending' },
+      { initials: 'TB', name: 'Théo B.', meta: 'PILOTE · SIGNALÉ · 2 AVIS', role: 'pilote', status: 'SIGNALÉ', st: 'flag' },
+      { initials: 'AP', name: 'Ana P.', meta: 'PILOTE · 6 SÉANCES · LÉDENON', role: 'pilote', status: 'ACTIF', st: 'ok' },
+    ];
+    const map = {
+      ok: { stColor: '#97C459', stBorder: '#97C45955' },
+      pending: { stColor: '#F2792B', stBorder: '#F2792B55' },
+      flag: { stColor: '#C8102E', stBorder: '#C8102E55' },
+    };
+    const F = [ { label: 'Tous', on: true }, { label: 'Pilotes', on: false }, { label: 'Coachs', on: false }, { label: 'Partenaires', on: false } ];
+    return {
+      isDark: true,
+      filters: F.map(f => ({ label: f.label, border: f.on ? '1px solid rgba(255,255,255,0.2)' : '1px solid #1C1C20', bg: f.on ? '#0B0B0D' : 'transparent', color: f.on ? '#F8F9FA' : '#6E6E76' })),
+      users: U.map(u => ({ initials: u.initials, name: u.name, meta: u.meta, status: u.status, roleColor: RC[u.role], ...map[u.st] })),
+    };
+  }
+}
+</script>
+</body>
+</html>

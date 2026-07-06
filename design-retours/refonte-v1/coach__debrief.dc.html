@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes oxvrec{0%,100%{opacity:1}50%{opacity:.35}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="coach__pilote.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:3px; color:#F8F9FA;">DÉBRIEF</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E; border:1px solid #C8102E55; border-radius:3px; padding:2px 6px;">COACH</div>
+      </div>
+
+      <!-- video canvas -->
+      <div style="position:relative; border-radius:8px; overflow:hidden; border:1px solid #232326; aspect-ratio:16/10; background:radial-gradient(90% 90% at 50% 20%, #16171d 0%, #08080b 75%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <!-- POV-ish frame -->
+        <svg viewBox="0 0 320 200" width="100%" height="100%" style="display:block;">
+          <polygon points="128,70 192,70 300,190 20,190" fill="#111218"></polygon>
+          <path d="M150,70 L60,190" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"></path>
+          <path d="M170,70 L210,190" stroke="#60A5FA" stroke-width="4" stroke-linecap="round"></path>
+          <path d="M160,70 L160,190" stroke="#FFB703" stroke-width="2.5" stroke-linecap="round"></path>
+        </svg>
+        <!-- telestration circle -->
+        <div style="position:absolute; top:46%; left:38%; width:64px; height:64px; border-radius:999px; border:2px solid #C8102E; box-shadow:0 0 12px rgba(200,16,46,0.5);"></div>
+        <div style="position:absolute; top:calc(46% - 22px); left:calc(38% + 66px); font-family:'Instrument Serif',serif; font-style:italic; font-size:14px; color:#F2D9DD; background:#12080acc; padding:4px 8px; border-radius:4px; border:1px solid #C8102E44;">freine ici</div>
+        <!-- REC badge -->
+        <div style="position:absolute; top:10px; left:10px; display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:4px; background:#0B0B0Dcc; border:1px solid #C8102E55;">
+          <div style="width:6px; height:6px; border-radius:999px; background:#C8102E; animation:oxvrec 1s ease-in-out infinite;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#C8102E;">MONTAGE V07</div>
+        </div>
+        <!-- speed overlay -->
+        <div style="position:absolute; bottom:10px; right:12px; display:flex; align-items:baseline; gap:3px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:30px; color:#FFB703; line-height:1; text-shadow:0 0 14px rgba(255,183,3,0.4);">118</div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:9px; color:#9A9AA3;">km/h</div>
+        </div>
+      </div>
+
+      <!-- transport + timeline with corner markers -->
+      <div style="display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 80ms both;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="width:40px; height:40px; border-radius:999px; background:#FFB703; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 0 16px rgba(255,183,3,0.35);"><svg width="13" height="14" viewBox="0 0 13 14" fill="none"><path d="M2 1.5v11l9-5.5z" fill="#050505"></path></svg></div>
+          <div style="flex:1; position:relative; height:34px; display:flex; align-items:center;">
+            <div style="position:relative; width:100%; height:6px; border-radius:999px; background:#1a1a1e;">
+              <div style="position:absolute; left:0; top:0; bottom:0; width:34%; background:#FFB703; border-radius:999px;"></div>
+              <div style="position:absolute; left:34%; top:50%; width:12px; height:12px; border-radius:999px; background:#FFB703; border:2px solid #050505; transform:translate(-50%,-50%);"></div>
+              <sc-for list="{{ markers }}" as="m" hint-placeholder-count="4">
+                <div style="position:absolute; left:{{ m.pos }}; top:50%; width:8px; height:8px; border-radius:2px; background:{{ m.color }}; transform:translate(-50%,-50%) rotate(45deg); border:1px solid #050505;"></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#9A9AA3;">0:12 / 0:35</div>
+        </div>
+      </div>
+
+      <!-- clip list -->
+      <div style="display:flex; flex-direction:column; gap:9px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C; padding:0 4px;">SÉQUENCES ANNOTÉES</div>
+        <sc-for list="{{ clips }}" as="c" hint-placeholder-count="3">
+          <div style="display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%);">
+            <div style="width:28px; height:28px; border-radius:5px; border:1px solid #C4A45955; background:#0B0B0D; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; font-size:11px; color:#C4A459; flex-shrink:0;">{{ c.corner }}</div>
+            <div style="flex:1; display:flex; flex-direction:column; gap:2px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:14px; color:#E6E6E8;">{{ c.name }}</div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:8.5px; letter-spacing:.3px; color:{{ c.color }};">{{ c.tag }}</div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:10px; color:#6E6E76;">{{ c.dur }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="padding:13px; border-radius:5px; background:#F8F9FA; text-align:center; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; color:#050505;">Partager le débrief au pilote</div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      isDark: true,
+      markers: [
+        { pos: '20%', color: '#60A5FA' }, { pos: '38%', color: '#F2792B' }, { pos: '62%', color: '#4ADE80' }, { pos: '84%', color: '#60A5FA' },
+      ],
+      clips: [
+        { corner: '07', name: 'Virage aveugle', tag: 'FREINAGE · 3 M TROP TÔT', color: '#60A5FA', dur: '0:08' },
+        { corner: '04', name: 'Épingle Nord', tag: 'CORDE · −3 KM/H', color: '#F2792B', dur: '0:11' },
+        { corner: '12', name: 'Grande courbe', tag: 'RÉACCÉL · À ANTICIPER', color: '#4ADE80', dur: '0:09' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

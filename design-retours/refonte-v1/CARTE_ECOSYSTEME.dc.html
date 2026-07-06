@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#4a4a52;}
+    doc-page:not(:defined){visibility:hidden;}
+    .h1{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:30px;letter-spacing:1px;color:#0d0d12;margin:0;}
+    .h2{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:19px;letter-spacing:1px;color:#0d0d12;margin:0;}
+    .ey{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:#8a6d1f;text-transform:uppercase;}
+    .p{font-family:'Newsreader',serif;font-size:13px;line-height:1.5;color:#26262c;margin:0 0 8px;}
+    .mono{font-family:'JetBrains Mono',monospace;}
+    .tk{font-family:'JetBrains Mono',monospace;font-size:10px;background:#f0efe9;border:1px solid #dcdbd2;border-radius:3px;padding:1px 5px;color:#33332c;white-space:nowrap;}
+    .node{border-radius:6px;padding:7px 9px;font-family:'JetBrains Mono',monospace;font-size:9.5px;color:#26262c;background:#faf9f4;border:1px solid #e2e1d6;line-height:1.3;}
+    .chip{display:inline-flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.5px;padding:3px 8px;border-radius:999px;}
+    .dot{width:9px;height:9px;border-radius:3px;display:inline-block;}
+  </style>
+</helmet>
+<x-import component-from-global-scope="doc-page" from="./doc-page.js" size="letter" margin="0.6in" hint-size="820px,1060px">
+
+  <div slot="header" style="display:flex;align-items:center;justify-content:space-between;padding:0 2px 6px;border-bottom:1px solid #e0dfd5;">
+    <span style="font-family:'Rajdhani',sans-serif;font-weight:700;font-size:11px;letter-spacing:3px;color:#0d0d12;">OXV MIRROR</span>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:8.5px;letter-spacing:1px;color:#9a9990;">CARTE DE L'ÉCOSYSTÈME · 4 RÔLES</span>
+  </div>
+
+  <div style="margin-bottom:14px;">
+    <div class="ey">Fonctionnalités & connexions</div>
+    <h1 class="h1">Carte de l'écosystème OXV</h1>
+    <p class="p" style="font-size:14px;color:#44444a;margin-top:6px;">Quatre rôles, une donnée commune. Le <strong>QDI</strong> (or) circule du boîtier au pilote, est lu et enrichi par le coach, monétisé par le partenaire, supervisé par l'admin. Ce document cartographie <strong>ce que fait chaque rôle</strong> et surtout <strong>ce qui circule entre eux</strong>. Chaque rôle a une couleur d'identité ; l'or reste réservé à la donnée de performance.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <span class="chip" style="background:#fff6e8;color:#8a6d1f;border:1px solid #f0d9a8;"><span class="dot" style="background:#FFB703;"></span>PILOTE · 10 écrans</span>
+      <span class="chip" style="background:#fdecee;color:#a3283a;border:1px solid #f2c2c9;"><span class="dot" style="background:#C8102E;"></span>COACH · 22 écrans</span>
+      <span class="chip" style="background:#e9f0fb;color:#2c5896;border:1px solid #c2d5f0;"><span class="dot" style="background:#2A6FDB;"></span>PARTENAIRE · 10 écrans</span>
+      <span class="chip" style="background:#e6f6f6;color:#1a7a7a;border:1px solid #b8e4e4;"><span class="dot" style="background:#17B3B3;"></span>ADMIN · 5 écrans</span>
+    </div>
+  </div>
+
+  <!-- CROSS-ROLE FLOWS -->
+  <div style="margin:6px 0 10px;"><h2 class="h2" style="padding-bottom:6px;border-bottom:2px solid #0d0d12;">Les flux inter-rôles</h2></div>
+  <p class="p">Ce qui passe d'un espace à l'autre — les connexions qui font une plateforme et non quatre apps.</p>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="chip" style="background:#e6f6f6;color:#1a7a7a;border:1px solid #b8e4e4;min-width:96px;justify-content:center;"><span class="dot" style="background:#17B3B3;"></span>ADMIN</span>
+      <span class="mono" style="font-size:11px;color:#a3283a;">──① valide / suspend ──▶</span>
+      <span class="chip" style="background:#fdecee;color:#a3283a;border:1px solid #f2c2c9;min-width:96px;justify-content:center;"><span class="dot" style="background:#C8102E;"></span>COACH</span>
+      <span class="p" style="margin:0;flex:1;">KYC, certif, assurance validés → le coach devient <span class="tk">publié</span> et réservable.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="chip" style="background:#fff6e8;color:#8a6d1f;border:1px solid #f0d9a8;min-width:96px;justify-content:center;"><span class="dot" style="background:#FFB703;"></span>PILOTE</span>
+      <span class="mono" style="font-size:11px;color:#a3283a;">──② réserve / paie ──▶</span>
+      <span class="chip" style="background:#fdecee;color:#a3283a;border:1px solid #f2c2c9;min-width:96px;justify-content:center;"><span class="dot" style="background:#C8102E;"></span>COACH</span>
+      <span class="p" style="margin:0;flex:1;">Vitrine publique → déverrouillage de session → l'acquisition data démarre.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="chip" style="background:#fdecee;color:#a3283a;border:1px solid #f2c2c9;min-width:96px;justify-content:center;"><span class="dot" style="background:#C8102E;"></span>COACH</span>
+      <span class="mono" style="font-size:11px;color:#8a6d1f;">──③ plan / focus target ──▶</span>
+      <span class="chip" style="background:#fff6e8;color:#8a6d1f;border:1px solid #f0d9a8;min-width:96px;justify-content:center;"><span class="dot" style="background:#FFB703;"></span>PILOTE</span>
+      <span class="p" style="margin:0;flex:1;">Note, repères, objectifs ciblés, rapport PDF → apparaissent côté pilote.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="chip" style="background:#fff6e8;color:#8a6d1f;border:1px solid #f0d9a8;min-width:96px;justify-content:center;"><span class="dot" style="background:#FFB703;"></span>PILOTE</span>
+      <span class="mono" style="font-size:11px;color:#2c5896;">──④ réserve stage / circuit ──▶</span>
+      <span class="chip" style="background:#e9f0fb;color:#2c5896;border:1px solid #c2d5f0;min-width:96px;justify-content:center;"><span class="dot" style="background:#2A6FDB;"></span>PARTENAIRE</span>
+      <span class="p" style="margin:0;flex:1;">Marketplace → réservation d'offre/événement → devis & facture.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="chip" style="background:#e6f6f6;color:#1a7a7a;border:1px solid #b8e4e4;min-width:96px;justify-content:center;"><span class="dot" style="background:#17B3B3;"></span>ADMIN</span>
+      <span class="mono" style="font-size:11px;color:#2c5896;">──⑤ commission / modère ──▶</span>
+      <span class="chip" style="background:#e9f0fb;color:#2c5896;border:1px solid #c2d5f0;min-width:96px;justify-content:center;"><span class="dot" style="background:#2A6FDB;"></span>PARTENAIRE</span>
+      <span class="p" style="margin:0;flex:1;">GMV → commission OXV ; avis signalés modérés ; santé data suivie.</span>
+    </div>
+  </div>
+
+  <!-- PILOTE -->
+  <div style="margin:14px 0 8px;break-inside:avoid;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="dot" style="background:#FFB703;width:12px;height:12px;"></span><h2 class="h2">Espace Pilote <span class="mono" style="font-size:11px;color:#8a6d1f;">· le miroir</span></h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
+      <div class="node"><b>ACCUEIL</b><br>Paddock · Progression</div>
+      <div class="node"><b>SIGNATURE</b><br>QDI radar · Bilan régularité · Data Lab</div>
+      <div class="node"><b>SÉANCE</b><br>Carte circuit · Détail virage · Comparer · Tour/tour · Vue pilote</div>
+    </div>
+    <p class="p" style="margin-top:7px;"><b>Connexions internes :</b> <span class="tk">Paddock</span> → tout ; <span class="tk">Progression</span> → 5 sous-vues ; <span class="tk">Carte</span> → <span class="tk">Détail virage</span> → <span class="tk">Comparer</span> ; <span class="tk">Vue pilote</span> (caméra embarquée). <b>Reçoit du coach :</b> plan, repères, focus target, rapport PDF.</p>
+  </div>
+
+  <!-- COACH -->
+  <div style="margin:12px 0 8px;break-inside:avoid;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="dot" style="background:#C8102E;width:12px;height:12px;"></span><h2 class="h2">Espace Coach <span class="mono" style="font-size:11px;color:#a3283a;">· la lecture humaine + le service premium</span></h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
+      <div class="node"><b>PILOTAGE</b><br>Poste (à traiter / pilotes / outils) · Pilotes · Détail pilote · CRM · File</div>
+      <div class="node"><b>SÉANCE LIVE</b><br>Direction course · Matériel+décharges · Contexte · Facturation/déverrouillage</div>
+      <div class="node"><b>ANALYSE</b><br>Studio télémétrique · Triage IA · Annoter · Comparer · Détail virage</div>
+      <div class="node"><b>PÉDAGOGIE</b><br>Priorités · Plan · Repères · Suivi objectifs · Débrief</div>
+      <div class="node"><b>CLÔTURE</b><br>Rapport PDF · Calendrier</div>
+      <div class="node"><b>VITRINE</b><br>Profil public (édition) · Vitrine (vue pilote)</div>
+    </div>
+    <p class="p" style="margin-top:7px;"><b>Workflow d'une séance :</b> <span class="tk">Contexte</span> → <span class="tk">Facturation</span> (déverrouillage) → run → <span class="tk">Triage IA</span> → <span class="tk">Studio/Annoter</span> → <span class="tk">Plan</span> (focus target) → run suivant → <span class="tk">Rapport PDF</span>. <b>Bande coach (rouge)</b> toujours séparée du miroir pilote.</p>
+  </div>
+
+  <!-- PARTENAIRE -->
+  <div style="margin:12px 0 8px;break-inside:avoid;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="dot" style="background:#2A6FDB;width:12px;height:12px;"></span><h2 class="h2">Espace Partenaire <span class="mono" style="font-size:11px;color:#2c5896;">· circuits, écoles, marques</span></h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;">
+      <div class="node"><b>CÔTÉ PILOTE</b><br>Marketplace · Fiche partenaire</div>
+      <div class="node"><b>PRO · ACTIVITÉ</b><br>Accueil · Réservations · Offres · Événements</div>
+      <div class="node"><b>PRO · GESTION</b><br>Devis · Facturation · Stats · Éditer vitrine</div>
+    </div>
+    <p class="p" style="margin-top:7px;"><b>Connexions :</b> <span class="tk">Marketplace</span> (côté pilote) → <span class="tk">Fiche</span> → réservation ; côté pro <span class="tk">Réservations</span> → <span class="tk">Devis</span> → <span class="tk">Facturation</span>. <b>Admin :</b> commission + modération.</p>
+  </div>
+
+  <!-- ADMIN -->
+  <div style="margin:12px 0 8px;break-inside:avoid;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><span class="dot" style="background:#17B3B3;width:12px;height:12px;"></span><h2 class="h2">Espace Admin <span class="mono" style="font-size:11px;color:#1a7a7a;">· la tour de contrôle</span></h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:7px;">
+      <div class="node"><b>SUPERVISION</b><br>Tour de contrôle (GMV, santé)</div>
+      <div class="node"><b>POPULATION</b><br>Utilisateurs (3 rôles)</div>
+      <div class="node"><b>CONFORMITÉ</b><br>Modération / validation</div>
+      <div class="node"><b>FINANCE</b><br>Revenus / commission</div>
+    </div>
+    <p class="p" style="margin-top:7px;"><b>Connexions :</b> valide les <span class="tk">coachs</span> et <span class="tk">partenaires</span>, modère les avis, suit GMV & commission, surveille la santé data (synchro boîtiers).</p>
+  </div>
+
+  <div style="margin-top:10px;padding:12px 15px;background:#faf9f4;border:1px solid #e2e1d6;border-radius:7px;break-inside:avoid;">
+    <div class="ey">Doctrine transverse</div>
+    <p class="p" style="margin:6px 0 0;">Or = donnée de performance uniquement · un seul chiffre roi par écran · fond Noir Abysse · chaque rôle a sa couleur d'identité (jamais l'or) · la bande coach rouge ne colore jamais une donnée pilote · références self-only (jamais un autre pilote sans consentement).</p>
+  </div>
+
+</x-import>
+</x-dc>
+</body>
+</html>

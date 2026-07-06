@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvpulse{0%,100%{opacity:.30}50%{opacity:.8}}
+    @keyframes oxvbreathe{0%,100%{opacity:.4;transform:scale(1)}50%{opacity:1;transform:scale(1.4)}}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 44px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <!-- AppBar -->
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <div onClick="{{ back }}" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">BILAN</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">VLC · 12.07</div>
+      </div>
+
+      <sc-if value="{{ isNominal }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex; flex-direction:column; gap:16px;">
+
+          <!-- Editorial header -->
+          <div style="display:flex; flex-direction:column; gap:4px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:15px; color:#9A9AA3;">Séance 3 · Valence</div>
+            <div style="font-family:'Instrument Serif',serif; font-size:29px; line-height:1.04; color:#F8F9FA;">Une séance régulière, propre.</div>
+          </div>
+
+          <!-- HERO — régularité gauge -->
+          <div style="position:relative; border-radius:6px; padding:18px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #232326; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05), 0 20px 40px rgba(0,0,0,0.45); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 80ms both;">
+            <div style="position:absolute; top:8px; left:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; top:8px; right:8px; width:14px; height:14px; border-top:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; left:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+            <div style="position:absolute; bottom:8px; right:8px; width:14px; height:14px; border-bottom:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+            <div style="position:absolute; top:-30%; left:50%; transform:translateX(-50%); width:70%; height:60%; background:radial-gradient(circle, rgba(255,183,3,0.10) 0%, transparent 70%); pointer-events:none;"></div>
+
+            <div style="position:relative; display:flex; align-items:center; gap:8px; margin-bottom:2px;">
+              <div style="width:6px; height:6px; border-radius:999px; background:#97C459; animation:oxvbreathe 2.6s ease-in-out infinite;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:12px; letter-spacing:2px; color:#97C459;">TRÈS RÉGULIER</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">34 TOURS</div>
+            </div>
+
+            <div style="position:relative; width:100%; max-width:276px; margin:0 auto; aspect-ratio:1;">
+              {{ gauge }}
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:70px; line-height:0.82; color:#FFB703; text-shadow:0 0 30px rgba(255,183,3,0.4); font-variant-numeric:tabular-nums;">{{ dispValue }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#9A9AA3; margin-top:2px;">s / tour</div>
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:3px; color:#6E6E76; margin-top:3px;">ÉCART-TYPE</div>
+              </div>
+            </div>
+
+            <div style="position:relative; display:flex; justify-content:center; gap:10px; margin-top:2px;">
+              <div style="display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:4px; background:#0B0B0D; border:1px solid #1C1C20;">
+                <div style="width:8px; height:2px; background:#F8F9FA;"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#C9C9CE; white-space:nowrap;">REC <span style="color:#54545C;">0,29</span></div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; padding:5px 12px; border-radius:4px; background:#0B0B0D; border:1px solid #1C1C20;">
+                <div style="width:8px; height:2px; background:#9A9AA3;"></div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#97C459; white-space:nowrap;">−0,07 <span style="color:#54545C;">MÉDIANE</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECONDARY — meilleur tour -->
+          <div style="display:flex; gap:11px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 160ms both;">
+            <div style="flex:1; border-radius:6px; padding:14px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:6px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:10.5px; letter-spacing:1.5px; color:#6E6E76;">MEILLEUR TOUR</div>
+              <div style="display:flex; align-items:baseline; gap:3px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:30px; color:#E6E6E8; letter-spacing:-1px;">1:24</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-weight:500; font-size:18px; color:#9A9AA3;">.6</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#97C459;">−0,3 s <span style="color:#54545C;">vs séance 2</span></div>
+            </div>
+            <div style="flex:1; border-radius:6px; padding:14px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:6px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:10.5px; letter-spacing:1.5px; color:#6E6E76;">FENÊTRE DE TOURS</div>
+              <div style="display:flex; align-items:baseline; gap:3px;">
+                <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:30px; color:#E6E6E8; letter-spacing:-1px;">0,8</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-weight:500; font-size:16px; color:#9A9AA3;">s</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:#54545C;">amplitude best → P90</div>
+            </div>
+          </div>
+
+          <!-- Consistency micro-strip -->
+          <div style="border-radius:6px; padding:14px; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); border:1px solid #1C1C20; display:flex; flex-direction:column; gap:10px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 220ms both;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <div style="width:6px; height:6px; border-radius:999px; background:#9A9AA3;"></div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#9A9AA3;">DISPERSION TOUR À TOUR</div>
+              <div style="flex:1;"></div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9.5px; color:#54545C;">34 TOURS</div>
+            </div>
+            <div>{{ strip }}</div>
+          </div>
+
+          <!-- METHOD -->
+          <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 300ms both;">
+            <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#6E6E76;">SOURCE & ANGLES MORTS</div>
+              <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13.5px; line-height:1.45; color:#9A9AA3;">Écart-type calculé sur les tours propres uniquement (hors entrée/sortie stand et drapeaux). 2 tours écartés ce jour. Sans capteur dédié — chrono dérivé du GPS 10 Hz, marge ±0,05 s. Comparaisons sur vos séances uniquement.</div>
+            </div>
+          </div>
+
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEmpty }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; padding:20px;">
+          <svg width="120" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="46" fill="none" stroke="#1C1C20" stroke-width="2" stroke-dasharray="4 6"></circle></svg>
+          <div style="font-family:'Instrument Serif',serif; font-size:23px; color:#F8F9FA;">Pas encore de bilan</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Votre premier bilan s'ouvre à la fin d'une séance analysée.</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isLoading }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;">
+          <svg width="130" height="130" viewBox="0 0 120 120" style="animation:oxvpulse 1.6s ease-in-out infinite;"><circle cx="60" cy="60" r="46" fill="none" stroke="#232326" stroke-width="3"></circle></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#54545C;">CALCUL DU BILAN</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isOffline }}">
+        <div style="min-height:440px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:20px;">
+          <svg width="110" height="110" viewBox="0 0 120 120" style="opacity:.45;"><circle cx="60" cy="60" r="46" fill="none" stroke="#54545C" stroke-width="2" stroke-dasharray="4 5"></circle></svg>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; letter-spacing:1.5px; color:#6E6E76;">HORS-LIGNE</div>
+          <div style="font-family:'Instrument Serif',serif; font-size:21px; color:#F8F9FA;">Bilan non actualisé</div>
+          <div style="max-width:250px; font-family:'Rajdhani',sans-serif; font-size:14px; line-height:1.45; color:#9A9AA3;">Dernière lecture le 12 juil. Reconnectez-vous pour recalculer.</div>
+        </div>
+      </sc-if>
+
+      <!-- States preview control -->
+      <div style="display:flex; flex-direction:column; gap:8px; margin-top:2px;">
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">APERÇU DES ÉTATS</div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ states }}" as="st" hint-placeholder-count="4">
+            <div onClick="{{ st.onClick }}" style="padding:7px 12px; border-radius:4px; border:{{ st.border }}; background:{{ st.bg }}; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:{{ st.color }};">{{ st.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 },
+  &quot;startState&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;nominal&quot;, &quot;options&quot;: [&quot;nominal&quot;, &quot;empty&quot;, &quot;loading&quot;, &quot;offline&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Aperçu&quot; }
+}">
+class Component extends DCLogic {
+  state = { view: 'nominal', anim: 0, mounted: false };
+
+  SD = 0.34;        // écart-type s/tour (hero)
+  FRAC = 0.65;      // consistency fraction of gauge
+
+  STATES = [
+    { key: 'nominal', label: 'NOMINAL' },
+    { key: 'empty',   label: 'VIDE' },
+    { key: 'loading', label: 'CHARGEMENT' },
+    { key: 'offline', label: 'HORS-LIGNE' },
+  ];
+
+  componentDidMount() {
+    const v = this.props.startState;
+    if (v && v !== this.state.view) this.setState({ view: v });
+    requestAnimationFrame(() => this.setState({ mounted: true }));
+    const dur = 1150, t0 = performance.now(), ease = (x) => 1 - Math.pow(1 - x, 3);
+    const tick = (now) => {
+      if (this._done) return;
+      const p = Math.min(1, (now - t0) / dur);
+      this.setState({ anim: ease(p) });
+      if (p < 1) this._raf = requestAnimationFrame(tick);
+    };
+    this._raf = requestAnimationFrame(tick);
+    // Fallback: setTimeout fires even when the tab is hidden (rAF does not),
+    // guaranteeing the resting state is correct regardless of visibility.
+    this._fb = setTimeout(() => { this._done = true; this.setState({ anim: 1, mounted: true }); }, dur + 120);
+  }
+  componentWillUnmount() { cancelAnimationFrame(this._raf); clearTimeout(this._fb); }
+
+  buildGauge(frac) {
+    const h = React.createElement;
+    const cx = 120, cy = 120, R = 92, A0 = 135, SW = 270;
+    const P = (f, r) => { const d = (A0 + f * SW) * Math.PI / 180; return [cx + r * Math.cos(d), cy + r * Math.sin(d)]; };
+    const [sx, sy] = P(0, R), [ex, ey] = P(1, R);
+    const arc = `M ${sx.toFixed(2)} ${sy.toFixed(2)} A ${R} ${R} 0 1 1 ${ex.toFixed(2)} ${ey.toFixed(2)}`;
+
+    const track = h('path', { key: 'trk', d: arc, fill: 'none', stroke: '#17171b', strokeWidth: 9, strokeLinecap: 'round' });
+
+    const ticks = [];
+    for (let k = 0; k <= 20; k++) {
+      const f = k / 20, major = k % 5 === 0;
+      const [x1, y1] = P(f, R - 8), [x2, y2] = P(f, major ? R - 17 : R - 13);
+      ticks.push(h('line', { key: 't' + k, x1, y1, x2, y2, stroke: major ? '#5a5a62' : '#2e2e34', strokeWidth: major ? 1.4 : 1 }));
+    }
+
+    const notch = (f, color, w, key) => { const [x1, y1] = P(f, R - 6), [x2, y2] = P(f, R + 8); return h('line', { key, x1, y1, x2, y2, stroke: color, strokeWidth: w, strokeLinecap: 'round' }); };
+    const med = notch(0.475, '#9A9AA3', 1.6, 'med');
+    const rec = notch(0.775, '#F8F9FA', 2, 'rec');
+
+    const progress = h('path', {
+      key: 'prg', d: arc, fill: 'none', stroke: '#FFB703', strokeWidth: 9, strokeLinecap: 'round',
+      pathLength: 100, strokeDasharray: `${(frac * 100).toFixed(2)} 100`,
+      style: { filter: 'drop-shadow(0 0 6px rgba(255,183,3,0.6))' },
+    });
+
+    const [lx0, ly0] = P(0, R + 17), [lx1, ly1] = P(1, R + 17);
+    const l0 = h('text', { key: 'l0', x: lx0, y: ly0, fill: '#54545C', fontFamily: '"JetBrains Mono", monospace', fontSize: 8.5, textAnchor: 'middle', dominantBaseline: 'middle' }, 'ÉPARS');
+    const l100 = h('text', { key: 'l100', x: lx1, y: ly1, fill: '#54545C', fontFamily: '"JetBrains Mono", monospace', fontSize: 8.5, textAnchor: 'middle', dominantBaseline: 'middle' }, 'SERRÉ');
+
+    return h('svg', { viewBox: '0 0 240 240', width: '100%', height: '100%', style: { display: 'block', overflow: 'visible' } },
+      track, ...ticks, med, rec, progress, l0, l100);
+  }
+
+  buildStrip() {
+    const h = React.createElement;
+    const W = 328, H = 66, padL = 6, padR = 6, mid = 30;
+    const laps = [0.42, -0.18, 0.31, 0.05, -0.12, 0.55, 0.22, -0.34, 0.14, 0.08, -0.05, 0.38, 0.19, -0.22, 0.11, 0.29, -0.09, 0.44, 0.02, -0.15, 0.33, 0.17, -0.28, 0.09, 0.24, -0.11, 0.41, 0.06, -0.19, 0.36, 0.13, -0.07, 0.27, 0.15];
+    const n = laps.length, gap = (W - padL - padR) / n, bw = gap * 0.5;
+    const maxA = 0.6, scale = (mid - 6) / maxA;
+    const on = this.state.mounted;
+
+    const band = h('rect', { key: 'band', x: padL, y: mid - 3 * scale * 0.34 / 0.6 * 0, width: W - padL - padR, height: 0, fill: 'none' });
+    const zeroLine = h('line', { key: 'zl', x1: padL, y1: mid, x2: W - padR, y2: mid, stroke: '#2e2e34', strokeWidth: 1, strokeDasharray: '2 3' });
+    // ±sd band
+    const sdBand = h('rect', { key: 'sd', x: padL, y: mid - this.SD * scale, width: W - padL - padR, height: this.SD * scale * 2, fill: 'rgba(255,183,3,0.06)' });
+
+    const bars = laps.map((d, i) => {
+      const x = padL + i * gap + (gap - bw) / 2;
+      const hgt = Math.abs(d) * scale;
+      const y = d >= 0 ? mid - hgt : mid;
+      const within = Math.abs(d) <= this.SD;
+      return h('rect', { key: 'b' + i, x, y: on ? y : mid, width: bw, height: on ? hgt : 0, rx: 1, fill: within ? '#FFB703' : '#6E6E76', opacity: within ? 0.9 : 0.55, style: { transition: `y 500ms cubic-bezier(.22,1,.36,1) ${i * 14}ms, height 500ms cubic-bezier(.22,1,.36,1) ${i * 14}ms` } });
+    });
+
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block' } }, sdBand, zeroLine, ...bars);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const disp = (this.SD * st.anim).toFixed(2).replace('.', ',');
+    return {
+      isDark: true,
+      gauge: this.buildGauge(this.FRAC * st.anim),
+      dispValue: disp,
+      strip: this.buildStrip(),
+      back: () => {},
+      isNominal: st.view === 'nominal',
+      isEmpty: st.view === 'empty',
+      isLoading: st.view === 'loading',
+      isOffline: st.view === 'offline',
+      states: this.STATES.map(s => ({
+        label: s.label, onClick: () => this.setState({ view: s.key }),
+        border: s.key === st.view ? '1px solid rgba(255,255,255,0.20)' : '1px solid #1C1C20',
+        bg: s.key === st.view ? '#0B0B0D' : 'transparent',
+        color: s.key === st.view ? '#F8F9FA' : '#6E6E76',
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

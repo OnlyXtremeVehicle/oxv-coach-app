@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#08080a;}
+    *{box-sizing:border-box;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100%; display:flex; align-items:center; justify-content:center; background:radial-gradient(120% 80% at 50% -10%, #101014 0%, #08080a 60%); padding:26px;">
+  <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" dark="{{ isDark }}" hint-size="402px,874px">
+    <div style="position:relative; min-height:100%; color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:58px 16px 40px; display:flex; flex-direction:column; gap:16px; background:linear-gradient(#1C1C2033 1px, transparent 1px) 0 0 / 100% 40px, #050505;">
+
+      <div style="position:relative; height:34px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <a href="app__paddock.dc.html" style="position:absolute; left:0; width:34px; height:34px; display:flex; align-items:center; justify-content:center; text-decoration:none;">
+          <svg width="9" height="16" viewBox="0 0 9 16" fill="none"><path d="M8 1L2 8l6 7" stroke="#9A9AA3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </a>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:15px; letter-spacing:5px; color:#F8F9FA;">TOURS</div>
+        <div style="position:absolute; right:0; font-family:'JetBrains Mono',monospace; font-size:9.5px; letter-spacing:1px; color:#54545C;">VLC · 34</div>
+      </div>
+
+      <!-- HERO best lap -->
+      <div style="position:relative; border-radius:6px; padding:18px; overflow:hidden; background:linear-gradient(180deg,#141418 0%,#0b0b0e 100%); border:1px solid #232326; box-shadow:inset 0 1px 0 rgba(255,255,255,0.05); animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) both;">
+        <div style="position:absolute; top:8px; left:8px; width:13px; height:13px; border-top:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+        <div style="position:absolute; top:8px; right:8px; width:13px; height:13px; border-top:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+        <div style="position:absolute; bottom:8px; left:8px; width:13px; height:13px; border-bottom:2px solid #3a3a42; border-left:2px solid #3a3a42;"></div>
+        <div style="position:absolute; bottom:8px; right:8px; width:13px; height:13px; border-bottom:2px solid #3a3a42; border-right:2px solid #3a3a42;"></div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+          <div style="width:6px; height:6px; border-radius:2px; background:#FFB703; box-shadow:0 0 8px #FFB70399;"></div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#9A9AA3;">MEILLEUR TOUR · T18</div>
+        </div>
+        <div style="display:flex; align-items:flex-end; gap:8px;">
+          <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:52px; line-height:0.82; color:#FFB703; letter-spacing:-2px; text-shadow:0 0 24px rgba(255,183,3,0.35);">1:24<span style="font-size:34px;">.6</span></div>
+          <div style="flex:1;"></div>
+          <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-end; padding-bottom:4px;">
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#97C459;">−0,3 <span style="color:#54545C;">vs séance 2</span></div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:11px; color:#9A9AA3;">théo. <span style="color:#C9C9CE;">1:23.9</span></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;">{{ scatter }}</div>
+      </div>
+
+      <!-- lap list -->
+      <div style="display:flex; flex-direction:column; gap:6px; animation:oxvrise 640ms cubic-bezier(.22,1,.36,1) 120ms both;">
+        <div style="display:flex; justify-content:space-between; padding:0 4px 2px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">TOUR</div>
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:11px; letter-spacing:2px; color:#54545C;">CHRONO · Δ BEST</div>
+        </div>
+        <sc-for list="{{ laps }}" as="lap" hint-placeholder-count="10">
+          <div style="display:flex; align-items:center; gap:12px; padding:11px 13px; border-radius:8px; border:{{ lap.border }}; background:{{ lap.bg }};">
+            <div style="width:26px; font-family:'JetBrains Mono',monospace; font-size:12px; color:{{ lap.numColor }};">{{ lap.num }}</div>
+            <div style="flex:1; position:relative; height:6px; border-radius:999px; background:#161618;">
+              <div style="position:absolute; left:0; top:0; bottom:0; width:{{ lap.barW }}; background:{{ lap.barColor }}; border-radius:999px;"></div>
+            </div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:13px; color:{{ lap.timeColor }}; min-width:52px; text-align:right;">{{ lap.time }}</div>
+            <div style="font-family:'JetBrains Mono',monospace; font-size:10.5px; color:{{ lap.deltaColor }}; min-width:42px; text-align:right;">{{ lap.delta }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex; gap:11px; padding:14px; border-radius:6px; border:1px solid #1C1C20; background:linear-gradient(180deg,#0e0e11 0%,#0a0a0c 100%);">
+        <div style="width:3px; border-radius:999px; background:#232326; flex-shrink:0;"></div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:400; font-size:13px; line-height:1.45; color:#9A9AA3;">Chronos dérivés du GPS 10 Hz (marge ±0,05 s). 2 tours hors-course écartés (stand, drapeau). La barre indique l'écart au meilleur tour ; le vert = dans la fenêtre des 0,8 s.</div>
+      </div>
+
+    </div>
+  </x-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 452, &quot;height&quot;: 924 } }">
+class Component extends DCLogic {
+  // 34 laps, best = 84.6s (T18)
+  raw = [88.9,87.2,86.1,85.7,85.9,85.3,85.6,85.1,85.4,84.9,85.2,85.0,85.3,84.8,85.1,84.9,85.2,84.6,85.0,84.8,85.3,85.1,84.9,85.4,85.0,84.8,85.2,85.5,85.1,84.9,85.3,85.0,85.6,85.2];
+  best = 84.6;
+
+  fmt(t) { const m = Math.floor(t / 60), s = (t - m * 60); return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1); }
+
+  buildScatter() {
+    const h = React.createElement, W = 328, H = 44;
+    const lo = 84.4, hi = 89.2, N = this.raw.length;
+    const X = (i) => 4 + i * (W - 8) / (N - 1);
+    const Y = (t) => 6 + (t - lo) / (hi - lo) * (H - 12);
+    const dots = this.raw.map((t, i) => {
+      const on = Math.abs(t - this.best) < 0.05;
+      return h('circle', { key: i, cx: X(i), cy: Y(t), r: on ? 3.2 : 2, fill: on ? '#FFB703' : '#6E6E76', opacity: on ? 1 : 0.7 });
+    });
+    const bestLine = h('line', { x1: 4, y1: Y(this.best), x2: W - 4, y2: Y(this.best), stroke: '#FFB70344', strokeWidth: 1, strokeDasharray: '2 3' });
+    return h('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', style: { display: 'block' } }, bestLine, ...dots);
+  }
+
+  renderVals() {
+    const worst = Math.max(...this.raw);
+    const laps = this.raw.map((t, i) => {
+      const d = t - this.best; const isBest = d < 0.05; const inWin = d <= 0.8;
+      return {
+        num: 'T' + String(i + 1).padStart(2, '0'),
+        time: this.fmt(t),
+        delta: isBest ? 'BEST' : '+' + d.toFixed(1),
+        barW: Math.max(4, (1 - (t - this.best) / (worst - this.best)) * 100) + '%',
+        barColor: isBest ? '#FFB703' : inWin ? '#97C459' : '#6E6E76',
+        bg: isBest ? '#0B0B0D' : 'transparent',
+        border: isBest ? '1px solid rgba(255,183,3,0.4)' : '1px solid #1C1C20',
+        numColor: isBest ? '#FFB703' : '#9A9AA3',
+        timeColor: isBest ? '#FFB703' : '#E6E6E8',
+        deltaColor: isBest ? '#FFB703' : inWin ? '#97C459' : '#6E6E76',
+      };
+    });
+    return { isDark: true, laps, scatter: this.buildScatter() };
+  }
+}
+</script>
+</body>
+</html>

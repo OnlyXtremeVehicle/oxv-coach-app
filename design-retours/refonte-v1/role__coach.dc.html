@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    html,body{margin:0;padding:0;background:#050505;}
+    *{box-sizing:border-box;}
+    a{text-decoration:none;color:inherit;}
+    @keyframes oxvrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+  </style>
+</helmet>
+<div style="min-height:100vh; background:radial-gradient(90% 60% at 50% -5%, #14090b 0%, #050505 55%); color:#F8F9FA; font-family:'Rajdhani',sans-serif; padding:48px 40px 80px;">
+  <div style="max-width:1120px; margin:0 auto; display:flex; flex-direction:column; gap:34px;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; flex-wrap:wrap; gap:20px; border-bottom:1px solid #1C1C20; padding-bottom:24px;">
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:14px; letter-spacing:3px; color:#54545C;">OXV MIRROR</div>
+          <div style="width:1px; height:12px; background:#232326;"></div>
+          <div style="font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:#C8102E;">ESPACE COACH</div>
+        </div>
+        <div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:52px; letter-spacing:2px; line-height:0.9; color:#F8F9FA;">RÔLE COACH</div>
+        <div style="font-family:'Instrument Serif',serif; font-style:italic; font-size:19px; color:#9A9AA3;">Data, pédagogie, monétisation : le studio télémétrique, le triage IA, la direction de course, la facturation — toute la prestation premium, la bande coach séparée du miroir.</div>
+      </div>
+      <div style="display:flex; gap:26px;">
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#C8102E; line-height:1;">19</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">ÉCRANS</div></div>
+        <div style="display:flex; flex-direction:column; gap:2px;"><div style="font-family:'Rajdhani',sans-serif; font-weight:700; font-size:34px; color:#F8F9FA; line-height:1;">3</div><div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:1px; color:#54545C;">PILIERS PREMIUM</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+      <sc-for list="{{ screens }}" as="s" hint-placeholder-count="19">
+        <a href="{{ s.href }}">
+          <div style="border-radius:8px; border:1px solid #1C1C20; background:linear-gradient(180deg,#131316 0%,#0b0b0e 100%); overflow:hidden; animation:oxvrise 600ms cubic-bezier(.22,1,.36,1) both;">
+            <div style="height:150px; position:relative; background:radial-gradient(80% 90% at 50% 0%, #16101 2%, #0a0a0d 70%); display:flex; align-items:center; justify-content:center; border-bottom:1px solid #1C1C20; overflow:hidden;">
+              <div style="position:absolute; top:10px; left:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; top:10px; right:10px; width:11px; height:11px; border-top:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; left:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-left:2px solid #2a2a30;"></div>
+              <div style="position:absolute; bottom:10px; right:10px; width:11px; height:11px; border-bottom:2px solid #2a2a30; border-right:2px solid #2a2a30;"></div>
+              {{ s.preview }}
+            </div>
+            <div style="padding:15px 16px; display:flex; align-items:center; gap:12px;">
+              <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+                <div style="font-family:'Rajdhani',sans-serif; font-weight:600; font-size:18px; letter-spacing:.3px; color:#F8F9FA;">{{ s.name }}</div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#6E6E76;">{{ s.meta }}</div>
+              </div>
+              <div style="font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.5px; color:#9A9AA3; border:1px solid #232326; border-radius:3px; padding:3px 7px;">{{ s.arch }}</div>
+            </div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="display:flex; align-items:center; gap:10px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.5px; color:#54545C;">
+      <div style="width:9px; height:3px; border-radius:2px; background:#C8102E;"></div> La bande coach (rouge) reste toujours visuellement séparée du miroir du pilote.
+    </div>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{ &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 620 } }">
+class Component extends DCLogic {
+  glyph(kind) {
+    const h = React.createElement;
+    const svg = (kids) => h('svg', { width: 132, height: 96, viewBox: '0 0 132 96', fill: 'none', style: { overflow: 'visible' } }, ...kids);
+    switch (kind) {
+      case 'list': return svg([20, 42, 64].map((y, i) => h('g', { key: i },
+        h('circle', { cx: 30, cy: y + 6, r: 7, fill: 'none', stroke: '#232326' }),
+        h('rect', { x: 44, y: y + 2, width: 44, height: 5, rx: 2, fill: '#232326' }),
+        h('circle', { cx: 104, cy: y + 5, r: 3, fill: ['#C8102E', '#C8102E', '#97C459'][i] }))));
+      case 'detail': return svg([
+        h('circle', { key: 1, cx: 34, cy: 30, r: 12, fill: 'none', stroke: '#232326' }),
+        h('rect', { key: 2, x: 54, y: 22, width: 56, height: 6, rx: 2, fill: '#232326' }),
+        h('rect', { key: 3, x: 22, y: 54, width: 88, height: 30, rx: 4, fill: '#12080a', stroke: '#C8102E44' }),
+        h('rect', { key: 4, x: 22, y: 54, width: 3, height: 30, fill: '#C8102E' }),
+        h('rect', { key: 5, x: 32, y: 64, width: 60, height: 4, rx: 2, fill: '#C8102E66' })]);
+      case 'annotate': return svg([
+        h('path', { key: 1, d: 'M14 30 C40 30 46 66 66 66 S100 34 118 34', stroke: '#FFB703', strokeWidth: 2, strokeLinecap: 'round' }),
+        h('circle', { key: 2, cx: 66, cy: 66, r: 3, fill: '#F2792B' }),
+        h('rect', { key: 3, x: 30, y: 78, width: 50, height: 5, rx: 2, fill: '#C8102E' }),
+        h('circle', { key: 4, cx: 96, cy: 80, r: 7, fill: '#C8102E' })]);
+      case 'queue': return svg([18, 40, 62].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 88, height: 16, rx: 3, fill: 'none', stroke: '#232326' }),
+        h('circle', { cx: 32, cy: y + 8, r: 3, fill: ['#F2792B', '#C8102E', '#97C459'][i] }),
+        h('rect', { x: 42, y: y + 5, width: 40, height: 5, rx: 2, fill: '#232326' }))));
+      case 'rank': return svg([16, 40, 64].map((y, i) => h('g', { key: i },
+        h('text', { x: 24, y: y + 12, fill: i < 2 ? '#FFB703' : '#54545C', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 15 }, String(i + 1)),
+        h('rect', { x: 38, y: y + 2, width: 20, height: 12, rx: 3, fill: 'none', stroke: '#C4A45955' }),
+        h('rect', { x: 66, y: y + 4, width: 44, height: 6, rx: 2, fill: ['#60A5FA', '#F2792B', '#4ADE80'][i] }))));
+      case 'form': return svg([
+        h('rect', { key: 1, x: 22, y: 20, width: 40, height: 16, rx: 4, fill: 'none', stroke: '#F8F9FA' }),
+        h('rect', { key: 2, x: 66, y: 20, width: 40, height: 16, rx: 4, fill: 'none', stroke: '#232326' }),
+        h('circle', { key: 3, cx: 30, cy: 56, r: 6, fill: 'none', stroke: '#F8F9FA' }), h('circle', { key: 4, cx: 30, cy: 56, r: 3, fill: '#F8F9FA' }),
+        h('rect', { key: 5, x: 44, y: 53, width: 60, height: 5, rx: 2, fill: '#232326' }),
+        h('circle', { key: 6, cx: 30, cy: 74, r: 6, fill: 'none', stroke: '#2e2e34' }),
+        h('rect', { key: 7, x: 44, y: 71, width: 48, height: 5, rx: 2, fill: '#1a1a1e' })]);
+      case 'check': return svg([18, 40, 62].map((y, i) => h('g', { key: i },
+        h('rect', { x: 24, y, width: 15, height: 15, rx: 3, fill: i < 2 ? '#F8F9FA' : 'none', stroke: i < 2 ? '#F8F9FA' : '#3a3a42' }),
+        i < 2 ? h('path', { d: `M27 ${y + 7.5} l3 3 6 -6`, stroke: '#050505', strokeWidth: 1.6, fill: 'none', strokeLinecap: 'round' }) : null,
+        h('rect', { x: 48, y: y + 4, width: 56, height: 6, rx: 2, fill: '#232326' }))));
+      case 'ab': return svg([
+        h('text', { key: 1, x: 34, y: 54, fill: '#9A9AA3', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 26, textAnchor: 'middle' }, '70'),
+        h('path', { key: 2, d: 'M52 46 h20 m0 0l-4 -3 m4 3l-4 3', stroke: '#97C459', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', fill: 'none' }),
+        h('text', { key: 3, x: 96, y: 56, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 32, textAnchor: 'middle' }, '73')]);
+      case 'timeline': return svg([
+        h('path', { key: 1, d: 'M14 66 L38 58 L56 52 L74 40 L98 30 L116 22', fill: 'none', stroke: '#60A5FA', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('path', { key: 2, d: 'M14 74 L38 70 L56 74 L74 66 L98 76 L116 70', fill: 'none', stroke: '#C084FC', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' }),
+        h('circle', { key: 3, cx: 116, cy: 22, r: 3, fill: '#60A5FA' }), h('circle', { key: 4, cx: 116, cy: 70, r: 3, fill: '#C084FC' })]);
+      case 'markers': return svg([20, 42, 64].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 18, height: 14, rx: 3, fill: 'none', stroke: '#C4A45955' }),
+        h('rect', { x: 48, y: y + 2, width: 40, height: 5, rx: 2, fill: '#232326' }),
+        h('circle', { cx: 100, cy: y + 6, r: 3.5, fill: ['#60A5FA', '#F2792B', '#4ADE80'][i] }))));
+      case 'cal': return svg(Array.from({ length: 12 }).map((_, i) => {
+        const x = 22 + (i % 4) * 24, y = 20 + Math.floor(i / 4) * 22, ev = [2, 5, 9].includes(i);
+        return h('g', { key: i },
+          h('rect', { x, y, width: 18, height: 18, rx: 3, fill: i === 6 ? '#0B0B0D' : 'none', stroke: i === 6 ? 'rgba(255,255,255,0.25)' : '#1a1a1e' }),
+          ev ? h('circle', { cx: x + 9, cy: y + 13, r: 2, fill: ['#F2792B', '#60A5FA', '#C084FC'][[2, 5, 9].indexOf(i)] }) : null);
+      }));
+      case 'video': return svg([
+        h('rect', { key: 1, x: 20, y: 16, width: 92, height: 52, rx: 4, fill: '#111218', stroke: '#232326' }),
+        h('path', { key: 2, d: 'M52,26 L38,60 M74,26 L86,60', stroke: '#60A5FA', strokeWidth: 2.5, strokeLinecap: 'round' }),
+        h('circle', { key: 3, cx: 56, cy: 46, r: 10, fill: 'none', stroke: '#C8102E', strokeWidth: 2 }),
+        h('rect', { key: 4, x: 20, y: 76, width: 92, height: 5, rx: 2, fill: '#1a1a1e' }),
+        h('rect', { key: 5, x: 20, y: 76, width: 32, height: 5, rx: 2, fill: '#FFB703' }),
+        h('circle', { key: 6, cx: 52, cy: 78.5, r: 3, fill: '#FFB703' })]);
+      case 'studio': return svg([
+        h('circle', { key: 1, cx: 38, cy: 48, r: 26, fill: 'none', stroke: '#3a3a42' }),
+        h('circle', { key: 2, cx: 38, cy: 48, r: 17, fill: 'none', stroke: '#1c1c22' }),
+        h('line', { key: 3, x1: 12, y1: 48, x2: 64, y2: 48, stroke: '#1c1c22' }), h('line', { key: 4, x1: 38, y1: 22, x2: 38, y2: 74, stroke: '#1c1c22' }),
+        ...Array.from({ length: 30 }).map((_, i) => { const a = i * 0.7, r = (0.6 + 0.35 * Math.abs(Math.sin(i))) * 24; return h('circle', { key: 'd' + i, cx: 38 + Math.cos(a) * r, cy: 48 + Math.sin(a) * r, r: 1.3, fill: '#FFB703', opacity: 0.7 }); }),
+        h('path', { key: 5, d: 'M78 34 C92 34 96 62 108 62 S122 40 122 40', fill: 'none', stroke: '#FFB703', strokeWidth: 2, strokeLinecap: 'round' }),
+        h('path', { key: 6, d: 'M78 40 C92 40 96 66 108 66', fill: 'none', stroke: '#60A5FA', strokeWidth: 1.6, strokeLinecap: 'round' })]);
+      case 'ia': return svg([
+        h('path', { key: 1, d: 'M66 14 L96 40 L86 82 L46 82 L36 40 Z', fill: 'none', stroke: '#2e2e34', strokeWidth: 2, strokeLinejoin: 'round' }),
+        h('circle', { key: 2, cx: 54, cy: 40, r: 7, fill: '#C8102E22' }), h('circle', { key: 3, cx: 54, cy: 40, r: 3, fill: '#C8102E' }),
+        h('circle', { key: 4, cx: 80, cy: 66, r: 7, fill: '#C8102E22' }), h('circle', { key: 5, cx: 80, cy: 66, r: 3, fill: '#C8102E' }),
+        h('line', { key: 6, x1: 20, y1: 20, x2: 112, y2: 20, stroke: '#C8102E', strokeWidth: 1, strokeDasharray: '3 3', opacity: 0.6 })]);
+      case 'crm': return svg([
+        h('circle', { key: 1, cx: 34, cy: 28, r: 11, fill: 'none', stroke: '#232326' }),
+        h('rect', { key: 2, x: 52, y: 22, width: 56, height: 5, rx: 2, fill: '#232326' }), h('rect', { key: 3, x: 52, y: 32, width: 36, height: 4, rx: 2, fill: '#1a1a1e' }),
+        h('rect', { key: 4, x: 22, y: 52, width: 88, height: 32, rx: 4, fill: '#0d0a0f', stroke: '#C084FC44' }),
+        h('rect', { key: 5, x: 22, y: 52, width: 3, height: 32, fill: '#C084FC' }),
+        h('rect', { key: 6, x: 34, y: 62, width: 62, height: 4, rx: 2, fill: '#C084FC66' }), h('rect', { key: 7, x: 34, y: 72, width: 48, height: 4, rx: 2, fill: '#C084FC44' })]);
+      case 'billing': return svg([
+        h('text', { key: 1, x: 22, y: 44, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 26 }, '4820'),
+        h('text', { key: 2, x: 92, y: 44, fill: '#54545C', fontFamily: '"JetBrains Mono"', fontSize: 12 }, '€'),
+        h('rect', { key: 3, x: 22, y: 60, width: 88, height: 20, rx: 4, fill: '#12080a', stroke: '#C8102E44' }),
+        h('rect', { key: 4, x: 30, y: 67, width: 38, height: 6, rx: 2, fill: '#C8102E66' }),
+        h('text', { key: 5, x: 96, y: 74, fill: '#FFB703', fontFamily: '"JetBrains Mono"', fontSize: 9, textAnchor: 'end' }, '450€')]);
+      case 'gear': return svg([16, 44, 72].map((y, i) => h('g', { key: i },
+        h('rect', { x: 22, y, width: 16, height: 16, rx: 3, fill: 'none', stroke: '#232326' }),
+        h('circle', { cx: 30, cy: y + 8, r: 2.5, fill: 'none', stroke: i < 2 ? '#F8F9FA' : '#54545C' }),
+        h('rect', { x: 46, y: y + 3, width: 40, height: 5, rx: 2, fill: '#232326' }),
+        h('rect', { x: 94, y: y + 3, width: 16, height: 8, rx: 2, fill: 'none', stroke: ['#97C459', '#97C459', '#C8102E'][i] }),
+        h('rect', { x: 95, y: y + 4, width: [12, 8, 3][i], height: 6, rx: 1, fill: ['#97C459', '#97C459', '#C8102E'][i] }))));
+      case 'live': return svg([16, 40, 64].map((y, i) => h('g', { key: i },
+        h('text', { x: 22, y: y + 12, fill: i === 0 ? '#FFB703' : '#54545C', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 14 }, String(i + 1)),
+        h('circle', { cx: 44, cy: y + 8, r: 3, fill: i < 3 ? '#4ADE80' : '#9A9AA3' }),
+        h('rect', { x: 54, y: y + 4, width: 40, height: 6, rx: 2, fill: '#232326' }),
+        h('text', { x: 110, y: y + 12, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 13, textAnchor: 'end' }, String([78, 73, 71][i])))));
+      case 'report': return svg([
+        h('rect', { key: 1, x: 30, y: 12, width: 72, height: 72, rx: 4, fill: '#faf9f4', stroke: '#cfceC4' }),
+        h('rect', { key: 2, x: 38, y: 20, width: 56, height: 16, rx: 3, fill: '#0a0a0c' }),
+        h('text', { key: 3, x: 84, y: 33, fill: '#FFB703', fontFamily: '"Rajdhani"', fontWeight: 700, fontSize: 12, textAnchor: 'end' }, '73'),
+        h('rect', { key: 4, x: 38, y: 44, width: 56, height: 4, rx: 2, fill: '#e2e1d6' }),
+        h('rect', { key: 5, x: 38, y: 52, width: 44, height: 4, rx: 2, fill: '#e2e1d6' }),
+        h('rect', { key: 6, x: 38, y: 62, width: 56, height: 10, rx: 2, fill: '#fbf3f4' }),
+        h('rect', { key: 7, x: 38, y: 62, width: 2.5, height: 10, fill: '#C8102E' })]);
+      default: return svg([]);
+    }
+  }
+  renderVals() {
+    const S = [
+      { name: 'Studio Télémétrique', meta: 'G-G · SUPERPOSITION · SPLIT VIDÉO', arch: 'A5', kind: 'studio', href: 'coach__studio.dc.html' },
+      { name: 'Triage IA', meta: 'SMART FLAGGING · 3 PERTES', arch: 'A7', kind: 'ia', href: 'coach__triage.dc.html' },
+      { name: 'Direction de course', meta: 'LEADERBOARD LIVE · BROADCAST', arch: 'A9', kind: 'live', href: 'coach__direction.dc.html' },
+      { name: 'Pilotes', meta: 'LISTE · STATUT DE LECTURE', arch: 'A9', kind: 'list', href: 'coach__pilotes.dc.html' },
+      { name: 'Détail pilote', meta: 'MIROIR + BANDE COACH', arch: 'A11', kind: 'detail', href: 'coach__pilote.dc.html' },
+      { name: 'Annoter', meta: 'NOTE + AUDIO · PAR VIRAGE', arch: 'A11', kind: 'annotate', href: 'coach__annoter.dc.html' },
+      { name: 'File de lecture', meta: 'STATUT PERSISTANT', arch: 'A9', kind: 'queue', href: 'coach__file.dc.html' },
+      { name: 'Priorités', meta: 'VIRAGES À TRAVAILLER · GAIN', arch: 'A11', kind: 'rank', href: 'coach__priorites.dc.html' },
+      { name: 'Contexte séance', meta: 'NIVEAU · OBJECTIF · PISTE', arch: 'A8', kind: 'form', href: 'coach__contexte.dc.html' },
+      { name: 'Plan', meta: 'OBJECTIFS ASSIGNÉS · CIBLE', arch: 'A11', kind: 'check', href: 'coach__plan.dc.html' },
+      { name: 'Comparer séances', meta: 'A → B · PROGRÈS PAR PILIER', arch: 'A6', kind: 'ab', href: 'coach__comparer.dc.html' },
+      { name: 'Suivi d\u2019objectifs', meta: 'CIBLES DANS LE TEMPS', arch: 'A2', kind: 'timeline', href: 'coach__suivi.dc.html' },
+      { name: 'Repères', meta: 'BIBLIOTHÈQUE · PAR VIRAGE', arch: 'A9', kind: 'markers', href: 'coach__reperes.dc.html' },
+      { name: 'Calendrier', meta: 'SÉANCES PLANIFIÉES', arch: 'A9', kind: 'cal', href: 'coach__calendrier.dc.html' },
+      { name: 'Débrief vidéo', meta: 'MONTAGE ANNOTÉ · TELESTRATION', arch: 'A5', kind: 'video', href: 'coach__debrief.dc.html' },
+      { name: 'Fiche pilote (CRM)', meta: 'HISTORIQUE · NOTES PRIVÉES', arch: 'A11', kind: 'crm', href: 'coach__crm.dc.html' },
+      { name: 'Facturation', meta: 'DÉVERROUILLAGE · CA · FACTURES', arch: 'A9', kind: 'billing', href: 'coach__facturation.dc.html' },
+      { name: 'Matériel', meta: 'PARC BLUETOOTH · DÉCHARGES', arch: 'A9', kind: 'gear', href: 'coach__materiel.dc.html' },
+      { name: 'Rapport PDF', meta: 'BILAN DE FIN · FACTURE SOLDÉE', arch: 'DOC', kind: 'report', href: 'coach__rapport.dc.html' },
+    ];
+    return { isDark: true, screens: S.map(s => ({ ...s, preview: this.glyph(s.kind) })) };
+  }
+}
+</script>
+</body>
+</html>
