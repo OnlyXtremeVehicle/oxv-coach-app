@@ -169,6 +169,16 @@ function QueueRow({
 
       {/* Marquage — actions sobres selon le statut courant. */}
       <View style={s.actions}>
+        {/* Studio : la lecture télémétrique de CETTE séance (P0). */}
+        <RowAction
+          label="Studio"
+          onPress={() =>
+            router.push({
+              pathname: '/(coach)/studio',
+              params: { sessionId: item.sessionId },
+            } as never)
+          }
+        />
         {item.status !== 'read' ? (
           <RowAction label="Marquer lue" onPress={() => onMark(item, 'read')} />
         ) : null}
