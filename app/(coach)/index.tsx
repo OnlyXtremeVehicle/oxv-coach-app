@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
@@ -32,8 +32,10 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 export default function CoachHubScreen() {
@@ -43,9 +45,13 @@ export default function CoachHubScreen() {
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [summary, setSummary] = useState<CoachDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     Promise.all([listMyPilots(), loadCoachDashboardSummary()])
       .then(([rows, s]) => {
         if (!cancelled) {
@@ -55,13 +61,24 @@ export default function CoachHubScreen() {
         }
       })
       .catch(() => {
-        // Réseau coupé : on sort du loading (la liste vide est gérée par EmptyState).
-        if (!cancelled) setLoading(false);
+        // Réseau coupé : état d'erreur honnête avec reprise (SPEC_BUILD §5).
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
+
+  const pilotsState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : pilots.length === 0
+        ? 'empty'
+        : 'nominal';
 
   const greeting = profile?.first_name ? `Bonjour ${profile.first_name}` : 'Bonjour';
 
@@ -69,18 +86,22 @@ export default function CoachHubScreen() {
     <Screen>
       <AppBar title="COACH OXV" leading={<Logo size={26} />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.title} accessibilityRole="header">
           {greeting}.
         </Text>
         <Text style={s.manifest}>Vos pilotes, à votre rythme.</Text>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xl }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : pilots.length === 0 ? (
-          <EmptyState />
-        ) : (
+        <StateWrapper
+          state={pilotsState}
+          skeletonLines={4}
+          emptyLabel="Aucun pilote"
+          emptyMessage="Les assignations sont gérées par l'équipe OXV. Un pilote doit aussi consentir au coaching avant que vous voyiez ses données."
+          errorCause="Vos pilotes n'ont pas pu être chargés."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <>
             {/* Bandeau alerte : nouvelles sessions à voir (24h) */}
             {summary && summary.lastDaySessionCount > 0 ? (
@@ -164,7 +185,7 @@ export default function CoachHubScreen() {
               <CoachLink label="Comparer deux pilotes" href="/(coach)/comparer-pilotes" />
             ) : null}
           </>
-        )}
+        </StateWrapper>
 
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
           {/* Ma fiche coach — profil vu par les pilotes (édition + publication). */}
@@ -297,26 +318,6 @@ function PilotCard({ pilot }: { pilot: CoachPilotRow }) {
   );
 }
 
-function EmptyState() {
-  return (
-    <Card
-      style={{
-        alignItems: 'center',
-        paddingVertical: theme.spacing.xxl,
-        marginTop: theme.spacing.xl,
-      }}
-    >
-      <Text style={s.emptyTitle} accessibilityRole="header">
-        Aucun pilote assigné pour l&apos;instant.
-      </Text>
-      <Text style={s.emptyHint}>
-        Les assignations sont gérées par l&apos;équipe OXV. Un pilote doit aussi consentir au
-        coaching avant que vous voyiez ses données.
-      </Text>
-    </Card>
-  );
-}
-
 function prettyLevel(level: string | null): string {
   switch (level) {
     case 'debutant':
@@ -352,7 +353,8 @@ const s = {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.palette.coach,
+    // Alerte de l'espace coach → rouge d'identité de rôle (roleColors.coach).
+    backgroundColor: theme.roleColors.coach,
   },
   queueTitle: {
     fontFamily: theme.fonts.bodyMedium,
@@ -394,21 +396,6 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
   },
   minorLink: {
     fontFamily: theme.fonts.mono,
