@@ -9,10 +9,9 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
 import { groupQueue, type QueueItem, type QueueStatus } from '@/services/coachQueueLogic';
 import { loadCoachQueue, setQueueStatus } from '@/services/coachQueueService';
@@ -20,6 +19,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 const FILTERS: { key: QueueStatus; label: string }[] = [
@@ -38,10 +38,12 @@ export default function FileLectureScreen() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [filter, setFilter] = useState<QueueStatus>('unread');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
+    setError(false);
     loadCoachQueue()
       .then((rows) => {
         if (!cancelled) {
@@ -50,7 +52,10 @@ export default function FileLectureScreen() {
         }
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -73,6 +78,13 @@ export default function FileLectureScreen() {
 
   const groups = groupQueue(items);
   const active = groups[filter];
+  const listState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : active.length === 0
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
@@ -104,21 +116,23 @@ export default function FileLectureScreen() {
           })}
         </View>
 
-        {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
-            <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-          </View>
-        ) : active.length === 0 ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState label="Rien ici" message={EMPTY[filter]} source="telemetry_sessions" />
-          </View>
-        ) : (
-          <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
-            {active.map((item) => (
-              <QueueRow key={item.sessionId} item={item} onMark={mark} />
-            ))}
-          </View>
-        )}
+        <View style={{ marginTop: theme.spacing.lg }}>
+          <StateWrapper
+            state={listState}
+            skeletonLines={4}
+            emptyLabel="Rien ici"
+            emptyMessage={EMPTY[filter]}
+            emptySource="telemetry_sessions"
+            errorCause="La file n'a pas pu être chargée."
+            onRetry={reload}
+          >
+            <View style={{ gap: theme.spacing.sm }}>
+              {active.map((item) => (
+                <QueueRow key={item.sessionId} item={item} onMark={mark} />
+              ))}
+            </View>
+          </StateWrapper>
+        </View>
       </View>
     </Screen>
   );
@@ -216,7 +230,7 @@ const s = {
     justifyContent: 'center' as const,
   },
   chipActive: {
-    borderColor: theme.palette.coach,
+    borderColor: theme.palette.edge,
     backgroundColor: theme.palette.card2,
   },
   chipLabel: {
@@ -230,7 +244,8 @@ const s = {
     color: theme.palette.cream,
   },
   row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: theme.spacing.md },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.palette.coach },
+  // Marqueur « non-lu » = rouge d'identité de rôle coach (roleColors.coach).
+  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.roleColors.coach },
   pilot: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
@@ -242,7 +257,7 @@ const s = {
     color: theme.palette.creamMute,
     marginTop: theme.spacing.xs,
   },
-  chevron: { color: theme.palette.faint, fontSize: 17 },
+  chevron: { color: theme.palette.creamMute, fontSize: 17 },
   actions: {
     flexDirection: 'row' as const,
     gap: theme.spacing.lg,
