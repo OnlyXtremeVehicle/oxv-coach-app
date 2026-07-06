@@ -98,10 +98,24 @@
 - **P4 — Console de direction** : version *factuelle* (statut, pas ranking — C1).
 - **P5 — Vidéo/HUD/live** : dépendances matérielles + architecture streaming.
 
-## 5. Décisions attendues (fondateur)
-1. **C1** — Leaderboard : proscrire le ranking / coach-privé / remplacer par « vs soi » ?
-2. **C2** — Consigne pilote : post-run seulement (silence en piste tenu) ?
-3. **C3** — Cause automatique : factuel + suggestion IA validée par le coach ?
-4. **C4** — Profil psycho : recadrer en notes privées accessibles (RGPD) ?
-5. **C5** — Équilibre auto : proxy lacet assumé (pas « angle volant ») ?
-6. **Monétisation** : construire derrière flag maintenant (inactif) ou attendre le SIRET ?
+## 5. Décisions ACTÉES (fondateur, 2026-07-04)
+1. **C1 — Console = état individuel, PAS de rang.** Factuel (en piste/stands/tours)
+   + QDI de chaque pilote vs SON propre historique. Aucun classement inter-pilotes.
+2. **C2 — Consigne pilote = entre les runs seulement.** Silence en piste tenu ;
+   HUD pendant le run écarté.
+3. **C3 — Smart Flagging = FAIT + suggestion IA validée par le coach.** L'appli
+   signale le fait (virage à plus forte chute) ; la CAUSE est une suggestion IA
+   que le coach valide/édite avant le pilote. L'IA n'affirme jamais seule.
+4. **C4 — Notes privées accessibles (RGPD).** Pas de « profil psycho » opaque ;
+   notes de travail du coach, accessibles au pilote sur demande, sans données
+   sensibles sans base légale. *(défaut appliqué)*
+5. **C5 — Équilibre par proxy lacet assumé.** Pas d'« angle volant » (capteur
+   absent) ; estimation lacet vs attendu, dite dans le bloc méthode. *(défaut appliqué)*
+6. **Monétisation — construire derrière un feature flag, INACTIF.** Rien
+   n'encaisse avant le SIRET ; le flux est prêt le jour de l'activation.
+
+## 6. Construit depuis
+- **P0 (cœur) — Smart Flagging factuel** : `coachTriageLogic` (pur, testé) +
+  `coachTriageService` — classe les virages par déficit de marge (le plus serré
+  en tête) pour orienter le débriefing. FAIT seul (C3). L'UI viendra avec la
+  refonte Claude Design.
