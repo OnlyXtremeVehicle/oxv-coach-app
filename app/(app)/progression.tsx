@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Pressable, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, Text, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { router } from 'expo-router';
 
@@ -26,8 +26,10 @@ import { theme } from '@/theme/v2';
 import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
 import { Segmented } from '@/ui/Segmented';
+import { StateWrapper } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
 
 const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
@@ -79,6 +81,8 @@ export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
   const [sessions, setSessions] = useState<SessionPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [granularity, setGranularity] = useState<Granularity>('all');
 
   useEffect(() => {
@@ -87,6 +91,8 @@ export default function ProgressionScreen() {
       return;
     }
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     fetchAllSessions(profile.id, { limit: 100 })
       .then((rows) => {
         if (cancelled) return;
@@ -103,12 +109,16 @@ export default function ProgressionScreen() {
         setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        // Erreur de lecture honnête, avec reprise (SPEC_BUILD §5).
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [profile]);
+  }, [profile, reloadKey]);
 
   const filtered = useMemo(() => {
     if (granularity === 'all') return sessions;
@@ -132,12 +142,19 @@ export default function ProgressionScreen() {
     return { current, previous, delta: current - previous };
   }, [sessions]);
 
-  if (loading) {
+  if (loading || error) {
     return (
-      <Screen scroll={false}>
+      <Screen>
         <AppBar title="PROGRESSION" onBack={() => router.back()} trailing={<AccountButton />} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={palette.creamMute} />
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}>
+          <StateWrapper
+            state={error ? 'error' : 'loading'}
+            skeletonLines={4}
+            errorCause="Votre progression n'a pas pu être chargée."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
+            {null}
+          </StateWrapper>
         </View>
       </Screen>
     );
@@ -283,7 +300,7 @@ function ProgressionChart({ points }: { points: SessionPoint[] }) {
   )} à ${formatLapTime(points[lastIdx].bestSeconds)}.`;
 
   return (
-    <View
+    <CockpitPanel
       style={s.chartPanel}
       accessible
       accessibilityRole="image"
@@ -359,7 +376,7 @@ function ProgressionChart({ points }: { points: SessionPoint[] }) {
             : ''}
         </Text>
       </View>
-    </View>
+    </CockpitPanel>
   );
 }
 
@@ -456,11 +473,9 @@ const s = {
     color: palette.creamMute,
     marginTop: spacing.xs,
   },
+  // Surcharge du CockpitPanel : on garde padding serré + halo or, on laisse le
+  // panneau fournir fond/bordure/rayon HUD (équerres cockpit).
   chartPanel: {
-    backgroundColor: palette.card2,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: palette.line,
     padding: spacing.md,
     marginBottom: spacing.xl,
     // halo or discret (iOS) — la donnée respire sans juger
