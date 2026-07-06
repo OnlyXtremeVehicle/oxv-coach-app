@@ -8,11 +8,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
-import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type MyEventPartnership,
   eventTypeLabel,
@@ -31,7 +30,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const STATUS_LABEL: Record<PartnerAccount['status'], string> = {
   pending: 'En attente de validation OXV',
@@ -46,9 +47,13 @@ export default function PartnerHubScreen() {
   const [leads, setLeads] = useState<PartnerLead[]>([]);
   const [myEvents, setMyEvents] = useState<MyEventPartnership[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     (async () => {
       const acc = await loadMyPartnerAccount();
       if (cancelled) return;
@@ -66,133 +71,132 @@ export default function PartnerHubScreen() {
       }
       setLoading(false);
     })().catch(() => {
-      if (!cancelled) setLoading(false);
+      if (!cancelled) {
+        setError(true);
+        setLoading(false);
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="PARTENAIRE OXV" leading={<Logo size={26} />} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  }, [reloadKey]);
 
   const newLeads = leads.filter((l) => l.status === 'new').length;
   const publishedOffers = offers.filter((o) => o.status === 'published').length;
+
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : !account ? 'empty' : 'nominal';
 
   return (
     <Screen>
       <AppBar title="PARTENAIRE OXV" leading={<Logo size={26} />} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        {account ? (
-          <>
-            <Text style={s.eyebrow}>{STATUS_LABEL[account.status].toUpperCase()}</Text>
-            <Text style={s.title} accessibilityRole="header">
-              {account.displayName}
-            </Text>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="partner" />
+        </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun compte partenaire"
+          emptyMessage="Aucun compte partenaire n'est rattaché à cet utilisateur. Contactez l'équipe OXV."
+          emptySource="partner_accounts"
+          errorCause="Votre tableau de bord n'a pas pu être chargé."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
+          {account ? (
+            <>
+              <Text style={s.eyebrow}>{STATUS_LABEL[account.status].toUpperCase()}</Text>
+              <Text style={s.title} accessibilityRole="header">
+                {account.displayName}
+              </Text>
 
-            <View
-              style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}
-            >
-              <Fact
-                value={offers.length.toString()}
-                label={offers.length > 1 ? 'offres' : 'offre'}
-              />
-              <Fact value={publishedOffers.toString()} label="publiée" />
-              <Fact value={newLeads.toString()} label={newLeads > 1 ? 'leads' : 'lead'} />
-            </View>
-
-            {account.status === 'pending' ? (
-              <Card style={{ marginTop: theme.spacing.xl }}>
-                <Text style={s.note}>
-                  Votre compte est en cours de validation par l&apos;équipe OXV. Vos offres seront
-                  visibles des pilotes une fois le compte validé.
-                </Text>
-              </Card>
-            ) : null}
-
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
-              <Card
-                onPress={() => router.push('/(partner)/profil' as never)}
-                accessibilityLabel="Ma fiche. Zone desservie et description."
+              <View
+                style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}
               >
-                <Text style={s.cardTitle}>Ma fiche</Text>
-                <Text style={s.cardHint}>Votre zone et votre description.</Text>
-              </Card>
-              <Card
-                onPress={() => router.push('/(partner)/offres' as never)}
-                accessibilityLabel="Mes offres. Créer et publier vos offres."
-              >
-                <Text style={s.cardTitle}>Mes offres</Text>
-                <Text style={s.cardHint}>Créer et publier vos offres.</Text>
-              </Card>
-              <Card
-                onPress={() => router.push('/(partner)/performance' as never)}
-                accessibilityLabel="Performance. Vos demandes et offres en chiffres."
-              >
-                <Text style={s.cardTitle}>Performance</Text>
-                <Text style={s.cardHint}>Vos demandes et offres en chiffres.</Text>
-              </Card>
-              <Card
-                onPress={() => router.push('/(partner)/leads' as never)}
-                accessibilityLabel={`Mes leads. ${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} de contact.`}
-              >
-                <Text style={s.cardTitle}>Mes leads</Text>
-                <Text style={s.cardHint}>
-                  {newLeads > 0
-                    ? `${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} à suivre.`
-                    : 'Les demandes de contact des pilotes.'}
-                </Text>
-              </Card>
-              <Card
-                onPress={() => router.push('/(partner)/rapports' as never)}
-                accessibilityLabel="Mes rapports. Les rapports d'événement partagés par OXV."
-              >
-                <Text style={s.cardTitle}>Mes rapports</Text>
-                <Text style={s.cardHint}>Les bilans d&apos;événement partagés par OXV.</Text>
-              </Card>
-              <Card
-                onPress={() => router.push('/(partner)/facturation' as never)}
-                accessibilityLabel="Facturation. Paiement et résiliation de votre compte."
-              >
-                <Text style={s.cardTitle}>Facturation</Text>
-                <Text style={s.cardHint}>Paiement et résiliation, en toute clarté.</Text>
-              </Card>
-            </View>
-
-            {myEvents.length > 0 ? (
-              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-                <Text style={s.eyebrow}>MES ÉVÉNEMENTS</Text>
-                {myEvents.map((m) =>
-                  m.event ? (
-                    <Card key={m.id}>
-                      <Text style={s.cardTitle}>{m.event.name}</Text>
-                      <Text style={s.cardHint}>
-                        {eventTypeLabel(m.event.eventType)} · {m.event.locationName}
-                      </Text>
-                    </Card>
-                  ) : null
-                )}
+                <Fact
+                  value={offers.length.toString()}
+                  label={offers.length > 1 ? 'offres' : 'offre'}
+                />
+                <Fact value={publishedOffers.toString()} label="publiée" />
+                <Fact value={newLeads.toString()} label={newLeads > 1 ? 'leads' : 'lead'} />
               </View>
-            ) : null}
-            {/* Suivi des leads (F4) à venir. */}
-          </>
-        ) : (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <EmptyState
-              label="Aucun compte partenaire"
-              message="Aucun compte partenaire n'est rattaché à cet utilisateur. Contactez l'équipe OXV."
-              source="partner_accounts"
-            />
-          </View>
-        )}
+
+              {account.status === 'pending' ? (
+                <Card style={{ marginTop: theme.spacing.xl }}>
+                  <Text style={s.note}>
+                    Votre compte est en cours de validation par l&apos;équipe OXV. Vos offres seront
+                    visibles des pilotes une fois le compte validé.
+                  </Text>
+                </Card>
+              ) : null}
+
+              <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
+                <Card
+                  onPress={() => router.push('/(partner)/profil' as never)}
+                  accessibilityLabel="Ma fiche. Zone desservie et description."
+                >
+                  <Text style={s.cardTitle}>Ma fiche</Text>
+                  <Text style={s.cardHint}>Votre zone et votre description.</Text>
+                </Card>
+                <Card
+                  onPress={() => router.push('/(partner)/offres' as never)}
+                  accessibilityLabel="Mes offres. Créer et publier vos offres."
+                >
+                  <Text style={s.cardTitle}>Mes offres</Text>
+                  <Text style={s.cardHint}>Créer et publier vos offres.</Text>
+                </Card>
+                <Card
+                  onPress={() => router.push('/(partner)/performance' as never)}
+                  accessibilityLabel="Performance. Vos demandes et offres en chiffres."
+                >
+                  <Text style={s.cardTitle}>Performance</Text>
+                  <Text style={s.cardHint}>Vos demandes et offres en chiffres.</Text>
+                </Card>
+                <Card
+                  onPress={() => router.push('/(partner)/leads' as never)}
+                  accessibilityLabel={`Mes leads. ${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} de contact.`}
+                >
+                  <Text style={s.cardTitle}>Mes leads</Text>
+                  <Text style={s.cardHint}>
+                    {newLeads > 0
+                      ? `${newLeads} ${newLeads > 1 ? 'nouvelles demandes' : 'nouvelle demande'} à suivre.`
+                      : 'Les demandes de contact des pilotes.'}
+                  </Text>
+                </Card>
+                <Card
+                  onPress={() => router.push('/(partner)/rapports' as never)}
+                  accessibilityLabel="Mes rapports. Les rapports d'événement partagés par OXV."
+                >
+                  <Text style={s.cardTitle}>Mes rapports</Text>
+                  <Text style={s.cardHint}>Les bilans d&apos;événement partagés par OXV.</Text>
+                </Card>
+                <Card
+                  onPress={() => router.push('/(partner)/facturation' as never)}
+                  accessibilityLabel="Facturation. Paiement et résiliation de votre compte."
+                >
+                  <Text style={s.cardTitle}>Facturation</Text>
+                  <Text style={s.cardHint}>Paiement et résiliation, en toute clarté.</Text>
+                </Card>
+              </View>
+
+              {myEvents.length > 0 ? (
+                <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+                  <Text style={s.eyebrow}>MES ÉVÉNEMENTS</Text>
+                  {myEvents.map((m) =>
+                    m.event ? (
+                      <Card key={m.id}>
+                        <Text style={s.cardTitle}>{m.event.name}</Text>
+                        <Text style={s.cardHint}>
+                          {eventTypeLabel(m.event.eventType)} · {m.event.locationName}
+                        </Text>
+                      </Card>
+                    ) : null
+                  )}
+                </View>
+              ) : null}
+              {/* Suivi des leads (F4) à venir. */}
+            </>
+          ) : null}
+        </StateWrapper>
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
