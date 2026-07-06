@@ -216,6 +216,9 @@ export default function CoachHubScreen() {
               réponse. Accessible à tout coach : c'est sa boîte de réception. */}
           <CoachLink label="Demandes" href="/(coach)/demandes" />
 
+          {/* Calendrier (agenda) — séances confirmées + créneaux à venir, agrégés. */}
+          <CoachLink label="Calendrier" href="/(coach)/calendrier" />
+
           {/* Mes repères de virage (§10.3c-A) — outil pédagogique de base,
               disponible pour tout coach. */}
           <CoachLink label="Mes repères de virage" href="/(coach)/reperes" />
