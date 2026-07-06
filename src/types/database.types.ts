@@ -757,6 +757,66 @@ export type Database = {
           },
         ]
       }
+      coach_invoices: {
+        Row: {
+          amount_ht: number
+          amount_total: number
+          coach_id: string
+          coaching_booking_id: string | null
+          created_at: string
+          currency: string
+          id: string
+          issued_at: string
+          lines: Json
+          number: string
+          pdf_path: string | null
+          pilot_id: string | null
+          seller: Json
+          service_date: string | null
+          vat_amount: number | null
+          vat_note: string | null
+          vat_rate: number | null
+        }
+        Insert: {
+          amount_ht: number
+          amount_total: number
+          coach_id: string
+          coaching_booking_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          issued_at?: string
+          lines: Json
+          number: string
+          pdf_path?: string | null
+          pilot_id?: string | null
+          seller: Json
+          service_date?: string | null
+          vat_amount?: number | null
+          vat_note?: string | null
+          vat_rate?: number | null
+        }
+        Update: {
+          amount_ht?: number
+          amount_total?: number
+          coach_id?: string
+          coaching_booking_id?: string | null
+          created_at?: string
+          currency?: string
+          id?: string
+          issued_at?: string
+          lines?: Json
+          number?: string
+          pdf_path?: string | null
+          pilot_id?: string | null
+          seller?: Json
+          service_date?: string | null
+          vat_amount?: number | null
+          vat_note?: string | null
+          vat_rate?: number | null
+        }
+        Relationships: []
+      }
       coach_ai_drafts: {
         Row: {
           coach_id: string
