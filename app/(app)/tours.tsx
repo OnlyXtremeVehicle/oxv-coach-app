@@ -39,13 +39,18 @@ import type { Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { CockpitPanel } from '@/ui/CockpitPanel';
+import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
 
 export default function ToursScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const [laps, setLaps] = useState<Lap[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const { level, toggle, canToggle } = useDetailLevel();
 
   useEffect(() => {
@@ -54,6 +59,8 @@ export default function ToursScreen() {
       return;
     }
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     fetchSessionLaps(params.sessionId)
       .then((rows) => {
         if (cancelled) return;
@@ -61,12 +68,16 @@ export default function ToursScreen() {
         setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        // Erreur de lecture honnête : on la montre plutôt que de l'avaler.
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [params.sessionId]);
+  }, [params.sessionId, reloadKey]);
 
   const [selectedLap, setSelectedLap] = useState<number | null>(null);
   const validLaps = useMemo(() => laps.filter((l) => !l.is_outlap && !l.is_inlap), [laps]);
@@ -86,6 +97,16 @@ export default function ToursScreen() {
     [validLaps]
   );
 
+  // État de la liste des tours (SPEC_BUILD §5). L'offline honnête = un échec de
+  // lecture, présenté comme reprise ; pas de cache dédié ici (suivi séparé).
+  const listState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : laps.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="TOURS" onBack={() => router.back()} />
@@ -97,38 +118,27 @@ export default function ToursScreen() {
             : 'Vos tours'}
         </Text>
 
-        {/* Chiffre central : meilleur tour */}
+        {/* Chiffre roi : meilleur tour (fait, or de donnée) dans un panneau cockpit
+            NG — équerres + grand chiffre Rajdhani. Un seul chiffre dominant. */}
         {bestLap ? (
           <View
-            style={{
-              alignItems: 'center',
-              marginTop: theme.spacing.xl,
-              marginBottom: theme.spacing.xxl,
-              paddingVertical: theme.spacing.lg,
-            }}
+            accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${bestLap.lap_number}`}
+            style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl }}
           >
-            <Text
-              style={[
-                s.eyebrow,
-                { color: theme.palette.creamMute, marginBottom: theme.spacing.sm },
-              ]}
-            >
-              MEILLEUR TOUR
-            </Text>
-            <Text
-              style={s.heroNumber}
-              accessibilityRole="text"
-              accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${bestLap.lap_number}`}
-            >
-              {formatLapTime(bestLap.duration_seconds)}
-            </Text>
-            <Text
-              style={[s.meta, { marginTop: theme.spacing.xs }]}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            >
-              Tour {bestLap.lap_number}
-            </Text>
+            <CockpitPanel>
+              <Text
+                style={[
+                  s.eyebrow,
+                  { color: theme.palette.creamMute, marginBottom: theme.spacing.md },
+                ]}
+              >
+                Meilleur tour
+              </Text>
+              <KingNumber value={formatLapTime(bestLap.duration_seconds)} />
+              <Text style={[s.meta, { marginTop: theme.spacing.md }]}>
+                Tour {bestLap.lap_number}
+              </Text>
+            </CockpitPanel>
           </View>
         ) : null}
 
@@ -185,11 +195,14 @@ export default function ToursScreen() {
           </View>
         ) : null}
 
-        {loading ? (
-          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
-        ) : laps.length === 0 ? (
-          <EmptyState />
-        ) : (
+        <StateWrapper
+          state={listState}
+          skeletonLines={4}
+          emptyLabel="Aucun tour"
+          emptyMessage="Les tours apparaissent dès qu'une session complète a été analysée."
+          errorCause="Vos tours n'ont pas pu être chargés."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <View style={{ gap: theme.spacing.xs }}>
             {laps.map((lap) => (
               <LapRow
@@ -212,7 +225,7 @@ export default function ToursScreen() {
               />
             ))}
           </View>
-        )}
+        </StateWrapper>
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable
@@ -349,17 +362,6 @@ function Detail({ label, value }: { label: string; value: string }) {
   );
 }
 
-function EmptyState() {
-  return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={s.emptyTitle}>Aucun tour enregistré.</Text>
-      <Text style={s.emptyHint}>
-        Les tours apparaissent dès qu'une session complète a été analysée.
-      </Text>
-    </Card>
-  );
-}
-
 /** Point projeté (forme attendue par TrackStage). */
 type Pt = { lat: number; lon: number; speed: number };
 
@@ -438,15 +440,6 @@ const s = {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.sm,
   },
-  heroNumber: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.hud,
-    letterSpacing: -1,
-    color: theme.palette.cream,
-    textShadowColor: 'rgba(255,183,3,0.45)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 18,
-  },
   meta: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
@@ -491,21 +484,6 @@ const s = {
   chevron: {
     color: theme.palette.creamMute,
     fontSize: 18,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
   },
   back: {
     fontFamily: theme.fonts.mono,
