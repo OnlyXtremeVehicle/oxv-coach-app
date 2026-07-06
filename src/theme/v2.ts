@@ -41,7 +41,10 @@ export const dataColors = {
   regularity: '#C084FC',
 } as const;
 
-// Familles de polices = noms exposés par @expo-google-fonts (Geist + Instrument Serif).
+// Familles de polices (refonte NG 2026-07-06, compromis fondateur) : Geist pour
+// le TEXTE, Rajdhani pour le CHIFFRE ROI (héros HUD), JetBrains Mono pour les
+// DONNÉES/labels/eyebrows, Instrument Serif pour l'éditorial. Noms = exports
+// @expo-google-fonts (chargés dans src/theme/fonts.ts).
 export const fonts = {
   display: 'Geist_600SemiBold', // titres (sans)
   displayReg: 'Geist_500Medium',
@@ -49,9 +52,11 @@ export const fonts = {
   bodyLight: 'Geist_300Light',
   bodyMedium: 'Geist_500Medium',
   bodySemi: 'Geist_600SemiBold',
-  mono: 'GeistMono_400Regular', // CHIFFRES = voix de l'instrument
-  monoMedium: 'GeistMono_500Medium',
-  serif: 'InstrumentSerif_400Regular', // touches éditoriales (titres hero, dates) — JAMAIS un chiffre
+  king: 'Rajdhani_600SemiBold', // CHIFFRE ROI : le grand chiffre central (or)
+  kingMedium: 'Rajdhani_500Medium',
+  mono: 'JetBrainsMono_400Regular', // données, labels, eyebrows, méta
+  monoMedium: 'JetBrainsMono_500Medium',
+  serif: 'InstrumentSerif_400Regular', // éditorial (ligne-miroir, dates) — JAMAIS un chiffre
   serifItalic: 'InstrumentSerif_400Regular_Italic', // mot qualitatif du bilan, citation coach
 } as const;
 

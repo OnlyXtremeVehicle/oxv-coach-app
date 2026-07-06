@@ -48,12 +48,12 @@ export const C = {
   gold: palette.gold, // OR = donnée (cockpit) — plus l'or Heritage #C4A459
   green: dataColors.accel,
 };
-// Aligné sur le thème v2 : Geist (display/body) + GeistMono (chiffres), les familles
-// réellement chargées par l'app. Cohérent avec src/theme/v2.ts.
+// Aligné sur le thème v2 (refonte NG) : Geist (display/body) + JetBrains Mono
+// (données), les familles réellement chargées par l'app. Cf. src/theme/v2.ts.
 export const F: { display?: string; body?: string; mono?: string } = {
   display: 'Geist_600SemiBold',
   body: 'Geist_400Regular',
-  mono: 'GeistMono_400Regular',
+  mono: 'JetBrainsMono_400Regular',
 };
 
 /* ============================ TYPES (contrats) ============================ */
