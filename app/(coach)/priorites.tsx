@@ -23,6 +23,7 @@ import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachPrioritesScreen() {
   const params = useLocalSearchParams<{ pilotId?: string }>();
@@ -31,6 +32,8 @@ export default function CoachPrioritesScreen() {
   const [selected, setSelected] = useState<number[]>([]);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -40,18 +43,29 @@ export default function CoachPrioritesScreen() {
       setLoading(false);
       return;
     }
-    getMyHighlightForPilot(pilotId).then((h) => {
-      if (cancelled) return;
-      if (h) {
-        setSelected(h.highlightCornerIndexes);
-        setNote(h.note ?? '');
-      }
-      setLoading(false);
-    });
+    setLoading(true);
+    setError(false);
+    getMyHighlightForPilot(pilotId)
+      .then((h) => {
+        if (cancelled) return;
+        if (h) {
+          setSelected(h.highlightCornerIndexes);
+          setNote(h.note ?? '');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, [pilotId]);
+  }, [pilotId, reloadKey]);
+
+  const formState: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
   async function onSave() {
     if (!pilotId || saving) return;
@@ -85,9 +99,12 @@ export default function CoachPrioritesScreen() {
             consigne.
           </Text>
 
-          {loading ? (
-            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
-          ) : (
+          <StateWrapper
+            state={formState}
+            skeletonLines={4}
+            errorCause="Les priorités n'ont pas pu être chargées."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
             <>
               <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
                 <SectionLabel>VIRAGES MIS EN AVANT</SectionLabel>
@@ -144,7 +161,7 @@ export default function CoachPrioritesScreen() {
                 />
               </View>
             </>
-          )}
+          </StateWrapper>
 
           <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
@@ -181,13 +198,6 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.md,
-  },
-  meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
   },
   pill: {
     flexDirection: 'row' as const,

@@ -82,14 +82,21 @@ export default function CoachAnnoterScreen() {
   };
 
   const reload = async () => {
-    if (!params.pilotId) return;
-    const rows = await listMyAnnotationsForCorner(
-      params.pilotId,
-      cornerIndex,
-      params.sessionId ?? undefined
-    );
-    setAnnotations(rows);
-    setLoading(false);
+    if (!params.pilotId) {
+      setLoading(false);
+      return;
+    }
+    try {
+      const rows = await listMyAnnotationsForCorner(
+        params.pilotId,
+        cornerIndex,
+        params.sessionId ?? undefined
+      );
+      setAnnotations(rows);
+    } finally {
+      // Toujours sortir du chargement, même en cas d'échec (pas de hang).
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -186,7 +193,9 @@ export default function CoachAnnoterScreen() {
                   style={
                     a.visibility === 'private'
                       ? { borderColor: theme.palette.line }
-                      : { borderColor: theme.palette.coach }
+                      : // Note partagée = la voix du coach (côté pilote : bande rouge).
+                        // Identité de rôle coach = rouge (roleColors.coach).
+                        { borderColor: theme.roleColors.coach }
                   }
                 >
                   <View style={s.noteHead}>
@@ -197,7 +206,7 @@ export default function CoachAnnoterScreen() {
                           color:
                             a.visibility === 'private'
                               ? theme.palette.creamMute
-                              : theme.palette.coach,
+                              : theme.roleColors.coach,
                         },
                       ]}
                     >
