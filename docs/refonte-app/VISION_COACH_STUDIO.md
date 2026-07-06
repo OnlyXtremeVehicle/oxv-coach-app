@@ -157,11 +157,69 @@ alter table public.coach_profiles
 ```
 - Le pilote paie via le **lien propre du coach** (ou tout moyen hors app) ; le
   coach marque `settled`. Aucun flux d'argent ne transite par OXV.
-- **À TRANCHER (question fondateur)** : l'app aide-t-elle le coach à éditer SA
-  propre facture (coach = vendeur, sa structure), ou reste-t-elle hors facturation
-  (le coach facture avec ses propres outils) ?
-- Ne touche PAS `payments`/`invoices` (réservés inscriptions/abonnements OXV). Pas
-  de coordination site paiement requise.
+- **DÉCIDÉ (fondateur 2026-07-04) : l'app AIDE le coach à éditer SA propre
+  facture** (coach = vendeur). Plus de valeur au coach ; l'app touche la
+  facturation d'un tiers → conformité à respecter (à faire VALIDER par un
+  comptable) :
+  - Émetteur = le coach : raison sociale, adresse, SIRET/SIREN, forme, régime TVA.
+  - Numérotation séquentielle continue, sans trou, PROPRE à chaque coach (jamais
+    mélangée à la suite OXV).
+  - TVA : taux + montant (assujetti) OU mention « TVA non applicable, art. 293 B
+    du CGI » (micro/franchise, cas courant).
+  - Disclaimer : facture émise par le coach sous SA responsabilité ; OXV = outil.
+- Ne touche PAS `payments`/`invoices` OXV (réservés inscriptions/abonnements).
+
+Schéma additif (STOP — à valider) :
+```sql
+-- Identité de facturation du coach (émetteur de SES factures).
+alter table public.coach_profiles
+  add column if not exists payment_link text,            -- lien de paiement du coach
+  add column if not exists billing_name text,            -- raison sociale
+  add column if not exists billing_address text,
+  add column if not exists billing_siret text,
+  add column if not exists billing_legal_form text,
+  add column if not exists vat_regime text default 'franchise'
+    check (vat_regime in ('franchise','assujetti')),     -- micro vs TVA
+  add column if not exists vat_rate numeric;             -- si assujetti (ex. 20)
+
+-- Factures ÉMISES PAR LE COACH (séquence propre, distincte d'OXV).
+create table if not exists public.coach_invoices (
+  id uuid primary key default gen_random_uuid(),
+  coach_id uuid not null references auth.users(id),
+  number text not null,                                  -- séquentiel par coach
+  pilot_id uuid references auth.users(id),
+  coaching_booking_id uuid references public.coaching_bookings(id),
+  issued_at timestamptz not null default now(),
+  service_date date,
+  currency text not null default 'EUR',
+  lines jsonb not null,                                  -- désignation/qté/PU
+  amount_ht integer not null,                            -- centimes
+  vat_rate numeric,
+  vat_amount integer,
+  amount_total integer not null,
+  vat_note text,                                         -- « TVA non applicable… »
+  seller jsonb not null,                                 -- snapshot identité coach
+  pdf_path text,
+  created_at timestamptz not null default now(),
+  unique (coach_id, number)
+);
+create table if not exists public.coach_invoice_counters (
+  coach_id uuid primary key references auth.users(id),
+  year integer not null,
+  next_number integer not null default 1
+);
+alter table public.coach_invoices enable row level security;
+alter table public.coach_invoice_counters enable row level security;
+create policy coach_invoices_coach_all on public.coach_invoices for all using (coach_id = auth.uid());
+create policy coach_invoices_pilot_select on public.coach_invoices for select using (pilot_id = auth.uid());
+create policy coach_invoices_admin_all on public.coach_invoices for all using (is_admin());
+create policy coach_counters_coach_all on public.coach_invoice_counters for all using (coach_id = auth.uid());
+```
+- Le coach VALIDE/édite avant émission ; numéro attribué à l'émission
+  (fonction serveur atomique pour garantir la continuité).
+- Derrière `coach_billing` (flag) tant que le parcours n'est pas éprouvé.
+- ⚠ **Faire valider le gabarit + le régime TVA par un comptable** avant mise en
+  service. Le coach reste responsable de SA facturation.
 
 ### P3 — Waivers e-sign (table neuve — nécessite le TEXTE JURIDIQUE)
 ```sql
