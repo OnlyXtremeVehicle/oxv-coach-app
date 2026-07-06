@@ -26,6 +26,7 @@ import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
 
 export default function CarteScreen() {
@@ -115,19 +116,22 @@ export default function CarteScreen() {
         <Text style={s.eyebrow}>Carte du circuit</Text>
         <Text style={s.title}>{circuit?.name ?? 'Votre circuit'}</Text>
 
-        <PilotPreset
-          animate
-          trajectory={trajectory ?? undefined}
-          trajectoryColorMode={trajectoryColorMode}
-          zoneByIndex={zoneByIndex}
-          selectedIndex={selectedCorner}
-          height={360}
-        />
+        {/* Carte = l'instrument central : encadrée cockpit (équerres HUD). */}
+        <CockpitPanel style={{ paddingHorizontal: theme.spacing.sm }}>
+          <PilotPreset
+            animate
+            trajectory={trajectory ?? undefined}
+            trajectoryColorMode={trajectoryColorMode}
+            zoneByIndex={zoneByIndex}
+            selectedIndex={selectedCorner}
+            height={360}
+          />
 
-        {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
-        <View style={{ marginTop: theme.spacing.lg }}>
-          <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
-        </View>
+          {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
+          </View>
+        </CockpitPanel>
 
         <Text style={s.caption}>
           {hasMargins
@@ -228,7 +232,8 @@ const s = {
     fontSize: 11,
     letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    // creamMute (≈ 6.4:1) plutôt que faint : passe WCAG AA, cohérent NG.
+    color: theme.palette.creamMute,
   },
   title: {
     fontFamily: theme.fonts.display,
