@@ -36,7 +36,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
@@ -51,26 +53,35 @@ export default function AdminCoachDetailScreen() {
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [allPilots, setAllPilots] = useState<PilotRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showPicker, setShowPicker] = useState(false);
   const [pilotSearch, setPilotSearch] = useState('');
 
   const reload = async () => {
     if (!params.id) return;
-    const [allCoaches, ass, pilots] = await Promise.all([
-      listCoaches(),
-      listAssignmentsForCoach(params.id),
-      listPilots(),
-    ]);
-    setCoach(allCoaches.find((c) => c.id === params.id) ?? null);
-    setAssignments(ass);
-    setAllPilots(pilots);
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      const [allCoaches, ass, pilots] = await Promise.all([
+        listCoaches(),
+        listAssignmentsForCoach(params.id),
+        listPilots(),
+      ]);
+      setCoach(allCoaches.find((c) => c.id === params.id) ?? null);
+      setAssignments(ass);
+      setAllPilots(pilots);
+      setLoading(false);
+    } catch {
+      setError(true);
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     reload();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [params.id, reloadKey]);
 
   const fullName = coach
     ? [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.email
@@ -147,6 +158,9 @@ export default function AdminCoachDetailScreen() {
     <Screen>
       <AppBar title="COACH" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN OXV · COACH</Text>
         <Text style={s.title}>{fullName}</Text>
         {coach ? <Text style={s.subEmail}>{coach.email}</Text> : null}
@@ -203,11 +217,21 @@ export default function AdminCoachDetailScreen() {
         {/* Liste assignations */}
         <Text style={[s.sectionLabel, { marginTop: theme.spacing.xxl }]}>ASSIGNATIONS</Text>
 
-        {loading ? (
-          <Text style={s.loading}>Chargement…</Text>
-        ) : assignments.length === 0 ? (
-          <Text style={s.centerMute}>Aucune assignation pour ce coach.</Text>
-        ) : (
+        <StateWrapper
+          state={
+            (loading
+              ? 'loading'
+              : error
+                ? 'error'
+                : assignments.length === 0
+                  ? 'empty'
+                  : 'nominal') as ScreenState
+          }
+          skeletonLines={5}
+          emptyMessage="Aucune assignation pour ce coach."
+          errorCause="La liste des assignations n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <View style={{ gap: theme.spacing.sm }}>
             {assignments.map((a) => (
               <AssignmentCard
@@ -218,7 +242,7 @@ export default function AdminCoachDetailScreen() {
               />
             ))}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -404,12 +428,6 @@ const s = {
     fontSize: 9,
     letterSpacing: 0.6,
     marginTop: theme.spacing.xs,
-  },
-  loading: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
   },
   centerMute: {
     fontFamily: theme.fonts.body,

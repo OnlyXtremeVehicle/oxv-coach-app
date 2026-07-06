@@ -18,6 +18,7 @@ import { setRegistrationStatus } from '@/services/eventsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -63,6 +64,9 @@ export default function AdminScanCheckinScreen() {
       <View
         style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
       >
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={[s.eyebrow, { color: ADMIN }]}>CHECK-IN PAR QR</Text>
 
         {!permission ? (

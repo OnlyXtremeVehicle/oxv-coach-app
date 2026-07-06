@@ -20,7 +20,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachLectureScreen() {
   const [vehicle, setVehicle] = useState(String(DEFAULT_READING_WEIGHTS.wVehicle));
@@ -29,27 +31,39 @@ export default function CoachLectureScreen() {
   const [smoothness, setSmoothness] = useState(String(DEFAULT_READING_WEIGHTS.wSmoothness));
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getMyReadingWeights().then((w) => {
-      if (cancelled) return;
-      if (w) {
-        setVehicle(String(w.wVehicle));
-        setPilot(String(w.wPilot));
-        setRegularity(String(w.wRegularity));
-        setSmoothness(String(w.wSmoothness));
-        setNote(w.note ?? '');
-      }
-      setLoading(false);
-    });
+    setLoading(true);
+    setLoadError(false);
+    getMyReadingWeights()
+      .then((w) => {
+        if (cancelled) return;
+        if (w) {
+          setVehicle(String(w.wVehicle));
+          setPilot(String(w.wPilot));
+          setRegularity(String(w.wRegularity));
+          setSmoothness(String(w.wSmoothness));
+          setNote(w.note ?? '');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoadError(true);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
+
+  const state: ScreenState = loading ? 'loading' : loadError ? 'error' : 'nominal';
 
   function parseW(s: string): number {
     const n = Number(s.trim().replace(',', '.'));
@@ -91,6 +105,9 @@ export default function CoachLectureScreen() {
             paddingBottom: theme.spacing.xxl,
           }}
         >
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="coach" />
+          </View>
           <Text style={[s.eyebrow, { color: theme.palette.coach }]}>MA LECTURE</Text>
           <Text style={s.title}>Votre grille.</Text>
           <Text style={s.manifest}>
@@ -98,9 +115,12 @@ export default function CoachLectureScreen() {
             côté de la marge OXV — jamais à sa place.
           </Text>
 
-          {loading ? (
-            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
-          ) : (
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            errorCause="Votre grille de lecture n'a pas pu être chargée."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
             <>
               <View style={{ marginTop: theme.spacing.xxl }}>
                 <Field
@@ -164,7 +184,7 @@ export default function CoachLectureScreen() {
                 />
               </View>
             </>
-          )}
+          </StateWrapper>
 
           <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Pressable accessibilityRole="button" onPress={() => router.back()}>
@@ -201,13 +221,6 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.md,
-  },
-  meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
   },
   errorTxt: {
     fontFamily: theme.fonts.mono,

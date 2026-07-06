@@ -32,8 +32,10 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateLong } from '@/utils/format';
 
 type Mode = 'browse' | 'compare';
@@ -52,6 +54,8 @@ export default function CoachPilotDetailScreen() {
   const [pilot, setPilot] = useState<CoachPilotRow | null>(null);
   const [sessions, setSessions] = useState<PilotSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [mode, setMode] = useState<Mode>('browse');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [pilotMedia, setPilotMedia] = useState<PilotMediaView[]>([]);
@@ -85,6 +89,8 @@ export default function CoachPilotDetailScreen() {
   useEffect(() => {
     if (!params.id) return;
     let cancelled = false;
+    setLoading(true);
+    setError(false);
     (async () => {
       try {
         // Charge les détails pilote (filtré par RLS via coach_pilots_view)
@@ -115,6 +121,8 @@ export default function CoachPilotDetailScreen() {
         const snaps = await listSharedSnapshotsForPilot(params.id);
         if (cancelled) return;
         setSharedSnapshots(snaps);
+      } catch {
+        if (!cancelled) setError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -122,16 +130,27 @@ export default function CoachPilotDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [params.id]);
+  }, [params.id, reloadKey]);
 
   const fullName = pilot
     ? [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || 'Pilote'
     : 'Chargement…';
 
+  const sessionsState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : sessions.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="PILOTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.eyebrow}>PILOTE SUIVI</Text>
         <Text style={s.title} accessibilityRole="header">
           {fullName}
@@ -158,11 +177,14 @@ export default function CoachPilotDetailScreen() {
           />
         </View>
 
-        {loading ? (
-          <Text style={s.caption}>Chargement…</Text>
-        ) : sessions.length === 0 ? (
-          <EmptyState />
-        ) : (
+        <StateWrapper
+          state={sessionsState}
+          skeletonLines={5}
+          emptyLabel="Aucune session pour ce pilote."
+          emptyMessage="Les sessions apparaissent ici dès qu'elles sont analysées."
+          errorCause="La liste des sessions n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <>
             <View style={s.rowBetween}>
               <SectionLabel>
@@ -214,7 +236,7 @@ export default function CoachPilotDetailScreen() {
               </View>
             ) : null}
           </>
-        )}
+        </StateWrapper>
 
         <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
           <Pressable
@@ -506,17 +528,6 @@ function SessionRow({
   );
 }
 
-function EmptyState() {
-  return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={[s.manifest, { textAlign: 'center' }]}>Aucune session pour ce pilote.</Text>
-      <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.md }]}>
-        Les sessions apparaissent ici dès qu&apos;elles sont analysées.
-      </Text>
-    </Card>
-  );
-}
-
 function colorForZone(zone: MarginZone | null): string {
   if (!zone) return theme.palette.creamMute;
   return zone === 'green'
@@ -580,13 +591,6 @@ const s = {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.value,
     color: theme.palette.cream,
-  },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
   },
   caption: {
     fontFamily: theme.fonts.body,

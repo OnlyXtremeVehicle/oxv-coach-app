@@ -20,7 +20,9 @@ import { type CoachRow, demoteToPilot, listCoaches } from '@/services/coachAdmin
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -29,25 +31,40 @@ const ADMIN = '#22D3EE';
 export default function AdminCoachsScreen() {
   const [coaches, setCoaches] = useState<CoachRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const reload = async () => {
-    const rows = await listCoaches();
-    setCoaches(rows);
-    setLoading(false);
+    setLoading(true);
+    setError(false);
+    try {
+      const rows = await listCoaches();
+      setCoaches(rows);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
     let cancelled = false;
-    listCoaches().then((rows) => {
-      if (!cancelled) {
-        setCoaches(rows);
-        setLoading(false);
-      }
-    });
+    setLoading(true);
+    setError(false);
+    listCoaches()
+      .then((rows) => {
+        if (!cancelled) setCoaches(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setError(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   function confirmDemote(coach: CoachRow) {
     const name = [coach.firstName, coach.lastName].filter(Boolean).join(' ') || coach.email;
@@ -73,27 +90,41 @@ export default function AdminCoachsScreen() {
     ]);
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : coaches.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="COACHS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN OXV · COACHS</Text>
         <Text style={s.title} accessibilityRole="header">
           Les coachs
         </Text>
         <Text style={s.lede}>Un toucher ouvre la gestion des pilotes assignés.</Text>
 
-        {loading ? (
-          <Text style={s.loading}>Chargement…</Text>
-        ) : coaches.length === 0 ? (
-          <EmptyState />
-        ) : (
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun coach pour l'instant."
+          emptyMessage="Pour ajouter un coach : Dashboard Supabase → SQL → UPDATE users SET role = 'coach' WHERE id = '...'"
+          errorCause="La liste des coachs n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <View style={{ gap: theme.spacing.sm }}>
             {coaches.map((coach) => (
               <CoachCard key={coach.id} coach={coach} onDemote={() => confirmDemote(coach)} />
             ))}
           </View>
-        )}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -153,18 +184,6 @@ function CoachCard({ coach, onDemote }: { coach: CoachRow; onDemote: () => void 
   );
 }
 
-function EmptyState() {
-  return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={s.emptyTitle}>Aucun coach pour l&apos;instant.</Text>
-      <Text style={s.emptyHint}>
-        Pour ajouter un coach : Dashboard Supabase → SQL → UPDATE users SET role = &apos;coach&apos;
-        WHERE id = &apos;...&apos;
-      </Text>
-    </Card>
-  );
-}
-
 const s = {
   eyebrow: {
     fontFamily: theme.fonts.mono,
@@ -187,12 +206,6 @@ const s = {
     color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xxl,
-  },
-  loading: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
   },
   row: {
     flexDirection: 'row' as const,
@@ -226,20 +239,5 @@ const s = {
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
     color: theme.palette.creamSoft,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
   },
 };

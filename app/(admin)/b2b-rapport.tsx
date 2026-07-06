@@ -23,8 +23,10 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -36,6 +38,7 @@ export default function AdminB2BReportScreen() {
   const [conclusion, setConclusion] = useState('');
   const [status, setStatus] = useState<B2BReportStatus>('draft');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,16 +53,24 @@ export default function AdminB2BReportScreen() {
     if (!eventId || !partnerId) return;
     let cancelled = false;
     setLoading(true);
+    setLoadError(false);
     (async () => {
-      let r = await getReport(eventId, partnerId);
-      if (!r) {
-        // Première ouverture : on génère le squelette (compteurs snapshottés).
-        const res = await generateReport(eventId, partnerId);
-        r = res.report ?? null;
-      }
-      if (!cancelled) {
-        apply(r);
-        setLoading(false);
+      try {
+        let r = await getReport(eventId, partnerId);
+        if (!r) {
+          // Première ouverture : on génère le squelette (compteurs snapshottés).
+          const res = await generateReport(eventId, partnerId);
+          r = res.report ?? null;
+        }
+        if (!cancelled) {
+          apply(r);
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setLoadError(true);
+          setLoading(false);
+        }
       }
     })();
     return () => {
@@ -92,16 +103,13 @@ export default function AdminB2BReportScreen() {
     else setError(res.error ?? 'Enregistrement impossible.');
   }
 
-  if (loading || !report) {
-    return (
-      <Screen>
-        <AppBar title="RAPPORT B2B" onBack={() => router.back()} />
-        <View style={{ padding: theme.spacing.lg }}>
-          <Text style={s.muted}>{loading ? 'Chargement…' : 'Rapport indisponible.'}</Text>
-        </View>
-      </Screen>
-    );
-  }
+  const state: ScreenState = loading
+    ? 'loading'
+    : loadError
+      ? 'error'
+      : !report
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
@@ -113,70 +121,87 @@ export default function AdminB2BReportScreen() {
           gap: theme.spacing.lg,
         }}
       >
-        <Text style={[s.eyebrow, { color: ADMIN }]}>PARTICIPATION (FIGÉE)</Text>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-          <Fact value={report.registeredCount.toString()} label="inscrits" />
-          <Fact value={report.checkedInCount.toString()} label="présents" />
-        </View>
-        <Button
-          label="Régénérer les compteurs"
-          variant="ghost"
-          onPress={onRefreshCounts}
-          loading={busy}
-        />
-
-        <Card style={{ gap: theme.spacing.md }}>
-          <SectionLabel>Éditorial</SectionLabel>
-          <Field
-            label="Média / temps forts"
-            optional
-            value={media}
-            onChangeText={setMedia}
-            multiline
-            maxLength={2000}
-          />
-          <Field
-            label="Conclusion"
-            optional
-            value={conclusion}
-            onChangeText={setConclusion}
-            multiline
-            maxLength={2000}
-          />
-        </Card>
-
-        <View style={{ gap: theme.spacing.sm }}>
-          <SectionLabel>Statut</SectionLabel>
-          <View style={s.pills}>
-            {(['draft', 'shared'] as B2BReportStatus[]).map((st) => {
-              const on = status === st;
-              return (
-                <Pressable
-                  key={st}
-                  onPress={() => setStatus(st)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={st === 'draft' ? 'Brouillon' : 'Partagé'}
-                  hitSlop={6}
-                  style={[s.pill, on ? s.pillOn : null]}
-                >
-                  <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>
-                    {st === 'draft' ? 'Brouillon' : 'Partagé'}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={s.hint}>« Partagé » rend le rapport visible du partenaire.</Text>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
         </View>
 
-        {error ? (
-          <Text style={s.error} accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Rapport indisponible"
+          emptyMessage="Ce rapport n'a pas encore pu être établi."
+          errorCause="Le rapport n'a pas pu être chargé."
+          onRetry={reload}
+        >
+          {report ? (
+            <>
+              <Text style={[s.eyebrow, { color: ADMIN }]}>PARTICIPATION (FIGÉE)</Text>
+              <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                <Fact value={report.registeredCount.toString()} label="inscrits" />
+                <Fact value={report.checkedInCount.toString()} label="présents" />
+              </View>
+              <Button
+                label="Régénérer les compteurs"
+                variant="ghost"
+                onPress={onRefreshCounts}
+                loading={busy}
+              />
 
-        <Button label="Enregistrer" onPress={() => onSave()} loading={busy} />
+              <Card style={{ gap: theme.spacing.md }}>
+                <SectionLabel>Éditorial</SectionLabel>
+                <Field
+                  label="Média / temps forts"
+                  optional
+                  value={media}
+                  onChangeText={setMedia}
+                  multiline
+                  maxLength={2000}
+                />
+                <Field
+                  label="Conclusion"
+                  optional
+                  value={conclusion}
+                  onChangeText={setConclusion}
+                  multiline
+                  maxLength={2000}
+                />
+              </Card>
+
+              <View style={{ gap: theme.spacing.sm }}>
+                <SectionLabel>Statut</SectionLabel>
+                <View style={s.pills}>
+                  {(['draft', 'shared'] as B2BReportStatus[]).map((st) => {
+                    const on = status === st;
+                    return (
+                      <Pressable
+                        key={st}
+                        onPress={() => setStatus(st)}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on }}
+                        accessibilityLabel={st === 'draft' ? 'Brouillon' : 'Partagé'}
+                        hitSlop={6}
+                        style={[s.pill, on ? s.pillOn : null]}
+                      >
+                        <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>
+                          {st === 'draft' ? 'Brouillon' : 'Partagé'}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={s.hint}>« Partagé » rend le rapport visible du partenaire.</Text>
+              </View>
+
+              {error ? (
+                <Text style={s.error} accessibilityLiveRegion="polite">
+                  {error}
+                </Text>
+              ) : null}
+
+              <Button label="Enregistrer" onPress={() => onSave()} loading={busy} />
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -221,11 +246,6 @@ const s = {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.faint,
-  },
-  muted: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamMute,
   },
   error: {
     fontFamily: theme.fonts.body,

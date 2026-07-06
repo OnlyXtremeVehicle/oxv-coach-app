@@ -9,7 +9,6 @@ import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import {
   type AdminEvent,
   eventStatusLabel,
@@ -20,7 +19,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -29,16 +30,25 @@ const ADMIN = '#22D3EE';
 export default function AdminEventsScreen() {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listEvents().then((rows) => {
-      if (!cancelled) {
-        setEvents(rows);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listEvents()
+      .then((rows) => {
+        if (!cancelled) {
+          setEvents(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -46,10 +56,21 @@ export default function AdminEventsScreen() {
 
   useFocusEffect(reload);
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : events.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="ÉVÉNEMENTS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={[s.eyebrow, { color: ADMIN }]}>COORDINATION</Text>
         <Text style={s.title} accessibilityRole="header">
           Les événements.
@@ -63,14 +84,16 @@ export default function AdminEventsScreen() {
         </View>
 
         <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-          {!loading && events.length === 0 ? (
-            <EmptyState
-              label="Aucun événement"
-              message="Aucun événement programmé."
-              source="events"
-            />
-          ) : (
-            events.map((e) => (
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            emptyLabel="Aucun événement"
+            emptyMessage="Aucun événement programmé."
+            emptySource="events"
+            errorCause="La liste des événements n'a pas pu être chargée."
+            onRetry={reload}
+          >
+            {events.map((e) => (
               <Card
                 key={e.id}
                 onPress={() => router.push(`/(admin)/evenements/${e.id}` as never)}
@@ -85,8 +108,8 @@ export default function AdminEventsScreen() {
                   {formatDateShort(e.startsAt)} · {e.locationName} · {e.currentPilots}/{e.maxPilots}
                 </Text>
               </Card>
-            ))
-          )}
+            ))}
+          </StateWrapper>
         </View>
       </View>
     </Screen>

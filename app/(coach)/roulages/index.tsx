@@ -22,25 +22,50 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateTime } from '@/utils/format';
 
 export default function CoachRoulagesScreen() {
   const { permissions, loading: permLoading } = useCoachPermissions();
   const [roulages, setRoulages] = useState<Roulage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    listMyRoulages()
+      .then((rows) => {
+        setRoulages(rows);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
-      listMyRoulages().then((rows) => {
-        if (!cancelled) {
-          setRoulages(rows);
-          setLoading(false);
-        }
-      });
+      setError(false);
+      listMyRoulages()
+        .then((rows) => {
+          if (!cancelled) {
+            setRoulages(rows);
+            setLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setError(true);
+            setLoading(false);
+          }
+        });
       return () => {
         cancelled = true;
       };
@@ -80,6 +105,14 @@ export default function CoachRoulagesScreen() {
 
   const { upcoming, past } = splitRoulagesByTime(roulages, new Date().toISOString());
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : roulages.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="ROULAGES" onBack={() => router.back()} />
@@ -92,32 +125,29 @@ export default function CoachRoulagesScreen() {
           </Link>
         </View>
 
-        {loading ? (
-          <ActivityIndicator
-            color={theme.palette.creamMute}
-            style={{ marginTop: theme.spacing.xl }}
-            accessibilityLabel="Chargement"
-          />
-        ) : roulages.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {upcoming.length > 0 ? (
-              <Section title="À venir">
-                {upcoming.map((r) => (
-                  <RoulageCard key={r.id} roulage={r} />
-                ))}
-              </Section>
-            ) : null}
-            {past.length > 0 ? (
-              <Section title="Passés">
-                {past.map((r) => (
-                  <RoulageCard key={r.id} roulage={r} muted />
-                ))}
-              </Section>
-            ) : null}
-          </>
-        )}
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Aucun roulage pour l'instant."
+          emptyMessage="Créez-en un pour convier vos pilotes."
+          errorCause="La liste de vos roulages n'a pas pu être chargée."
+          onRetry={reload}
+        >
+          {upcoming.length > 0 ? (
+            <Section title="À venir">
+              {upcoming.map((r) => (
+                <RoulageCard key={r.id} roulage={r} />
+              ))}
+            </Section>
+          ) : null}
+          {past.length > 0 ? (
+            <Section title="Passés">
+              {past.map((r) => (
+                <RoulageCard key={r.id} roulage={r} muted />
+              ))}
+            </Section>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -126,6 +156,9 @@ export default function CoachRoulagesScreen() {
 function Header() {
   return (
     <>
+      <View style={{ marginBottom: theme.spacing.md }}>
+        <RoleBadge role="coach" />
+      </View>
       <Text style={s.eyebrow}>COACH OXV</Text>
       <Text style={s.title} accessibilityRole="header">
         Vos roulages.
@@ -171,19 +204,6 @@ function RoulageCard({ roulage, muted }: { roulage: Roulage; muted?: boolean }) 
         </Card>
       </Pressable>
     </Link>
-  );
-}
-
-function EmptyState() {
-  return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={[s.manifest, { textAlign: 'center' }]} accessibilityRole="header">
-        Aucun roulage pour l&apos;instant.
-      </Text>
-      <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.md }]}>
-        Créez-en un pour convier vos pilotes.
-      </Text>
-    </Card>
   );
 }
 

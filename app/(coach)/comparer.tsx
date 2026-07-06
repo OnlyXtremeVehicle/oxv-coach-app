@@ -27,8 +27,10 @@ import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
 export default function CoachComparerScreen() {
@@ -43,6 +45,8 @@ export default function CoachComparerScreen() {
   const [snapA, setSnapA] = useState<SessionSnapshot | null>(null);
   const [snapB, setSnapB] = useState<SessionSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!params.sessionA || !params.sessionB) {
@@ -51,6 +55,7 @@ export default function CoachComparerScreen() {
     }
     let cancelled = false;
     setLoading(true);
+    setError(false);
 
     // Audit log côté coach : un accès à 2 sessions = 1 event "coach_view_compare"
     if (params.pilotId) {
@@ -74,84 +79,101 @@ export default function CoachComparerScreen() {
       .catch((err) => {
         if (cancelled) return;
         console.warn('[OXV][coach] comparer :', err);
+        setError(true);
         setLoading(false);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [params.sessionA, params.sessionB, params.pilotId]);
+  }, [params.sessionA, params.sessionB, params.pilotId, reloadKey]);
+
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : !snapA || !snapB
+        ? 'empty'
+        : 'nominal';
 
   return (
     <Screen>
       <AppBar title="COMPARATIF" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.title}>Deux sessions, côte à côte.</Text>
 
-        {loading ? (
-          <Text style={s.caption}>Chargement…</Text>
-        ) : !snapA || !snapB ? (
-          <EmptyState />
-        ) : (
-          <>
-            {/* Cartes — apparition décalée pour laisser le coach lire A avant que B arrive */}
-            <View
-              style={{
-                flexDirection: sideBySide ? 'row' : 'column',
-                gap: theme.spacing.lg,
-                marginTop: theme.spacing.lg,
-              }}
-            >
-              <FadeInSection delay={0} style={{ flex: 1 }}>
-                <SessionCard label="Session A" snap={snapA} />
-              </FadeInSection>
-              <FadeInSection delay={350} style={{ flex: 1 }}>
-                <SessionCard label="Session B" snap={snapB} />
-              </FadeInSection>
-            </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Sélection incomplète."
+          emptyMessage="Le comparatif requiert deux sessions analysées. Revenez à la liste pour les choisir."
+          errorCause="Le comparatif n'a pas pu être chargé."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
+          {snapA && snapB ? (
+            <>
+              {/* Cartes — apparition décalée pour laisser le coach lire A avant que B arrive */}
+              <View
+                style={{
+                  flexDirection: sideBySide ? 'row' : 'column',
+                  gap: theme.spacing.lg,
+                  marginTop: theme.spacing.lg,
+                }}
+              >
+                <FadeInSection delay={0} style={{ flex: 1 }}>
+                  <SessionCard label="Session A" snap={snapA} />
+                </FadeInSection>
+                <FadeInSection delay={350} style={{ flex: 1 }}>
+                  <SessionCard label="Session B" snap={snapB} />
+                </FadeInSection>
+              </View>
 
-            {/* Delta global */}
-            <FadeInSection delay={700} style={{ marginTop: theme.spacing.xxl }}>
-              <Card style={{ borderColor: theme.palette.coach }}>
-                <SectionLabel>ÉCART B − A</SectionLabel>
-                <View style={{ marginTop: theme.spacing.md }}>
-                  <DeltaLine
-                    label="Marge globale"
-                    deltaText={formatDeltaPoints(snapA.marginGlobal, snapB.marginGlobal)}
-                  />
-                  <DeltaLine
-                    label="Meilleur tour"
-                    deltaText={formatDeltaSeconds(snapA.bestLapSeconds, snapB.bestLapSeconds)}
-                  />
-                  <DeltaLine
-                    label="Nombre de tours"
-                    deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
-                  />
+              {/* Delta global */}
+              <FadeInSection delay={700} style={{ marginTop: theme.spacing.xxl }}>
+                <Card style={{ borderColor: theme.palette.coach }}>
+                  <SectionLabel>ÉCART B − A</SectionLabel>
+                  <View style={{ marginTop: theme.spacing.md }}>
+                    <DeltaLine
+                      label="Marge globale"
+                      deltaText={formatDeltaPoints(snapA.marginGlobal, snapB.marginGlobal)}
+                    />
+                    <DeltaLine
+                      label="Meilleur tour"
+                      deltaText={formatDeltaSeconds(snapA.bestLapSeconds, snapB.bestLapSeconds)}
+                    />
+                    <DeltaLine
+                      label="Nombre de tours"
+                      deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
+                    />
+                  </View>
+                </Card>
+              </FadeInSection>
+
+              {/* Delta par virage */}
+              <FadeInSection delay={900} style={{ marginTop: theme.spacing.xxl }}>
+                <View style={{ marginBottom: theme.spacing.md }}>
+                  <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
                 </View>
-              </Card>
-            </FadeInSection>
-
-            {/* Delta par virage */}
-            <FadeInSection delay={900} style={{ marginTop: theme.spacing.xxl }}>
-              <View style={{ marginBottom: theme.spacing.md }}>
-                <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
-              </View>
-              <View style={{ gap: theme.spacing.xs }}>
-                {BELTOISE_CORNERS.map((corner) => (
-                  <CornerDeltaRow
-                    key={corner.index}
-                    cornerIndex={corner.index}
-                    cornerName={corner.name}
-                    zoneA={snapA.zoneByIndex[corner.index] ?? null}
-                    zoneB={snapB.zoneByIndex[corner.index] ?? null}
-                    marginA={snapA.marginByIndex[corner.index] ?? null}
-                    marginB={snapB.marginByIndex[corner.index] ?? null}
-                  />
-                ))}
-              </View>
-            </FadeInSection>
-          </>
-        )}
+                <View style={{ gap: theme.spacing.xs }}>
+                  {BELTOISE_CORNERS.map((corner) => (
+                    <CornerDeltaRow
+                      key={corner.index}
+                      cornerIndex={corner.index}
+                      cornerName={corner.name}
+                      zoneA={snapA.zoneByIndex[corner.index] ?? null}
+                      zoneB={snapB.zoneByIndex[corner.index] ?? null}
+                      marginA={snapA.marginByIndex[corner.index] ?? null}
+                      marginB={snapB.marginByIndex[corner.index] ?? null}
+                    />
+                  ))}
+                </View>
+              </FadeInSection>
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -227,23 +249,6 @@ function ZoneDot({ zone }: { zone: MarginZone | null }) {
   return <View style={[s.zoneDot, { backgroundColor: colorForZone(zone) }]} />;
 }
 
-function EmptyState() {
-  return (
-    <Card
-      style={{
-        alignItems: 'center',
-        paddingVertical: theme.spacing.xxl,
-        marginTop: theme.spacing.lg,
-      }}
-    >
-      <Text style={s.emptyTitle}>Sélection incomplète.</Text>
-      <Text style={s.emptyHint}>
-        Le comparatif requiert deux sessions analysées. Revenez à la liste pour les choisir.
-      </Text>
-    </Card>
-  );
-}
-
 // ============================================================================
 // Helpers de formatage
 // ============================================================================
@@ -293,12 +298,6 @@ const s = {
     letterSpacing: 0.5,
     color: theme.palette.cream,
     marginTop: theme.spacing.sm,
-  },
-  caption: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
   },
   cardHead: {
     flexDirection: 'row' as const,
@@ -379,20 +378,5 @@ const s = {
     width: 12,
     height: 12,
     borderRadius: 6,
-  },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
   },
 };

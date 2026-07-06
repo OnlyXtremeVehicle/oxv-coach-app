@@ -29,7 +29,6 @@ import {
   TrackLayer,
   type CornerColorMode as ColorMode,
 } from '@/components/CircuitMap';
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { BELTOISE_CORNERS, type CornerTopology } from '@/lib/circuitTopology';
 import { type SegmentAggregate, aggregateSegmentStats } from '@/services/segmentAnalysesService';
 import {
@@ -41,7 +40,9 @@ import { type MarginZone, marginZoneOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Bronze = couleur de RÔLE réservée à l'admin (doctrine).
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -56,19 +57,30 @@ export default function CircuitInspectorScreen() {
   const [colorMode, setColorMode] = useState<ColorMode>('pace');
   const [aggregates, setAggregates] = useState<SegmentAggregate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    aggregateSegmentStats().then((rows) => {
-      if (!cancelled) {
-        setAggregates(rows);
-        setLoading(false);
-      }
-    });
+    setLoading(true);
+    setError(false);
+    aggregateSegmentStats()
+      .then((rows) => {
+        if (!cancelled) {
+          setAggregates(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const aggregateByIndex = useMemo(() => {
     const map = new Map<number, SegmentAggregate>();
@@ -103,10 +115,21 @@ export default function CircuitInspectorScreen() {
     ? (HAUTE_SAINTONGE_SEGMENTS.find((seg) => seg.order === selected) ?? null)
     : null;
 
+  const historyState: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : aggregates.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="INSPECTEUR CIRCUIT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>ADMIN OXV · INSPECTEUR</Text>
         <Text style={s.title} accessibilityRole="header">
           {HAUTE_SAINTONGE_CIRCUIT.name}
@@ -158,14 +181,14 @@ export default function CircuitInspectorScreen() {
 
         {/* Stats historiques */}
         <SectionHeader label="DONNÉES HISTORIQUES" />
-        {loading ? (
-          <Text style={s.note}>Chargement…</Text>
-        ) : aggregates.length === 0 ? (
-          <EmptyState
-            message="Aucune analyse de segment en base. Les statistiques agrégées apparaîtront après la première session analysée."
-            source="app_segment_analyses"
-          />
-        ) : (
+        <StateWrapper
+          state={historyState}
+          skeletonLines={5}
+          emptyMessage="Aucune analyse de segment en base. Les statistiques agrégées apparaîtront après la première session analysée."
+          emptySource="app_segment_analyses"
+          errorCause="Les données historiques n'ont pas pu être chargées."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
           <StatTable
             rows={[
               ['Sessions analysées (max)', String(totalSessions)],
@@ -173,7 +196,7 @@ export default function CircuitInspectorScreen() {
               ['Marge moyenne (tous virages)', formatGlobalMargin(aggregates)],
             ]}
           />
-        )}
+        </StateWrapper>
 
         {/* Liste des virages */}
         <SectionHeader label={`LES ${BELTOISE_CORNERS.length} VIRAGES`} />

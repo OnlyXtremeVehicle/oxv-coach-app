@@ -33,8 +33,10 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -55,28 +57,37 @@ export default function AdminEventDetailScreen() {
   const [available, setAvailable] = useState<PartnerOption[]>([]);
   const [devices, setDevices] = useState<EventDeviceAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(() => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
+    setError(false);
     Promise.all([
       getEvent(id),
       listEventRegistrations(id),
       listEventPartners(id),
       listPartnersForAttach(),
       listAssignmentsForEvent(id),
-    ]).then(([e, r, p, a, d]) => {
-      if (!cancelled) {
-        setEvent(e);
-        setRegs(r);
-        setPartners(p);
-        setAvailable(a);
-        setDevices(d);
-        setLoading(false);
-      }
-    });
+    ])
+      .then(([e, r, p, a, d]) => {
+        if (!cancelled) {
+          setEvent(e);
+          setRegs(r);
+          setPartners(p);
+          setAvailable(a);
+          setDevices(d);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -116,12 +127,25 @@ export default function AdminEventDetailScreen() {
     reload();
   }
 
-  if (loading || !event) {
+  if (loading || error || !event) {
+    const state: ScreenState = loading ? 'loading' : error ? 'error' : 'empty';
     return (
       <Screen>
         <AppBar title="ÉVÉNEMENT" onBack={() => router.back()} />
         <View style={{ padding: theme.spacing.lg }}>
-          <Text style={s.muted}>{loading ? 'Chargement…' : 'Événement introuvable.'}</Text>
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="admin" />
+          </View>
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            emptyLabel="Événement introuvable"
+            emptyMessage="Cet événement n'existe pas ou n'est plus accessible."
+            errorCause="L'événement n'a pas pu être chargé."
+            onRetry={reload}
+          >
+            {null}
+          </StateWrapper>
         </View>
       </Screen>
     );
@@ -131,6 +155,9 @@ export default function AdminEventDetailScreen() {
     <Screen>
       <AppBar title="ÉVÉNEMENT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={[s.type, { color: ADMIN }]}>{eventTypeLabel(event.eventType)}</Text>
         <Text style={s.name} accessibilityRole="header">
           {event.name}

@@ -28,19 +28,37 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatPriceCents } from '@/utils/format';
 
 export default function CoachBusinessScreen() {
   const { permissions, loading: permLoading } = useCoachPermissions();
   const [summary, setSummary] = useState<CoachBusinessSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const reload = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    loadCoachBusinessSummary()
+      .then((data) => {
+        setSummary(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError(true);
+        setLoading(false);
+      });
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
+      setError(false);
       loadCoachBusinessSummary()
         .then((s) => {
           if (!cancelled) {
@@ -49,7 +67,10 @@ export default function CoachBusinessScreen() {
           }
         })
         .catch(() => {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setError(true);
+            setLoading(false);
+          }
         });
       return () => {
         cancelled = true;
@@ -74,6 +95,9 @@ export default function CoachBusinessScreen() {
       <Screen>
         <AppBar title="BUSINESS" onBack={() => router.back()} />
         <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="coach" />
+          </View>
           <Header />
           <Card style={{ marginTop: theme.spacing.xl }}>
             <Text style={s.manifest}>
@@ -88,63 +112,71 @@ export default function CoachBusinessScreen() {
     );
   }
 
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
+
   return (
     <Screen>
       <AppBar title="BUSINESS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Header />
 
-        {loading || !summary ? (
-          <ActivityIndicator
-            color={theme.palette.creamMute}
-            style={{ marginTop: theme.spacing.xxl }}
-            accessibilityLabel="Chargement"
-          />
-        ) : (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            {/* Revenu cumulé — l'indicateur central */}
-            <Card
-              style={{
-                borderColor: theme.palette.coach,
-                alignItems: 'center',
-                paddingVertical: theme.spacing.xl,
-                marginBottom: theme.spacing.xl,
-              }}
-            >
-              <SectionLabel>Revenu de vos roulages</SectionLabel>
-              <Text style={s.hero}>{formatPriceCents(summary.totalRevenueCents)}</Text>
-              <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.xs }]}>
-                {summary.totalRevenueCents === 0
-                  ? 'Renseignez un prix sur vos roulages pour suivre vos revenus.'
-                  : 'Cumul des présences confirmées sur vos roulages tarifés.'}
-              </Text>
-            </Card>
+        <View style={{ marginTop: theme.spacing.xl }}>
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            errorCause="Votre activité n'a pas pu être chargée."
+            onRetry={reload}
+          >
+            {summary ? (
+              <>
+                {/* Revenu cumulé — l'indicateur central */}
+                <Card
+                  style={{
+                    borderColor: theme.palette.coach,
+                    alignItems: 'center',
+                    paddingVertical: theme.spacing.xl,
+                    marginBottom: theme.spacing.xl,
+                  }}
+                >
+                  <SectionLabel>Revenu de vos roulages</SectionLabel>
+                  <Text style={s.hero}>{formatPriceCents(summary.totalRevenueCents)}</Text>
+                  <Text style={[s.caption, { textAlign: 'center', marginTop: theme.spacing.xs }]}>
+                    {summary.totalRevenueCents === 0
+                      ? 'Renseignez un prix sur vos roulages pour suivre vos revenus.'
+                      : 'Cumul des présences confirmées sur vos roulages tarifés.'}
+                  </Text>
+                </Card>
 
-            {/* Stats secondaires */}
-            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
-              <Fact
-                label={summary.pilotCount > 1 ? 'Pilotes' : 'Pilote'}
-                value={String(summary.pilotCount)}
-              />
-              <Fact
-                label={summary.activeRoulageCount > 1 ? 'Roulages' : 'Roulage'}
-                value={String(summary.activeRoulageCount)}
-              />
-              <Fact
-                label={summary.totalAccepted > 1 ? 'Présences' : 'Présence'}
-                value={String(summary.totalAccepted)}
-              />
-            </View>
+                {/* Stats secondaires */}
+                <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+                  <Fact
+                    label={summary.pilotCount > 1 ? 'Pilotes' : 'Pilote'}
+                    value={String(summary.pilotCount)}
+                  />
+                  <Fact
+                    label={summary.activeRoulageCount > 1 ? 'Roulages' : 'Roulage'}
+                    value={String(summary.activeRoulageCount)}
+                  />
+                  <Fact
+                    label={summary.totalAccepted > 1 ? 'Présences' : 'Présence'}
+                    value={String(summary.totalAccepted)}
+                  />
+                </View>
 
-            <View style={{ marginTop: theme.spacing.xxl }}>
-              <Button
-                label="Gérer mes roulages"
-                variant="ghost"
-                onPress={() => router.push('/(coach)/roulages' as never)}
-              />
-            </View>
-          </View>
-        )}
+                <View style={{ marginTop: theme.spacing.xxl }}>
+                  <Button
+                    label="Gérer mes roulages"
+                    variant="ghost"
+                    onPress={() => router.push('/(coach)/roulages' as never)}
+                  />
+                </View>
+              </>
+            ) : null}
+          </StateWrapper>
+        </View>
       </View>
     </Screen>
   );

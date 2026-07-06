@@ -25,6 +25,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -139,6 +140,9 @@ export default function AdminUserDetailScreen() {
     <Screen>
       <AppBar title="COMPTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.name} accessibilityRole="header">
           {name}
         </Text>

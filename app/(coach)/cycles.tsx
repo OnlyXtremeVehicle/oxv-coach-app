@@ -21,6 +21,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -90,6 +91,9 @@ export default function CoachCyclesScreen() {
     <Screen>
       <AppBar title="PROGRAMMES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.eyebrow}>CYCLES DE PROGRESSION</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos programmes.

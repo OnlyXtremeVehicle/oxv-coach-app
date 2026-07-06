@@ -22,6 +22,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -96,6 +97,10 @@ export default function AdminCreateEventScreen() {
           gap: theme.spacing.lg,
         }}
       >
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
+
         <Card style={{ gap: theme.spacing.md }}>
           <SectionLabel>Informations</SectionLabel>
           <Field label="Nom" value={name} onChangeText={setName} maxLength={100} />

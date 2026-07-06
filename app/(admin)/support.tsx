@@ -10,7 +10,6 @@ import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { listAllTickets } from '@/services/supportAdminService';
 import {
   SUPPORT_CATEGORIES,
@@ -22,7 +21,9 @@ import {
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -50,17 +51,26 @@ function categoryLabel(c: SupportCategory): string {
 export default function AdminSupportScreen() {
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [openOnly, setOpenOnly] = useState(true);
 
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listAllTickets({ hideClosed: openOnly }).then((rows) => {
-      if (!cancelled) {
-        setTickets(rows);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listAllTickets({ hideClosed: openOnly })
+      .then((rows) => {
+        if (!cancelled) {
+          setTickets(rows);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -68,10 +78,21 @@ export default function AdminSupportScreen() {
 
   useFocusEffect(reload);
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : tickets.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="SUPPORT" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={[s.eyebrow, { color: ADMIN }]}>FILE DE SUPPORT</Text>
         <Text style={s.title} accessibilityRole="header">
           Les demandes.
@@ -102,14 +123,16 @@ export default function AdminSupportScreen() {
         </View>
 
         <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
-          {!loading && tickets.length === 0 ? (
-            <EmptyState
-              label="File vide"
-              message="Aucune demande à traiter."
-              source="support_tickets"
-            />
-          ) : (
-            tickets.map((t) => (
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            emptyLabel="File vide"
+            emptyMessage="Aucune demande à traiter."
+            emptySource="support_tickets"
+            errorCause="La file de support n'a pas pu être chargée."
+            onRetry={reload}
+          >
+            {tickets.map((t) => (
               <Card
                 key={t.id}
                 onPress={() => router.push(`/(admin)/support/${t.id}` as never)}
@@ -126,8 +149,8 @@ export default function AdminSupportScreen() {
                   {categoryLabel(t.category)} · {formatDateShort(t.createdAt)}
                 </Text>
               </Card>
-            ))
-          )}
+            ))}
+          </StateWrapper>
         </View>
       </View>
     </Screen>

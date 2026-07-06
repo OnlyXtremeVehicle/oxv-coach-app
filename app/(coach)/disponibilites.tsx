@@ -15,7 +15,7 @@
  *
  * Doctrine : vouvoiement, aucun emoji, sobre/premium, aucun classement ni note.
  * Accent coach = `palette.coach` (neutre, ni or ni rouge décoratifs). Réutilise
- * le kit (Screen, AppBar, Card, Field, Button, EmptyState, SectionLabel).
+ * le kit (Screen, AppBar, Card, Field, Button, StateWrapper, SectionLabel).
  */
 
 import { useCallback, useState } from 'react';
@@ -35,10 +35,11 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { EmptyState } from '@/components/instruments/EmptyState';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateTime } from '@/utils/format';
 
 function defaultStart(): Date {
@@ -64,19 +65,28 @@ export default function CoachDisponibilitesScreen() {
   // Liste de mes créneaux.
   const [slots, setSlots] = useState<MyAvailabilitySlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   // Identifiant du créneau en cours de mise à jour (verrouille SES boutons).
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    const rows = await listMyAvailability();
-    setSlots(rows);
-    setLoading(false);
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const rows = await listMyAvailability();
+      setSlots(rows);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
+      setLoadError(false);
       listMyAvailability()
         .then((rows) => {
           if (!cancelled) {
@@ -85,7 +95,10 @@ export default function CoachDisponibilitesScreen() {
           }
         })
         .catch(() => {
-          if (!cancelled) setLoading(false);
+          if (!cancelled) {
+            setLoadError(true);
+            setLoading(false);
+          }
         });
       return () => {
         cancelled = true;
@@ -190,6 +203,9 @@ export default function CoachDisponibilitesScreen() {
     <Screen>
       <AppBar title="DISPONIBILITÉS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.eyebrow}>ACCOMPAGNEMENT</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos créneaux ouverts.
@@ -246,15 +262,23 @@ export default function CoachDisponibilitesScreen() {
           <SectionLabel>Mes créneaux</SectionLabel>
 
           <View style={{ marginTop: theme.spacing.md }}>
-            {loading ? (
-              <EmptyState label="Chargement" message="Vos créneaux apparaissent ici." />
-            ) : slots.length === 0 ? (
-              <EmptyState
-                label="Aucun créneau"
-                message="Aucun créneau ouvert. Ouvrez-en un ci-dessus pour le proposer sur votre fiche."
-                source="coach_availability"
-              />
-            ) : (
+            <StateWrapper
+              state={
+                (loading
+                  ? 'loading'
+                  : loadError
+                    ? 'error'
+                    : slots.length === 0
+                      ? 'empty'
+                      : 'nominal') as ScreenState
+              }
+              skeletonLines={5}
+              emptyLabel="Aucun créneau"
+              emptyMessage="Aucun créneau ouvert. Ouvrez-en un ci-dessus pour le proposer sur votre fiche."
+              emptySource="coach_availability"
+              errorCause="Vos créneaux n'ont pas pu être chargés."
+              onRetry={reload}
+            >
               <View style={{ gap: theme.spacing.md }}>
                 {slots.map((slot) => (
                   <SlotCard
@@ -266,7 +290,7 @@ export default function CoachDisponibilitesScreen() {
                   />
                 ))}
               </View>
-            )}
+            </StateWrapper>
           </View>
         </View>
       </View>

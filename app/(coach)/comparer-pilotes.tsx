@@ -43,8 +43,10 @@ import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
 interface Side {
@@ -71,21 +73,34 @@ export default function CoachComparerPilotesScreen() {
 
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [loadingPilots, setLoadingPilots] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [sideA, setSideA] = useState<Side>(EMPTY_SIDE);
   const [sideB, setSideB] = useState<Side>(EMPTY_SIDE);
 
   useEffect(() => {
     let cancelled = false;
-    listMyPilots().then((rows) => {
-      if (!cancelled) {
-        setPilots(rows);
-        setLoadingPilots(false);
-      }
-    });
+    setLoadingPilots(true);
+    setError(false);
+    listMyPilots()
+      .then((rows) => {
+        if (!cancelled) {
+          setPilots(rows);
+          setLoadingPilots(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoadingPilots(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
+
+  const state: ScreenState = loadingPilots ? 'loading' : error ? 'error' : 'nominal';
 
   function pilotName(p: CoachPilotRow): string {
     return (
@@ -121,121 +136,129 @@ export default function CoachComparerPilotesScreen() {
     <Screen>
       <AppBar title="COMPARATIF PILOTES" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.title}>Deux pilotes, côte à côte.</Text>
 
-        {loadingPilots ? (
-          <Text style={s.caption}>Chargement…</Text>
-        ) : pilots.length < 2 ? (
-          <EmptyPilots count={pilots.length} />
-        ) : (
-          <>
-            {/* Sélecteurs A & B */}
-            <View
-              style={{
-                flexDirection: sideBySide ? 'row' : 'column',
-                gap: theme.spacing.lg,
-                marginTop: theme.spacing.lg,
-              }}
-            >
-              <SidePicker
-                label="PILOTE A"
-                side={sideA}
-                pilots={pilots}
-                pilotName={pilotName}
-                onSelectPilot={(p) => selectPilot('A', p)}
-                onSelectSession={(sid) =>
-                  sideA.pilot && selectSession('A', sideA.pilot.pilotId, sid)
-                }
-              />
-              <SidePicker
-                label="PILOTE B"
-                side={sideB}
-                pilots={pilots}
-                pilotName={pilotName}
-                onSelectPilot={(p) => selectPilot('B', p)}
-                onSelectSession={(sid) =>
-                  sideB.pilot && selectSession('B', sideB.pilot.pilotId, sid)
-                }
-              />
-            </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          errorCause="La liste de vos pilotes n'a pas pu être chargée."
+          onRetry={() => setReloadKey((k) => k + 1)}
+        >
+          {pilots.length < 2 ? (
+            <EmptyPilots count={pilots.length} />
+          ) : (
+            <>
+              {/* Sélecteurs A & B */}
+              <View
+                style={{
+                  flexDirection: sideBySide ? 'row' : 'column',
+                  gap: theme.spacing.lg,
+                  marginTop: theme.spacing.lg,
+                }}
+              >
+                <SidePicker
+                  label="PILOTE A"
+                  side={sideA}
+                  pilots={pilots}
+                  pilotName={pilotName}
+                  onSelectPilot={(p) => selectPilot('A', p)}
+                  onSelectSession={(sid) =>
+                    sideA.pilot && selectSession('A', sideA.pilot.pilotId, sid)
+                  }
+                />
+                <SidePicker
+                  label="PILOTE B"
+                  side={sideB}
+                  pilots={pilots}
+                  pilotName={pilotName}
+                  onSelectPilot={(p) => selectPilot('B', p)}
+                  onSelectSession={(sid) =>
+                    sideB.pilot && selectSession('B', sideB.pilot.pilotId, sid)
+                  }
+                />
+              </View>
 
-            {/* Cartes côte à côte */}
-            {bothReady ? (
-              <>
-                <View
-                  style={{
-                    flexDirection: sideBySide ? 'row' : 'column',
-                    gap: theme.spacing.lg,
-                    marginTop: theme.spacing.xxl,
-                  }}
-                >
-                  <FadeInSection delay={0} style={{ flex: 1 }}>
-                    <SnapshotCard
-                      name={sideA.pilot ? pilotName(sideA.pilot) : 'A'}
-                      snap={sideA.snapshot!}
-                    />
-                  </FadeInSection>
-                  <FadeInSection delay={300} style={{ flex: 1 }}>
-                    <SnapshotCard
-                      name={sideB.pilot ? pilotName(sideB.pilot) : 'B'}
-                      snap={sideB.snapshot!}
-                    />
-                  </FadeInSection>
-                </View>
+              {/* Cartes côte à côte */}
+              {bothReady ? (
+                <>
+                  <View
+                    style={{
+                      flexDirection: sideBySide ? 'row' : 'column',
+                      gap: theme.spacing.lg,
+                      marginTop: theme.spacing.xxl,
+                    }}
+                  >
+                    <FadeInSection delay={0} style={{ flex: 1 }}>
+                      <SnapshotCard
+                        name={sideA.pilot ? pilotName(sideA.pilot) : 'A'}
+                        snap={sideA.snapshot!}
+                      />
+                    </FadeInSection>
+                    <FadeInSection delay={300} style={{ flex: 1 }}>
+                      <SnapshotCard
+                        name={sideB.pilot ? pilotName(sideB.pilot) : 'B'}
+                        snap={sideB.snapshot!}
+                      />
+                    </FadeInSection>
+                  </View>
 
-                {/* Delta neutre B − A */}
-                <FadeInSection delay={600} style={{ marginTop: theme.spacing.xxl }}>
-                  <Card style={{ borderColor: theme.palette.coach }}>
-                    <SectionLabel>ÉCART B − A</SectionLabel>
-                    <View style={{ marginTop: theme.spacing.md }}>
-                      <DeltaLine
-                        label="Marge globale"
-                        deltaText={formatDeltaPoints(
-                          sideA.snapshot!.marginGlobal,
-                          sideB.snapshot!.marginGlobal
-                        )}
-                      />
-                      <DeltaLine
-                        label="Meilleur tour"
-                        deltaText={formatDeltaSeconds(
-                          sideA.snapshot!.bestLapSeconds,
-                          sideB.snapshot!.bestLapSeconds
-                        )}
-                      />
+                  {/* Delta neutre B − A */}
+                  <FadeInSection delay={600} style={{ marginTop: theme.spacing.xxl }}>
+                    <Card style={{ borderColor: theme.palette.coach }}>
+                      <SectionLabel>ÉCART B − A</SectionLabel>
+                      <View style={{ marginTop: theme.spacing.md }}>
+                        <DeltaLine
+                          label="Marge globale"
+                          deltaText={formatDeltaPoints(
+                            sideA.snapshot!.marginGlobal,
+                            sideB.snapshot!.marginGlobal
+                          )}
+                        />
+                        <DeltaLine
+                          label="Meilleur tour"
+                          deltaText={formatDeltaSeconds(
+                            sideA.snapshot!.bestLapSeconds,
+                            sideB.snapshot!.bestLapSeconds
+                          )}
+                        />
+                      </View>
+                    </Card>
+                  </FadeInSection>
+
+                  {/* Marges par virage */}
+                  <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
+                    <View style={{ marginBottom: theme.spacing.md }}>
+                      <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
                     </View>
-                  </Card>
-                </FadeInSection>
+                    <View style={{ gap: theme.spacing.xs }}>
+                      {BELTOISE_CORNERS.map((corner) => (
+                        <CornerRow
+                          key={corner.index}
+                          cornerIndex={corner.index}
+                          cornerName={corner.name}
+                          zoneA={sideA.snapshot!.zoneByIndex[corner.index] ?? null}
+                          zoneB={sideB.snapshot!.zoneByIndex[corner.index] ?? null}
+                          marginA={sideA.snapshot!.marginByIndex[corner.index] ?? null}
+                          marginB={sideB.snapshot!.marginByIndex[corner.index] ?? null}
+                        />
+                      ))}
+                    </View>
+                  </FadeInSection>
 
-                {/* Marges par virage */}
-                <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
-                  <View style={{ marginBottom: theme.spacing.md }}>
-                    <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
-                  </View>
-                  <View style={{ gap: theme.spacing.xs }}>
-                    {BELTOISE_CORNERS.map((corner) => (
-                      <CornerRow
-                        key={corner.index}
-                        cornerIndex={corner.index}
-                        cornerName={corner.name}
-                        zoneA={sideA.snapshot!.zoneByIndex[corner.index] ?? null}
-                        zoneB={sideB.snapshot!.zoneByIndex[corner.index] ?? null}
-                        marginA={sideA.snapshot!.marginByIndex[corner.index] ?? null}
-                        marginB={sideB.snapshot!.marginByIndex[corner.index] ?? null}
-                      />
-                    ))}
-                  </View>
-                </FadeInSection>
-
-                {/* Manifeste doctrinal coach */}
-                <Text style={s.manifest}>
-                  Les chiffres sont là. Le sens, vous le posez avec chacun.
-                </Text>
-              </>
-            ) : (
-              <Text style={s.hint}>Choisissez un pilote et une session de chaque côté.</Text>
-            )}
-          </>
-        )}
+                  {/* Manifeste doctrinal coach */}
+                  <Text style={s.manifest}>
+                    Les chiffres sont là. Le sens, vous le posez avec chacun.
+                  </Text>
+                </>
+              ) : (
+                <Text style={s.hint}>Choisissez un pilote et une session de chaque côté.</Text>
+              )}
+            </>
+          )}
+        </StateWrapper>
       </View>
     </Screen>
   );

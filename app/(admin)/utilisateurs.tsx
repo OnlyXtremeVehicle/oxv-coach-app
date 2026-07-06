@@ -16,6 +16,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
@@ -62,6 +63,9 @@ export default function AdminUsersScreen() {
     <Screen>
       <AppBar title="UTILISATEURS" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={[s.eyebrow, { color: ADMIN }]}>ANNUAIRE</Text>
         <Text style={s.title} accessibilityRole="header">
           Les comptes.

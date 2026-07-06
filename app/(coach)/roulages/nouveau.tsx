@@ -21,6 +21,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { formatDateTime } from '@/utils/format';
 
@@ -114,6 +115,9 @@ export default function NouveauRoulageScreen() {
     <Screen>
       <AppBar title="NOUVEAU ROULAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
+        </View>
         <Text style={s.eyebrow}>COACH OXV</Text>
         <Text style={s.title}>Un roulage à vous.</Text>
 

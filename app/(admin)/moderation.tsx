@@ -24,8 +24,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const STATUS_LABEL: Record<ModerationStatus, string> = {
   nouveau: 'Nouveau',
@@ -47,6 +49,7 @@ function statusColor(s: ModerationStatus): string {
 export default function AdminModerationScreen() {
   const [reports, setReports] = useState<ModerationReport[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [resolution, setResolution] = useState('');
   const [busy, setBusy] = useState(false);
@@ -54,15 +57,23 @@ export default function AdminModerationScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listReports().then((rows) => {
-      if (!cancelled) {
-        // Non-traités d'abord (nouveau, en_cours), puis le reste.
-        const open = rows.filter((r) => r.status === 'nouveau' || r.status === 'en_cours');
-        const closed = rows.filter((r) => r.status === 'resolu' || r.status === 'rejete');
-        setReports([...open, ...closed]);
-        setLoading(false);
-      }
-    });
+    setError(false);
+    listReports()
+      .then((rows) => {
+        if (!cancelled) {
+          // Non-traités d'abord (nouveau, en_cours), puis le reste.
+          const open = rows.filter((r) => r.status === 'nouveau' || r.status === 'en_cours');
+          const closed = rows.filter((r) => r.status === 'resolu' || r.status === 'rejete');
+          setReports([...open, ...closed]);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -88,22 +99,36 @@ export default function AdminModerationScreen() {
     }
   }
 
+  const state: ScreenState = loading
+    ? 'loading'
+    : error
+      ? 'error'
+      : reports.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen>
       <AppBar title="MODÉRATION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
         <Text style={s.eyebrow}>FILE DES SIGNALEMENTS</Text>
         <Text style={s.title} accessibilityRole="header">
           Signalements.
         </Text>
 
         <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-          {loading ? (
-            <Text style={s.muted}>Chargement…</Text>
-          ) : reports.length === 0 ? (
-            <Text style={s.muted}>Aucun signalement.</Text>
-          ) : (
-            reports.map((r) => {
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            emptyLabel="Aucun signalement"
+            emptyMessage="Aucun signalement pour le moment."
+            errorCause="La file des signalements n'a pas pu être chargée."
+            onRetry={reload}
+          >
+            {reports.map((r) => {
               const open = selectedId === r.id;
               return (
                 <Card
@@ -161,8 +186,8 @@ export default function AdminModerationScreen() {
                   ) : null}
                 </Card>
               );
-            })
-          )}
+            })}
+          </StateWrapper>
         </View>
       </View>
     </Screen>
@@ -175,7 +200,7 @@ const s = {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    color: theme.palette.creamMute,
     marginTop: theme.spacing.sm,
   },
   title: {
@@ -214,10 +239,5 @@ const s = {
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.sm,
     lineHeight: theme.fontSize.small * 1.45,
-  },
-  muted: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamMute,
   },
 };

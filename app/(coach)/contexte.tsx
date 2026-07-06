@@ -22,7 +22,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachContexteScreen() {
   const params = useLocalSearchParams<{ pilotId?: string; sessionId?: string }>();
@@ -34,6 +36,8 @@ export default function CoachContexteScreen() {
   const [equipment, setEquipment] = useState('');
   const [weatherNote, setWeatherNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -43,23 +47,33 @@ export default function CoachContexteScreen() {
       setLoading(false);
       return;
     }
-    getSessionContext(sessionId).then((ctx) => {
-      if (cancelled) return;
-      if (ctx) {
-        setPilotLevel(ctx.pilotLevel ?? '');
-        setObjective(ctx.objective ?? '');
-        setEquipment(ctx.equipment ?? '');
-        setWeatherNote(ctx.weatherNote ?? '');
-      }
-      setLoading(false);
-    });
+    setLoading(true);
+    setError(false);
+    getSessionContext(sessionId)
+      .then((ctx) => {
+        if (cancelled) return;
+        if (ctx) {
+          setPilotLevel(ctx.pilotLevel ?? '');
+          setObjective(ctx.objective ?? '');
+          setEquipment(ctx.equipment ?? '');
+          setWeatherNote(ctx.weatherNote ?? '');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+        setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, reloadKey]);
 
   const input = { pilotLevel, objective, equipment, weatherNote };
   const hasContent = contextHasContent(input);
+
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
   async function onSave() {
     if (!pilotId || !sessionId || saving) return;
@@ -80,14 +94,20 @@ export default function CoachContexteScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="coach" />
+          </View>
           <Text style={s.title}>La séance.</Text>
           <Text style={s.subtitle}>
             Ce que le capteur ne capte pas. Visible par votre pilote sur son bilan.
           </Text>
 
-          {loading ? (
-            <Text style={s.caption}>Chargement…</Text>
-          ) : (
+          <StateWrapper
+            state={state}
+            skeletonLines={5}
+            errorCause="Le contexte de séance n'a pas pu être chargé."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
             <>
               <Field
                 label="Niveau sur cette séance"
@@ -129,7 +149,7 @@ export default function CoachContexteScreen() {
                 disabled={saving || !pilotId || !sessionId}
               />
             </>
-          )}
+          </StateWrapper>
         </View>
       </KeyboardAvoidingView>
     </Screen>
@@ -151,12 +171,6 @@ const s = {
     marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.xxl,
     lineHeight: theme.fontSize.small * 1.5,
-  },
-  caption: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
   },
   savedNote: {
     fontFamily: theme.fonts.mono,

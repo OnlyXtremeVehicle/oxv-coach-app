@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { type CoachPilotRow, listMyPilots } from '@/services/coachService';
@@ -39,8 +39,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Fact } from '@/ui/Fact';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateTime, formatPriceCents } from '@/utils/format';
 
 function pilotName(p: CoachPilotRow): string {
@@ -55,6 +57,7 @@ export default function RoulageDetailScreen() {
   const [invitations, setInvitations] = useState<RoulageInvitation[]>([]);
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -74,8 +77,12 @@ export default function RoulageDetailScreen() {
     useCallback(() => {
       let cancelled = false;
       setLoading(true);
+      setError(false);
       load().catch(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(true);
+          setLoading(false);
+        }
       });
       return () => {
         cancelled = true;
@@ -121,207 +128,187 @@ export default function RoulageDetailScreen() {
     setBusy(false);
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="ROULAGE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  const places = roulage ? remainingPlaces(roulage, summary.accepted) : null;
+  const isOpen = roulage?.status === 'open';
 
-  if (!roulage) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="ROULAGE" onBack={() => router.back()} />
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingHorizontal: theme.spacing.lg,
-          }}
-        >
-          <Text style={[s.manifest, { textAlign: 'center' }]} accessibilityRole="header">
-            Ce roulage est introuvable.
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-            onPress={() => router.back()}
-            hitSlop={theme.hitSlop}
-            style={{ marginTop: theme.spacing.xl }}
-          >
-            <Text style={s.action}>Retour</Text>
-          </Pressable>
-        </View>
-      </Screen>
-    );
-  }
-
-  const places = remainingPlaces(roulage, summary.accepted);
-  const isOpen = roulage.status === 'open';
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : !roulage ? 'empty' : 'nominal';
 
   return (
     <Screen>
       <AppBar title="ROULAGE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>ROULAGE</Text>
-        <Text style={s.title} accessibilityRole="header">
-          {roulage.title}
-        </Text>
-        <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>
-          {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
-          {roulage.status !== 'open' ? ` · ${ROULAGE_STATUS_LABELS[roulage.status]}` : ''}
-        </Text>
-
-        {roulage.location ? (
-          <Text style={[s.body, { marginTop: theme.spacing.md }]}>{roulage.location}</Text>
-        ) : null}
-        {roulage.pricePerPilot != null ? (
-          <Text style={[s.body, { marginTop: theme.spacing.xs }]}>
-            {formatPriceCents(roulage.pricePerPilot)} par place
-          </Text>
-        ) : null}
-        {roulage.notes ? (
-          <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>{roulage.notes}</Text>
-        ) : null}
-
-        {/* Récapitulatif des réponses */}
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
-          <Fact label="Présents" value={String(summary.accepted)} />
-          <Fact label="En attente" value={String(summary.invited)} />
-          <Fact label="Places libres" value={places == null ? '∞' : String(places)} />
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
         </View>
-
-        {/* Pilotes invités */}
-        <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
-          <SectionLabel>{`Invités (${invitations.length})`}</SectionLabel>
-        </View>
-        {invitations.length === 0 ? (
-          <Text style={[s.caption, { fontStyle: 'italic' }]}>
-            Personne n&apos;est encore convié.
-          </Text>
-        ) : (
-          <View style={{ gap: theme.spacing.sm }}>
-            {invitations.map((inv) => {
-              const p = pilotById.get(inv.pilotId);
-              return (
-                <Card
-                  key={inv.id}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.body}>{p ? pilotName(p) : 'Pilote'}</Text>
-                    <Text style={[s.caption, { marginTop: 2 }]}>
-                      {INVITATION_STATUS_LABELS[inv.status]}
-                    </Text>
-                  </View>
-                  {isOpen ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Retirer ${p ? pilotName(p) : 'ce pilote'}`}
-                      accessibilityState={{ disabled: busy }}
-                      disabled={busy}
-                      onPress={() => onRemove(inv.id)}
-                      hitSlop={theme.hitSlop}
-                    >
-                      <Text style={s.mutedAction}>Retirer</Text>
-                    </Pressable>
-                  ) : null}
-                </Card>
-              );
-            })}
-          </View>
-        )}
-
-        {/* Sélecteur de pilotes à inviter (seulement si ouvert) */}
-        {isOpen ? (
-          <>
-            <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
-              <SectionLabel>Convier un pilote</SectionLabel>
-            </View>
-            {invitablePilots.length === 0 ? (
-              <Text style={[s.caption, { fontStyle: 'italic' }]}>
-                Tous vos pilotes sont déjà conviés.
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="ROULAGE"
+          emptyMessage="Ce roulage est introuvable."
+          errorCause="Ce roulage n'a pas pu être chargé."
+          onRetry={load}
+        >
+          {roulage ? (
+            <>
+              <Text style={s.eyebrow}>ROULAGE</Text>
+              <Text style={s.title} accessibilityRole="header">
+                {roulage.title}
               </Text>
-            ) : (
-              <View style={{ gap: theme.spacing.sm }}>
-                {invitablePilots.map((p) => (
-                  <Pressable
-                    key={p.pilotId}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Convier ${pilotName(p)}`}
-                    disabled={busy}
-                    onPress={() => onInvite(p.pilotId)}
-                    style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
-                  >
-                    <Card
-                      style={{
-                        borderColor: theme.palette.coach,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <Text style={s.body}>{pilotName(p)}</Text>
-                      <Text style={s.action}>Convier</Text>
-                    </Card>
-                  </Pressable>
-                ))}
+              <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>
+                {formatDateTime(roulage.startsAt)} · {roulage.circuitName}
+                {roulage.status !== 'open' ? ` · ${ROULAGE_STATUS_LABELS[roulage.status]}` : ''}
+              </Text>
+
+              {roulage.location ? (
+                <Text style={[s.body, { marginTop: theme.spacing.md }]}>{roulage.location}</Text>
+              ) : null}
+              {roulage.pricePerPilot != null ? (
+                <Text style={[s.body, { marginTop: theme.spacing.xs }]}>
+                  {formatPriceCents(roulage.pricePerPilot)} par place
+                </Text>
+              ) : null}
+              {roulage.notes ? (
+                <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>{roulage.notes}</Text>
+              ) : null}
+
+              {/* Récapitulatif des réponses */}
+              <View
+                style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.xl }}
+              >
+                <Fact label="Présents" value={String(summary.accepted)} />
+                <Fact label="En attente" value={String(summary.invited)} />
+                <Fact label="Places libres" value={places == null ? '∞' : String(places)} />
               </View>
-            )}
-          </>
-        ) : null}
 
-        {/* Actions roulage */}
-        {isOpen ? (
-          <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.md }}>
-            <Button
-              label="Clôturer le roulage"
-              variant="ghost"
-              loading={busy}
-              onPress={() => onStatus('done')}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Annuler le roulage"
-              accessibilityState={{ disabled: busy }}
-              disabled={busy}
-              onPress={() => onStatus('cancelled')}
-              style={({ pressed }) => ({
-                minHeight: 44,
-                paddingVertical: theme.spacing.md,
-                paddingHorizontal: theme.spacing.md,
-                borderRadius: theme.radius.md,
-                borderWidth: 1,
-                borderColor: theme.palette.red,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: busy ? 0.5 : pressed ? 0.7 : 1,
-              })}
-            >
-              <Text style={s.dangerAction}>Annuler le roulage</Text>
-            </Pressable>
-          </View>
-        ) : null}
+              {/* Pilotes invités */}
+              <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
+                <SectionLabel>{`Invités (${invitations.length})`}</SectionLabel>
+              </View>
+              {invitations.length === 0 ? (
+                <Text style={[s.caption, { fontStyle: 'italic' }]}>
+                  Personne n&apos;est encore convié.
+                </Text>
+              ) : (
+                <View style={{ gap: theme.spacing.sm }}>
+                  {invitations.map((inv) => {
+                    const p = pilotById.get(inv.pilotId);
+                    return (
+                      <Card
+                        key={inv.id}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.body}>{p ? pilotName(p) : 'Pilote'}</Text>
+                          <Text style={[s.caption, { marginTop: 2 }]}>
+                            {INVITATION_STATUS_LABELS[inv.status]}
+                          </Text>
+                        </View>
+                        {isOpen ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Retirer ${p ? pilotName(p) : 'ce pilote'}`}
+                            accessibilityState={{ disabled: busy }}
+                            disabled={busy}
+                            onPress={() => onRemove(inv.id)}
+                            hitSlop={theme.hitSlop}
+                          >
+                            <Text style={s.mutedAction}>Retirer</Text>
+                          </Pressable>
+                        ) : null}
+                      </Card>
+                    );
+                  })}
+                </View>
+              )}
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-            onPress={() => router.back()}
-            hitSlop={theme.hitSlop}
-          >
-            <Text style={s.mutedAction}>Retour</Text>
-          </Pressable>
-        </View>
+              {/* Sélecteur de pilotes à inviter (seulement si ouvert) */}
+              {isOpen ? (
+                <>
+                  <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
+                    <SectionLabel>Convier un pilote</SectionLabel>
+                  </View>
+                  {invitablePilots.length === 0 ? (
+                    <Text style={[s.caption, { fontStyle: 'italic' }]}>
+                      Tous vos pilotes sont déjà conviés.
+                    </Text>
+                  ) : (
+                    <View style={{ gap: theme.spacing.sm }}>
+                      {invitablePilots.map((p) => (
+                        <Pressable
+                          key={p.pilotId}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Convier ${pilotName(p)}`}
+                          disabled={busy}
+                          onPress={() => onInvite(p.pilotId)}
+                          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+                        >
+                          <Card
+                            style={{
+                              borderColor: theme.palette.coach,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}
+                          >
+                            <Text style={s.body}>{pilotName(p)}</Text>
+                            <Text style={s.action}>Convier</Text>
+                          </Card>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                </>
+              ) : null}
+
+              {/* Actions roulage */}
+              {isOpen ? (
+                <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.md }}>
+                  <Button
+                    label="Clôturer le roulage"
+                    variant="ghost"
+                    loading={busy}
+                    onPress={() => onStatus('done')}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Annuler le roulage"
+                    accessibilityState={{ disabled: busy }}
+                    disabled={busy}
+                    onPress={() => onStatus('cancelled')}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      paddingVertical: theme.spacing.md,
+                      paddingHorizontal: theme.spacing.md,
+                      borderRadius: theme.radius.md,
+                      borderWidth: 1,
+                      borderColor: theme.palette.red,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      opacity: busy ? 0.5 : pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Text style={s.dangerAction}>Annuler le roulage</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Retour"
+                  onPress={() => router.back()}
+                  hitSlop={theme.hitSlop}
+                >
+                  <Text style={s.mutedAction}>Retour</Text>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -353,13 +340,6 @@ const s = {
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
-  },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
   },
   // Actions = libellés (mots), donc pas en mono. Affordances sobres et trackées.
   action: {

@@ -20,33 +20,36 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachGabaritsScreen() {
   const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [label, setLabel] = useState('');
   const [body, setBody] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
-    const rows = await listMyTemplates();
-    setTemplates(rows);
-    setLoading(false);
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const rows = await listMyTemplates();
+      setTemplates(rows);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      reload().catch(() => {
-        if (!cancelled) setLoading(false);
-      });
-      return () => {
-        cancelled = true;
-      };
+      reload();
     }, [reload])
   );
 
@@ -73,6 +76,14 @@ export default function CoachGabaritsScreen() {
     await reload();
   }
 
+  const listState: ScreenState = loading
+    ? 'loading'
+    : loadError
+      ? 'error'
+      : templates.length === 0
+        ? 'empty'
+        : 'nominal';
+
   return (
     <Screen scroll={false}>
       <AppBar title="GABARITS" onBack={() => router.back()} />
@@ -86,6 +97,9 @@ export default function CoachGabaritsScreen() {
             paddingBottom: theme.spacing.xxl,
           }}
         >
+          <View style={{ marginBottom: theme.spacing.md }}>
+            <RoleBadge role="coach" />
+          </View>
           <Text style={[s.eyebrow, { color: theme.palette.coach }]}>GABARITS</Text>
           <Text style={s.title}>Vos formules.</Text>
           <Text style={s.manifest}>
@@ -93,37 +107,39 @@ export default function CoachGabaritsScreen() {
           </Text>
 
           {/* Liste existante */}
-          {loading ? (
-            <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
-          ) : templates.length === 0 ? (
-            <Text style={[s.empty, { marginTop: theme.spacing.xxl }]}>
-              Aucun gabarit pour l&apos;instant.
-            </Text>
-          ) : (
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xxl }}>
-              {templates.map((t) => (
-                <Card key={t.id}>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={[s.tplLabel, { flex: 1 }]}>{t.label}</Text>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Supprimer le gabarit ${t.label}`}
-                      onPress={() => onDelete(t.id)}
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <StateWrapper
+              state={listState}
+              skeletonLines={5}
+              emptyMessage="Aucun gabarit pour l'instant."
+              errorCause="La liste des gabarits n'a pas pu être chargée."
+              onRetry={reload}
+            >
+              <View style={{ gap: theme.spacing.sm }}>
+                {templates.map((t) => (
+                  <Card key={t.id}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
                     >
-                      <Text style={s.deleteTxt}>Supprimer</Text>
-                    </Pressable>
-                  </View>
-                  <Text style={s.tplBody}>{t.body}</Text>
-                </Card>
-              ))}
-            </View>
-          )}
+                      <Text style={[s.tplLabel, { flex: 1 }]}>{t.label}</Text>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Supprimer le gabarit ${t.label}`}
+                        onPress={() => onDelete(t.id)}
+                      >
+                        <Text style={s.deleteTxt}>Supprimer</Text>
+                      </Pressable>
+                    </View>
+                    <Text style={s.tplBody}>{t.body}</Text>
+                  </Card>
+                ))}
+              </View>
+            </StateWrapper>
+          </View>
 
           {/* Nouveau gabarit */}
           <View style={{ marginTop: theme.spacing.xxl, marginBottom: theme.spacing.md }}>
@@ -191,20 +207,6 @@ const s = {
     lineHeight: theme.fontSize.bodyLg * 1.6,
     color: theme.palette.creamSoft,
     marginTop: theme.spacing.md,
-  },
-  meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  empty: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.5,
   },
   tplLabel: {
     fontFamily: theme.fonts.bodyMedium,

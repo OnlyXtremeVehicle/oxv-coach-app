@@ -23,8 +23,10 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
@@ -110,101 +112,115 @@ export default function AdminSupportThreadScreen() {
     }
   }
 
+  const state: ScreenState = loading ? 'loading' : thread ? 'nominal' : 'empty';
+
   return (
     <Screen>
       <AppBar title="DEMANDE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        {loading || !thread ? (
-          <Text style={s.muted}>{loading ? 'Chargement…' : 'Demande introuvable.'}</Text>
-        ) : (
-          <>
-            <Text style={[s.cat, { color: ADMIN }]}>{categoryLabel(thread.ticket.category)}</Text>
-            <Text style={s.subject} accessibilityRole="header">
-              {thread.ticket.subject}
-            </Text>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="admin" />
+        </View>
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          emptyLabel="Demande introuvable"
+          emptyMessage="Cette demande n'est plus disponible."
+          errorCause="La demande n'a pas pu être chargée."
+          onRetry={reload}
+        >
+          {thread ? (
+            <>
+              <Text style={[s.cat, { color: ADMIN }]}>{categoryLabel(thread.ticket.category)}</Text>
+              <Text style={s.subject} accessibilityRole="header">
+                {thread.ticket.subject}
+              </Text>
 
-            {/* Statut */}
-            <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
-              <SectionLabel>Statut</SectionLabel>
-              <View style={s.pills}>
-                {STATUSES.map((st) => {
-                  const on = thread.ticket.status === st;
-                  return (
-                    <Pressable
-                      key={st}
-                      onPress={() => onStatus(st)}
-                      disabled={busy}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: on, disabled: busy }}
-                      accessibilityLabel={STATUS_LABELS[st]}
-                      hitSlop={6}
-                      style={[s.pill, on ? s.pillOn : null]}
-                    >
-                      <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>{STATUS_LABELS[st]}</Text>
-                    </Pressable>
-                  );
-                })}
+              {/* Statut */}
+              <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+                <SectionLabel>Statut</SectionLabel>
+                <View style={s.pills}>
+                  {STATUSES.map((st) => {
+                    const on = thread.ticket.status === st;
+                    return (
+                      <Pressable
+                        key={st}
+                        onPress={() => onStatus(st)}
+                        disabled={busy}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on, disabled: busy }}
+                        accessibilityLabel={STATUS_LABELS[st]}
+                        hitSlop={6}
+                        style={[s.pill, on ? s.pillOn : null]}
+                      >
+                        <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>
+                          {STATUS_LABELS[st]}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
-            {/* Priorité */}
-            <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
-              <SectionLabel>Priorité</SectionLabel>
-              <View style={s.pills}>
-                {PRIORITIES.map((p) => {
-                  const on = thread.ticket.priority === p;
-                  return (
-                    <Pressable
-                      key={p}
-                      onPress={() => onPriority(p)}
-                      disabled={busy}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: on, disabled: busy }}
-                      accessibilityLabel={p.toUpperCase()}
-                      hitSlop={6}
-                      style={[s.pill, on ? s.pillOn : null]}
-                    >
-                      <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>{p.toUpperCase()}</Text>
-                    </Pressable>
-                  );
-                })}
+              {/* Priorité */}
+              <View style={{ marginTop: theme.spacing.lg, gap: theme.spacing.sm }}>
+                <SectionLabel>Priorité</SectionLabel>
+                <View style={s.pills}>
+                  {PRIORITIES.map((p) => {
+                    const on = thread.ticket.priority === p;
+                    return (
+                      <Pressable
+                        key={p}
+                        onPress={() => onPriority(p)}
+                        disabled={busy}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on, disabled: busy }}
+                        accessibilityLabel={p.toUpperCase()}
+                        hitSlop={6}
+                        style={[s.pill, on ? s.pillOn : null]}
+                      >
+                        <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>{p.toUpperCase()}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
-            </View>
 
-            {/* Fil */}
-            <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
-              {thread.messages.map((m) => (
-                <Card key={m.id} style={m.isAdmin ? s.adminCard : undefined}>
-                  <Text style={s.author}>{m.isAdmin ? 'Équipe OXV' : 'Pilote'}</Text>
-                  <Text style={s.body}>{m.body}</Text>
-                  <Text style={s.time}>{formatDate(m.createdAt)}</Text>
-                </Card>
-              ))}
-            </View>
+              {/* Fil */}
+              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+                {thread.messages.map((m) => (
+                  <Card key={m.id} style={m.isAdmin ? s.adminCard : undefined}>
+                    <Text style={s.author}>{m.isAdmin ? 'Équipe OXV' : 'Pilote'}</Text>
+                    <Text style={s.body}>{m.body}</Text>
+                    <Text style={s.time}>{formatDate(m.createdAt)}</Text>
+                  </Card>
+                ))}
+              </View>
 
-            <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
-              <Field
-                label="Votre réponse"
-                value={reply}
-                onChangeText={setReply}
-                maxLength={4000}
-                multiline
-                placeholder="Réponse au pilote."
-              />
-              {error ? (
-                <Text style={s.error} accessibilityLiveRegion="polite">
-                  {error}
-                </Text>
-              ) : null}
-              <Button
-                label="Répondre"
-                onPress={onReply}
-                loading={sending}
-                disabled={!reply.trim()}
-              />
-            </View>
-          </>
-        )}
+              <View style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
+                <Field
+                  label="Votre réponse"
+                  value={reply}
+                  onChangeText={setReply}
+                  maxLength={4000}
+                  multiline
+                  placeholder="Réponse au pilote."
+                />
+                {error ? (
+                  <Text style={s.error} accessibilityLiveRegion="polite">
+                    {error}
+                  </Text>
+                ) : null}
+                <Button
+                  label="Répondre"
+                  onPress={onReply}
+                  loading={sending}
+                  disabled={!reply.trim()}
+                />
+              </View>
+            </>
+          ) : null}
+        </StateWrapper>
       </View>
     </Screen>
   );

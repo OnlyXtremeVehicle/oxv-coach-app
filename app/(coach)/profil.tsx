@@ -28,11 +28,14 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
+import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 export default function CoachProfileScreen() {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [headline, setHeadline] = useState('');
@@ -48,36 +51,40 @@ export default function CoachProfileScreen() {
   const [media, setMedia] = useState<CoachMediaView[]>([]);
   const [mediaBusy, setMediaBusy] = useState(false);
 
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-      listMyCoachMedia().then((m) => {
-        if (!cancelled) setMedia(m);
-      });
-      getMyCoachProfile()
-        .then((p) => {
-          if (cancelled) return;
-          setHeadline(p.headline ?? '');
-          setBio(p.bio ?? '');
-          setPalmares(p.palmares ?? '');
-          setSpecialties(p.specialties.join(', '));
-          setCircuits(p.circuits.join(', '));
-          setPrice(p.seasonPriceEur != null ? String(p.seasonPriceEur) : '');
-          setWebsite(p.websiteUrl ?? '');
-          setInstagram(p.instagramUrl ?? '');
-          setYoutube(p.youtubeUrl ?? '');
-          setPublished(p.isPublished);
+  const reload = useCallback(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    listMyCoachMedia().then((m) => {
+      if (!cancelled) setMedia(m);
+    });
+    getMyCoachProfile()
+      .then((p) => {
+        if (cancelled) return;
+        setHeadline(p.headline ?? '');
+        setBio(p.bio ?? '');
+        setPalmares(p.palmares ?? '');
+        setSpecialties(p.specialties.join(', '));
+        setCircuits(p.circuits.join(', '));
+        setPrice(p.seasonPriceEur != null ? String(p.seasonPriceEur) : '');
+        setWebsite(p.websiteUrl ?? '');
+        setInstagram(p.instagramUrl ?? '');
+        setYoutube(p.youtubeUrl ?? '');
+        setPublished(p.isPublished);
+        setLoading(false);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setError(true);
           setLoading(false);
-        })
-        .catch(() => {
-          if (!cancelled) setLoading(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }, [])
-  );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useFocusEffect(reload);
 
   async function onSave() {
     setSaving(true);
@@ -127,218 +134,221 @@ export default function CoachProfileScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="MON PROFIL" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
-        </View>
-      </Screen>
-    );
-  }
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
   return (
     <Screen>
       <AppBar title="MON PROFIL" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title} accessibilityRole="header">
-          Votre fiche coach.
-        </Text>
-        <Text style={s.intro}>
-          Ce que les pilotes voient de vous. Publiez-la pour apparaître dans la découverte.
-        </Text>
-
-        <View style={s.pubBlock}>
-          <SectionLabel>Publication</SectionLabel>
-          <View style={s.pubRow}>
-            {[
-              { v: true, label: 'Publiée' },
-              { v: false, label: 'Masquée' },
-            ].map((o) => {
-              const on = published === o.v;
-              return (
-                <Pressable
-                  key={o.label}
-                  onPress={() => setPublished(o.v)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={o.label}
-                  hitSlop={6}
-                  style={[s.pubPill, on ? s.pubPillOn : null]}
-                >
-                  <Text style={[s.pubPillT, on ? s.pubPillTOn : null]}>{o.label}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          <Text style={s.pubHint}>Une fiche publiée apparaît dans la découverte des pilotes.</Text>
+        <View style={{ marginBottom: theme.spacing.md }}>
+          <RoleBadge role="coach" />
         </View>
-
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <Field
-            label="Accroche"
-            value={headline}
-            onChangeText={setHeadline}
-            placeholder="Coach pilotage, circuit & data"
-            maxLength={80}
-          />
-          <Field
-            label="Présentation"
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Votre approche, votre parcours…"
-            multiline
-            maxLength={1000}
-            showCounter
-          />
-          <Field
-            label="Palmarès"
-            optional
-            value={palmares}
-            onChangeText={setPalmares}
-            placeholder="Titres, podiums, références…"
-            multiline
-            maxLength={500}
-          />
-          <Field
-            label="Spécialités"
-            value={specialties}
-            onChangeText={setSpecialties}
-            placeholder="Trajectoire, freinage, data"
-            helper="Séparées par des virgules."
-          />
-          <Field
-            label="Circuits"
-            value={circuits}
-            onChangeText={setCircuits}
-            placeholder="Haute Saintonge, Charente"
-            helper="Séparés par des virgules."
-          />
-          <Field
-            label="Tarif de saison"
-            optional
-            value={price}
-            onChangeText={setPrice}
-            placeholder="1500"
-            keyboardType="number-pad"
-            unit="€"
-            helper="Indicatif. Le règlement se fait de gré à gré, hors application."
-          />
-        </View>
-
-        <View style={{ marginTop: theme.spacing.lg }}>
-          <SectionLabel>Liens</SectionLabel>
-          <View style={{ marginTop: theme.spacing.md }}>
-            <Field
-              label="Site web"
-              optional
-              value={website}
-              onChangeText={setWebsite}
-              placeholder="https://…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Field
-              label="Instagram"
-              optional
-              value={instagram}
-              onChangeText={setInstagram}
-              placeholder="https://instagram.com/…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Field
-              label="YouTube"
-              optional
-              value={youtube}
-              onChangeText={setYoutube}
-              placeholder="https://youtube.com/…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-          </View>
-        </View>
-
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <SectionLabel>Médias</SectionLabel>
-          <Text style={s.mediaHint}>
-            Photos et vidéos de votre fiche, visibles par les pilotes.
+        <StateWrapper
+          state={state}
+          skeletonLines={5}
+          errorCause="Votre fiche coach n'a pas pu être chargée."
+          onRetry={reload}
+        >
+          <Text style={s.title} accessibilityRole="header">
+            Votre fiche coach.
+          </Text>
+          <Text style={s.intro}>
+            Ce que les pilotes voient de vous. Publiez-la pour apparaître dans la découverte.
           </Text>
 
-          {media.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ marginTop: theme.spacing.md }}
-              contentContainerStyle={{ gap: theme.spacing.sm }}
-            >
-              {media.map((m) => (
-                <View key={m.id} style={s.mediaTile}>
-                  {m.type === 'photo' ? (
-                    <Image
-                      source={{ uri: m.url }}
-                      style={s.mediaThumb}
-                      resizeMode="cover"
-                      accessibilityLabel="Photo de la fiche"
-                    />
-                  ) : (
-                    <View style={[s.mediaThumb, s.mediaVideo]}>
-                      <Text style={s.mediaVideoT}>Vidéo</Text>
-                    </View>
-                  )}
+          <View style={s.pubBlock}>
+            <SectionLabel>Publication</SectionLabel>
+            <View style={s.pubRow}>
+              {[
+                { v: true, label: 'Publiée' },
+                { v: false, label: 'Masquée' },
+              ].map((o) => {
+                const on = published === o.v;
+                return (
                   <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Retirer ce média"
+                    key={o.label}
+                    onPress={() => setPublished(o.v)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={o.label}
                     hitSlop={6}
-                    onPress={() => onRemoveMedia(m.id)}
-                    style={s.mediaRemove}
+                    style={[s.pubPill, on ? s.pubPillOn : null]}
                   >
-                    <Text style={s.mediaRemoveT}>Retirer</Text>
+                    <Text style={[s.pubPillT, on ? s.pubPillTOn : null]}>{o.label}</Text>
                   </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
-          )}
-
-          <View style={s.mediaActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ajouter une photo"
-              disabled={mediaBusy}
-              onPress={() => onAddMedia('photo')}
-              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-            >
-              <Text style={s.mediaBtnT}>Ajouter une photo</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ajouter une vidéo"
-              disabled={mediaBusy}
-              onPress={() => onAddMedia('video')}
-              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-            >
-              <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
-            </Pressable>
+                );
+              })}
+            </View>
+            <Text style={s.pubHint}>
+              Une fiche publiée apparaît dans la découverte des pilotes.
+            </Text>
           </View>
 
-          {mediaBusy ? (
-            <ActivityIndicator
-              color={theme.palette.creamMute}
-              style={{ marginTop: theme.spacing.md }}
-              accessibilityLabel="Envoi du média en cours"
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <Field
+              label="Accroche"
+              value={headline}
+              onChangeText={setHeadline}
+              placeholder="Coach pilotage, circuit & data"
+              maxLength={80}
             />
-          ) : null}
-        </View>
+            <Field
+              label="Présentation"
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Votre approche, votre parcours…"
+              multiline
+              maxLength={1000}
+              showCounter
+            />
+            <Field
+              label="Palmarès"
+              optional
+              value={palmares}
+              onChangeText={setPalmares}
+              placeholder="Titres, podiums, références…"
+              multiline
+              maxLength={500}
+            />
+            <Field
+              label="Spécialités"
+              value={specialties}
+              onChangeText={setSpecialties}
+              placeholder="Trajectoire, freinage, data"
+              helper="Séparées par des virgules."
+            />
+            <Field
+              label="Circuits"
+              value={circuits}
+              onChangeText={setCircuits}
+              placeholder="Haute Saintonge, Charente"
+              helper="Séparés par des virgules."
+            />
+            <Field
+              label="Tarif de saison"
+              optional
+              value={price}
+              onChangeText={setPrice}
+              placeholder="1500"
+              keyboardType="number-pad"
+              unit="€"
+              helper="Indicatif. Le règlement se fait de gré à gré, hors application."
+            />
+          </View>
 
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <Button label="Enregistrer ma fiche" loading={saving} onPress={onSave} />
-        </View>
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <SectionLabel>Liens</SectionLabel>
+            <View style={{ marginTop: theme.spacing.md }}>
+              <Field
+                label="Site web"
+                optional
+                value={website}
+                onChangeText={setWebsite}
+                placeholder="https://…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Field
+                label="Instagram"
+                optional
+                value={instagram}
+                onChangeText={setInstagram}
+                placeholder="https://instagram.com/…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Field
+                label="YouTube"
+                optional
+                value={youtube}
+                onChangeText={setYoutube}
+                placeholder="https://youtube.com/…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+          </View>
+
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <SectionLabel>Médias</SectionLabel>
+            <Text style={s.mediaHint}>
+              Photos et vidéos de votre fiche, visibles par les pilotes.
+            </Text>
+
+            {media.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: theme.spacing.md }}
+                contentContainerStyle={{ gap: theme.spacing.sm }}
+              >
+                {media.map((m) => (
+                  <View key={m.id} style={s.mediaTile}>
+                    {m.type === 'photo' ? (
+                      <Image
+                        source={{ uri: m.url }}
+                        style={s.mediaThumb}
+                        resizeMode="cover"
+                        accessibilityLabel="Photo de la fiche"
+                      />
+                    ) : (
+                      <View style={[s.mediaThumb, s.mediaVideo]}>
+                        <Text style={s.mediaVideoT}>Vidéo</Text>
+                      </View>
+                    )}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Retirer ce média"
+                      hitSlop={6}
+                      onPress={() => onRemoveMedia(m.id)}
+                      style={s.mediaRemove}
+                    >
+                      <Text style={s.mediaRemoveT}>Retirer</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
+            )}
+
+            <View style={s.mediaActions}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter une photo"
+                disabled={mediaBusy}
+                onPress={() => onAddMedia('photo')}
+                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+              >
+                <Text style={s.mediaBtnT}>Ajouter une photo</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter une vidéo"
+                disabled={mediaBusy}
+                onPress={() => onAddMedia('video')}
+                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+              >
+                <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
+              </Pressable>
+            </View>
+
+            {mediaBusy ? (
+              <ActivityIndicator
+                color={theme.palette.creamMute}
+                style={{ marginTop: theme.spacing.md }}
+                accessibilityLabel="Envoi du média en cours"
+              />
+            ) : null}
+          </View>
+
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <Button label="Enregistrer ma fiche" loading={saving} onPress={onSave} />
+          </View>
+        </StateWrapper>
       </View>
     </Screen>
   );
@@ -395,7 +405,7 @@ const s = {
   mediaEmpty: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.faint,
+    color: theme.palette.creamMute,
     marginTop: theme.spacing.md,
   },
   mediaTile: { width: 120 },
