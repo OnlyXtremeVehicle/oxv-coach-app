@@ -179,6 +179,16 @@ function QueueRow({
             } as never)
           }
         />
+        {/* Rapport : bilan du coach + PDF de synthèse. */}
+        <RowAction
+          label="Rapport"
+          onPress={() =>
+            router.push({
+              pathname: '/(coach)/rapport',
+              params: { sessionId: item.sessionId, startedAt: item.startedAt },
+            } as never)
+          }
+        />
         {item.status !== 'read' ? (
           <RowAction label="Marquer lue" onPress={() => onMark(item, 'read')} />
         ) : null}
