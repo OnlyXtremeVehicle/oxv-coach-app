@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { QdiRadar } from '@/components/QdiRadar';
@@ -125,7 +125,24 @@ function StudioBody({ data }: { data: StudioSession }) {
       </View>
 
       {/* Triage — les virages les plus serrés (fait seul, où regarder). */}
-      <Text style={[s.sectionLabel, { marginTop: spacing.xxl }]}>À REGARDER EN PREMIER</Text>
+      <View style={[s.triageHead, { marginTop: spacing.xxl }]}>
+        <Text style={s.sectionLabel}>À REGARDER EN PREMIER</Text>
+        {data.triage.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Voir le triage sur la carte"
+            hitSlop={8}
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/triage',
+                params: { sessionId: data.sessionId },
+              } as never)
+            }
+          >
+            <Text style={s.triageLink}>Sur la carte ›</Text>
+          </Pressable>
+        ) : null}
+      </View>
       {data.triage.length === 0 ? (
         <EmptyState
           label="Triage en attente"
@@ -212,6 +229,18 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
     marginBottom: spacing.md,
+  },
+  triageHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: spacing.md,
+  },
+  triageLink: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: palette.creamSoft,
   },
   sectionLabel: {
     fontFamily: theme.fonts.mono,
