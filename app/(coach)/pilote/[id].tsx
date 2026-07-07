@@ -163,14 +163,30 @@ export default function CoachPilotDetailScreen() {
         {sharedNotes.length > 0 ? <SharedNotesBlock notes={sharedNotes} /> : null}
         {sharedSnapshots.length > 0 ? <SharedSnapshotsBlock snapshots={sharedSnapshots} /> : null}
 
-        {/* Priorisation du bilan (§10.3c-B) */}
-        <View style={{ marginTop: theme.spacing.lg, marginBottom: theme.spacing.xxl }}>
+        {/* Priorisation du bilan (§10.3c-B) + Plan d'objectifs (coach_objectives) */}
+        <View
+          style={{
+            marginTop: theme.spacing.lg,
+            marginBottom: theme.spacing.xxl,
+            gap: theme.spacing.sm,
+          }}
+        >
           <Button
             label="Priorités du bilan"
             variant="ghost"
             onPress={() =>
               router.push({
                 pathname: '/(coach)/priorites',
+                params: { pilotId: params.id },
+              } as never)
+            }
+          />
+          <Button
+            label="Plan d’objectifs"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/plan',
                 params: { pilotId: params.id },
               } as never)
             }
