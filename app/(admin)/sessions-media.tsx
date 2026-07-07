@@ -269,7 +269,7 @@ export default function AdminSessionsMediaScreen() {
                       borderRadius: theme.radius.md,
                       borderWidth: 1,
                       borderColor: active ? ADMIN : theme.palette.line,
-                      backgroundColor: active ? 'rgba(184,115,51,0.10)' : theme.palette.card2,
+                      backgroundColor: active ? 'rgba(34,211,238,0.10)' : theme.palette.card2,
                       maxWidth: 220,
                       opacity: pressed ? 0.85 : 1,
                     })}

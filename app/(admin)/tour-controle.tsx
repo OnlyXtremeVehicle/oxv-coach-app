@@ -80,13 +80,10 @@ export default function TourControleScreen() {
   useFocusEffect(reload);
 
   const ct = data;
-  const state: ScreenState = loading
-    ? 'loading'
-    : error
-      ? 'error'
-      : !ct || (ct.todayEvents.length === 0 && ct.expectedPilots === 0)
-        ? 'empty'
-        : 'nominal';
+  // Pas d'état « vide » : le tour de contrôle affiche toujours son tableau de
+  // bord une fois chargé (une journée calme reste une journée à surveiller —
+  // 0 événement + N pilotes attendus ne doit jamais masquer le dashboard).
+  const state: ScreenState = loading ? 'loading' : error || !ct ? 'error' : 'nominal';
 
   return (
     <Screen>
@@ -98,8 +95,6 @@ export default function TourControleScreen() {
         <StateWrapper
           state={state}
           skeletonLines={5}
-          emptyLabel="Journée calme"
-          emptyMessage="Aucune activité opérationnelle aujourd'hui."
           errorCause="Le tour de contrôle n'a pas pu être chargé."
           onRetry={reload}
         >

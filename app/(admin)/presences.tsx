@@ -250,7 +250,7 @@ const s = {
   },
   togglePresent: {
     borderColor: ADMIN,
-    backgroundColor: 'rgba(184,115,51,0.12)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
   },
   toggleText: {
     fontFamily: theme.fonts.mono,

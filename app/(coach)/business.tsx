@@ -112,7 +112,9 @@ export default function CoachBusinessScreen() {
     );
   }
 
-  const state: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
+  // `empty` couvre le cas summary null sans erreur (sinon écran nominal blanc,
+  // les enfants du StateWrapper étant gardés par {summary ? … : null}).
+  const state: ScreenState = loading ? 'loading' : error ? 'error' : !summary ? 'empty' : 'nominal';
 
   return (
     <Screen>
@@ -127,6 +129,8 @@ export default function CoachBusinessScreen() {
           <StateWrapper
             state={state}
             skeletonLines={5}
+            emptyLabel="Aucune activité"
+            emptyMessage="Votre activité apparaîtra ici dès vos premières séances."
             errorCause="Votre activité n'a pas pu être chargée."
             onRetry={reload}
           >

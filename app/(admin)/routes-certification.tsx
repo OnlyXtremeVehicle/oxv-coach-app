@@ -73,7 +73,7 @@ export default function RoutesCertificationScreen() {
 
   return (
     <Screen>
-      <AppBar title="CERTIFICATION" subtitle="Belles routes" onBack={() => router.back()} />
+      <AppBar title="CERTIFICATION" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />

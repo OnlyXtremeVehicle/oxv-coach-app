@@ -526,7 +526,7 @@ const s = {
     borderColor: theme.palette.line,
     backgroundColor: theme.palette.card2,
   },
-  pillOn: { borderColor: ADMIN, backgroundColor: 'rgba(184,115,51,0.12)' },
+  pillOn: { borderColor: ADMIN, backgroundColor: 'rgba(34,211,238,0.12)' },
   pillT: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,

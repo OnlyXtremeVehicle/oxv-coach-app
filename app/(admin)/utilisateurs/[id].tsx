@@ -25,7 +25,6 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
-import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 
@@ -140,9 +139,9 @@ export default function AdminUserDetailScreen() {
     <Screen>
       <AppBar title="COMPTE" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={{ marginBottom: theme.spacing.md }}>
-          <RoleBadge role="admin" />
-        </View>
+        {/* Pas de RoleBadge ici : c'est la fiche d'un AUTRE utilisateur — un
+            badge « admin » se lirait comme le rôle de la personne consultée,
+            pas comme l'espace. L'identité admin vit au hub. */}
         <Text style={s.name} accessibilityRole="header">
           {name}
         </Text>
@@ -285,7 +284,7 @@ const s = {
   },
   pillOn: {
     borderColor: ADMIN,
-    backgroundColor: 'rgba(184,115,51,0.12)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
   },
   pillTxt: {
     fontFamily: theme.fonts.body,

@@ -288,7 +288,7 @@ function ToggleButton(props: {
         borderRadius: theme.radius.md,
         borderWidth: 1,
         borderColor: props.active ? ADMIN : theme.palette.line,
-        backgroundColor: props.active ? 'rgba(184,115,51,0.10)' : 'transparent',
+        backgroundColor: props.active ? 'rgba(34,211,238,0.10)' : 'transparent',
         alignItems: 'center',
         opacity: props.disabled ? 0.4 : pressed ? 0.85 : 1,
       })}
@@ -401,7 +401,7 @@ function CornerRow(props: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.md,
-        backgroundColor: isSelected ? 'rgba(184,115,51,0.10)' : theme.palette.card,
+        backgroundColor: isSelected ? 'rgba(34,211,238,0.10)' : theme.palette.card,
         borderColor: isSelected ? ADMIN : theme.palette.line,
       }}
     >

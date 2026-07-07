@@ -191,7 +191,7 @@ const s = {
   },
   filterOn: {
     borderColor: ADMIN,
-    backgroundColor: 'rgba(184,115,51,0.12)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
   },
   filterTxt: {
     fontFamily: theme.fonts.body,

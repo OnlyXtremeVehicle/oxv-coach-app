@@ -125,7 +125,7 @@ export default function PreparationScreen() {
           skeletonLines={5}
           emptyLabel="Préparation"
           emptyMessage="Aucun pilote inscrit à la prochaine session."
-          errorCause="La liste des pilotes n'a pas pu être chargée."
+          errorCause="La lecture des pilotes a échoué. Vérifiez la connexion, puis réessayez."
           onRetry={reload}
         >
           <View style={{ gap: theme.spacing.sm }}>
