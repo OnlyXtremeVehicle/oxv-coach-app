@@ -109,6 +109,22 @@ function StudioBody({ data }: { data: StudioSession }) {
         {data.bestLapSeconds != null ? ` · meilleur ${formatLapTime(data.bestLapSeconds)}` : ''}
       </Text>
 
+      {/* Mode présentation : la même séance, en vue calme à montrer au pilote. */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Ouvrir le mode présentation du débrief"
+        hitSlop={8}
+        onPress={() =>
+          router.push({
+            pathname: '/(coach)/debrief',
+            params: { sessionId: data.sessionId },
+          } as never)
+        }
+        style={{ marginTop: spacing.md }}
+      >
+        <Text style={s.triageLink}>Mode présentation ›</Text>
+      </Pressable>
+
       {/* Radar QDI 5 branches — jamais un composite (T6). */}
       <View style={{ marginTop: spacing.xl }}>
         {data.qdi ? (
