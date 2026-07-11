@@ -29,41 +29,71 @@ const sessionChannel = (sessionId: string) => `live:session:${sessionId}`;
 export type Unsubscribe = () => void;
 
 // ---------------------------------------------------------------------------
-// COACH — lire le roster (qui est en piste)
+// Roster — UN SEUL canal `live:roster` par client (singleton refcompté).
+// Un client supabase-js indexe les canaux par topic : lecture (coach) et track
+// (pilote) DOIVENT partager la même instance, sinon un removeChannel arrache le
+// canal de l'autre (bug visible dès que les deux rôles tournent dans un seul
+// client, ex. le simulateur dev). La clé de présence est celle du 1er appelant :
+// pilote → pilotId (unique) ; coach lecteur → 'coach' (ne track pas, clé neutre).
 // ---------------------------------------------------------------------------
 
-/** S'abonne à la présence des pilotes en piste. Rappelle `onRoster` à chaque sync. */
-export function subscribeRoster(onRoster: (roster: RosterEntry[]) => void): Unsubscribe {
-  const channel = supabase.channel(ROSTER_CHANNEL, { config: { presence: { key: 'coach' } } });
-  const emit = () => {
-    const state = channel.presenceState() as unknown as Record<string, RosterMeta[]>;
-    onRoster(reduceRoster(state));
-  };
-  channel
-    .on('presence', { event: 'sync' }, emit)
+let rosterChannel: RealtimeChannel | null = null;
+let rosterRefs = 0;
+let rosterTrack: RosterMeta | null = null;
+const rosterSyncCbs = new Set<() => void>();
+
+function ensureRosterChannel(preferredKey: string): RealtimeChannel {
+  if (rosterChannel) return rosterChannel;
+  const ch = supabase.channel(ROSTER_CHANNEL, { config: { presence: { key: preferredKey } } });
+  const emit = () => rosterSyncCbs.forEach((cb) => cb());
+  ch.on('presence', { event: 'sync' }, emit)
     .on('presence', { event: 'join' }, emit)
     .on('presence', { event: 'leave' }, emit)
-    .subscribe();
+    .subscribe((status) => {
+      if (status === 'SUBSCRIBED' && rosterTrack) ch.track(rosterTrack);
+    });
+  rosterChannel = ch;
+  return ch;
+}
+
+function releaseRosterChannel(): void {
+  rosterRefs -= 1;
+  if (rosterRefs <= 0 && rosterChannel) {
+    supabase.removeChannel(rosterChannel);
+    rosterChannel = null;
+    rosterRefs = 0;
+    rosterTrack = null;
+  }
+}
+
+/** COACH — s'abonne à la présence des pilotes en piste. Rappelle `onRoster` à chaque sync. */
+export function subscribeRoster(onRoster: (roster: RosterEntry[]) => void): Unsubscribe {
+  rosterRefs += 1;
+  const ch = ensureRosterChannel('coach');
+  const cb = () => {
+    const state = ch.presenceState() as unknown as Record<string, RosterMeta[]>;
+    onRoster(reduceRoster(state));
+  };
+  rosterSyncCbs.add(cb);
+  cb(); // état courant immédiat (peut être déjà synchronisé)
   return () => {
-    supabase.removeChannel(channel);
+    rosterSyncCbs.delete(cb);
+    releaseRosterChannel();
   };
 }
 
-// ---------------------------------------------------------------------------
-// PILOTE — s'annoncer en piste (présence)
-// ---------------------------------------------------------------------------
-
-/** Le pilote rejoint le roster (capture démarrée). Retourne le retrait. */
+/** PILOTE — rejoint le roster (capture démarrée). Retourne le retrait. */
 export function joinRoster(meta: RosterMeta): Unsubscribe {
-  const channel = supabase.channel(ROSTER_CHANNEL, {
-    config: { presence: { key: meta.pilotId } },
-  });
-  channel.subscribe((status) => {
-    if (status === 'SUBSCRIBED') channel.track(meta);
-  });
+  rosterRefs += 1;
+  rosterTrack = meta;
+  const ch = ensureRosterChannel(meta.pilotId);
+  // Si le canal est déjà abonné (créé par le coach), on track maintenant ;
+  // sinon le callback de subscribe s'en charge à SUBSCRIBED.
+  if (ch.state === 'joined') ch.track(meta);
   return () => {
-    channel.untrack();
-    supabase.removeChannel(channel);
+    rosterTrack = null;
+    ch.untrack();
+    releaseRosterChannel();
   };
 }
 

@@ -27,6 +27,9 @@ export function usePilotLive(sessionId: string | null): {
       setConn('offline');
       return;
     }
+    // Garde de montage : removeChannel est asynchrone, une trame en vol peut
+    // encore appeler onFrame après le démontage → on n'écrit plus d'état alors.
+    let active = true;
     subscribedRef.current = false;
     lastFrameMsRef.current = null;
     setFrame(null);
@@ -34,6 +37,7 @@ export function usePilotLive(sessionId: string | null): {
 
     const unsub = subscribePilotStream(sessionId, {
       onFrame: (f) => {
+        if (!active) return;
         lastFrameMsRef.current = Date.now();
         setFrame(f);
       },
@@ -44,6 +48,7 @@ export function usePilotLive(sessionId: string | null): {
 
     // Tick : réévalue l'état même sans nouvelle trame (live → stale → offline).
     const tick = setInterval(() => {
+      if (!active) return;
       setConn(
         deriveLiveConn({
           subscribed: subscribedRef.current,
@@ -54,6 +59,7 @@ export function usePilotLive(sessionId: string | null): {
     }, 1000);
 
     return () => {
+      active = false;
       clearInterval(tick);
       unsub();
     };

@@ -41,6 +41,10 @@ export default function CockpitFocusScreen() {
     frame?.cornerIndex != null ? (getCorner(frame.cornerIndex)?.name ?? null) : null;
   const alert = frame ? liveAlert(frame, cornerName) : null;
 
+  // Flux périmé : on atténue les valeurs figées pour qu'elles cessent de passer
+  // pour du direct (le bandeau d'état ne suffit pas, le chiffre roi domine).
+  const staleStyle = conn === 'stale' || conn === 'offline' ? { opacity: 0.4 } : null;
+
   return (
     <Screen>
       <AppBar title={(params.name ?? 'En direct').toUpperCase()} onBack={() => router.back()} />
@@ -56,7 +60,7 @@ export default function CockpitFocusScreen() {
         </View>
 
         {/* Chrono du tour en cours — chiffre roi, or (c'est un chrono). */}
-        <View style={s.hero}>
+        <View style={[s.hero, staleStyle]}>
           <Text style={s.eyebrow}>
             {frame
               ? `TOUR ${frame.lap}${frame.sector != null ? ` · SECTEUR ${frame.sector}` : ''}`
@@ -81,7 +85,7 @@ export default function CockpitFocusScreen() {
         ) : null}
 
         {/* Relevés instantanés — neutres (ni chrono, ni alarme). */}
-        <View style={s.tiles}>
+        <View style={[s.tiles, staleStyle]}>
           <Fact
             label="Vitesse"
             value={frame ? String(Math.round(frame.speedKmh)) : '—'}
