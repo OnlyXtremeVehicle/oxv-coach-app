@@ -293,7 +293,9 @@ const s = {
   bar: {
     width: '70%' as const,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold, // or = donnée
+    // Fréquence de séances (activité), pas un chrono → crème neutre.
+    // L'or reste réservé au chrono/record (canon V3).
+    backgroundColor: theme.palette.creamMute,
   },
   colLabel: {
     fontFamily: theme.fonts.mono,

@@ -53,13 +53,14 @@ import { SectionLabel } from '@/ui/SectionLabel';
 import { Segmented } from '@/ui/Segmented';
 import { formatDateShort } from '@/utils/format';
 
-// Couleurs sémantiques des zones de marge (vert/jaune/rouge) : couleurs de
-// donnée doublées d'un libellé. Le vert est le token canon ; le jaune n'a pas
-// d'équivalent exact dans la palette V2.
+// Zones de marge sur le dégradé §7.6 (identique à marginZoneExportColor / carte /
+// CornersLayer) : faible→large = ROUGE de donnée → OR → VERT. L'or est le
+// midpoint assumé du dégradé de marge ; le serré en rouge de DONNÉE (freinage),
+// jamais le rouge de marque.
 const MARGIN_COLORS = {
-  green: theme.palette.green,
-  yellow: '#EF9F27',
-  red: theme.palette.pilotAmber, // ambre pilote : rouge de marque interdit sur une donnée (canon)
+  green: theme.dataColors.accel, // marge large
+  yellow: theme.palette.gold, // marge moyenne (midpoint)
+  red: theme.dataColors.brake, // marge serrée (rouge de donnée)
 } as const;
 
 type Mode = 'snapshot' | 'aggregated';
@@ -287,9 +288,12 @@ function SnapshotView(props: SnapshotProps) {
       />
 
       <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}>
+        {/* Vous/Eux = étiquetage d'identité (qui), pas un chrono ni un rang :
+            vous en crème neutre, l'ami en bleu pour distinguer. L'or reste au
+            chrono/record ; aucun gagnant (self-only, même entre amis). */}
         <DuelColumn
           eyebrow="Vous"
-          accent={theme.palette.gold}
+          accent={theme.palette.cream}
           marginGlobal={props.selectedMineRow?.marginGlobal ?? null}
           marginZone={props.selectedMineRow?.marginZone ?? null}
           context={
@@ -300,7 +304,7 @@ function SnapshotView(props: SnapshotProps) {
         />
         <DuelColumn
           eyebrow="Eux"
-          accent={theme.palette.cream}
+          accent={theme.dataColors.trajectory}
           marginGlobal={props.selectedTheirsRow?.marginGlobal ?? null}
           marginZone={props.selectedTheirsRow?.marginZone ?? null}
           context={
@@ -495,8 +499,13 @@ function AggregatedView({ n, onChangeN, myStats, theirStats, loading }: Aggregat
         />
       ) : (
         <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <DuelStatColumn eyebrow="Vous" accent={theme.palette.gold} stats={myStats} n={n} />
-          <DuelStatColumn eyebrow="Eux" accent={theme.palette.cream} stats={theirStats} n={n} />
+          <DuelStatColumn eyebrow="Vous" accent={theme.palette.cream} stats={myStats} n={n} />
+          <DuelStatColumn
+            eyebrow="Eux"
+            accent={theme.dataColors.trajectory}
+            stats={theirStats}
+            n={n}
+          />
         </View>
       )}
     </>

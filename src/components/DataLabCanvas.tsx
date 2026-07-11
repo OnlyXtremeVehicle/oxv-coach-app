@@ -72,8 +72,9 @@ export function DataLabCanvas({
     });
   }
 
-  // Couleur de donnée par couche (ambre pilote pour la vitesse ; crème sinon).
-  const trajColor = layer === 'vitesse' ? theme.palette.pilotAmber : theme.palette.cream;
+  // Couleur de donnée par couche : vitesse = bleu (bout froid de la rampe
+  // vitesse, canon V3 — jamais l'or/ambre sur une vitesse) ; crème sinon.
+  const trajColor = layer === 'vitesse' ? theme.dataColors.trajectory : theme.palette.cream;
 
   return (
     <Canvas style={{ width, height }}>
