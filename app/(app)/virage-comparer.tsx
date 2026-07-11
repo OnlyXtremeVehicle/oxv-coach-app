@@ -204,16 +204,19 @@ export default function VirageComparerScreen() {
                 marginBottom: theme.spacing.xxl,
               }}
             >
+              {/* A/B = étiquetage de série (quelle session), pas un chrono : A
+                  neutre crème, B bleu. L'or reste au chrono/record ; aucune
+                  session « gagnante » (self-only). */}
               <MiniCard
                 label="Session A"
-                accent={theme.palette.gold}
+                accent={theme.palette.cream}
                 deep={deepA}
                 viewBox={viewBox}
                 cornerIndex={corner.index}
               />
               <MiniCard
                 label="Session B"
-                accent={theme.palette.cream}
+                accent={theme.dataColors.trajectory}
                 deep={deepB}
                 viewBox={viewBox}
                 cornerIndex={corner.index}
@@ -421,7 +424,7 @@ const s = {
   },
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    shadowColor: theme.palette.creamMute,
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },

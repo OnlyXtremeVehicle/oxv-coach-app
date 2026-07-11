@@ -75,7 +75,8 @@ function CornerMark(props: {
         cy={y}
         r={radius}
         fill={fill}
-        stroke={isSelected ? theme.palette.gold : theme.palette.night}
+        // Sélection : liseré crème neutre (l'or reste au chrono/record, jamais un état UI).
+        stroke={isSelected ? theme.palette.cream : theme.palette.night}
         strokeWidth={isSelected ? 3 : 2}
       />
       {showLabel ? (
@@ -107,23 +108,28 @@ function fillForCorner(
     if (!zone) return theme.palette.creamMute;
     return colorForZone(zone);
   }
+  // Dégradé de marge V3 (handoff §7.6) : faible→large = ROUGE → OR → VERT.
+  // L'or est le MIDPOINT assumé du dégradé de marge (exception documentée à
+  // « or = chrono »), le serré en rouge de DONNÉE, jamais le rouge de marque.
   switch (corner.pace) {
     case 'slow':
-      return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
+      return theme.dataColors.brake; // #F65B5B marge serrée
     case 'medium':
-      return '#EF9F27'; // jaune de marge (aligné sur l'export) — PAS le rouge freinage
+      return theme.palette.gold; // #FFB703 transition du dégradé de marge
     case 'fast':
-      return theme.palette.green;
+      return theme.dataColors.accel; // #4FC98A marge large
   }
 }
 
 function colorForZone(zone: MarginZone): string {
+  // Dégradé de marge (handoff §7.6), identique à marginZoneExportColor :
+  // rouge de donnée → or → vert. Cohérence carte / liste / export.
   switch (zone) {
     case 'green':
-      return theme.palette.green;
+      return theme.dataColors.accel; // marge large
     case 'yellow':
-      return '#EF9F27'; // jaune de marge (aligné sur l'export) — PAS le rouge freinage
+      return theme.palette.gold; // marge moyenne (midpoint du dégradé)
     case 'red':
-      return theme.palette.pilotAmber; // ambre pilote (rouge-perf neutralisé)
+      return theme.dataColors.brake; // marge serrée (rouge de donnée)
   }
 }

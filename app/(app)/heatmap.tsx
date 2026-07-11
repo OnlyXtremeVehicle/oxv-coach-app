@@ -30,7 +30,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 
-const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
+const { palette, speedHeat, fonts, fontSize, spacing, radius, hitSlop } = theme;
 
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -158,10 +158,12 @@ export default function HeatmapScreen() {
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               >
-                <View style={[s.gradSeg, { backgroundColor: palette.faint }]} />
-                {/* Cran tiède : or donnée translucide (heritageGold réservé au tier Heritage) */}
-                <View style={[s.gradSeg, { backgroundColor: 'rgba(255,183,3,0.45)' }]} />
-                <View style={[s.gradSeg, { backgroundColor: palette.gold }]} />
+                {/* Rampe froid → chaud partagée (theme.speedHeat) : bleu → cyan →
+                    vert → jaune. Même source que le rendu (TrackStage) : la légende
+                    ne peut plus mentir. Jamais de rouge (alarme) ni d'or (chrono). */}
+                {speedHeat.map((c, i) => (
+                  <View key={i} style={[s.gradSeg, { backgroundColor: c }]} />
+                ))}
               </View>
               <Text style={s.gradLabel}>Rapide</Text>
             </View>
@@ -178,7 +180,6 @@ export default function HeatmapScreen() {
                   label="Ligne la plus rapide"
                   value={String(Math.round(stats.max))}
                   unit="km/h"
-                  accent
                 />
               </View>
             ) : null}

@@ -211,15 +211,17 @@ export default function CarteScreen() {
 }
 
 function colorForZone(zone: MarginZone | null | undefined): string {
+  // Dégradé de marge (handoff §7.6), identique à marginZoneExportColor et aux
+  // pastilles CornersLayer : faible→large = ROUGE de donnée → OR → VERT. L'or
+  // est le midpoint assumé du dégradé de marge (exception à « or = chrono ») ;
+  // le serré en rouge de DONNÉE (freinage), jamais le rouge de marque.
   switch (zone) {
     case 'green':
-      return theme.palette.green;
+      return theme.dataColors.accel; // marge large
     case 'yellow':
-      return theme.palette.gold;
+      return theme.palette.gold; // marge moyenne (midpoint du dégradé)
     case 'red':
-      // Rouge de marque interdit sur une donnée : ambre pilote (canon, cf.
-      // CornersLayer / marginZoneExportColor).
-      return theme.palette.pilotAmber;
+      return theme.dataColors.brake; // marge serrée (rouge de donnée)
     default:
       // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
       return theme.palette.creamMute;

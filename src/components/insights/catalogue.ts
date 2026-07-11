@@ -158,13 +158,12 @@ export function getReading(key: string | undefined): ReadingDef | undefined {
 }
 
 /**
- * Couleur de donnée QDI d'une dimension, côté pilote. Identique à
- * theme.dataColors, SAUF `trajectory` : sa couleur figée (#E63946, un rouge)
- * est réservée à la marque et à la voix du coach. On la neutralise ici en
- * ambre, sans toucher dataColors (gelé, partagé avec le site).
+ * Couleur de donnée QDI d'une dimension, côté pilote = theme.dataColors, sans
+ * exception. La neutralisation historique de `trajectory` en ambre reposait sur
+ * une prémisse PÉRIMÉE (trajectory aurait été un rouge de marque #E63946) : en
+ * V3, dataColors.trajectory est BLEU #4F9DF7, distinct du rouge de marque. Chaque
+ * branche porte donc sa couleur canonique (une couleur = une donnée).
  */
-export const PILOT_TRAJECTORY_COLOR = theme.palette.pilotAmber;
 export function dimensionColor(dimension: QdiDimension): string {
-  if (dimension === 'trajectory') return PILOT_TRAJECTORY_COLOR;
   return theme.dataColors[dimension];
 }

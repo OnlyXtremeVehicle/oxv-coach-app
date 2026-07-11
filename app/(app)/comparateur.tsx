@@ -153,16 +153,20 @@ export default function ComparateurScreen() {
               </View>
             ) : null}
 
+            {/* A/B = simple étiquetage de série (quelle séance), pas une donnée
+                QDI ni un chrono : A neutre crème, B bleu pour distinguer les deux
+                traces. L'or reste au chrono/record ; aucune séance n'est « la »
+                référence (self-only, pas de gagnant). */}
             <SessionPicker
               label="Référence A"
-              accent={theme.palette.gold}
+              accent={theme.palette.cream}
               sessions={filtered}
               selectedId={selectedA}
               onSelect={setSelectedA}
             />
             <SessionPicker
               label="Référence B"
-              accent={theme.palette.cream}
+              accent={theme.dataColors.trajectory}
               sessions={filtered}
               selectedId={selectedB}
               onSelect={setSelectedB}
@@ -190,8 +194,8 @@ function DeltaPanel({
   }
   const deltaMargin = Number(b.marginGlobal) - Number(a.marginGlobal);
   // Doctrine comparaison : le signe situe l'écart (fait), la couleur ne juge
-  // pas. Pas de vert « mieux » / rouge « moins bien » — un écart neutre, en or
-  // de donnée comme le reste de l'écran.
+  // pas. Pas de vert « mieux » / rouge « moins bien » — un écart neutre, en
+  // crème atténué (l'or est réservé au chrono/record, pas à une donnée de marge).
   const sign = deltaMargin > 0 ? '+' : deltaMargin < 0 ? '−' : '±';
   const marginA = Math.round(Number(a.marginGlobal));
   const marginB = Math.round(Number(b.marginGlobal));
@@ -205,7 +209,7 @@ function DeltaPanel({
         accessibilityLabel={`Écart de marge entre les deux références : ${sign}${Math.abs(
           Math.round(deltaMargin)
         )} pour cent.`}
-        style={[s.deltaValue, { color: theme.palette.gold }]}
+        style={[s.deltaValue, { color: theme.palette.creamMute }]}
       >
         {sign}
         {Math.abs(Math.round(deltaMargin))}%

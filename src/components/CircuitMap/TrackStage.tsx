@@ -30,7 +30,7 @@ import { memo, useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Circle, Defs, Line, Path, Polyline, RadialGradient, Rect, Stop } from 'react-native-svg';
 
-import { fonts, fontSize, motion, palette, radius, spacing } from '@/theme/v2';
+import { fonts, fontSize, motion, palette, radius, spacing, speedHeat } from '@/theme/v2';
 
 import { CircuitMap } from './CircuitMap';
 import { CornersLayer } from './layers/CornersLayer';
@@ -225,7 +225,8 @@ function GlowSpine({
   );
 }
 
-/** Carte de chaleur SANS rouge : froid (faint) → tiède (or translucide) → chaud (or). */
+/** Carte de chaleur vitesse : rampe froid → chaud partagée (theme.speedHeat),
+ *  bleu → cyan → vert → jaune. Aucun or (chrono) ni rouge (alarme). */
 function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) {
   if (points.length < 2) return null;
   const vals = points
@@ -239,8 +240,9 @@ function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) 
         const a = projectToScene(p);
         const b = projectToScene(next);
         const r = max > 0 ? ((p.intensity ?? 0) + (next.intensity ?? 0)) / 2 / max : 0;
-        // Cran tiède : or donnée translucide — heritageGold réservé au tier Heritage.
-        const c = r < 0.34 ? palette.faint : r < 0.67 ? 'rgba(255,183,3,0.45)' : palette.gold;
+        // Rampe vitesse froid → chaud (source unique speedHeat) : jamais d'or.
+        const c =
+          r < 0.25 ? speedHeat[0] : r < 0.5 ? speedHeat[1] : r < 0.75 ? speedHeat[2] : speedHeat[3];
         return (
           <Polyline
             key={i}

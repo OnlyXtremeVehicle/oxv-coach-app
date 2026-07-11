@@ -134,7 +134,10 @@ export default function ToursScreen() {
               >
                 Meilleur tour
               </Text>
-              <KingNumber value={formatLapTime(bestLap.duration_seconds)} />
+              <KingNumber
+                value={formatLapTime(bestLap.duration_seconds)}
+                color={theme.palette.gold}
+              />
               <Text style={[s.meta, { marginTop: theme.spacing.md }]}>
                 Tour {bestLap.lap_number}
               </Text>

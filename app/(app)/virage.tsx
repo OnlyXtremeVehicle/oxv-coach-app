@@ -451,7 +451,7 @@ function StatRow({
       }}
     >
       <Text style={s.statLabel}>{label}</Text>
-      <Text style={[s.statValue, emphasis && { color: theme.palette.gold }]}>{value}</Text>
+      <Text style={[s.statValue, emphasis && { color: theme.palette.creamMute }]}>{value}</Text>
     </View>
   );
 }
@@ -522,14 +522,15 @@ function VirageNotFound() {
 }
 
 // Couleur de l'étiquette de marge : tons DONNÉE, jamais un rouge de verdict
-// (doctrine — le chiffre central n'est pas un jugement). Le « terrain serré »
-// reste neutre crème pour décrire sans condamner.
+// (doctrine — le chiffre central n'est pas un jugement). Le jaune emprunte la
+// donnée « fluidité » (dataColors.flow), pas l'or du chrono (canon R1). Le
+// « terrain serré » reste neutre crème pour décrire sans condamner.
 function colorForZone(zone: MarginZone): string {
   switch (zone) {
     case 'green':
       return theme.palette.green;
     case 'yellow':
-      return theme.palette.gold;
+      return theme.dataColors.flow;
     case 'red':
       return theme.palette.creamMute;
   }
@@ -557,7 +558,8 @@ const s = {
   },
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    // Ombre neutre — l'or reste réservé au chrono (canon R1), pas un accent par défaut.
+    shadowColor: theme.palette.creamMute,
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
