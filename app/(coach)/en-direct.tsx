@@ -50,7 +50,10 @@ export default function EnDirectScreen() {
               <Card
                 key={p.pilotId}
                 onPress={() =>
-                  router.push({ pathname: '/(coach)/pilote/[id]', params: { id: p.pilotId } })
+                  router.push({
+                    pathname: '/(coach)/en-direct/[sessionId]',
+                    params: { sessionId: p.sessionId, name: p.firstName },
+                  } as never)
                 }
                 accessibilityLabel={`${p.firstName}, ${p.onTrack ? 'en piste' : 'au stand'}${
                   p.circuit ? `, ${p.circuit}` : ''
