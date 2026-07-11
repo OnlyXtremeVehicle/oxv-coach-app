@@ -23,6 +23,7 @@
 
 import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import { startCapture, stopCapture } from '@/ble/captureMode';
+import { startPilotLiveRelay, stopPilotLiveRelay } from '@/services/liveRelayRunner';
 import {
   type RecordedLap,
   getRecordedLaps,
@@ -231,6 +232,15 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     handleReconnect(state, rc);
   });
 
+  // Relais LIVE vers le coach — UNIQUEMENT si le pilote a activé le « partage en
+  // direct » (garde-fou dans le runner). Best-effort, non bloquant, MUET côté
+  // pilote (silence en piste : aucun HUD). N'affecte jamais la capture locale.
+  void startPilotLiveRelay({
+    sessionId,
+    pilotId: input.userId,
+    circuit: input.circuitName ?? null,
+  }).catch(() => undefined);
+
   return { ok: true, sessionId };
 }
 
@@ -370,6 +380,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   //    puis flush final complet.
   state.unsubData();
   state.unsubReconnect();
+  stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);
   await drain(state);
 
@@ -436,6 +447,7 @@ export async function abortCaptureSession(): Promise<void> {
   setLinkStatus('idle');
   state.unsubData();
   state.unsubReconnect();
+  stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);
   // Attend un flush éventuellement en vol pour ne pas écrire après l'abandon.
   if (state.flushPromise) {
