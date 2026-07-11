@@ -293,9 +293,9 @@ const s = {
   invoiceAmount: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.h3,
-    // Montant (argent, pas un chrono/record) → crème neutre (canon strict : or =
-    // chrono uniquement). À CONFIRMER Gabin : veut-il le montant en or ? Si oui,
-    // c'est une exception « valeur money » à documenter (comme la marge §7.6).
+    // Montant encaissé (argent, pas un chrono) → crème neutre. Décision Gabin
+    // 2026-07-11 : le CA reste NEUTRE (l'or = chrono/record uniquement) ; seuls
+    // les TARIFS d'offre portent le heritageGold (registre offre).
     color: palette.cream,
   },
   footnote: {

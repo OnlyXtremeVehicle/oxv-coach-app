@@ -474,7 +474,9 @@ const s = {
   tariffValue: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.display,
-    color: theme.palette.cream,
+    // Tarif d'offre = registre « offre » heritageGold (décision Gabin 2026-07-11),
+    // distinct de l'or système (chrono) et du CA encaissé (crème).
+    color: theme.palette.heritageGold,
     letterSpacing: 0.5,
   },
   tariffLabel: {

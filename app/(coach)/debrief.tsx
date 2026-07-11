@@ -22,6 +22,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { KingNumber } from '@/ui/KingNumber';
+import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
@@ -125,7 +126,13 @@ function DebriefBody({ data }: { data: StudioSession }) {
       {data.margins.global != null ? (
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
           <Text style={s.eyebrowCentered}>Marge de la séance</Text>
-          <KingNumber value={`${Math.round(data.margins.global)}`} unit="%" label="Marge" />
+          {/* Marge = dégradé §7.6 selon la zone, pas l'or par défaut. */}
+          <KingNumber
+            value={`${Math.round(data.margins.global)}`}
+            unit="%"
+            label="Marge"
+            color={marginZoneExportColor(data.margins.zone)}
+          />
         </View>
       ) : null}
 

@@ -26,6 +26,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { KingNumber } from '@/ui/KingNumber';
+import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
@@ -185,7 +186,14 @@ function StudioBody({ data }: { data: StudioSession }) {
         <View style={{ marginTop: spacing.xxl }}>
           <CockpitPanel plain>
             <Text style={s.panelLabel}>Marge globale de la séance</Text>
-            <KingNumber value={`${Math.round(data.margins.global)}`} unit="%" label="Marge" />
+            {/* Marge = dégradé §7.6 selon la zone (serré→rouge donnée, moyen→or,
+                large→vert), pas l'or par défaut. L'or reste au chrono/record. */}
+            <KingNumber
+              value={`${Math.round(data.margins.global)}`}
+              unit="%"
+              label="Marge"
+              color={marginZoneExportColor(data.margins.zone)}
+            />
           </CockpitPanel>
         </View>
       ) : null}
