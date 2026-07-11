@@ -1,29 +1,41 @@
 /**
- * liveRelayRunner — relais du flux BLE pilote vers le coach, côté CAPTURE (P5).
+ * liveRelayRunner — relais du flux BLE pilote vers le(s) coach(s), côté CAPTURE (P5).
  *
  * Module-level (PAS un hook React) : la capture tourne sans écran monté (« silence
- * en piste »), donc le relais doit vivre avec le service de capture, pas avec l'UI.
- * Greffé sur `captureSessionService` (start/stop). Encapsule le GARDE-FOU de
- * consentement : il ne démarre QUE si le pilote a activé le « partage en direct »
- * (`coach_pilots.live_sharing_at IS NOT NULL`) — sinon aucune trame ne part.
+ * en piste »), donc le relais vit avec le service de capture, pas avec l'UI.
+ * Greffé sur `captureSessionService` (start/stop). GARDE-FOU de consentement :
+ * ne démarre QUE si le pilote a activé le « partage en direct » pour au moins un
+ * coach, et se réconcilie EN SÉANCE (révoquer un coach le fait sortir de SON
+ * roster ; révoquer le dernier coupe tout). Transport durci : roster PAR-COACH +
+ * canaux privés (cf. liveSessionService) — l'audience est scopée au binôme.
  *
- * Doctrine : muet côté pilote (aucun HUD, silence en piste respecté). Le coach
- * observe. Aucun classement.
+ * Doctrine : muet côté pilote (aucun HUD, silence en piste). Le coach observe.
  */
 
 import { bluetoothService } from '@/ble/bluetoothService';
 import { getRecordedLaps } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
-import { shouldEmitFrame } from '@/services/liveSessionLogic';
+import { type RosterMeta, shouldEmitFrame } from '@/services/liveSessionLogic';
 import { joinRoster, openPilotBroadcast } from '@/services/liveSessionService';
 import { raceBoxToLiveFrame } from '@/services/liveRelayLogic';
 
 let stopFn: (() => void) | null = null;
 
+/** Coachs à qui le pilote a consenti le partage LIVE (actif + live_sharing_at). */
+async function consentedCoachIds(pilotId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('coach_pilots')
+    .select('coach_id')
+    .eq('pilot_id', pilotId)
+    .eq('active', true)
+    .not('live_sharing_at', 'is', null);
+  return (data ?? []).map((r) => (r as { coach_id: string }).coach_id);
+}
+
 /**
- * Démarre le relais pour la séance courante SI le pilote a consenti au partage
- * live. Best-effort, non bloquant : toute erreur laisse la capture intacte et
- * simplement muette côté coach. Idempotent (stoppe un relais précédent).
+ * Démarre le relais pour la séance courante SI ≥ 1 coach a le partage live.
+ * Best-effort, non bloquant : toute erreur laisse la capture intacte et muette
+ * côté coach. Idempotent (stoppe un relais précédent).
  */
 export async function startPilotLiveRelay(input: {
   sessionId: string;
@@ -32,35 +44,40 @@ export async function startPilotLiveRelay(input: {
 }): Promise<void> {
   stopPilotLiveRelay();
 
-  // Garde-fou consentement : au moins un coach actif AVEC partage live activé.
-  const { data: consent } = await supabase
-    .from('coach_pilots')
-    .select('id')
-    .eq('pilot_id', input.pilotId)
-    .eq('active', true)
-    .not('live_sharing_at', 'is', null)
-    .limit(1)
-    .maybeSingle();
-  if (!consent) return; // pas de consentement live → silence réseau, rien n'est émis
+  const coachIds = await consentedCoachIds(input.pilotId);
+  if (coachIds.length === 0) return; // aucun consentement live → silence réseau
 
-  // Prénom du pilote pour le roster (le coach voit « qui est en piste »).
   const { data: me } = await supabase
     .from('users')
     .select('first_name')
     .eq('id', input.pilotId)
     .maybeSingle();
   const firstName = (me as { first_name?: string | null } | null)?.first_name ?? 'Pilote';
-
-  const leave = joinRoster({
+  const meta: RosterMeta = {
     pilotId: input.pilotId,
     firstName,
     sessionId: input.sessionId,
     circuit: input.circuit,
     onTrack: true,
     sinceMs: Date.now(),
-  });
-  const broadcast = openPilotBroadcast(input.sessionId);
+  };
 
+  // Une présence par coach consenti ; réconciliée si le consentement change.
+  const rosterLeaves = new Map<string, () => void>();
+  const syncRosters = (ids: string[]) => {
+    for (const [cid, leave] of rosterLeaves) {
+      if (!ids.includes(cid)) {
+        leave(); // ce coach a révoqué → le pilote sort de SON roster
+        rosterLeaves.delete(cid);
+      }
+    }
+    for (const cid of ids) {
+      if (!rosterLeaves.has(cid)) rosterLeaves.set(cid, joinRoster(cid, meta));
+    }
+  };
+  syncRosters(coachIds);
+
+  const broadcast = openPilotBroadcast(input.sessionId);
   let lastEmit: number | null = null;
   let lapStartMs = Date.now();
   let lastLapCount = getRecordedLaps().length;
@@ -77,11 +94,9 @@ export async function startPilotLiveRelay(input: {
     broadcast.send(raceBoxToLiveFrame(data, { lap: laps + 1, lapStartMs, nowMs: now }));
   });
 
-  // Révocation EN SÉANCE : on écoute coach_pilots en temps réel. Dès qu'un
-  // changement retire le dernier consentement live (live_sharing_at→null,
-  // consentement de base retiré, ou binôme désactivé), on coupe le relais
-  // immédiatement — « Coupez quand vous voulez » est tenu en vol, pas au
-  // prochain démarrage de capture.
+  // Révocation EN SÉANCE : on écoute coach_pilots en temps réel et on réconcilie.
+  // Révoquer UN coach le fait sortir de son roster ; révoquer le dernier coupe
+  // tout — « Coupez quand vous voulez » est tenu en vol.
   const consentCh = supabase
     .channel(`relay-consent:${input.pilotId}`)
     .on(
@@ -93,17 +108,10 @@ export async function startPilotLiveRelay(input: {
         filter: `pilot_id=eq.${input.pilotId}`,
       },
       () => {
-        supabase
-          .from('coach_pilots')
-          .select('id')
-          .eq('pilot_id', input.pilotId)
-          .eq('active', true)
-          .not('live_sharing_at', 'is', null)
-          .limit(1)
-          .maybeSingle()
-          .then(({ data: still }) => {
-            if (!still) stopPilotLiveRelay(); // plus aucun consentement live → coupe
-          });
+        consentedCoachIds(input.pilotId).then((ids) => {
+          if (ids.length === 0) stopPilotLiveRelay();
+          else syncRosters(ids);
+        });
       }
     )
     .subscribe();
@@ -111,12 +119,13 @@ export async function startPilotLiveRelay(input: {
   stopFn = () => {
     off();
     broadcast.close();
-    leave();
+    for (const leave of rosterLeaves.values()) leave();
+    rosterLeaves.clear();
     supabase.removeChannel(consentCh);
   };
 }
 
-/** Coupe le relais (fin de capture ou révocation). Idempotent. */
+/** Coupe le relais (fin de capture ou dernière révocation). Idempotent. */
 export function stopPilotLiveRelay(): void {
   if (stopFn) {
     stopFn();

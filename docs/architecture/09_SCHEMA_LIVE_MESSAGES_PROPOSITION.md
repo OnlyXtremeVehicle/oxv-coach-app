@@ -122,52 +122,61 @@ le « live » du fil est un abonnement, pas une seconde source de vérité.
 
 ---
 
-## 3 — ⚠ BLOQUEUR PROD : durcir le transport live (canaux privés + RLS realtime)
+## 3 — ✅ DURCI (appliqué 2026-07-11) : transport live privé + RLS realtime
 
-**Trouvé par la vérif privacy (2026-07-11).** Le transport du direct utilise des
-canaux **Supabase Realtime PUBLICS**. Le consentement per-coach (1-B) ne gate que
-l'ÉMISSION (le pilote émet ou pas), **pas l'AUDIENCE** :
+**Trouvé par la vérif privacy (2026-07-11), corrigé dans la foulée.** Le transport
+du direct utilisait des canaux **Supabase Realtime PUBLICS** : le consentement
+per-coach (1-B) ne gatait que l'ÉMISSION, **pas l'AUDIENCE** :
 
-- `live:roster` est GLOBAL → un pilote consentant au coach A diffuse sa présence
-  (+ sessionId) à **tout abonné** (autres coachs non consentis, autres pilotes).
-- `live:session:<id>` (broadcast) est lisible par **quiconque connaît le
+- `live:roster` était GLOBAL → un pilote consentant au coach A diffusait sa
+  présence (+ sessionId) à **tout abonné** (autres coachs, autres pilotes).
+- `live:session:<id>` (broadcast) était lisible par **quiconque connaît le
   sessionId** — position + télémétrie temps réel, sans vérif de binôme.
 
-→ Cela contredit « uniquement à ce coach » (mon-coach) et le RGPD. **À corriger
-AVANT toute mise en prod du live** (le live est de toute façon gated matériel ;
-ce durcissement se fait dans la même passe).
+→ Contredisait « uniquement à ce coach » (mon-coach) et le RGPD. **Corrigé** —
+audience désormais scopée au binôme consenti, côté serveur (RLS), pas seulement
+côté client.
 
-**Plan (STOP validation avant DDL realtime) :**
+**Appliqué (3 volets) :**
 1. **Canaux privés** app-side : `supabase.channel(topic, { config: { private: true } })`
-   à l'émission ET à la réception (liveSessionService).
-2. **Roster par-coach** : remplacer `live:roster` global par `live:roster:<coachId>`.
-   Le pilote rejoint la présence de CHAQUE coach à qui il a consenti le live ; le
-   coach ne lit que la sienne.
-3. **RLS `realtime.messages`** (Supabase Realtime Authorization) — autoriser
-   SELECT/INSERT d'un topic seulement au binôme consenti :
+   à l'émission ET à la réception (`liveSessionService`). Un canal privé délègue
+   l'autorisation à la RLS `realtime.messages` (au lieu de tout laisser passer).
+2. **Roster par-coach** : `live:roster` global → `live:roster:<coachId>`. Le pilote
+   rejoint la présence de CHAQUE coach à qui il a consenti le live (`liveRelayRunner`,
+   réconcilié en séance) ; le coach ne lit que la sienne (`subscribeRoster`).
+3. **RLS `realtime.messages`** — migration `live_realtime_authorization`, 4 policies
+   (topic parsé via `split_part(realtime.topic(), ':', 3)`) :
 
 ```sql
--- STOP : ne pas appliquer sans accord Gabin (schéma realtime).
--- Le coach reçoit le flux d'une séance SI binôme actif + live_sharing_at NOT NULL.
-CREATE POLICY live_session_recv ON realtime.messages FOR SELECT TO authenticated
+-- APPLIQUÉ. Le coach REÇOIT le flux d'une séance SI binôme actif + live consenti.
+CREATE POLICY "live_session_recv" ON realtime.messages FOR SELECT TO authenticated
 USING (
-  realtime.topic() LIKE 'live:session:%'
+  (SELECT realtime.topic()) LIKE 'live:session:%'
   AND EXISTS (
     SELECT 1 FROM public.telemetry_sessions ts
     JOIN public.coach_pilots cp ON cp.pilot_id = ts.user_id
-    WHERE ts.id::text = split_part(realtime.topic(), ':', 3)
-      AND cp.coach_id = auth.uid() AND cp.active AND cp.live_sharing_at IS NOT NULL
+    WHERE ts.id::text = split_part((SELECT realtime.topic()), ':', 3)
+      AND cp.coach_id = (SELECT auth.uid()) AND cp.active AND cp.live_sharing_at IS NOT NULL
   )
 );
--- + policy émission (pilote propriétaire de la séance) et policies roster:<coachId>
---   (coach lit la sienne ; pilote track s'il a consenti le live à ce coach).
+-- live_session_send : le PILOTE propriétaire de la séance émet (INSERT WITH CHECK).
+-- live_roster_read  : le coach lit UNIQUEMENT son roster (split_part = auth.uid()).
+-- live_roster_join  : le pilote se track chez un coach à qui il a consenti le live.
 ```
 
-Le détail exact des policies (roster, présence, émission) est à finaliser au
-moment du durcissement. Marqué **bloqueur** dans `liveSessionService`.
+**Vérifié** : les 4 policies en base (`pg_policy`), advisor sécurité sans régression
+(0 ERROR nouveau ; `realtime.messages` sorti de `rls_enabled_no_policy`), tsc/eslint/
+doctrine/jest verts. **Reste à valider en conditions réelles** (client authentifié
+sur build + réseau circuit) — non testable en headless. Bloqueur levé côté logiciel.
 
-## Ce que je fais MAINTENANT (sans DDL)
+## État (2026-07-11) — livré
 
-Rien en base. Sur ton **« go migration »**, j'applique via `apply_migration`
-(une migration nommée), régénère les types, puis je construis l'app-side (toggle
-live + gate relais ; service + écran messagerie). Jusque-là : **STOP**.
+Validé par Gabin (« 1-B et 2-A », « je valide », « go »). Appliqué :
+- **§1** `telemetry_sessions.live_sharing_at` + toggle « Partage en direct » (mon-coach),
+  gate d'émission dans `liveRelayRunner`.
+- **§2** table `coach_messages` + RLS + service/hook/écrans messagerie (durable).
+- **§3** transport durci : canaux privés + roster par-coach + RLS `realtime.messages`.
+- Types régénérés (`database.types.ts`), gates verts.
+
+**Seul reste terrain** : validation matériel RaceBox + réseau circuit sur un build
+(non testable en headless) — cf. tâche P5.

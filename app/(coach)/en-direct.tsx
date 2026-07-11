@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { EmptyState } from '@/components/instruments';
 import { useLiveRoster } from '@/hooks/useLiveRoster';
 import { joinRoster, startSimulatedStream } from '@/services/liveSessionService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -26,7 +27,8 @@ import { timeAgoFr } from '@/utils/time';
 const { palette, dataColors, spacing, radius, fonts, fontSize } = theme;
 
 export default function EnDirectScreen() {
-  const { roster, ready } = useLiveRoster();
+  const coachId = useAuthStore((st) => st.profile?.id ?? null);
+  const { roster, ready } = useLiveRoster(coachId);
 
   return (
     <Screen>
@@ -88,19 +90,20 @@ export default function EnDirectScreen() {
           </View>
         )}
 
-        {__DEV__ ? <DevSimulateButton /> : null}
+        {__DEV__ && coachId ? <DevSimulateButton coachId={coachId} /> : null}
       </View>
     </Screen>
   );
 }
 
 /** Dev-only : simule un pilote en piste (presence + flux) pour développer sans matériel. */
-function DevSimulateButton() {
+function DevSimulateButton({ coachId }: { coachId: string }) {
   const [on, setOn] = useState(false);
   useEffect(() => {
     if (!on) return;
     const sessionId = 'sim-session';
-    const leave = joinRoster({
+    // Le pilote simulé rejoint le roster de CE coach (transport par-coach).
+    const leave = joinRoster(coachId, {
       pilotId: 'sim-pilot',
       firstName: 'Adrien',
       sessionId,
@@ -113,7 +116,7 @@ function DevSimulateButton() {
       leave();
       stop();
     };
-  }, [on]);
+  }, [on, coachId]);
 
   return (
     <Pressable

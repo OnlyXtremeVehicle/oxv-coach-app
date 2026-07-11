@@ -1,24 +1,17 @@
 /**
  * liveSessionService — câblage Supabase Realtime du direct coach (P5).
  *
- * Transport (cadrage COACH §4) :
- *   - presence  `live:roster`         → qui est en piste (coach lit, pilote track)
- *   - broadcast `live:session:<id>`   → flux télémétrique throttlé (pilote émet,
- *                                        coach s'abonne)
- * Éphémère, ZÉRO schéma. La logique (reduceRoster, throttle, états) vit dans
- * liveSessionLogic (pur, testé) ; ici uniquement l'I/O Realtime + un SIMULATEUR
- * de flux pour développer sans RaceBox ni réseau circuit.
- *
- * ⚠ BLOQUEUR DE PROD (vérif privacy 2026-07-11) : ces canaux sont PUBLICS
- * (aucun `{ config: { private: true } }`, aucune RLS sur `realtime.messages`).
- * Le consentement per-coach ne gate que l'ÉMISSION (liveRelayRunner), PAS
- * l'AUDIENCE : sur `live:roster` GLOBAL, un pilote consentant au coach A expose
- * sa présence/sessionId à TOUT abonné (autres coachs, autres pilotes), et le
- * broadcast `live:session:<id>` est lisible par quiconque connaît le sessionId.
- * AVANT MISE EN PROD DU LIVE : canaux PRIVÉS + RLS `realtime.messages` scopées
- * au binôme consenti + roster par-coach (`live:roster:<coachId>`). Cf.
- * docs/architecture/09 §3. Le live n'est de toute façon pas expédiable avant la
- * validation matériel/réseau circuit — ce durcissement se fait dans la même passe.
+ * Transport (durci privacy 2026-07-11) — canaux PRIVÉS, audience scopée binôme :
+ *   - presence  `live:roster:<coachId>` → chaque coach a SON roster ; le pilote
+ *       ne s'y track que s'il a consenti le live à CE coach → un coach ne voit
+ *       que SES pilotes consentis (plus de roster global).
+ *   - broadcast `live:session:<id>`     → flux télémétrique throttlé, PRIVÉ.
+ * `{ config: { private: true } }` partout : l'autorisation serveur est portée par
+ * la RLS `realtime.messages` (migration realtime — cf. docs/architecture/09 §3).
+ * Le consentement gate donc l'ÉMISSION (liveRelayRunner) ET l'AUDIENCE (RLS +
+ * roster par-coach). Éphémère, zéro table. La logique (reduceRoster, throttle,
+ * états) vit dans liveSessionLogic (pur, testé). + un SIMULATEUR de flux pour
+ * développer sans RaceBox ni réseau circuit.
  *
  * Doctrine : le coach observe, le pilote conduit en silence. Aucun classement.
  */
@@ -33,91 +26,106 @@ import {
   reduceRoster,
 } from './liveSessionLogic';
 
-const ROSTER_CHANNEL = 'live:roster';
+const rosterTopic = (coachId: string) => `live:roster:${coachId}`;
 const sessionChannel = (sessionId: string) => `live:session:${sessionId}`;
 
 /** Nettoyage d'un abonnement. */
 export type Unsubscribe = () => void;
 
 // ---------------------------------------------------------------------------
-// Roster — UN SEUL canal `live:roster` par client (singleton refcompté).
-// Un client supabase-js indexe les canaux par topic : lecture (coach) et track
-// (pilote) DOIVENT partager la même instance, sinon un removeChannel arrache le
-// canal de l'autre (bug visible dès que les deux rôles tournent dans un seul
-// client, ex. le simulateur dev). La clé de présence est celle du 1er appelant :
-// pilote → pilotId (unique) ; coach lecteur → 'coach' (ne track pas, clé neutre).
+// Roster PAR COACH + canaux PRIVÉS (durcissement privacy 2026-07-11).
+//
+// Chaque coach a SON topic `live:roster:<coachId>` : le pilote ne se track que
+// dans le roster des coachs à qui il a consenti le live (liveRelayRunner), et le
+// coach ne lit QUE le sien. L'audience est ainsi scopée au binôme consenti, pas
+// globale. Canaux PRIVÉS (`private: true`) : l'autorisation serveur est portée
+// par la RLS `realtime.messages` (migration realtime, cf. docs/architecture/09).
+//
+// Un client indexe les canaux par topic → une Map refcomptée par coachId :
+// lecture (coach) + track (pilote) partagent l'instance du topic (évite qu'un
+// removeChannel arrache le canal de l'autre — cas du simulateur dev, 2 rôles/1
+// client). La clé de présence est celle du 1er appelant (pilote → pilotId).
 // ---------------------------------------------------------------------------
 
-let rosterChannel: RealtimeChannel | null = null;
-let rosterRefs = 0;
-let rosterTrack: RosterMeta | null = null;
-const rosterSyncCbs = new Set<() => void>();
+interface RosterTopicState {
+  channel: RealtimeChannel;
+  refs: number;
+  track: RosterMeta | null;
+  syncCbs: Set<() => void>;
+}
+const rosters = new Map<string, RosterTopicState>();
 
-function ensureRosterChannel(preferredKey: string): RealtimeChannel {
-  if (rosterChannel) return rosterChannel;
-  const ch = supabase.channel(ROSTER_CHANNEL, { config: { presence: { key: preferredKey } } });
-  const emit = () => rosterSyncCbs.forEach((cb) => cb());
-  ch.on('presence', { event: 'sync' }, emit)
+function ensureRoster(coachId: string, preferredKey: string): RosterTopicState {
+  const existing = rosters.get(coachId);
+  if (existing) return existing;
+  const channel = supabase.channel(rosterTopic(coachId), {
+    config: { private: true, presence: { key: preferredKey } },
+  });
+  const state: RosterTopicState = { channel, refs: 0, track: null, syncCbs: new Set() };
+  const emit = () => state.syncCbs.forEach((cb) => cb());
+  channel
+    .on('presence', { event: 'sync' }, emit)
     .on('presence', { event: 'join' }, emit)
     .on('presence', { event: 'leave' }, emit)
     .subscribe((status) => {
-      if (status === 'SUBSCRIBED' && rosterTrack) ch.track(rosterTrack);
+      if (status === 'SUBSCRIBED' && state.track) channel.track(state.track);
     });
-  rosterChannel = ch;
-  return ch;
+  rosters.set(coachId, state);
+  return state;
 }
 
-function releaseRosterChannel(): void {
-  rosterRefs -= 1;
-  if (rosterRefs <= 0 && rosterChannel) {
-    supabase.removeChannel(rosterChannel);
-    rosterChannel = null;
-    rosterRefs = 0;
-    rosterTrack = null;
+function releaseRoster(coachId: string): void {
+  const state = rosters.get(coachId);
+  if (!state) return;
+  state.refs -= 1;
+  if (state.refs <= 0) {
+    supabase.removeChannel(state.channel);
+    rosters.delete(coachId);
   }
 }
 
-/** COACH — s'abonne à la présence des pilotes en piste. Rappelle `onRoster` à chaque sync. */
-export function subscribeRoster(onRoster: (roster: RosterEntry[]) => void): Unsubscribe {
-  rosterRefs += 1;
-  const ch = ensureRosterChannel('coach');
+/** COACH — s'abonne à la présence des pilotes en piste QUI LUI ONT CONSENTI (son roster). */
+export function subscribeRoster(
+  coachId: string,
+  onRoster: (roster: RosterEntry[]) => void
+): Unsubscribe {
+  const state = ensureRoster(coachId, 'coach');
+  state.refs += 1;
   const cb = () => {
-    const state = ch.presenceState() as unknown as Record<string, RosterMeta[]>;
-    onRoster(reduceRoster(state));
+    const presence = state.channel.presenceState() as unknown as Record<string, RosterMeta[]>;
+    onRoster(reduceRoster(presence));
   };
-  rosterSyncCbs.add(cb);
+  state.syncCbs.add(cb);
   cb(); // état courant immédiat (peut être déjà synchronisé)
   return () => {
-    rosterSyncCbs.delete(cb);
-    releaseRosterChannel();
+    state.syncCbs.delete(cb);
+    releaseRoster(coachId);
   };
 }
 
-/** PILOTE — rejoint le roster (capture démarrée). Retourne le retrait. */
-export function joinRoster(meta: RosterMeta): Unsubscribe {
-  rosterRefs += 1;
-  rosterTrack = meta;
-  const ch = ensureRosterChannel(meta.pilotId);
-  // Si le canal est déjà abonné (créé par le coach), on track maintenant ;
-  // sinon le callback de subscribe s'en charge à SUBSCRIBED.
-  if (ch.state === 'joined') ch.track(meta);
+/** PILOTE — rejoint le roster d'UN coach consenti. Le runner en appelle un par coach. */
+export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
+  const state = ensureRoster(coachId, meta.pilotId);
+  state.refs += 1;
+  state.track = meta;
+  if (state.channel.state === 'joined') state.channel.track(meta);
   return () => {
-    rosterTrack = null;
-    ch.untrack();
-    releaseRosterChannel();
+    state.track = null;
+    state.channel.untrack();
+    releaseRoster(coachId);
   };
 }
 
 // ---------------------------------------------------------------------------
-// Flux télémétrique (broadcast)
+// Flux télémétrique (broadcast PRIVÉ)
 // ---------------------------------------------------------------------------
 
-/** COACH — s'abonne au flux live d'un pilote. `onStatus` reçoit l'état du canal. */
+/** COACH — s'abonne au flux live d'un pilote (canal privé, RLS binôme consenti). */
 export function subscribePilotStream(
   sessionId: string,
   handlers: { onFrame: (frame: LiveFrame) => void; onStatus?: (subscribed: boolean) => void }
 ): Unsubscribe {
-  const channel = supabase.channel(sessionChannel(sessionId));
+  const channel = supabase.channel(sessionChannel(sessionId), { config: { private: true } });
   channel
     .on('broadcast', { event: 'frame' }, (msg) => {
       handlers.onFrame(msg.payload as LiveFrame);
@@ -131,14 +139,16 @@ export function subscribePilotStream(
 }
 
 /**
- * PILOTE — ouvre un émetteur de flux. Renvoie `send(frame)` (le throttle est géré
- * en amont par le relais via shouldEmitFrame) + le retrait du canal.
+ * PILOTE — ouvre un émetteur de flux (canal PRIVÉ). Renvoie `send(frame)` (le
+ * throttle est géré en amont par le relais via shouldEmitFrame) + le retrait.
  */
 export function openPilotBroadcast(sessionId: string): {
   send: (frame: LiveFrame) => void;
   close: Unsubscribe;
 } {
-  const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId));
+  const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId), {
+    config: { private: true },
+  });
   let ready = false;
   channel.subscribe((status) => {
     ready = status === 'SUBSCRIBED';
