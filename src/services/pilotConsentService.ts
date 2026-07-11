@@ -49,6 +49,13 @@ export interface MyCoachAssignment {
   coachEmail: string;
   /** Timestamp ISO du consentement, ou null si pas encore consenti. */
   pilotConsentAt: string | null;
+  /**
+   * Consentement au partage LIVE (télémétrie + position TEMPS RÉEL) avec ce
+   * coach, ou null si non consenti. Distinct du consentement après-séance :
+   * plus sensible, OFF par défaut, révocable. Le relais live ne s'active QUE
+   * si non-null (cf. usePilotLiveRelay).
+   */
+  liveSharingAt: string | null;
   /** Niveau de lecture accordé (§6/§23). Sans effet tant que non consenti. */
   level: CoachAccessLevel;
   /** Si false, l'assignation est dormante côté admin (le coach ne verra rien). */
@@ -68,7 +75,7 @@ export async function listMyCoaches(): Promise<MyCoachAssignment[]> {
   const { data, error } = await supabase
     .from('coach_pilots')
     .select(
-      'id, coach_id, pilot_consent_at, level, active, created_at, notes, users!coach_pilots_coach_id_fkey(email, first_name, last_name)'
+      'id, coach_id, pilot_consent_at, live_sharing_at, level, active, created_at, notes, users!coach_pilots_coach_id_fkey(email, first_name, last_name)'
     )
     .order('created_at', { ascending: false });
 
@@ -91,6 +98,7 @@ export async function listMyCoaches(): Promise<MyCoachAssignment[]> {
       coachFirstName: coach?.first_name ?? null,
       coachLastName: coach?.last_name ?? null,
       pilotConsentAt: (row.pilot_consent_at as string | null) ?? null,
+      liveSharingAt: (row.live_sharing_at as string | null) ?? null,
       level: (row.level as CoachAccessLevel | null) ?? 'lecture_simple',
       active: Boolean(row.active),
       createdAt: row.created_at as string,
@@ -159,6 +167,27 @@ export async function setConsentLevel(
   const { error } = await supabase.from('coach_pilots').update({ level }).eq('id', assignmentId);
   if (error) {
     console.warn('[OXV][pilot] setConsentLevel :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/**
+ * Bascule le consentement au partage LIVE (télémétrie temps réel) pour ce coach.
+ * `on` = true → horodate `live_sharing_at` (le relais peut émettre) ; false →
+ * null (le relais se coupe immédiatement). Distinct du consentement après-séance :
+ * libre, révocable, sans justification. RLS : pilot_id = auth.uid().
+ */
+export async function setLiveSharing(
+  assignmentId: string,
+  on: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  const { error } = await supabase
+    .from('coach_pilots')
+    .update({ live_sharing_at: on ? new Date().toISOString() : null })
+    .eq('id', assignmentId);
+  if (error) {
+    console.warn('[OXV][pilot] setLiveSharing :', error.message);
     return { ok: false, error: error.message };
   }
   return { ok: true };

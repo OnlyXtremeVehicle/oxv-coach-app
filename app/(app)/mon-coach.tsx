@@ -27,6 +27,7 @@ import {
   listMyCoaches,
   revokeConsent,
   setConsentLevel,
+  setLiveSharing,
 } from '@/services/pilotConsentService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -89,6 +90,15 @@ export default function MonCoachScreen() {
     }
   }
 
+  async function onToggleLive(assignment: MyCoachAssignment, next: boolean) {
+    const result = await setLiveSharing(assignment.id, next);
+    if (result.ok) {
+      if (next) haptics.success();
+      else haptics.tap();
+      await reload();
+    }
+  }
+
   const activeAssignments = coaches.filter((c) => c.active);
 
   if (loading) {
@@ -121,6 +131,7 @@ export default function MonCoachScreen() {
                 assignment={assignment}
                 onToggle={(next) => onToggle(assignment, next)}
                 onSetLevel={(level) => onSetLevel(assignment, level)}
+                onToggleLive={(next) => onToggleLive(assignment, next)}
               />
             ))}
           </View>
@@ -144,10 +155,12 @@ function CoachCard({
   assignment,
   onToggle,
   onSetLevel,
+  onToggleLive,
 }: {
   assignment: MyCoachAssignment;
   onToggle: (next: boolean) => void;
   onSetLevel: (level: CoachAccessLevel) => void;
+  onToggleLive: (next: boolean) => void;
 }) {
   const fullName =
     [assignment.coachFirstName, assignment.coachLastName].filter(Boolean).join(' ') ||
@@ -217,6 +230,31 @@ function CoachCard({
               </Pressable>
             );
           })}
+        </View>
+      ) : null}
+
+      {/* Partage LIVE (temps réel) — consentement DISTINCT, OFF par défaut,
+          révocable. Suppose le consentement de base (le coach voit déjà les
+          séances). Le relais ne s'active que si ce toggle est ON. */}
+      {consented ? (
+        <View style={s.liveBlock}>
+          <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+            <Text style={s.levelLabel}>PARTAGE EN DIRECT</Text>
+            <Text style={s.liveHint}>
+              Votre position et votre télémétrie en temps réel, uniquement pendant que vous roulez,
+              uniquement à ce coach. Coupez quand vous voulez.
+            </Text>
+          </View>
+          <Switch
+            value={assignment.liveSharingAt !== null}
+            onValueChange={onToggleLive}
+            accessibilityRole="switch"
+            accessibilityLabel="Partage en direct avec ce coach"
+            accessibilityHint="Diffuse votre télémétrie temps réel à ce coach pendant vos roulages. Révocable à tout moment."
+            accessibilityState={{ checked: assignment.liveSharingAt !== null }}
+            trackColor={{ false: theme.palette.line, true: theme.palette.green }}
+            thumbColor={theme.palette.cream}
+          />
         </View>
       ) : null}
 
@@ -334,6 +372,21 @@ const s = {
     borderTopWidth: 1,
     borderTopColor: theme.palette.line,
     gap: theme.spacing.sm,
+  },
+  liveBlock: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    marginTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+  },
+  liveHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: 2,
   },
   levelLabel: {
     fontFamily: theme.fonts.mono,
