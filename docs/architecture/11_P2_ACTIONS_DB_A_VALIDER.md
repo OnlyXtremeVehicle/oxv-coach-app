@@ -1,11 +1,13 @@
 # P2 — Actions base de données à valider (fondateur)
 
-> **STATUT : STOP — en attente de validation Gabin.** Deux actions DB complètent
-> le build P2 « aide à la facture ». Elles n'ont **pas** été appliquées (le
-> classifier de sécurité a, à raison, bloqué une migration de schéma non validée —
-> conforme à la règle « modifier le schéma → demander avant »). Le code app est
-> livré et fonctionne sans elles ; le flag `coach_billing` est **OFF** en prod,
-> donc aucune exposition en attendant. À appliquer **avant d'activer le flag**.
+> **STATUT : ✅ VALIDÉ + APPLIQUÉ (2026-07-12).** Gabin a validé les deux actions
+> (« je valide tous et conformité »). Les deux migrations sont appliquées en prod
+> et mirrorées dans `supabase/migrations/` :
+> - `20260712090000_harden_next_coach_invoice_number_authz.sql`
+> - `20260712090500_coach_invoices_buyer_name_snapshot.sql`
+>
+> Types régénérés, code câblé (snapshot destinataire). Le flag `coach_billing`
+> reste **OFF** jusqu'au SIRET d'OXV (#82). Historique de la décision ci-dessous.
 
 Contexte : vérif adversariale du 2026-07-11 (4 lentilles : doctrine, canon
 couleur, RGPD, correction). Les correctifs de **code** sont déjà appliqués et
@@ -13,7 +15,7 @@ committés. Restent 2 actions **DB** qui relèvent de ta décision.
 
 ---
 
-## 1 — ⚠ SÉCURITÉ (majeur) : durcir `next_coach_invoice_number`
+## 1 — ✅ APPLIQUÉ · SÉCURITÉ (majeur) : durcir `next_coach_invoice_number`
 
 **Problème.** La fonction de numérotation est `SECURITY DEFINER` et utilise son
 paramètre `p_coach` tel quel. Un utilisateur authentifié peut donc appeler
@@ -67,7 +69,11 @@ dans `supabase/migrations/`.
 
 ---
 
-## 2 — Conformité (mineur) : figer le nom du destinataire à l'émission
+## 2 — ✅ APPLIQUÉ · Conformité : figer le nom du destinataire à l'émission
+
+> Option **(a) retenue** par le fondateur (« conformité »). Colonne `buyer_name`
+> ajoutée + écrite par `issueInvoice` + lue en priorité par `getInvoiceDetail`
+> (repli sur résolution vive pour les factures antérieures). Détail ci-dessous.
 
 **Problème.** `getInvoiceDetail` re-résout le nom du destinataire via
 `listMyPilots()` à chaque ouverture. Si le pilote retire son consentement (sort

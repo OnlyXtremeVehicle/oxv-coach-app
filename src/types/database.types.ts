@@ -1214,6 +1214,7 @@ export type Database = {
         Row: {
           amount_ht: number
           amount_total: number
+          buyer_name: string | null
           coach_id: string
           coaching_booking_id: string | null
           created_at: string
@@ -1233,6 +1234,7 @@ export type Database = {
         Insert: {
           amount_ht: number
           amount_total: number
+          buyer_name?: string | null
           coach_id: string
           coaching_booking_id?: string | null
           created_at?: string
@@ -1252,6 +1254,7 @@ export type Database = {
         Update: {
           amount_ht?: number
           amount_total?: number
+          buyer_name?: string | null
           coach_id?: string
           coaching_booking_id?: string | null
           created_at?: string

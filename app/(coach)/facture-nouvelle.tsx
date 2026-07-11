@@ -146,8 +146,12 @@ export default function FactureNouvelleScreen() {
     // prestation — sinon une prestation de décembre facturée en janvier casse la
     // continuité de numérotation.
     const year = new Date().getFullYear();
+    // Nom du destinataire figé maintenant (conformité) — la facture restera
+    // régénérable à l'identique même si le binôme change plus tard.
+    const buyerName = pilotId ? (pilots.find((p) => p.id === pilotId)?.name ?? null) : null;
     const res = await issueInvoice({
       pilotId,
+      buyerName,
       serviceDate: serviceDate.trim() || null,
       lines: validLines,
       year,

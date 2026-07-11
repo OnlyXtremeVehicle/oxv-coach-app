@@ -157,6 +157,8 @@ export interface InvoiceLine {
  */
 export async function issueInvoice(input: {
   pilotId?: string | null;
+  /** Nom du destinataire, FIGÉ à l'émission (snapshot conformité). */
+  buyerName?: string | null;
   bookingId?: string | null;
   serviceDate?: string | null;
   lines: InvoiceLine[];
@@ -201,6 +203,7 @@ export async function issueInvoice(input: {
       coach_id: coachId,
       number,
       pilot_id: input.pilotId ?? null,
+      buyer_name: input.buyerName?.trim() || null,
       coaching_booking_id: input.bookingId ?? null,
       service_date: input.serviceDate ?? null,
       lines: input.lines as never,
@@ -263,6 +266,7 @@ interface InvoiceDetailRow {
   vat_note: string | null;
   seller: unknown;
   pilot_id: string | null;
+  buyer_name: string | null;
 }
 
 function parseLines(raw: unknown): InvoiceLine[] {
@@ -300,7 +304,7 @@ export async function getInvoiceDetail(id: string): Promise<CoachInvoiceDetail |
   const { data } = await supabase
     .from('coach_invoices')
     .select(
-      'id, number, issued_at, service_date, currency, lines, amount_ht, vat_rate, vat_amount, amount_total, vat_note, seller, pilot_id'
+      'id, number, issued_at, service_date, currency, lines, amount_ht, vat_rate, vat_amount, amount_total, vat_note, seller, pilot_id, buyer_name'
     )
     .eq('id', id)
     .eq('coach_id', coachId)
@@ -308,8 +312,10 @@ export async function getInvoiceDetail(id: string): Promise<CoachInvoiceDetail |
   if (!data) return null;
   const r = data as unknown as InvoiceDetailRow;
 
-  let buyerName: string | null = null;
-  if (r.pilot_id) {
+  // Priorité au nom FIGÉ à l'émission (conformité). Repli sur résolution vive
+  // uniquement pour les factures antérieures au snapshot (buyer_name absent).
+  let buyerName: string | null = r.buyer_name?.trim() || null;
+  if (!buyerName && r.pilot_id) {
     const pilots = await listMyPilots();
     const match = pilots.find((p) => p.pilotId === r.pilot_id);
     if (match) buyerName = [match.firstName, match.lastName].filter(Boolean).join(' ') || null;
