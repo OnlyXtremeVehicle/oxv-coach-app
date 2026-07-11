@@ -64,3 +64,65 @@ export function canIssueInvoice(profile: {
     profile.billingSiret.trim()
   );
 }
+
+/** Formes juridiques courantes d'un coach indépendant (aide à la saisie). */
+export const COACH_LEGAL_FORMS = [
+  'Auto-entrepreneur',
+  'EI',
+  'EURL',
+  'SASU',
+  'SARL',
+  'SAS',
+  'Autre',
+] as const;
+
+/** Ne garde que les chiffres d'un SIRET saisi (retire espaces et séparateurs). */
+export function normalizeSiret(input: string): string {
+  return input.replace(/\D/g, '');
+}
+
+/**
+ * Valide un SIRET français : 14 chiffres + clé de Luhn. C'est un GARDE-FOU d'aide
+ * à la saisie (indice doux), PAS un bloquant : `canIssueInvoice` n'exige qu'un
+ * SIRET non vide (un coach peut relever d'une structure étrangère). On n'invente
+ * rien — on signale seulement une saisie probablement erronée.
+ */
+export function isValidSiret(input: string): boolean {
+  const s = normalizeSiret(input);
+  if (s.length !== 14) return false;
+  // Luhn canonique, en partant du chiffre de droite.
+  let sum = 0;
+  let double = false;
+  for (let i = s.length - 1; i >= 0; i -= 1) {
+    let d = s.charCodeAt(i) - 48;
+    if (double) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    double = !double;
+  }
+  return sum % 10 === 0;
+}
+
+/**
+ * Calcule le montant HT total (centimes) d'un jeu de lignes de facture. Chaque
+ * ligne = quantité × prix unitaire (centimes). Négatifs ramenés à 0 (honnêteté).
+ */
+export function linesAmountHtCents(lines: { quantity: number; unitPriceCents: number }[]): number {
+  return lines.reduce((sum, l) => {
+    const q = Math.max(0, l.quantity);
+    const pu = Math.max(0, Math.round(l.unitPriceCents));
+    return sum + q * pu;
+  }, 0);
+}
+
+/**
+ * Parse une saisie d'euros en français (« 120 », « 120,50 », « 1 200,5 ») en
+ * centimes. Renvoie null si la saisie n'est pas un montant lisible.
+ */
+export function parseEurosToCents(input: string): number | null {
+  const cleaned = input.replace(/\s/g, '').replace(',', '.');
+  if (cleaned === '' || !/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
+  return Math.round(parseFloat(cleaned) * 100);
+}

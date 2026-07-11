@@ -16,8 +16,10 @@ import {
   canIssueInvoice,
   computeInvoiceTotals,
   formatInvoiceNumber,
+  linesAmountHtCents,
   type VatRegime,
 } from '@/services/coachBillingLogic';
+import { listMyPilots } from '@/services/coachService';
 
 export interface CoachBillingProfile {
   paymentLink: string | null;
@@ -159,7 +161,7 @@ export async function issueInvoice(input: {
   serviceDate?: string | null;
   lines: InvoiceLine[];
   year: number;
-}): Promise<{ ok: boolean; number?: string; error?: string }> {
+}): Promise<{ ok: boolean; number?: string; id?: string; error?: string }> {
   const coachId = await currentCoachId();
   if (!coachId) return { ok: false, error: 'not_authenticated' };
 
@@ -175,7 +177,8 @@ export async function issueInvoice(input: {
     return { ok: false, error: 'billing_profile_incomplete' };
   }
 
-  const amountHtCents = input.lines.reduce((sum, l) => sum + l.quantity * l.unitPriceCents, 0);
+  // Source unique du HT (même calcul que l'aperçu écran, cf. coachBillingLogic).
+  const amountHtCents = linesAmountHtCents(input.lines);
   const totals = computeInvoiceTotals(amountHtCents, profile.vatRegime, profile.vatRate);
 
   const { data: seq, error: rpcError } = await supabase.rpc(
@@ -185,31 +188,147 @@ export async function issueInvoice(input: {
       p_year: input.year,
     } as never
   );
-  if (rpcError || typeof seq !== 'number') {
+  // Un séquence < 1 (ou 0, ou non entière) est une anomalie : on refuse plutôt
+  // que d'émettre un numéro masqué en « ANNÉE-0001 » (collision silencieuse).
+  if (rpcError || !Number.isInteger(seq) || (seq as number) < 1) {
     return { ok: false, error: rpcError?.message ?? 'numbering_failed' };
   }
   const number = formatInvoiceNumber(input.year, seq);
 
-  const { error } = await supabase.from('coach_invoices').insert({
-    coach_id: coachId,
-    number,
-    pilot_id: input.pilotId ?? null,
-    coaching_booking_id: input.bookingId ?? null,
-    service_date: input.serviceDate ?? null,
-    lines: input.lines as never,
-    amount_ht: totals.amountHt,
-    vat_rate: totals.vatRate,
-    vat_amount: totals.vatAmount,
-    amount_total: totals.amountTotal,
-    vat_note: totals.vatNote,
-    seller: {
-      name: profile.billingName,
-      address: profile.billingAddress,
-      siret: profile.billingSiret,
-      legalForm: profile.billingLegalForm,
-      vatRegime: profile.vatRegime,
-    } as never,
-  } as never);
+  const { data: inserted, error } = await supabase
+    .from('coach_invoices')
+    .insert({
+      coach_id: coachId,
+      number,
+      pilot_id: input.pilotId ?? null,
+      coaching_booking_id: input.bookingId ?? null,
+      service_date: input.serviceDate ?? null,
+      lines: input.lines as never,
+      amount_ht: totals.amountHt,
+      vat_rate: totals.vatRate,
+      vat_amount: totals.vatAmount,
+      amount_total: totals.amountTotal,
+      vat_note: totals.vatNote,
+      seller: {
+        name: profile.billingName,
+        address: profile.billingAddress,
+        siret: profile.billingSiret,
+        legalForm: profile.billingLegalForm,
+        vatRegime: profile.vatRegime,
+      } as never,
+    } as never)
+    .select('id')
+    .single();
   if (error) return { ok: false, error: error.message };
-  return { ok: true, number };
+  return { ok: true, number, id: (inserted as { id?: string } | null)?.id };
+}
+
+export interface InvoiceSeller {
+  name: string | null;
+  address: string | null;
+  siret: string | null;
+  legalForm: string | null;
+  vatRegime: VatRegime;
+}
+
+export interface CoachInvoiceDetail {
+  id: string;
+  number: string;
+  issuedAt: string;
+  serviceDate: string | null;
+  currency: string;
+  lines: InvoiceLine[];
+  amountHtCents: number;
+  vatRate: number | null;
+  vatAmountCents: number;
+  amountTotalCents: number;
+  vatNote: string | null;
+  seller: InvoiceSeller;
+  pilotId: string | null;
+  /** Nom du destinataire (résolu parmi les binômes du coach), sinon null. */
+  buyerName: string | null;
+}
+
+interface InvoiceDetailRow {
+  id: string;
+  number: string;
+  issued_at: string;
+  service_date: string | null;
+  currency: string | null;
+  lines: unknown;
+  amount_ht: number;
+  vat_rate: number | null;
+  vat_amount: number | null;
+  amount_total: number;
+  vat_note: string | null;
+  seller: unknown;
+  pilot_id: string | null;
+}
+
+function parseLines(raw: unknown): InvoiceLine[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((l) => {
+      const o = (l ?? {}) as Record<string, unknown>;
+      return {
+        label: typeof o.label === 'string' ? o.label : '',
+        quantity: typeof o.quantity === 'number' ? o.quantity : 0,
+        unitPriceCents: typeof o.unitPriceCents === 'number' ? o.unitPriceCents : 0,
+      };
+    })
+    .filter((l) => l.label.length > 0);
+}
+
+function parseSeller(raw: unknown): InvoiceSeller {
+  const o = (raw ?? {}) as Record<string, unknown>;
+  return {
+    name: typeof o.name === 'string' ? o.name : null,
+    address: typeof o.address === 'string' ? o.address : null,
+    siret: typeof o.siret === 'string' ? o.siret : null,
+    legalForm: typeof o.legalForm === 'string' ? o.legalForm : null,
+    vatRegime: (o.vatRegime as VatRegime) ?? 'franchise',
+  };
+}
+
+/**
+ * Détail complet d'une facture du coach courant (RLS : la sienne). Résout le nom
+ * du destinataire parmi les binômes du coach (sans exposer d'autres données).
+ */
+export async function getInvoiceDetail(id: string): Promise<CoachInvoiceDetail | null> {
+  const coachId = await currentCoachId();
+  if (!coachId) return null;
+  const { data } = await supabase
+    .from('coach_invoices')
+    .select(
+      'id, number, issued_at, service_date, currency, lines, amount_ht, vat_rate, vat_amount, amount_total, vat_note, seller, pilot_id'
+    )
+    .eq('id', id)
+    .eq('coach_id', coachId)
+    .maybeSingle();
+  if (!data) return null;
+  const r = data as unknown as InvoiceDetailRow;
+
+  let buyerName: string | null = null;
+  if (r.pilot_id) {
+    const pilots = await listMyPilots();
+    const match = pilots.find((p) => p.pilotId === r.pilot_id);
+    if (match) buyerName = [match.firstName, match.lastName].filter(Boolean).join(' ') || null;
+  }
+
+  return {
+    id: r.id,
+    number: r.number,
+    issuedAt: r.issued_at,
+    serviceDate: r.service_date ?? null,
+    currency: r.currency ?? 'EUR',
+    lines: parseLines(r.lines),
+    amountHtCents: r.amount_ht,
+    vatRate: r.vat_rate ?? null,
+    vatAmountCents: r.vat_amount ?? 0,
+    amountTotalCents: r.amount_total,
+    vatNote: r.vat_note ?? null,
+    seller: parseSeller(r.seller),
+    pilotId: r.pilot_id ?? null,
+    buyerName,
+  };
 }

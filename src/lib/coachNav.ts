@@ -73,6 +73,8 @@ export const COACH_ROUTE_TO_ZONE: Record<string, CoachTabZone> = {
   profil: 'moi',
   business: 'moi',
   facturation: 'moi',
+  'facturation-identite': 'moi',
+  'facture-nouvelle': 'moi',
   ar: 'moi',
 };
 

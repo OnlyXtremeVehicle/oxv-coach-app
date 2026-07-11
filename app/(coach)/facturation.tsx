@@ -11,19 +11,21 @@
  * le coach ; l'app est un outil. Le rendu PDF est une étape ultérieure.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
 import { canIssueInvoice } from '@/services/coachBillingLogic';
 import {
   type CoachBillingProfile,
   type CoachInvoiceSummary,
+  getInvoiceDetail,
   getMyBillingProfile,
   listMyInvoices,
   setInvoicingAssist,
 } from '@/services/coachBillingService';
+import { exportAndShareCoachInvoice } from '@/services/coachInvoicePdfService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -56,8 +58,11 @@ export default function FacturationScreen() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [sharingId, setSharingId] = useState<string | null>(null);
 
-  useEffect(() => {
+  // Rechargé à chaque focus (une facture émise ailleurs réapparaît ici) et sur
+  // retry (reloadKey change → nouvelle identité du callback).
+  const load = useCallback(() => {
     let cancelled = false;
     setLoading(true);
     setError(false);
@@ -83,7 +88,17 @@ export default function FacturationScreen() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reloadKey]);
+
+  useFocusEffect(load);
+
+  async function sharePdf(id: string) {
+    setSharingId(id);
+    const detail = await getInvoiceDetail(id);
+    if (detail) await exportAndShareCoachInvoice(detail, profile?.paymentLink ?? null);
+    setSharingId(null);
+  }
 
   async function toggleAssist(next: boolean) {
     setSaving(true);
@@ -158,14 +173,14 @@ export default function FacturationScreen() {
                 <CockpitPanel plain style={{ marginTop: spacing.lg }}>
                   <Text style={s.eyebrow}>Identité de facturation</Text>
                   <Text style={s.body}>
-                    Renseignez votre nom d&apos;émetteur et votre SIRET pour établir des factures
-                    conformes.
+                    Renseignez votre nom d&apos;émetteur et votre SIRET pour que l&apos;app vous
+                    aide à établir vos factures. Vous en restez l&apos;émetteur et le responsable.
                   </Text>
                   <View style={{ marginTop: spacing.lg }}>
                     <Button
                       variant="ghost"
-                      label="Compléter mon profil de facturation"
-                      onPress={() => router.push('/(coach)/profil' as never)}
+                      label="Compléter mon identité de facturation"
+                      onPress={() => router.push('/(coach)/facturation-identite' as never)}
                     />
                   </View>
                 </CockpitPanel>
@@ -177,7 +192,8 @@ export default function FacturationScreen() {
                   <View style={{ marginTop: spacing.lg }}>
                     <CockpitPanel>
                       <Text style={s.eyebrow}>Chiffre d&apos;affaires</Text>
-                      <KingNumber value={formatEuros(totalCents)} />
+                      {/* Argent, pas un chrono → crème neutre (l'or = chrono/record). */}
+                      <KingNumber value={formatEuros(totalCents)} color={palette.cream} />
                       <Text style={s.meta}>
                         {invoices.length} facture{invoices.length > 1 ? 's' : ''} émise
                         {invoices.length > 1 ? 's' : ''}
@@ -185,7 +201,15 @@ export default function FacturationScreen() {
                     </CockpitPanel>
                   </View>
 
-                  {/* Liste des factures — vide honnête si aucune. */}
+                  {/* Émettre une facture (identité complète requise, déjà garantie ici). */}
+                  <View style={{ marginTop: spacing.lg }}>
+                    <Button
+                      label="Émettre une facture"
+                      onPress={() => router.push('/(coach)/facture-nouvelle' as never)}
+                    />
+                  </View>
+
+                  {/* Liste des factures — vide honnête si aucune. Toucher = PDF. */}
                   <Text style={[s.sectionLabel, { marginTop: spacing.xxl }]}>FACTURES ÉMISES</Text>
                   {invoices.length === 0 ? (
                     <EmptyState
@@ -196,7 +220,12 @@ export default function FacturationScreen() {
                   ) : (
                     <View style={{ gap: spacing.sm }}>
                       {invoices.map((iv) => (
-                        <Card key={iv.id} style={s.invoiceRow}>
+                        <Card
+                          key={iv.id}
+                          style={s.invoiceRow}
+                          onPress={() => sharePdf(iv.id)}
+                          accessibilityLabel={`Facture ${iv.number}, générer le PDF`}
+                        >
                           <View style={{ flex: 1 }}>
                             <Text style={s.invoiceNumber}>{iv.number}</Text>
                             <Text style={s.invoiceMeta}>
@@ -205,16 +234,19 @@ export default function FacturationScreen() {
                                 : `Émise le ${formatDateShort(iv.issuedAt)}`}
                             </Text>
                           </View>
-                          <Text style={s.invoiceAmount}>{formatEuros(iv.amountTotalCents)}</Text>
+                          <View style={{ alignItems: 'flex-end' }}>
+                            <Text style={s.invoiceAmount}>{formatEuros(iv.amountTotalCents)}</Text>
+                            <Text style={s.invoicePdf}>{sharingId === iv.id ? 'PDF…' : 'PDF'}</Text>
+                          </View>
                         </Card>
                       ))}
                     </View>
                   )}
 
-                  {/* Honnêteté : le rendu PDF vient plus tard (gabarit à valider). */}
+                  {/* Honnêteté : le PDF est disponible ; le gabarit reste à faire valider. */}
                   <Text style={s.footnote}>
-                    L&apos;émission détaillée et le PDF arrivent prochainement. Le gabarit et le
-                    régime de TVA restent à valider par votre comptable.
+                    Touchez une facture pour en générer le PDF. Le gabarit et le régime de TVA
+                    restent à faire valider par votre comptable ; vous demeurez l&apos;émetteur.
                   </Text>
                 </>
               ) : null}
@@ -297,6 +329,13 @@ const s = {
     // 2026-07-11 : le CA reste NEUTRE (l'or = chrono/record uniquement) ; seuls
     // les TARIFS d'offre portent le heritageGold (registre offre).
     color: palette.cream,
+  },
+  invoicePdf: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: palette.creamMute,
+    marginTop: 2,
   },
   footnote: {
     fontFamily: theme.fonts.bodyLight,

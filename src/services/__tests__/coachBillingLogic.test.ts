@@ -3,6 +3,10 @@ import {
   canIssueInvoice,
   computeInvoiceTotals,
   formatInvoiceNumber,
+  isValidSiret,
+  linesAmountHtCents,
+  normalizeSiret,
+  parseEurosToCents,
 } from '@/services/coachBillingLogic';
 
 describe('computeInvoiceTotals', () => {
@@ -62,5 +66,49 @@ describe('canIssueInvoice', () => {
     expect(
       canIssueInvoice({ invoicingAssistEnabled: true, billingName: null, billingSiret: '123' })
     ).toBe(false);
+  });
+});
+
+describe('normalizeSiret', () => {
+  it('ne garde que les chiffres', () => {
+    expect(normalizeSiret('732 829 320 00074')).toBe('73282932000074');
+    expect(normalizeSiret('abc12')).toBe('12');
+  });
+});
+
+describe('isValidSiret', () => {
+  it('accepte un SIRET valide (14 chiffres + Luhn), espaces tolérés', () => {
+    expect(isValidSiret('73282932000074')).toBe(true);
+    expect(isValidSiret('732 829 320 00074')).toBe(true);
+  });
+  it('rejette une longueur ou une clé incorrecte', () => {
+    expect(isValidSiret('73282932000075')).toBe(false); // clé fausse
+    expect(isValidSiret('123')).toBe(false); // trop court
+    expect(isValidSiret('')).toBe(false);
+  });
+});
+
+describe('parseEurosToCents', () => {
+  it('parse les formats FR courants', () => {
+    expect(parseEurosToCents('120')).toBe(12000);
+    expect(parseEurosToCents('120,50')).toBe(12050);
+    expect(parseEurosToCents('1 200,5')).toBe(120050);
+  });
+  it('rejette les saisies illisibles', () => {
+    expect(parseEurosToCents('')).toBeNull();
+    expect(parseEurosToCents('abc')).toBeNull();
+    expect(parseEurosToCents('12,345')).toBeNull(); // 3 décimales
+  });
+});
+
+describe('linesAmountHtCents', () => {
+  it('somme quantité × prix unitaire, négatifs ramenés à 0', () => {
+    expect(
+      linesAmountHtCents([
+        { quantity: 2, unitPriceCents: 5000 },
+        { quantity: 1, unitPriceCents: 3000 },
+      ])
+    ).toBe(13000);
+    expect(linesAmountHtCents([{ quantity: -3, unitPriceCents: 5000 }])).toBe(0);
   });
 });
