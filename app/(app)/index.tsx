@@ -22,7 +22,7 @@ import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
 import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
-import { getQdiForSession } from '@/services/qdiService';
+import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
@@ -32,10 +32,11 @@ import { AccountButton } from '@/ui/AccountButton';
 import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { KingNumber } from '@/ui/KingNumber';
+import { QdiBars } from '@/ui/QdiBars';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
-const { palette, fonts, spacing, radius } = theme;
+const { palette, fonts, spacing, radius, dataColors } = theme;
 
 interface RecentSession {
   id: string;
@@ -64,7 +65,7 @@ export default function HomeHubScreen() {
   // Hub M7.0 : statut du boîtier affecté + disponibilité du radar QDI —
   // best-effort, le hub vit sans.
   const [myDevice, setMyDevice] = useState<MyDevice | null>(null);
-  const [qdiReady, setQdiReady] = useState(false);
+  const [qdi, setQdi] = useState<QdiRecord | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -99,7 +100,7 @@ export default function HomeHubScreen() {
         // Radar QDI de cette session (lecture seule — le calcul vit ailleurs).
         getQdiForSession(data.id)
           .then((q) => {
-            if (!cancelled) setQdiReady(Boolean(q));
+            if (!cancelled) setQdi(q);
           })
           .catch(() => undefined);
         // Régularité au tour (écart-type) — même chaîne que l'écran Régularité.
@@ -156,7 +157,7 @@ export default function HomeHubScreen() {
             loading={loading}
             action={action}
             myDevice={myDevice}
-            qdiReady={qdiReady}
+            qdi={qdi}
           />
         )}
 
@@ -238,7 +239,7 @@ function ModePassive({
   loading,
   action,
   myDevice,
-  qdiReady,
+  qdi,
 }: {
   greeting: string;
   firstName: string;
@@ -247,7 +248,7 @@ function ModePassive({
   loading: boolean;
   action: PaddockAction | null;
   myDevice: MyDevice | null;
-  qdiReady: boolean;
+  qdi: QdiRecord | null;
 }) {
   const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
 
@@ -292,21 +293,29 @@ function ModePassive({
                   {regularity ? <Text style={s.heroTours}>{regularity.lapCount} TOURS</Text> : null}
                 </View>
 
-                {/* Chiffre roi = régularité au tour (fait, T6-conforme). */}
+                {/* Chiffre roi = régularité au tour (fait, T6-conforme). Couleur =
+                    celle de la DONNÉE : violet régularité (système QDI V3). */}
                 {regularity ? (
                   <KingNumber
                     value={regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
                     unit="s"
                     label="Régularité"
+                    color={dataColors.regularity}
                   />
                 ) : (
                   <Text style={s.heroCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
                 )}
 
+                {/* Aperçu QDI 5 branches (silhouette colorée, pas un score). */}
+                {qdi ? (
+                  <View style={{ marginTop: spacing.lg }}>
+                    <QdiBars branches={qdi} height={54} />
+                  </View>
+                ) : null}
+
                 <View style={s.heroFoot}>
                   <Text style={s.heroMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
                   <View style={{ flex: 1 }} />
-                  {qdiReady ? <Text style={s.heroMeta}>Radar QDI prêt</Text> : null}
                   <Text style={s.heroOpen}>Ouvrir ›</Text>
                 </View>
               </CockpitPanel>
