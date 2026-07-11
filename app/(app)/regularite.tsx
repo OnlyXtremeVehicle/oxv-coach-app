@@ -216,7 +216,8 @@ function LapBar({
     >
       <Text style={s.lapTag}>T{lapNumber}</Text>
       {/* Piste centrée — l'écart se lit par la position (gauche = plus rapide,
-          droite = plus lent), jamais par la couleur. L'or est une donnée, neutre. */}
+          droite = plus lent). Couleur = la donnée : régularité = violet (canon
+          V3, cohérent avec la jauge de l'écran). L'or reste au chrono/record. */}
       <View
         style={{ flex: 1, height: 18, flexDirection: 'row', alignItems: 'center' }}
         importantForAccessibility="no-hide-descendants"
@@ -277,8 +278,8 @@ const s = {
   lapFill: {
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
+    backgroundColor: theme.dataColors.regularity,
+    shadowColor: theme.dataColors.regularity,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 4,

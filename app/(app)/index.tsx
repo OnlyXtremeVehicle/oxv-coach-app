@@ -211,7 +211,7 @@ function ModeEnroute() {
 function ModeCountdown({ firstName, action }: { firstName: string; action: PaddockAction | null }) {
   return (
     <View style={s.modeWrap}>
-      <Text style={s.eyebrow}>Prochaine session</Text>
+      <Text style={s.eyebrow}>Prochaine séance</Text>
       <Text style={s.modeTitle}>{firstName ? `À bientôt, ${firstName}.` : 'À bientôt.'}</Text>
       <Text style={s.modeManifest}>L'app vous tiendra au courant.</Text>
       {action ? (
@@ -322,7 +322,7 @@ function ModePassive({
             </Pressable>
           </Link>
         ) : (
-          <Text style={s.emptyManifest}>Votre première session écrira la première ligne.</Text>
+          <Text style={s.emptyManifest}>Votre première séance écrira la première ligne.</Text>
         )}
       </FadeInSection>
 

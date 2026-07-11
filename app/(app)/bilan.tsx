@@ -649,7 +649,7 @@ export default function BilanScreen() {
               { marginTop: theme.spacing.sm, opacity: pressed ? 0.6 : 1 },
             ]}
           >
-            <Text style={s.ctaGhostTxt}>Voir mes souvenirs de session</Text>
+            <Text style={s.ctaGhostTxt}>Voir mes souvenirs de séance</Text>
           </Pressable>
         ) : null}
 
@@ -776,9 +776,9 @@ function BilanEmpty() {
       >
         <Text style={[s.eyebrow, { marginBottom: theme.spacing.lg }]}>BILAN</Text>
         <Text style={[s.emptyTitle, { marginBottom: theme.spacing.xl }]}>
-          Aucune session encore.
+          Aucune séance encore.
         </Text>
-        <Text style={s.manifest}>Votre première session écrira la première ligne.</Text>
+        <Text style={s.manifest}>Votre première séance écrira la première ligne.</Text>
         <Pressable
           accessibilityRole="button"
           hitSlop={theme.hitSlop}
@@ -865,9 +865,12 @@ const s = {
     lineHeight: theme.fontSize.small * 1.4,
   },
   heroNumber: {
+    // Chrono = or, mais SUBORDONNÉ à la jauge régularité (instrument central de
+    // l'écran) : un seul chiffre dominant. La perf brute ne prend pas le dessus
+    // sur la régularité (doctrine sécurité > performance).
     fontFamily: theme.fonts.king,
-    fontSize: theme.fontSize.hud,
-    letterSpacing: -1,
+    fontSize: theme.fontSize.display,
+    letterSpacing: -0.5,
     color: theme.palette.gold,
     textAlign: 'center' as const,
   },
