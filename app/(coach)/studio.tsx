@@ -9,9 +9,10 @@
  * dit jamais quoi faire (la cause reste au coach, ou à une suggestion IA qu'il
  * valide, C3). QDI en 5 branches, JAMAIS un score composite (garde-fou T6).
  *
- * Skia (build-pending) : la superposition de traces et le diagramme G-G ne
- * tournent pas en Expo Go — ils apparaissent au build natif. Les panneaux de
- * données ci-dessous sont, eux, pleinement lisibles dès maintenant.
+ * Superposition de traces + diagramme G-G = react-native-svg (rendu dès Expo
+ * Go) : ils apparaîtront avec les premières TRAMES du boîtier (telemetry_frames
+ * vides avant la première vraie capture). Les panneaux de données ci-dessous
+ * sont, eux, pleinement lisibles dès maintenant. On n'invente rien sans trame.
  */
 
 import { useEffect, useState } from 'react';
@@ -213,11 +214,13 @@ function StudioBody({ data }: { data: StudioSession }) {
         </>
       ) : null}
 
-      {/* Superposition de traces + diagramme G-G = Skia (build natif). */}
+      {/* Superposition de traces + diagramme G-G (react-native-svg) : attente
+          honnête tant que la séance n'a pas de trames du boîtier. */}
       <View style={{ marginTop: spacing.xxl }}>
         <EmptyState
-          label="Au build natif"
-          message="La superposition des tours et le diagramme G-G s'affichent dans le build de l'application (rendu Skia)."
+          label="Secteurs & trace"
+          message="La superposition des tours et le diagramme G-G apparaîtront avec les premières trames du boîtier."
+          source="telemetry_frames"
         />
       </View>
     </View>
