@@ -42,9 +42,9 @@ const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
 const DISTANCES = [50, 100, 150];
 
 const POI_COLOR: Record<ScenicPoi['kind'], string> = {
-  viewpoint: theme.palette.gold,
+  viewpoint: theme.palette.cream, // point de vue = catégorie POI neutre ; l'or est réservé au chrono/record
   water: '#60A5FA', // bleu = eau (catégorie POI ; le freinage a pris le rouge de donnée)
-  pass: theme.dataColors.regularity, // rouge de marque interdit hors REC/coach — couleur de donnée non réservée
+  pass: theme.dataColors.regularity, // col = catégorie POI (violet régularité, couleur non-or) ; l'or reste au chrono/record
   peak: theme.palette.creamSoft,
 };
 const POI_LABEL: Record<ScenicPoi['kind'], string> = {
@@ -235,7 +235,7 @@ export default function BelleRouteScreen() {
           {route ? (
             <Polyline
               coordinates={route.coordinates.map((c) => ({ latitude: c.lat, longitude: c.lon }))}
-              strokeColor={theme.palette.gold}
+              strokeColor={theme.palette.cream}
               strokeWidth={4}
             />
           ) : null}

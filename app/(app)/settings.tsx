@@ -507,7 +507,7 @@ function prettyLevel(level: string | null | undefined): string {
 const s = {
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    shadowColor: theme.palette.creamMute,
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },

@@ -12,8 +12,9 @@
  * native est indisponible → la vue Liste est rendue d'office.
  *
  * Doctrine : visualisation sobre, aucune gamification, aucun classement.
- * **or = donnée (marqueurs circuits) UNIQUEMENT** — le bascule, les filtres, les
- * puces de groupe et les CTA restent gris/crème, jamais or.
+ * **or = chrono/record UNIQUEMENT** — un marqueur de circuit est un repère
+ * d'identité (pas un temps), donc crème ; le bascule, les filtres, les puces de
+ * groupe et les CTA restent gris/crème, jamais or.
  */
 
 import { useEffect, useState } from 'react';
@@ -108,7 +109,7 @@ export default function CarteOxvScreen() {
                 coordinate={{ latitude: c.finishLineLat, longitude: c.finishLineLon }}
                 title={c.name}
                 description="Circuit OXV"
-                pinColor={theme.palette.gold}
+                pinColor={theme.palette.cream}
                 onPress={() => setSelected({ type: 'circuit', circuit: c })}
               />
             ))}
@@ -137,7 +138,7 @@ export default function CarteOxvScreen() {
 
           {/* Légende sobre */}
           <View style={s.legend}>
-            <LegendItem color={theme.palette.gold} label="Circuits" />
+            <LegendItem color={theme.palette.cream} label="Circuits" />
             <LegendItem color={theme.palette.creamSoft} label="Lieux & événements" />
           </View>
 

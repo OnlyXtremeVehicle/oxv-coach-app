@@ -3,15 +3,15 @@
  *
  * Agrégation de toutes les sessions du pilote :
  *   - 3 chiffres centraux : km totaux, sessions, tours (cellules cockpit,
- *     valeurs à lueur dorée)
+ *     lueur neutre — ce sont des cumuls, pas des records)
  *   - Records (meilleur tour, vitesse max) + liste par circuit
  *
  * Mode SIMPLE (pilote particulier) : 3 grands chiffres + liste compacte.
  * Mode DÉTAILLÉ (coach / admin / curieux) : temps total piste, marge moyenne.
  *
- * Gaming : barre de statut (point posé — tout-temps, pas live), agrégats à
- * lueur dorée, meilleurs tours en or, boîtiers cockpit. L'or = la donnée,
- * jamais le jugement.
+ * Gaming : barre de statut (point posé — tout-temps, pas live), agrégats en
+ * lueur neutre, meilleurs tours en or (chrono/record uniquement), boîtiers
+ * cockpit. L'or ne colore que le chrono/record, jamais un cumul.
  *
  * Doctrine : pas de classement entre pilotes, juste ses propres stats.
  */
@@ -105,7 +105,7 @@ export default function StatsScreen() {
           <EmptyState />
         ) : (
           <>
-            {/* Panneau cockpit : statut + 3 agrégats à lueur dorée */}
+            {/* Panneau cockpit : statut + 3 agrégats (cumuls) à lueur neutre */}
             <View style={[s.panel, { marginBottom: theme.spacing.xl }]}>
               <View style={s.status}>
                 <View style={s.dot} />
@@ -329,7 +329,8 @@ const s = {
     fontSize: theme.fontSize.display,
     letterSpacing: -0.5,
     color: theme.palette.cream,
-    textShadowColor: 'rgba(255,183,3,0.4)',
+    // Lueur cockpit neutre : ces agrégats sont des cumuls, pas des records — pas d'or.
+    textShadowColor: 'rgba(245,245,247,0.15)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 14,
   },
@@ -341,7 +342,8 @@ const s = {
   cellUnit: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.bodyLg,
-    color: GOLD,
+    // Unité d'un cumul (km parcourus), pas un chrono/record : neutre, pas d'or.
+    color: theme.palette.creamMute,
   },
   cellLabel: {
     fontFamily: theme.fonts.mono,

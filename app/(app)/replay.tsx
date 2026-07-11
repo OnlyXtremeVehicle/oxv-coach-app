@@ -298,12 +298,9 @@ function ReplayStage({ frames, showGs }: { frames: Frame[]; showGs: boolean }) {
 
       {/* Relevés instantanés au point balayé. */}
       <View style={s.readouts}>
-        <Fact
-          label="Vitesse"
-          value={cur ? String(Math.round(cur.speedKmh)) : '—'}
-          unit="km/h"
-          accent
-        />
+        {/* Vitesse instantanée = donnée, pas un record → neutre (comme les
+            autres relevés). L'or/accent de Fact reste au chrono/record. */}
+        <Fact label="Vitesse" value={cur ? String(Math.round(cur.speedKmh)) : '—'} unit="km/h" />
         {showGs ? (
           <Fact label="G latéral" value={cur ? cur.gLat.toFixed(2) : '—'} unit="g" />
         ) : null}
@@ -413,7 +410,7 @@ const s = {
     marginLeft: -1.5,
     borderRadius: 2,
     backgroundColor: theme.palette.gold,
-    shadowColor: theme.palette.gold,
+    shadowColor: theme.palette.creamMute, // glow décoratif ≠ donnée → neutre (règle audit-or §2)
     shadowOpacity: 0.8,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },

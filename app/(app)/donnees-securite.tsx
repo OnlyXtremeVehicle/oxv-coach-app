@@ -155,9 +155,9 @@ function ProgressBar({ percent }: { percent: number }) {
         style={{
           height: '100%',
           width: `${percent}%`,
-          // Progression de préservation/lecture = donnée positive (or),
-          // pas un compte à rebours de suppression (le rouge = acte).
-          backgroundColor: theme.palette.gold,
+          // Progression de préservation/lecture = donnée neutre (pas un chrono
+          // ni un record), donc creamMute — l'or reste réservé au chrono/record.
+          backgroundColor: theme.palette.creamMute,
         }}
       />
     </View>

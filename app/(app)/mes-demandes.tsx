@@ -478,8 +478,9 @@ const s = {
     justifyContent: 'center' as const,
   },
   ratingDotOn: {
-    borderColor: theme.palette.gold,
-    backgroundColor: 'rgba(255,183,3,0.12)',
+    // Note d'avis : or ATTÉNUÉ (goldText), pas l'or record/chrono réservé au rythme.
+    borderColor: theme.palette.goldText,
+    backgroundColor: 'rgba(217,174,0,0.12)',
   },
   ratingNum: {
     fontFamily: theme.fonts.mono,
@@ -487,7 +488,8 @@ const s = {
     color: theme.palette.creamMute,
   },
   ratingNumOn: {
-    color: theme.palette.gold,
+    // Note d'avis : or atténué, une note n'est pas un chrono/record.
+    color: theme.palette.goldText,
   },
   ratingScale: {
     fontFamily: theme.fonts.mono,

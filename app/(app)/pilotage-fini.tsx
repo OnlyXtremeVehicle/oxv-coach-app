@@ -97,7 +97,7 @@ const s = {
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.gold,
+    color: theme.palette.creamMute,
   },
   title: {
     fontFamily: theme.fonts.display,

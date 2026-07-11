@@ -72,7 +72,9 @@ export default function ProgrammeScreen() {
                           s.dot,
                           {
                             backgroundColor:
-                              step.status === 'atteint' ? theme.palette.gold : theme.palette.faint,
+                              step.status === 'atteint'
+                                ? theme.dataColors.accel
+                                : theme.palette.faint,
                           },
                         ]}
                       />

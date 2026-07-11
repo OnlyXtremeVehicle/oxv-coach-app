@@ -2,7 +2,8 @@
  * Écran #23 — Notifications. Design V2 (charte oxv-mirror-app).
  *
  * 3 tabs en haut : À traiter / À découvrir / Archives.
- * Badge compteur (or = donnée) uniquement sur "À traiter" quand il y a
+ * Badge compteur neutre (creamMute — un "non lu" n'est pas un chrono/record,
+ * l'or est réservé au chrono) uniquement sur "À traiter" quand il y a
  * des actions requises (pacte modifié, KYC à compléter, etc.). Le rouge
  * est réservé à la marque/aux actes — un compteur reste une donnée.
  *
@@ -117,7 +118,7 @@ function EmptyTab({ label }: { label: string }) {
 const s = {
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    shadowColor: theme.palette.creamMute,
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
@@ -144,7 +145,7 @@ const s = {
     height: 18,
     paddingHorizontal: 4,
     borderRadius: 9,
-    backgroundColor: theme.palette.gold,
+    backgroundColor: theme.palette.creamMute,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
