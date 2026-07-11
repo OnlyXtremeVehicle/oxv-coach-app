@@ -122,6 +122,50 @@ le « live » du fil est un abonnement, pas une seconde source de vérité.
 
 ---
 
+## 3 — ⚠ BLOQUEUR PROD : durcir le transport live (canaux privés + RLS realtime)
+
+**Trouvé par la vérif privacy (2026-07-11).** Le transport du direct utilise des
+canaux **Supabase Realtime PUBLICS**. Le consentement per-coach (1-B) ne gate que
+l'ÉMISSION (le pilote émet ou pas), **pas l'AUDIENCE** :
+
+- `live:roster` est GLOBAL → un pilote consentant au coach A diffuse sa présence
+  (+ sessionId) à **tout abonné** (autres coachs non consentis, autres pilotes).
+- `live:session:<id>` (broadcast) est lisible par **quiconque connaît le
+  sessionId** — position + télémétrie temps réel, sans vérif de binôme.
+
+→ Cela contredit « uniquement à ce coach » (mon-coach) et le RGPD. **À corriger
+AVANT toute mise en prod du live** (le live est de toute façon gated matériel ;
+ce durcissement se fait dans la même passe).
+
+**Plan (STOP validation avant DDL realtime) :**
+1. **Canaux privés** app-side : `supabase.channel(topic, { config: { private: true } })`
+   à l'émission ET à la réception (liveSessionService).
+2. **Roster par-coach** : remplacer `live:roster` global par `live:roster:<coachId>`.
+   Le pilote rejoint la présence de CHAQUE coach à qui il a consenti le live ; le
+   coach ne lit que la sienne.
+3. **RLS `realtime.messages`** (Supabase Realtime Authorization) — autoriser
+   SELECT/INSERT d'un topic seulement au binôme consenti :
+
+```sql
+-- STOP : ne pas appliquer sans accord Gabin (schéma realtime).
+-- Le coach reçoit le flux d'une séance SI binôme actif + live_sharing_at NOT NULL.
+CREATE POLICY live_session_recv ON realtime.messages FOR SELECT TO authenticated
+USING (
+  realtime.topic() LIKE 'live:session:%'
+  AND EXISTS (
+    SELECT 1 FROM public.telemetry_sessions ts
+    JOIN public.coach_pilots cp ON cp.pilot_id = ts.user_id
+    WHERE ts.id::text = split_part(realtime.topic(), ':', 3)
+      AND cp.coach_id = auth.uid() AND cp.active AND cp.live_sharing_at IS NOT NULL
+  )
+);
+-- + policy émission (pilote propriétaire de la séance) et policies roster:<coachId>
+--   (coach lit la sienne ; pilote track s'il a consenti le live à ce coach).
+```
+
+Le détail exact des policies (roster, présence, émission) est à finaliser au
+moment du durcissement. Marqué **bloqueur** dans `liveSessionService`.
+
 ## Ce que je fais MAINTENANT (sans DDL)
 
 Rien en base. Sur ton **« go migration »**, j'applique via `apply_migration`

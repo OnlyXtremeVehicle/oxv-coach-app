@@ -77,10 +77,42 @@ export async function startPilotLiveRelay(input: {
     broadcast.send(raceBoxToLiveFrame(data, { lap: laps + 1, lapStartMs, nowMs: now }));
   });
 
+  // Révocation EN SÉANCE : on écoute coach_pilots en temps réel. Dès qu'un
+  // changement retire le dernier consentement live (live_sharing_at→null,
+  // consentement de base retiré, ou binôme désactivé), on coupe le relais
+  // immédiatement — « Coupez quand vous voulez » est tenu en vol, pas au
+  // prochain démarrage de capture.
+  const consentCh = supabase
+    .channel(`relay-consent:${input.pilotId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'coach_pilots',
+        filter: `pilot_id=eq.${input.pilotId}`,
+      },
+      () => {
+        supabase
+          .from('coach_pilots')
+          .select('id')
+          .eq('pilot_id', input.pilotId)
+          .eq('active', true)
+          .not('live_sharing_at', 'is', null)
+          .limit(1)
+          .maybeSingle()
+          .then(({ data: still }) => {
+            if (!still) stopPilotLiveRelay(); // plus aucun consentement live → coupe
+          });
+      }
+    )
+    .subscribe();
+
   stopFn = () => {
     off();
     broadcast.close();
     leave();
+    supabase.removeChannel(consentCh);
   };
 }
 

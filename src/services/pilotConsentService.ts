@@ -53,7 +53,8 @@ export interface MyCoachAssignment {
    * Consentement au partage LIVE (télémétrie + position TEMPS RÉEL) avec ce
    * coach, ou null si non consenti. Distinct du consentement après-séance :
    * plus sensible, OFF par défaut, révocable. Le relais live ne s'active QUE
-   * si non-null (cf. usePilotLiveRelay).
+   * si non-null, et se COUPE immédiatement à la révocation (cf. liveRelayRunner,
+   * qui écoute coach_pilots en temps réel).
    */
   liveSharingAt: string | null;
   /** Niveau de lecture accordé (§6/§23). Sans effet tant que non consenti. */

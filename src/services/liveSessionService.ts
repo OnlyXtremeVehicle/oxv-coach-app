@@ -9,6 +9,17 @@
  * liveSessionLogic (pur, testé) ; ici uniquement l'I/O Realtime + un SIMULATEUR
  * de flux pour développer sans RaceBox ni réseau circuit.
  *
+ * ⚠ BLOQUEUR DE PROD (vérif privacy 2026-07-11) : ces canaux sont PUBLICS
+ * (aucun `{ config: { private: true } }`, aucune RLS sur `realtime.messages`).
+ * Le consentement per-coach ne gate que l'ÉMISSION (liveRelayRunner), PAS
+ * l'AUDIENCE : sur `live:roster` GLOBAL, un pilote consentant au coach A expose
+ * sa présence/sessionId à TOUT abonné (autres coachs, autres pilotes), et le
+ * broadcast `live:session:<id>` est lisible par quiconque connaît le sessionId.
+ * AVANT MISE EN PROD DU LIVE : canaux PRIVÉS + RLS `realtime.messages` scopées
+ * au binôme consenti + roster par-coach (`live:roster:<coachId>`). Cf.
+ * docs/architecture/09 §3. Le live n'est de toute façon pas expédiable avant la
+ * validation matériel/réseau circuit — ce durcissement se fait dans la même passe.
+ *
  * Doctrine : le coach observe, le pilote conduit en silence. Aucun classement.
  */
 
