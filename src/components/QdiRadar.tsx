@@ -1,37 +1,43 @@
 /**
- * QdiRadar — LE radar de l'app (Lot M1, décision fondateur 2026-07-04).
+ * QdiRadar — LE radar de l'app (refonte V3, handoff §7.3 « Signature/QDI »).
  *
  * 5 branches (Trajectoire · Fluidité · Freinage · Accélération · Régularité),
- * valeurs 0-100 calculées par qdiLogic (déterministe, algo_version). Absorbe
- * l'ancienne empreinte signature : une seule vérité radar côté pilote.
+ * valeurs 0-100 (qdiLogic déterministe). Système couleur QDI : chaque branche a
+ * SA couleur (trajectoire bleu · fluidité jaune · freinage rouge · accélération
+ * vert · régularité violet), utilisée sur l'axe teinté, le sommet et le libellé.
  *
- * Self-only : le polygone de référence (pointillé neutre) est la médiane des
- * dernières sessions DU PILOTE — jamais un autre pilote. Une branche null
- * (données insuffisantes) est affichée « — » et tirée au centre, avec la
- * légende honnête. Or = donnée (trait courant) ; jamais de rouge de marque.
- *
- * `detail` (Signature/Heritage) affiche la valeur par branche ; Access = forme
- * seule (prompt v2).
+ * - polygone SÉANCE : trait BLANC `#F5F5F7`, un point de la couleur de la branche
+ *   à chaque sommet.
+ * - polygone EMPREINTE (self-only) : pointillé neutre `#54545C` = la médiane de
+ *   VOS dernières sessions — jamais un autre pilote.
+ * Une branche null (données insuffisantes) est « — », tirée au centre, honnête.
+ * JAMAIS un score unique (QDI reste 5 branches). `detail` affiche la valeur.
  */
 
+import React from 'react';
 import { Text, View } from 'react-native';
-import Svg, { Circle, Polygon, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
 
 import type { QdiBranches } from '@/services/qdiLogic';
 import { theme } from '@/theme/v2';
 
+const { dataColors, palette } = theme;
+
 const BRANCHES: { key: keyof QdiBranches; label: string; color: string }[] = [
-  { key: 'trajectoire', label: 'Trajectoire', color: theme.palette.pilotAmber },
-  { key: 'fluidite', label: 'Fluidité', color: theme.dataColors.flow },
-  { key: 'freinage', label: 'Freinage', color: theme.dataColors.brake },
-  { key: 'acceleration', label: 'Accélération', color: theme.palette.green },
-  { key: 'regularite', label: 'Régularité', color: theme.dataColors.regularity },
+  { key: 'trajectoire', label: 'Trajectoire', color: dataColors.trajectory },
+  { key: 'fluidite', label: 'Fluidité', color: dataColors.flow },
+  { key: 'freinage', label: 'Freinage', color: dataColors.brake },
+  { key: 'acceleration', label: 'Accélération', color: dataColors.accel },
+  { key: 'regularite', label: 'Régularité', color: dataColors.regularity },
 ];
 
 const SIZE = 300;
 const CX = SIZE / 2;
 const CY = SIZE / 2 + 6;
 const R = 104;
+
+/** Annotation courte optionnelle près d'une branche (ex. « votre point fort »). */
+export type QdiAnnotations = Partial<Record<keyof QdiBranches, string>>;
 
 function point(index: number, value01: number): { x: number; y: number } {
   const angle = -Math.PI / 2 + (index * 2 * Math.PI) / BRANCHES.length;
@@ -52,11 +58,13 @@ export function QdiRadar({
   reference,
   referenceSessions,
   detail,
+  annotations,
 }: {
   current: QdiBranches;
   reference?: QdiBranches | null;
   referenceSessions?: number;
   detail: boolean;
+  annotations?: QdiAnnotations;
 }) {
   const currentValues = BRANCHES.map((b) => current[b.key]);
   const referenceValues = reference ? BRANCHES.map((b) => reference[b.key]) : null;
@@ -73,49 +81,65 @@ export function QdiRadar({
             key={f}
             points={polygonPoints(BRANCHES.map(() => f * 100))}
             fill="none"
-            stroke={theme.palette.line}
+            stroke={palette.line}
             strokeWidth={1}
           />
         ))}
 
-        {/* Référence self-only (médiane de vos sessions) */}
+        {/* Axes teintés dans la couleur de chaque branche (35 %). */}
+        {BRANCHES.map((b, i) => {
+          const tip = point(i, 1);
+          return (
+            <Line
+              key={`ax-${b.key}`}
+              x1={CX}
+              y1={CY}
+              x2={tip.x}
+              y2={tip.y}
+              stroke={b.color}
+              strokeOpacity={0.35}
+              strokeWidth={1}
+            />
+          );
+        })}
+
+        {/* Empreinte self-only (médiane de vos sessions) — pointillé neutre */}
         {hasReference ? (
           <Polygon
             points={polygonPoints(referenceValues)}
             fill="none"
-            stroke={theme.palette.creamMute}
+            stroke={palette.faint}
             strokeWidth={1.5}
             strokeDasharray="4 4"
           />
         ) : null}
 
-        {/* Session courante — or = donnée */}
+        {/* Séance courante — trait BLANC (la couleur vit sur les sommets) */}
         {hasAnyValue ? (
           <Polygon
             points={polygonPoints(currentValues)}
-            fill="rgba(255,183,3,0.10)"
-            stroke={theme.palette.gold}
+            fill="rgba(245,245,247,0.06)"
+            stroke={palette.cream}
             strokeWidth={2}
             strokeLinejoin="round"
           />
         ) : null}
 
-        {/* Sommets + libellés */}
+        {/* Sommets colorés + libellés colorés (+ valeur si detail) */}
         {BRANCHES.map((b, i) => {
           const tip = point(i, 1.18);
           const v = current[b.key];
           const dot = point(i, (v ?? 0) / 100);
           return (
-            <>
+            <React.Fragment key={b.key}>
               {typeof v === 'number' ? (
-                <Circle key={`d-${b.key}`} cx={dot.x} cy={dot.y} r={3} fill={theme.palette.gold} />
+                <Circle cx={dot.x} cy={dot.y} r={3.5} fill={b.color} />
               ) : null}
               <SvgText
-                key={`l-${b.key}`}
                 x={tip.x}
                 y={tip.y - (detail ? 5 : 0)}
-                fill={theme.palette.creamSoft}
-                fontSize={11}
+                fill={b.color}
+                fontSize={10.5}
                 fontFamily={theme.fonts.mono}
                 textAnchor="middle"
               >
@@ -123,10 +147,9 @@ export function QdiRadar({
               </SvgText>
               {detail ? (
                 <SvgText
-                  key={`v-${b.key}`}
                   x={tip.x}
                   y={tip.y + 10}
-                  fill={typeof v === 'number' ? b.color : theme.palette.faint}
+                  fill={typeof v === 'number' ? b.color : palette.faint}
                   fontSize={12}
                   fontFamily={theme.fonts.mono}
                   textAnchor="middle"
@@ -134,15 +157,27 @@ export function QdiRadar({
                   {typeof v === 'number' ? String(v) : '—'}
                 </SvgText>
               ) : null}
-            </>
+              {annotations?.[b.key] ? (
+                <SvgText
+                  x={tip.x}
+                  y={tip.y + (detail ? 22 : 12)}
+                  fill={palette.creamMute}
+                  fontSize={8.5}
+                  fontFamily={theme.fonts.body}
+                  textAnchor="middle"
+                >
+                  {annotations[b.key]}
+                </SvgText>
+              ) : null}
+            </React.Fragment>
           );
         })}
       </Svg>
 
       <Text style={legendStyle}>
         {hasReference
-          ? `Trait plein : cette session. Pointillé : la médiane de vos ${referenceSessions ?? ''} dernières sessions.`
-          : 'Votre première lecture ici : la référence se construira au fil de vos sessions.'}
+          ? `Trait plein : cette séance. Pointillé : la médiane de vos ${referenceSessions ?? ''} dernières séances.`
+          : 'Votre première lecture ici : la référence se construira au fil de vos séances.'}
       </Text>
       {currentValues.some((v) => v === null) ? (
         <Text style={legendStyle}>
@@ -156,7 +191,7 @@ export function QdiRadar({
 const legendStyle = {
   fontFamily: theme.fonts.body,
   fontSize: theme.fontSize.small,
-  color: theme.palette.creamMute,
+  color: palette.creamMute,
   lineHeight: theme.fontSize.small * 1.5,
   textAlign: 'center' as const,
   marginTop: theme.spacing.sm,

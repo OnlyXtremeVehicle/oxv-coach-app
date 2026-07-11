@@ -1,15 +1,14 @@
 /**
- * KingNumber — le CHIFFRE ROI d'un écran (refonte NG, docs/refonte-app).
+ * KingNumber — le CHIFFRE ROI d'un écran (refonte V3, handoff §5).
  *
- * Un seul par écran (Principe 5 : un seul chiffre dominant). Grand chiffre
- * Rajdhani or, glow discret de donnée, chiffres tabulaires. À sa droite : une
- * unité optionnelle (« /100 », « s ») + un libellé court, et un fait de tendance
- * facultatif (jamais une prescription).
+ * Un seul par écran (un seul chiffre dominant). Grand chiffre en JetBrains Mono,
+ * tabular-nums, letter-spacing serré. Sa COULEUR est celle de la donnée qu'il
+ * représente : violet pour la régularité, or pour le chrono/record, etc. — via
+ * la prop `color`. Pas de halo « gaming » : un chiffre net (refonte calme).
  *
- * Code couleur : or = donnée (par défaut). Le glow est un halo de donnée, pas une
- * alarme. Le `tone` permet une donnée ambre (marge serrée) — JAMAIS le rouge de
- * marque. La tendance positive est verte, la négative reste neutre (crème) : on
- * n'alarme pas le pilote, on l'informe.
+ * À sa droite : une unité optionnelle (« s », « /100 ») + un libellé court, et un
+ * fait de tendance facultatif (descriptif, jamais une prescription). La tendance
+ * positive est verte, la négative reste neutre (crème) — on informe, on n'alarme.
  */
 
 import { StyleSheet, Text, View } from 'react-native';
@@ -19,18 +18,25 @@ import { theme } from '@/theme/v2';
 const { palette, fonts, spacing } = theme;
 
 export interface KingNumberProps {
-  /** Valeur déjà formatée (ex. « 0,4 », « 73 »). Le composant ne calcule rien. */
+  /** Valeur déjà formatée (ex. « 0,42 », « ±0,42 s », « 1:24.318 »). */
   value: string;
   /** Unité / dénominateur à droite du chiffre (ex. « s », « /100 »). */
   unit?: string;
-  /** Libellé court sous l'unité (ex. « RÉGULARITÉ », « QDI »). */
+  /** Libellé court sous l'unité (ex. « RÉGULARITÉ »). */
   label?: string;
   /** Fait de tendance facultatif (ex. « +3 vs médiane »). Descriptif, jamais un ordre. */
   trend?: string;
   /** Tendance positive → vert ; sinon crème neutre. Défaut : neutre. */
   trendPositive?: boolean;
-  /** Couleur du chiffre : « gold » (donnée, défaut) ou « amber » (marge serrée). */
+  /**
+   * Couleur du chiffre = couleur de sa DONNÉE (ex. dataColors.regularity violet,
+   * palette.gold pour un chrono). Prioritaire sur `tone`. Défaut : or.
+   */
+  color?: string;
+  /** Raccourci historique : « gold » (défaut) ou « amber ». Ignoré si `color`. */
   tone?: 'gold' | 'amber';
+  /** Taille du chiffre (défaut 48, plage refonte 46-54). */
+  size?: number;
 }
 
 export function KingNumber({
@@ -39,15 +45,17 @@ export function KingNumber({
   label,
   trend,
   trendPositive = false,
+  color,
   tone = 'gold',
+  size = 48,
 }: KingNumberProps) {
-  const color = tone === 'amber' ? palette.pilotAmber : palette.gold;
+  const resolved = color ?? (tone === 'amber' ? palette.pilotAmber : palette.gold);
 
   return (
     <View style={s.row}>
       <View style={s.numberRow}>
         <Text
-          style={[s.number, { color, textShadowColor: withAlpha(color) }]}
+          style={[s.number, { color: resolved, fontSize: size, lineHeight: size * 0.96 }]}
           accessibilityRole="text"
           allowFontScaling={false}
         >
@@ -68,36 +76,24 @@ export function KingNumber({
   );
 }
 
-/** Halo de donnée du chiffre roi (glow doux, non alarmant). */
-function withAlpha(hex: string): string {
-  // Or #FFB703 → glow ambré ; ambre #F2792B → glow ambré. On garde une opacité
-  // fixe et discrète, cohérente avec le canon (donnée = chaleur, pas alarme).
-  return hex === palette.gold ? 'rgba(255,183,3,0.38)' : 'rgba(242,121,43,0.34)';
-}
-
 const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md },
   numberRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   number: {
-    fontFamily: fonts.king, // Rajdhani — chiffre roi
-    fontSize: 66,
-    lineHeight: 60,
-    letterSpacing: -1,
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 26,
-    // fontVariant tabulaire : les chiffres ne dansent pas quand la valeur change.
-    fontVariant: ['tabular-nums'],
+    fontFamily: fonts.king, // JetBrains Mono bold — chiffre roi
+    letterSpacing: -1.5,
+    fontVariant: ['tabular-nums'], // les chiffres ne dansent pas quand la valeur change
   },
-  side: { justifyContent: 'flex-end', paddingBottom: 8, gap: 2 },
+  side: { justifyContent: 'flex-end', paddingBottom: 6, gap: 2 },
   unit: {
     fontFamily: fonts.mono,
     fontSize: 11,
-    color: palette.faint,
+    color: palette.eyebrow,
   },
   label: {
     fontFamily: fonts.mono,
     fontSize: 10,
-    letterSpacing: 2,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
     color: palette.eyebrow,
   },
