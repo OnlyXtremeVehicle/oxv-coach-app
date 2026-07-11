@@ -186,7 +186,8 @@ const s = {
   rank: {
     fontFamily: theme.fonts.king,
     fontSize: 24,
-    color: palette.gold,
+    // Rang/ordre (pas un chrono) → neutre. L'or reste au chrono/record.
+    color: palette.creamMute,
     width: 28,
     textAlign: 'center' as const,
   },
@@ -205,7 +206,9 @@ const s = {
   margin: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.h3,
-    color: palette.gold,
+    // Valeur de marge (pas un chrono) → neutre crème ; la zone de marge se code
+    // via le dégradé §7.6, pas via l'or.
+    color: palette.cream,
   },
   doctrine: {
     fontFamily: theme.fonts.bodyLight,

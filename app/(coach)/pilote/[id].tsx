@@ -41,8 +41,8 @@ import { formatDateLong } from '@/utils/format';
 type Mode = 'browse' | 'compare';
 
 // Couleurs de zone de marge (donnée, toujours doublée du libellé marginLabelOf).
-// Rouge de marge neutralisé en ambre pilote (#F2792B) : le rouge de marque ne
-// code jamais une donnée de perf (canon).
+// Marge serrée = rouge de DONNÉE (freinage, dataColors.brake #F65B5B), distinct
+// du rouge de MARQUE (#C8102E) qui ne code jamais une donnée de perf (canon V3).
 // Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
 // DONNÉE (freinage), jamais le rouge de marque.
 const ZONE_COLORS = {

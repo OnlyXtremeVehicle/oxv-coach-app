@@ -355,7 +355,8 @@ const s = {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
-    color: palette.gold,
+    // Cible d'objectif (pas un chrono/record) → neutre. L'or reste au chrono.
+    color: palette.creamMute,
     marginTop: spacing.xs,
   },
   objDetail: {

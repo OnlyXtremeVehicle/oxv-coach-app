@@ -274,7 +274,8 @@ const s = {
   triageRank: {
     fontFamily: theme.fonts.king,
     fontSize: 22,
-    color: palette.gold,
+    // Rang/ordre (pas un chrono) → neutre. L'or reste au chrono/record.
+    color: palette.creamMute,
     width: 26,
     textAlign: 'center' as const,
   },
@@ -293,7 +294,9 @@ const s = {
   triageMargin: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.h3,
-    color: palette.gold,
+    // Valeur de marge (pas un chrono) → neutre crème ; la marge code sa zone
+    // ailleurs (dégradé §7.6), pas via l'or.
+    color: palette.cream,
   },
   kmTitle: {
     fontFamily: theme.fonts.bodyMedium,

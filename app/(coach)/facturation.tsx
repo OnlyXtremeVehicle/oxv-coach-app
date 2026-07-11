@@ -293,7 +293,10 @@ const s = {
   invoiceAmount: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.h3,
-    color: palette.gold,
+    // Montant (argent, pas un chrono/record) → crème neutre (canon strict : or =
+    // chrono uniquement). À CONFIRMER Gabin : veut-il le montant en or ? Si oui,
+    // c'est une exception « valeur money » à documenter (comme la marge §7.6).
+    color: palette.cream,
   },
   footnote: {
     fontFamily: theme.fonts.bodyLight,
