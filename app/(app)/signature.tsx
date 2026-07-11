@@ -24,7 +24,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { SourceMethodBlock } from '@/components/InsightTransparency';
-import { QdiRadar } from '@/components/QdiRadar';
+import { QdiRadar, type QdiAnnotations } from '@/components/QdiRadar';
 import { FadeInSection } from '@/components/motion';
 import { EmptyState } from '@/components/instruments';
 import {
@@ -208,6 +208,30 @@ export default function SignatureScreen() {
 
   const hasContent = signature && signature.traits.length > 0;
 
+  // Branche la plus haute → annotation descriptive « point fort » sur le radar
+  // (registre autorisé, comme QdiBars ; self-only, jamais un ordre). Rien si
+  // aucune branche n'est mesurée.
+  const qdiAnnotations: QdiAnnotations | undefined = (() => {
+    if (!qdi) return undefined;
+    const keys: (keyof QdiBranches)[] = [
+      'trajectoire',
+      'fluidite',
+      'freinage',
+      'acceleration',
+      'regularite',
+    ];
+    let best: keyof QdiBranches | null = null;
+    let max = -1;
+    for (const k of keys) {
+      const v = qdi[k];
+      if (typeof v === 'number' && v > max) {
+        max = v;
+        best = k;
+      }
+    }
+    return best ? { [best]: 'point fort' } : undefined;
+  })();
+
   return (
     <Screen>
       <AppBar title="SIGNATURE" onBack={() => router.back()} />
@@ -247,6 +271,7 @@ export default function SignatureScreen() {
                       reference={qdiReference?.branches ?? null}
                       referenceSessions={qdiReference?.sessions}
                       detail={qdiAccess === 'full'}
+                      annotations={qdiAnnotations}
                     />
                   </CockpitPanel>
                 ) : (
