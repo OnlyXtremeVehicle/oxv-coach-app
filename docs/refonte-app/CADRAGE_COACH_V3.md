@@ -52,11 +52,14 @@ la donnée d'un pilote. Le reste :
    `color` → tombe sur le défaut **OR**, ce qui viole §7.6 (la marge = dégradé
    rouge-donnée→or→vert selon la zone). → brancher `color` sur le dégradé §7.6.
    L'or ne reste légitime que sur le **chrono/record** (best tour, courbe de rythme).
-2. **Eyebrows/accents d'identité** qui visent le rouge coach mais tapent
-   `palette.coach` (= crème #E6E6E8) : `pilote/[id]` (PILOTE SUIVI), `lecture`
-   (MA LECTURE), `reperes`, `annoter` (visChipOn), `comparer`/`comparer-pilotes`
-   (bordure carte sélectionnée). → passer à `roleColors.coach`/`coachAccent`
-   pour cohérence avec le RoleBadge ; garder `palette.coach` pour la citation.
+2. ~~Eyebrows/accents d'identité crème → rouge~~ **TRANCHÉ (Gabin 2026-07-11) :
+   GARDER LE CRÈME NEUTRE `palette.coach` #E6E6E8** sur les ~18 écrans coach
+   (eyebrows d'identité, bordures de sélection). Ce n'était PAS un bug mais un
+   choix NG assumé (« accent coach = crème neutre » documenté partout). Split
+   assumé : **rouge de rôle réservé à la nav (tab bar active), au RoleBadge et
+   aux CTA/bandes prescriptives** ; contenu d'écran en neutre sobre. Aucun sweep.
+   NE PAS re-flaguer (une vérif « cohérence identité » le proposera sans ce
+   contexte).
 3. **Couleur d'entité pilote sur comparatifs** : ne PAS emprunter le rouge de rôle
    (`#E23A4E`) comme couleur d'acteur A sur un écran data (confusion avec le rouge
    freinage). Couleur d'entité neutre (or/blanc, ou traj bleu/cyan).
