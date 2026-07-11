@@ -86,6 +86,16 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
+/** Halo du chiffre central, dérivé de la couleur de la donnée (calme, tempéré). */
+function hexToRgba(hex: string, alpha: number): string {
+  const h = hex.replace('#', '');
+  const full = h.length === 3 ? h[0] + h[0] + h[1] + h[1] + h[2] + h[2] : h;
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 const defaultFormat = (v: number) => v.toFixed(1);
 
 // ----------------------------------------------------------------------------
@@ -240,7 +250,14 @@ export function GaugeInstrument({
         <Animated.View style={[styles.center, { opacity: fade }]} pointerEvents="none">
           {label ? <Text style={styles.label}>{label}</Text> : null}
           <View style={styles.valueRow}>
-            <Text style={[styles.value, { fontSize: size * 0.2 }]}>{formatValue(value)}</Text>
+            <Text
+              style={[
+                styles.value,
+                { fontSize: size * 0.2, textShadowColor: hexToRgba(color, 0.28) },
+              ]}
+            >
+              {formatValue(value)}
+            </Text>
           </View>
           {unit ? <Text style={styles.unit}>{unit}</Text> : null}
           {delta ? <Text style={styles.delta}>{delta}</Text> : null}
@@ -281,10 +298,10 @@ const styles = StyleSheet.create({
     fontFamily: fonts.display,
     color: palette.cream,
     letterSpacing: -1,
-    // Halo doré tempéré — « Ferrari minimaliste » : le chiffre rayonne sans brûler.
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    // Halo tempéré dérivé de la couleur de la donnée (textShadowColor inline) —
+    // « Ferrari minimaliste » : le chiffre rayonne dans sa couleur, sans brûler.
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    textShadowRadius: 14,
   },
   unit: {
     fontFamily: fonts.mono,

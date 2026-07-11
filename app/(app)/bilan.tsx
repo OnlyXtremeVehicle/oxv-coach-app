@@ -421,6 +421,7 @@ export default function BilanScreen() {
               unit="s / tour"
               formatValue={(v) => v.toFixed(1).replace('.', ',')}
               caption={`${salient.lapCount} tours`}
+              color={theme.dataColors.regularity}
               size={264}
             />
           ) : null}
@@ -433,6 +434,7 @@ export default function BilanScreen() {
             }}
           >
             <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>VOTRE MEILLEUR TOUR</Text>
+            {/* Chrono = or (seule donnée qui porte l'or, canon V3). */}
             <Text style={[s.heroNumber, { marginBottom: theme.spacing.md }]}>
               {salient?.bestSeconds != null ? formatLapTime(salient.bestSeconds) : '—'}
             </Text>
@@ -497,7 +499,7 @@ export default function BilanScreen() {
                   ? Math.max(0, 100 - (salient.spreadSeconds / 3) * 100)
                   : 0
               }
-              tone="green"
+              color={theme.dataColors.regularity}
               onPress={() => router.push(`/(app)/regularite?sessionId=${session.id}` as never)}
             />
             <MeterBar
@@ -515,7 +517,7 @@ export default function BilanScreen() {
               label="Combiné"
               value="À explorer"
               fillPct={0}
-              tone="gold"
+              tone="faint"
               onPress={() => router.push(`/(app)/heatmap?sessionId=${session.id}` as never)}
             />
           </View>
@@ -863,10 +865,10 @@ const s = {
     lineHeight: theme.fontSize.small * 1.4,
   },
   heroNumber: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.king,
     fontSize: theme.fontSize.hud,
     letterSpacing: -1,
-    color: theme.palette.cream,
+    color: theme.palette.gold,
     textAlign: 'center' as const,
   },
   heroTitle: {

@@ -6,13 +6,16 @@
  * de remplissage qui monte à l'ouverture. Optionnellement cliquable — un pilier
  * renvoie vers son écran dédié.
  *
- * Doctrine cockpit factuel : la couleur (`tone`) est de la donnée, jamais un
- * verdict. Or = neutre/donnée, vert = tendance favorable, heritage = signature,
- * faint = en retrait. JAMAIS de rouge (réservé marque + bande coach).
+ * Doctrine cockpit factuel : la couleur est de la donnée, jamais un verdict.
+ * `tone` couvre les registres génériques (or = neutre/donnée, vert = tendance
+ * favorable, heritage = signature, faint = en retrait) ; `color` permet de poser
+ * directement la couleur d'une DONNÉE du système QDI V3 (ex. violet régularité,
+ * bleu trajectoire). `color` prime sur `tone`. JAMAIS de rouge de marque.
  *
  * Usage :
  *   <MeterBar label="S2" value="38,1" fillPct={68} tone="gold" />
- *   <MeterBar label="Consistance" value="87 %" fillPct={87} tone="green"
+ *   <MeterBar label="Consistance" value="87 %" fillPct={87}
+ *             color={dataColors.regularity}
  *             onPress={() => router.push('/(app)/regularite')} />
  */
 
@@ -29,8 +32,13 @@ export interface MeterBarProps {
   value?: string;
   /** Remplissage de la barre, 0..100. */
   fillPct: number;
-  /** Couleur de la donnée. Défaut « gold ». Jamais de rouge. */
+  /** Registre de couleur générique. Défaut « gold ». Jamais de rouge. */
   tone?: MeterTone;
+  /**
+   * Couleur de DONNÉE explicite (système QDI V3 : violet régularité, bleu
+   * trajectoire…). Prioritaire sur `tone`. Jamais un rouge de marque.
+   */
+  color?: string;
   /** Ligne secondaire optionnelle sous la barre. */
   caption?: string;
   /**
@@ -61,6 +69,7 @@ export function MeterBar({
   value,
   fillPct,
   tone = 'gold',
+  color: colorProp,
   caption,
   medianPct,
   recordPct,
@@ -68,7 +77,7 @@ export function MeterBar({
   animate = true,
   delay = 0,
 }: MeterBarProps) {
-  const color = TONE_COLOR[tone];
+  const color = colorProp ?? TONE_COLOR[tone];
   const pct = Math.max(0, Math.min(100, fillPct));
   const clampPct = (v: number) => Math.max(0, Math.min(100, v));
 

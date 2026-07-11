@@ -117,6 +117,7 @@ export default function RegulariteScreen() {
                 unit="s"
                 formatValue={(v) => v.toFixed(2).replace('.', ',')}
                 caption={reg.band ?? undefined}
+                color={theme.dataColors.regularity}
                 size={264}
               />
               <Text style={s.heroNote}>écart-type sur {reg.lapCount} tours</Text>
