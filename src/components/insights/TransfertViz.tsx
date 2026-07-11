@@ -26,7 +26,9 @@ import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
-const GOLD = theme.palette.gold;
+// Roulis / transfert = donnée (ni chrono, ni alarme) → crème neutre. L'or reste
+// au chrono/record. (Nom GOLD conservé pour limiter le churn ; valeur neutre.)
+const GOLD = theme.palette.cream;
 
 // Temps de prise de roulis par virage (entrée de courbe). Largeur ∝ durée.
 interface Corner {
@@ -230,7 +232,7 @@ const styles = StyleSheet.create({
     lineHeight: 42,
     color: theme.palette.cream,
     // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    textShadowColor: 'rgba(245,245,247,0.12)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },

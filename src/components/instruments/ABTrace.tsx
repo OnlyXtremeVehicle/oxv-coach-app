@@ -2,7 +2,8 @@
  * ABTrace — superposition factuelle de deux tours (mode `ab` de TrackStage).
  *
  * Charge le meilleur tour de deux sessions et les superpose sur le tracé du
- * circuit : A en or (mise en avant), B en neutre (référence). Sert deux écrans :
+ * circuit : A en crème (mise en avant), B en crème atténuée (référence). Sert
+ * deux écrans :
  *   - Comparateur  : vos deux propres tours (« vous contre vous »).
  *   - Côte-à-côte  : votre tour vs celui d'un ami accepté.
  *
@@ -48,9 +49,9 @@ export async function loadBestTrajectory(sessionId: string): Promise<Pt[]> {
 }
 
 export interface ABTraceProps {
-  /** Session A (mise en avant, or). */
+  /** Session A (mise en avant, crème). */
   sessionA: string;
-  /** Session B (référence, neutre). */
+  /** Session B (référence, crème atténuée). */
   sessionB: string;
   /** Étiquette de légende pour A. Défaut « Référence A ». */
   labelA?: string;
@@ -120,7 +121,7 @@ export function ABTrace({
       />
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.swatch, { backgroundColor: theme.palette.gold }]} />
+          <View style={[styles.swatch, { backgroundColor: theme.palette.cream }]} />
           <Text style={styles.legendText}>{labelA}</Text>
         </View>
         <View style={styles.legendItem}>

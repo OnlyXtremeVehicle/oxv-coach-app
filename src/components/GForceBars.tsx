@@ -20,7 +20,9 @@ import { View, Text } from 'react-native';
 import { theme } from '@/theme/v2';
 
 const { palette, fonts, fontSize, spacing, dataColors } = theme;
-const LAT = palette.gold;
+// G latéral (charge en virage) : pas de branche QDI dédiée ni un chrono → crème
+// neutre (l'or reste au chrono/record). Long. : freinage rouge / accél. vert.
+const LAT = palette.cream;
 const BRAKE = dataColors.brake;
 const ACCEL = dataColors.accel;
 

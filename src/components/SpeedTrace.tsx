@@ -1,7 +1,7 @@
 /**
  * SpeedTrace — courbe vitesse vs progression du tour. Transposition gaming.
  *
- * Affiche la signature vitesse du pilote : trace OR à halo qui monte et
+ * Affiche la signature vitesse du pilote : trace crème à halo qui monte et
  * descend selon les zones de freinage et de relance. Optionnellement
  * superpose un 2e tour pour comparer (cream neutre, sans verdict).
  *
@@ -24,7 +24,7 @@ import { HAUTE_SAINTONGE_SEGMENTS } from '@/trackviz/hauteSaintonge';
 import { theme } from '@/theme/v2';
 
 const { palette, fonts, fontSize, spacing } = theme;
-const GOLD = palette.gold;
+const SPEED = palette.cream;
 
 export interface SpeedTracePoint {
   /** Progression dans le tour, 0..1. */
@@ -34,7 +34,7 @@ export interface SpeedTracePoint {
 }
 
 export interface SpeedTraceProps {
-  /** Trace principale (or). */
+  /** Trace principale (crème). */
   points: SpeedTracePoint[];
   /** Trace comparée (cream neutre). Optionnelle. */
   comparePoints?: SpeedTracePoint[] | null;
@@ -150,10 +150,10 @@ export function SpeedTrace({
           />
         ) : null}
 
-        {/* Trace principale — OR à halo (large translucide + net) */}
+        {/* Trace principale — crème à halo (large translucide + net) */}
         <Path
           d={mainPath}
-          stroke={GOLD}
+          stroke={SPEED}
           strokeWidth={5}
           opacity={0.16}
           fill="none"
@@ -162,7 +162,7 @@ export function SpeedTrace({
         />
         <Path
           d={mainPath}
-          stroke={GOLD}
+          stroke={SPEED}
           strokeWidth={1.8}
           opacity={0.95}
           fill="none"
@@ -202,7 +202,7 @@ export function SpeedTrace({
             marginTop: spacing.sm,
           }}
         >
-          <LegendDot color={GOLD} label={label ?? 'Cette session'} />
+          <LegendDot color={SPEED} label={label ?? 'Cette session'} />
           <LegendDot color={palette.creamMute} label={compareLabel ?? 'Session comparée'} />
         </View>
       ) : null}

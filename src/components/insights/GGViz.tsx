@@ -21,7 +21,9 @@ import Svg, { Circle, G, Line, Text as SvgText } from 'react-native-svg';
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
-const GOLD = theme.palette.gold;
+// Nuage g-g = donnée de charge (ni chrono, ni alarme) → crème neutre. L'or reste
+// au chrono/record. (Nom GOLD conservé pour limiter le churn ; valeur neutre.)
+const GOLD = theme.palette.cream;
 
 // Repère carré ; centre du nuage et rayons.
 const VB = 240;
@@ -330,7 +332,7 @@ const styles = StyleSheet.create({
     lineHeight: 42,
     color: theme.palette.cream,
     // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    textShadowColor: 'rgba(245,245,247,0.12)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },
@@ -376,7 +378,7 @@ const styles = StyleSheet.create({
   statGold: {
     color: GOLD,
     // Lueur secondaire tempérée (≤ 0.36) — pas d'empilement de lueurs fortes.
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    textShadowColor: 'rgba(245,245,247,0.12)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 12,
   },

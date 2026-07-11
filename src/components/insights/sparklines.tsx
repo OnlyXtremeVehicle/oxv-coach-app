@@ -18,16 +18,16 @@ import type { ReadingKey } from '@/components/insights/catalogue';
 const C = theme.dataColors;
 
 // rgba dérivées des couleurs QDI pour les remplissages discrets des zones.
-// Ambre pilote = trajectoire ; le rouge de donnée #E63946 = FREINAGE (≠ marque).
-const TRAJ_LINE = theme.palette.pilotAmber;
-const TRAJ_FILL = 'rgba(242,121,43,0.10)';
-const TRAJ_SOFT = 'rgba(242,121,43,0.50)';
+// Élément neutre (crème) pour le principal ; le rouge de donnée #E63946 = FREINAGE (≠ marque).
+const TRAJ_LINE = theme.palette.cream;
+const TRAJ_FILL = 'rgba(245,245,247,0.10)';
+const TRAJ_SOFT = 'rgba(245,245,247,0.50)';
 const BRAKE_FILL = 'rgba(230,57,70,0.10)'; // freinage = rouge de donnée
 const BRAKE_SOFT = 'rgba(230,57,70,0.45)';
 const BRAKE_DOT = 'rgba(230,57,70,0.35)';
 const ACCEL_FILL = 'rgba(74,222,128,0.50)';
 const ACCEL_SOFT = 'rgba(74,222,128,0.50)'; // accélération = vert (corrige un bleu résiduel)
-const RED_GHOST = 'rgba(242,121,43,0.40)';
+const RED_GHOST = 'rgba(154,154,163,0.45)'; // série de référence secondaire = crème atténuée (creamMute)
 const LINE_GHOST = 'rgba(248,249,250,0.25)';
 
 function Frame({ children }: { children: React.ReactNode }) {

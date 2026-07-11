@@ -7,16 +7,16 @@
  *
  * La fluidité = régularité des transitions, lue dans le jerk (dérivée de
  * l'accélération). Cockpit : barre de statut, tour le plus fluide en nombre
- * héros (lueur dorée), trace de jerk lisse en OR à halo contre la trace hachée
- * en ambre, puis nuage fluidité × temps montrant que plus c'est fluide, plus
- * c'est rapide.
+ * héros, trace de jerk lisse en CRÈME à halo (série principale) contre la trace
+ * hachée en crème atténué (série de référence), puis nuage fluidité × temps
+ * montrant que plus c'est fluide, plus c'est rapide.
  *
  * DÉMO : tracés et points figés (rapide 1:42.8 / haché 1:45.1, 18 tours),
  * telemetry_frames vide jusqu'à Valence. Composant déterministe.
  *
  * Doctrine : révèle le lien entre douceur et vitesse. Ne dit jamais « soyez
- * plus fluide ». L'or est la donnée (fluidité) ; ambre pour le tour haché en
- * contraste. Aucune couleur heritage.
+ * plus fluide ». La série de flow principale est neutre (crème) et la référence
+ * en crème atténué ; l'or reste réservé au chrono/record. Aucune couleur heritage.
  */
 
 import { useEffect, useRef } from 'react';
@@ -26,7 +26,8 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
-const GOLD = theme.palette.gold;
+// Trace de flow principale : NEUTRE (crème). L'or reste réservé au chrono/record.
+const CREAM = theme.palette.cream;
 
 // Tour haché : dents de scie marquées (maquette N4-3).
 const JAGGED =
@@ -91,20 +92,20 @@ export function FlowViz() {
         <Svg width="100%" height={130} viewBox="0 0 320 130">
           {/* Ligne médiane de référence : filet fin. */}
           <Line x1={0} y1={65} x2={320} y2={65} stroke={theme.palette.line} strokeWidth={1} />
-          {/* Tour haché — ambre en contraste (jonctions arrondies, pas du bruit). */}
+          {/* Tour haché — série de référence en crème atténué (jonctions arrondies, pas du bruit). */}
           <Polyline
             points={JAGGED}
             fill="none"
-            stroke="rgba(242,121,43,0.55)"
+            stroke="rgba(245,245,247,0.55)"
             strokeWidth={1.5}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
-          {/* Tour rapide — fluidité (or), halo puis trait net. */}
+          {/* Tour rapide — série de flow principale (crème), halo puis trait net. */}
           <Polyline
             points={SMOOTH}
             fill="none"
-            stroke={GOLD}
+            stroke={CREAM}
             strokeWidth={5}
             opacity={0.16}
             strokeLinejoin="round"
@@ -113,15 +114,15 @@ export function FlowViz() {
           <Polyline
             points={SMOOTH}
             fill="none"
-            stroke={GOLD}
+            stroke={CREAM}
             strokeWidth={2}
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         </Svg>
         <View style={styles.legend}>
-          <Legend color={GOLD} label="Tour le + rapide (1:42.8)" />
-          <Legend color="rgba(242,121,43,0.6)" label="Tour le + haché (1:45.1)" />
+          <Legend color={CREAM} label="Tour le + rapide (1:42.8)" />
+          <Legend color="rgba(154,154,163,0.6)" label="Tour le + haché (1:45.1)" />
         </View>
       </View>
       <Text style={styles.hint}>↑ moins de pics = transitions plus douces</Text>
@@ -152,33 +153,33 @@ export function FlowViz() {
           >
             ← plus fluide
           </SvgText>
-          {/* Tendance : fluide (gauche) = rapide (bas). */}
+          {/* Tendance : fluide (gauche) = rapide (bas) — ligne de référence en crème atténué. */}
           <Line
             x1={46}
             y1={44}
             x2={278}
             y2={110}
-            stroke="rgba(255,183,3,0.40)"
+            stroke="rgba(154,154,163,0.40)"
             strokeWidth={2}
             strokeDasharray="4 4"
             strokeLinecap="round"
           />
-          {/* Les 18 tours. */}
+          {/* Les 18 tours — nuage de données principal (crème). */}
           {SCATTER.map((p, i) => (
-            <Circle key={i} cx={p.x} cy={p.y} r={3.5} fill={GOLD} opacity={0.85} />
+            <Circle key={i} cx={p.x} cy={p.y} r={3.5} fill={CREAM} opacity={0.85} />
           ))}
-          {/* Meilleur tour, le plus fluide — halo or. */}
-          <Circle cx={70} cy={48} r={10} fill={GOLD} opacity={0.16} />
+          {/* Meilleur tour, le plus fluide — halo crème (emphase de la donnée). */}
+          <Circle cx={70} cy={48} r={10} fill={CREAM} opacity={0.16} />
           <Circle
             cx={70}
             cy={48}
             r={5}
             fill="none"
-            stroke={GOLD}
+            stroke={CREAM}
             strokeWidth={2}
             strokeLinecap="round"
           />
-          <SvgText x={78} y={46} fill={GOLD} fontFamily={theme.fonts.mono} fontSize={8}>
+          <SvgText x={78} y={46} fill={CREAM} fontFamily={theme.fonts.mono} fontSize={8}>
             1:42.8
           </SvgText>
         </Svg>
@@ -240,8 +241,8 @@ const styles = StyleSheet.create({
     lineHeight: 42,
     letterSpacing: -0.4,
     color: theme.palette.cream,
-    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    // Lueur crème tempérée (« Ferrari minimaliste » : ≤ 0.36). Or réservé au chrono.
+    textShadowColor: 'rgba(245,245,247,0.34)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },

@@ -6,13 +6,13 @@
  * Spec     : 02_moteur_insights.md §3.1.
  *
  * Superpose les tours d'une séance : là où le faisceau s'évase, la trajectoire
- * change d'un tour à l'autre. Cockpit : barre de statut, nombre héros (écart max
- * à lueur dorée), trajectoire médiane en OR à halo sur le faisceau de variation
- * ambre, puis barres de dispersion par virage (écart-type latéral, en mètres).
+ * change d'un tour à l'autre. Cockpit : barre de statut, nombre héros (écart max),
+ * trajectoire médiane en crème atténuée (référence) à halo sur le faisceau de
+ * variation crème, puis barres de dispersion par virage (écart-type latéral, en m).
  *
  * Doctrine : montre où la ligne hésite. Ne demande jamais d'être plus régulier.
- * L'or est la donnée ; ambre pilote (#F2792B, neutralise le rouge trajectory)
- * pour la variation, accel (vert) pour la constance. Aucune couleur heritage.
+ * Deux séries superposées : médiane = crème atténuée (creamMute), variation = crème
+ * (cream). accel (vert) pour la constance. Or réservé au chrono ; aucun ici.
  */
 
 import { useEffect, useRef } from 'react';
@@ -23,8 +23,10 @@ import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
-const GOLD = theme.palette.gold;
-const AMBER = theme.palette.pilotAmber;
+// Médiane = série de RÉFÉRENCE → crème atténuée (distincte de la variation crème).
+const MEDIAN_COLOR = theme.palette.creamMute;
+// Faisceau/marqueur de variation = série PRINCIPALE → crème (neutralise l'ambre pilote).
+const VARIATION_COLOR = theme.palette.cream;
 
 // Variations DÉMO du faisceau (médiane + 5 traces, maquette N3-1).
 const TRACES = [
@@ -40,7 +42,7 @@ const MEDIAN =
 
 // Écart-type latéral par virage (mètres) → largeur de barre relative au max.
 const BARS = [
-  { corner: 'V4', meters: 1.8, color: AMBER },
+  { corner: 'V4', meters: 1.8, color: VARIATION_COLOR },
   { corner: 'V7', meters: 1.2, color: C.flow },
   { corner: 'V2', meters: 0.7, color: C.flow },
   { corner: 'V5', meters: 0.5, color: C.accel },
@@ -87,7 +89,7 @@ export function DispersionViz() {
           <Path
             d="M70,205 C40,150 45,95 95,70 C140,48 150,80 175,95 C205,113 250,95 270,130 C288,162 250,200 200,200 C150,200 120,210 70,205 Z"
             fill="none"
-            stroke="rgba(242,121,43,0.10)"
+            stroke="rgba(245,245,247,0.10)"
             strokeWidth={22}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -103,11 +105,11 @@ export function DispersionViz() {
               strokeLinejoin="round"
             />
           ))}
-          {/* Trajectoire médiane — halo or puis trait net. */}
+          {/* Trajectoire médiane (référence) — halo crème atténué puis trait net. */}
           <Path
             d={MEDIAN}
             fill="none"
-            stroke={GOLD}
+            stroke={MEDIAN_COLOR}
             strokeWidth={5}
             opacity={0.16}
             strokeLinecap="round"
@@ -116,25 +118,25 @@ export function DispersionViz() {
           <Path
             d={MEDIAN}
             fill="none"
-            stroke={GOLD}
+            stroke={MEDIAN_COLOR}
             strokeWidth={1.8}
             opacity={0.95}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
-          {/* Marqueur V4 (dispersion large) — halo ambre. */}
-          <Circle cx={150} cy={80} r={11} fill={AMBER} opacity={0.16} />
+          {/* Marqueur V4 (dispersion large) — halo crème (variation). */}
+          <Circle cx={150} cy={80} r={11} fill={VARIATION_COLOR} opacity={0.16} />
           <Circle
             cx={150}
             cy={80}
             r={5}
             fill="none"
-            stroke={AMBER}
+            stroke={VARIATION_COLOR}
             strokeWidth={2}
             strokeLinecap="round"
           />
-          <SvgText x={160} y={76} fontSize={9} fill={AMBER} fontFamily={theme.fonts.mono}>
+          <SvgText x={160} y={76} fontSize={9} fill={VARIATION_COLOR} fontFamily={theme.fonts.mono}>
             V4 · 1,8 m
           </SvgText>
           {/* Marqueur V1 (serré). */}
@@ -163,8 +165,8 @@ export function DispersionViz() {
         </Svg>
 
         <View style={styles.legend}>
-          <Legend color={GOLD} label="Trajectoire médiane" />
-          <Legend color="rgba(242,121,43,0.55)" label="Zone de variation" />
+          <Legend color={MEDIAN_COLOR} label="Trajectoire médiane" />
+          <Legend color="rgba(245,245,247,0.55)" label="Zone de variation" />
         </View>
       </View>
 
@@ -239,12 +241,12 @@ const styles = StyleSheet.create({
     fontSize: 38,
     lineHeight: 40,
     color: theme.palette.cream,
-    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    // Lueur crème tempérée (« Ferrari minimaliste » : ≤ 0.36). L'or reste au chrono.
+    textShadowColor: 'rgba(245,245,247,0.34)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },
-  heroUnit: { fontFamily: theme.fonts.mono, fontSize: 16, color: GOLD },
+  heroUnit: { fontFamily: theme.fonts.mono, fontSize: 16, color: theme.palette.cream },
   heroLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: 8.5,

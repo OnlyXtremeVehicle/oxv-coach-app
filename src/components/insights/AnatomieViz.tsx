@@ -5,13 +5,15 @@
  * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
  * Spec     : 02_moteur_insights.md §2.1.
  *
- * Décompose un virage en trois temps : freinage (bleu) / corde (ambre, minimum
- * de vitesse au pic de G latéral) / réaccélération (vert). Cockpit : barre de
- * statut, nombre héros (vitesse à la corde, à lueur dorée), profil de vitesse
- * en OR à halo sur fond de phases, puis cartouches et lignes de phase.
+ * Décompose un virage en trois temps : freinage (rouge donnée) / corde (crème,
+ * minimum de vitesse au pic de G latéral) / réaccélération (vert). Cockpit :
+ * barre de statut, nombre héros (vitesse à la corde, à lueur crème neutre),
+ * profil de vitesse en CRÈME à halo sur fond de phases, puis cartouches et
+ * lignes de phase.
  *
- * Doctrine : l'or est la donnée. Pas de rouge (réservé marque/coach), pas de
- * heritageGold. DÉMO virage 3 (95 m / 78 km/h / 140 m), telemetry_frames vide.
+ * Doctrine V3 : l'or est réservé au chrono/record — la vitesse (donnée de perf)
+ * est neutre (crème). Pas de rouge de marque (réservé marque/coach). DÉMO virage
+ * 3 (95 m / 78 km/h / 140 m), telemetry_frames vide.
  */
 
 import { useEffect, useRef } from 'react';
@@ -22,8 +24,9 @@ import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
-const GOLD = theme.palette.gold;
-const AMBER = theme.palette.pilotAmber;
+// V3 : vitesse = donnée de perf → neutre crème (l'or reste au chrono/record).
+const CREAM = theme.palette.cream;
+const CREAM_MUTE = theme.palette.creamMute;
 
 interface Phase {
   color: string;
@@ -42,7 +45,7 @@ const PHASES: Phase[] = [
     value: '−1,08 g',
   },
   {
-    color: AMBER,
+    color: CREAM,
     label: 'Corde',
     text: 'Vitesse mini à la corde : **78 km/h**',
     value: '1,12 g lat.',
@@ -57,7 +60,7 @@ const PHASES: Phase[] = [
 
 const ZONES = [
   { label: 'Freinage', value: '95 m', color: C.brake },
-  { label: 'Corde', value: '78 km/h', color: AMBER },
+  { label: 'Corde', value: '78 km/h', color: CREAM },
   { label: 'Réaccél.', value: '140 m', color: C.accel },
 ];
 
@@ -96,11 +99,11 @@ export function AnatomieViz() {
           <Text style={styles.heroLabel}>VITESSE À LA CORDE · MINIMUM</Text>
         </View>
 
-        {/* Profil de vitesse : courbe OR à halo sur fond de phases. */}
+        {/* Profil de vitesse : courbe CRÈME (donnée neutre) à halo sur fond de phases. */}
         <Svg width="100%" height={132} viewBox="0 0 320 132">
           {/* Zones de fond : freinage / corde / réaccél. (teintes d'identité, ténues). */}
           <Rect x={0} y={0} width={110} height={120} fill="rgba(230,57,70,0.06)" />
-          <Rect x={110} y={0} width={60} height={120} fill="rgba(242,121,43,0.07)" />
+          <Rect x={110} y={0} width={60} height={120} fill="rgba(245,245,247,0.07)" />
           <Rect x={170} y={0} width={150} height={120} fill="rgba(74,222,128,0.06)" />
 
           {/* Grille horizontale : filets fins (le ton sombre porte la discrétion). */}
@@ -116,11 +119,11 @@ export function AnatomieViz() {
             />
           ))}
 
-          {/* Courbe de vitesse — halo or puis trait net. */}
+          {/* Courbe de vitesse — halo crème atténué puis trait net crème. */}
           <Path
             d="M6,24 C50,28 85,62 110,86 C130,102 145,102 170,90 C210,70 260,42 314,26"
             fill="none"
-            stroke={GOLD}
+            stroke={CREAM_MUTE}
             strokeWidth={6}
             opacity={0.16}
             strokeLinecap="round"
@@ -129,22 +132,22 @@ export function AnatomieViz() {
           <Path
             d="M6,24 C50,28 85,62 110,86 C130,102 145,102 170,90 C210,70 260,42 314,26"
             fill="none"
-            stroke={GOLD}
+            stroke={CREAM}
             strokeWidth={2}
             opacity={0.95}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
-          {/* Point de corde (minimum de vitesse) — halo ambre + point net. */}
-          <Circle cx={140} cy={100} r={9} fill={AMBER} opacity={0.16} />
-          <Circle cx={140} cy={100} r={3.4} fill={AMBER} />
+          {/* Point de corde (minimum de vitesse) — halo crème + point net crème. */}
+          <Circle cx={140} cy={100} r={9} fill={CREAM} opacity={0.16} />
+          <Circle cx={140} cy={100} r={3.4} fill={CREAM} />
 
           {/* Repères de vitesse (mono). */}
           <SvgText x={8} y={18} fontSize={8} fill={C.brake} fontFamily={theme.fonts.mono}>
             182 km/h
           </SvgText>
-          <SvgText x={118} y={124} fontSize={8} fill={AMBER} fontFamily={theme.fonts.mono}>
+          <SvgText x={118} y={124} fontSize={8} fill={CREAM} fontFamily={theme.fonts.mono}>
             78 km/h
           </SvgText>
         </Svg>
@@ -233,15 +236,16 @@ const styles = StyleSheet.create({
     fontSize: 38,
     lineHeight: 40,
     color: theme.palette.cream,
-    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    // V3 : la vitesse n'est pas le chrono → lueur crème neutre tempérée
+    // (« Ferrari minimaliste » : ≤ 0.36). L'or reste réservé au chrono/record.
+    textShadowColor: 'rgba(245,245,247,0.34)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 16,
   },
   heroUnit: {
     fontFamily: theme.fonts.mono,
     fontSize: 16,
-    color: GOLD,
+    color: CREAM,
   },
   heroLabel: {
     fontFamily: theme.fonts.mono,

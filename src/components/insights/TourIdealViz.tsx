@@ -13,8 +13,8 @@
  * DÉMO : valeurs figées (1:42.8 / 1:41.2 ; S2 80 %), telemetry_frames vide.
  *
  * Doctrine : constate où le temps se loge (« 80 % en S2 »). Ne dit jamais d'y
- * travailler. L'or est la donnée ; ambre pilote (#F2792B) pour le secteur qui
- * concentre la perte. Aucune couleur heritage.
+ * travailler. L'or est réservé au chrono/record (nombre héros) ; le secteur qui
+ * concentre la perte est en crème (donnée neutre). Aucune couleur heritage.
  */
 
 import { useEffect, useRef } from 'react';
@@ -24,7 +24,9 @@ import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 
 const C = theme.dataColors;
-const AMBER = theme.palette.pilotAmber;
+// Secteur qui concentre la perte : donnée principale en crème (neutre V3).
+// L'or reste réservé au chrono/record (nombre héros).
+const HOT = theme.palette.cream;
 
 // Deux chronos DÉMO (maquette N3-2).
 const REAL_BEST = '1:42.8';
@@ -54,7 +56,7 @@ interface Lost {
   hot: boolean;
 }
 const LOST: Lost[] = [
-  { sector: 'S2', pct: 80, label: '80 % · 1,28 s', color: AMBER, hot: true },
+  { sector: 'S2', pct: 80, label: '80 % · 1,28 s', color: HOT, hot: true },
   { sector: 'S1', pct: 13, label: '13 % · 0,21 s', color: C.flow, hot: false },
   { sector: 'S3', pct: 7, label: '7 % · 0,11 s', color: C.flow, hot: false },
 ];
@@ -183,10 +185,10 @@ const styles = StyleSheet.create({
     lineHeight: 46,
     letterSpacing: -0.5,
     color: theme.palette.cream,
-    // Lueur dorée tempérée (« Ferrari minimaliste » : ≤ 0.36).
-    textShadowColor: 'rgba(255,183,3,0.34)',
+    // Lueur crème très discrète (V3 calme) : aucun or décoratif (or = chrono).
+    textShadowColor: 'rgba(245,245,247,0.12)',
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+    textShadowRadius: 14,
   },
   heroLabel: {
     fontFamily: theme.fonts.mono,
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
   },
   fillHot: {
     // Lueur de donnée lisible mais sans bloom qui bave (≤ ~0.5).
-    shadowColor: AMBER,
+    shadowColor: HOT,
     shadowOpacity: 0.5,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },

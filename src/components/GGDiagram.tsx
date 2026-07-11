@@ -6,9 +6,11 @@
  * pro remplit la totalité du cercle (toutes combinaisons accel+freinage
  * + appui latéral exploitées), un amateur laisse des zones vides.
  *
- * Cockpit factuel : nuage en OR (la donnée), anneau d'adhérence tireté
- * doré à halo, stats en or. AUCUN code-couleur de performance (pas de
- * heatmap rouge « vite = rouge » : le rouge est réservé marque + coach).
+ * Cockpit factuel : nuage en CRÈME (la donnée, neutre — le g-g n'est
+ * ni un chrono ni une alarme), anneau d'adhérence tireté crème atténué
+ * à halo, stats en crème. AUCUN code-couleur de performance (pas de
+ * heatmap rouge « vite = rouge » : le rouge est réservé marque + coach ;
+ * l'or reste strictement réservé au chrono/record).
  *
  * Doctrine : pas de jugement « il manque ici, ajoutez là ». L'app montre
  * la forme, le pilote ou son coach interprètent.
@@ -22,7 +24,6 @@ import { cockpitPanel } from '@/components/insights/vizChrome';
 import { theme } from '@/theme/v2';
 
 const { palette, fonts, fontSize, spacing } = theme;
-const GOLD = palette.gold;
 
 export interface GGPoint {
   /** g latéral (positif = droite, négatif = gauche). */
@@ -107,13 +108,13 @@ export function GGDiagram({
           ) : null
         )}
 
-        {/* Anneau d'adhérence : halo doré large + tracé net tireté */}
+        {/* Anneau d'adhérence : halo crème atténué large + tracé net tireté crème */}
         <Circle
           cx={0}
           cy={0}
           r={scaleMaxG}
           fill="none"
-          stroke={GOLD}
+          stroke={palette.creamMute}
           strokeWidth={0.05}
           opacity={0.16}
         />
@@ -122,7 +123,7 @@ export function GGDiagram({
           cy={0}
           r={scaleMaxG}
           fill="none"
-          stroke={GOLD}
+          stroke={palette.cream}
           strokeWidth={0.02}
           opacity={0.6}
           strokeDasharray="0.08 0.06"
@@ -185,13 +186,13 @@ export function GGDiagram({
           </G>
         ) : null}
 
-        {/* Nuage — OR uniforme (la donnée), Y inversé pour SVG (FREIN en haut) */}
+        {/* Nuage — CRÈME uniforme (la donnée, neutre), Y inversé pour SVG (FREIN en haut) */}
         {visiblePoints.map((p, i) => (
-          <Circle key={i} cx={p.gLat} cy={-p.gLong} r={0.04} fill={GOLD} opacity={0.5} />
+          <Circle key={i} cx={p.gLat} cy={-p.gLong} r={0.04} fill={palette.cream} opacity={0.5} />
         ))}
       </Svg>
 
-      {/* Récap chiffré — valeurs en or */}
+      {/* Récap chiffré — valeurs en crème (neutre) */}
       <View style={s.statRow}>
         <Stat label="LAT MAX" value={maxLat > 0 ? `${maxLat.toFixed(2)} g` : '—'} />
         <Stat
@@ -229,8 +230,8 @@ const s = {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: GOLD,
-    shadowColor: GOLD,
+    backgroundColor: palette.cream,
+    shadowColor: palette.creamMute,
     shadowOpacity: 0.8,
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
@@ -240,7 +241,7 @@ const s = {
     fontSize: 10,
     letterSpacing: 1.4,
     textTransform: 'uppercase' as const,
-    color: GOLD,
+    color: palette.creamMute,
   },
   statRow: {
     flexDirection: 'row' as const,
@@ -258,6 +259,6 @@ const s = {
   statValue: {
     fontFamily: fonts.mono,
     fontSize: fontSize.body,
-    color: GOLD,
+    color: palette.cream,
   },
 };
