@@ -61,21 +61,54 @@ la donnée d'un pilote. Le reste :
    (`#E23A4E`) comme couleur d'acteur A sur un écran data (confusion avec le rouge
    freinage). Couleur d'entité neutre (or/blanc, ou traj bleu/cyan).
 
-## 4. Live temps réel (P5) — REPORTÉ post-alpha
+## 4. Live temps réel (P5) — DANS LE SCOPE (décision Gabin 2026-07-11)
 
-Le live (centre de contrôle carte piste rafraîchie, focus pilote cockpit
-défilant, multi-live, comparatif live, note express) exige une **infra de
-streaming télémétrique continu + matériel circuit** (RaceBox émettant en temps
-réel + réseau circuit). Or l'app V1 est **post-session** (pas streaming), le
-RaceBox n'est pas garanti en dev, et l'alpha vise la lecture qualitative *après*
-séance (cœur de doctrine).
+Le live (En direct vue d'ensemble, cockpit focus pilote, multi-live, comparatif
+live, note express) est **inclus dans la V3 coach**. Doctrine OK : c'est le
+**coach** qui regarde le direct (il ne conduit pas) ; le **pilote** reste en
+silence en piste (aucun HUD au volant).
 
-**Décision : reporté.** On livre en V3 l'**onglet « En direct »** avec seulement
-ses **états robustes** (vide « Personne en piste » ; hors-ligne « Flux coupé —
-reconnexion auto, télémétrie gardée sur le boîtier ») + un placeholder honnête.
-Le live streaming = **PR dédiée post-alpha**, après validation matériel/réseau
-avec Gabin. Le hors-ligne robuste est non négociable (réseau circuit instable ;
-reconnexion BLE déjà faite `0b602c8`).
+### Architecture proposée — Supabase Realtime, sans nouveau schéma
+
+Transport = **Supabase Realtime** (déjà dans la stack), en deux canaux :
+
+1. **Presence** `live:roster` — le « qui est en piste ». L'app **pilote**, quand
+   une capture démarre, rejoint la presence (`{pilotId, prénom, sessionId,
+   circuit, since}`) ; à l'arrêt/déconnexion, la quitte. Le **coach** lit la
+   presence → liste des pilotes live + statut au stand/en piste. Éphémère, zéro
+   table.
+2. **Broadcast** `live:session:<sessionId>` — le flux télémétrique. L'app
+   **pilote** relaie les trames BLE (RaceBox) **throttlées** (~2-4 Hz, pas 25 Hz)
+   en broadcast : `{lap, sector, speedKmh, gLat, gLong, chrono, cornerAlert?}`.
+   Le **coach** (focus pilote) s'abonne → cockpit défilant. Éphémère, zéro table.
+
+**Aucune migration Supabase** (presence + broadcast sont éphémères). Une table
+`live_sessions` optionnelle (persistance/reprise) serait un +, à valider si
+besoin — **STOP schéma** avant toute DDL.
+
+### Découpage buildable (app-side, non bloqué)
+
+- **Pur** : `liveSessionLogic.ts` (throttle des trames, réduction de la presence
+  en roster, machine d'états de connexion vivant/reconnexion/coupé, dérivation
+  d'alerte « virage à surveiller » factuelle) + tests.
+- **Service** : `liveSessionService.ts` (canaux presence + broadcast ; `join/
+  leaveRoster`, `publishFrame` côté pilote ; `subscribeRoster`, `subscribePilot`
+  côté coach). Simulateur de flux pour le dev (aucun RaceBox requis).
+- **Store** : `useLiveStore` (roster, flux courant, état de connexion).
+- **UI coach** : onglet En direct (roster + états vide/hors-ligne robustes),
+  cockpit focus pilote, note express (réutilise l'enregistrement vocal +
+  attribution existants).
+- **Relais pilote** : pendant une capture, brancher `publishFrame` sur le flux
+  BLE existant (bluetoothService) — throttlé.
+
+### Dépendance externe (la seule)
+
+Le rendu **end-to-end réel** exige que le RaceBox émette pendant la séance et que
+le réseau circuit porte le broadcast. L'**app-side se construit et se teste dès
+maintenant** (simulateur de flux) ; la validation matériel/réseau se fait avec
+Gabin sur circuit. **Hors-ligne robuste = non négociable** (réseau circuit
+instable ; reconnexion BLE déjà faite `0b602c8`) : état « Flux coupé —
+reconnexion auto, télémétrie gardée sur le boîtier ».
 
 ## 5. Priorités de reskin
 

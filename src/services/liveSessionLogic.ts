@@ -1,0 +1,128 @@
+/**
+ * liveSessionLogic — logique PURE du direct coach (P5, décision Gabin 2026-07-11).
+ *
+ * Le coach regarde le direct d'un ou plusieurs pilotes en piste. Transport =
+ * Supabase Realtime (presence `live:roster` + broadcast `live:session:<id>`),
+ * câblé dans liveSessionService. Ici : uniquement des fonctions déterministes,
+ * testables, sans I/O — le modèle du live.
+ *
+ * Doctrine : le coach observe (il ne conduit pas) ; le pilote reste en silence
+ * en piste. Les alertes sont FACTUELLES et DESCRIPTIVES (« à surveiller »),
+ * jamais une consigne. Aucun classement entre pilotes.
+ */
+
+/** Une trame live throttlée (relayée par l'app pilote depuis le flux BLE). */
+export interface LiveFrame {
+  /** Numéro du tour en cours. */
+  lap: number;
+  /** Secteur en cours (1..n) ou null. */
+  sector: number | null;
+  speedKmh: number;
+  gLat: number;
+  gLong: number;
+  /** Temps écoulé sur le tour en cours (ms) ou null. */
+  chronoMs: number | null;
+  /** Index du virage en cours de négociation, ou null. */
+  cornerIndex: number | null;
+  /** Virage signalé « à surveiller » (fait, pas une consigne). */
+  cornerWatch: boolean;
+  /** Horodatage de la trame (ms epoch, côté réception). */
+  atMs: number;
+}
+
+/** Une inscription de présence (un pilote en piste, vu du coach). */
+export interface RosterMeta {
+  pilotId: string;
+  firstName: string;
+  sessionId: string;
+  circuit: string | null;
+  /** En piste (true) vs au stand (false). */
+  onTrack: boolean;
+  /** Depuis quand (ms epoch). */
+  sinceMs: number;
+}
+
+export type RosterEntry = RosterMeta;
+
+/** État de connexion d'un flux live (vue coach d'un pilote). */
+export type LiveConn = 'connecting' | 'live' | 'stale' | 'offline';
+
+/**
+ * Faut-il émettre cette trame ? (throttle côté pilote — on ne relaie pas 25 Hz,
+ * mais ~3-4 Hz). Émet si c'est la première trame ou si l'écart au dernier envoi
+ * atteint `minIntervalMs`.
+ */
+export function shouldEmitFrame(
+  lastEmitMs: number | null,
+  frameAtMs: number,
+  minIntervalMs = 300
+): boolean {
+  if (lastEmitMs === null) return true;
+  return frameAtMs - lastEmitMs >= minIntervalMs;
+}
+
+/**
+ * Réduit l'état de présence Supabase (map clé → métas) en un roster propre :
+ * un pilote unique (le plus récent si doublons), triés « en piste » d'abord puis
+ * par ancienneté croissante (le plus tôt en piste en tête). Aucun classement de
+ * performance — juste qui est là.
+ */
+export function reduceRoster(presence: Record<string, RosterMeta[]>): RosterEntry[] {
+  const byPilot = new Map<string, RosterMeta>();
+  for (const metas of Object.values(presence)) {
+    for (const m of metas) {
+      const existing = byPilot.get(m.pilotId);
+      if (!existing || m.sinceMs > existing.sinceMs) byPilot.set(m.pilotId, m);
+    }
+  }
+  return [...byPilot.values()].sort((a, b) => {
+    if (a.onTrack !== b.onTrack) return a.onTrack ? -1 : 1;
+    if (a.sinceMs !== b.sinceMs) return a.sinceMs - b.sinceMs;
+    return a.firstName.localeCompare(b.firstName);
+  });
+}
+
+/**
+ * État de connexion dérivé d'un flux. `connecting` tant qu'abonné sans trame ;
+ * `live` si une trame est arrivée récemment ; `stale` si le flux se tait un
+ * moment (réseau circuit instable) ; `offline` si abonnement perdu ou silence
+ * prolongé. Le hors-ligne est un état honnête, jamais une invention de donnée.
+ */
+export function deriveLiveConn(input: {
+  subscribed: boolean;
+  lastFrameMs: number | null;
+  nowMs: number;
+  staleAfterMs?: number;
+  offlineAfterMs?: number;
+}): LiveConn {
+  const { subscribed, lastFrameMs, nowMs } = input;
+  const staleAfterMs = input.staleAfterMs ?? 3000;
+  const offlineAfterMs = input.offlineAfterMs ?? 10000;
+  if (!subscribed) return 'offline';
+  if (lastFrameMs === null) return 'connecting';
+  const age = nowMs - lastFrameMs;
+  if (age >= offlineAfterMs) return 'offline';
+  if (age >= staleAfterMs) return 'stale';
+  return 'live';
+}
+
+/**
+ * Alerte live FACTUELLE pour le coach : un virage signalé « à surveiller ».
+ * Descriptif, jamais une consigne (« Freinez plus tôt » est interdit). Null si
+ * rien à signaler.
+ */
+export function liveAlert(frame: LiveFrame, cornerName: string | null): string | null {
+  if (!frame.cornerWatch || frame.cornerIndex === null) return null;
+  const name = cornerName ?? `Virage ${frame.cornerIndex}`;
+  return `${name} · à surveiller`;
+}
+
+/** Chrono live formaté « m:ss.d » (tour en cours). Null → tiret. */
+export function formatLiveChrono(chronoMs: number | null): string {
+  if (chronoMs === null || !Number.isFinite(chronoMs) || chronoMs < 0) return '—';
+  const totalSec = chronoMs / 1000;
+  const min = Math.floor(totalSec / 60);
+  const sec = Math.floor(totalSec % 60);
+  const tenth = Math.floor((totalSec * 10) % 10);
+  return `${min}:${String(sec).padStart(2, '0')}.${tenth}`;
+}
