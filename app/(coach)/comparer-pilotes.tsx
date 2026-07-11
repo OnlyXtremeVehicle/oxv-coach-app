@@ -455,12 +455,14 @@ function EmptyPilots({ count }: { count: number }) {
 
 function colorForZone(zone: MarginZone | null): string {
   switch (zone) {
+    // Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
+    // DONNÉE (freinage #F65B5B), jamais le rouge de marque.
     case 'green':
-      return theme.palette.green;
+      return theme.dataColors.accel;
     case 'yellow':
       return theme.palette.gold;
     case 'red':
-      return theme.palette.pilotAmber; // ambre pilote : rouge de marque interdit sur une donnée (canon)
+      return theme.dataColors.brake;
     default:
       return theme.palette.creamMute;
   }

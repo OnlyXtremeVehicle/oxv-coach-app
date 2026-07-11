@@ -43,10 +43,12 @@ type Mode = 'browse' | 'compare';
 // Couleurs de zone de marge (donnée, toujours doublée du libellé marginLabelOf).
 // Rouge de marge neutralisé en ambre pilote (#F2792B) : le rouge de marque ne
 // code jamais une donnée de perf (canon).
+// Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
+// DONNÉE (freinage), jamais le rouge de marque.
 const ZONE_COLORS = {
-  green: theme.palette.green,
-  yellow: '#EF9F27',
-  red: theme.palette.pilotAmber,
+  green: theme.dataColors.accel,
+  yellow: theme.palette.gold,
+  red: theme.dataColors.brake,
 } as const;
 
 export default function CoachPilotDetailScreen() {
