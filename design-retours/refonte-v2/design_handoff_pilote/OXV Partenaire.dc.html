@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#E7E5E0;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:#0B0B0D;text-decoration:none}
+  a:hover{color:#5B8DEF}
+  .dv-turn{padding:52px 56px 44px;border-bottom:1px solid rgba(0,0,0,.09)}
+  .dv-thd{display:flex;align-items:baseline;gap:12px;margin:0 0 8px}
+  .dv-tid{font:700 10px 'JetBrains Mono',monospace;padding:4px 8px;background:#3E6FCB;color:#fff;border-radius:5px;letter-spacing:.5px}
+  .dv-tname{font:700 15px/1.2 'Hanken Grotesk',sans-serif;color:#1a1a1a}
+  .dv-tsub{font:400 13px/1.5 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.5);max-width:760px;margin:2px 0 30px}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+  .dv-oid{font:700 10.5px 'JetBrains Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#1a1a1a;border-radius:5px}
+  .dv-olabel{display:flex;align-items:center;gap:9px;font:500 12px/1.3 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.62)}
+  .dv-opt:target .dv-oid{background:#3E6FCB;color:#fff}
+  .dv-next{margin:30px 0 0;font:400 12.5px/1.7 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.5)}
+  .desk{width:1240px;background:#0B0B0D;border:1px solid #26262A;border-radius:16px;overflow:hidden;box-shadow:0 40px 90px -30px rgba(0,0,0,.55)}
+  .dchrome{display:flex;align-items:center;gap:7px;padding:11px 15px;background:#0C0C0E;border-bottom:1px solid #191A1D}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dwin{display:flex;height:760px}
+  .rail{width:200px;flex:none;background:#0C0C0E;border-right:1px solid #191A1D;display:flex;flex-direction:column;padding:20px 14px}
+  .rlogo{display:flex;align-items:center;gap:9px;font:700 16px 'Hanken Grotesk';color:#F5F5F7;padding:2px 8px 22px}
+  .ri{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;font:600 13px 'Hanken Grotesk';color:#7A7A82;margin-bottom:3px;position:relative}
+  .ri.active{background:#141416;color:#F5F5F7}
+  .ri.active::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;background:#5B8DEF;border-radius:2px}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #17171A;flex:none}
+  .eyebrow{font:600 10px 'JetBrains Mono',monospace;letter-spacing:1.6px;color:#6E6E76;text-transform:uppercase}
+  .body{flex:1;overflow:hidden;padding:24px 28px}
+  .card{background:#111113;border:1px solid #1E1E22;border-radius:14px}
+  .chip{font:600 10px 'JetBrains Mono',monospace;padding:4px 9px;border-radius:6px}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t7">
+  <div class="dv-thd"><a class="dv-tid" href="#t7">7</a><span class="dv-tname">Partenaire — site pro sur téléphone (tableau de bord &amp; carte)</span></div>
+  <p class="dv-tsub">On complète la version téléphone du site pro (navigateur mobile) : <a class="dv-oid" href="#7a">7a</a> tableau de bord (les chiffres clés dans la poche), <a class="dv-oid" href="#7b">7b</a> carte publique en version téléphone.</p>
+  <div class="dv-opts">
+
+    <!-- 7a TABLEAU DE BORD MOBILE -->
+    <div class="dv-opt" id="7a">
+      <div class="dv-olabel"><a class="dv-oid" href="#7a">7a</a>Tableau de bord — mobile</div>
+      <div style="width:314px;background:#0B0B0D;border:5px solid #26262A;border-radius:36px;padding:8px">
+        <div style="background:#0B0B0D;border-radius:30px;overflow:hidden;min-height:660px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;padding:12px 22px 6px;font:600 12px 'JetBrains Mono';color:#C9C9CE"><span>08:40</span><span>5G</span></div><div style="display:flex;align-items:center;gap:9px;padding:2px 15px 9px;background:#0B0B0D"><div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#151517;border:1px solid #232326;border-radius:9px;padding:6px 12px"><svg width="10" height="10" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="1.5" stroke="#6E6E76" stroke-width="1.6"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9" stroke="#6E6E76" stroke-width="1.6"/></svg><span style="font:500 10px 'JetBrains Mono';color:#9A9AA3">oxvehicle.fr/pro</span></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4.5" r="1.3" fill="#6E6E76"/><circle cx="10" cy="10" r="1.3" fill="#6E6E76"/><circle cx="10" cy="15.5" r="1.3" fill="#6E6E76"/></svg></div>
+          <div style="flex:1;padding:6px 18px 0">
+            <div style="display:flex;align-items:center;gap:8px;margin:2px 0 16px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span><span style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">OXV<span style="color:#7BA5F5;font-weight:600"> pro</span></span></div>
+            <div style="font:400 16px/1.4 'Hanken Grotesk';color:#F5F5F7;margin-bottom:18px">Bonjour, PixTrack.</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+              <div style="background:#111113;border:1px solid #1E1E22;border-radius:13px;padding:14px"><div class="eyebrow" style="margin-bottom:6px">Nouveaux leads</div><div style="font:500 24px 'JetBrains Mono';color:#5B8DEF">5</div></div>
+              <div style="background:#111113;border:1px solid #1E1E22;border-radius:13px;padding:14px"><div class="eyebrow" style="margin-bottom:6px">Réservé · jour</div><div style="font:500 24px 'JetBrains Mono';color:#FFB703">315 €</div></div>
+              <div style="background:#111113;border:1px solid #1E1E22;border-radius:13px;padding:14px"><div class="eyebrow" style="margin-bottom:6px">Offres en ligne</div><div style="font:500 24px 'JetBrains Mono';color:#F5F5F7">3</div></div>
+              <div style="background:#111113;border:1px solid #1E1E22;border-radius:13px;padding:14px"><div class="eyebrow" style="margin-bottom:6px">Vues · 30 j</div><div style="font:500 24px 'JetBrains Mono';color:#F5F5F7">218</div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;background:#111113;border:1px solid #2A1A1E;border-left:2px solid #E23A4E;border-radius:12px;padding:13px 14px;margin-bottom:10px"><span class="livedot" style="width:8px;height:8px;border-radius:50%;background:#E23A4E;flex:none"></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8;flex:1">Nouveau lead · Photos du jour</span><span style="font:400 10px 'JetBrains Mono';color:#8A8A92">2 min</span></div>
+            <div style="display:flex;align-items:center;gap:10px;background:#0E0E10;border:1px solid #1A1A1D;border-radius:12px;padding:13px 14px"><span style="width:8px;height:8px;border-radius:50%;background:#4FC98A;flex:none"></span><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE;flex:1">Réservation confirmée · 11 h</span><span style="font:400 10px 'JetBrains Mono';color:#8A8A92">1 h</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:11px 6px 20px;background:#0C0C0E;border-top:1px solid #191A1D">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#7BA5F5"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Accueil</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Offres</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Leads</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Carte</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7b CARTE MOBILE -->
+    <div class="dv-opt" id="7b">
+      <div class="dv-olabel"><a class="dv-oid" href="#7b">7b</a>Carte de France — mobile</div>
+      <div style="width:314px;background:#0B0B0D;border:5px solid #26262A;border-radius:36px;padding:8px">
+        <div style="background:#0B0B0D;border-radius:30px;overflow:hidden;min-height:660px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;padding:12px 22px 6px;font:600 12px 'JetBrains Mono';color:#C9C9CE"><span>08:42</span><span>5G</span></div><div style="display:flex;align-items:center;gap:9px;padding:2px 15px 9px;background:#0B0B0D"><div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#151517;border:1px solid #232326;border-radius:9px;padding:6px 12px"><svg width="10" height="10" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="1.5" stroke="#6E6E76" stroke-width="1.6"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9" stroke="#6E6E76" stroke-width="1.6"/></svg><span style="font:500 10px 'JetBrains Mono';color:#9A9AA3">oxvehicle.fr/pro/carte</span></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4.5" r="1.3" fill="#6E6E76"/><circle cx="10" cy="10" r="1.3" fill="#6E6E76"/><circle cx="10" cy="15.5" r="1.3" fill="#6E6E76"/></svg></div>
+          <div style="flex:1;padding:6px 18px 0;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 14px"><div style="font:700 18px 'Hanken Grotesk';color:#F5F5F7">La carte</div><div style="display:flex;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:#FFB703"></span><span style="width:9px;height:9px;border-radius:50%;background:#5B8DEF"></span></div></div>
+            <div style="flex:1;background:radial-gradient(120% 90% at 50% 0%,#101216,#0A0B0D);border:1px solid #17171A;border-radius:16px;position:relative;overflow:hidden;margin-bottom:12px;min-height:300px">
+              <svg width="100%" height="100%" viewBox="0 0 260 340" fill="none" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0"><path d="M125,30 L150,36 L161,29 L176,43 L205,48 L202,70 L223,84 L215,107 L231,126 L220,150 L235,170 L216,186 L221,210 L199,218 L186,243 L161,239 L150,256 L131,243 L106,250 L94,233 L68,235 L60,215 L37,210 L48,184 L32,166 L46,143 L35,121 L52,103 L46,79 L70,70 L78,48 L103,51 Z" fill="#141619" stroke="#2A2D33" stroke-width="1.2" stroke-linejoin="round"/><g><circle cx="102" cy="166" r="12" fill="rgba(255,183,3,.14)"/><circle cx="102" cy="166" r="6" fill="#FFB703"/></g><circle cx="110" cy="158" r="4.5" fill="#5B8DEF"/><circle cx="150" cy="92" r="4.5" fill="#5B8DEF"/><circle cx="180" cy="90" r="5.5" fill="#FFB703"/></svg>
+            </div>
+            <div class="eyebrow" style="margin-bottom:8px">Près de toi</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:11px;background:#111113;border:1px solid #1E1E22;border-left:2px solid #FFB703;border-radius:11px;padding:10px 12px"><span style="font:700 11px 'JetBrains Mono';color:#FFB703;width:32px">19/7</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#E5E5E8">Roulage · Haute-Saintonge</div></div>
+              <div style="display:flex;align-items:center;gap:11px;background:#111113;border:1px solid #1E1E22;border-radius:11px;padding:10px 12px"><div style="width:26px;height:26px;border-radius:7px;background:#0B0B0D;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 9px 'Hanken Grotesk';color:#F5F5F7;flex:none">PX</div><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#E5E5E8">PixTrack · stand 12</div></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:11px 6px 20px;background:#0C0C0E;border-top:1px solid #191A1D">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Accueil</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Offres</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Leads</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#7BA5F5"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Carte</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Site pro (version téléphone) étendu : accueil + carte, en plus de stand + leads. Reste le rôle <strong>Admin</strong> (régie cyan) et la mise à jour du <strong>handoff</strong>.</p>
+</section>
+
+<section class="dv-turn" id="t6">
+  <div class="dv-thd"><a class="dv-tid" href="#t6">6</a><span class="dv-tname">Partenaire — site pro sur téléphone (au stand)</span></div>
+  <p class="dv-tsub">Le partenaire n'a pas son ordinateur au bord de piste : il ouvre le site pro sur son téléphone (navigateur) et suit ses <strong>réservations du jour</strong>, montre son <strong>QR</strong> et traite ses <strong>leads</strong> en direct. <a class="dv-oid" href="#6a">6a</a> Au stand · <a class="dv-oid" href="#6b">6b</a> Leads mobile.</p>
+  <div class="dv-opts">
+
+    <!-- 6a AU STAND (PHONE) -->
+    <div class="dv-opt" id="6a">
+      <div class="dv-olabel"><a class="dv-oid" href="#6a">6a</a>Au stand — réservations &amp; QR</div>
+      <div style="width:314px;background:#0B0B0D;border:5px solid #26262A;border-radius:36px;padding:8px">
+        <div style="background:#0B0B0D;border-radius:30px;overflow:hidden;min-height:660px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;padding:12px 22px 6px;font:600 12px 'JetBrains Mono';color:#C9C9CE"><span>10:02</span><span>5G</span></div><div style="display:flex;align-items:center;gap:9px;padding:2px 15px 9px;background:#0B0B0D"><div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#151517;border:1px solid #232326;border-radius:9px;padding:6px 12px"><svg width="10" height="10" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="1.5" stroke="#6E6E76" stroke-width="1.6"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9" stroke="#6E6E76" stroke-width="1.6"/></svg><span style="font:500 10px 'JetBrains Mono';color:#9A9AA3">oxvehicle.fr/pro/stand</span></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4.5" r="1.3" fill="#6E6E76"/><circle cx="10" cy="10" r="1.3" fill="#6E6E76"/><circle cx="10" cy="15.5" r="1.3" fill="#6E6E76"/></svg></div>
+          <div style="flex:1;padding:6px 18px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:20px;height:20px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span><span style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">OXV<span style="color:#7BA5F5;font-weight:600"> pro</span></span></div><div style="display:flex;align-items:center;gap:5px;background:rgba(79,201,138,.12);border-radius:16px;padding:5px 10px"><span class="livedot" style="width:6px;height:6px;border-radius:50%;background:#4FC98A"></span><span style="font:700 9px 'JetBrains Mono';color:#4FC98A">AU STAND</span></div></div>
+            <div class="eyebrow" style="margin-bottom:10px">Réservé aujourd'hui</div>
+            <div style="display:flex;align-items:baseline;gap:9px;margin-bottom:18px"><span style="font:500 44px 'JetBrains Mono';color:#FFB703;letter-spacing:-2px">315 €</span><span style="font:500 12px 'JetBrains Mono';color:#8A8A92">7 créneaux</span></div>
+            <div style="display:flex;align-items:center;gap:12px;background:#F5F5F7;border-radius:14px;padding:14px 16px;margin-bottom:16px"><div style="width:52px;height:52px;background:#0B0B0D;border-radius:9px;padding:6px;flex:none"><svg width="100%" height="100%" viewBox="0 0 40 40" fill="none"><g fill="#F5F5F7"><rect x="3" y="3" width="11" height="11" rx="1"/><rect x="6" y="6" width="5" height="5" fill="#0B0B0D"/><rect x="26" y="3" width="11" height="11" rx="1"/><rect x="29" y="6" width="5" height="5" fill="#0B0B0D"/><rect x="3" y="26" width="11" height="11" rx="1"/><rect x="6" y="29" width="5" height="5" fill="#0B0B0D"/><rect x="18" y="4" width="3" height="3"/><rect x="18" y="12" width="3" height="3"/><rect x="24" y="20" width="3" height="3"/><rect x="31" y="22" width="3" height="3"/><rect x="18" y="26" width="3" height="3"/><rect x="26" y="30" width="3" height="3"/><rect x="33" y="33" width="3" height="3"/></g></svg></div><div style="flex:1"><div style="font:700 13.5px 'Hanken Grotesk';color:#0B0B0D">Montre ton QR</div><div style="font:400 11px 'Hanken Grotesk';color:#55555C;margin-top:2px">Le pilote scanne, réserve, paie.</div></div></div>
+            <div class="eyebrow" style="margin-bottom:10px">Créneaux du jour</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;gap:11px;background:#111113;border:1px solid #1E1E22;border-radius:11px;padding:11px 13px"><span style="font:600 12px 'JetBrains Mono';color:#5B8DEF;width:46px">09:30</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#E5E5E8">Photos S1</div><span style="width:8px;height:8px;border-radius:50%;background:#4FC98A"></span></div>
+              <div style="display:flex;align-items:center;gap:11px;background:#111113;border:1px solid #2A1A1E;border-left:2px solid #E23A4E;border-radius:11px;padding:11px 13px"><span class="livedot" style="font:600 12px 'JetBrains Mono';color:#F2CE3B;width:46px">13:30</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#E5E5E8">Pack vidéo</div><span class="livedot" style="font:600 9px 'JetBrains Mono';color:#D9AE00">EN COURS</span></div>
+              <div style="display:flex;align-items:center;gap:11px;border:1px dashed #2C2C31;border-radius:11px;padding:11px 13px;opacity:0.6"><span style="font:600 12px 'JetBrains Mono';color:#6E6E76;width:46px">15:00</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#8A8A92">Libre</div></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:11px 6px 20px;background:#0C0C0E;border-top:1px solid #191A1D">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#7BA5F5"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Stand</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Offres</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Leads</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Moi</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6b LEADS (PHONE) -->
+    <div class="dv-opt" id="6b">
+      <div class="dv-olabel"><a class="dv-oid" href="#6b">6b</a>Leads — traiter en direct</div>
+      <div style="width:314px;background:#0B0B0D;border:5px solid #26262A;border-radius:36px;padding:8px">
+        <div style="background:#0B0B0D;border-radius:30px;overflow:hidden;min-height:660px;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;padding:12px 22px 6px;font:600 12px 'JetBrains Mono';color:#C9C9CE"><span>10:04</span><span>5G</span></div><div style="display:flex;align-items:center;gap:9px;padding:2px 15px 9px;background:#0B0B0D"><div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;background:#151517;border:1px solid #232326;border-radius:9px;padding:6px 12px"><svg width="10" height="10" viewBox="0 0 20 20" fill="none"><rect x="4" y="9" width="12" height="8" rx="1.5" stroke="#6E6E76" stroke-width="1.6"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9" stroke="#6E6E76" stroke-width="1.6"/></svg><span style="font:500 10px 'JetBrains Mono';color:#9A9AA3">oxvehicle.fr/pro/leads</span></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="4.5" r="1.3" fill="#6E6E76"/><circle cx="10" cy="10" r="1.3" fill="#6E6E76"/><circle cx="10" cy="15.5" r="1.3" fill="#6E6E76"/></svg></div>
+          <div style="flex:1;padding:6px 18px 0">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin:2px 0 16px"><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Leads</div><div style="display:flex;align-items:center;gap:5px;background:rgba(79,201,138,.1);border:1px solid rgba(79,201,138,.22);border-radius:14px;padding:5px 9px"><svg width="11" height="11" viewBox="0 0 20 20" fill="none"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#4FC98A" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8px 'JetBrains Mono';color:#4FC98A">CONSENTIS</span></div></div>
+            <div style="background:#111113;border:1px solid #2A3A5E;border-radius:14px;padding:15px 16px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:11px"><div style="width:38px;height:38px;border-radius:10px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="17" height="17" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="#5B8DEF" stroke-width="1.5"/></svg></div><div style="flex:1"><div style="font:700 13px 'Hanken Grotesk';color:#F5F5F7">Photos du jour</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">Haute-Saintonge · il y a 8 min</div></div><span class="livedot" style="width:8px;height:8px;border-radius:50%;background:#5B8DEF"></span></div><div style="font:400 12px/1.4 'Hanken Grotesk';color:#9A9AA3;margin-bottom:12px">Un pilote souhaite être recontacté pour la session de 11 h.</div><div style="display:flex;gap:8px"><div style="flex:1;text-align:center;background:#5B8DEF;color:#fff;border-radius:9px;padding:10px;font:700 12px 'Hanken Grotesk'">Répondre</div><div style="text-align:center;border:1px solid #232326;color:#C9C9CE;border-radius:9px;padding:10px 14px;font:600 12px 'Hanken Grotesk'">Plus tard</div></div></div>
+            <div style="background:#0E0E10;border:1px solid #1A1A1D;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:11px;margin-bottom:12px"><div style="width:34px;height:34px;border-radius:9px;background:#141416;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none;font:700 10px 'Hanken Grotesk';color:#C9C9CE">V</div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Pack vidéo</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92">en discussion</div></div><span style="font:600 9px 'JetBrains Mono';color:#D9AE00;background:rgba(242,206,59,.12);padding:4px 8px;border-radius:5px">EN COURS</span></div>
+            <div style="display:flex;align-items:flex-start;gap:8px;background:rgba(79,201,138,.06);border:1px solid rgba(79,201,138,.18);border-radius:11px;padding:11px 13px"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#4FC98A" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 10px/1.5 'Hanken Grotesk';color:#8FBFA0">Tu ne vois jamais l'identité ni les données de conduite. Contact via messagerie OXV.</span></div>
+          </div>
+          <div style="display:flex;justify-content:space-around;padding:11px 6px 20px;background:#0C0C0E;border-top:1px solid #191A1D">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Stand</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Offres</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#7BA5F5"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Leads</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:5px;color:#55555C"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5a5.5 5.5 0 0 1 11 0" stroke="currentColor" stroke-width="1.5"/></svg><span style="font:600 8.5px 'JetBrains Mono'">Moi</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Site pro en version téléphone posé (au stand + leads). L'espace Partenaire est complet sur bureau &amp; mobile responsive — tout en navigateur, pas d'app native. Reste le rôle <strong>Admin</strong> (régie cyan), ou la mise à jour du <strong>handoff</strong>.</p>
+</section>
+
+<section class="dv-turn" id="t5">
+  <div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">Partenaire — innovations pro (ce qui vaut 750 €/saison)</span></div>
+  <p class="dv-tsub">Des nouveautés absentes de la cartographie, qui font gagner du temps et de l'argent au partenaire. <a class="dv-oid" href="#5a">5a</a> Réservation &amp; QR au stand (le pilote scanne, réserve, paie en direct), <a class="dv-oid" href="#5b">5b</a> Abonnement Pro 750 €/saison avec l'argument de retour.</p>
+  <div class="dv-opts">
+
+    <!-- 5a RÉSERVATION & QR STAND -->
+    <div class="dv-opt" id="5a">
+      <div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a>Réservation &amp; QR au stand</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/reservations</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Réservations</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Réservations · aujourd'hui</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Haute-Saintonge · 19 juil.</div></div><div style="display:flex;align-items:center;gap:7px;background:rgba(79,201,138,.1);border:1px solid rgba(79,201,138,.25);border-radius:9px;padding:8px 13px"><span class="livedot" style="width:6px;height:6px;border-radius:50%;background:#4FC98A"></span><span style="font:600 10px 'JetBrains Mono';color:#4FC98A">EN LIGNE AU STAND</span></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="width:280px;flex:none;display:flex;flex-direction:column;gap:14px">
+                <div class="card" style="padding:20px;text-align:center"><span class="eyebrow" style="display:block;margin-bottom:14px">À afficher sur ton stand</span><div style="width:150px;height:150px;background:#F5F5F7;border-radius:14px;margin:0 auto 12px;padding:14px"><svg width="100%" height="100%" viewBox="0 0 100 100" fill="none"><g fill="#0B0B0D"><rect x="6" y="6" width="26" height="26" rx="2"/><rect x="11" y="11" width="16" height="16" rx="1" fill="#F5F5F7"/><rect x="15" y="15" width="8" height="8"/><rect x="68" y="6" width="26" height="26" rx="2"/><rect x="73" y="11" width="16" height="16" rx="1" fill="#F5F5F7"/><rect x="77" y="15" width="8" height="8"/><rect x="6" y="68" width="26" height="26" rx="2"/><rect x="11" y="73" width="16" height="16" rx="1" fill="#F5F5F7"/><rect x="15" y="77" width="8" height="8"/><rect x="40" y="8" width="6" height="6"/><rect x="50" y="8" width="6" height="6"/><rect x="40" y="18" width="6" height="6"/><rect x="58" y="40" width="6" height="6"/><rect x="68" y="40" width="6" height="6"/><rect x="80" y="44" width="6" height="6"/><rect x="42" y="42" width="6" height="6"/><rect x="42" y="54" width="6" height="6"/><rect x="52" y="52" width="6" height="6"/><rect x="64" y="58" width="6" height="6"/><rect x="76" y="60" width="6" height="6"/><rect x="86" y="70" width="6" height="6"/><rect x="42" y="70" width="6" height="6"/><rect x="52" y="76" width="6" height="6"/><rect x="64" y="72" width="6" height="6"/><rect x="72" y="82" width="6" height="6"/><rect x="84" y="86" width="8" height="8"/></g></svg></div><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Scanne &amp; réserve</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:3px">Le pilote voit tes offres, réserve un créneau et te paie en direct.</div></div>
+                <div class="card" style="padding:14px 16px"><div style="display:flex;justify-content:space-between;align-items:center"><div><div class="eyebrow" style="margin-bottom:5px">Réservé aujourd'hui</div><div style="font:500 22px 'JetBrains Mono';color:#FFB703">315 €</div></div><div style="text-align:right"><div style="font:500 18px 'JetBrains Mono';color:#5B8DEF">7</div><div style="font:400 9px 'JetBrains Mono';color:#6E6E76">créneaux</div></div></div></div>
+              </div>
+              <div style="flex:1;min-width:0"><span class="eyebrow" style="display:block;margin-bottom:12px">Créneaux du jour</span><div style="display:flex;flex-direction:column;gap:8px">
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px"><span style="font:600 12px 'JetBrains Mono';color:#5B8DEF;width:54px">09:30</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos session 1</div></div><span style="font:500 12px 'JetBrains Mono';color:#F5F5F7">45 €</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">RÉSERVÉ</span></div>
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px"><span style="font:600 12px 'JetBrains Mono';color:#5B8DEF;width:54px">11:00</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos session 2</div></div><span style="font:500 12px 'JetBrains Mono';color:#F5F5F7">45 €</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">RÉSERVÉ</span></div>
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px"><span class="livedot" style="font:600 12px 'JetBrains Mono';color:#F2CE3B;width:54px">13:30</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Pack vidéo</div></div><span style="font:500 12px 'JetBrains Mono';color:#F5F5F7">90 €</span><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">EN COURS</span></div>
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px;opacity:0.6;border-style:dashed"><span style="font:600 12px 'JetBrains Mono';color:#6E6E76;width:54px">15:00</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#8A8A92">Libre</div></div><span style="font:400 11px 'Hanken Grotesk';color:#6E6E76">à réserver</span></div>
+              </div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5b ABONNEMENT PRO -->
+    <div class="dv-opt" id="5b">
+      <div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a>Abonnement Pro — 750 €/saison, justifié</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/abonnement</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri active" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div style="display:flex;align-items:center;gap:13px"><div style="width:44px;height:44px;border-radius:11px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 15px 'Hanken Grotesk';color:#F5F5F7">PX</div><div><div style="font:700 18px 'Hanken Grotesk';color:#F5F5F7">PixTrack</div><div style="font:400 11px 'JetBrains Mono';color:#8A8A92;margin-top:2px">Partenaire validé · depuis avril 2026</div></div></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+                <div style="background:linear-gradient(150deg,#101A2E,#0B0B0D 62%);border:1px solid #1E2A44;border-radius:16px;padding:20px 22px"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px"><div><div style="display:flex;align-items:center;gap:8px"><span style="font:700 17px 'Hanken Grotesk';color:#F5F5F7">OXV Partenaire</span><span class="chip" style="background:#5B8DEF;color:#fff">PRO</span></div><div style="font:400 11.5px 'Hanken Grotesk';color:#9A9AA3;margin-top:5px">Actif · saison 2026</div></div><div style="text-align:right"><div style="font:500 26px 'JetBrains Mono';color:#F5F5F7;letter-spacing:-1px">750 €</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">/ saison</div></div></div><div style="background:rgba(79,201,138,.08);border:1px solid rgba(79,201,138,.2);border-radius:11px;padding:13px 15px"><div style="font:400 12.5px/1.5 'Hanken Grotesk';color:#C9C9CE">Cette saison via OXV : <span style="font-family:'JetBrains Mono';color:#4FC98A;font-weight:600">3 240 €</span> de prestations réservées — <span style="color:#F5F5F7">4,3×</span> l'abonnement.</div></div></div>
+                <div class="card" style="padding:16px 18px;flex:1"><span class="eyebrow" style="display:block;margin-bottom:14px">Inclus dans l'abonnement</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Fiche &amp; vitrine validée</span></div>
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Présence sur la carte de France</span></div>
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Catalogue &amp; réservation QR</span></div>
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Leads consentis illimités</span></div>
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Recommandation par les coachs</span></div>
+                  <div style="display:flex;align-items:center;gap:9px"><span style="width:16px;height:16px;border-radius:50%;background:rgba(79,201,138,.15);display:flex;align-items:center;justify-content:center;flex:none"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6.5l2.5 2.5L10 3" stroke="#4FC98A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Rapports d'événement B2B</span></div>
+                </div></div>
+              </div>
+              <div style="width:260px;flex:none;display:flex;flex-direction:column;gap:14px"><div class="card" style="padding:16px 18px"><span class="eyebrow" style="display:block;margin-bottom:14px">Ta saison</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:14px"><div><div style="font:500 22px 'JetBrains Mono';color:#5B8DEF">41</div><div style="font:400 9.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">demandes</div></div><div><div style="font:500 22px 'JetBrains Mono';color:#F5F5F7">4</div><div style="font:400 9.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">circuits</div></div><div><div style="font:500 22px 'JetBrains Mono';color:#F5F5F7">218</div><div style="font:400 9.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">vues fiche</div></div><div><div style="font:500 22px 'JetBrains Mono';color:#FFB703">3 240 €</div><div style="font:400 9.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">réservés</div></div></div></div><div style="text-align:center;border:1px solid #232326;border-radius:11px;padding:13px;font:600 12.5px 'Hanken Grotesk';color:#C9C9CE;margin-top:auto">Gérer l'abonnement</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Innovations Partenaire posées (réservation + QR au stand, abonnement Pro justifié). L'espace Partenaire est maintenant riche et « pro ». Reste le rôle <strong>Admin</strong> (régie cyan), ou la mise à jour du <strong>handoff</strong>.</p>
+</section>
+
+<section class="dv-turn" id="t4">
+  <div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Partenaire — Performance, Facturation, Rapports B2B (espace complet)</span></div>
+  <p class="dv-tsub">Les 3 derniers écrans qui bouclent l'espace Partenaire. <a class="dv-oid" href="#4a">4a</a> Performance (agrégats dérivés, aucune donnée pilote), <a class="dv-oid" href="#4b">4b</a> Facturation (transparente, non encaissée par OXV), <a class="dv-oid" href="#4c">4c</a> Rapports B2B (partagés par l'admin).</p>
+  <div class="dv-opts">
+
+    <!-- 4a PERFORMANCE -->
+    <div class="dv-opt" id="4a">
+      <div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Performance — agrégats, sans donnée pilote</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/performance</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Performance</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Ton activité, en chiffres</div></div><div style="display:flex;align-items:center;gap:7px;background:rgba(79,201,138,.1);border:1px solid rgba(79,201,138,.25);border-radius:9px;padding:8px 13px"><span style="width:6px;height:6px;border-radius:50%;background:#4FC98A"></span><span style="font:600 10px 'JetBrains Mono';color:#4FC98A">AUCUNE DONNÉE PILOTE</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:14px">
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Demandes · 90 j</div><div style="font:500 28px 'JetBrains Mono';color:#5B8DEF">41</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Converties</div><div style="font:500 28px 'JetBrains Mono';color:#4FC98A">28</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Taux</div><div style="font:500 28px 'JetBrains Mono';color:#F5F5F7">68 %</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Circuit n°1</div><div style="font:600 16px 'Hanken Grotesk';color:#F5F5F7;margin-top:5px">Haute-Saintonge</div></div>
+              </div>
+              <div style="display:flex;gap:16px;flex:1;min-height:0">
+                <div class="card" style="flex:1.5;padding:18px;display:flex;flex-direction:column"><span class="eyebrow" style="margin-bottom:16px">Demandes par mois</span><div style="flex:1;display:flex;align-items:flex-end;gap:12px"><div style="flex:1;height:40%;background:#2A2A2E;border-radius:4px 4px 0 0"></div><div style="flex:1;height:56%;background:#2A2A2E;border-radius:4px 4px 0 0"></div><div style="flex:1;height:50%;background:#2A2A2E;border-radius:4px 4px 0 0"></div><div style="flex:1;height:72%;background:#2A2A2E;border-radius:4px 4px 0 0"></div><div style="flex:1;height:88%;background:#5B8DEF;border-radius:4px 4px 0 0"></div></div></div>
+                <div class="card" style="flex:1;padding:18px"><span class="eyebrow" style="display:block;margin-bottom:14px">Par statut</span><div style="display:flex;flex-direction:column;gap:12px"><div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Converties</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">28</span></div><div style="height:6px;background:#1A1A1D;border-radius:3px"><div style="width:68%;height:100%;background:#4FC98A;border-radius:3px"></div></div></div><div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">En cours</span><span style="font:500 12px 'JetBrains Mono';color:#D9AE00">9</span></div><div style="height:6px;background:#1A1A1D;border-radius:3px"><div style="width:22%;height:100%;background:#F2CE3B;border-radius:3px"></div></div></div><div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Sans suite</span><span style="font:500 12px 'JetBrains Mono';color:#8A8A92">4</span></div><div style="height:6px;background:#1A1A1D;border-radius:3px"><div style="width:10%;height:100%;background:#54545C;border-radius:3px"></div></div></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4b FACTURATION -->
+    <div class="dv-opt" id="4b">
+      <div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a>Facturation — transparente, non encaissée</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/facturation</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Facturation</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Suivi transparent</div></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0"><span class="eyebrow" style="display:block;margin-bottom:12px">Transactions déclarées</span><div style="display:flex;flex-direction:column;gap:9px">
+                <div class="card" style="padding:13px 16px;display:flex;align-items:center;gap:13px"><span style="font:500 11px 'JetBrains Mono';color:#6E6E76;width:70px">4 juil</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos du jour</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92">Haute-Saintonge</div></div><span style="font:500 13px 'JetBrains Mono';color:#F5F5F7">45 €</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">RÉGLÉ</span></div>
+                <div class="card" style="padding:13px 16px;display:flex;align-items:center;gap:13px"><span style="font:500 11px 'JetBrains Mono';color:#6E6E76;width:70px">28 jun</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Pack vidéo</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92">Le Vigeant</div></div><span style="font:500 13px 'JetBrains Mono';color:#F5F5F7">90 €</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">RÉGLÉ</span></div>
+                <div class="card" style="padding:13px 16px;display:flex;align-items:center;gap:13px"><span style="font:500 11px 'JetBrains Mono';color:#6E6E76;width:70px">14 jun</span><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos du jour</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92">Haute-Saintonge</div></div><span style="font:500 13px 'JetBrains Mono';color:#F5F5F7">45 €</span><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">EN ATTENTE</span></div>
+              </div></div>
+              <div style="width:260px;flex:none;display:flex;flex-direction:column;gap:14px"><div class="card" style="padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Total réglé · saison</div><div style="font:500 26px 'JetBrains Mono';color:#FFB703">1 340 €</div></div><div style="background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:12px;padding:14px 15px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#5B8DEF" stroke-width="1.4"/><path d="M10 6v5M10 14h.01" stroke="#5B8DEF" stroke-width="1.6" stroke-linecap="round"/></svg><span style="font:700 12px 'Hanken Grotesk';color:#7BA5F5">OXV n'encaisse rien</span></div><div style="font:400 11.5px/1.6 'Hanken Grotesk';color:#9EB6E8">Le prix est affiché, tu es payé <strong style="color:#C9C9CE">en direct</strong> par le pilote. OXV tient juste le suivi. Paiement en ligne (Stripe) prévu plus tard.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4c RAPPORTS B2B -->
+    <div class="dv-opt" id="4c">
+      <div class="dv-olabel"><a class="dv-oid" href="#4c">4c</a>Rapports B2B — partagés par l'admin</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/rapports</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Rapports B2B</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Partagés par l'organisateur</div></div><span style="font:400 11px 'JetBrains Mono';color:#8A8A92">source : admin OXV</span></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+                <div class="card" style="padding:15px 17px;border-left:2px solid #22D3EE;display:flex;align-items:center;gap:14px"><div style="width:42px;height:42px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M6 3h6l3 3v11H6z" stroke="#22D3EE" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9h5M8 12h5" stroke="#22D3EE" stroke-width="1.5" stroke-linecap="round"/></svg></div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Roulage du 4 juillet</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Haute-Saintonge · 32 inscrits · 28 présents</div></div><div style="border:1px solid #232326;border-radius:9px;padding:9px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Ouvrir</div></div>
+                <div class="card" style="padding:15px 17px;border-left:2px solid #22D3EE;display:flex;align-items:center;gap:14px"><div style="width:42px;height:42px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M6 3h6l3 3v11H6z" stroke="#22D3EE" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 9h5M8 12h5" stroke="#22D3EE" stroke-width="1.5" stroke-linecap="round"/></svg></div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Journée du 12 juin</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Le Vigeant · 24 inscrits · 22 présents</div></div><div style="border:1px solid #232326;border-radius:9px;padding:9px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Ouvrir</div></div>
+              </div>
+              <div style="width:260px;flex:none"><div style="background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:16px;height:100%;display:flex;flex-direction:column"><div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#22D3EE" stroke-width="1.5" stroke-linejoin="round"/></svg><span style="font:700 12.5px 'Hanken Grotesk';color:#22D3EE">Cadre</span></div><div style="font:400 12px/1.6 'Hanken Grotesk';color:#9AC5CE">Les rapports d'événement sont générés et partagés par l'<strong style="color:#C9C9CE">admin</strong> (fréquentation, présents). Aucune donnée nominative de pilote — juste des volumes utiles à ton activité.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Espace <strong>Partenaire complet</strong> : tableau de bord, catalogue détaillé, offres, leads consentis, points de vente sur carte, fiche, carte publique de France, Performance, Facturation, Rapports B2B. Reste le grand rôle <strong>Admin</strong> (régie cyan). Je peux aussi mettre à jour le <strong>handoff</strong> avec le Partenaire.</p>
+</section>
+
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Carte OXV — la France, points de vente &amp; événements (public)</span></div>
+  <p class="dv-tsub">Une carte <strong>publique</strong>, visible de tous (pilotes, coachs, partenaires, visiteurs du site) : les <strong>événements</strong> à venir, les <strong>points de vente</strong> partenaires validés et les <strong>circuits</strong>, sur la carte de France. Aucune donnée personnelle — juste des lieux et des dates.</p>
+  <div class="dv-opts">
+
+    <!-- 3a CARTE FRANCE PUBLIQUE -->
+    <div class="dv-opt" id="3a">
+      <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Carte de France — publique</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">oxvehicle.fr/carte</span></div>
+        <div style="display:flex;flex-direction:column;height:760px">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px;border-bottom:1px solid #17171A;flex:none">
+            <div style="display:flex;align-items:center;gap:10px"><span style="display:inline-block;width:20px;height:20px;border:1.6px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span><span style="font:700 16px 'Hanken Grotesk';color:#F5F5F7">OXV</span><span style="font:500 13px 'Hanken Grotesk';color:#8A8A92;margin-left:6px">La carte</span></div>
+            <div style="display:flex;gap:8px"><span class="chip" style="background:rgba(255,183,3,.13);color:#FFB703;padding:8px 13px;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#FFB703"></span>Événements</span><span class="chip" style="background:rgba(91,141,239,.13);color:#7BA5F5;padding:8px 13px;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#5B8DEF"></span>Points de vente</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px;display:flex;align-items:center;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:#6E6E76"></span>Circuits</span></div>
+          </div>
+          <div style="flex:1;display:flex;min-height:0">
+            <!-- MAP -->
+            <div style="flex:1;min-width:0;position:relative;background:radial-gradient(120% 100% at 50% 0%,#101216,#0A0B0D)">
+              <svg width="100%" height="100%" viewBox="0 0 520 560" fill="none" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0">
+                <path d="M250,60 L300,72 L322,58 L352,86 L410,96 L404,140 L446,168 L430,214 L462,252 L440,300 L470,340 L432,372 L442,420 L398,436 L372,486 L322,478 L300,512 L262,486 L212,500 L188,466 L136,470 L120,430 L74,420 L96,368 L64,332 L92,286 L70,242 L104,206 L92,158 L140,140 L156,96 L206,102 Z" fill="#141619" stroke="#2A2D33" stroke-width="1.5" stroke-linejoin="round"/>
+                <!-- circuits (muted) -->
+                <circle cx="250" cy="230" r="4" fill="#6E6E76"/>
+                <circle cx="330" cy="300" r="4" fill="#6E6E76"/>
+                <!-- events (gold) -->
+                <g><circle cx="205" cy="330" r="18" fill="rgba(255,183,3,.14)"/><circle cx="205" cy="330" r="7" fill="#FFB703"/></g>
+                <text x="205" y="360" fill="#D9AE00" font-size="10" font-weight="700" font-family="JetBrains Mono,monospace" text-anchor="middle">Haute-Saintonge</text>
+                <g><circle cx="360" cy="180" r="14" fill="rgba(255,183,3,.12)"/><circle cx="360" cy="180" r="6" fill="#FFB703"/></g>
+                <!-- POS (blue) -->
+                <circle cx="220" cy="318" r="5.5" fill="#5B8DEF"/>
+                <circle cx="150" cy="410" r="5.5" fill="#5B8DEF"/>
+                <circle cx="300" cy="128" r="5.5" fill="#5B8DEF"/>
+                <text x="360" y="205" fill="#8A8A92" font-size="9" font-family="JetBrains Mono,monospace" text-anchor="middle">Nogaro</text>
+              </svg>
+              <div style="position:absolute;bottom:16px;left:16px;background:rgba(11,11,13,.7);backdrop-filter:blur(6px);border:1px solid #232326;border-radius:10px;padding:11px 14px"><div style="font:400 10.5px/1.6 'Hanken Grotesk';color:#9A9AA3">Zoome pour voir les <span style="color:#FFB703">événements</span> et <span style="color:#7BA5F5">points de vente</span> près de chez toi.</div></div>
+            </div>
+            <!-- LIST -->
+            <div style="width:340px;flex:none;border-left:1px solid #17171A;display:flex;flex-direction:column">
+              <div style="padding:18px 20px 12px"><div style="font:700 16px 'Hanken Grotesk';color:#F5F5F7">À venir près de toi</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:3px">Nouvelle-Aquitaine</div></div>
+              <div style="flex:1;overflow:hidden;padding:0 14px">
+                <div class="card" style="padding:14px 15px;margin-bottom:10px;border-left:2px solid #FFB703"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:700 15px 'JetBrains Mono';color:#FFB703">19</span><span style="font:500 8px 'JetBrains Mono';color:#8A8A92">JUIL</span></div><div style="flex:1"><div style="font:700 13.5px 'Hanken Grotesk';color:#F5F5F7">Roulage libre</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Haute-Saintonge · places dispo</div></div></div></div>
+                <div class="card" style="padding:14px 15px;margin-bottom:10px;border-left:2px solid #FFB703"><div style="display:flex;align-items:center;gap:12px"><div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:700 15px 'JetBrains Mono';color:#FFB703">02</span><span style="font:500 8px 'JetBrains Mono';color:#8A8A92">AOÛ</span></div><div style="flex:1"><div style="font:700 13.5px 'Hanken Grotesk';color:#F5F5F7">Journée coach</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Le Vigeant · avec Julien L.</div></div></div></div>
+                <div style="font:600 10px 'JetBrains Mono';color:#6E6E76;letter-spacing:1px;margin:16px 0 10px;padding-left:2px">POINTS DE VENTE</div>
+                <div class="card" style="padding:13px 15px;margin-bottom:10px;display:flex;align-items:center;gap:11px"><div style="width:34px;height:34px;border-radius:9px;background:#0B0B0D;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">PX</div><div style="flex:1"><div style="font:700 12.5px 'Hanken Grotesk';color:#F5F5F7">PixTrack · Photo</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">Haute-Saintonge · stand 12</div></div><span style="width:8px;height:8px;border-radius:50%;background:#5B8DEF"></span></div>
+                <div class="card" style="padding:13px 15px;display:flex;align-items:center;gap:11px"><div style="width:34px;height:34px;border-radius:9px;background:#141416;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:700 11px 'Hanken Grotesk';color:#C9C9CE;flex:none">GT</div><div style="flex:1"><div style="font:700 12.5px 'Hanken Grotesk';color:#F5F5F7">Garage Tessier · Méca</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">Haute-Saintonge · stand 3</div></div><span style="width:8px;height:8px;border-radius:50%;background:#5B8DEF"></span></div>
+              </div>
+              <div style="padding:14px 20px;border-top:1px solid #17171A;font:400 10px/1.5 'Hanken Grotesk';color:#6E6E76">Carte publique · aucun pilote géolocalisé, uniquement des lieux &amp; événements.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Carte publique posée (événements + points de vente + circuits sur la France, visible de tous). Alimentée par les points de vente validés (2b) et les événements du site. Prochain grand rôle : <strong>Admin</strong> (régie cyan) — validation partenaires, gestion événements &amp; points de la carte, rapports B2B.</p>
+</section>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Partenaire — catalogue détaillé, point de vente sur la carte, mise en avant</span></div>
+  <p class="dv-tsub">On complète l'espace : <a class="dv-oid" href="#2a">2a</a> catalogue produit détaillé (fiche produit riche), <a class="dv-oid" href="#2b">2b</a> point de vente placé sur la carte du circuit, <a class="dv-oid" href="#2c">2c</a> comment l'offre s'affiche en avant côté Pilote &amp; Coach. Toujours : leads consentis, aucune donnée pilote.</p>
+  <div class="dv-opts">
+
+    <!-- 2a CATALOGUE DÉTAILLÉ -->
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Catalogue produit — fiche détaillée</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/catalogue</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.5"/></svg>Points de vente</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Catalogue</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Fiche produit</div></div><div style="display:flex;gap:10px"><div style="border:1px solid #232326;border-radius:10px;padding:9px 14px;font:600 12px 'Hanken Grotesk';color:#C9C9CE">Aperçu pilote</div><div style="background:#5B8DEF;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#fff">Publier</div></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="width:230px;flex:none"><div class="eyebrow" style="margin-bottom:12px">Catégories</div><div style="display:flex;flex-direction:column;gap:6px"><div style="background:#141416;border:1px solid #232326;border-radius:9px;padding:11px 13px;font:600 12.5px 'Hanken Grotesk';color:#F5F5F7;display:flex;justify-content:space-between">Photo &amp; vidéo<span style="font:500 11px 'JetBrains Mono';color:#7BA5F5">3</span></div><div style="padding:11px 13px;font:500 12.5px 'Hanken Grotesk';color:#8A8A92;display:flex;justify-content:space-between">Coaching photo<span style="font:500 11px 'JetBrains Mono';color:#6E6E76">1</span></div><div style="padding:11px 13px;font:500 12.5px 'Hanken Grotesk';color:#8A8A92;display:flex;justify-content:space-between">Souvenirs<span style="font:500 11px 'JetBrains Mono';color:#6E6E76">2</span></div></div></div>
+              <div style="flex:1;min-width:0;display:flex;gap:20px">
+                <div style="width:240px;flex:none"><div style="height:150px;border-radius:12px;background:linear-gradient(135deg,#1C2740,#0F1524);border:1px solid #232326;position:relative;margin-bottom:10px"><span style="position:absolute;bottom:10px;left:12px" class="chip" style2="">​</span><div style="position:absolute;top:10px;left:10px;background:rgba(11,11,13,.6);border-radius:6px;padding:4px 8px;font:600 9px 'JetBrains Mono';color:#7BA5F5">EN LIGNE</div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div style="height:44px;border-radius:8px;background:#16161A;border:1px solid #232326"></div><div style="height:44px;border-radius:8px;background:#16161A;border:1px solid #232326"></div><div style="height:44px;border-radius:8px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:600 11px 'JetBrains Mono';color:#6E6E76">+5</div></div></div>
+                <div style="flex:1;min-width:0"><span class="chip" style="background:rgba(91,141,239,.14);color:#7BA5F5">PHOTO &amp; VIDÉO</span><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7;margin:12px 0 6px">Photos du jour — haute def</div><div style="display:flex;align-items:center;gap:12px;margin-bottom:16px"><span style="font:500 24px 'JetBrains Mono';color:#FFB703">45 €</span><span style="font:400 11px 'Hanken Grotesk';color:#8A8A92">prix affiché · payé en direct</span></div><div style="font:400 13px/1.6 'Hanken Grotesk';color:#C9C9CE;margin-bottom:18px">Toutes tes photos de la journée, retouchées et livrées le soir même. Format haute résolution, utilisation libre.</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"><div class="card" style="padding:12px 14px"><div class="eyebrow" style="margin-bottom:5px">Délai</div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Le soir même</div></div><div class="card" style="padding:12px 14px"><div class="eyebrow" style="margin-bottom:5px">Quota</div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">6 / jour</div></div><div class="card" style="padding:12px 14px"><div class="eyebrow" style="margin-bottom:5px">Circuits</div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Haute-S. · Vigeant</div></div><div class="card" style="padding:12px 14px"><div class="eyebrow" style="margin-bottom:5px">Validité</div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Saison 2026</div></div></div>
+                  <div style="display:flex;align-items:center;gap:9px;background:rgba(255,183,3,.06);border:1px solid rgba(255,183,3,.18);border-radius:11px;padding:12px 14px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="#D9AE00" stroke-width="1.4"/><path d="M10 6v5M10 14h.01" stroke="#D9AE00" stroke-width="1.6" stroke-linecap="round"/></svg><span style="font:400 11px/1.5 'Hanken Grotesk';color:#B99A4A">OXV n'encaisse pas. Le prix est affiché ; le paiement se règle en direct avec le pilote.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2b POINT DE VENTE SUR LA CARTE -->
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Point de vente sur la carte</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/points-de-vente</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Catalogue</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="currentColor" stroke-width="1.5"/></svg>Points de vente</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Points de vente</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Où te trouver, sur le circuit</div></div><div style="display:flex;align-items:center;gap:7px;background:#5B8DEF;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#fff"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 5v10M5 10h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>Ajouter un point</div></div>
+            <div class="body" style="display:flex;gap:20px">
+              <div style="flex:1;min-width:0"><div class="card" style="padding:14px;height:100%;display:flex;flex-direction:column"><span class="eyebrow" style="margin-bottom:8px">Haute-Saintonge · plan du paddock</span><div style="flex:1;background:#0E0E10;border:1px solid #17171A;border-radius:12px;position:relative;overflow:hidden">
+                <svg width="100%" height="100%" viewBox="0 0 560 380" fill="none" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0"><rect width="560" height="380" fill="#0C0D0F"/><path d="M120,300 C80,230 100,120 210,96 C300,76 360,140 450,110" stroke="#1E1E22" stroke-width="26" fill="none" stroke-linecap="round"/><path d="M120,300 C80,230 100,120 210,96 C300,76 360,140 450,110" stroke="#2C2C31" stroke-width="1.5" stroke-dasharray="2 10" fill="none"/><rect x="70" y="300" width="150" height="56" rx="6" fill="#141416" stroke="#232326"/><text x="80" y="332" fill="#6E6E76" font-size="11" font-family="JetBrains Mono,monospace">PADDOCK</text></svg>
+                <!-- POS pin -->
+                <div style="position:absolute;left:20%;top:78%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center"><div style="background:#5B8DEF;color:#fff;border-radius:9px;padding:7px 11px;font:700 11px 'Hanken Grotesk';white-space:nowrap;box-shadow:0 6px 16px -6px rgba(91,141,239,.6)">PixTrack · stand 12</div><div style="width:2px;height:14px;background:#5B8DEF"></div><div style="width:12px;height:12px;border-radius:50%;background:#5B8DEF;border:2px solid #0B0B0D;margin-top:-2px"></div></div>
+                <!-- other partner (muted) -->
+                <div style="position:absolute;left:62%;top:34%;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;opacity:0.5"><div style="width:10px;height:10px;border-radius:50%;background:#6E6E76;border:2px solid #0B0B0D"></div></div>
+              </div></div></div>
+              <div style="width:290px;flex:none;display:flex;flex-direction:column;gap:14px">
+                <div class="card" style="padding:16px 18px"><span class="eyebrow" style="display:block;margin-bottom:12px">Ce point de vente</span><div style="font:700 15px 'Hanken Grotesk';color:#F5F5F7;margin-bottom:3px">Stand 12 · Paddock B</div><div style="font:400 11.5px 'Hanken Grotesk';color:#8A8A92;margin-bottom:14px">Haute-Saintonge</div><div style="display:flex;flex-direction:column;gap:9px"><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:400 11.5px 'Hanken Grotesk';color:#8A8A92">Jours de présence</span><span style="font:500 12px 'Hanken Grotesk';color:#E5E5E8">Sam. &amp; Dim.</span></div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:400 11.5px 'Hanken Grotesk';color:#8A8A92">Visible sur la carte OXV</span><div style="width:40px;height:23px;border-radius:12px;background:#4FC98A;position:relative"><div style="position:absolute;top:2px;right:2px;width:19px;height:19px;border-radius:50%;background:#fff"></div></div></div></div></div>
+                <div style="background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:12px;padding:14px 15px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 4.2L16 7l-3 3 1 5-4-2.4L6 15l1-5-3-3 4.2-.8z" fill="#5B8DEF"/></svg><span style="font:700 12.5px 'Hanken Grotesk';color:#7BA5F5">Mise en avant</span></div><div style="font:400 11.5px/1.5 'Hanken Grotesk';color:#9EB6E8">Ton point de vente apparaît sur la <strong style="color:#C9C9CE">carte OXV du jour</strong>, côté pilote et côté coach, quand ils sont sur ce circuit.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2c MISE EN AVANT PILOTE + COACH -->
+    <div class="dv-opt" id="2c">
+      <div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Mise en avant — côté Pilote &amp; Coach</div>
+      <div style="display:flex;gap:34px;align-items:flex-start;background:#0B0B0D;border:1px solid #1E1E22;border-radius:22px;padding:30px 32px">
+        <!-- PILOTE PHONE -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:600 11px 'JetBrains Mono';color:#7BA5F5;letter-spacing:1px">CÔTÉ PILOTE · TÉLÉPHONE</div>
+          <div style="width:320px;background:#0B0B0D;border:5px solid #26262A;border-radius:34px;padding:7px">
+            <div style="background:#0B0B0D;border-radius:28px;overflow:hidden">
+              <div style="display:flex;justify-content:space-between;padding:12px 22px 8px;font:600 12px 'JetBrains Mono';color:#C9C9CE"><span>14:44</span><span>5G</span></div>
+              <div style="padding:4px 18px 18px">
+                <div style="font:700 19px 'Hanken Grotesk';color:#F5F5F7;margin-bottom:14px">Découverte</div>
+                <div style="display:flex;gap:7px;margin-bottom:16px"><span style="background:#141416;border:1px solid #232326;color:#9A9AA3;border-radius:8px;padding:6px 12px;font:600 11px 'Hanken Grotesk'">Coachs</span><span style="background:#5B8DEF;color:#fff;border-radius:8px;padding:6px 12px;font:600 11px 'Hanken Grotesk'">Partenaires</span></div>
+                <div style="position:relative;border-radius:15px;overflow:hidden;margin-bottom:12px;border:1px solid #2A3A5E"><div style="height:120px;background:linear-gradient(135deg,#1C2740,#0F1524);position:relative"><div style="position:absolute;top:10px;left:10px;display:flex;align-items:center;gap:5px;background:rgba(91,141,239,.9);border-radius:6px;padding:4px 9px"><svg width="10" height="10" viewBox="0 0 20 20" fill="none"><path d="M10 2l1.8 4.2L16 7l-3 3 1 5-4-2.4L6 15l1-5-3-3 4.2-.8z" fill="#fff"/></svg><span style="font:700 8.5px 'JetBrains Mono';color:#fff">EN AVANT · SUR TON CIRCUIT</span></div></div><div style="padding:13px 15px;background:#111113"><div style="display:flex;align-items:center;gap:9px;margin-bottom:8px"><div style="width:32px;height:32px;border-radius:9px;background:#0B0B0D;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 11px 'Hanken Grotesk';color:#F5F5F7">PX</div><div style="flex:1"><div style="font:700 13.5px 'Hanken Grotesk';color:#F5F5F7">PixTrack</div><div style="font:400 9.5px 'JetBrains Mono';color:#7BA5F5">PHOTOGRAPHE · STAND 12</div></div></div><div style="font:400 11.5px/1.4 'Hanken Grotesk';color:#9A9AA3;margin-bottom:10px">Photos du jour — livrées ce soir</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 15px 'JetBrains Mono';color:#FFB703">45 €</span><span style="background:#5B8DEF;color:#fff;border-radius:8px;padding:8px 13px;font:700 11px 'Hanken Grotesk'">Demander le contact</span></div></div></div>
+                <div style="font:400 10px/1.4 'Hanken Grotesk';color:#6E6E76;text-align:center">Tu choisis de partager. Ni ta télémétrie, ni ton identité.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- COACH TABLET SNIPPET -->
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="font:600 11px 'JetBrains Mono';color:#E2685A;letter-spacing:1px">CÔTÉ COACH · TABLETTE</div>
+          <div style="width:520px;background:#0B0B0D;border:1px solid #26262A;border-radius:16px;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:7px;padding:10px 14px;background:#0C0C0E;border-bottom:1px solid #191A1D"><span style="width:9px;height:9px;border-radius:50%;background:#2A2A2E"></span><span style="width:9px;height:9px;border-radius:50%;background:#2A2A2E"></span><span style="flex:1"></span><span style="font:600 10px 'JetBrains Mono';color:#6E6E76">Poste de pilotage · encart partenaires</span></div>
+            <div style="padding:20px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span class="eyebrow">Sur ton circuit aujourd'hui</span><span style="font:400 10px 'JetBrains Mono';color:#6E6E76">Haute-Saintonge</span></div>
+              <div style="display:flex;gap:12px">
+                <div style="flex:1;background:#111113;border:1px solid #2A3A5E;border-radius:13px;overflow:hidden"><div style="height:8px;background:#5B8DEF"></div><div style="padding:14px 15px"><div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><div style="width:34px;height:34px;border-radius:9px;background:#0B0B0D;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 11px 'Hanken Grotesk';color:#F5F5F7">PX</div><div style="flex:1"><div style="font:700 13px 'Hanken Grotesk';color:#F5F5F7">PixTrack</div><div style="font:400 9px 'JetBrains Mono';color:#7BA5F5">PHOTO · STAND 12</div></div></div><div style="font:400 11px/1.4 'Hanken Grotesk';color:#9A9AA3;margin-bottom:10px">Propose des photos à tes pilotes du jour.</div><div style="font:600 11.5px 'Hanken Grotesk';color:#7BA5F5">Recommander à un pilote ›</div></div></div>
+                <div style="flex:1;background:#0E0E10;border:1px solid #1A1A1D;border-radius:13px;padding:14px 15px;opacity:0.8"><div style="display:flex;align-items:center;gap:9px;margin-bottom:9px"><div style="width:34px;height:34px;border-radius:9px;background:#141416;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:700 11px 'Hanken Grotesk';color:#C9C9CE">GT</div><div style="flex:1"><div style="font:700 13px 'Hanken Grotesk';color:#E5E5E8">Garage Tessier</div><div style="font:400 9px 'JetBrains Mono';color:#8A8A92">MÉCA · STAND 3</div></div></div><div style="font:400 11px/1.4 'Hanken Grotesk';color:#8A8A92">Assistance pneus &amp; réglages sur place.</div></div>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;background:rgba(226,58,78,.06);border:1px solid rgba(226,58,78,.18);border-radius:10px;padding:11px 13px;margin-top:14px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#E2685A" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 10.5px/1.4 'Hanken Grotesk';color:#C99098">Le coach peut recommander un partenaire — le pilote reste libre, et garde le contrôle de son contact.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Partenaire complété : catalogue détaillé, point de vente sur la carte, mise en avant côté Pilote &amp; Coach. Restent en option : Performance (agrégats), Facturation, Rapports B2B (édités par l'admin). Prochain grand rôle : <strong>Admin</strong> (régie, cyan) — dont la validation des partenaires et l'éditeur de rapports B2B.</p>
+</section>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Partenaire — B2B marketplace (bureau) · colonne vertébrale</span></div>
+  <p class="dv-tsub">Le rôle <strong>Partenaire</strong> (garage, photographe, hôtel, école…) publie des offres et reçoit des <strong>leads consentis</strong> — <strong>sans jamais voir la télémétrie ni l'identité</strong> du pilote. Surface <strong>bureau</strong> (usage pro type back-office), identité <strong>bleue</strong>. <a class="dv-oid" href="#1a">1a</a> Tableau de bord · <a class="dv-oid" href="#1b">1b</a> Mes offres · <a class="dv-oid" href="#1c">1c</a> Mes leads · <a class="dv-oid" href="#1d">1d</a> Ma fiche.</p>
+  <div class="dv-opts">
+
+    <!-- 1a TABLEAU DE BORD -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Tableau de bord</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Mes offres</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Tableau de bord</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Bonjour, PixTrack</div></div><div style="display:flex;align-items:center;gap:7px;background:rgba(79,201,138,.1);border:1px solid rgba(79,201,138,.25);border-radius:9px;padding:8px 13px"><span style="width:6px;height:6px;border-radius:50%;background:#4FC98A"></span><span style="font:600 10.5px 'JetBrains Mono';color:#4FC98A">COMPTE VALIDÉ</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;gap:14px">
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Nouveaux leads · 7 j</div><div style="font:500 30px 'JetBrains Mono';color:#5B8DEF">5</div><div style="font:400 10.5px 'Hanken Grotesk';color:#6E6E76;margin-top:2px">+2 vs semaine passée</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Offres en ligne</div><div style="font:500 30px 'JetBrains Mono';color:#F5F5F7">3</div><div style="font:400 10.5px 'Hanken Grotesk';color:#6E6E76;margin-top:2px">sur 2 circuits</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Vues de fiche · 30 j</div><div style="font:500 30px 'JetBrains Mono';color:#F5F5F7">218</div><div style="font:400 10.5px 'Hanken Grotesk';color:#6E6E76;margin-top:2px">par des pilotes</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Taux de contact</div><div style="font:500 30px 'JetBrains Mono';color:#F2CE3B">32 %</div><div style="font:400 10.5px 'Hanken Grotesk';color:#6E6E76;margin-top:2px">vue → demande</div></div>
+              </div>
+              <div style="display:flex;gap:18px;flex:1;min-height:0">
+                <div class="card" style="flex:1.4;padding:18px;display:flex;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><span class="eyebrow">Demandes par semaine</span><span style="font:400 10px 'JetBrains Mono';color:#6E6E76">2 derniers mois</span></div><div style="flex:1;display:flex;align-items:flex-end;gap:10px"><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:38%;background:#2A2A2E;border-radius:4px 4px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:54%;background:#2A2A2E;border-radius:4px 4px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:46%;background:#2A2A2E;border-radius:4px 4px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:66%;background:#2A2A2E;border-radius:4px 4px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:58%;background:#2A2A2E;border-radius:4px 4px 0 0"></div></div><div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end"><div style="width:100%;height:82%;background:#5B8DEF;border-radius:4px 4px 0 0"></div></div></div></div>
+                <div class="card" style="flex:1;padding:18px;display:flex;flex-direction:column"><span class="eyebrow" style="margin-bottom:14px">Derniers leads</span><div style="display:flex;flex-direction:column;gap:11px"><div style="display:flex;align-items:center;gap:11px"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="#5B8DEF" stroke-width="1.5"/></svg></div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos · Haute-Saintonge</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">il y a 2 h</div></div><span class="chip" style="background:rgba(91,141,239,.14);color:#7BA5F5">NOUVEAU</span></div><div style="display:flex;align-items:center;gap:11px"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="#5B8DEF" stroke-width="1.5"/></svg></div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos · Le Vigeant</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">hier</div></div><span style="font:500 10px 'JetBrains Mono';color:#6E6E76">traité</span></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b MES OFFRES -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Mes offres</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/offres</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Mes offres</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Mes offres</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">3 offres publiées</div></div><div style="display:flex;align-items:center;gap:7px;background:#5B8DEF;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#fff"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 5v10M5 10h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>Nouvelle offre</div></div>
+            <div class="body" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;align-content:start">
+              <div class="card" style="padding:16px 18px;border-top:2px solid #5B8DEF"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span class="chip" style="background:rgba(91,141,239,.14);color:#7BA5F5">PHOTOGRAPHE</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">EN LIGNE</span></div><div style="font:700 15px 'Hanken Grotesk';color:#F5F5F7;margin-bottom:5px">Photos du jour</div><div style="font:400 11.5px/1.4 'Hanken Grotesk';color:#8A8A92;margin-bottom:14px">Photos haute def de ta journée sur circuit.</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 17px 'JetBrains Mono';color:#FFB703">45 €</span><span style="font:400 10.5px 'JetBrains Mono';color:#6E6E76">12 demandes</span></div></div>
+              <div class="card" style="padding:16px 18px;border-top:2px solid #5B8DEF"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span class="chip" style="background:rgba(91,141,239,.14);color:#7BA5F5">PHOTOGRAPHE</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">EN LIGNE</span></div><div style="font:700 15px 'Hanken Grotesk';color:#F5F5F7;margin-bottom:5px">Pack vidéo embarquée</div><div style="font:400 11.5px/1.4 'Hanken Grotesk';color:#8A8A92;margin-bottom:14px">Montage de ta meilleure session.</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 17px 'JetBrains Mono';color:#FFB703">90 €</span><span style="font:400 10.5px 'JetBrains Mono';color:#6E6E76">4 demandes</span></div></div>
+              <div class="card" style="padding:16px 18px;opacity:0.75"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span class="chip" style="background:rgba(91,141,239,.14);color:#7BA5F5">PHOTOGRAPHE</span><span class="chip" style="background:#1A1A1D;color:#8A8A92">BROUILLON</span></div><div style="font:700 15px 'Hanken Grotesk';color:#E5E5E8;margin-bottom:5px">Portrait paddock</div><div style="font:400 11.5px/1.4 'Hanken Grotesk';color:#8A8A92;margin-bottom:14px">Séance photo avant de rouler.</div><div style="display:flex;align-items:center;justify-content:space-between"><span style="font:500 17px 'JetBrains Mono';color:#9A8A5A">30 €</span><span style="font:400 10.5px 'JetBrains Mono';color:#6E6E76">non publiée</span></div></div>
+              <div style="border:1px dashed #2C2C31;border-radius:14px;padding:16px;display:flex;align-items:center;justify-content:center;gap:9px;min-height:120px"><svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M10 5v10M5 10h10" stroke="#6E6E76" stroke-width="1.7" stroke-linecap="round"/></svg><span style="font:500 12.5px 'Hanken Grotesk';color:#6E6E76">Créer une offre</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c MES LEADS -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Mes leads — consentis, sans identité ni télémétrie</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/leads</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Mes offres</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Mes leads</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Demandes de contact</div></div><div style="display:flex;align-items:center;gap:7px;background:rgba(79,201,138,.1);border:1px solid rgba(79,201,138,.25);border-radius:9px;padding:8px 13px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#4FC98A" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:600 10px 'JetBrains Mono';color:#4FC98A">SANS IDENTITÉ NI TÉLÉMÉTRIE</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:11px">
+              <div class="card" style="padding:16px 18px;border-left:2px solid #5B8DEF;display:flex;align-items:center;gap:16px">
+                <div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2a5 5 0 0 1 5 5c0 3.5-5 11-5 11S5 10.5 5 7a5 5 0 0 1 5-5Z" stroke="#5B8DEF" stroke-width="1.5"/></svg></div>
+                <div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Photos du jour · Haute-Saintonge</div><div style="font:400 11.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Un pilote souhaite être recontacté · il y a 2 h</div></div>
+                <div style="text-align:right;margin-right:6px"><div style="font:400 9.5px 'JetBrains Mono';color:#6E6E76">contact fourni par le pilote</div><div style="font:500 12px 'JetBrains Mono';color:#C9C9CE;margin-top:2px">via messagerie OXV</div></div>
+                <div style="background:#5B8DEF;border-radius:10px;padding:11px 16px;font:700 12.5px 'Hanken Grotesk';color:#fff">Répondre</div>
+              </div>
+              <div class="card" style="padding:16px 18px;display:flex;align-items:center;gap:16px">
+                <div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;flex:none"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 6h12v9H4z" stroke="#8A8A92" stroke-width="1.5"/><circle cx="10" cy="10.5" r="2.5" stroke="#8A8A92" stroke-width="1.5"/></svg></div>
+                <div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Pack vidéo · Le Vigeant</div><div style="font:400 11.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Recontacté · en discussion</div></div>
+                <span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">EN COURS</span>
+                <div style="border:1px solid #232326;border-radius:10px;padding:11px 16px;font:600 12.5px 'Hanken Grotesk';color:#C9C9CE">Ouvrir</div>
+              </div>
+              <div style="display:flex;align-items:flex-start;gap:9px;background:rgba(79,201,138,.06);border:1px solid rgba(79,201,138,.18);border-radius:12px;padding:13px 15px;margin-top:6px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#4FC98A" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 11.5px/1.5 'Hanken Grotesk';color:#8FBFA0">Tu ne reçois un lead que si le pilote a <strong style="color:#C9C9CE">explicitement demandé</strong> à être recontacté. Tu ne vois jamais son identité, ses données de conduite, ni ses autres partenaires.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1d MA FICHE -->
+    <div class="dv-opt" id="1d">
+      <div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Ma fiche — vue par les pilotes</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">partenaire.oxvehicle.fr/fiche</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 9l7-6 7 6M5 8v8h10V8" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>Tableau de bord</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Mes offres</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 5h12v9H8l-3 3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Mes leads</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Performance</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M4 17a6 6 0 0 1 12 0" stroke="currentColor" stroke-width="1.5"/></svg>Ma fiche</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Facturation</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#2A2A2E,#141416);border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">PX</div>PixTrack</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Ma fiche</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Ta vitrine auprès des pilotes</div></div><div style="display:flex;align-items:center;gap:7px;background:#5B8DEF;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#fff">Modifier</div></div>
+            <div class="body" style="display:flex;gap:24px">
+              <div style="width:340px;flex:none"><div class="card" style="padding:0;overflow:hidden"><div style="height:120px;background:linear-gradient(135deg,#1C2740,#0F1524);position:relative"><div style="position:absolute;bottom:12px;left:16px;display:flex;align-items:center;gap:10px"><div style="width:44px;height:44px;border-radius:11px;background:#0B0B0D;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 15px 'Hanken Grotesk';color:#F5F5F7">PX</div><div><div style="font:700 16px 'Hanken Grotesk';color:#F5F5F7">PixTrack</div><div style="font:500 10px 'JetBrains Mono';color:#7BA5F5">PHOTOGRAPHE PISTE</div></div></div></div><div style="padding:16px 18px"><div style="font:400 12.5px/1.55 'Hanken Grotesk';color:#C9C9CE">Photographe spécialisé circuit depuis 8 ans. Photos et vidéos haute def le jour même.</div><div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:14px"><span class="chip" style="background:#16161A;border:1px solid #232326;color:#C9C9CE;padding:6px 10px">Haute-Saintonge</span><span class="chip" style="background:#16161A;border:1px solid #232326;color:#C9C9CE;padding:6px 10px">Le Vigeant</span></div></div></div></div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:14px">
+                <div class="card" style="padding:16px 18px"><span class="eyebrow" style="display:block;margin-bottom:12px">Zone desservie</span><div style="display:flex;flex-wrap:wrap;gap:8px"><span class="chip" style="background:#16161A;border:1px solid #232326;color:#C9C9CE;padding:8px 12px">Nouvelle-Aquitaine</span><span class="chip" style="background:#16161A;border:1px solid #232326;color:#C9C9CE;padding:8px 12px">Occitanie</span></div></div>
+                <div class="card" style="padding:16px 18px"><span class="eyebrow" style="display:block;margin-bottom:12px">Vitrine (3 offres publiées)</span><div style="display:flex;gap:10px"><div style="flex:1;background:#16161A;border-radius:9px;padding:11px 13px"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Photos du jour</div><div style="font:500 13px 'JetBrains Mono';color:#FFB703;margin-top:4px">45 €</div></div><div style="flex:1;background:#16161A;border-radius:9px;padding:11px 13px"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Vidéo embarquée</div><div style="font:500 13px 'JetBrains Mono';color:#FFB703;margin-top:4px">90 €</div></div></div></div>
+                <div style="display:flex;align-items:flex-start;gap:9px;background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:12px;padding:13px 15px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><circle cx="10" cy="10" r="8" stroke="#5B8DEF" stroke-width="1.4"/><path d="M10 6v5M10 14h.01" stroke="#5B8DEF" stroke-width="1.6" stroke-linecap="round"/></svg><span style="font:400 11.5px/1.5 'Hanken Grotesk';color:#9EB6E8">Ta fiche est visible des pilotes une fois <strong style="color:#C9C9CE">validée par l'admin OXV</strong>. Les modifications repassent en validation.</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Colonne vertébrale Partenaire posée (bureau, bleu). Suite : « <strong>Performance</strong> (agrégats, sans donnée pilote) » · « <strong>Facturation</strong> (prix affiché, non encaissé) » · « <strong>Rapports B2B</strong> (partagés par l'admin) » · « côté pilote : la <strong>découverte partenaires</strong> existe déjà (Pilote 4b) ». Puis rôle <strong>Admin</strong>.</p>
+</section>
+</x-dc>
+</body>
+</html>

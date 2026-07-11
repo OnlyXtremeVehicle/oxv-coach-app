@@ -1,63 +1,70 @@
-// Charte OXV Mirror V2 / refonte (docs/refonte-app) — thème du kit UI (@/ui/*).
-// Polices Geist / Geist Mono (chargées dans app/_layout.tsx via @/theme/fonts).
-// Couleurs strictement codées : gold = quotidien/données, heritageGold = virage +
-// offre Heritage, red = marque, green = tendance positive.
-// Aligné sur `docs/refonte-app/04_DESIGN_CANON §1` (PR 7). Valeurs exactes.
+// Charte OXV — REFONTE V3 (2026-07-10, handoff design complet Pilote+Coach).
+// Thème unique sombre. Typo Hanken Grotesk (texte/UI) + JetBrains Mono
+// (données + CHIFFRE ROI). Système couleur QDI par branche (§4 handoff) : chaque
+// donnée a SA couleur ; l'OR est réservé au CHRONO/RECORD/RYTHME uniquement.
+// Les clés de tokens sont conservées (compat 159 écrans) ; seules les valeurs
+// changent. Rôles inchangés. Cf. design-retours/refonte-v2 §5 Design tokens.
 export const palette = {
-  night: '#050505', // fond base
-  nightCard: '#121214',
-  card: '#0B0B0D', // cartes (canon vise rgba(255,255,255,0.025) — surface translucide, migrée au build)
-  card2: '#121214', // cartes secondaires / pills
-  cream: '#F8F9FA', // texte primaire
-  creamSoft: '#E5E5E5',
-  secondary: '#C9C9CE', // texte secondaire (canon)
-  creamMute: '#9A9AA3', // texte muted
-  eyebrow: '#6E6E76', // eyebrows / sur-titres (canon — distinct de faint)
-  faint: '#54545C', // texte tertiaire / inactif
-  legend: '#B4B4BC',
-  line: '#1C1C20', // filets / bordure ligne
-  cardBorderProminent: '#232326', // bordure carte hero
-  separator: '#161618', // séparateur interne / ligne de liste
+  night: '#0B0B0D', // --bg fond app
+  nightCard: '#111113', // --surface
+  card: '#111113', // --surface : carte standard
+  card2: '#141416', // --surface-2 : carte alt / boutons ronds
+  surface3: '#16161A', // --surface-3 : tuiles internes
+  cream: '#F5F5F7', // --text primaire
+  creamSoft: '#E5E5E8', // --text-2 secondaire fort
+  secondary: '#C9C9CE', // --text-3 secondaire
+  creamMute: '#9A9AA3', // --text-muted labels
+  eyebrow: '#6E6E76', // --text-faint captions/axes/eyebrows
+  faint: '#55555C', // --text-faint-2 inactif
+  legend: '#8A8A92', // --text-muted-2 sous-labels
+  line: '#1E1E22', // --border bordure carte
+  cardBorderProminent: '#232326', // --border-2 bordure bouton/tuile
+  separator: '#17171A', // --border-hair séparateur fin
+  borderHair: '#1A1A1D', // --hair-soft cadre graphe
   edge: 'rgba(255,255,255,0.20)',
-  gold: '#FFB703', // DONNÉE uniquement (jauge, chiffre, points, barres)
-  red: '#C8102E', // rouge coach / REC (insigne, bande coach)
-  heritageGold: '#C4A459', // Heritage STRICT + registre référence (numéros de virage)
-  green: '#97C459', // tendance positive / état connecté
-  pilotAmber: '#F2792B', // marge serrée / trajectoire pilote : AMBRE qui neutralise le rouge de marque sur la DONNÉE de perf (jamais `red`). Source unique du fix canon — cf. marginZoneColorLogic, CircuitMap colorForZone.
-  coach: '#E6E6E8', // citation coach (bande coach utilise red)
+  gold: '#FFB703', // CHRONO / RECORD / RYTHME UNIQUEMENT (jamais une donnée QDI)
+  goldText: '#D9AE00', // or lisible sur fond clair
+  red: '#C8102E', // rouge de marque / coach (insigne, bande coach)
+  coachAccent: '#E23A4E', // accent UI coach (boutons, liserés)
+  coachAlert: '#E2685A', // alerte douce coach (lien « retirer l'accès »)
+  heritageGold: '#C4A459', // Heritage STRICT (offre)
+  green: '#4FC98A', // = accél / état connecté / validé (QDI accélération)
+  pilotAmber: '#F2792B', // legacy (marge serrée historique) — la marge passe au dégradé rouge→or→vert
+  coach: '#E6E6E8', // citation coach neutre (bande coach utilise red)
 } as const;
 
-// Couleurs de donnée (piliers / vues). Toujours doublées d'un libellé.
-// Décision fondateur 2026-07-04 : le FREINAGE prend le rouge de DONNÉE #E63946
-// (convention télémétrie : freinage rouge / accélération verte). Ce rouge de
-// donnée est DISTINCT du rouge de marque #C8102E (REC/insigne) — cf.
-// REGLES_COULEUR.md. La trajectoire (qui portait ce corail) passe à l'ambre
-// pilote, sa couleur d'affichage réelle depuis le fix canon PR-69.
+// Système couleur QDI (§4 handoff — CŒUR de la refonte). CHAQUE branche a une
+// couleur FIXE, utilisée PARTOUT où sa donnée apparaît (radar, barres, points
+// sur la piste, chips, annotations). Une couleur = une donnée. L'or n'est PAS
+// ici : il est réservé au chrono/record (palette.gold).
 export const dataColors = {
-  trajectory: '#F2792B', // = pilotAmber (trajectoire pilote, jamais le rouge)
-  flow: '#FFB703',
-  brake: '#E63946', // FREINAGE = rouge de donnée (≠ rouge de marque #C8102E)
-  accel: '#4ADE80',
-  regularity: '#C084FC',
+  trajectory: '#4F9DF7', // Trajectoire — bleu
+  brake: '#F65B5B', // Freinage — rouge
+  accel: '#4FC98A', // Accélération — vert
+  flow: '#F2CE3B', // Fluidité — jaune (texte sur fond clair : goldText/#B58F00)
+  regularity: '#A783F2', // Régularité — violet (barres inactives #3A2E52)
 } as const;
 
-// Familles de polices (refonte NG 2026-07-06, compromis fondateur) : Geist pour
-// le TEXTE, Rajdhani pour le CHIFFRE ROI (héros HUD), JetBrains Mono pour les
-// DONNÉES/labels/eyebrows, Instrument Serif pour l'éditorial. Noms = exports
+// Polices — REFONTE V3. Hanken Grotesk = texte/titres/UI ; JetBrains Mono =
+// données/labels/axes ET le CHIFFRE ROI (mono, tabular-nums, letter-spacing
+// négatif). Plus de Rajdhani ni Instrument Serif. Noms = exports
 // @expo-google-fonts (chargés dans src/theme/fonts.ts).
 export const fonts = {
-  display: 'Geist_600SemiBold', // titres (sans)
-  displayReg: 'Geist_500Medium',
-  body: 'Geist_400Regular',
-  bodyLight: 'Geist_300Light',
-  bodyMedium: 'Geist_500Medium',
-  bodySemi: 'Geist_600SemiBold',
-  king: 'Rajdhani_600SemiBold', // CHIFFRE ROI : le grand chiffre central (or)
-  kingMedium: 'Rajdhani_500Medium',
-  mono: 'JetBrainsMono_400Regular', // données, labels, eyebrows, méta
+  display: 'HankenGrotesk_600SemiBold', // titres
+  displayReg: 'HankenGrotesk_500Medium',
+  displayBold: 'HankenGrotesk_700Bold',
+  heavy: 'HankenGrotesk_800ExtraBold',
+  body: 'HankenGrotesk_400Regular',
+  bodyLight: 'HankenGrotesk_300Light',
+  bodyMedium: 'HankenGrotesk_500Medium',
+  bodySemi: 'HankenGrotesk_600SemiBold',
+  king: 'JetBrainsMono_700Bold', // CHIFFRE ROI : mono, grand, tabular-nums
+  kingMedium: 'JetBrainsMono_500Medium',
+  mono: 'JetBrainsMono_400Regular', // données, labels, eyebrows, chronos, axes
   monoMedium: 'JetBrainsMono_500Medium',
-  serif: 'InstrumentSerif_400Regular', // éditorial (ligne-miroir, dates) — JAMAIS un chiffre
-  serifItalic: 'InstrumentSerif_400Regular_Italic', // mot qualitatif du bilan, citation coach
+  monoSemi: 'JetBrainsMono_600SemiBold', // chrono/record accentué
+  serif: 'HankenGrotesk_400Regular', // éditorial (plus de serif : Hanken)
+  serifItalic: 'HankenGrotesk_400Regular_Italic',
 } as const;
 
 // Couleurs d'IDENTITÉ DE RÔLE (navigation, badges, hubs — jamais de la donnée).
@@ -66,10 +73,10 @@ export const fonts = {
 // (SPEC_BUILD §5 « couleur d'identité par rôle, jamais l'or »). Le coach porte le
 // rouge de marque (coach = marque OXV) ; partenaire = bleu ; admin = cyan.
 export const roleColors = {
-  pilot: '#F8F9FA', // crème (= palette.cream) : identité neutre du pilote
+  pilot: '#F5F5F7', // blanc (= palette.cream) : identité neutre du pilote
   coach: '#C8102E', // rouge de marque (= palette.red)
-  partner: '#5B8DEF', // bleu partenaire
-  admin: '#22D3EE', // cyan admin (remplace le bronze #B87333)
+  partner: '#5B8DEF', // bleu partenaire (site web)
+  admin: '#22D3EE', // cyan admin (site web)
 } as const;
 export type RoleKey = keyof typeof roleColors;
 

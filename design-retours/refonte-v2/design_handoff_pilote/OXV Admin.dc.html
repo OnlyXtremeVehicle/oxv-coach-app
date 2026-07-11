@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#E7E5E0;font-family:'Hanken Grotesk',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  a{color:#0B0B0D;text-decoration:none}
+  .dv-turn{padding:52px 56px 44px;border-bottom:1px solid rgba(0,0,0,.09)}
+  .dv-thd{display:flex;align-items:baseline;gap:12px;margin:0 0 8px}
+  .dv-tid{font:700 10px 'JetBrains Mono',monospace;padding:4px 8px;background:#0E7C8B;color:#fff;border-radius:5px;letter-spacing:.5px}
+  .dv-tname{font:700 15px/1.2 'Hanken Grotesk',sans-serif;color:#1a1a1a}
+  .dv-tsub{font:400 13px/1.5 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.5);max-width:760px;margin:2px 0 30px}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+  .dv-oid{font:700 10.5px 'JetBrains Mono',monospace;padding:3px 7px;background:rgba(0,0,0,.09);color:#1a1a1a;border-radius:5px}
+  .dv-olabel{display:flex;align-items:center;gap:9px;font:500 12px/1.3 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.62)}
+  .dv-opt:target .dv-oid{background:#0E7C8B;color:#fff}
+  .dv-next{margin:30px 0 0;font:400 12.5px/1.7 'Hanken Grotesk',sans-serif;color:rgba(0,0,0,.5)}
+  .desk{width:1240px;background:#0B0B0D;border:1px solid #26262A;border-radius:16px;overflow:hidden;box-shadow:0 40px 90px -30px rgba(0,0,0,.55)}
+  .dchrome{display:flex;align-items:center;gap:7px;padding:11px 15px;background:#0C0C0E;border-bottom:1px solid #191A1D}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dwin{display:flex;height:760px}
+  .rail{width:200px;flex:none;background:#0C0C0E;border-right:1px solid #191A1D;display:flex;flex-direction:column;padding:20px 14px}
+  .rlogo{display:flex;align-items:center;gap:9px;font:700 16px 'Hanken Grotesk';color:#F5F5F7;padding:2px 8px 22px}
+  .ri{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;font:600 13px 'Hanken Grotesk';color:#7A7A82;margin-bottom:3px;position:relative}
+  .ri.active{background:#141416;color:#F5F5F7}
+  .ri.active::before{content:"";position:absolute;left:-14px;top:9px;bottom:9px;width:3px;background:#22D3EE;border-radius:2px}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .head{display:flex;align-items:center;justify-content:space-between;padding:20px 28px;border-bottom:1px solid #17171A;flex:none}
+  .eyebrow{font:600 10px 'JetBrains Mono',monospace;letter-spacing:1.6px;color:#6E6E76;text-transform:uppercase}
+  .body{flex:1;overflow:hidden;padding:24px 28px}
+  .card{background:#111113;border:1px solid #1E1E22;border-radius:14px}
+  .chip{font:600 10px 'JetBrains Mono',monospace;padding:4px 9px;border-radius:6px}
+  @keyframes lp{0%,100%{opacity:1}50%{opacity:.35}}
+  .lp{animation:lp 1.6s ease-in-out infinite}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t4">
+  <div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Admin — Qualité data, Rapports B2B &amp; Support</span></div>
+  <p class="dv-tsub">Les trois dernières fonctions de la régie. <a class="dv-oid" href="#4a">4a</a> Qualité data (intégrité de l'ingestion RaceBox → Supabase), <a class="dv-oid" href="#4b">4b</a> Éditeur de rapports B2B (audience agrégée &amp; anonymisée, partagée au partenaire), <a class="dv-oid" href="#4c">4c</a> Support (boîte de réception, SLA, statut — miroir de « Mes demandes » côté pilote).</p>
+  <div class="dv-opts">
+
+    <!-- 4a QUALITÉ DATA -->
+    <div class="dv-opt" id="4a">
+      <div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>Qualité data — intégrité de l'ingestion</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/qualite-data</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Système · Qualité data</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Intégrité de la donnée</div></div><div style="display:flex;align-items:center;gap:10px"><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A;padding:8px 12px">Pipeline OK</span><span style="font:400 10.5px 'JetBrains Mono';color:#6E6E76">sync il y a 2 min</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:14px">
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Sessions ingérées · 24 h</div><div style="font:500 28px 'JetBrains Mono';color:#F5F5F7">47</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Complètes</div><div style="font:500 28px 'JetBrains Mono';color:#4FC98A">96 %</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">En anomalie</div><div style="font:500 28px 'JetBrains Mono';color:#D9AE00">3</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Boîtiers émetteurs</div><div style="font:500 28px 'JetBrains Mono';color:#F5F5F7">24<span style="font-size:16px;color:#6E6E76">/26</span></div></div>
+              </div>
+              <div style="display:flex;gap:16px;flex:1;min-height:0">
+                <div class="card" style="flex:1.5;padding:18px;display:flex;flex-direction:column">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span class="eyebrow">Sessions à vérifier</span><span style="font:400 10px 'JetBrains Mono';color:#6E6E76">3 sur 47</span></div>
+                  <div style="display:flex;flex-direction:column;gap:9px">
+                    <div style="display:flex;align-items:center;gap:12px;background:#0E0E10;border:1px solid #1A1A1D;border-left:2px solid #F2CE3B;border-radius:10px;padding:12px 14px"><div style="flex:1"><div style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">SES-4471</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Adrien M. · Haute-Saintonge · 19 juil.</div></div><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">GPS incomplet</span><div style="border:1px solid #232326;border-radius:9px;padding:8px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Examiner</div></div>
+                    <div style="display:flex;align-items:center;gap:12px;background:#0E0E10;border:1px solid #1A1A1D;border-left:2px solid #F2CE3B;border-radius:10px;padding:12px 14px"><div style="flex:1"><div style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">SES-4468</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Karim D. · Haute-Saintonge · 19 juil.</div></div><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">horloge décalée</span><div style="border:1px solid #232326;border-radius:9px;padding:8px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Examiner</div></div>
+                    <div style="display:flex;align-items:center;gap:12px;background:#0E0E10;border:1px solid #1A1A1D;border-left:2px solid #F65B5B;border-radius:10px;padding:12px 14px"><div style="flex:1"><div style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">SES-4462</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">boîtier #D488 · signal perdu en S2</div></div><span class="chip" style="background:rgba(246,91,91,.13);color:#F65B5B">tronquée</span><div style="border:1px solid #232326;border-radius:9px;padding:8px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Examiner</div></div>
+                  </div>
+                </div>
+                <div class="card" style="flex:1;padding:18px;display:flex;flex-direction:column">
+                  <span class="eyebrow" style="display:block;margin-bottom:8px">Contrôles automatiques</span>
+                  <div style="display:flex;flex-direction:column">
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px"><div><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Cohérence GPS</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">47 / 47 séances</div></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="#4FC98A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div style="height:1px;background:#17171A"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px"><div><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Continuité chrono</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">pas de tour manquant</div></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="#4FC98A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                    <div style="height:1px;background:#17171A"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px"><div><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Firmware homogène</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">1 boîtier en 2.3</div></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 12H3z" stroke="#D9AE00" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3M10 13h.01" stroke="#D9AE00" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+                    <div style="height:1px;background:#17171A"></div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 2px"><div><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Doublons de tour</div><div style="font:400 10px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">aucun détecté</div></div><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="#4FC98A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                  </div>
+                  <div style="margin-top:auto;display:flex;align-items:flex-start;gap:9px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:13px 15px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#22D3EE" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 11px/1.5 'Hanken Grotesk';color:#8FC8D2">Une séance en anomalie <strong style="color:#C9C9CE">n'alimente pas le Data Lab</strong> du pilote tant qu'elle n'est pas vérifiée. On ne montre jamais une donnée douteuse.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4b ÉDITEUR RAPPORTS B2B -->
+    <div class="dv-opt" id="4b">
+      <div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a>Éditeur de rapports B2B</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/rapports</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Partenaires · Rapports B2B</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Éditeur de rapport d'audience</div></div><div style="display:flex;align-items:center;gap:7px;background:#22D3EE;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#04222A"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 10l12-5-5 12-2-5-5-2z" stroke="#04222A" stroke-width="1.6" stroke-linejoin="round"/></svg>Partager à PixTrack</div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="width:318px;flex:none;display:flex;flex-direction:column;gap:16px">
+                <div><span class="eyebrow" style="display:block;margin-bottom:10px">Destinataire</span><div class="card" style="padding:13px 15px;display:flex;align-items:center;gap:12px;border-left:2px solid #5B8DEF"><div style="width:38px;height:38px;border-radius:10px;background:#16161A;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:700 12px 'Hanken Grotesk';color:#F5F5F7;flex:none">PX</div><div style="flex:1"><div style="font:600 13px 'Hanken Grotesk';color:#F5F5F7">PixTrack</div><div style="font:400 10px 'JetBrains Mono';color:#7BA5F5">partenaire · photographe</div></div></div></div>
+                <div><span class="eyebrow" style="display:block;margin-bottom:10px">Période</span><div style="display:flex;gap:8px"><span class="chip" style="background:#22D3EE;color:#04222A;padding:8px 13px">Juin 2026</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px">Mai</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px">T2</span></div></div>
+                <div style="flex:1"><span class="eyebrow" style="display:block;margin-bottom:10px">Sections incluses</span><div style="display:flex;flex-direction:column;gap:2px;background:#0E0E10;border:1px solid #1A1A1D;border-radius:14px;padding:6px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 12px"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Vues de fiche</div><div style="width:42px;height:24px;border-radius:13px;background:#22D3EE;position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#04222A"></div></div></div>
+                  <div style="height:1px;background:#17171A;margin:0 12px"></div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 12px"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Taux de contact</div><div style="width:42px;height:24px;border-radius:13px;background:#22D3EE;position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#04222A"></div></div></div>
+                  <div style="height:1px;background:#17171A;margin:0 12px"></div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 12px"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Offres les plus vues</div><div style="width:42px;height:24px;border-radius:13px;background:#22D3EE;position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#04222A"></div></div></div>
+                  <div style="height:1px;background:#17171A;margin:0 12px"></div>
+                  <div style="display:flex;align-items:center;justify-content:space-between;padding:13px 12px"><div style="font:600 12.5px 'Hanken Grotesk';color:#8A8A92">Provenance du trafic</div><div style="width:42px;height:24px;border-radius:13px;background:#2C2C31;position:relative"><div style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#8A8A92"></div></div></div>
+                </div></div>
+                <div style="display:flex;align-items:flex-start;gap:9px;background:rgba(91,141,239,.06);border:1px solid rgba(91,141,239,.2);border-radius:12px;padding:12px 14px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#5B8DEF" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 11px/1.5 'Hanken Grotesk';color:#9DB8EE">Agrégé &amp; anonymisé — <strong style="color:#C9C9CE">aucune identité pilote, aucune télémétrie.</strong></span></div>
+              </div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <span class="eyebrow" style="display:block;margin-bottom:10px">Aperçu · ce que reçoit le partenaire</span>
+                <div style="flex:1;background:#F5F5F7;border-radius:14px;padding:26px 28px;display:flex;flex-direction:column;color:#0B0B0D;overflow:hidden">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div style="display:flex;align-items:center;gap:8px"><span style="display:inline-block;width:15px;height:15px;border:1.5px solid #0B0B0D;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#0B0B0D"></span></span><span style="font:700 13px 'Hanken Grotesk';color:#0B0B0D">OXV</span><span style="font:600 9px 'JetBrains Mono';letter-spacing:1.4px;color:#8b8b90;text-transform:uppercase;margin-left:4px">Rapport d'audience</span></div><span style="font:500 11px 'JetBrains Mono';color:#6b6b70">Juin 2026</span></div>
+                  <div style="font:400 12px 'Hanken Grotesk';color:#6b6b70;margin-bottom:16px">Préparé pour <strong style="color:#0B0B0D">PixTrack</strong> · photographe</div>
+                  <div style="display:flex;align-items:flex-end;gap:26px;margin-bottom:22px">
+                    <div><div style="font:500 46px 'JetBrains Mono';color:#0B0B0D;letter-spacing:-1.5px;line-height:1">1 240</div><div style="font:400 11px 'Hanken Grotesk';color:#6b6b70;margin-top:5px">vues de fiche · <span style="color:#1F8A5B;font-weight:600">+18 % vs mai</span></div></div>
+                    <div style="border-left:1px solid #d5d3cc;padding-left:26px"><div style="font:500 46px 'JetBrains Mono';color:#0B0B0D;letter-spacing:-1.5px;line-height:1">8.6 %</div><div style="font:400 11px 'Hanken Grotesk';color:#6b6b70;margin-top:5px">taux de contact</div></div>
+                  </div>
+                  <div style="font:600 9px 'JetBrains Mono';letter-spacing:1.2px;color:#8b8b90;text-transform:uppercase;margin-bottom:12px">Vues de fiche par semaine</div>
+                  <div style="display:flex;align-items:flex-end;gap:12px;height:92px;margin-bottom:22px">
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end"><div style="width:100%;max-width:40px;height:46px;background:#5B8DEF;border-radius:5px 5px 0 0"></div><span style="font:500 9px 'JetBrains Mono';color:#8b8b90">S1</span></div>
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end"><div style="width:100%;max-width:40px;height:62px;background:#5B8DEF;border-radius:5px 5px 0 0"></div><span style="font:500 9px 'JetBrains Mono';color:#8b8b90">S2</span></div>
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end"><div style="width:100%;max-width:40px;height:42px;background:#5B8DEF;border-radius:5px 5px 0 0"></div><span style="font:500 9px 'JetBrains Mono';color:#8b8b90">S3</span></div>
+                    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end"><div style="width:100%;max-width:40px;height:76px;background:#3E6FCB;border-radius:5px 5px 0 0"></div><span style="font:500 9px 'JetBrains Mono';color:#8b8b90">S4</span></div>
+                  </div>
+                  <div style="font:600 9px 'JetBrains Mono';letter-spacing:1.2px;color:#8b8b90;text-transform:uppercase;margin-bottom:11px">Vos offres les plus vues</div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:#ECEAE4;border-radius:9px"><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#0B0B0D">Pack photos circuit</div><div style="font:500 11px 'JetBrains Mono';color:#3E6FCB">612 vues</div><div style="font:500 11px 'JetBrains Mono';color:#6b6b70">41 contacts</div></div>
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 13px;background:#ECEAE4;border-radius:9px"><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#0B0B0D">Reportage journée</div><div style="font:500 11px 'JetBrains Mono';color:#3E6FCB">388 vues</div><div style="font:500 11px 'JetBrains Mono';color:#6b6b70">22 contacts</div></div>
+                  </div>
+                  <div style="margin-top:auto;padding-top:16px;border-top:1px solid #e2e0da;font:400 10px/1.5 'Hanken Grotesk';color:#8b8b90">Données agrégées sur l'ensemble des pilotes. OXV ne partage ni l'identité ni la télémétrie des pilotes.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4c SUPPORT -->
+    <div class="dv-opt" id="4c">
+      <div class="dv-olabel"><a class="dv-oid" href="#4c">4c</a>Support — boîte de réception de la régie</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/support</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Utilisateurs · Support</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Demandes · régie</div></div><div style="display:flex;gap:8px"><span class="chip" style="background:#22D3EE;color:#04222A;padding:8px 13px">En cours · 5</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px">Résolu · 128</span></div></div>
+            <div class="body" style="display:flex;gap:20px">
+              <div style="width:300px;flex:none;display:flex;flex-direction:column">
+                <span class="eyebrow" style="display:block;margin-bottom:12px">Boîte de réception</span>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <div style="display:flex;align-items:flex-start;gap:11px;background:#101A1C;border:1px solid #0E3A44;border-left:2px solid #22D3EE;border-radius:11px;padding:12px 14px"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #F5F5F7;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">AM</div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font:600 12.5px 'Hanken Grotesk';color:#F5F5F7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Boîtier ne synchronise plus</span><span style="width:7px;height:7px;border-radius:50%;background:#22D3EE;flex:none"></span></div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Adrien M. · pilote</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font:500 9px 'JetBrains Mono';color:#8A8A92">1 h 20</span><span style="font:600 9px 'JetBrains Mono';color:#D9AE00">SLA 40 min</span></div></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:11px;background:#111113;border:1px solid #1E1E22;border-radius:11px;padding:12px 14px"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #E23A4E;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">JL</div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Numéro de facture manquant</span><span style="width:7px;height:7px;border-radius:50%;background:#8A8A92;flex:none"></span></div><div style="font:400 10.5px 'Hanken Grotesk';color:#E2685A;margin-top:2px">Julien L. · coach</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font:500 9px 'JetBrains Mono';color:#8A8A92">3 h</span><span style="font:600 9px 'JetBrains Mono';color:#6E6E76">SLA 4 h</span></div></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:11px;background:#111113;border:1px solid #1E1E22;border-radius:11px;padding:12px 14px"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">PX</div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Modifier une offre validée</span><span style="width:7px;height:7px;border-radius:50%;background:#8A8A92;flex:none"></span></div><div style="font:400 10.5px 'Hanken Grotesk';color:#7BA5F5;margin-top:2px">PixTrack · partenaire</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font:500 9px 'JetBrains Mono';color:#8A8A92">5 h</span><span style="font:600 9px 'JetBrains Mono';color:#6E6E76">SLA 4 h</span></div></div></div>
+                  <div style="display:flex;align-items:flex-start;gap:11px;background:#111113;border:1px solid #1E1E22;border-radius:11px;padding:12px 14px;opacity:0.7"><div style="width:34px;height:34px;border-radius:9px;background:#141416;border:1px solid #2A2A2E;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#C9C9CE;flex:none">SL</div><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span style="font:600 12.5px 'Hanken Grotesk';color:#C9C9CE;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Export de mes données</span><span style="width:7px;height:7px;border-radius:50%;background:#4FC98A;flex:none"></span></div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Sarah L. · pilote</div><div style="display:flex;align-items:center;gap:8px;margin-top:6px"><span style="font:600 9px 'JetBrains Mono';color:#4FC98A">résolu · hier</span></div></div></div>
+                </div>
+              </div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #17171A;margin-bottom:16px">
+                  <div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:10px;background:#16161A;border:1px solid #F5F5F7;display:flex;align-items:center;justify-content:center;font:600 12px 'Hanken Grotesk';color:#F5F5F7;flex:none">AM</div><div><div style="display:flex;align-items:center;gap:8px"><span style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Adrien Meunier</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3">pilote</span></div><a style="font:500 10.5px 'JetBrains Mono';color:#22D3EE" href="#2b">voir le profil ›</a></div></div>
+                  <div style="display:flex;gap:7px"><span class="chip" style="background:#22D3EE;color:#04222A;padding:8px 13px">EN COURS</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px">RÉSOLU</span></div>
+                </div>
+                <div style="font:700 16px 'Hanken Grotesk';color:#F5F5F7;margin-bottom:6px">Mon boîtier ne synchronise plus</div>
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:18px"><span style="font:400 11px 'JetBrains Mono';color:#8A8A92">Reçu il y a 1 h 20</span><span style="width:3px;height:3px;border-radius:50%;background:#3A3A40"></span><span style="font:600 11px 'JetBrains Mono';color:#D9AE00">à répondre sous 40 min</span></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+                  <div class="card" style="padding:15px 17px;max-width:520px"><div style="font:400 13px/1.6 'Hanken Grotesk';color:#E5E5E8">Depuis la journée de vendredi, mon RaceBox reste bloqué sur « en attente ». J'ai redémarré l'app et le boîtier, rien n'y fait. Ma séance n'est pas remontée.</div><div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid #1E1E22"><span class="chip" style="background:#16161A;border:1px solid #232326;color:#8A8A92">RaceBox #A3F1</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">firmware à jour</span><span style="font:400 10px 'JetBrains Mono';color:#6E6E76">lié · SES-4471</span></div></div>
+                </div>
+                <div style="margin-top:16px">
+                  <div style="background:#0E0E10;border:1px solid #1E1E22;border-radius:12px;padding:13px 15px;font:400 12.5px 'Hanken Grotesk';color:#6E6E76;margin-bottom:11px">Écrire une réponse à Adrien…</div>
+                  <div style="display:flex;align-items:center;gap:10px"><div style="background:#22D3EE;color:#04222A;border-radius:10px;padding:10px 18px;font:700 12.5px 'Hanken Grotesk'">Répondre</div><div style="border:1px solid #232326;color:#C9C9CE;border-radius:10px;padding:10px 16px;font:600 12.5px 'Hanken Grotesk'">Marquer résolu</div><span style="margin-left:auto;font:400 10px/1.4 'Hanken Grotesk';color:#6E6E76;max-width:210px;text-align:right">Côté pilote, l'échange s'affiche dans « Mes demandes » — EN COURS / RÉSOLU.</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Traîne Admin terminée : Devices, Qualité data, Rapports B2B, Support. Les 4 rôles sont complets et cohérents (sombre, QDI en couleurs, or = donnée chrono, doctrine miroir, une identité par rôle). Reste utile : ajouter les captures Partenaire &amp; Admin au handoff.</p>
+</section>
+
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Admin — Devices (parc RaceBox)</span></div>
+  <p class="dv-tsub">La santé du parc de boîtiers, jour J : batterie, signal, firmware, alias — et les alertes à traiter avant que ça bloque un pilote. <a class="dv-oid" href="#3a">3a</a>.</p>
+  <div class="dv-opts">
+
+    <!-- 3a DEVICES -->
+    <div class="dv-opt" id="3a">
+      <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Devices — santé du parc</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/devices</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Système · Devices</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Parc RaceBox · 26 actifs</div></div><div style="display:flex;gap:8px"><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A;padding:8px 12px">24 OK</span><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00;padding:8px 12px">2 alertes</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;padding:0 16px 6px"><span class="eyebrow">Boîtier</span><span class="eyebrow">Assigné</span><span class="eyebrow">Batterie</span><span class="eyebrow">Signal</span><span class="eyebrow">Firmware</span></div>
+              <div class="card" style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:14px 16px"><span style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">RaceBox #A3F1</span><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Adrien M.</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">82 %</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">bon</span><span style="font:500 11px 'JetBrains Mono';color:#8A8A92">à jour</span></div>
+              <div class="card" style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:14px 16px"><span style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">RaceBox #B7C2</span><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Karim D.</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">64 %</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">bon</span><span style="font:500 11px 'JetBrains Mono';color:#8A8A92">à jour</span></div>
+              <div class="card" style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:14px 16px;border-left:2px solid #F2CE3B"><span style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">RaceBox #C019</span><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Sarah L.</span><span style="font:500 12px 'JetBrains Mono';color:#D9AE00">18 %</span><span style="font:500 12px 'JetBrains Mono';color:#4FC98A">bon</span><span style="font:500 11px 'JetBrains Mono';color:#8A8A92">à jour</span></div>
+              <div class="card" style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1fr;gap:12px;align-items:center;padding:14px 16px;border-left:2px solid #F65B5B"><span style="font:600 12.5px 'JetBrains Mono';color:#F5F5F7">RaceBox #D488</span><span style="font:500 12px 'Hanken Grotesk';color:#C9C9CE">Thomas M.</span><span style="font:500 12px 'JetBrains Mono';color:#8A8A92">—</span><span style="font:500 12px 'JetBrains Mono';color:#F65B5B">perdu</span><span style="font:500 11px 'JetBrains Mono';color:#D9AE00">MAJ 2.4</span></div>
+              <div style="display:flex;align-items:flex-start;gap:9px;background:rgba(242,206,59,.06);border:1px solid rgba(242,206,59,.2);border-radius:12px;padding:13px 15px;margin-top:6px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 3l7 12H3z" stroke="#D9AE00" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3M10 13h.01" stroke="#D9AE00" stroke-width="1.6" stroke-linecap="round"/></svg><span style="font:400 11.5px/1.5 'Hanken Grotesk';color:#B99A4A">#C019 batterie faible (18 %) · #D488 sans signal &amp; firmware à mettre à jour. À régler avant la prochaine session pour ne pas perdre la télémétrie d'un pilote.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Admin : + Devices (parc RaceBox). Restent en option : Qualité data, éditeur rapports B2B, Support. Les 4 rôles sont couverts et le handoff est à jour.</p>
+</section>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Admin — Événements, Communauté &amp; Système</span></div>
+  <p class="dv-tsub">La traîne de la régie. <a class="dv-oid" href="#2a">2a</a> Événements (créer/gérer une journée + points de la carte), <a class="dv-oid" href="#2b">2b</a> Utilisateurs &amp; modération, <a class="dv-oid" href="#2c">2c</a> Système (feature-flags &amp; maintenance).</p>
+  <div class="dv-opts">
+
+    <!-- 2a ÉVÉNEMENTS -->
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Événements — créer &amp; gérer une journée</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/evenements</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Événements</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Journées &amp; roulages</div></div><div style="display:flex;align-items:center;gap:7px;background:#22D3EE;border-radius:10px;padding:9px 15px;font:700 12px 'Hanken Grotesk';color:#04222A"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M10 5v10M5 10h10" stroke="#04222A" stroke-width="1.8" stroke-linecap="round"/></svg>Créer</div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+                <div class="card" style="padding:15px 17px;border-left:2px solid #22D3EE;display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:700 15px 'JetBrains Mono';color:#F5F5F7">19</span><span style="font:500 8px 'JetBrains Mono';color:#22D3EE">JUIL</span></div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Roulage libre · Haute-Saintonge</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">32 inscrits · circuit_id lié</div></div><span class="chip" style="background:rgba(34,211,238,.13);color:#22D3EE">PUBLIÉ</span></div>
+                <div class="card" style="padding:15px 17px;display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:700 15px 'JetBrains Mono';color:#F5F5F7">26</span><span style="font:500 8px 'JetBrains Mono';color:#8A8A92">JUIL</span></div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Journée coach · Haute-Saintonge</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">18 inscrits · avec Julien L.</div></div><span class="chip" style="background:rgba(34,211,238,.13);color:#22D3EE">PUBLIÉ</span></div>
+                <div class="card" style="padding:15px 17px;display:flex;align-items:center;gap:14px;opacity:0.75"><div style="width:46px;height:46px;border-radius:11px;background:#141416;border:1px solid #232326;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:none"><span style="font:700 15px 'JetBrains Mono';color:#C9C9CE">02</span><span style="font:500 8px 'JetBrains Mono';color:#8A8A92">AOÛ</span></div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#E5E5E8">Journée · Le Vigeant</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">brouillon · circuit_id à renseigner</div></div><span class="chip" style="background:#1A1A1D;color:#8A8A92">BROUILLON</span></div>
+              </div>
+              <div style="width:270px;flex:none"><div class="card" style="padding:16px 18px"><span class="eyebrow" style="display:block;margin-bottom:12px">Sur la carte publique</span><div style="height:150px;background:radial-gradient(120% 90% at 50% 0,#101216,#0A0B0D);border:1px solid #17171A;border-radius:11px;position:relative;margin-bottom:12px"><svg width="100%" height="100%" viewBox="0 0 220 150" fill="none" style="position:absolute;inset:0" preserveAspectRatio="xMidYMid meet"><path d="M100,18 L128,26 L150,20 L164,40 L150,66 L164,92 L140,110 L150,132 L110,128 L86,134 L64,110 L40,104 L52,72 L38,48 L66,32 Z" fill="#141619" stroke="#2A2D33" stroke-width="1.2"/><circle cx="92" cy="96" r="7" fill="#FFB703"/><circle cx="128" cy="52" r="4" fill="#5B8DEF"/></svg></div><div style="font:400 11px/1.5 'Hanken Grotesk';color:#8A8A92">Publier un événement l'ajoute à la <strong style="color:#C9C9CE">carte de France</strong> visible de tous.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2b UTILISATEURS & MODÉRATION -->
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Utilisateurs &amp; modération</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/utilisateurs</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Utilisateurs</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Annuaire &amp; modération</div></div><div style="display:flex;align-items:center;gap:10px;background:#141416;border:1px solid #232326;border-radius:10px;padding:9px 13px"><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="9" cy="9" r="6" stroke="#8A8A92" stroke-width="1.6"/><path d="M13.5 13.5l3.5 3.5" stroke="#8A8A92" stroke-width="1.6" stroke-linecap="round"/></svg><span style="font:400 12px 'Hanken Grotesk';color:#8A8A92">Rechercher</span></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0"><span class="eyebrow" style="display:block;margin-bottom:12px">Signalements à traiter</span><div style="display:flex;flex-direction:column;gap:9px">
+                <div class="card" style="padding:14px 16px;border-left:2px solid #F65B5B;display:flex;align-items:center;gap:13px"><span style="width:30px;height:30px;border-radius:8px;background:rgba(246,91,91,.13);display:flex;align-items:center;justify-content:center;flex:none"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 12H3z" stroke="#F65B5B" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3" stroke="#F65B5B" stroke-width="1.5" stroke-linecap="round"/></svg></span><div style="flex:1"><div style="font:600 13px 'Hanken Grotesk';color:#F5F5F7">Avis coach signalé</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92">contenu inapproprié · il y a 3 h</div></div><div style="border:1px solid #232326;border-radius:9px;padding:8px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Examiner</div></div>
+                <div class="card" style="padding:14px 16px;display:flex;align-items:center;gap:13px"><span style="width:30px;height:30px;border-radius:8px;background:rgba(242,206,59,.13);display:flex;align-items:center;justify-content:center;flex:none"><svg width="15" height="15" viewBox="0 0 20 20" fill="none"><path d="M10 3l7 12H3z" stroke="#D9AE00" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v3" stroke="#D9AE00" stroke-width="1.5" stroke-linecap="round"/></svg></span><div style="flex:1"><div style="font:600 13px 'Hanken Grotesk';color:#F5F5F7">Offre partenaire signalée</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92">prix trompeur · hier</div></div><div style="border:1px solid #232326;border-radius:9px;padding:8px 13px;font:600 11.5px 'Hanken Grotesk';color:#C9C9CE">Examiner</div></div>
+              </div></div>
+              <div style="width:280px;flex:none"><span class="eyebrow" style="display:block;margin-bottom:12px">Annuaire</span><div style="display:flex;flex-direction:column;gap:8px"><div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:8px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">AM</div><div style="flex:1"><div style="font:600 12px 'Hanken Grotesk';color:#E5E5E8">Adrien M.</div><div style="font:400 9.5px 'JetBrains Mono';color:#8A8A92">pilote</div></div></div><div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:8px;background:#16161A;border:1px solid #E23A4E;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">JL</div><div style="flex:1"><div style="font:600 12px 'Hanken Grotesk';color:#E5E5E8">Julien L.</div><div style="font:400 9.5px 'JetBrains Mono';color:#E2685A">coach</div></div><div style="font:500 10px 'JetBrains Mono';color:#8A8A92">promu</div></div><div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:11px"><div style="width:32px;height:32px;border-radius:8px;background:#16161A;border:1px solid #5B8DEF;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">PX</div><div style="flex:1"><div style="font:600 12px 'Hanken Grotesk';color:#E5E5E8">PixTrack</div><div style="font:400 9.5px 'JetBrains Mono';color:#7BA5F5">partenaire</div></div></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2c SYSTÈME -->
+    <div class="dv-opt" id="2c">
+      <div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Système — feature-flags &amp; maintenance</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/systeme</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Système</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Feature-flags &amp; maintenance</div></div></div>
+            <div class="body" style="display:flex;gap:22px">
+              <div style="flex:1;min-width:0"><span class="eyebrow" style="display:block;margin-bottom:12px">Fonctions &amp; algorithmes</span><div style="display:flex;flex-direction:column;gap:2px;background:#0E0E10;border:1px solid #1A1A1D;border-radius:14px;padding:6px">
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px"><div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Assistant IA (coach)</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">brouillons factuels</div></div><div style="width:42px;height:24px;border-radius:13px;background:#22D3EE;position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#04222A"></div></div></div>
+                <div style="height:1px;background:#17171A;margin:0 12px"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px"><div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Vue AR (Ray-Ban)</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">expérimental · coachs bêta</div></div><div style="width:42px;height:24px;border-radius:13px;background:#2C2C31;position:relative"><div style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#8A8A92"></div></div></div>
+                <div style="height:1px;background:#17171A;margin:0 12px"></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 12px"><div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Réservation QR partenaire</div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92;margin-top:1px">paiement direct</div></div><div style="width:42px;height:24px;border-radius:13px;background:#22D3EE;position:relative"><div style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:#04222A"></div></div></div>
+              </div></div>
+              <div style="width:280px;flex:none;display:flex;flex-direction:column;gap:14px"><div class="card" style="padding:16px 18px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span class="eyebrow">Maintenance</span><span class="chip" style="background:rgba(79,201,138,.13);color:#4FC98A">EN LIGNE</span></div><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font:500 12.5px 'Hanken Grotesk';color:#E5E5E8">Kill-switch global</span><div style="width:42px;height:24px;border-radius:13px;background:#2C2C31;position:relative"><div style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#8A8A92"></div></div></div><div style="font:400 10.5px 'Hanken Grotesk';color:#8A8A92">Version minimale requise : <span style="font-family:'JetBrains Mono';color:#C9C9CE">2.4.0</span></div></div><div style="background:rgba(246,91,91,.06);border:1px solid rgba(246,91,91,.2);border-radius:12px;padding:13px 15px"><div style="font:400 11px/1.5 'Hanken Grotesk';color:#C99098">Le kill-switch coupe l'accès à toute l'app. À n'activer qu'en incident majeur.</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Admin bien étoffé : tour de contrôle, check-in, validation partenaires, événements (+ carte), utilisateurs &amp; modération, système/feature-flags. Restent en option : Devices (parc RaceBox), Qualité data, éditeur de rapports B2B, Support. Les 4 rôles sont désormais couverts. Prochaine étape utile : mettre à jour le <strong>handoff</strong> (Partenaire + Admin).</p>
+</section>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Admin — la régie (bureau, cyan) · colonne vertébrale</span></div>
+  <p class="dv-tsub">L'<strong>Admin</strong> opère la plateforme : jour J (tour de contrôle, check-in), communauté (validation partenaires, modération) et système (feature-flags, maintenance). Surface <strong>bureau</strong> dense, identité <strong>cyan</strong>. <a class="dv-oid" href="#1a">1a</a> Tour de contrôle · <a class="dv-oid" href="#1b">1b</a> Check-in QR · <a class="dv-oid" href="#1c">1c</a> Validation partenaires.</p>
+  <div class="dv-opts">
+
+    <!-- 1a TOUR DE CONTRÔLE -->
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Tour de contrôle — le jour J</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div style="display:flex;align-items:center;gap:12px"><div style="display:flex;align-items:center;gap:7px;background:rgba(34,211,238,.13);border-radius:20px;padding:6px 12px"><span class="lp" style="width:8px;height:8px;border-radius:50%;background:#22D3EE"></span><span style="font:700 11px 'JetBrains Mono';color:#22D3EE">EN DIRECT</span></div><div><div style="font:700 18px 'Hanken Grotesk';color:#F5F5F7">Haute-Saintonge · 19 juil.</div><div style="font:400 10.5px 'JetBrains Mono';color:#8A8A92;margin-top:2px">journée en cours · session 2</div></div></div><div style="text-align:right"><div style="font:500 24px 'JetBrains Mono';color:#F5F5F7">12:40</div><div style="font:400 9px 'JetBrains Mono';color:#8A8A92">restant</div></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:16px">
+              <div style="display:flex;gap:14px">
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Inscrits</div><div style="font:500 28px 'JetBrains Mono';color:#F5F5F7">32</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Présents (check-in)</div><div style="font:500 28px 'JetBrains Mono';color:#22D3EE">28</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">En piste</div><div style="font:500 28px 'JetBrains Mono';color:#F5F5F7">14</div></div>
+                <div class="card" style="flex:1;padding:16px 18px"><div class="eyebrow" style="margin-bottom:8px">Boîtiers actifs</div><div style="font:500 28px 'JetBrains Mono';color:#4FC98A">26</div></div>
+              </div>
+              <div style="display:flex;gap:16px;flex:1;min-height:0">
+                <div class="card" style="flex:1.5;padding:18px;display:flex;flex-direction:column"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><span class="eyebrow">Sessions du jour</span><span style="font:400 10px 'JetBrains Mono';color:#6E6E76">4 × 20 min</span></div><div style="display:flex;flex-direction:column;gap:9px"><div style="display:flex;align-items:center;gap:12px;background:#0E0E10;border:1px solid #1A1A1D;border-radius:10px;padding:11px 13px;opacity:0.6"><span style="font:600 11px 'JetBrains Mono';color:#6E6E76;width:44px">S1</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#C9C9CE">Terminée</div><svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M4 10l4 4 8-9" stroke="#4FC98A" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div style="display:flex;align-items:center;gap:12px;background:#101A1C;border:1px solid #0E3A44;border-left:2px solid #22D3EE;border-radius:10px;padding:11px 13px"><span class="lp" style="font:600 11px 'JetBrains Mono';color:#22D3EE;width:44px">S2</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#F5F5F7">En piste · 14 voitures</div><span class="lp" style="font:600 10px 'JetBrains Mono';color:#22D3EE">12:40</span></div><div style="display:flex;align-items:center;gap:12px;border:1px dashed #2C2C31;border-radius:10px;padding:11px 13px"><span style="font:600 11px 'JetBrains Mono';color:#6E6E76;width:44px">S3</span><div style="flex:1;font:600 12px 'Hanken Grotesk';color:#8A8A92">14 h 10</div></div></div></div>
+                <div class="card" style="flex:1;padding:18px"><span class="eyebrow" style="display:block;margin-bottom:14px">Alertes régie</span><div style="display:flex;flex-direction:column;gap:11px"><div style="display:flex;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#F2CE3B;margin-top:4px;flex:none"></span><div><div style="font:500 12px/1.4 'Hanken Grotesk';color:#E5E5E8">2 boîtiers sans signal</div><div style="font:400 10px 'JetBrains Mono';color:#6E6E76;margin-top:2px">voir Système › Devices</div></div></div><div style="display:flex;gap:10px"><span style="width:7px;height:7px;border-radius:50%;background:#22D3EE;margin-top:4px;flex:none"></span><div><div style="font:500 12px/1.4 'Hanken Grotesk';color:#E5E5E8">4 inscrits pas encore pointés</div><div style="font:400 10px 'JetBrains Mono';color:#6E6E76;margin-top:2px">rappel check-in</div></div></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1b CHECK-IN QR -->
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Check-in — scan du Pass OXV</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/check-in</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Check-in</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">Pointage à l'entrée</div></div><div style="font:500 13px 'JetBrains Mono';color:#22D3EE">28 / 32 pointés</div></div>
+            <div class="body" style="display:flex;gap:24px">
+              <div style="width:320px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center"><div style="width:230px;height:230px;border-radius:20px;border:1px solid #0E3A44;background:#0A1417;position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:16px"><div style="position:absolute;inset:22px;border:2px solid #22D3EE;border-radius:14px;opacity:0.25"></div><svg width="120" height="120" viewBox="0 0 40 40" fill="none"><g fill="#22D3EE" opacity="0.85"><rect x="3" y="3" width="11" height="11" rx="1"/><rect x="6" y="6" width="5" height="5" fill="#0A1417"/><rect x="26" y="3" width="11" height="11" rx="1"/><rect x="29" y="6" width="5" height="5" fill="#0A1417"/><rect x="3" y="26" width="11" height="11" rx="1"/><rect x="6" y="29" width="5" height="5" fill="#0A1417"/><rect x="18" y="4" width="3" height="3"/><rect x="18" y="12" width="3" height="3"/><rect x="24" y="20" width="3" height="3"/><rect x="31" y="22" width="3" height="3"/><rect x="18" y="26" width="3" height="3"/><rect x="26" y="30" width="3" height="3"/><rect x="33" y="33" width="3" height="3"/></g></svg><div class="lp" style="position:absolute;left:22px;right:22px;top:50%;height:2px;background:#22D3EE"></div></div><div style="font:600 13px 'Hanken Grotesk';color:#E5E5E8">Scanne le Pass OXV du pilote</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:4px">ou saisis son n° de licence</div></div>
+              <div style="flex:1;min-width:0"><span class="eyebrow" style="display:block;margin-bottom:12px">Derniers pointages</span><div style="display:flex;flex-direction:column;gap:8px">
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px;border-left:2px solid #4FC98A"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">AM</div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Adrien Meunier</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">licence 20-84421</div></div><span style="font:600 10px 'JetBrains Mono';color:#4FC98A">POINTÉ · 08:12</span></div>
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px;border-left:2px solid #4FC98A"><div style="width:34px;height:34px;border-radius:9px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#F5F5F7;flex:none">KD</div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Karim Diallo</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">licence 20-90114</div></div><span style="font:600 10px 'JetBrains Mono';color:#4FC98A">POINTÉ · 08:19</span></div>
+                <div class="card" style="padding:12px 15px;display:flex;align-items:center;gap:13px;opacity:0.7"><div style="width:34px;height:34px;border-radius:9px;background:#141416;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:600 11px 'Hanken Grotesk';color:#C9C9CE;flex:none">SL</div><div style="flex:1"><div style="font:600 12.5px 'Hanken Grotesk';color:#E5E5E8">Sarah Lemaire</div><div style="font:400 10px 'JetBrains Mono';color:#8A8A92">licence 20-77320</div></div><span style="font:600 10px 'JetBrains Mono';color:#8A8A92">ATTENDU</span></div>
+              </div><div style="font:400 10px/1.5 'Hanken Grotesk';color:#6E6E76;margin-top:14px">Le pointage alimente le KPI de présence partagé avec le site (attended_at).</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1c VALIDATION PARTENAIRES -->
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Validation des partenaires</div>
+      <div class="desk">
+        <div class="dchrome"><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span class="dot" style="background:#2A2A2E"></span><span style="flex:1;text-align:center;font:500 11px 'JetBrains Mono';color:#6E6E76">admin.oxvehicle.fr/partenaires</span></div>
+        <div class="dwin">
+          <div class="rail">
+            <div class="rlogo"><span style="display:inline-block;width:18px;height:18px;border:1.5px solid #F5F5F7;border-radius:50%;position:relative;overflow:hidden"><span style="position:absolute;right:0;top:0;bottom:0;width:50%;background:#F5F5F7"></span></span>OXV</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 3a7 7 0 1 0 7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="2" fill="currentColor"/></svg>Tour de contrôle</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14M7 2v3M13 2v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Événements</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="4" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M8 8h4v4H8z" fill="currentColor"/></svg>Check-in</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 16c0-2.2 1.8-4 4-4s4 1.8 4 4M12 15c0-1.6 1.3-3 3-3s3 1 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Utilisateurs</div>
+            <div class="ri active"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 8h14" stroke="currentColor" stroke-width="1.5"/></svg>Partenaires</div>
+            <div class="ri"><svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Système</div>
+            <div class="ri" style="margin-top:auto"><div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#0E3A44,#0B1F26);border:1px solid #22D3EE;display:flex;align-items:center;justify-content:center;font:600 10px 'Hanken Grotesk';color:#F5F5F7">AD</div>Régie</div>
+          </div>
+          <div class="main">
+            <div class="head"><div><div class="eyebrow" style="margin-bottom:5px">Partenaires</div><div style="font:700 20px 'Hanken Grotesk';color:#F5F5F7">2 comptes à valider</div></div><div style="display:flex;gap:8px"><span class="chip" style="background:#22D3EE;color:#04222A;padding:8px 13px">À valider · 2</span><span class="chip" style="background:#141416;border:1px solid #232326;color:#9A9AA3;padding:8px 13px">Validés · 24</span></div></div>
+            <div class="body" style="display:flex;flex-direction:column;gap:11px">
+              <div class="card" style="padding:16px 18px;border-left:2px solid #22D3EE"><div style="display:flex;align-items:center;gap:14px;margin-bottom:12px"><div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:700 13px 'Hanken Grotesk';color:#F5F5F7;flex:none">GT</div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Garage Tessier</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Mécanique · Nouvelle-Aquitaine · SIRET vérifié</div></div><span class="chip" style="background:rgba(242,206,59,.13);color:#D9AE00">EN ATTENTE</span></div><div style="display:flex;gap:10px"><div style="background:#22D3EE;color:#04222A;border-radius:10px;padding:10px 16px;font:700 12.5px 'Hanken Grotesk'">Valider</div><div style="border:1px solid #232326;color:#C9C9CE;border-radius:10px;padding:10px 16px;font:600 12.5px 'Hanken Grotesk'">Voir le dossier</div><div style="border:1px solid #232326;color:#8A8A92;border-radius:10px;padding:10px 16px;font:600 12.5px 'Hanken Grotesk'">Refuser</div></div></div>
+              <div class="card" style="padding:16px 18px;border-left:2px solid #22D3EE"><div style="display:flex;align-items:center;gap:14px"><div style="width:44px;height:44px;border-radius:11px;background:#16161A;border:1px solid #232326;display:flex;align-items:center;justify-content:center;font:700 13px 'Hanken Grotesk';color:#F5F5F7;flex:none">HL</div><div style="flex:1"><div style="font:700 14px 'Hanken Grotesk';color:#F5F5F7">Hôtel du Circuit</div><div style="font:400 11px 'Hanken Grotesk';color:#8A8A92;margin-top:2px">Hébergement · à 4 km · dossier incomplet</div></div><span class="chip" style="background:rgba(246,91,91,.13);color:#F65B5B">PIÈCE MANQUANTE</span></div></div>
+              <div style="display:flex;align-items:flex-start;gap:9px;background:rgba(34,211,238,.06);border:1px solid rgba(34,211,238,.2);border-radius:12px;padding:13px 15px;margin-top:6px"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" style="flex:none;margin-top:1px"><path d="M10 2l6 3v5c0 4-3 7-6 8-3-1-6-4-6-8V5l6-3Z" stroke="#22D3EE" stroke-width="1.4" stroke-linejoin="round"/></svg><span style="font:400 11.5px/1.5 'Hanken Grotesk';color:#8FC8D2">Un partenaire n'apparaît côté pilote/coach et sur la carte qu'une fois <strong style="color:#C9C9CE">validé ici</strong>. La validation vérifie l'activité réelle (SIRET, assurance).</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Colonne vertébrale Admin posée (tour de contrôle, check-in QR, validation partenaires). Suite : Événements (création/gestion), Utilisateurs (annuaire/modération), Devices (parc RaceBox), Système (feature-flags, maintenance), éditeur de rapports B2B, points de la carte publique.</p>
+</section>
+</x-dc>
+</body>
+</html>

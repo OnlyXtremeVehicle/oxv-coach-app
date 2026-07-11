@@ -1,23 +1,25 @@
 /**
- * Couleur d'une zone de marge pour les EXPORTS (PDF, captures Data Lab) — PR-69.
+ * Couleur d'une zone de marge (carte + EXPORTS PDF/captures Data Lab).
  *
- * Garde-fou doctrinal : le rouge de marque OXV (#C8102E) code la marque / le REC,
- * JAMAIS une donnée de performance. La zone « serrée » (faible marge) est donc
- * rendue en AMBRE neutralisé — jamais en rouge — exactement comme à l'écran
- * (cf. CircuitMap colorForZone). Pur et testé pour verrouiller l'invariant.
+ * REFONTE V3 (handoff §7.6 — Carte du circuit) : la marge se lit sur un dégradé
+ * MARGE faible→large = ROUGE → OR → VERT. Le « serré » (faible marge) est rendu
+ * en ROUGE DE DONNÉE `#F65B5B` (= dataColors.brake), DISTINCT du rouge de MARQUE
+ * `#C8102E` (REC/insigne) : l'invariant « jamais le rouge de marque sur une
+ * donnée de perf » reste tenu, mais on assume enfin le rouge de donnée (une
+ * couleur = une donnée). Pur et testé pour verrouiller l'invariant.
  */
 
-import { palette } from '@/theme/v2';
+import { dataColors, palette } from '@/theme/v2';
 
 export type ZoneLike = 'green' | 'yellow' | 'red' | null;
 
-/** Rouge de marque OXV — interdit sur une donnée de perf. */
+/** Rouge de MARQUE OXV — interdit sur une donnée de perf. */
 export const BRAND_RED = '#C8102E';
 
 export function marginZoneExportColor(zone: ZoneLike): string {
   if (!zone) return 'rgba(255,255,255,0.35)';
-  if (zone === 'green') return palette.green;
-  if (zone === 'yellow') return '#EF9F27';
-  // 'red' (terrain serré) : ambre pilote, rouge-perf neutralisé (doctrine).
-  return palette.pilotAmber;
+  if (zone === 'green') return palette.green; // marge large = vert
+  if (zone === 'yellow') return palette.gold; // marge moyenne = or (transition du dégradé)
+  // 'red' (terrain serré) : ROUGE DE DONNÉE #F65B5B — jamais le rouge de marque.
+  return dataColors.brake;
 }
