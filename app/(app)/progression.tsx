@@ -395,7 +395,9 @@ function StatsGrid({ stats }: { stats: { count: number; best: number; median: nu
  * Constat factuel : le delta du meilleur tour vs la séance précédente.
  * Jamais un jugement (« mieux »/« moins bien ») — le signe, la valeur en
  * secondes, et une formulation descriptive (« plus rapide »/« plus lent »).
- * Aucun rouge : une dégradation reste neutre (or), l'amélioration en vert.
+ * Aucun rouge : une dégradation reste neutre (crème), l'amélioration en vert.
+ * L'or est réservé au chrono/record (courbe, meilleur tour) — pas à un delta
+ * « neutre » (canon V3 : une couleur = une donnée).
  */
 function LastSessionDelta({
   current,
@@ -408,7 +410,9 @@ function LastSessionDelta({
 }) {
   const stable = Math.abs(delta) < 0.05;
   const word = stable ? 'stable' : delta < 0 ? 'plus rapide' : 'plus lent';
-  const accent = stable ? palette.creamMute : delta < 0 ? palette.green : palette.gold;
+  // Amélioration = vert (descriptif, jamais alarmant) ; stable et dégradation
+  // restent neutres (crème). L'or ne sert PAS de couleur « neutre » ici.
+  const accent = stable ? palette.creamMute : delta < 0 ? palette.green : palette.creamMute;
 
   return (
     <View style={s.deltaPanel}>
