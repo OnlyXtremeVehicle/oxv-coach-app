@@ -277,7 +277,9 @@ const s = {
   },
   dataPanel: {
     backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.gold,
+    // Glow neutre : aucun or décoratif (l'or reste au chrono/record) — a fortiori
+    // sur un écran de consentement RGPD, sans donnée de perf.
+    shadowColor: theme.palette.creamMute,
     shadowOpacity: 0.07,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
