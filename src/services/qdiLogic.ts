@@ -18,7 +18,14 @@
 
 import { haversineDistance } from '@/utils/geo';
 
-export const QDI_ALGO_VERSION = 'qdi-1.0.0';
+// 1.1.0 : jerk normalisé par Δt réel (g/s, plus g/trame) + exclusion des trous
+// d'acquisition > 200 ms (trames BLE perdues ≠ à-coups de conduite) ; corrige
+// aussi les axes G lus inversés en amont (sessionTelemetryService). Les calculs
+// persistés en 1.0.x sont invalides → recalcul paresseux à la lecture.
+export const QDI_ALGO_VERSION = 'qdi-1.1.0';
+
+/** Au-delà de ce trou entre deux trames, la paire est exclue (gap d'acquisition). */
+const MAX_FRAME_GAP_MS = 200;
 
 export interface QdiFrame {
   elapsedMs: number;
@@ -70,17 +77,25 @@ export function computeRegularite(lapSeconds: number[]): number | null {
 }
 
 // ---------------------------------------------------------------------------
-// Fluidité — douceur des transitions latérales : moyenne des |ΔG_lat| entre
-// trames consécutives (proxy des corrections de volant). 0.01 g/trame → 100 ;
-// 0.08 g/trame → 0.
+// Fluidité — douceur des transitions latérales : moyenne des |ΔG_lat/Δt| entre
+// trames consécutives (jerk en g/s — proxy des corrections de volant),
+// normalisée par le temps RÉEL entre trames (robuste aux pertes BLE et aux
+// variations de fréquence). 0,25 g/s → 100 ; 2,0 g/s → 0 (équivalents aux
+// anciens 0,01/0,08 g/trame à 25 Hz nominal).
 // ---------------------------------------------------------------------------
 export function computeFluidite(frames: QdiFrame[]): number | null {
-  const g = frames.map((f) => f.gLat).filter((v): v is number => v !== null && Number.isFinite(v));
-  if (g.length < 50) return null;
-  let sum = 0;
-  for (let i = 1; i < g.length; i++) sum += Math.abs(g[i] - g[i - 1]);
-  const meanJerk = sum / (g.length - 1);
-  return scoreDown(meanJerk, 0.01, 0.08);
+  const pts = frames.filter(
+    (f): f is QdiFrame & { gLat: number } => f.gLat !== null && Number.isFinite(f.gLat)
+  );
+  const jerks: number[] = [];
+  for (let i = 1; i < pts.length; i++) {
+    const dtMs = pts[i].elapsedMs - pts[i - 1].elapsedMs;
+    if (dtMs <= 0 || dtMs > MAX_FRAME_GAP_MS) continue; // trou d'acquisition
+    jerks.push((Math.abs(pts[i].gLat - pts[i - 1].gLat) * 1000) / dtMs);
+  }
+  if (jerks.length < 50) return null;
+  const meanJerk = jerks.reduce((a, b) => a + b, 0) / jerks.length;
+  return scoreDown(meanJerk, 0.25, 2.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -90,39 +105,56 @@ export function computeFluidite(frames: QdiFrame[]): number | null {
 // phases (modulation douce → faible), moyenné sur les phases.
 // ---------------------------------------------------------------------------
 function phaseSmoothness(frames: QdiFrame[], inPhase: (gLong: number) => boolean): number | null {
-  const phases: number[][] = [];
-  let current: number[] = [];
+  type Pt = { g: number; tMs: number };
+  const phases: Pt[][] = [];
+  let current: Pt[] = [];
+  const closeCurrent = () => {
+    if (current.length >= 4) phases.push(current);
+    current = [];
+  };
   for (const f of frames) {
     if (f.gLong !== null && Number.isFinite(f.gLong) && inPhase(f.gLong)) {
-      current.push(f.gLong);
+      // Un trou d'acquisition > 200 ms coupe la phase (pertes BLE ≠ conduite).
+      const prev = current[current.length - 1];
+      if (prev && f.elapsedMs - prev.tMs > MAX_FRAME_GAP_MS) closeCurrent();
+      current.push({ g: f.gLong, tMs: f.elapsedMs });
     } else if (current.length > 0) {
-      if (current.length >= 4) phases.push(current);
-      current = [];
+      closeCurrent();
     }
   }
-  if (current.length >= 4) phases.push(current);
+  closeCurrent();
   if (phases.length < 3) return null;
 
-  const perPhase = phases.map((p) => {
-    const deltas: number[] = [];
-    for (let i = 1; i < p.length; i++) deltas.push(p[i] - p[i - 1]);
-    const mean = deltas.reduce((a, b) => a + b, 0) / deltas.length;
-    const variance = deltas.reduce((a, b) => a + (b - mean) ** 2, 0) / deltas.length;
-    return Math.sqrt(variance);
-  });
+  const perPhase = phases
+    .map((p) => {
+      // ΔG normalisés par Δt réel (g/s) — robuste aux variations de fréquence.
+      const deltas: number[] = [];
+      for (let i = 1; i < p.length; i++) {
+        const dtMs = p[i].tMs - p[i - 1].tMs;
+        if (dtMs <= 0) continue;
+        deltas.push(((p[i].g - p[i - 1].g) * 1000) / dtMs);
+      }
+      if (deltas.length === 0) return null;
+      const mean = deltas.reduce((a, b) => a + b, 0) / deltas.length;
+      const variance = deltas.reduce((a, b) => a + (b - mean) ** 2, 0) / deltas.length;
+      return Math.sqrt(variance);
+    })
+    .filter((v): v is number => v !== null);
+  if (perPhase.length < 3) return null;
   return perPhase.reduce((a, b) => a + b, 0) / perPhase.length;
 }
 
-/** Freinage — progressivité et modulation des phases de décélération. */
+/** Freinage — progressivité des phases de décélération. Seuils en g/s
+ *  (0,5 → 100 ; 3,0 → 0 — équivalents aux anciens 0,02/0,12 g/trame à 25 Hz). */
 export function computeFreinage(frames: QdiFrame[]): number | null {
   const s = phaseSmoothness(frames, (g) => g <= -0.25);
-  return s === null ? null : scoreDown(s, 0.02, 0.12);
+  return s === null ? null : scoreDown(s, 0.5, 3.0);
 }
 
 /** Accélération — progressivité de la remise des gaz en sortie. */
 export function computeAcceleration(frames: QdiFrame[]): number | null {
   const s = phaseSmoothness(frames, (g) => g >= 0.15);
-  return s === null ? null : scoreDown(s, 0.02, 0.12);
+  return s === null ? null : scoreDown(s, 0.5, 3.0);
 }
 
 // ---------------------------------------------------------------------------

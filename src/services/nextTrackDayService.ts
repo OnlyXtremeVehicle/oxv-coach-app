@@ -14,26 +14,39 @@ export interface NextTrackDay {
 }
 
 export async function getMyNextTrackDay(userId: string): Promise<NextTrackDay | null> {
+  // .neq exclurait les status NULL en PostgREST → .or pour les conserver.
   const { data: regs } = await supabase
     .from('registrations')
     .select('session_id, status')
     .eq('user_id', userId)
-    .neq('status', 'cancelled')
-    .limit(50);
+    .or('status.is.null,status.neq.cancelled')
+    .order('created_at', { ascending: false })
+    .limit(100);
   const sessionIds = [...new Set((regs ?? []).map((r) => r.session_id).filter(Boolean))];
   if (sessionIds.length === 0) return null;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Date LOCALE (pas UTC) : à 0h30 heure de Paris, la journée d'hier est finie.
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const { data: sessions } = await supabase
     .from('sessions')
-    .select('id, date, start_time, circuit_id')
+    .select('id, date, start_time, circuit_id, status')
     .in('id', sessionIds)
     .gte('date', today)
     .order('date', { ascending: true })
-    .limit(1);
-  const next = (sessions ?? [])[0] as
-    | { id: string; date: string; start_time: string | null; circuit_id: string | null }
-    | undefined;
+    .limit(5);
+  // Une journée ANNULÉE/ARCHIVÉE par OXV ne doit jamais s'afficher comme
+  // « prochaine journée », même si l'inscription n'a pas été annulée ligne à
+  // ligne. Filtre côté client pour conserver les status NULL.
+  const next = (
+    (sessions ?? []) as {
+      id: string;
+      date: string;
+      start_time: string | null;
+      circuit_id: string | null;
+      status: string | null;
+    }[]
+  ).find((s) => s.status !== 'cancelled' && s.status !== 'archived');
   if (!next) return null;
 
   let circuitName: string | null = null;

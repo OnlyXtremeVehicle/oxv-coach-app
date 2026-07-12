@@ -17,27 +17,19 @@ import {
   type TrajectoryFrameRow,
 } from '@/services/trajectoryLogic';
 
-export interface SessionFrame {
-  elapsedMs: number;
-  lat: number | null;
-  lon: number | null;
-  speedKmh: number | null;
-  /** g latéral. Convention : positif = droite, négatif = gauche. */
-  gLat: number | null;
-  /** g longitudinal. Convention : positif = accélération, négatif = freinage. */
-  gLong: number | null;
-  /** g vertical (bumps). */
-  gVert: number | null;
-}
+// Convention d'axes + mapper pur : src/services/sessionTelemetryMapping.ts
+// (source unique, testée). Ré-exportés ici pour les consommateurs existants.
+export {
+  frameRowToSessionFrame,
+  type FrameRow,
+  type SessionFrame,
+} from '@/services/sessionTelemetryMapping';
+import {
+  frameRowToSessionFrame,
+  type FrameRow,
+  type SessionFrame,
+} from '@/services/sessionTelemetryMapping';
 
-/**
- * Charge les frames brutes d'une session pour les visualisations pro.
- *
- * Par défaut limité à 5000 frames (~5 minutes à 20 Hz, suffisant pour
- * une session piste typique de 20 min car les frames sont stockées
- * à fréquence variable). Pour des sessions plus longues, paginer en
- * augmentant `limit` ou en ajoutant un downsample côté serveur.
- */
 /**
  * Trajectoire GPS d'une séance (lat / lon / vitesse), pour la carte et la Vue
  * unifiée. Source UNIQUE de la requête trajectoire — supprime la copie inline
@@ -58,31 +50,33 @@ export async function loadSessionTrajectory(
   return mapFramesToTrajectory(data as TrajectoryFrameRow[]);
 }
 
-export async function loadSessionFrames(sessionId: string, limit = 5000): Promise<SessionFrame[]> {
-  const { data, error } = await supabase
-    .from('telemetry_frames')
-    .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z')
-    .eq('session_id', sessionId)
-    .order('elapsed_ms', { ascending: true })
-    .limit(limit);
-
-  if (error || !data) {
-    if (error) console.warn('[OXV][telemetry] loadSessionFrames :', error.message);
-    return [];
+/**
+ * Charge les frames d'une séance ENTIÈRE, paginées par 1000 (plafond PostgREST :
+ * un .limit(5000) seul ne rend que 1000 lignes → un QDI calculé sur l'amorce de
+ * séance). Borne de sécurité `maxFrames` (60 000 ≈ 40 min à 25 Hz).
+ */
+export async function loadSessionFrames(
+  sessionId: string,
+  maxFrames = 60_000
+): Promise<SessionFrame[]> {
+  const PAGE = 1000;
+  const rows: FrameRow[] = [];
+  for (let from = 0; from < maxFrames; from += PAGE) {
+    const { data, error } = await supabase
+      .from('telemetry_frames')
+      .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z')
+      .eq('session_id', sessionId)
+      .order('elapsed_ms', { ascending: true })
+      .range(from, Math.min(from + PAGE, maxFrames) - 1);
+    if (error) {
+      console.warn('[OXV][telemetry] loadSessionFrames :', error.message);
+      break;
+    }
+    if (!data || data.length === 0) break;
+    rows.push(...(data as FrameRow[]));
+    if (data.length < PAGE) break; // dernière page
   }
-
-  return data.map((row) => ({
-    elapsedMs: Number(row.elapsed_ms),
-    lat: row.latitude !== null ? Number(row.latitude) : null,
-    lon: row.longitude !== null ? Number(row.longitude) : null,
-    speedKmh: row.speed_kmh !== null ? Number(row.speed_kmh) : null,
-    // RaceBox convention après montage standard (X = lateral droite,
-    // Y = longitudinal forward). On expose tel quel — le client de
-    // visualisation interprète les signes.
-    gLat: row.g_force_x !== null ? Number(row.g_force_x) : null,
-    gLong: row.g_force_y !== null ? Number(row.g_force_y) : null,
-    gVert: row.g_force_z !== null ? Number(row.g_force_z) : null,
-  }));
+  return rows.map(frameRowToSessionFrame);
 }
 
 /**
@@ -153,15 +147,7 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
     return [];
   }
 
-  return data.map((row) => ({
-    elapsedMs: Number(row.elapsed_ms),
-    lat: row.latitude !== null ? Number(row.latitude) : null,
-    lon: row.longitude !== null ? Number(row.longitude) : null,
-    speedKmh: row.speed_kmh !== null ? Number(row.speed_kmh) : null,
-    gLat: row.g_force_x !== null ? Number(row.g_force_x) : null,
-    gLong: row.g_force_y !== null ? Number(row.g_force_y) : null,
-    gVert: row.g_force_z !== null ? Number(row.g_force_z) : null,
-  }));
+  return (data as FrameRow[]).map(frameRowToSessionFrame);
 }
 
 /**

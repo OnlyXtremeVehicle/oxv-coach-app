@@ -22,6 +22,7 @@ import { supabase } from '@/lib/supabase';
 import {
   computeQdi,
   medianBranches,
+  QDI_ALGO_VERSION,
   type QdiBranches,
   type QdiFrame,
   type QdiLapWindow,
@@ -103,11 +104,16 @@ export async function getQdiForSession(sessionId: string): Promise<QdiRecord | n
  */
 export async function getOrComputeQdiForSession(sessionId: string): Promise<QdiRecord | null> {
   const existing = await getQdiForSession(sessionId);
-  if (existing) return existing;
+  // Invalidation par version : un QDI persisté par un algo antérieur (axes G
+  // inversés / troncature 1000 trames en 1.0.x) est recalculé à la lecture.
+  // Si le recalcul échoue (lecteur non propriétaire, trames purgées), on rend
+  // l'existant plutôt que rien — mais jamais silencieusement à jour.
+  if (existing && existing.algoVersion === QDI_ALGO_VERSION) return existing;
   try {
-    return await computeAndPersistQdi(sessionId);
+    const fresh = await computeAndPersistQdi(sessionId);
+    return fresh ?? existing;
   } catch {
-    return null;
+    return existing;
   }
 }
 
@@ -127,7 +133,10 @@ export async function getQdiReference(
     .neq('id', excludeSessionId)
     .order('started_at', { ascending: false })
     .limit(15);
+  // Contrat « même circuit » strict : circuit inconnu → référence = les autres
+  // séances À CIRCUIT INCONNU (jamais un mélange tous-circuits silencieux).
   if (circuitName) query = query.eq('circuit_name', circuitName);
+  else query = query.is('circuit_name', null);
   const { data: sessions } = await query;
   const ids = (sessions ?? []).map((s) => s.id);
   if (ids.length === 0) {
@@ -180,12 +189,17 @@ export interface MonthlyQdi {
  * JAMAIS une courbe d'évolution. Self-only strict.
  */
 export async function listMonthlyQdi(userId: string, months = 3): Promise<MonthlyQdi[]> {
+  // Fenêtre bornée par DATE (pas par nombre de lignes) : le mois le plus ancien
+  // du triplet est complet, jamais une médiane sur une fraction de mois.
+  const windowStart = new Date();
+  windowStart.setMonth(windowStart.getMonth() - (months + 1));
   const { data: sessions } = await supabase
     .from('telemetry_sessions')
     .select('id, started_at')
     .eq('user_id', userId)
+    .gte('started_at', windowStart.toISOString())
     .order('started_at', { ascending: false })
-    .limit(40);
+    .limit(200);
   const rows = (sessions ?? []) as { id: string; started_at: string }[];
   if (rows.length === 0) return [];
 
@@ -203,28 +217,46 @@ export async function listMonthlyQdi(userId: string, months = 3): Promise<Monthl
     )
   );
 
-  // Groupe par mois (AAAA-MM), médiane par branche.
+  // Groupe par mois VÉCU (fuseau local de l'appareil — une séance du 1er à 0h30
+  // heure de Paris n'appartient pas au mois UTC précédent), médiane par branche.
   const byMonth = new Map<string, QdiBranches[]>();
   for (const r of rows) {
     const q = qdiBySession.get(r.id);
     if (!q) continue;
-    const key = r.started_at.slice(0, 7);
+    const d = new Date(r.started_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     const list = byMonth.get(key) ?? [];
     list.push(q);
     byMonth.set(key, list);
   }
 
-  return [...byMonth.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-months)
-    .map(([monthKey, list]) => ({
+  const entries = [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-months);
+  // Année dans le label si le triplet traverse deux années (sinon « JUIL 25 »
+  // juxtaposé à « JUIN » suggérerait des mois consécutifs).
+  const spansYears = new Set(entries.map(([k]) => k.slice(0, 4))).size > 1;
+  const MONTH_FR = [
+    'JANV',
+    'FÉVR',
+    'MARS',
+    'AVR',
+    'MAI',
+    'JUIN',
+    'JUIL',
+    'AOÛT',
+    'SEPT',
+    'OCT',
+    'NOV',
+    'DÉC',
+  ];
+  return entries.map(([monthKey, list]) => {
+    const m = MONTH_FR[Number(monthKey.slice(5, 7)) - 1] ?? monthKey;
+    return {
       monthKey,
-      monthLabel: new Date(`${monthKey}-01T00:00:00Z`)
-        .toLocaleDateString('fr-FR', { month: 'short' })
-        .toUpperCase(),
+      monthLabel: spansYears ? `${m} ${monthKey.slice(2, 4)}` : m,
       branches: medianBranches(list),
       sessions: list.length,
-    }));
+    };
+  });
 }
 
 export type QdiAccessLevel = 'full' | 'simple';
