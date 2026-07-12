@@ -1,38 +1,52 @@
 /**
- * Écran #14 — Carte du circuit (bilan post-session).
+ * Écran #14 — Carte du circuit (Data Lab). Reskin FIDÈLE aux maquettes Claude
+ * Design refonte-v2 §7.6 (screens/06-carte-circuit.png), décision fondateur.
  *
- * Refactor sem 16 : utilise CircuitMap PilotPreset avec animation
- * d'entrée + trajectoire GPS réelle du pilote superposée au tracé
- * officiel + 7 virages coloriés par sa marge.
+ * Héros conforme à la maquette (haut → bas) :
+ *   header « Carte du circuit » · eyebrow une ligne « {CIRCUIT} · TRAJECTOIRE
+ *   RÉELLE » · tracé plein cadre avec pastilles de virage colorées par marge
+ *   (rouge=serré → or → vert=large, dégradé validé fondateur) · barre de
+ *   légende dégradée « MARGE : faible → large » · carte accent rouge « Le
+ *   virage à surveiller » (virage à plus faible marge RÉELLE — masquée sans
+ *   donnée) · bouton « Ouvrir le virage N → ».
  *
- * Tap sur un virage → écran #15 Zoom virage.
- *
- * Reskin V2 : Screen + AppBar + Card/SectionLabel, typo/couleurs @/theme/v2.
- * Le composant carte (PilotPreset, SVG) est conservé tel quel.
+ * Parti A : les fonctions existantes hors-maquette (couches LayerToggle,
+ * aperçu CornerPanel, accès par virage) sont CONSERVÉES sous le héros.
+ * Logique/services/nav/RLS inchangés. Doctrine : jamais de fausse donnée —
+ * sans marges réelles, les virages restent neutres et la carte focus disparaît.
  */
 
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { CornerPanel, type CornerPanelData } from '@/components/CornerPanel';
 import { LayerToggle } from '@/components/LayerToggle';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
+import { selectFocusCorner } from '@/services/focusCorner';
 import { buildMapLayers, defaultActiveLayer, type MapLayerKey } from '@/services/mapLayersLogic';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
+
+const { palette, dataColors, fonts, spacing, radius } = theme;
+
+/** Marges réelles d'une session : zones qualitatives + pourcentages numériques. */
+interface MarginData {
+  zones: Record<number, MarginZone>;
+  numeric: Record<number, number>;
+}
 
 export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const [circuit, setCircuit] = useState<Circuit | null>(null);
-  const [liveMargins, setLiveMargins] = useState<Record<number, MarginZone> | null>(null);
+  const [marginData, setMarginData] = useState<MarginData | null>(null);
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [selectedCorner, setSelectedCorner] = useState<number | null>(null);
   const [pickedLayer, setPickedLayer] = useState<MapLayerKey | null>(null);
@@ -55,7 +69,7 @@ export default function CarteScreen() {
     let cancelled = false;
 
     getCornerMarginsZones(sessionId).then((res) => {
-      if (!cancelled && res) setLiveMargins(res.zones);
+      if (!cancelled && res) setMarginData(res);
     });
 
     // Trajectoire GPS (~1000 frames) via la source unique partagée avec la Vue
@@ -72,8 +86,9 @@ export default function CarteScreen() {
   }, [params.sessionId]);
 
   // Doctrine : jamais de fausse donnée. Sans marges réelles (pas de session
-  // analysée), on n'invente rien — les virages restent neutres.
-  const margins = liveMargins ?? {};
+  // analysée), on n'invente rien — les virages restent neutres. (Mémoïsé :
+  // référence stable pour le résumé a11y du tracé.)
+  const margins = useMemo(() => marginData?.zones ?? {}, [marginData]);
   const hasMargins = Object.keys(margins).length > 0;
 
   // Couches du tracé (Data Lab NG) — disponibilité honnête : la Vitesse attend
@@ -88,6 +103,40 @@ export default function CarteScreen() {
   const activeLayer = pickedLayer ?? defaultActiveLayer(layers);
   const trajectoryColorMode = activeLayer === 'vitesse' ? 'speed-heatmap' : 'uniform';
   const zoneByIndex = activeLayer === 'marges' ? margins : undefined;
+
+  // Le virage à surveiller (maquette §7.6) : celui à plus faible marge RÉELLE,
+  // via l'heuristique doctrinale existante (rouge le plus faible, sinon jaune
+  // le plus faible, sinon rien). Jamais depuis un mock — carte masquée sans
+  // marges de session analysée.
+  const focus = useMemo(
+    () => (marginData ? selectFocusCorner(marginData.zones, marginData.numeric) : null),
+    [marginData]
+  );
+  // Pourcentage affiché seulement s'il est réellement mesuré (jamais l'estimation par zone).
+  const focusPct =
+    focus && marginData && marginData.numeric[focus.corner.index] !== undefined
+      ? Math.round(marginData.numeric[focus.corner.index])
+      : null;
+
+  // Résumé factuel du tracé pour les lecteurs d'écran.
+  const mapA11yLabel = useMemo(() => {
+    const parts: string[] = [
+      `Tracé du circuit${circuit?.name ? ` ${circuit.name}` : ''}, ${BELTOISE_CORNERS.length} virages.`,
+    ];
+    if (hasTrajectory) parts.push('Votre trajectoire réelle est superposée au tracé.');
+    if (zoneByIndex && hasMargins) {
+      const zones = Object.values(margins);
+      const red = zones.filter((z) => z === 'red').length;
+      const yellow = zones.filter((z) => z === 'yellow').length;
+      const green = zones.filter((z) => z === 'green').length;
+      const counts: string[] = [];
+      if (red > 0) counts.push(`${red} en terrain serré`);
+      if (yellow > 0) counts.push(`${yellow} à explorer`);
+      if (green > 0) counts.push(`${green} confortable${green > 1 ? 's' : ''}`);
+      if (counts.length > 0) parts.push(`Marges par virage : ${counts.join(', ')}.`);
+    }
+    return parts.join(' ');
+  }, [circuit?.name, hasTrajectory, zoneByIndex, hasMargins, margins]);
 
   // Tap virage → aperçu en feuille basse (CornerPanel). Non destructif : le
   // détail plein écran reste accessible depuis le panneau (openCornerDetail).
@@ -111,84 +160,107 @@ export default function CarteScreen() {
 
   return (
     <Screen>
-      <AppBar title="CARTE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>Carte du circuit</Text>
-        <Text style={s.title}>{circuit?.name ?? 'Votre circuit'}</Text>
+      <AppBar title="Carte du circuit" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* Eyebrow une seule ligne (maquette) — circuit + nature de la lecture. */}
+        <Text style={s.eyebrow} numberOfLines={1}>
+          {circuit?.name ? `${circuit.name} · Trajectoire réelle` : 'Trajectoire réelle'}
+        </Text>
 
-        {/* Carte = l'instrument central : encadrée cockpit (équerres HUD). */}
-        <CockpitPanel style={{ paddingHorizontal: theme.spacing.sm }}>
+        {/* Tracé plein cadre (maquette) : pastilles colorées par marge. */}
+        <View accessible accessibilityLabel={mapA11yLabel}>
           <PilotPreset
             animate
             trajectory={trajectory ?? undefined}
             trajectoryColorMode={trajectoryColorMode}
             zoneByIndex={zoneByIndex}
             selectedIndex={selectedCorner}
-            height={360}
+            height={340}
+            background={palette.night}
           />
+        </View>
 
-          {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
-          <View style={{ marginTop: theme.spacing.lg }}>
-            <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
-          </View>
-        </CockpitPanel>
+        {/* Barre de légende dégradée — seulement quand les marges colorent
+            réellement les pastilles (honnêteté : pas de légende sans donnée). */}
+        {zoneByIndex && hasMargins ? <MarginLegendBar /> : null}
 
+        {/* Carte accent rouge « Le virage à surveiller » — marge réelle la plus
+            faible. Masquée sans marge disponible : rien d'inventé. */}
+        {focus ? (
+          <>
+            <View style={s.focusCard}>
+              <View style={s.focusHead}>
+                <View style={s.focusDot}>
+                  <Text style={s.focusDotLabel}>{focus.corner.index}</Text>
+                </View>
+                <Text style={s.focusTitle}>Le virage à surveiller</Text>
+              </View>
+              <Text style={s.focusBody}>
+                {`Votre marge la plus faible est au virage ${focus.corner.index} — ${focus.corner.name}.`}
+                {focusPct !== null ? ` Marge estimée ${focusPct} %.` : ''}
+              </Text>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Ouvrir le virage ${focus.corner.index}`}
+              onPress={() => openCornerDetail(focus.corner.index)}
+              style={({ pressed }) => [s.openBtn, { opacity: pressed ? 0.85 : 1 }]}
+            >
+              <Text style={s.openBtnTxt}>Ouvrir le virage {focus.corner.index} →</Text>
+            </Pressable>
+          </>
+        ) : null}
+
+        {/* ─────────────────────────────────────────────────────────────
+            Sous le héros (parti A) : les fonctions existantes hors-maquette,
+            conservées — couches de lecture et accès par virage.
+            ───────────────────────────────────────────────────────────── */}
+
+        {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
+        <Text style={s.sectionEyebrow}>Couches de lecture</Text>
+        <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
+
+        {/* Accès par virage → aperçu CornerPanel (remplace l'ancienne liste
+            verticale redondante par une rangée compacte de pastilles). */}
+        <Text style={s.sectionEyebrow}>Virages</Text>
         <Text style={s.caption}>
           {hasMargins
-            ? `${BELTOISE_CORNERS.length} virages — zoom au toucher`
-            : `${BELTOISE_CORNERS.length} virages — marges par virage indisponibles pour cette session`}
+            ? 'Aperçu au toucher, colorés par votre marge.'
+            : 'Aperçu au toucher — marges par virage indisponibles pour cette session.'}
         </Text>
-
-        {/* Liste tappable des virages */}
-        <View style={{ gap: theme.spacing.xs }}>
+        <View style={s.cornerRow}>
           {BELTOISE_CORNERS.map((corner) => {
             const zone = margins[corner.index] ?? null;
             const zoneLabel = zone ? marginLabelOf(zone) : null;
+            const isSelected = selectedCorner === corner.index;
             return (
               <Pressable
+                key={corner.index}
                 accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
                 accessibilityLabel={
                   zoneLabel
                     ? `Virage ${corner.index}, ${corner.name}, ${zoneLabel}`
                     : `Virage ${corner.index}, ${corner.name}`
                 }
-                key={corner.index}
                 onPress={() => onCornerTap(corner.index)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: theme.spacing.md,
-                  minHeight: 44,
-                  padding: theme.spacing.md,
-                  borderRadius: theme.radius.md,
-                  borderWidth: 1,
-                  borderColor: theme.palette.line,
-                  backgroundColor: theme.palette.card2,
-                  opacity: pressed ? 0.85 : 1,
-                })}
+                // 40 px visibles + hitSlop 2 = cible tactile 44 px, sans chevauchement.
+                hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
+                style={({ pressed }) => [
+                  s.cornerChip,
+                  { backgroundColor: colorForZone(zone) },
+                  isSelected ? s.cornerChipSelected : null,
+                  pressed ? { opacity: 0.85 } : null,
+                ]}
               >
-                <View
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: colorForZone(zone),
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Text style={s.cornerIndex}>{corner.index}</Text>
-                </View>
-                <Text style={s.cornerName}>{corner.name}</Text>
-                <Text style={s.chevron} accessibilityElementsHidden>
-                  ›
-                </Text>
+                <Text style={s.cornerIndex}>{corner.index}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
+        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Retour au bilan"
@@ -210,6 +282,36 @@ export default function CarteScreen() {
   );
 }
 
+/**
+ * Barre de légende dégradée (maquette §7.6) : faible→large = rouge de donnée
+ * → or → vert, le même dégradé de marge que les pastilles (source cohérente).
+ */
+function MarginLegendBar() {
+  return (
+    <View
+      accessible
+      accessibilityLabel="Légende des marges : du rouge, marge faible, à l'or puis au vert, marge large."
+      style={s.legendRow}
+    >
+      <Text style={s.legendLabel}>Marge</Text>
+      <View style={{ flex: 1 }}>
+        <Svg width="100%" height={6}>
+          <Defs>
+            <LinearGradient id="marginGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <Stop offset="0%" stopColor={dataColors.brake} />
+              <Stop offset="50%" stopColor={palette.gold} />
+              <Stop offset="100%" stopColor={dataColors.accel} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height={6} rx={3} fill="url(#marginGradient)" />
+        </Svg>
+      </View>
+      <Text style={[s.legendEnd, { color: dataColors.brake }]}>faible</Text>
+      <Text style={[s.legendEnd, { color: dataColors.accel }]}>large</Text>
+    </View>
+  );
+}
+
 function colorForZone(zone: MarginZone | null | undefined): string {
   // Dégradé de marge (handoff §7.6), identique à marginZoneExportColor et aux
   // pastilles CornersLayer : faible→large = ROUGE de donnée → OR → VERT. L'or
@@ -217,60 +319,142 @@ function colorForZone(zone: MarginZone | null | undefined): string {
   // le serré en rouge de DONNÉE (freinage), jamais le rouge de marque.
   switch (zone) {
     case 'green':
-      return theme.dataColors.accel; // marge large
+      return dataColors.accel; // marge large
     case 'yellow':
-      return theme.palette.gold; // marge moyenne (midpoint du dégradé)
+      return palette.gold; // marge moyenne (midpoint du dégradé)
     case 'red':
-      return theme.dataColors.brake; // marge serrée (rouge de donnée)
+      return dataColors.brake; // marge serrée (rouge de donnée)
     default:
       // Pas de donnée pour ce virage : neutre, jamais une couleur de verdict.
-      return theme.palette.creamMute;
+      return palette.creamMute;
   }
 }
 
 const s = {
   eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
+    fontFamily: fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2.4,
     textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
     // creamMute (≈ 6.4:1) plutôt que faint : passe WCAG AA, cohérent NG.
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.xl,
+  legendRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  legendLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.eyebrow,
+  },
+  legendEnd: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+  },
+  focusCard: {
+    marginTop: spacing.xl,
+    backgroundColor: palette.card,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    // Bordure teintée du rouge de donnée (accent maquette), 30 % d'alpha.
+    borderColor: `${dataColors.brake}4D`,
+    padding: spacing.lg,
+  },
+  focusHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  focusDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: dataColors.brake,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  focusDotLabel: {
+    fontFamily: fonts.monoSemi,
+    fontSize: theme.fontSize.small,
+    color: palette.night,
+  },
+  focusTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: palette.cream,
+  },
+  focusBody: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.body,
+    lineHeight: theme.fontSize.body * 1.55,
+    color: palette.creamMute,
+  },
+  openBtn: {
+    marginTop: spacing.lg,
+    minHeight: 52,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.edge,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  openBtnTxt: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
+    color: palette.cream,
+  },
+  sectionEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   caption: {
-    fontFamily: theme.fonts.body,
+    fontFamily: fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    color: palette.creamMute,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  cornerRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+  },
+  cornerChip: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  cornerChipSelected: {
+    // Sélection : liseré crème neutre (cohérent CornersLayer — jamais l'or).
+    borderWidth: 2,
+    borderColor: palette.cream,
   },
   cornerIndex: {
-    fontFamily: theme.fonts.mono,
-    color: theme.palette.night,
-    fontSize: 13,
-  },
-  cornerName: {
-    flex: 1,
-    fontFamily: theme.fonts.body,
-    color: theme.palette.cream,
-    fontSize: theme.fontSize.body,
-  },
-  chevron: {
-    color: theme.palette.creamMute,
-    fontSize: 18,
+    fontFamily: fonts.monoSemi,
+    fontSize: theme.fontSize.small,
+    color: palette.night,
   },
   backLink: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 11,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
 };

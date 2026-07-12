@@ -1,17 +1,18 @@
 /**
- * Écran Carte de chaleur — pilier §3.4 du cahier OXV Mirror.
- * Refonte gaming « cockpit factuel » (charte v2).
+ * Carte de chaleur — zone Data Lab. Reskin FIDÈLE aux maquettes Claude Design
+ * refonte-v2 §7bis (`screens/20-carte-chaleur.png`), décision fondateur 2026-07-12.
  *
- * Branche TrackStage (mode 'heatmap'), le composant maître de tracé : la
- * vitesse du roulage devient une chaleur le long du circuit, froid → chaud
- * (faint → or translucide → or), JAMAIS de rouge (réservé marque + coach).
- * Deux faits encadrent la carte : le virage le plus lent, la ligne la plus
- * rapide. Conforme à la maquette `maquette_heatmap_gaming.html`.
+ * Héros conforme à la maquette (haut → bas) :
+ *   header « Carte de chaleur » · eyebrow centré « VITESSE LE LONG DU TOUR » ·
+ *   tracé coloré par vitesse froid→chaud (theme.speedHeat — JAMAIS de rouge,
+ *   pas d'alarme) · légende PLEINE LARGEUR « LENT — RAPIDE » · carte narrative
+ *   unique (puce or, constat factuel dérivé de la vitesse max réelle).
  *
- * Source : telemetry_frames de la session (RLS owner). Les points de
- * freinage de l'ancienne version sont retirés (la maquette ne les montre
- * pas — la carte se concentre sur la vitesse). Tant que les frames sont
- * absentes, `EmptyState` honnête : aucune fausse donnée.
+ * La substance existante hors-maquette (deux faits min/max, manifeste, retour)
+ * est CONSERVÉE sous le héros — rien ne se perd (parti A).
+ *
+ * Source : telemetry_frames de la session (RLS owner). Tant que les frames
+ * sont absentes, `EmptyState` honnête : aucune fausse donnée.
  */
 
 import { useEffect, useState } from 'react';
@@ -31,6 +32,9 @@ import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 
 const { palette, speedHeat, fonts, fontSize, spacing, radius, hitSlop } = theme;
+
+/** Rappel doctrinal de la maquette — le chaud n'est pas une alarme. */
+const NO_RED_REMINDER = 'Le rouge n’existe pas ici — juste du plus lent au plus rapide.';
 
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -106,7 +110,7 @@ export default function HeatmapScreen() {
   if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="CHALEUR" onBack={() => router.back()} />
+        <AppBar title="Carte de chaleur" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={palette.creamMute} />
         </View>
@@ -123,12 +127,19 @@ export default function HeatmapScreen() {
     intensity: p.speed,
   }));
 
+  // Constat FACTUEL de la carte narrative : dérivé de la vitesse max réelle
+  // (telemetry_frames.speed_kmh). Sans vitesse enregistrée : phrase honnête,
+  // aucun chiffre inventé.
+  const narrative = stats
+    ? `Votre vitesse la plus haute est à ${Math.round(stats.max)} km/h. ${NO_RED_REMINDER}`
+    : `La vitesse de ce roulage n’a pas été enregistrée. ${NO_RED_REMINDER}`;
+
   return (
     <Screen>
-      <AppBar title="CHALEUR" onBack={() => router.back()} />
+      <AppBar title="Carte de chaleur" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <Text style={s.eyebrow}>Carte de chaleur · tracé</Text>
-        <Text style={s.title}>Votre vitesse, rendue visible.</Text>
+        {/* Eyebrow centré sous le header (maquette). */}
+        <Text style={s.eyebrow}>Vitesse le long du tour</Text>
 
         {!hasContent ? (
           <EmptyState
@@ -137,20 +148,25 @@ export default function HeatmapScreen() {
           />
         ) : (
           <>
+            {/* HÉROS — tracé coloré par vitesse froid → chaud (speedHeat). */}
             <View
               accessible
               accessibilityRole="image"
-              accessibilityLabel="Carte de chaleur de votre vitesse sur le tracé : froid pour le lent, chaud pour le rapide."
+              accessibilityLabel={
+                stats
+                  ? `Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide. Vitesse la plus haute : ${Math.round(stats.max)} kilomètres heure.`
+                  : 'Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide.'
+              }
             >
               <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
             </View>
 
-            {/* Légende — Lent → Rapide (froid → chaud, jamais de rouge) */}
+            {/* Légende PLEINE LARGEUR — LENT → RAPIDE (froid → chaud, jamais de rouge) */}
             <View
               style={s.legendRow}
               accessible
               accessibilityRole="text"
-              accessibilityLabel="Intensité : de lent à rapide"
+              accessibilityLabel="Légende : du lent au rapide"
             >
               <Text style={s.gradLabel}>Lent</Text>
               <View
@@ -165,10 +181,17 @@ export default function HeatmapScreen() {
                   <View key={i} style={[s.gradSeg, { backgroundColor: c }]} />
                 ))}
               </View>
-              <Text style={s.gradLabel}>Rapide</Text>
+              {/* « RAPIDE » porte le bout chaud de la rampe (jaune, maquette). */}
+              <Text style={[s.gradLabel, { color: speedHeat[speedHeat.length - 1] }]}>Rapide</Text>
             </View>
 
-            {/* Deux faits de vitesse (cf. maquette) */}
+            {/* CARTE NARRATIVE unique (maquette) : puce or + constat factuel. */}
+            <View style={s.narrativeCard} accessible accessibilityRole="text">
+              <View style={s.narrativeDot} />
+              <Text style={s.narrativeText}>{narrative}</Text>
+            </View>
+
+            {/* Substance conservée sous le héros (parti A) — deux faits réels. */}
             {stats ? (
               <View style={s.factsRow}>
                 <Fact
@@ -208,29 +231,23 @@ const s = {
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
     color: palette.creamMute,
     marginTop: spacing.sm,
-  },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: fontSize.h3,
-    letterSpacing: 0.5,
-    color: palette.cream,
-    marginTop: spacing.xs,
     marginBottom: spacing.xl,
   },
   legendRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    justifyContent: 'space-between' as const,
     gap: spacing.sm,
     marginTop: spacing.lg,
   },
   gradientBar: {
+    flex: 1,
     flexDirection: 'row' as const,
-    width: 140,
     height: 6,
     borderRadius: radius.pill,
     overflow: 'hidden' as const,
@@ -246,10 +263,36 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
   },
+  narrativeCard: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: spacing.md,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+  },
+  narrativeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: palette.gold, // puce OR de la maquette (constat, pas alarme)
+    marginTop: 5, // aligne la puce sur la première ligne de texte
+  },
+  narrativeText: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.5,
+    color: palette.creamSoft,
+  },
   factsRow: {
     flexDirection: 'row' as const,
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
   manifest: {
     fontFamily: fonts.bodyLight,

@@ -1,27 +1,28 @@
 /**
  * Écran #28 — Tour-par-tour (lap-by-lap).
  *
- * Liste chronologique des tours d'une session avec :
- *   - Numéro de tour
- *   - Temps au tour
- *   - Delta vs meilleur tour
- *   - Marqueur si meilleur tour
- *   - Marqueurs sobres si outlap / inlap (tours hors-référence)
+ * Reskin fidèle à la maquette refonte-v2 §7bis (#6a, 19-tour-par-tour.png) :
+ *   - Header « Tour par tour ».
+ *   - Bandeau récap 2 colonnes : MEILLEUR TOUR (chrono or, inline mono, sans
+ *     panneau cockpit) à gauche + MOYENNE (chrono crème, moyenne réelle des
+ *     tours valides) à droite.
+ *   - Liste plate des tours : « T{n} » à gauche, barre de delta horizontale au
+ *     centre (fond line, remplissage proportionnel au delta vs meilleur —
+ *     échelle honnête), chrono à droite + écart compact « +0,42 ».
+ *   - Ligne du meilleur tour surlignée (fond or translucide + bordure or) avec
+ *     tag « meilleur ».
+ *   - Outlap/inlap conservés mais marqués distinctement (sortie / rentrée),
+ *     sans barre de delta : ils ne se comparent pas au meilleur.
  *
- * Mode SIMPLE (pilote particulier par défaut) :
- *   - Temps au tour en grand
- *   - Tour de référence marqué en OR (donnée/repère, jamais un vert « bon ») ;
- *     delta neutre pour les autres tours
- *   - Label « Meilleur tour » plutôt qu'une étoile
+ * Parti A (validé fondateur) : le haut de l'écran est fidèle au PNG ; la
+ * substance existante hors-maquette est conservée SOUS la liste (frise de
+ * régularité, faisceau des tours, toggle simple/détaillé, retour).
  *
- * Mode DÉTAILLÉ (coach, admin, ou pilote curieux après toggle) :
- *   - Toutes les métriques : vitesse max, distance, G max
- *   - Affichage compact tabulaire
+ * Mode DÉTAILLÉ (coach, admin, ou pilote curieux après toggle) : métriques
+ * réelles par tour (vitesse max, G) en seconde ligne compacte.
  *
  * Tap sur un tour → ouvre Télémétrie avec ce tour pré-sélectionné.
- *
- * Reskin V2 : Screen + AppBar, Card du kit, styles via @/theme/v2. Logique,
- * données, navigation, useDetailLevel + toggle et états inchangés.
+ * Logique, données, navigation, useDetailLevel + toggle et états inchangés.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -38,12 +39,14 @@ import { loadLapFrames } from '@/services/sessionTelemetryService';
 import type { Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
-import { CockpitPanel } from '@/ui/CockpitPanel';
-import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
+
+/** Écart au meilleur tour, compact façon maquette : « +0,42 » (virgule fr). */
+function formatDeltaCompact(deltaSeconds: number): string {
+  return `+${deltaSeconds.toFixed(2).replace('.', ',')}`;
+}
 
 export default function ToursScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -89,6 +92,26 @@ export default function ToursScreen() {
       ),
     [validLaps]
   );
+  // Moyenne RÉELLE des tours valides (outlap/inlap exclus — honnêteté).
+  const avgSeconds = useMemo(
+    () =>
+      validLaps.length > 0
+        ? validLaps.reduce((sum, l) => sum + l.duration_seconds, 0) / validLaps.length
+        : null,
+    [validLaps]
+  );
+  // Échelle honnête de la barre de delta : le plus grand écart au meilleur
+  // tour = barre pleine. Aucun plancher artificiel.
+  const maxDeltaSeconds = useMemo(
+    () =>
+      bestLap
+        ? validLaps.reduce(
+            (max, l) => Math.max(max, l.duration_seconds - bestLap.duration_seconds),
+            0
+          )
+        : 0,
+    [validLaps, bestLap]
+  );
   const timeline = useMemo(
     () =>
       buildLapTimeline(
@@ -109,69 +132,35 @@ export default function ToursScreen() {
 
   return (
     <Screen>
-      <AppBar title="TOURS" onBack={() => router.back()} />
+      <AppBar title="Tour par tour" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>TOUR PAR TOUR</Text>
-        <Text style={s.title} accessibilityRole="header">
-          {laps.length > 0
-            ? `${validLaps.length} tour${validLaps.length > 1 ? 's' : ''} valide${validLaps.length > 1 ? 's' : ''}`
-            : 'Vos tours'}
-        </Text>
-
-        {/* Chiffre roi : meilleur tour (fait, or de donnée) dans un panneau cockpit
-            NG — équerres + grand chiffre Rajdhani. Un seul chiffre dominant. */}
+        {/* ——— Bandeau récap (maquette #6a) : meilleur tour OR à gauche,
+            moyenne crème à droite. Inline mono, sans panneau cockpit. ——— */}
         {bestLap ? (
           <View
-            accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${bestLap.lap_number}`}
-            style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl }}
+            accessibilityRole="summary"
+            accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${
+              bestLap.lap_number
+            }. Moyenne des tours valides : ${
+              avgSeconds !== null ? formatLapTime(avgSeconds) : 'non disponible'
+            }.`}
           >
-            <CockpitPanel>
-              <Text
-                style={[
-                  s.eyebrow,
-                  { color: theme.palette.creamMute, marginBottom: theme.spacing.md },
-                ]}
-              >
-                Meilleur tour
-              </Text>
-              <KingNumber
-                value={formatLapTime(bestLap.duration_seconds)}
-                color={theme.palette.gold}
-              />
-              <Text style={[s.meta, { marginTop: theme.spacing.md }]}>
-                Tour {bestLap.lap_number}
-              </Text>
-            </CockpitPanel>
-          </View>
-        ) : null}
-
-        {/* Frise de régularité — l'écart de chaque tour au médian. Sort des durées
-            de tour (table laps) : lisible AVANT toute frame du boîtier, là où le
-            faisceau reste en attente. Au toucher : sélection liée à la liste. */}
-        {!loading && validLaps.length >= 2 ? (
-          <View style={{ marginBottom: theme.spacing.xxl }}>
-            <Text
-              style={[
-                s.eyebrow,
-                { color: theme.palette.creamMute, marginBottom: theme.spacing.md },
-              ]}
-            >
-              RÉGULARITÉ, TOUR PAR TOUR
+            <View style={s.recap}>
+              <View>
+                <Text style={s.eyebrow}>Meilleur tour</Text>
+                <Text style={s.recapBest}>{formatLapTime(bestLap.duration_seconds)}</Text>
+              </View>
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={s.eyebrow}>Moyenne</Text>
+                <Text style={s.recapAvg}>
+                  {avgSeconds !== null ? formatLapTime(avgSeconds) : '—'}
+                </Text>
+              </View>
+            </View>
+            <Text style={s.recapCaption}>
+              Moyenne calculée sur {validLaps.length} tour{validLaps.length > 1 ? 's' : ''} valide
+              {validLaps.length > 1 ? 's' : ''}.
             </Text>
-            <LapTimeline
-              model={timeline}
-              selectedLapNumber={selectedLap}
-              onSelect={(n) => setSelectedLap((cur) => (cur === n ? null : n))}
-            />
-          </View>
-        ) : null}
-
-        {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
-            La dispersion des lignes = votre régularité de trajectoire, vue d'en
-            haut. Constat spatial, aucun jugement. */}
-        {params.sessionId && validLaps.length > 0 ? (
-          <View style={{ marginBottom: theme.spacing.xxl }}>
-            <LapsBeam sessionId={params.sessionId} laps={validLaps} />
           </View>
         ) : null}
 
@@ -181,7 +170,7 @@ export default function ToursScreen() {
             style={{
               flexDirection: 'row',
               justifyContent: 'flex-end',
-              marginBottom: theme.spacing.md,
+              marginBottom: theme.spacing.xs,
             }}
           >
             <Pressable
@@ -198,6 +187,7 @@ export default function ToursScreen() {
           </View>
         ) : null}
 
+        {/* ——— Liste plate des tours (maquette #6a) ——— */}
         <StateWrapper
           state={listState}
           skeletonLines={4}
@@ -206,14 +196,16 @@ export default function ToursScreen() {
           errorCause="Vos tours n'ont pas pu être chargés."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          <View style={{ gap: theme.spacing.xs }}>
-            {laps.map((lap) => (
+          <View>
+            {laps.map((lap, i) => (
               <LapRow
                 key={lap.id}
                 lap={lap}
                 isBest={bestLap?.id === lap.id}
                 isSelected={selectedLap === lap.lap_number}
+                isLast={i === laps.length - 1}
                 bestSeconds={bestLap?.duration_seconds ?? null}
+                maxDeltaSeconds={maxDeltaSeconds}
                 level={level}
                 onPress={() => {
                   if (!params.sessionId) return;
@@ -229,6 +221,34 @@ export default function ToursScreen() {
             ))}
           </View>
         </StateWrapper>
+
+        {/* ——— Sous la liste (parti A) : la substance existante hors-maquette
+            est conservée — rien ne se perd. ——— */}
+
+        {/* Frise de régularité — l'écart de chaque tour au médian. Sort des durées
+            de tour (table laps) : lisible AVANT toute frame du boîtier, là où le
+            faisceau reste en attente. Au toucher : sélection liée à la liste. */}
+        {!loading && validLaps.length >= 2 ? (
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>
+              Régularité, tour par tour
+            </Text>
+            <LapTimeline
+              model={timeline}
+              selectedLapNumber={selectedLap}
+              onSelect={(n) => setSelectedLap((cur) => (cur === n ? null : n))}
+            />
+          </View>
+        ) : null}
+
+        {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
+            La dispersion des lignes = votre régularité de trajectoire, vue d'en
+            haut. Constat spatial, aucun jugement. */}
+        {params.sessionId && validLaps.length > 0 ? (
+          <View style={{ marginTop: theme.spacing.xxl }}>
+            <LapsBeam sessionId={params.sessionId} laps={validLaps} />
+          </View>
+        ) : null}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
           <Pressable
@@ -249,20 +269,30 @@ function LapRow({
   lap,
   isBest,
   isSelected,
+  isLast,
   bestSeconds,
+  maxDeltaSeconds,
   level,
   onPress,
 }: {
   lap: Lap;
   isBest: boolean;
   isSelected?: boolean;
+  isLast: boolean;
   bestSeconds: number | null;
+  maxDeltaSeconds: number;
   level: 'simple' | 'detailed';
   onPress: () => void;
 }) {
   const isExcluded = lap.is_outlap || lap.is_inlap;
   const delta =
     bestSeconds !== null && !isBest && !isExcluded ? lap.duration_seconds - bestSeconds : null;
+  // Remplissage proportionnel au delta vs meilleur — échelle honnête : le plus
+  // grand écart = 100 %, delta nul = 0 %. Pas de plancher qui gonflerait.
+  const fillPct =
+    delta !== null && maxDeltaSeconds > 0
+      ? Math.round(Math.min(1, Math.max(0, delta / maxDeltaSeconds)) * 100)
+      : 0;
 
   const noteForA11y = isBest
     ? 'meilleur tour'
@@ -271,7 +301,7 @@ function LapRow({
         ? 'tour de sortie'
         : 'tour de rentrée'
       : delta !== null
-        ? `plus ${delta.toFixed(2)} seconde${delta >= 2 ? 's' : ''}`
+        ? `plus ${delta.toFixed(2).replace('.', ',')} seconde${delta >= 2 ? 's' : ''} que le meilleur`
         : '';
   const a11yLabel = `Tour ${lap.lap_number}, ${formatLapTime(lap.duration_seconds)}${
     noteForA11y ? `, ${noteForA11y}` : ''
@@ -283,75 +313,67 @@ function LapRow({
       accessibilityLabel={a11yLabel}
       accessibilityHint="Ouvre la télémétrie de ce tour"
       onPress={onPress}
-      style={({ pressed }) => ({ opacity: pressed ? 0.85 : isExcluded ? 0.5 : 1 })}
+      style={({ pressed }) => [
+        s.row,
+        isBest ? s.rowBest : null,
+        !isBest && !isLast ? s.rowSep : null,
+        isSelected && !isBest ? { backgroundColor: theme.palette.surface3 } : null,
+        isExcluded ? { opacity: 0.55 } : null,
+        pressed ? { opacity: 0.85 } : null,
+      ]}
     >
-      <Card
-        style={{
-          borderColor: isBest
-            ? theme.palette.gold
-            : isSelected
-              ? theme.palette.edge
-              : theme.palette.line,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: theme.spacing.md,
-        }}
-      >
-        {/* Badge numéro tour */}
+      <View style={s.rowMain}>
+        {/* N° de tour réel */}
+        <Text style={[s.rowNum, isBest ? s.rowNumBest : null]}>T{lap.lap_number}</Text>
+
+        {/* Barre de delta — décorative ; le delta chiffré porte l'information. */}
         <View
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 16,
-            backgroundColor: isBest ? theme.palette.gold : theme.palette.card2,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={s.track}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         >
-          <Text
-            style={{
-              fontFamily: theme.fonts.mono,
-              color: isBest ? theme.palette.night : theme.palette.creamSoft,
-              fontSize: 13,
-            }}
-          >
-            {lap.lap_number}
-          </Text>
-        </View>
-
-        {/* Temps au tour + label sobre */}
-        <View style={{ flex: 1 }}>
-          <Text style={s.lapTime}>{formatLapTime(lap.duration_seconds)}</Text>
           {isBest ? (
-            <Text style={[s.lapNote, { color: theme.palette.gold }]}>Meilleur tour</Text>
-          ) : isExcluded ? (
-            <Text style={s.lapNote}>{lap.is_outlap ? 'Tour de sortie' : 'Tour de rentrée'}</Text>
+            // Meilleur tour : delta nul → repère OR à l'origine de l'échelle
+            // (pas une valeur ; la maquette porte l'or sur cette ligne).
+            <View style={s.originMark} />
           ) : delta !== null ? (
-            <Text style={[s.lapNote, { fontFamily: theme.fonts.mono }]}>+{delta.toFixed(2)} s</Text>
-          ) : null}
-
-          {/* Détails techniques (mode détaillé) */}
-          {level === 'detailed' && !isExcluded ? (
-            <View
-              style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xs }}
-            >
-              {lap.max_speed_kmh != null ? (
-                <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
-              ) : null}
-              {lap.max_g_lateral != null ? (
-                <Detail label="G lat" value={`${lap.max_g_lateral.toFixed(2)}`} />
-              ) : null}
-              {lap.max_g_braking != null ? (
-                <Detail label="Frein" value={`${lap.max_g_braking.toFixed(2)}`} />
-              ) : null}
-            </View>
+            <View style={[s.fill, { width: `${fillPct}%` }]} />
           ) : null}
         </View>
 
-        <Text style={s.chevron} accessibilityElementsHidden importantForAccessibility="no">
-          ›
+        {/* Chrono réel */}
+        <Text style={[s.rowTime, isBest ? s.rowTimeBest : null]}>
+          {formatLapTime(lap.duration_seconds)}
         </Text>
-      </Card>
+
+        {/* Écart compact / tag */}
+        <Text style={[s.rowDelta, isBest ? s.rowDeltaBest : null]}>
+          {isBest
+            ? 'meilleur'
+            : isExcluded
+              ? lap.is_outlap
+                ? 'sortie'
+                : 'rentrée'
+              : delta !== null
+                ? formatDeltaCompact(delta)
+                : '—'}
+        </Text>
+      </View>
+
+      {/* Détails techniques (mode détaillé) — données réelles de la table laps */}
+      {level === 'detailed' && !isExcluded ? (
+        <View style={s.rowDetails}>
+          {lap.max_speed_kmh != null ? (
+            <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
+          ) : null}
+          {lap.max_g_lateral != null ? (
+            <Detail label="G lat" value={lap.max_g_lateral.toFixed(2).replace('.', ',')} />
+          ) : null}
+          {lap.max_g_braking != null ? (
+            <Detail label="Frein" value={lap.max_g_braking.toFixed(2).replace('.', ',')} />
+          ) : null}
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -429,25 +451,120 @@ function LapsBeam({ sessionId, laps }: { sessionId: string; laps: Lap[] }) {
 
 const s = {
   eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2.4,
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: 10, // .eyebrow maquette : mono 600 10px, letter-spacing 1.6
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    color: theme.palette.eyebrow,
   },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+  // Bandeau récap — 2 colonnes en baseline, marge 18 (maquette #6a).
+  recap: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'flex-end' as const,
+    marginTop: theme.spacing.sm,
   },
-  meta: {
+  recapBest: {
+    fontFamily: theme.fonts.kingMedium,
+    fontSize: 26,
+    letterSpacing: -0.5,
+    color: theme.palette.gold,
+    marginTop: 6,
+  },
+  recapAvg: {
+    fontFamily: theme.fonts.kingMedium,
+    fontSize: 20,
+    color: theme.palette.secondary,
+    marginTop: 6,
+  },
+  // Portée honnête de la moyenne (donnée réelle : tours valides uniquement).
+  recapCaption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.micro,
+    color: theme.palette.legend,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.lg,
+  },
+  // — Liste plate (maquette : ligne 11px de padding, séparateur #17171A) —
+  row: {
+    minHeight: 44, // cible tactile
+    justifyContent: 'center' as const,
+    paddingVertical: 11,
+  },
+  rowMain: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+  },
+  rowSep: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.palette.separator,
+  },
+  // Meilleur tour surligné : fond or translucide + bordure or, débord latéral
+  // léger comme la maquette. #FFB70314 = or de la maquette à ~8 % (brief).
+  rowBest: {
+    backgroundColor: '#FFB70314', // or translucide (maquette, non tokenisé)
+    borderWidth: 1,
+    borderColor: theme.palette.gold,
+    borderRadius: theme.radius.hud,
+    marginHorizontal: -theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+  },
+  rowNum: {
     fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.micro,
+    color: theme.palette.eyebrow,
+    width: 30,
+  },
+  rowNumBest: {
+    fontFamily: theme.fonts.monoSemi,
+    color: theme.palette.gold,
+  },
+  track: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.borderHair, // fond de barre (#1A1A1D maquette)
+    overflow: 'hidden' as const,
+  },
+  fill: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#2A2A2E', // remplissage neutre de la maquette (non tokenisé)
+  },
+  originMark: {
+    width: 10,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.palette.gold,
+  },
+  rowTime: {
+    fontFamily: theme.fonts.monoMedium,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
-    color: theme.palette.creamMute,
+    color: theme.palette.secondary,
+    minWidth: 62,
+    textAlign: 'right' as const,
+  },
+  rowTimeBest: {
+    fontFamily: theme.fonts.monoSemi,
+    color: theme.palette.gold,
+  },
+  rowDelta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10, // colonne d'écart compacte (maquette 10px)
+    color: theme.palette.eyebrow,
+    minWidth: 52,
+    textAlign: 'right' as const,
+  },
+  rowDeltaBest: {
+    fontFamily: theme.fonts.monoSemi,
+    color: theme.palette.gold,
+  },
+  rowDetails: {
+    flexDirection: 'row' as const,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.xs,
+    paddingLeft: 30 + theme.spacing.md, // aligné sur la colonne de la barre
   },
   toggle: {
     fontFamily: theme.fonts.mono,
@@ -461,17 +578,6 @@ const s = {
     minHeight: 44,
     justifyContent: 'center' as const,
   },
-  lapTime: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.h3,
-    color: theme.palette.cream,
-  },
-  lapNote: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: 2,
-  },
   detail: {
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 1.5,
@@ -483,10 +589,6 @@ const s = {
   detailValue: {
     fontFamily: theme.fonts.mono,
     color: theme.palette.creamSoft,
-  },
-  chevron: {
-    color: theme.palette.creamMute,
-    fontSize: 18,
   },
   back: {
     fontFamily: theme.fonts.mono,

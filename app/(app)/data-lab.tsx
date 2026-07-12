@@ -1,18 +1,22 @@
 /**
- * Data Lab — lecture détaillée d'une session (assemblage, PR 3 · ticket D1).
+ * Data Lab — lecture détaillée d'une session (reskin refonte-v2 §7.5).
  *
  * Index de navigation PUR : regroupe les écrans d'analyse rangés sous le Bilan
  * (cf. `appMap.dataLabScreens()`), chacun ouvert avec le `sessionId` courant.
  * AUCUNE logique d'analyse propre — chaque écran cible garde ses services.
- * Doctrine : sobre, index neutre (texte crème/muted, pas d'or décoratif) ;
- * vouvoiement, pas d'emoji.
+ *
+ * Maquette (05-datalab.png) : titre « Allez voir de plus près. » (vouvoyé) +
+ * ligne d'état de confiance (pastille verte si lecture complète) + grille
+ * 2 colonnes de 6 tuiles à icône colorée + 2 tuiles larges Comparer/Insights.
+ * Parti A : la substance hors-maquette (Vue unifiée, transparence, export CSV)
+ * est CONSERVÉE sous la grille. Vouvoiement, pas d'emoji, jamais prescriptif.
  */
 
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Text, View } from 'react-native';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
-import { DataConfidenceBanner } from '@/components/DataConfidenceBanner';
 import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTransparency';
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
@@ -26,17 +30,172 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
-// Libellés humains des écrans Data Lab (sobres, factuels, jamais prescriptifs).
-const LABELS: Record<string, { label: string; hint: string }> = {
-  carte: { label: 'Carte du circuit', hint: 'Votre tracé sur le circuit' },
-  virage: { label: 'Détails par virage', hint: 'Entrée, apex, sortie' },
-  'virage-comparer': { label: 'Comparer un virage', hint: 'Deux tours côte à côte' },
-  tours: { label: 'Tour par tour', hint: 'Vos tours détectés' },
-  heatmap: { label: 'Carte de chaleur', hint: 'Vitesse, charge, régularité' },
-  replay: { label: 'Rejouer un tour', hint: 'La session en mouvement' },
-  telemetry: { label: 'Télémétrie', hint: 'Vitesse, distance, G — données brutes' },
-  insights: { label: 'Lectures approfondies', hint: 'Les analyses qualitatives' },
-};
+const { palette, dataColors, speedHeat, fonts, fontSize, spacing, radius } = theme;
+
+/* ------------------------------------------------------------------ */
+/* Icônes des tuiles (maquette §7.5) — décoratives, 22 px, une couleur */
+/* par tuile. L'or sur Carte du circuit / Télémétrie / Insights vient  */
+/* de la maquette elle-même (icône d'index, pas une donnée QDI).       */
+/* ------------------------------------------------------------------ */
+
+const ICON = 22;
+
+/** Carte du circuit — anneau irrégulier or (tracé de piste). */
+function IconCircuit() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Path
+        d="M12 3.5 C17 3.5 20.5 6.5 20.5 10.5 C20.5 14 17.5 15 14.5 16 C11.5 17 11.5 20.5 8 20.5 C5 20.5 3.5 17.5 3.5 13.5 C3.5 8 7 3.5 12 3.5 Z"
+        stroke={palette.gold}
+        strokeWidth={1.8}
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Zoom virage — courbe bleue (trajectoire) + point d'apex. */
+function IconVirage() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Path
+        d="M5 19.5 C11 19.5 10.5 12.5 14.5 9.5"
+        stroke={dataColors.trajectory}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Circle cx={17.5} cy={6.5} r={2} fill={dataColors.trajectory} />
+    </Svg>
+  );
+}
+
+/** Tour par tour — lignes neutres (liste des tours). */
+function IconTours() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Line x1={4} y1={7} x2={20} y2={7} stroke={palette.creamSoft} strokeWidth={1.8} />
+      <Line x1={4} y1={12} x2={15} y2={12} stroke={palette.creamSoft} strokeWidth={1.8} />
+      <Line x1={4} y1={17} x2={18} y2={17} stroke={palette.creamSoft} strokeWidth={1.8} />
+    </Svg>
+  );
+}
+
+/** Carte de chaleur — grille multicolore (rampe vitesse `speedHeat`). */
+function IconHeat() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Rect x={4} y={4} width={7.5} height={7.5} rx={2} fill={speedHeat[0]} />
+      <Rect x={12.5} y={4} width={7.5} height={7.5} rx={2} fill={speedHeat[1]} />
+      <Rect x={4} y={12.5} width={7.5} height={7.5} rx={2} fill={speedHeat[2]} />
+      <Rect x={12.5} y={12.5} width={7.5} height={7.5} rx={2} fill={speedHeat[3]} />
+    </Svg>
+  );
+}
+
+/** Rejouer un tour — cercle + triangle neutres (lecture). */
+function IconReplay() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={8.5} stroke={palette.creamSoft} strokeWidth={1.8} fill="none" />
+      <Path d="M10.4 8.9 L15.2 12 L10.4 15.1 Z" fill={palette.creamSoft} />
+    </Svg>
+  );
+}
+
+/** Télémétrie — courbe or (canal brut). */
+function IconTelemetry() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Path
+        d="M3 12 C5.5 5.5 8 5.5 10.5 12 C13 18.5 15.5 18.5 18 12"
+        stroke={palette.gold}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Comparer — deux barres neutres côte à côte. */
+function IconComparer() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Rect x={6.5} y={9} width={3.5} height={9} rx={1} fill={palette.cream} />
+      <Rect x={13} y={6} width={3.5} height={12} rx={1} fill={palette.faint} />
+    </Svg>
+  );
+}
+
+/** Insights — ampoule or (maquette). */
+function IconInsights() {
+  return (
+    <Svg width={ICON} height={ICON} viewBox="0 0 24 24">
+      <Path
+        d="M12 3.5 a5.2 5.2 0 0 1 5.2 5.2 c0 2.1 -1.2 3.2 -2 4.4 c-.5 .7 -.8 1.2 -.8 2.1 h-4.8 c0 -.9 -.3 -1.4 -.8 -2.1 c-.8 -1.2 -2 -2.3 -2 -4.4 A5.2 5.2 0 0 1 12 3.5 Z"
+        stroke={palette.gold}
+        strokeWidth={1.6}
+        fill="none"
+      />
+      <Line x1={9.8} y1={18.5} x2={14.2} y2={18.5} stroke={palette.gold} strokeWidth={1.6} />
+    </Svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Tuiles — routes ACTUELLES (appMap), libellés de la maquette vouvoyés */
+/* ------------------------------------------------------------------ */
+
+type TileDef = { screen: string; title: string; sub: string; Icon: () => React.JSX.Element };
+
+const GRID_TILES: TileDef[] = [
+  { screen: 'carte', title: 'Carte du circuit', sub: 'marge par virage', Icon: IconCircuit },
+  { screen: 'virage', title: 'Zoom virage', sub: 'entrée · apex · sortie', Icon: IconVirage },
+  { screen: 'tours', title: 'Tour par tour', sub: 'chrono & écarts', Icon: IconTours },
+  { screen: 'heatmap', title: 'Carte de chaleur', sub: 'vitesse sur la piste', Icon: IconHeat },
+  { screen: 'replay', title: 'Rejouer un tour', sub: 'à votre rythme', Icon: IconReplay },
+  { screen: 'telemetry', title: 'Télémétrie', sub: 'G, vitesses, freins', Icon: IconTelemetry },
+];
+
+const WIDE_TILES: TileDef[] = [
+  {
+    screen: 'virage-comparer',
+    title: 'Comparer',
+    sub: 'deux tours côte à côte',
+    Icon: IconComparer,
+  },
+  { screen: 'insights', title: 'Insights', sub: 'les analyses qualitatives', Icon: IconInsights },
+];
+
+/**
+ * Ligne d'état de confiance (maquette : pastille + texte court). Même donnée
+ * que le Bilan (`computeDataConfidence`) — seule la présentation change.
+ * Honnête : verte uniquement si la lecture est complète ; sinon pastille
+ * neutre + raisons factuelles ; masquée s'il n'y a encore aucune trame.
+ */
+function ConfidenceLine({ confidence }: { confidence: DataConfidence | null }) {
+  if (!confidence) return null;
+  const good = confidence.level === 'complete';
+  const dotColor = good
+    ? palette.green
+    : confidence.level === 'partial'
+      ? palette.creamMute
+      : palette.faint;
+  const text = good
+    ? 'Données fiables sur cette séance'
+    : [confidence.label, ...confidence.reasons].join(' · ');
+  return (
+    <View style={s.confidenceRow} accessibilityRole="text" accessibilityLabel={text}>
+      <View
+        style={[s.confidenceDot, { backgroundColor: dotColor }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+      <Text style={[s.confidenceText, good && { color: palette.green }]}>{text}</Text>
+    </View>
+  );
+}
 
 export default function DataLabScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -85,18 +244,25 @@ export default function DataLabScreen() {
     };
   }, [sid]);
 
+  // Garde appMap : seules les couches connues de la carte de l'app sont rendues.
+  const known = new Set(dataLabScreens());
+
+  function openLayer(screen: string) {
+    OxvEvent.datalabCoucheOuverte(screen);
+    router.push((sid ? `/(app)/${screen}?sessionId=${sid}` : `/(app)/${screen}`) as never);
+  }
+
   return (
     <Screen>
-      <AppBar title="DATA LAB" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>LECTURE DÉTAILLÉE</Text>
+      <AppBar title="Data Lab" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         <Text style={s.title} accessibilityRole="header">
-          Votre session, couche par couche.
+          Allez voir de plus près.
         </Text>
-        <Text style={s.intro}>
-          Chaque lecture s'ouvre sur la session courante. Prenez ce qui vous parle, laissez le
-          reste.
-        </Text>
+
+        {/* Confiance de lecture (T-2, PR-53) — la solidité de la donnée AVANT
+            d'ouvrir les couches. Honnête, descriptif, jamais un jugement. */}
+        <ConfidenceLine confidence={confidence} />
 
         {view?.emptyReason ? (
           <View style={s.banner}>
@@ -104,30 +270,48 @@ export default function DataLabScreen() {
           </View>
         ) : null}
 
-        {/* Confiance de lecture (T-2, PR-53) — la solidité de la donnée AVANT
-            d'ouvrir les couches. Honnête, descriptif, jamais un jugement. */}
-        <DataConfidenceBanner confidence={confidence} />
-
-        <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
-          {dataLabScreens().map((screen) => {
-            const meta = LABELS[screen] ?? { label: screen, hint: '' };
+        {/* Grille 2 colonnes de 6 tuiles (maquette §7.5). */}
+        <View style={s.grid}>
+          {GRID_TILES.filter((t) => known.has(t.screen)).map(({ screen, title, sub, Icon }) => {
             const available = !view || screenHasData(screen, view);
             return (
               <Card
                 key={screen}
-                onPress={() => {
-                  OxvEvent.datalabCoucheOuverte(screen);
-                  router.push(
-                    (sid ? `/(app)/${screen}?sessionId=${sid}` : `/(app)/${screen}`) as never
-                  );
-                }}
-                accessibilityLabel={`${meta.label}. ${meta.hint}`}
+                style={s.tile}
+                onPress={() => openLayer(screen)}
+                accessibilityLabel={`${title}. ${sub}`}
               >
-                <Text style={s.cardTitle}>{meta.label}</Text>
-                {meta.hint ? <Text style={s.cardHint}>{meta.hint}</Text> : null}
-                {view && !available ? (
-                  <Text style={s.noData}>Pas de données pour cette session</Text>
-                ) : null}
+                <Icon />
+                <View>
+                  <Text style={s.tileTitle}>{title}</Text>
+                  <Text style={s.tileSub}>{sub}</Text>
+                  {view && !available ? (
+                    <Text style={s.noData}>Pas de données pour cette session</Text>
+                  ) : null}
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+
+        {/* Deux tuiles larges Comparer / Insights (maquette §7.5). */}
+        <View style={s.grid}>
+          {WIDE_TILES.filter((t) => known.has(t.screen)).map(({ screen, title, sub, Icon }) => {
+            const available = !view || screenHasData(screen, view);
+            return (
+              <Card
+                key={screen}
+                style={s.wideTile}
+                onPress={() => openLayer(screen)}
+                accessibilityLabel={`${title}. ${sub}`}
+              >
+                <Icon />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.tileTitle}>{title}</Text>
+                  {view && !available ? (
+                    <Text style={s.noData}>Pas de données pour cette session</Text>
+                  ) : null}
+                </View>
               </Card>
             );
           })}
@@ -136,7 +320,7 @@ export default function DataLabScreen() {
         {/* Vue unifiée (Skia, aperçu technique) — un seul canvas tracé + trajectoire.
             Distincte des couches standard : à valider sur un build (rendu natif). */}
         <Card
-          style={{ marginTop: theme.spacing.sm }}
+          style={{ marginTop: spacing.md }}
           onPress={() =>
             router.push(
               (sid ? `/(app)/data-lab-canvas?sessionId=${sid}` : '/(app)/data-lab-canvas') as never
@@ -144,13 +328,13 @@ export default function DataLabScreen() {
           }
           accessibilityLabel="Vue unifiée. Le tracé et votre trajectoire sur une même vue."
         >
-          <Text style={s.cardTitle}>Vue unifiée</Text>
-          <Text style={s.cardHint}>Le tracé et votre trajectoire, d’un seul tenant</Text>
+          <Text style={s.tileTitle}>Vue unifiée</Text>
+          <Text style={s.tileSub}>Le tracé et votre trajectoire, d’un seul tenant</Text>
         </Card>
 
         {/* Transparence (charte 11 §T1/T5, obligatoire) : source/méthode + limites,
             pour cadrer toute la lecture détaillée comme descriptive, jamais un verdict. */}
-        <View style={{ marginTop: theme.spacing.xxl }}>
+        <View style={{ marginTop: spacing.xxl }}>
           <SourceMethodBlock
             items={[
               'Chaque couche est calculée à partir des trames de votre boîtier — votre séance, rien d’autre.',
@@ -169,7 +353,7 @@ export default function DataLabScreen() {
         {/* Souveraineté data (PR-66) : récupérer la donnée la plus brute du boîtier,
             lisible par n'importe quel tableur, sans dépendre d'OXV (anti-lock-in). */}
         {sid ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <View style={{ marginTop: spacing.xl }}>
             <Button
               label="Exporter les données brutes (CSV)"
               variant="ghost"
@@ -207,66 +391,96 @@ function screenHasData(screen: string, v: DataLabSessionView): boolean {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
-  },
   title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
-    marginTop: theme.spacing.md,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+    lineHeight: fontSize.h2 * 1.25,
+    marginTop: spacing.md,
   },
-  intro: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.6,
-    marginTop: theme.spacing.md,
+  confidenceRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  cardTitle: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
+  confidenceDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginTop: 5,
   },
-  cardHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+  confidenceText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.45,
+  },
+  grid: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  tile: {
+    flexBasis: '47%' as const,
+    flexGrow: 1,
+    minHeight: 132,
+    justifyContent: 'space-between' as const,
+    gap: spacing.lg,
+    borderRadius: radius.sm,
+    padding: spacing.lg,
+  },
+  wideTile: {
+    flexBasis: '47%' as const,
+    flexGrow: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.md,
+    minHeight: 56,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  tileTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+  },
+  tileSub: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.micro,
+    color: palette.legend,
+    marginTop: spacing.xs,
   },
   banner: {
-    marginTop: theme.spacing.lg,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.sm,
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card,
+    borderColor: palette.line,
+    backgroundColor: palette.card,
   },
   bannerText: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.5,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
   },
   noData: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10.5,
     letterSpacing: 0.5,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.sm,
+    color: palette.faint,
+    marginTop: spacing.sm,
   },
   exportHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.5,
-    marginTop: theme.spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
+    marginTop: spacing.sm,
   },
 };
