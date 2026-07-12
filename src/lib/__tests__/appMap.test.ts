@@ -26,9 +26,16 @@ function realRouteSegments(): string[] {
 }
 
 // Routes volontairement HORS zones d'onglets : debug (gated __DEV__), médias de
-// session, vue de partage publique (deep-link). Documentées ici pour que le test
-// reste un garde-fou contre les VRAIES orphelines (ex. un nouvel écran oublié).
-const UNMAPPED_ALLOWLIST = new Set(['debug-capture', 'debug-circuit', 'session-media', 'share']);
+// session, vue de partage publique (deep-link), et la décharge (écran contextuel
+// signé à la réservation via param, gaté par le flag pilot_waivers). Documentées
+// ici pour que le test reste un garde-fou contre les VRAIES orphelines.
+const UNMAPPED_ALLOWLIST = new Set([
+  'debug-capture',
+  'debug-circuit',
+  'session-media',
+  'share',
+  'decharge',
+]);
 
 describe('appMap', () => {
   it('TAB_ORDER est exact et dans l’ordre verrouillé', () => {
