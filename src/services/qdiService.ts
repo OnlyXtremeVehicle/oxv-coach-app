@@ -164,6 +164,69 @@ export async function getQdiReference(
   return { branches: medianBranches(history), sessions: history.length };
 }
 
+/** Style QDI d'un mois : médiane des branches des séances du mois (self-only). */
+export interface MonthlyQdi {
+  /** Libellé court du mois (« MAI », « JUIN », « JUIL. »). */
+  monthLabel: string;
+  /** Clé de tri AAAA-MM. */
+  monthKey: string;
+  branches: QdiBranches;
+  sessions: number;
+}
+
+/**
+ * « Votre style au fil des séances » (maquette §7.3) : le style QDI des derniers
+ * mois AVEC données, en constats juxtaposés — médiane par branche par mois,
+ * JAMAIS une courbe d'évolution. Self-only strict.
+ */
+export async function listMonthlyQdi(userId: string, months = 3): Promise<MonthlyQdi[]> {
+  const { data: sessions } = await supabase
+    .from('telemetry_sessions')
+    .select('id, started_at')
+    .eq('user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(40);
+  const rows = (sessions ?? []) as { id: string; started_at: string }[];
+  if (rows.length === 0) return [];
+
+  const { data: analyses } = await supabase
+    .from('app_session_analyses')
+    .select('qdi, telemetry_session_id')
+    .in(
+      'telemetry_session_id',
+      rows.map((r) => r.id)
+    )
+    .not('qdi', 'is', null);
+  const qdiBySession = new Map(
+    ((analyses ?? []) as unknown as { qdi: QdiBranches; telemetry_session_id: string }[]).map(
+      (a) => [a.telemetry_session_id, a.qdi]
+    )
+  );
+
+  // Groupe par mois (AAAA-MM), médiane par branche.
+  const byMonth = new Map<string, QdiBranches[]>();
+  for (const r of rows) {
+    const q = qdiBySession.get(r.id);
+    if (!q) continue;
+    const key = r.started_at.slice(0, 7);
+    const list = byMonth.get(key) ?? [];
+    list.push(q);
+    byMonth.set(key, list);
+  }
+
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-months)
+    .map(([monthKey, list]) => ({
+      monthKey,
+      monthLabel: new Date(`${monthKey}-01T00:00:00Z`)
+        .toLocaleDateString('fr-FR', { month: 'short' })
+        .toUpperCase(),
+      branches: medianBranches(list),
+      sessions: list.length,
+    }));
+}
+
 export type QdiAccessLevel = 'full' | 'simple';
 
 /** Niveau de restitution selon l'offre (Signature/Heritage = détail). */

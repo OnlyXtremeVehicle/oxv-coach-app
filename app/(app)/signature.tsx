@@ -1,29 +1,25 @@
 /**
- * Écran Signature de pilotage — pilier §3.1 du cahier OXV Mirror.
+ * Signature de pilotage — zone Miroir. Reskin FIDÈLE aux maquettes Claude Design
+ * refonte-v2 §7.3 (screens/03-signature-qdi.png), décision fondateur 2026-07-12.
  *
- * Un portrait factuel et neutre du style du pilote sur une session :
- * nature du freinage, engagement latéral, réaccélération, régularité,
- * virages de prédilection. Aucune note, aucun classement.
+ * Héros conforme à la maquette (haut → bas) :
+ *   header « Signature de pilotage » · eyebrow centré « VOTRE STYLE, RIEN QUE LE
+ *   VÔTRE » · radar pentagonal QDI (polygone séance blanc + points colorés,
+ *   empreinte self-only en pointillé, annotation « point fort ») · légende ·
+ *   carte « votre lecture » (3 lignes pastille + phrase factuelle) · « Votre
+ *   style au fil des séances » (3 mini-radars mensuels, le dernier surligné).
  *
- * « Une empreinte personnelle, unique à chaque pilote — le miroir
- * descriptif par excellence. »
- *
- * Sécurité : RLS owner (la session appartient au pilote courant). Lit
- * app_segment_analyses + laps via les services existants.
- *
- * Refonte gaming « cockpit factuel » : panneaux + filets, libellés mono,
- * primitif EmptyState honnête. Les « virages confortables » sont listés
- * par leur nom (or Heritage = registre virage) avec leur marge chiffrée
- * — un repère factuel, pas un classement imposé. Le tracé (CircuitTraceHero)
- * reste inchangé.
+ * JAMAIS un score unique. Substance OXV préservée SOUS le héros (parti A) :
+ * méthode/limites, virages confortables, empreinte dans le temps (partage coach),
+ * rappel doctrinal. Logique/données/RLS inchangées. Vouvoiement.
  */
 
 import { useEffect, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
 import { SourceMethodBlock } from '@/components/InsightTransparency';
+import { MiniQdiRadar } from '@/components/MiniQdiRadar';
 import { QdiRadar, type QdiAnnotations } from '@/components/QdiRadar';
 import { FadeInSection } from '@/components/motion';
 import { EmptyState } from '@/components/instruments';
@@ -31,6 +27,8 @@ import {
   getOrComputeQdiForSession,
   getQdiAccessLevel,
   getQdiReference,
+  listMonthlyQdi,
+  type MonthlyQdi,
   type QdiAccessLevel,
   type QdiRecord,
 } from '@/services/qdiService';
@@ -48,9 +46,18 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper } from '@/ui/StateWrapper';
+
+const { palette, dataColors, spacing, radius, fonts } = theme;
+
+/** Couleur QDI de chaque trait de signature (une couleur = une donnée). */
+const TRAIT_COLOR: Record<string, string> = {
+  braking: dataColors.brake,
+  lateral: dataColors.trajectory,
+  reaccel: dataColors.accel,
+  regularity: dataColors.regularity,
+};
 
 export default function SignatureScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -60,16 +67,18 @@ export default function SignatureScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [, setSessionId] = useState<string | null>(null);
   // Empreinte consolidée : la mémoire descriptive du miroir, séance après séance.
   const [snapshots, setSnapshots] = useState<SignatureSnapshot[]>([]);
-  // QDI 5 branches (M1) — LE radar, self-only.
+  // QDI 5 branches — LE radar, self-only.
   const [qdi, setQdi] = useState<QdiRecord | null>(null);
   const [qdiReference, setQdiReference] = useState<{
     branches: QdiBranches;
     sessions: number;
   } | null>(null);
   const [qdiAccess, setQdiAccess] = useState<QdiAccessLevel>('full');
+  // « Votre style au fil des séances » — 3 mini-radars mensuels (constats).
+  const [monthly, setMonthly] = useState<MonthlyQdi[]>([]);
 
   useEffect(() => {
     if (!profile) {
@@ -110,18 +119,17 @@ export default function SignatureScreen() {
       ]);
       if (cancelled) return;
 
-      // QDI + référence self-only + niveau d'offre — best-effort, en parallèle
-      // du reste de l'écran (une erreur laisse l'état vide honnête).
+      // QDI + référence self-only + niveau d'offre + mois — best-effort.
       (async () => {
-        // Recalcul paresseux : couvre les sessions rattrapées par le cron
-        // serveur (qui ne calcule pas le QDI) et les sessions pré-migration.
-        const [record, access] = await Promise.all([
+        const [record, access, months] = await Promise.all([
           getOrComputeQdiForSession(resolvedId),
           getQdiAccessLevel(profile.id),
+          listMonthlyQdi(profile.id, 3),
         ]);
         if (cancelled) return;
         setQdi(record);
         setQdiAccess(access);
+        setMonthly(months);
         if (record) {
           const ref = await getQdiReference(profile.id, record.reference.circuit, resolvedId);
           if (!cancelled) setQdiReference(ref);
@@ -134,25 +142,23 @@ export default function SignatureScreen() {
         .map((l) => l.duration_seconds);
 
       const sig = computeSignature({
-        segments: segments.map((s) => ({
-          segmentIndex: s.segmentIndex,
-          segmentName: s.segmentName,
-          kind: s.kind,
-          entrySpeedKmh: s.entrySpeedKmh,
-          apexSpeedKmh: s.apexSpeedKmh,
-          exitSpeedKmh: s.exitSpeedKmh,
-          maxGLateral: s.maxGLateral,
-          maxGBraking: s.maxGBraking,
-          marginPercent: s.marginPercent,
+        segments: segments.map((s2) => ({
+          segmentIndex: s2.segmentIndex,
+          segmentName: s2.segmentName,
+          kind: s2.kind,
+          entrySpeedKmh: s2.entrySpeedKmh,
+          apexSpeedKmh: s2.apexSpeedKmh,
+          exitSpeedKmh: s2.exitSpeedKmh,
+          maxGLateral: s2.maxGLateral,
+          maxGBraking: s2.maxGBraking,
+          marginPercent: s2.marginPercent,
         })),
         lapTimesSeconds,
       });
       setSignature(sig);
       setLoading(false);
 
-      // Fige l'empreinte de cette séance (mémoire du miroir) puis charge la
-      // tendance descriptive des dernières séances. Best effort : n'affecte pas
-      // l'affichage de la signature courante.
+      // Fige l'empreinte de cette séance (mémoire du miroir).
       if (sig.traits.length > 0) {
         await upsertSnapshotForSession(resolvedId);
         if (cancelled) return;
@@ -160,8 +166,6 @@ export default function SignatureScreen() {
         if (!cancelled) setSnapshots(snaps);
       }
     })().catch(() => {
-      // Échec de lecture : état d'erreur honnête avec reprise, plutôt qu'un
-      // écran figé sur le chargement.
       if (!cancelled) {
         setError(true);
         setLoading(false);
@@ -175,7 +179,7 @@ export default function SignatureScreen() {
 
   async function onToggleShare(snap: SignatureSnapshot, next: boolean) {
     setSnapshots((prev) =>
-      prev.map((s) => (s.id === snap.id ? { ...s, sharedWithCoach: next } : s))
+      prev.map((s2) => (s2.id === snap.id ? { ...s2, sharedWithCoach: next } : s2))
     );
     const res = await setSnapshotShared(snap.id, next);
     if (!res.ok) setSnapshots(await listMySnapshots(8));
@@ -191,8 +195,8 @@ export default function SignatureScreen() {
   if (loading || error) {
     return (
       <Screen>
-        <AppBar title="SIGNATURE" onBack={() => router.back()} />
-        <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl }}>
+        <AppBar title="Signature de pilotage" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}>
           <StateWrapper
             state={error ? 'error' : 'loading'}
             skeletonLines={5}
@@ -208,9 +212,8 @@ export default function SignatureScreen() {
 
   const hasContent = signature && signature.traits.length > 0;
 
-  // Branche la plus haute → annotation descriptive « point fort » sur le radar
-  // (registre autorisé, comme QdiBars ; self-only, jamais un ordre). Rien si
-  // aucune branche n'est mesurée.
+  // Branche la plus haute → annotation « votre point fort » sur le radar
+  // (descriptif, self-only, jamais un ordre).
   const qdiAnnotations: QdiAnnotations | undefined = (() => {
     if (!qdi) return undefined;
     const keys: (keyof QdiBranches)[] = [
@@ -229,152 +232,167 @@ export default function SignatureScreen() {
         best = k;
       }
     }
-    return best ? { [best]: 'point fort' } : undefined;
+    return best ? { [best]: 'votre point fort' } : undefined;
   })();
 
   return (
     <Screen>
-      <AppBar title="SIGNATURE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Votre empreinte.</Text>
+      <AppBar title="Signature de pilotage" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* Accroche — eyebrow centré (maquette ; vouvoiement, doctrine). */}
+        <Text style={s.accroche}>VOTRE STYLE, RIEN QUE LE VÔTRE</Text>
 
-        {/* Tracé : où la signature s'exprime sur la piste (specs v4 §05 §4.2).
-            Couche d'entrée Vitesse d'apex ; le pilote bascule vers Anatomie freinage. */}
-        <FadeInSection style={{ marginBottom: theme.spacing.xl }}>
-          <CircuitTraceHero sessionId={sessionId ?? undefined} defaultLayer="apexSpeed" />
-        </FadeInSection>
-
-        {!hasContent ? (
+        {!hasContent && !qdi ? (
           <EmptyState
             message="Votre signature se dessine à partir de la trace de vos tours. Elle apparaîtra après votre premier roulage analysé."
             source="telemetry_frames · segment_analyses"
           />
         ) : (
           <>
-            {/* Manifeste */}
-            {signature.manifest ? (
-              <FadeInSection>
-                <Text style={s.manifest}>{signature.manifest}</Text>
-              </FadeInSection>
-            ) : null}
-
-            {/* Radar QDI 5 branches — LE radar de l'app (M1, absorbe l'ancienne
-                empreinte, décision fondateur 2026-07-04). Self-only : référence
-                = médiane de VOS sessions. Access = forme seule ; Signature/
-                Heritage = valeurs par branche. */}
-            <FadeInSection delay={80}>
-              <View style={{ marginBottom: theme.spacing.md }}>
-                {qdi ? (
-                  <CockpitPanel>
-                    <QdiRadar
-                      current={qdi}
-                      reference={qdiReference?.branches ?? null}
-                      referenceSessions={qdiReference?.sessions}
-                      detail={qdiAccess === 'full'}
-                      annotations={qdiAnnotations}
-                    />
-                  </CockpitPanel>
-                ) : (
-                  <EmptyState
-                    label="QDI en préparation"
-                    message="Le calcul des cinq branches suit l'analyse de la session. Revenez après le bilan."
-                  />
-                )}
-              </View>
-              <View style={{ marginBottom: theme.spacing.xl }}>
-                <SourceMethodBlock
-                  items={[
-                    'Cinq branches calculées par un algorithme déterministe versionné, depuis le GPS et la centrale inertielle du boîtier (25 Hz).',
-                    'Le boîtier ne mesure ni le volant ni les pédales : Fluidité, Freinage et Accélération lisent les accélérations subies par le véhicule — les conséquences, pas les gestes.',
-                    'La référence est votre propre historique sur ce circuit. Jamais un autre pilote, jamais un classement.',
-                  ]}
+            {/* RADAR — le portrait. Polygone séance blanc + points colorés,
+                empreinte self-only pointillée, annotation point fort. */}
+            <FadeInSection>
+              {qdi ? (
+                <QdiRadar
+                  current={qdi}
+                  reference={qdiReference?.branches ?? null}
+                  referenceSessions={qdiReference?.sessions}
+                  detail={qdiAccess === 'full'}
+                  annotations={qdiAnnotations}
                 />
-              </View>
+              ) : (
+                <EmptyState
+                  label="QDI en préparation"
+                  message="Le calcul des cinq branches suit l'analyse de la session. Revenez après le bilan."
+                />
+              )}
             </FadeInSection>
 
-            {/* Traits — le détail mesuré sous la silhouette */}
-            <View style={{ gap: theme.spacing.md }}>
-              {signature.traits.map((trait, i) => (
-                <FadeInSection key={trait.key} delay={120 + i * 90}>
-                  <View
-                    style={s.traitPanel}
-                    accessible
-                    accessibilityLabel={`${trait.label} : ${trait.value}${trait.detail ? `. ${trait.detail}` : ''}`}
-                  >
-                    <Text style={s.eyebrow}>{trait.label}</Text>
-                    <Text style={s.traitValue}>{trait.value}</Text>
-                    {trait.detail ? <Text style={s.traitDetail}>{trait.detail}</Text> : null}
-                  </View>
-                </FadeInSection>
-              ))}
-            </View>
-
-            {/* Virages de prédilection */}
-            {signature.comfortCorners.length > 0 ? (
-              <FadeInSection delay={120 + signature.traits.length * 90}>
-                <View style={{ marginTop: theme.spacing.xl }}>
-                  <View style={s.cornerPanel}>
-                    <Text style={s.eyebrow}>Vos virages les plus confortables</Text>
-                    <View style={{ marginTop: theme.spacing.sm }}>
-                      {signature.comfortCorners.map((c) => (
-                        <View
-                          key={c.segmentIndex}
-                          style={s.cornerRow}
-                          accessible
-                          accessibilityLabel={`${c.segmentName ?? `Virage ${c.segmentIndex}`} : ${Math.round(c.marginPercent)} % de marge`}
+            {/* VOTRE LECTURE — 3 lignes pastille + phrase factuelle (maquette).
+                Dérivées des traits mesurés (descriptif, jamais une consigne). */}
+            {hasContent ? (
+              <FadeInSection delay={80}>
+                <View style={s.lectureCard}>
+                  {signature.traits.slice(0, 3).map((trait) => (
+                    <View
+                      key={trait.key}
+                      style={s.lectureRow}
+                      accessible
+                      accessibilityLabel={`${trait.label} : ${trait.value}`}
+                    >
+                      <View
+                        style={[
+                          s.lectureDot,
+                          { backgroundColor: TRAIT_COLOR[trait.key] ?? palette.creamMute },
+                        ]}
+                      />
+                      <Text style={s.lectureText}>
+                        <Text
+                          style={{
+                            color: TRAIT_COLOR[trait.key] ?? palette.cream,
+                            fontFamily: fonts.bodyMedium,
+                          }}
                         >
-                          <Text style={s.cornerName}>
-                            {c.segmentName ?? `Virage ${c.segmentIndex}`}
-                          </Text>
-                          <Text style={s.cornerValue}>{Math.round(c.marginPercent)} %</Text>
-                        </View>
-                      ))}
+                          {trait.value}
+                        </Text>
+                        {trait.detail ? ` — ${trait.detail}` : ''}
+                      </Text>
                     </View>
-                  </View>
+                  ))}
                 </View>
               </FadeInSection>
             ) : null}
 
-            {/* Empreinte dans le temps — la mémoire descriptive du miroir. Des
-                constats juxtaposés, JAMAIS une flèche ni une courbe de progression
-                (la seule courbe temporelle reste le best-lap de Progression). */}
-            {snapshots.length >= 2 ? (
-              <FadeInSection delay={140 + signature.traits.length * 90}>
-                <View style={{ marginTop: theme.spacing.xxl }}>
-                  <Text style={s.eyebrow}>Votre empreinte dans le temps</Text>
-                  <View style={{ marginTop: theme.spacing.sm, gap: theme.spacing.sm }}>
-                    {snapshots.map((snap) => {
-                      const braking = traitValue(snap, 'braking');
-                      const lateral = traitValue(snap, 'lateral');
-                      return (
-                        <View key={snap.id} style={s.snapPanel}>
-                          <Text style={s.snapDate}>{snapDate(snap.computedAt)}</Text>
-                          <Text style={s.snapLine}>
-                            Tours {snap.regularityBand ?? '—'}
-                            {braking ? ` · freinage ${braking}` : ''}
-                            {lateral ? ` · engagement ${lateral}` : ''}
-                          </Text>
-                          <View style={s.snapShareRow}>
-                            <Text style={s.snapShareLabel}>Partagée avec mon coach</Text>
-                            <Switch
-                              value={snap.sharedWithCoach}
-                              onValueChange={(v) => onToggleShare(snap, v)}
-                              accessibilityRole="switch"
-                              accessibilityLabel="Partager cette empreinte avec mon coach"
-                              accessibilityState={{ checked: snap.sharedWithCoach }}
-                              trackColor={{ false: '#26262B', true: theme.palette.green }}
-                              thumbColor={theme.palette.cream}
-                            />
-                          </View>
-                        </View>
-                      );
-                    })}
-                  </View>
-                  <Text style={s.snapFootnote}>
-                    Des constats, séance après séance — pas une note d&apos;évolution.
-                  </Text>
+            {/* VOTRE STYLE AU FIL DES SÉANCES — mini-radars mensuels juxtaposés,
+                le dernier surligné. Des constats, jamais une courbe. */}
+            {monthly.length >= 2 ? (
+              <FadeInSection delay={140}>
+                <Text style={s.sectionEyebrow}>VOTRE STYLE AU FIL DES SÉANCES</Text>
+                <View style={s.monthRow}>
+                  {monthly.map((m, i) => (
+                    <MiniQdiRadar
+                      key={m.monthKey}
+                      label={m.monthLabel}
+                      branches={m.branches}
+                      highlighted={i === monthly.length - 1}
+                    />
+                  ))}
                 </View>
               </FadeInSection>
+            ) : null}
+
+            {/* ── Substance OXV sous le héros (parti A) ───────────────────── */}
+
+            <View style={{ marginTop: spacing.xxl }}>
+              <SourceMethodBlock
+                items={[
+                  'Cinq branches calculées par un algorithme déterministe versionné, depuis le GPS et la centrale inertielle du boîtier (25 Hz).',
+                  'Le boîtier ne mesure ni le volant ni les pédales : Fluidité, Freinage et Accélération lisent les accélérations subies par le véhicule — les conséquences, pas les gestes.',
+                  'La référence est votre propre historique sur ce circuit. Jamais un autre pilote, jamais un classement.',
+                ]}
+              />
+            </View>
+
+            {/* Virages de prédilection — repère factuel. */}
+            {hasContent && signature.comfortCorners.length > 0 ? (
+              <View style={{ marginTop: spacing.xl }}>
+                <View style={s.cornerPanel}>
+                  <Text style={s.eyebrow}>Vos virages les plus confortables</Text>
+                  <View style={{ marginTop: spacing.sm }}>
+                    {signature.comfortCorners.map((c) => (
+                      <View
+                        key={c.segmentIndex}
+                        style={s.cornerRow}
+                        accessible
+                        accessibilityLabel={`${c.segmentName ?? `Virage ${c.segmentIndex}`} : ${Math.round(c.marginPercent)} % de marge`}
+                      >
+                        <Text style={s.cornerName}>
+                          {c.segmentName ?? `Virage ${c.segmentIndex}`}
+                        </Text>
+                        <Text style={s.cornerValue}>{Math.round(c.marginPercent)} %</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Empreinte dans le temps — mémoire du miroir + partage coach. */}
+            {snapshots.length >= 2 ? (
+              <View style={{ marginTop: spacing.xxl }}>
+                <Text style={s.eyebrow}>Votre empreinte dans le temps</Text>
+                <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
+                  {snapshots.map((snap) => {
+                    const braking = traitValue(snap, 'braking');
+                    const lateral = traitValue(snap, 'lateral');
+                    return (
+                      <View key={snap.id} style={s.snapPanel}>
+                        <Text style={s.snapDate}>{snapDate(snap.computedAt)}</Text>
+                        <Text style={s.snapLine}>
+                          Tours {snap.regularityBand ?? '—'}
+                          {braking ? ` · freinage ${braking}` : ''}
+                          {lateral ? ` · engagement ${lateral}` : ''}
+                        </Text>
+                        <View style={s.snapShareRow}>
+                          <Text style={s.snapShareLabel}>Partagée avec mon coach</Text>
+                          <Switch
+                            value={snap.sharedWithCoach}
+                            onValueChange={(v) => onToggleShare(snap, v)}
+                            accessibilityRole="switch"
+                            accessibilityLabel="Partager cette empreinte avec mon coach"
+                            accessibilityState={{ checked: snap.sharedWithCoach }}
+                            trackColor={{ false: '#26262B', true: palette.green }}
+                            thumbColor={palette.cream}
+                          />
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+                <Text style={s.snapFootnote}>
+                  Des constats, séance après séance — pas une note d&apos;évolution.
+                </Text>
+              </View>
             ) : null}
 
             {/* Rappel doctrinal sobre */}
@@ -389,126 +407,131 @@ export default function SignatureScreen() {
 }
 
 const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.lg,
-  },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
+  accroche: {
+    fontFamily: fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
     textAlign: 'center' as const,
-    paddingHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.xxl,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xl,
   },
-  traitValue: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.3,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.xs,
+  sectionEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.md,
   },
-  traitDetail: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  // Carte « votre lecture » — 3 lignes pastille + phrase (maquette).
+  lectureCard: {
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  lectureRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: spacing.sm,
+  },
+  lectureDot: { width: 7, height: 7, borderRadius: 4, marginTop: 6 },
+  lectureText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.body,
+    color: palette.creamSoft,
+    lineHeight: theme.fontSize.body * 1.5,
+  },
+  monthRow: { flexDirection: 'row' as const, gap: spacing.sm },
+  cornerPanel: {
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   cornerName: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: theme.fontSize.body,
     letterSpacing: 0.5,
-    color: theme.palette.heritageGold,
+    color: palette.heritageGold,
   },
   cornerRow: {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    paddingVertical: theme.spacing.xs,
+    paddingVertical: spacing.xs,
   },
   cornerValue: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-  },
-  doctrine: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    paddingHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.xxl,
-  },
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  traitPanel: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  cornerPanel: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.lg,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
+    color: palette.cream,
   },
   snapPanel: {
-    backgroundColor: theme.palette.card2,
-    borderRadius: theme.radius.lg,
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.xs,
+    borderColor: palette.line,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.xs,
   },
   snapDate: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
   snapLine: {
-    fontFamily: theme.fonts.body,
+    fontFamily: fonts.body,
     fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+    color: palette.cream,
   },
   snapShareRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     borderTopWidth: 1,
-    borderTopColor: theme.palette.line,
-    paddingTop: theme.spacing.sm,
-    marginTop: theme.spacing.xs,
+    borderTopColor: palette.line,
+    paddingTop: spacing.sm,
+    marginTop: spacing.xs,
   },
   snapShareLabel: {
-    fontFamily: theme.fonts.body,
+    fontFamily: fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
   snapFootnote: {
-    fontFamily: theme.fonts.bodyLight,
+    fontFamily: fonts.bodyLight,
     fontSize: theme.fontSize.small,
     fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
+  doctrine: {
+    fontFamily: fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic' as const,
+    color: palette.creamMute,
+    textAlign: 'center' as const,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xxl,
   },
 };
