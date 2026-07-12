@@ -1,104 +1,106 @@
 /**
- * appMap — source unique de vérité de la navigation pilote (OXV Platform).
+ * appMap — source unique de vérité de la navigation pilote.
  *
- * Mappe chaque route réelle de `app/(app)/*` vers une zone (Paddock · Session ·
- * Bilan · Progression · Club · Compte). La barre d'onglets, le Paddock contextuel
- * et le futur Data Lab lisent cette table — fini les menus improvisés.
+ * Mappe chaque route réelle de `app/(app)/*` vers une zone. La barre d'onglets, le
+ * Paddock contextuel et le Data Lab lisent cette table — fini les menus improvisés.
  *
- * Décisions verrouillées (cf. docs/refonte-app/00_PLATEFORME_OXV.md §4) :
- *   - 5 onglets dans cet ordre : Paddock · Session · Bilan · Progression · Club.
- *   - Compte = icône haut-droite, JAMAIS un onglet (absent de TAB_ORDER).
+ * Nav = celle des MAQUETTES Claude Design refonte-v2 (§6 IA · décision fondateur
+ * 2026-07-12, remplace l'ancienne nav OXV Platform) :
+ *   - 5 onglets dans cet ordre : Miroir · Data Lab · Carnet · Découverte · Compte.
+ *   - Miroir = la lecture de soi (Paddock, Bilan, Signature/QDI, Progression).
+ *   - Data Lab = l'analyse (carte, virage, tours, heatmap, replay, télémétrie).
+ *   - Carnet = espace perso (ressenti, conditions, repères/objectifs).
+ *   - Découverte = marketplace / social (coachs, partenaires, roulages, mon coach).
+ *   - Compte = réglages (profil, garage, boîtier, données, notifications, support).
+ *   - Compte EST désormais le 5e onglet (dans les maquettes) — l'icône compte
+ *     reste possible en en-tête, mais la nav de fond le porte.
  *   - L'or est interdit sur la nav (géré dans AppTabBar).
- * Dérivé de `02_AUDIT_ROUTES.md` (colonne « Zone cible »).
  */
 
-export type Zone = 'paddock' | 'session' | 'bilan' | 'progression' | 'club' | 'compte';
+export type Zone = 'miroir' | 'datalab' | 'carnet' | 'decouverte' | 'compte';
 
-/** Ordre exact des onglets. `compte` n'y est PAS (icône, pas un onglet). */
-export const TAB_ORDER = ['paddock', 'session', 'bilan', 'progression', 'club'] as const;
+/** Ordre exact des onglets (maquettes refonte-v2 §5). */
+export const TAB_ORDER = ['miroir', 'datalab', 'carnet', 'decouverte', 'compte'] as const;
 export type TabZone = (typeof TAB_ORDER)[number];
 
 /** Route racine atteinte au tap d'un onglet (groupe expo-router inclus). */
 export const TAB_MAIN_ROUTE: Record<TabZone, string> = {
-  paddock: '/(app)',
-  session: '/(app)/session',
-  bilan: '/(app)/bilan',
-  progression: '/(app)/progression',
-  club: '/(app)/club',
+  miroir: '/(app)',
+  datalab: '/(app)/data-lab',
+  carnet: '/(app)/carnet',
+  decouverte: '/(app)/coachs',
+  compte: '/(app)/compte',
 };
 
 /**
  * Segment de route (sans groupe ni slash) → zone. Le segment '' correspond à
- * l'index (Paddock). Toute route de l'audit a une entrée ici (pas d'orpheline).
+ * l'index (Paddock, home Miroir). Toute route a une entrée ici (pas d'orpheline).
  */
 export const ROUTE_TO_ZONE: Record<string, Zone> = {
-  // Paddock
-  '': 'paddock',
-  index: 'paddock',
-  paddock: 'paddock',
-  'pass-oxv': 'paddock',
-  // Session (flux de capture)
-  session: 'session',
-  preparation: 'session',
-  equipement: 'session',
-  placement: 'session',
-  roulage: 'session',
-  'entre-runs': 'session',
-  'pilotage-fini': 'session',
-  'bilan-pret': 'session',
-  // Bilan + sous-vues Data Lab
-  bilan: 'bilan',
-  trace: 'bilan',
-  'data-lab': 'bilan',
-  'data-lab-canvas': 'bilan',
-  conditions: 'bilan',
-  carte: 'bilan',
-  virage: 'bilan',
-  'virage-comparer': 'bilan',
-  tours: 'bilan',
-  heatmap: 'bilan',
-  replay: 'bilan',
-  telemetry: 'bilan',
-  insights: 'bilan',
-  insight: 'bilan',
-  debrief: 'bilan',
-  'debrief-presentiel': 'bilan',
-  'prochaine-fois': 'bilan',
-  circuits: 'bilan',
-  circuit: 'bilan',
-  partage: 'bilan',
-  'carte-trophee': 'bilan',
-  // Progression
-  progression: 'progression',
-  signature: 'progression',
-  regularite: 'progression',
-  comparateur: 'progression',
-  stats: 'progression',
-  objectifs: 'progression',
-  carnet: 'progression',
-  programme: 'progression',
-  passeport: 'progression',
-  'empreinte-saison': 'progression',
-  'carte-licence': 'progression',
-  roulages: 'progression',
-  // Club
-  club: 'club',
-  'mon-coach': 'club',
-  coachs: 'club',
-  coach: 'club',
-  'mes-demandes': 'club',
-  amis: 'club',
-  // Territoire fusionné : `carte-oxv` est l'écran unique (carte + liste). Les
-  // anciennes coquilles `social` / `social-carte` / `lieux` ont été SUPPRIMÉES
-  // (PR-86, nettoyage E6 post-bascule — plus aucune navigation ne les vise).
-  'carte-oxv': 'club',
-  partenaires: 'club',
-  'cote-a-cote': 'club',
-  'belle-route': 'club',
-  'mes-routes': 'club',
-  'creer-trace': 'club',
-  galerie: 'club',
-  // Compte (icône, pas un onglet)
+  // ── MIROIR — la lecture de soi
+  '': 'miroir',
+  index: 'miroir',
+  paddock: 'miroir',
+  'pass-oxv': 'miroir',
+  bilan: 'miroir',
+  trace: 'miroir',
+  debrief: 'miroir',
+  'debrief-presentiel': 'miroir',
+  signature: 'miroir',
+  regularite: 'miroir',
+  progression: 'miroir',
+  stats: 'miroir',
+  comparateur: 'miroir',
+  'empreinte-saison': 'miroir',
+  passeport: 'miroir',
+  'carte-licence': 'miroir',
+  // Amorce/fin de séance (la barre s'efface pendant le flux, cf. CAPTURE_FLOW) —
+  // rattachées au Miroir (le pipeline séance → bilan).
+  session: 'miroir',
+  roulage: 'miroir',
+  'entre-runs': 'miroir',
+  'pilotage-fini': 'miroir',
+  'bilan-pret': 'miroir',
+
+  // ── DATA LAB — l'analyse
+  'data-lab': 'datalab',
+  'data-lab-canvas': 'datalab',
+  conditions: 'datalab',
+  carte: 'datalab',
+  virage: 'datalab',
+  'virage-comparer': 'datalab',
+  tours: 'datalab',
+  heatmap: 'datalab',
+  replay: 'datalab',
+  telemetry: 'datalab',
+  insights: 'datalab',
+  insight: 'datalab',
+
+  // ── CARNET — espace perso (sans donnée ni couleur QDI)
+  carnet: 'carnet',
+  'prochaine-fois': 'carnet',
+  objectifs: 'carnet',
+  programme: 'carnet',
+
+  // ── DÉCOUVERTE — marketplace / social
+  club: 'decouverte',
+  coachs: 'decouverte',
+  coach: 'decouverte',
+  'mon-coach': 'decouverte',
+  'mes-demandes': 'decouverte',
+  amis: 'decouverte',
+  'cote-a-cote': 'decouverte',
+  partenaires: 'decouverte',
+  'carte-oxv': 'decouverte',
+  'belle-route': 'decouverte',
+  'mes-routes': 'decouverte',
+  'creer-trace': 'decouverte',
+  galerie: 'decouverte',
+  roulages: 'decouverte',
+  partage: 'decouverte',
+  'carte-trophee': 'decouverte',
+
+  // ── COMPTE — réglages (5e onglet dans les maquettes)
   compte: 'compte',
   profil: 'compte',
   settings: 'compte',
@@ -109,6 +111,12 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   notifications: 'compte',
   'donnees-securite': 'compte',
   legal: 'compte',
+  circuits: 'compte',
+  circuit: 'compte',
+  // Journée sur circuit (jour J) + amorce matériel — rattachées au Compte (§7.13).
+  preparation: 'compte',
+  equipement: 'compte',
+  placement: 'compte',
 };
 
 /** Premier segment d'un pathname expo-router (sans groupe). '/virage' → 'virage'. */
@@ -121,7 +129,7 @@ export function zoneOfRoute(path: string): Zone | null {
   return ROUTE_TO_ZONE[firstSegment(path)] ?? null;
 }
 
-/** Écrans d'analyse détaillée rangés sous le Bilan (assemblés par le Data Lab). */
+/** Écrans d'analyse détaillée rangés sous le Data Lab. */
 const DATA_LAB_SCREENS = [
   'carte',
   'virage',

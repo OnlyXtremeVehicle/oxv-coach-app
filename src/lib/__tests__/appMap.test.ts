@@ -38,23 +38,25 @@ const UNMAPPED_ALLOWLIST = new Set([
 ]);
 
 describe('appMap', () => {
-  it('TAB_ORDER est exact et dans l’ordre verrouillé', () => {
-    expect(TAB_ORDER).toEqual(['paddock', 'session', 'bilan', 'progression', 'club']);
+  it('TAB_ORDER = les 5 zones des maquettes refonte-v2', () => {
+    expect(TAB_ORDER).toEqual(['miroir', 'datalab', 'carnet', 'decouverte', 'compte']);
   });
 
-  it('compte n’est jamais un onglet', () => {
-    expect(TAB_ORDER as readonly string[]).not.toContain('compte');
+  it('Compte est désormais le 5e onglet (maquettes refonte-v2)', () => {
+    expect(TAB_ORDER as readonly string[]).toContain('compte');
+    expect(TAB_ORDER[TAB_ORDER.length - 1]).toBe('compte');
   });
 
   it('zoneOfRoute mappe les routes clés', () => {
-    expect(zoneOfRoute('/')).toBe('paddock');
-    expect(zoneOfRoute('/bilan')).toBe('bilan');
-    expect(zoneOfRoute('/virage')).toBe('bilan');
-    expect(zoneOfRoute('/insight/abc')).toBe('bilan');
-    expect(zoneOfRoute('/mon-coach')).toBe('club');
+    expect(zoneOfRoute('/')).toBe('miroir');
+    expect(zoneOfRoute('/bilan')).toBe('miroir');
+    expect(zoneOfRoute('/signature')).toBe('miroir');
+    expect(zoneOfRoute('/progression')).toBe('miroir');
+    expect(zoneOfRoute('/virage')).toBe('datalab');
+    expect(zoneOfRoute('/insight/abc')).toBe('datalab');
+    expect(zoneOfRoute('/carnet')).toBe('carnet');
+    expect(zoneOfRoute('/mon-coach')).toBe('decouverte');
     expect(zoneOfRoute('/settings')).toBe('compte');
-    expect(zoneOfRoute('/progression')).toBe('progression');
-    expect(zoneOfRoute('/session')).toBe('session');
   });
 
   it('zoneOfRoute renvoie null pour une route hors zone', () => {
@@ -74,8 +76,8 @@ describe('appMap', () => {
       'insights',
     ]) {
       expect(dl).toContain(r);
-      // cohérence : chaque écran Data Lab est bien rangé sous Bilan
-      expect(ROUTE_TO_ZONE[r]).toBe('bilan');
+      // cohérence : chaque écran Data Lab est bien rangé sous la zone Data Lab
+      expect(ROUTE_TO_ZONE[r]).toBe('datalab');
     }
   });
 
@@ -108,8 +110,8 @@ describe('appMap — cohérence avec les routes réelles', () => {
     const realSet = new Set(real);
     for (const [tab, route] of Object.entries(TAB_MAIN_ROUTE)) {
       const seg = route.replace('/(app)', '').replace(/^\/+/, '');
-      // paddock = index ('/(app)' → ''), les autres ont un segment réel.
-      if (tab === 'paddock') expect(seg).toBe('');
+      // miroir = index ('/(app)' → ''), les autres ont un segment réel.
+      if (tab === 'miroir') expect(seg).toBe('');
       else expect(realSet.has(seg)).toBe(true);
     }
   });

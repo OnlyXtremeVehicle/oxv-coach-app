@@ -1,5 +1,8 @@
 /**
- * AppTabBar — barre d'onglets 5 zones (OXV Platform, PR 1).
+ * AppTabBar — barre d'onglets 5 zones (maquettes Claude Design refonte-v2 §5).
+ *
+ * Zones : Miroir · Data Lab · Carnet · Découverte · Compte (Compte EST un onglet
+ * dans les maquettes — décision fondateur 2026-07-12).
  *
  * Specs canon (`docs/refonte-app/04_DESIGN_CANON.md §4`) : hauteur 88 + safe-area,
  * fond `rgba(5,5,5,0.9)`, border-top `#1C1C20`, icônes 21 stroke 1.65, label
@@ -32,11 +35,11 @@ const BG = 'rgba(5,5,5,0.9)';
 const BORDER = '#1C1C20';
 
 const LABELS: Record<TabZone, string> = {
-  paddock: 'PADDOCK',
-  session: 'SESSION',
-  bilan: 'BILAN',
-  progression: 'PROGRESSION',
-  club: 'CLUB',
+  miroir: 'MIROIR',
+  datalab: 'DATA LAB',
+  carnet: 'CARNET',
+  decouverte: 'DÉCOUVERTE',
+  compte: 'COMPTE',
 };
 
 export function AppTabBar({ activeZone }: { activeZone: Zone | null }) {
@@ -88,36 +91,39 @@ function TabIcon({ zone, color }: { zone: TabZone; color: string }) {
   };
   return (
     <Svg width={21} height={21} viewBox="0 0 24 24">
-      {zone === 'paddock' ? (
+      {/* Miroir — la lecture de soi : cercle traversé d'une ligne de reflet. */}
+      {zone === 'miroir' ? (
         <>
-          <Path d="M6 21V3.5" {...p} />
-          <Path d="M6 4.5h11l-2.5 3.5L17 11H6" {...p} />
+          <Circle cx={12} cy={12} r={8.2} {...p} />
+          <Path d="M4 12h16" {...p} />
         </>
       ) : null}
-      {zone === 'session' ? (
+      {/* Data Lab — l'analyse : axes + courbe. */}
+      {zone === 'datalab' ? (
         <>
-          <Circle cx={12} cy={12} r={8.5} {...p} />
-          <Path d="M10.3 8.4l5 3.6-5 3.6z" {...p} />
+          <Path d="M4.5 4.5V20h15" {...p} />
+          <Path d="M7.5 15.5l3-4 3 2 4-6" {...p} />
         </>
       ) : null}
-      {zone === 'bilan' ? (
+      {/* Carnet — espace perso : carnet à reliure. */}
+      {zone === 'carnet' ? (
         <>
-          <Path d="M4.5 17a8 8 0 1 1 15 0" {...p} />
-          <Path d="M12 12.5l3.6-2.6" {...p} />
+          <Path d="M6.5 4.5h11v15h-11z" {...p} />
+          <Path d="M9.5 4.5V19.5M12.5 9h3.5M12.5 13h3.5" {...p} />
         </>
       ) : null}
-      {zone === 'progression' ? (
+      {/* Découverte — marketplace/social : boussole. */}
+      {zone === 'decouverte' ? (
         <>
-          <Path d="M4 17l5-5 4 3 7-8" {...p} />
-          <Path d="M20 7v4M20 7h-4" {...p} />
+          <Circle cx={12} cy={12} r={8.2} {...p} />
+          <Path d="M14.8 9.2l-1.8 4.2-4.2 1.8 1.8-4.2z" {...p} />
         </>
       ) : null}
-      {zone === 'club' ? (
+      {/* Compte — réglages : silhouette. */}
+      {zone === 'compte' ? (
         <>
-          <Circle cx={9} cy={8} r={3} {...p} />
-          <Path d="M3.5 20c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5" {...p} />
-          <Path d="M16 5.6a3 3 0 0 1 0 6" {...p} />
-          <Path d="M15.5 14.6c2.8.2 4.5 2.4 4.5 5.4" {...p} />
+          <Circle cx={12} cy={8} r={3.2} {...p} />
+          <Path d="M5.5 19.5c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" {...p} />
         </>
       ) : null}
     </Svg>
