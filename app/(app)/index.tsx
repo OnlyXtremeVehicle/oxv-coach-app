@@ -27,9 +27,9 @@ import { getMyNextTrackDay, type NextTrackDay } from '@/services/nextTrackDaySer
 import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
-import { formatLapTime } from '@/utils/format';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { formatChronoMs } from '@/utils/time';
 import { theme } from '@/theme/v2';
 import { AccountButton } from '@/ui/AccountButton';
 import { Card } from '@/ui/Card';
@@ -235,8 +235,13 @@ function ModeCountdown({ firstName, action }: { firstName: string; action: Paddo
   );
 }
 
-/** « Votre séance de vendredi » — jour de la séance, en toutes lettres. */
-function weekdayOf(date: Date): string {
+/**
+ * « Votre séance de vendredi » — jour en toutes lettres, UNIQUEMENT si la séance
+ * a moins de 7 jours (au-delà, « de vendredi » deviendrait trompeur).
+ */
+function recentWeekdayOf(date: Date): string | null {
+  const ageDays = (Date.now() - date.getTime()) / 86_400_000;
+  if (ageDays >= 7) return null;
   return date.toLocaleDateString('fr-FR', { weekday: 'long' });
 }
 
@@ -282,7 +287,10 @@ function ModePassive({
           {recentSession ? (
             <>
               {' '}
-              Votre séance de {weekdayOf(recentSession.startedAt)} est{' '}
+              {(() => {
+                const day = recentWeekdayOf(recentSession.startedAt);
+                return day ? `Votre séance de ${day} est ` : 'Votre dernière séance est ';
+              })()}
               <Text style={s.greetStrong}>prête.</Text>
             </>
           ) : null}
@@ -290,7 +298,12 @@ function ModePassive({
       </FadeInSection>
 
       {loading ? (
-        <View style={s.bilanSkeleton} accessibilityLabel="Chargement de votre dernier bilan">
+        <View
+          style={s.bilanSkeleton}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel="Chargement de votre dernier bilan"
+        >
           <View style={s.skelLineWide} />
           <View style={[s.skelLine, { marginTop: spacing.sm }]} />
         </View>
@@ -333,13 +346,13 @@ function ModePassive({
               >
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={`Votre meilleur tour, ${formatLapTime(bestSeconds)}`}
+                  accessibilityLabel={`Votre meilleur tour, ${formatChronoMs(bestSeconds * 1000)}`}
                   style={({ pressed }) => [s.bestCard, { opacity: pressed ? 0.9 : 1 }]}
                 >
                   <View style={s.goldDot} />
                   <Text style={s.bestLabel}>Votre meilleur tour</Text>
                   <Text style={s.bestDash}> — </Text>
-                  <Text style={s.bestChrono}>{formatLapTime(bestSeconds)}</Text>
+                  <Text style={s.bestChrono}>{formatChronoMs(bestSeconds * 1000)}</Text>
                 </Pressable>
               </Link>
             </FadeInSection>
@@ -463,7 +476,8 @@ const s = StyleSheet.create({
     color: dataColors.regularity,
     marginTop: spacing.sm,
   },
-  regUnit: { fontFamily: fonts.mono, fontSize: 20, letterSpacing: 0, color: dataColors.regularity },
+  // Unité atténuée (maquette : « s » gris, plus petit que les chiffres).
+  regUnit: { fontFamily: fonts.mono, fontSize: 20, letterSpacing: 0, color: palette.creamMute },
   regSub: {
     fontFamily: fonts.mono,
     fontSize: 11,
@@ -552,10 +566,10 @@ const s = StyleSheet.create({
     marginTop: spacing.xl,
   },
 
-  // Action principale contextuelle (canon : crème pleine largeur, texte sombre).
+  // Action principale contextuelle (maquette : crème quasi-pilule, texte sombre).
   primaryBtn: {
     backgroundColor: palette.cream,
-    borderRadius: 16,
+    borderRadius: 27,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',
@@ -572,24 +586,6 @@ const s = StyleSheet.create({
     marginTop: spacing.xxl,
     lineHeight: theme.fontSize.small * 1.5,
   },
-  shortcutRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.sm },
-  ghost: {
-    flex: 1,
-    height: 50,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: palette.line,
-    borderRadius: radius.lg,
-  },
-  ghostText: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: palette.creamMute,
-  },
-
   // Modes de flux (S5 silence en piste / S4 prochaine session)
   modeWrap: { marginTop: spacing.xxl * 2 },
   modeTitle: {

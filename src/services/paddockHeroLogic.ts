@@ -81,7 +81,8 @@ export function decidePaddockAction(input: PaddockHeroInput): PaddockAction | nu
     default:
       return hasRecentSession
         ? {
-            label: 'Découvrir mon dernier bilan',
+            // Copie maquette §7.1 : « Lire le bilan » (sec, direct).
+            label: 'Lire le bilan',
             href: withSession('/(app)/bilan', recentSessionId),
             hint: null,
           }

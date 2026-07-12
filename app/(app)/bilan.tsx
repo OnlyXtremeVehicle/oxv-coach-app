@@ -16,7 +16,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, type DimensionValue, Pressable, Text, View } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
-import Svg, { Line as SvgLine, Rect as SvgRect } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Line as SvgLine, Rect as SvgRect } from 'react-native-svg';
 
 import type { SessionInsights } from '@/circuit/sessionInsights';
 import {
@@ -81,6 +81,7 @@ export default function BilanScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
   const [contextRows, setContextRows] = useState<{ label: string; value: string }[]>([]);
   const [highlights, setHighlights] = useState<CoachPilotHighlight[]>([]);
   const [readingWeights, setReadingWeights] = useState<CoachReadingWeights[]>([]);
@@ -290,15 +291,26 @@ export default function BilanScreen() {
       const reg = computeRegularity(valid);
       const durations = valid.map((l) => l.durationSeconds).filter((d) => d > 0);
       const previous = await fetchPreviousSessions(profile.id, circuitId, 8, sessionId);
+      // Compte EXACT des séances sur ce circuit (le « Nᵉ séance ici » ne doit
+      // pas saturer à la limite de fetchPreviousSessions).
+      let hereCountQuery = supabase
+        .from('telemetry_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profile.id)
+        .eq('status', 'completed');
+      if (circuitId) hereCountQuery = hereCountQuery.eq('circuit_id', circuitId);
+      const { count: hereCount } = await hereCountQuery;
       if (cancelled) return;
       const prevWithBest = previous.find((s) => s.best_lap_seconds != null) ?? null;
       setLapDurations(durations);
-      setSpreadSeconds(reg.spreadSeconds);
+      // Régularité au tour = ÉCART-TYPE (handoff §9) — même métrique que le
+      // Paddock et Progression : le même ±X,XX s dit la même chose partout.
+      setSpreadSeconds(reg.stdDevSeconds);
       setBestSeconds(reg.bestSeconds ?? ownBest ?? null);
       setAvgSeconds(
         durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null
       );
-      setSessionsHere(previous.length + 1);
+      setSessionsHere(hereCount ?? previous.length + 1);
       setPrevBest(
         prevWithBest?.best_lap_seconds != null
           ? { seconds: prevWithBest.best_lap_seconds, date: prevWithBest.started_at ?? null }
@@ -345,8 +357,10 @@ export default function BilanScreen() {
             hitSlop={theme.hitSlop}
             onPress={async () => {
               setExporting(true);
-              await exportAndShareBilanPdf({ sessionId });
+              setExportError(false);
+              const res = await exportAndShareBilanPdf({ sessionId });
               setExporting(false);
+              if (!res.ok) setExportError(true);
             }}
           >
             {exporting ? (
@@ -427,22 +441,26 @@ export default function BilanScreen() {
           </View>
         </FadeInSection>
 
-        {/* Chips « moments » — faits saillants, jamais des consignes. */}
+        {/* Chips « moments » — faits saillants, jamais des consignes. Couleur par
+            NATURE du moment : référence = or (chrono/record), passage engagé =
+            rouge de donnée, variation = violet régularité. */}
         {keyMoments.length > 0 ? (
           <FadeInSection delay={180}>
             <View style={s.momentWrap}>
-              {keyMoments.slice(0, 3).map((m, i) => (
-                <View
-                  key={m.key}
-                  style={[
-                    s.momentChip,
-                    { borderLeftColor: i === 0 ? palette.gold : dataColors.regularity },
-                  ]}
-                >
-                  <Text style={s.momentTitle}>{m.title}</Text>
-                  <Text style={s.momentFact}>{m.fact}</Text>
-                </View>
-              ))}
+              {keyMoments.slice(0, 3).map((m) => {
+                const color =
+                  m.key === 'reference'
+                    ? palette.gold
+                    : m.key === 'engaged'
+                      ? dataColors.brake
+                      : dataColors.regularity;
+                return (
+                  <View key={m.key} style={[s.momentChip, { borderColor: color }]}>
+                    <Text style={[s.momentTitle, { color }]}>{m.title}</Text>
+                    <Text style={s.momentFact}>{m.fact}</Text>
+                  </View>
+                );
+              })}
             </View>
           </FadeInSection>
         ) : null}
@@ -552,10 +570,17 @@ export default function BilanScreen() {
             loading={exporting}
             onPress={async () => {
               setExporting(true);
-              await exportAndShareBilanPdf({ sessionId });
+              setExportError(false);
+              const res = await exportAndShareBilanPdf({ sessionId });
               setExporting(false);
+              if (!res.ok) setExportError(true);
             }}
           />
+          {exportError ? (
+            <Text style={s.exportError}>
+              Le PDF n&apos;a pas pu être généré. Réessayez dans un instant.
+            </Text>
+          ) : null}
         </View>
 
         {/* Transparence (charte 11) — source/méthode, angles morts, provenance. */}
@@ -601,23 +626,34 @@ function LapDispersion({
   const span = Math.max(0.001, max - min);
   const sorted = [...durations].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
+  // Quartiles RÉELS (interquartile p25→p75) — jamais une bande décorative.
+  const p25 = sorted[Math.floor(sorted.length * 0.25)];
+  const p75 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75))];
   const x = (d: number) => 6 + ((d - min) / span) * (W - 12);
-  const bandHalf = (span / 4 / span) * (W - 12); // ±quartile autour de la médiane
-  const mx = x(median);
   return (
     <View style={{ marginTop: spacing.lg, marginBottom: spacing.xs }}>
       <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
         {/* axe */}
         <SvgLine x1={6} y1={H / 2} x2={W - 6} y2={H / 2} stroke={palette.line} strokeWidth={1} />
-        {/* bande médiane (régularité = violet, translucide) */}
+        {/* bande interquartile réelle (régularité = violet, translucide) */}
         <SvgRect
-          x={Math.max(6, mx - bandHalf)}
+          x={x(p25)}
           y={H / 2 - 8}
-          width={Math.min(W - 12, bandHalf * 2)}
+          width={Math.max(2, x(p75) - x(p25))}
           height={16}
           rx={3}
           fill={dataColors.regularity}
           opacity={0.18}
+        />
+        {/* médiane — trait pointillé violet */}
+        <SvgLine
+          x1={x(median)}
+          y1={H / 2 - 10}
+          x2={x(median)}
+          y2={H / 2 + 10}
+          stroke={dataColors.regularity}
+          strokeWidth={1.2}
+          strokeDasharray="2 3"
         />
         {/* ticks par tour */}
         {durations.map((d, i) => (
@@ -631,16 +667,19 @@ function LapDispersion({
             strokeWidth={1.4}
           />
         ))}
-        {/* marqueur OR du meilleur tour (record) */}
+        {/* marqueur OR « lollipop » du meilleur tour (record) */}
         {bestSeconds != null ? (
-          <SvgLine
-            x1={x(bestSeconds)}
-            y1={H / 2 - 11}
-            x2={x(bestSeconds)}
-            y2={H / 2 + 11}
-            stroke={palette.gold}
-            strokeWidth={2}
-          />
+          <>
+            <SvgLine
+              x1={x(bestSeconds)}
+              y1={H / 2 - 11}
+              x2={x(bestSeconds)}
+              y2={H / 2 + 11}
+              stroke={palette.gold}
+              strokeWidth={2}
+            />
+            <SvgCircle cx={x(bestSeconds)} cy={H / 2 - 11} r={3} fill={palette.gold} />
+          </>
         ) : null}
       </Svg>
     </View>
@@ -667,10 +706,18 @@ function PillarRow({
         accessibilityRole="button"
         accessibilityLabel={`${label}${value != null ? `, ${Math.round(value)} sur 100` : ''}`}
         onPressIn={() => haptics.tap()}
-        style={({ pressed }) => [s.pillarRow, { opacity: pressed ? 0.9 : 1 }]}
+        style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
       >
-        <View style={[s.pillarDot, { backgroundColor: color }]} />
-        <Text style={s.pillarLabel}>{label}</Text>
+        {/* Niveau 1 (maquette) : pastille + nom à gauche, chip à droite. */}
+        <View style={s.pillarHead}>
+          <View style={[s.pillarDot, { backgroundColor: color }]} />
+          <Text style={s.pillarLabel}>{label}</Text>
+          <View style={{ flex: 1 }} />
+          <View style={[s.pillarChip, { borderColor: color, backgroundColor: `${color}14` }]}>
+            <Text style={[s.pillarChipTxt, { color }]}>{pct != null ? Math.round(pct) : '—'}</Text>
+          </View>
+        </View>
+        {/* Niveau 2 : barre PLEINE LARGEUR, repère médian + point coloré. */}
         <View style={s.pillarTrack}>
           <View style={s.pillarMedian} />
           {pct != null ? (
@@ -678,9 +725,6 @@ function PillarRow({
               style={[s.pillarPoint, { left: `${pct}%` as DimensionValue, backgroundColor: color }]}
             />
           ) : null}
-        </View>
-        <View style={[s.pillarChip, { borderColor: color }]}>
-          <Text style={[s.pillarChipTxt, { color }]}>{pct != null ? Math.round(pct) : '—'}</Text>
         </View>
       </Pressable>
     </Link>
@@ -883,17 +927,20 @@ const s = {
     marginTop: spacing.xxl,
     marginBottom: spacing.lg,
   },
-  // Pilier : pastille + nom + barre + chip
-  pillarRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.sm },
+  // Pilier (2 niveaux, maquette) : rangée pastille+nom+chip, puis barre dessous.
+  pillarHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   pillarDot: { width: 8, height: 8, borderRadius: 4 },
   pillarLabel: {
-    fontFamily: fonts.body,
+    fontFamily: fonts.bodySemi,
     fontSize: theme.fontSize.body,
-    color: palette.creamSoft,
-    width: 96,
+    color: palette.cream,
   },
   pillarTrack: {
-    flex: 1,
     height: 3,
     borderRadius: 2,
     backgroundColor: palette.line,
@@ -904,7 +951,6 @@ const s = {
     left: '50%' as DimensionValue,
     width: 1,
     height: 9,
-    marginTop: -3,
     backgroundColor: palette.faint,
   },
   pillarPoint: {
@@ -927,7 +973,7 @@ const s = {
   // Chips « moments »
   momentWrap: { gap: spacing.sm, marginTop: spacing.xl },
   momentChip: {
-    borderLeftWidth: 2,
+    borderWidth: 1,
     borderRadius: radius.sm,
     backgroundColor: palette.card2,
     paddingVertical: spacing.sm,
@@ -937,7 +983,6 @@ const s = {
     fontFamily: fonts.monoMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.4,
-    color: palette.cream,
   },
   momentFact: {
     fontFamily: fonts.body,
@@ -1025,6 +1070,13 @@ const s = {
     marginTop: spacing.sm,
   },
   coachReadingHint: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: spacing.sm,
+  },
+  exportError: {
     fontFamily: fonts.body,
     fontSize: theme.fontSize.small,
     color: palette.creamMute,

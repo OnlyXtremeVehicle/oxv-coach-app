@@ -56,7 +56,6 @@ function polygonPoints(values: (number | null)[]): string {
 export function QdiRadar({
   current,
   reference,
-  referenceSessions,
   detail,
   annotations,
 }: {
@@ -75,7 +74,7 @@ export function QdiRadar({
   return (
     <View accessibilityLabel="Radar QDI cinq branches, comparé à votre propre historique">
       <Svg width="100%" height={SIZE + 8} viewBox={`0 0 ${SIZE} ${SIZE + 8}`}>
-        {/* Grille : anneaux 25/50/75/100 */}
+        {/* Grille : contour plein + anneaux internes très atténués (maquette). */}
         {[0.25, 0.5, 0.75, 1].map((f) => (
           <Polygon
             key={f}
@@ -83,6 +82,7 @@ export function QdiRadar({
             fill="none"
             stroke={palette.line}
             strokeWidth={1}
+            strokeOpacity={f === 1 ? 1 : 0.45}
           />
         ))}
 
@@ -161,7 +161,7 @@ export function QdiRadar({
                 <SvgText
                   x={tip.x}
                   y={tip.y + (detail ? 22 : 12)}
-                  fill={palette.creamMute}
+                  fill={b.color}
                   fontSize={8.5}
                   fontFamily={theme.fonts.body}
                   textAnchor="middle"
@@ -174,11 +174,37 @@ export function QdiRadar({
         })}
       </Svg>
 
-      <Text style={legendStyle}>
-        {hasReference
-          ? `Trait plein : cette séance. Pointillé : la médiane de vos ${referenceSessions ?? ''} dernières séances.`
-          : 'Votre première lecture ici : la référence se construira au fil de vos séances.'}
-      </Text>
+      {/* Légende à échantillons de trait (maquette) : plein = séance, pointillé
+          = empreinte self-only. */}
+      <View style={legendRowStyle}>
+        <View style={legendItemStyle}>
+          <Svg width={22} height={8} viewBox="0 0 22 8">
+            <Line x1={0} y1={4} x2={22} y2={4} stroke={palette.cream} strokeWidth={2} />
+          </Svg>
+          <Text style={legendLabelStyle}>Cette séance</Text>
+        </View>
+        {hasReference ? (
+          <View style={legendItemStyle}>
+            <Svg width={22} height={8} viewBox="0 0 22 8">
+              <Line
+                x1={0}
+                y1={4}
+                x2={22}
+                y2={4}
+                stroke={palette.faint}
+                strokeWidth={1.5}
+                strokeDasharray="4 4"
+              />
+            </Svg>
+            <Text style={legendLabelStyle}>Votre empreinte</Text>
+          </View>
+        ) : null}
+      </View>
+      {!hasReference ? (
+        <Text style={legendStyle}>
+          Votre première lecture ici : la référence se construira au fil de vos séances.
+        </Text>
+      ) : null}
       {currentValues.some((v) => v === null) ? (
         <Text style={legendStyle}>
           Une branche sans valeur manque de données pour être mesurée — rien n'est inventé.
@@ -195,4 +221,22 @@ const legendStyle = {
   lineHeight: theme.fontSize.small * 1.5,
   textAlign: 'center' as const,
   marginTop: theme.spacing.sm,
+};
+
+const legendRowStyle = {
+  flexDirection: 'row' as const,
+  justifyContent: 'center' as const,
+  gap: theme.spacing.xl,
+  marginTop: theme.spacing.sm,
+};
+const legendItemStyle = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  gap: theme.spacing.sm,
+};
+const legendLabelStyle = {
+  fontFamily: theme.fonts.mono,
+  fontSize: 10,
+  letterSpacing: 0.6,
+  color: palette.creamMute,
 };

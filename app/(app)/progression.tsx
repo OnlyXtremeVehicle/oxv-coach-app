@@ -72,21 +72,27 @@ function formatDeltaSeconds(d: number): string {
   return `${sign}${Math.abs(d).toFixed(1).replace('.', ',')} s`;
 }
 
-/** « 1:24.3 » — chrono roi compact (dixième), mono. */
+/** « 1:24.3 » — chrono roi compact (dixième), mono. Arrondi AVANT le découpage
+ *  des minutes (119,97 s → « 2:00.0 », jamais « 1:60.0 »). */
 function formatBestShort(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const rest = seconds - m * 60;
+  const t = Math.round(seconds * 10) / 10;
+  const m = Math.floor(t / 60);
+  const rest = t - m * 60;
   return `${m}:${rest.toFixed(1).padStart(4, '0')}`;
 }
 
+/** « JUIL » sans point final (fr-FR abrège « juil. » — la maquette n'en a pas). */
 function monthLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase();
+  return new Date(iso)
+    .toLocaleDateString('fr-FR', { month: 'short' })
+    .replace(/\.$/, '')
+    .toUpperCase();
 }
 
 export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
   const [sessions, setSessions] = useState<SessionPoint[]>([]);
-  const [lastLaps, setLastLaps] = useState<number[]>([]);
+  const [lastLaps, setLastLaps] = useState<{ lapNumber: number; durationSeconds: number }[]>([]);
   const [spreadSeconds, setSpreadSeconds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -103,7 +109,7 @@ export default function ProgressionScreen() {
     (async () => {
       const rows = await fetchAllSessions(profile.id, { limit: 100 });
       if (cancelled) return;
-      const pts: SessionPoint[] = rows
+      const all = rows
         .filter((r) => r.best_lap_seconds != null && Number.isFinite(r.best_lap_seconds))
         .map((r) => ({
           sessionId: r.id,
@@ -111,6 +117,12 @@ export default function ProgressionScreen() {
           circuitName: r.circuit_name,
           bestSeconds: r.best_lap_seconds as number,
         }));
+      // Soi contre soi SUR LE MÊME TERRAIN : la courbe suit le circuit de la
+      // dernière séance — mélanger deux circuits rendrait la progression fausse.
+      const refCircuit = all[0]?.circuitName ?? null;
+      const pts: SessionPoint[] = refCircuit
+        ? all.filter((r) => r.circuitName === refCircuit)
+        : all;
       setSessions(pts); // trié started_at décroissant
 
       // Module 2 — les tours de la DERNIÈRE séance (constance).
@@ -120,8 +132,9 @@ export default function ProgressionScreen() {
         const valid = laps
           .filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0)
           .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }));
-        setLastLaps(valid.map((l) => l.durationSeconds));
-        setSpreadSeconds(computeRegularity(valid).spreadSeconds);
+        setLastLaps(valid);
+        // Constance = ÉCART-TYPE (handoff §9) — même métrique que Paddock/Bilan.
+        setSpreadSeconds(computeRegularity(valid).stdDevSeconds);
       }
       setLoading(false);
     })().catch(() => {
@@ -172,7 +185,7 @@ export default function ProgressionScreen() {
       <AppBar title="Progression" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         {/* ── MODULE 1 — MEILLEUR TOUR ─────────────────────────────────── */}
-        <Text style={[s.moduleEyebrow, { color: palette.goldText }]}>
+        <Text style={[s.moduleEyebrow, { color: palette.gold }]}>
           MEILLEUR TOUR · SÉANCE APRÈS SÉANCE
         </Text>
         {lastBest != null ? (
@@ -216,7 +229,7 @@ export default function ProgressionScreen() {
               </Text>
               <Text style={s.kingSub}>s d&apos;écart</Text>
             </View>
-            <ConstancyBars durations={lastLaps} />
+            <ConstancyBars laps={lastLaps} />
             <Text style={s.modulePhrase}>
               Des barres presque égales — vous êtes régulier. Le tour en or est votre meilleur.
             </Text>
@@ -389,28 +402,32 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
 
 /**
  * Histogramme de constance (maquette) : une barre par tour de la dernière
- * séance, violet sombre — la barre du MEILLEUR tour en OR. Légende T1 /
- * ◆ votre meilleur / TN. Des barres presque égales = régularité.
+ * séance, violet sombre — la barre du MEILLEUR tour en OR, et la plus COURTE
+ * (hauteur = durée du tour : plus rapide = plus court, encodage maquette).
+ * Légende T1 / ◆ votre meilleur / TN. Des barres presque égales = régularité.
  */
-function ConstancyBars({ durations }: { durations: number[] }) {
+function ConstancyBars({ laps }: { laps: { lapNumber: number; durationSeconds: number }[] }) {
   const W = 320;
   const H = 84;
-  const n = durations.length;
-  const gap = 6;
-  const barW = Math.max(6, (W - gap * (n - 1)) / n);
+  const n = laps.length;
+  // Gap dérivé de n : au-delà de ~27 tours, un gap fixe ferait déborder le viewBox.
+  const gap = Math.min(6, W / (3 * n));
+  const barW = (W - gap * (n - 1)) / n;
+  const durations = laps.map((l) => l.durationSeconds);
   const lo = Math.min(...durations);
   const hi = Math.max(...durations);
   const span = hi - lo || 1;
-  // Barres hautes et proches : la variation ne module que le TIERS supérieur —
-  // des tours presque égaux donnent des barres presque égales (lecture maquette).
-  const hFor = (d: number) => H * 0.55 + ((hi - d) / span) * H * 0.35;
+  // Hauteur = durée (le rapide est plus court). La variation ne module que le
+  // tiers supérieur : des tours presque égaux donnent des barres presque égales.
+  const hFor = (d: number) => H * 0.55 + ((d - lo) / span) * H * 0.35;
   const bestIdx = durations.indexOf(lo);
+  const bestLapNumber = laps[bestIdx]?.lapNumber ?? bestIdx + 1;
 
   return (
     <View
       accessible
       accessibilityRole="image"
-      accessibilityLabel={`Régularité sur ${n} tours ; le meilleur est le tour ${bestIdx + 1}.`}
+      accessibilityLabel={`Régularité sur ${n} tours ; le meilleur est le tour ${bestLapNumber}.`}
     >
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
         {durations.map((d, i) => {
@@ -430,7 +447,7 @@ function ConstancyBars({ durations }: { durations: number[] }) {
       </Svg>
       <View style={s.axisRow}>
         <Text style={s.axis}>T1</Text>
-        <Text style={[s.axis, { color: palette.goldText }]}>◆ votre meilleur</Text>
+        <Text style={[s.axis, { color: palette.gold }]}>◆ votre meilleur</Text>
         <Text style={s.axis}>T{n}</Text>
       </View>
     </View>

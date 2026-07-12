@@ -273,32 +273,38 @@ export default function SignatureScreen() {
             {hasContent ? (
               <FadeInSection delay={80}>
                 <View style={s.lectureCard}>
-                  {signature.traits.slice(0, 3).map((trait) => (
-                    <View
-                      key={trait.key}
-                      style={s.lectureRow}
-                      accessible
-                      accessibilityLabel={`${trait.label} : ${trait.value}`}
-                    >
+                  {/* Régularité d'abord (maquette : 1re ligne violette), puis les
+                      autres traits mesurés. Libellé + valeur colorée + détail. */}
+                  {[...signature.traits]
+                    .sort((a, b) => (a.key === 'regularity' ? -1 : b.key === 'regularity' ? 1 : 0))
+                    .slice(0, 3)
+                    .map((trait) => (
                       <View
-                        style={[
-                          s.lectureDot,
-                          { backgroundColor: TRAIT_COLOR[trait.key] ?? palette.creamMute },
-                        ]}
-                      />
-                      <Text style={s.lectureText}>
-                        <Text
-                          style={{
-                            color: TRAIT_COLOR[trait.key] ?? palette.cream,
-                            fontFamily: fonts.bodyMedium,
-                          }}
-                        >
-                          {trait.value}
+                        key={trait.key}
+                        style={s.lectureRow}
+                        accessible
+                        accessibilityLabel={`${trait.label} : ${trait.value}`}
+                      >
+                        <View
+                          style={[
+                            s.lectureDot,
+                            { backgroundColor: TRAIT_COLOR[trait.key] ?? palette.creamMute },
+                          ]}
+                        />
+                        <Text style={s.lectureText}>
+                          {trait.label}{' '}
+                          <Text
+                            style={{
+                              color: TRAIT_COLOR[trait.key] ?? palette.cream,
+                              fontFamily: fonts.bodyMedium,
+                            }}
+                          >
+                            {trait.value.toLowerCase()}
+                          </Text>
+                          {trait.detail ? ` — ${trait.detail}` : ''}
                         </Text>
-                        {trait.detail ? ` — ${trait.detail}` : ''}
-                      </Text>
-                    </View>
-                  ))}
+                      </View>
+                    ))}
                 </View>
               </FadeInSection>
             ) : null}

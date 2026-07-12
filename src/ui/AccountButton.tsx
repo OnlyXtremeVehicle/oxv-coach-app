@@ -19,7 +19,16 @@ export function AccountButton({ size = 22 }: { size?: number }) {
         accessibilityRole="button"
         accessibilityLabel="Compte"
         hitSlop={theme.hitSlop}
-        style={({ pressed }) => ({ padding: 4, opacity: pressed ? 0.6 : 1 })}
+        style={({ pressed }) => ({
+          // Cercle plein (maquette §7.1) : glyphe dans une pastille surface-2.
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: theme.palette.card2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.6 : 1,
+        })}
       >
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
           <Circle cx={12} cy={8} r={3.4} stroke={theme.palette.creamMute} strokeWidth={1.6} />
