@@ -47,6 +47,12 @@ function median(values: number[]): number | null {
   return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
 }
 
+/**
+ * Écart-type POPULATION (division par N, pas N−1) — choix assumé : mesure
+ * DESCRIPTIVE de la séance telle qu'elle est (pas une inférence sur une
+ * population), cohérent avec qdiLogic.computeRegularite. Pour très peu de
+ * tours, il minore la dispersion (N=2 → facteur ≈ 0,71).
+ */
 function stdDev(values: number[]): number | null {
   if (values.length < 2) return null;
   const mean = values.reduce((a, b) => a + b, 0) / values.length;

@@ -16,8 +16,11 @@
  */
 export function formatLapTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '—';
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds - mins * 60;
+  // Arrondi AVANT le découpage des minutes : 119,995 s → « 2'00.00 »,
+  // jamais « 1'60.00 » (bord de retenue du toFixed).
+  const total = Math.round(seconds * 100) / 100;
+  const mins = Math.floor(total / 60);
+  const secs = total - mins * 60;
   if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
   return `${secs.toFixed(2)} s`;
 }

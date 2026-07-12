@@ -24,7 +24,7 @@ import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
 import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
 import { getMyNextTrackDay, type NextTrackDay } from '@/services/nextTrackDayService';
-import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
+import { getOrComputeQdiForSession, type QdiRecord } from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { useAppStateStore } from '@/store/useAppStateStore';
@@ -84,7 +84,7 @@ export default function HomeHubScreen() {
     (async () => {
       const { data, error } = await supabase
         .from('telemetry_sessions')
-        .select('id, started_at, circuit_name')
+        .select('id, started_at, circuit_name, best_lap_seconds')
         .eq('user_id', profile.id)
         .eq('status', 'completed')
         .order('started_at', { ascending: false })
@@ -98,8 +98,10 @@ export default function HomeHubScreen() {
           startedAt: new Date(data.started_at),
           circuitName: data.circuit_name,
         });
-        // Radar QDI de cette session (lecture seule — le calcul vit ailleurs).
-        getQdiForSession(data.id)
+        // Radar QDI — recalcul PARESSEUX (session rattrapée par le cron serveur
+        // ou QDI d'un algo antérieur), comme la Signature. RLS own-row : seul
+        // le propriétaire écrit ; ici c'est toujours lui.
+        getOrComputeQdiForSession(data.id)
           .then((q) => {
             if (!cancelled) setQdi(q);
           })
@@ -115,7 +117,10 @@ export default function HomeHubScreen() {
           if (reg.stdDevSeconds !== null) {
             setRegularity({ stdDevSeconds: reg.stdDevSeconds, lapCount: reg.lapCount });
           }
-          if (reg.bestSeconds != null) setBestSeconds(reg.bestSeconds);
+          // Repli sur l'agrégat de séance (écrit à la complétion) si les lignes
+          // laps manquent — même chaîne que le Bilan et la carte trophée.
+          const aggBest = (data as { best_lap_seconds?: number | null }).best_lap_seconds ?? null;
+          setBestSeconds(reg.bestSeconds ?? aggBest);
         }
       }
       if (!cancelled) setLoading(false);
@@ -321,7 +326,7 @@ function ModePassive({
                   ±{regularity.stdDevSeconds.toFixed(2).replace('.', ',')}
                   <Text style={s.regUnit}> s</Text>
                 </Text>
-                <Text style={s.regSub}>{regularity.lapCount} tours</Text>
+                <Text style={s.regSub}>{regularity.lapCount} tours lancés</Text>
               </>
             ) : (
               <Text style={s.regSub}>{timeAgoFr(recentSession.startedAt)}</Text>

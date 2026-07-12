@@ -48,7 +48,15 @@ export async function fetchPreviousSessions(
   }
 }
 
-export async function fetchSessionLaps(sessionId: string): Promise<Lap[]> {
+/**
+ * @param opts.strict — fait REMONTER l'erreur au lieu de rendre [] : un écran
+ * strict distingue « panne réseau » (état erreur + retry) de « aucun tour »
+ * (empty state). Sans strict, [] sur erreur (compat des appelants existants).
+ */
+export async function fetchSessionLaps(
+  sessionId: string,
+  opts?: { strict?: boolean }
+): Promise<Lap[]> {
   try {
     const { data, error } = await supabase
       .from('laps')
@@ -56,9 +64,13 @@ export async function fetchSessionLaps(sessionId: string): Promise<Lap[]> {
       .eq('session_id', sessionId)
       .order('lap_number', { ascending: true });
 
-    if (error || !data) return [];
-    return data as Lap[];
+    if (error) {
+      if (opts?.strict) throw new Error(error.message);
+      return [];
+    }
+    return (data ?? []) as Lap[];
   } catch (error) {
+    if (opts?.strict) throw error;
     console.error('[Sessions] Fetch laps error:', error);
     return [];
   }
@@ -201,6 +213,8 @@ export async function fetchAllSessions(
     circuitId?: string;
     fromDate?: string;
     toDate?: string;
+    /** Fait REMONTER l'erreur (état erreur + retry) au lieu d'un [] trompeur. */
+    strict?: boolean;
   } = {}
 ): Promise<TelemetrySession[]> {
   try {
@@ -234,11 +248,13 @@ export async function fetchAllSessions(
     const { data, error } = await query;
 
     if (error) {
+      if (options.strict) throw new Error(error.message);
       console.error('[Sessions] Fetch all error:', error);
       return [];
     }
     return (data || []) as TelemetrySession[];
   } catch (error) {
+    if (options.strict) throw error;
     console.error('[Sessions] Fetch all exception:', error);
     return [];
   }

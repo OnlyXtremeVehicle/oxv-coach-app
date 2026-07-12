@@ -51,10 +51,12 @@ import { StateWrapper } from '@/ui/StateWrapper';
 
 const { palette, dataColors, spacing, radius, fonts } = theme;
 
-/** Couleur QDI de chaque trait de signature (une couleur = une donnée). */
+/** Couleur QDI de chaque trait de signature (une couleur = une donnée).
+ *  Le bleu reste à la TRAJECTOIRE (radar) ; l'engagement latéral (G lat, domaine
+ *  de la Fluidité) porte le jaune — jamais deux données sur la même couleur. */
 const TRAIT_COLOR: Record<string, string> = {
   braking: dataColors.brake,
-  lateral: dataColors.trajectory,
+  lateral: dataColors.flow,
   reaccel: dataColors.accel,
   regularity: dataColors.regularity,
 };
@@ -245,7 +247,7 @@ export default function SignatureScreen() {
         {!hasContent && !qdi ? (
           <EmptyState
             message="Votre signature se dessine à partir de la trace de vos tours. Elle apparaîtra après votre premier roulage analysé."
-            source="telemetry_frames · segment_analyses"
+            source="telemetry_frames · app_segment_analyses"
           />
         ) : (
           <>
@@ -368,32 +370,41 @@ export default function SignatureScreen() {
               <View style={{ marginTop: spacing.xxl }}>
                 <Text style={s.eyebrow}>Votre empreinte dans le temps</Text>
                 <View style={{ marginTop: spacing.sm, gap: spacing.sm }}>
-                  {snapshots.map((snap) => {
-                    const braking = traitValue(snap, 'braking');
-                    const lateral = traitValue(snap, 'lateral');
-                    return (
-                      <View key={snap.id} style={s.snapPanel}>
-                        <Text style={s.snapDate}>{snapDate(snap.computedAt)}</Text>
-                        <Text style={s.snapLine}>
-                          Tours {snap.regularityBand ?? '—'}
-                          {braking ? ` · freinage ${braking}` : ''}
-                          {lateral ? ` · engagement ${lateral}` : ''}
-                        </Text>
-                        <View style={s.snapShareRow}>
-                          <Text style={s.snapShareLabel}>Partagée avec mon coach</Text>
-                          <Switch
-                            value={snap.sharedWithCoach}
-                            onValueChange={(v) => onToggleShare(snap, v)}
-                            accessibilityRole="switch"
-                            accessibilityLabel="Partager cette empreinte avec mon coach"
-                            accessibilityState={{ checked: snap.sharedWithCoach }}
-                            trackColor={{ false: '#26262B', true: palette.green }}
-                            thumbColor={palette.cream}
-                          />
+                  {[...snapshots]
+                    .sort((a, b) =>
+                      (b.sessionStartedAt ?? b.computedAt).localeCompare(
+                        a.sessionStartedAt ?? a.computedAt
+                      )
+                    )
+                    .map((snap) => {
+                      const braking = traitValue(snap, 'braking');
+                      const lateral = traitValue(snap, 'lateral');
+                      return (
+                        <View key={snap.id} style={s.snapPanel}>
+                          {/* Date de la SÉANCE (computed_at daterait du recalcul). */}
+                          <Text style={s.snapDate}>
+                            {snapDate(snap.sessionStartedAt ?? snap.computedAt)}
+                          </Text>
+                          <Text style={s.snapLine}>
+                            Tours {snap.regularityBand ?? '—'}
+                            {braking ? ` · freinage ${braking}` : ''}
+                            {lateral ? ` · engagement ${lateral}` : ''}
+                          </Text>
+                          <View style={s.snapShareRow}>
+                            <Text style={s.snapShareLabel}>Partagée avec mon coach</Text>
+                            <Switch
+                              value={snap.sharedWithCoach}
+                              onValueChange={(v) => onToggleShare(snap, v)}
+                              accessibilityRole="switch"
+                              accessibilityLabel="Partager cette empreinte avec mon coach"
+                              accessibilityState={{ checked: snap.sharedWithCoach }}
+                              trackColor={{ false: '#26262B', true: palette.green }}
+                              thumbColor={palette.cream}
+                            />
+                          </View>
                         </View>
-                      </View>
-                    );
-                  })}
+                      );
+                    })}
                 </View>
                 <Text style={s.snapFootnote}>
                   Des constats, séance après séance — pas une note d&apos;évolution.

@@ -21,6 +21,9 @@ export interface SignatureSnapshot {
   id: string;
   sessionId: string | null;
   computedAt: string;
+  /** Date de la SÉANCE source (celle à afficher — computed_at est écrasé à
+   *  chaque recalcul et daterait l'empreinte du jour de la relecture). */
+  sessionStartedAt: string | null;
   regularityBand: string | null;
   traits: SignatureTrait[];
   axes: SignatureAxis[];
@@ -29,7 +32,7 @@ export interface SignatureSnapshot {
 }
 
 const COLS =
-  'id, session_id, computed_at, regularity_band, traits, axes, turn_sample_count, shared_with_coach';
+  'id, session_id, computed_at, regularity_band, traits, axes, turn_sample_count, shared_with_coach, telemetry_sessions(started_at)';
 
 function asTraits(v: unknown): SignatureTrait[] {
   return Array.isArray(v) ? (v as SignatureTrait[]) : [];
@@ -39,10 +42,12 @@ function asAxes(v: unknown): SignatureAxis[] {
 }
 
 function mapSnapshot(r: Record<string, unknown>): SignatureSnapshot {
+  const joined = r.telemetry_sessions as { started_at?: string | null } | null;
   return {
     id: r.id as string,
     sessionId: (r.session_id as string | null) ?? null,
     computedAt: r.computed_at as string,
+    sessionStartedAt: joined?.started_at ?? null,
     regularityBand: (r.regularity_band as string | null) ?? null,
     traits: asTraits(r.traits),
     axes: asAxes(r.axes),

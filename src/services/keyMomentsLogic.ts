@@ -26,9 +26,11 @@ export interface KeyMoment {
   fact: string;
 }
 
+/** Chrono M:SS.mmm — arrondi AVANT découpage (119,9996 s → 2:00.000, jamais 1:60.000). */
 function fmtLap(s: number): string {
-  const m = Math.floor(s / 60);
-  const r = s - m * 60;
+  const totalMs = Math.round(s * 1000);
+  const m = Math.floor(totalMs / 60_000);
+  const r = (totalMs % 60_000) / 1000;
   return `${m}:${r.toFixed(3).padStart(6, '0')}`;
 }
 
@@ -52,7 +54,7 @@ export function computeKeyMoments(input: { laps: KMLap[]; segments: KMSegment[] 
     moments.push({
       key: 'engaged',
       title: 'Le passage le plus engagé',
-      fact: `${top.segmentName ?? `Virage ${top.segmentIndex}`} — ${(top.maxGLateral as number).toFixed(2)} g d'appui latéral.`,
+      fact: `${top.segmentName ?? `Virage ${top.segmentIndex}`} — ${(top.maxGLateral as number).toFixed(2).replace('.', ',')} g d'appui latéral.`,
     });
   }
 
@@ -62,6 +64,9 @@ export function computeKeyMoments(input: { laps: KMLap[]; segments: KMSegment[] 
     let from = sorted[0];
     let to = sorted[0];
     for (let i = 1; i < sorted.length; i++) {
+      // Uniquement des tours PHYSIQUEMENT consécutifs : un écart qui enjambe un
+      // arrêt au stand (in/out-lap intermédiaire) n'est pas une variation de rythme.
+      if (sorted[i].lapNumber !== sorted[i - 1].lapNumber + 1) continue;
       const d = Math.abs(sorted[i].durationSeconds - sorted[i - 1].durationSeconds);
       if (d > maxDelta) {
         maxDelta = d;

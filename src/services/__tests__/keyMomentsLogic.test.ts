@@ -33,7 +33,7 @@ describe('computeKeyMoments', () => {
     });
     const eng = m.find((x) => x.key === 'engaged');
     expect(eng?.fact).toContain('Épingle');
-    expect(eng?.fact).toContain('1.18');
+    expect(eng?.fact).toContain('1,18'); // virgule fr-FR (formats unifiés)
   });
 
   it("écart net entre deux tours quand l'amplitude est notable", () => {

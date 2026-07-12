@@ -144,11 +144,17 @@ function reaccelTrait(turns: SignatureSegmentInput[]): SignatureTrait | null {
   if (mean >= 1.25) value = 'précoce';
   else if (mean >= 1.1) value = 'franche';
   else value = 'posée';
+  // Libellé adapté au signe (chicanes/segments courts : ratio < 1 possible) —
+  // jamais un « -3 % au-dessus » contradictoire.
+  const pct = Math.round((mean - 1) * 100);
   return {
     key: 'reaccel',
     label: 'Réaccélération',
     value,
-    detail: `sortie ${Math.round((mean - 1) * 100)} % au-dessus de la corde`,
+    detail:
+      pct >= 0
+        ? `sortie ${pct} % au-dessus de la corde`
+        : `sortie ${Math.abs(pct)} % en dessous de la corde`,
   };
 }
 

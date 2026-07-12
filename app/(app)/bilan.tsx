@@ -45,7 +45,12 @@ import { listReadingWeightsForMe } from '@/services/coachReadingService';
 import { getSessionContext } from '@/services/coachSessionContextService';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
-import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
+import {
+  getQdiAccessLevel,
+  getQdiForSession,
+  type QdiAccessLevel,
+  type QdiRecord,
+} from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchPreviousSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -89,9 +94,14 @@ export default function BilanScreen() {
   const [demoBanner, setDemoBanner] = useState<DemoBanner | null>(null);
   const [keyMoments, setKeyMoments] = useState<KeyMoment[]>([]);
   const [qdi, setQdi] = useState<QdiRecord | null>(null);
+  const [qdiAccess, setQdiAccess] = useState<QdiAccessLevel>('full');
+  // La lecture pondérée du coach n'a de sens que sur un breakdown COMPLET —
+  // jamais sur des composantes nulles remplacées par 100 (valeur inventée).
+  const [breakdownReliable, setBreakdownReliable] = useState(false);
 
   // Régularité (héros) : durées de tours valides + agrégats (soi contre soi).
   const [lapDurations, setLapDurations] = useState<number[]>([]);
+  const [medianSeconds, setMedianSeconds] = useState<number | null>(null);
   const [spreadSeconds, setSpreadSeconds] = useState<number | null>(null);
   const [bestSeconds, setBestSeconds] = useState<number | null>(null);
   const [avgSeconds, setAvgSeconds] = useState<number | null>(null);
@@ -123,6 +133,15 @@ export default function BilanScreen() {
         if (cancelled) return;
 
         if (existing && existing.marginZone) {
+          // Un breakdown persisté à composantes NULLES ne doit jamais nourrir la
+          // lecture pondérée du coach avec des 100 inventés : on marque le
+          // breakdown non fiable et la carte coach se masque.
+          setBreakdownReliable(
+            existing.marginVehicle != null &&
+              existing.marginPilot != null &&
+              existing.breakdown?.regularity != null &&
+              existing.breakdown?.smoothness != null
+          );
           setMargin({
             marginGlobal: existing.marginGlobal,
             marginZone: existing.marginZone,
@@ -143,6 +162,7 @@ export default function BilanScreen() {
         const laps = await fetchSessionLaps(targetSession.id);
         const result = computeMargin({ session: targetSession, laps });
         if (cancelled) return;
+        setBreakdownReliable(true); // calcul frais : composantes réelles
         setMargin(result);
         setLoading(false);
 
@@ -177,17 +197,22 @@ export default function BilanScreen() {
     };
   }, [session?.id]);
 
-  // Radar QDI (lecture seule) — nourrit les « Quatre piliers ».
+  // Radar QDI (lecture seule) — nourrit les « Quatre piliers ». Le niveau
+  // d'offre gate le DÉTAIL chiffré (Access = forme seule, comme la Signature).
   useEffect(() => {
-    if (!session?.id) return;
+    if (!session?.id || !profile?.id) return;
     let cancelled = false;
-    getQdiForSession(session.id).then((q) => {
-      if (!cancelled) setQdi(q);
-    });
+    Promise.all([getQdiForSession(session.id), getQdiAccessLevel(profile.id)]).then(
+      ([q, access]) => {
+        if (cancelled) return;
+        setQdi(q);
+        setQdiAccess(access);
+      }
+    );
     return () => {
       cancelled = true;
     };
-  }, [session?.id]);
+  }, [session?.id, profile?.id]);
 
   // OXV Key Moments (T-3) — moments factuels saillants (→ chips « moments »).
   useEffect(() => {
@@ -303,6 +328,7 @@ export default function BilanScreen() {
       if (cancelled) return;
       const prevWithBest = previous.find((s) => s.best_lap_seconds != null) ?? null;
       setLapDurations(durations);
+      setMedianSeconds(reg.medianSeconds);
       // Régularité au tour = ÉCART-TYPE (handoff §9) — même métrique que le
       // Paddock et Progression : le même ±X,XX s dit la même chose partout.
       setSpreadSeconds(reg.stdDevSeconds);
@@ -338,7 +364,8 @@ export default function BilanScreen() {
   const contextLine = [
     session.circuit_name ?? 'Séance',
     session.started_at ? formatDateShort(session.started_at) : null,
-    lapDurations.length ? `${lapDurations.length} tours` : null,
+    // « lancés » : tours valides (hors outlap/inlap) — le total enregistré diffère.
+    lapDurations.length ? `${lapDurations.length} tours lancés` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -395,7 +422,11 @@ export default function BilanScreen() {
               —<Text style={s.regUnit}> s</Text>
             </Text>
           )}
-          <LapDispersion durations={lapDurations} bestSeconds={bestSeconds} />
+          <LapDispersion
+            durations={lapDurations}
+            bestSeconds={bestSeconds}
+            medianSeconds={medianSeconds}
+          />
         </FadeInSection>
 
         {/* Meilleur tour — l'unique porteur de l'OR (chrono/record). */}
@@ -413,7 +444,10 @@ export default function BilanScreen() {
                 <Text style={s.bestSub}>
                   {belowMean.toFixed(1).replace('.', ',')} s sous votre moyenne
                 </Text>
-              ) : prevBest ? (
+              ) : session.circuit_id == null ? null : sessionsHere > 1 ? (
+                // Branché sur le COMPTE réel de séances (pas sur prevBest, qui
+                // peut être null avec des séances passées sans chrono) ; « ici »
+                // seulement si le circuit est identifié.
                 <Text style={s.bestSub}>{sessionsHere}ᵉ séance ici</Text>
               ) : (
                 <Text style={s.bestSub}>Première séance ici</Text>
@@ -434,6 +468,7 @@ export default function BilanScreen() {
                   label={p.label}
                   color={p.color}
                   value={typeof value === 'number' ? value : null}
+                  showValue={qdiAccess === 'full'}
                   href={`/(app)/signature?sessionId=${sessionId}`}
                 />
               );
@@ -525,23 +560,25 @@ export default function BilanScreen() {
           </View>
         ))}
 
-        {/* La lecture du coach (§10.3c-D) — attribuée, à côté de la marge OXV. */}
-        {readingWeights.map((w) => {
-          const reading = computeCoachReading(margin.breakdown, w);
-          if (reading === null) return null;
-          return (
-            <View key={w.coachId} style={{ marginTop: spacing.xl }}>
-              <Card style={s.coachCardCentered}>
-                <Text style={s.coachEyebrow}>LA LECTURE DE VOTRE COACH</Text>
-                <Text style={s.coachReading}>{reading}%</Text>
-                {w.note ? <Text style={s.coachNote}>« {w.note} »</Text> : null}
-                <Text style={s.coachReadingHint}>
-                  La grille de lecture de votre coach, à côté de la marge OXV — pas à sa place.
-                </Text>
-              </Card>
-            </View>
-          );
-        })}
+        {/* La lecture du coach (§10.3c-D) — attribuée, à côté de la marge OXV.
+            UNIQUEMENT sur un breakdown complet (jamais sur des 100 inventés). */}
+        {breakdownReliable &&
+          readingWeights.map((w) => {
+            const reading = computeCoachReading(margin.breakdown, w);
+            if (reading === null) return null;
+            return (
+              <View key={w.coachId} style={{ marginTop: spacing.xl }}>
+                <Card style={s.coachCardCentered}>
+                  <Text style={s.coachEyebrow}>LA LECTURE DE VOTRE COACH</Text>
+                  <Text style={s.coachReading}>{reading}%</Text>
+                  {w.note ? <Text style={s.coachNote}>« {w.note} »</Text> : null}
+                  <Text style={s.coachReadingHint}>
+                    La grille de lecture de votre coach, à côté de la marge OXV — pas à sa place.
+                  </Text>
+                </Card>
+              </View>
+            );
+          })}
 
         {/* Actions complémentaires — souvenirs, carte à partager, ressenti. */}
         <View style={{ marginTop: spacing.xxl, gap: spacing.sm }}>
@@ -614,9 +651,12 @@ export default function BilanScreen() {
 function LapDispersion({
   durations,
   bestSeconds,
+  medianSeconds,
 }: {
   durations: number[];
   bestSeconds: number | null;
+  /** Médiane du SERVICE (computeRegularity) — une seule définition par écran. */
+  medianSeconds: number | null;
 }) {
   if (durations.length < 2) return <View style={{ height: spacing.lg }} />;
   const W = 300;
@@ -625,7 +665,7 @@ function LapDispersion({
   const max = Math.max(...durations);
   const span = Math.max(0.001, max - min);
   const sorted = [...durations].sort((a, b) => a - b);
-  const median = sorted[Math.floor(sorted.length / 2)];
+  const median = medianSeconds ?? sorted[Math.floor(sorted.length / 2)];
   // Quartiles RÉELS (interquartile p25→p75) — jamais une bande décorative.
   const p25 = sorted[Math.floor(sorted.length * 0.25)];
   const p75 = sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.75))];
@@ -692,11 +732,14 @@ function PillarRow({
   label,
   color,
   value,
+  showValue,
   href,
 }: {
   label: string;
   color: string;
   value: number | null;
+  /** Offre Access = forme seule (pas de chiffre), comme le radar Signature. */
+  showValue: boolean;
   href: string;
 }) {
   const pct = value != null ? Math.max(0, Math.min(100, value)) : null;
@@ -713,9 +756,13 @@ function PillarRow({
           <View style={[s.pillarDot, { backgroundColor: color }]} />
           <Text style={s.pillarLabel}>{label}</Text>
           <View style={{ flex: 1 }} />
-          <View style={[s.pillarChip, { borderColor: color, backgroundColor: `${color}14` }]}>
-            <Text style={[s.pillarChipTxt, { color }]}>{pct != null ? Math.round(pct) : '—'}</Text>
-          </View>
+          {showValue ? (
+            <View style={[s.pillarChip, { borderColor: color, backgroundColor: `${color}14` }]}>
+              <Text style={[s.pillarChipTxt, { color }]}>
+                {pct != null ? Math.round(pct) : '—'}
+              </Text>
+            </View>
+          ) : null}
         </View>
         {/* Niveau 2 : barre PLEINE LARGEUR, repère médian + point coloré. */}
         <View style={s.pillarTrack}>

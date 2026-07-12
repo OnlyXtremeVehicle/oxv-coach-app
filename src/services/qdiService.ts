@@ -267,10 +267,14 @@ export async function getQdiAccessLevel(userId: string): Promise<QdiAccessLevel>
     .from('registrations')
     .select('offer_type, status')
     .eq('user_id', userId)
-    .neq('status', 'cancelled')
     .order('created_at', { ascending: false })
     .limit(10);
-  const offers = (data ?? []).map((r) => String(r.offer_type).toLowerCase());
-  if (offers.length === 0) return 'full'; // hors parcours commercial : rien à restreindre
-  return offers.some((o) => o.includes('signature') || o.includes('heritage')) ? 'full' : 'simple';
+  // Le niveau suit l'inscription EFFECTIVE la plus récente (confirmée/venue/
+  // en attente de paiement) — pas un some() sur tout l'historique : une
+  // Signature annulée il y a un an ne donne pas le détail à vie.
+  const ACTIVE = new Set(['confirmed', 'attended', 'pending_payment', 'pending']);
+  const current = (data ?? []).find((r) => ACTIVE.has(String(r.status)));
+  if (!current) return 'full'; // hors parcours commercial : rien à restreindre
+  const offer = String(current.offer_type).toLowerCase();
+  return offer.includes('signature') || offer.includes('heritage') ? 'full' : 'simple';
 }

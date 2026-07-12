@@ -54,6 +54,9 @@ export function QdiBars({
       <View style={[s.bars, { height }]}>
         {BRANCHES.map((b, i) => {
           const v = values[i];
+          // Plancher de VISIBILITÉ assumé (silhouette, pas un score) : une valeur
+          // réelle 0-3 rend 4 % coloré ; une branche NULL rend 3 % gris — la
+          // COULEUR distingue mesuré/absent, pas la hauteur.
           const pct = typeof v === 'number' ? Math.max(4, Math.min(100, v)) : 3;
           const strong = highlightStrongest && i === strongest;
           return (

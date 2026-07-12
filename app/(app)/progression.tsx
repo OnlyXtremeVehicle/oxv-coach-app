@@ -93,7 +93,10 @@ export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
   const [sessions, setSessions] = useState<SessionPoint[]>([]);
   const [lastLaps, setLastLaps] = useState<{ lapNumber: number; durationSeconds: number }[]>([]);
-  const [spreadSeconds, setSpreadSeconds] = useState<number | null>(null);
+  // Écart-type des tours de la dernière séance (le nom dit ce que c'est —
+  // regularityService expose AUSSI un spreadSeconds = amplitude, à ne pas confondre).
+  const [stdDevSeconds, setStdDevSeconds] = useState<number | null>(null);
+  const [regularityManifest, setRegularityManifest] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -107,7 +110,9 @@ export default function ProgressionScreen() {
     setLoading(true);
     setError(false);
     (async () => {
-      const rows = await fetchAllSessions(profile.id, { limit: 100 });
+      // strict : une panne réseau affiche l'état ERREUR + retry, jamais un faux
+      // « 0 séance enregistrée » (fait inventé).
+      const rows = await fetchAllSessions(profile.id, { limit: 100, strict: true });
       if (cancelled) return;
       const all = rows
         .filter((r) => r.best_lap_seconds != null && Number.isFinite(r.best_lap_seconds))
@@ -127,14 +132,16 @@ export default function ProgressionScreen() {
 
       // Module 2 — les tours de la DERNIÈRE séance (constance).
       if (pts.length > 0) {
-        const laps = await fetchSessionLaps(pts[0].sessionId);
+        const laps = await fetchSessionLaps(pts[0].sessionId, { strict: true });
         if (cancelled) return;
         const valid = laps
           .filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0)
           .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }));
         setLastLaps(valid);
         // Constance = ÉCART-TYPE (handoff §9) — même métrique que Paddock/Bilan.
-        setSpreadSeconds(computeRegularity(valid).stdDevSeconds);
+        const reg = computeRegularity(valid);
+        setStdDevSeconds(reg.stdDevSeconds);
+        setRegularityManifest(reg.manifest);
       }
       setLoading(false);
     })().catch(() => {
@@ -210,14 +217,15 @@ export default function ProgressionScreen() {
                 {points[points.length - 1] ? monthLabel(points[points.length - 1].startedAt) : ''}
               </Text>
             </View>
+            {/* Descriptif, jamais une conclusion de tendance inventée. */}
             <Text style={s.modulePhrase}>
-              Vous gagnez du temps, séance après séance. Juste vous, pas de classement.
+              Votre meilleur tour, séance après séance. Juste vous, pas de classement.
             </Text>
           </>
         )}
 
         {/* ── MODULE 2 — CONSTANCE ─────────────────────────────────────── */}
-        {lastLaps.length >= 2 && spreadSeconds != null ? (
+        {lastLaps.length >= 2 && stdDevSeconds != null ? (
           <>
             <View style={s.separator} />
             <Text style={[s.moduleEyebrow, { color: dataColors.regularity }]}>
@@ -225,13 +233,14 @@ export default function ProgressionScreen() {
             </Text>
             <View style={s.kingRow}>
               <Text style={[s.kingNumber, { color: dataColors.regularity }]}>
-                ±{spreadSeconds.toFixed(2).replace('.', ',')}
+                ±{stdDevSeconds.toFixed(2).replace('.', ',')}
               </Text>
-              <Text style={s.kingSub}>s d&apos;écart</Text>
+              <Text style={s.kingSub}>s d&apos;écart-type</Text>
             </View>
             <ConstancyBars laps={lastLaps} />
+            {/* Phrase DÉRIVÉE de la donnée (manifest du service), jamais figée. */}
             <Text style={s.modulePhrase}>
-              Des barres presque égales — vous êtes régulier. Le tour en or est votre meilleur.
+              {regularityManifest ?? 'Vos tours, tels quels.'} Le tour en or est votre meilleur.
             </Text>
           </>
         ) : null}
@@ -274,7 +283,9 @@ export default function ProgressionScreen() {
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Fact label="Séances" value={String(stats.count)} />
             <Fact label="Meilleur tour" value={formatLapTime(stats.best)} accent />
-            <Fact label="Tour médian" value={formatLapTime(stats.median)} />
+            {/* Médiane de vos MEILLEURS tours (une valeur par séance), pas le
+                tour médian d'une séance — le libellé dit la population. */}
+            <Fact label="Médiane des meilleurs" value={formatLapTime(stats.median)} />
           </View>
         ) : null}
 
@@ -332,6 +343,9 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
   const xStep = points.length > 1 ? (W - 12) / (points.length - 1) : 0;
   const xy = points.map((p, i) => ({ x: 6 + i * xStep, y: yFor(p.bestSeconds) }));
   const lastIdx = xy.length - 1;
+  // Le RECORD réel (min all-time de la fenêtre), pas le dernier point : le label
+  // « votre record » ne doit jamais désigner une séance qui n'est pas le record.
+  const recordIdx = values.indexOf(lo);
 
   const lineD =
     `M ${xy[0].x.toFixed(1)},${xy[0].y.toFixed(1)} ` +
@@ -341,9 +355,7 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
       .join(' ');
   const areaD = `${lineD} L ${xy[lastIdx].x.toFixed(1)},${H} L ${xy[0].x.toFixed(1)},${H} Z`;
 
-  const a11ySummary = `Meilleur tour sur ${points.length} séances, de ${formatLapTime(
-    points[0].bestSeconds
-  )} à ${formatLapTime(points[lastIdx].bestSeconds)}.`;
+  const a11ySummary = `Meilleur tour sur ${points.length} séances ; record ${formatLapTime(lo)}.`;
 
   return (
     <View
@@ -370,9 +382,9 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
           strokeLinejoin="round"
           fill="none"
         />
-        {/* points cerclés + dernier plein « votre record » */}
+        {/* points cerclés + le point RECORD plein, labellisé « votre record » */}
         {xy.map((p, i) =>
-          i === lastIdx ? null : (
+          i === recordIdx ? null : (
             <Circle
               key={i}
               cx={p.x}
@@ -384,14 +396,14 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
             />
           )
         )}
-        <Circle cx={xy[lastIdx].x} cy={xy[lastIdx].y} r={4.5} fill={palette.gold} />
+        <Circle cx={xy[recordIdx].x} cy={xy[recordIdx].y} r={4.5} fill={palette.gold} />
         <SvgText
-          x={Math.min(xy[lastIdx].x, W - 8)}
-          y={Math.max(10, xy[lastIdx].y - 10)}
+          x={Math.min(Math.max(xy[recordIdx].x, 40), W - 8)}
+          y={Math.max(10, xy[recordIdx].y - 10)}
           fill={palette.gold}
           fontSize={9}
           fontFamily={fonts.mono}
-          textAnchor="end"
+          textAnchor={xy[recordIdx].x > W / 2 ? 'end' : 'start'}
         >
           votre record
         </SvgText>
@@ -415,11 +427,13 @@ function ConstancyBars({ laps }: { laps: { lapNumber: number; durationSeconds: n
   const barW = (W - gap * (n - 1)) / n;
   const durations = laps.map((l) => l.durationSeconds);
   const lo = Math.min(...durations);
-  const hi = Math.max(...durations);
-  const span = hi - lo || 1;
-  // Hauteur = durée (le rapide est plus court). La variation ne module que le
-  // tiers supérieur : des tours presque égaux donnent des barres presque égales.
-  const hFor = (d: number) => H * 0.55 + ((d - lo) / span) * H * 0.35;
+  // Hauteur = durée, sur une ÉCHELLE FIXE (pleine variation visuelle = 3 s
+  // au-dessus du meilleur, clampée) : un pilote régulier voit réellement des
+  // barres presque égales, un pilote dispersé des barres inégales — l'échelle
+  // relative min-max rendait les deux identiques.
+  const FULL_SCALE_S = 3;
+  const hFor = (d: number) =>
+    H * 0.55 + Math.min(1, Math.max(0, (d - lo) / FULL_SCALE_S)) * H * 0.35;
   const bestIdx = durations.indexOf(lo);
   const bestLapNumber = laps[bestIdx]?.lapNumber ?? bestIdx + 1;
 
