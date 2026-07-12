@@ -1,15 +1,16 @@
 /**
- * Écran #20 — Accueil / Hub central, 3 modes. Refonte (docs/refonte-app, archétype 2 « Hub »).
+ * Paddock — accueil Miroir, 3 modes. Reskin FIDÈLE aux maquettes Claude Design
+ * refonte-v2 §7.1 (screens/01-paddock.png), décision fondateur 2026-07-12.
  *
  *   mode "enroute"   (S5)  — silence en piste : « Coupez l'app. Je conduis. »
  *   mode "countdown" (S4)  — prochaine session
- *   mode "passive"   (autres) — greeting + dernier bilan + 1 action principale
- *                              contextuelle + 2 raccourcis (PR 2). La liste
- *                              « Tout le paddock » a été retirée (PR migration) :
- *                              la nav vit dans les 5 zones + le hub Compte (icône).
+ *   mode "passive"   — maquette : salutation 2 lignes (« …est prête. ») ·
+ *     eyebrow « RÉGULARITÉ AU TOUR · CIRCUIT » · chiffre roi ±X,XX s VIOLET 54px
+ *     + sous-label tours · aperçu QDI 5 barres colorées · carte meilleur tour
+ *     (OR) · bouton crème « Lire le bilan → » · bloc « PROCHAINE JOURNÉE ».
  *
- * Chiffre héros = régularité au tour (écart-type, fait factuel), pas la marge
- * globale (réservée au Bilan). Réutilise computeRegularity + fetchSessionLaps.
+ * Chiffre héros = régularité au tour (fait factuel). Le chrono record reste or,
+ * discret. Vouvoiement. Substance conservée : statut boîtier, debug, déconnexion.
  */
 
 import { useEffect, useState } from 'react';
@@ -22,16 +23,16 @@ import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
 import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
+import { getMyNextTrackDay, type NextTrackDay } from '@/services/nextTrackDayService';
 import { getQdiForSession, type QdiRecord } from '@/services/qdiService';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
+import { formatLapTime } from '@/utils/format';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AccountButton } from '@/ui/AccountButton';
 import { Card } from '@/ui/Card';
-import { CockpitPanel } from '@/ui/CockpitPanel';
-import { KingNumber } from '@/ui/KingNumber';
 import { QdiBars } from '@/ui/QdiBars';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
@@ -44,14 +45,6 @@ interface RecentSession {
   circuitName: string | null;
 }
 
-// Raccourcis contextuels (2 max, doctrine Paddock — cf. ticket 11 B1). Les 5
-// zones vivent désormais dans la barre d'onglets (PR 1) ; ici, juste l'essentiel
-// à portée du pouce, sous l'action principale.
-const SHORTCUTS = [
-  { label: 'Ma progression', href: '/(app)/progression' },
-  { label: 'Mon coach', href: '/(app)/mon-coach' },
-] as const;
-
 export default function HomeHubScreen() {
   const profile = useAuthStore((s) => s.profile);
   const signOut = useAuthStore((s) => s.signOut);
@@ -61,11 +54,12 @@ export default function HomeHubScreen() {
   const [regularity, setRegularity] = useState<{ stdDevSeconds: number; lapCount: number } | null>(
     null
   );
+  const [bestSeconds, setBestSeconds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  // Hub M7.0 : statut du boîtier affecté + disponibilité du radar QDI —
-  // best-effort, le hub vit sans.
+  // Hub : statut du boîtier + radar QDI + prochaine journée — best-effort.
   const [myDevice, setMyDevice] = useState<MyDevice | null>(null);
   const [qdi, setQdi] = useState<QdiRecord | null>(null);
+  const [nextDay, setNextDay] = useState<NextTrackDay | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -77,6 +71,13 @@ export default function HomeHubScreen() {
     getMyAssignedDevice()
       .then((d) => {
         if (!cancelled) setMyDevice(d);
+      })
+      .catch(() => undefined);
+
+    // Prochaine journée sur circuit (maquette §7.1) — bloc masqué si aucune.
+    getMyNextTrackDay(profile.id)
+      .then((d) => {
+        if (!cancelled) setNextDay(d);
       })
       .catch(() => undefined);
 
@@ -114,6 +115,7 @@ export default function HomeHubScreen() {
           if (reg.stdDevSeconds !== null) {
             setRegularity({ stdDevSeconds: reg.stdDevSeconds, lapCount: reg.lapCount });
           }
+          if (reg.bestSeconds != null) setBestSeconds(reg.bestSeconds);
         }
       }
       if (!cancelled) setLoading(false);
@@ -154,10 +156,12 @@ export default function HomeHubScreen() {
             firstName={firstName}
             recentSession={recentSession}
             regularity={regularity}
+            bestSeconds={bestSeconds}
             loading={loading}
             action={action}
             myDevice={myDevice}
             qdi={qdi}
+            nextDay={nextDay}
           />
         )}
 
@@ -231,104 +235,122 @@ function ModeCountdown({ firstName, action }: { firstName: string; action: Paddo
   );
 }
 
+/** « Votre séance de vendredi » — jour de la séance, en toutes lettres. */
+function weekdayOf(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { weekday: 'long' });
+}
+
+/** « Sam. 19 juil. » — date courte du bloc « Prochaine journée ». */
+function shortDay(iso: string): string {
+  const d = new Date(`${iso}T00:00:00`);
+  const txt = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+  return txt.charAt(0).toUpperCase() + txt.slice(1);
+}
+
 function ModePassive({
   greeting,
   firstName,
   recentSession,
   regularity,
+  bestSeconds,
   loading,
   action,
   myDevice,
   qdi,
+  nextDay,
 }: {
   greeting: string;
   firstName: string;
   recentSession: RecentSession | null;
   regularity: { stdDevSeconds: number; lapCount: number } | null;
+  bestSeconds: number | null;
   loading: boolean;
   action: PaddockAction | null;
   myDevice: MyDevice | null;
   qdi: QdiRecord | null;
+  nextDay: NextTrackDay | null;
 }) {
-  const greetingText = firstName ? `${greeting}, ${firstName}.` : `${greeting}.`;
+  const greetingText = firstName ? `${greeting} ${firstName}.` : `${greeting}.`;
 
   return (
     <View style={{ marginTop: spacing.md }}>
-      {/* Salutation */}
+      {/* Salutation 2 lignes (maquette) : « Bonsoir Adrien. Votre séance de
+          vendredi est prête. » — « prête. » accentué. */}
       <FadeInSection>
-        <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Paddock</Text>
-        <Text style={s.greetTitle}>{greetingText}</Text>
+        <Text style={s.greetTitle}>
+          {greetingText}
+          {recentSession ? (
+            <>
+              {' '}
+              Votre séance de {weekdayOf(recentSession.startedAt)} est{' '}
+              <Text style={s.greetStrong}>prête.</Text>
+            </>
+          ) : null}
+        </Text>
       </FadeInSection>
 
-      {/* Dernier bilan — porte d'entrée vers le débrief, chiffre déjà visible.
-          Entre dans la chorégraphie d'apparition (greeting → bilan → action).
-          Pendant le chargement : squelette calme plutôt qu'un saut de mise en page. */}
-      <FadeInSection delay={60}>
-        {loading ? (
-          <View style={s.bilanSkeleton} accessibilityLabel="Chargement de votre dernier bilan">
-            <Text style={[s.eyebrow, { marginBottom: spacing.md }]}>Votre dernier bilan</Text>
-            <View style={s.skelLineWide} />
-            <View style={[s.skelLine, { marginTop: spacing.sm }]} />
-          </View>
-        ) : recentSession ? (
-          <Link
-            href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }}
-            asChild
-          >
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Votre dernier bilan, ${recentSession.circuitName ?? 'session'}, ${timeAgoFr(
-                recentSession.startedAt
-              )}`}
-              style={({ pressed }) => ({ marginTop: spacing.xl, opacity: pressed ? 0.92 : 1 })}
-            >
-              <CockpitPanel>
-                {/* Contexte : point de donnée + séance + nombre de tours */}
-                <View style={s.heroHead}>
-                  <View style={s.heroDot} />
-                  <Text style={s.heroEyebrow} numberOfLines={1}>
-                    Dernier bilan · {recentSession.circuitName ?? 'Session'}
-                  </Text>
-                  <View style={{ flex: 1 }} />
-                  {regularity ? <Text style={s.heroTours}>{regularity.lapCount} TOURS</Text> : null}
-                </View>
+      {loading ? (
+        <View style={s.bilanSkeleton} accessibilityLabel="Chargement de votre dernier bilan">
+          <View style={s.skelLineWide} />
+          <View style={[s.skelLine, { marginTop: spacing.sm }]} />
+        </View>
+      ) : recentSession ? (
+        <>
+          {/* HÉROS — régularité au tour, chiffre roi VIOLET 54px (maquette). */}
+          <FadeInSection delay={60}>
+            <Text style={s.regEyebrow} numberOfLines={1}>
+              RÉGULARITÉ AU TOUR
+              {recentSession.circuitName ? ` · ${recentSession.circuitName.toUpperCase()}` : ''}
+            </Text>
+            {regularity ? (
+              <>
+                <Text style={s.regNumber}>
+                  ±{regularity.stdDevSeconds.toFixed(2).replace('.', ',')}
+                  <Text style={s.regUnit}> s</Text>
+                </Text>
+                <Text style={s.regSub}>{regularity.lapCount} tours</Text>
+              </>
+            ) : (
+              <Text style={s.regSub}>{timeAgoFr(recentSession.startedAt)}</Text>
+            )}
+          </FadeInSection>
 
-                {/* Chiffre roi = régularité au tour (fait, T6-conforme). Couleur =
-                    celle de la DONNÉE : violet régularité (système QDI V3). */}
-                {regularity ? (
-                  <KingNumber
-                    value={regularity.stdDevSeconds.toFixed(1).replace('.', ',')}
-                    unit="s"
-                    label="Régularité"
-                    color={dataColors.regularity}
-                  />
-                ) : (
-                  <Text style={s.heroCircuit}>{recentSession.circuitName ?? 'Session'}</Text>
-                )}
+          {/* Aperçu QDI — 5 barres colorées (silhouette, pas un score). */}
+          {qdi ? (
+            <FadeInSection delay={120}>
+              <View style={{ marginTop: spacing.xl }}>
+                <QdiBars branches={qdi} height={54} />
+              </View>
+            </FadeInSection>
+          ) : null}
 
-                {/* Aperçu QDI 5 branches (silhouette colorée, pas un score). */}
-                {qdi ? (
-                  <View style={{ marginTop: spacing.lg }}>
-                    <QdiBars branches={qdi} height={54} />
-                  </View>
-                ) : null}
+          {/* Carte meilleur tour — l'unique OR du Paddock (chrono/record). */}
+          {bestSeconds != null ? (
+            <FadeInSection delay={160}>
+              <Link
+                href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }}
+                asChild
+              >
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Votre meilleur tour, ${formatLapTime(bestSeconds)}`}
+                  style={({ pressed }) => [s.bestCard, { opacity: pressed ? 0.9 : 1 }]}
+                >
+                  <View style={s.goldDot} />
+                  <Text style={s.bestLabel}>Votre meilleur tour</Text>
+                  <Text style={s.bestDash}> — </Text>
+                  <Text style={s.bestChrono}>{formatLapTime(bestSeconds)}</Text>
+                </Pressable>
+              </Link>
+            </FadeInSection>
+          ) : null}
+        </>
+      ) : (
+        <Text style={s.emptyManifest}>Votre première séance écrira la première ligne.</Text>
+      )}
 
-                <View style={s.heroFoot}>
-                  <Text style={s.heroMeta}>{timeAgoFr(recentSession.startedAt)}</Text>
-                  <View style={{ flex: 1 }} />
-                  <Text style={s.heroOpen}>Ouvrir ›</Text>
-                </View>
-              </CockpitPanel>
-            </Pressable>
-          </Link>
-        ) : (
-          <Text style={s.emptyManifest}>Votre première séance écrira la première ligne.</Text>
-        )}
-      </FadeInSection>
-
-      {/* Action principale contextuelle (Paddock NG, §7) + 2 raccourcis ghost.
-          Le hint situe le moment (factuel) ; l'action s'adapte à l'état pilote. */}
-      <FadeInSection delay={120}>
+      {/* Action principale contextuelle — bouton plein crème (maquette). */}
+      <FadeInSection delay={200}>
         {action?.hint ? <Text style={s.actionHint}>{action.hint}</Text> : null}
         {action ? (
           <Link href={action.href as never} asChild>
@@ -340,34 +362,43 @@ function ModePassive({
                 { opacity: pressed ? 0.9 : 1 },
               ]}
             >
-              <Text style={s.primaryBtnText}>{action.label}</Text>
+              <Text style={s.primaryBtnText}>{action.label} →</Text>
             </Pressable>
           </Link>
         ) : null}
-        <View style={s.shortcutRow}>
-          {SHORTCUTS.map((sc) => (
-            <Link key={sc.href} href={sc.href as never} asChild>
-              <Pressable
-                accessibilityRole="button"
-                style={({ pressed }) => [s.ghost, { opacity: pressed ? 0.85 : 1 }]}
-              >
-                <Text style={s.ghostText}>{sc.label}</Text>
-              </Pressable>
-            </Link>
-          ))}
-        </View>
       </FadeInSection>
 
-      {/* Statut équipement (hub M7.0) — uniquement si un boîtier est affecté.
-          Information, pas une action : les 3 actions visibles restent
-          l'action principale + les 2 raccourcis. */}
+      {/* PROCHAINE JOURNÉE (maquette) — séparateur + date + « Préparer › ». */}
+      {nextDay ? (
+        <FadeInSection delay={240}>
+          <View style={s.nextSeparator} />
+          <Link href={'/(app)/preparation' as never} asChild>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Prochaine journée, ${shortDay(nextDay.date)}. Préparer`}
+              style={({ pressed }) => [s.nextRow, { opacity: pressed ? 0.85 : 1 }]}
+            >
+              <View>
+                <Text style={s.nextEyebrow}>PROCHAINE JOURNÉE</Text>
+                <Text style={s.nextDate}>
+                  {shortDay(nextDay.date)}
+                  {nextDay.circuitName ? ` · ${nextDay.circuitName}` : ''}
+                </Text>
+              </View>
+              <Text style={s.nextAction}>Préparer ›</Text>
+            </Pressable>
+          </Link>
+        </FadeInSection>
+      ) : null}
+
+      {/* Statut équipement — information, sous la ligne de flottaison. */}
       {myDevice ? (
-        <FadeInSection delay={180}>
+        <FadeInSection delay={280}>
           <Link href={'/(app)/mon-equipement' as never} asChild>
             <Card
               onPress={() => {}}
               accessibilityLabel={`Votre boîtier ${myDevice.alias ?? myDevice.label}, état ${myDevice.healthStatus ?? 'inconnu'}`}
-              style={{ marginTop: spacing.lg }}
+              style={{ marginTop: spacing.xl }}
             >
               <Text style={[s.eyebrow, { marginBottom: spacing.xs }]}>Votre boîtier</Text>
               <Text style={s.deviceLine}>
@@ -405,59 +436,94 @@ const s = StyleSheet.create({
     color: palette.creamMute,
   },
 
+  // Salutation 20px, 2 lignes (maquette §7.1) — « prête. » accentué.
   greetTitle: {
-    fontFamily: fonts.display,
-    fontSize: 25,
-    letterSpacing: -0.5,
+    fontFamily: fonts.body,
+    fontSize: 20,
+    letterSpacing: -0.2,
+    lineHeight: 28,
     color: palette.cream,
     marginTop: 2,
   },
+  greetStrong: { fontFamily: fonts.bodySemi, color: palette.cream },
 
-  // Dernier bilan (panneau cockpit héros — chiffre dominant unique, refonte NG).
-  // Ligne de contexte : point de donnée + séance + nb de tours.
-  heroHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  heroDot: { width: 6, height: 6, borderRadius: 2, backgroundColor: palette.creamMute },
-  heroEyebrow: {
+  // Héros régularité — chiffre roi violet 54px (couleur de la donnée).
+  regEyebrow: {
     fontFamily: fonts.mono,
     fontSize: 11,
-    letterSpacing: 1.6,
+    letterSpacing: 1.8,
     textTransform: 'uppercase',
     color: palette.creamMute,
-    flexShrink: 1,
+    marginTop: spacing.xxl,
   },
-  heroTours: {
+  regNumber: {
+    fontFamily: fonts.king,
+    fontSize: 54,
+    letterSpacing: -1.5,
+    color: dataColors.regularity,
+    marginTop: spacing.sm,
+  },
+  regUnit: { fontFamily: fonts.mono, fontSize: 20, letterSpacing: 0, color: dataColors.regularity },
+  regSub: {
     fontFamily: fonts.mono,
-    fontSize: 9,
+    fontSize: 11,
     letterSpacing: 0.5,
-    color: palette.faint,
+    color: palette.eyebrow,
+    marginTop: spacing.xs,
   },
-  heroCircuit: {
-    fontFamily: fonts.display,
-    fontSize: 22,
-    letterSpacing: -0.3,
-    color: palette.cream,
-  },
-  heroFoot: {
+
+  // Carte meilleur tour — pastille + chrono OR (l'unique or du Paddock).
+  bestCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xl,
     gap: spacing.sm,
-    marginTop: spacing.lg,
   },
-  heroMeta: {
-    fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 0.4,
-    color: palette.creamMute,
+  goldDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: palette.gold },
+  bestLabel: { fontFamily: fonts.bodyMedium, fontSize: theme.fontSize.body, color: palette.cream },
+  bestDash: { fontFamily: fonts.body, fontSize: theme.fontSize.body, color: palette.creamMute },
+  bestChrono: {
+    fontFamily: fonts.monoSemi,
+    fontSize: theme.fontSize.bodyLg,
+    letterSpacing: -0.3,
+    color: palette.gold,
   },
-  heroOpen: {
+
+  // Prochaine journée — séparateur + eyebrow + date + « Préparer › ».
+  nextSeparator: {
+    height: 1,
+    backgroundColor: palette.separator,
+    marginTop: spacing.xxl,
+  },
+  nextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.lg,
+    minHeight: 56,
+  },
+  nextEyebrow: {
     fontFamily: fonts.mono,
-    fontSize: 11,
-    letterSpacing: 0.8,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
+  },
+  nextDate: {
+    fontFamily: fonts.bodySemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: palette.cream,
+    marginTop: 3,
+  },
+  nextAction: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
     color: palette.creamSoft,
   },
   deviceLine: {
