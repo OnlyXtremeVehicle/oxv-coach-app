@@ -1,10 +1,23 @@
 # P3 — Waivers e-sign : proposition (schéma + texte)
 
-> **STATUT : STOP — proposition en attente de validation.** Le schéma DB **et** le
-> texte de décharge doivent être validés par le fondateur (Gabin) **et relus par
-> un avocat spécialisé droit du sport mécanique** avant tout build. Rien n'est
-> appliqué en base ; aucun écran n'est construit. Ce document sert de support à
-> cette décision.
+> **STATUT (2026-07-12) : décisions prises + build livré, GATÉ OFF.** Gabin a
+> tranché : timing = **à la réservation**, valeur probante = **simple**, périmètre
+> = **pilote uniquement**. Schéma `pilot_waiver_signatures` appliqué + durci
+> (index unique idempotent, policies scopées `authenticated`, insert rattaché au
+> pilote, contrainte nom) + mirroré ; service + écran de signature construits +
+> vérifiés (workflow adversarial 3 lentilles, 11 trouvailles traitées), **derrière
+> le flag `pilot_waivers` (OFF)**.
+>
+> **Conditions d'activation restantes (avant flag ON) :**
+> 1. **Relecture du texte** de décharge (§5, version 0.1) par un avocat spécialisé
+>    droit du sport mécanique.
+> 2. **Rétention (D4)** : durée de conservation à décider (alignée sur la
+>    prescription du litige sportif) + purge `pg_cron`, à consigner dans la
+>    Politique de confidentialité (`docs/juridique/04`).
+>
+> Tant que le flag est OFF, l'écran affiche « Bientôt » et `acceptWaiver` refuse
+> d'écrire (garde-fou serveur-adjacent) — rien de légalement effectif n'est
+> présenté ni signable.
 
 Objectif produit : permettre au pilote de **signer électroniquement une décharge
 de responsabilité** (waiver) reconnaissant les risques de l'activité sur circuit,

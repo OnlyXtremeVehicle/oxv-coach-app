@@ -5234,6 +5234,48 @@ export type Database = {
           },
         ]
       }
+      pilot_waiver_signatures: {
+        Row: {
+          app_version: string | null
+          booking_id: string | null
+          created_at: string
+          document_hash: string
+          id: string
+          session_id: string | null
+          signed_at: string
+          signed_full_name: string
+          user_agent: string | null
+          user_id: string
+          waiver_version: string
+        }
+        Insert: {
+          app_version?: string | null
+          booking_id?: string | null
+          created_at?: string
+          document_hash: string
+          id?: string
+          session_id?: string | null
+          signed_at?: string
+          signed_full_name: string
+          user_agent?: string | null
+          user_id: string
+          waiver_version: string
+        }
+        Update: {
+          app_version?: string | null
+          booking_id?: string | null
+          created_at?: string
+          document_hash?: string
+          id?: string
+          session_id?: string | null
+          signed_at?: string
+          signed_full_name?: string
+          user_agent?: string | null
+          user_id?: string
+          waiver_version?: string
+        }
+        Relationships: []
+      }
       pricing: {
         Row: {
           active: boolean | null
