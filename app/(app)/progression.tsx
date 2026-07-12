@@ -1,56 +1,53 @@
 /**
- * Écran #17 — Progression. Refonte gaming « cockpit factuel » (charte v2).
+ * Progression & Constance — zone Miroir. Reskin FIDÈLE aux maquettes Claude
+ * Design refonte-v2 §7.4 (screens/04-progression.png), décision fondateur
+ * 2026-07-12.
  *
- * Trajectoire FACTUELLE du meilleur tour (best_lap_seconds) séance après
- * séance. Convention sport auto : l'axe vertical porte le temps, le rapide
- * en bas — quand le chrono descend, la courbe descend. Soi vs soi, jamais
- * une note : la marge globale % (ancien score) est abandonnée côté pilote.
+ * Deux modules (maquette) :
+ *   MODULE 1 — MEILLEUR TOUR : chiffre roi OR (~40px mono) « dernière séance »,
+ *   courbe en AIRE or (gradient sous la ligne, points cerclés, dernier point
+ *   plein + « votre record »), axes premier→dernier mois, phrase self-only.
+ *   MODULE 2 — CONSTANCE : ±X,XX s VIOLET (~40px), histogramme des tours de la
+ *   dernière séance (barres violet sombre #3A2E52, le meilleur tour en OR),
+ *   légende T1 / ◆ votre meilleur / TN, phrase descriptive.
  *
- * Doctrine : aucune comparaison avec d'autres pilotes, aucune zone de
- * performance colorée (pas de vert/jaune/rouge). Or = donnée. Phrase
- * manifeste sobre « Vous avancez. ».
- *
- * État vide pédagogique sous 3 séances : on n'affiche pas la courbe pour
- * éviter une lecture trompeuse.
+ * Convention maquette : l'amélioration monte (le record en haut à droite).
+ * Soi contre soi, jamais un classement. Substance préservée SOUS les modules
+ * (parti A) : delta dernière séance, stats, sous-vues. Vouvoiement.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, Text, View } from 'react-native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import Svg, {
+  Circle,
+  Defs,
+  LinearGradient,
+  Path,
+  Rect,
+  Stop,
+  Text as SvgText,
+} from 'react-native-svg';
 import { router } from 'expo-router';
 
 import { EmptyState, Fact } from '@/components/instruments';
-import { fetchAllSessions } from '@/services/sessionsService';
+import { computeRegularity } from '@/services/regularityService';
+import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
-import { AccountButton } from '@/ui/AccountButton';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
-import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
-import { Segmented } from '@/ui/Segmented';
 import { StateWrapper } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
 
-const { palette, fonts, fontSize, spacing, radius, hitSlop } = theme;
-const AnimatedPath = Animated.createAnimatedComponent(Path);
+const { palette, dataColors, fonts, fontSize, spacing, radius, hitSlop } = theme;
 
-type Granularity = 'week' | 'month' | 'all';
+/** Violet sombre des barres de constance (maquette §7.4). */
+const BAR_INACTIVE = '#3A2E52';
 
-const GRAN_OPTIONS: { id: Granularity; label: string }[] = [
-  { id: 'week', label: 'Semaine' },
-  { id: 'month', label: 'Mois' },
-  { id: 'all', label: 'Tout' },
-];
-
-// Sous-vues de la zone Progression (PR 5) — accès depuis le hub. « Comparateur »
-// et « Historique » n'étaient atteignables depuis aucun autre hub.
+// Sous-vues de la zone Progression — accès conservé (substance).
 const PROGRESSION_VIEWS: { label: string; hint: string; href: string }[] = [
-  {
-    label: 'Passeport',
-    hint: 'Votre identité de pilote, cumulée',
-    href: '/(app)/passeport',
-  },
+  { label: 'Passeport', hint: 'Votre identité de pilote, cumulée', href: '/(app)/passeport' },
   {
     label: 'Signature',
     hint: 'Ce qui rend votre pilotage reconnaissable',
@@ -63,7 +60,6 @@ const PROGRESSION_VIEWS: { label: string; hint: string; href: string }[] = [
   { label: 'Historique', hint: 'Toutes vos séances', href: '/(app)/roulages' },
 ];
 
-/** Un point factuel : le meilleur tour d'une séance. */
 type SessionPoint = {
   sessionId: string;
   startedAt: string;
@@ -71,19 +67,30 @@ type SessionPoint = {
   bestSeconds: number;
 };
 
-/** Delta chrono signé, en secondes (négatif = plus rapide). */
 function formatDeltaSeconds(d: number): string {
   const sign = d > 0 ? '+' : d < 0 ? '−' : '±';
   return `${sign}${Math.abs(d).toFixed(1).replace('.', ',')} s`;
 }
 
+/** « 1:24.3 » — chrono roi compact (dixième), mono. */
+function formatBestShort(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const rest = seconds - m * 60;
+  return `${m}:${rest.toFixed(1).padStart(4, '0')}`;
+}
+
+function monthLabel(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { month: 'short' }).toUpperCase();
+}
+
 export default function ProgressionScreen() {
   const profile = useAuthStore((s) => s.profile);
   const [sessions, setSessions] = useState<SessionPoint[]>([]);
+  const [lastLaps, setLastLaps] = useState<number[]>([]);
+  const [spreadSeconds, setSpreadSeconds] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
-  const [granularity, setGranularity] = useState<Granularity>('all');
 
   useEffect(() => {
     if (!profile) {
@@ -93,47 +100,45 @@ export default function ProgressionScreen() {
     let cancelled = false;
     setLoading(true);
     setError(false);
-    fetchAllSessions(profile.id, { limit: 100 })
-      .then((rows) => {
+    (async () => {
+      const rows = await fetchAllSessions(profile.id, { limit: 100 });
+      if (cancelled) return;
+      const pts: SessionPoint[] = rows
+        .filter((r) => r.best_lap_seconds != null && Number.isFinite(r.best_lap_seconds))
+        .map((r) => ({
+          sessionId: r.id,
+          startedAt: r.started_at,
+          circuitName: r.circuit_name,
+          bestSeconds: r.best_lap_seconds as number,
+        }));
+      setSessions(pts); // trié started_at décroissant
+
+      // Module 2 — les tours de la DERNIÈRE séance (constance).
+      if (pts.length > 0) {
+        const laps = await fetchSessionLaps(pts[0].sessionId);
         if (cancelled) return;
-        // Source factuelle : sessions complétées dotées d'un meilleur tour.
-        const pts: SessionPoint[] = rows
-          .filter((r) => r.best_lap_seconds != null && Number.isFinite(r.best_lap_seconds))
-          .map((r) => ({
-            sessionId: r.id,
-            startedAt: r.started_at,
-            circuitName: r.circuit_name,
-            bestSeconds: r.best_lap_seconds as number,
-          }));
-        setSessions(pts); // déjà trié par started_at décroissant
+        const valid = laps
+          .filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0)
+          .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }));
+        setLastLaps(valid.map((l) => l.durationSeconds));
+        setSpreadSeconds(computeRegularity(valid).spreadSeconds);
+      }
+      setLoading(false);
+    })().catch(() => {
+      if (!cancelled) {
+        setError(true);
         setLoading(false);
-      })
-      .catch(() => {
-        // Erreur de lecture honnête, avec reprise (SPEC_BUILD §5).
-        if (!cancelled) {
-          setError(true);
-          setLoading(false);
-        }
-      });
+      }
+    });
     return () => {
       cancelled = true;
     };
   }, [profile, reloadKey]);
 
-  const filtered = useMemo(() => {
-    if (granularity === 'all') return sessions;
-    const cutoffDays = granularity === 'week' ? 7 : 30;
-    const cutoff = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
-    return sessions.filter((p) => new Date(p.startedAt).getTime() >= cutoff);
-  }, [sessions, granularity]);
-
-  // Points ordonnés chronologiquement croissants pour la courbe.
-  const points = useMemo(() => [...filtered].reverse(), [filtered]);
-
+  // Points chronologiques croissants pour la courbe (module 1).
+  const points = useMemo(() => [...sessions].reverse(), [sessions]);
   const stats = useMemo(() => computeStats(sessions), [sessions]);
 
-  // Cœur du pilier Évolution : cette séance VS la précédente (chrono réel).
-  // sessions est trié décroissant (plus récente en tête).
   const lastDelta = useMemo(() => {
     if (sessions.length < 2) return null;
     const current = sessions[0].bestSeconds;
@@ -145,7 +150,7 @@ export default function ProgressionScreen() {
   if (loading || error) {
     return (
       <Screen>
-        <AppBar title="PROGRESSION" onBack={() => router.back()} trailing={<AccountButton />} />
+        <AppBar title="Progression" onBack={() => router.back()} />
         <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}>
           <StateWrapper
             state={error ? 'error' : 'loading'}
@@ -160,50 +165,108 @@ export default function ProgressionScreen() {
     );
   }
 
+  const lastBest = sessions[0]?.bestSeconds ?? null;
+
   return (
     <Screen>
-      <AppBar title="PROGRESSION" onBack={() => router.back()} />
+      <AppBar title="Progression" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <Text style={s.eyebrow}>Meilleur tour · séance après séance</Text>
-        <Text style={s.title}>Vous avancez.</Text>
-
-        {/* Depuis la dernière séance — constat neutre, vs soi */}
-        {lastDelta ? <LastSessionDelta {...lastDelta} /> : null}
+        {/* ── MODULE 1 — MEILLEUR TOUR ─────────────────────────────────── */}
+        <Text style={[s.moduleEyebrow, { color: palette.goldText }]}>
+          MEILLEUR TOUR · SÉANCE APRÈS SÉANCE
+        </Text>
+        {lastBest != null ? (
+          <View style={s.kingRow}>
+            <Text style={[s.kingNumber, { color: palette.gold }]}>{formatBestShort(lastBest)}</Text>
+            <Text style={s.kingSub}>dernière séance</Text>
+          </View>
+        ) : null}
 
         {sessions.length < 3 ? (
-          <EmptyState
-            message={`Votre trajectoire apparaîtra après 3 séances complètes. ${sessions.length} enregistrée${sessions.length > 1 ? 's' : ''} pour l'instant.`}
-          />
+          <View style={{ marginTop: spacing.lg }}>
+            <EmptyState
+              message={`Votre trajectoire apparaîtra après 3 séances complètes. ${sessions.length} enregistrée${sessions.length > 1 ? 's' : ''} pour l'instant.`}
+            />
+          </View>
         ) : (
           <>
-            <View style={{ marginBottom: spacing.xl }}>
-              <Segmented
-                options={GRAN_OPTIONS.map((o) => o.label)}
-                value={GRAN_OPTIONS.find((o) => o.id === granularity)!.label}
-                onChange={(label) => {
-                  const opt = GRAN_OPTIONS.find((o) => o.label === label);
-                  if (opt) setGranularity(opt.id);
-                }}
-              />
+            <BestLapAreaChart points={points} />
+            <View style={s.axisRow}>
+              <Text style={s.axis}>{points[0] ? monthLabel(points[0].startedAt) : ''}</Text>
+              <Text style={s.axis}>
+                {points[points.length - 1] ? monthLabel(points[points.length - 1].startedAt) : ''}
+              </Text>
             </View>
-
-            {points.length < 2 ? (
-              <View style={{ marginBottom: spacing.xl }}>
-                <EmptyState
-                  label="Période trop courte"
-                  message="Aucune séance sur la période sélectionnée. Une fenêtre plus large fait réapparaître la trajectoire."
-                />
-              </View>
-            ) : (
-              <ProgressionChart points={points} />
-            )}
-
-            <StatsGrid stats={stats} />
+            <Text style={s.modulePhrase}>
+              Vous gagnez du temps, séance après séance. Juste vous, pas de classement.
+            </Text>
           </>
         )}
 
-        {/* Vos lectures — sous-vues de la zone Progression (PR 5). */}
-        <Text style={[s.eyebrow, { marginTop: spacing.xxl, marginBottom: spacing.md }]}>
+        {/* ── MODULE 2 — CONSTANCE ─────────────────────────────────────── */}
+        {lastLaps.length >= 2 && spreadSeconds != null ? (
+          <>
+            <View style={s.separator} />
+            <Text style={[s.moduleEyebrow, { color: dataColors.regularity }]}>
+              CONSTANCE · VOS TOURS
+            </Text>
+            <View style={s.kingRow}>
+              <Text style={[s.kingNumber, { color: dataColors.regularity }]}>
+                ±{spreadSeconds.toFixed(2).replace('.', ',')}
+              </Text>
+              <Text style={s.kingSub}>s d&apos;écart</Text>
+            </View>
+            <ConstancyBars durations={lastLaps} />
+            <Text style={s.modulePhrase}>
+              Des barres presque égales — vous êtes régulier. Le tour en or est votre meilleur.
+            </Text>
+          </>
+        ) : null}
+
+        {/* ── Substance sous les modules (parti A) ─────────────────────── */}
+
+        {lastDelta ? (
+          <View style={s.deltaPanel}>
+            <View style={{ flex: 1, paddingRight: spacing.md }}>
+              <Text style={s.eyebrowSmall}>Depuis votre dernière séance</Text>
+              <Text style={[s.deltaBody, { marginTop: spacing.xs }]}>
+                Meilleur tour{' '}
+                {Math.abs(lastDelta.delta) < 0.05
+                  ? 'stable'
+                  : lastDelta.delta < 0
+                    ? 'plus rapide'
+                    : 'plus lent'}{' '}
+                · {formatLapTime(lastDelta.previous)} → {formatLapTime(lastDelta.current)}
+              </Text>
+            </View>
+            <Text
+              style={[
+                s.deltaValue,
+                {
+                  color:
+                    Math.abs(lastDelta.delta) < 0.05
+                      ? palette.creamMute
+                      : lastDelta.delta < 0
+                        ? palette.green
+                        : palette.creamMute,
+                },
+              ]}
+            >
+              {Math.abs(lastDelta.delta) < 0.05 ? '±0,0 s' : formatDeltaSeconds(lastDelta.delta)}
+            </Text>
+          </View>
+        ) : null}
+
+        {sessions.length >= 3 ? (
+          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+            <Fact label="Séances" value={String(stats.count)} />
+            <Fact label="Meilleur tour" value={formatLapTime(stats.best)} accent />
+            <Fact label="Tour médian" value={formatLapTime(stats.median)} />
+          </View>
+        ) : null}
+
+        {/* Vos lectures — sous-vues de la zone. */}
+        <Text style={[s.eyebrowSmall, { marginTop: spacing.xxl, marginBottom: spacing.md }]}>
           VOS LECTURES
         </Text>
         <View style={{ gap: spacing.sm }}>
@@ -236,106 +299,67 @@ export default function ProgressionScreen() {
 }
 
 /**
- * Courbe du meilleur tour par séance. Axe Y = temps (le rapide en bas) :
- * une suite de chronos décroissants fait descendre la ligne. Ligne or à
- * halo, points or, dernière séance accentuée. Aucune bande de performance.
+ * Courbe en AIRE du meilleur tour (maquette) : ligne OR + gradient sous la
+ * ligne, points cerclés, dernier point plein labellisé « votre record ».
+ * Convention maquette : l'amélioration MONTE (chrono plus bas = point plus haut).
  */
-function ProgressionChart({ points }: { points: SessionPoint[] }) {
+function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
   const W = 320;
-  const H = 180;
+  const H = 150;
+  const PAD_TOP = 22;
+  const PAD_BOTTOM = 10;
 
-  // Domaine vertical dérivé des données, avec marge de respiration.
   const values = points.map((p) => p.bestSeconds);
   const lo = Math.min(...values);
   const hi = Math.max(...values);
   const span = hi - lo || 1;
-  const pad = span * 0.18;
-  const yHi = hi + pad; // borne haute = plus lent (en haut)
-  const yLo = Math.max(0, lo - pad); // borne basse = plus rapide (en bas)
-  const yFor = (t: number) => ((yHi - t) / (yHi - yLo)) * H;
+  // Plus rapide (lo) → plus HAUT (maquette : le record culmine).
+  const yFor = (t: number) => PAD_TOP + ((t - lo) / span) * (H - PAD_TOP - PAD_BOTTOM);
 
-  const xStep = points.length > 1 ? W / (points.length - 1) : 0;
-  const xy = points.map((p, i) => ({ x: i * xStep, y: yFor(p.bestSeconds) }));
-
-  const pathD =
-    xy.length === 0
-      ? ''
-      : `M ${xy[0].x.toFixed(1)},${xy[0].y.toFixed(1)} ` +
-        xy
-          .slice(1)
-          .map((p) => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`)
-          .join(' ');
-
-  // Animation draw-on de la courbe (~1.2s ease-out)
-  const dashOffset = useRef(new Animated.Value(1)).current;
-  const pathLength = useMemo(() => {
-    let total = 0;
-    for (let i = 1; i < xy.length; i++) {
-      const dx = xy[i].x - xy[i - 1].x;
-      const dy = xy[i].y - xy[i - 1].y;
-      total += Math.sqrt(dx * dx + dy * dy);
-    }
-    return total;
-  }, [xy]);
-  useEffect(() => {
-    dashOffset.setValue(1);
-    Animated.timing(dashOffset, {
-      toValue: 0,
-      duration: 1200,
-      delay: 200,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-  }, [dashOffset, pathD]);
-  const interpolatedOffset = dashOffset.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, pathLength],
-  });
-
+  const xStep = points.length > 1 ? (W - 12) / (points.length - 1) : 0;
+  const xy = points.map((p, i) => ({ x: 6 + i * xStep, y: yFor(p.bestSeconds) }));
   const lastIdx = xy.length - 1;
 
-  // Résumé textuel pour lecteur d'écran : un fait, pas une courbe à deviner.
+  const lineD =
+    `M ${xy[0].x.toFixed(1)},${xy[0].y.toFixed(1)} ` +
+    xy
+      .slice(1)
+      .map((p) => `L ${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+      .join(' ');
+  const areaD = `${lineD} L ${xy[lastIdx].x.toFixed(1)},${H} L ${xy[0].x.toFixed(1)},${H} Z`;
+
   const a11ySummary = `Meilleur tour sur ${points.length} séances, de ${formatLapTime(
     points[0].bestSeconds
   )} à ${formatLapTime(points[lastIdx].bestSeconds)}.`;
 
   return (
-    <CockpitPanel
-      style={s.chartPanel}
+    <View
+      style={s.chartFrame}
       accessible
       accessibilityRole="image"
       accessibilityLabel={a11ySummary}
     >
       <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
-        {/* Halo de la courbe (glow or, faible opacité) */}
-        <AnimatedPath
-          d={pathD}
-          stroke={palette.gold}
-          strokeWidth={7}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          opacity={0.16}
-          strokeDasharray={`${pathLength}`}
-          strokeDashoffset={interpolatedOffset}
-        />
-        {/* Courbe nette — draw-on progressif (~1.2s) */}
-        <AnimatedPath
-          d={pathD}
+        <Defs>
+          <LinearGradient id="goldArea" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={palette.gold} stopOpacity={0.28} />
+            <Stop offset="1" stopColor={palette.gold} stopOpacity={0.02} />
+          </LinearGradient>
+        </Defs>
+        {/* aire sous la ligne (gradient or) */}
+        <Path d={areaD} fill="url(#goldArea)" />
+        {/* ligne or */}
+        <Path
+          d={lineD}
           stroke={palette.gold}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
           fill="none"
-          strokeDasharray={`${pathLength}`}
-          strokeDashoffset={interpolatedOffset}
         />
-
-        {/* Points — dernière séance accentuée (« vous êtes ici ») */}
+        {/* points cerclés + dernier plein « votre record » */}
         {xy.map((p, i) =>
-          i === lastIdx ? (
-            <Circle key={i} cx={p.x} cy={p.y} r={9} fill={palette.gold} opacity={0.18} />
-          ) : (
+          i === lastIdx ? null : (
             <Circle
               key={i}
               cx={p.x}
@@ -347,84 +371,68 @@ function ProgressionChart({ points }: { points: SessionPoint[] }) {
             />
           )
         )}
-        {xy[lastIdx] ? (
-          <Circle cx={xy[lastIdx].x} cy={xy[lastIdx].y} r={5} fill={palette.gold} />
-        ) : null}
+        <Circle cx={xy[lastIdx].x} cy={xy[lastIdx].y} r={4.5} fill={palette.gold} />
+        <SvgText
+          x={Math.min(xy[lastIdx].x, W - 8)}
+          y={Math.max(10, xy[lastIdx].y - 10)}
+          fill={palette.gold}
+          fontSize={9}
+          fontFamily={fonts.mono}
+          textAnchor="end"
+        >
+          votre record
+        </SvgText>
       </Svg>
-
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          marginTop: spacing.sm,
-        }}
-      >
-        <Text style={s.axis}>
-          {points[0]?.startedAt
-            ? new Date(points[0].startedAt).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'short',
-              })
-            : ''}
-        </Text>
-        <Text style={s.axis}>
-          {points[points.length - 1]?.startedAt
-            ? new Date(points[points.length - 1].startedAt).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'short',
-              })
-            : ''}
-        </Text>
-      </View>
-    </CockpitPanel>
-  );
-}
-
-function StatsGrid({ stats }: { stats: { count: number; best: number; median: number } }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-      <Fact label="Séances" value={String(stats.count)} />
-      <Fact label="Meilleur tour" value={formatLapTime(stats.best)} accent />
-      <Fact label="Tour médian" value={formatLapTime(stats.median)} />
     </View>
   );
 }
 
 /**
- * Encart « depuis la dernière séance » — cœur du pilier Évolution.
- * Constat factuel : le delta du meilleur tour vs la séance précédente.
- * Jamais un jugement (« mieux »/« moins bien ») — le signe, la valeur en
- * secondes, et une formulation descriptive (« plus rapide »/« plus lent »).
- * Aucun rouge : une dégradation reste neutre (crème), l'amélioration en vert.
- * L'or est réservé au chrono/record (courbe, meilleur tour) — pas à un delta
- * « neutre » (canon V3 : une couleur = une donnée).
+ * Histogramme de constance (maquette) : une barre par tour de la dernière
+ * séance, violet sombre — la barre du MEILLEUR tour en OR. Légende T1 /
+ * ◆ votre meilleur / TN. Des barres presque égales = régularité.
  */
-function LastSessionDelta({
-  current,
-  previous,
-  delta,
-}: {
-  current: number;
-  previous: number;
-  delta: number;
-}) {
-  const stable = Math.abs(delta) < 0.05;
-  const word = stable ? 'stable' : delta < 0 ? 'plus rapide' : 'plus lent';
-  // Amélioration = vert (descriptif, jamais alarmant) ; stable et dégradation
-  // restent neutres (crème). L'or ne sert PAS de couleur « neutre » ici.
-  const accent = stable ? palette.creamMute : delta < 0 ? palette.green : palette.creamMute;
+function ConstancyBars({ durations }: { durations: number[] }) {
+  const W = 320;
+  const H = 84;
+  const n = durations.length;
+  const gap = 6;
+  const barW = Math.max(6, (W - gap * (n - 1)) / n);
+  const lo = Math.min(...durations);
+  const hi = Math.max(...durations);
+  const span = hi - lo || 1;
+  // Barres hautes et proches : la variation ne module que le TIERS supérieur —
+  // des tours presque égaux donnent des barres presque égales (lecture maquette).
+  const hFor = (d: number) => H * 0.55 + ((hi - d) / span) * H * 0.35;
+  const bestIdx = durations.indexOf(lo);
 
   return (
-    <View style={s.deltaPanel}>
-      <View style={{ flex: 1, paddingRight: spacing.md }}>
-        <Text style={s.eyebrowSmall}>Depuis votre dernière séance</Text>
-        <Text style={[s.deltaBody, { marginTop: spacing.xs }]}>
-          Meilleur tour {word} · {formatLapTime(previous)} → {formatLapTime(current)}
-        </Text>
+    <View
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Régularité sur ${n} tours ; le meilleur est le tour ${bestIdx + 1}.`}
+    >
+      <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+        {durations.map((d, i) => {
+          const h = hFor(d);
+          return (
+            <Rect
+              key={i}
+              x={i * (barW + gap)}
+              y={H - h}
+              width={barW}
+              height={h}
+              rx={2}
+              fill={i === bestIdx ? palette.gold : BAR_INACTIVE}
+            />
+          );
+        })}
+      </Svg>
+      <View style={s.axisRow}>
+        <Text style={s.axis}>T1</Text>
+        <Text style={[s.axis, { color: palette.goldText }]}>◆ votre meilleur</Text>
+        <Text style={s.axis}>T{n}</Text>
       </View>
-      <Text style={[s.deltaValue, { color: accent }]}>
-        {stable ? '±0,0 s' : formatDeltaSeconds(delta)}
-      </Text>
     </View>
   );
 }
@@ -436,20 +444,69 @@ function computeStats(sessions: SessionPoint[]): {
 } {
   if (sessions.length === 0) return { count: 0, best: 0, median: 0 };
   const times = sessions.map((p) => p.bestSeconds).sort((a, b) => a - b);
-  const best = times[0]; // le plus petit chrono = le meilleur
+  const best = times[0];
   const mid = Math.floor(times.length / 2);
   const median = times.length % 2 ? times[mid] : (times[mid - 1] + times[mid]) / 2;
   return { count: sessions.length, best, median };
 }
 
 const s = {
-  eyebrow: {
+  moduleEyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
-    letterSpacing: 1.5,
+    letterSpacing: 1.8,
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
+    marginTop: spacing.lg,
+  },
+  kingRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'baseline' as const,
+    gap: spacing.md,
     marginTop: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  kingNumber: {
+    fontFamily: fonts.king,
+    fontSize: 40,
+    letterSpacing: -1.5,
+  },
+  kingSub: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+  },
+  chartFrame: {
+    backgroundColor: palette.card,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.borderHair,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+  },
+  axisRow: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    marginTop: spacing.sm,
+  },
+  axis: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  modulePhrase: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.6,
+    marginTop: spacing.lg,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: palette.separator,
+    marginVertical: spacing.xxl,
   },
   eyebrowSmall: {
     fontFamily: fonts.mono,
@@ -458,13 +515,28 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
   },
-  title: {
-    fontFamily: fonts.display,
-    fontSize: fontSize.h3,
-    letterSpacing: 0.5,
-    color: palette.cream,
-    marginTop: spacing.xs,
+  deltaPanel: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    backgroundColor: palette.card2,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xxl,
     marginBottom: spacing.lg,
+  },
+  deltaBody: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
+  },
+  deltaValue: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.value,
+    color: palette.cream,
   },
   navLabel: {
     fontFamily: fonts.bodyMedium,
@@ -477,37 +549,6 @@ const s = {
     color: palette.creamMute,
     marginTop: spacing.xs,
   },
-  // Surcharge du CockpitPanel : on garde padding serré + halo or, on laisse le
-  // panneau fournir fond/bordure/rayon HUD (équerres cockpit).
-  chartPanel: {
-    padding: spacing.md,
-    marginBottom: spacing.xl,
-    // halo or discret (iOS) — la donnée respire sans juger
-    shadowColor: palette.gold,
-    shadowOpacity: 0.15,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 2,
-  },
-  deltaPanel: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    backgroundColor: palette.card2,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: palette.line,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.xl,
-  },
-  axis: {
-    fontFamily: fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
-  },
   linkPress: {
     minHeight: 44,
     justifyContent: 'center' as const,
@@ -519,15 +560,5 @@ const s = {
     letterSpacing: 1,
     color: palette.creamMute,
     textDecorationLine: 'underline' as const,
-  },
-  deltaBody: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    color: palette.creamSoft,
-  },
-  deltaValue: {
-    fontFamily: fonts.mono,
-    fontSize: fontSize.value,
-    color: palette.cream,
   },
 };
