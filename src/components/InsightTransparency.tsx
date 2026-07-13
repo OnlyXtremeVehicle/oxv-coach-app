@@ -35,12 +35,18 @@ export function DataQualityBanner({
 }) {
   if (!dataQuality) return null;
   const low = isLowReliability(dataQuality);
+  // Langage v2 : LIGNE D'ÉTAT à pastille (comme le menu Data Lab) — verte si
+  // fiable, NEUTRE si fragile. L'or est réservé au chrono (canon), jamais à un
+  // avertissement de méthode.
   return (
-    <View style={[styles.banner, low ? styles.bannerWarn : styles.bannerOk]}>
-      <Text style={[styles.bannerText, { color: low ? palette.gold : palette.creamMute }]}>
+    <View style={styles.stateRow}>
+      <View
+        style={[styles.stateDot, { backgroundColor: low ? palette.faint : theme.dataColors.accel }]}
+      />
+      <Text style={[styles.stateText, low && { color: palette.creamSoft }]}>
         {low
-          ? `Fiabilité réduite : ${dataQuality.pct_valid}% des points sont valides. À lire avec prudence.`
-          : `Fiabilité : ${dataQuality.pct_valid}% des points valides · ${dataQuality.frames_used} trames.`}
+          ? `Fiabilité réduite : ${dataQuality.pct_valid} % des points valides. À lire avec prudence.`
+          : `Fiabilité : ${dataQuality.pct_valid} % des points valides · ${dataQuality.frames_used} trames.`}
       </Text>
     </View>
   );
@@ -90,42 +96,51 @@ export function ProvenanceLine({
 }
 
 const styles = StyleSheet.create({
-  banner: {
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 0.5,
+  // Ligne d'état (v2) : pastille + texte muted, sans encadré lourd.
+  stateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.lg,
+    minHeight: 20,
   },
-  bannerWarn: { borderColor: palette.gold, backgroundColor: 'rgba(255,183,3,0.08)' },
-  bannerOk: { borderColor: palette.line, backgroundColor: palette.card2 },
-  bannerText: { fontSize: fontSize.small },
+  stateDot: { width: 7, height: 7, borderRadius: 4 },
+  stateText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.45,
+  },
+  // Tuile v2 : surface, hairline, caption mono fine.
   block: {
     padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 0.5,
+    borderRadius: radius.md,
+    borderWidth: 1,
     borderColor: palette.line,
-    backgroundColor: palette.card2,
+    backgroundColor: palette.card,
     marginTop: spacing.lg,
     gap: spacing.xs,
   },
   blockTitle: {
     fontFamily: fonts.mono,
-    fontSize: fontSize.eyebrow,
-    letterSpacing: 2,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: palette.creamMute,
+    color: palette.eyebrow,
     marginBottom: spacing.xs,
   },
   blockLine: {
     color: palette.creamSoft,
     fontFamily: fonts.body,
     fontSize: fontSize.small,
-    lineHeight: fontSize.small * 1.5,
+    lineHeight: fontSize.small * 1.55,
   },
   provenance: {
-    color: palette.creamMute,
+    color: palette.eyebrow,
     fontFamily: fonts.mono,
-    fontSize: fontSize.small,
+    fontSize: 10,
+    letterSpacing: 0.6,
     marginTop: spacing.lg,
     textAlign: 'center',
   },
