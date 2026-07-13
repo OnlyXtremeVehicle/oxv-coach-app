@@ -1,25 +1,34 @@
 /**
- * Écran Amis pilotes — gestion des amitiés pour la vue Côte à côte.
+ * Écran Amis — amitiés pilote ↔ pilote (porte d'entrée du Côte à côte).
+ * Reskin fidèle à la maquette refonte-v2 §7bis #7e (screens/29-amis.png).
  *
- * 3 sections :
- *   1. Ajouter un ami (recherche par @handle)
- *   2. Demandes reçues (accept / decline)
- *   3. Mes amis (toucher → écran côte à côte, swipe → révoquer)
- *   4. Demandes envoyées (révoquer si attente trop longue)
+ * Maquette : champ « Ajouter par @handle » sous le titre, lignes ami =
+ * avatar initiales + nom + méta mono « @handle · roulé ensemble ×N »,
+ * chevron, caption « Aucun classement entre vous. Juste des repères
+ * communs. » Le bouton rond « + » de la maquette est DROP : doublon du
+ * champ d'ajout toujours visible (aucun contrôle sans effet réel).
  *
- * Doctrine : pas de notion de "score d'amitié", pas de classement, pas
- * de notifications agressives. Juste une liste sobre. La comparaison
- * entre amis est un partage volontaire entre copains, pas du coaching.
+ * Données réelles uniquement :
+ *   - Amitiés : pilot_friendships via friendshipsService — flux demande /
+ *     acceptation / refus / révocation INCHANGÉS, restylés v2.
+ *   - « roulé ensemble ×N » : croisement réel de mes analyses
+ *     (app_session_analyses ⋈ telemetry_sessions, analysesService) et des
+ *     sessions de l'ami visibles par RLS 0027 (duelService). N = jours
+ *     distincts où les deux ont une session le même jour sur le même
+ *     circuit. À défaut, « même circuit » si au moins un circuit en commun.
+ *     Aucune trace commune → mention masquée (le @handle seul).
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Button, typo/couleurs
- * @/theme/v2. Logique d'amitiés (recherche, accept, révoque) inchangée.
+ * Doctrine : aucun score, aucun classement, jamais de « gagnant ». La
+ * comparaison est un partage consenti entre copains, pas du coaching.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { listRecentAnalyses } from '@/services/analysesService';
+import { loadFriendSessionList } from '@/services/duelService';
 import {
   type FriendListEntry,
   acceptFriendRequest,
@@ -39,14 +48,98 @@ import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { StateWrapper } from '@/ui/StateWrapper';
 import { timeAgoFr } from '@/utils/time';
 
+const { palette, fonts, fontSize, spacing } = theme;
+
+/* ------------------------------------------------------------------ */
+/* Repères communs — dérivés de données réelles, jamais un score.      */
+/* ------------------------------------------------------------------ */
+
+interface SharedTrace {
+  /** Jours distincts où les deux pilotes ont roulé le même circuit. */
+  togetherCount: number;
+  /** Au moins un circuit en commun (sans jour partagé). */
+  sharedCircuit: boolean;
+}
+
+/** Clé de jour LOCAL (les sessions OXV sont horodatées sur place). */
+function localDayKey(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
+function normCircuit(name: string | null): string | null {
+  const n = (name ?? '').trim().toLowerCase();
+  return n || null;
+}
+
+/**
+ * Croise mes sessions et celles de l'ami. Strict : « roulé ensemble »
+ * exige même jour ET même circuit nommé des deux côtés — sinon on ne
+ * l'affirme pas.
+ */
+function computeSharedTrace(
+  mine: { startedAt: string; circuitName: string | null }[],
+  theirs: { startedAt: string; circuitName: string | null }[]
+): SharedTrace {
+  const myDayCircuits = new Set<string>();
+  const myCircuits = new Set<string>();
+  for (const m of mine) {
+    const c = normCircuit(m.circuitName);
+    if (!c) continue;
+    myCircuits.add(c);
+    myDayCircuits.add(`${localDayKey(m.startedAt)}|${c}`);
+  }
+
+  const togetherDays = new Set<string>();
+  let sharedCircuit = false;
+  for (const t of theirs) {
+    const c = normCircuit(t.circuitName);
+    if (!c) continue;
+    if (myCircuits.has(c)) sharedCircuit = true;
+    const key = `${localDayKey(t.startedAt)}|${c}`;
+    if (myDayCircuits.has(key)) togetherDays.add(key);
+  }
+  return { togetherCount: togetherDays.size, sharedCircuit };
+}
+
+/** Mention factuelle de la maquette — masquée si rien ne la porte. */
+function sharedMentionOf(trace: SharedTrace | undefined): string | null {
+  if (!trace) return null;
+  if (trace.togetherCount > 0) return `roulé ensemble ×${trace.togetherCount}`;
+  if (trace.sharedCircuit) return 'même circuit';
+  return null;
+}
+
+/** Initiales d'avatar depuis le @handle réel (« thomas.m » → TM). */
+function initialsOf(entry: FriendListEntry): string {
+  const source = entry.friendHandle ?? entry.friendFirstName ?? '';
+  const letters = source
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('');
+  return letters || '—';
+}
+
+function displayNameOf(entry: FriendListEntry): string {
+  return entry.friendFirstName ?? entry.friendHandle ?? `Pilote ${entry.friendId.slice(0, 6)}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Écran                                                               */
+/* ------------------------------------------------------------------ */
+
 export default function AmisScreen() {
-  const profile = useAuthStore((s) => s.profile);
+  const profile = useAuthStore((s2) => s2.profile);
 
   const [accepted, setAccepted] = useState<FriendListEntry[]>([]);
   const [received, setReceived] = useState<FriendListEntry[]>([]);
   const [sent, setSent] = useState<FriendListEntry[]>([]);
+  const [sharedByFriend, setSharedByFriend] = useState<Record<string, SharedTrace>>({});
   const [loading, setLoading] = useState(true);
 
   const [searchHandle, setSearchHandle] = useState('');
@@ -55,14 +148,32 @@ export default function AmisScreen() {
   const reload = useCallback(async () => {
     if (!profile?.id) return;
     try {
-      const [a, r, s] = await Promise.all([
+      const [a, r, sn] = await Promise.all([
         listAcceptedFriends(profile.id),
         listPendingReceived(profile.id),
         listPendingSent(profile.id),
       ]);
       setAccepted(a);
       setReceived(r);
-      setSent(s);
+      setSent(sn);
+
+      // Repères communs — croisement réel de mes analyses et des sessions
+      // de chaque ami (lisibles seulement si amitié acceptée, RLS 0027).
+      if (a.length > 0) {
+        const mine = (await listRecentAnalyses(profile.id, 100)).map((m) => ({
+          startedAt: m.sessionStartedAt,
+          circuitName: m.circuitName,
+        }));
+        const entries = await Promise.all(
+          a.map(async (f) => {
+            const theirs = await loadFriendSessionList(f.friendId, 100);
+            return [f.friendId, computeSharedTrace(mine, theirs)] as const;
+          })
+        );
+        setSharedByFriend(Object.fromEntries(entries));
+      } else {
+        setSharedByFriend({});
+      }
     } finally {
       setLoading(false);
     }
@@ -122,116 +233,135 @@ export default function AmisScreen() {
     }
   }
 
-  if (loading) {
-    return (
-      <Screen scroll={false}>
-        <AppBar title="AMIS" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
-        </View>
-      </Screen>
-    );
-  }
-
   return (
     <Screen>
-      <AppBar title="AMIS" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Pour comparer, en miroir.</Text>
+      <AppBar title="Amis" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* Ajout par @handle — flux d'invitation existant, restylé v2 */}
+        <Field
+          label="Ajouter par @handle"
+          value={searchHandle}
+          onChangeText={setSearchHandle}
+          placeholder="@handle"
+          helper="Le pseudo public du pilote à inviter."
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="send"
+          onSubmitEditing={handleSendRequest}
+          containerStyle={{ marginBottom: spacing.sm }}
+        />
+        <Button
+          label="Envoyer la demande"
+          onPress={handleSendRequest}
+          loading={searching}
+          disabled={!searchHandle.trim()}
+        />
 
-        {/* Bloc recherche */}
-        <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
-          <View style={[s.headRow, { marginBottom: theme.spacing.md }]}>
-            <View style={s.headDot} />
-            <SectionLabel>AJOUTER UN AMI</SectionLabel>
-          </View>
-          <Field
-            label="Pseudo du pilote"
-            value={searchHandle}
-            onChangeText={setSearchHandle}
-            placeholder="@handle"
-            helper="Le pseudo public du pilote à inviter."
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Button
-            label={searching ? 'Recherche…' : 'Envoyer la demande'}
-            onPress={handleSendRequest}
-            disabled={searching || !searchHandle.trim()}
-          />
-        </Card>
+        <View style={{ marginTop: spacing.xxl }}>
+          <StateWrapper state={loading ? 'loading' : 'nominal'} skeletonLines={4}>
+            {/* Demandes reçues */}
+            {received.length > 0 && (
+              <Section title={`Demandes reçues (${received.length})`}>
+                {received.map((f) => (
+                  <FriendRow
+                    key={f.friendshipId}
+                    entry={f}
+                    meta={metaPending(f)}
+                    actions={[
+                      {
+                        label: 'Accepter',
+                        kind: 'primary',
+                        onPress: () => handleAccept(f.friendshipId),
+                      },
+                      {
+                        label: 'Décliner',
+                        kind: 'subtle',
+                        onPress: () => handleDecline(f.friendshipId),
+                      },
+                    ]}
+                  />
+                ))}
+              </Section>
+            )}
 
-        {/* Demandes reçues */}
-        {received.length > 0 && (
-          <Section title={`DEMANDES REÇUES (${received.length})`}>
-            {received.map((f) => (
-              <FriendRow
-                key={f.friendshipId}
-                entry={f}
-                actions={[
-                  {
-                    label: 'Accepter',
-                    kind: 'primary',
-                    onPress: () => handleAccept(f.friendshipId),
-                  },
-                  {
-                    label: 'Décliner',
-                    kind: 'subtle',
-                    onPress: () => handleDecline(f.friendshipId),
-                  },
-                ]}
-              />
-            ))}
-          </Section>
-        )}
+            {/* Amis acceptés */}
+            <Section title={`Amis (${accepted.length})`}>
+              {accepted.length === 0 ? (
+                <Text style={s.empty}>
+                  Aucun ami pour l&apos;instant. Les pilotes que vous ajoutez par @handle
+                  apparaissent ici.
+                </Text>
+              ) : (
+                accepted.map((f) => (
+                  <FriendRow
+                    key={f.friendshipId}
+                    entry={f}
+                    meta={metaAccepted(f, sharedByFriend[f.friendId])}
+                    onPress={() => router.push(`/(app)/cote-a-cote/${f.friendId}` as never)}
+                    actions={[
+                      {
+                        label: 'Révoquer',
+                        kind: 'subtle',
+                        onPress: () => handleRevoke(f.friendshipId),
+                      },
+                    ]}
+                  />
+                ))
+              )}
+            </Section>
 
-        {/* Mes amis acceptés */}
-        <Section title={`MES AMIS (${accepted.length})`}>
-          {accepted.length === 0 ? (
-            <Text style={s.empty}>
-              Aucun ami pour l&apos;instant. Invitez un autre pilote OXV pour comparer vos bilans.
-            </Text>
-          ) : (
-            accepted.map((f) => (
-              <FriendRow
-                key={f.friendshipId}
-                entry={f}
-                onPress={() => router.push(`/(app)/cote-a-cote/${f.friendId}` as never)}
-                actions={[
-                  {
-                    label: 'Révoquer',
-                    kind: 'subtle',
-                    onPress: () => handleRevoke(f.friendshipId),
-                  },
-                ]}
-              />
-            ))
-          )}
-        </Section>
+            {/* Demandes envoyées en attente */}
+            {sent.length > 0 && (
+              <Section title={`Demandes envoyées (${sent.length})`}>
+                {sent.map((f) => (
+                  <FriendRow
+                    key={f.friendshipId}
+                    entry={f}
+                    meta={metaPending(f)}
+                    actions={[
+                      {
+                        label: 'Annuler',
+                        kind: 'subtle',
+                        onPress: () => handleRevoke(f.friendshipId),
+                      },
+                    ]}
+                  />
+                ))}
+              </Section>
+            )}
+          </StateWrapper>
+        </View>
 
-        {/* Demandes envoyées en attente */}
-        {sent.length > 0 && (
-          <Section title={`DEMANDES ENVOYÉES (${sent.length})`}>
-            {sent.map((f) => (
-              <FriendRow
-                key={f.friendshipId}
-                entry={f}
-                actions={[
-                  { label: 'Annuler', kind: 'subtle', onPress: () => handleRevoke(f.friendshipId) },
-                ]}
-              />
-            ))}
-          </Section>
-        )}
-
-        {/* Phrase manifeste doctrinale */}
-        <Text style={s.manifest}>Comparer pour comprendre, pas pour départager.</Text>
+        {/* Caption doctrinale de la maquette */}
+        <Text style={s.caption}>Aucun classement entre vous. Juste des repères communs.</Text>
       </View>
     </Screen>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/* Méta mono sous le nom — chaque segment trace vers du réel.          */
+/* ------------------------------------------------------------------ */
+
+function metaAccepted(entry: FriendListEntry, trace: SharedTrace | undefined): string {
+  const parts = [
+    entry.friendHandle ? `@${entry.friendHandle}` : null,
+    sharedMentionOf(trace),
+  ].filter((p): p is string => Boolean(p));
+  return parts.length > 0 ? parts.join(' · ') : timeAgoFr(new Date(entry.requestedAt));
+}
+
+function metaPending(entry: FriendListEntry): string {
+  const parts = [
+    entry.friendHandle ? `@${entry.friendHandle}` : null,
+    timeAgoFr(new Date(entry.requestedAt)),
+  ].filter((p): p is string => Boolean(p));
+  return parts.join(' · ');
+}
+
+/* ------------------------------------------------------------------ */
+/* Sections & lignes                                                   */
+/* ------------------------------------------------------------------ */
 
 interface ActionDef {
   label: string;
@@ -241,159 +371,176 @@ interface ActionDef {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginBottom: theme.spacing.xxl, gap: theme.spacing.sm }}>
-      <View style={s.headRow}>
-        <View style={s.headDot} />
-        <SectionLabel>{title}</SectionLabel>
-      </View>
+    <View style={{ marginBottom: spacing.xxl, gap: spacing.sm }}>
+      <SectionLabel>{title}</SectionLabel>
       {children}
     </View>
   );
 }
 
+function Chevron() {
+  return <View style={s.chev} accessibilityElementsHidden importantForAccessibility="no" />;
+}
+
 function FriendRow({
   entry,
+  meta,
   onPress,
   actions,
 }: {
   entry: FriendListEntry;
+  meta: string;
   onPress?: () => void;
   actions: ActionDef[];
 }) {
-  const displayName =
-    entry.friendFirstName ?? entry.friendHandle ?? `Pilote ${entry.friendId.slice(0, 6)}`;
-  const subtitle = entry.friendHandle
-    ? `@${entry.friendHandle}`
-    : timeAgoFr(new Date(entry.requestedAt));
+  const displayName = displayNameOf(entry);
 
-  const inner = (
-    <Card style={s.dataPanel}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={{ flex: 1 }}>
-          <Text style={s.rowName}>{displayName}</Text>
-          <Text style={s.rowMeta}>{subtitle}</Text>
+  return (
+    <Card
+      onPress={onPress}
+      accessibilityLabel={onPress ? `${displayName} — côte à côte` : undefined}
+    >
+      <View style={s.rowHead}>
+        <View style={s.avatar}>
+          <Text style={s.avatarTxt}>{initialsOf(entry)}</Text>
         </View>
-        {onPress ? <Text style={s.chevron}>›</Text> : null}
+        <View style={{ flex: 1 }}>
+          <Text style={s.rowName} numberOfLines={1}>
+            {displayName}
+          </Text>
+          <Text style={s.rowMeta} numberOfLines={1}>
+            {meta}
+          </Text>
+        </View>
+        {onPress ? <Chevron /> : null}
       </View>
-      <View style={{ flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-        {actions.map((a) => (
-          <Pressable
-            key={a.label}
-            accessibilityRole="button"
-            onPress={a.onPress}
-            style={({ pressed }) => [
-              a.kind === 'primary' ? s.chipPrimary : s.chipSubtle,
-              { opacity: pressed ? 0.7 : 1 },
-            ]}
-          >
-            <Text style={a.kind === 'primary' ? s.chipPrimaryTxt : s.chipSubtleTxt}>{a.label}</Text>
-          </Pressable>
-        ))}
-      </View>
+
+      {actions.length > 0 && (
+        <View style={s.actionsRow}>
+          {actions.map((a) => (
+            <Pressable
+              key={a.label}
+              accessibilityRole="button"
+              accessibilityLabel={`${a.label} — ${displayName}`}
+              onPress={a.onPress}
+              style={({ pressed }) => [
+                a.kind === 'primary' ? s.chipPrimary : s.chipSubtle,
+                { opacity: pressed ? 0.7 : 1 },
+              ]}
+            >
+              <Text style={a.kind === 'primary' ? s.chipPrimaryTxt : s.chipSubtleTxt}>
+                {a.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </Card>
   );
-
-  if (onPress) {
-    return (
-      <Pressable accessibilityRole="button" onPress={onPress}>
-        {inner}
-      </Pressable>
-    );
-  }
-  return inner;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/* Styles                                                              */
+/* ------------------------------------------------------------------ */
 
-const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
+const s = StyleSheet.create({
+  rowHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
   },
-  dataPanel: {
-    backgroundColor: theme.palette.card2,
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  headRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.sm,
-  },
-  headDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    // Repère de structure neutre — or réservé à la donnée (canon R1).
-    backgroundColor: theme.palette.creamMute,
-  },
-  empty: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    paddingVertical: theme.spacing.lg,
-    lineHeight: theme.fontSize.small * 1.5,
-  },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.md,
+  avatarTxt: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 1,
+    color: palette.creamMute,
   },
   rowName: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
-  },
-  chevron: {
-    color: theme.palette.creamMute,
-    fontSize: 18,
+    fontFamily: fonts.display,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
   },
   rowMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
+    fontFamily: fonts.mono,
+    fontSize: 11,
     letterSpacing: 0.6,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+    color: palette.creamMute,
+    marginTop: 3,
+  },
+  chev: {
+    width: 8,
+    height: 8,
+    borderTopWidth: 1.6,
+    borderRightWidth: 1.6,
+    borderColor: palette.faint,
+    transform: [{ rotate: '45deg' }],
+    marginRight: 2,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: palette.separator,
   },
   chipPrimary: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: theme.radius.sm,
-    backgroundColor: theme.palette.cream,
+    backgroundColor: palette.cream,
   },
   chipPrimaryTxt: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
     color: '#000',
   },
   chipSubtle: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderColor: theme.palette.edge,
+    borderColor: palette.cardBorderProminent,
+    backgroundColor: palette.card2,
   },
   chipSubtleTxt: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
   },
-};
+  empty: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
+    paddingVertical: spacing.lg,
+    textAlign: 'center',
+  },
+  caption: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.legend,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+});

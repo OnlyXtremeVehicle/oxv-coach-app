@@ -1,14 +1,26 @@
 /**
- * Écran #— Fiche coach + demande de séance (Phase 1 marketplace).
+ * Fiche coach publique — reskin refonte-v2 §7bis (`#8b`, 32-fiche-coach.png).
  *
- * Affiche la fiche d'un coach publié (bio, palmarès, circuits, spécialités,
- * tarif indicatif) puis, à la demande, un formulaire sobre : choix d'un créneau
- * ouvert (ou prise de contact libre) + un mot. À l'envoi → `requestBooking` →
- * Toast de confirmation. AUCUN paiement (Phase 2).
+ * Maquette : héros centré (avatar CERCLÉ ROUGE, nom, eyebrow rouge), rangée de
+ * tuiles stats, bio en carte, ligne de disponibilité VERTE, CTA rouge
+ * « Demander une séance ». Héritage GARDÉ et retravaillé au langage v2 :
+ * palmarès, circuits, spécialités, liens, médias, avis, et le formulaire de
+ * demande (`requestBooking`, Phase 1 marketplace, AUCUN paiement).
  *
- * Doctrine : premium, vouvoiement, aucun emoji, aucune note/aucun classement.
- * Un seul chiffre dominant : le tarif indicatif. Accent coach = `palette.coach`.
- * Réutilise le kit (Screen, AppBar, Card, Field, Button).
+ * Données RÉELLES uniquement (coachMarketplaceService, RLS `is_published`) :
+ * - stats = nombre de circuits / spécialités EN BASE (l'« expérience » de la
+ *   maquette n'existe pas en base → non affichée) ;
+ * - prix = `season_price_eur` réel, registre tarif d'offre heritageGold
+ *   (décision Gabin 2026-07-11 — l'or système reste au chrono) ; la maquette
+ *   dit « la séance », la base porte un tarif de SAISON → libellé honnête ;
+ * - dispo verte = créneaux `open` à venir réels (`coach_availability`) ;
+ * - pastille de partage de la maquette : DROP (aucun flux de partage réel).
+ *
+ * Navigation : la Découverte pousse `demande=1` (bouton « Contacter ») → le
+ * formulaire de demande s'ouvre directement à l'arrivée.
+ *
+ * Doctrine : vouvoiement, aucun emoji, aucune note/aucun classement inter-coachs.
+ * Un seul chiffre dominant : le tarif indicatif. Accent contexte = rouge coach.
  */
 
 import { useEffect, useState } from 'react';
@@ -16,6 +28,8 @@ import { ActivityIndicator, Image, Linking, Pressable, ScrollView, Text, View } 
 import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { EmptyState } from '@/components/instruments/EmptyState';
+import { ReportButton } from '@/components/ReportButton';
 import {
   type CoachAvailabilitySlot,
   type CoachProfileDetail,
@@ -25,7 +39,6 @@ import {
   listCoachReviews,
   requestBooking,
 } from '@/services/coachMarketplaceService';
-import { ReportButton } from '@/components/ReportButton';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -35,8 +48,18 @@ import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort, formatDateTime } from '@/utils/format';
 
+const { palette, fonts, fontSize, spacing, radius } = theme;
+
+/** Initiales pour l'avatar de repli (mêmes règles que la Découverte). */
+function initialsOf(headline: string | null): string {
+  const base = (headline ?? '').trim();
+  if (!base) return 'OXV';
+  const parts = base.split(/\s+/).slice(0, 2);
+  return parts.map((p) => p.charAt(0).toUpperCase()).join('') || 'OXV';
+}
+
 export default function CoachDetailScreen() {
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; demande?: string }>();
   const coachId = params.id;
 
   const pilotFirstName = useAuthStore((st) => st.profile?.first_name ?? null);
@@ -50,8 +73,9 @@ export default function CoachDetailScreen() {
   });
   const [loading, setLoading] = useState(true);
 
-  // Formulaire de demande.
-  const [formOpen, setFormOpen] = useState(false);
+  // Formulaire de demande. `demande=1` (poussé par « Contacter » depuis la
+  // Découverte) ouvre le formulaire directement à l'arrivée sur la fiche.
+  const [formOpen, setFormOpen] = useState(params.demande === '1');
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -109,9 +133,9 @@ export default function CoachDetailScreen() {
   if (loading) {
     return (
       <Screen>
-        <AppBar title="COACH" onBack={() => router.back()} />
-        <View style={{ paddingVertical: theme.spacing.xxl * 2, alignItems: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+        <AppBar title="Fiche coach" onBack={() => router.back()} />
+        <View style={{ paddingVertical: spacing.xxl * 2, alignItems: 'center' }}>
+          <ActivityIndicator color={palette.creamMute} accessibilityLabel="Chargement" />
         </View>
       </Screen>
     );
@@ -120,39 +144,183 @@ export default function CoachDetailScreen() {
   if (!profile) {
     return (
       <Screen>
-        <AppBar title="COACH" onBack={() => router.back()} />
-        <View style={{ paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.xl }}>
-          <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-            <Text style={s.emptyTitle}>Fiche indisponible.</Text>
-            <Text style={s.emptyHint}>Ce coach n&apos;est plus publié.</Text>
-          </Card>
+        <AppBar title="Fiche coach" onBack={() => router.back()} />
+        <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.xl }}>
+          <EmptyState
+            label="Fiche indisponible"
+            message="Ce coach n'est plus publié."
+            source="coach_profiles"
+          />
         </View>
       </Screen>
     );
   }
 
-  const tariff = profile.seasonPriceEur !== null ? `${Math.round(profile.seasonPriceEur)} €` : null;
+  const name = profile.headline ?? 'Coach OXV';
+
+  // Tuiles stats — uniquement ce qui EXISTE en base (jamais de chiffre inventé).
+  const circuitCount = profile.circuits.length;
+  const specialtyCount = profile.specialties.length;
+  const price =
+    profile.seasonPriceEur !== null
+      ? `${Math.round(profile.seasonPriceEur).toLocaleString('fr-FR')} €`
+      : null;
+  const hasStats = circuitCount > 0 || specialtyCount > 0 || price !== null;
+
+  // Disponibilité réelle : créneaux `open` à venir (getCoachProfile ne lit que
+  // les créneaux futurs `open`/`full` — RLS côté base).
+  const openSlots = availability.filter((a) => a.status === 'open').length;
+  const dispoLabel =
+    openSlots > 0
+      ? `Disponible — ${openSlots} créneau${openSlots > 1 ? 'x' : ''} ouvert${openSlots > 1 ? 's' : ''}`
+      : 'Aucun créneau ouvert pour l’instant';
 
   return (
     <Screen>
-      <AppBar title="COACH" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>COACH OXV</Text>
-        <Text style={s.title}>{profile.headline ?? 'Coach OXV'}</Text>
+      <AppBar title="Fiche coach" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* Héros centré — avatar cerclé rouge, nom, eyebrow rouge (maquette). */}
+        <View style={s.hero}>
+          <View style={s.avatarRing}>
+            {profile.photoUrl ? (
+              <Image
+                source={{ uri: profile.photoUrl }}
+                style={s.avatar}
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              <View style={[s.avatar, s.avatarFallback]}>
+                <Text style={s.avatarInitials}>{initialsOf(profile.headline)}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={s.name}>{name}</Text>
+          <Text style={s.roleEyebrow}>Coach OXV</Text>
+        </View>
 
-        {/* Tarif indicatif — chiffre dominant unique de l'écran. */}
-        {tariff ? (
-          <View style={s.tariffBlock}>
-            <Text style={s.tariffValue}>{tariff}</Text>
-            <Text style={s.tariffLabel}>Tarif indicatif · réglé hors application</Text>
+        {/* Stats réelles. L'« expérience » de la maquette n'est pas en base → absente. */}
+        {hasStats ? (
+          <View style={s.statsRow}>
+            {circuitCount > 0 ? (
+              <View style={s.statTile}>
+                <Text style={s.statValue}>{circuitCount}</Text>
+                <Text style={s.statLabel}>circuit{circuitCount > 1 ? 's' : ''}</Text>
+              </View>
+            ) : null}
+            {specialtyCount > 0 ? (
+              <View style={s.statTile}>
+                <Text style={s.statValue}>{specialtyCount}</Text>
+                <Text style={s.statLabel}>spécialité{specialtyCount > 1 ? 's' : ''}</Text>
+              </View>
+            ) : null}
+            {price ? (
+              // Chiffre dominant unique de l'écran : le tarif. Registre tarif
+              // d'offre heritageGold (décision Gabin 2026-07-11) — l'or système
+              // (#FFB703) reste réservé au chrono/record.
+              <View style={s.statTile} accessibilityLabel={`Tarif de saison ${price}`}>
+                <Text style={[s.statValue, { color: palette.heritageGold }]}>{price}</Text>
+                <Text style={s.statLabel}>la saison</Text>
+              </View>
+            ) : null}
           </View>
         ) : null}
+        {price ? <Text style={s.tariffNote}>Tarif indicatif · réglé hors application</Text> : null}
 
+        {/* Bio réelle en carte (maquette). Absente = masquée. */}
         {profile.bio ? (
-          <Section label="Présentation">
+          <Card style={s.bioCard}>
             <Text style={s.body}>{profile.bio}</Text>
-          </Section>
+          </Card>
         ) : null}
+
+        {/* Disponibilité verte réelle (coach_availability, créneaux ouverts à venir). */}
+        <View style={s.dispoRow}>
+          <View
+            style={[s.dispoDot, { backgroundColor: openSlots > 0 ? palette.green : palette.faint }]}
+          />
+          <Text style={[s.dispoT, openSlots > 0 && { color: palette.green }]}>{dispoLabel}</Text>
+        </View>
+
+        {/* CTA rouge (maquette) → ouvre le formulaire réel de demande. */}
+        {!formOpen ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Demander une séance à ${name}`}
+            onPress={() => setFormOpen(true)}
+            style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={s.ctaT}>Demander une séance</Text>
+          </Pressable>
+        ) : (
+          <Card style={{ marginTop: spacing.lg }}>
+            <Text style={s.formTitle}>Votre demande</Text>
+
+            {availability.length > 0 ? (
+              <>
+                <Text style={s.formHint}>
+                  Choisissez un créneau, ou laissez vide pour une prise de contact libre.
+                </Text>
+                <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
+                  {availability.map((slot) => {
+                    const on = slot.id === selectedSlotId;
+                    return (
+                      <Pressable
+                        key={slot.id}
+                        accessibilityRole="radio"
+                        accessibilityState={{ selected: on }}
+                        onPress={() => setSelectedSlotId(on ? null : slot.id)}
+                        style={({ pressed }) => [
+                          s.slot,
+                          on && s.slotOn,
+                          { opacity: pressed ? 0.85 : 1 },
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.slotDate}>{formatDateTime(slot.startsAt)}</Text>
+                          <Text style={s.slotMeta}>{slot.circuitName}</Text>
+                        </View>
+                        {on ? <Text style={s.slotCheck}>✓</Text> : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </>
+            ) : (
+              <Text style={s.formHint}>
+                Aucun créneau ouvert publié. Votre demande vaudra prise de contact.
+              </Text>
+            )}
+
+            <View style={{ marginTop: spacing.lg }}>
+              <Field
+                label="Votre message"
+                optional
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Votre niveau, vos attentes, vos disponibilités…"
+                multiline
+                maxLength={600}
+                showCounter
+              />
+            </View>
+
+            <Button label="Envoyer la demande" loading={sending} onPress={onSubmit} />
+
+            <View style={{ marginTop: spacing.lg, alignItems: 'center' }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Annuler la demande"
+                hitSlop={theme.hitSlop}
+                onPress={() => setFormOpen(false)}
+                disabled={sending}
+              >
+                <Text style={s.cancel}>Annuler</Text>
+              </Pressable>
+            </View>
+          </Card>
+        )}
+
+        {/* — Héritage retravaillé v2 : le reste de la fiche. — */}
 
         {profile.palmares ? (
           <Section label="Palmarès">
@@ -175,7 +343,7 @@ export default function CoachDetailScreen() {
         {/* Réseaux du coach — le pilote peut le retrouver hors application. */}
         {profile.websiteUrl || profile.instagramUrl || profile.youtubeUrl ? (
           <Section label="Liens">
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
               {(
                 [
                   ['Site web', profile.websiteUrl],
@@ -189,27 +357,9 @@ export default function CoachDetailScreen() {
                     accessibilityRole="link"
                     accessibilityLabel={label}
                     onPress={() => Linking.openURL(url).catch(() => undefined)}
-                    style={({ pressed }) => ({
-                      minHeight: 44,
-                      paddingHorizontal: theme.spacing.lg,
-                      justifyContent: 'center',
-                      borderRadius: theme.radius.sm,
-                      borderWidth: 1,
-                      borderColor: theme.palette.edge,
-                      opacity: pressed ? 0.8 : 1,
-                    })}
+                    style={({ pressed }) => [s.linkPill, pressed && { opacity: 0.8 }]}
                   >
-                    <Text
-                      style={{
-                        fontFamily: theme.fonts.mono,
-                        fontSize: 11,
-                        letterSpacing: 1.2,
-                        textTransform: 'uppercase' as const,
-                        color: theme.palette.creamMute,
-                      }}
-                    >
-                      {label}
-                    </Text>
+                    <Text style={s.linkPillT}>{label}</Text>
                   </Pressable>
                 ) : null
               )}
@@ -223,7 +373,7 @@ export default function CoachDetailScreen() {
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: theme.spacing.sm }}
+              contentContainerStyle={{ gap: spacing.sm }}
             >
               {profile.media.map((m) =>
                 m.type === 'photo' ? (
@@ -234,18 +384,7 @@ export default function CoachDetailScreen() {
                     onPress={() => Linking.openURL(m.url).catch(() => undefined)}
                     style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                   >
-                    <Image
-                      source={{ uri: m.url }}
-                      resizeMode="cover"
-                      style={{
-                        width: 140,
-                        height: 140,
-                        borderRadius: theme.radius.md,
-                        borderWidth: 1,
-                        borderColor: theme.palette.line,
-                        backgroundColor: theme.palette.card2,
-                      }}
-                    />
+                    <Image source={{ uri: m.url }} resizeMode="cover" style={s.mediaTile} />
                   </Pressable>
                 ) : (
                   <Pressable
@@ -253,29 +392,13 @@ export default function CoachDetailScreen() {
                     accessibilityRole="button"
                     accessibilityLabel="Ouvrir la vidéo"
                     onPress={() => Linking.openURL(m.url).catch(() => undefined)}
-                    style={({ pressed }) => ({
-                      width: 140,
-                      height: 140,
-                      borderRadius: theme.radius.md,
-                      borderWidth: 1,
-                      borderColor: theme.palette.line,
-                      backgroundColor: theme.palette.card2,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      opacity: pressed ? 0.85 : 1,
-                    })}
+                    style={({ pressed }) => [
+                      s.mediaTile,
+                      s.mediaVideo,
+                      pressed && { opacity: 0.85 },
+                    ]}
                   >
-                    <Text
-                      style={{
-                        fontFamily: theme.fonts.mono,
-                        fontSize: 11,
-                        letterSpacing: 1.2,
-                        textTransform: 'uppercase' as const,
-                        color: theme.palette.creamMute,
-                      }}
-                    >
-                      Vidéo
-                    </Text>
+                    <Text style={s.mediaVideoT}>Vidéo</Text>
                   </Pressable>
                 )
               )}
@@ -285,78 +408,6 @@ export default function CoachDetailScreen() {
 
         {/* Avis — agrégat de CE coach uniquement, jamais un classement. */}
         <ReviewsSection reviews={reviews} summary={reviewsSummary} />
-
-        {/* Demande de séance. */}
-        <View style={{ marginTop: theme.spacing.xxl }}>
-          {!formOpen ? (
-            <Button label="Demander une séance" onPress={() => setFormOpen(true)} />
-          ) : (
-            <Card>
-              <Text style={s.formTitle}>Votre demande</Text>
-
-              {availability.length > 0 ? (
-                <>
-                  <Text style={s.formHint}>
-                    Choisissez un créneau, ou laissez vide pour une prise de contact libre.
-                  </Text>
-                  <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-                    {availability.map((slot) => {
-                      const on = slot.id === selectedSlotId;
-                      return (
-                        <Pressable
-                          key={slot.id}
-                          accessibilityRole="radio"
-                          accessibilityState={{ selected: on }}
-                          onPress={() => setSelectedSlotId(on ? null : slot.id)}
-                          style={({ pressed }) => [
-                            s.slot,
-                            on && s.slotOn,
-                            { opacity: pressed ? 0.85 : 1 },
-                          ]}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.slotDate}>{formatDateTime(slot.startsAt)}</Text>
-                            <Text style={s.slotMeta}>{slot.circuitName}</Text>
-                          </View>
-                          {on ? <Text style={s.slotCheck}>✓</Text> : null}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                </>
-              ) : (
-                <Text style={s.formHint}>
-                  Aucun créneau ouvert publié. Votre demande vaudra prise de contact.
-                </Text>
-              )}
-
-              <View style={{ marginTop: theme.spacing.lg }}>
-                <Field
-                  label="Votre message"
-                  optional
-                  value={message}
-                  onChangeText={setMessage}
-                  placeholder="Votre niveau, vos attentes, vos disponibilités…"
-                  multiline
-                  maxLength={600}
-                  showCounter
-                />
-              </View>
-
-              <Button label="Envoyer la demande" loading={sending} onPress={onSubmit} />
-
-              <View style={{ marginTop: theme.spacing.lg, alignItems: 'center' }}>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setFormOpen(false)}
-                  disabled={sending}
-                >
-                  <Text style={s.cancel}>Annuler</Text>
-                </Pressable>
-              </View>
-            </Card>
-          )}
-        </View>
       </View>
     </Screen>
   );
@@ -364,7 +415,7 @@ export default function CoachDetailScreen() {
 
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <View style={{ marginTop: theme.spacing.xl }}>
+    <View style={{ marginTop: spacing.xl }}>
       <Text style={s.sectionLabel}>{label}</Text>
       {children}
     </View>
@@ -405,12 +456,11 @@ function ReviewsSection({
   return (
     <Section label="Avis">
       {summary.average === null ? (
-        <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
-          <Text style={s.emptyTitle}>Aucun avis pour l&apos;instant.</Text>
-          <Text style={s.emptyHint}>
-            Les pilotes accompagnés par ce coach pourront partager leur retour ici.
-          </Text>
-        </Card>
+        <EmptyState
+          label="Aucun avis"
+          message="Les pilotes accompagnés par ce coach pourront partager leur retour ici."
+          source="coach_reviews"
+        />
       ) : (
         <>
           <View style={s.avgBlock}>
@@ -424,7 +474,7 @@ function ReviewsSection({
             <Text style={s.avgCount}>{countLabel}</Text>
           </View>
 
-          <View style={{ gap: theme.spacing.md, marginTop: theme.spacing.lg }}>
+          <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
             {reviews.map((r) => (
               <Card key={r.id}>
                 <View style={s.reviewHead}>
@@ -451,205 +501,330 @@ function ReviewsSection({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/* Styles — langage refonte-v2 : surfaces card/card2, hairlines,       */
+/* eyebrows mono ls 1.6+, accent contexte rouge coach.                 */
+/* ------------------------------------------------------------------ */
+
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+  // — Héros centré —
+  hero: {
+    alignItems: 'center' as const,
+    marginTop: spacing.md,
+  },
+  // Avatar cerclé rouge (maquette) : anneau 2 px coachAccent + respiration.
+  avatarRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    borderWidth: 2,
+    borderColor: palette.coachAccent,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: palette.card2,
+  },
+  avatarFallback: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  avatarInitials: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.h3,
+    letterSpacing: 1,
+    color: palette.creamSoft,
+  },
+  name: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+    textAlign: 'center' as const,
+    marginTop: spacing.md,
+  },
+  roleEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
     textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
-    marginBottom: theme.spacing.md,
+    color: palette.coachAccent,
+    marginTop: spacing.xs,
   },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
+
+  // — Tuiles stats —
+  statsRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.sm,
+    marginTop: spacing.xl,
   },
-  tariffBlock: {
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+  statTile: {
+    flex: 1,
+    alignItems: 'center' as const,
+    paddingVertical: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card,
   },
-  tariffValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.display,
-    // Tarif d'offre = registre « offre » heritageGold (décision Gabin 2026-07-11),
-    // distinct de l'or système (chrono) et du CA encaissé (crème).
-    color: theme.palette.heritageGold,
-    letterSpacing: 0.5,
+  statValue: {
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.h3,
+    color: palette.cream,
   },
-  tariffLabel: {
-    fontFamily: theme.fonts.mono,
+  statLabel: {
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.xs,
+    color: palette.faint,
+    marginTop: spacing.xs,
   },
-  sectionLabel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.6,
+  tariffNote: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginBottom: theme.spacing.sm,
+    color: palette.faint,
+    textAlign: 'center' as const,
+    marginTop: spacing.sm,
+  },
+
+  // — Bio —
+  bioCard: {
+    marginTop: spacing.lg,
+    padding: spacing.lg,
   },
   body: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.creamSoft,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
+    fontFamily: fonts.body,
+    fontSize: fontSize.bodyLg,
+    color: palette.creamSoft,
+    lineHeight: fontSize.bodyLg * 1.6,
+  },
+
+  // — Disponibilité —
+  dispoRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xs,
+  },
+  dispoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dispoT: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+  },
+
+  // — CTA rouge coach —
+  cta: {
+    minHeight: 48,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderRadius: radius.sm,
+    backgroundColor: palette.coachAccent,
+    marginTop: spacing.lg,
+  },
+  ctaT: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: palette.cream,
+  },
+
+  // — Sections héritage —
+  sectionLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase' as const,
+    color: palette.eyebrow,
+    marginBottom: spacing.sm,
   },
   meta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
     letterSpacing: 0.6,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.5,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
   },
+  linkPill: {
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'center' as const,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    backgroundColor: palette.card2,
+  },
+  linkPillT: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  mediaTile: {
+    width: 140,
+    height: 140,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
+  },
+  mediaVideo: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  mediaVideoT: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+
+  // — Formulaire de demande —
   formTitle: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    color: theme.palette.cream,
-    marginBottom: theme.spacing.sm,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    color: palette.cream,
+    marginBottom: spacing.sm,
   },
   formHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.5,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
   },
   slot: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.palette.card2,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.md,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    backgroundColor: palette.card2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     minHeight: 52,
   },
-  slotOn: { borderColor: theme.palette.coach, borderWidth: 1.5 },
+  slotOn: { borderColor: palette.coachAccent, borderWidth: 1.5 },
   slotDate: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
+    fontFamily: fonts.body,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
   },
   slotMeta: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
     marginTop: 3,
   },
   slotCheck: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.coach,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.bodyLg,
+    color: palette.coachAccent,
   },
   cancel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.micro,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.micro,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-  },
-  emptyHint: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
-  },
+
+  // — Avis —
   avgBlock: {
-    marginTop: theme.spacing.sm,
+    marginTop: spacing.sm,
   },
   avgRow: {
     flexDirection: 'row' as const,
     alignItems: 'flex-end' as const,
   },
   avgValue: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     // Chiffre secondaire : ne rivalise pas avec le tarif (chiffre dominant unique de l'écran)
-    fontSize: theme.fontSize.value,
-    color: theme.palette.creamSoft,
+    fontSize: fontSize.value,
+    color: palette.creamSoft,
     letterSpacing: 0.5,
   },
   avgScale: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamMute,
-    marginLeft: theme.spacing.sm,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.body,
+    color: palette.creamMute,
+    marginLeft: spacing.sm,
     marginBottom: 4,
   },
   dots: {
     flexDirection: 'row' as const,
     gap: 5,
-    marginTop: theme.spacing.sm,
+    marginTop: spacing.sm,
   },
   dot: {
     width: 9,
     height: 9,
     borderRadius: 999,
   },
-  dotOn: { backgroundColor: theme.palette.cream },
-  dotOff: { backgroundColor: theme.palette.line },
+  dotOn: { backgroundColor: palette.cream },
+  dotOff: { backgroundColor: palette.line },
   avgCount: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.sm,
+    color: palette.faint,
+    marginTop: spacing.sm,
   },
   reviewHead: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
   },
   reviewName: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
     letterSpacing: 0.2,
   },
   reviewRating: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.h3,
-    color: theme.palette.cream,
-    marginLeft: theme.spacing.sm,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.h3,
+    color: palette.cream,
+    marginLeft: spacing.sm,
   },
   reviewRatingScale: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
   },
   reviewComment: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
-    lineHeight: theme.fontSize.body * 1.55,
-    marginTop: theme.spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    color: palette.creamSoft,
+    lineHeight: fontSize.body * 1.55,
+    marginTop: spacing.sm,
   },
   reviewDate: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
+    color: palette.faint,
   },
   reviewFooter: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
-    marginTop: theme.spacing.md,
+    marginTop: spacing.md,
   },
 };

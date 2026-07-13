@@ -10,7 +10,8 @@
  * (= le composer CRUD existant restylé, trait de saisie vert discret) + notes
  * enregistrées dessous (partage coach opt-in par note, révocable) · eyebrow
  * « VOS REPÈRES » = les intentions réelles du pilote (session_intentions) en
- * checklist de lecture + « Ajouter un repère » vers le composer d'intention.
+ * checklist de lecture + « Ajouter un repère » vers l'écran Prochaine fois
+ * (qui porte la saisie réelle d'intention).
  *
  * Zone volontairement SANS donnée de perf ni couleur QDI (doctrine Carnet).
  * Page blanche : l'app ne pré-remplit ni ne suggère JAMAIS le contenu (V5 P-E).
@@ -325,8 +326,8 @@ export default function CarnetScreen() {
 
         {/* ── VOS REPÈRES — les intentions réelles du pilote, en lecture.
             Case cochée = intention portée en séance ; case vide = posée pour la
-            prochaine fois. « Ajouter un repère » ouvre le composer d'intention
-            réel (Préparation — l'écran « prochaine fois » n'a pas de saisie). */}
+            prochaine fois. « Ajouter un repère » ouvre l'écran Prochaine fois,
+            qui porte désormais la saisie réelle d'intention (maquette #7a). */}
         <View style={s.section}>
           <Text style={s.eyebrow}>VOS REPÈRES</Text>
           {reperes.length > 0 ? (
@@ -353,7 +354,7 @@ export default function CarnetScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Ajouter un repère"
-            onPress={() => router.push('/(app)/preparation' as never)}
+            onPress={() => router.push('/(app)/prochaine-fois' as never)}
             style={({ pressed }) => [s.addRepere, pressed && { opacity: 0.7 }]}
           >
             <Text style={s.addRepereTxt}>+ Ajouter un repère</Text>
