@@ -2,9 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 import {
+  COACH_RAIL_LABEL,
+  COACH_RAIL_MAIN_ROUTE,
+  COACH_RAIL_ORDER,
+  COACH_ROUTE_TO_RAIL,
   COACH_ROUTE_TO_ZONE,
   COACH_TAB_MAIN_ROUTE,
   COACH_TAB_ORDER,
+  coachRailItemOfRoute,
   coachZoneOfRoute,
   shouldShowCoachTabBar,
 } from '../coachNav';
@@ -74,5 +79,49 @@ describe('coachNav — cohérence avec les routes réelles', () => {
       if (tab === 'pilotes') expect(seg).toBe('');
       else expect(realSet.has(seg)).toBe(true);
     }
+  });
+});
+
+describe('coachNav — rail console tablette (§12, deux formats)', () => {
+  const real = realCoachSegments();
+
+  it('COACH_RAIL_ORDER = les 6 items du rail §12, chacun avec label + route', () => {
+    expect(COACH_RAIL_ORDER).toEqual(['poste', 'file', 'studio', 'pilotes', 'agenda', 'business']);
+    for (const item of COACH_RAIL_ORDER) {
+      expect(COACH_RAIL_LABEL[item]).toBeTruthy();
+      expect(COACH_RAIL_MAIN_ROUTE[item]).toMatch(/^\/\(coach\)/);
+    }
+  });
+
+  it('chaque item du rail pointe vers une route racine existante', () => {
+    const realSet = new Set(real);
+    for (const route of Object.values(COACH_RAIL_MAIN_ROUTE)) {
+      const seg = route.replace('/(coach)', '').replace(/^\/+/, '');
+      if (seg !== '') expect(realSet.has(seg)).toBe(true);
+    }
+  });
+
+  it('chaque écran (coach) est mappé à un item de rail (pas d’orpheline console)', () => {
+    const orphans = real.filter((seg) => !(seg in COACH_ROUTE_TO_RAIL));
+    expect(orphans).toEqual([]);
+  });
+
+  it('aucune entrée rail ne pointe vers une route inexistante', () => {
+    const realSet = new Set(real);
+    const dangling = Object.keys(COACH_ROUTE_TO_RAIL).filter(
+      (seg) => seg !== '' && seg !== 'index' && !realSet.has(seg)
+    );
+    expect(dangling).toEqual([]);
+  });
+
+  it('coachRailItemOfRoute suit la sémantique §12', () => {
+    expect(coachRailItemOfRoute('/')).toBe('poste');
+    expect(coachRailItemOfRoute('/en-direct')).toBe('poste');
+    expect(coachRailItemOfRoute('/file-lecture')).toBe('file');
+    expect(coachRailItemOfRoute('/triage')).toBe('studio');
+    expect(coachRailItemOfRoute('/pilote/abc')).toBe('pilotes');
+    expect(coachRailItemOfRoute('/calendrier')).toBe('agenda');
+    expect(coachRailItemOfRoute('/facturation')).toBe('business');
+    expect(coachRailItemOfRoute('/inconnu')).toBeNull();
   });
 });
