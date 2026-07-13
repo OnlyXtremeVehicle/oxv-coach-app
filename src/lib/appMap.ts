@@ -60,6 +60,9 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   roulage: 'miroir',
   'entre-runs': 'miroir',
   'pilotage-fini': 'miroir',
+  // « Vos données sont en sécurité » (ex-route `donnees-securite`, réaffectée
+  // à l'écran RGPD du Compte) : étape du flux capture, barre masquée.
+  preservation: 'miroir',
   'bilan-pret': 'miroir',
 
   // ── DATA LAB — l'analyse
@@ -155,6 +158,7 @@ const CAPTURE_FLOW = new Set([
   'roulage',
   'entre-runs',
   'pilotage-fini',
+  'preservation',
   'bilan-pret',
 ]);
 

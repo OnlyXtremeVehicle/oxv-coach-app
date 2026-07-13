@@ -29,12 +29,14 @@ export default function PilotageFiniScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      // `/preservation` (ex-`/donnees-securite`, route réaffectée à l'écran
+      // RGPD du Compte). Cast nécessaire tant que typed-routes Expo n'a pas regen.
       router.replace({
-        pathname: '/(app)/donnees-securite',
+        pathname: '/(app)/preservation',
         // On relaie l'URI .ubx local : il sert de source d'analyse prioritaire
         // (déjà en mémoire flash) si l'écriture en base a connu des trous réseau.
         params: { sessionId: params.sessionId ?? '', ubxUri: params.ubxUri ?? '' },
-      });
+      } as never);
     }, TRANSITION_MS);
     return () => clearTimeout(timer);
   }, [params.sessionId, params.ubxUri]);
