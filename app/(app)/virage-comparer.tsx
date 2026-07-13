@@ -1,137 +1,235 @@
 /**
- * Écran "Comparer ce virage" — superpose les données d'un même virage
- * entre 2 sessions du pilote courant.
+ * Écran #22 — Comparer un virage. Reskin FIDÈLE à la maquette Claude Design
+ * refonte-v2 §7bis #6d (screens/22-comparer-virage.png).
  *
- * Flow :
- *   - Arrive avec params {index, sessionA}
- *   - Charge la liste des autres sessions du pilote
- *   - Picker pour choisir sessionB
- *   - Affiche : 2 cartes zoomées + delta vitesses + GForceBars compare
+ * Maquette (haut → bas) : AppBar détail « Comparer · Virage N » · 2 pills de
+ * tours (tiret or / tiret bleu) · carte : 2 tracés superposés du MÊME virage
+ * (tour A en OR, tour B en BLEU #4F9DF7) + points d'apex · 3 tuiles factuelles
+ * (apex A / apex B / écart) · une phrase descriptive. Deux faits côte à côte,
+ * AUCUN gagnant.
  *
- * Doctrine : pas de winner, les deltas sont neutres. Le pilote
- * interprète seul si « + 6 km/h à l'apex » est une bonne ou mauvaise
- * nouvelle. L'app décrit, ne juge pas.
+ * Pivot assumé (doc à l'appui) : l'écran comparait 2 SESSIONS ; la cible v2
+ * compare 2 TOURS de la même séance — cf. cartographie fonctionnelle du bundle
+ * (« Deux tours côte à côte sur un même virage »), 12_ACCEPTANCE_CRITERIA §2.4
+ * (« deux tours du pilote ») et AUDIT_CDC_V2 (écart connu « 2 sessions au lieu
+ * de 2 tours »). DROP net : picker de 2ᵉ session, tableaux delta et GForceBars
+ * adossés à `segment_analyses` (stats PAR SESSION — aucune table par tour,
+ * besoin noté, zéro schéma inventé).
  *
- * Reskin V2 : Screen + AppBar, Card du kit, styles via @/theme/v2. Les
- * cartes SVG (CircuitMap + couches) et les barres G comparées (GForceBars)
- * restent inchangées, comme toute la logique (picker, chargement A/B).
+ * Données réelles uniquement :
+ *   - tours : `fetchSessionLaps` (table `laps`) — numéros, chronos, meilleur ;
+ *   - trace : `loadLapFrames` (table `telemetry_frames`, RLS pilote/coach),
+ *     fenêtrée sur le virage via les progress de HAUTE_SAINTONGE_SEGMENTS
+ *     (même approximation V1 index/total que cornerDeepDiveService — appliquée
+ *     à UN tour, donc plus juste que sur la séance entière) ;
+ *   - apex : frame la plus proche de la corde OSM (même méthode que
+ *     virage.tsx) ; vitesse mesurée à ce point, sinon « — ».
+ * L'annotation « apex +tôt » du PNG n'est PAS reprise : chiffre d'exemple,
+ * aucune définition validée de l'antériorité d'apex.
+ *
+ * Couleurs : OR = tour de référence A (défaut : meilleur tour → lien chrono,
+ * convention verrouillée « A or / B bleu ; aucun gagnant », PLAN_V3) ; BLEU
+ * trajectoire = tour B. L'écart reste crème : un delta n'est pas un record.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Circle as SvgCircle } from 'react-native-svg';
 
 import {
   CircuitMap,
-  CornersLayer,
   TrackLayer,
   TrajectoryLayer,
   getCornerViewBox,
+  projectToScene,
 } from '@/components/CircuitMap';
-import { GForceBars } from '@/components/GForceBars';
-import { supabase } from '@/lib/supabase';
 import { getCorner } from '@/lib/circuitTopology';
-import { type CornerDeepDive, loadCornerDeepDive } from '@/services/cornerDeepDiveService';
-import { useAuthStore } from '@/store/useAuthStore';
-import { type MarginZone, marginZoneOf } from '@/types/domain';
+import { fetchSessionLaps } from '@/services/sessionsService';
+import { type SessionFrame, loadLapFrames } from '@/services/sessionTelemetryService';
+import { HAUTE_SAINTONGE_SEGMENTS } from '@/trackviz/hauteSaintonge';
+import type { Lap } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { formatDateShort } from '@/utils/format';
+import { formatLapTime } from '@/utils/format';
 
-interface SessionOption {
-  id: string;
-  startedAt: string;
-  marginGlobal: number | null;
+// Fond de l'encart graphe — couleur maquette non tokenisée, même valeur que
+// l'encart du Zoom virage (virage.tsx, 07-zoom-virage.png).
+const GRAPH_BG = '#0E0E10';
+
+/** Portion du tour couvrant le virage + point d'apex mesuré. */
+interface CornerSlice {
+  points: { lat: number; lon: number }[];
+  apex: { lat: number; lon: number; speedKmh: number | null } | null;
+}
+
+/**
+ * Fenêtre le tour sur le virage (progress index/total — approximation V1,
+ * cf. cornerDeepDiveService) puis marque la frame la plus proche de la corde
+ * OSM (même méthode d'argmin que virage.tsx). Jamais de point inventé.
+ */
+function sliceCorner(
+  frames: SessionFrame[],
+  win: { start: number; end: number } | null,
+  apexRef: { lat: number; lon: number }
+): CornerSlice {
+  const valid = frames.filter(
+    (f): f is SessionFrame & { lat: number; lon: number } => f.lat !== null && f.lon !== null
+  );
+  const total = valid.length;
+  if (total === 0) return { points: [], apex: null };
+
+  const windowed =
+    win && total > 1
+      ? valid.filter((_, i) => {
+          const p = i / (total - 1);
+          return p >= win.start && p <= win.end;
+        })
+      : valid;
+  if (windowed.length === 0) return { points: [], apex: null };
+
+  let apexIdx = 0;
+  let bestD = Infinity;
+  windowed.forEach((f, i) => {
+    const d = (f.lat - apexRef.lat) ** 2 + (f.lon - apexRef.lon) ** 2;
+    if (d < bestD) {
+      bestD = d;
+      apexIdx = i;
+    }
+  });
+  const apexFrame = windowed[apexIdx];
+
+  return {
+    points: windowed.map((f) => ({ lat: f.lat, lon: f.lon })),
+    apex: { lat: apexFrame.lat, lon: apexFrame.lon, speedKmh: apexFrame.speedKmh },
+  };
 }
 
 export default function VirageComparerScreen() {
   const params = useLocalSearchParams<{ index?: string; sessionA?: string }>();
-  const profile = useAuthStore((s) => s.profile);
   const cornerIndex = Number(params.index ?? '1');
   const corner = getCorner(cornerIndex);
-  const { width } = useWindowDimensions();
-  const sideBySide = width >= 760;
 
-  const [options, setOptions] = useState<SessionOption[]>([]);
-  const [sessionBId, setSessionBId] = useState<string | null>(null);
-  const [deepA, setDeepA] = useState<CornerDeepDive | null>(null);
-  const [deepB, setDeepB] = useState<CornerDeepDive | null>(null);
-  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [laps, setLaps] = useState<Lap[]>([]);
+  const [loadingLaps, setLoadingLaps] = useState(true);
+  const [lapA, setLapA] = useState<number | null>(null);
+  const [lapB, setLapB] = useState<number | null>(null);
+  // null = frames en cours de chargement pour le tour sélectionné.
+  const [framesA, setFramesA] = useState<SessionFrame[] | null>(null);
+  const [framesB, setFramesB] = useState<SessionFrame[] | null>(null);
+  const [expanded, setExpanded] = useState<'A' | 'B' | null>(null);
 
-  // Charge la liste des autres sessions du pilote (filtre A)
+  // Charge les tours réels de la séance ; défaut : A = meilleur tour (lien
+  // chrono → or), B = le tour valide suivant au chrono. Aucun tour → état vide.
   useEffect(() => {
-    if (!profile || !params.sessionA) return;
-    const sessionA = params.sessionA; // narrow avant async closure
+    if (!params.sessionA) {
+      setLoadingLaps(false);
+      return;
+    }
     let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('telemetry_sessions')
-        .select('id, started_at, app_session_analyses(margin_global)')
-        .eq('user_id', profile.id)
-        .eq('status', 'completed')
-        .neq('id', sessionA)
-        .order('started_at', { ascending: false })
-        .limit(20);
-      if (cancelled) return;
-      const list: SessionOption[] = (data ?? []).map((row: Record<string, unknown>) => {
-        const analysisJoined = row.app_session_analyses as
-          | { margin_global?: number | null }[]
-          | { margin_global?: number | null }
-          | null;
-        const first = Array.isArray(analysisJoined) ? analysisJoined[0] : analysisJoined;
-        return {
-          id: row.id as string,
-          startedAt: row.started_at as string,
-          marginGlobal:
-            first?.margin_global !== null && first?.margin_global !== undefined
-              ? Number(first.margin_global)
-              : null,
-        };
+    fetchSessionLaps(params.sessionA)
+      .then((rows) => {
+        if (cancelled) return;
+        setLaps(rows);
+        const valid = rows.filter((l) => !l.is_outlap && !l.is_inlap);
+        const pool = valid.length >= 2 ? valid : rows;
+        const sorted = [...pool].sort((x, y) => x.duration_seconds - y.duration_seconds);
+        const first = pool.find((l) => l.is_best_lap) ?? sorted[0] ?? null;
+        const second = sorted.find((l) => first !== null && l.lap_number !== first.lap_number);
+        setLapA(first ? first.lap_number : null);
+        setLapB(second ? second.lap_number : null);
+        setLoadingLaps(false);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadingLaps(false);
       });
-      setOptions(list);
-      setLoadingOptions(false);
-    })();
     return () => {
       cancelled = true;
     };
-  }, [profile, params.sessionA]);
+  }, [params.sessionA]);
 
-  // Charge le deep-dive A
+  // Frames réelles du tour A (telemetry_frames via loadLapFrames, RLS intacte).
   useEffect(() => {
-    if (!params.sessionA || !corner) return;
+    if (!params.sessionA || lapA === null) return;
+    const sessionId = params.sessionA;
+    const lapNumber = lapA;
     let cancelled = false;
-    loadCornerDeepDive(params.sessionA, corner.index).then((d) => {
-      if (!cancelled) setDeepA(d);
+    setFramesA(null);
+    loadLapFrames(sessionId, lapNumber).then((rows) => {
+      if (!cancelled) setFramesA(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [params.sessionA, corner]);
+  }, [params.sessionA, lapA]);
 
-  // Charge le deep-dive B quand sélectionné
+  // Frames réelles du tour B.
   useEffect(() => {
-    if (!sessionBId || !corner) return;
+    if (!params.sessionA || lapB === null) return;
+    const sessionId = params.sessionA;
+    const lapNumber = lapB;
     let cancelled = false;
-    setDeepB(null);
-    loadCornerDeepDive(sessionBId, corner.index).then((d) => {
-      if (!cancelled) setDeepB(d);
+    setFramesB(null);
+    loadLapFrames(sessionId, lapNumber).then((rows) => {
+      if (!cancelled) setFramesB(rows);
     });
     return () => {
       cancelled = true;
     };
-  }, [sessionBId, corner]);
+  }, [params.sessionA, lapB]);
 
   const viewBox = useMemo(() => {
     if (!corner) return undefined;
     return getCornerViewBox({ lat: corner.apexLat, lon: corner.apexLon }, 100);
   }, [corner]);
 
+  // Fenêtre progress du virage (segments trackviz réels, mêmes bornes que
+  // cornerDeepDiveService).
+  const cornerWindow = useMemo(() => {
+    const sg = HAUTE_SAINTONGE_SEGMENTS.find((seg) => seg.order === cornerIndex);
+    return sg ? { start: sg.progressStart, end: sg.progressEnd } : null;
+  }, [cornerIndex]);
+
+  const sliceA = useMemo(
+    () =>
+      corner && framesA
+        ? sliceCorner(framesA, cornerWindow, { lat: corner.apexLat, lon: corner.apexLon })
+        : null,
+    [framesA, cornerWindow, corner]
+  );
+  const sliceB = useMemo(
+    () =>
+      corner && framesB
+        ? sliceCorner(framesB, cornerWindow, { lat: corner.apexLat, lon: corner.apexLon })
+        : null,
+    [framesB, cornerWindow, corner]
+  );
+
+  // Vitesses d'apex mesurées, arrondies AVANT le delta pour que les trois
+  // tuiles restent cohérentes entre elles (84 − 79 = +5).
+  const apexAKmh = sliceA?.apex?.speedKmh != null ? Math.round(sliceA.apex.speedKmh) : null;
+  const apexBKmh = sliceB?.apex?.speedKmh != null ? Math.round(sliceB.apex.speedKmh) : null;
+  const delta = apexAKmh !== null && apexBKmh !== null ? apexAKmh - apexBKmh : null;
+  const deltaText =
+    delta === null ? '—' : delta > 0 ? `+${delta}` : delta < 0 ? `−${Math.abs(delta)}` : '±0';
+
+  // Phrase descriptive dérivée du delta MESURÉ (vouvoiement, jamais de
+  // consigne, aucun gagnant). Delta absent → pas de phrase.
+  const caption =
+    delta === null || lapA === null || lapB === null
+      ? null
+      : delta > 0
+        ? `Au tour ${lapA}, vous portez plus de vitesse à l'apex. Deux faits, côte à côte.`
+        : delta < 0
+          ? `Au tour ${lapB}, vous portez plus de vitesse à l'apex. Deux faits, côte à côte.`
+          : "Vitesse d'apex identique sur les deux tours. Deux faits, côte à côte.";
+
   if (!corner) {
     return (
       <Screen scroll={false}>
-        <AppBar title="COMPARER" onBack={() => router.back()} />
+        <AppBar title="Comparer" onBack={() => router.back()} />
         <View
           style={{
             flex: 1,
@@ -140,169 +238,202 @@ export default function VirageComparerScreen() {
             paddingHorizontal: theme.spacing.lg,
           }}
         >
-          <Text style={[s.title, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
+          <Text style={[s.emptyTitle, { textAlign: 'center' }]}>Ce virage n'existe pas.</Text>
         </View>
       </Screen>
     );
   }
 
+  const framesLoading = framesA === null || framesB === null;
+  const noTrace =
+    !framesLoading && (sliceA?.points.length ?? 0) < 2 && (sliceB?.points.length ?? 0) < 2;
+
   return (
     <Screen>
-      <AppBar title="COMPARER" onBack={() => router.back()} />
+      <AppBar
+        title={`Comparer · Virage ${corner.index}`}
+        subtitle={corner.name}
+        onBack={() => router.back()}
+      />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={s.headRow}>
-          <View style={s.headDot} />
-          <Text style={s.eyebrow}>COMPARER VIRAGE {String(corner.index).padStart(2, '0')}</Text>
-        </View>
-        <Text style={[s.title, { marginTop: theme.spacing.md, marginBottom: theme.spacing.xl }]}>
-          {corner.name}
-        </Text>
-
-        {/* Picker session B */}
-        {!sessionBId ? (
-          <View style={{ marginBottom: theme.spacing.xxl }}>
-            <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>
-              CHOISIR LA SESSION B
-            </Text>
-            {loadingOptions ? (
-              <Text style={s.meta}>Chargement…</Text>
-            ) : options.length === 0 ? (
-              <Text style={s.meta}>Aucune autre session disponible.</Text>
-            ) : (
-              <View style={{ gap: theme.spacing.xs }}>
-                {options.map((o) => {
-                  const when = formatDateShort(o.startedAt);
-                  const pct = o.marginGlobal !== null ? `${Math.round(o.marginGlobal)} %` : null;
-                  return (
-                    <Card
-                      key={o.id}
-                      onPress={() => setSessionBId(o.id)}
-                      accessibilityLabel={`Session B du ${when}${pct ? `, marge ${pct}` : ''}.`}
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Text style={s.optionDate}>{when}</Text>
-                      <Text style={s.optionMargin}>{pct ?? '—'}</Text>
-                    </Card>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        ) : null}
-
-        {/* Comparaison */}
-        {sessionBId && deepA && deepB ? (
+        {!params.sessionA ? (
+          <EmptyBlock
+            title="Aucune séance à comparer."
+            hint="Ouvrez ce comparateur depuis un virage du Data Lab."
+          />
+        ) : loadingLaps ? (
+          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
+        ) : lapA === null || lapB === null ? (
+          <EmptyBlock
+            title="Deux tours complets, au minimum."
+            hint="La comparaison s'ouvre dès que la séance contient deux tours."
+          />
+        ) : (
           <>
-            <View
-              style={{
-                flexDirection: sideBySide ? 'row' : 'column',
-                gap: theme.spacing.lg,
-                marginBottom: theme.spacing.xxl,
-              }}
-            >
-              {/* A/B = étiquetage de série (quelle session), pas un chrono : A
-                  neutre crème, B bleu. L'or reste au chrono/record ; aucune
-                  session « gagnante » (self-only). */}
-              <MiniCard
-                label="Session A"
-                accent={theme.palette.cream}
-                deep={deepA}
-                viewBox={viewBox}
-                cornerIndex={corner.index}
+            {/* Sélecteurs de tours réels — pills v2 (tiret or / tiret bleu). */}
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <LapPill
+                color={theme.palette.gold}
+                lapNumber={lapA}
+                expanded={expanded === 'A'}
+                onPress={() => setExpanded(expanded === 'A' ? null : 'A')}
               />
-              <MiniCard
-                label="Session B"
-                accent={theme.dataColors.trajectory}
-                deep={deepB}
-                viewBox={viewBox}
-                cornerIndex={corner.index}
+              <LapPill
+                color={theme.dataColors.trajectory}
+                lapNumber={lapB}
+                expanded={expanded === 'B'}
+                onPress={() => setExpanded(expanded === 'B' ? null : 'B')}
               />
             </View>
 
-            <Section eyebrow="DELTA VITESSES B − A">
-              <Card style={s.dataPanel}>
-                <DeltaRow
-                  label="À l'entrée"
-                  a={deepA.stats?.entrySpeedKmh ?? null}
-                  b={deepB.stats?.entrySpeedKmh ?? null}
-                  unit="km/h"
-                />
-                <DeltaRow
-                  label="Au point bas"
-                  a={deepA.stats?.minSpeedKmh ?? null}
-                  b={deepB.stats?.minSpeedKmh ?? null}
-                  unit="km/h"
-                />
-                <DeltaRow
-                  label="À l'apex"
-                  a={deepA.stats?.apexSpeedKmh ?? null}
-                  b={deepB.stats?.apexSpeedKmh ?? null}
-                  unit="km/h"
-                />
-                <DeltaRow
-                  label="À la sortie"
-                  a={deepA.stats?.exitSpeedKmh ?? null}
-                  b={deepB.stats?.exitSpeedKmh ?? null}
-                  unit="km/h"
-                  last
-                />
-              </Card>
-            </Section>
+            {/* Choix du tour pour la pill dépliée — tours réels de la séance. */}
+            {expanded ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: theme.spacing.sm }}
+                contentContainerStyle={{ gap: theme.spacing.xs, paddingHorizontal: 2 }}
+              >
+                {laps.map((l) => {
+                  const otherLap = expanded === 'A' ? lapB : lapA;
+                  if (l.lap_number === otherLap) return null;
+                  const on = (expanded === 'A' ? lapA : lapB) === l.lap_number;
+                  const kind = l.is_best_lap
+                    ? ', meilleur tour'
+                    : l.is_outlap
+                      ? ', tour de sortie'
+                      : l.is_inlap
+                        ? ', tour de rentrée'
+                        : '';
+                  return (
+                    <Pressable
+                      key={l.id}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={`Tour ${l.lap_number}, ${formatLapTime(l.duration_seconds)}${kind}`}
+                      accessibilityHint="Sélectionne ce tour pour la comparaison"
+                      hitSlop={theme.hitSlop}
+                      onPress={() => {
+                        if (expanded === 'A') setLapA(l.lap_number);
+                        else setLapB(l.lap_number);
+                        setExpanded(null);
+                      }}
+                      style={({ pressed }) => [
+                        s.chip,
+                        {
+                          borderColor: on
+                            ? l.is_best_lap
+                              ? theme.palette.gold
+                              : theme.palette.edge
+                            : theme.palette.line,
+                          opacity: pressed ? 0.85 : l.is_outlap || l.is_inlap ? 0.6 : 1,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          s.chipNum,
+                          { color: on ? theme.palette.cream : theme.palette.creamMute },
+                        ]}
+                      >
+                        T{l.lap_number}
+                      </Text>
+                      {/* Chrono : l'or reste au meilleur tour (record), seul. */}
+                      <Text style={[s.chipChrono, l.is_best_lap && { color: theme.palette.gold }]}>
+                        {formatLapTime(l.duration_seconds)}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            ) : null}
 
-            <Section eyebrow="FORCES — A en couleur, B en gris">
-              <GForceBars
-                lateralG={deepA.stats?.maxGLateral ?? null}
-                brakingG={deepA.stats?.maxGBraking ?? null}
-                accelG={deepA.stats?.maxGAccel ?? null}
-                compare={{
-                  lateralG: deepB.stats?.maxGLateral ?? null,
-                  brakingG: deepB.stats?.maxGBraking ?? null,
-                  accelG: deepB.stats?.maxGAccel ?? null,
-                  label: 'Session B',
-                }}
+            {/* Tracés superposés du même virage — or sur bleu, points d'apex. */}
+            <Card style={s.traceCard}>
+              {framesLoading ? (
+                <View style={s.traceLoading}>
+                  <Text style={s.meta}>Chargement…</Text>
+                </View>
+              ) : (
+                <View
+                  accessible
+                  accessibilityLabel={`Tracés superposés du virage ${corner.index} : tour ${lapA} en or, tour ${lapB} en bleu, points d'apex marqués.`}
+                >
+                  <CircuitMap
+                    viewBox={viewBox}
+                    height={240}
+                    background={GRAPH_BG}
+                    borderRadius={theme.radius.md}
+                  >
+                    <TrackLayer animate={false} opacity={0.25} strokeWidth={6} />
+                    {sliceB && sliceB.points.length > 1 ? (
+                      <TrajectoryLayer
+                        points={sliceB.points}
+                        colorMode="uniform"
+                        color={theme.dataColors.trajectory}
+                        strokeWidth={3}
+                      />
+                    ) : null}
+                    {sliceA && sliceA.points.length > 1 ? (
+                      <TrajectoryLayer
+                        points={sliceA.points}
+                        colorMode="uniform"
+                        color={theme.palette.gold}
+                        strokeWidth={3}
+                      />
+                    ) : null}
+                    {sliceB?.apex ? (
+                      <ApexDot at={sliceB.apex} color={theme.dataColors.trajectory} />
+                    ) : null}
+                    {sliceA?.apex ? <ApexDot at={sliceA.apex} color={theme.palette.gold} /> : null}
+                  </CircuitMap>
+                </View>
+              )}
+            </Card>
+            {noTrace ? (
+              <Text style={[s.meta, { marginBottom: theme.spacing.lg }]}>
+                Pas de trace GPS exploitable sur ce virage pour ces tours.
+              </Text>
+            ) : null}
+
+            {/* Trois faits — apex A, apex B, écart. Aucun gagnant. */}
+            <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+              <Tile
+                label={`T${lapA} · apex`}
+                labelColor={theme.palette.gold}
+                value={apexAKmh !== null ? String(apexAKmh) : '—'}
+                a11y={`Vitesse à l'apex au tour ${lapA} : ${apexAKmh !== null ? `${apexAKmh} kilomètres heure` : 'non mesurée'}.`}
               />
-            </Section>
+              <Tile
+                label={`T${lapB} · apex`}
+                labelColor={theme.dataColors.trajectory}
+                value={apexBKmh !== null ? String(apexBKmh) : '—'}
+                a11y={`Vitesse à l'apex au tour ${lapB} : ${apexBKmh !== null ? `${apexBKmh} kilomètres heure` : 'non mesurée'}.`}
+              />
+              {/* Delta = fait neutre, pas un record → crème, jamais l'or. */}
+              <Tile
+                label="Écart"
+                labelColor={theme.palette.eyebrow}
+                value={deltaText}
+                a11y={
+                  delta !== null
+                    ? `Écart à l'apex, tour ${lapA} moins tour ${lapB} : ${deltaText} kilomètres heure.`
+                    : "Écart à l'apex non mesurable."
+                }
+              />
+            </View>
 
-            <Section eyebrow="DELTA TRAJECTOIRE">
-              <Card style={s.dataPanel}>
-                <DeltaRow
-                  label="Écart latéral moyen"
-                  a={deepA.stats?.avgLateralErrorM ?? null}
-                  b={deepB.stats?.avgLateralErrorM ?? null}
-                  unit="m"
-                  decimals={1}
-                />
-                <DeltaRow
-                  label="Écart latéral max"
-                  a={deepA.stats?.maxLateralErrorM ?? null}
-                  b={deepB.stats?.maxLateralErrorM ?? null}
-                  unit="m"
-                  decimals={1}
-                  last
-                />
-              </Card>
-            </Section>
-
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setSessionBId(null)}
-              style={({ pressed }) => [s.secondaryCta, { opacity: pressed ? 0.85 : 1 }]}
-            >
-              <Text style={s.secondaryCtaTxt}>Choisir une autre session B</Text>
-            </Pressable>
+            {caption ? <Text style={s.caption}>{caption}</Text> : null}
           </>
-        ) : null}
-
-        {sessionBId && (!deepA || !deepB) ? (
-          <Text style={[s.meta, { paddingVertical: theme.spacing.lg }]}>Chargement…</Text>
-        ) : null}
+        )}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
+          <Pressable
+            accessibilityRole="button"
+            hitSlop={theme.hitSlop}
+            onPress={() => router.back()}
+            style={s.backHit}
+          >
             <Text style={s.back}>Retour</Text>
           </Pressable>
         </View>
@@ -311,183 +442,209 @@ export default function VirageComparerScreen() {
   );
 }
 
-function MiniCard({
+/**
+ * Pill de sélection d'un tour (maquette : tiret couleur + « Tour N »).
+ * Or = tour de référence A, bleu trajectoire = tour B — étiquetage de série,
+ * jamais un verdict. Tap → déplie le choix parmi les tours réels.
+ */
+function LapPill({
+  color,
+  lapNumber,
+  expanded,
+  onPress,
+}: {
+  color: string;
+  lapNumber: number;
+  expanded: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      accessibilityLabel={`Tour ${lapNumber}`}
+      accessibilityHint="Ouvre le choix du tour à comparer"
+      onPress={onPress}
+      style={({ pressed }) => [
+        s.pill,
+        {
+          borderColor: expanded ? theme.palette.edge : theme.palette.line,
+          opacity: pressed ? 0.85 : 1,
+        },
+      ]}
+    >
+      <View style={[s.pillDash, { backgroundColor: color }]} />
+      <Text style={s.pillTxt}>Tour {lapNumber}</Text>
+    </Pressable>
+  );
+}
+
+/** Point d'apex mesuré sur un tracé (frame réelle la plus proche de la corde). */
+function ApexDot({ at, color }: { at: { lat: number; lon: number }; color: string }) {
+  const p = projectToScene(at);
+  return (
+    <SvgCircle
+      cx={p.x}
+      cy={p.y}
+      r={3.4}
+      fill={color}
+      stroke={theme.palette.night}
+      strokeWidth={1.2}
+    />
+  );
+}
+
+/** Tuile factuelle — eyebrow mono couleur de série, chiffre mono, unité. */
+function Tile({
   label,
-  accent,
-  deep,
-  viewBox,
-  cornerIndex,
+  labelColor,
+  value,
+  a11y,
 }: {
   label: string;
-  accent: string;
-  deep: CornerDeepDive;
-  viewBox: string | undefined;
-  cornerIndex: number;
+  labelColor: string;
+  value: string;
+  a11y: string;
 }) {
-  const zone: MarginZone =
-    deep.stats?.marginZone ??
-    (deep.stats?.marginPercent != null ? marginZoneOf(deep.stats.marginPercent) : 'yellow');
-  const trajectoryPoints =
-    deep.trajectory.length > 1
-      ? deep.trajectory.map((p) => ({ lat: p.lat, lon: p.lon, speed: p.speedKmh }))
-      : null;
-
   return (
-    <Card style={[s.dataPanel, { flex: 1 }]}>
-      <Text style={[s.eyebrow, { marginBottom: theme.spacing.sm, color: accent }]}>{label}</Text>
-      <CircuitMap viewBox={viewBox} height={180} background={theme.palette.card2}>
-        <TrackLayer animate={false} opacity={0.3} strokeWidth={6} />
-        {trajectoryPoints ? (
-          <TrajectoryLayer points={trajectoryPoints} colorMode="speed-heatmap" />
-        ) : null}
-        <CornersLayer
-          colorMode="zone"
-          zoneByIndex={{ [cornerIndex]: zone }}
-          selectedIndex={cornerIndex}
-          showLabels
-          radius={16}
-        />
-      </CircuitMap>
-      <Text style={[s.miniValue, { color: accent }]}>
-        {deep.stats?.marginPercent != null ? `${Math.round(deep.stats.marginPercent)} %` : '—'}
-      </Text>
+    <View style={s.tile} accessible accessibilityLabel={a11y}>
+      <Text style={[s.tileLabel, { color: labelColor }]}>{label}</Text>
+      <Text style={s.tileValue}>{value}</Text>
+      <Text style={s.tileUnit}>km/h</Text>
+    </View>
+  );
+}
+
+function EmptyBlock({ title, hint }: { title: string; hint: string }) {
+  return (
+    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
+      <Text style={s.emptyTitle}>{title}</Text>
+      <Text style={s.emptyHint}>{hint}</Text>
     </Card>
   );
 }
 
-function Section({ eyebrow, children }: { eyebrow: string; children: React.ReactNode }) {
-  return (
-    <View style={{ marginBottom: theme.spacing.xxl }}>
-      <View style={[s.headRow, { marginBottom: theme.spacing.md }]}>
-        <View style={s.headDot} />
-        <Text style={s.eyebrow}>{eyebrow}</Text>
-      </View>
-      {children}
-    </View>
-  );
-}
-
-function DeltaRow({
-  label,
-  a,
-  b,
-  unit,
-  decimals = 0,
-  last = false,
-}: {
-  label: string;
-  a: number | null;
-  b: number | null;
-  unit: string;
-  decimals?: number;
-  last?: boolean;
-}) {
-  const delta = a !== null && b !== null ? b - a : null;
-  const text =
-    delta === null
-      ? '—'
-      : `${delta > 0 ? '+' : delta < 0 ? '−' : '±'}${Math.abs(delta).toFixed(decimals)} ${unit}`;
-  return (
-    <View
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: theme.spacing.sm,
-        borderBottomWidth: last ? 0 : 1,
-        borderBottomColor: theme.palette.line,
-      }}
-    >
-      <Text style={s.statLabel}>{label}</Text>
-      <Text style={s.statValue}>{text}</Text>
-    </View>
-  );
-}
-
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  headRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.sm,
-  },
-  headDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: theme.palette.creamMute,
-  },
-  dataPanel: {
-    backgroundColor: theme.palette.card2,
-    shadowColor: theme.palette.creamMute,
-    shadowOpacity: 0.07,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 8,
-  },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-  },
   meta: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.5,
     color: theme.palette.creamMute,
   },
-  optionDate: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+  pill: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    backgroundColor: theme.palette.card2,
   },
-  optionMargin: {
+  pillDash: {
+    width: 16,
+    height: 3,
+    borderRadius: 2,
+  },
+  pillTxt: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
+    letterSpacing: 0.5,
+    color: theme.palette.cream,
+  },
+  chip: {
+    minHeight: 44,
+    minWidth: 56,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    backgroundColor: theme.palette.card2,
+  },
+  chipNum: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+  },
+  chipChrono: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.4,
     color: theme.palette.creamMute,
+    marginTop: 2,
   },
-  statLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
+  traceCard: {
+    padding: theme.spacing.xs,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
   },
-  statValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+  traceLoading: {
+    height: 240,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
   },
-  miniValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.h3,
-    color: theme.palette.cream,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
-  },
-  secondaryCta: {
-    padding: theme.spacing.md,
+  tile: {
+    flex: 1,
+    alignItems: 'center' as const,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.palette.line,
-    alignItems: 'center' as const,
-    marginTop: theme.spacing.xl,
+    backgroundColor: theme.palette.surface3,
   },
-  secondaryCtaTxt: {
+  tileLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: 10,
-    letterSpacing: 1.2,
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
+  },
+  tileValue: {
+    fontFamily: theme.fonts.king,
+    fontSize: theme.fontSize.value,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.xs,
+  },
+  tileUnit: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
     color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.6,
+    color: theme.palette.secondary,
+    marginTop: theme.spacing.lg,
+  },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic' as const,
+    color: theme.palette.creamSoft,
+    textAlign: 'center' as const,
+  },
+  emptyHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
   },
   back: {
     fontFamily: theme.fonts.mono,
     fontSize: 11,
     letterSpacing: 1,
     color: theme.palette.creamMute,
+  },
+  backHit: {
+    minHeight: 44,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
   },
 };

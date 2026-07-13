@@ -1,42 +1,74 @@
 /**
- * Passeport — identité piste CUMULATIVE du pilote (PR-40). Zone Progression.
+ * Passeport piste — carte d'identité CUMULATIVE du pilote.
+ * Reskin fidèle à la maquette refonte-v2 §7bis #5e (screens/18-passeport.png).
  *
- * Le portrait de qui vous êtes en piste, au fil des séances : votre empreinte
- * (silhouette signature, visuel dominant) + des faits d'identité neutres. Aucun
- * record, aucun rang, aucun score — l'identité, pas la performance. Le best-lap
- * et la marge vivent ailleurs (Progression/Bilan). Sobre, vouvoiement, pas d'emoji.
+ * Maquette : carte d'identité à dégradé sombre (nom réel, badge PALIER or,
+ * 3 stats mono : séances / circuits / tours) · eyebrow « Vos circuits » ·
+ * une carte par circuit roulé avec le MEILLEUR TEMPS réel en or (l'or est
+ * réservé au chrono/record) · note « Le vôtre seul — aucun autre pilote ».
+ * Soi seul : aucun autre pilote, aucun classement, jamais de « gagnant ».
+ *
+ * Données réelles uniquement :
+ *   - nom → profiles (useAuthStore) ;
+ *   - « Membre depuis » → première séance complétée (passportService) ;
+ *   - palier → registrations.offer_type de l'inscription EFFECTIVE la plus
+ *     récente (même règle que qdiService.getQdiAccessLevel, RLS own-row) ;
+ *     aucune inscription = badge masqué ;
+ *   - stats → loadPassport (loadPilotStats agrégé) ; records par circuit →
+ *     stats.byCircuit.bestLapSeconds (best_lap_seconds réels), « — » si absent.
+ *
+ * Héritage retravaillé (le graphique v2 fait loi) : le radar d'empreinte, le
+ * manifeste et la distance km sont DROP (absents de la maquette — l'empreinte
+ * vit sur Signature/Empreinte de saison). Les accès Empreinte de saison et
+ * Carte de licence sont GARDÉS (seule porte d'entrée de ces écrans) mais
+ * retravaillés en lignes discrètes v2. Tutoiement des PNG transposé en
+ * vouvoiement. Zéro nouvelle table.
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import { EmptyState, Fact } from '@/components/instruments';
-import { DriverAvatar } from '@/components/signature/DriverAvatar';
-import { RadarEmpreinte } from '@/components/signature/RadarEmpreinte';
+import { EmptyState } from '@/components/instruments';
+import { supabase } from '@/lib/supabase';
 import { type Passport, loadPassport } from '@/services/passportService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { formatLapTime } from '@/utils/format';
 
-function prettyLevel(level: string | null | undefined): string {
-  switch (level) {
-    case 'debutant':
-      return 'Débutant';
-    case 'intermediaire':
-      return 'Apprivoisé';
-    case 'confirme':
-      return 'Confirmé';
-    case 'expert':
-      return 'Expert';
-    default:
-      return 'Pilote OXV';
-  }
+const { palette, fonts, fontSize, spacing, radius } = theme;
+
+/** Libellés d'affichage des offres réelles (enum offer_type_enum). */
+const OFFER_LABELS: Record<string, string> = {
+  access: 'Access',
+  signature: 'Signature',
+  promotion: 'Promotion',
+  heritage: 'Heritage',
+};
+
+/**
+ * Palier RÉEL du pilote : offre de l'inscription EFFECTIVE la plus récente
+ * (même règle que qdiService.getQdiAccessLevel — une Signature annulée il y a
+ * un an ne donne pas le palier à vie). RLS : registrations own-row.
+ * Null = hors parcours commercial → badge masqué (jamais un palier inventé).
+ */
+async function loadCurrentOffer(userId: string): Promise<string | null> {
+  const { data } = await supabase
+    .from('registrations')
+    .select('offer_type, status')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  const ACTIVE = new Set(['confirmed', 'attended', 'pending_payment', 'pending']);
+  const current = (data ?? []).find((r) => ACTIVE.has(String(r.status)));
+  return current ? String(current.offer_type) : null;
 }
 
+/** « Membre depuis {mois année} » — date RÉELLE de la première séance complétée. */
 function memberSinceLabel(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -44,9 +76,50 @@ function memberSinceLabel(iso: string | null): string | null {
   return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
 }
 
+/** Fond de la carte d'identité : dégradé sombre (surface-3 → surface), thème only. */
+function CardGradient() {
+  return (
+    <Svg
+      width="100%"
+      height="100%"
+      style={{ position: 'absolute', top: 0, left: 0 }}
+      pointerEvents="none"
+    >
+      <Defs>
+        <LinearGradient id="passportCard" x1="0%" y1="0%" x2="60%" y2="100%">
+          <Stop offset="0" stopColor={palette.surface3} stopOpacity="1" />
+          <Stop offset="1" stopColor={palette.card} stopOpacity="1" />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#passportCard)" />
+    </Svg>
+  );
+}
+
+/** Colonne de stat de la carte (chiffre mono + label bas de casse, maquette). */
+function StatCol({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ flex: 1 }} accessible accessibilityLabel={`${value} ${label}`}>
+      <Text style={s.statValue}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+/** Glyphe tracé (anneau fin) des lignes circuit — décoratif, maquette. */
+function TrackRing() {
+  return <View style={s.ring} importantForAccessibility="no" />;
+}
+
+/** Chevron droit fin des lignes de navigation (héritage retravaillé v2). */
+function ChevronRight() {
+  return <View style={s.chevRight} importantForAccessibility="no" />;
+}
+
 export default function PasseportScreen() {
-  const profile = useAuthStore((s) => s.profile);
+  const profile = useAuthStore((st) => st.profile);
   const [passport, setPassport] = useState<Passport | null>(null);
+  const [offer, setOffer] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(() => {
@@ -56,12 +129,17 @@ export default function PasseportScreen() {
     }
     let cancelled = false;
     setLoading(true);
-    loadPassport(profile.id).then((p) => {
-      if (!cancelled) {
-        setPassport(p);
-        setLoading(false);
-      }
-    });
+    Promise.all([loadPassport(profile.id), loadCurrentOffer(profile.id)])
+      .then(([p, o]) => {
+        if (!cancelled) {
+          setPassport(p);
+          setOffer(o);
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -69,180 +147,281 @@ export default function PasseportScreen() {
 
   useFocusEffect(reload);
 
+  const name =
+    [profile?.first_name, profile?.last_name]
+      .map((part) => (part ?? '').trim())
+      .filter(Boolean)
+      .join(' ') || 'Pilote';
   const since = memberSinceLabel(passport?.memberSince ?? null);
-  const name = profile?.first_name?.trim() || 'Pilote';
-  const hasData = (passport?.stats.totalSessions ?? 0) > 0;
+  const offerLabel = offer ? (OFFER_LABELS[offer] ?? offer) : null;
+  // Heritage porte SA couleur d'offre (heritageGold strict) ; les autres paliers
+  // suivent la maquette (or). Jamais une couleur QDI ici.
+  const offerColor = offer === 'heritage' ? palette.heritageGold : palette.gold;
+
+  // Le plus familier en tête (séances) — jamais un classement de performance.
   const circuits = passport
     ? Object.values(passport.stats.byCircuit).sort((a, b) => b.sessionCount - a.sessionCount)
     : [];
 
   return (
     <Screen>
-      <AppBar title="PASSEPORT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={s.headRow}>
-          {hasData && passport ? <DriverAvatar axes={passport.signature.axes} size={56} /> : null}
-          <View style={{ flex: 1 }}>
-            <Text style={s.eyebrow}>IDENTITÉ PISTE</Text>
-            <Text style={s.title} accessibilityRole="header">
-              {name}.
-            </Text>
-            <Text style={s.sub}>
-              {prettyLevel(profile?.pilot_level)}
-              {since ? ` · membre depuis ${since}` : ''}
-            </Text>
+      <AppBar title="Passeport piste" onBack={() => router.back()} />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* ── Carte d'identité (dégradé sombre, maquette) ─────────────────── */}
+        <View style={s.idCard}>
+          <CardGradient />
+          <View style={s.idHead}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name} accessibilityRole="header">
+                {name}
+              </Text>
+              {since ? <Text style={s.since}>Membre depuis {since}</Text> : null}
+            </View>
+            {offerLabel ? (
+              <View style={s.palier} accessible accessibilityLabel={`Palier ${offerLabel}`}>
+                <Text style={[s.palierEyebrow, { color: offerColor }]}>PALIER</Text>
+                <Text style={[s.palierValue, { color: offerColor }]}>{offerLabel}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={s.idHair} />
+
+          <View style={s.statRow}>
+            <StatCol
+              value={passport ? String(passport.stats.totalSessions) : '—'}
+              label={passport?.stats.totalSessions === 1 ? 'séance' : 'séances'}
+            />
+            <StatCol
+              value={passport ? String(passport.circuitCount) : '—'}
+              label={passport?.circuitCount === 1 ? 'circuit' : 'circuits'}
+            />
+            <StatCol
+              value={passport ? String(passport.stats.totalLaps) : '—'}
+              label={passport?.stats.totalLaps === 1 ? 'tour' : 'tours'}
+            />
           </View>
         </View>
 
         {loading ? (
-          <View style={{ paddingVertical: theme.spacing.xxl, alignItems: 'center' }}>
-            <ActivityIndicator color={theme.palette.creamMute} />
+          <View style={{ paddingVertical: spacing.xxl, alignItems: 'center' }}>
+            <ActivityIndicator color={palette.creamMute} />
           </View>
-        ) : !hasData ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+        ) : circuits.length === 0 ? (
+          <View style={{ marginTop: spacing.xl }}>
             <EmptyState
               label="Passeport à composer"
-              message="Votre identité de pilote se dessine au fil de vos séances analysées."
+              message="Vos circuits et vos temps s'inscriront ici au fil de vos séances analysées."
             />
           </View>
         ) : (
           <>
-            {/* Empreinte — le visuel DOMINANT (silhouette factuelle 5 axes). */}
-            <View style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
-              <RadarEmpreinte axes={passport!.signature.axes} />
+            {/* ── Records par circuit — chronos RÉELS, en or (chrono seul) ── */}
+            <View style={{ marginTop: spacing.xl, marginBottom: spacing.md }}>
+              <SectionLabel>Vos circuits</SectionLabel>
+            </View>
+            <View style={{ gap: spacing.sm + 2 }}>
+              {circuits.map((c) => (
+                <View
+                  key={c.circuitName}
+                  style={s.circuitCard}
+                  accessible
+                  accessibilityLabel={
+                    c.bestLapSeconds !== null
+                      ? `${c.circuitName}, meilleur temps ${formatLapTime(c.bestLapSeconds)}`
+                      : `${c.circuitName}, meilleur temps non disponible`
+                  }
+                >
+                  <TrackRing />
+                  <Text style={s.circuitName} numberOfLines={2}>
+                    {c.circuitName}
+                  </Text>
+                  <Text
+                    style={[
+                      s.circuitBest,
+                      c.bestLapSeconds === null && { color: palette.creamMute },
+                    ]}
+                  >
+                    {c.bestLapSeconds !== null ? formatLapTime(c.bestLapSeconds) : '—'}
+                  </Text>
+                </View>
+              ))}
             </View>
 
-            {passport!.signature.manifest ? (
-              <Text style={s.manifest}>{passport!.signature.manifest}</Text>
-            ) : null}
-
-            {/* Faits d'identité NEUTRES (cumul) — jamais un record ni un rang. */}
-            <View style={s.factRow}>
-              <Fact label="Séances" value={String(passport!.stats.totalSessions)} />
-              <Fact label="Circuits" value={String(passport!.circuitCount)} />
-            </View>
-            <View style={[s.factRow, { marginTop: theme.spacing.sm }]}>
-              <Fact label="Tours" value={String(passport!.stats.totalLaps)} />
-              <Fact
-                label="Distance"
-                value={
-                  passport!.stats.totalDistanceKm > 0
-                    ? String(Math.round(passport!.stats.totalDistanceKm))
-                    : '—'
-                }
-                unit="km"
-              />
-            </View>
-
-            {/* Carnet de circuits (PR-63) : où vous avez roulé. Le plus familier
-                en tête (séances), jamais un classement de performance. */}
-            {circuits.length > 0 ? (
-              <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>
-                <SectionLabel>Vos circuits</SectionLabel>
-                {circuits.map((c) => (
-                  <View key={c.circuitName} style={s.circuitRow}>
-                    <Text style={s.circuitName}>{c.circuitName}</Text>
-                    <Text style={s.circuitMeta}>
-                      {c.sessionCount} séance{c.sessionCount > 1 ? 's' : ''} · {c.lapCount} tours
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {/* Empreinte de saison (PR-65b) — la tranche de l'année en cours. */}
-            <View style={{ marginTop: theme.spacing.xxl }}>
-              <Button
-                label="Voir mon empreinte de saison"
-                variant="ghost"
-                onPress={() => router.push('/(app)/empreinte-saison' as never)}
-              />
-            </View>
-
-            {/* Carte de licence partageable (PR-65) — insigne factuel vers l'extérieur. */}
-            <View style={{ marginTop: theme.spacing.sm }}>
-              <Button
-                label="Partager ma carte de licence"
-                variant="ghost"
-                onPress={() => router.push('/(app)/carte-licence' as never)}
-              />
-            </View>
-
-            <Text style={s.doctrine}>Votre identité, telle que mesurée. Pas un rang.</Text>
+            <Text style={s.footnote}>
+              Votre meilleur temps par circuit. Le vôtre seul — aucun autre pilote.
+            </Text>
           </>
         )}
+
+        {/* ── Héritage retravaillé : seuls accès Empreinte saison / Licence ── */}
+        {!loading ? (
+          <View style={s.linkList}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Empreinte de saison"
+              onPress={() => router.push('/(app)/empreinte-saison' as never)}
+              style={({ pressed }) => [s.linkRow, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={s.linkLabel}>Empreinte de saison</Text>
+              <ChevronRight />
+            </Pressable>
+            <View style={s.linkHair} />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Carte de licence"
+              onPress={() => router.push('/(app)/carte-licence' as never)}
+              style={({ pressed }) => [s.linkRow, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={s.linkLabel}>Carte de licence</Text>
+              <ChevronRight />
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </Screen>
   );
 }
 
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
+  // Carte d'identité : dégradé sombre clippé, bordure line, padding généreux.
+  idCard: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    overflow: 'hidden' as const,
+    padding: spacing.lg,
+    marginTop: spacing.xs,
+  },
+  idHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: spacing.md,
+  },
+  name: {
+    fontFamily: fonts.displayBold,
+    fontSize: 18,
+    letterSpacing: 0.2,
+    color: palette.cream,
+  },
+  since: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.micro,
+    color: palette.creamMute,
+    marginTop: spacing.xs + 1,
+    lineHeight: fontSize.micro * 1.45,
+  },
+  // Badge palier (or — maquette ; Heritage garde son heritageGold strict).
+  palier: { alignItems: 'flex-end' as const },
+  palierEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.sm,
+    opacity: 0.8,
   },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
-    marginTop: theme.spacing.md,
+  palierValue: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.body,
+    marginTop: 2,
   },
-  sub: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+  idHair: {
+    height: 1,
+    backgroundColor: palette.separator,
+    marginVertical: spacing.lg - 2,
   },
-  headRow: {
+  statRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.md,
+  },
+  statValue: {
+    fontFamily: fonts.king,
+    fontSize: 24,
+    letterSpacing: -0.5,
+    color: palette.cream,
+    fontVariant: ['tabular-nums' as const],
+  },
+  statLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
+  },
+  // Ligne circuit : carte v2 (surface, hairline), glyphe anneau, chrono or.
+  circuitCard: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.sm,
+    gap: spacing.md,
+    minHeight: 52,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg - 2,
   },
-  circuitRow: {
+  ring: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: palette.faint,
+  },
+  circuitName: {
+    flex: 1,
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.body,
+    color: palette.cream,
+    lineHeight: fontSize.body * 1.3,
+  },
+  circuitBest: {
+    fontFamily: fonts.monoSemi,
+    fontSize: 13,
+    letterSpacing: 0.3,
+    color: palette.gold,
+    fontVariant: ['tabular-nums' as const],
+  },
+  footnote: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.micro,
+    color: palette.faint,
+    textAlign: 'center' as const,
+    lineHeight: fontSize.micro * 1.5,
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  // Lignes de navigation héritées (Empreinte saison / Licence), style v2 sobre.
+  linkList: {
+    marginTop: spacing.xxl,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.borderHair,
+    borderRadius: radius.lg,
+  },
+  linkRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.palette.line,
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
   },
-  circuitName: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    flex: 1,
+  linkLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.creamSoft,
   },
-  circuitMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+  linkHair: {
+    height: 1,
+    backgroundColor: palette.separator,
+    marginHorizontal: spacing.lg,
   },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-    marginBottom: theme.spacing.xl,
-  },
-  factRow: {
-    flexDirection: 'row' as const,
-    gap: theme.spacing.sm,
-  },
-  doctrine: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
+  chevRight: {
+    width: 8,
+    height: 8,
+    borderRightWidth: 1.5,
+    borderTopWidth: 1.5,
+    borderColor: palette.faint,
+    transform: [{ rotate: '45deg' }],
   },
 };

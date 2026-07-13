@@ -1,82 +1,116 @@
 /**
- * Écran #18 — Comparateur.
+ * Écran #18 — Comparateur. Reskin FIDÈLE à la maquette Claude Design
+ * refonte-v2 §7bis #6f (screens/24-comparateur.png).
  *
- * 3 modes selon l'horizon temporel :
- *   - Évolution immédiate : 2 sessions récentes (< 7 jours)
- *   - Évolution récente   : périodes 7j vs 3 mois
- *   - Progression         : vue long terme (> 3 mois)
+ * Maquette (haut → bas) : AppBar détail « Comparateur » · 2 cartes sélecteurs
+ * « SÉANCE A » (or) / « SÉANCE B » (bleu #4F9DF7) séparées par « VS » · tableau
+ * factuel 4 lignes (valeur A · libellé · valeur B) : meilleur tour, régularité
+ * (écart-type), tours, vitesse max · phrase de clôture vouvoyée. SANS gagnant,
+ * sans vert/rouge de jugement — deux faits côte à côte.
  *
- * V1 simplifié : on liste les 10 dernières analyses, on permet d'en
- * sélectionner 2, et on affiche le delta de marge composite + delta
- * chronos. La phrase signature en bas rappelle la doctrine :
- *   "Vos chronos évoluent aussi, mais ce n'est pas l'essentiel."
+ * DROP net (hors maquette) : les 3 modes temporels (Segmented), le panneau
+ * « écart de marge » (la marge vit dans le Bilan), la superposition ABTrace et
+ * la couche coach CircuitTraceHero (la superposition de tracés vit dans
+ * virage-comparer, §7bis #6d). Héritage gardé et retravaillé : le choix de
+ * 2 séances réelles du pilote, en cartes v2 dépliables.
  *
- * Reskin V2 : Screen + AppBar, Segmented (modes), Card/SectionLabel, typo
- * et couleurs @/theme/v2. Logique (sélection, delta, lecture coach) inchangée.
+ * Données réelles uniquement (les chiffres du PNG sont des exemples) :
+ *   - séances : `telemetry_sessions` via fetchAllSessions (RLS owner) —
+ *     started_at, circuit_name, best_lap_seconds, lap_count, max_speed_kmh ;
+ *   - régularité : écart-type des tours réels (`laps` via fetchSessionLaps →
+ *     computeRegularity, mêmes filtres outlap/inlap que l'écran Régularité).
+ *   Valeur absente → « — ». Aucune table ni colonne nouvelle.
+ *
+ * Couleurs : OR = séance A / BLEU trajectoire = séance B — étiquetage de série,
+ * convention verrouillée « A or / B bleu ; aucun gagnant » (cf. virage-comparer).
+ * L'écart-type de A en violet = couleur QDI fixe de la régularité ; les valeurs
+ * neutres de B atténuées, comme la maquette. Jamais un verdict.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
-import { ABTrace } from '@/components/instruments';
-import { type RecentAnalysisRow, listRecentAnalyses } from '@/services/analysesService';
+import { computeRegularity } from '@/services/regularityService';
+import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { marginLabelOf, marginZoneOf } from '@/types/domain';
+import type { TelemetrySession } from '@/types/telemetry';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
-import { Segmented } from '@/ui/Segmented';
-import { timeAgoFr } from '@/utils/time';
+import { formatDateShort, formatLapTime } from '@/utils/format';
 
-type Mode = 'immediate' | 'recent' | 'progression';
+/** Conversion sûre des numeric Supabase (parfois des chaînes au runtime). */
+function num(v: unknown): number | null {
+  if (v === null || v === undefined) return null;
+  const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+  return Number.isFinite(n) ? n : null;
+}
 
-const MODE_LABELS: Record<Mode, string> = {
-  immediate: 'Immédiate',
-  recent: 'Récente',
-  progression: 'Long terme',
-};
+/** « 4 juil. » — date courte des cartes sélecteurs (maquette, sans année). */
+function formatDayMonth(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+}
 
-const MODES: Mode[] = ['immediate', 'recent', 'progression'];
-const MODE_BY_LABEL: Record<string, Mode> = {
-  Immédiate: 'immediate',
-  Récente: 'recent',
-  'Long terme': 'progression',
-};
+/** Meilleur tour affiché — chrono via util partagé (arrondi sûr), sinon « — ». */
+function lapText(session: TelemetrySession | undefined): string {
+  const v = num(session?.best_lap_seconds);
+  return v !== null && v > 0 ? formatLapTime(v) : '—';
+}
 
-const MODE_WINDOW_DAYS: Record<Mode, number> = {
-  immediate: 7,
-  recent: 90,
-  progression: 9999,
-};
+/** Écart-type affiché « ±0,42 » (fr virgule), sinon « — ». */
+function stdText(sd: number | null | undefined): string {
+  return sd === null || sd === undefined ? '—' : `±${sd.toFixed(2).replace('.', ',')}`;
+}
+
+/** Écart-type énoncé pour lecteur d'écran. */
+function stdSpoken(sd: number | null | undefined): string {
+  return sd === null || sd === undefined
+    ? 'non mesurée'
+    : `${sd.toFixed(2).replace('.', ',')} seconde`;
+}
+
+function countText(session: TelemetrySession | undefined): string {
+  const v = num(session?.lap_count);
+  return v !== null ? String(Math.round(v)) : '—';
+}
+
+function vmaxText(session: TelemetrySession | undefined): string {
+  const v = num(session?.max_speed_kmh);
+  return v !== null ? String(Math.round(v)) : '—';
+}
 
 export default function ComparateurScreen() {
   const profile = useAuthStore((s) => s.profile);
-  const [analyses, setAnalyses] = useState<RecentAnalysisRow[]>([]);
+  const [sessions, setSessions] = useState<TelemetrySession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<Mode>('immediate');
-  const [selectedA, setSelectedA] = useState<string | null>(null);
-  const [selectedB, setSelectedB] = useState<string | null>(null);
+  const [idA, setIdA] = useState<string | null>(null);
+  const [idB, setIdB] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<'A' | 'B' | null>(null);
+  // Écart-type par séance (clé = id session). Absent de la map = pas encore
+  // calculé (affiché « — ») ; null = calculé mais non mesurable (< 2 tours).
+  const [stdBySession, setStdBySession] = useState<Record<string, number | null>>({});
 
+  // Séances réelles du pilote ; défaut : A = la plus récente, B = la précédente
+  // (comme la maquette : « 4 juil. » vs « 12 juin »).
   useEffect(() => {
     if (!profile) {
       setLoading(false);
       return;
     }
     let cancelled = false;
-    listRecentAnalyses(profile.id, 100)
+    fetchAllSessions(profile.id, { limit: 20 })
       .then((rows) => {
         if (cancelled) return;
-        setAnalyses(rows);
-        setLoading(false);
-        // Pré-sélection : les deux plus récentes
+        setSessions(rows);
         if (rows.length >= 2) {
-          setSelectedA(rows[1].telemetrySessionId);
-          setSelectedB(rows[0].telemetrySessionId);
+          setIdA(rows[0].id);
+          setIdB(rows[1].id);
         }
+        setLoading(false);
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
@@ -86,18 +120,33 @@ export default function ComparateurScreen() {
     };
   }, [profile]);
 
-  const filtered = useMemo(() => {
-    const cutoff = Date.now() - MODE_WINDOW_DAYS[mode] * 24 * 60 * 60 * 1000;
-    return analyses.filter((a) => new Date(a.sessionStartedAt).getTime() >= cutoff);
-  }, [analyses, mode]);
-
-  const rowA = analyses.find((a) => a.telemetrySessionId === selectedA);
-  const rowB = analyses.find((a) => a.telemetrySessionId === selectedB);
+  // Écart-type réel des séances sélectionnées : tours de la table `laps`,
+  // mêmes filtres outlap/inlap que regularite.tsx. Résultat mis en cache par
+  // id de séance (pas de refetch quand on rebascule sur une séance déjà vue).
+  useEffect(() => {
+    const targets = [idA, idB].filter((id): id is string => id !== null && !(id in stdBySession));
+    if (targets.length === 0) return;
+    let cancelled = false;
+    targets.forEach((sessionId) => {
+      fetchSessionLaps(sessionId).then((laps) => {
+        if (cancelled) return;
+        const reg = computeRegularity(
+          laps
+            .filter((l) => !l.is_outlap && !l.is_inlap)
+            .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }))
+        );
+        setStdBySession((prev) => ({ ...prev, [sessionId]: reg.stdDevSeconds }));
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [idA, idB, stdBySession]);
 
   if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="COMPARATEUR" onBack={() => router.back()} />
+        <AppBar title="Comparateur" onBack={() => router.back()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator color={theme.palette.creamMute} />
         </View>
@@ -105,76 +154,144 @@ export default function ComparateurScreen() {
     );
   }
 
+  const sessionA = sessions.find((row) => row.id === idA);
+  const sessionB = sessions.find((row) => row.id === idB);
+  const stdA = idA ? stdBySession[idA] : undefined;
+  const stdB = idB ? stdBySession[idB] : undefined;
+
   return (
     <Screen>
-      <AppBar title="COMPARATEUR" onBack={() => router.back()} />
+      <AppBar title="Comparateur" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.title}>Évolution</Text>
-
-        <View style={{ marginBottom: theme.spacing.xxl }}>
-          <Segmented
-            options={MODES.map((m) => MODE_LABELS[m])}
-            value={MODE_LABELS[mode]}
-            onChange={(label) => setMode(MODE_BY_LABEL[label])}
-          />
-        </View>
-
-        {analyses.length < 2 ? (
-          <EmptyState count={analyses.length} />
+        {sessions.length < 2 ? (
+          <EmptyBlock count={sessions.length} />
         ) : (
           <>
-            <DeltaPanel a={rowA} b={rowB} />
+            {/* Sélecteurs A / B — cartes v2, « VS » factuel entre les deux. */}
+            <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: theme.spacing.sm }}>
+              <SelectorCard
+                slot="A"
+                color={theme.palette.gold}
+                session={sessionA}
+                expanded={expanded === 'A'}
+                onPress={() => setExpanded(expanded === 'A' ? null : 'A')}
+              />
+              <Text style={s.vs}>VS</Text>
+              <SelectorCard
+                slot="B"
+                color={theme.dataColors.trajectory}
+                session={sessionB}
+                expanded={expanded === 'B'}
+                onPress={() => setExpanded(expanded === 'B' ? null : 'B')}
+              />
+            </View>
 
-            {/* Superposition factuelle A vs B (vous contre vous) : les deux tracés
-                sur le même tracé de circuit, A en or, B en neutre. Aucune mention
-                « mieux/moins bien » — on montre la divergence, on ne juge pas.
-                Zone pilote (au-dessus de la couche coach). */}
-            {selectedA && selectedB ? (
-              <View style={{ marginTop: theme.spacing.xl }}>
-                <ABTrace
-                  sessionA={selectedA}
-                  sessionB={selectedB}
-                  labelA="Référence A"
-                  labelB="Référence B"
-                  statusLabel="VOS DEUX TOURS · SUPERPOSÉS"
-                  note="Là où vos deux lignes divergent — sans verdict."
-                  emptyMessage="La superposition de vos deux tours apparaîtra dès vos premières frames réelles."
-                />
+            {/* Choix de la séance pour la carte dépliée — séances réelles. */}
+            {expanded ? (
+              <View style={{ marginTop: theme.spacing.md }}>
+                <Text
+                  style={[
+                    s.pickerEyebrow,
+                    {
+                      color: expanded === 'A' ? theme.palette.gold : theme.dataColors.trajectory,
+                    },
+                  ]}
+                >
+                  CHOISIR LA SÉANCE {expanded}
+                </Text>
+                <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+                  {sessions.map((row) => {
+                    const otherId = expanded === 'A' ? idB : idA;
+                    if (row.id === otherId) return null;
+                    const active = (expanded === 'A' ? idA : idB) === row.id;
+                    const best = lapText(row);
+                    return (
+                      <Card
+                        key={row.id}
+                        onPress={() => {
+                          if (expanded === 'A') setIdA(row.id);
+                          else setIdB(row.id);
+                          setExpanded(null);
+                        }}
+                        accessibilityLabel={`Séance du ${formatDateShort(row.started_at)}, ${
+                          row.circuit_name || 'circuit inconnu'
+                        }, meilleur tour ${best === '—' ? 'non mesuré' : best}.${
+                          active ? ' Sélectionnée.' : ''
+                        }`}
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          borderColor: active ? theme.palette.edge : theme.palette.line,
+                          backgroundColor: active ? theme.palette.surface3 : theme.palette.card,
+                        }}
+                      >
+                        <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
+                          <Text style={s.pickDate}>{formatDateShort(row.started_at)}</Text>
+                          <Text style={s.pickCircuit}>{row.circuit_name || '—'}</Text>
+                        </View>
+                        {/* Chrono de repère — crème atténué : dans une liste de
+                            choix, aucun tour n'est « le » record mis en or. */}
+                        <Text style={s.pickChrono}>{best}</Text>
+                      </Card>
+                    );
+                  })}
+                </View>
               </View>
             ) : null}
 
-            {/* Lecture coach (specs v4 §05 §4.3) : où le temps se loge sur le tracé
-                (perte de temps par secteur), couche comparative attribuée au coach
-                (badge + liseré or). Sur VOS propres tours — aucune comparaison
-                inter-pilotes ici, donc pas d'exposition de données d'un tiers. */}
-            {selectedA ? (
-              <View style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xl }}>
-                <CircuitTraceHero sessionId={selectedA} role="coach" defaultLayer="timeLoss" />
-              </View>
-            ) : null}
+            {/* Tableau factuel — valeur A · libellé · valeur B, hairlines. */}
+            <View style={{ marginTop: theme.spacing.xl }}>
+              <MetricRow
+                label="meilleur tour"
+                valueA={lapText(sessionA)}
+                valueB={lapText(sessionB)}
+                colorA={theme.palette.gold}
+                colorB={theme.dataColors.trajectory}
+                a11y={`Meilleur tour — séance A : ${
+                  lapText(sessionA) === '—' ? 'non mesuré' : lapText(sessionA)
+                } ; séance B : ${lapText(sessionB) === '—' ? 'non mesuré' : lapText(sessionB)}.`}
+              />
+              <MetricRow
+                label="régularité"
+                valueA={stdText(stdA)}
+                valueB={stdText(stdB)}
+                colorA={theme.dataColors.regularity}
+                colorB={theme.palette.creamMute}
+                a11y={`Régularité, écart-type des tours — séance A : ${stdSpoken(
+                  stdA
+                )} ; séance B : ${stdSpoken(stdB)}.`}
+              />
+              <MetricRow
+                label="tours"
+                valueA={countText(sessionA)}
+                valueB={countText(sessionB)}
+                colorA={theme.palette.cream}
+                colorB={theme.palette.creamMute}
+                a11y={`Tours bouclés — séance A : ${
+                  countText(sessionA) === '—' ? 'non compté' : countText(sessionA)
+                } ; séance B : ${countText(sessionB) === '—' ? 'non compté' : countText(sessionB)}.`}
+              />
+              <MetricRow
+                label="vitesse max"
+                valueA={vmaxText(sessionA)}
+                valueB={vmaxText(sessionB)}
+                colorA={theme.palette.cream}
+                colorB={theme.palette.creamMute}
+                last
+                a11y={`Vitesse maximale — séance A : ${
+                  vmaxText(sessionA) === '—'
+                    ? 'non mesurée'
+                    : `${vmaxText(sessionA)} kilomètres heure`
+                } ; séance B : ${
+                  vmaxText(sessionB) === '—'
+                    ? 'non mesurée'
+                    : `${vmaxText(sessionB)} kilomètres heure`
+                }.`}
+              />
+            </View>
 
-            {/* A/B = simple étiquetage de série (quelle séance), pas une donnée
-                QDI ni un chrono : A neutre crème, B bleu pour distinguer les deux
-                traces. L'or reste au chrono/record ; aucune séance n'est « la »
-                référence (self-only, pas de gagnant). */}
-            <SessionPicker
-              label="Référence A"
-              accent={theme.palette.cream}
-              sessions={filtered}
-              selectedId={selectedA}
-              onSelect={setSelectedA}
-            />
-            <SessionPicker
-              label="Référence B"
-              accent={theme.dataColors.trajectory}
-              sessions={filtered}
-              selectedId={selectedB}
-              onSelect={setSelectedB}
-            />
-
-            <Text style={s.signature}>
-              Vos chronos évoluent aussi, mais ce n&apos;est pas l&apos;essentiel.
-            </Text>
+            <Text style={s.caption}>Vos deux séances, sans gagnant — juste ce qui a changé.</Text>
           </>
         )}
       </View>
@@ -182,170 +299,177 @@ export default function ComparateurScreen() {
   );
 }
 
-function DeltaPanel({
-  a,
-  b,
+/**
+ * Carte sélecteur d'une séance (maquette : eyebrow couleur de série, date
+ * courte, circuit). Tap → déplie la liste des séances réelles. Or = série A,
+ * bleu trajectoire = série B — un étiquetage, pas un verdict.
+ */
+function SelectorCard({
+  slot,
+  color,
+  session,
+  expanded,
+  onPress,
 }: {
-  a: RecentAnalysisRow | undefined;
-  b: RecentAnalysisRow | undefined;
+  slot: 'A' | 'B';
+  color: string;
+  session: TelemetrySession | undefined;
+  expanded: boolean;
+  onPress: () => void;
 }) {
-  if (!a || !b) {
-    return <Text style={s.deltaHint}>Choisissez deux références à situer.</Text>;
-  }
-  const deltaMargin = Number(b.marginGlobal) - Number(a.marginGlobal);
-  // Doctrine comparaison : le signe situe l'écart (fait), la couleur ne juge
-  // pas. Pas de vert « mieux » / rouge « moins bien » — un écart neutre, en
-  // crème atténué (l'or est réservé au chrono/record, pas à une donnée de marge).
-  const sign = deltaMargin > 0 ? '+' : deltaMargin < 0 ? '−' : '±';
-  const marginA = Math.round(Number(a.marginGlobal));
-  const marginB = Math.round(Number(b.marginGlobal));
-  const zoneA = marginZoneOf(Number(a.marginGlobal));
-  const zoneB = marginZoneOf(Number(b.marginGlobal));
-
+  const date = session ? formatDayMonth(session.started_at) : '—';
+  const circuit = session?.circuit_name || '—';
   return (
-    <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xl }}>
-      <SectionLabel>ÉCART DE MARGE</SectionLabel>
-      <Text
-        accessibilityLabel={`Écart de marge entre les deux références : ${sign}${Math.abs(
-          Math.round(deltaMargin)
-        )} pour cent.`}
-        style={[s.deltaValue, { color: theme.palette.creamMute }]}
-      >
-        {sign}
-        {Math.abs(Math.round(deltaMargin))}%
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      accessibilityLabel={`Séance ${slot} : ${date}, ${circuit}`}
+      accessibilityHint={`Ouvre le choix de la séance ${slot}`}
+      onPress={onPress}
+      style={({ pressed }) => [
+        s.selector,
+        { borderColor: expanded ? theme.palette.edge : theme.palette.line },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      <Text style={[s.selectorEyebrow, { color }]}>SÉANCE {slot}</Text>
+      <Text style={s.selectorDate}>{date}</Text>
+      <Text numberOfLines={1} style={s.selectorCircuit}>
+        {circuit}
       </Text>
-      <Text style={s.deltaDetail}>
-        Référence A {marginA}% ({marginLabelOf(zoneA)}){'\n'}Référence B {marginB}% (
-        {marginLabelOf(zoneB)})
-      </Text>
-    </Card>
+    </Pressable>
   );
 }
 
-function SessionPicker({
+/** Ligne du tableau — valeur A à gauche, libellé centré, valeur B à droite. */
+function MetricRow({
   label,
-  accent,
-  sessions,
-  selectedId,
-  onSelect,
+  valueA,
+  valueB,
+  colorA,
+  colorB,
+  last,
+  a11y,
 }: {
   label: string;
-  accent: string;
-  sessions: RecentAnalysisRow[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
+  valueA: string;
+  valueB: string;
+  colorA: string;
+  colorB: string;
+  last?: boolean;
+  a11y: string;
 }) {
   return (
-    <View style={{ marginBottom: theme.spacing.xl, marginTop: theme.spacing.lg }}>
-      <Text style={[s.pickerEyebrow, { color: accent }]}>{label.toUpperCase()}</Text>
-      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-        {sessions.map((session) => {
-          const active = selectedId === session.telemetrySessionId;
-          const name = session.circuitName ?? 'Session';
-          const when = timeAgoFr(new Date(session.sessionStartedAt));
-          const pct = Math.round(Number(session.marginGlobal));
-          return (
-            <Card
-              key={session.telemetrySessionId}
-              onPress={() => onSelect(session.telemetrySessionId)}
-              accessibilityLabel={`${label} : ${name}, ${when}, marge ${pct} pour cent.${
-                active ? ' Sélectionnée.' : ''
-              }`}
-              style={{
-                borderColor: active ? theme.palette.edge : theme.palette.line,
-                backgroundColor: active ? 'rgba(255,255,255,0.07)' : theme.palette.card,
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-                <Text style={s.pickName}>{name}</Text>
-                <Text style={s.pickMeta}>{when}</Text>
-              </View>
-              <Text style={s.pickValue}>{pct}%</Text>
-            </Card>
-          );
-        })}
-      </View>
+    <View accessible accessibilityLabel={a11y} style={[s.row, !last && s.rowBorder]}>
+      <Text style={[s.rowValue, { color: colorA, textAlign: 'left' }]}>{valueA}</Text>
+      <Text style={s.rowLabel}>{label}</Text>
+      <Text style={[s.rowValue, { color: colorB, textAlign: 'right' }]}>{valueB}</Text>
     </View>
   );
 }
 
-function EmptyState({ count }: { count: number }) {
+function EmptyBlock({ count }: { count: number }) {
   return (
     <Card style={{ alignItems: 'center', paddingVertical: theme.spacing.xxl }}>
-      <Text style={s.emptyTitle}>Comparer demande deux sessions au moins.</Text>
+      <Text style={s.emptyTitle}>Comparer demande deux séances au moins.</Text>
       <Text style={s.emptyHint}>
-        {count === 0 ? 'Aucune session encore.' : '1 session enregistrée.'}
+        {count === 0
+          ? 'Aucune séance enregistrée pour l’instant.'
+          : 'Une seule séance enregistrée pour l’instant.'}
       </Text>
     </Card>
   );
 }
 
 const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
+  selector: {
+    flex: 1,
+    minHeight: 44,
+    backgroundColor: theme.palette.card2,
+    borderWidth: 1,
+    borderRadius: theme.radius.md,
+    padding: theme.spacing.md,
   },
-  deltaHint: {
+  selectorEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase' as const,
+  },
+  selectorDate: {
+    fontFamily: theme.fonts.bodySemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+    marginTop: theme.spacing.xs,
+  },
+  selectorCircuit: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginBottom: theme.spacing.xl,
+    marginTop: 2,
   },
-  deltaValue: {
+  vs: {
+    alignSelf: 'center' as const,
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.hud,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-  },
-  deltaDetail: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
-    lineHeight: theme.fontSize.small * 1.6,
-  },
-  signature: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.md,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: theme.palette.eyebrow,
   },
   pickerEyebrow: {
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2.4,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
   },
-  pickName: {
+  pickDate: {
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
+    fontSize: theme.fontSize.body,
     color: theme.palette.cream,
   },
-  pickMeta: {
+  pickCircuit: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+    marginTop: 2,
   },
-  pickValue: {
+  pickChrono: {
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.value,
-    color: theme.palette.cream,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+  },
+  row: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    minHeight: 44,
+    paddingVertical: theme.spacing.lg,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: theme.palette.separator,
+  },
+  rowValue: {
+    flex: 1,
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: 16,
+    letterSpacing: 0.3,
+  },
+  rowLabel: {
+    flex: 1,
+    textAlign: 'center' as const,
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    color: theme.palette.eyebrow,
+  },
+  caption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.6,
+    color: theme.palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.md,
   },
   emptyTitle: {
     fontFamily: theme.fonts.bodyLight,
@@ -355,11 +479,10 @@ const s = {
     textAlign: 'center' as const,
   },
   emptyHint: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.5,
     color: theme.palette.creamMute,
     textAlign: 'center' as const,
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
   },
 };

@@ -1,28 +1,37 @@
 /**
- * Galerie « Lectures approfondies » — la vitrine du moteur d'insights.
+ * Insights — constats qualitatifs de la séance + galerie des six lectures.
  *
- * Spec : docs/specs-bundle-v4/02_moteur_insights.md
- * Maquette : docs/specs-bundle-v4/maquette_galerie_insights.html
+ * Reskin refonte-v2 §7bis (maquette 23-insights.png) : cartes de constat à
+ * LISERÉ GAUCHE 2 px couleur QDI (Régularité violet / Freinage rouge /
+ * Accélération vert / Fluidité jaune), eyebrow mono à pastille, phrase
+ * descriptive — des constats, jamais des consignes.
  *
- * Rassemble les six lectures sur trois niveaux (N2 décomposition, N3
- * régularité, N4 signature) et donne, d'un coup d'œil, la profondeur de
- * l'app. Chaque carte énonce un FAIT chiffré (jamais une consigne), porte la
- * couleur QDI de sa dimension et une mini-sparkline. Tap → écran de détail
- * /(app)/insight/<clé>.
+ * DONNÉES RÉELLES CÂBLÉES (règle fondateur) — chaque carte trace vers du réel :
+ *  - Régularité : `laps` (fetchSessionLaps) → computeRegularity (amplitude et
+ *    écart-type des tours valides, formatés via formatLapTime).
+ *  - Freinage / Accélération / Fluidité : branches QDI persistées
+ *    (`app_session_analyses.qdi`, getOrComputeQdiForSession — recalcul
+ *    paresseux canonique, comme le Paddock et la Signature). Le gating offre
+ *    est RESPECTÉ (getQdiAccessLevel : Access = pas de détail chiffré, comme
+ *    le Bilan). Branche absente → carte masquée ; rien du tout → ligne vide
+ *    honnête. Les chiffres de la maquette ne sont que des exemples.
  *
- * ÉTAT (§5 du moteur) : `telemetry_frames` est vide ; toutes les valeurs sont
- * de DÉMONSTRATION jusqu'à la première vraie capture (Valence, juillet 2026).
- * Le bandeau DemoBanner le signale à l'écran.
+ * Le marqueur DÉMO (honnêteté pré-Valence, §5 du moteur) est CONSERVÉ,
+ * restylé v2 en ligne d'état à pastille NEUTRE (le composant partagé
+ * DemoBanner, utilisé par les détails, n'est pas modifié — besoin noté).
  *
- * Doctrine : un miroir, pas un directeur (pied de galerie). Couleurs =
- * theme.dataColors (QDI), aucune couleur heritage.
+ * Héritage GARDÉ : les six lectures du catalogue (routes /(app)/insight/<clé>
+ * inchangées), transparence T5 et pied doctrinal. Héritage DROP : le héros
+ * eyebrow+H1 (absent de la maquette).
  */
 
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
-import { DemoBanner, InsightCard } from '@/components/insights/InsightCard';
+import { InsightCard } from '@/components/insights/InsightCard';
 import {
+  DEMO_NOTICE,
   DOCTRINE_FOOTER,
   READINGS,
   TIERS,
@@ -31,55 +40,226 @@ import {
 import { Sparkline } from '@/components/insights/sparklines';
 import { BlindspotsBlock } from '@/components/InsightTransparency';
 import { FadeInSection } from '@/components/motion';
+import { supabase } from '@/lib/supabase';
+import {
+  getOrComputeQdiForSession,
+  getQdiAccessLevel,
+  type QdiRecord,
+} from '@/services/qdiService';
+import { computeRegularity, type RegularityProfile } from '@/services/regularityService';
+import { fetchSessionLaps } from '@/services/sessionsService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
+import { formatLapTime } from '@/utils/format';
+
+const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
+
+/* ------------------------------------------------------------------ */
+/* Constats réels — dérivés des tours et des branches QDI de la séance */
+/* ------------------------------------------------------------------ */
+
+interface Constat {
+  key: string;
+  /** Eyebrow de la carte (RÉGULARITÉ, FREINAGE…), couleur QDI. */
+  label: string;
+  color: string;
+  /** Constat descriptif ; le segment **…** sort en mono coloré. */
+  fact: string;
+}
+
+/**
+ * Assemble les constats disponibles (ordre maquette : régularité, freinage,
+ * accélération, puis fluidité). Une donnée absente = pas de carte — jamais
+ * une valeur inventée. `qdi` arrive déjà filtré par le gating offre.
+ */
+function buildConstats(reg: RegularityProfile, qdi: QdiRecord | null): Constat[] {
+  const out: Constat[] = [];
+  if (reg.lapCount >= 3 && reg.spreadSeconds !== null && reg.stdDevSeconds !== null) {
+    out.push({
+      key: 'regularite',
+      label: 'Régularité',
+      color: dataColors.regularity,
+      fact: `Vos ${reg.lapCount} tours valides tiennent dans **${formatLapTime(
+        reg.spreadSeconds
+      )}**. Écart-type de la séance : ±${formatLapTime(reg.stdDevSeconds)}.`,
+    });
+  }
+  if (qdi && qdi.freinage !== null) {
+    out.push({
+      key: 'freinage',
+      label: 'Freinage',
+      color: dataColors.brake,
+      fact: `Progressivité de vos freinages : **${qdi.freinage}/100**, mesurée sur chaque phase de décélération.`,
+    });
+  }
+  if (qdi && qdi.acceleration !== null) {
+    out.push({
+      key: 'acceleration',
+      label: 'Accélération',
+      color: dataColors.accel,
+      fact: `Vos remises de gaz : **${qdi.acceleration}/100** de progressivité en sortie.`,
+    });
+  }
+  if (qdi && qdi.fluidite !== null) {
+    out.push({
+      key: 'fluidite',
+      label: 'Fluidité',
+      color: dataColors.flow,
+      fact: `Douceur de vos transitions latérales : **${qdi.fluidite}/100** sur la séance.`,
+    });
+  }
+  return out;
+}
+
+/** Carte de constat (maquette) : liseré gauche 2 px + eyebrow à pastille. */
+function ConstatCard({ constat }: { constat: Constat }) {
+  const plain = constat.fact.split('**').join('');
+  return (
+    <View
+      style={[styles.constatCard, { borderLeftColor: constat.color }]}
+      accessibilityRole="text"
+      accessibilityLabel={`${constat.label}. ${plain}`}
+    >
+      <View style={styles.constatHead}>
+        <View style={[styles.constatDot, { backgroundColor: constat.color }]} />
+        <Text style={[styles.constatLabel, { color: constat.color }]}>{constat.label}</Text>
+      </View>
+      <Text style={styles.constatText}>
+        {constat.fact.split('**').map((part, i) =>
+          i % 2 === 1 ? (
+            <Text key={`n${i}`} style={[styles.constatNum, { color: constat.color }]}>
+              {part}
+            </Text>
+          ) : (
+            <Text key={`t${i}`}>{part}</Text>
+          )
+        )}
+      </Text>
+    </View>
+  );
+}
 
 export default function InsightsScreen() {
+  const profileId = useAuthStore((s) => s.profile)?.id;
+  const params = useLocalSearchParams<{ sessionId?: string }>();
+
+  // null = chargement en cours ; [] = rien à constater (honnête).
+  const [constats, setConstats] = useState<Constat[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Séance ciblée (param du Data Lab), sinon la dernière séance complétée.
+      let sid = params.sessionId;
+      if (!sid && profileId) {
+        const { data } = await supabase
+          .from('telemetry_sessions')
+          .select('id')
+          .eq('user_id', profileId)
+          .eq('status', 'completed')
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        sid = (data as { id?: string } | null)?.id;
+      }
+      if (!sid) {
+        if (!cancelled) setConstats([]);
+        return;
+      }
+
+      // Gating offre identique au Bilan : Access = pas de détail de branche.
+      const [laps, access] = await Promise.all([
+        fetchSessionLaps(sid),
+        profileId ? getQdiAccessLevel(profileId) : Promise.resolve('full' as const),
+      ]);
+      const qdi = access === 'full' ? await getOrComputeQdiForSession(sid).catch(() => null) : null;
+      if (cancelled) return;
+
+      const reg = computeRegularity(
+        laps
+          .filter((l) => !l.is_outlap && !l.is_inlap)
+          .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }))
+      );
+      setConstats(buildConstats(reg, qdi));
+    })().catch(() => {
+      if (!cancelled) setConstats([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionId, profileId]);
+
   return (
     <Screen>
-      <AppBar title="LECTURES APPROFONDIES" onBack={() => router.back()} />
+      <AppBar title="Insights" onBack={() => router.back()} />
       <View style={styles.body}>
-        {/* Héros + marqueur DÉMO révélés en premier (cascade douce). */}
+        {/* Intro (maquette, vouvoyée) + marqueur DÉMO en ligne d'état v2. */}
         <FadeInSection>
-          <View style={styles.hero}>
-            <Text style={styles.eyebrow}>Le moteur d’insights</Text>
-            <Text style={styles.h1} accessibilityRole="header">
-              Ce que vos données révèlent
-            </Text>
-            <Text style={styles.subtitle}>
-              Six lectures, du constat direct à la signature de votre voiture. Chacune montre un
-              fait — jamais une consigne.
-            </Text>
+          <Text style={styles.intro}>
+            Ce que la donnée raconte de votre séance — des constats, pas des consignes.
+          </Text>
+          <View style={styles.stateRow} accessibilityRole="text" accessibilityLabel={DEMO_NOTICE}>
+            <View style={styles.stateDot} />
+            <Text style={styles.stateText}>{DEMO_NOTICE}</Text>
           </View>
-
-          {/* Marqueur DÉMO : données réelles dès Valence (§5). */}
-          <DemoBanner />
         </FadeInSection>
 
-        {/* Trois familles (tiers) avec leurs cartes — chaque famille révélée
-            en cascade après l'en-tête (delays plafonnés à 4 paliers). */}
+        {/* Constats de la séance — réels, une carte par dimension mesurable. */}
+        <FadeInSection delay={80}>
+          <SectionRule label="Constats · votre séance" />
+          {constats === null ? null : constats.length === 0 ? (
+            <Text style={styles.emptyText}>
+              Aucun constat pour l’instant — les constats apparaissent à partir de trois tours
+              valides captés par le boîtier.
+            </Text>
+          ) : (
+            <>
+              <View style={styles.constatList}>
+                {constats.map((c) => (
+                  <ConstatCard key={c.key} constat={c} />
+                ))}
+              </View>
+              {/* Honnêteté capteurs (QDI, bloc méthode obligatoire) : des
+                  accélérations subies, jamais des gestes. */}
+              <Text style={styles.methodNote}>
+                Dérivés de vos temps au tour et des accélérations subies (GPS + centrale inertielle)
+                — jamais de vos gestes.
+              </Text>
+            </>
+          )}
+        </FadeInSection>
+
+        {/* Les six lectures approfondies — héritage gardé, routes inchangées. */}
+        <FadeInSection delay={160}>
+          <Text style={styles.lecturesLead}>
+            Six lectures, du constat direct à la signature de votre voiture. Chacune montre un fait
+            — jamais une consigne.
+          </Text>
+        </FadeInSection>
         {TIERS.map((tier, ti) => (
-          <FadeInSection key={tier.id} delay={Math.min(ti + 1, 3) * 80}>
-            <TierLabel label={tier.label} />
-            {READINGS.filter((r) => r.tier === (tier.id as InsightTier)).map((r) => (
-              <InsightCard
-                key={r.key}
-                name={r.name}
-                badge={r.badge}
-                dimension={r.dimension}
-                fact={r.fact}
-                onPress={() => router.push(`/(app)/insight/${r.key}` as never)}
-              >
-                <Sparkline reading={r.key} />
-              </InsightCard>
-            ))}
+          <FadeInSection key={tier.id} delay={Math.min(ti + 3, 4) * 80}>
+            <SectionRule label={tier.label} />
+            <View style={styles.constatList}>
+              {READINGS.filter((r) => r.tier === (tier.id as InsightTier)).map((r) => (
+                <InsightCard
+                  key={r.key}
+                  name={r.name}
+                  badge={r.badge}
+                  dimension={r.dimension}
+                  fact={r.fact}
+                  onPress={() => router.push(`/(app)/insight/${r.key}` as never)}
+                >
+                  <Sparkline reading={r.key} />
+                </InsightCard>
+              ))}
+            </View>
           </FadeInSection>
         ))}
 
-        {/* Transparence T5 (charte 11, obligatoire) : « Ce que l'app ne dira jamais »
-            — les limites explicites, avant le pied doctrinal. */}
-        <FadeInSection delay={300}>
+        {/* Transparence T5 (charte 11, obligatoire) : les limites explicites. */}
+        <FadeInSection delay={400}>
           <BlindspotsBlock
             items={[
               'Ces lectures décrivent vos données. Elles ne vous disent pas quoi faire.',
@@ -89,9 +269,8 @@ export default function InsightsScreen() {
           />
         </FadeInSection>
 
-        {/* Pied doctrinal — un miroir, pas un directeur. Rejoint la cascade
-            (au lieu d'apparaître sec) en clôture, après les trois familles. */}
-        <FadeInSection delay={320}>
+        {/* Pied doctrinal — un miroir, pas un directeur. */}
+        <FadeInSection delay={400}>
           <View style={styles.footer}>
             <Text style={styles.footerText}>{DOCTRINE_FOOTER}</Text>
           </View>
@@ -101,82 +280,145 @@ export default function InsightsScreen() {
   );
 }
 
-/** Libellé de famille (mono faint) avec filet à droite. */
-function TierLabel({ label }: { label: string }) {
+/** Libellé de section mono (eyebrow v2) avec filet hairline à droite. */
+function SectionRule({ label }: { label: string }) {
   return (
-    <View style={styles.tier}>
-      <Text style={styles.tierText}>{label}</Text>
-      <View style={styles.tierLine} />
+    <View style={styles.rule}>
+      <Text style={styles.ruleText}>{label}</Text>
+      <View style={styles.ruleLine} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   body: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
-  hero: {
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.lg,
-  },
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 2.6,
-    textTransform: 'uppercase',
-    color: theme.palette.creamMute,
-    marginBottom: theme.spacing.md,
-  },
-  h1: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: -0.2,
-    lineHeight: theme.fontSize.h2 * 1.25,
-    color: theme.palette.cream,
-    marginBottom: theme.spacing.sm,
-  },
-  subtitle: {
-    fontFamily: theme.fonts.bodyLight,
+  intro: {
+    fontFamily: fonts.bodyLight,
     fontSize: 13.5,
     lineHeight: 13.5 * 1.55,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
   },
-  tier: {
+  // Ligne d'état DÉMO (v2) : pastille neutre + texte muted, sans encadré.
+  stateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.md,
-    marginTop: theme.spacing.xl,
-    marginBottom: theme.spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    minHeight: 20,
   },
-  tierText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 2,
+  stateDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: palette.faint,
+  },
+  stateText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.45,
+  },
+  rule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    marginBottom: spacing.md,
+  },
+  ruleText: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: theme.palette.creamMute,
+    color: palette.eyebrow,
   },
-  tierLine: {
+  ruleLine: {
     flex: 1,
     height: StyleSheet.hairlineWidth,
-    backgroundColor: theme.palette.line,
+    backgroundColor: palette.line,
+  },
+  constatList: {
+    gap: spacing.md,
+  },
+  // Carte de constat (maquette 23-insights) : surface v2, liseré gauche 2 px.
+  constatCard: {
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderLeftWidth: 2,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 44,
+  },
+  constatHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  constatDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+  },
+  constatLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+  },
+  constatText: {
+    fontFamily: fonts.body,
+    fontSize: 13.5,
+    lineHeight: 13.5 * 1.5,
+    color: palette.creamSoft,
+  },
+  constatNum: {
+    fontFamily: fonts.monoMedium,
+  },
+  methodNote: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    lineHeight: 10 * 1.6,
+    color: palette.eyebrow,
+    marginTop: spacing.md,
+  },
+  emptyText: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.creamMute,
+  },
+  lecturesLead: {
+    fontFamily: fonts.bodyLight,
+    fontSize: 13.5,
+    lineHeight: 13.5 * 1.55,
+    color: palette.creamMute,
+    marginTop: spacing.xl,
   },
   footer: {
-    marginTop: theme.spacing.lg,
-    paddingVertical: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.md,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: theme.palette.line,
+    borderColor: palette.line,
     borderStyle: 'dashed',
-    borderRadius: theme.radius.lg,
+    borderRadius: radius.lg,
     alignItems: 'center',
   },
   footerText: {
-    fontFamily: theme.fonts.bodyLight,
+    fontFamily: fonts.bodyLight,
     fontStyle: 'italic',
     fontSize: 12,
     lineHeight: 12 * 1.6,
     textAlign: 'center',
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
 });
