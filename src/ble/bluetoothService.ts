@@ -15,6 +15,11 @@ import type { BleManager, Device, Subscription } from 'react-native-ble-plx';
 import { Buffer } from 'buffer';
 import { parseRaceBoxDataMessage, UbxFrameBuffer, isRaceBoxDataMessage } from '@/ubx/parser';
 import { RaceBoxData, RaceBoxDevice, BleStatus, RACEBOX_PROTOCOL } from '@/types/telemetry';
+import {
+  RECONNECT_MAX_ATTEMPTS,
+  nextReconnectDelayMs,
+  shouldGiveUpReconnect,
+} from './reconnectPolicy';
 
 /**
  * Charge `react-native-ble-plx` à la demande pour éviter le crash au
@@ -62,16 +67,19 @@ export interface ReconnectState {
 type ReconnectListener = (state: ReconnectState) => void;
 
 /**
- * Paramètres de la reconnexion auto rapide pilotée par le service (au plus
- * près de la couche BLE, déclenchée par `device.onDisconnected`).
+ * Paramètres de la reconnexion auto pilotée par le service (au plus près de la
+ * couche BLE, déclenchée par `device.onDisconnected`). Backoff progressif
+ * plafonné + décision d'abandon selon le mode : cf. `reconnectPolicy` (pur, testé).
  *
- * Volontairement courts et bornés : sur site, on veut récupérer un micro-
- * décrochage en quelques secondes sans figer la capture. Le watchdog applicatif
- * `initBle` garde, lui, son backoff long + la modal paddock #25 comme filet.
+ * Deux modes :
+ *   - BORNÉ (défaut) : hors capture (initBle / paddock), on abandonne après
+ *     RECONNECT_MAX_ATTEMPTS tentatives → phase `lost`. Le watchdog applicatif
+ *     `initBle` garde son backoff long + la modal paddock #25 comme filet.
+ *   - ILLIMITÉ (`unlimitedReconnect`) : armé pendant une capture. Une coupure ne
+ *     devient JAMAIS terminale — on retente sans fin (toujours au backoff
+ *     progressif plafonné), la capture reste ouverte, le trou est horodaté côté
+ *     capture. Seul le pilote (stop/abort) ou un timeout long peut clôturer.
  */
-const RECONNECT_MAX_ATTEMPTS = 5;
-const RECONNECT_BACKOFF_MS = 2_000;
-
 export class RaceBoxBluetoothService {
   private manager: BleManager | null;
   private currentDevice: Device | null = null;
@@ -87,6 +95,13 @@ export class RaceBoxBluetoothService {
   private reconnectPhase: ReconnectPhase = 'idle';
   private reconnectAttempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Mode reconnexion ILLIMITÉE : tant qu'une capture est ARMÉE, une coupure BLE
+   * ne doit jamais devenir terminale (`lost`). On retente indéfiniment (backoff
+   * progressif plafonné), la session reste ouverte. Hors capture, reste `false`
+   * → mode borné (initBle / paddock).
+   */
+  private unlimitedReconnect = false;
   /**
    * Vrai pendant un `disconnect()` ou `destroy()` demandé par l'utilisateur :
    * sert à NE PAS déclencher la reconnexion auto sur une coupure volontaire.
@@ -451,22 +466,31 @@ export class RaceBoxBluetoothService {
     this.scheduleReconnect(targetId);
   }
 
-  /** Programme la prochaine tentative de reconnexion (backoff fixe, borné). */
+  /**
+   * Programme la prochaine tentative de reconnexion.
+   *
+   * Backoff PROGRESSIF PLAFONNÉ (2 s → 4 → 8 → 16 → 30 s max, cf.
+   * `nextReconnectDelayMs`) appliqué dans les DEUX modes — le plafond évite de
+   * marteler la radio. La décision d'abandonner dépend du mode :
+   *   - illimité (capture armée) : jamais → on reprogramme toujours ;
+   *   - borné (initBle / paddock) : après RECONNECT_MAX_ATTEMPTS → `lost`.
+   */
   private scheduleReconnect(deviceId: string): void {
     if (this.reconnectTimer) return;
-    if (this.reconnectAttempt >= RECONNECT_MAX_ATTEMPTS) {
-      // Tentatives épuisées : liaison perdue (terminal). Le watchdog initBle
-      // et sa modal paddock #25 restent le filet pour l'utilisateur.
+    if (shouldGiveUpReconnect(this.reconnectAttempt, this.unlimitedReconnect)) {
+      // Tentatives épuisées (mode borné uniquement) : liaison perdue (terminal).
+      // Le watchdog initBle et sa modal paddock #25 restent le filet utilisateur.
       this.setReconnectPhase('lost', this.reconnectAttempt);
       this.emitError('Liaison perdue après plusieurs tentatives.');
       this.emitStatus('error');
       return;
     }
 
+    const delayMs = nextReconnectDelayMs(this.reconnectAttempt);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       void this.attemptReconnect(deviceId);
-    }, RECONNECT_BACKOFF_MS);
+    }, delayMs);
   }
 
   /**
@@ -514,6 +538,16 @@ export class RaceBoxBluetoothService {
   /** `true` tant que la reconnexion auto rapide du service est en cours. */
   public isReconnecting(): boolean {
     return this.reconnectPhase === 'reconnecting';
+  }
+
+  /**
+   * Active/désactive le mode reconnexion ILLIMITÉE. Armé par la capture
+   * (startCaptureSession) et désarmé à la clôture (stop/abort/finalize) pour ne
+   * pas fuiter hors capture. En illimité, `scheduleReconnect` ne bascule jamais
+   * en `lost` : on retente indéfiniment au backoff progressif plafonné.
+   */
+  public setUnlimitedReconnect(on: boolean): void {
+    this.unlimitedReconnect = on;
   }
 
   /** Instantané de l'état de reconnexion auto, pour l'UI et la coordination. */

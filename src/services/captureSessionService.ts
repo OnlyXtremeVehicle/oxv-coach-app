@@ -62,13 +62,27 @@ const FLUSH_EVERY_FRAMES = 50;
 const FLUSH_INTERVAL_MS = 4_000;
 
 /**
+ * Délai d'interruption CONTINUE (lien non rétabli) au-delà duquel la séance est
+ * considérée abandonnée et clôturée proprement — même chemin qu'un arrêt pilote.
+ *
+ * En deçà de ce seuil, la reconnexion illimitée (côté BLE) garde la session
+ * OUVERTE : une coupure de piste (stands, tunnel radio, boîtier qui redémarre)
+ * ne tue plus la capture. 15 min couvre largement ces décrochages sans laisser
+ * une capture morte tourner indéfiniment. Seuls le pilote (stop/abort) ou ce
+ * timeout long peuvent clôturer une séance.
+ */
+const LONG_INTERRUPT_TIMEOUT_MS = 15 * 60 * 1000;
+
+/**
  * État de la capture vis-à-vis du lien BLE, distinct du statut Supabase de la
  * session. Permet à l'UI de capture de ne JAMAIS laisser croire qu'on enregistre
  * alors que le boîtier a décroché :
  *
  *   - `recording`   : lien stable, trames en arrivée.
- *   - `interrupted` : lien tombé, reconnexion auto en cours (capture en pause).
- *   - `lost`        : reconnexion épuisée — capture finalisée proprement.
+ *   - `interrupted` : lien tombé, reconnexion ILLIMITÉE en cours (capture en
+ *                     pause, session TOUJOURS ouverte, trou horodaté).
+ *   - `lost`        : abandon prolongé (timeout long dépassé) ou repli défensif —
+ *                     capture finalisée proprement.
  *   - `idle`        : aucune capture active.
  */
 export type CaptureLinkStatus = 'idle' | 'recording' | 'interrupted' | 'lost';
@@ -124,6 +138,17 @@ interface CaptureState {
   timer: ReturnType<typeof setInterval> | null;
   flushing: boolean;
   flushPromise: Promise<void> | null;
+  /**
+   * Timer d'interruption LONGUE : armé quand la capture passe `interrupted`,
+   * annulé à la reprise / à l'arrêt / à l'abandon. S'il expire, la séance est
+   * clôturée pour abandon prolongé (cf. LONG_INTERRUPT_TIMEOUT_MS).
+   */
+  interruptTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * Timestamp (ms) du début du trou de liaison courant, ou `null` si le lien
+   * n'est pas interrompu. Sert à tracer la durée du trou à la reprise.
+   */
+  gapStartMs: number | null;
 }
 
 let current: CaptureState | null = null;
@@ -220,6 +245,8 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     timer: null,
     flushing: false,
     flushPromise: null,
+    interruptTimer: null,
+    gapStartMs: null,
   };
   current = state;
   setLinkStatus('recording');
@@ -260,9 +287,14 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   });
   state.timer = setInterval(() => void flush(state), FLUSH_INTERVAL_MS);
 
+  // La capture est ARMÉE : reconnexion BLE ILLIMITÉE tant qu'on enregistre. Une
+  // coupure ne tue plus la séance — elle est mise en pause, le trou horodaté, et
+  // seul le pilote (stop/abort) ou le timeout long peut clôturer.
+  bluetoothService.setUnlimitedReconnect(true);
+
   // Suit la reconnexion BLE pour ne jamais compter contre un lien mort en
   // silence : on met la capture en pause pendant les tentatives, on reprend à
-  // la reconnexion, et on finalise proprement si la liaison est perdue.
+  // la reconnexion (trou horodaté), et on ne finalise que sur abandon prolongé.
   state.unsubReconnect = bluetoothService.onReconnectChange((rc: ReconnectState) => {
     if (current !== state) return;
     handleReconnect(state, rc);
@@ -285,26 +317,80 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
  *
  *   - `reconnecting` : lien tombé → capture « interrompue », compteurs live en
  *     pause (les trames ne tombent plus, on ne fige pas l'UI en « enregistre »).
- *   - `idle` revenant alors qu'on était interrompu → lien rétabli, on reprend.
- *   - `lost` : reconnexion épuisée → on finalise la capture proprement (flush +
- *     agrégats) sans rester sur un état figé.
+ *     On HORODATE le début du trou et on arme le TIMEOUT LONG. La session reste
+ *     OUVERTE : la reconnexion illimitée retente sans fin en arrière-plan.
+ *   - `idle` revenant alors qu'on était interrompu → lien rétabli : on reprend,
+ *     on annule le timeout long et on trace la durée du trou.
+ *   - `lost` : ne devrait plus survenir en capture (mode illimité). Garde
+ *     DÉFENSIVE — si ça arrive quand même (plus de device cible), on finalise
+ *     proprement en dernier recours plutôt que rester figé.
  */
 function handleReconnect(state: CaptureState, rc: ReconnectState): void {
   if (rc.phase === 'reconnecting') {
     if (linkStatus !== 'interrupted') {
       setLinkStatus('interrupted');
       useSessionStore.getState().pauseSession();
+      // Début du trou de liaison : on l'horodate pour en tracer la durée à la
+      // reprise, et on arme le timeout long (seule clôture non-pilote tolérée).
+      state.gapStartMs = Date.now();
+      startInterruptTimeout(state);
     }
   } else if (rc.phase === 'idle') {
     if (linkStatus === 'interrupted') {
       setLinkStatus('recording');
       useSessionStore.getState().resumeSession();
+      clearInterruptTimeout(state);
+      logLinkGap(state);
     }
   } else if (rc.phase === 'lost') {
-    // Terminal : on stoppe la capture proprement (best-effort, non bloquant).
+    // Repli défensif : le mode illimité empêche normalement 'lost' en capture.
     setLinkStatus('lost');
+    clearInterruptTimeout(state);
     void finalizeOnLostLink();
   }
+}
+
+/**
+ * Arme le TIMEOUT LONG d'interruption : au-delà de LONG_INTERRUPT_TIMEOUT_MS
+ * sans reprise du lien, la séance est clôturée proprement (abandon prolongé),
+ * équivalent à une clôture pilote. Idempotent : ne relance pas un timer déjà armé.
+ */
+function startInterruptTimeout(state: CaptureState): void {
+  if (state.interruptTimer) return;
+  state.interruptTimer = setTimeout(() => {
+    state.interruptTimer = null;
+    // Une capture différente (ou aucune) est active : rien à finaliser ici.
+    if (current !== state) return;
+    console.warn(
+      `[OXV][capture] interruption prolongée (> ${Math.round(
+        LONG_INTERRUPT_TIMEOUT_MS / 60000
+      )} min) — clôture de la séance pour abandon.`
+    );
+    // Coupe la reconnexion illimitée AVANT de finaliser : plus de device à
+    // rejoindre, on arrête de solliciter la radio.
+    bluetoothService.setUnlimitedReconnect(false);
+    void finalizeOnLostLink();
+  }, LONG_INTERRUPT_TIMEOUT_MS);
+}
+
+/** Annule le timeout long d'interruption s'il est armé (reprise / arrêt / abandon). */
+function clearInterruptTimeout(state: CaptureState): void {
+  if (state.interruptTimer) {
+    clearTimeout(state.interruptTimer);
+    state.interruptTimer = null;
+  }
+}
+
+/**
+ * Trace FACTUELLE du trou de liaison à la reprise (durée en ms). Console
+ * uniquement : pas d'écran, pas de HUD, pas de son (silence en piste). Les
+ * trames ne sont pas insérées pendant le trou ; cette trace le rend exploitable.
+ */
+function logLinkGap(state: CaptureState): void {
+  if (state.gapStartMs == null) return;
+  const durationMs = Date.now() - state.gapStartMs;
+  console.warn(`[OXV][capture] trou de liaison ${durationMs} ms`);
+  state.gapStartMs = null;
 }
 
 /**
@@ -323,6 +409,9 @@ async function finalizeOnLostLink(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
+  // Désarme la reconnexion illimitée : hors capture, on repasse en mode borné.
+  // (stopCaptureSession le fait déjà ; explicite ici pour le chemin terminal.)
+  bluetoothService.setUnlimitedReconnect(false);
   // stopCaptureSession remet le statut à 'idle' ; on rétablit 'lost' pour l'UI.
   setLinkStatus('lost');
 }
@@ -429,6 +518,10 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   //    puis flush final complet (les lots en échec sont requeués sur fichier).
   state.unsubData();
   state.unsubReconnect();
+  // Désarme la reconnexion illimitée + le timeout long : hors capture, on
+  // repasse en mode borné (initBle / paddock) et aucun timer ne fuite.
+  bluetoothService.setUnlimitedReconnect(false);
+  clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);
   await drain(state);
@@ -511,6 +604,9 @@ export async function abortCaptureSession(): Promise<void> {
   setLinkStatus('idle');
   state.unsubData();
   state.unsubReconnect();
+  // Désarme la reconnexion illimitée + le timeout long (cf. stopCaptureSession).
+  bluetoothService.setUnlimitedReconnect(false);
+  clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);
   // Attend un flush éventuellement en vol pour ne pas écrire après l'abandon.
