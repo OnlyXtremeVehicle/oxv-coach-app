@@ -1,21 +1,32 @@
 /**
- * Vue Coach — mes repères de référence par virage (§10.3c-A).
+ * Coach — Repères de virage. Reskin refonte-v2 §12, RESPONSIVE deux formats.
  *
- * Liste les virages du circuit ; pour chacun, indique si un repère est posé.
- * Tap → éditeur du repère (point de freinage, vitesse repère, trajectoire).
+ * Le coach pose, virage par virage, un point de freinage repère (rouge) et une
+ * vitesse d'apex repère (bleu). Ces repères sont superposés chez ses pilotes
+ * consentis et ATTRIBUÉS à lui — jamais une consigne de l'app (doctrine miroir,
+ * §12 garde-fous). Cet écran est la LISTE d'entrée : chaque virage ouvre
+ * l'éditeur (repere/[index]) où le repère se saisit et s'enregistre. La saisie
+ * (sliders de la maquette) vit dans l'éditeur ; ici, aucun contrôle mort.
  *
- * Ces repères sont superposés à la donnée de vos élèves, étiquetés « Repère
- * de votre coach ». Descriptif, attribué — jamais une consigne.
+ * Deux formats (décision fondateur 2026-07-13, handoff §12) :
+ *   - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH, maquette
+ *     coach/08-reperes) : deux colonnes — la file des virages à gauche, un
+ *     panneau latéral (nature des repères + rappel doctrinal) à droite.
+ *   - COMPAGNON téléphone : une colonne, la file puis le rappel. Même matière.
+ * Le rail §12 est porté par (coach)/_layout ; l'écran n'adapte que son corps.
  *
- * Reskin V2 : Screen + AppBar, Card, typo/couleurs @/theme/v2. Logique
- * (chargement des repères, navigation vers l'éditeur) inchangée.
+ * Couleurs QDI fixes : freinage = rouge de donnée (#F65B5B), apex/trajectoire =
+ * bleu (#4F9DF7). Identité coach = rouge d'accent (#E23A4E). Aucun or (réservé
+ * au chrono/record). Données réelles : listMyCornerReferences (RLS) ; les
+ * chiffres de la maquette sont des exemples, un virage sans repère affiche « — ».
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { type CoachCornerReference, referenceHasContent } from '@/services/coachReferenceLogic';
 import { listMyCornerReferences } from '@/services/coachReferenceService';
 import { theme } from '@/theme/v2';
@@ -24,7 +35,12 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
+const { palette, dataColors, fonts, fontSize, spacing } = theme;
+
 export default function CoachReperesScreen() {
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const [byIndex, setByIndex] = useState<Map<number, CoachCornerReference>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -55,154 +71,382 @@ export default function CoachReperesScreen() {
 
   const listState: ScreenState = loading ? 'loading' : error ? 'error' : 'nominal';
 
+  // La file des virages : chaque carte ouvre l'éditeur du repère (route réelle).
+  const list = (
+    <StateWrapper
+      state={listState}
+      skeletonLines={5}
+      errorCause="Vos repères n'ont pas pu être chargés."
+      onRetry={load}
+    >
+      <View style={{ gap: spacing.md }}>
+        {BELTOISE_CORNERS.map((corner) => {
+          const ref = byIndex.get(corner.index);
+          const filled = ref ? referenceHasContent(ref) : false;
+          return (
+            <Card
+              key={corner.index}
+              onPress={() =>
+                router.push({
+                  pathname: '/(coach)/repere/[index]',
+                  params: { index: String(corner.index) },
+                } as never)
+              }
+              accessibilityLabel={`${corner.name}, repère ${filled ? 'à modifier' : 'à ajouter'}`}
+              style={[s.cornerCard, { borderColor: filled ? palette.coachAccent : palette.line }]}
+            >
+              <View style={s.cornerMain}>
+                <View style={s.cornerHead}>
+                  <Text style={s.cornerNum}>{String(corner.index).padStart(2, '0')}</Text>
+                  <Text style={s.cornerName} numberOfLines={1}>
+                    {corner.name}
+                  </Text>
+                </View>
+                {filled && ref ? (
+                  <ReferenceChips reference={ref} />
+                ) : (
+                  <Text style={s.cornerEmpty}>Aucun repère posé</Text>
+                )}
+              </View>
+              <Text style={[s.action, { color: filled ? palette.coachAccent : palette.creamMute }]}>
+                {filled ? 'Modifier' : 'Ajouter'}
+              </Text>
+            </Card>
+          );
+        })}
+      </View>
+    </StateWrapper>
+  );
+
+  const aside = <ReperesAside />;
+
   return (
     <Screen>
       <AppBar title="REPÈRES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={[s.eyebrow, { color: theme.palette.coach }]}>MES REPÈRES</Text>
-        <Text style={s.title} accessibilityRole="header">
-          Vos repères.
-        </Text>
-        <Text style={s.manifest}>
-          Vos repères par virage, superposés à la donnée de vos élèves. Des repères, jamais des
-          consignes.
-        </Text>
-
-        <View style={{ marginTop: theme.spacing.xxl }}>
-          <StateWrapper
-            state={listState}
-            skeletonLines={5}
-            errorCause="Vos repères n'ont pas pu être chargés."
-            onRetry={load}
-          >
-            <View style={{ gap: theme.spacing.md }}>
-              {BELTOISE_CORNERS.map((corner) => {
-                const ref = byIndex.get(corner.index);
-                const filled = ref ? referenceHasContent(ref) : false;
-                return (
-                  <Pressable
-                    key={corner.index}
-                    accessibilityRole="button"
-                    accessibilityLabel={`${corner.name}, repère ${filled ? 'à modifier' : 'à ajouter'}`}
-                    onPress={() =>
-                      router.push({
-                        pathname: '/(coach)/repere/[index]',
-                        params: { index: String(corner.index) },
-                      } as never)
-                    }
-                    style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                  >
-                    <Card
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderColor: filled ? theme.palette.coach : theme.palette.line,
-                      }}
-                    >
-                      <View style={{ flex: 1, paddingRight: theme.spacing.md }}>
-                        <Text style={s.cornerName}>
-                          <Text style={s.cornerIndex}>{String(corner.index).padStart(2, '0')}</Text>
-                          {'  '}
-                          {corner.name}
-                        </Text>
-                        {filled && ref ? (
-                          <Text style={s.cornerSummary}>{summarizeReference(ref)}</Text>
-                        ) : null}
-                      </View>
-                      <Text
-                        style={[
-                          s.action,
-                          { color: filled ? theme.palette.coach : theme.palette.creamMute },
-                        ]}
-                      >
-                        {filled ? 'Modifier' : 'Ajouter'}
-                      </Text>
-                    </Card>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </StateWrapper>
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        <View style={isConsole ? s.headerRow : undefined}>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={s.eyebrow}>MES REPÈRES</Text>
+            <Text style={s.title} accessibilityRole="header">
+              Vos repères.
+            </Text>
+            <Text style={s.manifest}>
+              Un point de freinage, une vitesse d&apos;apex — posés virage par virage, superposés
+              chez vos pilotes et attribués à vous. Des repères, jamais des consignes.
+            </Text>
+          </View>
+          {isConsole ? (
+            <Text style={s.superposed} accessibilityRole="text">
+              SUPERPOSÉS CHEZ LE PILOTE
+            </Text>
+          ) : null}
         </View>
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Retour"
-            onPress={() => router.back()}
-            hitSlop={theme.hitSlop}
-          >
-            <Text style={s.backLink}>Retour</Text>
-          </Pressable>
-        </View>
+        {isConsole ? (
+          <View style={s.consoleRow}>
+            <View style={{ flex: 1.4 }}>{list}</View>
+            <View style={{ flex: 1 }}>{aside}</View>
+          </View>
+        ) : (
+          <View style={{ marginTop: spacing.xxl, gap: spacing.xxl }}>
+            {list}
+            {aside}
+          </View>
+        )}
       </View>
     </Screen>
   );
 }
 
-function summarizeReference(ref: CoachCornerReference): string {
-  const parts: string[] = [];
-  if (ref.brakingPointM != null) parts.push(`freinage ${Math.round(ref.brakingPointM)} m`);
-  if (ref.targetSpeedKmh != null) parts.push(`${Math.round(ref.targetSpeedKmh)} km/h`);
-  if (ref.trajectoryNote) parts.push(ref.trajectoryNote);
-  return parts.join(' · ');
+/**
+ * Résumé coloré d'un repère posé : freinage (rouge de donnée) + vitesse d'apex
+ * (bleu), plus la note de trajectoire si elle existe. Chaque valeur trace vers
+ * un champ réel (brakingPointM / targetSpeedKmh / trajectoryNote).
+ */
+function ReferenceChips({ reference }: { reference: CoachCornerReference }) {
+  const chips: { key: string; label: string; color: string }[] = [];
+  if (reference.brakingPointM != null) {
+    chips.push({
+      key: 'brake',
+      label: `Freinage ${Math.round(reference.brakingPointM)} m`,
+      color: dataColors.brake,
+    });
+  }
+  if (reference.targetSpeedKmh != null) {
+    chips.push({
+      key: 'speed',
+      label: `Apex ${Math.round(reference.targetSpeedKmh)} km/h`,
+      color: dataColors.trajectory,
+    });
+  }
+  return (
+    <View style={s.summary}>
+      {chips.length > 0 ? (
+        <View style={s.chipsWrap}>
+          {chips.map((c) => (
+            <View key={c.key} style={s.chip}>
+              <View style={[s.chipDot, { backgroundColor: c.color }]} />
+              <Text style={[s.chipTxt, { color: c.color }]}>{c.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {reference.trajectoryNote ? (
+        <Text style={s.noteTxt} numberOfLines={2}>
+          {reference.trajectoryNote}
+        </Text>
+      ) : null}
+    </View>
+  );
 }
 
-const s = {
+/**
+ * Panneau latéral : ce qu'est un repère (légende des deux types + trajectoire)
+ * et le rappel doctrinal de la maquette. Descriptif — aucun contrôle.
+ */
+function ReperesAside() {
+  return (
+    <View style={{ gap: spacing.lg }}>
+      <View style={s.asideBlock}>
+        <Text style={s.asideLabel}>CE QU&apos;EST UN REPÈRE</Text>
+        <LegendRow
+          color={dataColors.brake}
+          title="Point de freinage"
+          hint="La distance repère avant la corde."
+        />
+        <LegendRow
+          color={dataColors.trajectory}
+          title="Vitesse d'apex"
+          hint="La vitesse repère à la corde."
+        />
+        <LegendRow
+          color={palette.secondary}
+          title="Trajectoire"
+          hint="Un mot sur la ligne, si besoin."
+          last
+        />
+      </View>
+      <Card style={s.doctrineCard}>
+        <Text style={s.doctrineTxt}>
+          Des repères, pas une obligation. Vos pilotes restent libres de leur conduite.
+        </Text>
+      </Card>
+    </View>
+  );
+}
+
+function LegendRow({
+  color,
+  title,
+  hint,
+  last,
+}: {
+  color: string;
+  title: string;
+  hint: string;
+  last?: boolean;
+}) {
+  return (
+    <View style={[s.legendRow, last ? null : s.legendRowBorder]}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+        style={[s.legendDot, { backgroundColor: color }]}
+      />
+      <View style={{ flex: 1 }}>
+        <Text style={s.legendTitle}>{title}</Text>
+        <Text style={s.legendHint}>{hint}</Text>
+      </View>
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+  consoleRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginTop: spacing.xl,
+  },
+
+  // En-tête — identité coach en rouge d'accent (le neutre « coach » de la
+  // palette était crème, pas la marque : on porte bien l'identité rôle ici).
   eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    textTransform: 'uppercase',
+    color: palette.coachAccent,
+    marginTop: spacing.sm,
+    marginBottom: spacing.md,
   },
   title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
     letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
+    color: palette.cream,
+    lineHeight: fontSize.h2 * 1.25,
   },
   manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamSoft,
-    marginTop: theme.spacing.md,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.bodyLg,
+    fontStyle: 'italic',
+    lineHeight: fontSize.bodyLg * 1.6,
+    color: palette.creamSoft,
+    marginTop: spacing.md,
+    maxWidth: 520,
+  },
+  superposed: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
+    marginTop: spacing.sm,
+  },
+
+  // File des virages
+  cornerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  cornerMain: {
+    flex: 1,
+    paddingRight: spacing.md,
+  },
+  cornerHead: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
+  // Numéro de virage = repère neutre (label), en mono — l'or reste au chrono.
+  cornerNum: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.body,
+    letterSpacing: 0.5,
+    color: palette.creamMute,
   },
   cornerName: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+    flexShrink: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
   },
-  // Numéro de virage = registre référence (heritageGold), en mono (chiffre).
-  cornerIndex: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.heritageGold,
+  cornerEmpty: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.3,
+    color: palette.eyebrow,
+    marginTop: spacing.sm,
   },
-  cornerSummary: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
-    lineHeight: theme.fontSize.small * 1.4,
-  },
-  // Action = libellé (mot), donc pas en mono. Affordance sobre et trackée.
   action: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.small,
     letterSpacing: 0.4,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
   },
-  backLink: {
-    fontFamily: theme.fonts.mono,
+
+  // Résumé (chips colorés + note)
+  summary: {
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  chipsWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: palette.surface3,
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+  },
+  chipDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  chipTxt: {
+    fontFamily: fonts.mono,
     fontSize: 11,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
+    letterSpacing: 0.3,
   },
-};
+  noteTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.4,
+    marginTop: 2,
+  },
+
+  // Panneau latéral
+  asideBlock: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: theme.radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+  },
+  asideLabel: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase',
+    color: palette.faint,
+    marginBottom: spacing.sm,
+  },
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  legendRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: palette.separator,
+  },
+  legendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    marginTop: 4,
+  },
+  legendTitle: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
+  },
+  legendHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.4,
+    marginTop: 2,
+  },
+
+  // Rappel doctrinal — liseré gauche à l'identité coach (couleur de rôle §5),
+  // jamais l'or de la maquette (réservé au chrono).
+  doctrineCard: {
+    borderLeftWidth: 2,
+    borderLeftColor: palette.coachAccent,
+  },
+  doctrineTxt: {
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamSoft,
+    lineHeight: fontSize.small * 1.55,
+  },
+});

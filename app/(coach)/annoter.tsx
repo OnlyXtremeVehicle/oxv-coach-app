@@ -1,26 +1,54 @@
 /**
- * Écran Coach — Annoter un virage d'un pilote suivi.
+ * Coach — Annoter un virage d'un pilote suivi. Reskin refonte-v2 §12, RESPONSIVE
+ * deux formats.
  *
- * Le coach arrive avec params {pilotId, cornerIndex, sessionId?} et
- * peut :
- *   - Voir ses notes existantes sur ce virage
- *   - Ajouter une nouvelle note (visibilité shared par défaut)
+ * Le coach arrive avec params {pilotId, cornerIndex, sessionId?} et peut :
+ *   - Voir ses notes existantes sur ce virage (lecture, à gauche en console)
+ *   - Rédiger une note (texte + mémo vocal), la partager ou la garder brouillon
  *   - Éditer / supprimer ses propres notes
  *   - Basculer la visibilité (private = brouillon, shared = visible pilote)
  *
- * Doctrine : ton sobre rappelé en placeholder du textarea. Le coach
- * peut bien sûr écrire ce qu'il veut — la doctrine est là pour le
- * cadrer, pas pour censurer.
+ * Deux formats (décision fondateur 2026-07-13) :
+ *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH, maquette coach/06-annoter) :
+ *     header (eyebrow + titre virage + pastille « VISIBLE PILOTE SI PARTAGÉE »)
+ *     puis 2 colonnes — VIRAGE CONCERNÉ + vos notes à gauche, éditeur (note écrite
+ *     + mémo vocal + partage + actions) à droite.
+ *   - COMPAGNON (téléphone) : 1 colonne compacte, même contenu empilé, AppBar.
+ * Le rail (console) et les onglets (téléphone) sont fournis par le layout : cet
+ * écran n'affiche que son corps, il ne touche à aucune navigation.
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Chip/Button du kit. Accent
- * coach = theme.palette.coach (crème neutre). Logique inchangée.
+ * Adaptations honnêtes vis-à-vis de la maquette (backend inchangé, zéro table) :
+ *   - la maquette montre un graphe de trajectoire du virage à gauche ; cet écran
+ *     ne charge pas la télémétrie de la séance → colonne « virage concerné »
+ *     factuelle (n°, nom réel, profil, contexte de la note). Aucun tracé inventé.
+ *   - le nom du pilote n'est pas chargé ici (RLS : le coach ne voit jamais les
+ *     coordonnées) → « le pilote » plutôt qu'un prénom d'exemple.
+ *   - la durée du mémo vocal est mesurée réellement (chrono d'enregistrement) ;
+ *     la waveform est un glyphe décoratif (masqué de l'accessibilité), pas une
+ *     amplitude affichée comme donnée.
+ *
+ * Doctrine : ton sobre en placeholder ; la voix du coach reste ATTRIBUÉE (rappel
+ * « à votre nom, jamais une consigne »). Le rempart réel des notes partagées est
+ * le filtre doctrinal du service (createAnnotation → isDoctrineSafe) : inchangé.
+ * expo-av (enregistrement) requiert un build natif : signalé honnêtement.
  */
 
-import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { getCorner } from '@/lib/circuitTopology';
+import { getCorner, type CornerTopology } from '@/lib/circuitTopology';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type AnnotationVisibility,
   type CoachAnnotation,
@@ -42,10 +70,25 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Field } from '@/ui/Field';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort } from '@/utils/format';
+
+const { palette, spacing, fonts, fontSize, radius } = theme;
+
+/** Profil de virage (topologie réelle) → étiquette sobre en clair. */
+function paceLabel(pace: CornerTopology['pace']): string {
+  return pace === 'slow' ? 'Épingle' : pace === 'fast' ? 'Courbe rapide' : 'Virage moyen';
+}
+
+/** Durée du mémo vocal en « m:ss » (chrono réel de l'enregistrement). */
+function fmtDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${m}:${String(sec).padStart(2, '0')}`;
+}
 
 export default function CoachAnnoterScreen() {
   const params = useLocalSearchParams<{
@@ -55,6 +98,10 @@ export default function CoachAnnoterScreen() {
   }>();
   const cornerIndex = Number(params.cornerIndex ?? '1');
   const corner = getCorner(cornerIndex);
+  const cornerName = corner?.name ?? `Virage ${cornerIndex}`;
+
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [annotations, setAnnotations] = useState<CoachAnnotation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +113,9 @@ export default function CoachAnnoterScreen() {
   // Note vocale (PR-59) — l'enregistrement requiert expo-av (build natif).
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
+  // Chrono réel de l'enregistrement (source : horloge de démarrage).
+  const [recElapsedMs, setRecElapsedMs] = useState(0);
+  const recStartRef = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +126,24 @@ export default function CoachAnnoterScreen() {
       cancelled = true;
     };
   }, []);
+
+  // Chrono d'enregistrement : démarre au passage en enregistrement, se fige au
+  // stop (cleanup) pour afficher la durée finale du mémo prêt.
+  useEffect(() => {
+    if (!recording) return;
+    recStartRef.current = Date.now();
+    setRecElapsedMs(0);
+    const id = setInterval(() => {
+      if (recStartRef.current != null) setRecElapsedMs(Date.now() - recStartRef.current);
+    }, 250);
+    return () => {
+      clearInterval(id);
+      if (recStartRef.current != null) {
+        setRecElapsedMs(Date.now() - recStartRef.current);
+        recStartRef.current = null;
+      }
+    };
+  }, [recording]);
 
   const applyTemplate = (tpl: CoachAnnotationTemplate) => {
     setBody((prev) => (prev.trim().length > 0 ? `${prev}\n${tpl.body}` : tpl.body));
@@ -121,6 +189,15 @@ export default function CoachAnnoterScreen() {
     }
   }
 
+  function resetForm() {
+    setBody('');
+    setVisibility('shared');
+    setEditingId(null);
+    setRecordedUri(null);
+    setRecElapsedMs(0);
+    recStartRef.current = null;
+  }
+
   const onSave = async () => {
     if (!params.pilotId || !body.trim()) return;
     setSaving(true);
@@ -137,10 +214,7 @@ export default function CoachAnnoterScreen() {
       });
       if (created && recordedUri) await attachAudioToAnnotation(created.id, recordedUri);
     }
-    setBody('');
-    setVisibility('shared');
-    setEditingId(null);
-    setRecordedUri(null);
+    resetForm();
     await reload();
     setSaving(false);
   };
@@ -160,321 +234,786 @@ export default function CoachAnnoterScreen() {
     await reload();
   };
 
+  const dirty = editingId != null || body.trim().length > 0 || recordedUri != null;
+  const sessionScoped = !!params.sessionId;
+
+  // — Blocs partagés entre les deux formats —
+  const cornerBlock = (
+    <CornerContext
+      cornerIndex={cornerIndex}
+      cornerName={cornerName}
+      corner={corner}
+      sessionScoped={sessionScoped}
+      compact={!isConsole}
+    />
+  );
+  const notesBlock = (
+    <NotesBlock annotations={annotations} loading={loading} onEdit={onEdit} onDelete={onDelete} />
+  );
+  const editorBlock = (
+    <>
+      {templates.length > 0 ? (
+        <TemplateChips templates={templates} onApply={applyTemplate} />
+      ) : null}
+      <Field
+        label={editingId ? 'Modifier la note' : 'Votre note écrite'}
+        value={body}
+        onChangeText={setBody}
+        placeholder="Ce que vous avez observé sur ce virage. Sobre, descriptif, ouvert."
+        multiline
+        numberOfLines={6}
+        maxLength={1000}
+        showCounter
+      />
+      <VoiceMemo
+        recording={!!recording}
+        hasRecording={!!recordedUri}
+        elapsedMs={recElapsedMs}
+        onToggle={onToggleRecord}
+      />
+      <ShareToggle
+        shared={visibility === 'shared'}
+        onToggle={() => setVisibility(visibility === 'shared' ? 'private' : 'shared')}
+      />
+      <AttributionNote />
+    </>
+  );
+  const footer = (
+    <View style={[s.footer, !isConsole && s.footerStack]}>
+      <View style={isConsole ? undefined : s.footerStackItem}>
+        <Button label="Annuler" variant="ghost" onPress={resetForm} disabled={!dirty} />
+      </View>
+      <View style={isConsole ? { flex: 1.4 } : s.footerStackItem}>
+        <SaveCta
+          label={editingId ? 'Mettre à jour la note' : 'Enregistrer la note'}
+          saving={saving}
+          disabled={saving || !body.trim()}
+          onPress={onSave}
+        />
+      </View>
+    </View>
+  );
+
   return (
-    <Screen>
-      <AppBar title="ANNOTER" onBack={() => router.back()} />
+    <Screen scroll={false}>
+      {isConsole ? (
+        <View style={s.consoleHead}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.headEyebrow}>{`ANNOTER · VIRAGE ${cornerIndex}`}</Text>
+            <Text style={s.headTitle} accessibilityRole="header" numberOfLines={1}>
+              {cornerName}
+            </Text>
+          </View>
+          <VisibilityPill />
+        </View>
+      ) : (
+        <AppBar title="ANNOTER" subtitle={`Virage ${cornerIndex}`} onBack={() => router.back()} />
+      )}
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-          <Text style={s.title}>{corner?.name ?? `Virage ${cornerIndex}`}</Text>
-          <Text style={s.subtitle}>
-            {params.sessionId ? 'Note attachée à cette session' : 'Note générique sur le virage'}
-          </Text>
-
-          {/* Notes existantes */}
-          {loading ? (
-            <Text style={s.caption}>Chargement…</Text>
-          ) : annotations.length === 0 ? (
-            <Text style={[s.caption, { marginBottom: theme.spacing.xl }]}>
-              Aucune note pour l&apos;instant.
-            </Text>
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: isConsole ? spacing.xl : spacing.lg,
+            paddingTop: isConsole ? spacing.sm : spacing.md,
+            paddingBottom: spacing.xxl,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {isConsole ? (
+            <View style={s.cols}>
+              <View style={s.colLeft}>
+                {cornerBlock}
+                {notesBlock}
+              </View>
+              <View style={s.colRight}>
+                {editorBlock}
+                {footer}
+              </View>
+            </View>
           ) : (
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.xl }}>
-              <SectionLabel>
-                {`${annotations.length} NOTE${annotations.length > 1 ? 'S' : ''} EXISTANTE${
-                  annotations.length > 1 ? 'S' : ''
-                }`}
-              </SectionLabel>
-              {annotations.map((a) => (
-                <Card
-                  key={a.id}
-                  style={
-                    a.visibility === 'private'
-                      ? { borderColor: theme.palette.line }
-                      : // Note partagée = la voix du coach (côté pilote : bande rouge).
-                        // Identité de rôle coach = rouge (roleColors.coach).
-                        { borderColor: theme.roleColors.coach }
-                  }
-                >
-                  <View style={s.noteHead}>
-                    <Text
-                      style={[
-                        s.noteFlag,
-                        {
-                          color:
-                            a.visibility === 'private'
-                              ? theme.palette.creamMute
-                              : theme.roleColors.coach,
-                        },
-                      ]}
-                    >
-                      {a.visibility === 'private' ? 'BROUILLON' : 'PARTAGÉE'}
-                    </Text>
-                    <Text style={s.noteDate}>{formatDateShort(a.createdAt)}</Text>
-                  </View>
-                  <Text style={s.noteBody}>{a.body}</Text>
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      gap: theme.spacing.lg,
-                      marginTop: theme.spacing.md,
-                    }}
-                  >
-                    <Pressable accessibilityRole="button" onPress={() => onEdit(a)}>
-                      <Text style={s.actionEdit}>Modifier</Text>
-                    </Pressable>
-                    <Pressable accessibilityRole="button" onPress={() => onDelete(a.id)}>
-                      <Text style={s.actionDelete}>Supprimer</Text>
-                    </Pressable>
-                  </View>
-                </Card>
-              ))}
+            <View style={{ gap: spacing.xl }}>
+              <View style={{ gap: spacing.md }}>
+                <Text style={s.screenHeading} accessibilityRole="header">
+                  {cornerName}
+                </Text>
+                <VisibilityPill />
+              </View>
+              {cornerBlock}
+              {notesBlock}
+              <View>{editorBlock}</View>
+              {footer}
             </View>
           )}
-
-          {/* Formulaire */}
-          <View style={{ marginTop: theme.spacing.xxl }} />
-
-          {/* Gabarits réutilisables (§10.3c-C) — appui pour insérer. */}
-          {templates.length > 0 ? (
-            <View style={s.templateRow}>
-              {templates.map((t) => (
-                <Pressable
-                  key={t.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Insérer le gabarit ${t.label}`}
-                  onPress={() => applyTemplate(t)}
-                  style={({ pressed }) => [s.templateChip, { opacity: pressed ? 0.7 : 1 }]}
-                >
-                  <Text style={s.templateChipText}>+ {t.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-
-          <Field
-            label={editingId ? 'Modifier la note' : 'Nouvelle note'}
-            value={body}
-            onChangeText={setBody}
-            placeholder="Ce que vous avez observé sur ce virage. Sobre, descriptif, ouvert."
-            multiline
-            numberOfLines={6}
-            maxLength={1000}
-            showCounter
-          />
-
-          {/* Toggle visibilité */}
-          <View
-            style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg }}
-          >
-            <VisibilityChip
-              label="Partagée avec le pilote"
-              active={visibility === 'shared'}
-              onPress={() => setVisibility('shared')}
-            />
-            <VisibilityChip
-              label="Brouillon"
-              active={visibility === 'private'}
-              onPress={() => setVisibility('private')}
-            />
-          </View>
-
-          {/* Note vocale (PR-59) — enregistrement via expo-av (build natif). */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              recording ? 'Arrêter l’enregistrement' : 'Enregistrer une note vocale'
-            }
-            onPress={onToggleRecord}
-            style={({ pressed }) => [
-              {
-                marginTop: theme.spacing.lg,
-                minHeight: 44,
-                justifyContent: 'center',
-                paddingHorizontal: theme.spacing.md,
-                borderRadius: theme.radius.sm,
-                borderWidth: 1,
-                borderColor: recording ? theme.palette.red : theme.palette.coach,
-              },
-              pressed && { opacity: 0.8 },
-            ]}
-          >
-            <Text
-              style={{
-                fontFamily: theme.fonts.mono,
-                fontSize: 11,
-                letterSpacing: 0.8,
-                textTransform: 'uppercase',
-                color: recording ? theme.palette.red : theme.palette.coach,
-              }}
-            >
-              {recording
-                ? 'Arrêter l’enregistrement'
-                : recordedUri
-                  ? 'Note vocale prête · réenregistrer'
-                  : 'Enregistrer une note vocale'}
-            </Text>
-          </Pressable>
-
-          {/* Boutons */}
-          <View
-            style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}
-          >
-            <View style={{ flex: 1 }}>
-              <Button
-                label={editingId ? 'Mettre à jour' : 'Enregistrer'}
-                onPress={onSave}
-                disabled={saving || !body.trim()}
-              />
-            </View>
-            {editingId ? (
-              <Button
-                label="Annuler"
-                variant="ghost"
-                onPress={() => {
-                  setEditingId(null);
-                  setBody('');
-                  setVisibility('shared');
-                }}
-              />
-            ) : null}
-          </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );
 }
 
-function VisibilityChip({
-  label,
-  active,
-  onPress,
+/** Colonne / bloc « virage concerné » — identité factuelle du virage (données
+ *  réelles de topologie). Remplace le tracé de la maquette, non chargé ici. */
+function CornerContext({
+  cornerIndex,
+  cornerName,
+  corner,
+  sessionScoped,
+  compact,
 }: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
+  cornerIndex: number;
+  cornerName: string;
+  corner: CornerTopology | null;
+  sessionScoped: boolean;
+  compact: boolean;
 }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        s.visChip,
-        active ? s.visChipOn : null,
-        { opacity: pressed ? 0.85 : 1 },
-      ]}
+    <View>
+      {!compact ? <Text style={s.eyebrow}>VIRAGE CONCERNÉ</Text> : null}
+      <CockpitPanel plain>
+        <View style={s.cornerRow}>
+          <View style={s.cornerMarker}>
+            <Text style={s.cornerMarkerTxt}>{`V${cornerIndex}`}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.cornerName} numberOfLines={1}>
+              {cornerName}
+            </Text>
+            <Text style={s.cornerPace}>{corner ? paceLabel(corner.pace) : 'Virage'}</Text>
+          </View>
+        </View>
+        <View style={s.cornerMetaRow}>
+          <Text style={s.cornerMetaTxt}>
+            {sessionScoped ? 'Note attachée à cette séance' : 'Note générique sur ce virage'}
+          </Text>
+        </View>
+      </CockpitPanel>
+    </View>
+  );
+}
+
+/** Vos notes déjà posées sur ce virage (lecture + édition / suppression). */
+function NotesBlock({
+  annotations,
+  loading,
+  onEdit,
+  onDelete,
+}: {
+  annotations: CoachAnnotation[];
+  loading: boolean;
+  onEdit: (a: CoachAnnotation) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <View style={{ marginTop: spacing.xl }}>
+      <Text style={s.eyebrow}>VOS NOTES SUR CE VIRAGE</Text>
+      {loading ? (
+        <Text style={s.muted}>Lecture de vos notes…</Text>
+      ) : annotations.length === 0 ? (
+        <Text style={s.muted}>Aucune note pour l’instant.</Text>
+      ) : (
+        <View style={{ gap: spacing.sm }}>
+          {annotations.map((a) => {
+            const shared = a.visibility === 'shared';
+            return (
+              <Card key={a.id} style={shared ? s.noteCardShared : s.noteCardDraft}>
+                <View style={s.noteHead}>
+                  <Text
+                    style={[
+                      s.noteFlag,
+                      { color: shared ? palette.coachAccent : palette.creamMute },
+                    ]}
+                  >
+                    {shared ? 'PARTAGÉE' : 'BROUILLON'}
+                  </Text>
+                  <Text style={s.noteDate}>{formatDateShort(a.createdAt)}</Text>
+                </View>
+                <Text style={s.noteBody}>{a.body}</Text>
+                <View style={s.noteActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Modifier cette note"
+                    hitSlop={theme.hitSlop}
+                    onPress={() => onEdit(a)}
+                    style={s.noteAction}
+                  >
+                    <Text style={s.actionEdit}>Modifier</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Supprimer cette note"
+                    hitSlop={theme.hitSlop}
+                    onPress={() => onDelete(a.id)}
+                    style={s.noteAction}
+                  >
+                    <Text style={s.actionDelete}>Supprimer</Text>
+                  </Pressable>
+                </View>
+              </Card>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/** Gabarits réutilisables (§10.3c-C) — appui pour insérer une phrase taguée. */
+function TemplateChips({
+  templates,
+  onApply,
+}: {
+  templates: CoachAnnotationTemplate[];
+  onApply: (t: CoachAnnotationTemplate) => void;
+}) {
+  return (
+    <View style={{ marginBottom: spacing.md }}>
+      <Text style={s.eyebrow}>VOS GABARITS</Text>
+      <View style={s.templateRow}>
+        {templates.map((t) => (
+          <Pressable
+            key={t.id}
+            accessibilityRole="button"
+            accessibilityLabel={`Insérer le gabarit ${t.label}`}
+            hitSlop={theme.hitSlop}
+            onPress={() => onApply(t)}
+            style={({ pressed }) => [s.templateChip, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={s.templateChipTxt}>+ {t.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+/** Mémo vocal — bouton micro rouge + glyphe waveform (décoratif) + durée réelle. */
+function VoiceMemo({
+  recording,
+  hasRecording,
+  elapsedMs,
+  onToggle,
+}: {
+  recording: boolean;
+  hasRecording: boolean;
+  elapsedMs: number;
+  onToggle: () => void;
+}) {
+  const active = recording || hasRecording;
+  const label = recording
+    ? 'Arrêter l’enregistrement'
+    : hasRecording
+      ? 'Mémo prêt · réenregistrer'
+      : 'Appuyez pour enregistrer';
+  return (
+    <View style={s.voiceCard}>
+      <Text style={s.eyebrow}>MÉMO VOCAL</Text>
+      <View style={s.voiceRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            recording ? 'Arrêter l’enregistrement' : 'Enregistrer une note vocale'
+          }
+          onPress={onToggle}
+          style={({ pressed }) => [s.micBtn, pressed && { opacity: 0.85 }]}
+        >
+          <View style={recording ? s.micStop : s.micDot} />
+        </Pressable>
+        <View style={s.voiceMid}>
+          <Waveform active={active} />
+          <Text style={s.voiceLabel}>{label}</Text>
+        </View>
+        {active ? <Text style={s.voiceDuration}>{fmtDuration(elapsedMs)}</Text> : null}
+      </View>
+    </View>
+  );
+}
+
+/** Glyphe waveform décoratif (identité de la carte mémo), masqué de l'a11y —
+ *  ce n'est pas une amplitude mesurée. Motif fixe (déterministe). */
+function Waveform({ active }: { active: boolean }) {
+  const heights = [7, 14, 22, 12, 26, 9, 20, 16, 28, 11, 18, 24, 10, 15];
+  const color = active ? palette.coachAccent : palette.cardBorderProminent;
+  return (
+    <View
+      style={s.waveform}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
     >
-      <Text style={[s.visChipText, active ? s.visChipTextOn : null]}>{label}</Text>
+      {heights.map((h, i) => (
+        <View key={i} style={[s.waveBar, { height: h, backgroundColor: color }]} />
+      ))}
+    </View>
+  );
+}
+
+/** Partager avec le pilote — ON = vert (état consenti/visible, cf. §7.11). */
+function ShareToggle({ shared, onToggle }: { shared: boolean; onToggle: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="switch"
+      accessibilityState={{ checked: shared }}
+      accessibilityLabel="Partager cette note avec le pilote"
+      onPress={onToggle}
+      style={s.shareRow}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={s.shareLabel}>Partager avec le pilote</Text>
+        <Text style={s.shareHint}>
+          {shared ? 'Visible dès l’enregistrement' : 'Brouillon — invisible pour le pilote'}
+        </Text>
+      </View>
+      <View
+        style={[s.toggleTrack, shared ? s.toggleTrackOn : s.toggleTrackOff]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
+      >
+        <View style={[s.toggleThumb, shared ? s.toggleThumbOn : s.toggleThumbOff]} />
+      </View>
     </Pressable>
   );
 }
 
-const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+/** Rappel d'attribution (doctrine) — la voix du coach est attribuée, jamais une
+ *  consigne de l'app. Liseré rouge coach (jamais l'or, réservé au chrono). */
+function AttributionNote() {
+  return (
+    <View style={s.attrNote} accessibilityRole="summary">
+      <View style={s.attrRing} />
+      <Text style={s.attrTxt}>
+        Une note partagée apparaît à votre nom chez le pilote — jamais comme une consigne de l’app.
+      </Text>
+    </View>
+  );
+}
+
+/** Pastille d'en-tête : rappelle la portée de la note (rouge coach). */
+function VisibilityPill() {
+  return (
+    <View
+      style={s.pill}
+      accessibilityRole="text"
+      accessibilityLabel="Visible du pilote si partagée"
+    >
+      <View style={s.pillRing} />
+      <Text style={s.pillTxt}>VISIBLE PILOTE SI PARTAGÉE</Text>
+    </View>
+  );
+}
+
+/** CTA d'action réelle (rouge coach). L'or reste au chrono ; le coach porte le rouge. */
+function SaveCta({
+  label,
+  saving,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  saving: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const inert = disabled || saving;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy: saving }}
+      disabled={inert}
+      onPress={inert ? undefined : onPress}
+      style={({ pressed }) => [
+        s.cta,
+        disabled ? s.ctaDisabled : null,
+        pressed && !inert ? { opacity: 0.9 } : null,
+      ]}
+    >
+      <View style={s.ctaContent}>
+        {saving ? (
+          <ActivityIndicator
+            size="small"
+            color={palette.cream}
+            style={{ marginRight: spacing.sm }}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : null}
+        <Text style={[s.ctaTxt, disabled ? s.ctaTxtDisabled : null]}>{label}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const s = StyleSheet.create({
+  // — Header console —
+  consoleHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: palette.line,
+  },
+  headEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.xs,
+  },
+  headTitle: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+  },
+  screenHeading: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+  },
+
+  // — Colonnes console —
+  cols: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    alignItems: 'flex-start',
+  },
+  colLeft: { flex: 1, maxWidth: 420 },
+  colRight: { flex: 1.15, gap: spacing.md },
+
+  // — Eyebrows de section —
+  eyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.md,
+  },
+  muted: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    paddingVertical: spacing.sm,
+  },
+
+  // — Virage concerné —
+  cornerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  cornerMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(226,58,78,0.14)',
+    borderWidth: 1,
+    borderColor: palette.coachAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cornerMarkerTxt: {
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.body,
     letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
+    color: palette.coachAccent,
   },
-  subtitle: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
+  cornerName: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    letterSpacing: 0.2,
+    color: palette.cream,
+  },
+  cornerPace: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginTop: 3,
   },
-  caption: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
+  cornerMetaRow: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: palette.separator,
   },
+  cornerMetaTxt: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamSoft,
+  },
+
+  // — Notes existantes —
+  noteCardShared: { borderColor: palette.coachAccent },
+  noteCardDraft: { borderColor: palette.line },
   noteHead: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: theme.spacing.xs,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
   },
   noteFlag: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
   },
   noteDate: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 9,
     letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
   },
   noteBody: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.body * 1.5,
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    color: palette.cream,
+    lineHeight: fontSize.body * 1.5,
+  },
+  noteActions: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginTop: spacing.md,
+  },
+  noteAction: {
+    minHeight: 44,
+    justifyContent: 'center',
   },
   actionEdit: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
+    textTransform: 'uppercase',
+    color: palette.creamSoft,
   },
   actionDelete: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.red,
+    textTransform: 'uppercase',
+    color: palette.coachAlert,
   },
+
+  // — Gabarits —
   templateRow: {
-    flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   templateChip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radius.pill,
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
   },
-  templateChipText: {
-    fontFamily: theme.fonts.mono,
+  templateChipTxt: {
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 0.6,
-    color: theme.palette.creamSoft,
+    color: palette.creamSoft,
   },
-  visChip: {
+
+  // — Mémo vocal —
+  voiceCard: {
+    marginTop: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
+  },
+  voiceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  micBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: palette.coachAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: palette.cream,
+  },
+  micStop: {
+    width: 12,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: palette.cream,
+  },
+  voiceMid: { flex: 1, gap: spacing.xs },
+  waveform: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    height: 28,
+  },
+  waveBar: {
+    width: 3,
+    borderRadius: 2,
+  },
+  voiceLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+  },
+  voiceDuration: {
+    fontFamily: fonts.monoMedium,
+    fontSize: fontSize.body,
+    color: palette.creamSoft,
+    letterSpacing: 0.5,
+  },
+
+  // — Partage (toggle) —
+  shareRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 44,
+    marginTop: spacing.md,
+  },
+  shareLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
+    letterSpacing: 0.2,
+  },
+  shareHint: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: 3,
+  },
+  toggleTrack: {
+    width: 46,
+    height: 26,
+    borderRadius: 13,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  toggleTrackOn: { backgroundColor: palette.green, alignItems: 'flex-end' },
+  toggleTrackOff: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    alignItems: 'flex-start',
+  },
+  toggleThumb: { width: 20, height: 20, borderRadius: 10 },
+  toggleThumbOn: { backgroundColor: palette.night },
+  toggleThumbOff: { backgroundColor: palette.creamMute },
+
+  // — Note d'attribution (doctrine) —
+  attrNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: palette.coachAccent,
+    backgroundColor: 'rgba(226,58,78,0.07)',
+  },
+  attrRing: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.4,
+    borderColor: palette.coachAccent,
+  },
+  attrTxt: {
     flex: 1,
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.radius.md,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.coachAccent,
+  },
+
+  // — Pastille d'en-tête —
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
-    alignItems: 'center' as const,
+    borderColor: palette.coachAccent,
+    backgroundColor: palette.card2,
+    alignSelf: 'flex-start',
   },
-  visChipOn: {
-    borderColor: theme.palette.coach,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+  pillRing: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.4,
+    borderColor: palette.coachAccent,
   },
-  visChipText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
+  pillTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.coachAccent,
   },
-  visChipTextOn: {
-    color: theme.palette.cream,
+
+  // — Pied (actions) —
+  footer: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    alignItems: 'center',
   },
-};
+  footerStack: {
+    flexDirection: 'column-reverse',
+    alignItems: 'stretch',
+  },
+  footerStackItem: { alignSelf: 'stretch' },
+
+  // — CTA rouge coach —
+  cta: {
+    backgroundColor: palette.coachAccent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaDisabled: { backgroundColor: '#2A2A2E' },
+  ctaContent: { flexDirection: 'row', alignItems: 'center' },
+  ctaTxt: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.cream,
+  },
+  ctaTxtDisabled: { color: '#6A6A73' },
+});
