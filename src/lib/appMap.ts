@@ -94,6 +94,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   amis: 'decouverte',
   'cote-a-cote': 'decouverte',
   partenaires: 'decouverte',
+  catalogue: 'decouverte',
   'carte-oxv': 'decouverte',
   'belle-route': 'decouverte',
   'mes-routes': 'decouverte',

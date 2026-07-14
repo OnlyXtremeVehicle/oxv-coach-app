@@ -306,6 +306,17 @@ function PartenairesTab({
   return (
     <View style={s.tabBody}>
       <Text style={s.sectionEyebrow}>Partenaires</Text>
+      {partners.length > 0 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voir le catalogue des partenaires"
+          onPress={() => router.push('/(app)/catalogue' as never)}
+          style={({ pressed }) => [s.catalogueLink, pressed && { opacity: 0.85 }]}
+        >
+          <Text style={s.catalogueLinkT}>Voir le catalogue</Text>
+          <Text style={s.catalogueLinkChevron}>›</Text>
+        </Pressable>
+      ) : null}
       {partners.length === 0 ? (
         <EmptyState
           label="À venir"
@@ -574,6 +585,31 @@ const s = {
     fontFamily: fonts.bodySemi,
     fontSize: 13,
     color: palette.cream,
+  },
+
+  // — Lien vers le catalogue (paddock des partenaires) —
+  catalogueLink: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    backgroundColor: 'rgba(91,141,239,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(91,141,239,0.35)',
+    marginBottom: spacing.md,
+  },
+  catalogueLinkT: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 13,
+    color: roleColors.partner,
+  },
+  catalogueLinkChevron: {
+    fontFamily: fonts.body,
+    fontSize: 20,
+    color: roleColors.partner,
+    marginTop: -2,
   },
 
   // — Carte partenaire (accent haut bleu) —
