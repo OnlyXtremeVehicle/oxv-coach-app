@@ -1,49 +1,69 @@
 /**
- * Coach — Studio télémétrique (P0/VISION_COACH_STUDIO.md).
+ * Coach — Studio télémétrique (P0/VISION_COACH_STUDIO.md), RESPONSIVE DEUX
+ * FORMATS (décision fondateur 2026-07-13, handoff §12).
  *
- * Au retour aux stands, la lecture d'UNE séance pour le coach : le TRIAGE
- * factuel (où regarder), le radar QDI 5 branches, le résumé des marges, les
- * moments-clés. Câblé sur getStudioSession (agrégation déjà en place et testée).
+ *  - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : l'atelier de lecture
+ *    d'UNE séance en trois colonnes, fidèle à la maquette coach/03-studio :
+ *      · gauche  = signature QDI (radar 5 branches) + lecture rapide (moments),
+ *      · centre  = trajectoire & marge par virage (carte + légende de marge) +
+ *                  le chiffre roi (marge globale de la séance),
+ *      · droite  = « où regarder » (triage factuel) + la liste des tours.
+ *  - COMPAGNON téléphone : la même matière, empilée en une colonne compacte.
+ *
+ * Le MÊME composant s'adapte à la largeur ; aucune navigation n'est cassée.
  *
  * Doctrine : des FAITS. Le triage désigne les virages les plus serrés — il ne
  * dit jamais quoi faire (la cause reste au coach, ou à une suggestion IA qu'il
  * valide, C3). QDI en 5 branches, JAMAIS un score composite (garde-fou T6).
+ * L'or reste au chrono/record ; la marge se lit sur son dégradé §7.6.
  *
- * Superposition de traces + diagramme G-G = react-native-svg (rendu dès Expo
- * Go) : ils apparaîtront avec les premières TRAMES du boîtier (telemetry_frames
- * vides avant la première vraie capture). Les panneaux de données ci-dessous
- * sont, eux, pleinement lisibles dès maintenant. On n'invente rien sans trame.
+ * Données réelles uniquement : getStudioSession (agrégation testée), plus les
+ * tours (fetchSessionLaps) et la trace GPS (loadSessionTrajectory) en
+ * best-effort. La carte et sa trace se remplissent avec les premières TRAMES du
+ * boîtier ; sans trame, la topologie du circuit reste lisible. On n'invente rien.
  */
 
-import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { CoachPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { QdiRadar } from '@/components/QdiRadar';
 import { EmptyState } from '@/components/instruments';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
+import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
+import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
+import { fetchSessionLaps } from '@/services/sessionsService';
 import { theme } from '@/theme/v2';
+import type { MarginZone } from '@/types/domain';
+import type { Lap } from '@/types/telemetry';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { KingNumber } from '@/ui/KingNumber';
-import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatLapTime } from '@/utils/format';
+import { formatLapTimeMs } from '@/utils/format';
 
-const { palette, spacing } = theme;
+const { palette, dataColors, spacing } = theme;
 
 export default function CoachStudioScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
+  const sessionId = params.sessionId;
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const [data, setData] = useState<StudioSession | null>(null);
+  const [laps, setLaps] = useState<Lap[]>([]);
+  const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const sessionId = params.sessionId;
     if (!sessionId) {
       setLoading(false);
       return;
@@ -64,16 +84,28 @@ export default function CoachStudioScreen() {
           setLoading(false);
         }
       });
+    // Tours + trace GPS : best-effort, ne conditionnent pas l'état de l'écran
+    // (vides tant que le boîtier n'a pas déposé de tours/trames).
+    fetchSessionLaps(sessionId)
+      .then((rows) => {
+        if (!cancelled) setLaps(rows);
+      })
+      .catch(() => undefined);
+    loadSessionTrajectory(sessionId)
+      .then((pts) => {
+        if (!cancelled && pts.length > 1) setTrajectory(pts);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
-  }, [params.sessionId, reloadKey]);
+  }, [sessionId, reloadKey]);
 
   const state: ScreenState = loading
     ? 'loading'
     : error
       ? 'error'
-      : !params.sessionId || !data
+      : !sessionId || !data
         ? 'empty'
         : 'nominal';
 
@@ -93,75 +125,324 @@ export default function CoachStudioScreen() {
           errorCause="La séance n'a pas pu être chargée."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          {data ? <StudioBody data={data} /> : null}
+          {data ? (
+            <StudioBody data={data} laps={laps} trajectory={trajectory} isConsole={isConsole} />
+          ) : null}
         </StateWrapper>
       </View>
     </Screen>
   );
 }
 
-function StudioBody({ data }: { data: StudioSession }) {
+function StudioBody({
+  data,
+  laps,
+  trajectory,
+  isConsole,
+}: {
+  data: StudioSession;
+  laps: Lap[];
+  trajectory: TrajectoryPoint[] | null;
+  isConsole: boolean;
+}) {
+  // Couleur des pastilles de virage sur la carte = zone de marge du triage
+  // (dégradé §7.6 rouge→or→vert). Seules les zones réellement mesurées colorent.
+  const zoneByIndex = useMemo(() => {
+    const out: Record<number, MarginZone> = {};
+    for (const c of data.triage) {
+      if (c.marginZone) out[c.segmentIndex] = c.marginZone as MarginZone;
+    }
+    return out;
+  }, [data.triage]);
+  const hasZones = Object.keys(zoneByIndex).length > 0;
+
+  // Tours volants (hors entrée/sortie de stand), meilleur mis en avant en or.
+  const timedLaps = useMemo(
+    () => laps.filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0),
+    [laps]
+  );
+  const bestLapNumber = useMemo(() => {
+    if (timedLaps.length === 0) return null;
+    const flagged = timedLaps.find((l) => l.is_best_lap);
+    if (flagged) return flagged.lap_number;
+    return timedLaps.reduce((m, l) => (l.duration_seconds < m.duration_seconds ? l : m)).lap_number;
+  }, [timedLaps]);
+
+  const header = <StudioHeader data={data} isConsole={isConsole} />;
+
+  const qdiPanel = <QdiPanel qdi={data.qdi} />;
+  const readsPanel = <ReadsPanel moments={data.keyMoments} />;
+  const trajectoryPanel = (
+    <TrajectoryPanel
+      trajectory={trajectory}
+      zoneByIndex={zoneByIndex}
+      hasZones={hasZones}
+      bestLapSeconds={data.bestLapSeconds}
+      height={isConsole ? 320 : 240}
+    />
+  );
+  const marginPanel = <MarginKingPanel margins={data.margins} />;
+  const watchPanel = <WatchPanel triage={data.triage} sessionId={data.sessionId} />;
+  const lapsPanel = <LapsPanel laps={timedLaps} bestLapNumber={bestLapNumber} />;
+
+  if (isConsole) {
+    // Console : trois colonnes (gauche lecture · centre carte+chiffre · droite triage+tours).
+    return (
+      <View>
+        {header}
+        <View style={s.consoleRow}>
+          <View style={[s.col, { flex: 1 }]}>
+            {qdiPanel}
+            {readsPanel}
+          </View>
+          <View style={[s.col, { flex: 1.3 }]}>
+            {trajectoryPanel}
+            {marginPanel}
+          </View>
+          <View style={[s.col, { flex: 1 }]}>
+            {watchPanel}
+            {lapsPanel}
+          </View>
+        </View>
+        <DoctrineLine />
+      </View>
+    );
+  }
+
+  // Compagnon : une colonne, le chiffre roi en tête pour ancrer la lecture.
   return (
-    <View>
-      {/* Méta séance */}
+    <View style={{ gap: spacing.xl }}>
+      {header}
+      {marginPanel}
+      {qdiPanel}
+      {trajectoryPanel}
+      {watchPanel}
+      {lapsPanel}
+      {readsPanel}
+      <DoctrineLine />
+    </View>
+  );
+}
+
+// ── En-tête : identité de la séance + actions réelles ───────────────────────
+
+function StudioHeader({ data, isConsole }: { data: StudioSession; isConsole: boolean }) {
+  const identity = (
+    <View style={{ flexShrink: 1 }}>
       <Text style={s.eyebrow}>Séance · 25 Hz</Text>
-      <Text style={s.title}>{data.circuitName ?? 'Séance'}</Text>
+      <Text style={s.title} accessibilityRole="header">
+        {data.circuitName ?? 'Séance'}
+      </Text>
       <Text style={s.meta}>
         {data.lapCount} tour{data.lapCount > 1 ? 's' : ''}
-        {data.bestLapSeconds != null ? ` · meilleur ${formatLapTime(data.bestLapSeconds)}` : ''}
+        {data.bestLapSeconds != null ? ` · meilleur ${formatLapTimeMs(data.bestLapSeconds)}` : ''}
       </Text>
+      <PresentationLink sessionId={data.sessionId} />
+    </View>
+  );
 
-      {/* Mode présentation : la même séance, en vue calme à montrer au pilote. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Ouvrir le mode présentation du débrief"
-        hitSlop={8}
-        onPress={() =>
-          router.push({
-            pathname: '/(coach)/debrief',
-            params: { sessionId: data.sessionId },
-          } as never)
-        }
-        style={{ marginTop: spacing.md }}
-      >
-        <Text style={s.triageLink}>Mode présentation ›</Text>
-      </Pressable>
-
-      {/* Radar QDI 5 branches — jamais un composite (T6). */}
-      <View style={{ marginTop: spacing.xl }}>
-        {data.qdi ? (
-          <CockpitPanel>
-            <Text style={s.panelLabel}>Radar QDI</Text>
-            <QdiRadar current={data.qdi} reference={null} detail />
-          </CockpitPanel>
-        ) : (
-          <EmptyState
-            label="QDI en préparation"
-            message="Les cinq branches apparaîtront après l'analyse de la séance."
-          />
-        )}
+  if (isConsole) {
+    return (
+      <View style={s.headerRow}>
+        {identity}
+        <ReportButton sessionId={data.sessionId} />
       </View>
+    );
+  }
+  return (
+    <View style={{ gap: spacing.md }}>
+      {identity}
+      <ReportButton sessionId={data.sessionId} full />
+    </View>
+  );
+}
 
-      {/* Triage — les virages les plus serrés (fait seul, où regarder). */}
-      <View style={[s.triageHead, { marginTop: spacing.xxl }]}>
-        <Text style={s.sectionLabel}>À REGARDER EN PREMIER</Text>
-        {data.triage.length > 0 ? (
+function ReportButton({ sessionId, full }: { sessionId: string; full?: boolean }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Rédiger le rapport de la séance"
+      hitSlop={8}
+      onPress={() => router.push({ pathname: '/(coach)/rapport', params: { sessionId } } as never)}
+      style={({ pressed }) => [
+        s.reportBtn,
+        full ? { alignSelf: 'stretch' } : null,
+        pressed ? { opacity: 0.9 } : null,
+      ]}
+    >
+      <Text style={s.reportBtnTxt}>Rédiger le rapport</Text>
+    </Pressable>
+  );
+}
+
+function PresentationLink({ sessionId }: { sessionId: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Ouvrir le mode présentation du débrief"
+      hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
+      onPress={() => router.push({ pathname: '/(coach)/debrief', params: { sessionId } } as never)}
+      style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}
+    >
+      <Text style={s.link}>Mode présentation ›</Text>
+    </Pressable>
+  );
+}
+
+// ── Signature QDI (radar 5 branches) ────────────────────────────────────────
+
+function QdiPanel({ qdi }: { qdi: StudioSession['qdi'] }) {
+  return (
+    <View>
+      {qdi ? (
+        <CockpitPanel>
+          <Text style={s.panelLabel}>Signature QDI · cette séance</Text>
+          <QdiRadar current={qdi} reference={null} detail />
+        </CockpitPanel>
+      ) : (
+        <EmptyState
+          label="QDI en préparation"
+          message="Les cinq branches apparaîtront après l'analyse de la séance."
+        />
+      )}
+    </View>
+  );
+}
+
+// ── Lecture rapide : les moments factuels de la séance ──────────────────────
+
+function ReadsPanel({ moments }: { moments: StudioSession['keyMoments'] }) {
+  return (
+    <Card>
+      <Text style={s.panelLabel}>Lecture rapide</Text>
+      {moments.length === 0 ? (
+        <Text style={s.empty}>
+          Les repères de lecture suivent l'analyse des tours de la séance.
+        </Text>
+      ) : (
+        <View style={{ gap: spacing.md, marginTop: spacing.xs }}>
+          {moments.map((m) => (
+            <View key={m.key} style={s.readRow}>
+              <View style={s.readDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.readTitle}>{m.title}</Text>
+                <Text style={s.readFact}>{m.fact}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+    </Card>
+  );
+}
+
+// ── Trajectoire & marge par virage : carte + légende de marge ───────────────
+
+function TrajectoryPanel({
+  trajectory,
+  zoneByIndex,
+  hasZones,
+  bestLapSeconds,
+  height,
+}: {
+  trajectory: TrajectoryPoint[] | null;
+  zoneByIndex: Record<number, MarginZone>;
+  hasZones: boolean;
+  bestLapSeconds: number | null;
+  height: number;
+}) {
+  return (
+    <View>
+      <View style={s.panelHead}>
+        <Text style={s.panelLabel}>Trajectoire & marge par virage</Text>
+        {bestLapSeconds != null ? (
+          <Text style={s.panelNote}>meilleur {formatLapTimeMs(bestLapSeconds)}</Text>
+        ) : null}
+      </View>
+      <CoachPreset trajectory={trajectory ?? undefined} zoneByIndex={zoneByIndex} height={height} />
+      {hasZones ? (
+        <MarginLegendBar />
+      ) : (
+        <Text style={s.mapCaption}>
+          La trace GPS et la coloration des marges apparaîtront avec les premières trames du
+          boîtier.
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Légende de marge (handoff §7.6) : faible→large = rouge de DONNÉE → or → vert,
+ * le même dégradé que les pastilles de virage (source cohérente). L'or ici est
+ * le midpoint assumé du dégradé de marge, jamais un chrono.
+ */
+function MarginLegendBar() {
+  return (
+    <View
+      accessible
+      accessibilityLabel="Légende des marges : du rouge, marge faible, à l'or puis au vert, marge large."
+      style={s.legendRow}
+    >
+      <Text style={s.legendLabel}>Marge</Text>
+      <View style={{ flex: 1 }}>
+        <Svg width="100%" height={6}>
+          <Defs>
+            <LinearGradient id="studioMarginGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <Stop offset="0%" stopColor={dataColors.brake} />
+              <Stop offset="50%" stopColor={palette.gold} />
+              <Stop offset="100%" stopColor={dataColors.accel} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100%" height={6} rx={3} fill="url(#studioMarginGradient)" />
+        </Svg>
+      </View>
+      <Text style={[s.legendEnd, { color: dataColors.brake }]}>faible</Text>
+      <Text style={[s.legendEnd, { color: dataColors.accel }]}>large</Text>
+    </View>
+  );
+}
+
+// ── Chiffre roi : marge globale de la séance ────────────────────────────────
+
+function MarginKingPanel({ margins }: { margins: StudioSession['margins'] }) {
+  if (margins.global == null) return null;
+  return (
+    <CockpitPanel plain>
+      <Text style={s.panelLabel}>Marge globale de la séance</Text>
+      {/* Marge = dégradé §7.6 selon la zone (serré→rouge de donnée, moyen→or,
+          large→vert), jamais l'or par défaut. L'or reste au chrono/record. */}
+      <KingNumber
+        value={`${Math.round(margins.global)}`}
+        unit="%"
+        label="Marge"
+        color={marginZoneExportColor(margins.zone)}
+      />
+    </CockpitPanel>
+  );
+}
+
+// ── Où regarder : triage factuel des virages les plus serrés ────────────────
+
+function WatchPanel({ triage, sessionId }: { triage: StudioSession['triage']; sessionId: string }) {
+  return (
+    <View>
+      <View style={s.panelHead}>
+        <Text style={s.sectionLabel}>Où regarder</Text>
+        {triage.length > 0 ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Voir le triage sur la carte"
-            hitSlop={8}
+            hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
             onPress={() =>
-              router.push({
-                pathname: '/(coach)/triage',
-                params: { sessionId: data.sessionId },
-              } as never)
+              router.push({ pathname: '/(coach)/triage', params: { sessionId } } as never)
             }
           >
-            <Text style={s.triageLink}>Sur la carte ›</Text>
+            <Text style={s.link}>Sur la carte ›</Text>
           </Pressable>
         ) : null}
       </View>
-      {data.triage.length === 0 ? (
+      {triage.length === 0 ? (
         <EmptyState
           label="Triage en attente"
           message="Le classement des virages suit l'analyse des marges de la séance."
@@ -169,70 +450,93 @@ function StudioBody({ data }: { data: StudioSession }) {
         />
       ) : (
         <View style={{ gap: spacing.sm }}>
-          {data.triage.map((c, i) => (
-            <Card key={c.segmentIndex} style={s.triageRow}>
-              <Text style={s.triageRank}>{i + 1}</Text>
+          {triage.map((c, i) => (
+            <Card key={c.segmentIndex} style={s.watchRow}>
+              <Text style={[s.watchRank, { color: marginZoneExportColor(c.marginZone) }]}>
+                {i + 1}
+              </Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.triageName}>{c.label}</Text>
-                <Text style={s.triageFact}>{c.fact}</Text>
+                <Text style={s.watchName}>{c.label}</Text>
+                <Text style={s.watchFact}>{c.fact}</Text>
               </View>
-              <Text style={s.triageMargin}>{Math.round(c.marginPercent)} %</Text>
+              <Text style={s.watchMargin}>{Math.round(c.marginPercent)} %</Text>
             </Card>
           ))}
         </View>
       )}
-
-      {/* Marges (résumé) */}
-      {data.margins.global != null ? (
-        <View style={{ marginTop: spacing.xxl }}>
-          <CockpitPanel plain>
-            <Text style={s.panelLabel}>Marge globale de la séance</Text>
-            {/* Marge = dégradé §7.6 selon la zone (serré→rouge donnée, moyen→or,
-                large→vert), pas l'or par défaut. L'or reste au chrono/record. */}
-            <KingNumber
-              value={`${Math.round(data.margins.global)}`}
-              unit="%"
-              label="Marge"
-              color={marginZoneExportColor(data.margins.zone)}
-            />
-          </CockpitPanel>
-        </View>
-      ) : null}
-
-      {/* Moments-clés */}
-      {data.keyMoments.length > 0 ? (
-        <>
-          <Text style={[s.sectionLabel, { marginTop: spacing.xxl }]}>MOMENTS DE LA SÉANCE</Text>
-          <View style={{ gap: spacing.sm }}>
-            {data.keyMoments.map((m) => (
-              <Card key={m.key}>
-                <Text style={s.kmTitle}>{m.title}</Text>
-                <Text style={s.kmFact}>{m.fact}</Text>
-              </Card>
-            ))}
-          </View>
-        </>
-      ) : null}
-
-      {/* Superposition de traces + diagramme G-G (react-native-svg) : attente
-          honnête tant que la séance n'a pas de trames du boîtier. */}
-      <View style={{ marginTop: spacing.xxl }}>
-        <EmptyState
-          label="Secteurs & trace"
-          message="La superposition des tours et le diagramme G-G apparaîtront avec les premières trames du boîtier."
-          source="telemetry_frames"
-        />
-      </View>
     </View>
   );
 }
 
-const s = {
+// ── Tours : la liste des chronos, le meilleur en or ─────────────────────────
+
+function LapsPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: number | null }) {
+  return (
+    <View>
+      <Text style={[s.sectionLabel, { marginBottom: spacing.md }]}>Tours</Text>
+      {laps.length === 0 ? (
+        <EmptyState
+          label="Tours en attente"
+          message="Les chronos par tour apparaîtront avec les premiers tours du boîtier."
+          source="laps"
+        />
+      ) : (
+        <Card>
+          {laps.map((l, i) => {
+            const isBest = l.lap_number === bestLapNumber;
+            return (
+              <View
+                key={l.id}
+                accessibilityRole="text"
+                accessibilityLabel={`Tour ${l.lap_number}, ${formatLapTimeMs(l.duration_seconds)}${
+                  isBest ? ', votre meilleur' : ''
+                }`}
+                style={[s.lapRow, i > 0 ? s.lapRowBorder : null, isBest ? s.lapRowBest : null]}
+              >
+                <Text style={[s.lapNo, isBest ? s.lapTextBest : null]}>T{l.lap_number}</Text>
+                <Text style={[s.lapChrono, isBest ? s.lapTextBest : null]}>
+                  {formatLapTimeMs(l.duration_seconds)}
+                </Text>
+              </View>
+            );
+          })}
+        </Card>
+      )}
+    </View>
+  );
+}
+
+function DoctrineLine() {
+  return (
+    <Text style={s.doctrine}>
+      Le Studio décrit la séance. La lecture, et la suite, restent à vous.
+    </Text>
+  );
+}
+
+const s = StyleSheet.create({
+  // Layout
+  consoleRow: {
+    flexDirection: 'row',
+    gap: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  col: {
+    gap: spacing.xl,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+
+  // En-tête séance
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: palette.creamMute,
     marginBottom: spacing.sm,
   },
@@ -249,76 +553,193 @@ const s = {
     color: palette.creamMute,
     marginTop: spacing.sm,
   },
-  panelLabel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
-    marginBottom: spacing.md,
-  },
-  triageHead: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: spacing.md,
-  },
-  triageLink: {
+  link: {
     fontFamily: theme.fonts.mono,
     fontSize: 11,
     letterSpacing: 0.8,
     color: palette.creamSoft,
   },
+
+  // CTA rapport (identité coach : rouge d'accent)
+  reportBtn: {
+    backgroundColor: palette.coachAccent,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reportBtnTxt: {
+    fontFamily: theme.fonts.bodySemi,
+    fontSize: theme.fontSize.body,
+    color: palette.night,
+    letterSpacing: 0.2,
+  },
+
+  // Panneaux
+  panelLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.md,
+  },
   sectionLabel: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: palette.creamMute,
-    marginBottom: spacing.md,
   },
-  triageRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+  panelHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
     gap: spacing.md,
   },
-  triageRank: {
-    fontFamily: theme.fonts.king,
-    fontSize: 22,
-    // Rang/ordre (pas un chrono) → neutre. L'or reste au chrono/record.
-    color: palette.creamMute,
-    width: 26,
-    textAlign: 'center' as const,
+  panelNote: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    color: palette.gold,
   },
-  triageName: {
+  mapCaption: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: spacing.md,
+  },
+  empty: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+    marginTop: spacing.xs,
+  },
+
+  // Lecture rapide
+  readRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  readDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: palette.creamMute,
+    marginTop: 6,
+  },
+  readTitle: {
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
+    fontSize: theme.fontSize.body,
     color: palette.cream,
   },
-  triageFact: {
+  readFact: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: palette.creamMute,
     marginTop: 2,
     lineHeight: theme.fontSize.small * 1.4,
   },
-  triageMargin: {
+
+  // Légende de marge
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  legendLabel: {
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.h3,
-    // Valeur de marge (pas un chrono) → neutre crème ; la marge code sa zone
-    // ailleurs (dégradé §7.6), pas via l'or.
-    color: palette.cream,
+    fontSize: 9.5,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
   },
-  kmTitle: {
+  legendEnd: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+
+  // Où regarder (triage)
+  watchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  watchRank: {
+    fontFamily: theme.fonts.king,
+    fontSize: 20,
+    width: 24,
+    textAlign: 'center',
+  },
+  watchName: {
     fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
+    fontSize: theme.fontSize.bodyLg,
     color: palette.cream,
   },
-  kmFact: {
+  watchFact: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: palette.creamMute,
-    marginTop: spacing.xs,
+    marginTop: 2,
     lineHeight: theme.fontSize.small * 1.4,
   },
-};
+  watchMargin: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.h3,
+    // Valeur de marge (pas un chrono) → neutre crème ; la zone se code via le
+    // dégradé §7.6 (rang coloré + carte), jamais via l'or.
+    color: palette.cream,
+  },
+
+  // Tours
+  lapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  lapRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: palette.separator,
+  },
+  lapRowBest: {
+    backgroundColor: 'rgba(255,183,3,0.10)',
+    borderRadius: theme.radius.sm,
+    borderTopWidth: 0,
+  },
+  lapNo: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    letterSpacing: 0.6,
+    color: palette.creamMute,
+  },
+  lapChrono: {
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: palette.cream,
+    fontVariant: ['tabular-nums'],
+  },
+  // Meilleur tour = record → OR (seule donnée dorée autorisée).
+  lapTextBest: {
+    color: palette.gold,
+  },
+
+  doctrine: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+    paddingHorizontal: spacing.md,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+});

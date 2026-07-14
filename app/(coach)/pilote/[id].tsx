@@ -1,19 +1,37 @@
 /**
- * Vue Coach — Détail d'un pilote : liste de ses sessions analysées.
+ * Vue Coach — Fiche pilote (CRM lecture seule, handoff §12 · coach/15-fiche-pilote).
  *
- * Lecture seule. Tap sur une session → ouvre l'écran bilan existant
- * (/(app)/bilan?sessionId=xxx) qui fonctionne grâce aux RLS coach SELECT
- * sur app_session_analyses et autres tables analyses.
+ * Reskin refonte-v2 RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13) :
+ *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : 2 colonnes — identité /
+ *     historique à gauche (véhicule, empreinte partagée, rappel confidentialité),
+ *     lecture courante à droite (ses séances + outils de guidance, carnet
+ *     partagé). Header = identité du pilote + badge « consenti · lecture seule ».
+ *   - COMPAGNON (téléphone) : 1 colonne — identité centrée, rangée de repères
+ *     (record or, régularité violet, séances), rappel de consentement, séances.
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel/Segmented/Button. Logique
- * inchangée (sélection comparaison FIFO, navigation bilan/contexte/priorités).
+ * Identité COACH rouge (#E23A4E) sur les actifs/actions ; OR (#FFB703) réservé au
+ * chrono/record ; couleurs QDI fixes. Lecture seule : le coach LIT, il ne prescrit
+ * pas. Périmètre de consentement RLS (jamais email/téléphone/adresse). Logique,
+ * services, états et navigation inchangés (comparaison FIFO, bilan, contexte,
+ * annoter, priorités, plan). Données réelles uniquement ; absent → « — ».
  */
 
 import { useEffect, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import Svg, { Polygon } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type CoachPilotRow,
   type PilotSessionSummary,
@@ -32,19 +50,17 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
-import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatDateLong } from '@/utils/format';
+import { formatChronoTenths, formatDateShort } from '@/utils/format';
 
 type Mode = 'browse' | 'compare';
 
 // Couleurs de zone de marge (donnée, toujours doublée du libellé marginLabelOf).
 // Marge serrée = rouge de DONNÉE (freinage, dataColors.brake #F65B5B), distinct
-// du rouge de MARQUE (#C8102E) qui ne code jamais une donnée de perf (canon V3).
-// Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
-// DONNÉE (freinage), jamais le rouge de marque.
+// du rouge de MARQUE/coach (#E23A4E) qui code l'identité, jamais une perf.
+// Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de donnée.
 const ZONE_COLORS = {
   green: theme.dataColors.accel,
   yellow: theme.palette.gold,
@@ -53,6 +69,9 @@ const ZONE_COLORS = {
 
 export default function CoachPilotDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const [pilot, setPilot] = useState<CoachPilotRow | null>(null);
   const [sessions, setSessions] = useState<PilotSessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -137,6 +156,9 @@ export default function CoachPilotDetailScreen() {
   const fullName = pilot
     ? [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || 'Pilote'
     : 'Chargement…';
+  const initials =
+    [pilot?.firstName?.[0], pilot?.lastName?.[0]].filter(Boolean).join('').toUpperCase() || '·';
+  const sinceLabel = pilot?.assignedAt ? formatSince(pilot.assignedAt) : null;
 
   const sessionsState: ScreenState = loading
     ? 'loading'
@@ -146,136 +168,394 @@ export default function CoachPilotDetailScreen() {
         ? 'empty'
         : 'nominal';
 
+  // Repères réels (compagnon). Record = meilleur tour toutes séances (or, chrono).
+  const bestOverall = sessions.reduce<number | null>((best, sess) => {
+    if (sess.bestLapSeconds == null) return best;
+    return best == null ? sess.bestLapSeconds : Math.min(best, sess.bestLapSeconds);
+  }, null);
+  const latestSnapshot = sharedSnapshots[0] ?? null;
+  // Régularité = bande QDI (violet) de l'empreinte la plus récente partagée. C'est
+  // un CONSTAT descriptif (« réguliers »), jamais un score inventé.
+  const regulariteLabel = latestSnapshot?.regularityBand
+    ? capitalize(latestSnapshot.regularityBand)
+    : '—';
+
+  // — Fragments réutilisés par les deux formats (rendus une seule fois) —
+
+  const consentBadge = <ConsentBadge />;
+
+  const sessionsSection = (
+    <View>
+      <View style={s.rowBetween}>
+        <SectionLabel>Ses séances</SectionLabel>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            mode === 'browse' ? 'Comparer deux séances' : 'Annuler la comparaison'
+          }
+          hitSlop={theme.hitSlop}
+          onPress={() => {
+            setMode(mode === 'browse' ? 'compare' : 'browse');
+            setSelectedIds([]);
+          }}
+          style={{ minHeight: 44, justifyContent: 'center' }}
+        >
+          <Text style={s.action}>{mode === 'browse' ? 'Comparer 2 séances' : 'Annuler'}</Text>
+        </Pressable>
+      </View>
+
+      {mode === 'compare' ? (
+        <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>
+          Sélectionnez deux séances à comparer ({selectedIds.length}/2).
+        </Text>
+      ) : null}
+
+      <StateWrapper
+        state={sessionsState}
+        skeletonLines={5}
+        emptyLabel="Aucune séance pour ce pilote."
+        emptyMessage="Les séances apparaissent ici dès qu'elles sont analysées."
+        errorCause="La liste des séances n'a pas pu être chargée."
+        onRetry={() => setReloadKey((k) => k + 1)}
+      >
+        <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+          {sessions.map((session) => (
+            <SessionRow
+              key={session.id}
+              session={session}
+              pilotId={params.id}
+              mode={mode}
+              selected={selectedIds.includes(session.id)}
+              onToggle={() => toggleSelected(session.id)}
+            />
+          ))}
+        </View>
+      </StateWrapper>
+
+      {mode === 'compare' ? (
+        <View style={{ marginTop: theme.spacing.lg }}>
+          <Button label="Ouvrir le comparatif" disabled={!canCompare} onPress={openComparison} />
+        </View>
+      ) : null}
+    </View>
+  );
+
+  // Outils de guidance (§12) — priorisation du bilan + plan d'objectifs. Le coach
+  // oriente ; sa voix apparaît chez le pilote attribuée, jamais comme consigne.
+  const guidanceSection = (
+    <View style={{ gap: theme.spacing.sm }}>
+      <Button
+        label="Priorités du bilan"
+        variant="ghost"
+        onPress={() =>
+          router.push({
+            pathname: '/(coach)/priorites',
+            params: { pilotId: params.id },
+          } as never)
+        }
+      />
+      <Button
+        label="Plan d’objectifs"
+        variant="ghost"
+        onPress={() =>
+          router.push({
+            pathname: '/(coach)/plan',
+            params: { pilotId: params.id },
+          } as never)
+        }
+      />
+    </View>
+  );
+
+  const backLink = (
+    <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Retour à mes pilotes"
+        hitSlop={theme.hitSlop}
+        onPress={() => router.back()}
+        style={{ minHeight: 44, justifyContent: 'center' }}
+      >
+        <Text style={s.back}>Retour à mes pilotes</Text>
+      </Pressable>
+    </View>
+  );
+
+  // ————————————————————————————————————————————————————————————————
+  // CONSOLE TABLETTE — 2 colonnes (identité / lecture courante)
+  // ————————————————————————————————————————————————————————————————
+  if (isConsole) {
+    return (
+      <Screen>
+        <View style={s.consolePad}>
+          <View style={s.consoleHeader}>
+            <Avatar initials={initials} size={52} />
+            <View style={{ flex: 1 }}>
+              <Text style={s.title} accessibilityRole="header" numberOfLines={1}>
+                {fullName}
+              </Text>
+              {sinceLabel ? <Text style={s.metaMuted}>{sinceLabel}</Text> : null}
+            </View>
+            {pilot ? consentBadge : null}
+          </View>
+
+          <View style={s.columns}>
+            <View style={s.colLeft}>
+              {pilot?.vehicle ? <VehiculeSection vehicle={pilot.vehicle} /> : null}
+              {pilot ? <EmpreinteSection snapshots={sharedSnapshots} /> : null}
+              {pilot ? (
+                <ConsentInfoCard text="Vous ne voyez jamais son email, son téléphone ni son adresse." />
+              ) : null}
+              {pilot ? <ProfileMetaSection pilot={pilot} /> : null}
+              {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
+            </View>
+
+            <View style={s.colRight}>
+              {sessionsSection}
+              {guidanceSection}
+              {sharedNotes.length > 0 ? <SharedNotesSection notes={sharedNotes} /> : null}
+            </View>
+          </View>
+
+          {backLink}
+        </View>
+      </Screen>
+    );
+  }
+
+  // ————————————————————————————————————————————————————————————————
+  // COMPAGNON TÉLÉPHONE — 1 colonne
+  // ————————————————————————————————————————————————————————————————
   return (
     <Screen>
-      <AppBar title="PILOTE" onBack={() => router.back()} />
+      <AppBar title="Fiche pilote" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={{ marginBottom: theme.spacing.md }}>
-          <RoleBadge role="coach" />
-        </View>
-        <Text style={s.eyebrow}>PILOTE SUIVI</Text>
-        <Text style={s.title} accessibilityRole="header">
-          {fullName}
-        </Text>
-
-        {/* Profil du pilote (affichage croisé) — édité par le pilote, visible
-            ici car affilié et consenti (coach_pilots_view). */}
-        {pilot ? <PilotProfileBlock pilot={pilot} /> : null}
-        {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
-        {sharedNotes.length > 0 ? <SharedNotesBlock notes={sharedNotes} /> : null}
-        {sharedSnapshots.length > 0 ? <SharedSnapshotsBlock snapshots={sharedSnapshots} /> : null}
-
-        {/* Priorisation du bilan (§10.3c-B) + Plan d'objectifs (coach_objectives) */}
-        <View
-          style={{
-            marginTop: theme.spacing.lg,
-            marginBottom: theme.spacing.xxl,
-            gap: theme.spacing.sm,
-          }}
-        >
-          <Button
-            label="Priorités du bilan"
-            variant="ghost"
-            onPress={() =>
-              router.push({
-                pathname: '/(coach)/priorites',
-                params: { pilotId: params.id },
-              } as never)
-            }
-          />
-          <Button
-            label="Plan d’objectifs"
-            variant="ghost"
-            onPress={() =>
-              router.push({
-                pathname: '/(coach)/plan',
-                params: { pilotId: params.id },
-              } as never)
-            }
-          />
+        <View style={s.companionIdentity}>
+          <Avatar initials={initials} size={68} />
+          <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">
+            {fullName}
+          </Text>
+          {sinceLabel ? (
+            <Text style={[s.metaMuted, { textAlign: 'center' }]}>{sinceLabel}</Text>
+          ) : null}
         </View>
 
-        <StateWrapper
-          state={sessionsState}
-          skeletonLines={5}
-          emptyLabel="Aucune session pour ce pilote."
-          emptyMessage="Les sessions apparaissent ici dès qu'elles sont analysées."
-          errorCause="La liste des sessions n'a pas pu être chargée."
-          onRetry={() => setReloadKey((k) => k + 1)}
-        >
-          <>
-            <View style={s.rowBetween}>
-              <SectionLabel>
-                {`${sessions.length} ${sessions.length === 1 ? 'SESSION' : 'SESSIONS'}`}
-              </SectionLabel>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  mode === 'browse' ? 'Comparer deux sessions' : 'Annuler la comparaison'
-                }
-                hitSlop={theme.hitSlop}
-                onPress={() => {
-                  setMode(mode === 'browse' ? 'compare' : 'browse');
-                  setSelectedIds([]);
-                }}
-              >
-                <Text style={s.action}>
-                  {mode === 'browse' ? 'Comparer 2 sessions' : 'Annuler'}
-                </Text>
-              </Pressable>
-            </View>
+        {pilot ? (
+          <View style={s.tilesRow}>
+            <Tile
+              value={bestOverall != null ? formatChronoTenths(bestOverall) : '—'}
+              label="record"
+              color={theme.palette.gold}
+            />
+            <Tile value={regulariteLabel} label="régularité" color={theme.dataColors.regularity} />
+            <Tile
+              value={loading ? '—' : String(sessions.length)}
+              label="séances"
+              color={theme.palette.cream}
+            />
+          </View>
+        ) : null}
 
-            {mode === 'compare' ? (
-              <Text style={[s.caption, { marginTop: theme.spacing.md }]}>
-                Sélectionnez deux sessions à comparer ({selectedIds.length}/2).
-              </Text>
-            ) : null}
+        {pilot ? (
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <ConsentInfoCard text="Consenti · lecture seule. Aucune coordonnée visible." />
+          </View>
+        ) : null}
 
-            <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
-              {sessions.map((session) => (
-                <SessionRow
-                  key={session.id}
-                  session={session}
-                  pilotId={params.id}
-                  mode={mode}
-                  selected={selectedIds.includes(session.id)}
-                  onToggle={() => toggleSelected(session.id)}
-                />
-              ))}
-            </View>
+        <View style={{ marginTop: theme.spacing.xl }}>{sessionsSection}</View>
 
-            {mode === 'compare' ? (
-              <View style={{ marginTop: theme.spacing.xl }}>
-                <Button
-                  label="Ouvrir le comparatif"
-                  disabled={!canCompare}
-                  onPress={openComparison}
-                />
-              </View>
-            ) : null}
-          </>
-        </StateWrapper>
+        <View style={{ marginTop: theme.spacing.xl }}>{guidanceSection}</View>
 
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Retour à mes pilotes"
-            hitSlop={theme.hitSlop}
-            onPress={() => router.back()}
-            style={{ minHeight: 44, justifyContent: 'center' }}
-          >
-            <Text style={s.back}>Retour à mes pilotes</Text>
-          </Pressable>
-        </View>
+        {pilot ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <EmpreinteSection snapshots={sharedSnapshots} />
+          </View>
+        ) : null}
+
+        {sharedNotes.length > 0 ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <SharedNotesSection notes={sharedNotes} />
+          </View>
+        ) : null}
+
+        {pilot?.vehicle ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <VehiculeSection vehicle={pilot.vehicle} />
+          </View>
+        ) : null}
+
+        {pilot ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <ProfileMetaSection pilot={pilot} />
+          </View>
+        ) : null}
+
+        {pilotMedia.length > 0 ? (
+          <View style={{ marginTop: theme.spacing.xl }}>
+            <PilotMediaBlock media={pilotMedia} />
+          </View>
+        ) : null}
+
+        {backLink}
       </View>
     </Screen>
   );
 }
 
-function PilotProfileBlock({ pilot }: { pilot: CoachPilotRow }) {
+// ————————————————————————————————————————————————————————————————
+// Pièces d'identité
+// ————————————————————————————————————————————————————————————————
+
+/** Avatar neutre du pilote (initiales) — le pilote est neutre, jamais le rouge coach. */
+function Avatar({ initials, size }: { initials: string; size: number }) {
+  return (
+    <View
+      style={[s.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    >
+      <Text style={[s.avatarTxt, { fontSize: Math.round(size * 0.34) }]}>{initials}</Text>
+    </View>
+  );
+}
+
+/** Badge d'accès — vert (état consenti), lecture seule. Jamais l'or, jamais le rouge coach. */
+function ConsentBadge() {
+  return (
+    <View
+      style={s.consentBadge}
+      accessibilityRole="text"
+      accessibilityLabel="Accès consenti, lecture seule"
+    >
+      <View style={s.consentDot} />
+      <Text style={s.consentBadgeTxt}>Consenti · lecture seule</Text>
+    </View>
+  );
+}
+
+/** Rappel de confidentialité — accent vert discret, factuel (garde-fou RLS §12). */
+function ConsentInfoCard({ text }: { text: string }) {
+  return (
+    <View style={s.consentInfo} accessibilityRole="summary">
+      <Text style={s.consentInfoTxt}>{text}</Text>
+    </View>
+  );
+}
+
+/** Repère chiffré (compagnon). Or = record, violet = régularité QDI, crème = compte. */
+function Tile({ value, label, color }: { value: string; label: string; color: string }) {
+  const muted = value === '—';
+  return (
+    <View style={s.tile}>
+      <Text
+        style={[s.tileValue, { color: muted ? theme.palette.creamMute : color }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+      >
+        {value}
+      </Text>
+      <Text style={s.tileLabel}>{label}</Text>
+    </View>
+  );
+}
+
+// ————————————————————————————————————————————————————————————————
+// Colonne identité / historique
+// ————————————————————————————————————————————————————————————————
+
+function VehiculeSection({ vehicle }: { vehicle: string }) {
+  return (
+    <View>
+      <SectionLabel>Véhicule</SectionLabel>
+      <Card style={{ marginTop: theme.spacing.sm }}>
+        <Text style={s.vehicleModel}>{vehicle}</Text>
+      </Card>
+    </View>
+  );
+}
+
+/**
+ * Empreinte partagée — la signature (5 axes) que le pilote a explicitement
+ * partagée. Silhouette neutre (jamais un score), tracée seulement quand tous les
+ * axes ont une mesure ; sinon un constat honnête. Les empreintes plus anciennes
+ * restent listées (constats juxtaposés), jamais une courbe d'évolution.
+ */
+function EmpreinteSection({ snapshots }: { snapshots: SignatureSnapshot[] }) {
+  const latest = snapshots[0] ?? null;
+  const older = snapshots.slice(1);
+  const axes = latest?.axes ?? [];
+  const complete = axes.length === 5 && axes.every((a) => a.value !== null);
+  const values = complete ? axes.map((a) => a.value as number) : null;
+  const braking = latest?.traits.find((t) => t.key === 'braking')?.value ?? null;
+  const lateral = latest?.traits.find((t) => t.key === 'lateral')?.value ?? null;
+  const detail = [braking && `freinage ${braking}`, lateral && `engagement ${lateral}`]
+    .filter(Boolean)
+    .join(' · ');
+  const size = 132;
+
+  return (
+    <View>
+      <SectionLabel>Empreinte récente</SectionLabel>
+      <Card style={{ marginTop: theme.spacing.sm, gap: theme.spacing.md }}>
+        <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+          {values ? (
+            <Svg
+              width={size}
+              height={size}
+              viewBox={`0 0 ${size} ${size}`}
+              accessibilityLabel="Empreinte de pilotage sur cinq axes"
+            >
+              <Polygon
+                points={pentaPoints(size, [1, 1, 1, 1, 1])}
+                fill="none"
+                stroke={theme.palette.line}
+                strokeWidth={1}
+              />
+              <Polygon
+                points={pentaPoints(size, [0.5, 0.5, 0.5, 0.5, 0.5])}
+                fill="none"
+                stroke={theme.palette.line}
+                strokeWidth={1}
+              />
+              <Polygon
+                points={pentaPoints(size, values)}
+                fill="rgba(245,245,247,0.06)"
+                stroke={theme.palette.creamMute}
+                strokeWidth={1.5}
+                strokeLinejoin="round"
+              />
+            </Svg>
+          ) : (
+            <Text style={s.emptyMini}>Empreinte non partagée pour l’instant.</Text>
+          )}
+          {latest?.regularityBand ? (
+            <Text style={s.empreinteBand}>Tours {latest.regularityBand}</Text>
+          ) : null}
+        </View>
+        {detail ? <Text style={[s.caption, { textAlign: 'center' }]}>{detail}</Text> : null}
+        {older.length > 0 ? (
+          <View style={s.empreinteOlder}>
+            {older.map((sn) => (
+              <Text key={sn.id} style={s.noteMeta}>
+                {formatDateShort(sn.sessionStartedAt ?? sn.computedAt)} · Tours{' '}
+                {sn.regularityBand ?? '—'}
+              </Text>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+    </View>
+  );
+}
+
+/**
+ * Profil pilote (affichage croisé) — édité par le pilote, visible car affilié et
+ * consenti (coach_pilots_view). Le véhicule a sa propre carte ; ici le reste.
+ */
+function ProfileMetaSection({ pilot }: { pilot: CoachPilotRow }) {
   const rows: { label: string; value: string }[] = [];
   if (pilot.pilotLevel) rows.push({ label: 'Niveau', value: pilotLevelLabel(pilot.pilotLevel) });
-  if (pilot.vehicle) rows.push({ label: 'Véhicule', value: pilot.vehicle });
   if (pilot.experienceYears) rows.push({ label: 'Expérience', value: pilot.experienceYears });
   if (pilot.ffsaLicense) rows.push({ label: 'Licence FFSA', value: pilot.ffsaLicense });
 
@@ -290,133 +570,110 @@ function PilotProfileBlock({ pilot }: { pilot: CoachPilotRow }) {
   if (rows.length === 0 && links.length === 0) return null;
 
   return (
-    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View>
       <SectionLabel>Profil pilote</SectionLabel>
-      {rows.map((r) => (
-        <View key={r.label} style={{ gap: 2 }}>
-          <Text style={s.profileLabel}>{r.label}</Text>
-          <Text style={s.profileValue}>{r.value}</Text>
-        </View>
-      ))}
-      {links.length > 0 ? (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
-          {links.map(([label, url]) => (
-            <Pressable
-              key={label}
-              accessibilityRole="link"
-              accessibilityLabel={label}
-              onPress={() => url && Linking.openURL(url).catch(() => undefined)}
-              style={({ pressed }) => ({
-                minHeight: 44,
-                paddingHorizontal: theme.spacing.lg,
-                justifyContent: 'center',
-                borderRadius: theme.radius.sm,
-                borderWidth: 1,
-                borderColor: theme.palette.line,
-                opacity: pressed ? 0.8 : 1,
-              })}
-            >
-              <Text style={s.profileLink}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
-    </Card>
+      <Card style={{ marginTop: theme.spacing.sm, gap: theme.spacing.md }}>
+        {rows.map((r) => (
+          <View key={r.label} style={{ gap: 2 }}>
+            <Text style={s.profileLabel}>{r.label}</Text>
+            <Text style={s.profileValue}>{r.value}</Text>
+          </View>
+        ))}
+        {links.length > 0 ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
+            {links.map(([label, url]) => (
+              <Pressable
+                key={label}
+                accessibilityRole="link"
+                accessibilityLabel={label}
+                onPress={() => url && Linking.openURL(url).catch(() => undefined)}
+                style={({ pressed }) => ({
+                  minHeight: 44,
+                  paddingHorizontal: theme.spacing.lg,
+                  justifyContent: 'center',
+                  borderRadius: theme.radius.sm,
+                  borderWidth: 1,
+                  borderColor: theme.palette.line,
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={s.profileLink}>{label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+      </Card>
+    </View>
   );
 }
 
 function PilotMediaBlock({ media }: { media: PilotMediaView[] }) {
   return (
-    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View>
       <SectionLabel>Médias</SectionLabel>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: theme.spacing.sm }}
-      >
-        {media.map((m) =>
-          m.type === 'photo' && m.signedUrl ? (
-            <Pressable
-              key={m.id}
-              accessibilityRole="image"
-              accessibilityLabel="Photo du pilote"
-              onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
-              style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-            >
-              <Image source={{ uri: m.signedUrl }} resizeMode="cover" style={s.mediaThumb} />
-            </Pressable>
-          ) : (
-            <Pressable
-              key={m.id}
-              accessibilityRole="button"
-              accessibilityLabel={m.type === 'video' ? 'Ouvrir la vidéo' : 'Photo'}
-              onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
-              style={({ pressed }) => [
-                s.mediaThumb,
-                s.mediaCenter,
-                { opacity: pressed ? 0.85 : 1 },
-              ]}
-            >
-              <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
-            </Pressable>
-          )
-        )}
-      </ScrollView>
-    </Card>
+      <Card style={{ marginTop: theme.spacing.sm }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ gap: theme.spacing.sm }}
+        >
+          {media.map((m) =>
+            m.type === 'photo' && m.signedUrl ? (
+              <Pressable
+                key={m.id}
+                accessibilityRole="image"
+                accessibilityLabel="Photo du pilote"
+                onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
+                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+              >
+                <Image source={{ uri: m.signedUrl }} resizeMode="cover" style={s.mediaThumb} />
+              </Pressable>
+            ) : (
+              <Pressable
+                key={m.id}
+                accessibilityRole="button"
+                accessibilityLabel={m.type === 'video' ? 'Ouvrir la vidéo' : 'Photo'}
+                onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
+                style={({ pressed }) => [
+                  s.mediaThumb,
+                  s.mediaCenter,
+                  { opacity: pressed ? 0.85 : 1 },
+                ]}
+              >
+                <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
+              </Pressable>
+            )
+          )}
+        </ScrollView>
+      </Card>
+    </View>
   );
 }
 
 /**
  * Carnet partagé — notes que le pilote a explicitement partagées (lecture seule).
  * Le coach observe, il ne répond pas (la note du pilote est SON espace). Doctrine :
- * aucune interprétation, aucun jugement affiché ici.
+ * aucune interprétation, aucun jugement affiché ici ; attribution factuelle.
  */
-function SharedNotesBlock({ notes }: { notes: PilotNote[] }) {
+function SharedNotesSection({ notes }: { notes: PilotNote[] }) {
   return (
-    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
+    <View>
       <SectionLabel>Carnet partagé</SectionLabel>
-      {notes.map((n) => (
-        <View key={n.id} style={{ gap: theme.spacing.xs }}>
-          <Text style={s.sharedNoteDate}>{formatDateLong(n.createdAt)}</Text>
-          <Text style={s.sharedNoteBody}>{n.body}</Text>
-        </View>
-      ))}
-    </Card>
+      <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
+        {notes.map((n) => (
+          <Card key={n.id} style={{ gap: theme.spacing.xs }}>
+            <Text style={s.noteQuote}>« {n.body} »</Text>
+            <Text style={s.noteMeta}>{formatDateShort(n.createdAt)} · partagé par le pilote</Text>
+          </Card>
+        ))}
+      </View>
+    </View>
   );
 }
 
-/**
- * Empreinte partagée — snapshots de signature que le pilote a partagés (lecture
- * seule). Des constats descriptifs consolidés, jamais un score ni une cible.
- */
-function SharedSnapshotsBlock({ snapshots }: { snapshots: SignatureSnapshot[] }) {
-  const traitValue = (snap: SignatureSnapshot, key: string) =>
-    snap.traits.find((t) => t.key === key)?.value ?? null;
-  return (
-    <Card style={{ marginTop: theme.spacing.lg, gap: theme.spacing.md }}>
-      <SectionLabel>Empreinte partagée</SectionLabel>
-      {snapshots.map((snap) => {
-        const braking = traitValue(snap, 'braking');
-        const lateral = traitValue(snap, 'lateral');
-        return (
-          <View key={snap.id} style={{ gap: theme.spacing.xs }}>
-            <Text style={s.sharedNoteDate}>
-              {new Date(snap.computedAt).toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'short',
-              })}
-            </Text>
-            <Text style={s.sharedNoteBody}>
-              Tours {snap.regularityBand ?? '—'}
-              {braking ? ` · freinage ${braking}` : ''}
-              {lateral ? ` · engagement ${lateral}` : ''}
-            </Text>
-          </View>
-        );
-      })}
-    </Card>
-  );
-}
+// ————————————————————————————————————————————————————————————————
+// Ligne de séance
+// ————————————————————————————————————————————————————————————————
 
 function SessionRow({
   session,
@@ -431,28 +688,21 @@ function SessionRow({
   selected?: boolean;
   onToggle?: () => void;
 }) {
-  const dateStr = formatDateLong(session.startedAt);
+  const dateStr = formatDateShort(session.startedAt);
   const lapStr = session.lapCount
     ? `${session.lapCount} tour${session.lapCount > 1 ? 's' : ''}`
     : '—';
-  const marginStr = session.marginGlobal !== null ? `${Math.round(session.marginGlobal)} %` : '—';
+  const hasChrono = session.bestLapSeconds != null;
+  const chronoStr = hasChrono ? formatChronoTenths(session.bestLapSeconds as number) : '—';
 
-  // Libellé a11y consolidé : date, circuit, tours, zone de marge et marge.
+  // Libellé a11y consolidé : date, circuit, tours, zone de marge et meilleur tour.
   const zoneStr = session.marginZone ? `, ${marginLabelOf(session.marginZone)}` : '';
-  const marginA11y =
-    session.marginGlobal !== null ? `, marge ${Math.round(session.marginGlobal)} %` : '';
-  const rowA11yLabel = `${dateStr}, ${session.circuitName ?? 'circuit'}, ${lapStr}${zoneStr}${marginA11y}`;
+  const chronoA11y = hasChrono ? `, meilleur tour ${chronoStr}` : '';
+  const rowA11yLabel = `${dateStr}, ${session.circuitName ?? 'circuit'}, ${lapStr}${zoneStr}${chronoA11y}`;
 
   const rowContent = (
     <>
-      <View
-        style={{
-          width: 6,
-          height: 40,
-          borderRadius: 3,
-          backgroundColor: colorForZone(session.marginZone),
-        }}
-      />
+      <View style={[s.zoneBar, { backgroundColor: colorForZone(session.marginZone) }]} />
       <View style={{ flex: 1 }}>
         <Text style={s.sessionDate}>{dateStr}</Text>
         <Text style={[s.caption, { marginTop: theme.spacing.xs }]}>
@@ -460,7 +710,8 @@ function SessionRow({
           {session.marginZone ? ` · ${marginLabelOf(session.marginZone)}` : ''}
         </Text>
       </View>
-      <Text style={s.sessionValue}>{marginStr}</Text>
+      {/* Meilleur tour = OR (chrono/record), la seule couleur or de l'écran. */}
+      <Text style={[s.sessionChrono, !hasChrono && s.sessionChronoMuted]}>{chronoStr}</Text>
     </>
   );
 
@@ -476,7 +727,7 @@ function SessionRow({
       >
         <Card
           style={{
-            borderColor: selected ? theme.palette.coach : theme.palette.line,
+            borderColor: selected ? theme.palette.coachAccent : theme.palette.line,
             borderWidth: selected ? 1.5 : 1,
             flexDirection: 'row',
             alignItems: 'center',
@@ -546,6 +797,10 @@ function SessionRow({
   );
 }
 
+// ————————————————————————————————————————————————————————————————
+// Helpers
+// ————————————————————————————————————————————————————————————————
+
 function colorForZone(zone: MarginZone | null): string {
   if (!zone) return theme.palette.creamMute;
   return zone === 'green'
@@ -555,41 +810,195 @@ function colorForZone(zone: MarginZone | null): string {
       : ZONE_COLORS.red;
 }
 
-const s = {
-  eyebrow: {
+function capitalize(value: string): string {
+  return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+/** « Suivi depuis mai 2026 » à partir de la date d'affiliation (jamais inventée). */
+function formatSince(iso: string): string | null {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    return `Suivi depuis ${d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Sommets d'un pentagone régulier (5 axes), rayons pondérés par `values` (0–1). */
+function pentaPoints(size: number, values: number[]): string {
+  const cx = size / 2;
+  const cy = size / 2;
+  const r = size / 2 - 6;
+  return values
+    .map((v, i) => {
+      const a = -Math.PI / 2 + (i * 2 * Math.PI) / values.length;
+      return `${(cx + Math.cos(a) * r * v).toFixed(1)},${(cy + Math.sin(a) * r * v).toFixed(1)}`;
+    })
+    .join(' ');
+}
+
+const s = StyleSheet.create({
+  consolePad: { padding: theme.spacing.xl },
+  consoleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
+  },
+  columns: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.xl,
+  },
+  colLeft: { width: 320, gap: theme.spacing.lg },
+  colRight: { flex: 1, gap: theme.spacing.xl },
+  companionIdentity: {
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.lg,
+  },
+  avatar: {
+    backgroundColor: theme.palette.card2,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTxt: {
     fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.coach,
-    marginBottom: theme.spacing.md,
+    color: theme.palette.cream,
+    letterSpacing: 0.5,
   },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
     color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
+    lineHeight: theme.fontSize.h2 * 1.2,
+  },
+  metaMuted: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    marginTop: 2,
+  },
+  // Badge d'accès consenti — vert (état), lecture seule.
+  consentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs + 2,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 6,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: 'rgba(79,201,138,0.45)',
+    backgroundColor: 'rgba(79,201,138,0.08)',
+  },
+  consentDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: theme.palette.green },
+  consentBadgeTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: theme.palette.green,
+  },
+  // Rappel confidentialité — accent vert 2px (§5 bordure d'accent), texte sobre.
+  consentInfo: {
+    backgroundColor: 'rgba(79,201,138,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(79,201,138,0.22)',
+    borderLeftWidth: 2,
+    borderLeftColor: theme.palette.green,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+  },
+  consentInfoTxt: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+  tilesRow: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md,
+  },
+  tile: {
+    flex: 1,
+    backgroundColor: theme.palette.card2,
+    borderWidth: 1,
+    borderColor: theme.palette.line,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  tileValue: {
+    fontFamily: theme.fonts.king,
+    fontSize: 20,
+    letterSpacing: -0.5,
+  },
+  tileLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: theme.palette.creamMute,
+  },
+  vehicleModel: {
+    fontFamily: theme.fonts.bodySemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: theme.palette.cream,
+  },
+  empreinteBand: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.6,
+    color: theme.dataColors.regularity,
+  },
+  empreinteOlder: {
+    gap: theme.spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: theme.palette.line,
+    paddingTop: theme.spacing.sm,
+  },
+  emptyMini: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.lg,
   },
   rowBetween: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  // Libellé d'action (interactif) — corps, pas mono : le mono reste aux chiffres.
+  // Libellé d'action (interactif) — corps, pas mono ; identité coach (rouge).
   action: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.3,
-    color: theme.palette.coach,
+    color: theme.palette.coachAccent,
   },
+  zoneBar: { width: 6, height: 40, borderRadius: 3 },
   sessionDate: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
+  sessionChrono: {
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.gold,
+  },
+  sessionChronoMuted: { color: theme.palette.creamMute },
   sessionActions: {
-    flexDirection: 'row' as const,
+    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: theme.palette.line,
   },
@@ -598,17 +1007,12 @@ const s = {
     minHeight: 44,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   sessionActionDivider: {
     borderLeftWidth: 1,
     borderLeftColor: theme.palette.line,
-  },
-  sessionValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.value,
-    color: theme.palette.cream,
   },
   caption: {
     fontFamily: theme.fonts.body,
@@ -616,26 +1020,25 @@ const s = {
     color: theme.palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
   },
-  // Carnet partagé (lecture seule coach) — date en mono (voix de l'instrument).
-  sharedNoteDate: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  sharedNoteBody: {
+  noteQuote: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.cream,
     lineHeight: theme.fontSize.small * 1.5,
+  },
+  noteMeta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: theme.palette.creamMute,
   },
   // Libellé de champ de profil — corps en capitales (le mono reste aux chiffres).
   profileLabel: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: theme.palette.creamMute,
   },
   profileValue: {
@@ -643,12 +1046,11 @@ const s = {
     fontSize: theme.fontSize.bodyLg,
     color: theme.palette.cream,
   },
-  // Pastille de lien réseau — capitales mono, comme les eyebrows.
   profileLink: {
     fontFamily: theme.fonts.mono,
     fontSize: 11,
     letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: theme.palette.creamMute,
   },
   // Lien de retour (interactif) — corps, pas mono.
@@ -666,12 +1068,12 @@ const s = {
     borderColor: theme.palette.line,
     backgroundColor: theme.palette.card2,
   },
-  mediaCenter: { alignItems: 'center' as const, justifyContent: 'center' as const },
+  mediaCenter: { alignItems: 'center', justifyContent: 'center' },
   mediaTileT: {
     fontFamily: theme.fonts.mono,
     fontSize: 11,
     letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: theme.palette.creamMute,
   },
-};
+});

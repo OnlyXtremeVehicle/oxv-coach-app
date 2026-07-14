@@ -1,26 +1,45 @@
 /**
- * Coach — File de lecture (V9 §14, sur `coach_queue`).
+ * Coach — File de lecture (handoff §12 `coach/02-file-lecture`, sur `coach_queue`).
  *
- * Les sessions des pilotes consentis, avec un statut de lecture EXPLICITE et
- * persistant : à lire / lues / archivées (filtrable, marquable). Un tap ouvre la
- * fiche du pilote. Lecture seule côté pilote — rien de ceci ne lui est exposé.
- * « À votre rythme » : la file aide le coach, elle ne le presse pas. Accent
- * coach neutre, vouvoiement, pas d'emoji.
+ * RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13) : le MÊME écran
+ * s'adapte selon la largeur.
+ *   - CONSOLE tablette (≥ COACH_CONSOLE_MIN_WIDTH) : table dense fidèle à la
+ *     maquette — en-tête (eyebrow + titre + filtres à droite), ligne de colonnes
+ *     (PILOTE · CIRCUIT · REÇU), rangées à ligne unique + flèche d'entrée Studio.
+ *     Le rail (CoachRail) est fourni par `_layout.tsx`.
+ *   - COMPAGNON téléphone (< seuil) : AppBar + une colonne de cartes compactes.
+ *
+ * Les séances des pilotes consentis, avec un statut de lecture EXPLICITE et
+ * persistant : à lire / lues / archivées (filtrable, marquable via `coach_queue`).
+ * La flèche ouvre le Studio (lecture de CETTE séance, entrée directe §12).
+ * « À votre rythme » : la file aide le coach, elle ne le presse pas. Identité
+ * coach = rouge #E23A4E sur l'actif et l'action ; l'or reste réservé au chrono
+ * (absent ici : la file ne porte ni meilleur tour ni régularité — cf. rapport).
+ * Vouvoiement, zéro emoji, descriptif jamais prescriptif. Lecture seule côté
+ * pilote — rien de ceci ne lui est exposé.
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import * as haptics from '@/lib/haptics';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { groupQueue, type QueueItem, type QueueStatus } from '@/services/coachQueueLogic';
 import { loadCoachQueue, setQueueStatus } from '@/services/coachQueueService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatDateShort } from '@/utils/format';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
+
+const AVATAR = 34;
+const RECU_W = 100;
+const TRAIL_W = 40;
+/** Nombre de « lues récemment » montrées sous le filtre « à lire » (teaser). */
+const RECENT_READ_LIMIT = 4;
 
 const FILTERS: { key: QueueStatus; label: string }[] = [
   { key: 'unread', label: 'À lire' },
@@ -35,6 +54,9 @@ const EMPTY: Record<QueueStatus, string> = {
 };
 
 export default function FileLectureScreen() {
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const [items, setItems] = useState<QueueItem[]>([]);
   const [filter, setFilter] = useState<QueueStatus>('unread');
   const [loading, setLoading] = useState(true);
@@ -77,109 +99,198 @@ export default function FileLectureScreen() {
   );
 
   const groups = groupQueue(items);
-  const active = groups[filter];
+  const primary = groups[filter];
+  // Sous « à lire », on montre en second un rappel des dernières lues (maquette
+  // « LUES RÉCEMMENT ») — composition d'écran, aucune requête supplémentaire.
+  const hasRecentRead = filter === 'unread' && groups.read.length > 0;
   const listState: ScreenState = loading
     ? 'loading'
     : error
       ? 'error'
-      : active.length === 0
+      : primary.length === 0 && !hasRecentRead
         ? 'empty'
         : 'nominal';
 
+  const renderFilters = () => (
+    <View style={s.filterRow} accessibilityRole="tablist">
+      {FILTERS.map((f) => {
+        const on = f.key === filter;
+        return (
+          <Pressable
+            key={f.key}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: on }}
+            accessibilityLabel={`${f.label}, ${groups.counts[f.key]}`}
+            onPress={() => setFilter(f.key)}
+            style={[s.chip, !isConsole && s.chipGrow, on && s.chipActive]}
+          >
+            <Text style={[s.chipLabel, on && s.chipLabelActive]}>
+              {f.label} · {groups.counts[f.key]}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+
+  const renderList = () => (
+    <StateWrapper
+      state={listState}
+      skeletonLines={4}
+      emptyLabel="Rien ici"
+      emptyMessage={EMPTY[filter]}
+      emptySource="telemetry_sessions"
+      errorCause="La file n'a pas pu être chargée."
+      onRetry={reload}
+    >
+      {isConsole ? <ColumnHeader /> : null}
+      <View style={{ gap: spacing.sm }}>
+        {filter === 'unread' ? (
+          <>
+            {groups.unread.length === 0 ? (
+              <Text style={s.calmNote}>Rien à lire pour l’instant.</Text>
+            ) : (
+              groups.unread.map((item) => (
+                <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
+              ))
+            )}
+            {groups.read.length > 0 ? (
+              <>
+                <RecentlyReadDivider />
+                {groups.read.slice(0, RECENT_READ_LIMIT).map((item) => (
+                  <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
+                ))}
+              </>
+            ) : null}
+          </>
+        ) : (
+          primary.map((item) => (
+            <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
+          ))
+        )}
+      </View>
+    </StateWrapper>
+  );
+
   return (
     <Screen>
-      <AppBar title="FILE DE LECTURE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>À VOTRE RYTHME</Text>
-        <Text style={s.title} accessibilityRole="header">
-          Votre file de lecture.
-        </Text>
-
-        {/* Filtres + compteurs. */}
-        <View style={s.filterRow} accessibilityRole="tablist">
-          {FILTERS.map((f) => {
-            const isActive = f.key === filter;
-            return (
-              <Pressable
-                key={f.key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`${f.label}, ${groups.counts[f.key]}`}
-                onPress={() => setFilter(f.key)}
-                style={[s.chip, isActive ? s.chipActive : null]}
-              >
-                <Text style={[s.chipLabel, isActive ? s.chipLabelActive : null]}>
-                  {f.label} · {groups.counts[f.key]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        <View style={{ marginTop: theme.spacing.lg }}>
-          <StateWrapper
-            state={listState}
-            skeletonLines={4}
-            emptyLabel="Rien ici"
-            emptyMessage={EMPTY[filter]}
-            emptySource="telemetry_sessions"
-            errorCause="La file n'a pas pu être chargée."
-            onRetry={reload}
-          >
-            <View style={{ gap: theme.spacing.sm }}>
-              {active.map((item) => (
-                <QueueRow key={item.sessionId} item={item} onMark={mark} />
-              ))}
+      {isConsole ? null : <AppBar title="FILE DE LECTURE" onBack={() => router.back()} />}
+      <View style={isConsole ? s.consolePad : s.companionPad}>
+        {isConsole ? (
+          <View style={s.consoleHead}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.eyebrow}>FILE DE LECTURE</Text>
+              <Text style={s.title} accessibilityRole="header">
+                {titleFor(filter, groups.counts)}
+              </Text>
             </View>
-          </StateWrapper>
-        </View>
+            {renderFilters()}
+          </View>
+        ) : (
+          <>
+            <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>À VOTRE RYTHME</Text>
+            <Text style={s.title} accessibilityRole="header">
+              {titleFor(filter, groups.counts)}
+            </Text>
+            <View style={{ marginTop: spacing.lg }}>{renderFilters()}</View>
+          </>
+        )}
+
+        <View style={{ marginTop: spacing.lg }}>{renderList()}</View>
       </View>
     </Screen>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ColumnHeader() {
+  return (
+    <View
+      style={s.colHead}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
+      <View style={{ width: AVATAR }} />
+      <Text style={[s.colHeadTxt, { flex: 1.4 }]}>PILOTE</Text>
+      <Text style={[s.colHeadTxt, { flex: 1.2 }]}>CIRCUIT</Text>
+      <Text style={[s.colHeadTxt, { width: RECU_W }]}>REÇU</Text>
+      <View style={{ width: TRAIL_W }} />
+    </View>
+  );
+}
+
+function RecentlyReadDivider() {
+  return (
+    <View style={s.divider}>
+      <Text style={s.dividerTxt} accessibilityRole="header">
+        LUES RÉCEMMENT
+      </Text>
+      <View style={s.dividerLine} />
+    </View>
+  );
+}
+
 function QueueRow({
   item,
+  isConsole,
   onMark,
 }: {
   item: QueueItem;
+  isConsole: boolean;
   onMark: (item: QueueItem, status: QueueStatus) => void;
 }) {
-  const meta = [item.circuitName, formatDateShort(item.startedAt)].filter(Boolean).join(' · ');
+  const recu = receivedLabel(item.startedAt);
+  const circuit = item.circuitName ?? '—';
+  const muted = item.status !== 'unread';
+
+  const openStudio = () =>
+    router.push({ pathname: '/(coach)/studio', params: { sessionId: item.sessionId } } as never);
+
+  const a11y = `${item.pilotName}. ${item.circuitName ?? 'circuit inconnu'}. Reçu ${recu}. Ouvrir le studio.`;
 
   return (
-    <Card>
+    <View style={[s.rowCard, item.status === 'unread' && s.rowCardUnread]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${item.pilotName}. ${meta}. Ouvrir la fiche.`}
-        onPress={() =>
-          router.push({ pathname: '/(coach)/pilote/[id]', params: { id: item.pilotId } } as never)
-        }
-        style={({ pressed }) => [s.row, pressed && { opacity: 0.85 }]}
+        accessibilityLabel={a11y}
+        onPress={openStudio}
+        style={({ pressed }) => [s.rowMain, pressed && { opacity: 0.85 }]}
       >
-        {item.status === 'unread' ? (
-          <View style={s.dot} accessibilityElementsHidden importantForAccessibility="no" />
-        ) : null}
-        <View style={{ flex: 1 }}>
-          <Text style={s.pilot}>{item.pilotName}</Text>
-          {meta ? <Text style={s.meta}>{meta}</Text> : null}
+        <View style={s.avatar}>
+          <Text style={s.avatarTxt}>{initialsOf(item.pilotName)}</Text>
         </View>
-        <Text style={s.chevron}>›</Text>
+
+        {isConsole ? (
+          <>
+            <Text numberOfLines={1} style={[s.name, muted && s.nameMuted, { flex: 1.4 }]}>
+              {item.pilotName}
+            </Text>
+            <Text numberOfLines={1} style={[s.cellMuted, { flex: 1.2 }]}>
+              {circuit}
+            </Text>
+            <Text numberOfLines={1} style={[s.cellMuted, { width: RECU_W }]}>
+              {recu}
+            </Text>
+          </>
+        ) : (
+          <View style={{ flex: 1 }}>
+            <Text numberOfLines={1} style={[s.name, muted && s.nameMuted]}>
+              {item.pilotName}
+            </Text>
+            <Text numberOfLines={1} style={s.metaLine}>
+              {circuit} · {recu}
+            </Text>
+          </View>
+        )}
+
+        <View style={s.trailCol} accessibilityElementsHidden importantForAccessibility="no">
+          <Trailing status={item.status} />
+        </View>
       </Pressable>
 
-      {/* Marquage — actions sobres selon le statut courant. */}
+      {/* Marquage + accès — actions sobres selon le statut courant. */}
       <View style={s.actions}>
-        {/* Studio : la lecture télémétrique de CETTE séance (P0). */}
-        <RowAction
-          label="Studio"
-          onPress={() =>
-            router.push({
-              pathname: '/(coach)/studio',
-              params: { sessionId: item.sessionId },
-            } as never)
-          }
-        />
-        {/* Rapport : bilan du coach + PDF de synthèse. */}
         <RowAction
           label="Rapport"
           onPress={() =>
@@ -198,9 +309,31 @@ function QueueRow({
         {item.status !== 'archived' ? (
           <RowAction label="Archiver" onPress={() => onMark(item, 'archived')} />
         ) : null}
+        <RowAction
+          label="Fiche"
+          onPress={() =>
+            router.push({ pathname: '/(coach)/pilote/[id]', params: { id: item.pilotId } } as never)
+          }
+        />
       </View>
-    </Card>
+    </View>
   );
+}
+
+/** Indicateur de fin de rangée (décoratif) : flèche rouge d'entrée si à lire,
+ *  coche si lue, flèche neutre si archivée. Le tap Studio porte sur la rangée. */
+function Trailing({ status }: { status: QueueStatus }) {
+  if (status === 'unread') {
+    return (
+      <View style={s.trailUnread}>
+        <Text style={s.trailArrowOn}>→</Text>
+      </View>
+    );
+  }
+  if (status === 'read') {
+    return <Text style={s.trailCheck}>✓</Text>;
+  }
+  return <Text style={s.trailArrowMuted}>→</Text>;
 }
 
 function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
@@ -208,7 +341,7 @@ function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={8}
+      hitSlop={10}
       onPress={onPress}
       style={({ pressed }) => [s.action, pressed && { opacity: 0.6 }]}
     >
@@ -217,81 +350,208 @@ function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
-const s = {
+// ============================================================================
+// Helpers (purs, affichage seulement — dérivés de données réelles)
+// ============================================================================
+
+function plur(n: number): string {
+  return n >= 2 ? 's' : '';
+}
+
+function titleFor(
+  filter: QueueStatus,
+  counts: { unread: number; read: number; archived: number }
+): string {
+  const n = counts[filter];
+  if (filter === 'unread') {
+    return n === 0 ? 'Rien à lire pour l’instant.' : `${n} séance${plur(n)} à lire.`;
+  }
+  if (filter === 'read') {
+    return n === 0 ? 'Aucune séance lue.' : `${n} séance${plur(n)} lue${plur(n)}.`;
+  }
+  return n === 0 ? 'Aucune séance archivée.' : `${n} séance${plur(n)} archivée${plur(n)}.`;
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '·';
+  const first = parts[0][0] ?? '';
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : '';
+  return (first + last).toUpperCase() || '·';
+}
+
+/** Ancienneté lisible de la séance (colonne REÇU). Dérivée de `started_at` —
+ *  seul horodatage porté par la file (pas de timestamp de réception distinct). */
+function receivedLabel(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return '—';
+  const diffMs = Date.now() - t;
+  if (diffMs < 0) return formatDateShort(iso);
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return 'à l’instant';
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  const d = Math.floor(h / 24);
+  if (d < 2) return 'hier';
+  if (d < 7) return `il y a ${d} j`;
+  return formatDateShort(iso);
+}
+
+const s = StyleSheet.create({
+  consolePad: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  companionPad: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  consoleHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
   eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
   },
   title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
     letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
-    marginTop: theme.spacing.md,
+    color: palette.cream,
+    lineHeight: fontSize.h2 * 1.2,
+    marginTop: spacing.sm,
   },
-  filterRow: {
-    flexDirection: 'row' as const,
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.xl,
-  },
+
+  // Filtres
+  filterRow: { flexDirection: 'row', gap: spacing.sm },
   chip: {
-    flex: 1,
-    minHeight: 40,
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.radius.md,
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  chipActive: {
-    borderColor: theme.palette.edge,
-    backgroundColor: theme.palette.card2,
-  },
+  chipGrow: { flex: 1 },
+  // Actif = rouge coach (identité de rôle sur l'actif — jamais le blanc/or pilote).
+  chipActive: { backgroundColor: palette.coachAccent, borderColor: palette.coachAccent },
   chipLabel: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10.5,
     letterSpacing: 0.8,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
   },
-  chipLabelActive: {
-    color: theme.palette.cream,
+  chipLabelActive: { color: palette.cream },
+
+  // En-tête de colonnes (console)
+  colHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  row: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: theme.spacing.md },
-  // Marqueur « non-lu » = rouge d'identité de rôle coach (roleColors.coach).
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: theme.roleColors.coach },
-  pilot: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
+  colHeadTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.faint,
   },
-  meta: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
+
+  // Rangée
+  rowCard: {
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    backgroundColor: palette.card,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  chevron: { color: theme.palette.creamMute, fontSize: 17 },
+  rowCardUnread: { borderLeftWidth: 2, borderLeftColor: palette.coachAccent },
+  rowMain: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 52 },
+  avatar: {
+    width: AVATAR,
+    height: AVATAR,
+    borderRadius: AVATAR / 2,
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTxt: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.5, color: palette.creamSoft },
+  name: { fontFamily: fonts.bodyMedium, fontSize: fontSize.bodyLg, color: palette.cream },
+  nameMuted: { color: palette.creamMute },
+  cellMuted: { fontFamily: fonts.mono, fontSize: fontSize.small, color: palette.creamMute },
+  metaLine: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+
+  trailCol: { width: TRAIL_W, alignItems: 'flex-end', justifyContent: 'center' },
+  trailUnread: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: palette.coachAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trailArrowOn: { fontFamily: fonts.mono, fontSize: 15, color: palette.night },
+  trailArrowMuted: { fontFamily: fonts.mono, fontSize: 15, color: palette.faint },
+  trailCheck: { fontFamily: fonts.mono, fontSize: 15, color: palette.creamMute },
+
   actions: {
-    flexDirection: 'row' as const,
-    gap: theme.spacing.lg,
-    marginTop: theme.spacing.md,
-    paddingTop: theme.spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: theme.palette.line,
+    borderTopColor: palette.separator,
   },
-  action: { minHeight: 32, justifyContent: 'center' as const },
+  action: { minHeight: 36, justifyContent: 'center' },
   actionText: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: 10.5,
     letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
   },
-};
+
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  dividerTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.faint,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: palette.separator },
+  calmNote: {
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamMute,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+});

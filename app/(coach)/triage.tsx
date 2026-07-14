@@ -1,36 +1,53 @@
 /**
- * Coach — Triage (smart flagging). Réintégration coach__triage.
+ * Coach — Triage (smart flagging). Reskin refonte-v2 §12, RESPONSIVE deux formats.
  *
  * Les virages où le pilote a le moins de marge sur CETTE séance, classés — « où
  * regarder en premier ». Câble coachTriageService (déjà testé). Carte SVG
  * (PilotPreset) des virages flagués + liste FACTUELLE. Doctrine C3 : le triage
  * désigne, il ne dit pas la CAUSE ni quoi faire — au coach (ou à une suggestion
- * IA qu'il valide) de conclure. Rouge de marge neutralisé en ambre (canon).
+ * IA qu'il valide) de conclure.
  *
+ * Deux formats (décision fondateur 2026-07-13) :
+ *   - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH, maquette
+ *     coach/04-triage) : deux colonnes — carte des virages à gauche, priorité de
+ *     lecture (liste classée + légende de marge) à droite, action « Ouvrir dans
+ *     le Studio ».
+ *   - COMPAGNON téléphone : une colonne, carte puis liste, même contenu.
+ * Le rail §12 est porté par (coach)/_layout ; l'écran n'adapte que son corps.
+ *
+ * Couleur de marge = dégradé §7.6 (rouge de DONNÉE → or midpoint → vert), via
+ * marginZoneExportColor — jamais le rouge de marque, jamais l'or décoratif.
  * SVG, pas Skia : tourne en Expo Go et au build.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { type TriageCorner } from '@/services/coachTriageLogic';
 import { getSessionTriage } from '@/services/coachTriageService';
+import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import type { MarginZone } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
+import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
-const { palette, spacing } = theme;
+const { palette, spacing, fonts, fontSize, dataColors } = theme;
 
 export default function CoachTriageScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sessionId = params.sessionId;
+
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [corners, setCorners] = useState<TriageCorner[]>([]);
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
@@ -71,7 +88,7 @@ export default function CoachTriageScreen() {
     };
   }, [sessionId, reloadKey]);
 
-  // Couleur des virages flagués sur la carte (zone de marge, rouge→ambre canon).
+  // Couleur des virages flagués sur la carte (zone de marge, dégradé §7.6 canon).
   const zoneByIndex = useMemo(() => {
     const out: Record<number, MarginZone> = {};
     for (const c of corners) {
@@ -79,6 +96,9 @@ export default function CoachTriageScreen() {
     }
     return out;
   }, [corners]);
+
+  // Légende de marge seulement si au moins un virage est qualifié (honnêteté).
+  const hasMargins = useMemo(() => corners.some((c) => c.marginZone != null), [corners]);
 
   const state: ScreenState = loading
     ? 'loading'
@@ -99,6 +119,7 @@ export default function CoachTriageScreen() {
         <Text style={s.title} accessibilityRole="header">
           Les virages les plus serrés.
         </Text>
+        <Text style={s.subtitle}>Classés par marge — un fait, pas une consigne.</Text>
 
         <StateWrapper
           state={state}
@@ -113,44 +134,101 @@ export default function CoachTriageScreen() {
           errorCause="Le triage n'a pas pu être chargé."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          {/* Carte des virages flagués (SVG). Sans trames, la forme du circuit
-              suffit à situer ; les couleurs de zone marquent où c'est serré. */}
-          <View style={{ marginTop: spacing.lg }}>
-            <PilotPreset
-              animate
-              trajectory={trajectory ?? undefined}
-              zoneByIndex={zoneByIndex}
-              selectedIndex={selected}
-              height={300}
-            />
-          </View>
+          {/* CONSOLE : carte à gauche, priorité de lecture à droite. COMPAGNON :
+              les deux blocs s'empilent (une colonne). Même contenu, un seul arbre. */}
+          <View
+            style={{
+              flexDirection: isConsole ? 'row' : 'column',
+              gap: spacing.lg,
+              marginTop: spacing.lg,
+            }}
+          >
+            {/* Carte des virages flagués (SVG). Sans trames, la forme du circuit
+                suffit à situer ; les couleurs de zone marquent où c'est serré. */}
+            <View style={isConsole ? { flex: 1.05 } : undefined}>
+              <PilotPreset
+                animate
+                trajectory={trajectory ?? undefined}
+                zoneByIndex={zoneByIndex}
+                selectedIndex={selected}
+                height={isConsole ? 400 : 300}
+              />
+            </View>
 
-          <View style={{ gap: spacing.sm, marginTop: spacing.xl }}>
-            {corners.map((c, i) => {
-              const active = selected === c.segmentIndex;
-              return (
-                <Pressable
-                  key={c.segmentIndex}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${i + 1}. ${c.label}. ${c.fact}`}
-                  onPress={() =>
-                    setSelected((cur) => (cur === c.segmentIndex ? null : c.segmentIndex))
-                  }
-                  style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
-                >
-                  <Card style={{ borderColor: active ? palette.edge : palette.line }}>
-                    <View style={s.row}>
-                      <Text style={s.rank}>{i + 1}</Text>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.name}>{c.label}</Text>
-                        <Text style={s.fact}>{c.fact}</Text>
-                      </View>
-                      <Text style={s.margin}>{Math.round(c.marginPercent)} %</Text>
-                    </View>
-                  </Card>
-                </Pressable>
-              );
-            })}
+            {/* Priorité de lecture : en-tête + légende, liste classée, action. */}
+            <View style={isConsole ? { flex: 1 } : undefined}>
+              <View style={s.priorityHead}>
+                <Text style={s.priorityLabel}>Priorité de lecture</Text>
+                {hasMargins ? <MarginLegend /> : null}
+              </View>
+
+              <View style={{ gap: spacing.sm }}>
+                {corners.map((c) => {
+                  const active = selected === c.segmentIndex;
+                  const zoneColor = c.marginZone ? marginZoneExportColor(c.marginZone) : null;
+                  const pct = Math.round(c.marginPercent);
+                  return (
+                    <Pressable
+                      key={c.segmentIndex}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      accessibilityLabel={c.fact}
+                      onPress={() =>
+                        setSelected((cur) => (cur === c.segmentIndex ? null : c.segmentIndex))
+                      }
+                      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
+                    >
+                      <Card style={{ borderColor: active ? palette.edge : palette.line }}>
+                        <View style={s.row}>
+                          {/* Pastille numérotée = n° du virage, coloré par zone —
+                              même repère que les points de la carte. */}
+                          <View
+                            style={[
+                              s.pill,
+                              zoneColor ? { backgroundColor: zoneColor } : s.pillNeutral,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                s.pillNum,
+                                { color: zoneColor ? palette.night : palette.creamMute },
+                              ]}
+                            >
+                              {c.segmentIndex}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.name}>{c.label}</Text>
+                            <Text style={s.fact}>{c.fact}</Text>
+                          </View>
+                          {/* Valeur de marge sur le dégradé §7.6 (neutre si zone
+                              non qualifiée) — jamais l'or par défaut. */}
+                          <Text style={[s.margin, { color: zoneColor ?? palette.cream }]}>
+                            {pct} %
+                          </Text>
+                        </View>
+                      </Card>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Ouvrir la même séance dans le Studio (lecture dense). Route réelle. */}
+              {sessionId ? (
+                <View style={{ marginTop: spacing.lg }}>
+                  <Button
+                    variant="ghost"
+                    label="Ouvrir dans le Studio"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(coach)/studio',
+                        params: { sessionId },
+                      } as never)
+                    }
+                  />
+                </View>
+              ) : null}
+            </View>
           </View>
 
           <Text style={s.doctrine}>
@@ -162,62 +240,126 @@ export default function CoachTriageScreen() {
   );
 }
 
+/**
+ * Légende de marge (handoff §7.6) : faible→large = rouge de DONNÉE → or midpoint
+ * → vert, le même dégradé que les pastilles de virage (source cohérente).
+ */
+function MarginLegend() {
+  return (
+    <View
+      accessible
+      accessibilityLabel="Légende des marges : du rouge, marge faible, à l'or puis au vert, marge large."
+      style={s.legend}
+    >
+      <Text style={s.legendLabel}>Marge</Text>
+      <Svg width={80} height={6}>
+        <Defs>
+          <LinearGradient id="triageMarginGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <Stop offset="0%" stopColor={dataColors.brake} />
+            <Stop offset="50%" stopColor={palette.gold} />
+            <Stop offset="100%" stopColor={dataColors.accel} />
+          </LinearGradient>
+        </Defs>
+        <Rect x="0" y="0" width={80} height={6} rx={3} fill="url(#triageMarginGradient)" />
+      </Svg>
+    </View>
+  );
+}
+
 const s = {
   eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
     color: palette.creamMute,
     marginBottom: spacing.sm,
   },
   title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
     letterSpacing: 0.5,
     color: palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
+    lineHeight: fontSize.h2 * 1.25,
+  },
+  subtitle: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
+  priorityHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  priorityLabel: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  legend: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+  },
+  legendLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.eyebrow,
   },
   row: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: spacing.md,
   },
-  rank: {
-    fontFamily: theme.fonts.king,
-    fontSize: 24,
-    // Rang/ordre (pas un chrono) → neutre. L'or reste au chrono/record.
-    color: palette.creamMute,
+  pill: {
     width: 28,
-    textAlign: 'center' as const,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  pillNeutral: {
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  pillNum: {
+    fontFamily: fonts.monoSemi,
+    fontSize: 13,
   },
   name: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.bodyLg,
     color: palette.cream,
   },
   fact: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
     color: palette.creamMute,
     marginTop: 2,
-    lineHeight: theme.fontSize.small * 1.4,
+    lineHeight: fontSize.small * 1.4,
   },
   margin: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.h3,
-    // Valeur de marge (pas un chrono) → neutre crème ; la zone de marge se code
-    // via le dégradé §7.6, pas via l'or.
-    color: palette.cream,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.h3,
   },
   doctrine: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
     fontStyle: 'italic' as const,
     color: palette.creamMute,
     textAlign: 'center' as const,
     marginTop: spacing.xxl,
     paddingHorizontal: spacing.md,
-    lineHeight: theme.fontSize.small * 1.5,
+    lineHeight: fontSize.small * 1.5,
   },
 };
