@@ -14,6 +14,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useUIStore } from '@/store/useUIStore';
 import { flushQueue } from '@/services/offlineQueue';
+import { processQueue } from '@/services/captureSyncQueue';
 
 let unsubscribe: (() => void) | null = null;
 let wasOffline = false;
@@ -29,10 +30,15 @@ export function initNetInfo(): () => void {
     appState.setCondition('network', online ? 'online' : 'offline');
     uiState.setOfflineBannerVisible(!online);
 
-    // Si on revient en ligne après un offline, on vide la queue
+    // Si on revient en ligne après un offline, on vide les files : actions
+    // unitaires (MMKV) ET file de synchro de capture (fichiers) — cette dernière
+    // draine create_session / frames requeuées / laps / complete / upload .ubx.
     if (online && wasOffline) {
       flushQueue().catch((err) => {
         console.warn('[OXV] flushQueue après reconnexion :', err);
+      });
+      processQueue().catch((err) => {
+        console.warn('[OXV] processQueue (capture) après reconnexion :', err);
       });
     }
     wasOffline = !online;

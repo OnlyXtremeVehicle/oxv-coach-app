@@ -32,7 +32,6 @@ import {
 } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
 import { attachPendingIntentionToSession } from '@/services/intentionsService';
-import { uploadTelemetryFile } from '@/services/telemetryStorage';
 import { useSessionStore } from '@/store/useSessionStore';
 import type { RaceBoxData } from '@/types/telemetry';
 
@@ -43,6 +42,13 @@ import {
   raceBoxToFrameInsert,
   updateMaxima,
 } from './captureFrameMapping';
+import {
+  type CaptureSessionRow,
+  type LapInsert,
+  enqueue,
+  newUuid,
+  processQueue,
+} from './captureSyncQueue';
 
 /**
  * Repli de DERNIER recours si l'appelant ne fournit pas la ligne d'arrivée du
@@ -98,10 +104,18 @@ function setLinkStatus(next: CaptureLinkStatus): void {
 interface CaptureState {
   sessionId: string;
   userId: string;
+  circuitId: string | null;
+  circuitName: string | null;
+  vehicleId: string | null;
   startMs: number;
   buffer: TelemetryFrameInsert[];
   total: number;
-  dropped: number;
+  /**
+   * Trames émises dont l'insertion DIRECTE a échoué et qui ont été REQUEUÉES sur
+   * fichier (op `frames`) pour resynchronisation. Ni perdues, ni encore
+   * confirmées en base : elles seront insérées au prochain drain.
+   */
+  requeued: number;
   lastElapsed: number;
   maxima: SessionMaxima;
   unsubData: () => void;
@@ -132,28 +146,48 @@ export interface StartCaptureResult {
   error?: string;
 }
 
-/** Crée la session et démarre l'enregistrement (frames + tours + .ubx). */
+/**
+ * Crée la session et démarre l'enregistrement (frames + tours + .ubx).
+ *
+ * LOCAL-FIRST (P0 Valence) : l'`id` de session est généré côté client et la
+ * création de la ligne serveur est PERSISTÉE dans la file de synchro
+ * (captureSyncQueue) plutôt qu'attendue en ligne. L'enregistrement démarre
+ * IMMÉDIATEMENT ; le drain part en arrière-plan (insert immédiat si réseau,
+ * sinon rejeu ultérieur). Ne retourne JAMAIS d'échec pour cause d'absence de
+ * réseau — le pilote n'est jamais bloqué avant la piste.
+ */
 export async function startCaptureSession(input: StartCaptureInput): Promise<StartCaptureResult> {
   if (current) return { ok: false, error: 'Une capture est déjà active.' };
 
-  const { data, error } = await supabase
-    .from('telemetry_sessions')
-    .insert({
-      user_id: input.userId,
-      status: 'recording',
-      started_at: new Date().toISOString(),
-      circuit_id: input.circuitId ?? null,
-      circuit_name: input.circuitName ?? 'Circuit',
-      vehicle_id: input.vehicleId ?? null,
-    })
-    .select('id')
-    .single();
+  const sessionId = newUuid();
+  const startMs = Date.now();
 
-  if (error || !data) {
-    return { ok: false, error: error?.message ?? 'Création de session impossible.' };
+  const circuitId = input.circuitId ?? null;
+  const circuitName = input.circuitName ?? 'Circuit';
+  const vehicleId = input.vehicleId ?? null;
+
+  // Persiste la création de session sur la file (survivante hors-ligne). On ne
+  // laisse PAS une panne disque bloquer la piste : le .ubx local reste le filet.
+  const createRow: CaptureSessionRow = {
+    id: sessionId,
+    user_id: input.userId,
+    status: 'recording',
+    started_at: new Date(startMs).toISOString(),
+    circuit_id: circuitId,
+    circuit_name: circuitName,
+    vehicle_id: vehicleId,
+  };
+  try {
+    await enqueue({ type: 'create_session', sessionId, row: createRow });
+  } catch (e) {
+    console.warn(
+      '[OXV][capture] persistance de la création de session KO (on démarre quand même) :',
+      e instanceof Error ? e.message : e
+    );
   }
-
-  const sessionId = (data as { id: string }).id;
+  // Draine en arrière-plan : si réseau, l'insert part tout de suite ; sinon il
+  // attend dans la file. Best-effort, jamais bloquant.
+  void processQueue().catch(() => undefined);
 
   // Rattache l'intention posée en préparation (V9) à cette séance — best-effort,
   // non bloquant : l'intention est facultative et ne doit jamais retarder la
@@ -161,7 +195,6 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // lancement peuvent dériver le circuit différemment) ; borné par la fraîcheur.
   void attachPendingIntentionToSession({ sessionId }).catch(() => undefined);
 
-  const startMs = Date.now();
   const finish = input.finishLine ?? BELTOISE_FINISH;
   if (!input.finishLine) {
     console.warn(
@@ -173,10 +206,13 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   const state: CaptureState = {
     sessionId,
     userId: input.userId,
+    circuitId,
+    circuitName,
+    vehicleId,
     startMs,
     buffer: [],
     total: 0,
-    dropped: 0,
+    requeued: 0,
     lastElapsed: 0,
     maxima: { ...EMPTY_MAXIMA },
     unsubData: () => undefined,
@@ -304,13 +340,25 @@ function flush(state: CaptureState): Promise<void> {
     try {
       while (state.buffer.length > 0) {
         const batch = state.buffer.splice(0); // prend tout, vide en place
-        const { error } = await supabase.from('telemetry_frames').insert(batch);
-        if (error) {
-          // Lot perdu (réseau) : on compte la perte ; le .ubx local sert de filet.
-          state.dropped += batch.length;
-          console.warn('[OXV][capture] écriture frames KO :', error.message);
-        } else {
+        try {
+          const { error } = await supabase.from('telemetry_frames').insert(batch);
+          if (error) throw error;
           state.total += batch.length;
+        } catch (e) {
+          // Insert direct KO (réseau, ou session pas encore créée côté serveur) :
+          // on NE PERD PAS le lot. On le REQUEUE sur fichier (op `frames`) pour
+          // rejeu ordonné après reprise réseau. `requeued` alimente le total émis.
+          // Le drain (processQueue) le réinsèrera ; le .ubx local reste le filet.
+          try {
+            await enqueue({ type: 'frames', sessionId: state.sessionId, batch });
+            state.requeued += batch.length;
+          } catch (persistErr) {
+            // Disque indisponible : dernier recours = .ubx local (déjà capturé).
+            console.warn(
+              '[OXV][capture] requeue lot frames KO (filet .ubx) :',
+              persistErr instanceof Error ? persistErr.message : persistErr
+            );
+          }
         }
       }
     } finally {
@@ -332,12 +380,12 @@ async function drain(state: CaptureState): Promise<void> {
   await flush(state);
 }
 
-/** Persiste les tours détectés dans la table laps (best-effort). */
-async function persistLaps(state: CaptureState, laps: RecordedLap[]): Promise<void> {
-  if (laps.length === 0) return;
+/** Construit les lignes `laps` à partir des tours détectés (transformation pure). */
+function buildLapRows(sessionId: string, laps: RecordedLap[]): LapInsert[] {
+  if (laps.length === 0) return [];
   const bestMs = Math.min(...laps.map((l) => l.durationMs));
-  const rows = laps.map((l) => ({
-    session_id: state.sessionId,
+  return laps.map((l) => ({
+    session_id: sessionId,
     lap_number: l.lapNumber,
     duration_seconds: l.durationMs / 1000,
     started_at: new Date(l.startedAtMs).toISOString(),
@@ -350,8 +398,6 @@ async function persistLaps(state: CaptureState, laps: RecordedLap[]): Promise<vo
     is_outlap: false,
     is_inlap: false,
   }));
-  const { error } = await supabase.from('laps').insert(rows);
-  if (error) console.warn('[OXV][capture] écriture laps KO :', error.message);
 }
 
 export interface StopCaptureResult {
@@ -364,8 +410,11 @@ export interface StopCaptureResult {
 }
 
 /**
- * Arrête l'enregistrement : flush final, persistance des tours, agrégats,
- * status 'completed', upload .ubx. Retourne sessionId + ubxUri pour le bilan.
+ * Arrête l'enregistrement : flush final, puis clôture REJOUABLE via la file de
+ * synchro. Les tours, l'update `complete` et l'upload .ubx passent par la FILE
+ * (enqueue) — jamais des appels directs perdus si hors-ligne. La session ne reste
+ * donc JAMAIS en `recording` fantôme : soit `complete` part tout de suite
+ * (réseau), soit il attend et sera rejoué. Retourne sessionId + ubxUri pour le bilan.
  */
 export async function stopCaptureSession(): Promise<StopCaptureResult> {
   // Capture-and-null synchrone : un second appel concurrent court-circuite.
@@ -377,7 +426,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   setLinkStatus('idle');
 
   // 1. Stoppe l'arrivée de nouvelles trames + le timer + le suivi reconnexion,
-  //    puis flush final complet.
+  //    puis flush final complet (les lots en échec sont requeués sur fichier).
   state.unsubData();
   state.unsubReconnect();
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
@@ -392,10 +441,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   const bestLapSeconds = store.bestLapMs != null ? store.bestLapMs / 1000 : null;
   store.endSession();
 
-  // 3. Persiste les tours détaillés (régularité + tour-par-tour du bilan).
-  await persistLaps(state, recordedLaps);
-
-  // 4. Ferme la capture .ubx locale (filet de sécurité).
+  // 3. Ferme la capture .ubx locale (filet de sécurité).
   let ubxUri: string | null = null;
   try {
     ubxUri = await stopCapture();
@@ -403,11 +449,26 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
     ubxUri = null;
   }
 
-  // 5. Marque la session 'completed' avec les agrégats.
+  const { sessionId, userId, total, requeued } = state;
+  // Total ÉMIS = trames insérées en direct + trames requeuées (à resync). C'est
+  // la cible ; `execComplete` RÉCONCILIE ensuite total_frames sur le compte RÉEL
+  // en base après drain FIFO (les ops `frames` précèdent `complete`).
+  const emittedFrames = total + requeued;
+
+  // 4. Enqueue la clôture (tours → agrégats → upload) DANS L'ORDRE FIFO.
+  const lapRows = buildLapRows(sessionId, recordedLaps);
+  if (lapRows.length > 0) {
+    await enqueue({ type: 'laps', sessionId, rows: lapRows }).catch((e) =>
+      console.warn('[OXV][capture] enqueue laps KO :', e instanceof Error ? e.message : e)
+    );
+  }
+
   const durationSeconds = Math.round((Date.now() - state.startMs) / 1000);
-  const { error } = await supabase
-    .from('telemetry_sessions')
-    .update({
+  await enqueue({
+    type: 'complete',
+    sessionId,
+    userId,
+    updates: {
       status: 'completed',
       ended_at: new Date().toISOString(),
       duration_seconds: durationSeconds,
@@ -416,27 +477,30 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
       max_speed_kmh: state.maxima.maxSpeedKmh || null,
       max_g_lateral: state.maxima.maxGLateral || null,
       max_g_longitudinal: state.maxima.maxGLongitudinal || null,
-      total_frames: state.total,
-    })
-    .eq('id', state.sessionId)
-    .eq('user_id', state.userId);
-  if (error) {
-    console.warn('[OXV][capture] complétion de session KO :', error.message);
-  }
-  if (state.dropped > 0) {
-    console.warn(`[OXV][capture] ${state.dropped} trame(s) perdue(s) à l'écriture (filet .ubx).`);
-  }
+      total_frames: emittedFrames,
+    },
+  }).catch((e) =>
+    console.warn('[OXV][capture] enqueue complete KO :', e instanceof Error ? e.message : e)
+  );
 
-  const { sessionId, userId, total, dropped } = state;
-
-  // 6. Upload du .ubx brut en arrière-plan (best-effort, non bloquant).
+  // 5. Upload du .ubx brut via la file (survivant hors-ligne, idempotent).
   if (ubxUri) {
-    uploadTelemetryFile({ fileUri: ubxUri, userId, telemetrySessionId: sessionId }).catch((e) =>
-      console.warn('[OXV][capture] upload .ubx KO :', e instanceof Error ? e.message : e)
+    await enqueue({ type: 'ubx_upload', sessionId, userId, fileUri: ubxUri }).catch((e) =>
+      console.warn('[OXV][capture] enqueue upload .ubx KO :', e instanceof Error ? e.message : e)
     );
   }
 
-  return { ok: true, sessionId, ubxUri, totalFrames: total, droppedFrames: dropped };
+  if (requeued > 0) {
+    console.warn(
+      `[OXV][capture] ${requeued} trame(s) requeuée(s) pour resynchronisation (filet .ubx).`
+    );
+  }
+
+  // 6. Draine en arrière-plan : si réseau, la clôture part tout de suite ; sinon
+  //    elle attend et sera rejouée (reprise au lancement / retour réseau).
+  void processQueue().catch(() => undefined);
+
+  return { ok: true, sessionId, ubxUri, totalFrames: emittedFrames, droppedFrames: 0 };
 }
 
 /** Abandonne la capture en cours : marque 'aborted', sans router vers le bilan. */
@@ -464,9 +528,19 @@ export async function abortCaptureSession(): Promise<void> {
     /* ignore */
   }
   useSessionStore.getState().abortSession();
-  await supabase
-    .from('telemetry_sessions')
-    .update({ status: 'aborted', ended_at: new Date().toISOString() })
-    .eq('id', state.sessionId)
-    .eq('user_id', state.userId);
+
+  // Marque 'aborted' via la FILE (rejouable). Indispensable hors-ligne : la
+  // création de session est peut-être encore en attente dans la file ; sans cette
+  // clôture rejouée, un create_session drainé plus tard ressusciterait une séance
+  // en `recording` fantôme. `execComplete` applique l'update .eq(id).eq(user_id)
+  // (il ne recompte total_frames que pour un statut 'completed').
+  await enqueue({
+    type: 'complete',
+    sessionId: state.sessionId,
+    userId: state.userId,
+    updates: { status: 'aborted', ended_at: new Date().toISOString() },
+  }).catch((e) =>
+    console.warn('[OXV][capture] enqueue abort KO :', e instanceof Error ? e.message : e)
+  );
+  void processQueue().catch(() => undefined);
 }

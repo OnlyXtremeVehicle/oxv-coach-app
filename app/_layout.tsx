@@ -18,6 +18,7 @@ import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
 import { trackEvent } from '@/services/analyticsService';
+import { resumeUnsyncedCaptures } from '@/services/captureSyncQueue';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAppFonts } from '@/theme/fonts';
@@ -41,6 +42,10 @@ export default function RootLayout() {
     console.warn(`[OXV] Runtime : ${runtimeLabel()}`);
     initialize();
     initNetInfo();
+    // Reprend les captures non synchronisées d'un run précédent (crash / arrêt
+    // hors-ligne) : draine la file de synchro si elle n'est pas vide. Silencieux,
+    // non bloquant (silence en piste).
+    void resumeUnsyncedCaptures();
     // Mesure d'audience anonyme (§9) — no-op si non configurée ou opt-out.
     trackEvent('app_ouverte');
     if (!isExpoGo()) {
