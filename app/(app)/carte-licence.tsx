@@ -1,13 +1,18 @@
 /**
  * Carte licence OXV — licence numérique du pilote (§7bis, screens/33-carte-licence.png).
  *
- * Reskin fidèle au langage refonte-v2. Deux strates :
+ * Reskin fidèle au langage refonte-v2. Deux strates DÉCOUPLÉES :
  *   1. La CARTE D'IDENTITÉ licence (surface sombre, liseré crème) : nom réel,
  *      n° FFSA réel (`users.ffsa_license`), statut de validité RÉEL. Le badge
  *      vert « VALIDÉ » n'apparaît QUE si `users.kyc_status = 'validated'`
  *      (seul signal de validité vérifiable en base) ; sinon aucun badge.
+ *      Elle est INCONDITIONNELLE et PRIMAIRE : dès qu'une identité existe (profil
+ *      chargé, ou `ffsa_license`/`kyc_status` non nuls), elle s'affiche — même à
+ *      zéro séance analysée (maquette 33 : l'identité ne dépend pas du roulage).
  *   2. L'INSIGNE PARTAGEABLE (LicenseCard) capturé en image (react-native-view-shot)
- *      → feuille de partage OS. Faits cumulés neutres, jamais un rang.
+ *      → feuille de partage OS. Faits cumulés neutres, jamais un rang. Réservé
+ *      aux pilotes ayant au moins une séance : rendu conditionnel (section
+ *      « À partager ») à l'intérieur de l'écran, sans jamais masquer la strate 1.
  *
  * ÉCARTS À LA MAQUETTE (assumés, cf. sharedChangesNeeded) :
  *  - « Valide 31.12.2026 » : AUCUNE colonne de fin de validité de licence
@@ -29,6 +34,7 @@ import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from '
 import { router, useFocusEffect } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import Svg, { Circle, Path } from 'react-native-svg';
 
 import { LicenseCard } from '@/components/LicenseCard';
 import { FadeInSection } from '@/components/motion';
@@ -160,8 +166,11 @@ export default function CarteLicenceScreen() {
     );
   }
 
-  const hasData = (passport?.stats.totalSessions ?? 0) > 0;
-  if (!passport || !hasData) {
+  // Une identité existe dès que le profil est chargé, ou qu'une donnée licence
+  // (n° FFSA / statut KYC) est présente — indépendamment du roulage. Sans aucune
+  // identité (profil absent), on garde un état d'attente honnête.
+  const hasIdentity = !!profile || !!identity?.ffsaLicense || !!identity?.kycStatus;
+  if (!hasIdentity) {
     return (
       <Screen scroll={false}>
         <AppBar title="Ma licence" onBack={() => router.back()} />
@@ -169,7 +178,9 @@ export default function CarteLicenceScreen() {
           <Text style={s.emptyTitle} accessibilityRole="header">
             Licence à composer.
           </Text>
-          <Text style={s.emptyBody}>Votre carte se compose au fil de vos séances analysées.</Text>
+          <Text style={s.emptyBody}>
+            Votre licence apparaîtra dès que votre profil sera renseigné.
+          </Text>
         </View>
       </Screen>
     );
@@ -179,6 +190,8 @@ export default function CarteLicenceScreen() {
   const ffsa = identity?.ffsaLicense?.trim() || null;
   const validated = identity?.kycStatus === 'validated';
   const validatedOn = validated ? validatedOnLabel(identity?.kycValidatedAt ?? null) : null;
+  // L'insigne partageable (strate 2) n'apparaît qu'à partir d'une séance analysée.
+  const hasSharedData = !!passport && passport.stats.totalSessions > 0;
 
   return (
     <Screen>
@@ -188,7 +201,10 @@ export default function CarteLicenceScreen() {
         <FadeInSection>
           <View style={s.licence}>
             <View style={s.licenceTop}>
-              <Text style={s.licenceBrand}>OXV</Text>
+              <View style={s.brandRow}>
+                <MirrorGlyph />
+                <Text style={s.licenceBrand}>OXV</Text>
+              </View>
               {validated ? (
                 <View style={s.badge} accessibilityRole="text" accessibilityLabel="Licence validée">
                   <View
@@ -248,40 +264,64 @@ export default function CarteLicenceScreen() {
           </FadeInSection>
         ) : null}
 
-        {/* — Strate 2 : l'insigne partageable (faits cumulés neutres) — */}
-        <FadeInSection delay={140}>
-          <View style={s.headRow}>
-            <Text style={s.sectionEyebrow}>À partager</Text>
-            <View style={s.headLine} accessibilityElementsHidden importantForAccessibility="no" />
-          </View>
-        </FadeInSection>
+        {/* — Strate 2 : l'insigne partageable (faits cumulés neutres) —
+            Gate séances : la strate 1 (identité) reste, elle, toujours visible. */}
+        {passport && hasSharedData ? (
+          <>
+            <FadeInSection delay={140}>
+              <View style={s.headRow}>
+                <Text style={s.sectionEyebrow}>À partager</Text>
+                <View
+                  style={s.headLine}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              </View>
+            </FadeInSection>
 
-        <View style={{ marginTop: spacing.lg, marginBottom: spacing.xl }}>
-          <LicenseCard
-            ref={cardRef}
-            name={name}
-            level={prettyLevel(profile?.pilot_level)}
-            since={sinceLabel(passport.memberSince)}
-            axes={passport.signature.axes}
-            sessions={passport.stats.totalSessions}
-            circuits={passport.circuitCount}
-            laps={passport.stats.totalLaps}
-          />
-        </View>
+            <View style={{ marginTop: spacing.lg, marginBottom: spacing.xl }}>
+              <LicenseCard
+                ref={cardRef}
+                name={name}
+                level={prettyLevel(profile?.pilot_level)}
+                since={sinceLabel(passport.memberSince)}
+                axes={passport.signature.axes}
+                sessions={passport.stats.totalSessions}
+                circuits={passport.circuitCount}
+                laps={passport.stats.totalLaps}
+              />
+            </View>
 
-        <FadeInSection delay={200}>
-          <Button label="Partager" onPress={onShare} loading={sharing} />
-        </FadeInSection>
+            <FadeInSection delay={200}>
+              <Button label="Partager" onPress={onShare} loading={sharing} />
+            </FadeInSection>
 
-        <FadeInSection delay={260}>
-          <Text style={s.note}>
-            {Platform.OS === 'ios'
-              ? 'La feuille de partage couvre Story et Enregistrer.'
-              : 'Partagez l’image ou enregistrez-la depuis la feuille système.'}
-          </Text>
-        </FadeInSection>
+            <FadeInSection delay={260}>
+              <Text style={s.note}>
+                {Platform.OS === 'ios'
+                  ? 'La feuille de partage couvre Story et Enregistrer.'
+                  : 'Partagez l’image ou enregistrez-la depuis la feuille système.'}
+              </Text>
+            </FadeInSection>
+          </>
+        ) : null}
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Petit glyphe miroir (~16px) posé avant « OXV » : un cercle crème dont une
+ * moitié est pleine — motif du miroir OXV (maquette 33). Purement décoratif.
+ */
+function MirrorGlyph() {
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no">
+      <Svg width={16} height={16} viewBox="0 0 16 16">
+        <Circle cx={8} cy={8} r={6} fill="none" stroke={palette.cream} strokeWidth={1.25} />
+        <Path d="M8 2 A6 6 0 0 0 8 14 Z" fill={palette.cream} />
+      </Svg>
+    </View>
   );
 }
 
@@ -335,6 +375,11 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   licenceBrand: {
     fontFamily: fonts.heavy,

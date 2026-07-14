@@ -266,7 +266,7 @@ function IdentityBadge({
   return (
     <View style={s.badgeWrap} accessible accessibilityLabel={name}>
       <View style={[s.badge, { borderColor: color }]}>
-        <Text style={[s.badgeInitials, { color }]}>{initials}</Text>
+        <Text style={s.badgeInitials}>{initials}</Text>
       </View>
       <Text style={[s.badgeName, { color }]} numberOfLines={1}>
         {name}
@@ -366,7 +366,7 @@ function formatLapOrDash(seconds: number | null): string {
 
 function formatSpeedOrDash(kmh: number | null): string {
   if (kmh === null || !Number.isFinite(kmh) || kmh <= 0) return '—';
-  return `${Math.round(kmh)} km/h`;
+  return String(Math.round(kmh));
 }
 
 function initialsFrom(source: string | null): string {
@@ -421,6 +421,7 @@ const s = StyleSheet.create({
     fontFamily: fonts.monoSemi,
     fontSize: fontSize.body,
     letterSpacing: 1,
+    color: palette.cream,
   },
   badgeName: {
     fontFamily: fonts.mono,

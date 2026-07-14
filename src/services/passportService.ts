@@ -27,6 +27,14 @@ export interface Passport {
 
 const RECENT_SESSIONS = 6;
 
+/**
+ * Sentinelle du bucket « séance sans circuit » : statsService range les séances
+ * dont `circuit_name` est null sous cette clé de repli (`?? 'Inconnu'`). On
+ * l'exclut du passeport — ni comptée, ni affichée avec un chrono or : un circuit
+ * inconnu n'est pas un circuit. Doit rester alignée sur statsService.
+ */
+export const NO_CIRCUIT = 'Inconnu';
+
 export async function loadPassport(userId: string): Promise<Passport> {
   const stats = await loadPilotStats(userId);
 
@@ -84,6 +92,6 @@ export async function loadPassport(userId: string): Promise<Passport> {
     stats,
     signature,
     memberSince,
-    circuitCount: Object.keys(stats.byCircuit).length,
+    circuitCount: Object.keys(stats.byCircuit).filter((name) => name !== NO_CIRCUIT).length,
   };
 }

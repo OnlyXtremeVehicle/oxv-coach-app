@@ -4,7 +4,14 @@
  * surligné). Constats juxtaposés, JAMAIS une courbe d'évolution.
  *
  * Rendu volontairement minimal : grille pentagonale + polygone du mois (trait
- * crème). Une branche absente est tirée au centre — rien n'est inventé.
+ * crème par défaut). Une branche absente est tirée au centre — rien n'est inventé.
+ *
+ * Deux variantes :
+ *  - tuile (défaut, signature §7.3) : cadre bordé + libellé du mois sous le SVG ;
+ *  - nue (`bare`, empreinte-saison #5d) : pentagone seul, sans tuile ni libellé
+ *    interne — le parent pose le mois en colonne à gauche.
+ * `accentColor` (optionnel) remplace le crème du mois surligné (pentagone et,
+ * en variante tuile, libellé) : la couleur QDI de la branche mise en avant.
  */
 
 import { Text, View } from 'react-native';
@@ -40,16 +47,58 @@ export function MiniQdiRadar({
   branches,
   highlighted,
   size = 46,
+  accentColor,
+  bare,
 }: {
   label: string;
   branches: QdiBranches;
   highlighted?: boolean;
   size?: number;
+  /** Couleur du mois surligné (défaut : crème). Une couleur QDI, jamais l'or. */
+  accentColor?: string;
+  /** Pentagone seul, sans tuile ni libellé interne (le parent pose le mois). */
+  bare?: boolean;
 }) {
   const values = KEYS.map((k) => {
     const v = branches[k];
     return typeof v === 'number' ? Math.max(0, Math.min(100, v)) / 100 : 0;
   });
+  const highlightColor = accentColor ?? palette.cream;
+
+  const svg = (
+    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {/* grille pentagonale (contour à 100 %) */}
+      <Polygon
+        points={points(
+          size,
+          KEYS.map(() => 1)
+        )}
+        fill="none"
+        stroke={palette.line}
+        strokeWidth={1}
+      />
+      {/* polygone du mois */}
+      <Polygon
+        points={points(size, values)}
+        fill="rgba(245,245,247,0.08)"
+        stroke={highlighted ? highlightColor : palette.creamMute}
+        strokeWidth={1.4}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+
+  if (bare) {
+    return (
+      <View
+        accessibilityLabel={`Style de ${label}`}
+        style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}
+      >
+        {svg}
+      </View>
+    );
+  }
+
   return (
     <View
       accessibilityLabel={`Style de ${label}`}
@@ -63,33 +112,14 @@ export function MiniQdiRadar({
         backgroundColor: highlighted ? palette.card2 : 'transparent',
       }}
     >
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* grille pentagonale (contour à 100 %) */}
-        <Polygon
-          points={points(
-            size,
-            KEYS.map(() => 1)
-          )}
-          fill="none"
-          stroke={palette.line}
-          strokeWidth={1}
-        />
-        {/* polygone du mois */}
-        <Polygon
-          points={points(size, values)}
-          fill="rgba(245,245,247,0.08)"
-          stroke={highlighted ? palette.cream : palette.creamMute}
-          strokeWidth={1.4}
-          strokeLinejoin="round"
-        />
-      </Svg>
+      {svg}
       <Text
         style={{
           fontFamily: fonts.mono,
           fontSize: 9,
           letterSpacing: 1.2,
           textTransform: 'uppercase',
-          color: highlighted ? palette.cream : palette.faint,
+          color: highlighted ? highlightColor : palette.faint,
           marginTop: spacing.sm,
         }}
       >

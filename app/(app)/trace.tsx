@@ -25,7 +25,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
-import { formatDateTime, formatLapTime } from '@/utils/format';
+import { formatChronoTenths, formatSessionMeta } from '@/utils/format';
 
 /**
  * N° du tour de référence, dérivé du moment-clé « reference » (fait généré par
@@ -93,20 +93,18 @@ export default function TraceScreen() {
   const hasBest = trace.bestSeconds != null;
   const claimBest = hasBest && trace.lapCount >= 2;
   const lapNo = claimBest ? bestLapNumberOf(trace) : null;
-  const chronoLabel = trace.bestSeconds != null ? formatLapTime(trace.bestSeconds) : '—';
+  const chronoLabel = trace.bestSeconds != null ? formatChronoTenths(trace.bestSeconds) : '—';
   const toursLabel =
     trace.lapCount > 0 ? `sur ${trace.lapCount} ${trace.lapCount > 1 ? 'tours' : 'tour'}` : null;
 
   return (
     <Screen scroll={false}>
       <AppBar
-        title="Trace"
-        subtitle={trace.circuitName ?? undefined}
         onBack={() => router.back()}
         trailing={
           session.started_at ? (
             <Text style={s.barMeta} numberOfLines={2}>
-              {formatDateTime(session.started_at)}
+              {formatSessionMeta(session.started_at)}
             </Text>
           ) : undefined
         }
@@ -206,7 +204,7 @@ function GhostDoor({ label, a11y, onPress }: { label: string; a11y: string; onPr
 function TraceEmpty() {
   return (
     <Screen scroll={false}>
-      <AppBar title="Trace" onBack={() => router.back()} />
+      <AppBar onBack={() => router.back()} />
       <View style={s.body}>
         <View style={{ flex: 1.2 }} />
         <Text style={s.eyebrow}>Encore aucune trace</Text>
@@ -272,7 +270,7 @@ const s = {
     alignItems: 'flex-end' as const,
     marginTop: theme.spacing.xl,
   },
-  // CHIFFRE ROI : mono bold, or (chrono/record). formatLapTime = arrondi sûr.
+  // CHIFFRE ROI : mono bold, or (chrono/record). formatChronoTenths = M:SS.d (maquette).
   chrono: {
     fontFamily: theme.fonts.king,
     fontSize: 44,

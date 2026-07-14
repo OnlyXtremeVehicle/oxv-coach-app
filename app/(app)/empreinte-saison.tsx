@@ -229,13 +229,18 @@ export default function EmpreinteSaisonScreen() {
                         accessible
                         accessibilityLabel={`${m.monthLabel} : ${headline ? `${headline}, ` : ''}${fact}`}
                       >
-                        <View style={s.radarSlot}>
-                          <MiniQdiRadar
-                            label={m.monthLabel}
-                            branches={m.branches}
-                            highlighted={isLast}
-                          />
-                        </View>
+                        {/* Libellé du mois en colonne à gauche du pentagone nu
+                            (maquette #5d), surligné violet sur le dernier mois. */}
+                        <Text style={[s.monthLabel, isLast && { color: dataColors.regularity }]}>
+                          {m.monthLabel}
+                        </Text>
+                        <MiniQdiRadar
+                          label={m.monthLabel}
+                          branches={m.branches}
+                          highlighted={isLast}
+                          bare
+                          accentColor={isLast ? dataColors.regularity : undefined}
+                        />
                         <View style={{ flex: 1 }}>
                           <Text style={s.monthTitle}>{headline ?? fact}</Text>
                           {headline ? (
@@ -380,10 +385,14 @@ const s = {
     borderLeftColor: dataColors.regularity,
     backgroundColor: palette.card2,
   },
-  // MiniQdiRadar est flex:1 : une rangée à largeur fixe le borne sans le modifier.
-  radarSlot: {
-    width: 92,
-    flexDirection: 'row' as const,
+  // Libellé du mois en colonne gauche (mono, aligné) — pentagone nu à sa droite.
+  monthLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+    width: 40,
   },
   monthTitle: {
     fontFamily: fonts.bodySemi,

@@ -26,6 +26,59 @@ export function formatLapTime(seconds: number): string {
 }
 
 /**
+ * Formate un temps au tour au canon des maquettes refonte-v2 : « M:SS.mmm »
+ * (deux-points, millième). Distinct de {@link formatLapTime} (apostrophe +
+ * centième, verrouillé par test + exports PDF) : réservé aux CHIFFRES ROIS des
+ * écrans qui suivent la maquette au millième (bilan, passeport, référence).
+ *
+ * Exemples :
+ *   formatLapTimeMs(84.318)  → "1:24.318"
+ *   formatLapTimeMs(45.123)  → "45.123 s"
+ */
+export function formatLapTimeMs(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+  // Arrondi au millième AVANT découpage des minutes (bord de retenue).
+  const total = Math.round(seconds * 1000) / 1000;
+  const mins = Math.floor(total / 60);
+  const secs = total - mins * 60;
+  if (mins > 0) return `${mins}:${secs.toFixed(3).padStart(6, '0')}`;
+  return `${secs.toFixed(3)} s`;
+}
+
+/**
+ * Formate un temps au tour au dixième (« M:SS.d ») — canon des maquettes où le
+ * chiffre roi est allégé (Trace, scrubber du rejeu). Deux-points, 1 décimale.
+ *
+ * Exemples :
+ *   formatChronoTenths(84.318) → "1:24.3"
+ *   formatChronoTenths(45.1)   → "45.1 s"
+ */
+export function formatChronoTenths(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+  const total = Math.round(seconds * 10) / 10;
+  const mins = Math.floor(total / 60);
+  const secs = total - mins * 60;
+  if (mins > 0) return `${mins}:${secs.toFixed(1).padStart(4, '0')}`;
+  return `${secs.toFixed(1)} s`;
+}
+
+/**
+ * Méta de séance courte SANS année, au canon des maquettes (« 4 juil · 20 h 12 »).
+ * Le caller met en capitales si besoin. Séparateur milieu de point.
+ */
+export function formatSessionMeta(iso: string): string {
+  try {
+    const d = new Date(iso);
+    const date = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${date} · ${hh} h ${mm}`;
+  } catch {
+    return '—';
+  }
+}
+
+/**
  * Formate une durée longue en h Xmin.
  *
  * Exemples :

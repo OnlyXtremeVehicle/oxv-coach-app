@@ -17,7 +17,7 @@ function Chevron() {
 }
 
 type Props = {
-  title: string;
+  title?: string;
   subtitle?: string;
   onBack?: () => void;
   leading?: React.ReactNode; // ex. <Logo /> sur les écrans racines
@@ -39,9 +39,11 @@ export function AppBar({ title, subtitle, onBack, leading, trailing }: Props) {
           <Chevron />
         </Pressable>
         <View pointerEvents="none" style={styles.centerWrap}>
-          <Text numberOfLines={1} style={styles.titleCentered}>
-            {title}
-          </Text>
+          {title ? (
+            <Text numberOfLines={1} style={styles.titleCentered}>
+              {title}
+            </Text>
+          ) : null}
           {subtitle ? (
             <Text numberOfLines={1} style={[styles.sub, { textAlign: 'center' }]}>
               {subtitle}
@@ -58,7 +60,7 @@ export function AppBar({ title, subtitle, onBack, leading, trailing }: Props) {
     <View style={styles.bar}>
       {leading ?? null}
       <View style={{ flex: 1 }}>
-        <Text style={styles.title}>{title}</Text>
+        {title ? <Text style={styles.title}>{title}</Text> : null}
         {subtitle ? <Text style={styles.sub}>{subtitle}</Text> : null}
       </View>
       {trailing ?? null}

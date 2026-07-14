@@ -50,7 +50,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
-import { formatDateShort, formatLapTime } from '@/utils/format';
+import { formatDateLong, formatLapTime } from '@/utils/format';
 
 const SITE_URL = 'https://oxvehicle.fr';
 
@@ -131,7 +131,7 @@ export default function CarteTropheeScreen() {
       setData({
         bestLapLabel: bestSeconds != null ? formatLapTime(bestSeconds) : '—',
         circuitName: session.circuit_name || 'Circuit',
-        dateLabel: formatDateShort(session.started_at),
+        dateLabel: formatDateLong(session.started_at),
         subLabel: lapCount > 0 ? `Tracé · ${lapCount} tour${lapCount > 1 ? 's' : ''}` : 'Tracé',
         tracePoints,
       });

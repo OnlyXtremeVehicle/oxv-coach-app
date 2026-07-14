@@ -60,7 +60,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { formatDateShort, formatLapTime } from '@/utils/format';
+import { formatDateShort, formatLapTimeMs } from '@/utils/format';
 
 const { palette, dataColors, spacing, radius, fonts } = theme;
 
@@ -105,7 +105,6 @@ export default function BilanScreen() {
   const [spreadSeconds, setSpreadSeconds] = useState<number | null>(null);
   const [bestSeconds, setBestSeconds] = useState<number | null>(null);
   const [avgSeconds, setAvgSeconds] = useState<number | null>(null);
-  const [prevBest, setPrevBest] = useState<{ seconds: number; date: string | null } | null>(null);
   const [sessionsHere, setSessionsHere] = useState(1);
 
   useEffect(() => {
@@ -326,7 +325,6 @@ export default function BilanScreen() {
       if (circuitId) hereCountQuery = hereCountQuery.eq('circuit_id', circuitId);
       const { count: hereCount } = await hereCountQuery;
       if (cancelled) return;
-      const prevWithBest = previous.find((s) => s.best_lap_seconds != null) ?? null;
       setLapDurations(durations);
       setMedianSeconds(reg.medianSeconds);
       // Régularité au tour = ÉCART-TYPE (handoff §9) — même métrique que le
@@ -337,11 +335,6 @@ export default function BilanScreen() {
         durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : null
       );
       setSessionsHere(hereCount ?? previous.length + 1);
-      setPrevBest(
-        prevWithBest?.best_lap_seconds != null
-          ? { seconds: prevWithBest.best_lap_seconds, date: prevWithBest.started_at ?? null }
-          : null
-      );
     })();
     return () => {
       cancelled = true;
@@ -435,7 +428,7 @@ export default function BilanScreen() {
             <View style={s.bestLeft}>
               <View style={s.goldDot} />
               <Text style={s.bestChrono}>
-                {bestSeconds != null ? formatLapTime(bestSeconds) : '—'}
+                {bestSeconds != null ? formatLapTimeMs(bestSeconds) : '—'}
               </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
@@ -445,9 +438,8 @@ export default function BilanScreen() {
                   {belowMean.toFixed(1).replace('.', ',')} s sous votre moyenne
                 </Text>
               ) : session.circuit_id == null ? null : sessionsHere > 1 ? (
-                // Branché sur le COMPTE réel de séances (pas sur prevBest, qui
-                // peut être null avec des séances passées sans chrono) ; « ici »
-                // seulement si le circuit est identifié.
+                // Branché sur le COMPTE réel de séances ; « ici » seulement si
+                // le circuit est identifié.
                 <Text style={s.bestSub}>{sessionsHere}ᵉ séance ici</Text>
               ) : (
                 <Text style={s.bestSub}>Première séance ici</Text>

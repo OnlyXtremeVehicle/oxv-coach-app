@@ -31,6 +31,8 @@ import Toast from 'react-native-toast-message';
 import { EmptyState } from '@/components/instruments/EmptyState';
 import { ReportButton } from '@/components/ReportButton';
 import {
+  type AvailabilityStatus,
+  availabilityStatusLabel,
   type CoachAvailabilitySlot,
   type CoachProfileDetail,
   type CoachReview,
@@ -262,24 +264,36 @@ export default function CoachDetailScreen() {
                 </Text>
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
                   {availability.map((slot) => {
-                    const on = slot.id === selectedSlotId;
+                    // Seuls les créneaux `open` sont sélectionnables ; un `full`
+                    // (complet) reste visible mais désactivé, doublé de son libellé
+                    // factuel — le statut n'est jamais porté par la couleur seule.
+                    const isOpen = slot.status === 'open';
+                    const on = isOpen && slot.id === selectedSlotId;
                     return (
                       <Pressable
                         key={slot.id}
                         accessibilityRole="radio"
-                        accessibilityState={{ selected: on }}
+                        accessibilityState={{ selected: on, disabled: !isOpen }}
+                        disabled={!isOpen}
                         onPress={() => setSelectedSlotId(on ? null : slot.id)}
                         style={({ pressed }) => [
                           s.slot,
                           on && s.slotOn,
-                          { opacity: pressed ? 0.85 : 1 },
+                          !isOpen && s.slotDisabled,
+                          { opacity: !isOpen ? 0.6 : pressed ? 0.85 : 1 },
                         ]}
                       >
                         <View style={{ flex: 1 }}>
                           <Text style={s.slotDate}>{formatDateTime(slot.startsAt)}</Text>
                           <Text style={s.slotMeta}>{slot.circuitName}</Text>
                         </View>
-                        {on ? <Text style={s.slotCheck}>✓</Text> : null}
+                        {on ? (
+                          <Text style={s.slotCheck}>✓</Text>
+                        ) : !isOpen ? (
+                          <Text style={s.slotStatus}>
+                            {availabilityStatusLabel(slot.status as AvailabilityStatus)}
+                          </Text>
+                        ) : null}
                       </Pressable>
                     );
                   })}
@@ -719,6 +733,17 @@ const s = {
     minHeight: 52,
   },
   slotOn: { borderColor: palette.coachAccent, borderWidth: 1.5 },
+  // Créneau non ouvert (complet / fermé) : bordure atténuée, non sélectionnable.
+  slotDisabled: { borderColor: palette.separator, backgroundColor: palette.card },
+  // Libellé factuel du statut (« Complet ») — texte, jamais couleur seule.
+  slotStatus: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+    marginLeft: spacing.sm,
+  },
   slotDate: {
     fontFamily: fonts.body,
     fontSize: fontSize.bodyLg,
@@ -754,8 +779,9 @@ const s = {
   },
   avgValue: {
     fontFamily: fonts.mono,
-    // Chiffre secondaire : ne rivalise pas avec le tarif (chiffre dominant unique de l'écran)
-    fontSize: fontSize.value,
+    // Chiffre secondaire : plafonné à h3 pour ne PAS rivaliser avec le tarif,
+    // seul chiffre dominant de l'écran (heritageGold + mono).
+    fontSize: fontSize.h3,
     color: palette.creamSoft,
     letterSpacing: 0.5,
   },

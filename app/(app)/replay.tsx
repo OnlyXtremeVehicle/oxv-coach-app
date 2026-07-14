@@ -6,8 +6,8 @@
  *   - Carte surface avec le tracé (`TrackStage` mode `replay`, contrôlé) et le
  *     relevé VITESSE de la frame courante en haut à droite (mono crème — la
  *     vitesse est une donnée, jamais l'or).
- *   - Scrubber MANUEL : chrono OR (formatChronoMs, temps réel écoulé dans le
- *     tour — l'or reste au chrono) qui suit la position, barre fine à
+ *   - Scrubber MANUEL : chrono OR (formatChronoTenths au dixième, temps réel
+ *     écoulé dans le tour — l'or reste au chrono) qui suit la position, barre fine à
  *     remplissage or + pastille, total du tour à droite.
  *   - Commandes en pastilles ‹ ⏸ › : pas d'autoplay par défaut ; la lecture ne
  *     part QUE sur geste du pilote, au rythme réel du tour (fenêtre des frames),
@@ -44,8 +44,7 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatLapTime } from '@/utils/format';
-import { formatChronoMs } from '@/utils/time';
+import { formatChronoTenths, formatLapTime } from '@/utils/format';
 
 /** G en « fr » : 2 décimales, virgule, − U+2212, « — » si non mesuré. */
 function formatG(g: number | null | undefined): string {
@@ -248,17 +247,6 @@ export default function ReplayScreen() {
         >
           <ReplayStage frames={frames} showGs={level === 'detailed'} />
         </StateWrapper>
-
-        <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={theme.hitSlop}
-            onPress={() => router.back()}
-            style={s.backHit}
-          >
-            <Text style={s.back}>Retour</Text>
-          </Pressable>
-        </View>
       </View>
     </Screen>
   );
@@ -382,7 +370,7 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
       {totalMs > 0 ? (
         <>
           <View style={s.scrubRow}>
-            <Text style={s.chronoNow}>{formatChronoMs(elapsedMs)}</Text>
+            <Text style={s.chronoNow}>{formatChronoTenths(elapsedMs / 1000)}</Text>
             <View
               style={s.scrubTrack}
               accessibilityRole="adjustable"
@@ -391,7 +379,7 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
                 min: 0,
                 max: 100,
                 now: Math.round(progress * 100),
-                text: `${formatChronoMs(elapsedMs)} sur ${formatChronoMs(totalMs)}`,
+                text: `${formatChronoTenths(elapsedMs / 1000)} sur ${formatChronoTenths(totalMs / 1000)}`,
               }}
               accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
               onAccessibilityAction={(e: AccessibilityActionEvent) => {
@@ -412,7 +400,7 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
                 importantForAccessibility="no"
               />
             </View>
-            <Text style={s.chronoTotal}>{formatChronoMs(totalMs)}</Text>
+            <Text style={s.chronoTotal}>{formatChronoTenths(totalMs / 1000)}</Text>
           </View>
           <Text style={s.scrubHint}>Faites glisser pour avancer — pas de lecture automatique.</Text>
         </>
@@ -638,17 +626,5 @@ const s = {
     height: 16,
     borderRadius: 1.5,
     backgroundColor: theme.palette.night,
-  },
-  back: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
-  },
-  // Cible tactile confortable pour le lien « Retour » (texte seul).
-  backHit: {
-    minHeight: 44,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
   },
 };

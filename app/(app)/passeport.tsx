@@ -32,13 +32,13 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
 import { supabase } from '@/lib/supabase';
-import { type Passport, loadPassport } from '@/services/passportService';
+import { NO_CIRCUIT, type Passport, loadPassport } from '@/services/passportService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
-import { formatLapTime } from '@/utils/format';
+import { formatLapTimeMs } from '@/utils/format';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
 
@@ -159,8 +159,12 @@ export default function PasseportScreen() {
   const offerColor = offer === 'heritage' ? palette.heritageGold : palette.gold;
 
   // Le plus familier en tête (séances) — jamais un classement de performance.
+  // Le bucket « sans circuit » (circuit_name null → NO_CIRCUIT) est exclu :
+  // pas de circuit « Inconnu » ni de chrono or pour une séance non située.
   const circuits = passport
-    ? Object.values(passport.stats.byCircuit).sort((a, b) => b.sessionCount - a.sessionCount)
+    ? Object.values(passport.stats.byCircuit)
+        .filter((c) => c.circuitName !== NO_CIRCUIT)
+        .sort((a, b) => b.sessionCount - a.sessionCount)
     : [];
 
   return (
@@ -228,7 +232,7 @@ export default function PasseportScreen() {
                   accessible
                   accessibilityLabel={
                     c.bestLapSeconds !== null
-                      ? `${c.circuitName}, meilleur temps ${formatLapTime(c.bestLapSeconds)}`
+                      ? `${c.circuitName}, meilleur temps ${formatLapTimeMs(c.bestLapSeconds)}`
                       : `${c.circuitName}, meilleur temps non disponible`
                   }
                 >
@@ -242,7 +246,7 @@ export default function PasseportScreen() {
                       c.bestLapSeconds === null && { color: palette.creamMute },
                     ]}
                   >
-                    {c.bestLapSeconds !== null ? formatLapTime(c.bestLapSeconds) : '—'}
+                    {c.bestLapSeconds !== null ? formatLapTimeMs(c.bestLapSeconds) : '—'}
                   </Text>
                 </View>
               ))}

@@ -11,14 +11,15 @@
  * polyline SVG : le rendu 3D animé/interactif (CircuitTrace) ne se capture pas.
  *
  * Doctrine / code couleur : le meilleur tour est un FAIT (pas un classement,
- * pas de « mieux que »). gold = la couleur donnée du jour (tracé + libellé) ;
- * l'or Heritage (#C4A459) reste réservé aux membres Heritage — JAMAIS ici.
- * red = la marque (le X) ; cream = le chiffre. Aucune formulation prescriptive.
+ * pas de « mieux que »). gold = l'or du chrono/record — libellé, tracé ET le
+ * chiffre roi (canon : l'or est réservé au chrono/record). L'or Heritage
+ * (#C4A459) reste réservé aux membres Heritage — JAMAIS ici. red = la marque
+ * (le X) ; cream = le texte neutre. Aucune formulation prescriptive.
  */
 
 import { forwardRef, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Polyline } from 'react-native-svg';
+import Svg, { Circle, Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { type Circuit, generateCircuit, type LatLon } from '@/circuit/circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
@@ -78,6 +79,26 @@ function buildTracePolyline(circuit: Circuit): { points: string; start: [number,
   return { points, start: projected[0] };
 }
 
+/**
+ * Fond ambré chaud de la carte : halo or centré haut-droite (#31280C → #161610),
+ * peint en SVG absolu DERRIÈRE le contenu pour être capturé par
+ * react-native-view-shot (maquette 36-carte-trophee : carte chaude, halo or —
+ * pas d'aplat noir froid).
+ */
+function CardBackground() {
+  return (
+    <Svg width="100%" height="100%" style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <RadialGradient id="trophyHalo" cx="78%" cy="12%" r="95%">
+          <Stop offset="0" stopColor="#31280C" stopOpacity="1" />
+          <Stop offset="1" stopColor="#161610" stopOpacity="1" />
+        </RadialGradient>
+      </Defs>
+      <Rect x="0" y="0" width="100%" height="100%" fill="url(#trophyHalo)" />
+    </Svg>
+  );
+}
+
 export const TrophyCard = forwardRef<View, TrophyCardProps>(function TrophyCard(
   { bestLapLabel, circuitName, dateLabel, subLabel, tracePoints },
   ref
@@ -91,11 +112,12 @@ export const TrophyCard = forwardRef<View, TrophyCardProps>(function TrophyCard(
 
   return (
     <View ref={ref} style={s.card} collapsable={false}>
+      <CardBackground />
       <View style={s.top}>
         <Text style={s.logo}>
           O<Text style={s.logoX}>X</Text>V
         </Text>
-        <Text style={s.eyebrow}>{`SESSION\n${dateLabel.toUpperCase()}`}</Text>
+        <Text style={s.eyebrow}>{dateLabel.toUpperCase()}</Text>
       </View>
 
       <View style={s.traceWrap}>
@@ -120,9 +142,8 @@ export const TrophyCard = forwardRef<View, TrophyCardProps>(function TrophyCard(
       </View>
 
       <View style={s.hero}>
-        <Text style={s.heroLabel}>MEILLEUR TOUR</Text>
+        <Text style={s.heroLabel}>{`MEILLEUR TOUR · ${circuitName.toUpperCase()}`}</Text>
         <Text style={s.heroValue}>{bestLapLabel}</Text>
-        <Text style={s.heroCircuit}>{circuitName}</Text>
         <Text style={s.heroSub}>{subLabel}</Text>
       </View>
 
@@ -141,7 +162,7 @@ const s = StyleSheet.create({
     borderRadius: theme.radius.xl,
     borderWidth: 1,
     borderColor: '#242428',
-    backgroundColor: '#0A0A0C',
+    backgroundColor: '#161610',
     paddingHorizontal: 24,
     paddingVertical: 26,
     overflow: 'hidden',
@@ -186,14 +207,7 @@ const s = StyleSheet.create({
     fontSize: 46,
     letterSpacing: -0.5,
     lineHeight: 48,
-    color: theme.palette.cream,
-  },
-  heroCircuit: {
-    fontFamily: theme.fonts.display,
-    fontSize: 14,
-    letterSpacing: -0.1,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.md,
+    color: theme.palette.gold,
   },
   heroSub: {
     fontFamily: theme.fonts.mono,

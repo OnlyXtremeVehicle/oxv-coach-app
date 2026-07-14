@@ -257,6 +257,44 @@ function HeatTrack({ points, u }: { points: TrackStageHeatPoint[]; u: number }) 
   );
 }
 
+/**
+ * Trajectoire de rejeu scindée au curseur (maquette 21-rejouer) : la portion
+ * PARCOURUE (0 → progress) en or vif opaque, le RESTANT (progress → fin) en gris
+ * épais. Split à l'index Math.round(progress·(n−1)). En l'absence de progress
+ * (lecture auto), tout le tracé reste « restant » et seul le curseur glisse.
+ */
+function ReplayTrajectory({
+  points,
+  progress,
+  u,
+}: {
+  points: TrajectoryPoint[];
+  progress?: number;
+  u: number;
+}) {
+  const { done, rest } = useMemo(() => {
+    const n = points.length;
+    const p =
+      typeof progress === 'number' && Number.isFinite(progress)
+        ? Math.min(1, Math.max(0, progress))
+        : 0;
+    const cut = n > 1 ? Math.round(p * (n - 1)) : 0;
+    // Le restant chevauche d'un point le parcouru pour une jonction continue.
+    return { done: points.slice(0, cut + 1), rest: points.slice(cut) };
+  }, [points, progress]);
+
+  return (
+    <>
+      {rest.length > 1 ? (
+        <TrajectoryLayer points={rest} color={palette.line} strokeWidth={u * 0.008} />
+      ) : null}
+      {done.length > 1 ? (
+        <TrajectoryLayer points={done} color={palette.gold} strokeWidth={u * 0.007} />
+      ) : null}
+    </>
+  );
+}
+
 /** Curseur de rejeu glissant le long de la trajectoire. */
 function ReplayMarker({
   trajectory,
@@ -309,8 +347,17 @@ function ReplayMarker({
 
   return (
     <>
-      <AnimatedCircle cx={cx} cy={cy} r={u * 0.022} fill={palette.gold} opacity={0.18} />
-      <AnimatedCircle cx={cx} cy={cy} r={u * 0.009} fill={palette.gold} />
+      {/* Anneau net cerclant le disque (Circle stroke, fill none). */}
+      <AnimatedCircle
+        cx={cx}
+        cy={cy}
+        r={u * 0.022}
+        stroke={palette.gold}
+        strokeWidth={u * 0.004}
+        fill="none"
+      />
+      {/* Gros disque plein or au point courant. */}
+      <AnimatedCircle cx={cx} cy={cy} r={u * 0.013} fill={palette.gold} />
     </>
   );
 }
@@ -433,11 +480,7 @@ export function TrackStage({
 
           {mode === 'replay' && trajectory ? (
             <>
-              <TrajectoryLayer
-                points={trajectory}
-                color="rgba(255,183,3,0.35)"
-                strokeWidth={u * 0.005}
-              />
+              <ReplayTrajectory points={trajectory} progress={progress} u={u} />
               <ReplayMarker
                 trajectory={trajectory}
                 progress={progress}
