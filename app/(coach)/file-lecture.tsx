@@ -242,6 +242,7 @@ function QueueRow({
 }) {
   const recu = receivedLabel(item.startedAt);
   const circuit = item.circuitName ?? '—';
+  const lapLabel = item.lapCount != null ? `${item.lapCount} tours` : null;
   const muted = item.status !== 'unread';
 
   const openStudio = () =>
@@ -263,9 +264,16 @@ function QueueRow({
 
         {isConsole ? (
           <>
-            <Text numberOfLines={1} style={[s.name, muted && s.nameMuted, { flex: 1.4 }]}>
-              {item.pilotName}
-            </Text>
+            <View style={{ flex: 1.4 }}>
+              <Text numberOfLines={1} style={[s.name, muted && s.nameMuted]}>
+                {item.pilotName}
+              </Text>
+              {lapLabel ? (
+                <Text numberOfLines={1} style={s.lapSub}>
+                  {lapLabel}
+                </Text>
+              ) : null}
+            </View>
             <Text numberOfLines={1} style={[s.cellMuted, { flex: 1.2 }]}>
               {circuit}
             </Text>
@@ -279,7 +287,7 @@ function QueueRow({
               {item.pilotName}
             </Text>
             <Text numberOfLines={1} style={s.metaLine}>
-              {circuit} · {recu}
+              {[circuit, lapLabel, recu].filter(Boolean).join(' · ')}
             </Text>
           </View>
         )}
@@ -491,6 +499,12 @@ const s = StyleSheet.create({
   avatarTxt: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.5, color: palette.creamSoft },
   name: { fontFamily: fonts.bodyMedium, fontSize: fontSize.bodyLg, color: palette.cream },
   nameMuted: { color: palette.creamMute },
+  lapSub: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.micro,
+    color: palette.creamMute,
+    marginTop: 1,
+  },
   cellMuted: { fontFamily: fonts.mono, fontSize: fontSize.small, color: palette.creamMute },
   metaLine: {
     fontFamily: fonts.body,

@@ -38,6 +38,7 @@ export async function loadCoachQueue(): Promise<QueueItem[]> {
     pilotName: e.pilotName,
     circuitName: e.circuitName,
     startedAt: e.startedAt,
+    lapCount: e.lapCount,
     status: resolveQueueStatus(explicitById.get(e.sessionId), e.annotated),
   }));
 }

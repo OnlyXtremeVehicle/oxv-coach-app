@@ -227,17 +227,38 @@ function StudioBody({
 // ── En-tête : identité de la séance + actions réelles ───────────────────────
 
 function StudioHeader({ data, isConsole }: { data: StudioSession; isConsole: boolean }) {
+  const dateLabel = data.startedAt
+    ? new Date(data.startedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+    : null;
+  const initials = data.pilotName
+    ? data.pilotName
+        .split(/\s+/)
+        .map((w) => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : null;
+  const subParts = [
+    data.circuitName ?? null,
+    dateLabel,
+    `${data.lapCount} tour${data.lapCount > 1 ? 's' : ''}`,
+    data.bestLapSeconds != null ? `meilleur ${formatLapTimeMs(data.bestLapSeconds)}` : null,
+  ].filter(Boolean);
   const identity = (
-    <View style={{ flexShrink: 1 }}>
-      <Text style={s.eyebrow}>Séance · 25 Hz</Text>
-      <Text style={s.title} accessibilityRole="header">
-        {data.circuitName ?? 'Séance'}
-      </Text>
-      <Text style={s.meta}>
-        {data.lapCount} tour{data.lapCount > 1 ? 's' : ''}
-        {data.bestLapSeconds != null ? ` · meilleur ${formatLapTimeMs(data.bestLapSeconds)}` : ''}
-      </Text>
-      <PresentationLink sessionId={data.sessionId} />
+    <View style={s.identityRow}>
+      {initials ? (
+        <View style={s.studioAvatar}>
+          <Text style={s.studioAvatarTxt}>{initials}</Text>
+        </View>
+      ) : null}
+      <View style={{ flexShrink: 1 }}>
+        <Text style={s.eyebrow}>Studio · 25 Hz</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {data.pilotName ?? data.circuitName ?? 'Séance'}
+        </Text>
+        <Text style={s.meta}>{subParts.join(' · ')}</Text>
+        <PresentationLink sessionId={data.sessionId} />
+      </View>
     </View>
   );
 
@@ -532,6 +553,21 @@ const s = StyleSheet.create({
   },
 
   // En-tête séance
+  identityRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, flexShrink: 1 },
+  studioAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: palette.coachAccent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  studioAvatarTxt: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: palette.cream,
+  },
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,

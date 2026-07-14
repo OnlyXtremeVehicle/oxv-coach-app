@@ -17,6 +17,8 @@ export interface QueueItem {
   pilotName: string;
   circuitName: string | null;
   startedAt: string;
+  /** Nombre de tours (réel), null si non renseigné. Sous-label « N tours ». */
+  lapCount: number | null;
   status: QueueStatus;
 }
 

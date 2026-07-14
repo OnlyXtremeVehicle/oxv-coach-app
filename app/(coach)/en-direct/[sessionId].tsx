@@ -58,7 +58,7 @@ import { theme } from '@/theme/v2';
 import type { Lap } from '@/types/telemetry';
 import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
-import { formatLapTimeMs } from '@/utils/format';
+import { formatChronoTenths } from '@/utils/format';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
 
@@ -152,7 +152,8 @@ export default function CockpitFocusScreen() {
   const alertCard = alert ? (
     <AlertCard text={alert} cornerIndex={frame?.cornerIndex ?? null} dim={dim} />
   ) : null;
-  const tours = <ToursPanel laps={timedLaps} bestLapNumber={bestLapNumber} />;
+  // Live : dernier tour en tête (maquette 27-en-direct-focus, ordre décroissant).
+  const tours = <ToursPanel laps={[...timedLaps].reverse()} bestLapNumber={bestLapNumber} />;
   const actions = <ActionsPanel sessionId={sessionId} cornerIndex={frame?.cornerIndex ?? null} />;
 
   return (
@@ -434,7 +435,7 @@ function ToursPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: numbe
               <View
                 key={l.id}
                 accessibilityRole="text"
-                accessibilityLabel={`Tour ${l.lap_number}, ${formatLapTimeMs(l.duration_seconds)}${
+                accessibilityLabel={`Tour ${l.lap_number}, ${formatChronoTenths(l.duration_seconds)}${
                   isBest ? ', son meilleur' : ''
                 }`}
                 style={[s.lapRow, i > 0 && s.lapRowBorder, isBest && s.lapRowBest]}
@@ -442,7 +443,7 @@ function ToursPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: numbe
                 <Text style={[s.lapNo, isBest && s.lapBest]}>T{l.lap_number}</Text>
                 {isBest ? <Text style={s.lapTag}>meilleur</Text> : <View style={{ flex: 1 }} />}
                 <Text style={[s.lapChrono, isBest && s.lapBest]}>
-                  {formatLapTimeMs(l.duration_seconds)}
+                  {formatChronoTenths(l.duration_seconds)}
                 </Text>
               </View>
             );

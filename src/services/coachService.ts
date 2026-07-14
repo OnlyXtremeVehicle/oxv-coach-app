@@ -161,6 +161,8 @@ export interface ReadingQueueEntry {
   pilotName: string;
   circuitName: string | null;
   startedAt: string;
+  /** Nombre de tours de la séance (colonne réelle), null si non renseigné. */
+  lapCount: number | null;
   /** Le coach a-t-il déjà annoté cette session ? (proxy « lue »). */
   annotated: boolean;
 }
@@ -176,7 +178,7 @@ export async function loadReadingQueue(): Promise<ReadingQueueEntry[]> {
     listMyPilots(),
     supabase
       .from('telemetry_sessions')
-      .select('id, user_id, started_at, circuit_name')
+      .select('id, user_id, started_at, circuit_name, lap_count')
       .order('started_at', { ascending: false })
       .limit(200),
     supabase.from('coach_annotations').select('telemetry_session_id'),
@@ -193,7 +195,14 @@ export async function loadReadingQueue(): Promise<ReadingQueueEntry[]> {
 
   const entries: ReadingQueueEntry[] = (sessionsRes.data ?? [])
     .map(
-      (s) => s as { id: string; user_id: string; started_at: string; circuit_name: string | null }
+      (s) =>
+        s as {
+          id: string;
+          user_id: string;
+          started_at: string;
+          circuit_name: string | null;
+          lap_count: number | null;
+        }
     )
     .filter((row) => nameById.has(row.user_id))
     .map((row) => ({
@@ -202,6 +211,7 @@ export async function loadReadingQueue(): Promise<ReadingQueueEntry[]> {
       pilotName: nameById.get(row.user_id) ?? 'Pilote',
       circuitName: row.circuit_name ?? null,
       startedAt: row.started_at,
+      lapCount: row.lap_count ?? null,
       annotated: annotated.has(row.id),
     }));
 

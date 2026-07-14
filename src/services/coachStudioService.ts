@@ -12,6 +12,7 @@
  */
 
 import { getAnalysisForSession } from '@/services/analysesService';
+import { listMyPilots } from '@/services/coachService';
 import { getSessionTriage } from '@/services/coachTriageService';
 import type { TriageCorner } from '@/services/coachTriageLogic';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
@@ -31,6 +32,10 @@ export interface StudioMarginSummary {
 export interface StudioSession {
   sessionId: string;
   circuitName: string | null;
+  /** Nom du pilote de la séance (via listMyPilots, RLS consentement), null si non résolu. */
+  pilotName: string | null;
+  /** Début de séance (ISO), null si non renseigné. */
+  startedAt: string | null;
   bestLapSeconds: number | null;
   lapCount: number;
   /** Smart Flagging : les virages les plus serrés (fait seul). */
@@ -48,18 +53,24 @@ export interface StudioSession {
 export async function getStudioSession(telemetrySessionId: string): Promise<StudioSession | null> {
   const { data: session } = await supabase
     .from('telemetry_sessions')
-    .select('id, circuit_name, lap_count, best_lap_seconds')
+    .select('id, user_id, started_at, circuit_name, lap_count, best_lap_seconds')
     .eq('id', telemetrySessionId)
     .maybeSingle();
   if (!session) return null;
 
-  const [triage, qdi, analysis, laps, segments] = await Promise.all([
+  const [triage, qdi, analysis, laps, segments, pilots] = await Promise.all([
     getSessionTriage(telemetrySessionId),
     getQdiForSession(telemetrySessionId),
     getAnalysisForSession(telemetrySessionId),
     fetchSessionLaps(telemetrySessionId),
     listSegmentAnalysesForSession(telemetrySessionId),
+    listMyPilots(),
   ]);
+
+  const pilot = pilots.find((p) => p.pilotId === (session as { user_id?: string }).user_id);
+  const pilotName = pilot
+    ? [pilot.firstName, pilot.lastName].filter(Boolean).join(' ') || null
+    : null;
 
   const keyMoments = computeKeyMoments({
     laps: laps.map((l) => ({
@@ -78,6 +89,8 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
   return {
     sessionId: telemetrySessionId,
     circuitName: session.circuit_name ?? null,
+    pilotName,
+    startedAt: (session as { started_at?: string | null }).started_at ?? null,
     bestLapSeconds: session.best_lap_seconds ?? null,
     lapCount: session.lap_count ?? laps.filter((l) => !l.is_outlap && !l.is_inlap).length,
     triage,

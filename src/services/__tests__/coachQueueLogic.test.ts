@@ -25,6 +25,7 @@ function item(status: QueueStatus, id: string): QueueItem {
     pilotName: 'Pilote',
     circuitName: null,
     startedAt: '2026-06-29T10:00:00Z',
+    lapCount: null,
     status,
   };
 }
