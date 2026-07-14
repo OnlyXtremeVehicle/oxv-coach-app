@@ -1,40 +1,58 @@
 /**
- * Coach — Débrief, MODE PRÉSENTATION. Réintégration coach__debrief.
+ * Coach — Débrief, MODE PRÉSENTATION, RESPONSIVE DEUX FORMATS (décision fondateur
+ * 2026-07-13, handoff §12 · coach/18-debrief + coach-mobile/14-debrief-stand).
  *
- * Une vue calme, épurée, LECTURE SEULE : la synthèse d'une séance à montrer au
- * pilote côte à côte (le miroir partagé). Distincte du Studio (outil dense de
- * travail) — ici, de l'air, de grands repères, aucune action d'édition. Réutilise
- * getStudioSession (QDI 5 branches + faits + moments), présenté autrement.
+ * Une vue CALME, LECTURE SEULE : la lecture d'une séance à montrer au pilote
+ * côte à côte (le miroir partagé). Distincte du Studio (atelier dense) — ici, de
+ * l'air, UN fait dominant, aucune action d'édition.
  *
- * Doctrine : des FAITS, le vouvoiement, aucune prescription. QDI en 5 branches
- * (jamais un composite, T6). C'est un miroir qu'on regarde ensemble — les
- * conclusions appartiennent au pilote. SVG (QdiRadar), pas Skia.
+ *  - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : deux colonnes fidèles
+ *    à la maquette — à gauche l'eyebrow « ce qu'on regarde ensemble » + le fait
+ *    dominant + le chiffre roi (marge du virage) ; à droite la trajectoire avec
+ *    le virage mis en évidence.
+ *  - COMPAGNON téléphone (« au stand ») : une colonne — chiffre roi, lecture, et
+ *    une carte pour ouvrir le virage sur la carte. Pas de contrôle d'édition.
+ *
+ * Doctrine : des FAITS, le vouvoiement, aucune prescription. Le triage désigne le
+ * virage le plus serré (la marge la plus fine) et sa zone ; il ne dit jamais quoi
+ * faire. La marge se lit sur le dégradé §7.6 (serré→rouge de donnée, moyen→or,
+ * large→vert), jamais l'or par défaut — l'or reste au chrono/record. C'est un
+ * miroir qu'on regarde ensemble ; les conclusions appartiennent au pilote.
+ *
+ * Données réelles uniquement : getStudioSession (agrégation testée) + la trace
+ * GPS (loadSessionTrajectory) en best-effort. Sans donnée de marge, la lecture
+ * s'efface proprement (EmptyState). On n'invente rien.
  */
 
-import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { QdiRadar } from '@/components/QdiRadar';
+import { CoachPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { EmptyState } from '@/components/instruments';
-import { type StudioSession, getStudioSession } from '@/services/coachStudioService';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
+import { marginZoneExportColor, type ZoneLike } from '@/services/marginZoneColorLogic';
+import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { theme } from '@/theme/v2';
+import type { MarginZone } from '@/types/domain';
 import { AppBar } from '@/ui/AppBar';
-import { CockpitPanel } from '@/ui/CockpitPanel';
 import { KingNumber } from '@/ui/KingNumber';
-import { marginZoneExportColor } from '@/services/marginZoneColorLogic';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatLapTime } from '@/utils/format';
+import { formatLapTimeMs } from '@/utils/format';
 
 const { palette, spacing } = theme;
 
 export default function CoachDebriefScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sessionId = params.sessionId;
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [data, setData] = useState<StudioSession | null>(null);
+  const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -60,6 +78,13 @@ export default function CoachDebriefScreen() {
           setLoading(false);
         }
       });
+    // Trace GPS : best-effort, ne conditionne pas l'état de l'écran (la topologie
+    // du circuit reste lisible tant que le boîtier n'a pas déposé de trames).
+    loadSessionTrajectory(sessionId)
+      .then((pts) => {
+        if (!cancelled && pts.length > 1) setTrajectory(pts);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -83,141 +108,365 @@ export default function CoachDebriefScreen() {
 
         <StateWrapper
           state={state}
-          skeletonLines={6}
+          skeletonLines={5}
           emptyLabel="Aucune séance"
           emptyMessage="Ouvrez le débrief depuis une séance de votre file de lecture."
           errorCause="La séance n'a pas pu être chargée."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          {data ? <DebriefBody data={data} /> : null}
+          {data ? <DebriefBody data={data} trajectory={trajectory} isConsole={isConsole} /> : null}
         </StateWrapper>
       </View>
     </Screen>
   );
 }
 
-function DebriefBody({ data }: { data: StudioSession }) {
-  return (
-    <View>
-      {/* En-tête présentation : grand titre calme. */}
-      <Text style={s.eyebrow}>Votre séance</Text>
-      <Text style={s.heroTitle}>{data.circuitName ?? 'Séance'}</Text>
-      <Text style={s.heroSub}>
-        {data.lapCount} tour{data.lapCount > 1 ? 's' : ''}
-        {data.bestLapSeconds != null ? ` · meilleur ${formatLapTime(data.bestLapSeconds)}` : ''}
-      </Text>
+// ── Lecture dominante dérivée des faits réels ───────────────────────────────
 
-      {/* QDI radar — le repère central, en grand. */}
-      <View style={{ marginTop: spacing.xxl }}>
-        {data.qdi ? (
-          <CockpitPanel>
-            <Text style={s.panelLabel}>Votre empreinte · 5 branches</Text>
-            <QdiRadar current={data.qdi} reference={null} detail />
-          </CockpitPanel>
-        ) : (
-          <EmptyState
-            label="QDI en préparation"
-            message="Les cinq branches apparaîtront après l'analyse de la séance."
-          />
-        )}
-      </View>
+interface Dominant {
+  /** Nom du virage (« Virage 3 ») ou libellé de séance. */
+  headline: string;
+  /** Phrase factuelle et descriptive (jamais une consigne). */
+  narrative: string;
+  /** Marge mesurée, en %. */
+  marginPercent: number;
+  /** Zone de marge (couleur du chiffre roi + de la pastille sur la carte). */
+  zone: ZoneLike;
+  /** Segment mis en évidence sur la carte, ou null (lecture de séance). */
+  segmentIndex: number | null;
+}
 
-      {/* Marge globale, en grand chiffre calme. */}
-      {data.margins.global != null ? (
-        <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Text style={s.eyebrowCentered}>Marge de la séance</Text>
-          {/* Marge = dégradé §7.6 selon la zone, pas l'or par défaut. */}
-          <KingNumber
-            value={`${Math.round(data.margins.global)}`}
-            unit="%"
-            label="Marge"
-            color={marginZoneExportColor(data.margins.zone)}
-          />
-        </View>
+/**
+ * Le fait dominant à montrer : le virage le plus serré (marge la plus fine) si le
+ * triage l'a désigné, sinon la marge globale de la séance. Rien si aucune marge
+ * n'est mesurée (honnêteté — on n'affiche pas de chiffre inventé).
+ */
+function deriveDominant(data: StudioSession): Dominant | null {
+  const top = data.triage[0];
+  if (top) {
+    return {
+      headline: top.label,
+      narrative: cornerNarrative(top.label, top.marginZone),
+      marginPercent: top.marginPercent,
+      zone: top.marginZone,
+      segmentIndex: top.segmentIndex,
+    };
+  }
+  if (data.margins.global != null) {
+    return {
+      headline: 'Lecture de séance',
+      narrative: 'La marge globale de cette séance.',
+      marginPercent: data.margins.global,
+      zone: data.margins.zone,
+      segmentIndex: null,
+    };
+  }
+  return null;
+}
+
+/** Phrase descriptive d'un virage selon sa zone (vocabulaire du triage). */
+function cornerNarrative(label: string, zone: ZoneLike): string {
+  if (zone === 'red') return `${label} : le terrain le plus serré mesuré sur la séance.`;
+  if (zone === 'yellow') return `${label} : la marge la plus fine, un terrain à explorer.`;
+  if (zone === 'green') return `${label} : la marge la plus fine, et elle reste confortable.`;
+  return `${label} : la marge la plus fine mesurée sur la séance.`;
+}
+
+function DebriefBody({
+  data,
+  trajectory,
+  isConsole,
+}: {
+  data: StudioSession;
+  trajectory: TrajectoryPoint[] | null;
+  isConsole: boolean;
+}) {
+  const dominant = useMemo(() => deriveDominant(data), [data]);
+
+  // Couleur des pastilles de virage = zone de marge du triage (dégradé §7.6).
+  // Seules les zones réellement mesurées colorent un virage.
+  const zoneByIndex = useMemo(() => {
+    const out: Record<number, MarginZone> = {};
+    for (const c of data.triage) {
+      if (c.marginZone) out[c.segmentIndex] = c.marginZone as MarginZone;
+    }
+    return out;
+  }, [data.triage]);
+
+  const meta = (
+    <Text style={s.meta}>
+      {data.circuitName ?? 'Séance'} · {data.lapCount} tour{data.lapCount > 1 ? 's' : ''}
+      {data.bestLapSeconds != null ? (
+        <Text style={s.metaGold}> · meilleur {formatLapTimeMs(data.bestLapSeconds)}</Text>
       ) : null}
+    </Text>
+  );
 
-      {/* Moments de la séance — calmes, un par ligne. */}
-      {data.keyMoments.length > 0 ? (
-        <View style={{ marginTop: spacing.xxl }}>
-          <Text style={s.eyebrow}>Ce qui s'est passé</Text>
-          <View style={{ marginTop: spacing.md, gap: spacing.lg }}>
-            {data.keyMoments.map((m) => (
-              <View key={m.key}>
-                <Text style={s.momentTitle}>{m.title}</Text>
-                <Text style={s.momentFact}>{m.fact}</Text>
-              </View>
-            ))}
+  // Aucune marge mesurée : la lecture s'efface proprement, quel que soit le format.
+  if (!dominant) {
+    return (
+      <View>
+        <Text style={s.presentEyebrow}>Mode débrief</Text>
+        <Text style={s.presentTitle}>À montrer côte à côte</Text>
+        <View style={{ marginTop: spacing.sm, marginBottom: spacing.xl }}>{meta}</View>
+        <EmptyState
+          label="Lecture en préparation"
+          message="Les repères de marge de cette séance ne sont pas encore disponibles."
+          source="app_segment_analyses"
+        />
+        <MirrorLine />
+      </View>
+    );
+  }
+
+  if (isConsole) {
+    // Console : deux colonnes, aérées — à gauche la lecture, à droite la carte.
+    return (
+      <View>
+        <Text style={s.presentEyebrow}>Mode débrief</Text>
+        <Text style={s.presentTitle}>À montrer côte à côte</Text>
+        <View style={{ marginTop: spacing.sm }}>{meta}</View>
+
+        <View style={s.consoleRow}>
+          <View style={s.consoleReadCol}>
+            <Text style={s.eyebrow}>Ce qu'on regarde ensemble</Text>
+            <Text style={[s.narrative, s.narrativeConsole]}>{dominant.narrative}</Text>
+            <View style={{ marginTop: spacing.xl }}>
+              <KingNumber
+                value={`${Math.round(dominant.marginPercent)}`}
+                unit="%"
+                label="de marge"
+                color={marginZoneExportColor(dominant.zone)}
+                size={54}
+              />
+            </View>
+          </View>
+
+          <View style={s.consoleMapCol}>
+            <TrackPanel
+              trajectory={trajectory}
+              zoneByIndex={zoneByIndex}
+              selectedIndex={dominant.segmentIndex}
+              headline={dominant.headline}
+              height={320}
+            />
           </View>
         </View>
+
+        <MirrorLine />
+      </View>
+    );
+  }
+
+  // Compagnon téléphone : une colonne, le chiffre roi en tête pour ancrer la lecture.
+  return (
+    <View style={{ gap: spacing.xl }}>
+      <View>
+        <Text style={s.presentEyebrow}>Mode débrief</Text>
+        {meta}
+      </View>
+
+      <View>
+        <Text style={s.eyebrow}>Ce qui ressort de votre run</Text>
+        <View style={{ marginTop: spacing.md }}>
+          <KingNumber
+            value={`${Math.round(dominant.marginPercent)}`}
+            unit="%"
+            label="de marge"
+            color={marginZoneExportColor(dominant.zone)}
+            size={46}
+          />
+        </View>
+        <Text style={[s.narrative, s.narrativeMobile]}>{dominant.narrative}</Text>
+      </View>
+
+      {dominant.segmentIndex != null ? (
+        <MapCard sessionId={data.sessionId} headline={dominant.headline} />
       ) : null}
 
-      {/* Ligne-miroir de clôture (éditorial serif). */}
-      <Text style={s.mirror}>
-        Un miroir, pas un verdict. La piste est à vous. Les décisions aussi.
-      </Text>
+      <MirrorLine />
     </View>
   );
 }
 
-const s = {
+// ── Carte : trajectoire réelle, le virage dominant mis en évidence ──────────
+
+function TrackPanel({
+  trajectory,
+  zoneByIndex,
+  selectedIndex,
+  headline,
+  height,
+}: {
+  trajectory: TrajectoryPoint[] | null;
+  zoneByIndex: Record<number, MarginZone>;
+  selectedIndex: number | null;
+  headline: string;
+  height: number;
+}) {
+  return (
+    <View>
+      <CoachPreset
+        trajectory={trajectory ?? undefined}
+        zoneByIndex={zoneByIndex}
+        selectedIndex={selectedIndex}
+        height={height}
+      />
+      {selectedIndex != null ? (
+        <Text style={s.mapCaption}>{headline} en évidence</Text>
+      ) : (
+        <Text style={s.mapCaption}>
+          La trace GPS apparaîtra avec les premières trames du boîtier.
+        </Text>
+      )}
+    </View>
+  );
+}
+
+// ── Carte d'accès (téléphone) : ouvrir le virage sur la carte du triage ─────
+
+function MapCard({ sessionId, headline }: { sessionId: string; headline: string }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Ouvrir ${headline} sur la carte du triage`}
+      onPress={() => router.push({ pathname: '/(coach)/triage', params: { sessionId } } as never)}
+      style={({ pressed }) => [s.mapCard, pressed ? { opacity: 0.92 } : null]}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={s.mapCardTitle}>Le virage à regarder ensemble</Text>
+        <Text style={s.mapCardName}>{headline}</Text>
+      </View>
+      <Text style={s.mapCardChevron}>Sur la carte ›</Text>
+    </Pressable>
+  );
+}
+
+function MirrorLine() {
+  return (
+    <Text style={s.mirror}>
+      Un miroir, pas un verdict. La piste est à vous. Les décisions aussi.
+    </Text>
+  );
+}
+
+const s = StyleSheet.create({
+  // En-tête présentation
+  presentEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2.4,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
+  },
+  presentTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+    marginTop: spacing.sm,
+  },
+  meta: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+  },
+  // Meilleur tour = record → OR (seule donnée dorée autorisée).
+  metaGold: {
+    color: palette.gold,
+  },
+
+  // Colonnes console
+  consoleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxl,
+    marginTop: spacing.xxl * 2,
+  },
+  consoleReadCol: {
+    flex: 1.1,
+  },
+  consoleMapCol: {
+    flex: 1,
+  },
+
+  // Lecture dominante
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
     letterSpacing: 2.4,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
   },
-  eyebrowCentered: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2.4,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
-    marginBottom: spacing.md,
-  },
-  heroTitle: {
-    fontFamily: theme.fonts.serif,
-    fontSize: theme.fontSize.serifTitle,
+  narrative: {
+    fontFamily: theme.fonts.display,
     color: palette.cream,
-    lineHeight: theme.fontSize.serifTitle,
-    marginTop: spacing.sm,
   },
-  heroSub: {
+  narrativeConsole: {
+    fontSize: theme.fontSize.display,
+    lineHeight: theme.fontSize.display * 1.25,
+    marginTop: spacing.md,
+  },
+  narrativeMobile: {
+    fontSize: theme.fontSize.h3,
+    lineHeight: theme.fontSize.h3 * 1.35,
+    marginTop: spacing.md,
+  },
+
+  // Carte
+  mapCaption: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
     letterSpacing: 0.4,
     color: palette.creamMute,
     marginTop: spacing.md,
   },
-  panelLabel: {
+
+  // Carte d'accès téléphone
+  mapCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 44,
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderWidth: 1,
+    borderLeftColor: palette.coachAccent,
+    borderLeftWidth: 2,
+    borderRadius: theme.radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  mapCardTitle: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
     color: palette.creamMute,
-    marginBottom: spacing.md,
   },
-  momentTitle: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.2,
+  mapCardName: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.bodyLg,
     color: palette.cream,
+    marginTop: 2,
   },
-  momentFact: {
+  mapCardChevron: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.8,
+    color: palette.creamSoft,
+  },
+
+  // Ligne-miroir de clôture
+  mirror: {
     fontFamily: theme.fonts.bodyLight,
     fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic',
     color: palette.creamSoft,
-    marginTop: spacing.xs,
-    lineHeight: theme.fontSize.bodyLg * 1.5,
-  },
-  mirror: {
-    fontFamily: theme.fonts.serifItalic,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: palette.creamSoft,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     marginTop: spacing.xxl * 1.5,
     paddingHorizontal: spacing.lg,
     lineHeight: theme.fontSize.bodyLg * 1.6,
   },
-};
+});

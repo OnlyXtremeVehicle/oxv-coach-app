@@ -1,37 +1,60 @@
 /**
- * Écran Coach — Comparatif de 2 sessions d'un même pilote.
+ * Écran Coach — Comparer DEUX séances d'un même pilote (handoff §12 ·
+ * coach/16-comparer-seances). Reskin refonte-v2 RESPONSIVE DEUX FORMATS
+ * (décision fondateur 2026-07-13) :
+ *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : fidèle à la maquette —
+ *     en-tête « COMPARER · {pilote} » + « {mois A} vs {mois B} » + tag
+ *     « deux faits, aucun gagnant », deux cartes-colonnes (A or / B bleu) et un
+ *     TABLEAU FACTUEL (valeur A · libellé · valeur B).
+ *   - COMPAGNON téléphone : la même matière en UNE colonne compacte.
  *
- * Deux cartes empilées (mobile portrait) ou côte à côte (tablette / paysage),
- * chacune affichant la trajectoire réelle GPS du pilote et la coloration
- * des 7 virages par zone de marge.
+ * Doctrine (garde-fous §12) : deux LECTURES côte à côte, JAMAIS un gagnant — ni
+ * vert/rouge de jugement, ni delta interprété. L'app décrit, le coach interprète.
+ * Lecture seule ; chaque consultation journalisée (logCoachView, RLS coach).
  *
- * Doctrine coach :
- *   - Pas de "winner" — pas de "session B est meilleure que A"
- *   - Delta neutre (« +12 pts », « -0.4 s ») sans interprétation
- *   - Le coach interprète, l'app décrit
- *   - Lecture seule, pas d'écriture
+ * Convention de série verrouillée « A or / B bleu » (cf. comparateur pilote) :
+ * l'OR (#FFB703) et le BLEU trajectoire (#4F9DF7) sont ici des ÉTIQUETTES de
+ * colonne, pas un verdict. La régularité garde sa couleur QDI fixe (violet) sur
+ * les deux colonnes. Marge & tours restent neutres (aucune hiérarchie).
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel du kit. Accent coach =
- * theme.palette.coach (crème neutre). Cartes SVG (CoachPreset) inchangées.
+ * Données réelles uniquement (les chiffres du PNG sont des exemples) :
+ *   - meilleur tour · marge globale · tours → loadSessionSnapshot
+ *     (telemetry_sessions + app_session_analyses, RLS coach) ;
+ *   - régularité → écart-type des tours réels (`laps` via fetchSessionLaps →
+ *     computeRegularity, mêmes filtres outlap/inlap que l'écran Régularité),
+ *     best-effort, sans bloquer l'écran.
+ *   Valeur absente → « — ». Aucune table ni colonne nouvelle. La maquette montre
+ *   une ligne « sorties » : non tracée dans le modèle → retirée (pas de contrôle
+ *   mort). Le nom du pilote pour l'eyebrow vient de listMyPilots (best-effort).
  */
 
 import { useEffect, useState } from 'react';
-import { Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CoachPreset } from '@/components/CircuitMap';
-import { FadeInSection } from '@/components/motion';
-import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
-import { type SessionSnapshot, loadSessionSnapshot, logCoachView } from '@/services/coachService';
-import { type MarginZone, marginLabelOf } from '@/types/domain';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import {
+  type SessionSnapshot,
+  listMyPilots,
+  loadSessionSnapshot,
+  logCoachView,
+} from '@/services/coachService';
+import { computeRegularity } from '@/services/regularityService';
+import { fetchSessionLaps } from '@/services/sessionsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatDateShort, formatLapTime } from '@/utils/format';
+import { formatChronoTenths } from '@/utils/format';
+
+const { palette, dataColors, spacing } = theme;
+
+// Étiquettes de série (convention verrouillée « A or / B bleu ; aucun gagnant »).
+const SERIES_A = palette.gold; // #FFB703 — étiquette de la colonne A (pas un record)
+const SERIES_B = dataColors.trajectory; // #4F9DF7 — étiquette de la colonne B
+const REGUL = dataColors.regularity; // #A783F2 — couleur QDI fixe de la régularité
 
 export default function CoachComparerScreen() {
   const params = useLocalSearchParams<{
@@ -40,14 +63,21 @@ export default function CoachComparerScreen() {
     sessionB?: string;
   }>();
   const { width } = useWindowDimensions();
-  const sideBySide = width >= 760;
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [snapA, setSnapA] = useState<SessionSnapshot | null>(null);
   const [snapB, setSnapB] = useState<SessionSnapshot | null>(null);
+  const [firstName, setFirstName] = useState<string | null>(null);
+  // Écart-type des tours par côté : null = non mesurable / pas encore calculé
+  // (affiché « — »). N'influence pas l'état de l'écran (best-effort).
+  const [stdA, setStdA] = useState<number | null>(null);
+  const [stdB, setStdB] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // Chargement des deux snapshots (pilote source des états). Inchangé : audit
+  // RGPD (un accès à 2 séances = 2 events « coach_view_compare »).
   useEffect(() => {
     if (!params.sessionA || !params.sessionB) {
       setLoading(false);
@@ -57,7 +87,6 @@ export default function CoachComparerScreen() {
     setLoading(true);
     setError(false);
 
-    // Audit log côté coach : un accès à 2 sessions = 1 event "coach_view_compare"
     if (params.pilotId) {
       logCoachView(params.pilotId, {
         subtype: 'coach_view_compare',
@@ -88,6 +117,51 @@ export default function CoachComparerScreen() {
     };
   }, [params.sessionA, params.sessionB, params.pilotId, reloadKey]);
 
+  // Nom du pilote pour l'eyebrow « COMPARER · {prénom} » — best-effort, RLS
+  // coach_pilots_view (jamais de coordonnées). N'affecte pas l'état de l'écran.
+  useEffect(() => {
+    if (!params.pilotId) return;
+    let cancelled = false;
+    listMyPilots()
+      .then((rows) => {
+        if (cancelled) return;
+        const found = rows.find((p) => p.pilotId === params.pilotId);
+        if (found) setFirstName(found.firstName?.trim() || null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [params.pilotId]);
+
+  // Régularité réelle (écart-type des tours volants) — best-effort, mêmes filtres
+  // que l'écran Régularité. Ne conditionne pas l'état (violet si mesuré, « — » sinon).
+  useEffect(() => {
+    const a = params.sessionA;
+    const b = params.sessionB;
+    if (!a || !b) return;
+    let cancelled = false;
+    setStdA(null);
+    setStdB(null);
+    const load = (sessionId: string, setter: (v: number | null) => void) =>
+      fetchSessionLaps(sessionId)
+        .then((laps) => {
+          if (cancelled) return;
+          const reg = computeRegularity(
+            laps
+              .filter((l) => !l.is_outlap && !l.is_inlap)
+              .map((l) => ({ lapNumber: l.lap_number, durationSeconds: l.duration_seconds }))
+          );
+          setter(reg.stdDevSeconds);
+        })
+        .catch(() => undefined);
+    load(a, setStdA);
+    load(b, setStdB);
+    return () => {
+      cancelled = true;
+    };
+  }, [params.sessionA, params.sessionB, reloadKey]);
+
   const state: ScreenState = loading
     ? 'loading'
     : error
@@ -99,79 +173,33 @@ export default function CoachComparerScreen() {
   return (
     <Screen>
       <AppBar title="COMPARATIF" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={{ marginBottom: theme.spacing.md }}>
+      <View
+        style={[
+          { paddingHorizontal: isConsole ? spacing.xl : spacing.lg, paddingBottom: spacing.xxl },
+          isConsole ? s.consoleWidth : null,
+        ]}
+      >
+        <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>
-        <Text style={s.title}>Deux sessions, côte à côte.</Text>
 
         <StateWrapper
           state={state}
           skeletonLines={5}
           emptyLabel="Sélection incomplète."
-          emptyMessage="Le comparatif requiert deux sessions analysées. Revenez à la liste pour les choisir."
+          emptyMessage="Le comparatif requiert deux séances analysées. Revenez à la fiche du pilote pour les choisir."
           errorCause="Le comparatif n'a pas pu être chargé."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
           {snapA && snapB ? (
-            <>
-              {/* Cartes — apparition décalée pour laisser le coach lire A avant que B arrive */}
-              <View
-                style={{
-                  flexDirection: sideBySide ? 'row' : 'column',
-                  gap: theme.spacing.lg,
-                  marginTop: theme.spacing.lg,
-                }}
-              >
-                <FadeInSection delay={0} style={{ flex: 1 }}>
-                  <SessionCard label="Session A" snap={snapA} />
-                </FadeInSection>
-                <FadeInSection delay={350} style={{ flex: 1 }}>
-                  <SessionCard label="Session B" snap={snapB} />
-                </FadeInSection>
-              </View>
-
-              {/* Delta global */}
-              <FadeInSection delay={700} style={{ marginTop: theme.spacing.xxl }}>
-                <Card style={{ borderColor: theme.palette.coach }}>
-                  <SectionLabel>ÉCART B − A</SectionLabel>
-                  <View style={{ marginTop: theme.spacing.md }}>
-                    <DeltaLine
-                      label="Marge globale"
-                      deltaText={formatDeltaPoints(snapA.marginGlobal, snapB.marginGlobal)}
-                    />
-                    <DeltaLine
-                      label="Meilleur tour"
-                      deltaText={formatDeltaSeconds(snapA.bestLapSeconds, snapB.bestLapSeconds)}
-                    />
-                    <DeltaLine
-                      label="Nombre de tours"
-                      deltaText={formatDeltaCount(snapA.lapCount, snapB.lapCount)}
-                    />
-                  </View>
-                </Card>
-              </FadeInSection>
-
-              {/* Delta par virage */}
-              <FadeInSection delay={900} style={{ marginTop: theme.spacing.xxl }}>
-                <View style={{ marginBottom: theme.spacing.md }}>
-                  <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
-                </View>
-                <View style={{ gap: theme.spacing.xs }}>
-                  {BELTOISE_CORNERS.map((corner) => (
-                    <CornerDeltaRow
-                      key={corner.index}
-                      cornerIndex={corner.index}
-                      cornerName={corner.name}
-                      zoneA={snapA.zoneByIndex[corner.index] ?? null}
-                      zoneB={snapB.zoneByIndex[corner.index] ?? null}
-                      marginA={snapA.marginByIndex[corner.index] ?? null}
-                      marginB={snapB.marginByIndex[corner.index] ?? null}
-                    />
-                  ))}
-                </View>
-              </FadeInSection>
-            </>
+            <ComparerBody
+              snapA={snapA}
+              snapB={snapB}
+              firstName={firstName}
+              stdA={stdA}
+              stdB={stdB}
+              isConsole={isConsole}
+            />
           ) : null}
         </StateWrapper>
       </View>
@@ -179,206 +207,344 @@ export default function CoachComparerScreen() {
   );
 }
 
-function SessionCard({ label, snap }: { label: string; snap: SessionSnapshot }) {
-  const dateStr = formatDateShort(snap.startedAt);
-  const marginStr = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
-  const lapStr =
-    snap.bestLapSeconds !== null ? `Meilleur tour ${formatLapTime(snap.bestLapSeconds)}` : null;
-  return (
-    <Card style={{ borderColor: theme.palette.coach }}>
-      <View style={s.cardHead}>
-        <View>
-          <SectionLabel>{label}</SectionLabel>
-          <Text style={s.cardDate}>{dateStr}</Text>
-        </View>
-        <Text style={s.cardMargin}>{marginStr}</Text>
+// ─────────────────────────────────────────────────────────────────────────────
+// Corps — en-tête + cartes-colonnes + tableau factuel, arrangés par format
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ComparerBody({
+  snapA,
+  snapB,
+  firstName,
+  stdA,
+  stdB,
+  isConsole,
+}: {
+  snapA: SessionSnapshot;
+  snapB: SessionSnapshot;
+  firstName: string | null;
+  stdA: number | null;
+  stdB: number | null;
+  isConsole: boolean;
+}) {
+  const eyebrow = `COMPARER${firstName ? ` · ${firstName.toUpperCase()}` : ''}`;
+  const title = periodTitle(snapA.startedAt, snapB.startedAt);
+
+  const header = isConsole ? (
+    <View style={s.headerRow}>
+      <View style={{ flexShrink: 1 }}>
+        <Text style={s.eyebrow}>{eyebrow}</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {title}
+        </Text>
       </View>
-      <CoachPreset
-        trajectory={snap.trajectory.length > 1 ? snap.trajectory : undefined}
-        zoneByIndex={snap.zoneByIndex}
-        height={220}
+      <Text style={s.tag}>deux faits, aucun gagnant</Text>
+    </View>
+  ) : (
+    <View>
+      <Text style={s.eyebrow}>{eyebrow}</Text>
+      <Text style={s.title} accessibilityRole="header">
+        {title}
+      </Text>
+      <Text style={[s.tag, { marginTop: spacing.xs }]}>deux faits, aucun gagnant</Text>
+    </View>
+  );
+
+  const headCards = (
+    <View style={s.headCards}>
+      <ColumnHead slot="A" color={SERIES_A} snap={snapA} />
+      <ColumnHead slot="B" color={SERIES_B} snap={snapB} />
+    </View>
+  );
+
+  const table = (
+    <View style={s.table}>
+      <MetricRow
+        label="meilleur tour"
+        valueA={chronoText(snapA)}
+        valueB={chronoText(snapB)}
+        colorA={SERIES_A}
+        colorB={SERIES_B}
+        a11y={`Meilleur tour. Séance A : ${spoken(chronoText(snapA))} ; séance B : ${spoken(
+          chronoText(snapB)
+        )}.`}
       />
-      {lapStr ? <Text style={s.lapStr}>{lapStr}</Text> : null}
+      <MetricRow
+        label="régularité"
+        valueA={stdText(stdA)}
+        valueB={stdText(stdB)}
+        colorA={REGUL}
+        colorB={REGUL}
+        a11y={`Régularité, écart-type des tours. Séance A : ${stdSpoken(
+          stdA
+        )} ; séance B : ${stdSpoken(stdB)}.`}
+      />
+      <MetricRow
+        label="marge globale"
+        valueA={margeText(snapA)}
+        valueB={margeText(snapB)}
+        colorA={palette.cream}
+        colorB={palette.cream}
+        a11y={`Marge globale. Séance A : ${spoken(margeText(snapA))} ; séance B : ${spoken(
+          margeText(snapB)
+        )}.`}
+      />
+      <MetricRow
+        label="tours"
+        valueA={toursText(snapA)}
+        valueB={toursText(snapB)}
+        colorA={palette.cream}
+        colorB={palette.cream}
+        last
+        a11y={`Tours bouclés. Séance A : ${spoken(toursText(snapA))} ; séance B : ${spoken(
+          toursText(snapB)
+        )}.`}
+      />
+    </View>
+  );
+
+  const closing = (
+    <Text style={s.closing}>
+      Les chiffres sont là. Le sens, vous le posez avec {firstName ? firstName : 'ce pilote'}.
+    </Text>
+  );
+
+  return (
+    <View style={{ gap: isConsole ? spacing.xl : spacing.lg, marginTop: spacing.md }}>
+      {header}
+      {headCards}
+      {table}
+      {closing}
+    </View>
+  );
+}
+
+// ── Carte-colonne : date de la séance + badge de série (A or / B bleu) ────────
+
+function ColumnHead({
+  slot,
+  color,
+  snap,
+}: {
+  slot: 'A' | 'B';
+  color: string;
+  snap: SessionSnapshot;
+}) {
+  const day = dayNumber(snap.startedAt);
+  const month = monthName(snap.startedAt);
+  return (
+    <Card style={s.headCard}>
+      <View style={s.headRow} accessible accessibilityLabel={`Séance ${slot} : ${day} ${month}.`}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.headDay}>{day}</Text>
+          <Text style={s.headMonth}>{month}</Text>
+        </View>
+        <View style={[s.badge, { backgroundColor: color }]}>
+          <Text style={s.badgeTxt}>{slot}</Text>
+        </View>
+      </View>
     </Card>
   );
 }
 
-function DeltaLine({ label, deltaText }: { label: string; deltaText: string }) {
-  return (
-    <View style={s.deltaLine}>
-      <Text style={s.deltaLabel}>{label}</Text>
-      <Text style={s.deltaValue}>{deltaText}</Text>
-    </View>
-  );
-}
+// ── Ligne du tableau : valeur A · libellé centré · valeur B ───────────────────
 
-function CornerDeltaRow({
-  cornerIndex,
-  cornerName,
-  zoneA,
-  zoneB,
-  marginA,
-  marginB,
+function MetricRow({
+  label,
+  valueA,
+  valueB,
+  colorA,
+  colorB,
+  last,
+  a11y,
 }: {
-  cornerIndex: number;
-  cornerName: string;
-  zoneA: MarginZone | null;
-  zoneB: MarginZone | null;
-  marginA: number | null;
-  marginB: number | null;
+  label: string;
+  valueA: string;
+  valueB: string;
+  colorA: string;
+  colorB: string;
+  last?: boolean;
+  a11y: string;
 }) {
-  const deltaStr = formatDeltaPoints(marginA, marginB);
-  // Les pastilles couleur restent décoratives pour l'œil ; on les double d'un
-  // libellé accessible (zone A → zone B + écart) pour le lecteur d'écran.
-  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. ${zoneLabelFr(zoneA)} vers ${zoneLabelFr(
-    zoneB
-  )}. Écart ${deltaStr}.`;
+  // Une valeur absente reste neutre (jamais colorée sur un tiret).
+  const cA = valueA === '—' ? palette.creamMute : colorA;
+  const cB = valueB === '—' ? palette.creamMute : colorB;
   return (
-    <View accessible accessibilityLabel={a11yLabel} style={s.cornerRow}>
-      <Text style={s.cornerIndex}>{cornerIndex}</Text>
-      <Text style={s.cornerName}>{cornerName}</Text>
-      <ZoneDot zone={zoneA} />
-      <Text style={s.arrow}>→</Text>
-      <ZoneDot zone={zoneB} />
-      <Text style={s.cornerDelta}>{deltaStr}</Text>
+    <View accessible accessibilityLabel={a11y} style={[s.row, !last && s.rowBorder]}>
+      <Text style={[s.rowValue, { color: cA, textAlign: 'left' }]}>{valueA}</Text>
+      <Text style={s.rowLabel}>{label}</Text>
+      <Text style={[s.rowValue, { color: cB, textAlign: 'right' }]}>{valueB}</Text>
     </View>
   );
 }
 
-function ZoneDot({ zone }: { zone: MarginZone | null }) {
-  return <View style={[s.zoneDot, { backgroundColor: colorForZone(zone) }]} />;
-}
-
 // ============================================================================
-// Helpers de formatage
+// Formatage — chaque valeur trace vers une donnée réelle, « — » sinon
 // ============================================================================
 
-function colorForZone(zone: MarginZone | null): string {
-  switch (zone) {
-    // Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
-    // DONNÉE (freinage #F65B5B), jamais le rouge de marque.
-    case 'green':
-      return theme.dataColors.accel;
-    case 'yellow':
-      return theme.palette.gold;
-    case 'red':
-      return theme.dataColors.brake;
-    default:
-      return theme.palette.creamMute;
-  }
+function chronoText(snap: SessionSnapshot): string {
+  return snap.bestLapSeconds !== null && snap.bestLapSeconds > 0
+    ? formatChronoTenths(snap.bestLapSeconds)
+    : '—';
 }
 
-function zoneLabelFr(zone: MarginZone | null): string {
-  return zone ? marginLabelOf(zone) : 'marge indisponible';
+function margeText(snap: SessionSnapshot): string {
+  return snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
 }
 
-function formatDeltaPoints(a: number | null, b: number | null): string {
-  if (a === null || b === null) return '—';
-  const delta = b - a;
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(Math.round(delta))} pts`;
+function toursText(snap: SessionSnapshot): string {
+  return snap.lapCount !== null ? String(snap.lapCount) : '—';
 }
 
-function formatDeltaSeconds(a: number | null, b: number | null): string {
-  if (a === null || b === null) return '—';
-  const delta = b - a;
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(delta).toFixed(2)} s`;
+/** Écart-type « ±0,42 » (fr virgule), « — » si non mesuré. */
+function stdText(sd: number | null): string {
+  return sd === null ? '—' : `±${sd.toFixed(2).replace('.', ',')}`;
 }
 
-function formatDeltaCount(a: number | null, b: number | null): string {
-  if (a === null || b === null) return '—';
-  const delta = b - a;
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(delta)}`;
+/** Énoncé lecteur d'écran de l'écart-type. */
+function stdSpoken(sd: number | null): string {
+  return sd === null ? 'non mesurée' : `${sd.toFixed(2).replace('.', ',')} seconde`;
 }
 
-const s = {
+/** Valeur absente → énoncé neutre pour lecteur d'écran. */
+function spoken(value: string): string {
+  return value === '—' ? 'non mesuré' : value;
+}
+
+function dayNumber(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : String(d.getDate());
+}
+
+function monthName(iso: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('fr-FR', { month: 'long' });
+}
+
+function capitalize(value: string): string {
+  return value.length > 0 ? value.charAt(0).toUpperCase() + value.slice(1) : value;
+}
+
+/**
+ * Titre « {mois A} vs {mois B} » (maquette). Si les deux séances tombent le même
+ * mois, on précise le jour pour rester lisible (« 4 juillet vs 18 juillet »).
+ */
+function periodTitle(isoA: string, isoB: string): string {
+  const mA = monthName(isoA);
+  const mB = monthName(isoB);
+  if (mA === '—' || mB === '—') return 'Deux séances';
+  if (mA !== mB) return `${capitalize(mA)} vs ${capitalize(mB)}`;
+  return `${capitalize(`${dayNumber(isoA)} ${mA}`)} vs ${dayNumber(isoB)} ${mB}`;
+}
+
+const s = StyleSheet.create({
+  // Console : largeur de lecture confortable, centrée (le rail est à gauche).
+  consoleWidth: { width: '100%', maxWidth: 820, alignSelf: 'center' },
+
+  // En-tête
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  eyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.sm,
+  },
   title: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
     letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
+    color: palette.cream,
   },
-  cardHead: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: theme.spacing.sm,
-  },
-  cardDate: {
+  tag: {
     fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.xs,
+    fontSize: theme.fontSize.small,
+    color: palette.eyebrow,
   },
-  cardMargin: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.value,
-    color: theme.palette.cream,
+
+  // Cartes-colonnes A / B
+  headCards: {
+    flexDirection: 'row',
+    gap: spacing.md,
   },
-  lapStr: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+  headCard: { flex: 1 },
+  headRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
   },
-  deltaLine: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    paddingVertical: theme.spacing.xs,
+  headDay: {
+    fontFamily: theme.fonts.king,
+    fontSize: 26,
+    letterSpacing: -0.5,
+    color: palette.cream,
+    fontVariant: ['tabular-nums'],
   },
-  deltaLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
-  },
-  deltaValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-  },
-  cornerRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
-  },
-  cornerIndex: {
+  headMonth: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    width: 16,
-    textAlign: 'center' as const,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
   },
-  cornerName: {
+  badge: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeTxt: {
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: 12,
+    letterSpacing: 0.5,
+    color: palette.night,
+  },
+
+  // Tableau factuel
+  table: {
+    borderTopWidth: 1,
+    borderTopColor: palette.separator,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 44,
+    paddingVertical: spacing.lg,
+  },
+  rowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: palette.separator,
+  },
+  rowValue: {
     flex: 1,
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: 16,
+    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
   },
-  arrow: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-  },
-  cornerDelta: {
-    width: 64,
-    textAlign: 'right' as const,
+  rowLabel: {
+    flex: 1,
+    textAlign: 'center',
     fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    color: palette.eyebrow,
+  },
+
+  closing: {
+    fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.cream,
+    lineHeight: theme.fontSize.small * 1.6,
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
   },
-  zoneDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-};
+});

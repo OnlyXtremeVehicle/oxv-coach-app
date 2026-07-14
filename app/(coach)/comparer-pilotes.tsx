@@ -1,35 +1,49 @@
 /**
- * Écran Coach — Comparatif de DEUX pilotes différents.
+ * Coach — Comparer DEUX pilotes, RESPONSIVE DEUX FORMATS (décision fondateur
+ * 2026-07-13, handoff §12 · `coach/17-comparer-pilotes.png`).
  *
- * Distinct de comparer.tsx (qui compare 2 sessions d'UN même pilote).
- * Ici le coach choisit pilote A + une de ses sessions, et pilote B + une
- * de ses sessions, pour les regarder côte à côte.
+ * Distinct de `comparer.tsx` (2 séances d'UN même pilote). Ici le coach choisit
+ * pilote A + une de ses séances, pilote B + une des siennes, pour les LIRE côte
+ * à côte.
  *
- * Légitimité doctrinale (cahier OXV Mirror §8) : le coach est le tiers
- * professionnel agréé qui interprète. La comparaison entre élèves est son
- * outil de travail. L'app reste descriptive — elle montre les chiffres,
- * c'est le coach qui en tire le sens avec chaque pilote.
+ *  - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : fidèle à la maquette
+ *    — deux cartes pilote côte à côte (identité A or / B bleu §4 comparaison),
+ *    colonne de droite = rappel doctrinal (« deux styles, pas un meilleur ») +
+ *    écart factuel B − A ; sous les cartes, les marges par virage en pleine
+ *    largeur. Le rail vertical est fourni par `_layout.tsx`.
+ *  - COMPAGNON téléphone : la même matière empilée en une colonne. Les onglets
+ *    bas sont fournis par `_layout.tsx`.
  *
- * Sécurité : le coach ne voit QUE ses pilotes consentis (RLS coach_pilots
- * + is_coach_of). loadSessionSnapshot échoue si la session n'appartient
- * pas à un pilote suivi.
+ * Légitimité doctrinale (cahier OXV Mirror §8) : le coach est le tiers agréé qui
+ * interprète. L'app reste DESCRIPTIVE — elle montre les chiffres, JAMAIS un
+ * classement ni un gagnant entre pilotes. Deux lectures, pas un rang.
  *
- * Doctrine :
- *   - Delta neutre, jamais "pilote A meilleur que B"
- *   - Lecture seule
- *   - Audit RGPD : chaque consultation loggée via logCoachView
+ * Sécurité : le coach ne voit QUE ses pilotes consentis (RLS coach_pilots_view +
+ * is_coach_of) ; `loadSessionSnapshot` échoue si la séance n'appartient pas à un
+ * pilote suivi. Chaque consultation est loggée via `logCoachView` (audit RGPD).
  *
- * Reskin V2 : Screen + AppBar, Card/SectionLabel du kit. Accent coach =
- * theme.palette.coach (crème neutre). Cartes SVG (CoachPreset) inchangées.
+ * Données réelles : chaque valeur trace vers `loadSessionSnapshot` (marge,
+ * meilleur tour, trajectoire, zones de virage — mêmes services/RLS qu'avant).
+ * Le radar QDI 5 branches de la maquette n'est PAS reproduit : ces branches ne
+ * font pas partie du snapshot de cette vue (elles vivraient dans getQdiForSession,
+ * autre chemin RLS) — plutôt qu'inventer un pentagone, on garde la trace GPS
+ * réelle colorée par marge (le vrai miroir de la ligne du pilote). Le second
+ * chiffre « régularité » de la maquette étant hors snapshot, la carte montre le
+ * record (or = chrono) + la marge globale, tous deux réels.
+ *
+ * Couleurs : langage refonte-v2. Or `#FFB703` = chrono/record. Identité de
+ * comparaison A = or / B = bleu `#4F9DF7` (portée aux liserés d'avatar et aux
+ * eyebrows de côté, jamais aux valeurs). Zones de virage sur le dégradé §7.6.
  */
 
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
 import { CoachPreset } from '@/components/CircuitMap';
 import { FadeInSection } from '@/components/motion';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type CoachPilotRow,
   type PilotSessionSummary,
@@ -47,7 +61,18 @@ import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
-import { formatDateShort, formatLapTime } from '@/utils/format';
+import { formatChronoTenths, formatDateShort, formatDelta } from '@/utils/format';
+
+const { palette, dataColors, fonts, spacing, radius } = theme;
+
+/** Gouttière écran de la console (§5 handoff : 24 px horizontal). */
+const CONSOLE_GUTTER = 24;
+
+/** Signe moins typographique (U+2212), jamais le trait d'union. */
+const MINUS = '−';
+
+/** Identité de comparaison (§4) : A = or, B = bleu. Liserés/eyebrows, pas données. */
+const SIDE_COLOR = { A: palette.gold, B: dataColors.trajectory } as const;
 
 interface Side {
   pilot: CoachPilotRow | null;
@@ -69,7 +94,7 @@ const EMPTY_SIDE: Side = {
 
 export default function CoachComparerPilotesScreen() {
   const { width } = useWindowDimensions();
-  const sideBySide = width >= 760;
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [loadingPilots, setLoadingPilots] = useState(true);
@@ -102,13 +127,6 @@ export default function CoachComparerPilotesScreen() {
 
   const state: ScreenState = loadingPilots ? 'loading' : error ? 'error' : 'nominal';
 
-  function pilotName(p: CoachPilotRow): string {
-    return (
-      [p.firstName, p.lastName].filter(Boolean).join(' ').trim() ||
-      `Pilote ${p.pilotId.slice(0, 6)}`
-    );
-  }
-
   async function selectPilot(side: 'A' | 'B', pilot: CoachPilotRow) {
     const setter = side === 'A' ? setSideA : setSideB;
     setter({ ...EMPTY_SIDE, pilot, loadingSessions: true });
@@ -130,16 +148,114 @@ export default function CoachComparerPilotesScreen() {
     );
   }
 
-  const bothReady = sideA.snapshot && sideB.snapshot;
+  const bothReady = Boolean(sideA.snapshot && sideB.snapshot);
+  const nameA = sideA.pilot ? pilotName(sideA.pilot) : null;
+  const nameB = sideB.pilot ? pilotName(sideB.pilot) : null;
+  const headerTitle = nameA && nameB ? `${nameA} & ${nameB}` : 'Deux pilotes, côte à côte.';
+
+  // ── En-tête (eyebrow + titre + rappel « aucun classement ») ────────────────
+  const headerBlock = (
+    <View style={isConsole ? s.headerRow : undefined}>
+      <View style={{ flexShrink: 1 }}>
+        <Text style={s.eyebrow}>COMPARER DEUX PILOTES</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {headerTitle}
+        </Text>
+      </View>
+      <View style={isConsole ? undefined : { marginTop: spacing.md, alignSelf: 'flex-start' }}>
+        <NoRankingBadge />
+      </View>
+    </View>
+  );
+
+  const pickers = (
+    <View style={isConsole ? s.pickerRow : s.pickerCol}>
+      <SidePicker
+        label="PILOTE A"
+        side={sideA}
+        pilots={pilots}
+        grow={isConsole}
+        onSelectPilot={(p) => selectPilot('A', p)}
+        onSelectSession={(sid) => sideA.pilot && selectSession('A', sideA.pilot.pilotId, sid)}
+      />
+      <SidePicker
+        label="PILOTE B"
+        side={sideB}
+        pilots={pilots}
+        grow={isConsole}
+        onSelectPilot={(p) => selectPilot('B', p)}
+        onSelectSession={(sid) => sideB.pilot && selectSession('B', sideB.pilot.pilotId, sid)}
+      />
+    </View>
+  );
+
+  const deltaCard =
+    sideA.snapshot && sideB.snapshot ? (
+      <Card>
+        <SectionLabel>{`ÉCART B ${MINUS} A`}</SectionLabel>
+        <View style={{ marginTop: spacing.md }}>
+          <DeltaLine
+            label="Marge globale"
+            deltaText={formatDelta(sideA.snapshot.marginGlobal, sideB.snapshot.marginGlobal, 'pts')}
+          />
+          <DeltaLine
+            label="Meilleur tour"
+            deltaText={formatDelta(
+              sideA.snapshot.bestLapSeconds,
+              sideB.snapshot.bestLapSeconds,
+              's',
+              2
+            )}
+          />
+        </View>
+      </Card>
+    ) : null;
+
+  const cornerSection =
+    sideA.snapshot && sideB.snapshot ? (
+      <View style={{ marginTop: spacing.xxl }}>
+        <View style={{ marginBottom: spacing.md }}>
+          <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
+        </View>
+        <View style={{ gap: spacing.xs }}>
+          {BELTOISE_CORNERS.map((corner) => (
+            <CornerRow
+              key={corner.index}
+              cornerIndex={corner.index}
+              cornerName={corner.name}
+              zoneA={sideA.snapshot!.zoneByIndex[corner.index] ?? null}
+              zoneB={sideB.snapshot!.zoneByIndex[corner.index] ?? null}
+              marginA={sideA.snapshot!.marginByIndex[corner.index] ?? null}
+              marginB={sideB.snapshot!.marginByIndex[corner.index] ?? null}
+            />
+          ))}
+        </View>
+      </View>
+    ) : null;
+
+  const cardA =
+    sideA.snapshot && nameA ? (
+      <SnapshotCard side="A" name={nameA} snap={sideA.snapshot} height={isConsole ? 180 : 200} />
+    ) : null;
+  const cardB =
+    sideB.snapshot && nameB ? (
+      <SnapshotCard side="B" name={nameB} snap={sideB.snapshot} height={isConsole ? 180 : 200} />
+    ) : null;
 
   return (
     <Screen>
-      <AppBar title="COMPARATIF PILOTES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={{ marginBottom: theme.spacing.md }}>
+      <AppBar title="COMPARER PILOTES" onBack={() => router.back()} />
+      <View
+        style={{
+          paddingHorizontal: isConsole ? CONSOLE_GUTTER : spacing.lg,
+          paddingBottom: spacing.xxl,
+        }}
+      >
+        <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>
-        <Text style={s.title}>Deux pilotes, côte à côte.</Text>
+
+        {headerBlock}
 
         <StateWrapper
           state={state}
@@ -151,110 +267,40 @@ export default function CoachComparerPilotesScreen() {
             <EmptyPilots count={pilots.length} />
           ) : (
             <>
-              {/* Sélecteurs A & B */}
-              <View
-                style={{
-                  flexDirection: sideBySide ? 'row' : 'column',
-                  gap: theme.spacing.lg,
-                  marginTop: theme.spacing.lg,
-                }}
-              >
-                <SidePicker
-                  label="PILOTE A"
-                  side={sideA}
-                  pilots={pilots}
-                  pilotName={pilotName}
-                  onSelectPilot={(p) => selectPilot('A', p)}
-                  onSelectSession={(sid) =>
-                    sideA.pilot && selectSession('A', sideA.pilot.pilotId, sid)
-                  }
-                />
-                <SidePicker
-                  label="PILOTE B"
-                  side={sideB}
-                  pilots={pilots}
-                  pilotName={pilotName}
-                  onSelectPilot={(p) => selectPilot('B', p)}
-                  onSelectSession={(sid) =>
-                    sideB.pilot && selectSession('B', sideB.pilot.pilotId, sid)
-                  }
-                />
-              </View>
+              <View style={{ marginTop: spacing.xl }}>{pickers}</View>
 
-              {/* Cartes côte à côte */}
               {bothReady ? (
-                <>
-                  <View
-                    style={{
-                      flexDirection: sideBySide ? 'row' : 'column',
-                      gap: theme.spacing.lg,
-                      marginTop: theme.spacing.xxl,
-                    }}
-                  >
-                    <FadeInSection delay={0} style={{ flex: 1 }}>
-                      <SnapshotCard
-                        name={sideA.pilot ? pilotName(sideA.pilot) : 'A'}
-                        snap={sideA.snapshot!}
-                      />
-                    </FadeInSection>
-                    <FadeInSection delay={300} style={{ flex: 1 }}>
-                      <SnapshotCard
-                        name={sideB.pilot ? pilotName(sideB.pilot) : 'B'}
-                        snap={sideB.snapshot!}
-                      />
-                    </FadeInSection>
-                  </View>
-
-                  {/* Delta neutre B − A */}
-                  <FadeInSection delay={600} style={{ marginTop: theme.spacing.xxl }}>
-                    <Card style={{ borderColor: theme.palette.coach }}>
-                      <SectionLabel>ÉCART B − A</SectionLabel>
-                      <View style={{ marginTop: theme.spacing.md }}>
-                        <DeltaLine
-                          label="Marge globale"
-                          deltaText={formatDeltaPoints(
-                            sideA.snapshot!.marginGlobal,
-                            sideB.snapshot!.marginGlobal
-                          )}
-                        />
-                        <DeltaLine
-                          label="Meilleur tour"
-                          deltaText={formatDeltaSeconds(
-                            sideA.snapshot!.bestLapSeconds,
-                            sideB.snapshot!.bestLapSeconds
-                          )}
-                        />
+                isConsole ? (
+                  <>
+                    <View style={s.resultRow}>
+                      <View style={s.cardsWrap}>
+                        <FadeInSection delay={0} style={{ flex: 1 }}>
+                          {cardA}
+                        </FadeInSection>
+                        <FadeInSection delay={150} style={{ flex: 1 }}>
+                          {cardB}
+                        </FadeInSection>
                       </View>
-                    </Card>
-                  </FadeInSection>
-
-                  {/* Marges par virage */}
-                  <FadeInSection delay={800} style={{ marginTop: theme.spacing.xxl }}>
-                    <View style={{ marginBottom: theme.spacing.md }}>
-                      <SectionLabel>MARGES PAR VIRAGE</SectionLabel>
+                      <View style={s.sideCol}>
+                        <DoctrineNote />
+                        {deltaCard}
+                      </View>
                     </View>
-                    <View style={{ gap: theme.spacing.xs }}>
-                      {BELTOISE_CORNERS.map((corner) => (
-                        <CornerRow
-                          key={corner.index}
-                          cornerIndex={corner.index}
-                          cornerName={corner.name}
-                          zoneA={sideA.snapshot!.zoneByIndex[corner.index] ?? null}
-                          zoneB={sideB.snapshot!.zoneByIndex[corner.index] ?? null}
-                          marginA={sideA.snapshot!.marginByIndex[corner.index] ?? null}
-                          marginB={sideB.snapshot!.marginByIndex[corner.index] ?? null}
-                        />
-                      ))}
-                    </View>
-                  </FadeInSection>
-
-                  {/* Manifeste doctrinal coach */}
-                  <Text style={s.manifest}>
-                    Les chiffres sont là. Le sens, vous le posez avec chacun.
-                  </Text>
-                </>
+                    {cornerSection}
+                    <Manifest />
+                  </>
+                ) : (
+                  <View style={{ marginTop: spacing.xxl, gap: spacing.xl }}>
+                    {cardA}
+                    {cardB}
+                    <DoctrineNote />
+                    {deltaCard}
+                    {cornerSection}
+                    <Manifest />
+                  </View>
+                )
               ) : (
-                <Text style={s.hint}>Choisissez un pilote et une session de chaque côté.</Text>
+                <Text style={s.hint}>Choisissez un pilote et une séance de chaque côté.</Text>
               )}
             </>
           )}
@@ -270,60 +316,49 @@ function SidePicker({
   label,
   side,
   pilots,
-  pilotName,
+  grow,
   onSelectPilot,
   onSelectSession,
 }: {
   label: string;
   side: Side;
   pilots: CoachPilotRow[];
-  pilotName: (p: CoachPilotRow) => string;
+  grow: boolean;
   onSelectPilot: (p: CoachPilotRow) => void;
   onSelectSession: (sessionId: string) => void;
 }) {
   return (
-    <View style={{ flex: 1 }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
+    <View style={grow ? { flex: 1 } : { width: '100%' }}>
+      <View style={{ marginBottom: spacing.sm }}>
         <SectionLabel>{label}</SectionLabel>
       </View>
       {/* Pilotes */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View
-          style={{ flexDirection: 'row', gap: theme.spacing.sm, paddingBottom: theme.spacing.sm }}
-        >
-          {pilots.map((p) => {
-            const active = side.pilot?.pilotId === p.pilotId;
-            return (
-              <PickChip
-                key={p.pilotId}
-                label={pilotName(p)}
-                active={active}
-                onPress={() => onSelectPilot(p)}
-              />
-            );
-          })}
+        <View style={{ flexDirection: 'row', gap: spacing.sm, paddingBottom: spacing.sm }}>
+          {pilots.map((p) => (
+            <PickChip
+              key={p.pilotId}
+              label={pilotName(p)}
+              active={side.pilot?.pilotId === p.pilotId}
+              onPress={() => onSelectPilot(p)}
+            />
+          ))}
         </View>
       </ScrollView>
 
-      {/* Sessions du pilote choisi */}
+      {/* Séances du pilote choisi */}
       {side.pilot ? (
         side.loadingSessions ? (
-          <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>Chargement des sessions…</Text>
+          <Text style={[s.caption, { marginTop: spacing.sm }]}>Chargement des séances…</Text>
         ) : side.sessions.length === 0 ? (
-          <Text style={[s.caption, { marginTop: theme.spacing.sm }]}>Aucune session analysée.</Text>
+          <Text style={[s.caption, { marginTop: spacing.sm }]}>Aucune séance analysée.</Text>
         ) : (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            style={{ marginTop: theme.spacing.sm }}
+            style={{ marginTop: spacing.sm }}
           >
-            <View
-              style={{
-                flexDirection: 'row',
-                gap: theme.spacing.sm,
-                paddingBottom: theme.spacing.sm,
-              }}
-            >
+            <View style={{ flexDirection: 'row', gap: spacing.sm, paddingBottom: spacing.sm }}>
               {side.sessions.map((sess) => (
                 <PickChip
                   key={sess.id}
@@ -353,6 +388,7 @@ function PickChip({
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
+      hitSlop={theme.hitSlop}
       onPress={onPress}
       style={({ pressed }) => [s.chip, active ? s.chipOn : null, { opacity: pressed ? 0.85 : 1 }]}
     >
@@ -363,27 +399,56 @@ function PickChip({
   );
 }
 
-function SnapshotCard({ name, snap }: { name: string; snap: SessionSnapshot }) {
-  const marginStr = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
-  const lapStr =
-    snap.bestLapSeconds !== null ? `Meilleur tour ${formatLapTime(snap.bestLapSeconds)}` : null;
+function SnapshotCard({
+  side,
+  name,
+  snap,
+  height,
+}: {
+  side: 'A' | 'B';
+  name: string;
+  snap: SessionSnapshot;
+  height: number;
+}) {
+  const record = snap.bestLapSeconds !== null ? formatChronoTenths(snap.bestLapSeconds) : '—';
+  const marge = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
+  const sideColor = SIDE_COLOR[side];
+  const a11y = `Pilote ${side}, ${name}. Séance du ${formatDateShort(
+    snap.startedAt
+  )}. Record ${record}. Marge globale ${marge}.`;
+
   return (
-    <Card style={{ borderColor: theme.palette.coach }}>
-      <View style={s.cardHead}>
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={s.cardName}>
-            {name}
-          </Text>
-          <Text style={s.cardDate}>{formatDateShort(snap.startedAt)}</Text>
+    <Card>
+      <View accessible accessibilityLabel={a11y}>
+        <View style={s.snapHead}>
+          <View style={[s.avatar, { borderColor: sideColor }]}>
+            <Text style={s.avatarTxt}>{initialsOf(name)}</Text>
+          </View>
+          <View style={{ flexShrink: 1 }}>
+            <Text style={[s.sideEyebrow, { color: sideColor }]}>PILOTE {side}</Text>
+            <Text numberOfLines={1} style={s.snapName}>
+              {name}
+            </Text>
+          </View>
         </View>
-        <Text style={s.cardMargin}>{marginStr}</Text>
+
+        <CoachPreset
+          trajectory={snap.trajectory.length > 1 ? snap.trajectory : undefined}
+          zoneByIndex={snap.zoneByIndex}
+          height={height}
+        />
+
+        <View style={s.statRow}>
+          <View style={s.stat}>
+            <Text style={s.statRecord}>{record}</Text>
+            <Text style={s.statLabel}>record</Text>
+          </View>
+          <View style={s.stat}>
+            <Text style={s.statMarge}>{marge}</Text>
+            <Text style={s.statLabel}>marge</Text>
+          </View>
+        </View>
       </View>
-      <CoachPreset
-        trajectory={snap.trajectory.length > 1 ? snap.trajectory : undefined}
-        zoneByIndex={snap.zoneByIndex}
-        height={200}
-      />
-      {lapStr ? <Text style={s.lapStr}>{lapStr}</Text> : null}
     </Card>
   );
 }
@@ -412,10 +477,12 @@ function CornerRow({
   marginA: number | null;
   marginB: number | null;
 }) {
-  const deltaStr = formatDeltaPoints(marginA, marginB);
-  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. A : ${zoneLabelFr(
-    zoneA
-  )}. B : ${zoneLabelFr(zoneB)}. Écart ${deltaStr}.`;
+  const deltaStr = formatDelta(marginA, marginB, 'pts');
+  // Les pastilles couleur restent décoratives ; on les double d'un libellé
+  // accessible (zone A → zone B + écart) pour le lecteur d'écran.
+  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. ${zoneLabelFr(zoneA)} vers ${zoneLabelFr(
+    zoneB
+  )}. Écart ${deltaStr}.`;
   return (
     <View accessible accessibilityLabel={a11yLabel} style={s.cornerRow}>
       <Text style={s.cornerIndex}>{cornerIndex}</Text>
@@ -432,15 +499,33 @@ function ZoneDot({ zone }: { zone: MarginZone | null }) {
   return <View style={[s.zoneDot, { backgroundColor: colorForZone(zone) }]} />;
 }
 
+function NoRankingBadge() {
+  return (
+    <View style={s.badge} accessible accessibilityLabel="Aucun classement entre les pilotes.">
+      <View style={s.badgeDot} accessibilityElementsHidden importantForAccessibility="no" />
+      <Text style={s.badgeTxt}>AUCUN CLASSEMENT</Text>
+    </View>
+  );
+}
+
+function DoctrineNote() {
+  return (
+    <View style={s.note}>
+      <Text style={s.noteStrong}>Deux styles, pas un meilleur.</Text>
+      <Text style={s.noteTxt}>
+        Sert à adapter votre pédagogie — jamais à les mettre en concurrence.
+      </Text>
+    </View>
+  );
+}
+
+function Manifest() {
+  return <Text style={s.manifest}>Les chiffres sont là. Le sens, vous le posez avec chacun.</Text>;
+}
+
 function EmptyPilots({ count }: { count: number }) {
   return (
-    <Card
-      style={{
-        alignItems: 'center',
-        paddingVertical: theme.spacing.xxl,
-        marginTop: theme.spacing.lg,
-      }}
-    >
+    <Card style={{ alignItems: 'center', paddingVertical: spacing.xxl, marginTop: spacing.xl }}>
       <Text style={s.emptyTitle}>
         {count === 0 ? 'Aucun pilote suivi.' : 'Un seul pilote suivi.'}
       </Text>
@@ -453,18 +538,30 @@ function EmptyPilots({ count }: { count: number }) {
 // Helpers
 // ============================================================================
 
+function pilotName(p: CoachPilotRow): string {
+  return (
+    [p.firstName, p.lastName].filter(Boolean).join(' ').trim() || `Pilote ${p.pilotId.slice(0, 6)}`
+  );
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0]?.slice(0, 2) || '·').toUpperCase();
+}
+
 function colorForZone(zone: MarginZone | null): string {
   switch (zone) {
     // Dégradé de marge §7.6 : large→vert, moyen→or (midpoint), serré→rouge de
     // DONNÉE (freinage #F65B5B), jamais le rouge de marque.
     case 'green':
-      return theme.dataColors.accel;
+      return dataColors.accel;
     case 'yellow':
-      return theme.palette.gold;
+      return palette.gold;
     case 'red':
-      return theme.dataColors.brake;
+      return dataColors.brake;
     default:
-      return theme.palette.creamMute;
+      return palette.creamMute;
   }
 }
 
@@ -472,174 +569,233 @@ function zoneLabelFr(zone: MarginZone | null): string {
   return zone ? marginLabelOf(zone) : 'marge indisponible';
 }
 
-function formatDeltaPoints(a: number | null, b: number | null): string {
-  if (a === null || b === null) return '—';
-  const delta = b - a;
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(Math.round(delta))} pts`;
-}
-
-function formatDeltaSeconds(a: number | null, b: number | null): string {
-  if (a === null || b === null) return '—';
-  const delta = b - a;
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(delta).toFixed(2)} s`;
-}
-
-const s = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    marginTop: theme.spacing.sm,
+const s = StyleSheet.create({
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  caption: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    paddingVertical: theme.spacing.lg,
-  },
-  hint: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
-  },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.md,
-  },
-  chip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
-    maxWidth: 200,
-  },
-  chipOn: {
-    borderColor: theme.palette.coach,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-  },
-  chipText: {
-    fontFamily: theme.fonts.mono,
+  eyebrow: {
+    fontFamily: fonts.mono,
     fontSize: 10,
-    letterSpacing: 0.6,
-    color: theme.palette.creamMute,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
   },
-  chipTextOn: {
-    color: theme.palette.cream,
+  title: {
+    fontFamily: fonts.display,
+    fontSize: theme.fontSize.h2,
+    letterSpacing: 0.3,
+    color: palette.cream,
+    lineHeight: theme.fontSize.h2 * 1.2,
+    marginTop: spacing.xs,
   },
-  cardHead: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    marginBottom: theme.spacing.sm,
-  },
-  cardName: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
-  },
-  cardDate: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.xs,
-  },
-  cardMargin: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.value,
-    color: theme.palette.cream,
-  },
-  lapStr: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
-  },
-  deltaLine: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    paddingVertical: theme.spacing.xs,
-  },
-  deltaLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
-  },
-  deltaValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
-  },
-  cornerRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.md,
-    padding: theme.spacing.md,
-    borderRadius: theme.radius.md,
+
+  // Rappel doctrinal « aucun classement » (statut, pas un contrôle).
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
+    borderColor: 'rgba(79,201,138,0.30)',
+    backgroundColor: 'rgba(79,201,138,0.08)',
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: dataColors.accel },
+  badgeTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+  },
+
+  // Sélecteurs
+  pickerRow: { flexDirection: 'row', gap: spacing.lg },
+  pickerCol: { gap: spacing.lg },
+
+  // Résultat console : cartes (2/3) + colonne latérale (1/3).
+  resultRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginTop: spacing.xxl,
+    alignItems: 'flex-start',
+  },
+  cardsWrap: { flex: 2, flexDirection: 'row', gap: spacing.lg, alignItems: 'stretch' },
+  sideCol: { flex: 1, minWidth: 200, gap: spacing.lg },
+
+  // Carte pilote
+  snapHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    backgroundColor: palette.surface3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTxt: { fontFamily: fonts.mono, fontSize: 12, color: palette.creamSoft },
+  sideEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  snapName: {
+    fontFamily: fonts.bodySemi,
+    fontSize: theme.fontSize.bodyLg,
+    color: palette.cream,
+    marginTop: 1,
+  },
+  statRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.xxl,
+    marginTop: spacing.md,
+  },
+  stat: { alignItems: 'center' },
+  statRecord: { fontFamily: fonts.monoSemi, fontSize: theme.fontSize.h3, color: palette.gold },
+  statMarge: { fontFamily: fonts.monoSemi, fontSize: theme.fontSize.h3, color: palette.cream },
+  statLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    color: palette.eyebrow,
+    marginTop: spacing.xs,
+  },
+
+  // Note doctrinale (colonne latérale)
+  note: {
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(79,201,138,0.25)',
+    backgroundColor: 'rgba(79,201,138,0.08)',
+  },
+  noteStrong: {
+    fontFamily: fonts.bodySemi,
+    fontSize: theme.fontSize.body,
+    color: palette.creamSoft,
+    marginBottom: spacing.xs,
+  },
+  noteTxt: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.5,
+  },
+
+  // Écart B − A
+  deltaLine: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.xs,
+  },
+  deltaLabel: { fontFamily: fonts.body, fontSize: theme.fontSize.body, color: palette.creamSoft },
+  deltaValue: { fontFamily: fonts.mono, fontSize: theme.fontSize.body, color: palette.cream },
+
+  // Marges par virage
+  cornerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
   },
   cornerIndex: {
-    fontFamily: theme.fonts.mono,
+    fontFamily: fonts.mono,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
     width: 16,
-    textAlign: 'center' as const,
+    textAlign: 'center',
   },
   cornerName: {
     flex: 1,
-    fontFamily: theme.fonts.body,
+    fontFamily: fonts.body,
     fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+    color: palette.cream,
   },
-  arrow: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-  },
+  arrow: { fontFamily: fonts.body, fontSize: theme.fontSize.small, color: palette.creamMute },
   cornerDelta: {
-    width: 64,
-    textAlign: 'right' as const,
-    fontFamily: theme.fonts.mono,
+    width: 72,
+    textAlign: 'right',
+    fontFamily: fonts.mono,
     fontSize: theme.fontSize.small,
-    color: theme.palette.cream,
+    color: palette.cream,
   },
-  zoneDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+  zoneDot: { width: 12, height: 12, borderRadius: 6 },
+
+  // Divers
+  caption: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    paddingVertical: spacing.lg,
   },
-  emptyTitle: {
-    fontFamily: theme.fonts.bodyLight,
+  hint: {
+    fontFamily: fonts.bodyLight,
+    fontSize: theme.fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+  },
+  manifest: {
+    fontFamily: fonts.bodyLight,
     fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamSoft,
-    textAlign: 'center' as const,
+    fontStyle: 'italic',
+    lineHeight: theme.fontSize.bodyLg * 1.6,
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+    paddingHorizontal: spacing.md,
+  },
+  chip: {
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
+    maxWidth: 220,
+  },
+  chipOn: { borderColor: palette.coachAccent, backgroundColor: 'rgba(226,58,78,0.10)' },
+  chipText: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: palette.creamMute,
+  },
+  chipTextOn: { color: palette.cream },
+  emptyTitle: {
+    fontFamily: fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic',
+    color: palette.creamSoft,
+    textAlign: 'center',
   },
   emptyHint: {
-    fontFamily: theme.fonts.body,
+    fontFamily: fonts.body,
     fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.md,
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.md,
     lineHeight: theme.fontSize.small * 1.5,
   },
-};
+});
