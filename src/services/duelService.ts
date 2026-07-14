@@ -21,6 +21,11 @@ export interface DuelSessionRow {
   startedAt: string;
   marginGlobal: number | null;
   marginZone: MarginZone | null;
+  /** Meilleur tour (s) de la session de l'ami. Lisible via RLS 0027
+   *  (telemetry_sessions_select_friend). null si non renseigné. */
+  bestLapSeconds: number | null;
+  /** Vitesse max (km/h) de la session de l'ami, même RLS. null si absent. */
+  maxSpeedKmh: number | null;
 }
 
 export interface AggregatedStats {
@@ -46,6 +51,8 @@ interface JoinedRow {
     id: string;
     started_at: string | null;
     circuit_name: string | null;
+    best_lap_seconds: number | null;
+    max_speed_kmh: number | null;
   } | null;
 }
 
@@ -61,7 +68,7 @@ export async function loadFriendSessionList(
     .from('app_session_analyses')
     .select(
       `id, user_id, margin_global, margin_zone, computed_at, telemetry_session_id,
-       telemetry_sessions(id, started_at, circuit_name)`
+       telemetry_sessions(id, started_at, circuit_name, best_lap_seconds, max_speed_kmh)`
     )
     .eq('user_id', friendId)
     .order('computed_at', { ascending: false })
@@ -77,6 +84,8 @@ export async function loadFriendSessionList(
     startedAt: row.telemetry_sessions?.started_at ?? row.computed_at,
     marginGlobal: row.margin_global,
     marginZone: (row.margin_zone as MarginZone | null) ?? null,
+    bestLapSeconds: row.telemetry_sessions?.best_lap_seconds ?? null,
+    maxSpeedKmh: row.telemetry_sessions?.max_speed_kmh ?? null,
   }));
 }
 
@@ -92,7 +101,7 @@ export async function loadFriendAnalysisForSession(
     .from('app_session_analyses')
     .select(
       `id, user_id, margin_global, margin_zone, computed_at, telemetry_session_id,
-       telemetry_sessions(id, started_at, circuit_name)`
+       telemetry_sessions(id, started_at, circuit_name, best_lap_seconds, max_speed_kmh)`
     )
     .eq('user_id', friendId)
     .eq('telemetry_session_id', sessionId)
@@ -109,6 +118,8 @@ export async function loadFriendAnalysisForSession(
     startedAt: row.telemetry_sessions?.started_at ?? row.computed_at,
     marginGlobal: row.margin_global,
     marginZone: (row.margin_zone as MarginZone | null) ?? null,
+    bestLapSeconds: row.telemetry_sessions?.best_lap_seconds ?? null,
+    maxSpeedKmh: row.telemetry_sessions?.max_speed_kmh ?? null,
   };
 }
 

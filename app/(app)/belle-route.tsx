@@ -1,413 +1,241 @@
 /**
- * Écran « Belle route » — itinéraire balade/découverte (doc architecture/09).
+ * Écran « Belles routes » — découverte de routes touristiques HORS CHRONO
+ * (maquette refonte-v2 #37 · doc architecture/09 · README §7bis).
  *
- * Cadre OXV : TOURISME / DÉCOUVERTE, pas performance. Propose de belles routes
- * sinueuses + points de vue autour du pilote, sur notre carte.
+ * Cadre OXV : TOURISME / DÉCOUVERTE, jamais performance. On liste des routes
+ * à savourer, certifiées par OXV, avec leur distance et leur préférence de
+ * sinuosité. AUCUN chrono ici : hors piste, l'or ne s'applique pas.
  *
- * V1 : les points de vue (Overpass/OSM) s'affichent SANS clé. Le calcul de
- * tracé (GraphHopper Directions + custom model pour la sinuosité réelle) s'active
- * dès que la clé EXPO_PUBLIC_GRAPHHOPPER_KEY est posée. react-native-maps : build
- * natif requis (fallback en Expo Go).
+ * Données réelles (table `scenic_routes`, via scenicRoutesService — NON modifié) :
+ *   - nom              → r.name
+ *   - distance (km)    → r.distanceKm
+ *   - sinuosité (label)→ r.curviness   (préférence de balade, pas une métrique)
+ *   - badge CERTIFIÉE  → r.status === 'certified'   (verrou admin en base)
  *
- * Attribution affichée sur l'écran de la carte :
- * « Powered by GraphHopper » + © OpenStreetMap.
+ * Volontairement masqués faute de source réelle (voir sharedChangesNeeded) :
+ *   - la DURÉE n'est pas persistée dans `scenic_routes` → non affichée ;
+ *   - il n'existe pas de colonne de POPULARITÉ → badge « POPULAIRE » masqué ;
+ *   - la géométrie du tracé n'est pas exposée par le service → l'en-tête de
+ *     carte reste une surface calme (aucun tracé fabriqué).
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from 'react-native-maps';
-import * as Location from 'expo-location';
-import Toast from 'react-native-toast-message';
 
-import { isExpoGo } from '@/lib/runtime';
-import { findScenicPois } from '@/services/routing/scenicPoiService';
-import { planScenicRoute } from '@/services/routing/scenicRouteService';
-import { saveRoute } from '@/services/routing/scenicRoutesService';
-import type { Curviness, GeoPoint, ScenicPoi, ScenicRoute } from '@/services/routing/types';
+import { type SavedScenicRoute, listCertifiedRoutes } from '@/services/routing/scenicRoutesService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
+import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 
-// Repli si la géoloc est refusée : Circuit de Haute Saintonge (Beltoise).
-const BELTOISE: GeoPoint = { lat: 45.2415, lon: -0.0915 };
-
-const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
-  { label: 'Douce', value: 'douce' },
-  { label: 'Sinueuse', value: 'sinueuse' },
-  { label: 'Très sinueuse', value: 'tres_sinueuse' },
-];
-const DISTANCES = [50, 100, 150];
-
-const POI_COLOR: Record<ScenicPoi['kind'], string> = {
-  viewpoint: theme.palette.cream, // point de vue = catégorie POI neutre ; l'or est réservé au chrono/record
-  water: '#60A5FA', // bleu = eau (catégorie POI ; le freinage a pris le rouge de donnée)
-  pass: theme.dataColors.regularity, // col = catégorie POI (violet régularité, couleur non-or) ; l'or reste au chrono/record
-  peak: theme.palette.creamSoft,
-};
-const POI_LABEL: Record<ScenicPoi['kind'], string> = {
-  viewpoint: 'Point de vue',
-  water: 'Eau',
-  pass: 'Col',
-  peak: 'Sommet',
+// Libellés humains de la préférence de balade (jamais une note de conduite).
+const CURVINESS_LABEL: Record<string, string> = {
+  douce: 'Route douce',
+  sinueuse: 'Route sinueuse',
+  tres_sinueuse: 'Route très sinueuse',
 };
 
-export default function BelleRouteScreen() {
-  const [start, setStart] = useState<GeoPoint>(BELTOISE);
-  const [pois, setPois] = useState<ScenicPoi[]>([]);
-  const [route, setRoute] = useState<ScenicRoute | null>(null);
-  const [curviness, setCurviness] = useState<Curviness>('sinueuse');
-  const [distanceKm, setDistanceKm] = useState(100);
-  const [loadingPois, setLoadingPois] = useState(true);
-  const [planning, setPlanning] = useState(false);
-  const [routeUnavailable, setRouteUnavailable] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const mapRef = useRef<MapView>(null);
+function curvinessLabel(value: string | null): string | null {
+  if (!value) return null;
+  return CURVINESS_LABEL[value] ?? value;
+}
 
-  // Position de départ (géoloc, sinon Beltoise) + points de vue autour (keyless).
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      let center = BELTOISE;
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status === 'granted') {
-          const pos = await Location.getCurrentPositionAsync({});
-          center = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        }
-      } catch {
-        // géoloc indisponible → on garde Beltoise
-      }
-      if (cancelled) return;
-      setStart(center);
-      const found = await findScenicPois(center, 40000);
-      if (!cancelled) {
-        setPois(found);
-        setLoadingPois(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+export default function BellesRoutesScreen() {
+  const [routes, setRoutes] = useState<SavedScenicRoute[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(async () => {
+    try {
+      setRoutes(await listCertifiedRoutes());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // Recadre la carte sur le départ + les points de vue (+ le tracé si présent).
   useEffect(() => {
-    const coords = [
-      { latitude: start.lat, longitude: start.lon },
-      ...pois.map((p) => ({ latitude: p.point.lat, longitude: p.point.lon })),
-      ...(route ? route.coordinates.map((c) => ({ latitude: c.lat, longitude: c.lon })) : []),
-    ];
-    if (coords.length > 1) {
-      mapRef.current?.fitToCoordinates(coords, {
-        edgePadding: { top: 60, right: 60, bottom: 120, left: 60 },
-        animated: true,
-      });
-    }
-  }, [pois, route, start]);
+    void reload();
+  }, [reload]);
 
-  async function onPlan() {
-    setPlanning(true);
-    setRouteUnavailable(false);
-    try {
-      const r = await planScenicRoute({
-        start,
-        distanceKm,
-        curviness,
-        avoidMotorways: true,
-        // Étapes « belles » : on glisse quelques points de vue proches comme waypoints.
-        waypoints: pois.slice(0, 3).map((p) => p.point),
-      });
-      if (r) setRoute(r);
-      else setRouteUnavailable(true);
-    } finally {
-      setPlanning(false);
-    }
-  }
-
-  async function onSave() {
-    setSaving(true);
-    try {
-      const saved = await saveRoute({
-        name: `Belle route · ${distanceKm} km`,
-        start,
-        curviness,
-        route,
-        pois,
-      });
-      Toast.show({
-        type: saved ? 'success' : 'error',
-        text1: saved ? 'Route enregistrée' : 'Connexion requise',
-        text2: saved ? 'Retrouvez-la dans « Mes belles routes ».' : undefined,
-      });
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (isExpoGo()) {
+  if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="BELLE ROUTE" onBack={() => router.back()} />
+        <AppBar title="Belles routes" onBack={() => router.back()} />
         <View style={s.centered}>
-          <Text style={s.fallback}>
-            La carte n&apos;est disponible que dans l&apos;application installée.
-          </Text>
+          <ActivityIndicator color={theme.palette.creamMute} />
         </View>
       </Screen>
     );
   }
 
   return (
-    <Screen scroll={false}>
-      <AppBar title="BELLE ROUTE" subtitle="Balade & points de vue" onBack={() => router.back()} />
+    <Screen>
+      <AppBar title="Belles routes" onBack={() => router.back()} />
+      <View style={s.body}>
+        <Text style={s.lede}>Des routes à savourer, loin du chrono.</Text>
 
-      {/* Contrôles */}
-      <View style={s.controls}>
-        <View style={s.pillRow}>
-          {CURVINESS_OPTIONS.map((o) => {
-            const on = o.value === curviness;
-            return (
-              <Pressable
-                key={o.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                onPress={() => setCurviness(o.value)}
-                style={[s.pill, on && s.pillOn]}
-                hitSlop={6}
-              >
-                <Text style={[s.pillT, on && s.pillTOn]}>{o.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <View style={[s.pillRow, { marginTop: theme.spacing.sm }]}>
-          {DISTANCES.map((d) => {
-            const on = d === distanceKm;
-            return (
-              <Pressable
-                key={d}
-                accessibilityRole="button"
-                accessibilityState={{ selected: on }}
-                onPress={() => setDistanceKm(d)}
-                style={[s.pill, on && s.pillOn]}
-                hitSlop={6}
-              >
-                <Text style={[s.pillT, on && s.pillTOn]}>{d} km</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Carte */}
-      <View style={{ flex: 1 }}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_DEFAULT}
-          style={{ flex: 1 }}
-          initialRegion={{
-            latitude: start.lat,
-            longitude: start.lon,
-            latitudeDelta: 0.6,
-            longitudeDelta: 0.6,
-          }}
-          showsPointsOfInterest={false}
-          showsCompass={false}
-          toolbarEnabled={false}
-        >
-          <Marker
-            coordinate={{ latitude: start.lat, longitude: start.lon }}
-            title="Départ"
-            pinColor={theme.palette.cream}
-          />
-          {pois.map((p) => (
-            <Marker
-              key={p.id}
-              coordinate={{ latitude: p.point.lat, longitude: p.point.lon }}
-              title={p.name ?? POI_LABEL[p.kind]}
-              description={POI_LABEL[p.kind]}
-              pinColor={POI_COLOR[p.kind]}
-            />
-          ))}
-          {route ? (
-            <Polyline
-              coordinates={route.coordinates.map((c) => ({ latitude: c.lat, longitude: c.lon }))}
-              strokeColor={theme.palette.cream}
-              strokeWidth={4}
-            />
-          ) : null}
-        </MapView>
-
-        {loadingPois ? (
-          <View style={s.pill2}>
-            <ActivityIndicator color={theme.palette.creamSoft} size="small" />
-            <Text style={s.pill2T}>Points de vue…</Text>
-          </View>
-        ) : null}
-
-        {/* Attribution (GraphHopper + OpenStreetMap) */}
-        <Pressable
-          style={s.attr}
-          accessibilityRole="link"
-          onPress={() => Linking.openURL('https://www.graphhopper.com').catch(() => undefined)}
-        >
-          <Text style={s.attrT}>Powered by GraphHopper · © OpenStreetMap</Text>
-        </Pressable>
-
-        <View style={s.legend}>
-          {(['viewpoint', 'water', 'pass', 'peak'] as ScenicPoi['kind'][]).map((k) => (
-            <View key={k} style={s.legendItem}>
-              <View style={[s.legendDot, { backgroundColor: POI_COLOR[k] }]} />
-              <Text style={s.legendT}>{POI_LABEL[k]}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Résumé + action */}
-      <View style={[s.footer, cockpitHalo]}>
-        <StatusLine label="Balade · découverte" />
-        {route ? (
-          <Text style={s.summary}>
-            {Math.round(route.distanceKm)} km · {Math.round(route.durationMin)} min
-            {route.ascentM ? ` · ${Math.round(route.ascentM)} m D+` : ''} · sinuosité{' '}
-            {route.sinuosity.toFixed(2)}
-          </Text>
-        ) : routeUnavailable ? (
-          <Text style={s.summaryMute}>
-            Le calcul d&apos;itinéraire s&apos;activera une fois la clé GraphHopper configurée. Les
-            points de vue, eux, sont déjà sur la carte.
-          </Text>
+        {routes.length === 0 ? (
+          <Card style={{ ...s.empty, ...cockpitHalo }}>
+            <Text style={s.emptyTitle}>Aucune route certifiée pour l&apos;instant.</Text>
+            <Text style={s.emptyHint}>
+              Les routes validées par OXV apparaîtront ici. Vos itinéraires enregistrés restent dans
+              « Mes belles routes ».
+            </Text>
+          </Card>
         ) : (
-          <Text style={s.summaryMute}>{pois.length} points remarquables autour de vous.</Text>
+          <>
+            <StatusLine
+              label={`${routes.length} route${routes.length > 1 ? 's' : ''} certifiée${
+                routes.length > 1 ? 's' : ''
+              }`}
+            />
+            <View style={s.list}>
+              {routes.map((r) => (
+                <RouteCard key={r.id} route={r} />
+              ))}
+            </View>
+          </>
         )}
-        <View style={{ marginTop: theme.spacing.sm }}>
-          <Button
-            label={planning ? 'Calcul…' : 'Calculer une belle route'}
-            onPress={onPlan}
-            disabled={planning}
-          />
-        </View>
-        <View style={{ marginTop: theme.spacing.sm }}>
-          <Button
-            label={saving ? 'Enregistrement…' : 'Enregistrer cette route'}
-            variant="ghost"
-            onPress={onSave}
-            disabled={saving}
-          />
-        </View>
       </View>
     </Screen>
   );
 }
 
-const s = {
-  centered: {
-    flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-    paddingHorizontal: theme.spacing.xl,
-  },
-  fallback: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-  },
-  controls: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm },
-  pillRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: theme.spacing.sm },
-  pill: {
-    backgroundColor: theme.palette.card2,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  pillOn: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: theme.palette.edge },
-  pillT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  pillTOn: { color: theme.palette.cream },
-  pill2: {
-    position: 'absolute' as const,
-    top: theme.spacing.md,
-    alignSelf: 'center' as const,
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
+function RouteCard({ route: r }: { route: SavedScenicRoute }) {
+  const certified = r.status === 'certified';
+  const accent = certified ? theme.dataColors.accel : theme.palette.line;
+  const curve = curvinessLabel(r.curviness);
+
+  // Méta réelles uniquement. La durée n'est pas persistée → non affichée.
+  const meta: string[] = [];
+  if (r.distanceKm != null) meta.push(`${Math.round(r.distanceKm)} km`);
+  if (r.sinuosity != null) meta.push(`sinuosité ${r.sinuosity.toFixed(2)}`);
+
+  return (
+    <Card style={{ ...s.card, ...cockpitHalo }}>
+      {/* En-tête de carte : surface calme + liseré d'accent (vert = certifiée).
+          Aucun tracé fabriqué — la géométrie réelle n'est pas exposée ici. */}
+      <View style={[s.header, { borderBottomColor: accent }]}>
+        {certified ? (
+          <View style={s.badge}>
+            <Text style={s.badgeT}>Certifiée OXV</Text>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={s.cardBody}>
+        <Text style={s.name} numberOfLines={2}>
+          {r.name}
+        </Text>
+        <View style={s.metaRow}>
+          {meta.length > 0 ? (
+            <Text style={s.meta}>{meta.join('  ·  ')}</Text>
+          ) : (
+            <Text style={s.meta}>—</Text>
+          )}
+          {curve ? <Text style={s.curve}>{curve}</Text> : null}
+        </View>
+      </View>
+    </Card>
+  );
+}
+
+const s = StyleSheet.create({
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  body: {
     paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.pill,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.sm,
+    paddingBottom: theme.spacing.xxl,
   },
-  pill2T: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 0.6,
-    color: theme.palette.creamSoft,
+  lede: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
+    marginBottom: theme.spacing.lg,
+    lineHeight: theme.fontSize.body * 1.5,
   },
-  attr: {
-    position: 'absolute' as const,
-    bottom: theme.spacing.sm,
-    right: theme.spacing.sm,
-    backgroundColor: 'rgba(5,5,5,0.6)',
+  list: { gap: theme.spacing.md },
+
+  // Carte route — padding 0 pour que l'en-tête touche les bords ; le corps
+  // récupère l'espacement standard.
+  card: { padding: 0, overflow: 'hidden' },
+  header: {
+    height: 96,
+    backgroundColor: theme.palette.card2,
+    borderBottomWidth: 2,
+    justifyContent: 'flex-start',
+  },
+  cardBody: { padding: theme.spacing.md },
+
+  // Eyebrow badge (JetBrains Mono, sentence-case impossible en majuscules :
+  // on garde l'eyebrow mono en capitales, canon v2 des eyebrows).
+  badge: {
+    alignSelf: 'flex-start',
+    margin: theme.spacing.md,
+    backgroundColor: theme.palette.night,
+    borderColor: theme.palette.separator,
+    borderWidth: 1,
+    borderRadius: theme.radius.sm,
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
-    borderRadius: theme.radius.sm,
   },
-  attrT: {
+  badgeT: {
     fontFamily: theme.fonts.mono,
-    fontSize: 8,
-    letterSpacing: 0.4,
-    color: theme.palette.creamMute,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: theme.dataColors.accel,
   },
-  legend: {
-    position: 'absolute' as const,
-    top: theme.spacing.sm,
-    left: theme.spacing.sm,
-    backgroundColor: 'rgba(5,5,5,0.6)',
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 6,
-    gap: 4,
+
+  name: {
+    fontFamily: theme.fonts.displayReg,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
   },
-  legendItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
-  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
-  legendT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 8,
-    letterSpacing: 0.4,
-    color: theme.palette.creamMute,
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.sm,
   },
-  footer: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.md,
-    paddingBottom: theme.spacing.lg,
-  },
-  summary: {
+  meta: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.small,
-    letterSpacing: 0.6,
-    color: theme.palette.cream,
-    textAlign: 'center' as const,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
   },
-  summaryMute: {
+  // Chip de préférence de balade — surface calme, neutre (l'accent vert reste
+  // réservé à la certification OXV, pas à un descripteur géométrique).
+  curve: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: theme.palette.secondary,
+    backgroundColor: theme.palette.surface3,
+    borderColor: theme.palette.line,
+    borderWidth: 1,
+    borderRadius: theme.radius.pill,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 3,
+    overflow: 'hidden',
+  },
+
+  empty: { alignItems: 'center', paddingVertical: theme.spacing.xxl },
+  emptyTitle: {
+    fontFamily: theme.fonts.bodyLight,
+    fontSize: theme.fontSize.bodyLg,
+    fontStyle: 'italic',
+    color: theme.palette.creamMute,
+    textAlign: 'center',
+  },
+  emptyHint: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
     lineHeight: theme.fontSize.small * 1.5,
+    paddingHorizontal: theme.spacing.md,
   },
-};
+});

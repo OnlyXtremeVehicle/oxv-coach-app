@@ -1,16 +1,23 @@
 /**
- * Support pilote — liste de mes demandes + création (PR-10).
+ * Support pilote — liste de mes demandes + création (PR-10), langage refonte-v2.
  *
  * Le pilote signale un problème (équipement, bilan, données, question coach) ou
  * dépose une demande RGPD, sans quitter l'app. Suit le statut, ouvre le fil.
  *
- * Doctrine : sobre, vouvoiement, pas d'emoji, or = donnée (jamais la nav ni les
- * badges de statut). Aucune promesse de délai automatique.
+ * Reskin v2 (maquette 43-support) : AppBar détail (pastille + titre centré), deux
+ * tuiles d'action (Nous écrire → composer existant · Aide & FAQ → oxvehicle.fr),
+ * puis « Vos demandes » réelles avec chip de statut. Le flux de création est
+ * conservé tel quel (mêmes services, mêmes états, même RLS).
+ *
+ * Doctrine : sobre, vouvoiement, pas d'emoji, descriptif jamais prescriptif.
+ * Or = chrono/record UNIQUEMENT (jamais un chip ni la nav). EN COURS = jaune
+ * fluidité, RÉSOLU = vert accélération, autres statuts = neutre.
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import Svg, { Path } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
 import {
@@ -28,6 +35,14 @@ import { Card } from '@/ui/Card';
 import { Field } from '@/ui/Field';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { formatDateShort } from '@/utils/format';
+
+const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
+
+// Site public OXV — destination réelle de la tuile « Aide & FAQ » (aligné sur
+// carte-trophee.tsx qui pointe le même domaine). Aucune page /faq garantie : on
+// ouvre le site, la sous-étiquette nomme honnêtement la destination.
+const SITE_URL = 'https://oxvehicle.fr';
 
 const STATUS_LABELS: Record<SupportStatus, string> = {
   nouveau: 'Nouveau',
@@ -37,8 +52,75 @@ const STATUS_LABELS: Record<SupportStatus, string> = {
   ferme: 'Fermé',
 };
 
+/**
+ * Ton du chip de statut. EN COURS = jaune fluidité, RÉSOLU = vert accélération
+ * (maquette). Les autres statuts restent neutres : aucun jugement, aucune
+ * couleur de rôle ni d'or détournée.
+ */
+function statusColor(status: SupportStatus): string {
+  if (status === 'en_cours') return dataColors.flow;
+  if (status === 'resolu') return palette.green;
+  return palette.creamMute;
+}
+
 function categoryLabel(c: SupportCategory): string {
   return SUPPORT_CATEGORIES.find((x) => x.value === c)?.label ?? c;
+}
+
+function ChatGlyph() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M4 5 h16 a1 1 0 0 1 1 1 v9 a1 1 0 0 1 -1 1 H9 l-4 3 v-3 H4 a1 1 0 0 1 -1 -1 V6 a1 1 0 0 1 1 -1 Z"
+        stroke={palette.cream}
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+function HelpGlyph() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 21 a9 9 0 1 0 0 -18 a9 9 0 0 0 0 18 Z"
+        stroke={palette.cream}
+        strokeWidth={1.6}
+      />
+      <Path
+        d="M9.4 9.2 a2.6 2.6 0 0 1 5 0.9 c0 1.7 -2.4 2 -2.4 3.5"
+        stroke={palette.cream}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+      />
+      <Path d="M12 17 h0.01" stroke={palette.cream} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+type ActionTileProps = {
+  glyph: React.ReactNode;
+  title: string;
+  sub: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+};
+
+function ActionTile({ glyph, title, sub, onPress, accessibilityLabel }: ActionTileProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={4}
+      style={({ pressed }) => [s.tile, pressed && s.tilePressed]}
+    >
+      <View style={s.tileIcon}>{glyph}</View>
+      <Text style={s.tileTitle}>{title}</Text>
+      <Text style={s.tileSub}>{sub}</Text>
+    </Pressable>
+  );
 }
 
 export default function SupportIndexScreen() {
@@ -86,23 +168,34 @@ export default function SupportIndexScreen() {
 
   return (
     <Screen>
-      <AppBar title="SUPPORT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={s.eyebrow}>AIDE & SUPPORT</Text>
-        <Text style={s.title} accessibilityRole="header">
-          Vos demandes.
-        </Text>
-        <Text style={s.intro}>
-          Un souci d'équipement, de bilan, de données, une question pour votre coach ou une demande
-          sur vos données : écrivez-nous. Nous revenons vers vous.
-        </Text>
+      <AppBar title="Support" onBack={() => router.back()} />
+      <View style={s.body}>
+        {/* Deux tuiles d'action — cibles réelles : composer existant + site OXV. */}
+        <View style={s.tiles}>
+          <ActionTile
+            glyph={<ChatGlyph />}
+            title="Nous écrire"
+            sub="Ouvrir une demande"
+            accessibilityLabel="Nous écrire, ouvrir une demande"
+            onPress={() => {
+              setError(null);
+              setComposing(true);
+            }}
+          />
+          <ActionTile
+            glyph={<HelpGlyph />}
+            title="Aide & FAQ"
+            sub="Sur oxvehicle.fr"
+            accessibilityLabel="Aide et FAQ, ouvrir oxvehicle point fr"
+            onPress={() => {
+              Linking.openURL(SITE_URL).catch(() => undefined);
+            }}
+          />
+        </View>
 
-        {!composing ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
-            <Button label="Nouvelle demande" onPress={() => setComposing(true)} />
-          </View>
-        ) : (
-          <Card style={{ marginTop: theme.spacing.xl, gap: theme.spacing.md }}>
+        {/* Composer — flux de création conservé (services, états, validation). */}
+        {composing ? (
+          <Card style={s.composer}>
             <SectionLabel>Catégorie</SectionLabel>
             <View style={s.pills}>
               {SUPPORT_CATEGORIES.map((c) => {
@@ -149,9 +242,13 @@ export default function SupportIndexScreen() {
             <Button label="Envoyer" onPress={onSend} loading={sending} disabled={!subject.trim()} />
             <Button label="Annuler" variant="ghost" onPress={() => setComposing(false)} />
           </Card>
-        )}
+        ) : null}
 
-        <View style={{ marginTop: theme.spacing.xxl, gap: theme.spacing.sm }}>
+        {/* Vos demandes réelles (support_tickets, RLS own-row). */}
+        <View style={s.listHead}>
+          <SectionLabel>Vos demandes</SectionLabel>
+        </View>
+        <View style={s.list}>
           {!loading && tickets.length === 0 ? (
             <EmptyState
               label="Aucune demande"
@@ -159,19 +256,32 @@ export default function SupportIndexScreen() {
               source="support_tickets"
             />
           ) : (
-            tickets.map((t) => (
-              <Card
-                key={t.id}
-                onPress={() => router.push(`/(app)/support/${t.id}` as never)}
-                accessibilityLabel={`${t.subject}, ${STATUS_LABELS[t.status]}`}
-              >
-                <View style={s.ticketTop}>
-                  <Text style={s.ticketCat}>{categoryLabel(t.category)}</Text>
-                  <Text style={s.ticketStatus}>{STATUS_LABELS[t.status]}</Text>
-                </View>
-                <Text style={s.ticketSubject}>{t.subject}</Text>
-              </Card>
-            ))
+            tickets.map((t) => {
+              const tone = statusColor(t.status);
+              return (
+                <Card
+                  key={t.id}
+                  onPress={() => router.push(`/(app)/support/${t.id}` as never)}
+                  accessibilityLabel={`${t.subject}, ${categoryLabel(t.category)}, ${STATUS_LABELS[t.status]}`}
+                >
+                  <View style={s.ticketRow}>
+                    <View style={s.ticketMain}>
+                      <Text style={s.ticketSubject} numberOfLines={1}>
+                        {t.subject}
+                      </Text>
+                      <Text style={s.ticketMeta} numberOfLines={1}>
+                        {categoryLabel(t.category)} · {formatDateShort(t.createdAt)}
+                      </Text>
+                    </View>
+                    <View style={[s.chip, { borderColor: tone }]}>
+                      <Text style={[s.chipTxt, { color: tone }]}>
+                        {STATUS_LABELS[t.status].toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              );
+            })
           )}
         </View>
       </View>
@@ -180,84 +290,126 @@ export default function SupportIndexScreen() {
 }
 
 const s = {
-  eyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-    marginTop: theme.spacing.sm,
+  body: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
   },
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.25,
-    marginTop: theme.spacing.md,
+  // Rangée de deux tuiles d'action égales.
+  tiles: {
+    flexDirection: 'row' as const,
+    gap: spacing.md,
   },
-  intro: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    lineHeight: theme.fontSize.small * 1.6,
-    marginTop: theme.spacing.md,
+  tile: {
+    flex: 1,
+    minHeight: 108,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    backgroundColor: palette.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    justifyContent: 'space-between' as const,
+  },
+  tilePressed: {
+    opacity: 0.92,
+    borderColor: palette.edge,
+  },
+  tileIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: palette.card2,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: spacing.md,
+  },
+  tileTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+    letterSpacing: 0.2,
+  },
+  tileSub: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
+  },
+  composer: {
+    marginTop: spacing.xl,
+    gap: spacing.md,
   },
   pills: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: theme.spacing.sm,
+    gap: spacing.sm,
   },
   pill: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    minHeight: 40,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    minHeight: 44,
     justifyContent: 'center' as const,
-    borderRadius: theme.radius.md,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
   },
   pillOn: {
-    borderColor: theme.palette.cream,
+    borderColor: palette.cream,
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   pillTxt: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
   },
   pillTxtOn: {
-    color: theme.palette.cream,
+    color: palette.cream,
   },
   error: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.red,
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    color: palette.red,
   },
-  ticketTop: {
+  listHead: {
+    marginTop: spacing.xxl,
+    marginBottom: spacing.md,
+  },
+  list: {
+    gap: spacing.sm,
+  },
+  ticketRow: {
     flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    marginBottom: theme.spacing.xs,
+    gap: spacing.md,
   },
-  ticketCat: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.faint,
-  },
-  ticketStatus: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+  ticketMain: {
+    flex: 1,
   },
   ticketSubject: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.cream,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
+    letterSpacing: 0.2,
+  },
+  ticketMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 10.5,
+    letterSpacing: 0.6,
+    color: palette.eyebrow,
+    marginTop: 3,
+  },
+  // Chip de statut : bordure d'accent 2px couleur du contexte (v2), texte assorti.
+  chip: {
+    borderWidth: 2,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  chipTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
   },
 };

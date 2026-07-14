@@ -1,5 +1,15 @@
 /**
  * Écran « La carte OXV » — écran UNIQUE du territoire OXV (carte + liste).
+ * Reskin fidèle au langage refonte-v2 (§7bis, screens/34-carte-oxv-live.png).
+ *
+ * ÉCART À LA MAQUETTE (assumé). Le PNG montre un mode LIVE (positions des
+ * pilotes en temps réel, badge LIVE rouge, temps restant, nb de voitures) qui
+ * N'EXISTE PAS côté pilote : le suivi en direct est réservé au Coach (décision
+ * P5 ; §12 « En direct · centre de contrôle », coach-only). On NE simule donc
+ * NI positions de pilotes NI badge LIVE. Ce qui est repris de la maquette :
+ * le langage sombre v2 (surfaces, hairlines, eyebrows mono, liseré d'accent),
+ * la carte réelle du territoire, et la note factuelle « repère, pas classement »
+ * transposée aux points réels de la carte. Écart noté dans sharedChangesNeeded.
  *
  * Fusion (décision Gabin 2026-06) : les anciennes routes `social` /
  * `social-carte` / `lieux` ont été SUPPRIMÉES (PR-86) au profit de cet écran ;
@@ -7,9 +17,12 @@
  * au profit de `social_pings`. Voir `roadmap/rapports/pr-08-fusion-carte-oxv.md`.
  *
  * Deux vues via un bascule sobre : « Carte » (MapView, marqueurs circuits +
- * points du territoire, panneau « marketing au clic ») et « Liste » (points
- * groupés par type, actions Direct/Détails/Contacter). En Expo Go la carte
- * native est indisponible → la vue Liste est rendue d'office.
+ * points du territoire, panneau « au clic ») et « Liste » (points groupés par
+ * type, actions Direct/Détails/Contacter). En Expo Go la carte native est
+ * indisponible → la vue Liste est rendue d'office.
+ *
+ * Données RÉELLES uniquement : circuits (circuitsService) + points publiés
+ * (social_pings, RLS membres validés). Chiffres/textes de la maquette = exemples.
  *
  * Doctrine : visualisation sobre, aucune gamification, aucun classement.
  * **or = chrono/record UNIQUEMENT** — un marqueur de circuit est un repère
@@ -35,8 +48,9 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateLong } from '@/utils/format';
+
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
 // Centre par défaut : Nouvelle-Aquitaine.
 const DEFAULT_REGION = {
@@ -81,11 +95,12 @@ export default function CarteOxvScreen() {
   }, []);
 
   const showMap = canMap && view === 'carte';
+  const total = circuits.length + pings.length;
 
   return (
     <Screen scroll={false}>
       <AppBar
-        title="LA CARTE OXV"
+        title="La carte OXV"
         subtitle="Circuits · lieux · événements"
         onBack={() => router.back()}
       />
@@ -94,55 +109,65 @@ export default function CarteOxvScreen() {
 
       {showMap ? (
         <View style={{ flex: 1 }}>
-          <MapView
-            provider={PROVIDER_DEFAULT}
-            style={{ flex: 1 }}
-            initialRegion={DEFAULT_REGION}
-            showsPointsOfInterest={false}
-            showsCompass={false}
-            toolbarEnabled={false}
-            onPress={() => setSelected(null)}
-          >
-            {circuits.map((c) => (
-              <Marker
-                key={`c-${c.id}`}
-                coordinate={{ latitude: c.finishLineLat, longitude: c.finishLineLon }}
-                title={c.name}
-                description="Circuit OXV"
-                pinColor={theme.palette.cream}
-                onPress={() => setSelected({ type: 'circuit', circuit: c })}
-              />
-            ))}
-            {pings.map((p) => (
-              <Marker
-                key={`p-${p.id}`}
-                coordinate={{ latitude: p.lat, longitude: p.lon }}
-                title={p.title}
-                description={PING_KIND_LABELS[p.kind]}
-                pinColor={theme.palette.creamSoft}
-                onPress={() => setSelected({ type: 'ping', ping: p })}
-              />
-            ))}
-          </MapView>
+          <View style={s.mapFrame}>
+            <MapView
+              provider={PROVIDER_DEFAULT}
+              style={{ flex: 1 }}
+              initialRegion={DEFAULT_REGION}
+              showsPointsOfInterest={false}
+              showsCompass={false}
+              toolbarEnabled={false}
+              onPress={() => setSelected(null)}
+            >
+              {circuits.map((c) => (
+                <Marker
+                  key={`c-${c.id}`}
+                  coordinate={{ latitude: c.finishLineLat, longitude: c.finishLineLon }}
+                  title={c.name}
+                  description="Circuit OXV"
+                  pinColor={palette.cream}
+                  onPress={() => setSelected({ type: 'circuit', circuit: c })}
+                />
+              ))}
+              {pings.map((p) => (
+                <Marker
+                  key={`p-${p.id}`}
+                  coordinate={{ latitude: p.lat, longitude: p.lon }}
+                  title={p.title}
+                  description={PING_KIND_LABELS[p.kind]}
+                  pinColor={palette.creamSoft}
+                  onPress={() => setSelected({ type: 'ping', ping: p })}
+                />
+              ))}
+            </MapView>
 
-          {loading ? (
-            <View style={s.loadingPill}>
-              <ActivityIndicator
-                color={theme.palette.creamSoft}
-                size="small"
-                accessibilityLabel="Chargement de la carte"
-              />
-              <Text style={s.loadingTxt}>Chargement…</Text>
+            {loading ? (
+              <View style={s.loadingPill}>
+                <ActivityIndicator
+                  color={palette.creamSoft}
+                  size="small"
+                  accessibilityLabel="Chargement de la carte"
+                />
+                <Text style={s.loadingTxt}>Chargement</Text>
+              </View>
+            ) : null}
+
+            {/* Légende sobre */}
+            <View style={s.legend}>
+              <LegendItem color={palette.cream} label="Circuits" />
+              <LegendItem color={palette.creamSoft} label="Lieux & événements" />
             </View>
-          ) : null}
-
-          {/* Légende sobre */}
-          <View style={s.legend}>
-            <LegendItem color={theme.palette.cream} label="Circuits" />
-            <LegendItem color={theme.palette.creamSoft} label="Lieux & événements" />
           </View>
 
-          {/* Panneau « marketing au clic » */}
+          {/* Note factuelle (transposée de la maquette : un repère, pas un rang). */}
+          <View style={s.mapNote}>
+            <View style={s.mapNoteDot} accessibilityElementsHidden importantForAccessibility="no" />
+            <Text style={s.mapNoteT}>
+              Chaque point est un repère du territoire OXV. Aucun rang.
+            </Text>
+          </View>
+
+          {/* Panneau « au clic » */}
           {selected ? <DetailPanel selected={selected} onClose={() => setSelected(null)} /> : null}
         </View>
       ) : (
@@ -159,11 +184,8 @@ export default function CarteOxvScreen() {
         >
           <Text style={s.action}>Les circuits en liste</Text>
         </Pressable>
-        <Text
-          style={s.count}
-          accessibilityLabel={`${circuits.length + pings.length} points sur la carte`}
-        >
-          <Text style={s.countNum}>{circuits.length + pings.length}</Text> points
+        <Text style={s.count} accessibilityLabel={`${total} points sur la carte`}>
+          <Text style={s.countNum}>{total}</Text> points
         </Text>
       </View>
     </Screen>
@@ -208,7 +230,7 @@ function TerritoryList({
     return (
       <View style={s.centered}>
         <ActivityIndicator
-          color={theme.palette.creamMute}
+          color={palette.creamMute}
           accessibilityLabel="Chargement du territoire OXV"
         />
       </View>
@@ -220,7 +242,7 @@ function TerritoryList({
       <ScrollView contentContainerStyle={s.listContent}>
         <EmptyState
           label="Indisponible"
-          message="Le territoire n'a pas pu être chargé. Réessayez quand votre connexion sera de retour."
+          message="Le territoire n'a pas pu être chargé. À revoir quand votre connexion sera de retour."
           source="social_pings"
         />
       </ScrollView>
@@ -243,14 +265,18 @@ function TerritoryList({
   return (
     <ScrollView contentContainerStyle={s.listContent}>
       {groups.map((group) => (
-        <View key={group.kind} style={{ marginTop: theme.spacing.xl, gap: theme.spacing.sm }}>
+        <View key={group.kind} style={s.group}>
           <View style={s.headRow}>
             <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
-            <SectionLabel>{PING_KIND_LABELS[group.kind]}</SectionLabel>
+            <Text style={s.groupEyebrow}>{PING_KIND_LABELS[group.kind]}</Text>
+            <View style={s.headLine} accessibilityElementsHidden importantForAccessibility="no" />
+            <Text style={s.groupCount}>{group.items.length}</Text>
           </View>
-          {group.items.map((ping) => (
-            <PingCard key={ping.id} ping={ping} />
-          ))}
+          <View style={{ gap: spacing.sm }}>
+            {group.items.map((ping) => (
+              <PingCard key={ping.id} ping={ping} />
+            ))}
+          </View>
         </View>
       ))}
     </ScrollView>
@@ -266,20 +292,15 @@ function PingCard({ ping }: { ping: SocialPing }) {
   };
 
   return (
-    <Card style={s.dataPanel}>
+    <Card style={s.pingCard}>
       <Text style={s.pingTitle}>{ping.title}</Text>
-      {ping.startsAt ? <Text style={s.pingMeta}>{formatDateLong(ping.startsAt)}</Text> : null}
+      <View style={s.pingMetas}>
+        {ping.startsAt ? <PingMeta label="date" value={formatDateLong(ping.startsAt)} /> : null}
+        {ping.address ? <PingMeta label="lieu" value={ping.address} /> : null}
+      </View>
       {ping.description ? <Text style={s.pingBody}>{ping.description}</Text> : null}
-      {ping.address ? <Text style={s.pingAddr}>{ping.address}</Text> : null}
 
-      <View
-        style={{
-          flexDirection: 'row',
-          flexWrap: 'wrap',
-          gap: theme.spacing.sm,
-          marginTop: theme.spacing.md,
-        }}
-      >
+      <View style={s.pingActions}>
         {/* Sémantique liste (comme l'ancien `social`) : aucune condition isEvent. */}
         {ping.liveUrl ? (
           <PingAction
@@ -308,6 +329,16 @@ function PingCard({ ping }: { ping: SocialPing }) {
   );
 }
 
+/** Rangée factuelle « micro-label mono · valeur » (langage v2). */
+function PingMeta({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={s.metaRow}>
+      <Text style={s.metaLabel}>{label}</Text>
+      <Text style={s.metaValue}>{value}</Text>
+    </View>
+  );
+}
+
 function PingAction({
   label,
   accessibilityLabel,
@@ -325,30 +356,9 @@ function PingAction({
       accessibilityLabel={accessibilityLabel ?? label}
       hitSlop={theme.hitSlop}
       onPress={onPress}
-      style={({ pressed }) => ({
-        minHeight: 44,
-        justifyContent: 'center',
-        paddingHorizontal: theme.spacing.lg,
-        paddingVertical: theme.spacing.sm,
-        borderRadius: theme.radius.sm,
-        borderWidth: 1,
-        borderColor: theme.palette.edge,
-        // Doctrine : or = donnée. Le CTA primaire se distingue par un fond gris
-        // (card2), jamais par l'or.
-        backgroundColor: primary ? theme.palette.card2 : 'transparent',
-        opacity: pressed ? 0.85 : 1,
-      })}
+      style={({ pressed }) => [s.btn, primary ? s.btnPrimary : s.btnGhost, pressed && s.btnPressed]}
     >
-      <Text
-        style={{
-          fontFamily: theme.fonts.bodyMedium,
-          fontSize: theme.fontSize.small,
-          letterSpacing: 0.3,
-          color: theme.palette.cream,
-        }}
-      >
-        {label}
-      </Text>
+      <Text style={[s.btnT, primary ? s.btnTPrimary : null]}>{label}</Text>
     </Pressable>
   );
 }
@@ -379,15 +389,19 @@ function DetailPanel({
       <Card style={s.panel}>
         <PanelHead label="Circuit OXV" title={c.name} onClose={onClose} />
         {c.lengthKm ? (
-          <Text style={s.panelMeta}>{c.lengthKm.toFixed(1).replace('.', ',')} km</Text>
+          <View style={s.panelMetas}>
+            <PingMeta label="longueur" value={`${c.lengthKm.toFixed(1).replace('.', ',')} km`} />
+          </View>
         ) : null}
-        <PanelAction
-          label="Voir le circuit"
-          primary
-          onPress={() =>
-            router.push({ pathname: '/(app)/circuit/[id]', params: { id: c.id } } as never)
-          }
-        />
+        <View style={s.panelActions}>
+          <PanelAction
+            label="Voir le circuit"
+            primary
+            onPress={() =>
+              router.push({ pathname: '/(app)/circuit/[id]', params: { id: c.id } } as never)
+            }
+          />
+        </View>
       </Card>
     );
   }
@@ -405,13 +419,15 @@ function DetailPanel({
           accessibilityLabel={`Visuel — ${p.title}`}
         />
       ) : null}
-      {p.startsAt ? <Text style={s.panelMeta}>{formatDateLong(p.startsAt)}</Text> : null}
+      <View style={s.panelMetas}>
+        {p.startsAt ? <PingMeta label="date" value={formatDateLong(p.startsAt)} /> : null}
+        {p.address ? <PingMeta label="lieu" value={p.address} /> : null}
+      </View>
       {p.description ? (
         <Text style={s.panelBody} numberOfLines={3}>
           {p.description}
         </Text>
       ) : null}
-      {p.address ? <Text style={s.panelAddr}>{p.address}</Text> : null}
       <View style={s.panelActions}>
         {/* Liens du point : Direct/Détails (événement), Site, réseaux, contact. */}
         {isEvent && p.liveUrl ? (
@@ -464,7 +480,7 @@ function PanelHead({
         onPress={onClose}
         style={s.panelClose}
       >
-        <Text style={s.panelCloseT}>✕</Text>
+        <View style={s.panelCloseX} accessibilityElementsHidden importantForAccessibility="no" />
       </Pressable>
     </View>
   );
@@ -484,239 +500,337 @@ function PanelAction({
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
-      style={({ pressed }) => [
-        s.panelBtn,
-        primary ? s.panelBtnPrimary : s.panelBtnGhost,
-        pressed && { opacity: 0.8 },
-      ]}
+      style={({ pressed }) => [s.btn, primary ? s.btnPrimary : s.btnGhost, pressed && s.btnPressed]}
     >
-      <Text style={[s.panelBtnT, primary ? s.panelBtnTPrimary : null]}>{label}</Text>
+      <Text style={[s.btnT, primary ? s.btnTPrimary : null]}>{label}</Text>
     </Pressable>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* Styles — langage refonte-v2 : surfaces sombres, hairlines,          */
+/* eyebrows mono, cadre de carte, liseré d'accent crème (identité,     */
+/* jamais l'or). Cibles tactiles ≥ 44 px.                              */
+/* ------------------------------------------------------------------ */
 
 const s = {
   centered: {
     flex: 1,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    paddingHorizontal: theme.spacing.xl,
+    paddingHorizontal: spacing.xl,
   },
+
+  // — Bascule Carte / Liste (segment sobre v2) —
   toggle: {
     flexDirection: 'row' as const,
-    gap: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: theme.spacing.sm,
-    paddingBottom: theme.spacing.sm,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   toggleBtn: {
     minHeight: 36,
-    paddingHorizontal: theme.spacing.lg,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center' as const,
-    borderRadius: theme.radius.sm,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: theme.palette.line,
+    borderColor: palette.line,
   },
   // Actif = fond gris (card2), jamais d'or ni de heritageGold.
-  toggleBtnOn: { backgroundColor: theme.palette.card2, borderColor: theme.palette.edge },
+  toggleBtnOn: { backgroundColor: palette.card2, borderColor: palette.cardBorderProminent },
   toggleT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.5,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
-  toggleTOn: { color: theme.palette.cream },
-  listContent: {
-    paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
-  },
-  loadingPill: {
-    position: 'absolute' as const,
-    top: theme.spacing.md,
-    alignSelf: 'center' as const,
-    backgroundColor: theme.palette.card,
-    borderColor: theme.palette.line,
+  toggleTOn: { color: palette.cream },
+
+  // — Vue carte (cadre sombre v2 autour du MapView) —
+  mapFrame: {
+    flex: 1,
+    marginHorizontal: spacing.lg,
+    borderRadius: radius.lg,
     borderWidth: 1,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radius.pill,
+    borderColor: palette.line,
+    backgroundColor: palette.card,
+    overflow: 'hidden' as const,
+  },
+  mapNote: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: theme.spacing.sm,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  loadingTxt: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+  mapNoteDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: palette.creamSoft,
   },
-  legend: {
-    position: 'absolute' as const,
-    top: theme.spacing.md,
-    left: theme.spacing.md,
-    backgroundColor: 'rgba(5,5,5,0.6)',
-    borderRadius: theme.radius.sm,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 6,
-    gap: 4,
+  mapNoteT: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.4,
+    color: palette.creamMute,
   },
-  legendItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
-  legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendT: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+
+  // — Liste territoire —
+  listContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
+  group: { marginTop: spacing.xl, gap: spacing.sm },
   headRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: theme.spacing.sm,
+    gap: spacing.sm,
+    marginBottom: spacing.xs,
   },
   // Doctrine : puce de groupe en gris (creamMute), jamais or.
   headDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: theme.palette.creamMute,
+    backgroundColor: palette.creamMute,
   },
-  dataPanel: { backgroundColor: theme.palette.card2 },
+  groupEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase' as const,
+    color: palette.eyebrow,
+  },
+  headLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: palette.separator,
+  },
+  groupCount: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    color: palette.faint,
+  },
+
+  // — Carte d'un point (liseré gauche crème = identité territoire, jamais or) —
+  pingCard: {
+    backgroundColor: palette.card2,
+    borderLeftWidth: 2,
+    borderLeftColor: palette.edge,
+    padding: spacing.lg,
+  },
   pingTitle: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.bodyLg,
-    color: theme.palette.cream,
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
   },
-  pingMeta: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
-    marginTop: theme.spacing.xs,
-  },
+  pingMetas: { marginTop: spacing.sm, gap: spacing.xs },
   pingBody: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
-    marginTop: theme.spacing.sm,
-    lineHeight: theme.fontSize.small * 1.5,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+    lineHeight: fontSize.small * 1.5,
   },
-  pingAddr: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+  pingActions: {
+    flexDirection: 'row' as const,
+    flexWrap: 'wrap' as const,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
+
+  // — Rangée factuelle « label mono · valeur » —
+  metaRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    gap: spacing.md,
+  },
+  metaLabel: {
+    width: 56,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+    paddingTop: 2,
+  },
+  metaValue: {
+    flex: 1,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.3,
+    color: palette.creamMute,
+  },
+
+  // — Boutons (partagés carte/liste) : ghost bordé, primaire fond card2 —
+  btn: {
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+  },
+  // Doctrine : or = donnée. Le CTA primaire se distingue par un fond gris
+  // (card2) + bordure prominente, jamais par l'or.
+  btnPrimary: { backgroundColor: palette.card2, borderColor: palette.cardBorderProminent },
+  btnGhost: { borderColor: palette.line },
+  btnPressed: { opacity: 0.85 },
+  btnT: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  btnTPrimary: { color: palette.cream },
+
+  // — Overlays carte —
+  loadingPill: {
+    position: 'absolute' as const,
+    top: spacing.md,
+    alignSelf: 'center' as const,
+    backgroundColor: palette.card,
+    borderColor: palette.line,
+    borderWidth: 1,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.pill,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+  },
+  loadingTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.creamSoft,
+  },
+  legend: {
+    position: 'absolute' as const,
+    top: spacing.md,
+    left: spacing.md,
+    backgroundColor: 'rgba(11,11,13,0.72)',
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    gap: 4,
+  },
+  legendItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 6 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendT: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: palette.creamSoft,
+  },
+
+  // — Panneau « au clic » (liseré haut crème, hairlines, eyebrow) —
   panel: {
     position: 'absolute' as const,
-    left: theme.spacing.lg,
-    right: theme.spacing.lg,
-    bottom: theme.spacing.lg,
-    backgroundColor: theme.palette.card2,
+    left: spacing.lg,
+    right: spacing.lg,
+    bottom: spacing.lg,
+    backgroundColor: palette.card2,
+    borderTopWidth: 2,
+    borderTopColor: palette.edge,
+    padding: spacing.lg,
   },
   panelImage: {
     width: '100%' as const,
     height: 120,
-    borderRadius: theme.radius.sm,
-    backgroundColor: theme.palette.card,
-    marginTop: theme.spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: palette.card,
+    marginTop: spacing.md,
   },
   panelHead: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    gap: theme.spacing.md,
+    gap: spacing.md,
   },
   panelEyebrow: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.5,
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
+    color: palette.eyebrow,
     marginBottom: 4,
   },
   panelTitle: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h3,
-    letterSpacing: 0.3,
-    color: theme.palette.cream,
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    letterSpacing: 0.2,
+    color: palette.cream,
   },
   panelClose: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  panelCloseT: { fontFamily: theme.fonts.body, fontSize: 16, color: theme.palette.creamMute },
-  panelMeta: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 0.6,
-    color: theme.palette.creamSoft,
-    marginTop: theme.spacing.sm,
+  panelCloseX: {
+    width: 11,
+    height: 11,
+    borderLeftWidth: 1.5,
+    borderBottomWidth: 1.5,
+    borderColor: palette.creamMute,
+    transform: [{ rotate: '-45deg' }],
+    marginTop: -2,
   },
+  panelMetas: { marginTop: spacing.md, gap: spacing.xs },
   panelBody: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
-    lineHeight: theme.fontSize.small * 1.5,
-    marginTop: theme.spacing.sm,
-  },
-  panelAddr: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.sm,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
+    marginTop: spacing.sm,
   },
   panelActions: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
-    gap: theme.spacing.sm,
-    marginTop: theme.spacing.md,
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
-  panelBtn: {
-    minHeight: 44,
-    paddingHorizontal: theme.spacing.lg,
-    borderRadius: theme.radius.sm,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  // Doctrine : or = donnée. Le CTA primaire du panneau se distingue par un fond
-  // gris (card2) + bordure, jamais par l'or.
-  panelBtnPrimary: {
-    backgroundColor: theme.palette.card2,
-    borderWidth: 1,
-    borderColor: theme.palette.edge,
-  },
-  panelBtnGhost: { borderWidth: 1, borderColor: theme.palette.edge },
-  panelBtnT: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.creamMute,
-  },
-  panelBtnTPrimary: { color: theme.palette.cream },
+
+  // — Barre d'action basse —
   actionBar: {
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.palette.line,
+    borderTopColor: palette.separator,
   },
   actionHit: { minHeight: 44, justifyContent: 'center' as const },
   action: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.small,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.small,
     letterSpacing: 0.3,
-    color: theme.palette.cream,
+    color: palette.cream,
   },
   count: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamMute,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
   },
   countNum: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    color: theme.palette.creamSoft,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
   },
 };

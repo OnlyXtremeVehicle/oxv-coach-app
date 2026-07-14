@@ -1,76 +1,61 @@
 /**
- * Écran Côte à côte — comparaison amicale entre deux copains pilotes.
+ * Écran Côte à côte — deux copains pilotes, leurs chiffres l'un à côté de
+ * l'autre. Reskin fidèle à la maquette refonte-v2 §7bis #7f
+ * (screens/30-cote-a-cote.png).
  *
- * Ce n'est PAS du coaching ni un classement : c'est un partage entre amis
- * qui ont chacun opt-in. Deux pilotes consentants regardent leurs chiffres
- * l'un à côté de l'autre, par jeu, sans hiérarchie.
+ * Maquette : deux pastilles d'identité (VOUS en or, l'ami en cyan) sous le
+ * titre, un tracé superposé des deux tours, puis un tableau à deux lignes —
+ * meilleur tour (or) et vitesse max — avec la valeur de chacun de part et
+ * d'autre. Phrase manifeste calme en bas.
  *
- * 2 modes au choix :
- *   1. SNAPSHOT  — 1 session vs 1 session (sélecteur des 2 côtés)
- *   2. AGRÉGÉ    — moyenne + best des N dernières sessions des 2
+ * Doctrine OXV Mirror (verrouillée) :
+ *   - AUCUN gagnant, aucun delta jugé, aucune hiérarchie. On juxtapose, on ne
+ *     classe pas. Self-only : jamais le QDI de l'ami, jamais sa marge notée.
+ *   - L'or reste réservé au chrono / record (le meilleur tour) ; il porte aussi
+ *     l'identité « VOUS » ici, calé sur la maquette. L'ami porte le cyan.
+ *   - Chaque valeur trace vers une source réelle ; absent → « — »/EmptyState.
  *
- * Doctrine OXV Mirror :
- *   - PAS DE GAGNANT DÉSIGNÉ. Pas de badge, pas de "vainqueur".
- *   - Pas de conseil, pas d'interprétation : l'app montre, elle ne juge pas.
- *   - Juste les chiffres côte à côte, neutres, entre deux copains.
- *   - Phrase manifeste en bas : « Entre copains. Pas de classement. »
+ * Données réelles :
+ *   - Séances : mes analyses (analysesService) + celles de l'ami (duelService),
+ *     lisibles seulement si l'amitié est acceptée (RLS 0027, are_friends).
+ *   - Meilleur tour / vitesse max : colonnes de telemetry_sessions. Les miennes
+ *     via fetchAllSessions ; celles de l'ami via loadFriendSessionList (RLS
+ *     telemetry_sessions_select_friend). Absentes → « — ».
+ *   - Tracés superposés : ABTrace charge les frames réelles du meilleur tour de
+ *     chaque côté. Côté ami, les frames ne sont pas ouvertes par la RLS (laps /
+ *     telemetry_frames restent owner/coach) : l'EmptyState honnête s'affiche
+ *     tant qu'aucune trajectoire réelle n'est disponible.
  *
- * Sécurité : 100% RLS (migration 0027). Si l'ami a révoqué l'amitié
- * pendant qu'on est sur l'écran, le fetch retourne [] et on tombe sur
- * l'état vide.
- *
- * Reskin V2 : Screen + AppBar, Segmented pour les bascules, Card pour les
- * colonnes et la grille virage par virage. La logique de données, le RLS et
- * les couleurs de zone de marge sont inchangés.
+ * Sécurité : si l'ami révoque l'amitié pendant la consultation, les services
+ * renvoient [] et l'écran retombe sur ses états vides — RGPD respecté côté DB.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { ABTrace } from '@/components/instruments';
 
 import { listRecentAnalyses, type RecentAnalysisRow } from '@/services/analysesService';
-import {
-  type DuelSessionRow,
-  type AggregatedStats,
-  loadAggregatedStats,
-  loadFriendSessionList,
-} from '@/services/duelService';
+import { type DuelSessionRow, loadFriendSessionList } from '@/services/duelService';
 import { listAcceptedFriends } from '@/services/friendshipsService';
-import {
-  type SegmentAnalysisRow,
-  listSegmentAnalysesForSession,
-} from '@/services/segmentAnalysesService';
-import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { fetchAllSessions } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
-import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
-import { Segmented } from '@/ui/Segmented';
-import { formatDateShort } from '@/utils/format';
+import { formatDateShort, formatLapTime } from '@/utils/format';
 
-// Zones de marge sur le dégradé §7.6 (identique à marginZoneExportColor / carte /
-// CornersLayer) : faible→large = ROUGE de donnée → OR → VERT. L'or est le
-// midpoint assumé du dégradé de marge ; le serré en rouge de DONNÉE (freinage),
-// jamais le rouge de marque.
-const MARGIN_COLORS = {
-  green: theme.dataColors.accel, // marge large
-  yellow: theme.palette.gold, // marge moyenne (midpoint)
-  red: theme.dataColors.brake, // marge serrée (rouge de donnée)
-} as const;
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
-type Mode = 'snapshot' | 'aggregated';
-const AGGREGATE_OPTIONS = [3, 5, 10] as const;
-type AggregateN = (typeof AGGREGATE_OPTIONS)[number];
-
-const MODE_OPTIONS: { id: Mode; label: string }[] = [
-  { id: 'snapshot', label: 'Snapshot' },
-  { id: 'aggregated', label: 'Agrégé' },
-];
+// Identité des deux côtés (maquette §7bis) : VOUS en or (aussi la couleur du
+// chrono/record — cohérent, le meilleur tour est le chiffre de la table),
+// l'ami en cyan. Aucune couleur de marge, aucun rang : ce sont des étiquettes
+// de « qui », pas un verdict.
+const SELF_COLOR = palette.gold; // #FFB703 — VOUS
+const FRIEND_COLOR = '#22D3EE'; // cyan — l'ami
 
 interface FriendInfo {
   id: string;
@@ -78,41 +63,53 @@ interface FriendInfo {
   firstName: string | null;
 }
 
-export default function DuelScreen() {
+/** Meilleur tour / vitesse max d'une séance, tracés vers telemetry_sessions. */
+interface SessionMetrics {
+  bestLapSeconds: number | null;
+  maxSpeedKmh: number | null;
+}
+
+export default function CoteACoteScreen() {
   const profile = useAuthStore((s) => s.profile);
   const { friendId } = useLocalSearchParams<{ friendId: string }>();
-
-  const [mode, setMode] = useState<Mode>('snapshot');
-  const [aggregateN, setAggregateN] = useState<AggregateN>(5);
 
   const [friendInfo, setFriendInfo] = useState<FriendInfo | null>(null);
   const [mySessions, setMySessions] = useState<RecentAnalysisRow[]>([]);
   const [friendSessions, setFriendSessions] = useState<DuelSessionRow[]>([]);
   const [selectedMine, setSelectedMine] = useState<string | null>(null);
   const [selectedTheirs, setSelectedTheirs] = useState<string | null>(null);
-  const [myStats, setMyStats] = useState<AggregatedStats | null>(null);
-  const [theirStats, setTheirStats] = useState<AggregatedStats | null>(null);
 
-  const [mySegments, setMySegments] = useState<SegmentAnalysisRow[]>([]);
-  const [theirSegments, setTheirSegments] = useState<SegmentAnalysisRow[]>([]);
+  // Métriques de séance (meilleur tour / vmax) de MES séances, indexées par
+  // telemetry_session_id. Celles de l'ami vivent déjà dans DuelSessionRow.
+  const [myMetrics, setMyMetrics] = useState<Record<string, SessionMetrics>>({});
 
   const [loading, setLoading] = useState(true);
-  const [statsLoading, setStatsLoading] = useState(false);
-  const [segmentsLoading, setSegmentsLoading] = useState(false);
 
-  // Chargement initial : sessions des 2 côtés + info friend
+  // Chargement initial : mes séances (analyses + métriques), celles de l'ami,
+  // et l'info du copain. Tout est lecture seule, la RLS 0027 fait la sécurité.
   useEffect(() => {
     if (!profile?.id || !friendId) return;
     let cancelled = false;
     (async () => {
-      const [mine, theirs, friends] = await Promise.all([
+      const [mine, theirs, friends, mySessionRows] = await Promise.all([
         listRecentAnalyses(profile.id, 20),
         loadFriendSessionList(friendId, 20),
         listAcceptedFriends(profile.id),
+        fetchAllSessions(profile.id, { limit: 60 }),
       ]);
       if (cancelled) return;
+
       setMySessions(mine);
       setFriendSessions(theirs);
+
+      const metrics: Record<string, SessionMetrics> = {};
+      for (const s of mySessionRows) {
+        metrics[s.id] = {
+          bestLapSeconds: s.best_lap_seconds,
+          maxSpeedKmh: s.max_speed_kmh,
+        };
+      }
+      setMyMetrics(metrics);
 
       const friend = friends.find((f) => f.friendId === friendId);
       if (friend) {
@@ -133,44 +130,6 @@ export default function DuelScreen() {
     };
   }, [profile?.id, friendId]);
 
-  // Recharge stats agrégées quand mode/n change
-  const reloadAggregated = useCallback(async () => {
-    if (!profile?.id || !friendId || mode !== 'aggregated') return;
-    setStatsLoading(true);
-    const [mine, theirs] = await Promise.all([
-      loadAggregatedStats(profile.id, aggregateN),
-      loadAggregatedStats(friendId, aggregateN),
-    ]);
-    setMyStats(mine);
-    setTheirStats(theirs);
-    setStatsLoading(false);
-  }, [profile?.id, friendId, mode, aggregateN]);
-
-  useEffect(() => {
-    void reloadAggregated();
-  }, [reloadAggregated]);
-
-  // En mode snapshot, fetch les segment analyses des 2 côtés quand
-  // les sessions sélectionnées changent. RLS strict côté DB.
-  useEffect(() => {
-    if (mode !== 'snapshot') return;
-    let cancelled = false;
-    (async () => {
-      setSegmentsLoading(true);
-      const [mine, theirs] = await Promise.all([
-        selectedMine ? listSegmentAnalysesForSession(selectedMine) : Promise.resolve([]),
-        selectedTheirs ? listSegmentAnalysesForSession(selectedTheirs) : Promise.resolve([]),
-      ]);
-      if (cancelled) return;
-      setMySegments(mine);
-      setTheirSegments(theirs);
-      setSegmentsLoading(false);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, selectedMine, selectedTheirs]);
-
   const friendDisplayName = useMemo(() => {
     if (!friendInfo) return 'Cet ami';
     return (
@@ -179,359 +138,167 @@ export default function DuelScreen() {
     );
   }, [friendInfo, friendId]);
 
-  const selectedMineRow = mySessions.find((s) => s.telemetrySessionId === selectedMine);
+  const myInitials = useMemo(() => initialsFrom(displayNameSelf(profile)), [profile]);
+  const friendInitials = useMemo(
+    () => initialsFrom(friendInfo?.firstName ?? friendInfo?.handle ?? null),
+    [friendInfo]
+  );
+
   const selectedTheirsRow = friendSessions.find((s) => s.sessionId === selectedTheirs);
+  const myMetric = selectedMine ? (myMetrics[selectedMine] ?? null) : null;
 
   if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="CÔTE À CÔTE" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={theme.palette.creamMute} />
+        <AppBar title="Côte à côte" onBack={() => router.back()} />
+        <View style={s.center}>
+          <ActivityIndicator color={palette.creamMute} />
         </View>
       </Screen>
     );
   }
 
+  const hasBothSides = mySessions.length > 0 && friendSessions.length > 0;
+
   return (
     <Screen>
-      <AppBar title="CÔTE À CÔTE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <Text style={st.title}>Vous & {friendDisplayName}</Text>
-
-        <View style={{ marginBottom: theme.spacing.xl }}>
-          <Segmented
-            options={MODE_OPTIONS.map((o) => o.label)}
-            value={MODE_OPTIONS.find((o) => o.id === mode)!.label}
-            onChange={(label) => {
-              const next = MODE_OPTIONS.find((o) => o.label === label);
-              if (next) setMode(next.id);
-            }}
-          />
+      <AppBar title="Côte à côte" onBack={() => router.back()} />
+      <View style={s.page}>
+        {/* Deux pastilles d'identité — VOUS (or) & l'ami (cyan). Étiquettes de
+            « qui », jamais un rang. */}
+        <View style={s.duo}>
+          <IdentityBadge initials={myInitials} name="Vous" color={SELF_COLOR} />
+          <Text style={s.amp}>&amp;</Text>
+          <IdentityBadge initials={friendInitials} name={friendDisplayName} color={FRIEND_COLOR} />
         </View>
 
-        {mode === 'snapshot' ? (
-          <SnapshotView
-            mySessions={mySessions}
-            friendSessions={friendSessions}
-            selectedMine={selectedMine}
-            selectedTheirs={selectedTheirs}
-            onSelectMine={setSelectedMine}
-            onSelectTheirs={setSelectedTheirs}
-            selectedMineRow={selectedMineRow}
-            selectedTheirsRow={selectedTheirsRow}
-            mySegments={mySegments}
-            theirSegments={theirSegments}
-            segmentsLoading={segmentsLoading}
-          />
+        {!hasBothSides ? (
+          <Text style={s.empty}>
+            Une séance de chaque côté suffit à comparer. Dès que {friendDisplayName} et vous en
+            aurez chacun une, elles apparaîtront ici.
+          </Text>
         ) : (
-          <AggregatedView
-            n={aggregateN}
-            onChangeN={setAggregateN}
-            myStats={myStats}
-            theirStats={theirStats}
-            loading={statsLoading}
-          />
+          <>
+            {/* Sélecteurs de séances réelles, restylés v2 */}
+            <SessionPicker
+              label="Votre séance"
+              accent={SELF_COLOR}
+              items={mySessions.map((m) => ({
+                id: m.telemetrySessionId,
+                label: `${formatDateShort(m.sessionStartedAt)} · ${m.circuitName ?? '—'}`,
+              }))}
+              selectedId={selectedMine}
+              onSelect={setSelectedMine}
+            />
+            <SessionPicker
+              label={`Séance de ${friendDisplayName}`}
+              accent={FRIEND_COLOR}
+              items={friendSessions.map((f) => ({
+                id: f.sessionId,
+                label: `${formatDateShort(f.startedAt)} · ${f.circuitName ?? '—'}`,
+              }))}
+              selectedId={selectedTheirs}
+              onSelect={setSelectedTheirs}
+            />
+
+            {/* Tracés superposés, réels ou EmptyState honnête, posés sur une
+                surface encadrée (panneau du tracé de la maquette). Le tour A
+                (vous) s'affiche en crème appuyée, la référence B (l'ami) en crème
+                atténuée : ABTrace, composant partagé, fixe ces teintes ; l'identité
+                or / cyan reste portée par les pastilles et la légende ci-dessus. */}
+            {selectedMine && selectedTheirs ? (
+              <View style={s.traceBlock}>
+                <ABTrace
+                  sessionA={selectedMine}
+                  sessionB={selectedTheirs}
+                  labelA="Vous"
+                  labelB={friendDisplayName}
+                  statusLabel="Vos deux tours · côte à côte"
+                  note="Deux lignes, deux styles. On regarde, on ne classe pas."
+                  emptyMessage="La superposition apparaîtra dès que vos deux tours auront des frames réelles."
+                />
+              </View>
+            ) : null}
+
+            {/* Tableau meilleur tour / vitesse max — valeurs réelles des deux
+                côtés, sans delta ni verdict. */}
+            <Card style={s.tableCard}>
+              <CompareRow
+                label="Meilleur tour"
+                mine={formatLapOrDash(myMetric?.bestLapSeconds ?? null)}
+                theirs={formatLapOrDash(selectedTheirsRow?.bestLapSeconds ?? null)}
+                mineColor={SELF_COLOR}
+                theirsColor={FRIEND_COLOR}
+                isLast={false}
+              />
+              <CompareRow
+                label="Vitesse max"
+                mine={formatSpeedOrDash(myMetric?.maxSpeedKmh ?? null)}
+                theirs={formatSpeedOrDash(selectedTheirsRow?.maxSpeedKmh ?? null)}
+                mineColor={palette.cream}
+                theirsColor={palette.cream}
+                isLast
+              />
+            </Card>
+          </>
         )}
 
-        <Text style={st.manifest}>Entre copains. Pas de classement.</Text>
-
-        <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-          <Pressable accessibilityRole="button" onPress={() => router.back()}>
-            <Text style={st.backLink}>Retour</Text>
-          </Pressable>
-        </View>
+        {/* Manifeste doctrinal calme (transposé au vouvoiement). */}
+        <Text style={s.manifest}>Deux styles, deux tours. On regarde, on ne classe pas.</Text>
       </View>
     </Screen>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/* Pastille d'identité — anneau de couleur du côté (or / cyan).        */
+/* ------------------------------------------------------------------ */
 
-interface SnapshotProps {
-  mySessions: RecentAnalysisRow[];
-  friendSessions: DuelSessionRow[];
-  selectedMine: string | null;
-  selectedTheirs: string | null;
-  onSelectMine: (id: string) => void;
-  onSelectTheirs: (id: string) => void;
-  selectedMineRow: RecentAnalysisRow | undefined;
-  selectedTheirsRow: DuelSessionRow | undefined;
-  mySegments: SegmentAnalysisRow[];
-  theirSegments: SegmentAnalysisRow[];
-  segmentsLoading: boolean;
-}
-
-function SnapshotView(props: SnapshotProps) {
-  if (props.mySessions.length === 0 || props.friendSessions.length === 0) {
-    return <Text style={st.empty}>Pas assez de sessions des deux côtés pour comparer.</Text>;
-  }
-  return (
-    <>
-      <SessionPicker
-        label="Votre session"
-        items={props.mySessions.map((s) => ({
-          id: s.telemetrySessionId,
-          label: `${formatDateShort(s.sessionStartedAt)} · ${s.circuitName ?? '—'}`,
-        }))}
-        selectedId={props.selectedMine}
-        onSelect={props.onSelectMine}
-      />
-      <SessionPicker
-        label="Sa session"
-        items={props.friendSessions.map((s) => ({
-          id: s.sessionId,
-          label: `${formatDateShort(s.startedAt)} · ${s.circuitName ?? '—'}`,
-        }))}
-        selectedId={props.selectedTheirs}
-        onSelect={props.onSelectTheirs}
-      />
-
-      <View style={{ flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl }}>
-        {/* Vous/Eux = étiquetage d'identité (qui), pas un chrono ni un rang :
-            vous en crème neutre, l'ami en bleu pour distinguer. L'or reste au
-            chrono/record ; aucun gagnant (self-only, même entre amis). */}
-        <DuelColumn
-          eyebrow="Vous"
-          accent={theme.palette.cream}
-          marginGlobal={props.selectedMineRow?.marginGlobal ?? null}
-          marginZone={props.selectedMineRow?.marginZone ?? null}
-          context={
-            props.selectedMineRow?.sessionStartedAt
-              ? formatDateShort(props.selectedMineRow.sessionStartedAt)
-              : null
-          }
-        />
-        <DuelColumn
-          eyebrow="Eux"
-          accent={theme.dataColors.trajectory}
-          marginGlobal={props.selectedTheirsRow?.marginGlobal ?? null}
-          marginZone={props.selectedTheirsRow?.marginZone ?? null}
-          context={
-            props.selectedTheirsRow?.startedAt
-              ? formatDateShort(props.selectedTheirsRow.startedAt)
-              : null
-          }
-        />
-      </View>
-
-      {/* Superposition factuelle des deux tours (vous vs ami) : votre meilleur
-          tour en or, le sien en neutre, sur le même tracé. Partage consenti
-          entre amis acceptés (RLS telemetry_frames_select_friend) — pas de
-          gagnant, pas de classement. */}
-      {props.selectedMine && props.selectedTheirs ? (
-        <View style={{ marginTop: theme.spacing.xl }}>
-          <ABTrace
-            sessionA={props.selectedMine}
-            sessionB={props.selectedTheirs}
-            labelA="Vous"
-            labelB="Eux"
-            statusLabel="VOS DEUX TOURS · CÔTE À CÔTE"
-            note="Vos deux lignes, côte à côte — pas de classement."
-            emptyMessage="La superposition apparaîtra dès que vos deux tours auront des frames réelles."
-          />
-        </View>
-      ) : null}
-
-      {/* Comparaison virage par virage */}
-      <CornerComparisonSection
-        mySegments={props.mySegments}
-        theirSegments={props.theirSegments}
-        loading={props.segmentsLoading}
-      />
-    </>
-  );
-}
-
-function CornerComparisonSection({
-  mySegments,
-  theirSegments,
-  loading,
+function IdentityBadge({
+  initials,
+  name,
+  color,
 }: {
-  mySegments: SegmentAnalysisRow[];
-  theirSegments: SegmentAnalysisRow[];
-  loading: boolean;
+  initials: string;
+  name: string;
+  color: string;
 }) {
-  const mineByIdx = useMemo(() => {
-    const map = new Map<number, SegmentAnalysisRow>();
-    for (const s of mySegments) map.set(s.segmentIndex, s);
-    return map;
-  }, [mySegments]);
-
-  const theirsByIdx = useMemo(() => {
-    const map = new Map<number, SegmentAnalysisRow>();
-    for (const s of theirSegments) map.set(s.segmentIndex, s);
-    return map;
-  }, [theirSegments]);
-
-  if (!loading && mySegments.length === 0 && theirSegments.length === 0) return null;
-
   return (
-    <View style={{ marginTop: theme.spacing.xl }}>
-      <View style={{ alignItems: 'center', marginBottom: theme.spacing.md }}>
-        <SectionLabel>Virage par virage</SectionLabel>
+    <View style={s.badgeWrap} accessible accessibilityLabel={name}>
+      <View style={[s.badge, { borderColor: color }]}>
+        <Text style={[s.badgeInitials, { color }]}>{initials}</Text>
       </View>
-      {loading ? (
-        <ActivityIndicator
-          color={theme.palette.creamMute}
-          style={{ marginVertical: theme.spacing.lg }}
-        />
-      ) : (
-        <Card style={{ padding: 0, overflow: 'hidden' }}>
-          {BELTOISE_CORNERS.map((corner, i) => (
-            <CornerRow
-              key={corner.index}
-              cornerIndex={corner.index}
-              cornerName={corner.name}
-              mine={mineByIdx.get(corner.index) ?? null}
-              theirs={theirsByIdx.get(corner.index) ?? null}
-              isLast={i === BELTOISE_CORNERS.length - 1}
-            />
-          ))}
-        </Card>
-      )}
-    </View>
-  );
-}
-
-function CornerRow({
-  cornerIndex,
-  cornerName,
-  mine,
-  theirs,
-  isLast,
-}: {
-  cornerIndex: number;
-  cornerName: string;
-  mine: SegmentAnalysisRow | null;
-  theirs: SegmentAnalysisRow | null;
-  isLast: boolean;
-}) {
-  // Doctrine côte à côte : on situe les deux marges, sans verdict. Le libellé
-  // accessible attribue chaque côté (vous / eux) — pas de « gagnant ».
-  const a11yLabel = `Virage ${cornerIndex}, ${cornerName}. Vous : ${margePhrase(
-    mine
-  )}. Eux : ${margePhrase(theirs)}.`;
-  return (
-    <View
-      accessible
-      accessibilityLabel={a11yLabel}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: theme.spacing.lg,
-        paddingVertical: theme.spacing.md,
-        borderBottomWidth: isLast ? 0 : 1,
-        borderBottomColor: theme.palette.line,
-        gap: theme.spacing.md,
-      }}
-    >
-      <View style={{ width: 70 }}>
-        <Text style={st.cornerIdx}>V{cornerIndex}</Text>
-        <Text style={st.cornerName} numberOfLines={1}>
-          {cornerName}
-        </Text>
-      </View>
-
-      <SegmentMargeCell row={mine} />
-      <Text
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-        style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}
-      >
-        ·
+      <Text style={[s.badgeName, { color }]} numberOfLines={1}>
+        {name}
       </Text>
-      <SegmentMargeCell row={theirs} />
     </View>
   );
 }
 
-function margePhrase(row: SegmentAnalysisRow | null): string {
-  if (!row || row.marginPercent === null) return 'marge indisponible';
-  const pct = Math.round(row.marginPercent);
-  return row.marginZone ? `${pct} pour cent, ${marginLabelOf(row.marginZone)}` : `${pct} pour cent`;
-}
-
-function SegmentMargeCell({ row }: { row: SegmentAnalysisRow | null }) {
-  if (!row || row.marginPercent === null) {
-    return (
-      <View style={{ flex: 1, alignItems: 'center' }}>
-        <Text style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.body }}>—</Text>
-      </View>
-    );
-  }
-  const color = colorForZone(row.marginZone);
-  return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={[st.cellValue, { color }]}>{Math.round(row.marginPercent)}%</Text>
-    </View>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-interface AggregatedProps {
-  n: AggregateN;
-  onChangeN: (n: AggregateN) => void;
-  myStats: AggregatedStats | null;
-  theirStats: AggregatedStats | null;
-  loading: boolean;
-}
-
-function AggregatedView({ n, onChangeN, myStats, theirStats, loading }: AggregatedProps) {
-  return (
-    <>
-      <View style={{ marginBottom: theme.spacing.xl }}>
-        <Segmented
-          options={AGGREGATE_OPTIONS.map((o) => `${o} dernières`)}
-          value={`${n} dernières`}
-          onChange={(label) => {
-            const opt = AGGREGATE_OPTIONS.find((o) => `${o} dernières` === label);
-            if (opt) onChangeN(opt);
-          }}
-        />
-      </View>
-
-      {loading ? (
-        <ActivityIndicator
-          color={theme.palette.creamMute}
-          style={{ marginVertical: theme.spacing.xxl }}
-        />
-      ) : (
-        <View style={{ flexDirection: 'row', gap: theme.spacing.md }}>
-          <DuelStatColumn eyebrow="Vous" accent={theme.palette.cream} stats={myStats} n={n} />
-          <DuelStatColumn
-            eyebrow="Eux"
-            accent={theme.dataColors.trajectory}
-            stats={theirStats}
-            n={n}
-          />
-        </View>
-      )}
-    </>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/* Sélecteur de séances réelles — pills mono, accent du côté.          */
+/* ------------------------------------------------------------------ */
 
 function SessionPicker({
   label,
+  accent,
   items,
   selectedId,
   onSelect,
 }: {
   label: string;
+  accent: string;
   items: { id: string; label: string }[];
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
   return (
-    <View style={{ marginBottom: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.sm }}>
+    <View style={s.pickerBlock}>
+      <View style={s.pickerHead}>
         <SectionLabel>{label}</SectionLabel>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', gap: theme.spacing.sm }}>
+        <View style={s.pickerRow}>
           {items.map((it) => {
             const active = it.id === selectedId;
             return (
@@ -541,12 +308,12 @@ function SessionPicker({
                 accessibilityState={{ selected: active }}
                 onPress={() => onSelect(it.id)}
                 style={({ pressed }) => [
-                  st.pill,
-                  active && st.pillOn,
+                  s.pill,
+                  active && { borderColor: accent, backgroundColor: palette.card },
                   { opacity: pressed ? 0.7 : 1 },
                 ]}
               >
-                <Text style={[st.pillT, active && st.pillTOn]}>{it.label}</Text>
+                <Text style={[s.pillTxt, active && { color: palette.cream }]}>{it.label}</Text>
               </Pressable>
             );
           })}
@@ -556,220 +323,176 @@ function SessionPicker({
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+/* ------------------------------------------------------------------ */
+/* Ligne du tableau — valeur | libellé | valeur. Aucun delta.          */
+/* ------------------------------------------------------------------ */
 
-function DuelColumn({
-  eyebrow,
-  accent,
-  marginGlobal,
-  marginZone,
-  context,
+function CompareRow({
+  label,
+  mine,
+  theirs,
+  mineColor,
+  theirsColor,
+  isLast,
 }: {
-  eyebrow: string;
-  accent: string;
-  marginGlobal: number | null;
-  marginZone: MarginZone | null;
-  context: string | null;
-}) {
-  const color = colorForZone(marginZone);
-  return (
-    <Card style={{ flex: 1, alignItems: 'center', paddingVertical: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.md }}>
-        <Text style={[st.sideTag, { color: accent }]}>{eyebrow}</Text>
-      </View>
-      {marginGlobal !== null ? (
-        <>
-          <Text style={[st.heroNumber, { color, marginBottom: theme.spacing.sm }]}>
-            {Math.round(marginGlobal)}%
-          </Text>
-          {marginZone ? (
-            <Text style={[st.zoneLabel, { color }]}>{marginLabelOf(marginZone)}</Text>
-          ) : null}
-        </>
-      ) : (
-        <Text style={st.empty}>—</Text>
-      )}
-      {context ? <Text style={st.colContext}>{context}</Text> : null}
-    </Card>
-  );
-}
-
-function DuelStatColumn({
-  eyebrow,
-  accent,
-  stats,
-  n,
-}: {
-  eyebrow: string;
-  accent: string;
-  stats: AggregatedStats | null;
-  n: number;
+  label: string;
+  mine: string;
+  theirs: string;
+  mineColor: string;
+  theirsColor: string;
+  isLast: boolean;
 }) {
   return (
-    <Card style={{ flex: 1, alignItems: 'center', paddingVertical: theme.spacing.lg }}>
-      <View style={{ marginBottom: theme.spacing.md }}>
-        <Text style={[st.sideTag, { color: accent }]}>{eyebrow}</Text>
-      </View>
-      {!stats || stats.count === 0 ? (
-        <Text style={st.empty}>Pas assez de sessions</Text>
-      ) : (
-        <>
-          <Text style={st.statCaption}>
-            MARGE MOYENNE ({stats.count}/{n})
-          </Text>
-          <Text style={[st.heroNumber, { color: theme.palette.cream }]}>
-            {stats.marginAvg !== null ? `${Math.round(stats.marginAvg)}%` : '—'}
-          </Text>
-          <Text style={[st.statCaption, { marginTop: theme.spacing.lg }]}>MEILLEURE</Text>
-          <Text style={st.statBest}>
-            {stats.marginBest !== null ? `${Math.round(stats.marginBest)}%` : '—'}
-          </Text>
-          <View
-            accessible
-            accessibilityLabel={`Répartition des marges : ${stats.marginZoneDistribution.green} confortable, ${stats.marginZoneDistribution.yellow} à explorer, ${stats.marginZoneDistribution.red} terrain serré.`}
-            style={{
-              flexDirection: 'row',
-              gap: theme.spacing.xs,
-              marginTop: theme.spacing.lg,
-              alignItems: 'center',
-            }}
-          >
-            <ZoneDot color={MARGIN_COLORS.green} count={stats.marginZoneDistribution.green} />
-            <ZoneDot color={MARGIN_COLORS.yellow} count={stats.marginZoneDistribution.yellow} />
-            <ZoneDot color={MARGIN_COLORS.red} count={stats.marginZoneDistribution.red} />
-          </View>
-        </>
-      )}
-    </Card>
-  );
-}
-
-function ZoneDot({ color, count }: { color: string; count: number }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-      <View
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: 4,
-          backgroundColor: color,
-        }}
-      />
-      <Text style={{ color: theme.palette.creamMute, fontSize: theme.fontSize.small }}>
-        {count}
-      </Text>
+    <View
+      accessible
+      accessibilityLabel={`${label}. Vous : ${mine}. L'ami : ${theirs}.`}
+      style={[s.tableRow, !isLast && s.tableRowBorder]}
+    >
+      <Text style={[s.tableValue, { color: mineColor, textAlign: 'left' }]}>{mine}</Text>
+      <Text style={s.tableLabel}>{label}</Text>
+      <Text style={[s.tableValue, { color: theirsColor, textAlign: 'right' }]}>{theirs}</Text>
     </View>
   );
 }
 
-function colorForZone(zone: MarginZone | null): string {
-  if (zone === 'green') return MARGIN_COLORS.green;
-  if (zone === 'yellow') return MARGIN_COLORS.yellow;
-  if (zone === 'red') return MARGIN_COLORS.red;
-  return theme.palette.creamSoft;
+/* ------------------------------------------------------------------ */
+/* Helpers d'affichage — chronos via utils, fr virgule, « — » si vide. */
+/* ------------------------------------------------------------------ */
+
+function formatLapOrDash(seconds: number | null): string {
+  if (seconds === null || !Number.isFinite(seconds) || seconds <= 0) return '—';
+  return formatLapTime(seconds);
 }
 
-const st = {
-  title: {
-    fontFamily: theme.fonts.display,
-    fontSize: theme.fontSize.h2,
-    letterSpacing: 0.5,
-    color: theme.palette.cream,
-    lineHeight: theme.fontSize.h2 * 1.2,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.xl,
+function formatSpeedOrDash(kmh: number | null): string {
+  if (kmh === null || !Number.isFinite(kmh) || kmh <= 0) return '—';
+  return `${Math.round(kmh)} km/h`;
+}
+
+function initialsFrom(source: string | null): string {
+  const letters = (source ?? '')
+    .replace(/^@+/, '')
+    .split(/[._\-\s]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.charAt(0).toUpperCase())
+    .join('');
+  return letters || '—';
+}
+
+function displayNameSelf(profile: { first_name?: string | null } | null): string | null {
+  if (!profile) return null;
+  return profile.first_name ?? null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Styles                                                              */
+/* ------------------------------------------------------------------ */
+
+const s = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  page: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+
+  duo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginTop: spacing.md,
+    marginBottom: spacing.xl,
   },
-  manifest: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.bodyLg,
-    fontStyle: 'italic' as const,
-    lineHeight: theme.fontSize.bodyLg * 1.6,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.xxl,
-    paddingHorizontal: theme.spacing.md,
+  amp: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    color: palette.creamMute,
+    marginTop: 18,
   },
-  backLink: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 11,
+  badgeWrap: { alignItems: 'center', maxWidth: 120 },
+  badge: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    backgroundColor: palette.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeInitials: {
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.body,
     letterSpacing: 1,
-    color: theme.palette.creamMute,
   },
-  empty: {
-    fontFamily: theme.fonts.bodyLight,
-    fontSize: theme.fontSize.small,
-    fontStyle: 'italic' as const,
-    color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    padding: theme.spacing.lg,
+  badgeName: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    marginTop: spacing.sm,
+    textAlign: 'center',
   },
+
+  pickerBlock: { marginBottom: spacing.lg },
+  pickerHead: { marginBottom: spacing.sm },
+  pickerRow: { flexDirection: 'row', gap: spacing.sm },
   pill: {
-    backgroundColor: theme.palette.card2,
-    borderColor: theme.palette.line,
+    backgroundColor: palette.card2,
+    borderColor: palette.line,
     borderWidth: 1,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    minHeight: 44,
+    justifyContent: 'center',
   },
-  pillOn: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: theme.palette.edge },
-  pillT: {
-    fontFamily: theme.fonts.mono,
+  pillTxt: {
+    fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 0.6,
-    color: theme.palette.creamMute,
+    color: palette.creamMute,
   },
-  pillTOn: { color: theme.palette.cream },
-  sideTag: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9.5,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase' as const,
-    color: theme.palette.cream,
+
+  traceBlock: { marginTop: spacing.md, marginBottom: spacing.xl },
+
+  tableCard: { padding: 0, overflow: 'hidden' },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
-  heroNumber: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 44,
-    letterSpacing: -1,
-    color: theme.palette.cream,
+  tableRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: palette.line,
   },
-  zoneLabel: {
-    fontFamily: theme.fonts.body,
-    fontSize: theme.fontSize.small,
-    textAlign: 'center' as const,
+  tableValue: {
+    flex: 1,
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.h3,
+    letterSpacing: -0.3,
   },
-  colContext: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1,
-    color: theme.palette.creamMute,
-    marginTop: theme.spacing.md,
+  tableLabel: {
+    flex: 1.1,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.6,
+    color: palette.creamMute,
+    textAlign: 'center',
   },
-  cornerIdx: {
-    fontFamily: theme.fonts.mono,
-    color: theme.palette.creamMute,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1.5,
+
+  empty: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.creamMute,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
-  cornerName: {
-    fontFamily: theme.fonts.body,
-    color: theme.palette.creamSoft,
-    fontSize: theme.fontSize.small,
-    marginTop: 2,
+  manifest: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.6,
+    color: palette.legend,
+    textAlign: 'center',
+    marginTop: spacing.xxl,
+    paddingHorizontal: spacing.md,
   },
-  cellValue: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.bodyLg,
-  },
-  statCaption: {
-    fontFamily: theme.fonts.mono,
-    color: theme.palette.creamMute,
-    fontSize: theme.fontSize.eyebrow,
-    letterSpacing: 1,
-    textAlign: 'center' as const,
-  },
-  statBest: {
-    fontFamily: theme.fonts.mono,
-    color: theme.palette.cream,
-    fontSize: theme.fontSize.bodyLg,
-  },
-};
+});

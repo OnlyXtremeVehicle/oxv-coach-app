@@ -1,24 +1,38 @@
 /**
- * Écran « Carte trophée de partage » (maquette
- * docs/refonte-app/maquette_partage_refondu.html, archétype 12).
+ * Écran « Carte-souvenir » (maquette refonte-v2 §7bis, `36-carte-trophee.png`).
+ *
+ * Un souvenir partageable : une carte ambrée à halo or, portant le meilleur tour
+ * réel de la séance en chrono or géant, un tracé et une signature gravée. C'est
+ * le seul objet OXV pensé pour être vu HORS de l'app.
  *
  * Prend `?sessionId=`, charge la séance + ses tours comme le bilan, en tire le
  * meilleur tour (computeRegularity → bestSeconds, repli best_lap_seconds) et la
- * géométrie du tracé, puis rend <TrophyCard> (4:5, capturable) suivi de deux
- * actions :
- *   — « Partager » (or, primaire) : capture la carte en image
- *     (react-native-view-shot) → feuille de partage OS (expo-sharing). La
- *     feuille système couvre Story et Enregistrer.
- *   — « Lien » (ghost) : Share.share() natif avec une URL simple du site.
+ * géométrie du tracé, puis rend <TrophyCard> (4:5, capturable) suivi d'une rangée
+ * d'actions ancrée en bas :
+ *   — « Partager » (crème, primaire) : capture la carte en image
+ *     (react-native-view-shot) → feuille de partage OS (expo-sharing). La feuille
+ *     système couvre Story et Enregistrer.
+ *   — bouton carré d'export (à droite) : Share.share() natif, un lien simple vers
+ *     le site — le même souvenir, sans image.
  *
- * Doctrine : le meilleur tour est un fait, pas un classement. Aucun partage
- * RGPD (sharesService) ici — c'est une image, pas une exposition de données.
+ * Doctrine (OXV Moment) : le meilleur tour est un FAIT, pas un classement.
+ * MethodLimitBlock + ExportWatermark posent la portée honnête AVANT le geste.
+ * Restyle refonte-v2, fonctionnel inchangé. Valeurs réelles ; « — » si absentes.
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Share, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
+import Svg, { Path, Polyline } from 'react-native-svg';
 import * as Sharing from 'expo-sharing';
 
 import { MethodLimitBlock } from '@/components/MethodLimitBlock';
@@ -35,7 +49,6 @@ import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
 import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
 import { formatDateShort, formatLapTime } from '@/utils/format';
 
@@ -47,6 +60,29 @@ interface CardData {
   dateLabel: string;
   subLabel: string;
   tracePoints: LatLon[] | null;
+}
+
+/** Glyphe d'export (flèche montante hors du plateau) pour le bouton carré. */
+function ExportGlyph() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Polyline
+        points="8,7 12,3 16,7"
+        stroke={theme.palette.cream}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M12 3 V15" stroke={theme.palette.cream} strokeWidth={1.7} strokeLinecap="round" />
+      <Path
+        d="M5 13 V19 A2 2 0 0 0 7 21 H17 A2 2 0 0 0 19 19 V13"
+        stroke={theme.palette.cream}
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
 }
 
 export default function CarteTropheeScreen() {
@@ -144,7 +180,7 @@ export default function CarteTropheeScreen() {
   if (loading) {
     return (
       <Screen scroll={false}>
-        <AppBar title="CARTE À PARTAGER" onBack={() => router.back()} />
+        <AppBar title="Carte-souvenir" onBack={() => router.back()} />
         <View style={s.center}>
           <ActivityIndicator
             color={theme.palette.creamMute}
@@ -158,13 +194,13 @@ export default function CarteTropheeScreen() {
   if (!data) {
     return (
       <Screen scroll={false}>
-        <AppBar title="CARTE À PARTAGER" onBack={() => router.back()} />
+        <AppBar title="Carte-souvenir" onBack={() => router.back()} />
         <View style={s.empty}>
           <Text style={s.emptyTitle} accessibilityRole="header">
             Aucune séance à mettre en carte.
           </Text>
           <Text style={s.emptyBody}>
-            Ouvrez une séance depuis votre bilan pour en faire une carte.
+            Ouvrez une séance depuis votre bilan pour en faire un souvenir.
           </Text>
         </View>
       </Screen>
@@ -172,19 +208,16 @@ export default function CarteTropheeScreen() {
   }
 
   return (
-    <Screen>
-      <AppBar title="CARTE À PARTAGER" subtitle="VERS L'EXTÉRIEUR" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+    <Screen scroll={false}>
+      <AppBar title="Carte-souvenir" onBack={() => router.back()} />
+      <View style={s.page}>
         {/* En-tête révélé en douceur. La carte elle-même (capturée en image par
             react-native-view-shot) reste STATIQUE et hors de toute animation. */}
         <FadeInSection delay={0}>
           <StatusLine label="Prêt à partager" />
-          <SectionLabel>VOTRE SÉANCE, EN UNE CARTE</SectionLabel>
         </FadeInSection>
 
-        <View
-          style={{ marginTop: theme.spacing.xl, marginBottom: theme.spacing.xxl, ...cockpitHalo }}
-        >
+        <View style={[s.cardHalo, cockpitHalo]}>
           <TrophyCard
             ref={cardRef}
             bestLapLabel={data.bestLapLabel}
@@ -195,25 +228,44 @@ export default function CarteTropheeScreen() {
           />
         </View>
 
+        {/* Espace vivant sous la carte — la maquette laisse respirer le souvenir. */}
+        <View style={{ flex: 1 }} />
+
         {/* Portée honnête de l'image, AVANT le geste de partage (V9 §17). */}
-        <FadeInSection delay={60} style={{ marginBottom: theme.spacing.lg }}>
+        <FadeInSection delay={60} style={{ marginBottom: theme.spacing.md }}>
           <MethodLimitBlock />
         </FadeInSection>
 
-        {/* Actions + note révélées après la carte (cascade 80/160). Le bouton
-            primaire passe par l'état `loading` du kit (spinner + libellé tenu +
-            `busy` a11y) pendant la capture ; le lien est neutralisé en parallèle
-            pour éviter une seconde feuille de partage concurrente. */}
-        <FadeInSection delay={80} style={{ gap: theme.spacing.sm }}>
-          <Button label="Partager" onPress={onShareImage} loading={sharing} />
-          <Button label="Lien" variant="ghost" onPress={onShareLink} disabled={sharing} />
-        </FadeInSection>
+        {/* Actions ancrées en bas (maquette : « Partager » plein + carré d'export).
+            Le bouton primaire passe par l'état `loading` du kit (spinner + libellé
+            tenu + `busy` a11y) pendant la capture ; l'export lien est neutralisé
+            en parallèle pour éviter une seconde feuille de partage concurrente. */}
+        <FadeInSection delay={80}>
+          <View style={s.actions}>
+            <View style={{ flex: 1 }}>
+              <Button label="Partager" onPress={onShareImage} loading={sharing} />
+            </View>
+            <Pressable
+              onPress={sharing ? undefined : onShareLink}
+              disabled={sharing}
+              accessibilityRole="button"
+              accessibilityLabel="Partager un lien vers la séance"
+              accessibilityState={{ disabled: sharing }}
+              hitSlop={8}
+              style={({ pressed }) => [
+                s.exportBtn,
+                sharing && s.exportBtnInert,
+                pressed && !sharing && { opacity: 0.85 },
+              ]}
+            >
+              <ExportGlyph />
+            </Pressable>
+          </View>
 
-        <FadeInSection delay={160}>
           <Text style={s.note}>
             {Platform.OS === 'ios'
               ? 'La feuille de partage couvre Story et Enregistrer.'
-              : 'Partagez l’image ou enregistrez-la depuis la feuille système.'}
+              : 'L’image se partage ou s’enregistre depuis la feuille système.'}
           </Text>
         </FadeInSection>
       </View>
@@ -221,42 +273,70 @@ export default function CarteTropheeScreen() {
   );
 }
 
-const s = {
+const s = StyleSheet.create({
+  page: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+  },
+  cardHalo: {
+    marginTop: theme.spacing.xs,
+  },
   center: {
     flex: 1,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   empty: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyTitle: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,
     letterSpacing: 0.5,
     color: theme.palette.cream,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     marginBottom: theme.spacing.md,
   },
   emptyBody: {
     fontFamily: theme.fonts.body,
     fontSize: theme.fontSize.body,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
+    textAlign: 'center',
     lineHeight: theme.fontSize.body * 1.5,
   },
+  // Rangée d'actions ancrée : « Partager » plein prend la largeur, le carré
+  // d'export se pose à droite (surface-2, bord fin — grammaire refonte-v2).
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: theme.spacing.sm,
+  },
+  exportBtn: {
+    width: 52,
+    minHeight: 48,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.palette.cardBorderProminent,
+    backgroundColor: theme.palette.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exportBtnInert: {
+    opacity: 0.5,
+  },
   // Note d'aide : c'est une phrase (pas un chiffre) → corps léger, pas mono.
-  // Contraste relevé de `faint` (2.98:1, sous AA) à `creamMute` (7.30:1) car ce
-  // texte porte une information que le pilote doit pouvoir lire.
+  // Contraste `creamMute` (7.30:1, au-dessus de AA) car ce texte porte une
+  // information que le pilote doit pouvoir lire.
   note: {
     fontFamily: theme.fonts.bodyLight,
     fontSize: theme.fontSize.small,
     lineHeight: theme.fontSize.small * 1.5,
     color: theme.palette.creamMute,
-    textAlign: 'center' as const,
-    marginTop: theme.spacing.lg,
+    textAlign: 'center',
+    marginTop: theme.spacing.md,
   },
-};
+});

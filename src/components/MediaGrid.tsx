@@ -109,7 +109,18 @@ function MediaTile({
   );
 }
 
-function MediaModal({ item, onClose }: { item: SessionMediaItem | null; onClose: () => void }) {
+/**
+ * Visionneuse plein écran (lightbox) réutilisable. Exportée pour que la galerie
+ * pilote (mosaïque) rouvre EXACTEMENT le même lecteur que la grille uniforme —
+ * aucun comportement modifié, simple partage.
+ */
+export function MediaModal({
+  item,
+  onClose,
+}: {
+  item: SessionMediaItem | null;
+  onClose: () => void;
+}) {
   if (!item) return null;
 
   const handleVideoOpen = async () => {
