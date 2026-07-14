@@ -1,146 +1,708 @@
 /**
- * Cockpit focus — le coach suit UN pilote en direct (P5).
+ * Coach — En direct · focus pilote (handoff §12 `coach/27-en-direct-focus` +
+ * coach-mobile `02-pilote-live`). Le coach suit UN pilote en piste (P5).
  *
- * Flux Realtime via usePilotLive (broadcast). Chiffre roi = le CHRONO du tour en
- * cours (or, c'est un chrono/record en devenir) ; vitesse et G sont des relevés
- * NEUTRES (pas des chronos). Une alerte « virage · à surveiller » factuelle
- * quand un virage est signalé. L'état de connexion est honnête (live / ralenti /
- * coupé) : réseau circuit instable, on n'invente jamais un direct.
+ * RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13), le MÊME écran :
+ *   - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : deux colonnes
+ *     fidèles à la maquette — à gauche le TOUR EN COURS (chrono roi, or), le
+ *     secteur en cours et la liste des tours ; à droite la VITESSE live (relevé
+ *     + trace qui défile), les forces G, l'alerte « à surveiller » et les actions
+ *     rapides. Le rail §12 est porté par `_layout.tsx`.
+ *   - COMPAGNON téléphone (< seuil) : une colonne compacte — chrono roi, relevés
+ *     live, alerte, tours, actions. Les onglets bas sont portés par `_layout`.
  *
- * Doctrine : le coach observe (le pilote conduit en silence). Aucune consigne
- * générée par l'app ; la note express du coach est ATTRIBUÉE, jamais « de l'app ».
+ * Chiffre roi = le CHRONO du tour en cours (or — c'est un chrono/record en
+ * devenir). La vitesse et les G sont des relevés NEUTRES (jamais l'or, réservé au
+ * chrono : règle fondateur). L'état de connexion est HONNÊTE (live / connexion /
+ * ralenti / coupé) : réseau circuit instable, on n'invente jamais un direct — les
+ * valeurs figées sont atténuées pour cesser de passer pour du temps réel.
+ *
+ * Doctrine (Principe 3 · silence en piste) : le coach OBSERVE, le pilote conduit
+ * en silence. Données factuelles temps réel seulement (positions/relevés/écarts),
+ * AUCUN ordre de pilotage. L'alerte est descriptive (« à surveiller »), jamais une
+ * consigne. La note du coach est ATTRIBUÉE, lisible après la séance — jamais « de
+ * l'app ». Vouvoiement, zéro emoji.
+ *
+ * Données réelles uniquement : le flux via usePilotLive (broadcast Realtime), les
+ * tours terminés via fetchSessionLaps (table `laps`, best-effort — vides tant que
+ * le boîtier n'a rien déposé). Aucune valeur inventée : le delta « vs son best »
+ * de la maquette n'a pas de source dans la trame → il n'est pas affiché.
  */
 
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  type LayoutChangeEvent,
+  Pressable,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+  useWindowDimensions,
+} from 'react-native';
+import Svg, { Polyline } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { Fact } from '@/components/instruments';
+import { Fact, EmptyState } from '@/components/instruments';
 import { usePilotLive } from '@/hooks/usePilotLive';
 import { getCorner } from '@/lib/circuitTopology';
-import { formatLiveChrono, liveAlert } from '@/services/liveSessionLogic';
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import {
+  type LiveConn,
+  type LiveFrame,
+  formatLiveChrono,
+  liveAlert,
+} from '@/services/liveSessionLogic';
+import { fetchSessionLaps } from '@/services/sessionsService';
 import { theme } from '@/theme/v2';
-import { AppBar } from '@/ui/AppBar';
+import type { Lap } from '@/types/telemetry';
 import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
+import { formatLapTimeMs } from '@/utils/format';
 
-const { palette, dataColors, spacing, radius, fonts, fontSize } = theme;
+const { palette, fonts, fontSize, spacing, radius } = theme;
 
-const CONN_LABEL = {
-  connecting: 'Connexion au flux…',
-  stale: 'Flux ralenti — dernières données conservées.',
-  offline: 'Flux coupé — reconnexion auto, télémétrie gardée sur le boîtier.',
-  live: '',
-} as const;
+/** Longueur du tampon de trace de vitesse (relevés live accumulés côté client). */
+const TRACE_LEN = 48;
+
+/** État de connexion honnête → badge court + phrase descriptive. */
+const CONN: Record<LiveConn, { badge: string; note: string }> = {
+  connecting: { badge: 'Connexion', note: 'Connexion au flux…' },
+  live: { badge: 'En direct', note: '' },
+  stale: { badge: 'Ralenti', note: 'Flux ralenti — dernières données conservées.' },
+  offline: {
+    badge: 'Hors ligne',
+    note: 'Flux coupé — reconnexion auto, télémétrie gardée sur le boîtier.',
+  },
+};
 
 export default function CockpitFocusScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; name?: string }>();
   const sessionId = params.sessionId ?? null;
+  const pilotName = params.name ?? 'Pilote';
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const { frame, conn } = usePilotLive(sessionId);
+
+  // Tours terminés (table `laps`, best-effort) — la liste TOURS de la maquette,
+  // le meilleur en or. Vide tant que le boîtier n'a rien déposé : EmptyState.
+  const [laps, setLaps] = useState<Lap[]>([]);
+  useEffect(() => {
+    if (!sessionId) {
+      setLaps([]);
+      return;
+    }
+    let cancelled = false;
+    fetchSessionLaps(sessionId)
+      .then((rows) => {
+        if (!cancelled) setLaps(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  // Trace de vitesse qui défile : relevés live accumulés (données réelles, pas de
+  // synthèse). Bornée à TRACE_LEN. Réinitialisée quand on change de pilote.
+  const [speedTrace, setSpeedTrace] = useState<number[]>([]);
+  useEffect(() => {
+    setSpeedTrace([]);
+  }, [sessionId]);
+  useEffect(() => {
+    if (!frame) return;
+    setSpeedTrace((prev) => {
+      const next = [...prev, frame.speedKmh];
+      return next.length > TRACE_LEN ? next.slice(next.length - TRACE_LEN) : next;
+    });
+  }, [frame]);
 
   const cornerName =
     frame?.cornerIndex != null ? (getCorner(frame.cornerIndex)?.name ?? null) : null;
   const alert = frame ? liveAlert(frame, cornerName) : null;
 
-  // Flux périmé : on atténue les valeurs figées pour qu'elles cessent de passer
-  // pour du direct (le bandeau d'état ne suffit pas, le chiffre roi domine).
-  const staleStyle = conn === 'stale' || conn === 'offline' ? { opacity: 0.4 } : null;
+  // Flux périmé : on atténue les valeurs LIVE figées (le bandeau ne suffit pas, le
+  // chiffre roi domine). Les tours (base, pas du live) restent, eux, pleins.
+  const isStale = conn === 'stale' || conn === 'offline';
+  const dim = isStale ? s.dim : null;
+
+  // Meilleur tour volant → surligné en or dans la liste.
+  const timedLaps = useMemo(
+    () => laps.filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0),
+    [laps]
+  );
+  const bestLapNumber = useMemo(() => {
+    if (timedLaps.length === 0) return null;
+    const flagged = timedLaps.find((l) => l.is_best_lap);
+    if (flagged) return flagged.lap_number;
+    return timedLaps.reduce((m, l) => (l.duration_seconds < m.duration_seconds ? l : m)).lap_number;
+  }, [timedLaps]);
+
+  const header = (
+    <LiveHeader
+      name={pilotName}
+      subtitle={frame ? subtitleFor(frame) : 'En attente du flux'}
+      conn={conn}
+      isConsole={isConsole}
+    />
+  );
+  const chrono = <ChronoHero frame={frame} dim={dim} />;
+  const secteur = frame?.sector != null ? <SecteurLine sector={frame.sector} dim={dim} /> : null;
+  const alertCard = alert ? (
+    <AlertCard text={alert} cornerIndex={frame?.cornerIndex ?? null} dim={dim} />
+  ) : null;
+  const tours = <ToursPanel laps={timedLaps} bestLapNumber={bestLapNumber} />;
+  const actions = <ActionsPanel sessionId={sessionId} cornerIndex={frame?.cornerIndex ?? null} />;
 
   return (
     <Screen>
-      <AppBar title={(params.name ?? 'En direct').toUpperCase()} onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Bandeau d'état honnête */}
-        <View style={s.connRow}>
-          <View
-            style={[s.dot, { backgroundColor: conn === 'live' ? dataColors.accel : palette.faint }]}
-          />
-          <Text style={[s.connTxt, conn === 'live' ? { color: dataColors.accel } : null]}>
-            {conn === 'live' ? 'EN DIRECT' : CONN_LABEL[conn]}
-          </Text>
-        </View>
+      <View style={isConsole ? s.consolePad : s.companionPad}>
+        {header}
 
-        {/* Chrono du tour en cours — chiffre roi, or (c'est un chrono). */}
-        <View style={[s.hero, staleStyle]}>
-          <Text style={s.eyebrow}>
-            {frame
-              ? `TOUR ${frame.lap}${frame.sector != null ? ` · SECTEUR ${frame.sector}` : ''}`
-              : 'TOUR EN COURS'}
-          </Text>
-          <View style={{ marginTop: spacing.sm }}>
-            <KingNumber
-              value={formatLiveChrono(frame?.chronoMs ?? null)}
-              label="Tour en cours"
-              color={palette.gold}
-              size={54}
-            />
+        {isConsole ? (
+          <View style={s.consoleRow}>
+            {/* Colonne gauche : le tour en cours (chrono roi) + secteur + tours. */}
+            <View style={[s.col, { flex: 1 }]}>
+              {chrono}
+              {secteur}
+              {tours}
+            </View>
+            {/* Colonne droite : vitesse live + forces + alerte + actions. */}
+            <View style={[s.col, { flex: 1.4 }]}>
+              <SpeedPanel current={frame?.speedKmh ?? null} trace={speedTrace} dim={dim} />
+              <GRow frame={frame} dim={dim} />
+              {alertCard}
+              {actions}
+              <DoctrineCaption />
+            </View>
           </View>
-        </View>
-
-        {/* Alerte factuelle « à surveiller » (vue du coach, jamais du pilote). */}
-        {alert ? (
-          <View style={s.alertCard}>
-            <View style={s.alertBar} />
-            <Text style={s.alertTxt}>{alert}</Text>
+        ) : (
+          <View style={{ gap: spacing.xl, marginTop: spacing.lg }}>
+            {chrono}
+            <LiveRow frame={frame} dim={dim} />
+            {alertCard}
+            {tours}
+            {actions}
+            <DoctrineCaption />
           </View>
-        ) : null}
-
-        {/* Relevés instantanés — neutres (ni chrono, ni alarme). */}
-        <View style={[s.tiles, staleStyle]}>
-          <Fact
-            label="Vitesse"
-            value={frame ? String(Math.round(frame.speedKmh)) : '—'}
-            unit="km/h"
-          />
-          <Fact label="G latéral" value={frame ? frame.gLat.toFixed(2) : '—'} unit="g" />
-          <Fact label="G long." value={frame ? frame.gLong.toFixed(2) : '—'} unit="g" />
-        </View>
-
-        {/* Note express — voix du coach, ATTRIBUÉE (jamais une consigne de l'app). */}
-        <Pressable
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({
-              pathname: '/(coach)/annoter',
-              params: sessionId ? { sessionId } : {},
-            })
-          }
-          style={({ pressed }) => [s.noteBtn, { opacity: pressed ? 0.9 : 1 }]}
-        >
-          <Text style={s.noteTxt}>Note express</Text>
-        </Pressable>
+        )}
       </View>
     </Screen>
   );
 }
 
-const s = {
-  connRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    minHeight: 20,
+// ─────────────────────────────────────────────────────────────────────────────
+// En-tête : identité du pilote + état de connexion honnête.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LiveHeader({
+  name,
+  subtitle,
+  conn,
+  isConsole,
+}: {
+  name: string;
+  subtitle: string;
+  conn: LiveConn;
+  isConsole: boolean;
+}) {
+  const note = CONN[conn].note;
+  return (
+    <View style={[s.headerWrap, isConsole && { paddingTop: spacing.sm }]}>
+      <View style={s.headerRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          hitSlop={12}
+          onPress={() => router.back()}
+          style={({ pressed }) => [s.backBtn, pressed && { opacity: 0.7 }]}
+        >
+          <View style={s.chev} />
+        </Pressable>
+        <View style={s.avatar}>
+          <Text style={s.avatarTxt}>{initialsOf(name)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text numberOfLines={1} style={s.headerName} accessibilityRole="header">
+            {name}
+          </Text>
+          <Text numberOfLines={1} style={s.headerSub}>
+            {subtitle}
+          </Text>
+        </View>
+        <LiveBadge conn={conn} />
+      </View>
+      {note ? <Text style={s.connNote}>{note}</Text> : null}
+    </View>
+  );
+}
+
+function LiveBadge({ conn }: { conn: LiveConn }) {
+  const live = conn === 'live';
+  return (
+    <View
+      accessibilityRole="text"
+      accessibilityLabel={live ? 'En direct' : CONN[conn].note || CONN[conn].badge}
+      style={[s.badge, live ? s.badgeLive : s.badgeMuted]}
+    >
+      <View style={[s.badgeDot, { backgroundColor: live ? palette.cream : palette.faint }]} />
+      <Text style={[s.badgeTxt, { color: live ? palette.cream : palette.creamMute }]}>
+        {CONN[conn].badge.toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tour en cours : le chiffre roi (chrono, or).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ChronoHero({ frame, dim }: { frame: LiveFrame | null; dim: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[s.heroCard, dim]}>
+      <Text style={s.eyebrow}>Tour en cours</Text>
+      <View style={{ marginTop: spacing.sm }}>
+        <KingNumber
+          value={formatLiveChrono(frame?.chronoMs ?? null)}
+          color={palette.gold}
+          size={52}
+        />
+      </View>
+    </View>
+  );
+}
+
+function SecteurLine({ sector, dim }: { sector: number; dim: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[s.secteurCard, dim]}>
+      <Text style={s.eyebrow}>Secteur</Text>
+      <View style={s.secteurRow}>
+        <Text style={s.secteurValue}>S{sector}</Text>
+        <Text style={s.secteurState}>en cours</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Vitesse live (console) : relevé dominant neutre + trace qui défile.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SpeedPanel({
+  current,
+  trace,
+  dim,
+}: {
+  current: number | null;
+  trace: number[];
+  dim: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[s.speedCard, dim]}>
+      <View style={s.speedHead}>
+        <Text style={s.eyebrow}>Vitesse · live</Text>
+        <View style={s.speedValueRow}>
+          <Text style={s.speedValue}>{current != null ? String(Math.round(current)) : '—'}</Text>
+          <Text style={s.speedUnit}>km/h</Text>
+        </View>
+      </View>
+      <SpeedTrace values={trace} />
+    </View>
+  );
+}
+
+/** Sparkline des relevés de vitesse (données réelles accumulées). Neutre : la
+ *  vitesse n'est ni un chrono/record (or) ni une alarme (rouge). */
+function SpeedTrace({ values }: { values: number[] }) {
+  const [w, setW] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
+  const H = 64;
+  const PAD = 6;
+
+  let body = (
+    <Text style={s.tracePlaceholder}>La trace de vitesse défile dès les premières trames.</Text>
+  );
+  if (w > 0 && values.length >= 2) {
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const span = max - min < 1 ? 1 : max - min;
+    const pts = values
+      .map((v, i) => {
+        const x = (i / (values.length - 1)) * w;
+        const y = PAD + (1 - (v - min) / span) * (H - PAD * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(' ');
+    body = (
+      <Svg width={w} height={H}>
+        <Polyline
+          points={pts}
+          fill="none"
+          stroke={palette.creamSoft}
+          strokeWidth={1.6}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+      </Svg>
+    );
+  }
+
+  return (
+    <View
+      onLayout={onLayout}
+      style={s.traceWrap}
+      accessibilityRole="image"
+      accessibilityLabel="Trace de la vitesse relevée en direct."
+    >
+      {body}
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Relevés de forces (neutres, factuels).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Console : forces G seules (la vitesse a son panneau dédié). */
+function GRow({ frame, dim }: { frame: LiveFrame | null; dim: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[s.tiles, dim]}>
+      <Fact label="G latéral" value={frame ? formatG(frame.gLat) : '—'} unit="g" />
+      <Fact label="G long." value={frame ? formatG(frame.gLong) : '—'} unit="g" />
+    </View>
+  );
+}
+
+/** Téléphone : vitesse + forces G en une rangée compacte. */
+function LiveRow({ frame, dim }: { frame: LiveFrame | null; dim: StyleProp<ViewStyle> }) {
+  return (
+    <View style={[s.tiles, dim]}>
+      <Fact label="Vitesse" value={frame ? String(Math.round(frame.speedKmh)) : '—'} unit="km/h" />
+      <Fact label="G latéral" value={frame ? formatG(frame.gLat) : '—'} unit="g" />
+      <Fact label="G long." value={frame ? formatG(frame.gLong) : '—'} unit="g" />
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Alerte factuelle « à surveiller » (vue du coach, jamais une consigne).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AlertCard({
+  text,
+  cornerIndex,
+  dim,
+}: {
+  text: string;
+  cornerIndex: number | null;
+  dim: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[s.alertCard, dim]}>
+      {cornerIndex != null ? (
+        <View style={s.alertBadge}>
+          <Text style={s.alertBadgeTxt}>{cornerIndex}</Text>
+        </View>
+      ) : (
+        <View style={s.alertBar} />
+      )}
+      <Text style={s.alertTxt}>{text}</Text>
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tours terminés : la liste des chronos, le meilleur en or.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ToursPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: number | null }) {
+  return (
+    <View>
+      <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Tours</Text>
+      {laps.length === 0 ? (
+        <EmptyState
+          label="Tours en attente"
+          message="Les tours terminés apparaîtront ici, dès les premiers tours du boîtier."
+          source="laps"
+        />
+      ) : (
+        <View style={s.toursCard}>
+          {laps.map((l, i) => {
+            const isBest = l.lap_number === bestLapNumber;
+            return (
+              <View
+                key={l.id}
+                accessibilityRole="text"
+                accessibilityLabel={`Tour ${l.lap_number}, ${formatLapTimeMs(l.duration_seconds)}${
+                  isBest ? ', son meilleur' : ''
+                }`}
+                style={[s.lapRow, i > 0 && s.lapRowBorder, isBest && s.lapRowBest]}
+              >
+                <Text style={[s.lapNo, isBest && s.lapBest]}>T{l.lap_number}</Text>
+                {isBest ? <Text style={s.lapTag}>meilleur</Text> : <View style={{ flex: 1 }} />}
+                <Text style={[s.lapChrono, isBest && s.lapBest]}>
+                  {formatLapTimeMs(l.duration_seconds)}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Actions rapides du coach — vers des écrans réels (aucun contrôle mort).
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ActionsPanel({
+  sessionId,
+  cornerIndex,
+}: {
+  sessionId: string | null;
+  cornerIndex: number | null;
+}) {
+  return (
+    <View>
+      <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Actions rapides</Text>
+      <View style={{ gap: spacing.sm }}>
+        <ActionButton
+          label="Note vocale"
+          primary
+          onPress={() =>
+            router.push({
+              pathname: '/(coach)/annoter',
+              params: {
+                ...(sessionId ? { sessionId } : {}),
+                ...(cornerIndex != null ? { cornerIndex: String(cornerIndex) } : {}),
+              },
+            } as never)
+          }
+        />
+        <ActionButton
+          label="Poser un repère"
+          onPress={() => router.push({ pathname: '/(coach)/reperes' } as never)}
+        />
+        <ActionButton
+          label="Message"
+          onPress={() => router.push({ pathname: '/(coach)/messages' } as never)}
+        />
+      </View>
+    </View>
+  );
+}
+
+function ActionButton({
+  label,
+  primary,
+  onPress,
+}: {
+  label: string;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => [
+        s.actionBtn,
+        primary ? s.actionBtnPrimary : s.actionBtnGhost,
+        pressed && { opacity: 0.9 },
+      ]}
+    >
+      <Text style={[s.actionTxt, primary ? s.actionTxtPrimary : s.actionTxtGhost]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function DoctrineCaption() {
+  return <Text style={s.doctrine}>Votre note part attribuée à vous, lisible après sa séance.</Text>;
+}
+
+// ============================================================================
+// Helpers (purs, affichage seulement)
+// ============================================================================
+
+function subtitleFor(frame: LiveFrame): string {
+  const sector = frame.sector != null ? ` · secteur ${frame.sector}` : '';
+  return `Tour ${frame.lap}${sector}`;
+}
+
+/** G en français : virgule décimale, signe « − » (U+2212) si négatif. */
+function formatG(v: number): string {
+  if (!Number.isFinite(v)) return '—';
+  return v.toFixed(2).replace('-', '−').replace('.', ',');
+}
+
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '·';
+  const first = parts[0][0] ?? '';
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : '';
+  return (first + last).toUpperCase() || '·';
+}
+
+const s = StyleSheet.create({
+  consolePad: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
-  dot: { width: 7, height: 7, borderRadius: 4 },
-  connTxt: {
+  companionPad: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xxl,
+  },
+  consoleRow: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.xl },
+  col: { gap: spacing.xl },
+  dim: { opacity: 0.4 },
+
+  // En-tête
+  headerWrap: { gap: spacing.sm },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 44 },
+  backBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chev: {
+    width: 9,
+    height: 9,
+    borderLeftWidth: 1.7,
+    borderBottomWidth: 1.7,
+    borderColor: palette.creamSoft,
+    transform: [{ rotate: '45deg' }],
+    marginLeft: 3,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarTxt: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 0.5, color: palette.creamSoft },
+  headerName: { fontFamily: fonts.display, fontSize: fontSize.h3, color: palette.cream },
+  headerSub: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+  connNote: {
     fontFamily: fonts.mono,
     fontSize: 10,
-    letterSpacing: 1,
+    letterSpacing: 0.6,
     color: palette.creamMute,
+    marginLeft: 34 + spacing.md,
   },
-  hero: { marginTop: spacing.xl, alignItems: 'flex-start' as const },
+
+  // Badge live / état
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    height: 26,
+    borderRadius: radius.pill,
+  },
+  badgeLive: { backgroundColor: palette.red },
+  badgeMuted: {
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: 3 },
+  badgeTxt: { fontFamily: fonts.mono, fontSize: 9.5, letterSpacing: 1.2 },
+
+  // Eyebrow commun
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
-    color: palette.creamMute,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
   },
-  alertCard: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+
+  // Tour en cours (chiffre roi)
+  heroCard: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Secteur
+  secteurCard: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  secteurRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
+  secteurValue: { fontFamily: fonts.monoSemi, fontSize: 20, color: palette.cream },
+  secteurState: { fontFamily: fonts.mono, fontSize: fontSize.small, color: palette.creamMute },
+
+  // Vitesse live
+  speedCard: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.lg,
+  },
+  speedHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
     gap: spacing.md,
-    marginTop: spacing.xl,
+  },
+  speedValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  speedValue: {
+    fontFamily: fonts.king,
+    fontSize: 30,
+    letterSpacing: -1,
+    color: palette.cream,
+    fontVariant: ['tabular-nums'],
+  },
+  speedUnit: { fontFamily: fonts.mono, fontSize: 11, color: palette.creamMute },
+  traceWrap: { height: 64, marginTop: spacing.md, justifyContent: 'center' },
+  tracePlaceholder: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.4,
+  },
+
+  // Relevés
+  tiles: { flexDirection: 'row', gap: spacing.sm },
+
+  // Alerte
+  alertCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     backgroundColor: palette.card2,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -148,21 +710,93 @@ const s = {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
   },
+  alertBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: palette.coachAlert,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  alertBadgeTxt: { fontFamily: fonts.monoSemi, fontSize: 11, color: palette.night },
   alertBar: {
     width: 3,
-    alignSelf: 'stretch' as const,
+    alignSelf: 'stretch',
     borderRadius: 2,
     backgroundColor: palette.coachAlert,
   },
-  alertTxt: { fontFamily: fonts.bodyMedium, fontSize: fontSize.body, color: palette.cream },
-  tiles: { flexDirection: 'row' as const, gap: spacing.sm, marginTop: spacing.xxl },
-  noteBtn: {
-    marginTop: spacing.xxl,
-    height: 54,
-    borderRadius: 16,
-    backgroundColor: palette.coachAccent,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+  alertTxt: {
+    flex: 1,
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
   },
-  noteTxt: { fontFamily: fonts.bodyMedium, fontSize: 15, color: palette.cream },
-};
+
+  // Tours
+  toursCard: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+  },
+  lapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  lapRowBorder: { borderTopWidth: 1, borderTopColor: palette.separator },
+  lapRowBest: {
+    backgroundColor: 'rgba(255,183,3,0.08)',
+    borderRadius: radius.sm,
+    borderTopWidth: 0,
+    paddingHorizontal: spacing.sm,
+  },
+  lapNo: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.body,
+    letterSpacing: 0.6,
+    color: palette.creamMute,
+  },
+  lapTag: {
+    flex: 1,
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    color: palette.gold,
+  },
+  lapChrono: {
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+    fontVariant: ['tabular-nums'],
+  },
+  lapBest: { color: palette.gold },
+
+  // Actions
+  actionBtn: {
+    minHeight: 48,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  actionBtnPrimary: { backgroundColor: palette.coachAccent },
+  actionBtnGhost: { backgroundColor: palette.card2, borderWidth: 1, borderColor: palette.line },
+  actionTxt: { fontFamily: fonts.bodySemi, fontSize: fontSize.body, letterSpacing: 0.2 },
+  actionTxtPrimary: { color: palette.cream },
+  actionTxtGhost: { color: palette.creamSoft },
+
+  doctrine: {
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
+    fontStyle: 'italic',
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    lineHeight: fontSize.small * 1.5,
+  },
+});

@@ -1,5 +1,7 @@
 /**
  * Coach — Émettre une facture (P2, aide à la facture · émetteur = le coach).
+ * Reskin refonte-v2 §12, RESPONSIVE deux formats (pas de maquette dédiée : on
+ * applique le langage v2 des écrans frères de facturation — `coach/23-facturation`).
  *
  * Le coach saisit ses lignes de prestation, choisit un destinataire parmi SES
  * binômes (optionnel) et une date. L'app calcule HT/TVA/TTC selon le régime
@@ -7,14 +9,33 @@
  * facture, puis propose le PDF. Aucun montant inventé ; le coach reste émetteur
  * et responsable. Paiement direct au coach, hors OXV.
  *
- * Doctrine : vouvoiement, sans emoji ; chiffres en mono ; honnêteté (l'app aide,
- * elle n'émet ni n'encaisse). L'argent n'est jamais en or (or = chrono).
+ * Deux formats (décision fondateur 2026-07-13) :
+ *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : header (eyebrow FACTURATION +
+ *     titre « Nouvelle facture » + insigne coach) puis 2 colonnes — l'éditeur de
+ *     lignes à gauche, le récapitulatif (totaux + CTA « Émettre » + rappel) à droite,
+ *     à la manière d'un bon de facturation.
+ *   - COMPAGNON (téléphone) : AppBar de retour + 1 colonne empilée (mêmes blocs).
+ * Le rail (console) / les onglets (téléphone) viennent du layout : cet écran
+ * n'affiche que son corps, il ne touche à aucune navigation.
+ *
+ * Doctrine : vouvoiement, sans emoji ; chiffres en mono (JetBrains) ; honnêteté
+ * (l'app aide, elle n'émet ni n'encaisse). Le CTA porte le ROUGE coach (identité
+ * de rôle) ; l'argent n'est jamais en or (l'or reste réservé au chrono/record).
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { router } from 'expo-router';
 
+import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   canIssueInvoice,
   computeInvoiceTotals,
@@ -34,6 +55,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Field } from '@/ui/Field';
+import { KingNumber } from '@/ui/KingNumber';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
@@ -51,7 +73,7 @@ interface PilotOption {
   name: string;
 }
 
-/** Centimes → euros « 1 200,00 € ». */
+/** Centimes → euros « 1 200,00 € » (espaces milliers, virgule fr). */
 function euros(cents: number): string {
   const fixed = (cents / 100).toFixed(2).replace('.', ',');
   const [int, dec] = fixed.split(',');
@@ -64,6 +86,9 @@ function todayIso(): string {
 }
 
 export default function FactureNouvelleScreen() {
+  const { width } = useWindowDimensions();
+  const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+
   const [state, setState] = useState<ScreenState>('loading');
   const [profile, setProfile] = useState<CoachBillingProfile | null>(null);
   const [pilots, setPilots] = useState<PilotOption[]>([]);
@@ -168,187 +193,259 @@ export default function FactureNouvelleScreen() {
     setSharing(false);
   }
 
-  // Succès : la facture est écrite, on propose le PDF sans surprise.
+  // — En-tête commun aux deux états (console : eyebrow + titre + insigne coach) —
+  const consoleHead = (heading: string) => (
+    <View style={s.consoleHead}>
+      <View style={{ flex: 1 }}>
+        <Text style={s.eyebrow}>FACTURATION</Text>
+        <Text style={s.title} accessibilityRole="header">
+          {heading}
+        </Text>
+      </View>
+      <RoleBadge role="coach" />
+    </View>
+  );
+
+  // ── Succès : la facture est écrite, on propose le PDF sans surprise. ──────────
   if (issued) {
+    const summary = (
+      <>
+        <CockpitPanel>
+          <Text style={s.panelEyebrow}>Facture émise</Text>
+          <Text style={s.issuedNumber}>{issued.number}</Text>
+          <Text style={s.issuedMeta}>
+            {euros(totals.amountTotal)} · {validLines.length} ligne
+            {validLines.length > 1 ? 's' : ''}
+          </Text>
+        </CockpitPanel>
+        <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
+          <CoachCTA
+            label="Générer le PDF"
+            onPress={onSharePdf}
+            loading={sharing}
+            disabled={!issued.id}
+            block
+          />
+          <Button label="Retour à la facturation" variant="ghost" onPress={() => router.back()} />
+        </View>
+      </>
+    );
+
     return (
       <Screen>
-        <AppBar title="FACTURE ÉMISE" onBack={() => router.back()} />
-        <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-          <CockpitPanel style={{ marginTop: spacing.lg }}>
-            <Text style={s.eyebrow}>Facture émise</Text>
-            <Text style={s.issuedNumber}>{issued.number}</Text>
-            <Text style={s.issuedMeta}>
-              {euros(totals.amountTotal)} · {validLines.length} ligne
-              {validLines.length > 1 ? 's' : ''}
-            </Text>
-          </CockpitPanel>
-          <View style={{ marginTop: spacing.xl, gap: spacing.md }}>
-            <Button
-              label="Générer le PDF"
-              onPress={onSharePdf}
-              loading={sharing}
-              disabled={!issued.id}
-            />
-            <Button label="Retour à la facturation" variant="ghost" onPress={() => router.back()} />
+        {isConsole ? null : <AppBar title="FACTURE ÉMISE" onBack={() => router.back()} />}
+        <View style={isConsole ? s.consolePad : s.companionPad}>
+          {isConsole ? consoleHead('Facture émise') : null}
+          <View
+            style={[
+              isConsole ? s.narrow : undefined,
+              { marginTop: isConsole ? spacing.xl : spacing.lg },
+            ]}
+          >
+            {summary}
           </View>
         </View>
       </Screen>
     );
   }
 
+  // ── Éditeur ──────────────────────────────────────────────────────────────────
+
+  // Identité de facturation manquante : on oriente vers l'écran d'identité.
+  const identityRequired = (
+    <CockpitPanel plain>
+      <Text style={s.panelEyebrow}>Identité requise</Text>
+      <Text style={s.body}>
+        Renseignez votre identité de facturation (nom et SIRET) avant d’émettre une facture.
+      </Text>
+      <View style={{ marginTop: spacing.lg }}>
+        <Button
+          variant="ghost"
+          label="Compléter mon identité"
+          onPress={() => router.replace('/(coach)/facturation-identite' as never)}
+        />
+      </View>
+    </CockpitPanel>
+  );
+
+  // L'éditeur (colonne gauche console / haut de pile compagnon) : destinataire,
+  // date, lignes de prestation.
+  const editor = (
+    <>
+      <Text style={s.sectionLabel}>DESTINATAIRE · OPTIONNEL</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.xs }}
+        style={{ marginBottom: spacing.lg }}
+      >
+        <SelectPill label="Aucun" active={pilotId === null} onPress={() => setPilotId(null)} />
+        {pilots.map((p) => (
+          <SelectPill
+            key={p.id}
+            label={p.name}
+            active={pilotId === p.id}
+            onPress={() => setPilotId(p.id)}
+          />
+        ))}
+      </ScrollView>
+
+      <Field
+        label="Date de prestation"
+        value={serviceDate}
+        onChangeText={setServiceDate}
+        placeholder="AAAA-MM-JJ"
+        optional
+        helper="Date de la prestation facturée."
+        maxLength={10}
+      />
+
+      <Text style={s.sectionLabel}>PRESTATIONS</Text>
+      <View style={{ gap: spacing.md }}>
+        {lines.map((l, i) => (
+          <View key={i} style={s.lineCard}>
+            <Field
+              label={`Ligne ${i + 1}`}
+              value={l.label}
+              onChangeText={(t) => updateLine(i, { label: t })}
+              placeholder="Séance de coaching, analyse…"
+              maxLength={120}
+              containerStyle={{ marginBottom: spacing.md }}
+            />
+            <View style={s.lineRow}>
+              <Field
+                label="Quantité"
+                value={l.qty}
+                onChangeText={(t) => updateLine(i, { qty: t.replace(/\D/g, '') })}
+                keyboardType="number-pad"
+                maxLength={4}
+                containerStyle={s.qtyField}
+              />
+              <Field
+                label="Prix unitaire HT"
+                value={l.pu}
+                onChangeText={(t) => updateLine(i, { pu: t })}
+                keyboardType="decimal-pad"
+                unit="€"
+                placeholder="0,00"
+                maxLength={10}
+                containerStyle={s.puField}
+              />
+            </View>
+            {lines.length > 1 ? (
+              <Pressable
+                onPress={() => removeLine(i)}
+                accessibilityRole="button"
+                accessibilityLabel={`Retirer la ligne ${i + 1}`}
+                hitSlop={theme.hitSlop}
+                style={s.removeBtn}
+              >
+                <Text style={s.removeTxt}>Retirer cette ligne</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ))}
+      </View>
+
+      <Pressable
+        onPress={addLine}
+        accessibilityRole="button"
+        accessibilityLabel="Ajouter une ligne de prestation"
+        style={s.addBtn}
+        hitSlop={theme.hitSlop}
+      >
+        <Text style={s.addTxt}>+ Ajouter une ligne</Text>
+      </Pressable>
+    </>
+  );
+
+  // Récapitulatif (colonne droite console / bas de pile compagnon) : le chiffre
+  // roi de l'écran = le total à régler (crème neutre — l'argent n'est jamais en or).
+  const totalsPanel = (
+    <CockpitPanel>
+      <Text style={s.panelEyebrow}>Total à régler</Text>
+      <KingNumber value={euros(totals.amountTotal)} color={palette.cream} size={38} />
+      <View style={s.totBreak}>
+        <View style={s.totRow}>
+          <Text style={s.totLabel}>Total HT</Text>
+          <Text style={s.totValue}>{euros(totals.amountHt)}</Text>
+        </View>
+        <View style={s.totRow}>
+          <Text style={s.totLabel}>
+            TVA{totals.vatRate != null ? ` (${totals.vatRate} %)` : ''}
+          </Text>
+          <Text style={s.totValueMute}>
+            {totals.vatNote ? totals.vatNote : euros(totals.vatAmount)}
+          </Text>
+        </View>
+      </View>
+    </CockpitPanel>
+  );
+
+  const emitBlock = (
+    <View>
+      <CoachCTA
+        label="Émettre la facture"
+        onPress={onIssue}
+        loading={issuing}
+        disabled={validLines.length === 0}
+        block
+      />
+      <Text style={s.footnote}>
+        Vous restez l’émetteur et le responsable de cette facture. OXV n’émet pas et n’encaisse pas
+        à votre place.
+      </Text>
+    </View>
+  );
+
+  let bodyContent: React.ReactNode;
+  if (!canIssue) {
+    bodyContent = <View style={isConsole ? s.narrow : undefined}>{identityRequired}</View>;
+  } else if (isConsole) {
+    // Console pleine : éditeur à gauche, récapitulatif + action à droite.
+    bodyContent = (
+      <View style={s.cols}>
+        <View style={s.mainCol}>{editor}</View>
+        <View style={s.aside}>
+          {totalsPanel}
+          {emitBlock}
+        </View>
+      </View>
+    );
+  } else {
+    // Compagnon : une colonne empilée.
+    bodyContent = (
+      <View>
+        {editor}
+        <View style={{ marginTop: spacing.lg }}>{totalsPanel}</View>
+        <View style={{ marginTop: spacing.xl }}>{emitBlock}</View>
+      </View>
+    );
+  }
+
   return (
     <Screen>
-      <AppBar title="ÉMETTRE UNE FACTURE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <View style={{ marginBottom: spacing.md }}>
-          <RoleBadge role="coach" />
+      {isConsole ? null : <AppBar title="ÉMETTRE UNE FACTURE" onBack={() => router.back()} />}
+      <View style={isConsole ? s.consolePad : s.companionPad}>
+        {isConsole ? (
+          consoleHead('Nouvelle facture')
+        ) : (
+          <View style={{ marginTop: spacing.sm, marginBottom: spacing.md }}>
+            <RoleBadge role="coach" />
+          </View>
+        )}
+
+        <View style={{ marginTop: isConsole ? spacing.xl : 0 }}>
+          <StateWrapper state={state} skeletonLines={6} errorCause="Facturation illisible.">
+            {bodyContent}
+          </StateWrapper>
         </View>
-
-        <StateWrapper state={state} skeletonLines={6} errorCause="Facturation illisible.">
-          {!canIssue ? (
-            <CockpitPanel plain style={{ marginTop: spacing.sm }}>
-              <Text style={s.eyebrow}>Identité requise</Text>
-              <Text style={s.body}>
-                Renseignez votre identité de facturation (nom et SIRET) avant d’émettre une facture.
-              </Text>
-              <View style={{ marginTop: spacing.lg }}>
-                <Button
-                  variant="ghost"
-                  label="Compléter mon identité"
-                  onPress={() => router.replace('/(coach)/facturation-identite' as never)}
-                />
-              </View>
-            </CockpitPanel>
-          ) : (
-            <>
-              {/* Destinataire optionnel : un binôme du coach. */}
-              <Text style={s.sectionLabel}>DESTINATAIRE · OPTIONNEL</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ gap: spacing.sm, paddingBottom: spacing.xs }}
-                style={{ marginBottom: spacing.lg }}
-              >
-                <SelectPill
-                  label="Aucun"
-                  active={pilotId === null}
-                  onPress={() => setPilotId(null)}
-                />
-                {pilots.map((p) => (
-                  <SelectPill
-                    key={p.id}
-                    label={p.name}
-                    active={pilotId === p.id}
-                    onPress={() => setPilotId(p.id)}
-                  />
-                ))}
-              </ScrollView>
-
-              <Field
-                label="Date de prestation"
-                value={serviceDate}
-                onChangeText={setServiceDate}
-                placeholder="AAAA-MM-JJ"
-                optional
-                helper="Date de la prestation facturée."
-                maxLength={10}
-              />
-
-              {/* Lignes de prestation. */}
-              <Text style={s.sectionLabel}>PRESTATIONS</Text>
-              <View style={{ gap: spacing.md }}>
-                {lines.map((l, i) => (
-                  <View key={i} style={s.lineCard}>
-                    <Field
-                      label={`Ligne ${i + 1}`}
-                      value={l.label}
-                      onChangeText={(t) => updateLine(i, { label: t })}
-                      placeholder="Séance de coaching, analyse…"
-                      maxLength={120}
-                      containerStyle={{ marginBottom: spacing.md }}
-                    />
-                    <View style={s.lineRow}>
-                      <Field
-                        label="Quantité"
-                        value={l.qty}
-                        onChangeText={(t) => updateLine(i, { qty: t.replace(/\D/g, '') })}
-                        keyboardType="number-pad"
-                        maxLength={4}
-                        containerStyle={s.qtyField}
-                      />
-                      <Field
-                        label="Prix unitaire HT"
-                        value={l.pu}
-                        onChangeText={(t) => updateLine(i, { pu: t })}
-                        keyboardType="decimal-pad"
-                        unit="€"
-                        placeholder="0,00"
-                        maxLength={10}
-                        containerStyle={s.puField}
-                      />
-                    </View>
-                    {lines.length > 1 ? (
-                      <Pressable
-                        onPress={() => removeLine(i)}
-                        accessibilityRole="button"
-                        hitSlop={theme.hitSlop}
-                        style={s.removeBtn}
-                      >
-                        <Text style={s.removeTxt}>Retirer cette ligne</Text>
-                      </Pressable>
-                    ) : null}
-                  </View>
-                ))}
-              </View>
-
-              <Pressable
-                onPress={addLine}
-                accessibilityRole="button"
-                style={s.addBtn}
-                hitSlop={theme.hitSlop}
-              >
-                <Text style={s.addTxt}>+ Ajouter une ligne</Text>
-              </Pressable>
-
-              {/* Aperçu des totaux — argent en crème neutre (l'or reste au chrono). */}
-              <CockpitPanel style={{ marginTop: spacing.lg }}>
-                <View style={s.totRow}>
-                  <Text style={s.totLabel}>Total HT</Text>
-                  <Text style={s.totValue}>{euros(totals.amountHt)}</Text>
-                </View>
-                <View style={s.totRow}>
-                  <Text style={s.totLabel}>
-                    TVA{totals.vatRate != null ? ` (${totals.vatRate} %)` : ''}
-                  </Text>
-                  <Text style={s.totValueMute}>
-                    {totals.vatNote ? totals.vatNote : euros(totals.vatAmount)}
-                  </Text>
-                </View>
-                <View style={[s.totRow, s.totGrand]}>
-                  <Text style={s.totGrandLabel}>Total à régler</Text>
-                  <Text style={s.totGrandValue}>{euros(totals.amountTotal)}</Text>
-                </View>
-              </CockpitPanel>
-
-              <View style={{ marginTop: spacing.xl }}>
-                <Button
-                  label="Émettre la facture"
-                  onPress={onIssue}
-                  loading={issuing}
-                  disabled={validLines.length === 0}
-                />
-              </View>
-              <Text style={s.footnote}>
-                Vous restez l’émetteur et le responsable de cette facture. OXV n’émet pas et
-                n’encaisse pas à votre place.
-              </Text>
-            </>
-          )}
-        </StateWrapper>
       </View>
     </Screen>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function SelectPill({
   label,
@@ -372,22 +469,105 @@ function SelectPill({
   );
 }
 
-const s = {
+/** CTA d'action réelle (rouge coach). L'or reste au chrono ; le coach porte le
+ *  rouge. État désactivé honnête (atténué + non cliquable, jamais un contrôle mort). */
+function CoachCTA({
+  label,
+  onPress,
+  loading,
+  disabled,
+  block,
+}: {
+  label: string;
+  onPress: () => void;
+  loading?: boolean;
+  disabled?: boolean;
+  block?: boolean;
+}) {
+  const inert = disabled || loading;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled, busy: !!loading }}
+      onPress={inert ? undefined : onPress}
+      disabled={inert}
+      style={({ pressed }) => [
+        s.cta,
+        block ? s.ctaBlock : null,
+        disabled ? s.ctaDisabled : null,
+        pressed && !inert ? { opacity: 0.9 } : null,
+      ]}
+    >
+      <View style={s.ctaContent}>
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={palette.cream}
+            style={{ marginRight: spacing.sm }}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : null}
+        <Text style={[s.ctaTxt, disabled ? s.ctaTxtDisabled : null]}>{label}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+const s = StyleSheet.create({
+  // — Gouttières —
+  consolePad: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  companionPad: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+
+  // — En-tête console —
+  consoleHead: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: palette.creamMute,
-    marginBottom: spacing.sm,
   },
+  title: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h2,
+    letterSpacing: 0.5,
+    color: palette.cream,
+    marginTop: spacing.sm,
+  },
+
+  // — Colonnes console —
+  cols: { flexDirection: 'row', gap: spacing.xl, alignItems: 'flex-start' },
+  mainCol: { flex: 1.7 },
+  aside: { flex: 1, maxWidth: 340, gap: spacing.lg },
+  narrow: { maxWidth: 560, alignSelf: 'center', width: '100%' },
+
+  // — Libellés de section —
   sectionLabel: {
     fontFamily: fonts.mono,
     fontSize: fontSize.eyebrow,
     letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    textTransform: 'uppercase',
     color: palette.creamMute,
     marginBottom: spacing.md,
+  },
+  panelEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.sm,
   },
   body: {
     fontFamily: fonts.body,
@@ -395,6 +575,8 @@ const s = {
     color: palette.creamSoft,
     lineHeight: fontSize.body * 1.5,
   },
+
+  // — Lignes de prestation —
   lineCard: {
     borderWidth: 1,
     borderColor: palette.line,
@@ -402,25 +584,30 @@ const s = {
     padding: spacing.md,
     backgroundColor: palette.card,
   },
-  lineRow: { flexDirection: 'row' as const, gap: spacing.md },
+  lineRow: { flexDirection: 'row', gap: spacing.md },
   qtyField: { flex: 1, marginBottom: 0 },
   puField: { flex: 2, marginBottom: 0 },
-  removeBtn: { marginTop: spacing.sm, alignSelf: 'flex-start' as const },
+  removeBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
+    minHeight: 28,
+    justifyContent: 'center',
+  },
   removeTxt: {
     fontFamily: fonts.body,
     fontSize: fontSize.small,
     color: palette.creamMute,
-    textDecorationLine: 'underline' as const,
+    textDecorationLine: 'underline',
   },
   addBtn: {
     marginTop: spacing.md,
-    height: 48,
+    minHeight: 48,
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: palette.line,
-    borderStyle: 'dashed' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addTxt: {
     fontFamily: fonts.mono,
@@ -428,23 +615,26 @@ const s = {
     letterSpacing: 1,
     color: palette.creamSoft,
   },
+
+  // — Récapitulatif des totaux —
+  totBreak: {
+    borderTopWidth: 1,
+    borderTopColor: palette.line,
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    gap: spacing.xs,
+  },
   totRow: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingVertical: spacing.xs,
   },
   totLabel: { fontFamily: fonts.body, fontSize: fontSize.body, color: palette.creamSoft },
   totValue: { fontFamily: fonts.mono, fontSize: fontSize.body, color: palette.cream },
   totValueMute: { fontFamily: fonts.mono, fontSize: fontSize.small, color: palette.creamMute },
-  totGrand: {
-    borderTopWidth: 1,
-    borderTopColor: palette.line,
-    marginTop: spacing.sm,
-    paddingTop: spacing.md,
-  },
-  totGrandLabel: { fontFamily: fonts.bodyMedium, fontSize: fontSize.bodyLg, color: palette.cream },
-  totGrandValue: { fontFamily: fonts.mono, fontSize: fontSize.h3, color: palette.cream },
+
+  // — Succès —
   issuedNumber: {
     fontFamily: fonts.mono,
     fontSize: fontSize.value,
@@ -457,14 +647,17 @@ const s = {
     color: palette.creamMute,
     marginTop: spacing.sm,
   },
+
   footnote: {
     fontFamily: fonts.bodyLight,
     fontSize: fontSize.small,
-    fontStyle: 'italic' as const,
+    fontStyle: 'italic',
     color: palette.creamMute,
     marginTop: spacing.lg,
     lineHeight: fontSize.small * 1.5,
   },
+
+  // — Pastilles de sélection (destinataire) —
   pill: {
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -472,8 +665,32 @@ const s = {
     borderWidth: 1,
     borderColor: palette.line,
     backgroundColor: palette.card2,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   pillOn: { borderColor: palette.cream, backgroundColor: 'rgba(255,255,255,0.07)' },
   pillTxt: { fontFamily: fonts.body, fontSize: fontSize.small, color: palette.creamMute },
   pillTxtOn: { color: palette.cream },
-};
+
+  // — CTA rouge coach —
+  cta: {
+    backgroundColor: palette.coachAccent,
+    borderRadius: radius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaBlock: { alignSelf: 'stretch' },
+  ctaContent: { flexDirection: 'row', alignItems: 'center' },
+  ctaDisabled: { backgroundColor: '#2A2A2E' },
+  ctaTxt: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.cream,
+  },
+  ctaTxtDisabled: { color: '#6A6A73' },
+});
