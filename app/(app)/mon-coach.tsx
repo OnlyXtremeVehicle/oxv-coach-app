@@ -28,10 +28,16 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Linking, Pressable, Switch, Text, View } from 'react-native';
 import { Link, router } from 'expo-router';
 
+import { EmptyState as InstrumentEmptyState } from '@/components/instruments/EmptyState';
 import * as haptics from '@/lib/haptics';
+import {
+  formatInvoiceAmount,
+  listMyCoachInvoices,
+  type MyCoachInvoice,
+} from '@/services/pilotCoachBillingService';
 import {
   type CoachAccessLevel,
   type MyCoachAssignment,
@@ -94,6 +100,10 @@ function sinceLabel(iso: string): string {
 export default function MonCoachScreen() {
   const [coaches, setCoaches] = useState<MyCoachAssignment[]>([]);
   const [loading, setLoading] = useState(true);
+  // Factures du coach (règlement direct) — chargées à part, secondaires : une
+  // erreur de facturation ne bloque jamais l'écran de consentement.
+  const [invoices, setInvoices] = useState<MyCoachInvoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   const reload = async () => {
     try {
@@ -115,6 +125,14 @@ export default function MonCoachScreen() {
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
+      });
+    listMyCoachInvoices()
+      .then((rows) => {
+        if (!cancelled) setInvoices(rows);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setInvoicesLoading(false);
       });
     return () => {
       cancelled = true;
@@ -215,6 +233,15 @@ export default function MonCoachScreen() {
             ))}
           </View>
         )}
+
+        {/* Vos prestations — règlement DIRECT au coach (OXV n'encaisse pas).
+            Affichée dès qu'un coach est actif ou qu'une facture existe ; jamais
+            de facture factice si aucune n'existe (source coach_invoices). */}
+        {activeAssignments.length > 0 || invoices.length > 0 ? (
+          <View style={{ marginTop: spacing.xxl }}>
+            <BillingSection invoices={invoices} loading={invoicesLoading} />
+          </View>
+        ) : null}
 
         {/* Accès aux invitations de roulages (§8). Le pilote convié par un
             coach gère ici sa présence. */}
@@ -427,6 +454,108 @@ function NeverSeenCard() {
   );
 }
 
+/**
+ * Section « Vos prestations » — factures du coach et RÈGLEMENT DIRECT.
+ *
+ * OXV n'encaisse pas : l'app AFFICHE le montant dû et OUVRE le lien de paiement
+ * du coach (SumUp/Lydia/PayPal.me…) ; le pilote règle dans sa banque / son appli.
+ * Aucune coordonnée bancaire n'est saisie ici — on n'ouvre qu'un lien. Le lien
+ * vient du profil coach (chemin A) ; absent, l'écran renvoie au coach pour le
+ * moyen de paiement. Données réelles uniquement : rien n'est inventé.
+ */
+function BillingSection({ invoices, loading }: { invoices: MyCoachInvoice[]; loading: boolean }) {
+  return (
+    <View>
+      <View style={{ marginBottom: spacing.md }}>
+        <SectionLabel>Vos prestations</SectionLabel>
+      </View>
+      <Text style={s.billingNote}>{'Réglé directement à votre coach. OXV n’encaisse pas.'}</Text>
+
+      {loading ? (
+        <View style={s.billingLoading}>
+          <ActivityIndicator
+            color={palette.creamMute}
+            accessibilityLabel="Chargement des prestations"
+          />
+        </View>
+      ) : invoices.length === 0 ? (
+        <InstrumentEmptyState
+          label="Aucune prestation"
+          message="Les prestations facturées par votre coach apparaîtront ici, avec leur règlement."
+          source="coach_invoices"
+        />
+      ) : (
+        <View style={{ gap: spacing.md }}>
+          {invoices.map((inv) => (
+            <InvoiceCard key={inv.id} invoice={inv} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
+ * Une facture : n° + coach + date + montant, puis le règlement. Si un lien de
+ * paiement existe et que la prestation n'est pas déjà réglée → bouton « Régler »
+ * (rouge coach) qui ouvre le lien HORS application. Sinon, ligne factuelle vers
+ * le coach. L'état « réglé » (vert) n'apparaît QUE s'il est réellement constaté.
+ */
+function InvoiceCard({ invoice }: { invoice: MyCoachInvoice }) {
+  const amount = formatInvoiceAmount(invoice.amountTotalCents, invoice.currency);
+  const dateIso = invoice.serviceDate ?? invoice.issuedAt;
+  const canPay = !invoice.settled && invoice.paymentLink !== null;
+
+  function onPay() {
+    if (!invoice.paymentLink) return;
+    void Linking.openURL(invoice.paymentLink).catch(() => undefined);
+  }
+
+  return (
+    <Card style={s.invoiceCard}>
+      <View style={s.invoiceRow}>
+        <View style={{ flex: 1, paddingRight: spacing.md }}>
+          <Text style={s.invoiceNumber}>{invoice.number}</Text>
+          <Text style={s.invoiceCoach} numberOfLines={1}>
+            {invoice.coachName}
+          </Text>
+          <Text style={s.invoiceDate}>{formatDateShort(dateIso)}</Text>
+        </View>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={s.invoiceAmount} accessibilityLabel={`Montant ${amount}`}>
+            {amount}
+          </Text>
+          {invoice.settled ? <SettledPill /> : null}
+        </View>
+      </View>
+
+      {invoice.settled ? null : canPay ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Régler ${amount} à ${invoice.coachName}`}
+          accessibilityHint="Ouvre le lien de paiement de votre coach, hors de l'application."
+          onPress={onPay}
+          style={({ pressed }) => [s.payButton, pressed ? { opacity: 0.85 } : null]}
+        >
+          <Text style={s.payButtonText}>{`Régler ${amount}`}</Text>
+        </Pressable>
+      ) : (
+        <Text style={s.payHint}>Le coach vous communiquera le moyen de paiement.</Text>
+      )}
+    </Card>
+  );
+}
+
+/** Pastille verte « RÉGLÉ » — affichée seulement si le règlement est constaté. */
+function SettledPill() {
+  return (
+    <View style={s.settledPill} accessibilityRole="text" accessibilityLabel="Prestation réglée">
+      <View style={s.settledDot} />
+      <Text style={s.settledText}>RÉGLÉ</Text>
+    </View>
+  );
+}
+
 /** État sans coach — honnête, avec l'accès à la place de marché existante. */
 function EmptyState() {
   return (
@@ -626,5 +755,98 @@ const s = {
     textAlign: 'center' as const,
     lineHeight: fontSize.small * 1.5,
     marginTop: spacing.md,
+  },
+
+  // — Section « Vos prestations » (règlement direct au coach) —
+  billingNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
+    marginBottom: spacing.md,
+  },
+  billingLoading: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center' as const,
+  },
+  // Carte facture : surface card, liseré gauche rouge coach (contexte coach).
+  invoiceCard: {
+    padding: spacing.lg,
+    borderLeftWidth: 2,
+    borderLeftColor: palette.coachAccent,
+  },
+  invoiceRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+  },
+  invoiceNumber: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.micro,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    color: palette.faint,
+  },
+  invoiceCoach: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+    marginTop: 3,
+  },
+  invoiceDate: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.micro,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+  // Montant TTC : chiffre mono, dominant de la carte (jamais l'or système).
+  invoiceAmount: {
+    fontFamily: fonts.monoSemi,
+    fontSize: fontSize.h3,
+    color: palette.cream,
+  },
+  // Bouton « Régler » — rouge coach, cible ≥ 48 px (ouvre le lien du coach).
+  payButton: {
+    minHeight: 48,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderRadius: radius.sm,
+    backgroundColor: palette.coachAccent,
+    marginTop: spacing.lg,
+  },
+  payButtonText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: 14,
+    color: palette.cream,
+  },
+  payHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.5,
+    marginTop: spacing.md,
+  },
+  // Pastille « RÉGLÉ » verte — même registre que la pastille de consentement.
+  settledPill: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: GREEN_TINT_PILL,
+    marginTop: spacing.sm,
+  },
+  settledDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: palette.green,
+  },
+  settledText: {
+    fontFamily: fonts.monoSemi,
+    fontSize: 10,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.green,
   },
 };
