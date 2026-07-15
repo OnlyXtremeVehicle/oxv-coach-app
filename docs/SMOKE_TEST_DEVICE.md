@@ -296,3 +296,70 @@ npx tsx scripts/generate-fixture-ubx.ts test-fixtures/demo-session.ubx
 | Q33 | Trace GPS référence Beltoise | Map-matching approximatif |
 
 — Claude Code, sem 13 J4
+
+---
+
+## Durcissement capture Valencia — scénario « survie hors-ligne » (à exécuter sur device réel)
+
+> Ajouté avec le lot `feat(valencia)` (durcissement hors-ligne, audit §4). Ce
+> scénario est la **définition de « terminé »** du lot : tant qu'il ne passe pas
+> bout-à-bout sur un vrai iPhone + RaceBox, le durcissement n'est pas validé.
+
+### Stratégie écran (v1)
+
+- **Premier plan assumé + keep-awake actif.** Pendant toute la capture, l'app
+  maintient l'écran allumé (`expo-keep-awake`, tag `oxv-capture`, activé à
+  l'armement, libéré à l'arrêt/abandon/timeout long). L'auto-verrouillage ne
+  coupe donc pas la radio BLE pendant un relais.
+- **Pas de BLE en arrière-plan (v1).** `app.json` a été mis en cohérence :
+  `UIBackgroundModes: ["bluetooth-central"]` retiré (contredisait le plugin
+  `react-native-ble-plx` `isBackgroundEnabled:false`). L'arrière-plan BLE
+  (entitlements iOS) est un lot ultérieur. **À vérifier le jour J** : ne pas
+  compter sur une capture écran éteint ; garder le téléphone déverrouillé (ou
+  auto-verrouillage « Jamais » en secours), écran face au ciel dans la voiture.
+
+### Parcours à faire passer (device réel, RaceBox appairé)
+
+1. [ ] **Démarrage en MODE AVION.** Activer le mode avion, lancer une capture.
+       → La session se **crée localement** (UUID client) et **enregistre** ;
+       aucun blocage, aucun message d'erreur réseau. (Chantier 1.)
+2. [ ] **Téléphone verrouillé** (ou laissé écran allumé grâce au keep-awake)
+       pendant un **relais de 20 min**. → Aucune trame perdue ; les compteurs
+       live reprennent normalement. (Chantiers 2 + 4.)
+3. [ ] **Coupure BLE de 90 s** en cours de relais (éteindre / éloigner le
+       RaceBox ~90 s puis le rallumer). → La capture passe « interrompue »
+       (pause), la session reste **ouverte**, se **reprend au même identifiant**
+       à la reconnexion ; un « trou de liaison N ms » est loggé. Aucune clôture
+       forcée avant 15 min. (Chantier 5.)
+4. [ ] **Arrêt de la capture TOUJOURS hors réseau.** → Rien n'est perdu ; la
+       session n'est **jamais laissée en `recording` fantôme** (la clôture est
+       mise en file). (Chantier 3.)
+5. [ ] **Retour du réseau** (couper le mode avion). → Synchronisation
+       **automatique et intégrale** : session, trames, tours, `.ubx`. Vérifier
+       en base : **zéro doublon** de trame, `total_frames` **exact** (= trames
+       émises), tours détectés. (Chantiers 2/3/6.)
+
+### Vérifications en base après le parcours
+
+- [ ] `telemetry_sessions` : 1 seule ligne, `status='completed'`, `total_frames`
+      cohérent avec la durée × la fréquence (~25 Hz).
+- [ ] `telemetry_frames` : `count(*) == total_frames` ; **aucun doublon**
+      `(session_id, elapsed_ms)` (requête :
+      `select session_id, elapsed_ms, count(*) from telemetry_frames group by 1,2 having count(*) > 1;` → 0 ligne).
+- [ ] `laps` : tours présents, `best_lap` marqué, durées cohérentes (issues de
+      la base **monotone**, pas de durée négative même si l'horloge a bougé).
+
+### Pré-requis de données (à faire AVANT la session, hors code)
+
+- [ ] **Ligne d'arrivée de Valencia en base `circuits`.** Sans elle, repli
+      volontairement piégé → **0 tour détecté**. La requête SQL exacte à coller
+      est dans `RAPPORT_DURCISSEMENT_VALENCIA.md` (préparée, **non exécutée**).
+- [ ] **Migration d'idempotence appliquée** :
+      `20260715120000_valencia_telemetry_frames_unique.sql` doit être exécutée
+      en prod (par Gabin) pour que l'upsert soit réellement idempotent. Tant
+      qu'elle ne l'est pas, le client retombe sur un `insert` simple (garde
+      anti-casse) — l'étape 5 « zéro doublon » n'est garantie qu'après application.
+- [ ] **Vérifier ≥ 20 Hz à l'armement** (manuel) : contrôler le débit de trames
+      au démarrage (le RaceBox Mini S émet à 25 Hz nominal).
+
+— Claude Code, lot durcissement Valencia

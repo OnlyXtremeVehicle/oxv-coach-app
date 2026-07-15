@@ -21,6 +21,8 @@
  * trames). iTOW est stocké pour un ordonnancement plus robuste ultérieur.
  */
 
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+
 import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import { startCapture, stopCapture } from '@/ble/captureMode';
 import { startPilotLiveRelay, stopPilotLiveRelay } from '@/services/liveRelayRunner';
@@ -60,6 +62,32 @@ export const BELTOISE_FINISH = { lat: 45.6004, lon: -0.141, radiusM: 40 };
 
 const FLUSH_EVERY_FRAMES = 50;
 const FLUSH_INTERVAL_MS = 4_000;
+
+/**
+ * Stratégie écran v1 (Valencia §4.4) : PREMIER PLAN ASSUMÉ. La capture BLE tourne
+ * au premier plan ; pour survivre à un relais de 20 min sans que l'auto-verrouillage
+ * coupe la radio, on maintient l'écran allumé pendant toute la capture (activé à
+ * l'armement, libéré à l'arrêt). `app.json` est mis en cohérence : pas de mode
+ * arrière-plan BLE revendiqué (le keep-awake couvre le besoin ; l'arrière-plan BLE
+ * = entitlements à venir). Le tag isole notre verrou des autres usages.
+ */
+const KEEP_AWAKE_TAG = 'oxv-capture';
+
+/** Maintient l'écran allumé pendant la capture (best-effort, jamais bloquant). */
+function armKeepAwake(): void {
+  void activateKeepAwakeAsync(KEEP_AWAKE_TAG).catch((e) =>
+    console.warn('[OXV][capture] keep-awake KO :', e instanceof Error ? e.message : e)
+  );
+}
+
+/** Libère le verrou d'écran (idempotent : une libération sans verrou est ignorée). */
+function releaseKeepAwake(): void {
+  try {
+    deactivateKeepAwake(KEEP_AWAKE_TAG);
+  } catch {
+    /* pas de verrou actif — sans effet */
+  }
+}
 
 /**
  * Délai d'interruption CONTINUE (lien non rétabli) au-delà duquel la séance est
@@ -291,6 +319,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // coupure ne tue plus la séance — elle est mise en pause, le trou horodaté, et
   // seul le pilote (stop/abort) ou le timeout long peut clôturer.
   bluetoothService.setUnlimitedReconnect(true);
+  armKeepAwake();
 
   // Suit la reconnexion BLE pour ne jamais compter contre un lien mort en
   // silence : on met la capture en pause pendant les tentatives, on reprend à
@@ -369,6 +398,7 @@ function startInterruptTimeout(state: CaptureState): void {
     // Coupe la reconnexion illimitée AVANT de finaliser : plus de device à
     // rejoindre, on arrête de solliciter la radio.
     bluetoothService.setUnlimitedReconnect(false);
+    releaseKeepAwake();
     void finalizeOnLostLink();
   }, LONG_INTERRUPT_TIMEOUT_MS);
 }
@@ -412,6 +442,7 @@ async function finalizeOnLostLink(): Promise<void> {
   // Désarme la reconnexion illimitée : hors capture, on repasse en mode borné.
   // (stopCaptureSession le fait déjà ; explicite ici pour le chemin terminal.)
   bluetoothService.setUnlimitedReconnect(false);
+  releaseKeepAwake();
   // stopCaptureSession remet le statut à 'idle' ; on rétablit 'lost' pour l'UI.
   setLinkStatus('lost');
 }
@@ -521,6 +552,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   // Désarme la reconnexion illimitée + le timeout long : hors capture, on
   // repasse en mode borné (initBle / paddock) et aucun timer ne fuite.
   bluetoothService.setUnlimitedReconnect(false);
+  releaseKeepAwake();
   clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);
@@ -606,6 +638,7 @@ export async function abortCaptureSession(): Promise<void> {
   state.unsubReconnect();
   // Désarme la reconnexion illimitée + le timeout long (cf. stopCaptureSession).
   bluetoothService.setUnlimitedReconnect(false);
+  releaseKeepAwake();
   clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   if (state.timer) clearInterval(state.timer);

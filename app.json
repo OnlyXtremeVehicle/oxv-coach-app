@@ -23,7 +23,6 @@
         "NSLocationWhenInUseUsageDescription": "iOS requiert l'accès à la localisation pour scanner les appareils Bluetooth.",
         "NSCameraUsageDescription": "OXV utilise l'appareil photo pour votre photo de profil et la lecture des documents.",
         "NSPhotoLibraryUsageDescription": "OXV utilise vos photos pour votre profil et vos véhicules.",
-        "UIBackgroundModes": ["bluetooth-central"],
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true,
