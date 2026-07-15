@@ -23,7 +23,10 @@
  *
  * IDEMPOTENCE au replay :
  *   - create_session : upsert onConflict 'id' (pose/replace la ligne) ;
- *   - frames         : insert simple pour l'instant (cf. TODO valencia-6) ;
+ *   - frames         : upsert onConflict (session_id, elapsed_ms) ignoreDuplicates
+ *                      (Valencia §4.6) — un rejeu de lot ne crée plus de doublon.
+ *                      GARDE : si la contrainte UNIQUE n'est pas encore en prod
+ *                      (42P10), repli automatique sur insert simple (cf. execFrames) ;
  *   - laps           : insert ;
  *   - complete       : update .eq(id).eq(user_id) — idempotent par nature, et
  *                      RÉCONCILIE `total_frames` en recomptant les trames RÉELLES
@@ -233,6 +236,67 @@ function isPermanentFailure(err: unknown): boolean {
 }
 
 // ============================================================================
+// Insertion idempotente des trames (Valencia §4.6)
+// ============================================================================
+
+/**
+ * Bascule STICKY (durée de vie de l'app) : passe à `true` dès qu'on constate que
+ * la contrainte UNIQUE (session_id, elapsed_ms) n'existe pas encore en prod. On
+ * cesse alors de tenter l'UPSERT (qui échouerait à chaque lot) et on insère
+ * directement. Remis à `false` au (re)chargement du module.
+ */
+let framesUpsertUnsupported = false;
+/** Ne loguer le repli qu'UNE fois (pas à chaque lot). */
+let framesUpsertFallbackLogged = false;
+
+/**
+ * Vrai si l'erreur signale l'ABSENCE de contrainte UNIQUE/exclusion compatible
+ * avec la clause ON CONFLICT (Postgres 42P10). C'est le cas tant que la migration
+ * Valencia §4.6 n'a pas été appliquée en prod.
+ */
+function isMissingConflictConstraint(err: unknown): boolean {
+  if (errorCode(err) === '42P10') return true;
+  const m = errorMessage(err).toLowerCase();
+  return m.includes('no unique or exclusion constraint') || m.includes('on conflict');
+}
+
+/**
+ * Insère un lot de trames de façon IDEMPOTENTE (Valencia §4.6).
+ *
+ * Chemin nominal : UPSERT onConflict (session_id, elapsed_ms) ignoreDuplicates —
+ * un rejeu de lot par la file de synchro n'introduit AUCUN doublon.
+ *
+ * GARDE ANTI-CASSE : tant que la migration
+ * `..._valencia_telemetry_frames_unique.sql` n'est pas appliquée en prod, la
+ * contrainte UNIQUE n'existe pas et Postgres renvoie 42P10 (« no unique or
+ * exclusion constraint matching the ON CONFLICT specification »). On DÉTECTE ce
+ * cas et on RETOMBE sur un `.insert(batch)` simple (le lot passe quand même), en
+ * loguant UNE seule fois. Le code est ainsi SÛR que la contrainte existe ou non,
+ * et devient RÉELLEMENT idempotent dès que la migration est en prod. Les autres
+ * erreurs (réseau/permanentes) sont propagées telles quelles à l'appelant.
+ */
+async function insertFramesIdempotent(batch: TelemetryFrameInsert[]): Promise<void> {
+  if (!framesUpsertUnsupported) {
+    const { error } = await supabase
+      .from('telemetry_frames')
+      .upsert(batch, { onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true });
+    if (!error) return;
+    if (!isMissingConflictConstraint(error)) throw error;
+    // Contrainte pas encore en prod : bascule définitive vers l'insert simple.
+    framesUpsertUnsupported = true;
+    if (!framesUpsertFallbackLogged) {
+      framesUpsertFallbackLogged = true;
+      console.warn(
+        '[OXV][capture-queue] contrainte UNIQUE (session_id,elapsed_ms) absente — ' +
+          "repli sur insert simple. Appliquer la migration Valencia §4.6 pour l'idempotence stricte."
+      );
+    }
+  }
+  const { error } = await supabase.from('telemetry_frames').insert(batch);
+  if (error) throw error;
+}
+
+// ============================================================================
 // Exécution des opérations
 // ============================================================================
 
@@ -245,10 +309,7 @@ async function execCreateSession(op: Extract<CaptureQueueOp, { type: 'create_ses
 
 async function execFrames(op: Extract<CaptureQueueOp, { type: 'frames' }>) {
   if (op.batch.length === 0) return;
-  // TODO(valencia-6): upsert onConflict (session_id,elapsed_ms) pour une
-  // idempotence stricte au replay. Insert simple pour l'instant (chantier séparé).
-  const { error } = await supabase.from('telemetry_frames').insert(op.batch);
-  if (error) throw error;
+  await insertFramesIdempotent(op.batch);
 }
 
 async function execLaps(op: Extract<CaptureQueueOp, { type: 'laps' }>) {
@@ -409,10 +470,12 @@ export async function resumeUnsyncedCaptures(): Promise<void> {
  * séance dont des lots sont définitivement absents côté serveur. Réutilise le
  * parser UBX existant (checksum Fletcher-8 + reconstruction par chunks).
  *
- * Best-effort, idempotent-ready : les trames sont insérées par paquets ; un lot
+ * Best-effort et IDEMPOTENT (Valencia §4.6) : les trames sont insérées par
+ * paquets via `insertFramesIdempotent` (UPSERT onConflict (session_id,
+ * elapsed_ms), repli insert si la contrainte n'est pas encore en prod) ; un lot
  * en échec est loggé sans interrompre les autres. L'`elapsed_ms` est dérivé de
- * l'iTOW relatif au premier échantillon (comme parseUbxFile) — la déduplication
- * stricte sur (session_id, elapsed_ms) est le CHANTIER 6 (upsert), séparé.
+ * l'iTOW relatif au premier échantillon (comme parseUbxFile) — deux réimports
+ * du même .ubx ne créent donc plus de doublons une fois la migration appliquée.
  */
 export async function reimportUbxToFrames(
   sessionId: string,
@@ -449,15 +512,15 @@ export async function reimportUbxToFrames(
   let inserted = 0;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const batch = rows.slice(i, i + CHUNK);
-    // TODO(valencia-6): upsert onConflict (session_id,elapsed_ms) — idempotence stricte.
-    const { error } = await supabase.from('telemetry_frames').insert(batch);
-    if (error) {
+    try {
+      await insertFramesIdempotent(batch);
+      inserted += batch.length;
+    } catch (err) {
       console.warn(
-        `[OXV][capture-queue] réimport .ubx : lot KO (session ${sessionId}, user ${userId}) : ${error.message}`
+        `[OXV][capture-queue] réimport .ubx : lot KO (session ${sessionId}, user ${userId}) : ${errorMessage(err)}`
       );
       continue;
     }
-    inserted += batch.length;
   }
   return { inserted };
 }

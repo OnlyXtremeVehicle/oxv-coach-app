@@ -19,6 +19,7 @@
 import { bluetoothService } from './bluetoothService';
 import { useSessionStore } from '@/store/useSessionStore';
 import { GpsFix } from '@/types/telemetry';
+import { nextMonotonic } from '@/utils/monotonicClock';
 import {
   type LapDetectorState,
   createLapDetector,
@@ -28,7 +29,12 @@ import {
 
 let state: LapDetectorState | null = null;
 let unsubscribe: (() => void) | null = null;
-let previousLapAt: number | null = null;
+/** Instant MURAL (Date.now) du dernier passage — sert à l'affichage des dates. */
+let previousLapWallMs: number | null = null;
+/** Instant MONOTONE du dernier passage — sert à MESURER la durée du tour. */
+let previousLapMonoMs: number | null = null;
+/** Dernière base monotone retenue (max-monotone sur l'horloge murale). */
+let lastMonoMs = 0;
 let previousLapLat: number | null = null;
 let previousLapLon: number | null = null;
 let lapNumber = 0;
@@ -61,7 +67,9 @@ export interface LapDetectionStartOptions {
 export function startLapDetection(opts: LapDetectionStartOptions): void {
   stopLapDetection();
   state = createLapDetector(opts.finishLineLat, opts.finishLineLon, opts.finishLineRadiusM ?? 30);
-  previousLapAt = null;
+  previousLapWallMs = null;
+  previousLapMonoMs = null;
+  lastMonoMs = 0;
   previousLapLat = null;
   previousLapLon = null;
   lapNumber = 0;
@@ -71,24 +79,35 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
     if (!state) return;
     if (frame.gps.fix < GpsFix.Fix3D) return;
 
-    // Timestamp en epoch ms : monotonique au mieux pour mesurer les
-    // durées intra-session (iTOW GPS serait + précis mais plus complexe
-    // pour les chronos affichés ; à faire en sem. 5 si nécessaire).
-    const now = Date.now();
-    const completedLap = processGpsPoint(state, frame.gps.latitude, frame.gps.longitude, now);
+    // Deux horloges, deux usages distincts (Valencia §4.6) :
+    //   - `wallNow` (horloge murale) : instant D'AFFICHAGE, horodate les dates de
+    //     début/fin de tour (startedAtMs/endedAtMs → ISO). Le recul éventuel de
+    //     cette horloge n'affecte que l'étiquette de date, pas la mesure.
+    //   - `monoNow` (base MONOTONE) : instant de MESURE. Non décroissant (max avec
+    //     le dernier point), il sert à la fois au cooldown de détection et au
+    //     calcul de la durée — jamais faussé par un recul d'horloge (throttling
+    //     arrière-plan / resynchro NTP). Même convention que l'`elapsed_ms` des
+    //     trames dans captureSessionService.
+    const wallNow = Date.now();
+    lastMonoMs = nextMonotonic(lastMonoMs, wallNow);
+    const monoNow = lastMonoMs;
+    const completedLap = processGpsPoint(state, frame.gps.latitude, frame.gps.longitude, monoNow);
 
     if (!completedLap) {
       return;
     }
 
-    if (previousLapAt !== null) {
-      const lapDurationMs = now - previousLapAt;
+    if (previousLapMonoMs !== null && previousLapWallMs !== null) {
+      // Durée = différence de deux instants MONOTONES → toujours ≥ 0.
+      const lapDurationMs = monoNow - previousLapMonoMs;
       lapNumber += 1;
       useSessionStore.getState().registerLap(lapDurationMs);
       recordedLaps.push({
         lapNumber,
-        startedAtMs: previousLapAt,
-        endedAtMs: now,
+        // startedAt/endedAt = instants MURAUX (dates affichables).
+        startedAtMs: previousLapWallMs,
+        endedAtMs: wallNow,
+        // durationMs = durée MESURÉE sur la base monotone.
         durationMs: lapDurationMs,
         startLat: previousLapLat,
         startLon: previousLapLon,
@@ -98,7 +117,8 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
     }
     // Le premier passage = fin d'outlap : on mémorise le point de départ du
     // premier tour chronométré, sans le compter.
-    previousLapAt = now;
+    previousLapWallMs = wallNow;
+    previousLapMonoMs = monoNow;
     previousLapLat = frame.gps.latitude;
     previousLapLon = frame.gps.longitude;
   });
@@ -111,7 +131,9 @@ export function stopLapDetection(): void {
   }
   if (state) resetLapDetector(state);
   state = null;
-  previousLapAt = null;
+  previousLapWallMs = null;
+  previousLapMonoMs = null;
+  lastMonoMs = 0;
 }
 
 export interface LapDetectorStatus {

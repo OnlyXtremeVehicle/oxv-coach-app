@@ -24,6 +24,8 @@ interface SbCtrl {
   frameCount: number;
   calls: { table: string; kind: string; opts: any }[];
   errorByTable: Record<string, { message: string; code?: string }>;
+  /** Force une erreur UNIQUEMENT sur les upserts d'une table (garde 42P10). */
+  upsertErrorByTable: Record<string, { message: string; code?: string }>;
   uploadError: Error | null;
 }
 function sbCtrl(): SbCtrl {
@@ -34,6 +36,7 @@ function sbCtrl(): SbCtrl {
       frameCount: 0,
       calls: [],
       errorByTable: {},
+      upsertErrorByTable: {},
       uploadError: null,
     } as SbCtrl;
   }
@@ -113,9 +116,12 @@ jest.mock('@/lib/supabase', () => {
     then(resolve: (v: any) => any, reject?: (e: any) => any) {
       const c = ctrl();
       c.calls.push({ table: this.table, kind: this.kind, opts: this.opts });
+      const forcedUpsert = this.kind === 'upsert' ? c.upsertErrorByTable[this.table] : undefined;
       const forced = c.errorByTable[this.table];
       let result: any;
-      if (forced) {
+      if (forcedUpsert) {
+        result = { error: forcedUpsert, count: null, data: null };
+      } else if (forced) {
         result = { error: forced, count: null, data: null };
       } else if (c.remainingOk > 0) {
         c.remainingOk -= 1;
@@ -164,6 +170,7 @@ beforeEach(() => {
   c.frameCount = 0;
   c.calls = [];
   c.errorByTable = {};
+  c.upsertErrorByTable = {};
   c.uploadError = null;
 });
 
@@ -257,9 +264,9 @@ describe('enqueue / persistance / FIFO', () => {
     expect(res.processed).toBe(3);
     expect(res.remaining).toBe(0);
 
-    // Ordre FIFO : session (upsert) → frames (insert) → laps (insert).
+    // Ordre FIFO : session (upsert) → frames (upsert idempotent §4.6) → laps (insert).
     const seq = sbCtrl().calls.map((c) => `${c.table}:${c.kind}`);
-    expect(seq).toEqual(['telemetry_sessions:upsert', 'telemetry_frames:insert', 'laps:insert']);
+    expect(seq).toEqual(['telemetry_sessions:upsert', 'telemetry_frames:upsert', 'laps:insert']);
     // Tout est supprimé du disque après succès.
     expect(await hasPending()).toBe(false);
   });
@@ -298,8 +305,8 @@ describe('arrêt au premier échec réseau + reprise', () => {
       .calls.map((c) => `${c.table}:${c.kind}`)
       .slice(1); // après le create initial
     expect(drainedAfter).toEqual([
-      'telemetry_frames:insert', // échec réseau
-      'telemetry_frames:insert', // rejeu OK
+      'telemetry_frames:upsert', // échec réseau (upsert idempotent §4.6)
+      'telemetry_frames:upsert', // rejeu OK
       'laps:insert',
     ]);
   });
@@ -327,6 +334,76 @@ describe('erreur permanente → drop + continue', () => {
     expect(res.dropped).toBe(1); // laps
     expect(res.remaining).toBe(0);
     expect(await hasPending()).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Idempotence des trames (Valencia §4.6) : upsert onConflict + garde anti-casse
+// ---------------------------------------------------------------------------
+describe('idempotence frames (Valencia §4.6)', () => {
+  // Module frais par test : la bascule STICKY `framesUpsertUnsupported` est ainsi
+  // isolée (même disque + même contrôle Supabase via globalThis). Même pattern
+  // que le test « survie au redémarrage ».
+  function freshQueue(): typeof import('../captureSyncQueue') {
+    jest.resetModules();
+    return require('../captureSyncQueue') as typeof import('../captureSyncQueue');
+  }
+
+  it('insère les trames par UPSERT onConflict (session_id,elapsed_ms) en nominal', async () => {
+    const q = freshQueue();
+    await q.enqueue(framesOp('s1'));
+    const res = await q.processQueue();
+
+    expect(res.processed).toBe(1);
+    const call = sbCtrl().calls.find((c) => c.table === 'telemetry_frames');
+    expect(call?.kind).toBe('upsert');
+    expect(call?.opts).toMatchObject({
+      onConflict: 'session_id,elapsed_ms',
+      ignoreDuplicates: true,
+    });
+    expect(await q.hasPending()).toBe(false);
+  });
+
+  it('retombe sur insert simple quand la contrainte manque (42P10), le lot passe', async () => {
+    const q = freshQueue();
+    sbCtrl().upsertErrorByTable = {
+      telemetry_frames: {
+        message:
+          'there is no unique or exclusion constraint matching the ON CONFLICT specification',
+        code: '42P10',
+      },
+    };
+    await q.enqueue(framesOp('s1'));
+    const res = await q.processQueue();
+
+    // Le lot est bien inséré (via le repli) : rien ne reste en attente.
+    expect(res.processed).toBe(1);
+    const kinds = sbCtrl()
+      .calls.filter((c) => c.table === 'telemetry_frames')
+      .map((c) => c.kind);
+    expect(kinds).toEqual(['upsert', 'insert']);
+    expect(await q.hasPending()).toBe(false);
+  });
+
+  it('ne bascule/loggue qu’une fois sur plusieurs lots (upsert non retenté)', async () => {
+    const q = freshQueue();
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    sbCtrl().upsertErrorByTable = {
+      telemetry_frames: { message: 'no unique or exclusion constraint', code: '42P10' },
+    };
+    await q.enqueue(framesOp('s1'));
+    await q.enqueue(framesOp('s1'));
+    const res = await q.processQueue();
+
+    expect(res.processed).toBe(2);
+    const kinds = sbCtrl()
+      .calls.filter((c) => c.table === 'telemetry_frames')
+      .map((c) => c.kind);
+    // 1er lot : upsert (42P10) → insert ; 2e lot : insert direct (bascule sticky).
+    expect(kinds).toEqual(['upsert', 'insert', 'insert']);
+    const fallbackLogs = warn.mock.calls.filter((c) => String(c[0]).includes('contrainte UNIQUE'));
+    expect(fallbackLogs.length).toBe(1);
+    warn.mockRestore();
   });
 });
 
@@ -474,10 +551,11 @@ describe('reimportUbxToFrames', () => {
 
     const { inserted } = await reimportUbxToFrames('sess', 'user-1', uri);
     expect(inserted).toBe(3);
-    const insertCall = sbCtrl().calls.find(
-      (c) => c.table === 'telemetry_frames' && c.kind === 'insert'
+    // Réimport idempotent (§4.6) : upsert onConflict (session_id,elapsed_ms).
+    const upsertCall = sbCtrl().calls.find(
+      (c) => c.table === 'telemetry_frames' && c.kind === 'upsert'
     );
-    expect(insertCall).toBeDefined();
+    expect(upsertCall).toBeDefined();
   });
 
   it('lève si le fichier .ubx est absent', async () => {
