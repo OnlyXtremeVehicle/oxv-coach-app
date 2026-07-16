@@ -13,10 +13,44 @@
 | 5 | Coupure BLE sans clôture forcée (reconnexion illimitée armée) | `3e91df8` |
 | 6 | Idempotence des trames + chronos de tours monotones | `0a201d7` |
 | 4 | Keep-awake pendant la capture + cohérence app.json | `f3699b1` |
+| — | **Vérif adversariale** → 2 critiques (séance détruite, marge fabriquée) | `b6c1ee2` |
+| — | **Vérif adversariale** → critique 2 (clé d'unicité destructrice) | `5cb86ba` |
+| — | **Vérif adversariale** → 6 findings concurrence & cycle de vie | `3c89996` |
 
-**Gates finaux** : `tsc --noEmit` 0 · `eslint` 0 · `jest` **654 passés / 0 échec**
-(dont ~30 nouveaux : file de sync, politique de reconnexion, horloge monotone,
-idempotence).
+**Gates finaux** : `tsc --noEmit` 0 · `eslint` 0 · `jest` **718 passés / 0 échec**
+(~95 nouveaux : file de sync, politique de reconnexion, horloge monotone,
+idempotence, classification des erreurs, honnêteté de la marge, concurrence).
+
+## Vérif adversariale — 17 findings confirmés, tous corrigés
+
+Le lot a été soumis à une **vérif adversariale contre-vérifiée** (5 lentilles :
+perte de données, races, idempotence/ordre, régression du nominal, ressources).
+Résultat : **17 findings confirmés, dont 3 CRITIQUES** — tous corrigés avant
+terrain. Les trois critiques auraient frappé le jour J :
+
+1. **Séance entière détruite par une erreur passagère.** `isPermanentFailure`
+   droppait toute erreur portant un code. À l'application de la migration,
+   PostgREST répond `503 PGRST002` quelques secondes : un pilote resynchronisant
+   à cet instant voyait sa `create_session` supprimée, puis toutes ses trames et
+   tours tomber en **cascade FK** — séance perdue, sans alerte. Idem `53300`
+   (« too many clients ») quand tous les pilotes synchronisent en fin de roulage.
+   → classification en **liste blanche**, défaut = transitoire, garde dure sur
+   `create_session`, **quarantaine** au lieu de suppression.
+2. **La contrainte d'unicité aurait détruit des trames réelles.** `elapsed_ms`
+   était monotone **non strict** et le RaceBox livre plusieurs trames par
+   notification BLE dans le même tick → trames distinctes au même `elapsed_ms`,
+   **silencieusement jetées** par `DO NOTHING`. → `elapsed_ms` rendu
+   **strictement** croissant à la source ; clé conservée sur `(session_id,
+   elapsed_ms)` et **non** `itow_ms` (unicité non maîtrisée : répétable avant fix
+   GPS, réenroulement hebdo, colonne nullable). L'iTOW reste l'**identité
+   physique** qui apparie le réimport `.ubx`.
+3. **Marge de 100 % fabriquée, affichée et persistée.** Un `max_g_lateral` absent
+   était lu « 0 g observé donc 100 % de marge » — donnée absente devenue chiffre
+   faux et définitif. → une entrée absente rend `null` (« — »), un 0 g
+   réellement observé rend toujours 100 ; rien n'est persisté sans marge résolue.
+
+Chaque test ajouté a été **vérifié en échec contre le comportement d'avant le
+fix** (aucun test complaisant).
 
 *Note d'outillage : `node` n'était pas sur le PATH du shell (perdu au rechargement
 de session) ; gates exécutés via l'install node du Bureau. Sans effet sur le code.*
@@ -130,6 +164,35 @@ Le lot est **logiciellement complet et testé**, mais sa validation finale est u
 20 min → coupure BLE 90 s → arrêt hors réseau → retour réseau, avec vérif en base
 (zéro doublon, `total_frames` exact, tours détectés). **Tant que ce parcours n'est
 pas passé sur device, le durcissement n'est pas validé.**
+
+## DÉCISION FONDATEUR REQUISE — la fluidité est fabriquée sur 100 % des séances
+
+Découvert en corrigeant la critique 3, **non corrigé** (un fix naïf serait
+destructeur) :
+
+- `buildLapRows` (`captureSessionService.ts`) n'écrit **jamais** `laps.max_g_lateral`,
+  et aucun trigger ne le calcule côté base.
+- `computeSmoothness` (`marginCalculator.ts`) lit donc
+  `Number(l.max_g_lateral ?? 0)` → **que des zéros** → écart-type 0 → **fluidité = 100
+  fabriquée**, sur **100 % des séances réelles captées par l'app**.
+- La fluidité pèse ~24 % de la marge globale : c'est la même violation « donnée
+  absente → 100 » que la critique 3, **un cran plus bas**.
+
+**Pourquoi je ne l'ai pas corrigée seul** : rendre la fluidité honnêtement `null`
+**nullifierait la marge globale de TOUTES les séances** captées jusqu'ici (la
+pondération n'est calculée que si ses termes existent). C'est un arbitrage produit,
+pas technique. Trois voies :
+
+1. **Écrire la donnée** : renseigner `laps.max_g_lateral` à la capture (le maximum
+   par tour est disponible dans le flux) → la fluidité devient réelle. *La plus
+   juste ; demande une passe sur le write-path.*
+2. **Retirer la fluidité de la marge** : repondérer sans elle tant qu'elle n'est pas
+   mesurée → marge honnête, mais définition qui change.
+3. **Assumer `null`** : la marge globale se tait (« — ») tant que la fluidité n'est
+   pas mesurée → le plus honnête immédiatement, le plus visible pour le pilote.
+
+Ma recommandation : **(1)**, la donnée existe dans le flux, c'est du write-path — et
+c'est cohérent avec la règle « chaque valeur trace vers une source réelle ».
 
 ## Ce qui reste manuel le jour J
 
