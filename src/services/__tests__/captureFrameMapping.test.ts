@@ -1,6 +1,11 @@
 import { GpsFix, type RaceBoxData } from '@/types/telemetry';
 
-import { EMPTY_MAXIMA, raceBoxToFrameInsert, updateMaxima } from '../captureFrameMapping';
+import {
+  EMPTY_MAXIMA,
+  nextElapsedMs,
+  raceBoxToFrameInsert,
+  updateMaxima,
+} from '../captureFrameMapping';
 
 function frame(
   overrides: Partial<{
@@ -74,6 +79,68 @@ function frame(
     battery: { isCharging: false, level: o.battery },
   };
 }
+
+// ---------------------------------------------------------------------------
+// `elapsed_ms` est la CLÉ D'IDEMPOTENCE des trames (UNIQUE (session_id,
+// elapsed_ms) + UPSERT DO NOTHING) : deux trames réelles distinctes partageant
+// une valeur seraient JETÉES en silence par la base. Ces tests VERROUILLENT la
+// stricte croissance — leur échec signalerait une perte de données du pilote.
+// ---------------------------------------------------------------------------
+describe('nextElapsedMs — stricte croissance (Valencia §4.6)', () => {
+  it('suit l’horloge murale quand elle avance normalement', () => {
+    // 25 Hz : une trame toutes les 40 ms, aucun clamp ne s'applique.
+    expect(nextElapsedMs(1_000_040, 1_000_000, 0)).toBe(40);
+    expect(nextElapsedMs(1_000_080, 1_000_000, 40)).toBe(80);
+  });
+
+  it('DEUX TRAMES DANS LA MÊME MILLISECONDE reçoivent des elapsed STRICTEMENT différents', () => {
+    // Cas prouvé : le RaceBox livre plusieurs trames par notification BLE,
+    // drainées dans le MÊME tick synchrone → `Date.now()` identique.
+    const now = 1_000_500;
+    const start = 1_000_000;
+    const a = nextElapsedMs(now, start, 0);
+    const b = nextElapsedMs(now, start, a);
+    const c = nextElapsedMs(now, start, b);
+    expect(a).toBe(500);
+    expect(b).toBe(501);
+    expect(c).toBe(502);
+    expect(new Set([a, b, c]).size).toBe(3); // aucune collision de clé
+  });
+
+  it('un RECUL D’HORLOGE ne fige plus elapsed : la suite avance de 1 ms par trame', () => {
+    // Resynchro NTP au retour réseau : `now - startMs` recule de 2 s. L'ancien
+    // `Math.max(now - start, last)` épinglait ~50 trames sur la même valeur.
+    const start = 1_000_000;
+    let last = 10_000;
+    const out: number[] = [];
+    for (let i = 0; i < 5; i += 1) {
+      last = nextElapsedMs(start + 8_000, start, last); // horloge reculée à 8 s
+      out.push(last);
+    }
+    expect(out).toEqual([10_001, 10_002, 10_003, 10_004, 10_005]);
+    expect(new Set(out).size).toBe(5);
+  });
+
+  it('se recale seule dès que l’horloge murale rattrape', () => {
+    // La compression n'est que temporaire : aucune dérive permanente.
+    const start = 1_000_000;
+    const compressed = nextElapsedMs(start + 8_000, start, 10_000); // 10_001
+    expect(compressed).toBe(10_001);
+    expect(nextElapsedMs(start + 12_000, start, compressed)).toBe(12_000);
+  });
+
+  it('est strictement croissante quelle que soit l’horloge (propriété générale)', () => {
+    const start = 1_000_000;
+    // Horloge chaotique : constante, en recul, en avance, en saut.
+    const clocks = [500, 500, 500, 200, 100, 4_000, 4_000, 3_999, 9_000];
+    let last = 0;
+    for (const dt of clocks) {
+      const next = nextElapsedMs(start + dt, start, last);
+      expect(next).toBeGreaterThan(last); // STRICTEMENT — jamais >=
+      last = next;
+    }
+  });
+});
 
 describe('raceBoxToFrameInsert (P0 write path)', () => {
   it('mappe les colonnes lues par l’analyse', () => {

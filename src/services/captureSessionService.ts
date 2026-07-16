@@ -16,9 +16,18 @@
  *
  * Doctrine « silence en piste » : ce service n'affiche rien. La capture tourne
  * tant que l'app est au premier plan (V1 ; BLE arrière-plan = entitlements à
- * venir). `elapsed_ms` dérive de l'horloge murale, rendu MONOTONE par session
- * (un éventuel recul d'horloge / throttling arrière-plan ne réordonne pas les
- * trames). iTOW est stocké pour un ordonnancement plus robuste ultérieur.
+ * venir).
+ *
+ * `elapsed_ms` dérive de l'horloge murale et est rendu STRICTEMENT CROISSANT
+ * par session (`nextElapsedMs`) : ce n'est pas un confort d'ordonnancement,
+ * c'est la CONDITION de la clé d'idempotence des trames — UNIQUE (session_id,
+ * elapsed_ms) côté base + UPSERT ON CONFLICT DO NOTHING côté file de synchro.
+ * Une suite seulement MONOTONE (ex æquo possibles) ferait jeter en silence des
+ * trames réelles distinctes. Toute modification de la génération d'`elapsed_ms`
+ * doit préserver la stricte croissance, sous peine de perte de données.
+ * `itow_ms` est stocké sur chaque trame : c'est l'IDENTITÉ PHYSIQUE de la trame
+ * (temps du boîtier), utilisée pour réconcilier un réimport .ubx avec les
+ * trames déjà captées en live (cf. `reimportUbxToFrames`).
  */
 
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
@@ -41,6 +50,7 @@ import {
   EMPTY_MAXIMA,
   type SessionMaxima,
   type TelemetryFrameInsert,
+  nextElapsedMs,
   raceBoxToFrameInsert,
   updateMaxima,
 } from './captureFrameMapping';
@@ -306,8 +316,12 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // Flux de trames → buffer → flush par paquets.
   state.unsubData = bluetoothService.onData((frame: RaceBoxData) => {
     if (current !== state) return;
-    // elapsed monotone : on n'autorise jamais un recul (clock skew / throttling).
-    const elapsed = Math.max(Date.now() - state.startMs, state.lastElapsed);
+    // elapsed STRICTEMENT croissant : `elapsed_ms` est la CLÉ D'IDEMPOTENCE des
+    // trames (UNIQUE (session_id, elapsed_ms)). Un simple `Math.max` avec
+    // `lastElapsed` (monotone NON strict) laisserait deux trames RÉELLES émises
+    // dans la même ms partager une clé — l'UPSERT DO NOTHING en jetterait une
+    // en silence. Cf. `nextElapsedMs` pour l'arbitrage complet.
+    const elapsed = nextElapsedMs(Date.now(), state.startMs, state.lastElapsed);
     state.lastElapsed = elapsed;
     state.buffer.push(raceBoxToFrameInsert(frame, sessionId, elapsed));
     state.maxima = updateMaxima(state.maxima, frame);

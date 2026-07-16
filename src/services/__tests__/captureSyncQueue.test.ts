@@ -22,12 +22,14 @@ function fsMap(): Map<string, string> {
 interface SbCtrl {
   remainingOk: number;
   frameCount: number;
-  calls: { table: string; kind: string; opts: any }[];
+  calls: { table: string; kind: string; opts: any; rows: any[] | null }[];
   errorByTable: Record<string, { message: string; code?: string }>;
   /** Force une erreur UNIQUEMENT sur les upserts d'une table (garde 42P10). */
   upsertErrorByTable: Record<string, { message: string; code?: string }>;
   /** Force une erreur UNIQUEMENT sur les inserts d'une table (repli → 23505). */
   insertErrorByTable: Record<string, { message: string; code?: string }>;
+  /** Lignes renvoyées par un `.select()` (réimport : clés déjà en base). */
+  selectRowsByTable: Record<string, any[]>;
   /** Erreur levée par l'upload Storage (souvent SANS `.code` : status seul). */
   uploadError: unknown;
 }
@@ -41,6 +43,7 @@ function sbCtrl(): SbCtrl {
       errorByTable: {},
       upsertErrorByTable: {},
       insertErrorByTable: {},
+      selectRowsByTable: {},
       uploadError: null,
     } as SbCtrl;
   }
@@ -100,16 +103,19 @@ jest.mock('@/lib/supabase', () => {
     table: string;
     kind = 'select';
     opts: any = undefined;
+    rows: any[] | null = null;
     constructor(table: string) {
       this.table = table;
     }
-    upsert(_row: unknown, opts?: unknown) {
+    upsert(rows: unknown, opts?: unknown) {
       this.kind = 'upsert';
       this.opts = opts;
+      this.rows = Array.isArray(rows) ? rows : [rows];
       return this;
     }
-    insert(_rows: unknown) {
+    insert(rows: unknown) {
       this.kind = 'insert';
+      this.rows = Array.isArray(rows) ? rows : [rows];
       return this;
     }
     update(_obj: unknown) {
@@ -124,9 +130,18 @@ jest.mock('@/lib/supabase', () => {
     eq() {
       return this;
     }
+    order() {
+      return this;
+    }
+    /** Pagination : la 2e page est vide (le réimport s'arrête sur page < taille). */
+    range(from: number) {
+      this.offset = from;
+      return this;
+    }
+    offset = 0;
     then(resolve: (v: any) => any, reject?: (e: any) => any) {
       const c = ctrl();
-      c.calls.push({ table: this.table, kind: this.kind, opts: this.opts });
+      c.calls.push({ table: this.table, kind: this.kind, opts: this.opts, rows: this.rows });
       const forcedUpsert = this.kind === 'upsert' ? c.upsertErrorByTable[this.table] : undefined;
       const forcedInsert = this.kind === 'insert' ? c.insertErrorByTable[this.table] : undefined;
       const forced = c.errorByTable[this.table];
@@ -139,7 +154,13 @@ jest.mock('@/lib/supabase', () => {
         result = { error: forced, count: null, data: null };
       } else if (c.remainingOk > 0) {
         c.remainingOk -= 1;
-        result = { error: null, count: this.kind === 'select' ? c.frameCount : null, data: null };
+        const rows = this.kind === 'select' ? (c.selectRowsByTable[this.table] ?? null) : null;
+        result = {
+          error: null,
+          count: this.kind === 'select' ? c.frameCount : null,
+          // Une page au-delà de la 1re est vide : la boucle de pagination sort.
+          data: this.offset > 0 ? [] : rows,
+        };
       } else {
         c.remainingOk -= 1;
         result = { error: { message: 'Network request failed' }, count: null, data: null };
@@ -188,6 +209,7 @@ beforeEach(() => {
   c.errorByTable = {};
   c.upsertErrorByTable = {};
   c.insertErrorByTable = {};
+  c.selectRowsByTable = {};
   c.uploadError = null;
 });
 
@@ -286,9 +308,9 @@ describe('enqueue / persistance / FIFO', () => {
     expect(res.processed).toBe(3);
     expect(res.remaining).toBe(0);
 
-    // Ordre FIFO : session (upsert) → frames (upsert idempotent §4.6) → laps (insert).
+    // Ordre FIFO : session → frames → laps, toutes en upsert idempotent (§4.6).
     const seq = sbCtrl().calls.map((c) => `${c.table}:${c.kind}`);
-    expect(seq).toEqual(['telemetry_sessions:upsert', 'telemetry_frames:upsert', 'laps:insert']);
+    expect(seq).toEqual(['telemetry_sessions:upsert', 'telemetry_frames:upsert', 'laps:upsert']);
     // Tout est supprimé du disque après succès.
     expect(await hasPending()).toBe(false);
   });
@@ -329,7 +351,7 @@ describe('arrêt au premier échec réseau + reprise', () => {
     expect(drainedAfter).toEqual([
       'telemetry_frames:upsert', // échec réseau (upsert idempotent §4.6)
       'telemetry_frames:upsert', // rejeu OK
-      'laps:insert',
+      'laps:upsert',
     ]);
   });
 
@@ -552,6 +574,113 @@ describe('idempotence frames (Valencia §4.6)', () => {
 
     expect(res.dropped).toBe(0);
     expect(await q.hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Idempotence des TOURS. La file est at-least-once par construction : un rejeu
+// (réponse perdue après COMMIT, deleteOp raté, app tuée entre exécution et
+// suppression) doit être inoffensif. Les lignes `laps` ne portent aucun `id`
+// client → un insert nu rejoué créait des tours NEUFS, jamais une collision.
+// ---------------------------------------------------------------------------
+describe('idempotence laps (Valencia §4.6)', () => {
+  function freshQueue(): typeof import('../captureSyncQueue') {
+    jest.resetModules();
+    return require('../captureSyncQueue') as typeof import('../captureSyncQueue');
+  }
+
+  it('écrit les tours par UPSERT onConflict (session_id,lap_number) en nominal', async () => {
+    const q = freshQueue();
+    await q.enqueue(lapsOp('s1'));
+    const res = await q.processQueue();
+
+    expect(res.processed).toBe(1);
+    const call = sbCtrl().calls.find((c) => c.table === 'laps');
+    expect(call?.kind).toBe('upsert');
+    expect(call?.opts).toMatchObject({
+      onConflict: 'session_id,lap_number',
+      ignoreDuplicates: true,
+    });
+  });
+
+  it('REJEU après réponse perdue : l’op repart en upsert, les tours ne doublent pas', async () => {
+    const q = freshQueue();
+    await q.enqueue(lapsOp('s1'));
+
+    // 1er drain : PostgREST a COMMIT les tours, mais la réponse se perd
+    // (timeout Wi-Fi au paddock) → erreur réseau → l'op est CONSERVÉE.
+    sbCtrl().remainingOk = 0;
+    const first = await q.processQueue();
+    expect(first.processed).toBe(0);
+    expect(first.dropped).toBe(0);
+    expect(await q.hasPending()).toBe(true);
+
+    // 2e drain (retour réseau / boot) : l'op est rejouée. C'est un UPSERT
+    // ignoreDuplicates → ON CONFLICT DO NOTHING : les tours déjà en base sont
+    // ignorés au lieu d'être réinsérés avec de nouveaux gen_random_uuid().
+    sbCtrl().remainingOk = 1e9;
+    const second = await q.processQueue();
+    expect(second.processed).toBe(1);
+    expect(await q.hasPending()).toBe(false);
+
+    const lapCalls = sbCtrl().calls.filter((c) => c.table === 'laps');
+    expect(lapCalls.map((c) => c.kind)).toEqual(['upsert', 'upsert']);
+    expect(lapCalls[1].opts).toMatchObject({
+      onConflict: 'session_id,lap_number',
+      ignoreDuplicates: true,
+    });
+  });
+
+  it('repli 42P10 : contrainte pas encore en prod → insert simple, le lot passe', async () => {
+    const q = freshQueue();
+    sbCtrl().upsertErrorByTable = {
+      laps: {
+        message:
+          'there is no unique or exclusion constraint matching the ON CONFLICT specification',
+        code: '42P10',
+      },
+    };
+    await q.enqueue(lapsOp('s1'));
+    const res = await q.processQueue();
+
+    // Les tours sont écrits malgré tout : la migration peut être appliquée après.
+    expect(res.processed).toBe(1);
+    expect(res.dropped).toBe(0);
+    const kinds = sbCtrl()
+      .calls.filter((c) => c.table === 'laps')
+      .map((c) => c.kind);
+    expect(kinds).toEqual(['upsert', 'insert']);
+    expect(await q.hasPending()).toBe(false);
+  });
+
+  it('la contrainte laps apparaît après la bascule : lot absorbé en upsert, jamais droppé', async () => {
+    const q = freshQueue();
+
+    // 1) Migration absente → 42P10 → repli insert, bascule sticky enclenchée.
+    sbCtrl().upsertErrorByTable = {
+      laps: { message: 'no unique or exclusion constraint', code: '42P10' },
+    };
+    await q.enqueue(lapsOp('s1'));
+    expect((await q.processQueue()).processed).toBe(1);
+
+    // 2) Gabin applique la migration en cours de journée, sans redémarrer l'app :
+    //    l'insert nu du repli lève désormais 23505 (tours déjà en base).
+    sbCtrl().upsertErrorByTable = {};
+    sbCtrl().insertErrorByTable = {
+      laps: { message: 'duplicate key value violates unique constraint', code: '23505' },
+    };
+    await q.enqueue(lapsOp('s1'));
+    const res = await q.processQueue();
+
+    // Le 23505 PROUVE que la contrainte existe : ré-armement + rejeu en upsert.
+    expect(res.processed).toBe(1);
+    expect(res.dropped).toBe(0);
+    const kinds = sbCtrl()
+      .calls.filter((c) => c.table === 'laps')
+      .map((c) => c.kind);
+    expect(kinds).toEqual(['upsert', 'insert', 'insert', 'upsert']);
+    expect(await q.hasPending()).toBe(false);
     expect(quarantined()).toEqual([]);
   });
 });
@@ -835,31 +964,148 @@ function buildUbxFrame(itow: number, speedKmh: number): Uint8Array {
   return f;
 }
 
-describe('reimportUbxToFrames', () => {
-  it('parse un .ubx local et réinsère les trames', async () => {
-    const frames = [buildUbxFrame(1000, 100), buildUbxFrame(1040, 120), buildUbxFrame(1080, 140)];
-    const totalLen = frames.reduce((s, f) => s + f.length, 0);
-    const bytes = new Uint8Array(totalLen);
-    let off = 0;
-    for (const f of frames) {
-      bytes.set(f, off);
-      off += f.length;
-    }
-    const uri = '/oxv/sess.ubx';
-    fsMap().set(uri, Buffer.from(bytes).toString('base64'));
+/** Écrit un .ubx en mémoire à partir d'une liste d'iTOW. */
+function writeUbx(uri: string, itows: number[]): void {
+  const frames = itows.map((t, i) => buildUbxFrame(t, 100 + i));
+  const bytes = new Uint8Array(frames.reduce((s, f) => s + f.length, 0));
+  let off = 0;
+  for (const f of frames) {
+    bytes.set(f, off);
+    off += f.length;
+  }
+  fsMap().set(uri, Buffer.from(bytes).toString('base64'));
+}
 
-    const { inserted } = await reimportUbxToFrames('sess', 'user-1', uri);
+/** Lignes réellement passées à l'upsert telemetry_frames (tous lots confondus). */
+function upsertedFrames(): any[] {
+  return sbCtrl()
+    .calls.filter((c) => c.table === 'telemetry_frames' && c.kind === 'upsert')
+    .flatMap((c) => c.rows ?? []);
+}
+
+describe('reimportUbxToFrames', () => {
+  it('parse un .ubx local et réinsère les trames (séance à zéro trame)', async () => {
+    const uri = '/oxv/sess.ubx';
+    writeUbx(uri, [1000, 1040, 1080]);
+
+    const { inserted, skipped } = await reimportUbxToFrames('sess', 'user-1', uri);
     expect(inserted).toBe(3);
+    expect(skipped).toBe(0);
     // Réimport idempotent (§4.6) : upsert onConflict (session_id,elapsed_ms).
     const upsertCall = sbCtrl().calls.find(
       (c) => c.table === 'telemetry_frames' && c.kind === 'upsert'
     );
     expect(upsertCall).toBeDefined();
+    // Sans ancre live, l'origine reste le 1er iTOW du fichier.
+    expect(upsertedFrames().map((r) => r.elapsed_ms)).toEqual([0, 40, 80]);
   });
 
   it('lève si le fichier .ubx est absent', async () => {
     await expect(reimportUbxToFrames('sess', 'user-1', '/oxv/nope.ubx')).rejects.toThrow(
       /introuvable/i
     );
+  });
+
+  // ── Le cœur des findings [5]/[11] : le filet doit COMBLER, pas dupliquer ──
+  it('séance PARTIELLEMENT synchronisée : ne réinsère QUE les trames manquantes', async () => {
+    const uri = '/oxv/sess.ubx';
+    // Le .ubx porte les 5 trames physiques ; la base n'en a que 3 (2 lots perdus).
+    writeUbx(uri, [1000, 1040, 1080, 1120, 1160]);
+    // Trames live déjà en base : elapsed_ms MURAL (origine ≠ celle du fichier) —
+    // c'est précisément ce décalage qui faisait tout dupliquer.
+    sbCtrl().selectRowsByTable = {
+      telemetry_frames: [
+        { itow_ms: 1000, elapsed_ms: 350 },
+        { itow_ms: 1040, elapsed_ms: 391 },
+        { itow_ms: 1160, elapsed_ms: 512 },
+      ],
+    };
+
+    const { inserted, skipped } = await reimportUbxToFrames('sess', 'user-1', uri);
+
+    // 3 trames déjà présentes (appariées par iTOW) → sautées ; 2 comblées.
+    // Avant correctif : 5 insérées → 8 lignes pour 5 trames physiques.
+    expect(inserted).toBe(2);
+    expect(skipped).toBe(3);
+
+    const rows = upsertedFrames();
+    expect(rows.map((r) => r.itow_ms)).toEqual([1080, 1120]);
+    // Recalage sur l'ancre live (iTOW 1000 → elapsed 350) : les trames comblées
+    // tombent sur la MÊME échelle de temps que les trames live, pas sur 80/120.
+    expect(rows.map((r) => r.elapsed_ms)).toEqual([430, 470]);
+  });
+
+  it('un réimport RÉPÉTÉ sur une séance déjà complète n’insère rien', async () => {
+    const uri = '/oxv/sess.ubx';
+    writeUbx(uri, [1000, 1040, 1080]);
+    sbCtrl().selectRowsByTable = {
+      telemetry_frames: [
+        { itow_ms: 1000, elapsed_ms: 350 },
+        { itow_ms: 1040, elapsed_ms: 390 },
+        { itow_ms: 1080, elapsed_ms: 430 },
+      ],
+    };
+
+    const { inserted, skipped } = await reimportUbxToFrames('sess', 'user-1', uri);
+    expect(inserted).toBe(0);
+    expect(skipped).toBe(3);
+    expect(upsertedFrames()).toEqual([]);
+  });
+
+  it('n’attribue JAMAIS un elapsed_ms déjà occupé par une trame live', async () => {
+    const uri = '/oxv/sess.ubx';
+    writeUbx(uri, [1000, 1040]);
+    // L'ancre (iTOW 1000 → elapsed 100) ferait tomber la trame comblée (iTOW
+    // 1040) sur elapsed 140 — déjà pris par une AUTRE trame live. Sous
+    // ON CONFLICT DO NOTHING, elle serait jetée : la trame manquante qu'on
+    // voulait justement restaurer. L'allocation doit la décaler.
+    sbCtrl().selectRowsByTable = {
+      telemetry_frames: [
+        { itow_ms: 1000, elapsed_ms: 100 },
+        { itow_ms: 9999, elapsed_ms: 140 },
+      ],
+    };
+
+    const { inserted } = await reimportUbxToFrames('sess', 'user-1', uri);
+    expect(inserted).toBe(1);
+    const rows = upsertedFrames();
+    expect(rows.map((r) => r.itow_ms)).toEqual([1040]);
+    expect(rows[0].elapsed_ms).toBe(141); // décalée, pas perdue
+  });
+
+  it('iTOW RÉPÉTÉ (avant fix GPS) : la trame en trop est restituée, jamais confondue', async () => {
+    const uri = '/oxv/sess.ubx';
+    // Trois trames physiques distinctes partagent l'iTOW 0 (répétition avant fix).
+    writeUbx(uri, [0, 0, 0, 40]);
+    // La base n'en a qu'UNE. L'anti-join est un MULTI-ENSEMBLE : il doit rendre
+    // les deux autres, pas les écarter comme « déjà présentes ».
+    sbCtrl().selectRowsByTable = {
+      telemetry_frames: [{ itow_ms: 0, elapsed_ms: 10 }],
+    };
+
+    const { inserted, skipped } = await reimportUbxToFrames('sess', 'user-1', uri);
+    expect(inserted).toBe(3); // 2 trames à iTOW 0 + la trame à iTOW 40
+    expect(skipped).toBe(1);
+    const rows = upsertedFrames();
+    expect(rows.map((r) => r.itow_ms)).toEqual([0, 0, 40]);
+    // Clés d'unicité toutes distinctes : aucune ne sera jetée par DO NOTHING.
+    const elapsed = rows.map((r) => r.elapsed_ms);
+    expect(new Set([...elapsed, 10]).size).toBe(4);
+  });
+
+  it('REFUSE une séance portant des trames sans itow_ms plutôt que de la corrompre', async () => {
+    const uri = '/oxv/sess.ubx';
+    writeUbx(uri, [1000, 1040]);
+    // Lignes héritées, écrites avant l'ajout de la colonne : inappariables.
+    sbCtrl().selectRowsByTable = {
+      telemetry_frames: [
+        { itow_ms: null, elapsed_ms: 350 },
+        { itow_ms: 1040, elapsed_ms: 390 },
+      ],
+    };
+
+    await expect(reimportUbxToFrames('sess', 'user-1', uri)).rejects.toThrow(/sans itow_ms/i);
+    // Rien n'a été écrit : le .ubx reste le filet, l'opérateur arbitre.
+    expect(upsertedFrames()).toEqual([]);
   });
 });

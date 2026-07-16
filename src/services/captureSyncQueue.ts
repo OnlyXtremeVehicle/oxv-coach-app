@@ -41,13 +41,50 @@
  *                      (Valencia §4.6) — un rejeu de lot ne crée plus de doublon.
  *                      GARDE : si la contrainte UNIQUE n'est pas encore en prod
  *                      (42P10), repli automatique sur insert simple, RÉ-ARMÉ dès
- *                      qu'un 23505 prouve que la migration est passée (cf.
- *                      insertFramesIdempotent) ;
- *   - laps           : insert ;
+ *                      qu'un 23505 prouve que la migration est passée ;
+ *   - laps           : upsert onConflict (session_id, lap_number) ignoreDuplicates
+ *                      — un rejeu de la file ne duplique plus les tours. MÊME
+ *                      garde 42P10 + ré-armement 23505 que les trames. L'op porte
+ *                      le lot COMPLET et immuable des tours : un rejeu est
+ *                      identique à l'original, `ignoreDuplicates` est donc exact ;
  *   - complete       : update .eq(id).eq(user_id) — idempotent par nature, et
  *                      RÉCONCILIE `total_frames` en recomptant les trames RÉELLES
  *                      en base (voir execComplete) ;
  *   - ubx_upload     : uploadTelemetryFile (déjà idempotent, upsert:true).
+ *
+ * ── CHOIX DE LA CLÉ D'IDEMPOTENCE DES TRAMES (Valencia §4.6) ────────────────
+ * Retenu : (session_id, elapsed_ms), avec `elapsed_ms` rendu STRICTEMENT
+ * croissant à la source (captureFrameMapping.nextElapsedMs).
+ *
+ * L'alternative examinée et ÉCARTÉE était (session_id, itow_ms). `itow_ms` a
+ * pourtant un attrait réel : c'est la seule valeur issue du BOÎTIER, donc
+ * identique par construction sur le chemin live ET sur le réimport .ubx. Deux
+ * raisons dirimantes l'écartent comme clé d'UNICITÉ :
+ *
+ *   1. Son unicité n'est pas la NÔTRE. L'iTOW est un temps GPS produit par le
+ *      RaceBox : avant fix il peut se répéter ou rester à 0, et il se réenroule
+ *      chaque dimanche à 00:00 UTC. Sous `ignoreDuplicates` (ON CONFLICT DO
+ *      NOTHING), toute répétition d'iTOW = une trame RÉELLE DISTINCTE DÉTRUITE
+ *      EN SILENCE — exactement le défaut qu'on corrige. On ne fonde pas
+ *      l'identité d'une donnée de pilote sur une valeur qu'on ne contrôle pas
+ *      et dont on ne peut pas PROUVER l'unicité.
+ *   2. `itow_ms` est NULLABLE (colonne + type). En Postgres les NULL sont
+ *      DISTINCTS : un index total ne dédoublonnerait donc PAS les lignes à iTOW
+ *      nul, et un index partiel `WHERE itow_ms IS NOT NULL` les laisserait sans
+ *      protection. Un `SET NOT NULL` interdirait par ailleurs toute source de
+ *      trame future sans iTOW.
+ *
+ * `elapsed_ms` strict offre au contraire une garantie SOUS NOTRE CONTRÔLE :
+ * unique par séance par construction, et STABLE au rejeu (calculé une seule
+ * fois à la capture puis sérialisé dans le lot) — les deux propriétés que
+ * l'idempotence exige, et les seules.
+ *
+ * COMPROMIS ASSUMÉ : la clé `elapsed_ms` ne réconcilie pas, à elle seule, le
+ * réimport .ubx (base de temps différente du live). On ne le règle donc PAS en
+ * changeant la clé, mais là où est le problème : `reimportUbxToFrames`
+ * réconcilie explicitement sur `itow_ms` — l'identité PHYSIQUE de la trame,
+ * ce que l'iTOW est réellement — sans lui faire porter une unicité qu'il ne
+ * garantit pas. Voir l'en-tête de cette fonction.
  *
  * Doctrine « silence en piste » : ce module n'affiche rien, ne notifie rien.
  */
@@ -59,6 +96,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadTelemetryFile } from '@/services/telemetryStorage';
 import { parseRaceBoxDataMessage, UbxFrameBuffer } from '@/ubx/parser';
 import type { Database } from '@/types/database.types';
+import type { RaceBoxData } from '@/types/telemetry';
 
 import { type TelemetryFrameInsert, raceBoxToFrameInsert } from './captureFrameMapping';
 
@@ -440,21 +478,80 @@ function isDroppableFailure(op: CaptureQueueOp, err: unknown): boolean {
 }
 
 // ============================================================================
-// Insertion idempotente des trames (Valencia §4.6)
+// Écriture idempotente (Valencia §4.6) — trames et tours
 // ============================================================================
 
 /**
- * Bascule de repli : passe à `true` dès qu'on constate que la contrainte UNIQUE
- * (session_id, elapsed_ms) n'existe pas encore en prod. On cesse alors de tenter
+ * Bascule de repli par table : passe à `true` dès qu'on constate que la
+ * contrainte UNIQUE n'existe pas encore en prod. On cesse alors de tenter
  * l'UPSERT (qui échouerait à chaque lot) et on insère directement.
  *
  * NON définitive : un 23505 en mode repli prouve que la contrainte est apparue
  * entre-temps (migration appliquée en cours de journée, sans redémarrage de
- * l'app) et RÉ-ARME la bascule — cf. `insertFramesIdempotent`.
+ * l'app) et RÉ-ARME la bascule — cf. `writeIdempotent`.
  */
-let framesUpsertUnsupported = false;
-/** Ne loguer le repli qu'UNE fois (pas à chaque lot). */
-let framesUpsertFallbackLogged = false;
+interface UpsertGuard {
+  /** Contrainte UNIQUE constatée absente (42P10) → repli sur insert simple. */
+  unsupported: boolean;
+  /** Ne loguer le repli qu'UNE fois (pas à chaque lot). */
+  logged: boolean;
+}
+
+const framesGuard: UpsertGuard = { unsupported: false, logged: false };
+const lapsGuard: UpsertGuard = { unsupported: false, logged: false };
+
+/** Réponse minimale d'un appel PostgREST, telle qu'on la classe ici. */
+type WriteOutcome = { error: unknown };
+
+/**
+ * Exécute une écriture IDEMPOTENTE : UPSERT `ON CONFLICT DO NOTHING`, avec
+ * repli sûr tant que la contrainte UNIQUE n'est pas en prod.
+ *
+ * Motif commun aux trames et aux tours (les deux seules ops multi-lignes de la
+ * file), en trois temps :
+ *
+ *   1. UPSERT nominal. Un rejeu de lot n'introduit aucun doublon.
+ *   2. 42P10 (« no unique or exclusion constraint matching the ON CONFLICT
+ *      specification ») = la migration Valencia n'est pas encore appliquée. On
+ *      bascule sur `.insert()` simple (le lot passe quand même) en loguant UNE
+ *      fois. Les autres erreurs (réseau/logiques) remontent telles quelles.
+ *   3. 23505 en mode repli = PREUVE que la contrainte existe DÉSORMAIS (migration
+ *      appliquée pendant la vie de l'app, sans redémarrage). Laisser la bascule
+ *      à `true` transformerait une collision sur UNE ligne en abandon du lot
+ *      ENTIER : on RÉ-ARME et on rejoue en UPSERT, qui absorbe aussi bien le
+ *      rejeu de lot que l'ex æquo intra-lot. Jamais de lot perdu pour une
+ *      collision d'unicité.
+ */
+async function writeIdempotent(
+  guard: UpsertGuard,
+  keyLabel: string,
+  upsert: () => Promise<WriteOutcome>,
+  insert: () => Promise<WriteOutcome>
+): Promise<void> {
+  if (!guard.unsupported) {
+    const { error } = await upsert();
+    if (!error) return;
+    if (!isMissingConflictConstraint(error)) throw error;
+    guard.unsupported = true;
+    if (!guard.logged) {
+      guard.logged = true;
+      console.warn(
+        `[OXV][capture-queue] contrainte UNIQUE ${keyLabel} absente — ` +
+          "repli sur insert simple. Appliquer la migration Valencia §4.6 pour l'idempotence stricte."
+      );
+    }
+  }
+  const { error } = await insert();
+  if (!error) return;
+  if (errorCode(error) === '23505') {
+    guard.unsupported = false;
+    guard.logged = false;
+    const retry = await upsert();
+    if (retry.error) throw retry.error;
+    return;
+  }
+  throw error;
+}
 
 /**
  * Vrai si l'erreur signale l'ABSENCE de contrainte UNIQUE/exclusion compatible
@@ -473,52 +570,44 @@ function isMissingConflictConstraint(err: unknown): boolean {
 /**
  * Insère un lot de trames de façon IDEMPOTENTE (Valencia §4.6).
  *
- * Chemin nominal : UPSERT onConflict (session_id, elapsed_ms) ignoreDuplicates —
- * un rejeu de lot par la file de synchro n'introduit AUCUN doublon.
- *
- * GARDE ANTI-CASSE : tant que la migration
- * `..._valencia_telemetry_frames_unique.sql` n'est pas appliquée en prod, la
- * contrainte UNIQUE n'existe pas et Postgres renvoie 42P10 (« no unique or
- * exclusion constraint matching the ON CONFLICT specification »). On DÉTECTE ce
- * cas et on RETOMBE sur un `.insert(batch)` simple (le lot passe quand même), en
- * loguant UNE seule fois. Le code est ainsi SÛR que la contrainte existe ou non,
- * et devient RÉELLEMENT idempotent dès que la migration est en prod. Les autres
- * erreurs (réseau/permanentes) sont propagées telles quelles à l'appelant.
+ * Clé : (session_id, elapsed_ms) — cf. l'argumentaire du choix de clé en tête
+ * de module. Repose sur la STRICTE croissance d'`elapsed_ms` garantie à la
+ * source (captureFrameMapping.nextElapsedMs) : sans elle, deux trames réelles
+ * distinctes partageraient une clé et l'une serait jetée en silence.
  */
 async function insertFramesIdempotent(batch: TelemetryFrameInsert[]): Promise<void> {
-  if (!framesUpsertUnsupported) {
-    const { error } = await supabase
-      .from('telemetry_frames')
-      .upsert(batch, { onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true });
-    if (!error) return;
-    if (!isMissingConflictConstraint(error)) throw error;
-    // Contrainte pas encore en prod : bascule définitive vers l'insert simple.
-    framesUpsertUnsupported = true;
-    if (!framesUpsertFallbackLogged) {
-      framesUpsertFallbackLogged = true;
-      console.warn(
-        '[OXV][capture-queue] contrainte UNIQUE (session_id,elapsed_ms) absente — ' +
-          "repli sur insert simple. Appliquer la migration Valencia §4.6 pour l'idempotence stricte."
-      );
-    }
-  }
-  const { error } = await supabase.from('telemetry_frames').insert(batch);
-  if (!error) return;
-  // Un 23505 en mode repli est la PREUVE que la contrainte existe DÉSORMAIS : la
-  // migration a été appliquée pendant la vie de l'app. Laisser la bascule à
-  // `true` transformerait alors une collision sur UNE trame en abandon du lot
-  // ENTIER. On ré-arme et on rejoue en UPSERT : ON CONFLICT DO NOTHING absorbe
-  // aussi bien le rejeu de lot que l'ex æquo intra-lot.
-  if (errorCode(error) === '23505') {
-    framesUpsertUnsupported = false;
-    framesUpsertFallbackLogged = false;
-    const retry = await supabase
-      .from('telemetry_frames')
-      .upsert(batch, { onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true });
-    if (retry.error) throw retry.error;
-    return;
-  }
-  throw error;
+  await writeIdempotent(
+    framesGuard,
+    '(session_id,elapsed_ms)',
+    async () =>
+      await supabase
+        .from('telemetry_frames')
+        .upsert(batch, { onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true }),
+    async () => await supabase.from('telemetry_frames').insert(batch)
+  );
+}
+
+/**
+ * Insère les tours de façon IDEMPOTENTE.
+ *
+ * Clé naturelle : (session_id, lap_number). Les lignes de `laps` ne portent
+ * AUCUN `id` client (buildLapRows) : le serveur applique `gen_random_uuid()` à
+ * chaque insert, donc un rejeu de la file — at-least-once par construction :
+ * réponse perdue après COMMIT, `deleteOp` raté, ou app tuée entre l'exécution et
+ * la suppression du fichier — créait des lignes NEUVES sans jamais entrer en
+ * collision. Une séance de 12 tours en affichait 24, avec `is_best_lap` vrai sur
+ * deux lignes et `loadLapFrames` (.maybeSingle) en erreur « multiple rows ».
+ */
+async function insertLapsIdempotent(rows: LapInsert[]): Promise<void> {
+  await writeIdempotent(
+    lapsGuard,
+    '(session_id,lap_number)',
+    async () =>
+      await supabase
+        .from('laps')
+        .upsert(rows, { onConflict: 'session_id,lap_number', ignoreDuplicates: true }),
+    async () => await supabase.from('laps').insert(rows)
+  );
 }
 
 // ============================================================================
@@ -539,8 +628,7 @@ async function execFrames(op: Extract<CaptureQueueOp, { type: 'frames' }>) {
 
 async function execLaps(op: Extract<CaptureQueueOp, { type: 'laps' }>) {
   if (op.rows.length === 0) return;
-  const { error } = await supabase.from('laps').insert(op.rows);
-  if (error) throw error;
+  await insertLapsIdempotent(op.rows);
 }
 
 async function execComplete(op: Extract<CaptureQueueOp, { type: 'complete' }>) {
@@ -721,23 +809,94 @@ export async function resumeUnsyncedCaptures(): Promise<void> {
 // Réimport .ubx → telemetry_frames (filet de dernier recours)
 // ============================================================================
 
+/** Clés des trames déjà présentes en base, pour réconcilier un réimport. */
+interface ExistingFrameKey {
+  itow_ms: number | null;
+  elapsed_ms: number;
+}
+
+/** Pagination PostgREST (défaut supabase-js : 1000 lignes max par requête). */
+const FRAMES_PAGE_SIZE = 1000;
+/** Borne de sûreté : une séance de 20 min à 25 Hz ≈ 30 000 trames. */
+const FRAMES_READ_LIMIT = 200_000;
+
+/**
+ * Lit les clés (itow_ms, elapsed_ms) de TOUTES les trames déjà en base pour une
+ * séance. Paginé — même motif que `analyzeSessionService.fetchSamplesFromFrames`.
+ */
+async function fetchExistingFrameKeys(sessionId: string): Promise<ExistingFrameKey[]> {
+  const out: ExistingFrameKey[] = [];
+  let offset = 0;
+  while (offset < FRAMES_READ_LIMIT) {
+    const { data, error } = await supabase
+      .from('telemetry_frames')
+      .select('itow_ms, elapsed_ms')
+      .eq('session_id', sessionId)
+      .order('elapsed_ms', { ascending: true })
+      .range(offset, offset + FRAMES_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const page = (data ?? []) as ExistingFrameKey[];
+    out.push(...page);
+    if (page.length < FRAMES_PAGE_SIZE) break;
+    offset += FRAMES_PAGE_SIZE;
+  }
+  return out;
+}
+
 /**
  * Ré-insère dans telemetry_frames les trames d'un fichier .ubx local, pour une
  * séance dont des lots sont définitivement absents côté serveur. Réutilise le
  * parser UBX existant (checksum Fletcher-8 + reconstruction par chunks).
  *
- * Best-effort et IDEMPOTENT (Valencia §4.6) : les trames sont insérées par
- * paquets via `insertFramesIdempotent` (UPSERT onConflict (session_id,
- * elapsed_ms), repli insert si la contrainte n'est pas encore en prod) ; un lot
- * en échec est loggé sans interrompre les autres. L'`elapsed_ms` est dérivé de
- * l'iTOW relatif au premier échantillon (comme parseUbxFile) — deux réimports
- * du même .ubx ne créent donc plus de doublons une fois la migration appliquée.
+ * ── IL COMBLE, IL NE DUPLIQUE PAS ───────────────────────────────────────────
+ * Le défaut historique : le réimport dérivait son `elapsed_ms` de l'iTOW du
+ * PREMIER échantillon du fichier, quand le chemin live le dérive de l'horloge
+ * MURALE depuis l'armement. Deux bases de temps sans rapport → la clé
+ * d'idempotence (session_id, elapsed_ms) ne faisait coïncider AUCUNE trame :
+ * réimporter une séance à moitié synchronisée AJOUTAIT les 10 000 trames du
+ * fichier aux 8 000 déjà en base — 18 000 lignes, deux séries entrelacées, une
+ * séance PARTIELLE (récupérable) rendue CORROMPUE. Le filet de secours
+ * détruisait la séance qu'il devait sauver.
+ *
+ * La réconciliation se fait donc sur `itow_ms` — l'IDENTITÉ PHYSIQUE de la
+ * trame, la seule valeur écrite à l'identique par les deux chemins (mapper
+ * partagé `raceBoxToFrameInsert`). On ne fait PAS d'`itow_ms` la clé d'unicité
+ * de la table pour autant (cf. l'argumentaire en tête de module : son unicité
+ * est une propriété du boîtier, pas du code) : on l'utilise ici comme critère
+ * d'APPARIEMENT, ce qu'il est réellement.
+ *
+ * Trois garanties, dans l'ordre de la règle fondateur (ne jamais perdre, ne
+ * jamais inventer) :
+ *
+ *   1. ANTI-JOIN MULTI-ENSEMBLE sur itow_ms : une trame du fichier n'est
+ *      réinsérée que si la base n'en a pas déjà autant portant cet iTOW. Deux
+ *      trames réelles partageant un iTOW (répétition avant fix GPS) sont donc
+ *      comptées, pas confondues — on n'en perd aucune.
+ *   2. RECALAGE de la base de temps : l'`elapsed_ms` des trames comblées est
+ *      reconstruit depuis une ANCRE live déjà en base (la trame de plus petit
+ *      iTOW et son elapsed_ms), pour que les trames restituées tombent sur la
+ *      MÊME échelle de temps que les trames live. Sans ancre (séance à zéro
+ *      trame), on retombe sur l'origine = premier iTOW du fichier.
+ *   3. ALLOCATION SANS COLLISION : l'`elapsed_ms` attribué est strictement
+ *      croissant ET garanti libre vis-à-vis des valeurs déjà en base. Sans
+ *      cela, une trame comblée tombant par hasard sur l'`elapsed_ms` d'une
+ *      trame live serait écartée par `ON CONFLICT DO NOTHING` — soit exactement
+ *      la trame manquante que le réimport devait restaurer.
+ *
+ * REFUS EXPLICITE : si la séance porte déjà des trames SANS `itow_ms` (lignes
+ * héritées, écrites avant l'ajout de la colonne), l'appariement est impossible
+ * et réimporter dupliquerait. On LÈVE plutôt que de corrompir en silence — le
+ * .ubx reste intact sur l'appareil, l'opérateur décide.
+ *
+ * LIMITE ASSUMÉE : la lecture des clés existantes puis l'insertion ne sont pas
+ * atomiques. Le réimport est un outil de secours MANUEL, à lancer sur une séance
+ * close — jamais en concurrence d'une capture live sur la même séance.
  */
 export async function reimportUbxToFrames(
   sessionId: string,
   userId: string,
   fileUri: string
-): Promise<{ inserted: number }> {
+): Promise<{ inserted: number; skipped: number }> {
   const info = await FileSystem.getInfoAsync(fileUri);
   if (!info.exists) {
     throw new Error(`Fichier .ubx introuvable : ${fileUri}`);
@@ -754,15 +913,62 @@ export async function reimportUbxToFrames(
     rawFrames.push(...buffer.push(bytes.slice(i, i + chunkSize)));
   }
 
-  const rows: TelemetryFrameInsert[] = [];
-  let originItow: number | null = null;
-  for (const frameBytes of rawFrames) {
-    const data = parseRaceBoxDataMessage(frameBytes);
-    if (!data) continue;
-    if (originItow === null) originItow = data.timestamp.iTOW;
-    rows.push(raceBoxToFrameInsert(data, sessionId, data.timestamp.iTOW - originItow));
+  const parsed = rawFrames
+    .map((f) => parseRaceBoxDataMessage(f))
+    .filter((d): d is RaceBoxData => d !== null);
+  if (parsed.length === 0) return { inserted: 0, skipped: 0 };
+
+  // ── Trames déjà en base : appariement par iTOW + ancre de recalage ────────
+  const existing = await fetchExistingFrameKeys(sessionId);
+
+  const untrackable = existing.filter((r) => r.itow_ms === null).length;
+  if (untrackable > 0) {
+    throw new Error(
+      `Réimport refusé : la séance ${sessionId} porte ${untrackable} trame(s) sans itow_ms — ` +
+        'appariement impossible, le réimport dupliquerait au lieu de combler. ' +
+        'Le .ubx local reste intact ; réconcilier à la main (cf. Valencia §4.6).'
+    );
   }
-  if (rows.length === 0) return { inserted: 0 };
+
+  /** Combien de trames de cet iTOW la base porte DÉJÀ (anti-join multi-ensemble). */
+  const alreadyByItow = new Map<number, number>();
+  /** Valeurs d'elapsed_ms occupées : une trame comblée ne doit jamais y tomber. */
+  const usedElapsed = new Set<number>();
+  let anchor: { itow: number; elapsed: number } | null = null;
+  for (const r of existing) {
+    if (r.itow_ms === null) continue;
+    alreadyByItow.set(r.itow_ms, (alreadyByItow.get(r.itow_ms) ?? 0) + 1);
+    usedElapsed.add(r.elapsed_ms);
+    if (anchor === null || r.itow_ms < anchor.itow) {
+      anchor = { itow: r.itow_ms, elapsed: r.elapsed_ms };
+    }
+  }
+  // Séance à zéro trame : aucune ancre live, l'origine est le 1er iTOW du fichier
+  // (comportement historique, correct dans ce cas tout-ou-rien).
+  const base = anchor ?? { itow: parsed[0].timestamp.iTOW, elapsed: 0 };
+
+  const rows: TelemetryFrameInsert[] = [];
+  let skipped = 0;
+  let lastElapsed = -1;
+  for (const data of parsed) {
+    const itow = data.timestamp.iTOW;
+    const already = alreadyByItow.get(itow) ?? 0;
+    if (already > 0) {
+      // Cette trame physique est DÉJÀ en base : on ne la réinsère pas. On
+      // décrémente pour que d'éventuelles trames SUPPLÉMENTAIRES au même iTOW
+      // soient tout de même restituées.
+      alreadyByItow.set(itow, already - 1);
+      skipped += 1;
+      continue;
+    }
+    let elapsed = Math.max(0, Math.round(base.elapsed + (itow - base.itow)));
+    if (elapsed <= lastElapsed) elapsed = lastElapsed + 1;
+    while (usedElapsed.has(elapsed)) elapsed += 1;
+    usedElapsed.add(elapsed);
+    lastElapsed = elapsed;
+    rows.push(raceBoxToFrameInsert(data, sessionId, elapsed));
+  }
+  if (rows.length === 0) return { inserted: 0, skipped };
 
   const CHUNK = 500;
   let inserted = 0;
@@ -778,5 +984,5 @@ export async function reimportUbxToFrames(
       continue;
     }
   }
-  return { inserted };
+  return { inserted, skipped };
 }

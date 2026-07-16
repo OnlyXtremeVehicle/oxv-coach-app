@@ -10,6 +10,40 @@
 
 import { GpsFix, type RaceBoxData } from '@/types/telemetry';
 
+/**
+ * Prochain `elapsed_ms` d'une capture — suite STRICTEMENT croissante (Valencia §4.6).
+ *
+ * `elapsed_ms` n'est pas qu'une colonne d'ordonnancement : c'est la CLÉ
+ * D'IDEMPOTENCE des trames (UNIQUE (session_id, elapsed_ms) + UPSERT
+ * ON CONFLICT DO NOTHING côté file de synchro). Deux trames RÉELLES et
+ * DISTINCTES qui partageraient un `elapsed_ms` seraient donc SILENCIEUSEMENT
+ * JETÉES par la base. Or elles le peuvent :
+ *
+ *   - le RaceBox livre PLUSIEURS trames par notification BLE, émises dans le
+ *     MÊME tick synchrone (UbxFrameBuffer draine toutes les trames complètes
+ *     d'une notification en boucle) → même `Date.now()` ;
+ *   - un blocage du thread JS (GC, sérialisation d'un lot) fait délivrer les
+ *     notifications en attente dos à dos, dans la même milliseconde ;
+ *   - un RECUL D'HORLOGE (resynchro NTP au retour réseau) fait reculer
+ *     `now - startMs` pendant plusieurs secondes.
+ *
+ * D'où le `+ 1` : on ne se contente pas d'interdire le RECUL (`Math.max` avec
+ * `lastElapsed`, qui produit des ex æquo), on impose une STRICTE croissance.
+ * Arbitrage assumé : pendant un recul d'horloge, l'horodatage avance de 1 ms
+ * par trame au lieu de se figer — le timing est temporairement compressé (faux
+ * de quelques ms, et la suite se recale seule quand l'horloge murale rattrape)
+ * mais AUCUNE trame n'est détruite. Garder la donnée avec un timing légèrement
+ * faux vaut mieux que détruire la donnée : règle fondateur. `itow_ms` reste
+ * stocké sur chaque ligne pour le temps GPS exact.
+ *
+ * Conséquence : `lastElapsed` démarrant à 0, la première trame porte
+ * `elapsed_ms >= 1` (la valeur 0 n'est jamais émise en live — sans importance,
+ * l'origine est `started_at`).
+ */
+export function nextElapsedMs(nowMs: number, startMs: number, lastElapsed: number): number {
+  return Math.max(nowMs - startMs, lastElapsed + 1);
+}
+
 /** Une ligne à insérer dans public.telemetry_frames. */
 export interface TelemetryFrameInsert {
   session_id: string;

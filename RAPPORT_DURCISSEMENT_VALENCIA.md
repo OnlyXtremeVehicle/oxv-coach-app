@@ -55,7 +55,14 @@ attend et sera rejoué ; `abortCaptureSession` enqueue aussi un `complete` en st
 silencieux/non bloquant) + `processQueue()` accroché au **retour réseau**
 (`src/lib/netinfo.ts`). **Réimport `.ubx` → `telemetry_frames`** :
 `reimportUbxToFrames(sessionId, userId, fileUri)` parse le `.ubx` local (réutilise
-le parser UBX existant) et réinsère les trames manquantes — filet ultime testé.
+le parser UBX existant) et **comble** les trames manquantes — filet ultime testé.
+Il **apparie sur `itow_ms`** (l'identité physique de la trame, écrite à
+l'identique par le live et par le fichier) : les trames déjà en base sont sautées,
+seules les absentes sont réinsérées, avec un `elapsed_ms` **recalé sur l'échelle
+de temps des trames live** et garanti libre. Utilisable sur une séance
+**partiellement** synchronisée — sa raison d'être. Refuse explicitement une
+séance portant des trames héritées sans `itow_ms` (appariement impossible) plutôt
+que de la dupliquer en silence.
 
 ### 4. Écran et arrière-plan — premier plan assumé
 `expo-keep-awake` (tag `oxv-capture`) activé à l'armement, libéré aux **4 points de
@@ -79,19 +86,39 @@ le pilote (stop/abort) ou un **timeout long** `LONG_INTERRUPT_TIMEOUT_MS = 15 mi
 dernier recours.
 
 ### 6. Idempotence en base
-**Migration** `supabase/migrations/20260715120000_valencia_telemetry_frames_unique.sql`
-(**créée, NON exécutée** — à appliquer en prod par Gabin) : dédoublonne d'abord
-(garde le plus petit `ctid` par `(session_id, elapsed_ms)`), puis
-`ADD CONSTRAINT … UNIQUE (session_id, elapsed_ms)`, posée idempotemment (bloc
-`DO/IF NOT EXISTS` sur `pg_constraint`). **Client** : insert des trames → `upsert`
-`onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true`, avec **garde
-anti-casse** : tant que la contrainte n'existe pas en prod, l'upsert renvoie `42P10`
-→ **repli `insert`** (bascule sticky + log unique). Sûr avec ou sans contrainte ;
-idempotence réelle dès la migration en base. **Chronos de tours monotones** :
-`src/utils/monotonicClock.ts` (`nextMonotonic = Math.max(wallNow, lastMono)`, même
-convention que l'`elapsed_ms` des trames) ; `lapDetectionRunner` sépare l'instant
-**mural** (dates d'affichage) et la **durée mesurée** (delta monotone, jamais
-négative si l'horloge recule).
+**DEUX migrations** (**créées, NON exécutées** — à appliquer en prod par Gabin) :
+`20260715120000_valencia_telemetry_frames_unique.sql` (trames) et
+`20260716120000_valencia_laps_unique.sql` (tours). Même structure : dédoublonnage
+préalable (plus petit `ctid` par couple), puis `ADD CONSTRAINT … UNIQUE` posée
+idempotemment (bloc `DO/IF NOT EXISTS` sur `pg_constraint`).
+
+**Clé retenue pour les trames : `(session_id, elapsed_ms)`**, et non `itow_ms`.
+`itow_ms` est pourtant identique par construction sur le live et le réimport,
+mais son unicité est une propriété du **boîtier** (iTOW répétable/nul avant fix
+GPS, réenroulement hebdomadaire) et la colonne est **nullable** (les NULL sont
+distincts en Postgres) : sous `ON CONFLICT DO NOTHING`, toute répétition ferait
+détruire en silence une trame réelle. `elapsed_ms` offre une garantie **sous
+notre contrôle**. **Prérequis**, sans quoi la contrainte détruit au lieu de
+protéger : `elapsed_ms` est désormais **STRICTEMENT croissant** à la source
+(`captureFrameMapping.nextElapsedMs`) — l'ancien `Math.max(now - start, last)`
+n'était que monotone, et le RaceBox livre plusieurs trames par notification BLE
+dans le même tick (même `Date.now()`). Ne pas appliquer la migration trames à un
+parc encore sur une version antérieure.
+
+**Client** : trames ET tours passent par un `upsert … ignoreDuplicates: true`
+(`onConflict: 'session_id,elapsed_ms'` / `'session_id,lap_number'`) avec la même
+**garde anti-casse** : tant que la contrainte n'existe pas en prod, l'upsert
+renvoie `42P10` → **repli `insert`** (bascule sticky + log unique) ; un `23505`
+en mode repli prouve que la migration est passée → **ré-armement** et rejeu en
+upsert (jamais de lot abandonné pour une collision d'unicité). Sûr avec ou sans
+contrainte, dans les deux ordres d'application.
+
+**Chronos de tours monotones** : `src/utils/monotonicClock.ts`
+(`nextMonotonic = Math.max(wallNow, lastMono)`) — monotonie **non stricte**,
+volontairement : c'est une base de **durées**, pas une clé d'unicité (contrairement
+à l'`elapsed_ms` des trames, qui exige la stricte croissance).
+`lapDetectionRunner` sépare l'instant **mural** (dates d'affichage) et la **durée
+mesurée** (delta monotone, jamais négative si l'horloge recule).
 
 ---
 
@@ -106,8 +133,13 @@ pas passé sur device, le durcissement n'est pas validé.**
 
 ## Ce qui reste manuel le jour J
 
-- [ ] **Appliquer la migration d'idempotence** en prod (sinon repli `insert`, pas
-      d'idempotence stricte — l'étape « zéro doublon » n'est garantie qu'après).
+- [ ] **Appliquer les DEUX migrations d'idempotence** en prod — trames
+      (`20260715120000_…_telemetry_frames_unique.sql`) **et** tours
+      (`20260716120000_valencia_laps_unique.sql`). Sinon repli `insert`, pas
+      d'idempotence stricte — l'étape « zéro doublon » n'est garantie qu'après.
+      Prérequis pour les trames : parc à jour (`elapsed_ms` strictement
+      croissant). Auditer avant si les tables ne sont plus vides (les requêtes
+      sont en tête de chaque migration) : le dédoublonnage supprime des lignes.
 - [ ] **Renseigner la ligne d'arrivée de Valencia** en base `circuits` (requête
       ci-dessous) — sans elle, **0 tour détecté** (repli piégé volontaire).
 - [ ] **Vérifier ≥ 20 Hz à l'armement** (débit de trames au démarrage ; RaceBox

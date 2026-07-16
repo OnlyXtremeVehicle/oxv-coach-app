@@ -3,11 +3,44 @@
 --
 -- NON appliquée automatiquement ; à exécuter en prod par Gabin.
 --
--- Problème (audit §4.6) : `telemetry_frames` n'a pas de contrainte UNIQUE sur
+-- Problème : `telemetry_frames` n'a pas de contrainte UNIQUE sur
 -- (session_id, elapsed_ms). La file de synchro de capture (captureSyncQueue)
 -- rejoue des lots au retry réseau → des trames en DOUBLON peuvent apparaître.
 -- Cette contrainte rend l'écriture idempotente : côté client, l'UPSERT
 -- onConflict (session_id, elapsed_ms) ignore alors proprement les doublons.
+--
+-- ── PRÉREQUIS CLIENT — À NE PAS IGNORER ────────────────────────────────────
+-- Cette contrainte n'est SÛRE qu'à partir de la version d'app qui génère un
+-- `elapsed_ms` STRICTEMENT croissant (captureFrameMapping.nextElapsedMs).
+--
+-- Avant ce correctif, `elapsed_ms` était seulement MONOTONE
+-- (`Math.max(now - startMs, lastElapsed)`, ex æquo autorisés). Or le RaceBox
+-- livre plusieurs trames par notification BLE, émises dans le même tick
+-- synchrone, et un recul d'horloge (resynchro NTP) figeait `elapsed_ms`
+-- pendant plusieurs secondes : des trames RÉELLES et DISTINCTES partageaient
+-- alors la clé. Posée sur cette génération-là, la contrainte censée protéger
+-- aurait DÉTRUIT en silence des trames de pilote (UPSERT DO NOTHING), et le
+-- dédoublonnage ci-dessous en aurait supprimé d'autres. Ne pas appliquer cette
+-- migration à un parc encore sur une version antérieure.
+--
+-- ── POURQUOI elapsed_ms ET NON itow_ms ─────────────────────────────────────
+-- `itow_ms` (temps GPS du boîtier) a été examiné comme clé : il est identique
+-- par construction sur le chemin live ET sur le réimport .ubx. Écarté pour deux
+-- raisons dirimantes :
+--   1. son unicité est une propriété du BOÎTIER, pas du code — l'iTOW peut se
+--      répéter ou rester à 0 avant fix GPS, et se réenroule chaque dimanche à
+--      00:00 UTC. Sous ON CONFLICT DO NOTHING, toute répétition = une trame
+--      réelle distincte détruite en silence ;
+--   2. `itow_ms` est NULLABLE, et en Postgres les NULL sont DISTINCTS : un index
+--      total ne dédoublonnerait pas les lignes à iTOW nul, un index partiel les
+--      laisserait sans protection, et un SET NOT NULL interdirait toute source
+--      de trame future sans iTOW.
+-- `elapsed_ms` strict offre au contraire une garantie sous notre contrôle :
+-- unique par séance par construction, et stable au rejeu (calculé une seule
+-- fois à la capture, sérialisé dans le lot).
+-- La cohérence du réimport .ubx est traitée là où est le problème — côté client,
+-- dans `reimportUbxToFrames`, qui apparie sur `itow_ms` sans lui faire porter
+-- une unicité qu'il ne garantit pas.
 --
 -- Cette migration :
 --   1. DÉDOUBLONNE les lignes existantes (garde une seule ligne par couple
@@ -18,6 +51,15 @@
 --
 -- La table est vide en prod avant Valence (07/2026) : le dédoublonnage est un
 -- no-op au moment prévu de l'exécution, mais reste nécessaire par sûreté.
+--
+-- AUDIT PRÉALABLE si la table n'est PLUS vide (le DELETE de l'étape 1 détruit
+-- des lignes) — inspecter AVANT d'exécuter :
+--   SELECT session_id, elapsed_ms, count(*)
+--     FROM public.telemetry_frames
+--    GROUP BY 1, 2 HAVING count(*) > 1;
+-- Des ex æquo ici signalent des trames capturées par une version antérieure du
+-- client : ce sont des trames RÉELLES, pas des doublons de rejeu. Ne pas les
+-- supprimer sans arbitrage.
 -- ============================================================================
 
 -- 1. Dédoublonnage : idiome standard Postgres. Pour chaque couple
@@ -48,4 +90,4 @@ BEGIN
 END $$;
 
 COMMENT ON CONSTRAINT telemetry_frames_session_elapsed_unique ON public.telemetry_frames IS
-  'Valencia §4.6 : idempotence des trames. Un couple (session_id, elapsed_ms) est unique ; permet l''UPSERT onConflict côté client (captureSyncQueue) et bloque les doublons au rejeu de la file de synchro.';
+  'Valencia §4.6 : idempotence des trames. Un couple (session_id, elapsed_ms) est unique ; permet l''UPSERT onConflict côté client (captureSyncQueue) et bloque les doublons au rejeu de la file de synchro. SÛRETÉ : suppose un client générant un elapsed_ms STRICTEMENT croissant (captureFrameMapping.nextElapsedMs) — sans quoi deux trames réelles distinctes peuvent partager la clé et l''une est jetée en silence.';
