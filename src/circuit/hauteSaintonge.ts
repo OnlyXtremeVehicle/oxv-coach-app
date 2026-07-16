@@ -86,3 +86,75 @@ export const HAUTE_SAINTONGE_POINTS: LatLon[] = [
   { lat: 45.2428654, lon: -0.0960924 },
   { lat: 45.2428731, lon: -0.0958743 },
 ];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALIBRATION OXV (relevé terrain 2026-07-16, GeoJSON source :
+// `src/circuit/data/haute-saintonge.geojson`)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Ligne de départ/arrivée OFFICIELLE OXV — point de déclenchement du chrono.
+ *
+ * Relevé fondateur, vérifié géométriquement contre le tracé OSM :
+ *   - à **1,47 m** de l'axe de la piste → elle est bien SUR la piste ;
+ *   - à **22,9 m** de l'axe de la VOIE DES STANDS, qui longe la ligne droite.
+ *
+ * Cette deuxième distance est la contrainte qui commande le rayon (cf.
+ * {@link HAUTE_SAINTONGE_FINISH_RADIUS_M}).
+ */
+export const HAUTE_SAINTONGE_FINISH: LatLon = { lat: 45.240578, lon: -0.094391 };
+
+/**
+ * Cap de la piste au franchissement de la ligne (degrés, 0 = nord).
+ * Informatif : la détection de tour ne filtre PAS sur le cap — et ne le pourrait
+ * pas ici, la voie des stands étant parallèle (300,8° contre 298,5°, soit 2,3°
+ * d'écart). Le rayon est le SEUL levier de discrimination.
+ */
+export const HAUTE_SAINTONGE_FINISH_HEADING_DEG = 298.5;
+
+/**
+ * RAYON DE DÉTECTION DE LA LIGNE — 15 m. **Ne pas élargir sans relire ceci.**
+ *
+ * La voie des stands passe à 22,9 m de la ligne et lui est PARALLÈLE : avec les
+ * défauts du code (30 m dans `circuitsService`, 40 m dans `BELTOISE_FINISH`),
+ * chaque passage aux stands déclencherait un faux tour — compteur, meilleur
+ * temps et régularité corrompus.
+ *
+ * Fenêtre admissible calculée sur la géométrie réelle (test de garde
+ * `hauteSaintongeCalibration.test.ts`) :
+ *   - plancher ≈ 9,5 m  = 1,5 (axe) + 3 (demi-largeur piste, tag width=6) + 5 (GPS) ;
+ *   - plafond  ≈ 20,4 m = 22,9 (stands) − 2,5 (demi-largeur voie des stands).
+ * 15 m se tient au milieu : couvre toute la largeur de piste avec la marge GPS,
+ * et laisse ~5 m de garde avant le bord des stands.
+ */
+export const HAUTE_SAINTONGE_FINISH_RADIUS_M = 15;
+
+/**
+ * Axe de la VOIE DES STANDS (OSM way 54412759, `highway=service`).
+ * Conservée pour VÉRIFIER la calibration : c'est elle qui borne le rayon de la
+ * ligne d'arrivée. Sert de garde-fou dans les tests, pas au rendu.
+ */
+export const HAUTE_SAINTONGE_PIT_LANE: LatLon[] = [
+  { lat: 45.2390749, lon: -0.0908906 },
+  { lat: 45.2391293, lon: -0.0912516 },
+  { lat: 45.2393437, lon: -0.092159 },
+  { lat: 45.2394476, lon: -0.0925844 },
+  { lat: 45.2395153, lon: -0.092798 },
+  { lat: 45.239577, lon: -0.092932 },
+  { lat: 45.239856, lon: -0.0934017 },
+  { lat: 45.2400284, lon: -0.093669 },
+  { lat: 45.240145, lon: -0.0939316 },
+  { lat: 45.2402083, lon: -0.0940822 },
+  { lat: 45.2405154, lon: -0.0948129 },
+  { lat: 45.2406122, lon: -0.0950511 },
+  { lat: 45.2406761, lon: -0.0952084 },
+  { lat: 45.2408144, lon: -0.095594 },
+  { lat: 45.2409609, lon: -0.0959996 },
+  { lat: 45.2411163, lon: -0.0963118 },
+  { lat: 45.2412871, lon: -0.0965422 },
+  { lat: 45.2414841, lon: -0.0966891 },
+  { lat: 45.2416352, lon: -0.0967584 },
+  { lat: 45.2418259, lon: -0.0967968 },
+  { lat: 45.2419573, lon: -0.0968077 },
+  { lat: 45.2421921, lon: -0.0967996 },
+];
