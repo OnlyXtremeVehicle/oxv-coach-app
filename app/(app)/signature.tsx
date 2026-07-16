@@ -14,14 +14,14 @@
  * rappel doctrinal. Logique/données/RLS inchangées. Vouvoiement.
  */
 
-import { useEffect, useState } from 'react';
-import { Switch, Text, View } from 'react-native';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LayoutAnimation, Platform, Pressable, Switch, Text, UIManager, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { SourceMethodBlock } from '@/components/InsightTransparency';
 import { MiniQdiRadar } from '@/components/MiniQdiRadar';
 import { QdiRadar, type QdiAnnotations } from '@/components/QdiRadar';
-import { FadeInSection } from '@/components/motion';
+import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { EmptyState } from '@/components/instruments';
 import {
   getOrComputeQdiForSession,
@@ -50,6 +50,22 @@ import { Screen } from '@/ui/Screen';
 import { StateWrapper } from '@/ui/StateWrapper';
 
 const { palette, dataColors, spacing, radius, fonts } = theme;
+
+// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
+// Android exige l'activation explicite ; sans effet ailleurs.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+/** Légende QDI du panneau pédagogique — mêmes couleurs que le radar (une couleur
+ *  = une donnée, système §4 handoff). */
+const QDI_LEGEND = [
+  { label: 'Trajectoire', color: dataColors.trajectory },
+  { label: 'Fluidité', color: dataColors.flow },
+  { label: 'Freinage', color: dataColors.brake },
+  { label: 'Accélération', color: dataColors.accel },
+  { label: 'Régularité', color: dataColors.regularity },
+] as const;
 
 /** Couleur QDI de chaque trait de signature (une couleur = une donnée).
  *  Le bleu reste à la TRAJECTOIRE (radar) ; l'engagement latéral (G lat, domaine
@@ -251,6 +267,13 @@ export default function SignatureScreen() {
           />
         ) : (
           <>
+            {/* Lecture (retour build 23) — ce qu'on regarde, en une phrase simple.
+                Descriptif, jamais prescriptif. */}
+            <Text style={s.lectureLine}>
+              Cinq facettes de votre conduite, mesurées sur cette séance. La forme est un portrait,
+              pas une note.
+            </Text>
+
             {/* RADAR — le portrait. Polygone séance blanc + points colorés,
                 empreinte self-only pointillée, annotation point fort. */}
             <FadeInSection>
@@ -308,6 +331,41 @@ export default function SignatureScreen() {
                       </View>
                     ))}
                 </View>
+              </FadeInSection>
+            ) : null}
+
+            {/* Pédagogie (build 23) : comment lire — repliable, état local, pas un modal. */}
+            {qdi ? (
+              <FadeInSection delay={110}>
+                <HowToRead>
+                  <HowRow color={palette.cream}>
+                    Le polygone blanc est votre séance : cinq branches notées de 0 à 100, un sommet
+                    par branche.
+                  </HowRow>
+                  {qdiReference ? (
+                    <HowRow color={palette.faint}>
+                      Le pointillé est votre propre référence : la médiane de vos dernières séances
+                      ici. Jamais un autre pilote.
+                    </HowRow>
+                  ) : null}
+                  <HowLegend items={QDI_LEGEND} />
+                  <HowRow>
+                    « Votre point fort » marque la branche la plus haute de la séance. Un constat,
+                    pas une note.
+                  </HowRow>
+                  <HowRow>
+                    Une branche à « — » manque de données : elle reste au centre, sans invention.
+                  </HowRow>
+                  {monthly.length >= 2 ? (
+                    <HowRow>
+                      Les mini-radars reprennent la même forme, mois par mois — le dernier est mis
+                      en avant.
+                    </HowRow>
+                  ) : null}
+                  <HowRow>
+                    La méthode et ses limites sont détaillées plus bas, sous « Source / Méthode ».
+                  </HowRow>
+                </HowToRead>
               </FadeInSection>
             ) : null}
 
@@ -423,6 +481,69 @@ export default function SignatureScreen() {
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Pédagogie (retour fondateur build 23 : « élevé mais pas très compréhensible »).
+   Composants LOCAUX à l'écran — le périmètre du chantier ne touche pas aux
+   composants partagés. Descriptif uniquement : ce que ça montre, jamais quoi
+   faire. Aucune donnée ni logique modifiée — lisibilité et motion seulement.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+function HowToRead({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const reduceMotion = useReduceMotion();
+  return (
+    <View style={{ marginTop: spacing.lg }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        hitSlop={theme.hitSlop}
+        onPress={() => {
+          if (!reduceMotion) {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.create(
+                220,
+                LayoutAnimation.Types.easeInEaseOut,
+                LayoutAnimation.Properties.opacity
+              )
+            );
+          }
+          setOpen((o) => !o);
+        }}
+        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <Text style={s.howLabel}>Comment lire cet écran</Text>
+        <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
+      </Pressable>
+      {open ? <View style={s.howPanel}>{children}</View> : null}
+    </View>
+  );
+}
+
+/** Une ligne du panneau : pastille de couleur (optionnelle) + phrase factuelle. */
+function HowRow({ color, children }: { color?: string; children: ReactNode }) {
+  return (
+    <View style={s.howRow}>
+      {color ? <View style={[s.howDot, { backgroundColor: color }]} /> : null}
+      <Text style={s.howText}>{children}</Text>
+    </View>
+  );
+}
+
+/** Légende compacte : une pastille + un libellé par donnée, dans SA couleur. */
+function HowLegend({ items }: { items: readonly { label: string; color: string }[] }) {
+  return (
+    <View style={s.howLegendWrap}>
+      {items.map((it) => (
+        <View key={it.label} style={s.howLegendItem}>
+          <View style={[s.howLegendDot, { backgroundColor: it.color }]} />
+          <Text style={[s.howLegendTxt, { color: it.color }]}>{it.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const s = {
   accroche: {
     fontFamily: fonts.mono,
@@ -434,6 +555,16 @@ const s = {
     marginTop: spacing.sm,
     marginBottom: spacing.xl,
   },
+  // Ligne de lecture (build 23) : dit ce qu'on regarde, en une phrase simple.
+  lectureLine: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.55,
+    textAlign: 'center' as const,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
   sectionEyebrow: {
     fontFamily: fonts.mono,
     fontSize: theme.fontSize.eyebrow,
@@ -443,6 +574,36 @@ const s = {
     marginTop: spacing.xxl,
     marginBottom: spacing.md,
   },
+  // « Comment lire cet écran » — affordance fine + panneau sobre.
+  howBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    minHeight: 44,
+  },
+  howLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  howChevron: { fontFamily: fonts.body, fontSize: 16, color: palette.creamMute },
+  howChevronOpen: { transform: [{ rotate: '90deg' }] },
+  howPanel: { gap: spacing.sm, paddingBottom: spacing.xs },
+  howRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: spacing.sm },
+  howDot: { width: 7, height: 7, borderRadius: 4, marginTop: 5 },
+  howText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamSoft,
+    lineHeight: theme.fontSize.small * 1.55,
+  },
+  howLegendWrap: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
+  howLegendItem: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5 },
+  howLegendDot: { width: 7, height: 7, borderRadius: 4 },
+  howLegendTxt: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.6 },
   eyebrow: {
     fontFamily: fonts.mono,
     fontSize: theme.fontSize.eyebrow,

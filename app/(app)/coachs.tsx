@@ -1,31 +1,48 @@
 /**
- * Découverte — racine de la zone (onglet 4), reskin refonte-v2 §7.10.
+ * Découverte — racine de la zone (onglet 4), reskin refonte-v2 §7.10,
+ * élargie en VRAI HUB (retour fondateur build 23 : « on n'a pas toutes les
+ * options — le social manque »).
  *
  * Maquette (10-decouverte.png) : titre « Découverte » inline (sans retour) +
  * onglets PILLS « Coachs / Partenaires / Roulages » (état local, Coachs actif
  * par défaut). Onglet Coachs : cartes coach à ACCENT HAUT rouge coach
  * (`palette.coachAccent`), avatar initiales, nom, spécialité, prix réel s'il
  * existe, boutons « Voir la fiche » (bordé) / « Contacter » (plein rouge).
- * Onglet Partenaires : cartes à accent haut BLEU (`roleColors.partner`), badge
- * catégorie, bouton bleu « Demander le contact » (lead CONSENTI §8.1, flux
- * existant) + note de confidentialité. Onglet Roulages : invitations réelles
- * du pilote (accepter / décliner), restylées v2.
+ * Onglet Partenaires : cartes à accent haut BLEU (`roleColors.partner`), logo
+ * réel s'il existe, badge catégorie, bouton bleu « Demander le contact » (lead
+ * CONSENTI §8.1, flux existant) + note de confidentialité. Onglet Roulages :
+ * invitations réelles du pilote (accepter / décliner), restylées v2.
+ *
+ * HUB (build 23) — sous les onglets, la richesse EXISTANTE de la zone est
+ * réexposée (routes déjà mappées `decouverte` dans appMap, RIEN d'ajouté) :
+ *   - LE CLUB (teinte violette de section) : Galerie (première photo réelle en
+ *     vignette via listAllPilotMedia, compte réel de médias), Amis (compte réel
+ *     d'amitiés acceptées), La carte OXV (pictogramme, pas de fausse carte).
+ *   - ROUTES (teinte verte, déjà portée par « Certifiée OXV ») : Belles routes,
+ *     Mes routes, Créer une route, Créer un tracé (import OSM).
+ * Animations : cascade FadeInSection sobre (contenu → club → routes), retour
+ * haptique léger sur chaque accès. Compteurs RÉELS uniquement — un compte
+ * indisponible ou nul est remplacé par un libellé descriptif, jamais inventé.
  *
  * Données RÉELLES uniquement : coachs publiés (coachMarketplaceService, RLS
  * `is_published`), partenaires validés + offres publiées (partnerService),
- * invitations roulages (roulagesService). Donnée absente = masquée/EmptyState.
+ * invitations roulages (roulagesService), amitiés (friendshipsService), médias
+ * (sessionMediaService). Donnée absente = masquée/EmptyState.
  * Doctrine : vouvoiement, aucun emoji, aucun classement, ton descriptif.
  */
 
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import { FadeInSection } from '@/components/motion';
 import { ReportButton } from '@/components/ReportButton';
 import * as haptics from '@/lib/haptics';
 import { type CoachListing, listPublishedCoaches } from '@/services/coachMarketplaceService';
+import { listAcceptedFriends } from '@/services/friendshipsService';
 import {
   type MarketplacePartner,
   listMarketplace,
@@ -38,6 +55,8 @@ import {
   listMyInvitations,
   respondToInvitation,
 } from '@/services/roulagesService';
+import { type SessionMediaItem, listAllPilotMedia } from '@/services/sessionMediaService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -45,7 +64,22 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatDateTime, formatPriceCents } from '@/utils/format';
 
-const { palette, roleColors, fonts, fontSize, spacing, radius } = theme;
+const { palette, roleColors, dataColors, fonts, fontSize, spacing, radius } = theme;
+
+/**
+ * Teinte du CLUB — violet du thème (dataColors.regularity), employée ici comme
+ * IDENTITÉ DE SECTION (navigation/hub), pas comme donnée QDI : aucune valeur de
+ * régularité n'apparaît sur ces cartes, aucune ambiguïté possible. C'est la
+ * seule teinte vive du thème qui n'est ni le rouge coach, ni le bleu
+ * partenaire, ni le cyan admin — et jamais l'or (chrono/record uniquement).
+ */
+const CLUB_TINT = dataColors.regularity;
+
+/**
+ * Teinte des ROUTES — vert du thème, déjà porté par « Certifiée OXV » dans
+ * Mes routes. Identité de section, pas une donnée d'accélération ici.
+ */
+const ROUTES_TINT = dataColors.accel;
 
 type DiscoverTab = 'coachs' | 'partenaires' | 'roulages';
 
@@ -68,6 +102,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 export default function DecouverteScreen() {
+  const profileId = useAuthStore((st) => st.profile?.id ?? null);
   const [tab, setTab] = useState<DiscoverTab>('coachs');
   const [loading, setLoading] = useState(true);
 
@@ -76,6 +111,9 @@ export default function DecouverteScreen() {
   const [requested, setRequested] = useState<Set<string>>(new Set());
   const [invitations, setInvitations] = useState<PilotInvitation[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Hub — compteurs et vignettes RÉELS. null = indisponible (jamais inventé).
+  const [friendCount, setFriendCount] = useState<number | null>(null);
+  const [media, setMedia] = useState<SessionMediaItem[]>([]);
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -85,13 +123,22 @@ export default function DecouverteScreen() {
       listMarketplace(),
       listMyPilotLeads(),
       listMyInvitations(),
+      // Hub : chaque source échoue en silence SANS bloquer le reste.
+      profileId
+        ? listAcceptedFriends(profileId)
+            .then((l) => l.length)
+            .catch(() => null)
+        : Promise.resolve(null),
+      listAllPilotMedia().catch(() => [] as SessionMediaItem[]),
     ])
-      .then(([coachList, partnerList, leads, invits]) => {
+      .then(([coachList, partnerList, leads, invits, friends, mediaList]) => {
         if (cancelled) return;
         setCoaches(coachList);
         setPartners(partnerList);
         setRequested(new Set(leads.map((l) => l.partnerId)));
         setInvitations(invits);
+        setFriendCount(friends);
+        setMedia(mediaList);
         setLoading(false);
       })
       .catch(() => {
@@ -100,7 +147,7 @@ export default function DecouverteScreen() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [profileId]);
 
   useFocusEffect(reload);
 
@@ -156,7 +203,10 @@ export default function DecouverteScreen() {
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={label}
                 hitSlop={theme.hitSlop}
-                onPress={() => setTab(key)}
+                onPress={() => {
+                  haptics.tap();
+                  setTab(key);
+                }}
                 style={({ pressed }) => [
                   s.pill,
                   active && s.pillActive,
@@ -173,16 +223,37 @@ export default function DecouverteScreen() {
           <View style={{ paddingVertical: spacing.xxl * 2, alignItems: 'center' }}>
             <ActivityIndicator color={palette.creamMute} accessibilityLabel="Chargement" />
           </View>
-        ) : tab === 'coachs' ? (
-          <CoachsTab coaches={coaches} />
-        ) : tab === 'partenaires' ? (
-          <PartenairesTab partners={partners} requested={requested} onAsk={askPartner} />
         ) : (
-          <RoulagesTab invitations={invitations} busyId={busyId} onRespond={respond} />
+          <>
+            {/* Cascade d'entrée sobre : contenu de l'onglet, puis le club,
+                puis les routes (FadeInSection, ease-out, jamais de bounce). */}
+            <FadeInSection>
+              {tab === 'coachs' ? (
+                <CoachsTab coaches={coaches} />
+              ) : tab === 'partenaires' ? (
+                <PartenairesTab partners={partners} requested={requested} onAsk={askPartner} />
+              ) : (
+                <RoulagesTab invitations={invitations} busyId={busyId} onRespond={respond} />
+              )}
+            </FadeInSection>
+            <FadeInSection delay={120}>
+              <ClubSection friendCount={friendCount} media={media} />
+            </FadeInSection>
+            <FadeInSection delay={240}>
+              <RoutesSection />
+            </FadeInSection>
+          </>
         )}
       </View>
     </Screen>
   );
+}
+
+/** Navigation du hub — retour haptique léger puis route (toutes existantes,
+ *  zone `decouverte` de l'appMap). */
+function openHubRoute(path: string): void {
+  haptics.tap();
+  router.push(path as never);
 }
 
 /* ------------------------------------------------------------------ */
@@ -192,7 +263,10 @@ export default function DecouverteScreen() {
 function CoachsTab({ coaches }: { coaches: CoachListing[] }) {
   return (
     <View style={s.tabBody}>
-      <Text style={s.sectionEyebrow}>Coachs</Text>
+      {/* Compteur RÉEL (coachs publiés chargés) — masqué à zéro. */}
+      <Text style={s.sectionEyebrow}>
+        {coaches.length > 0 ? `Coachs · ${coaches.length}` : 'Coachs'}
+      </Text>
       {coaches.length === 0 ? (
         <EmptyState
           label="À venir"
@@ -303,9 +377,15 @@ function PartenairesTab({
   requested: Set<string>;
   onAsk: (partner: MarketplacePartner) => void;
 }) {
+  // Compteur RÉEL : total des offres publiées chargées, masqué à zéro.
+  const offerCount = partners.reduce((n, p) => n + p.offers.length, 0);
   return (
     <View style={s.tabBody}>
-      <Text style={s.sectionEyebrow}>Partenaires</Text>
+      <Text style={s.sectionEyebrow}>
+        {offerCount > 0
+          ? `Partenaires · ${offerCount} ${offerCount > 1 ? 'offres' : 'offre'}`
+          : 'Partenaires'}
+      </Text>
       {partners.length > 0 ? (
         <Pressable
           accessibilityRole="button"
@@ -329,12 +409,24 @@ function PartenairesTab({
             const done = requested.has(p.id);
             return (
               <Card key={p.id} style={s.partnerCard}>
-                <View style={s.partnerBadge}>
-                  <Text style={s.partnerBadgeT} numberOfLines={1}>
-                    {TYPE_LABEL[p.type] ?? 'Partenaire'}
-                  </Text>
+                <View style={s.partnerHead}>
+                  <View style={{ flex: 1 }}>
+                    <View style={s.partnerBadge}>
+                      <Text style={s.partnerBadgeT} numberOfLines={1}>
+                        {TYPE_LABEL[p.type] ?? 'Partenaire'}
+                      </Text>
+                    </View>
+                    <Text style={s.partnerName}>{p.displayName}</Text>
+                  </View>
+                  {/* Logo RÉEL du partenaire s'il existe — jamais d'image factice. */}
+                  {p.logoUrl ? (
+                    <Image
+                      source={{ uri: p.logoUrl }}
+                      style={s.partnerLogo}
+                      accessibilityIgnoresInvertColors
+                    />
+                  ) : null}
                 </View>
-                <Text style={s.partnerName}>{p.displayName}</Text>
                 {p.description ? <Text style={s.partnerDesc}>{p.description}</Text> : null}
 
                 {p.offers.length > 0 ? (
@@ -396,7 +488,10 @@ function RoulagesTab({
 }) {
   return (
     <View style={s.tabBody}>
-      <Text style={s.sectionEyebrow}>Roulages</Text>
+      {/* Compteur RÉEL (invitations chargées) — masqué à zéro. */}
+      <Text style={s.sectionEyebrow}>
+        {invitations.length > 0 ? `Roulages · ${invitations.length}` : 'Roulages'}
+      </Text>
       {invitations.length === 0 ? (
         <EmptyState
           label="À venir"
@@ -453,6 +548,230 @@ function RoulagesTab({
           })}
         </View>
       )}
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hub — LE CLUB (social) : Galerie, Amis, La carte OXV                */
+/* ------------------------------------------------------------------ */
+
+/** Pictogramme deux silhouettes — décoratif, teinte club. */
+function PeoplePicto() {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Circle cx={9.5} cy={8.5} r={3.6} stroke={CLUB_TINT} strokeWidth={1.5} fill="none" />
+      <Path
+        d="M3 21.5c0-3.7 2.9-6 6.5-6s6.5 2.3 6.5 6"
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Circle
+        cx={18.5}
+        cy={9.5}
+        r={2.8}
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+        opacity={0.55}
+      />
+      <Path
+        d="M17.5 15.6c3.2.4 5.5 2.5 5.5 5.4"
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinecap="round"
+        opacity={0.55}
+      />
+    </Svg>
+  );
+}
+
+/** Pictogramme repère de carte — décoratif, teinte club. */
+function PinPicto() {
+  return (
+    <Svg width={26} height={26} viewBox="0 0 26 26">
+      <Path
+        d="M13 3.2c-3.8 0-6.6 2.8-6.6 6.4 0 4.7 6.6 12.6 6.6 12.6s6.6-7.9 6.6-12.6c0-3.6-2.8-6.4-6.6-6.4z"
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinejoin="round"
+      />
+      <Circle cx={13} cy={9.8} r={2.4} stroke={CLUB_TINT} strokeWidth={1.5} fill="none" />
+    </Svg>
+  );
+}
+
+/** Pictogramme cadre photo — décoratif, pour la galerie sans média. */
+function PhotoPicto() {
+  return (
+    <Svg width={30} height={30} viewBox="0 0 30 30">
+      <Rect
+        x={4}
+        y={8.5}
+        width={22}
+        height={16}
+        rx={3}
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+      />
+      <Circle cx={15} cy={16.5} r={4.2} stroke={CLUB_TINT} strokeWidth={1.5} fill="none" />
+      <Path
+        d="M11.4 8.5l1.5-2.5h4.2l1.5 2.5"
+        stroke={CLUB_TINT}
+        strokeWidth={1.5}
+        fill="none"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/**
+ * LE CLUB — cartes d'accès riches vers la vie sociale de la zone :
+ * Galerie (première photo RÉELLE en vignette, compte réel de médias),
+ * Amis (compte RÉEL d'amitiés acceptées), La carte OXV (pictogramme —
+ * on ne fabrique pas de mini-carte). Compteur nul/indisponible = libellé
+ * descriptif, jamais un chiffre inventé.
+ */
+function ClubSection({
+  friendCount,
+  media,
+}: {
+  friendCount: number | null;
+  media: SessionMediaItem[];
+}) {
+  const cover = media.find((m) => m.mediaType === 'photo' && m.signedUrl);
+  const mediaCount = media.length;
+
+  return (
+    <View style={s.hubSection}>
+      <Text style={s.sectionEyebrow}>Le club</Text>
+
+      {/* Galerie — vitrine : votre première photo réelle en couverture. */}
+      <Card
+        onPress={() => openHubRoute('/(app)/galerie')}
+        accessibilityLabel="Ouvrir la galerie"
+        style={s.clubCard}
+      >
+        {cover?.signedUrl ? (
+          <Image
+            source={{ uri: cover.signedUrl }}
+            style={s.galleryCover}
+            resizeMode="cover"
+            accessibilityIgnoresInvertColors
+          />
+        ) : (
+          <View style={[s.galleryCover, s.galleryCoverEmpty]}>
+            <PhotoPicto />
+          </View>
+        )}
+        <View style={s.hubCardRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={s.hubCardTitle}>Galerie</Text>
+            <Text style={s.hubCardMeta} numberOfLines={1}>
+              {mediaCount > 0
+                ? `${mediaCount} ${mediaCount > 1 ? 'médias' : 'média'}`
+                : 'Vos photos et vidéos de journées OXV'}
+            </Text>
+          </View>
+          <Text style={s.hubChevron}>›</Text>
+        </View>
+      </Card>
+
+      <View style={s.tileRow}>
+        <Card
+          onPress={() => openHubRoute('/(app)/amis')}
+          accessibilityLabel="Ouvrir vos amis"
+          style={[s.clubCard, s.tile]}
+        >
+          <PeoplePicto />
+          <Text style={s.tileTitle}>Amis</Text>
+          <Text style={s.tileMeta} numberOfLines={1}>
+            {friendCount != null && friendCount > 0
+              ? `${friendCount} ${friendCount > 1 ? 'amis' : 'ami'}`
+              : 'Pilote à pilote'}
+          </Text>
+        </Card>
+        <Card
+          onPress={() => openHubRoute('/(app)/carte-oxv')}
+          accessibilityLabel="Ouvrir la carte OXV"
+          style={[s.clubCard, s.tile]}
+        >
+          <PinPicto />
+          <Text style={s.tileTitle}>La carte OXV</Text>
+          <Text style={s.tileMeta} numberOfLines={1}>
+            Circuits et territoire
+          </Text>
+        </Card>
+      </View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Hub — ROUTES : belles routes, mes routes, création                  */
+/* ------------------------------------------------------------------ */
+
+const ROUTE_LINKS: { path: string; title: string; desc: string; create: boolean }[] = [
+  {
+    path: '/(app)/belle-route',
+    title: 'Belles routes',
+    desc: 'Les routes certifiées OXV, hors chrono.',
+    create: false,
+  },
+  {
+    path: '/(app)/mes-routes',
+    title: 'Mes routes',
+    desc: 'Vos routes enregistrées et leur statut.',
+    create: false,
+  },
+  {
+    path: '/(app)/creer-route',
+    title: 'Créer une route',
+    desc: 'Votre itinéraire de balade, à composer.',
+    create: true,
+  },
+  {
+    path: '/(app)/creer-trace',
+    title: 'Créer un tracé',
+    desc: 'Un circuit importé depuis OpenStreetMap.',
+    create: true,
+  },
+];
+
+/** ROUTES — accès direct aux quatre écrans routes de la zone. */
+function RoutesSection() {
+  return (
+    <View style={s.hubSection}>
+      <Text style={s.sectionEyebrow}>Routes</Text>
+      <Card style={s.routesCard}>
+        {ROUTE_LINKS.map(({ path, title, desc, create }, i) => (
+          <Pressable
+            key={path}
+            accessibilityRole="button"
+            accessibilityLabel={title}
+            onPress={() => openHubRoute(path)}
+            style={({ pressed }) => [
+              s.routeRow,
+              i > 0 && s.routeRowBorder,
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={s.routeTitle}>{title}</Text>
+              <Text style={s.routeDesc} numberOfLines={1}>
+                {desc}
+              </Text>
+            </View>
+            <Text style={create ? s.routePlus : s.hubChevron}>{create ? '+' : '›'}</Text>
+          </Pressable>
+        ))}
+      </Card>
     </View>
   );
 }
@@ -618,6 +937,17 @@ const s = {
     borderTopColor: roleColors.partner,
     padding: spacing.lg,
   },
+  partnerHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.md,
+  },
+  partnerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: palette.card2,
+  },
   partnerBadge: {
     alignSelf: 'flex-start' as const,
     paddingHorizontal: spacing.sm,
@@ -736,5 +1066,106 @@ const s = {
     flexDirection: 'row' as const,
     gap: spacing.sm,
     marginTop: spacing.md,
+  },
+
+  // — Hub (build 23) : sections LE CLUB (violet) et ROUTES (vert) —
+  hubSection: { marginTop: spacing.xxl },
+  clubCard: {
+    borderTopWidth: 2,
+    borderTopColor: CLUB_TINT,
+    padding: spacing.md,
+  },
+  galleryCover: {
+    width: '100%' as const,
+    height: 110,
+    borderRadius: radius.sm,
+    backgroundColor: palette.surface3,
+  },
+  galleryCoverEmpty: {
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    borderWidth: 1,
+    borderColor: palette.line,
+  },
+  hubCardRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  hubCardTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.bodyLg,
+    color: palette.cream,
+  },
+  hubCardMeta: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+  hubChevron: {
+    fontFamily: fonts.body,
+    fontSize: 20,
+    color: palette.creamMute,
+    marginTop: -2,
+  },
+  tileRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  tile: {
+    flex: 1,
+    padding: spacing.lg,
+    alignItems: 'flex-start' as const,
+  },
+  tileTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.body,
+    color: palette.cream,
+    marginTop: spacing.sm,
+  },
+  tileMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+  routesCard: {
+    borderTopWidth: 2,
+    borderTopColor: ROUTES_TINT,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.lg,
+  },
+  routeRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingVertical: spacing.md,
+  },
+  routeRowBorder: {
+    borderTopWidth: 1,
+    borderTopColor: palette.separator,
+  },
+  routeTitle: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.body,
+    color: palette.cream,
+  },
+  routeDesc: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
+  routePlus: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.h3,
+    color: ROUTES_TINT,
+    marginTop: -2,
   },
 };

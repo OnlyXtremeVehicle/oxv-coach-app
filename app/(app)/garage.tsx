@@ -6,6 +6,12 @@
  * pour en ajouter. Le CRUD existant (ajout, ouverture de fiche → journal de
  * réglages / édition) est PRÉSERVÉ, restylé au langage v2.
  *
+ * Photos (retour fondateur build 23 : « relier les véhicules et les photos ») :
+ * quand un véhicule a une VRAIE photo (média `users.media` rattaché par
+ * `vehicleId`, bucket privé → URL signée), elle remplace la silhouette SVG en
+ * cover (carte de tête et lignes). Sans photo : silhouette conservée — jamais
+ * d'image factice.
+ *
  * Données réelles uniquement (table `vehicles`, RLS own-row via garageService) :
  *  - marque, modèle, année, couleur, notes — seules colonnes réelles.
  *  - Il N'EXISTE PAS de colonne `is_primary` : le maquette montre un badge
@@ -22,12 +28,14 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
+import { FadeInSection } from '@/components/motion';
 import { type Vehicle, addVehicle, listMyVehicles } from '@/services/garageService';
+import { getMyVehicleCovers } from '@/services/pilotMediaService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -78,6 +86,7 @@ function metaLine(v: Vehicle): string {
 
 export default function GarageScreen() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [covers, setCovers] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [composing, setComposing] = useState(false);
   const [brand, setBrand] = useState('');
@@ -90,9 +99,10 @@ export default function GarageScreen() {
   const reload = useCallback(() => {
     let cancelled = false;
     setLoading(true);
-    listMyVehicles().then((rows) => {
+    Promise.all([listMyVehicles(), getMyVehicleCovers()]).then(([rows, cv]) => {
       if (!cancelled) {
         setVehicles(rows);
+        setCovers(cv);
         setLoading(false);
       }
     });
@@ -138,6 +148,7 @@ export default function GarageScreen() {
 
   const primary = vehicles[0] ?? null;
   const others = vehicles.slice(1);
+  const heroCover = primary ? covers[primary.id] : undefined;
 
   return (
     <Screen>
@@ -200,68 +211,90 @@ export default function GarageScreen() {
 
         {primary ? (
           <>
-            {/* Véhicule en tête — grande carte silhouette + méta réelle.
+            {/* Véhicule en tête — grande carte : VRAIE photo (cover signée) si
+                elle existe, silhouette sinon + méta réelle.
                 (Pas de badge PRINCIPALE : aucune colonne is_primary réelle.) */}
-            <Pressable
-              onPress={() => openVehicle(primary.id)}
-              accessibilityRole="button"
-              accessibilityLabel={`${vehicleName(primary)}. ${metaLine(primary)}`}
-              style={({ pressed }) => [s.hero, pressed && s.pressed]}
-            >
-              <View style={s.heroArt}>
-                <CarSilhouette />
-              </View>
-              <View style={s.heroBody}>
-                <Text style={s.heroName} numberOfLines={1}>
-                  {vehicleName(primary)}
-                </Text>
-                <Text style={s.heroMeta} numberOfLines={1}>
-                  {metaLine(primary)}
-                </Text>
-              </View>
-            </Pressable>
+            <FadeInSection>
+              <Pressable
+                onPress={() => openVehicle(primary.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`${vehicleName(primary)}. ${metaLine(primary)}`}
+                style={({ pressed }) => [s.hero, pressed && s.pressed]}
+              >
+                <View style={[s.heroArt, heroCover ? s.heroArtPhoto : null]}>
+                  {heroCover ? (
+                    <Image
+                      source={{ uri: heroCover }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                      accessible={false}
+                    />
+                  ) : (
+                    <CarSilhouette />
+                  )}
+                </View>
+                <View style={s.heroBody}>
+                  <Text style={s.heroName} numberOfLines={1}>
+                    {vehicleName(primary)}
+                  </Text>
+                  <Text style={s.heroMeta} numberOfLines={1}>
+                    {metaLine(primary)}
+                  </Text>
+                </View>
+              </Pressable>
+            </FadeInSection>
 
             {others.length > 0 ? (
               <View style={s.othersBlock}>
                 <SectionLabel>Autres véhicules</SectionLabel>
                 <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-                  {others.map((v) => (
-                    <Pressable
-                      key={v.id}
-                      onPress={() => openVehicle(v.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${vehicleName(v)}. ${metaLine(v)}`}
-                      style={({ pressed }) => [s.row, pressed && s.pressed]}
-                    >
-                      <View style={s.rowIcon} accessibilityElementsHidden>
-                        <Svg width={30} height={12} viewBox="0 0 30 12">
-                          <Path
-                            d="M2 9 C2 6 8 5 12 5 C15 3 20 3 24 5 C27 5 28 7 28 9"
-                            stroke={palette.creamMute}
-                            strokeWidth={1.4}
-                            strokeLinecap="round"
-                            fill="none"
-                          />
-                        </Svg>
-                      </View>
-                      <View style={s.rowBody}>
-                        <Text style={s.rowName} numberOfLines={1}>
-                          {vehicleName(v)}
-                        </Text>
-                        <Text style={s.rowMeta} numberOfLines={1}>
-                          {metaLine(v)}
-                        </Text>
-                      </View>
-                      <View style={s.chev} accessibilityElementsHidden />
-                    </Pressable>
+                  {others.map((v, i) => (
+                    <FadeInSection key={v.id} delay={120 + Math.min(i, 6) * 60}>
+                      <Pressable
+                        onPress={() => openVehicle(v.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`${vehicleName(v)}. ${metaLine(v)}`}
+                        style={({ pressed }) => [s.row, pressed && s.pressed]}
+                      >
+                        <View style={s.rowIcon} accessibilityElementsHidden>
+                          {covers[v.id] ? (
+                            <Image
+                              source={{ uri: covers[v.id] }}
+                              style={s.rowThumb}
+                              resizeMode="cover"
+                              accessible={false}
+                            />
+                          ) : (
+                            <Svg width={30} height={12} viewBox="0 0 30 12">
+                              <Path
+                                d="M2 9 C2 6 8 5 12 5 C15 3 20 3 24 5 C27 5 28 7 28 9"
+                                stroke={palette.creamMute}
+                                strokeWidth={1.4}
+                                strokeLinecap="round"
+                                fill="none"
+                              />
+                            </Svg>
+                          )}
+                        </View>
+                        <View style={s.rowBody}>
+                          <Text style={s.rowName} numberOfLines={1}>
+                            {vehicleName(v)}
+                          </Text>
+                          <Text style={s.rowMeta} numberOfLines={1}>
+                            {metaLine(v)}
+                          </Text>
+                        </View>
+                        <View style={s.chev} accessibilityElementsHidden />
+                      </Pressable>
+                    </FadeInSection>
                   ))}
                 </View>
               </View>
             ) : null}
 
             <Text style={s.footNote}>
-              Année et couleur telles que vous les avez renseignées. Ouvrez un véhicule pour
-              consigner ses réglages.
+              Année et couleur telles que vous les avez renseignées. Ouvrez un véhicule pour ajouter
+              ses photos et consigner ses réglages.
             </Text>
           </>
         ) : null}
@@ -311,7 +344,10 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     borderBottomWidth: 1,
     borderBottomColor: palette.separator,
+    overflow: 'hidden',
   },
+  // Avec une vraie photo, la scène gagne en hauteur (cover pleine largeur).
+  heroArtPhoto: { height: 168 },
   heroBody: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
@@ -354,7 +390,9 @@ const s = StyleSheet.create({
     borderColor: palette.separator,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  rowThumb: { width: '100%', height: '100%' },
   rowBody: { flex: 1, gap: 2 },
   rowName: {
     fontFamily: fonts.bodyMedium,

@@ -6,9 +6,11 @@
  * et aux admins (RLS storage, migration 0011). L'affichage passe donc par des
  * URLs SIGNÉES (jamais d'URL publique).
  *
- * Métadonnées : `users.media` (jsonb) = tableau de { id, path, type }. Le pilote
- * édite les siens (RLS self-update) ; le coach lit les chemins via
+ * Métadonnées : `users.media` (jsonb) = tableau de { id, path, type, vehicleId? }.
+ * Le pilote édite les siens (RLS self-update) ; le coach lit les chemins via
  * coach_pilots_view (migration 0012) puis les signe (is_coach_of l'y autorise).
+ * `vehicleId` (optionnel, zéro schéma) rattache un média à un véhicule du
+ * garage ; sans lui, l'item reste un média de profil (rétrocompatible).
  *
  * Doctrine : sobre, vouvoiement, pas d'emoji. Le média est une vitrine, jamais
  * une donnée de pilotage.
@@ -26,11 +28,18 @@ const SIGNED_TTL_SECONDS = 60 * 30; // 30 min
 
 export type PilotMediaType = 'photo' | 'video';
 
-/** Entrée média telle que stockée dans le jsonb `users.media`. */
+/**
+ * Entrée média telle que stockée dans le jsonb `users.media`.
+ *
+ * `vehicleId` (additif, zéro schéma — retour fondateur build 23) : présent =
+ * photo/vidéo rattachée à un véhicule du garage ; absent = média de profil.
+ * Les items historiques n'en ont pas et restent donc des médias de profil.
+ */
 export interface PilotMediaItem {
   id: string;
   path: string;
   type: PilotMediaType;
+  vehicleId?: string;
 }
 
 /** Entrée média + URL signée temporaire (null si la signature a échoué). */
@@ -48,9 +57,22 @@ export function parsePilotMedia(raw: unknown): PilotMediaItem[] {
     const id = typeof o.id === 'string' ? o.id : null;
     const path = typeof o.path === 'string' ? o.path : null;
     if (!id || !path) continue;
-    out.push({ id, path, type: o.type === 'video' ? 'video' : 'photo' });
+    const item: PilotMediaItem = { id, path, type: o.type === 'video' ? 'video' : 'photo' };
+    // Rattachement véhicule optionnel — préservé au round-trip jsonb.
+    if (typeof o.vehicleId === 'string' && o.vehicleId.length > 0) item.vehicleId = o.vehicleId;
+    out.push(item);
   }
   return out;
+}
+
+/** Médias de PROFIL = sans rattachement véhicule (rétrocompatible). */
+function profileScope(items: PilotMediaItem[]): PilotMediaItem[] {
+  return items.filter((m) => m.vehicleId == null);
+}
+
+/** Médias d'UN véhicule du garage. */
+function vehicleScope(items: PilotMediaItem[], vehicleId: string): PilotMediaItem[] {
+  return items.filter((m) => m.vehicleId === vehicleId);
 }
 
 /**
@@ -88,11 +110,42 @@ async function readRawMedia(userId: string): Promise<PilotMediaItem[]> {
   return parsePilotMedia(data.media);
 }
 
-/** Lit les médias de MON profil pilote (avec URLs signées). */
+/**
+ * Lit les médias de MON profil pilote (avec URLs signées). Les médias rattachés
+ * à un véhicule (`vehicleId`) vivent dans le garage, pas ici.
+ */
 export async function listMyPilotMedia(): Promise<PilotMediaView[]> {
   const id = await currentUserId();
   if (!id) return [];
-  return signPilotMedia(await readRawMedia(id));
+  return signPilotMedia(profileScope(await readRawMedia(id)));
+}
+
+/** Lit les médias d'UN de MES véhicules (avec URLs signées). */
+export async function listMyVehicleMedia(vehicleId: string): Promise<PilotMediaView[]> {
+  const id = await currentUserId();
+  if (!id) return [];
+  return signPilotMedia(vehicleScope(await readRawMedia(id), vehicleId));
+}
+
+/**
+ * Première photo (cover) de CHACUN de mes véhicules, signée — une seule lecture
+ * DB + une seule requête de signature pour tout le garage. Clé = vehicleId ;
+ * un véhicule sans photo n'a pas d'entrée (l'écran garde alors sa silhouette).
+ */
+export async function getMyVehicleCovers(): Promise<Record<string, string>> {
+  const id = await currentUserId();
+  if (!id) return {};
+  const firstPhotoByVehicle = new Map<string, PilotMediaItem>();
+  for (const m of await readRawMedia(id)) {
+    if (m.type !== 'photo' || !m.vehicleId) continue;
+    if (!firstPhotoByVehicle.has(m.vehicleId)) firstPhotoByVehicle.set(m.vehicleId, m);
+  }
+  const signed = await signPilotMedia([...firstPhotoByVehicle.values()]);
+  const covers: Record<string, string> = {};
+  for (const v of signed) {
+    if (v.vehicleId && v.signedUrl) covers[v.vehicleId] = v.signedUrl;
+  }
+  return covers;
 }
 
 type AddResult =
@@ -103,8 +156,15 @@ type AddResult =
 /**
  * Sélectionne une photo/vidéo, l'envoie dans `pilot-media/{pilotId}/…` puis
  * l'ajoute au jsonb `media`. Rollback du storage si l'écriture DB échoue.
+ *
+ * `opts.vehicleId` (additif) : rattache le média à un véhicule du garage. Les
+ * `items` retournés sont ceux du MÊME périmètre (véhicule si fourni, profil
+ * sinon) — chaque écran reçoit sa propre liste, prête à afficher.
  */
-export async function addMyPilotMedia(type: PilotMediaType): Promise<AddResult> {
+export async function addMyPilotMedia(
+  type: PilotMediaType,
+  opts?: { vehicleId?: string }
+): Promise<AddResult> {
   const id = await currentUserId();
   if (!id) return { ok: false, error: 'Vous devez être connecté pour ajouter un média.' };
 
@@ -131,12 +191,17 @@ export async function addMyPilotMedia(type: PilotMediaType): Promise<AddResult> 
   const mime =
     asset.mimeType ?? (type === 'video' ? 'video/mp4' : ext === 'png' ? 'image/png' : 'image/jpeg');
 
+  // Le typage RN du Blob (globals.d.ts) est plus étroit que son runtime : les
+  // parts sont typées Array<Blob | string> et `lastModified` est requis dans
+  // les options, alors qu'un Uint8Array + { type } passent (validé en prod).
+  // Signature locale fidèle au runtime — cast type-only, aucun changement.
+  const BlobCtor = Blob as unknown as new (parts: Uint8Array[], options: { type: string }) => Blob;
   let blob: Blob;
   try {
     const base64 = await FileSystem.readAsStringAsync(asset.uri, {
       encoding: FileSystem.EncodingType.Base64,
     });
-    blob = new Blob([Buffer.from(base64, 'base64')], { type: mime });
+    blob = new BlobCtor([Buffer.from(base64, 'base64')], { type: mime });
   } catch (e) {
     console.warn('[OXV][pilotMedia] read file :', e);
     return { ok: false, error: "Ce fichier n'a pas pu être lu. Réessayez avec un autre." };
@@ -153,7 +218,9 @@ export async function addMyPilotMedia(type: PilotMediaType): Promise<AddResult> 
     return { ok: false, error: "L'envoi du média a échoué. Réessayez dans un instant." };
   }
 
-  const next = [...(await readRawMedia(id)), { id: mediaId, path, type }];
+  const added: PilotMediaItem = { id: mediaId, path, type };
+  if (opts?.vehicleId) added.vehicleId = opts.vehicleId;
+  const next = [...(await readRawMedia(id)), added];
   const { error: updErr } = await supabase
     .from('users')
     // PilotMediaItem[] -> Json : l'interface n'a pas d'index signature, cast au bord DB.
@@ -168,10 +235,15 @@ export async function addMyPilotMedia(type: PilotMediaType): Promise<AddResult> 
     return { ok: false, error: "Le média n'a pas pu être enregistré." };
   }
 
-  return { ok: true, items: await signPilotMedia(next) };
+  const scoped = opts?.vehicleId ? vehicleScope(next, opts.vehicleId) : profileScope(next);
+  return { ok: true, items: await signPilotMedia(scoped) };
 }
 
-/** Retire un média (storage + jsonb) de MON profil pilote. */
+/**
+ * Retire un média (storage + jsonb) de MON profil pilote ou de MON véhicule.
+ * Les `items` retournés suivent le périmètre du média retiré (véhicule si
+ * l'item était rattaché, profil sinon).
+ */
 export async function removeMyPilotMedia(
   mediaId: string
 ): Promise<{ ok: true; items: PilotMediaView[] } | { ok: false; error: string }> {
@@ -198,5 +270,6 @@ export async function removeMyPilotMedia(
       .catch(() => undefined);
   }
 
-  return { ok: true, items: await signPilotMedia(next) };
+  const scoped = target?.vehicleId ? vehicleScope(next, target.vehicleId) : profileScope(next);
+  return { ok: true, items: await signPilotMedia(scoped) };
 }

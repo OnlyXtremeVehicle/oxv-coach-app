@@ -16,8 +16,17 @@
  * (parti A) : delta dernière séance, stats, sous-vues. Vouvoiement.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  Animated,
+  Easing,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import Svg, {
   Circle,
   Defs,
@@ -29,7 +38,9 @@ import Svg, {
 } from 'react-native-svg';
 import { router } from 'expo-router';
 
+import { SourceMethodBlock } from '@/components/InsightTransparency';
 import { EmptyState, Fact } from '@/components/instruments';
+import { useReduceMotion } from '@/components/motion';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -41,6 +52,12 @@ import { StateWrapper } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius, hitSlop } = theme;
+
+// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
+// Android exige l'activation explicite ; sans effet ailleurs.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 /** Violet sombre des barres de constance (maquette §7.4). */
 const BAR_INACTIVE = '#3A2E52';
@@ -196,10 +213,22 @@ export default function ProgressionScreen() {
           MEILLEUR TOUR · SÉANCE APRÈS SÉANCE
         </Text>
         {lastBest != null ? (
-          <View style={s.kingRow}>
-            <Text style={[s.kingNumber, { color: palette.gold }]}>{formatBestShort(lastBest)}</Text>
-            <Text style={s.kingSub}>dernière séance</Text>
-          </View>
+          <>
+            <View style={s.kingRow}>
+              <Text style={[s.kingNumber, { color: palette.gold }]}>
+                {formatBestShort(lastBest)}
+              </Text>
+              <Text style={s.kingSub}>dernière séance</Text>
+            </View>
+            {/* Lecture (retour build 23) — ce qu'on regarde, en une phrase simple.
+                Descriptif, jamais prescriptif. */}
+            <Text style={s.lectureLine}>
+              Votre meilleur tour de la dernière séance sur ce circuit.
+              {sessions.length >= 3
+                ? ' La courbe retrace ce chrono, séance après séance — quand il baisse, elle monte.'
+                : ''}
+            </Text>
+          </>
         ) : null}
 
         {sessions.length < 3 ? (
@@ -232,10 +261,9 @@ export default function ProgressionScreen() {
               CONSTANCE · VOS TOURS
             </Text>
             <View style={s.kingRow}>
-              <Text style={[s.kingNumber, { color: dataColors.regularity }]}>
-                ±{stdDevSeconds.toFixed(2).replace('.', ',')}
-              </Text>
-              <Text style={s.kingSub}>s d&apos;écart-type</Text>
+              <ConstancyKingNumber stdDevSeconds={stdDevSeconds} />
+              {/* Libellé vulgarisé SANS perdre le terme technique (build 23). */}
+              <Text style={s.kingSub}>s d&apos;écart-type (dispersion)</Text>
             </View>
             <ConstancyBars laps={lastLaps} />
             {/* Phrase DÉRIVÉE de la donnée (manifest du service), jamais figée. */}
@@ -243,6 +271,39 @@ export default function ProgressionScreen() {
               {regularityManifest ?? 'Vos tours, tels quels.'} Le tour en or est votre meilleur.
             </Text>
           </>
+        ) : null}
+
+        {/* Pédagogie (build 23) : comment lire — repliable, état local, pas un modal. */}
+        {sessions.length > 0 ? (
+          <HowToRead>
+            <HowRow color={palette.gold}>
+              L&apos;or ne dit que le chrono : la courbe du meilleur tour, la barre du meilleur
+              tour, le record. Jamais un jugement.
+            </HowRow>
+            {sessions.length >= 3 ? (
+              <HowRow>
+                Sur la courbe, chaque point est une séance ; le point plein est votre record. Un
+                chrono plus bas est dessiné plus haut : l&apos;amélioration monte.
+              </HowRow>
+            ) : null}
+            <HowRow color={dataColors.regularity}>
+              Le violet est la régularité. ± est l&apos;écart-type : la dispersion de vos tours
+              autour de leur moyenne — plus il est petit, plus vos tours se ressemblent.
+            </HowRow>
+            {lastLaps.length >= 2 ? (
+              <HowRow>
+                L&apos;histogramme reprend la dernière séance : une barre par tour, plus courte =
+                tour plus rapide. Des barres presque égales dessinent une séance régulière.
+              </HowRow>
+            ) : null}
+            <SourceMethodBlock
+              items={[
+                'Chronos mesurés par le boîtier (GPS et capteurs inertiels, 25 points par seconde), tours détectés au passage de la ligne.',
+                'La courbe suit un seul circuit — celui de votre dernière séance — pour comparer le comparable.',
+                'La référence est votre propre historique. Aucun autre pilote, aucun classement.',
+              ]}
+            />
+          </HowToRead>
         ) : null}
 
         {/* ── Substance sous les modules (parti A) ─────────────────────── */}
@@ -443,27 +504,165 @@ function ConstancyBars({ laps }: { laps: { lapNumber: number; durationSeconds: n
       accessibilityRole="image"
       accessibilityLabel={`Régularité sur ${n} tours ; le meilleur est le tour ${bestLapNumber}.`}
     >
-      <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
-        {durations.map((d, i) => {
-          const h = hFor(d);
-          return (
-            <Rect
-              key={i}
-              x={i * (barW + gap)}
-              y={H - h}
-              width={barW}
-              height={h}
-              rx={2}
-              fill={i === bestIdx ? palette.gold : BAR_INACTIVE}
-            />
-          );
-        })}
-      </Svg>
+      {/* Les barres S'ÉTIRENT depuis la ligne de base à l'apparition (build 23). */}
+      <BarsReveal height={H}>
+        <Svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H}>
+          {durations.map((d, i) => {
+            const h = hFor(d);
+            return (
+              <Rect
+                key={i}
+                x={i * (barW + gap)}
+                y={H - h}
+                width={barW}
+                height={h}
+                rx={2}
+                fill={i === bestIdx ? palette.gold : BAR_INACTIVE}
+              />
+            );
+          })}
+        </Svg>
+      </BarsReveal>
       <View style={s.axisRow}>
         <Text style={s.axis}>T1</Text>
         <Text style={[s.axis, { color: palette.gold }]}>◆ votre meilleur</Text>
         <Text style={s.axis}>T{n}</Text>
       </View>
+    </View>
+  );
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Pédagogie (retour fondateur build 23 : « élevé mais pas très compréhensible »).
+   Composants LOCAUX à l'écran — le périmètre du chantier ne touche pas aux
+   composants partagés. Descriptif uniquement : ce que ça montre, jamais quoi
+   faire. Aucune donnée ni logique modifiée — lisibilité et motion seulement.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/** « 0,42 » — format français (virgule), N décimales. */
+function fmtFr(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace('.', ',');
+}
+
+/**
+ * Chiffre roi qui COMPTE : de 0 vers la valeur réelle (ease-out cubic, ~900 ms).
+ * La destination est la donnée ; l'animation n'est qu'un chemin vers elle.
+ * Respecte « Réduire les animations » (rendu direct, WCAG 2.3.3).
+ */
+function useCountUpFr(value: number, decimals: number, duration = 900): string {
+  const reduceMotion = useReduceMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+  const [display, setDisplay] = useState(() => fmtFr(0, decimals));
+  useEffect(() => {
+    if (reduceMotion) {
+      setDisplay(fmtFr(value, decimals));
+      return;
+    }
+    const listener = progress.addListener(({ value: p }) => setDisplay(fmtFr(p * value, decimals)));
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    return () => progress.removeListener(listener);
+  }, [value, decimals, duration, reduceMotion, progress]);
+  return display;
+}
+
+/** Le chiffre roi violet (écart-type) — se construit à l'apparition. */
+function ConstancyKingNumber({ stdDevSeconds }: { stdDevSeconds: number }) {
+  const display = useCountUpFr(stdDevSeconds, 2);
+  return (
+    <Text
+      style={[s.kingNumber, { color: dataColors.regularity }]}
+      accessibilityLabel={`Plus ou moins ${fmtFr(stdDevSeconds, 2)} secondes d'écart-type`}
+    >
+      ±{display}
+    </Text>
+  );
+}
+
+/**
+ * Les barres s'étirent depuis la ligne de base à l'apparition (transform seul,
+ * 60 fps, ancrage bas via translateY compensé). « Réduire les animations » =
+ * rendu direct, sans mouvement.
+ */
+function BarsReveal({ height, children }: { height: number; children: ReactNode }) {
+  const reduceMotion = useReduceMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.setValue(1);
+      return;
+    }
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration: 500,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [progress, reduceMotion]);
+  return (
+    <Animated.View
+      style={{
+        opacity: progress,
+        transform: [
+          {
+            translateY: progress.interpolate({
+              inputRange: [0, 1],
+              outputRange: [height / 2, 0],
+            }),
+          },
+          { scaleY: progress },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+function HowToRead({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const reduceMotion = useReduceMotion();
+  return (
+    <View style={{ marginTop: spacing.lg }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        hitSlop={hitSlop}
+        onPress={() => {
+          if (!reduceMotion) {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.create(
+                220,
+                LayoutAnimation.Types.easeInEaseOut,
+                LayoutAnimation.Properties.opacity
+              )
+            );
+          }
+          setOpen((o) => !o);
+        }}
+        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <Text style={s.howLabel}>Comment lire cet écran</Text>
+        <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
+      </Pressable>
+      {open ? <View style={s.howPanel}>{children}</View> : null}
+    </View>
+  );
+}
+
+/** Une ligne du panneau : pastille de couleur (optionnelle) + phrase factuelle. */
+function HowRow({ color, children }: { color?: string; children: ReactNode }) {
+  return (
+    <View style={s.howRow}>
+      {color ? <View style={[s.howDot, { backgroundColor: color }]} /> : null}
+      <Text style={s.howText}>{children}</Text>
     </View>
   );
 }
@@ -533,6 +732,40 @@ const s = {
     color: palette.creamMute,
     lineHeight: fontSize.small * 1.6,
     marginTop: spacing.lg,
+  },
+  // Ligne de lecture (build 23) : dit ce qu'on regarde, en une phrase simple.
+  lectureLine: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.55,
+    marginBottom: spacing.md,
+  },
+  // « Comment lire cet écran » — affordance fine + panneau sobre.
+  howBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    minHeight: 44,
+  },
+  howLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  howChevron: { fontFamily: fonts.body, fontSize: 16, color: palette.creamMute },
+  howChevronOpen: { transform: [{ rotate: '90deg' }] },
+  howPanel: { gap: spacing.sm, paddingBottom: spacing.xs },
+  howRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: spacing.sm },
+  howDot: { width: 7, height: 7, borderRadius: 4, marginTop: 5 },
+  howText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
+    lineHeight: fontSize.small * 1.55,
   },
   separator: {
     height: 1,

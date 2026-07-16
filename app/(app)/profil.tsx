@@ -13,6 +13,13 @@
  *  - médias : pilotMediaService (bucket privé `pilot-media`, URLs signées).
  * Toute valeur absente est rendue « — » (jamais inventée).
  *
+ * Nom public unifié site/app : `users.public_handle` (TEXT UNIQUE) est LA source
+ * du pseudo partagé entre oxvehicle.fr et l'app — éditable ici. Validation via
+ * la règle handle existante (src/utils/validation.ts), normalisation minuscules.
+ * L'unicité est garantie par la contrainte UNIQUE : pas de vérification
+ * préalable (racée) — une violation renvoie Postgres 23505, rendu « Ce nom est
+ * déjà pris. ». Voir docs/COORDINATION_SITE_HANDLE.md pour le contrat côté site.
+ *
  * Note visibilité amis : le périmètre RLS réel n'ouvre AUCUNE lecture de la ligne
  * `users` à un ami (policy `users_select_own_or_admin`). Ce qu'un ami accepté peut
  * lire, ce sont les bilans de séance partagés (are_friends), jamais les
@@ -43,6 +50,7 @@ import {
 } from '@/services/pilotMediaService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
+import { isValidHandle } from '@/utils/validation';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
@@ -90,6 +98,8 @@ export default function PilotProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const [identity, setIdentity] = useState<Identity>(EMPTY_IDENTITY);
+  const [handleInput, setHandleInput] = useState('');
+  const [handleError, setHandleError] = useState<string | null>(null);
   const [level, setLevel] = useState<string | null>(null);
   const [experience, setExperience] = useState('');
   const [ffsa, setFfsa] = useState('');
@@ -131,6 +141,8 @@ export default function PilotProfileScreen() {
             city: row?.address_city ?? null,
             avatarUrl: row?.avatar_url ?? null,
           });
+          setHandleInput(row?.public_handle ?? '');
+          setHandleError(null);
         })().catch(() => undefined);
       }
 
@@ -157,7 +169,48 @@ export default function PilotProfileScreen() {
   );
 
   async function onSave() {
+    // Nom public — normalisation minuscules (la base stocke la forme minuscule,
+    // le @ est un préfixe d'affichage, jamais stocké).
+    const nextHandle = handleInput.trim().replace(/^@+/, '').toLowerCase();
+    const currentHandle = identity.handle ?? '';
+    const handleChanged = nextHandle !== currentHandle;
+
+    // Validation locale (règle partagée site/app, src/utils/validation.ts).
+    // Un champ vidé alors qu'un nom existe échoue aussi : le nom public se
+    // remplace, il ne se retire pas depuis l'app.
+    if (handleChanged && !isValidHandle(nextHandle)) {
+      setHandleError('3 à 20 caractères : minuscules, chiffres, tiret ou underscore.');
+      return;
+    }
+
     setSaving(true);
+
+    // Écriture users.public_handle (RLS self-update). Pas de vérification
+    // préalable d'unicité — racée : la contrainte UNIQUE est la vérité, une
+    // violation renvoie Postgres 23505.
+    if (handleChanged && userId) {
+      const { error } = await supabase
+        .from('users')
+        .update({ public_handle: nextHandle })
+        .eq('id', userId);
+      if (error) {
+        setSaving(false);
+        if (error.code === '23505') {
+          setHandleError('Ce nom est déjà pris.');
+          return;
+        }
+        console.warn('[OXV][profil] update public_handle :', error.message);
+        Toast.show({
+          type: 'error',
+          text1: "Votre nom public n'a pas pu être enregistré. Réessayez dans un instant.",
+        });
+        return;
+      }
+      setIdentity((prev) => ({ ...prev, handle: nextHandle }));
+      setHandleInput(nextHandle);
+      setHandleError(null);
+    }
+
     const res = await updateMyPilotProfile({
       pilotLevel: level,
       experienceYears: experience,
@@ -255,6 +308,38 @@ export default function PilotProfileScreen() {
           Vos coordonnées restent privées. Vos amis ne voient que les bilans de séance que vous
           partagez avec eux.
         </Text>
+
+        {/* ---- Nom public unifié site/app (users.public_handle, UNIQUE) ---- */}
+        <View style={s.editBlock}>
+          <SectionLabel>Identité publique</SectionLabel>
+          {identity.handle === null ? (
+            <View style={s.handleInvite} accessibilityRole="text">
+              <Text style={s.handleInviteTitle}>Choisissez votre nom public</Text>
+              <Text style={s.handleInviteBody}>
+                Le même nom vous suit sur oxvehicle.fr et dans l&apos;app.
+              </Text>
+            </View>
+          ) : null}
+          <Field
+            label="Nom public"
+            value={handleInput}
+            onChangeText={(t) => {
+              setHandleInput(t.toLowerCase());
+              setHandleError(null);
+            }}
+            placeholder="votre-nom"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={20}
+            error={handleError}
+            helper={
+              identity.handle
+                ? "Le même nom vous suit sur oxvehicle.fr et dans l'app."
+                : '3 à 20 caractères : minuscules, chiffres, tiret ou underscore.'
+            }
+            containerStyle={{ marginBottom: 0 }}
+          />
+        </View>
 
         {/* ---- Édition (CRUD existant, restylé v2) ---- */}
         <View style={s.editBlock}>
@@ -497,6 +582,28 @@ const s = {
     lineHeight: fontSize.small * 1.6,
     color: palette.eyebrow,
     marginTop: spacing.lg,
+  },
+
+  /* Nom public — invite visible tant que le pilote n'a pas choisi. */
+  handleInvite: {
+    borderWidth: 1,
+    borderColor: palette.edge,
+    borderRadius: radius.md,
+    backgroundColor: palette.card,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    gap: spacing.xs,
+  },
+  handleInviteTitle: {
+    fontFamily: fonts.bodySemi,
+    fontSize: fontSize.body,
+    color: palette.cream,
+  },
+  handleInviteBody: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.creamMute,
   },
 
   /* Édition. */

@@ -17,6 +17,9 @@
  *   - il n'existe pas de colonne de POPULARITÉ → badge « POPULAIRE » masqué ;
  *   - la géométrie du tracé n'est pas exposée par le service → l'en-tête de
  *     carte reste une surface calme (aucun tracé fabriqué).
+ *
+ * En tête : CTA sobre vers « Créer votre route » (planificateur GraphHopper,
+ * retour fondateur build 23) — route `/(app)/creer-route`.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -74,6 +77,22 @@ export default function BellesRoutesScreen() {
       <AppBar title="Belles routes" onBack={() => router.back()} />
       <View style={s.body}>
         <Text style={s.lede}>Des routes à savourer, loin du chrono.</Text>
+
+        {/* CTA planificateur (retour fondateur build 23) — sobre, jamais d'or. */}
+        <Card
+          onPress={() => router.push('/(app)/creer-route' as never)}
+          accessibilityLabel="Créer votre route"
+          style={{ ...s.createCta, ...cockpitHalo }}
+        >
+          <View style={s.createBody}>
+            <Text style={s.createEyebrow}>Planificateur</Text>
+            <Text style={s.createTitle}>Créer votre route</Text>
+            <Text style={s.createHint}>
+              Composez un itinéraire sinueux depuis votre position, étape par étape.
+            </Text>
+          </View>
+          <View style={s.createChev} accessibilityElementsHidden importantForAccessibility="no" />
+        </Card>
 
         {routes.length === 0 ? (
           <Card style={{ ...s.empty, ...cockpitHalo }}>
@@ -155,6 +174,49 @@ const s = StyleSheet.create({
     lineHeight: theme.fontSize.body * 1.5,
   },
   list: { gap: theme.spacing.md },
+
+  // — CTA planificateur (en tête) : carte actionnable, liseré gauche crème
+  // (identité, jamais l'or), chevron sobre à droite.
+  createCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    backgroundColor: theme.palette.card2,
+    borderLeftWidth: 2,
+    borderLeftColor: theme.palette.edge,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+  },
+  createBody: { flex: 1 },
+  createEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase',
+    color: theme.palette.eyebrow,
+    marginBottom: 4,
+  },
+  createTitle: {
+    fontFamily: theme.fonts.display,
+    fontSize: theme.fontSize.h3,
+    color: theme.palette.cream,
+  },
+  createHint: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.45,
+    marginTop: theme.spacing.xs,
+  },
+  createChev: {
+    width: 9,
+    height: 9,
+    borderTopWidth: 1.7,
+    borderRightWidth: 1.7,
+    borderColor: theme.palette.creamMute,
+    transform: [{ rotate: '45deg' }],
+    marginRight: 3,
+  },
 
   // Carte route — padding 0 pour que l'en-tête touche les bords ; le corps
   // récupère l'espacement standard.

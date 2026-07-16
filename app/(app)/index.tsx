@@ -13,12 +13,23 @@
  * discret. Vouvoiement. Substance conservée : statut boîtier, debug, déconnexion.
  */
 
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Animated,
+  Easing,
+  LayoutAnimation,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  UIManager,
+  View,
+} from 'react-native';
 import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
-import { FadeInSection } from '@/components/motion';
+import { SourceMethodBlock } from '@/components/InsightTransparency';
+import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
@@ -38,6 +49,22 @@ import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
 const { palette, fonts, spacing, radius, dataColors } = theme;
+
+// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
+// Android exige l'activation explicite ; sans effet ailleurs.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+/** Légende QDI du panneau pédagogique — mêmes couleurs que QdiBars (une couleur
+ *  = une donnée, système §4 handoff). */
+const QDI_LEGEND = [
+  { label: 'Trajectoire', color: dataColors.trajectory },
+  { label: 'Fluidité', color: dataColors.flow },
+  { label: 'Freinage', color: dataColors.brake },
+  { label: 'Accélération', color: dataColors.accel },
+  { label: 'Régularité', color: dataColors.regularity },
+] as const;
 
 interface RecentSession {
   id: string;
@@ -322,11 +349,14 @@ function ModePassive({
             </Text>
             {regularity ? (
               <>
-                <Text style={s.regNumber}>
-                  ±{regularity.stdDevSeconds.toFixed(2).replace('.', ',')}
-                  <Text style={s.regUnit}> s</Text>
-                </Text>
+                <RegularityKingNumber stdDevSeconds={regularity.stdDevSeconds} />
                 <Text style={s.regSub}>{regularity.lapCount} tours lancés</Text>
+                {/* Lecture (retour build 23) — ce qu'on regarde, en une phrase.
+                    Descriptif, jamais prescriptif. */}
+                <Text style={s.lectureLine}>
+                  Votre régularité : l&apos;écart entre vos tours (écart-type). Plus il est petit,
+                  plus vous êtes constant.
+                </Text>
               </>
             ) : (
               <Text style={s.regSub}>{timeAgoFr(recentSession.startedAt)}</Text>
@@ -362,6 +392,42 @@ function ModePassive({
               </Link>
             </FadeInSection>
           ) : null}
+
+          {/* Pédagogie (retour build 23 : « élevé mais pas très compréhensible »)
+              — comment lire, repliable, état local, jamais un modal. */}
+          <FadeInSection delay={180}>
+            <HowToRead>
+              {regularity ? (
+                <HowRow color={dataColors.regularity}>
+                  Le grand chiffre violet est votre régularité au tour : l&apos;écart-type de vos
+                  tours lancés, en secondes. Les tours lancés excluent la sortie et la rentrée des
+                  stands.
+                </HowRow>
+              ) : null}
+              {qdi ? (
+                <>
+                  <HowRow>
+                    Les cinq barres dessinent votre QDI : cinq facettes de la séance, une couleur
+                    par donnée, la hauteur suit la valeur mesurée. Une silhouette, pas un score — «
+                    point fort » marque la plus haute.
+                  </HowRow>
+                  <HowLegend items={QDI_LEGEND} />
+                </>
+              ) : null}
+              {bestSeconds != null ? (
+                <HowRow color={palette.gold}>
+                  L&apos;or est réservé au chrono : la carte « Votre meilleur tour », rien
+                  d&apos;autre.
+                </HowRow>
+              ) : null}
+              <SourceMethodBlock
+                items={[
+                  'Ces chiffres viennent de votre dernière séance close, enregistrée par le boîtier (GPS et capteurs inertiels, 25 points par seconde).',
+                  'La référence est vous, uniquement — aucun autre pilote, aucun classement.',
+                ]}
+              />
+            </HowToRead>
+          </FadeInSection>
         </>
       ) : (
         <Text style={s.emptyManifest}>Votre première séance écrira la première ligne.</Text>
@@ -433,6 +499,115 @@ function ModePassive({
   );
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   Pédagogie (retour fondateur build 23 : « élevé mais pas très compréhensible »).
+   Composants LOCAUX à l'écran — le périmètre du chantier ne touche pas aux
+   composants partagés. Descriptif uniquement : ce que ça montre, jamais quoi
+   faire. Aucune donnée ni logique modifiée — lisibilité et motion seulement.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/** « 0,42 » — format français (virgule), N décimales. */
+function fmtFr(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace('.', ',');
+}
+
+/**
+ * Chiffre roi qui COMPTE : de 0 vers la valeur réelle (ease-out cubic, ~900 ms).
+ * La destination est la donnée ; l'animation n'est qu'un chemin vers elle.
+ * Respecte « Réduire les animations » (rendu direct, WCAG 2.3.3).
+ */
+function useCountUpFr(value: number, decimals: number, duration = 900): string {
+  const reduceMotion = useReduceMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+  const [display, setDisplay] = useState(() => fmtFr(0, decimals));
+  useEffect(() => {
+    if (reduceMotion) {
+      setDisplay(fmtFr(value, decimals));
+      return;
+    }
+    const listener = progress.addListener(({ value: p }) => setDisplay(fmtFr(p * value, decimals)));
+    progress.setValue(0);
+    Animated.timing(progress, {
+      toValue: 1,
+      duration,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    return () => progress.removeListener(listener);
+  }, [value, decimals, duration, reduceMotion, progress]);
+  return display;
+}
+
+/** Le chiffre roi violet (régularité) — se construit à l'apparition. */
+function RegularityKingNumber({ stdDevSeconds }: { stdDevSeconds: number }) {
+  const display = useCountUpFr(stdDevSeconds, 2);
+  return (
+    <Text
+      style={s.regNumber}
+      accessibilityLabel={`Régularité au tour : plus ou moins ${fmtFr(stdDevSeconds, 2)} secondes`}
+    >
+      ±{display}
+      <Text style={s.regUnit}> s</Text>
+    </Text>
+  );
+}
+
+/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+function HowToRead({ children }: { children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const reduceMotion = useReduceMotion();
+  return (
+    <View style={{ marginTop: spacing.lg }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        hitSlop={theme.hitSlop}
+        onPress={() => {
+          if (!reduceMotion) {
+            LayoutAnimation.configureNext(
+              LayoutAnimation.create(
+                220,
+                LayoutAnimation.Types.easeInEaseOut,
+                LayoutAnimation.Properties.opacity
+              )
+            );
+          }
+          setOpen((o) => !o);
+        }}
+        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <Text style={s.howLabel}>Comment lire cet écran</Text>
+        <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
+      </Pressable>
+      {open ? <View style={s.howPanel}>{children}</View> : null}
+    </View>
+  );
+}
+
+/** Une ligne du panneau : pastille de couleur (optionnelle) + phrase factuelle. */
+function HowRow({ color, children }: { color?: string; children: ReactNode }) {
+  return (
+    <View style={s.howRow}>
+      {color ? <View style={[s.howDot, { backgroundColor: color }]} /> : null}
+      <Text style={s.howText}>{children}</Text>
+    </View>
+  );
+}
+
+/** Légende compacte : une pastille + un libellé par donnée, dans SA couleur. */
+function HowLegend({ items }: { items: readonly { label: string; color: string }[] }) {
+  return (
+    <View style={s.howLegendWrap}>
+      {items.map((it) => (
+        <View key={it.label} style={s.howLegendItem}>
+          <View style={[s.howLegendDot, { backgroundColor: it.color }]} />
+          <Text style={[s.howLegendTxt, { color: it.color }]}>{it.label}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
   top: {
     flexDirection: 'row',
@@ -490,6 +665,44 @@ const s = StyleSheet.create({
     color: palette.eyebrow,
     marginTop: spacing.xs,
   },
+  // Ligne de lecture (build 23) : dit ce qu'on regarde, en une phrase simple.
+  lectureLine: {
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamMute,
+    lineHeight: theme.fontSize.small * 1.55,
+    marginTop: spacing.sm,
+  },
+  // « Comment lire cet écran » — affordance fine + panneau sobre.
+  howBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  howLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+  },
+  howChevron: { fontFamily: fonts.body, fontSize: 16, color: palette.creamMute },
+  howChevronOpen: { transform: [{ rotate: '90deg' }] },
+  howPanel: { gap: spacing.sm, paddingBottom: spacing.xs },
+  howRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  howDot: { width: 7, height: 7, borderRadius: 4, marginTop: 5 },
+  howText: {
+    flex: 1,
+    fontFamily: fonts.body,
+    fontSize: theme.fontSize.small,
+    color: palette.creamSoft,
+    lineHeight: theme.fontSize.small * 1.55,
+  },
+  howLegendWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  howLegendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  howLegendDot: { width: 7, height: 7, borderRadius: 4 },
+  howLegendTxt: { fontFamily: fonts.mono, fontSize: 10, letterSpacing: 0.6 },
 
   // Carte meilleur tour — pastille + chrono OR (l'unique or du Paddock).
   bestCard: {
