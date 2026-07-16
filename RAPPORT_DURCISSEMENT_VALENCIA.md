@@ -198,76 +198,40 @@ la marge, (3) assumer le `null`. **Voie (1) retenue** : la donnée existe dans l
 c'est du write-path, et c'est la seule où la fluidité devient *vraie* plutôt que
 supprimée ou tue. Appliquée en `c409dcc`.
 
-**Reste signalé, non corrigé** : `fetchSpeedSamples` (`sessionsService.ts`) mappe
-`null → 0` sur un graphe de vitesse — même classe de bug, mais c'est du **code mort**
-(exporté, zéro appelant dans `src/` et `app/`). À supprimer ou corriger — décision
-Gabin, sans urgence.
+**`fetchSpeedSamples`** (même classe de bug, code mort à zéro appelant) :
+**SUPPRIMÉ** (DROP net, décision fondateur 2026-07-16).
+
+---
+
+## Base de production — TOUT EST APPLIQUÉ (2026-07-16, accords explicites fondateur)
+
+| Action | État |
+|---|---|
+| Migration idempotence **trames** (`UNIQUE (session_id, elapsed_ms)`) | ✅ appliquée (0 doublon constaté avant pose ; l'upsert client s'active seul) |
+| Migration idempotence **tours** (`UNIQUE (session_id, lap_number)`) | ✅ appliquée |
+| **Haute Saintonge** — ligne officielle 45.240578/-0.094391, demi-largeur 15 m, cap 298,5° | ✅ appliquée (l'ancienne ligne était à 231 m, sur un sommet du tracé, rayon 40 m) |
+| **Ricardo Tormo** — ligne officielle 39.483568/-0.631076, demi-largeur **10 m**, cap 55,2°, 4,000 km | ✅ créée (`06876cce`) |
+| 3 sessions fantômes `recording` (pré-durcissement) | ✅ passées `aborted` |
+
+**Détection par PORTE** (`e64c37e`) : les deux circuits ont un `finish_line_heading`
+→ le rayon sert de **demi-largeur de porte** (franchissement + sens obligatoire),
+plus de rayon de proximité. Calibration Valence (relevé fondateur + imagerie du pit
+wall) : la ligne est côté opposé aux stands ; fenêtre latérale mesurée **[8,0 ;
+12,5] m** (bord piste côté stands à 8 m, pit wall 8→12,5 m, fast lane au-delà) —
+10 m retenus. Détail : `docs/SQL_CALIBRATION_RICARDO_TORMO.sql` et
+`docs/SQL_CALIBRATION_HAUTE_SAINTONGE.sql`.
 
 ## Ce qui reste manuel le jour J
 
-- [ ] **Appliquer les DEUX migrations d'idempotence** en prod — trames
-      (`20260715120000_…_telemetry_frames_unique.sql`) **et** tours
-      (`20260716120000_valencia_laps_unique.sql`). Sinon repli `insert`, pas
-      d'idempotence stricte — l'étape « zéro doublon » n'est garantie qu'après.
-      Prérequis pour les trames : parc à jour (`elapsed_ms` strictement
-      croissant). Auditer avant si les tables ne sont plus vides (les requêtes
-      sont en tête de chaque migration) : le dédoublonnage supprime des lignes.
-- [ ] **Renseigner la ligne d'arrivée de Valencia** en base `circuits` (requête
-      ci-dessous) — sans elle, **0 tour détecté** (repli piégé volontaire).
+- [ ] **Test de la porte** (les deux circuits) : remonter la voie des stands SANS
+      franchir la ligne → **0 tour attendu**. Si un tour apparaît à Valence,
+      réduire la demi-largeur vers 9 m, jamais sous 8.
 - [ ] **Vérifier ≥ 20 Hz à l'armement** (débit de trames au démarrage ; RaceBox
       Mini S = 25 Hz nominal).
 - [ ] **Garder le téléphone déverrouillé / écran allumé** (keep-awake couvre
       l'auto-verrouillage ; pas de capture écran éteint en v1).
 - [ ] Contrôler qu'aucune séance locale n'est restée en file après synchro (retour
       réseau → file vidée).
-
----
-
-## Requête SQL Valencia — ligne d'arrivée (PRÉPARÉE, NON EXÉCUTÉE)
-
-La table `circuits` stocke la ligne d'arrivée dans `finish_line_lat`,
-`finish_line_lon`, `finish_line_radius_m`, `finish_line_heading` (lu par
-`circuitsService` → `captureFinishLineFor`). **Je ne connais pas les coordonnées
-GPS réelles de la ligne d'arrivée de Valencia** : elles doivent venir d'un relevé
-terrain (un point RaceBox posé sur la ligne start/finish, ou la donnée officielle
-du circuit). Les placeholders `<…>` ci-dessous sont à remplacer par ces valeurs
-réelles **avant** exécution. Ne pas inventer de coordonnées.
-
-```sql
--- Valencia — ligne d'arrivée pour la détection de tours (jalon Valencia).
--- Remplacer les placeholders <…> par le relevé RÉEL de la ligne start/finish.
--- Ricardo Tormo (Cheste) ≈ 39.4589 N, -0.6317 E — À VÉRIFIER/RELEVER PRÉCISÉMENT.
-insert into public.circuits (
-  id, name, is_official, is_default,
-  finish_line_lat, finish_line_lon, finish_line_radius_m, finish_line_heading,
-  length_km, turns_count
-) values (
-  gen_random_uuid(),
-  'Circuit Ricardo Tormo (Valencia)',
-  true,
-  false,
-  <FINISH_LAT>,          -- ex. 39.48590 (latitude de la ligne, WGS84)
-  <FINISH_LON>,          -- ex. -0.63170 (longitude de la ligne, WGS84)
-  30,                    -- rayon de détection en mètres (30 = valeur usuelle)
-  <FINISH_HEADING|null>, -- cap de franchissement en degrés, ou null
-  4.005,                 -- longueur km (À CONFIRMER)
-  14                     -- nombre de virages (À CONFIRMER)
-)
--- Si le circuit existe déjà, mettre à jour la ligne d'arrivée au lieu d'insérer :
-on conflict (id) do update set
-  finish_line_lat      = excluded.finish_line_lat,
-  finish_line_lon      = excluded.finish_line_lon,
-  finish_line_radius_m = excluded.finish_line_radius_m,
-  finish_line_heading  = excluded.finish_line_heading;
-```
-
-> Le `on conflict (id)` ne se déclenche qu'avec un `id` fixe connu ; pour un
-> circuit déjà présent, préférer un `UPDATE public.circuits SET finish_line_… =
-> <…> WHERE name = 'Circuit Ricardo Tormo (Valencia)';` ciblé. Vérifier au
-> préalable : `select id, name, finish_line_lat, finish_line_lon from public.circuits
-> where name ilike '%valencia%' or name ilike '%tormo%';`
-
-Au lancement de la capture, `placement.tsx` doit passer `circuit.finishLine` de ce
-circuit — sinon repli `BELTOISE_FINISH` (hors piste → 0 tour).
+- [ ] Parcours complet « survie hors-ligne » de `docs/SMOKE_TEST_DEVICE.md`.
 
 — Claude Code, lot durcissement Valencia

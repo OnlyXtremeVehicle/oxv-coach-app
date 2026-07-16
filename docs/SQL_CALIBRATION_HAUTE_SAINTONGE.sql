@@ -4,8 +4,13 @@
 -- Source géométrie : OpenStreetMap way 54412766 « Piste vitesse » (ODbL).
 -- Fichier source : src/circuit/data/haute-saintonge.geojson
 --
--- ⚠ PRÉPARÉE, NON EXÉCUTÉE. À appliquer en prod par Gabin.
+-- ✅ APPLIQUÉE EN PROD le 2026-07-16 (via MCP, accord explicite fondateur) sur
+--    l'id 0670af3f-ef84-4843-8a55-0c8bc3dcdca9. NE PAS RÉ-EXÉCUTER l'étape 2b
+--    (insert) — la ligne existe. Ce fichier reste la référence de calibration.
+--    Rollback si besoin : lat 45.2426515, lon -0.0941293, radius 40, heading null.
 -- ⚠ LE RAYON EST LA VALEUR CRITIQUE — lire la note ci-dessous avant de changer 15.
+-- ⚠ Depuis e64c37e, le rayon sert de DEMI-LARGEUR DE PORTE (détection par
+--    franchissement, sens obligatoire) quand finish_line_heading est renseigné.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ── POURQUOI 15 m ET PAS LE DÉFAUT (30 m) ────────────────────────────────────

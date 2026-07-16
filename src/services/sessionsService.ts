@@ -156,48 +156,6 @@ export function calculateEvolution(
   };
 }
 
-export interface SpeedSample {
-  elapsedSeconds: number;
-  speedKmh: number;
-}
-
-export async function fetchSpeedSamples(sessionId: string): Promise<SpeedSample[]> {
-  const laps = await fetchSessionLaps(sessionId);
-  if (laps.length === 0) return [];
-
-  const num = (v: unknown): number => {
-    if (v === null || v === undefined) return 0;
-    const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-    return isNaN(n) ? 0 : n;
-  };
-
-  const samples: SpeedSample[] = [];
-  let cumulativeTime = 0;
-
-  for (const lap of laps) {
-    const lapDuration = num(lap.duration_seconds);
-
-    samples.push({
-      elapsedSeconds: cumulativeTime,
-      speedKmh: num(lap.avg_speed_kmh),
-    });
-
-    samples.push({
-      elapsedSeconds: cumulativeTime + lapDuration / 2,
-      speedKmh: num(lap.max_speed_kmh),
-    });
-
-    cumulativeTime += lapDuration;
-
-    samples.push({
-      elapsedSeconds: cumulativeTime,
-      speedKmh: num(lap.avg_speed_kmh),
-    });
-  }
-
-  return samples;
-}
-
 // ============================================================
 // NOUVEAU B.5 — Liste sessions et stats globales
 // ============================================================
