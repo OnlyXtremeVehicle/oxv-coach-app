@@ -1,9 +1,12 @@
 import { GpsFix, type RaceBoxData } from '@/types/telemetry';
 
 import {
+  EMPTY_LAP_MAXIMA,
   EMPTY_MAXIMA,
+  lapMaximaToColumns,
   nextElapsedMs,
   raceBoxToFrameInsert,
+  updateLapMaxima,
   updateMaxima,
 } from '../captureFrameMapping';
 
@@ -184,5 +187,92 @@ describe('updateMaxima', () => {
     expect(m.maxSpeedKmh).toBe(180);
     expect(m.maxGLateral).toBeCloseTo(1.4, 5);
     expect(m.maxGLongitudinal).toBeCloseTo(0.9, 5);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MAXIMA PAR TOUR — la donnée que `laps.max_*` n'avait jamais reçue.
+//
+// Sans ces valeurs, `computeSmoothness` lisait `max_g_lateral ?? 0` sur chaque
+// tour : écart-type nul, fluidité 100 fabriquée sur 100 % des séances réelles.
+// Ces tests verrouillent la CONVENTION D'AXES (identique à updateMaxima et à
+// sessionTelemetryMapping.test.ts) et le refus de fabriquer un zéro.
+// ---------------------------------------------------------------------------
+describe('updateLapMaxima — accumulation par tour', () => {
+  it('retient le latéral en VALEUR ABSOLUE (un virage à gauche compte autant)', () => {
+    let m = EMPTY_LAP_MAXIMA;
+    m = updateLapMaxima(m, frame({ gy: 0.6 })); // droite
+    m = updateLapMaxima(m, frame({ gy: -1.2 })); // gauche, plus fort
+    m = updateLapMaxima(m, frame({ gy: 0.9 }));
+    expect(m.maxGLateral).toBeCloseTo(1.2, 5);
+  });
+
+  it('sépare FREINAGE (x > 0) et ACCÉLÉRATION (x < 0) — convention verrouillée', () => {
+    let m = EMPTY_LAP_MAXIMA;
+    m = updateLapMaxima(m, frame({ gx: 0.9 })); // gros freinage
+    m = updateLapMaxima(m, frame({ gx: -0.4 })); // accélération
+    m = updateLapMaxima(m, frame({ gx: 0.2 })); // petit freinage
+    // Le freinage ne doit JAMAIS récupérer le 0.4 d'accélération, et
+    // l'accélération jamais le 0.9 de freinage : c'est l'inversion d'axes qui
+    // fausserait le QDI entier.
+    expect(m.maxGBraking).toBeCloseTo(0.9, 5);
+    expect(m.maxGAccel).toBeCloseTo(0.4, 5);
+  });
+
+  it('un tour mesuré SANS freinage porte un freinage de 0 (observation, pas trou)', () => {
+    // Nuance essentielle : 0 mesuré ≠ null. Ici on a bien regardé, et il n'a
+    // jamais freiné.
+    const m = updateLapMaxima(EMPTY_LAP_MAXIMA, frame({ gx: -0.5 }));
+    expect(m.maxGBraking).toBe(0);
+    expect(m.maxGAccel).toBeCloseTo(0.5, 5);
+  });
+
+  it('retient la vitesse max et alimente la moyenne depuis la MÊME source', () => {
+    let m = EMPTY_LAP_MAXIMA;
+    m = updateLapMaxima(m, frame({ speed: 100 }));
+    m = updateLapMaxima(m, frame({ speed: 180 }));
+    m = updateLapMaxima(m, frame({ speed: 140 }));
+    expect(m.maxSpeedKmh).toBe(180);
+    expect(lapMaximaToColumns(m).avg_speed_kmh).toBeCloseTo(140, 5);
+  });
+
+  it('est une transformation PURE (n’altère pas l’accumulateur reçu)', () => {
+    const before = { ...EMPTY_LAP_MAXIMA };
+    updateLapMaxima(EMPTY_LAP_MAXIMA, frame({ speed: 200, gy: 1.5 }));
+    expect(EMPTY_LAP_MAXIMA).toEqual(before);
+  });
+});
+
+describe('lapMaximaToColumns — absent = null, JAMAIS 0', () => {
+  it('un tour sans AUCUNE trame rattachée rend tout null', () => {
+    // Le cœur de la correction : ce tour se rendra « — », pas « 0 ».
+    expect(lapMaximaToColumns(undefined)).toEqual({
+      max_speed_kmh: null,
+      avg_speed_kmh: null,
+      max_g_lateral: null,
+      max_g_braking: null,
+      max_g_accel: null,
+    });
+  });
+
+  it('un accumulateur vierge rend tout null (aucun 0 par défaut)', () => {
+    const cols = lapMaximaToColumns({ ...EMPTY_LAP_MAXIMA });
+    expect(cols.max_g_lateral).toBeNull();
+    expect(cols.max_speed_kmh).toBeNull();
+    expect(cols.avg_speed_kmh).toBeNull();
+    // Le verrou : surtout pas 0 — c'est ce zéro-là qui fabriquait la fluidité.
+    expect(cols.max_g_lateral).not.toBe(0);
+  });
+
+  it('projette les mesures réelles sur les colonnes `laps`', () => {
+    let m = EMPTY_LAP_MAXIMA;
+    m = updateLapMaxima(m, frame({ speed: 120, gx: 0.8, gy: -1.1 }));
+    m = updateLapMaxima(m, frame({ speed: 160, gx: -0.6, gy: 0.4 }));
+    const cols = lapMaximaToColumns(m);
+    expect(cols.max_speed_kmh).toBe(160);
+    expect(cols.avg_speed_kmh).toBeCloseTo(140, 5);
+    expect(cols.max_g_lateral).toBeCloseTo(1.1, 5);
+    expect(cols.max_g_braking).toBeCloseTo(0.8, 5);
+    expect(cols.max_g_accel).toBeCloseTo(0.6, 5);
   });
 });

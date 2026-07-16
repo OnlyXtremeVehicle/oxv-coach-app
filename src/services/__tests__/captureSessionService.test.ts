@@ -31,6 +31,10 @@ interface Ctrl {
   /** Id d'intention gelé localement (null = aucune intention en attente). */
   pendingIntentionId: string | null;
   forgotIntention: number;
+  /** Tours que le runner de détection déclare avoir enregistrés. */
+  recordedLaps: any[];
+  /** Numéro de tour EN COURS côté runner (0 = outlap). Piloté par le test. */
+  currentLapNumber: number;
 }
 function ctrl(): Ctrl {
   const g = globalThis as any;
@@ -44,6 +48,8 @@ function ctrl(): Ctrl {
       enqueued: [],
       pendingIntentionId: null,
       forgotIntention: 0,
+      recordedLaps: [],
+      currentLapNumber: 0,
     } as Ctrl;
   }
   return g.__OXV_CS__;
@@ -91,7 +97,10 @@ jest.mock('@/ble/captureMode', () => ({
 jest.mock('@/ble/lapDetectionRunner', () => ({
   startLapDetection: jest.fn(),
   stopLapDetection: jest.fn(),
-  getRecordedLaps: jest.fn(() => []),
+  getRecordedLaps: jest.fn(() => (globalThis as any).__OXV_CS__.recordedLaps),
+  // Le runner est la SOURCE des frontières de tour ; le test le joue en pilotant
+  // ce numéro entre deux trames, exactement comme un franchissement de ligne.
+  getCurrentLapNumber: jest.fn(() => (globalThis as any).__OXV_CS__.currentLapNumber),
 }));
 
 jest.mock('@/services/liveRelayRunner', () => ({
@@ -174,7 +183,7 @@ async function settle(turns = 10): Promise<void> {
   for (let i = 0; i < turns; i += 1) await new Promise((r) => setTimeout(r, 0));
 }
 
-function raceBoxFrame(): RaceBoxData {
+function raceBoxFrame(o: { speed?: number; gx?: number; gy?: number } = {}): RaceBoxData {
   return {
     timestamp: {
       year: 2026,
@@ -194,10 +203,37 @@ function raceBoxFrame(): RaceBoxData {
       altitude: 30,
       accuracy: 1.2,
     },
-    motion: { speed: 144, heading: 90, headingValid: true },
-    imu: { gForceX: 0.3, gForceY: -1.1, gForceZ: 1, rotRateX: 1, rotRateY: 2, rotRateZ: 3 },
+    motion: { speed: o.speed ?? 144, heading: 90, headingValid: true },
+    imu: {
+      gForceX: o.gx ?? 0.3,
+      gForceY: o.gy ?? -1.1,
+      gForceZ: 1,
+      rotRateX: 1,
+      rotRateY: 2,
+      rotRateZ: 3,
+    },
     battery: { isCharging: false, level: 80 },
   };
+}
+
+/** Tour tel que le runner de détection l'enregistre (durée en ms). */
+function recordedLap(lapNumber: number, durationMs = 100_000): any {
+  return {
+    lapNumber,
+    startedAtMs: 1_700_000_000_000,
+    endedAtMs: 1_700_000_000_000 + durationMs,
+    durationMs,
+    startLat: 45.6,
+    startLon: -0.141,
+    endLat: 45.6,
+    endLon: -0.141,
+  };
+}
+
+/** Les lignes `laps` réellement enfilées à la clôture. */
+function enqueuedLapRows(): any[] {
+  const op = ctrl().enqueued.find((o: any) => o.type === 'laps');
+  return op ? op.rows : [];
 }
 
 const START = { userId: 'user-1', finishLine: { lat: 45.6, lon: -0.141, radiusM: 40 } };
@@ -214,6 +250,8 @@ beforeEach(async () => {
   c.enqueued = [];
   c.pendingIntentionId = null;
   c.forgotIntention = 0;
+  c.recordedLaps = [];
+  c.currentLapNumber = 0;
   setUnlimitedReconnect.mockClear();
   activateKeepAwakeAsync.mockClear();
   deactivateKeepAwake.mockClear();
@@ -348,6 +386,130 @@ describe('flush — bornage du lot', () => {
 
     await stopCaptureSession(); // le flush final écoule le partiel
     expect(ctrl().inserts.map((b) => b.length)).toEqual([30]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// MAXIMA PAR TOUR — la donnée que `laps.max_*` n'a jamais reçue.
+//
+// `buildLapRows` n'écrivait aucune des colonnes statistiques, et aucun trigger ne
+// les calculait : elles étaient NULL sur 100 % des séances. `computeSmoothness`
+// les relisait en `?? 0` → écart-type nul → fluidité 100 FABRIQUÉE, pour ~24 % de
+// la marge globale. On corrige à la SOURCE : la donnée est mesurée pendant la
+// capture et écrite. Ces tests verrouillent le rattachement trame↔tour et le
+// refus d'inventer.
+// ---------------------------------------------------------------------------
+describe('maxima par tour — la donnée est ÉCRITE, ou rien ne l’est', () => {
+  it('rattache chaque trame à son tour et écrit les vraies mesures', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+
+    // Outlap : le pilote sort des stands, freine fort, appuie fort. Ces trames
+    // ne sont d'AUCUN tour chronométré.
+    ctrl().currentLapNumber = 0;
+    emit(raceBoxFrame({ speed: 200, gx: 1.4, gy: -1.9 }));
+
+    // Franchissement de la ligne → le runner ouvre le tour 1.
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 100, gx: 0.8, gy: 0.5 }));
+    emit(raceBoxFrame({ speed: 160, gx: -0.6, gy: -1.1 }));
+
+    // Franchissement suivant → tour 1 clos, tour 2 ouvert.
+    ctrl().currentLapNumber = 2;
+    emit(raceBoxFrame({ speed: 120, gx: 0.2, gy: 0.3 }));
+
+    ctrl().recordedLaps = [recordedLap(1, 100_000), recordedLap(2, 101_000)];
+    await stopCaptureSession();
+
+    const rows = enqueuedLapRows();
+    expect(rows).toHaveLength(2);
+
+    // Tour 1 : maxima de SES trames seulement.
+    expect(rows[0].lap_number).toBe(1);
+    expect(rows[0].max_g_lateral).toBeCloseTo(1.1, 5); // |−1.1| > |0.5|
+    expect(rows[0].max_g_braking).toBeCloseTo(0.8, 5); // x > 0
+    expect(rows[0].max_g_accel).toBeCloseTo(0.6, 5); // −x > 0
+    expect(rows[0].max_speed_kmh).toBe(160);
+    expect(rows[0].avg_speed_kmh).toBeCloseTo(130, 5);
+
+    // L'OUTLAP N'A PAS DÉTEINT sur le tour 1 : ses 1.9 g / 1.4 g / 200 km/h
+    // auraient fabriqué un maximum que le tour 1 n'a jamais produit.
+    expect(rows[0].max_g_lateral).not.toBeCloseTo(1.9, 5);
+    expect(rows[0].max_speed_kmh).not.toBe(200);
+
+    // Tour 2 : ses propres mesures, indépendantes du tour 1.
+    expect(rows[1].lap_number).toBe(2);
+    expect(rows[1].max_g_lateral).toBeCloseTo(0.3, 5);
+    expect(rows[1].max_speed_kmh).toBe(120);
+  });
+
+  it('un tour SANS aucune trame rattachée reste null — jamais 0', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 150, gx: 0.7, gy: -0.9 }));
+
+    // Le runner déclare un tour 2 (ligne franchie deux fois) mais aucune trame
+    // n'a pu lui être rattachée — trou de liaison BLE sur tout le tour, par ex.
+    ctrl().recordedLaps = [recordedLap(1), recordedLap(2)];
+    await stopCaptureSession();
+
+    const rows = enqueuedLapRows();
+    expect(rows).toHaveLength(2);
+    expect(rows[0].max_g_lateral).toBeCloseTo(0.9, 5);
+
+    // Le verrou du finding : ce tour se rendra « — ». Un 0 ici rentrerait dans
+    // l'écart-type de la fluidité comme une mesure réelle.
+    expect(rows[1].max_g_lateral).toBeNull();
+    expect(rows[1].max_g_braking).toBeNull();
+    expect(rows[1].max_g_accel).toBeNull();
+    expect(rows[1].max_speed_kmh).toBeNull();
+    expect(rows[1].avg_speed_kmh).toBeNull();
+    expect(rows[1].max_g_lateral).not.toBe(0);
+  });
+
+  it('le DERNIER tour est figé à l’arrêt (il ne se clôt pas par incrément)', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 130, gx: 0.5, gy: -0.7 }));
+    emit(raceBoxFrame({ speed: 170, gx: -0.3, gy: 1.3 }));
+
+    // Le franchissement final atteint le runner (le tour 1 est ENREGISTRÉ) mais
+    // aucun incrément ne nous parvient : plus aucune trame ne suit. Sans gel à
+    // l'arrêt, ce tour partirait vide alors qu'il a bien été mesuré.
+    ctrl().recordedLaps = [recordedLap(1)];
+    await stopCaptureSession();
+
+    const rows = enqueuedLapRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0].max_g_lateral).toBeCloseTo(1.3, 5);
+    expect(rows[0].max_speed_kmh).toBe(170);
+    expect(rows[0].max_g_braking).toBeCloseTo(0.5, 5);
+    expect(rows[0].max_g_accel).toBeCloseTo(0.3, 5);
+  });
+
+  it('les maxima ne fuient pas d’une séance à la suivante', async () => {
+    await startCaptureSession(START);
+    ctrl().currentLapNumber = 1;
+    ctrl().onData!(raceBoxFrame({ speed: 250, gx: 1.5, gy: -1.8 }));
+    ctrl().recordedLaps = [recordedLap(1)];
+    await stopCaptureSession();
+
+    ctrl().enqueued = [];
+    await startCaptureSession(START);
+    ctrl().currentLapNumber = 1;
+    ctrl().onData!(raceBoxFrame({ speed: 90, gx: 0.1, gy: -0.2 }));
+    ctrl().recordedLaps = [recordedLap(1)];
+    await stopCaptureSession();
+
+    // L'état vit dans la CaptureState, pas dans le module : la séance B porte
+    // ses propres mesures, pas les 1.8 g de A.
+    const rows = enqueuedLapRows();
+    expect(rows[0].max_g_lateral).toBeCloseTo(0.2, 5);
+    expect(rows[0].max_speed_kmh).toBe(90);
   });
 });
 

@@ -11,6 +11,11 @@
  *      les tours dans `laps`, calcule les agrégats, passe la session en
  *      'completed', upload le .ubx.
  *
+ * Les maxima PAR TOUR (`laps.max_g_lateral`, `max_g_braking`, `max_g_accel`,
+ * `max_speed_kmh`, `avg_speed_kmh`) sont accumulés ICI, pendant la capture : ils
+ * ne sont dérivables nulle part ailleurs, et sans eux la fluidité du bilan se
+ * calculait sur des zéros (cf. `accumulateLapMaxima` et captureFrameMapping).
+ *
  * Le mapping trame→ligne est isolé et testé (captureFrameMapping). Ici on ne
  * fait que l'orchestration réseau/état.
  *
@@ -37,6 +42,7 @@ import { startCapture, stopCapture } from '@/ble/captureMode';
 import { startPilotLiveRelay, stopPilotLiveRelay } from '@/services/liveRelayRunner';
 import {
   type RecordedLap,
+  getCurrentLapNumber,
   getRecordedLaps,
   startLapDetection,
   stopLapDetection,
@@ -47,11 +53,15 @@ import { useSessionStore } from '@/store/useSessionStore';
 import type { RaceBoxData } from '@/types/telemetry';
 
 import {
+  EMPTY_LAP_MAXIMA,
   EMPTY_MAXIMA,
+  type LapMaxima,
   type SessionMaxima,
   type TelemetryFrameInsert,
+  lapMaximaToColumns,
   nextElapsedMs,
   raceBoxToFrameInsert,
+  updateLapMaxima,
   updateMaxima,
 } from './captureFrameMapping';
 import {
@@ -170,6 +180,19 @@ interface CaptureState {
   requeued: number;
   lastElapsed: number;
   maxima: SessionMaxima;
+  /**
+   * Maxima RÉELLEMENT mesurés, par numéro de tour chronométré (clé ≥ 1). Un tour
+   * ABSENT de cette map n'a reçu aucune trame : ses colonnes resteront `null`.
+   * Jamais de valeur par défaut ici — c'est la donnée, ou rien.
+   */
+  lapMaxima: Map<number, LapMaxima>;
+  /** Accumulateur du tour EN COURS, figé au changement de tour et à l'arrêt. */
+  currentLapMaxima: LapMaxima;
+  /**
+   * Numéro de tour vu à la trame précédente (0 = outlap). Son changement est le
+   * SIGNAL de clôture du tour précédent (cf. `getCurrentLapNumber`).
+   */
+  currentLapNumber: number;
   unsubData: () => void;
   /** Désabonnement du suivi de reconnexion BLE (interruption/lost). */
   unsubReconnect: () => void;
@@ -302,6 +325,9 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     requeued: 0,
     lastElapsed: 0,
     maxima: { ...EMPTY_MAXIMA },
+    lapMaxima: new Map(),
+    currentLapMaxima: { ...EMPTY_LAP_MAXIMA },
+    currentLapNumber: 0,
     unsubData: () => undefined,
     unsubReconnect: () => undefined,
     timer: null,
@@ -321,6 +347,11 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   }
 
   // Détection de tours (compteurs live dans le store + enregistrement détaillé).
+  //
+  // L'ORDRE EST PORTEUR : ce runner s'abonne au flux BLE AVANT nous (cf.
+  // `state.unsubData` plus bas), donc pour une trame donnée il a déjà arbitré le
+  // franchissement de ligne quand notre `onData` lit `getCurrentLapNumber()`.
+  // C'est ce qui permet de rattacher chaque trame au bon tour sans redétecter.
   startLapDetection({
     finishLineLat: finish.lat,
     finishLineLon: finish.lon,
@@ -349,6 +380,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     state.lastElapsed = elapsed;
     state.buffer.push(raceBoxToFrameInsert(frame, sessionId, elapsed));
     state.maxima = updateMaxima(state.maxima, frame);
+    accumulateLapMaxima(state, frame);
     if (state.buffer.length >= FLUSH_EVERY_FRAMES) void flush(state);
   });
   state.timer = setInterval(() => void flush(state), FLUSH_INTERVAL_MS);
@@ -579,8 +611,56 @@ async function drain(state: CaptureState): Promise<void> {
   await flush(state, true);
 }
 
-/** Construit les lignes `laps` à partir des tours détectés (transformation pure). */
-function buildLapRows(sessionId: string, laps: RecordedLap[]): LapInsert[] {
+/**
+ * Rattache une trame au tour qu'elle mesure et met à jour les maxima de ce tour.
+ *
+ * Les FRONTIÈRES de tour ne sont pas les nôtres : elles appartiennent au runner
+ * de détection, abonné au même flux et AVANT nous — il a donc déjà traité cette
+ * trame. On se contente donc de LIRE son numéro de tour en cours : un changement
+ * depuis la trame précédente signifie « le tour précédent vient de se clore », et
+ * rien d'autre. Aucune détection dupliquée, aucune responsabilité déplacée.
+ *
+ * L'accumulateur est figé AVANT d'agréger la trame courante : la trame qui porte
+ * le franchissement ouvre le tour suivant, elle ne clôt pas le précédent. C'est
+ * aussi ce qui écarte l'OUTLAP — ses trames s'accumulent sous le numéro 0, et le
+ * premier passage de ligne les jette (`freezeCurrentLap` n'archive que les
+ * numéros ≥ 1) au lieu de les attribuer au tour 1, dont elles ne sont pas.
+ */
+function accumulateLapMaxima(state: CaptureState, frame: RaceBoxData): void {
+  const lapNumber = getCurrentLapNumber();
+  if (lapNumber !== state.currentLapNumber) {
+    freezeCurrentLap(state);
+    state.currentLapNumber = lapNumber;
+  }
+  state.currentLapMaxima = updateLapMaxima(state.currentLapMaxima, frame);
+}
+
+/**
+ * Archive les maxima du tour en cours et repart d'un accumulateur vierge.
+ *
+ * Le numéro 0 (outlap) n'est PAS archivé : ce n'est pas un tour chronométré.
+ */
+function freezeCurrentLap(state: CaptureState): void {
+  if (state.currentLapNumber > 0) {
+    state.lapMaxima.set(state.currentLapNumber, state.currentLapMaxima);
+  }
+  state.currentLapMaxima = { ...EMPTY_LAP_MAXIMA };
+}
+
+/**
+ * Construit les lignes `laps` à partir des tours détectés (transformation pure).
+ *
+ * Les colonnes statistiques viennent des maxima accumulés PENDANT la capture, par
+ * numéro de tour. Un tour absent de `lapMaxima` — aucune trame rattachée — garde
+ * ses colonnes à `null` : la lecture les rendra « — ». On n'écrit JAMAIS 0 pour
+ * une mesure qui n'a pas eu lieu ; c'est exactement le zéro fabriqué qui donnait
+ * une fluidité de 100 sortie de nulle part.
+ */
+function buildLapRows(
+  sessionId: string,
+  laps: RecordedLap[],
+  lapMaxima: ReadonlyMap<number, LapMaxima>
+): LapInsert[] {
   if (laps.length === 0) return [];
   const bestMs = Math.min(...laps.map((l) => l.durationMs));
   return laps.map((l) => ({
@@ -596,6 +676,7 @@ function buildLapRows(sessionId: string, laps: RecordedLap[]): LapInsert[] {
     is_best_lap: l.durationMs === bestMs,
     is_outlap: false,
     is_inlap: false,
+    ...lapMaximaToColumns(lapMaxima.get(l.lapNumber)),
   }));
 }
 
@@ -638,6 +719,14 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   await drain(state);
 
   // 2. Arrête la détection de tours, relève compteurs + tours détaillés.
+  //
+  //    Le tour EN COURS ne se clôt pas par incrément mais par l'arrêt : on fige
+  //    son accumulateur ici, sinon ses mesures resteraient en l'air. C'est sûr —
+  //    `unsubData()` est déjà passé, plus aucune trame ne peut l'alimenter. Le
+  //    cas réel : le franchissement final atteint le runner (encore abonné) mais
+  //    plus nous ; le tour est alors ENREGISTRÉ, et sans ce gel il partirait avec
+  //    des colonnes vides alors qu'il a bien été mesuré.
+  freezeCurrentLap(state);
   stopLapDetection();
   const recordedLaps = getRecordedLaps();
   const store = useSessionStore.getState();
@@ -660,7 +749,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   const emittedFrames = total + requeued;
 
   // 4. Enqueue la clôture (tours → agrégats → upload) DANS L'ORDRE FIFO.
-  const lapRows = buildLapRows(sessionId, recordedLaps);
+  const lapRows = buildLapRows(sessionId, recordedLaps, state.lapMaxima);
   if (lapRows.length > 0) {
     await enqueue({ type: 'laps', sessionId, rows: lapRows }).catch((e) =>
       console.warn('[OXV][capture] enqueue laps KO :', e instanceof Error ? e.message : e)

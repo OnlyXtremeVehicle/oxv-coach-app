@@ -25,6 +25,12 @@
  * « 100 % de marge » — le chiffre roi du bilan, faux et persisté à vie.
  * Les appelants filtrent avec `isMarginResolved()` et rendent « — ».
  *
+ * Même règle pour la FLUIDITÉ, sur `laps.max_g_lateral` : les tours sans
+ * mesure sont écartés, et sous deux tours mesurés la fluidité vaut `null`.
+ * Conséquence ASSUMÉE : les séances captées AVANT l'écriture de cette colonne
+ * (cf. captureSessionService) n'ont pas de marge et se rendent « — ». On
+ * préfère le silence honnête au chiffre inventé ; on ne les rattrape pas.
+ *
  * Voir docs/architecture/02_PARTIE_2_algorithmes.md, sections 7-8.
  */
 
@@ -187,9 +193,16 @@ function computePilotMargin(laps: Lap[]): PilotMarginResult {
   }
 
   const regularity = computeRegularity(validLaps.map((l) => l.duration_seconds));
-  const smoothness = computeSmoothness(validLaps.map((l) => Number(l.max_g_lateral ?? 0)));
+  const smoothness = computeSmoothness(validLaps);
 
-  const marginPilot = clampMargin(REGULARITY_WEIGHT * regularity + SMOOTHNESS_WEIGHT * smoothness);
+  // Même arbitrage que la marge globale : une composante absente ne se pondère
+  // pas. La régularité, elle, reste RÉELLE (les temps au tour sont mesurés) et
+  // continue d'être exposée dans le breakdown — mais elle ne peut pas tenir lieu
+  // de marge pilote à elle seule.
+  const marginPilot =
+    smoothness !== null
+      ? clampMargin(REGULARITY_WEIGHT * regularity + SMOOTHNESS_WEIGHT * smoothness)
+      : null;
 
   return { marginPilot, regularity, smoothness, validLapCount: validLaps.length };
 }
@@ -205,13 +218,38 @@ function computeRegularity(lapSecondsList: number[]): number {
 }
 
 /**
- * Smoothness : stddev des G_lat max par tour, mappé sur [0, 100].
+ * Smoothness : stddev des G_lat max par tour, mappé sur [0, 100], ou `null`
+ * quand moins de DEUX tours portent une mesure.
  * stddev ≤ 0.05 g → 100 (transitions très constantes)
  * stddev ≥ 0.55 g → 0 (transitions très variables)
+ *
+ * Les tours SANS mesure sont écartés, jamais convertis en 0 g. Le `?? 0` d'avant
+ * était la dernière fabrication du write-path : `laps.max_g_lateral` n'était
+ * écrit par personne, tous les tours entraient donc à 0, l'écart-type valait 0,
+ * et la fluidité sortait à 100 sur 100 % des séances réelles — ~24 % de la marge
+ * globale (0,6 × 0,4) adossés à rien. Une dispersion de zéros identiques n'est
+ * pas un pilotage d'une constance parfaite : c'est une absence de données.
  */
-function computeSmoothness(gLatPerLap: number[]): number {
-  const stddev = standardDeviation(gLatPerLap);
+function computeSmoothness(laps: Lap[]): number | null {
+  const measured = laps
+    .map((l) => toFiniteNumber(l.max_g_lateral))
+    .filter((v): v is number => v !== null);
+  // Une dispersion demande deux points. Sous ce seuil il n'y a rien à dire —
+  // et surtout pas « 100 ».
+  if (measured.length < 2) return null;
+  const stddev = standardDeviation(measured);
   return clampMargin(100 - Math.max(0, stddev - 0.05) * 200);
+}
+
+/**
+ * Nombre exploitable, ou `null`. Couvre l'`undefined` (SELECT partiel casté en
+ * `Lap`), le NULL de base, et une valeur corrompue — un trou, quelle qu'en soit
+ * la forme, ne devient jamais une valeur.
+ */
+function toFiniteNumber(v: number | null | undefined): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
 
 function standardDeviation(values: number[]): number {

@@ -126,3 +126,99 @@ export function updateMaxima(m: SessionMaxima, frame: RaceBoxData): SessionMaxim
     maxGLongitudinal: Math.max(m.maxGLongitudinal, Math.abs(frame.imu.gForceX)),
   };
 }
+
+// ---------------------------------------------------------------------------
+// MAXIMA PAR TOUR — les colonnes `laps.max_*` / `laps.avg_speed_kmh`.
+//
+// Elles existent en base depuis 0004_laps_and_circuits.sql mais n'étaient
+// JAMAIS écrites, et aucun trigger ne les calculait. `computeSmoothness` lisait
+// donc `max_g_lateral ?? 0` sur tous les tours → écart-type nul → fluidité 100
+// sur 100 % des séances réelles. Un quart de la marge globale ne venait d'AUCUNE
+// mesure. On écrit désormais la donnée à la SOURCE, pendant la capture.
+//
+// Ces valeurs sont `number | null` et JAMAIS `0` par défaut : le zéro est
+// réservé à une mesure qui vaut réellement zéro. Un tour sans aucune trame
+// exploitable reste `null` de bout en bout — il se rendra « — », pas « 0 ».
+// ---------------------------------------------------------------------------
+
+/**
+ * Maxima RÉELLEMENT mesurés sur UN tour. Chaque champ vaut `null` tant qu'aucune
+ * trame exploitable ne l'a alimenté.
+ */
+export interface LapMaxima {
+  maxSpeedKmh: number | null;
+  /** Latéral = |gForceY| (convention verrouillée, cf. sessionTelemetryMapping). */
+  maxGLateral: number | null;
+  /** Freinage = part POSITIVE de gForceX (x > 0 = freinage). */
+  maxGBraking: number | null;
+  /** Accélération = part positive de −gForceX. */
+  maxGAccel: number | null;
+  /** Somme des vitesses exploitables, pour la moyenne du tour. */
+  speedSumKmh: number;
+  /** Nombre de vitesses exploitables agrégées. 0 → pas de moyenne (null). */
+  speedSampleCount: number;
+}
+
+export const EMPTY_LAP_MAXIMA: LapMaxima = {
+  maxSpeedKmh: null,
+  maxGLateral: null,
+  maxGBraking: null,
+  maxGAccel: null,
+  speedSumKmh: 0,
+  speedSampleCount: 0,
+};
+
+/** Retient le plus grand, en ignorant un candidat non exploitable (jamais NaN). */
+function maxOf(current: number | null, candidate: number): number | null {
+  if (!Number.isFinite(candidate)) return current;
+  return current === null ? candidate : Math.max(current, candidate);
+}
+
+/**
+ * Agrège une trame dans les maxima du tour EN COURS (transformation pure).
+ *
+ * CONVENTION D'AXES — verrouillée par sessionTelemetryMapping.test.ts, ne pas
+ * l'inverser : gForceY = LATÉRAL, gForceX = LONGITUDINAL avec x > 0 = FREINAGE.
+ * D'où freinage = max(gForceX, 0) et accélération = max(−gForceX, 0) : chaque
+ * sens ne retient que sa propre moitié de l'axe. Un tour mesuré sans freinage
+ * porte donc un maximum de freinage de 0 — c'est une OBSERVATION (« il n'a
+ * jamais freiné »), pas un trou comblé ; le trou, lui, reste `null`.
+ */
+export function updateLapMaxima(m: LapMaxima, frame: RaceBoxData): LapMaxima {
+  const speed = frame.motion.speed;
+  const speedUsable = Number.isFinite(speed);
+  return {
+    maxSpeedKmh: maxOf(m.maxSpeedKmh, speed),
+    maxGLateral: maxOf(m.maxGLateral, Math.abs(frame.imu.gForceY)),
+    maxGBraking: maxOf(m.maxGBraking, Math.max(0, frame.imu.gForceX)),
+    maxGAccel: maxOf(m.maxGAccel, Math.max(0, -frame.imu.gForceX)),
+    speedSumKmh: speedUsable ? m.speedSumKmh + speed : m.speedSumKmh,
+    speedSampleCount: speedUsable ? m.speedSampleCount + 1 : m.speedSampleCount,
+  };
+}
+
+/** Les colonnes statistiques d'une ligne `laps`. `null` = rien de mesuré. */
+export interface LapStatColumns {
+  max_speed_kmh: number | null;
+  avg_speed_kmh: number | null;
+  max_g_lateral: number | null;
+  max_g_braking: number | null;
+  max_g_accel: number | null;
+}
+
+/**
+ * Projette les maxima d'un tour sur ses colonnes `laps` (transformation pure).
+ *
+ * `undefined` (tour sans AUCUNE trame rattachée — jamais mesuré) et un
+ * accumulateur vide donnent le même résultat : tout `null`. C'est le cœur de la
+ * correction — on écrit du réel, ou rien.
+ */
+export function lapMaximaToColumns(m: LapMaxima | undefined): LapStatColumns {
+  return {
+    max_speed_kmh: m?.maxSpeedKmh ?? null,
+    avg_speed_kmh: m && m.speedSampleCount > 0 ? m.speedSumKmh / m.speedSampleCount : null,
+    max_g_lateral: m?.maxGLateral ?? null,
+    max_g_braking: m?.maxGBraking ?? null,
+    max_g_accel: m?.maxGAccel ?? null,
+  };
+}

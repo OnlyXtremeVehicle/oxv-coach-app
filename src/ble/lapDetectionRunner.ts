@@ -136,6 +136,27 @@ export function stopLapDetection(): void {
   lastMonoMs = 0;
 }
 
+/**
+ * Numéro du tour CHRONOMÉTRÉ en cours, ou 0 tant que la ligne n'a pas été
+ * franchie une première fois (outlap : aucun tour commencé).
+ *
+ * LECTURE SEULE — ce runner reste seul propriétaire des frontières de tour. Ce
+ * getter existe pour que la capture (captureSessionService) puisse RATTACHER
+ * chaque trame au tour qu'elle mesure, sans dupliquer la détection : les deux
+ * sont abonnés au MÊME flux BLE, et ce runner s'abonne le PREMIER — quand la
+ * capture lit ce numéro pour une trame, le franchissement porté par cette trame
+ * est donc déjà pris en compte ici. Un changement de valeur entre deux trames
+ * signifie exactement « le tour précédent vient de se clore ».
+ *
+ * `lapNumber` compte les tours CLOS ; le tour en cours est donc le suivant. Le 0
+ * de l'outlap n'est pas un numéro de tour : il dit « rien à mesurer encore », et
+ * distingue les trames d'approche (freinages, appuis) des mesures du tour 1 —
+ * les leur attribuer fabriquerait un maximum que le tour 1 n'a pas produit.
+ */
+export function getCurrentLapNumber(): number {
+  return previousLapMonoMs === null ? 0 : lapNumber + 1;
+}
+
 export interface LapDetectorStatus {
   active: boolean;
   rawCrossings: number;

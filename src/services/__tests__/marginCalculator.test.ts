@@ -207,6 +207,87 @@ describe('computeMargin — honnêteté de la donnée absente', () => {
   });
 });
 
+// ============================================================================
+// FLUIDITÉ — la dernière fabrication du write-path.
+//
+// `laps.max_g_lateral` n'était écrit par personne (buildLapRows l'omettait, aucun
+// trigger ne le calculait). Le `Number(l.max_g_lateral ?? 0)` d'ici transformait
+// donc tous les tours en 0 g : écart-type nul → fluidité 100, sur 100 % des
+// séances réelles, pour ~24 % de la marge globale (0,6 × 0,4). Des zéros
+// identiques ne sont pas une constance parfaite : c'est une absence de données.
+// ============================================================================
+describe('computeMargin — fluidité : tours sans mesure', () => {
+  it('ne fabrique JAMAIS 100 de fluidité quand AUCUN tour n’a de max_g_lateral', () => {
+    // Exactement les séances déjà captées avant l'écriture de la colonne.
+    const laps = [
+      lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: null }),
+      lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: null }),
+      lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: null }),
+    ];
+    const out = computeMargin({ session: session(0.5), laps });
+
+    // Le verrou du finding : avant, stddev([0,0,0]) = 0 → smoothness = 100.
+    expect(out.breakdown.smoothness).toBeNull();
+    expect(out.breakdown.smoothness).not.toBe(100);
+    // La fluidité manque → pas de marge pilote, donc pas de marge globale.
+    expect(out.marginPilot).toBeNull();
+    expect(out.marginGlobal).toBeNull();
+    expect(out.marginZone).toBeNull();
+    expect(isMarginResolved(out)).toBe(false);
+    // La régularité, elle, est RÉELLE (les temps au tour sont mesurés) et reste
+    // exposée : on ne perd pas une donnée vraie au passage.
+    expect(out.breakdown.regularity).toBeGreaterThan(95);
+  });
+
+  it('un SEUL tour mesuré ne suffit pas à une dispersion → null', () => {
+    const laps = [
+      lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.6 }),
+      lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: null }),
+      lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: null }),
+    ];
+    const out = computeMargin({ session: session(0.5), laps });
+    expect(out.breakdown.smoothness).toBeNull();
+    expect(out.marginGlobal).toBeNull();
+  });
+
+  it('ignore les tours sans mesure et calcule sur les tours RÉELLEMENT mesurés', () => {
+    // Deux tours mesurés suffisent : la dispersion porte sur EUX, le tour muet
+    // n'entre pas comme un 0 (qui aurait explosé l'écart-type à ~0,28).
+    const laps = [
+      lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.6 }),
+      lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.62 }),
+      lap({ lap_number: 3, duration_seconds: 100, max_g_lateral: null }),
+    ];
+    const out = computeMargin({ session: session(0.65), laps });
+
+    // stddev([0.6, 0.62]) = 0.01 ≤ 0.05 → fluidité 100, et cette fois c'est vrai.
+    expect(out.breakdown.smoothness).toBe(100);
+    expect(out.marginGlobal).not.toBeNull();
+    expect(isMarginResolved(out)).toBe(true);
+  });
+
+  it('des tours mesurés et DISPERSÉS donnent une fluidité basse (valeur réelle)', () => {
+    // Contre-épreuve : le calcul distingue bien un vrai pilotage irrégulier d'un
+    // « tout à 0 ». stddev([0.2, 1.1]) = 0.45 → 100 − 0.40 × 200 = 20.
+    const laps = [
+      lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: 0.2 }),
+      lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 1.1 }),
+    ];
+    const out = computeMargin({ session: session(1.1), laps });
+    expect(out.breakdown.smoothness).toBeCloseTo(20, 5);
+  });
+
+  it('écarte un max_g_lateral corrompu comme une absence (jamais 0 g)', () => {
+    const laps = [
+      lap({ lap_number: 1, duration_seconds: 100, max_g_lateral: Number.NaN }),
+      lap({ lap_number: 2, duration_seconds: 100, max_g_lateral: 0.6 }),
+    ];
+    const out = computeMargin({ session: session(0.6), laps });
+    expect(out.breakdown.smoothness).toBeNull();
+    expect(out.marginGlobal).toBeNull();
+  });
+});
+
 describe('isMarginResolved', () => {
   it('accepte une marge dont toutes les composantes sont réelles', () => {
     const out = computeMargin({ session: session(0.5), laps: regularLaps() });
