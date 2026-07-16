@@ -165,10 +165,22 @@ Le lot est **logiciellement complet et testé**, mais sa validation finale est u
 (zéro doublon, `total_frames` exact, tours détectés). **Tant que ce parcours n'est
 pas passé sur device, le durcissement n'est pas validé.**
 
-## DÉCISION FONDATEUR REQUISE — la fluidité est fabriquée sur 100 % des séances
+## La fluidité est devenue réelle — décision fondateur prise et appliquée (`c409dcc`)
 
-Découvert en corrigeant la critique 3, **non corrigé** (un fix naïf serait
-destructeur) :
+> **Tranché** : voie (1), « on écrit la donnée à la capture ». La colonne
+> `laps.max_g_lateral` existait déjà → **zéro migration**. Depuis `c409dcc`, la
+> capture accumule et écrit les maxima **par tour** (`max_g_lateral`,
+> `max_g_braking`, `max_g_accel`, `max_speed_kmh`, `avg_speed_kmh`), dans la
+> convention d'axes verrouillée (gForceY = latéral ; gForceX > 0 = freinage).
+> L'outlap est exclu du tour 1 ; le dernier tour est figé à l'arrêt ; un tour sans
+> trame reste `null` (jamais 0), tandis qu'un tour mesuré sans freinage porte
+> honnêtement 0 (« il n'a jamais freiné » est une observation, pas un trou).
+> `computeSmoothness` écarte désormais les tours non mesurés au lieu de les lire
+> 0 g. **Conséquence assumée** : les séances déjà captées (colonne NULL) voient
+> leur marge se taire (« — ») au lieu d'afficher un 100 fabriqué — silence honnête,
+> sans rattrapage. Le diagnostic d'origine est conservé ci-dessous.
+
+Découvert en corrigeant la critique 3 :
 
 - `buildLapRows` (`captureSessionService.ts`) n'écrit **jamais** `laps.max_g_lateral`,
   et aucun trigger ne le calcule côté base.
@@ -178,21 +190,18 @@ destructeur) :
 - La fluidité pèse ~24 % de la marge globale : c'est la même violation « donnée
   absente → 100 » que la critique 3, **un cran plus bas**.
 
-**Pourquoi je ne l'ai pas corrigée seul** : rendre la fluidité honnêtement `null`
-**nullifierait la marge globale de TOUTES les séances** captées jusqu'ici (la
-pondération n'est calculée que si ses termes existent). C'est un arbitrage produit,
-pas technique. Trois voies :
+**Pourquoi elle ne pouvait pas être corrigée sans arbitrage** : rendre la fluidité
+honnêtement `null` **nullifie la marge globale de toutes les séances captées
+jusqu'ici** (la pondération n'est calculée que si ses termes existent). Trois voies
+étaient sur la table — (1) écrire la donnée à la capture, (2) retirer la fluidité de
+la marge, (3) assumer le `null`. **Voie (1) retenue** : la donnée existe dans le flux,
+c'est du write-path, et c'est la seule où la fluidité devient *vraie* plutôt que
+supprimée ou tue. Appliquée en `c409dcc`.
 
-1. **Écrire la donnée** : renseigner `laps.max_g_lateral` à la capture (le maximum
-   par tour est disponible dans le flux) → la fluidité devient réelle. *La plus
-   juste ; demande une passe sur le write-path.*
-2. **Retirer la fluidité de la marge** : repondérer sans elle tant qu'elle n'est pas
-   mesurée → marge honnête, mais définition qui change.
-3. **Assumer `null`** : la marge globale se tait (« — ») tant que la fluidité n'est
-   pas mesurée → le plus honnête immédiatement, le plus visible pour le pilote.
-
-Ma recommandation : **(1)**, la donnée existe dans le flux, c'est du write-path — et
-c'est cohérent avec la règle « chaque valeur trace vers une source réelle ».
+**Reste signalé, non corrigé** : `fetchSpeedSamples` (`sessionsService.ts`) mappe
+`null → 0` sur un graphe de vitesse — même classe de bug, mais c'est du **code mort**
+(exporté, zéro appelant dans `src/` et `app/`). À supprimer ou corriger — décision
+Gabin, sans urgence.
 
 ## Ce qui reste manuel le jour J
 
