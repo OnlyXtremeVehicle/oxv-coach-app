@@ -52,8 +52,8 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
-import { __testing, raceBoxToTrackVizSample } from '../analyzeSessionService';
-import { GpsFix, type RaceBoxData } from '@/types/telemetry';
+import { __testing, isAnalyzableSession, raceBoxToTrackVizSample } from '../analyzeSessionService';
+import { GpsFix, type RaceBoxData, type TelemetrySession } from '@/types/telemetry';
 
 function buildRaceBoxData(overrides: Partial<RaceBoxData> = {}): RaceBoxData {
   return {
@@ -129,6 +129,31 @@ describe('raceBoxToTrackVizSample', () => {
     const data = buildRaceBoxData();
     const sample = raceBoxToTrackVizSample(data, -42);
     expect(sample.elapsed_ms).toBe(0);
+  });
+});
+
+// ============================================================================
+// Verrou finding [3] (durcissement Valencia) : une session non close n'est
+// jamais analysée. Sa clôture passe par la file de synchro — tant qu'elle n'est
+// pas drainée, `max_g_lateral` est NULL et les tours ne sont pas tous remontés.
+// Analyser là figerait un chiffre faux à vie (upsert onConflict, sans recalcul).
+// ============================================================================
+describe('isAnalyzableSession', () => {
+  const withStatus = (status: TelemetrySession['status']): Pick<TelemetrySession, 'status'> => ({
+    status,
+  });
+
+  it('accepte une session close', () => {
+    expect(isAnalyzableSession(withStatus('completed'))).toBe(true);
+  });
+
+  it('refuse une session encore en enregistrement (clôture non drainée)', () => {
+    expect(isAnalyzableSession(withStatus('recording'))).toBe(false);
+  });
+
+  it('refuse les statuts sans agrégats fiables', () => {
+    expect(isAnalyzableSession(withStatus('aborted'))).toBe(false);
+    expect(isAnalyzableSession(withStatus('processing'))).toBe(false);
   });
 });
 

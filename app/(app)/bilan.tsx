@@ -29,7 +29,12 @@ import { FadeInSection } from '@/components/motion';
 import { CoachBand } from '@/components/instruments';
 import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
-import { getAnalysisForSession, upsertAnalysis } from '@/services/analysesService';
+import {
+  type SessionAnalysis,
+  getAnalysisForSession,
+  upsertAnalysis,
+} from '@/services/analysesService';
+import { isAnalyzableSession } from '@/services/analyzeSessionService';
 import { OxvEvent } from '@/services/analyticsEvents';
 import { type DemoBanner, demoBannerForEventType } from '@/services/eventContextLogic';
 import { getEventLite } from '@/services/eventsService';
@@ -44,7 +49,12 @@ import { type CoachReadingWeights, computeCoachReading } from '@/services/coachR
 import { listReadingWeightsForMe } from '@/services/coachReadingService';
 import { getSessionContext } from '@/services/coachSessionContextService';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
-import { type ComputeMarginOutput, computeMargin } from '@/services/marginCalculator';
+import {
+  type ComputeMarginOutput,
+  type ResolvedMarginBreakdown,
+  computeMargin,
+  isMarginResolved,
+} from '@/services/marginCalculator';
 import {
   getQdiAccessLevel,
   getQdiForSession,
@@ -96,8 +106,10 @@ export default function BilanScreen() {
   const [qdi, setQdi] = useState<QdiRecord | null>(null);
   const [qdiAccess, setQdiAccess] = useState<QdiAccessLevel>('full');
   // La lecture pondérée du coach n'a de sens que sur un breakdown COMPLET —
-  // jamais sur des composantes nulles remplacées par 100 (valeur inventée).
-  const [breakdownReliable, setBreakdownReliable] = useState(false);
+  // jamais sur des composantes absentes remplacées par 100 (valeur inventée).
+  // L'état ne porte QUE des composantes réelles : le masquage est structurel,
+  // plus un booléen qu'on pouvait forcer à `true`.
+  const [coachBreakdown, setCoachBreakdown] = useState<ResolvedMarginBreakdown | null>(null);
 
   // Régularité (héros) : durées de tours valides + agrégats (soi contre soi).
   const [lapDurations, setLapDurations] = useState<number[]>([]);
@@ -132,25 +144,20 @@ export default function BilanScreen() {
         if (cancelled) return;
 
         if (existing && existing.marginZone) {
-          // Un breakdown persisté à composantes NULLES ne doit jamais nourrir la
-          // lecture pondérée du coach avec des 100 inventés : on marque le
-          // breakdown non fiable et la carte coach se masque.
-          setBreakdownReliable(
-            existing.marginVehicle != null &&
-              existing.marginPilot != null &&
-              existing.breakdown?.regularity != null &&
-              existing.breakdown?.smoothness != null
-          );
+          // Une composante absente reste absente : la combler par 100 fabriquait
+          // un chiffre. Le breakdown ne nourrit la lecture coach que s'il est
+          // intégralement réel (cf. `realBreakdownOf`).
+          setCoachBreakdown(realBreakdownOf(existing, targetSession));
           setMargin({
             marginGlobal: existing.marginGlobal,
             marginZone: existing.marginZone,
-            marginVehicle: existing.marginVehicle ?? 100,
-            marginPilot: existing.marginPilot ?? 100,
+            marginVehicle: existing.marginVehicle,
+            marginPilot: existing.marginPilot,
             breakdown: {
-              vehicle: existing.marginVehicle ?? 100,
-              pilot: existing.marginPilot ?? 100,
-              regularity: existing.breakdown?.regularity ?? 100,
-              smoothness: existing.breakdown?.smoothness ?? 100,
+              vehicle: existing.marginVehicle,
+              pilot: existing.marginPilot,
+              regularity: existing.breakdown?.regularity ?? null,
+              smoothness: existing.breakdown?.smoothness ?? null,
             },
             validLapCount: 0,
           });
@@ -161,11 +168,21 @@ export default function BilanScreen() {
         const laps = await fetchSessionLaps(targetSession.id);
         const result = computeMargin({ session: targetSession, laps });
         if (cancelled) return;
-        setBreakdownReliable(true); // calcul frais : composantes réelles
+        setCoachBreakdown(isMarginResolved(result) ? result.breakdown : null);
         setMargin(result);
         setLoading(false);
 
-        if (targetSession.user_id === profile.id) {
+        // On ne fige en base qu'une marge ENTIÈREMENT calculée, et seulement sur
+        // une séance close : un bilan ouvert pendant que la file de synchro
+        // draine encore lit des agrégats partiels (`max_g_lateral` NULL, tours
+        // pas tous remontés). L'upsert est définitif (`onConflict`, aucun
+        // recalcul ensuite) — dans le doute on n'écrit pas, la prochaine
+        // ouverture recalculera sur des données complètes.
+        if (
+          targetSession.user_id === profile.id &&
+          isAnalyzableSession(targetSession) &&
+          isMarginResolved(result)
+        ) {
           upsertAnalysis({
             telemetrySessionId: targetSession.id,
             userId: profile.id,
@@ -402,6 +419,18 @@ export default function BilanScreen() {
           </View>
         ) : null}
 
+        {/* Séance pas encore close : la file de synchro draine toujours. On le
+            DIT, au lieu de laisser croire que le bilan partiel est le bilan. */}
+        {!isAnalyzableSession(session) ? (
+          <View style={s.demoBanner}>
+            <Text style={s.demoTitle}>Séance en cours de synchronisation.</Text>
+            <Text style={s.demoBody}>
+              Les données de cette séance n&apos;ont pas fini de remonter. Ce bilan reste partiel
+              tant que la synchronisation n&apos;est pas terminée.
+            </Text>
+          </View>
+        ) : null}
+
         {/* HÉROS — régularité au tour, chiffre roi VIOLET plat à gauche. */}
         <FadeInSection>
           <Text style={s.regEyebrow}>RÉGULARITÉ AU TOUR</Text>
@@ -554,9 +583,9 @@ export default function BilanScreen() {
 
         {/* La lecture du coach (§10.3c-D) — attribuée, à côté de la marge OXV.
             UNIQUEMENT sur un breakdown complet (jamais sur des 100 inventés). */}
-        {breakdownReliable &&
+        {coachBreakdown !== null &&
           readingWeights.map((w) => {
-            const reading = computeCoachReading(margin.breakdown, w);
+            const reading = computeCoachReading(coachBreakdown, w);
             if (reading === null) return null;
             return (
               <View key={w.coachId} style={{ marginTop: spacing.xl }}>
@@ -824,6 +853,30 @@ function ShareIcon() {
       />
     </Svg>
   );
+}
+
+/**
+ * Breakdown d'une analyse DÉJÀ persistée, uniquement s'il est intégralement
+ * réel — sinon `null`, et la lecture du coach se masque.
+ *
+ * Une composante nulle en base ne se comble pas. Et un breakdown complet ne
+ * suffit pas : les analyses écrites avant le durcissement Valencia ont pu
+ * figer un 100/100/100/100 fabriqué sur une séance non close (`max_g_lateral`
+ * absent) ou sans tours — le G latéral de séance et le nombre de tours sont
+ * donc vérifiés à la source, sur la session elle-même.
+ */
+function realBreakdownOf(
+  analysis: SessionAnalysis,
+  session: TelemetrySession
+): ResolvedMarginBreakdown | null {
+  if (session.max_g_lateral == null) return null;
+  if (session.lap_count < 2) return null;
+  const { marginVehicle, marginPilot } = analysis;
+  const regularity = analysis.breakdown?.regularity;
+  const smoothness = analysis.breakdown?.smoothness;
+  if (marginVehicle == null || marginPilot == null) return null;
+  if (typeof regularity !== 'number' || typeof smoothness !== 'number') return null;
+  return { vehicle: marginVehicle, pilot: marginPilot, regularity, smoothness };
 }
 
 async function loadSession(

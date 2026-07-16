@@ -17,6 +17,14 @@
  * le transfert de charge dynamique (sec. 7 des algos), la stabilité
  * dynamique (sec. 8), et la marge par virage (sec. 5).
  *
+ * DONNÉE ABSENTE ≠ VALEUR NULLE (règle fondateur « données réelles ») :
+ * chaque composante vaut `null` quand son entrée manque, et la marge
+ * globale vaut `null` dès qu'une composante manque. Un trou ne se comble
+ * jamais par une valeur par défaut : une session non close porte
+ * `max_g_lateral = NULL`, et la lire comme « 0 g observé » produirait
+ * « 100 % de marge » — le chiffre roi du bilan, faux et persisté à vie.
+ * Les appelants filtrent avec `isMarginResolved()` et rendent « — ».
+ *
  * Voir docs/architecture/02_PARTIE_2_algorithmes.md, sections 7-8.
  */
 
@@ -33,11 +41,12 @@ export const DEFAULT_VEHICLE: VehicleParameters = {
   maxGLateral: 1.0,
 };
 
+/** Sous-composantes 0..100. `null` = entrée absente, donc rien à dire. */
 export interface MarginBreakdown {
-  vehicle: number;
-  pilot: number;
-  regularity: number;
-  smoothness: number;
+  vehicle: number | null;
+  pilot: number | null;
+  regularity: number | null;
+  smoothness: number | null;
 }
 
 export interface ComputeMarginInput {
@@ -47,13 +56,53 @@ export interface ComputeMarginInput {
 }
 
 export interface ComputeMarginOutput {
+  marginGlobal: MarginPercent | null;
+  marginZone: MarginZone | null;
+  marginVehicle: number | null;
+  marginPilot: number | null;
+  breakdown: MarginBreakdown;
+  /** Nombre de tours valides utilisés pour le calcul (hors outlap/inlap). */
+  validLapCount: number;
+}
+
+/** Breakdown entièrement calculé — aucune composante absente. */
+export interface ResolvedMarginBreakdown {
+  vehicle: number;
+  pilot: number;
+  regularity: number;
+  smoothness: number;
+}
+
+/**
+ * Marge dont TOUTES les composantes sortent de données réelles. Seule forme
+ * persistable (app_session_analyses) et affichable : le reste se rend « — ».
+ */
+export interface ResolvedMarginOutput extends ComputeMarginOutput {
   marginGlobal: MarginPercent;
   marginZone: MarginZone;
   marginVehicle: number;
   marginPilot: number;
-  breakdown: MarginBreakdown;
-  /** Nombre de tours valides utilisés pour le calcul (hors outlap/inlap). */
-  validLapCount: number;
+  breakdown: ResolvedMarginBreakdown;
+}
+
+/**
+ * Garde de type : la marge est-elle réellement calculable ?
+ *
+ * Le point d'entrée unique des appelants — figer une marge partielle en base
+ * la rendrait définitive (upsert `onConflict`, jamais recalculé), et aucun
+ * écran ne pourrait plus distinguer le chiffre réel de son bouche-trou.
+ */
+export function isMarginResolved(out: ComputeMarginOutput): out is ResolvedMarginOutput {
+  return (
+    out.marginGlobal !== null &&
+    out.marginZone !== null &&
+    out.marginVehicle !== null &&
+    out.marginPilot !== null &&
+    out.breakdown.vehicle !== null &&
+    out.breakdown.pilot !== null &&
+    out.breakdown.regularity !== null &&
+    out.breakdown.smoothness !== null
+  );
 }
 
 const VEHICLE_WEIGHT = 0.4;
@@ -68,13 +117,17 @@ export function computeMargin(input: ComputeMarginInput): ComputeMarginOutput {
   const marginVehicle = computeVehicleMargin(input.session, vehicle);
   const pilot = computePilotMargin(input.laps);
 
-  const marginGlobal = clampMargin(
-    VEHICLE_WEIGHT * marginVehicle + PILOT_WEIGHT * pilot.marginPilot
-  );
+  // Une composante absente ne se pondère pas : la somme 40/60 n'a de sens que
+  // si ses deux termes existent. Sinon il n'y a pas de marge globale — et non
+  // pas « une marge de 100 % ».
+  const marginGlobal =
+    marginVehicle !== null && pilot.marginPilot !== null
+      ? clampMargin(VEHICLE_WEIGHT * marginVehicle + PILOT_WEIGHT * pilot.marginPilot)
+      : null;
 
   return {
     marginGlobal,
-    marginZone: marginZoneOf(marginGlobal),
+    marginZone: marginGlobal !== null ? marginZoneOf(marginGlobal) : null,
     marginVehicle,
     marginPilot: pilot.marginPilot,
     breakdown: {
@@ -87,11 +140,24 @@ export function computeMargin(input: ComputeMarginInput): ComputeMarginOutput {
   };
 }
 
+/**
+ * Marge véhicule, ou `null` si le G latéral maximum n'a pas été observé.
+ *
+ * `max_g_lateral` n'est écrit qu'à la CLÔTURE de la session (op `complete` de
+ * la file de synchro) : tant qu'elle est en `recording`, la colonne est NULL.
+ * Ce NULL dit « pas encore mesuré », pas « 0 g » — le confondre avec un zéro
+ * réel donnait 100 % de marge à la séance la plus engagée.
+ */
 function computeVehicleMargin(
   session: Pick<TelemetrySession, 'max_g_lateral'>,
   vehicle: VehicleParameters
-): number {
-  const observedG = Number(session.max_g_lateral ?? 0);
+): number | null {
+  // `== null` couvre aussi l'`undefined` : les lignes Supabase sont castées en
+  // `TelemetrySession`, un SELECT partiel peut donc laisser la clé absente.
+  const raw = session.max_g_lateral;
+  if (raw == null) return null;
+  const observedG = Number(raw);
+  if (!Number.isFinite(observedG)) return null;
   if (observedG <= 0) return 100;
   if (vehicle.maxGLateral <= 0) return 0;
   const usage = observedG / vehicle.maxGLateral;
@@ -99,17 +165,25 @@ function computeVehicleMargin(
 }
 
 interface PilotMarginResult {
-  marginPilot: number;
-  regularity: number;
-  smoothness: number;
+  marginPilot: number | null;
+  regularity: number | null;
+  smoothness: number | null;
   validLapCount: number;
 }
 
 function computePilotMargin(laps: Lap[]): PilotMarginResult {
   const validLaps = laps.filter((l) => !l.is_outlap && !l.is_inlap && l.duration_seconds > 0);
 
+  // Régularité et fluidité sont des DISPERSIONS : sous deux tours valides il
+  // n'y a rien à disperser. Zéro tour n'est pas un pilote parfaitement régulier,
+  // c'est une séance dont les tours ne sont pas (encore) là.
   if (validLaps.length < 2) {
-    return { marginPilot: 100, regularity: 100, smoothness: 100, validLapCount: validLaps.length };
+    return {
+      marginPilot: null,
+      regularity: null,
+      smoothness: null,
+      validLapCount: validLaps.length,
+    };
   }
 
   const regularity = computeRegularity(validLaps.map((l) => l.duration_seconds));

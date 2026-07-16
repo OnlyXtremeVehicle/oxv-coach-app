@@ -26,7 +26,10 @@ interface SbCtrl {
   errorByTable: Record<string, { message: string; code?: string }>;
   /** Force une erreur UNIQUEMENT sur les upserts d'une table (garde 42P10). */
   upsertErrorByTable: Record<string, { message: string; code?: string }>;
-  uploadError: Error | null;
+  /** Force une erreur UNIQUEMENT sur les inserts d'une table (repli → 23505). */
+  insertErrorByTable: Record<string, { message: string; code?: string }>;
+  /** Erreur levée par l'upload Storage (souvent SANS `.code` : status seul). */
+  uploadError: unknown;
 }
 function sbCtrl(): SbCtrl {
   const g = globalThis as any;
@@ -37,6 +40,7 @@ function sbCtrl(): SbCtrl {
       calls: [],
       errorByTable: {},
       upsertErrorByTable: {},
+      insertErrorByTable: {},
       uploadError: null,
     } as SbCtrl;
   }
@@ -79,6 +83,13 @@ jest.mock('expo-file-system', () => {
     deleteAsync: jest.fn(async (p: string) => {
       files.delete(p);
     }),
+    // Renommage : écrase la destination (comme Android `renameTo` et iOS
+    // `removeFile`+`moveItem`), lève si la source n'existe pas.
+    moveAsync: jest.fn(async ({ from, to }: { from: string; to: string }) => {
+      if (!files.has(from)) throw new Error(`Fichier introuvable : ${from}`);
+      files.set(to, files.get(from)!);
+      files.delete(from);
+    }),
   };
 });
 
@@ -117,10 +128,13 @@ jest.mock('@/lib/supabase', () => {
       const c = ctrl();
       c.calls.push({ table: this.table, kind: this.kind, opts: this.opts });
       const forcedUpsert = this.kind === 'upsert' ? c.upsertErrorByTable[this.table] : undefined;
+      const forcedInsert = this.kind === 'insert' ? c.insertErrorByTable[this.table] : undefined;
       const forced = c.errorByTable[this.table];
       let result: any;
       if (forcedUpsert) {
         result = { error: forcedUpsert, count: null, data: null };
+      } else if (forcedInsert) {
+        result = { error: forcedInsert, count: null, data: null };
       } else if (forced) {
         result = { error: forced, count: null, data: null };
       } else if (c.remainingOk > 0) {
@@ -144,11 +158,13 @@ jest.mock('@/lib/supabase', () => {
 jest.mock('@/services/telemetryStorage', () => ({
   uploadTelemetryFile: jest.fn(async () => {
     const g = globalThis as any;
-    const err = g.__OXV_SB__?.uploadError as Error | null;
+    const err: unknown = g.__OXV_SB__?.uploadError;
     if (err) throw err;
     return { storagePath: 'p', sizeBytes: 1, durationMs: 1 };
   }),
 }));
+
+import * as FileSystem from 'expo-file-system';
 
 import { RACEBOX_PROTOCOL } from '@/types/telemetry';
 
@@ -171,8 +187,14 @@ beforeEach(() => {
   c.calls = [];
   c.errorByTable = {};
   c.upsertErrorByTable = {};
+  c.insertErrorByTable = {};
   c.uploadError = null;
 });
+
+/** Fichiers présents sous `capture-queue/quarantine/`. */
+function quarantined(): string[] {
+  return [...fsMap().keys()].filter((k) => k.startsWith('/oxv/capture-queue/quarantine/'));
+}
 
 // --- Fabriques d'opérations ---
 function createOp(sessionId: string, userId = 'user-1'): CaptureQueueOp {
@@ -321,8 +343,8 @@ describe('arrêt au premier échec réseau + reprise', () => {
   });
 });
 
-describe('erreur permanente → drop + continue', () => {
-  it('abandonne (log + suppression) une op en erreur logique et poursuit la file', async () => {
+describe('erreur permanente → quarantaine + continue', () => {
+  it('abandonne (log + quarantaine) une op en erreur logique et poursuit la file', async () => {
     await enqueue(createOp('s1'));
     await enqueue(lapsOp('s1')); // sera forcée en erreur permanente
     await enqueue(framesOp('s1'));
@@ -334,6 +356,83 @@ describe('erreur permanente → drop + continue', () => {
     expect(res.dropped).toBe(1); // laps
     expect(res.remaining).toBe(0);
     expect(await hasPending()).toBe(false);
+  });
+
+  it('23502 sur laps : droppée MAIS déplacée en quarantaine, jamais détruite', async () => {
+    await enqueue(lapsOp('s1'));
+    sbCtrl().errorByTable = { laps: { message: 'null value in column', code: '23502' } };
+
+    const res = await processQueue();
+    expect(res.dropped).toBe(1);
+    expect(await hasPending()).toBe(false);
+
+    // La donnée du pilote survit dans `quarantine/` : inspectable et rejouable.
+    const q = quarantined();
+    expect(q.length).toBe(1);
+    expect(q[0]).toMatch(/-laps\.json$/);
+    const env = JSON.parse(fsMap().get(q[0])!);
+    expect(env.op.type).toBe('laps');
+    expect(env.op.sessionId).toBe('s1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Classification des erreurs (Valencia §1) : liste BLANCHE d'abandon,
+// défaut = TRANSITOIRE. Une erreur plateforme ne doit JAMAIS détruire de donnée.
+// ---------------------------------------------------------------------------
+describe('classification : erreurs plateforme conservées', () => {
+  it.each([
+    ['PGRST002', 'Could not query the database for its schema cache'], // migration en cours
+    ['PGRST000', 'Could not connect with the database'],
+    ['53300', 'sorry, too many clients already'], // fin de roulage, tous synchronisent
+    ['57P03', 'the database system is shutting down'],
+    ['08006', 'connection failure'],
+    ['40001', 'could not serialize access due to concurrent update'],
+    ['XX999', 'code totalement inconnu'], // défaut = transitoire
+  ])('code %s → conservée (dropped=0, reste en attente)', async (code, message) => {
+    await enqueue(lapsOp('s1'));
+    sbCtrl().errorByTable = { laps: { message, code } };
+
+    const res = await processQueue();
+    expect(res.dropped).toBe(0);
+    expect(res.processed).toBe(0);
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
+
+  it('23503 sur frames = ordonnancement (create_session pas encore passé) → conservée et stop FIFO', async () => {
+    await enqueue(framesOp('s1'));
+    await enqueue(lapsOp('s1'));
+    sbCtrl().errorByTable = {
+      telemetry_frames: {
+        message: 'insert or update on table "telemetry_frames" violates foreign key constraint',
+        code: '23503',
+      },
+    };
+
+    const res = await processQueue();
+    expect(res.dropped).toBe(0);
+    expect(res.processed).toBe(0);
+    // FIFO préservé : le lot `laps` derrière n'a pas été tenté.
+    expect(res.remaining).toBe(2);
+    expect(sbCtrl().calls.filter((c) => c.table === 'laps')).toEqual([]);
+    expect(await hasPending()).toBe(true);
+  });
+
+  it('GARDE DURE : create_session avec 42501 (RLS) est conservée malgré le code logique', async () => {
+    await enqueue(createOp('s1'));
+    sbCtrl().errorByTable = {
+      telemetry_sessions: {
+        message: 'new row violates row-level security policy',
+        code: '42501',
+      },
+    };
+
+    const res = await processQueue();
+    // L'abandonner ferait tomber trames et tours par cascade FK : jamais.
+    expect(res.dropped).toBe(0);
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
   });
 });
 
@@ -405,6 +504,56 @@ describe('idempotence frames (Valencia §4.6)', () => {
     expect(fallbackLogs.length).toBe(1);
     warn.mockRestore();
   });
+
+  it('la contrainte apparaît après la bascule : ré-évaluation en upsert, lot absorbé (jamais droppé)', async () => {
+    const q = freshQueue();
+
+    // 1) Migration absente : 42P10 → repli insert. La bascule s'enclenche.
+    sbCtrl().upsertErrorByTable = {
+      telemetry_frames: { message: 'no unique or exclusion constraint', code: '42P10' },
+    };
+    await q.enqueue(framesOp('s1'));
+    expect((await q.processQueue()).processed).toBe(1);
+
+    // 2) Gabin applique la migration en cours de journée, sans redémarrer l'app.
+    //    L'insert nu du repli lève désormais 23505 sur un ex æquo intra-lot.
+    sbCtrl().upsertErrorByTable = {};
+    sbCtrl().insertErrorByTable = {
+      telemetry_frames: {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+      },
+    };
+    await q.enqueue(framesOp('s1'));
+    const res = await q.processQueue();
+
+    // Le 23505 PROUVE que la contrainte existe : on ré-arme et on rejoue en
+    // upsert (DO NOTHING absorbe la collision) au lieu de jeter 50 trames.
+    expect(res.processed).toBe(1);
+    expect(res.dropped).toBe(0);
+    const kinds = sbCtrl()
+      .calls.filter((c) => c.table === 'telemetry_frames')
+      .map((c) => c.kind);
+    expect(kinds).toEqual(['upsert', 'insert', 'insert', 'upsert']);
+    expect(await q.hasPending()).toBe(false);
+    expect(quarantined()).toEqual([]);
+  });
+
+  it('un 23505 sur les trames ne droppe JAMAIS le lot', async () => {
+    const q = freshQueue();
+    sbCtrl().errorByTable = {
+      telemetry_frames: {
+        message: 'duplicate key value violates unique constraint',
+        code: '23505',
+      },
+    };
+    await q.enqueue(framesOp('s1'));
+    const res = await q.processQueue();
+
+    expect(res.dropped).toBe(0);
+    expect(await q.hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
 });
 
 describe('complete : réconciliation total_frames', () => {
@@ -468,6 +617,156 @@ describe('ubx_upload', () => {
     const res = await processQueue();
     expect(res.processed).toBe(0);
     expect(await hasPending()).toBe(true);
+  });
+
+  // Les erreurs Supabase Storage n'ont PAS de `.code` (seulement `status`) :
+  // la classification SQLSTATE y est aveugle. Cf. Valencia §15.
+  it('erreur Storage 403 (sans .code) : conservée, jamais droppée à tort', async () => {
+    sbCtrl().uploadError = {
+      name: 'StorageApiError',
+      message: 'new row violates row-level security policy',
+      status: 403,
+      statusCode: '403',
+    };
+    await enqueue({
+      type: 'ubx_upload',
+      sessionId: 's1',
+      userId: 'user-1',
+      fileUri: '/oxv/s1.ubx',
+    });
+
+    const res = await processQueue();
+    // JWT expiré / mauvais pilote connecté = RÉCUPÉRABLE : on ne perd pas le brut.
+    expect(res.dropped).toBe(0);
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
+
+  it('erreur Storage 413 (au-dessus de la limite du bucket) : abandon en quarantaine', async () => {
+    sbCtrl().uploadError = {
+      name: 'StorageApiError',
+      message: 'The object exceeded the maximum allowed size',
+      status: 413,
+      statusCode: '413',
+    };
+    await enqueue({
+      type: 'ubx_upload',
+      sessionId: 's1',
+      userId: 'user-1',
+      fileUri: '/oxv/s1.ubx',
+    });
+
+    const res = await processQueue();
+    expect(res.dropped).toBe(1);
+    expect(quarantined().length).toBe(1);
+    expect(await hasPending()).toBe(false);
+  });
+
+  it('un upload durablement en échec ne bloque PAS la file : les ops suivantes passent', async () => {
+    sbCtrl().uploadError = {
+      name: 'StorageApiError',
+      message: 'new row violates row-level security policy',
+      status: 403,
+    };
+    await enqueue({
+      type: 'ubx_upload',
+      sessionId: 's1',
+      userId: 'user-1',
+      fileUri: '/oxv/s1.ubx',
+    });
+    await enqueue(createOp('s2', 'user-2')); // séance du pilote suivant
+
+    const res = await processQueue();
+    // L'upload est une op FEUILLE : sautée, gardée, mais la séance de s2 part.
+    expect(res.processed).toBe(1);
+    expect(res.dropped).toBe(0);
+    expect(res.remaining).toBe(1);
+    expect(sbCtrl().calls.map((c) => c.table)).toEqual(['telemetry_sessions']);
+    expect(await pendingSessionIds()).toEqual(['s1']);
+  });
+
+  it('compte les tentatives et met l’upload en quarantaine au bout de MAX_UPLOAD_ATTEMPTS', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    sbCtrl().uploadError = { name: 'StorageApiError', message: 'boom', status: 403 };
+    await enqueue({
+      type: 'ubx_upload',
+      sessionId: 's1',
+      userId: 'user-1',
+      fileUri: '/oxv/s1.ubx',
+    });
+
+    for (let i = 0; i < 9; i += 1) {
+      const r = await processQueue();
+      expect(r.dropped).toBe(0);
+      expect(await hasPending()).toBe(true);
+    }
+    // 10e tentative : dead-letter borné (l'op reste inspectable en quarantaine).
+    const last = await processQueue();
+    expect(last.dropped).toBe(1);
+    expect(await hasPending()).toBe(false);
+    expect(quarantined().length).toBe(1);
+    warn.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Écriture atomique + quarantaine des fichiers illisibles (Valencia §16)
+// ---------------------------------------------------------------------------
+describe('durabilité sur disque', () => {
+  it('écrit l’op via un fichier temporaire puis renommage (jamais de .json partiel)', async () => {
+    const write = FileSystem.writeAsStringAsync as unknown as jest.Mock;
+    const move = FileSystem.moveAsync as unknown as jest.Mock;
+    write.mockClear();
+    move.mockClear();
+
+    await enqueue(framesOp('s1'));
+
+    // L'écriture vise un `.tmp` (invisible du drain), le renommage la publie.
+    const written = write.mock.calls[0][0] as string;
+    expect(written).toMatch(/\.json\.tmp$/);
+    const moved = move.mock.calls[0][0] as { from: string; to: string };
+    expect(moved.from).toBe(written);
+    expect(moved.to).toMatch(/-frames\.json$/);
+    // Aucun `.tmp` résiduel, l'op est drainable.
+    expect([...fsMap().keys()].filter((k) => k.endsWith('.tmp'))).toEqual([]);
+    expect(await hasPending()).toBe(true);
+  });
+
+  it('un .json tronqué est mis en quarantaine, pas détruit', async () => {
+    await enqueue(framesOp('s1'));
+    const name = [...fsMap().keys()].find((k) => k.endsWith('-frames.json'))!;
+    // Écriture torpillée par un crash : JSON coupé en deux.
+    const truncated = fsMap().get(name)!.slice(0, 40);
+    fsMap().set(name, truncated);
+
+    const res = await processQueue();
+    expect(res.dropped).toBe(1);
+    expect(await hasPending()).toBe(false);
+
+    const q = quarantined();
+    expect(q.length).toBe(1);
+    expect(fsMap().get(q[0])).toBe(truncated); // les octets survivent, intacts
+  });
+
+  it('resumeUnsyncedCaptures évacue les .tmp orphelins en quarantaine', async () => {
+    fsMap().set('/oxv/capture-queue/000000000000001-000000-frames.json.tmp', '{"op":{"typ');
+    await resumeUnsyncedCaptures();
+
+    expect([...fsMap().keys()].filter((k) => k.startsWith('/oxv/capture-queue/'))).toEqual([
+      '/oxv/capture-queue/quarantine/000000000000001-000000-frames.json.tmp',
+    ]);
+  });
+
+  it('relit une op « nue » écrite par une version antérieure de l’app', async () => {
+    // Ancien format : l'op sérialisée directement, sans enveloppe.
+    fsMap().set(
+      '/oxv/capture-queue/000000000000001-000000-create_session.json',
+      JSON.stringify(createOp('s-legacy'))
+    );
+    expect(await pendingSessionIds()).toEqual(['s-legacy']);
+    const res = await processQueue();
+    expect(res.processed).toBe(1);
+    expect(await hasPending()).toBe(false);
   });
 });
 

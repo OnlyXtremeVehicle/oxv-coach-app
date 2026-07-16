@@ -15,18 +15,34 @@
  * run précédent portent un horodatage antérieur et sont donc drainées en premier.
  *
  * Drain (`processQueue`) : traite les fichiers DANS L'ORDRE ; supprime du disque
- * chaque opération réussie ; s'ARRÊTE au premier échec RÉSEAU en gardant le reste
- * (FIFO préservé, on ne martèle pas un réseau tombé) ; DROP (log + suppression)
- * une opération en échec PERMANENT clair (erreur logique Postgres, fichier source
- * absent) pour ne pas bloquer la file. Toute erreur ambiguë est traitée
- * prudemment comme transitoire (conservée, jamais perdue).
+ * chaque opération réussie ; s'ARRÊTE au premier échec RÉSEAU/TRANSITOIRE en
+ * gardant le reste (FIFO préservé, on ne martèle pas un réseau tombé) ; met en
+ * QUARANTAINE (log + déplacement sous `capture-queue/quarantine/`, JAMAIS de
+ * suppression) une opération en échec réellement LOGIQUE, pour ne pas bloquer la
+ * file. Toute erreur ambiguë est traitée prudemment comme transitoire (conservée,
+ * jamais perdue).
+ *
+ * CLASSIFICATION — liste BLANCHE d'abandon (cf. Valencia §1) :
+ *   - DROP seulement sur erreur sans espoir de rejeu : SQLSTATE 22 (donnée
+ *     invalide), 23 (intégrité) SAUF 23503/23505, 42 (syntaxe/privilège),
+ *     PGRST202/PGRST205, fichier source absent, et quelques statuts Storage ;
+ *   - TRANSITOIRE explicite : SQLSTATE 08/40/53/57, PGRST000/001/002 (503
+ *     plateforme, p. ex. rechargement du cache de schéma après une migration) ;
+ *   - DÉFAUT pour tout code INCONNU : TRANSITOIRE. C'est le sens de la promesse
+ *     ci-dessus : un code qu'on ne sait pas lire n'autorise pas à détruire la
+ *     donnée d'un pilote.
+ *   - GARDE DURE : une op `create_session` n'est JAMAIS abandonnée — la FK
+ *     `telemetry_frames.session_id … ON DELETE CASCADE` ferait tomber TOUTE la
+ *     séance derrière elle.
  *
  * IDEMPOTENCE au replay :
  *   - create_session : upsert onConflict 'id' (pose/replace la ligne) ;
  *   - frames         : upsert onConflict (session_id, elapsed_ms) ignoreDuplicates
  *                      (Valencia §4.6) — un rejeu de lot ne crée plus de doublon.
  *                      GARDE : si la contrainte UNIQUE n'est pas encore en prod
- *                      (42P10), repli automatique sur insert simple (cf. execFrames) ;
+ *                      (42P10), repli automatique sur insert simple, RÉ-ARMÉ dès
+ *                      qu'un 23505 prouve que la migration est passée (cf.
+ *                      insertFramesIdempotent) ;
  *   - laps           : insert ;
  *   - complete       : update .eq(id).eq(user_id) — idempotent par nature, et
  *                      RÉCONCILIE `total_frames` en recomptant les trames RÉELLES
@@ -70,9 +86,12 @@ export type CaptureQueueOp =
 export interface ProcessResult {
   /** Opérations effectivement synchronisées puis supprimées du disque. */
   processed: number;
-  /** Opérations abandonnées (erreur permanente / fichier illisible). */
+  /**
+   * Opérations abandonnées (erreur logique / fichier illisible). Elles ne sont
+   * pas détruites : elles partent en `capture-queue/quarantine/`.
+   */
   dropped: number;
-  /** Opérations restant sur disque (arrêt réseau ou rien à faire). */
+  /** Opérations restant sur disque (arrêt réseau, upload sauté, ou rien à faire). */
   remaining: number;
 }
 
@@ -131,6 +150,30 @@ function queueDir(): string {
   return `${base}capture-queue/`;
 }
 
+/**
+ * Sous-dossier des opérations ABANDONNÉES. Elles y sont DÉPLACÉES, jamais
+ * supprimées : la file repart, mais la donnée du pilote reste inspectable et
+ * rejouable à la main. Une séance ne doit pas mourir dans une branche `catch`.
+ */
+function quarantineDir(): string {
+  return `${queueDir()}quarantine/`;
+}
+
+/**
+ * Enveloppe persistée sur disque. `attempts` borne le dead-letter d'`ubx_upload`
+ * (seul type d'op où l'on abandonne au bout d'un nombre de tentatives) ; les
+ * autres types ne sont jamais abandonnés pour cause de tentatives. L'enveloppe
+ * évite de polluer l'union `CaptureQueueOp` avec des champs de transport.
+ */
+interface QueueEnvelope {
+  op: CaptureQueueOp;
+  attempts: number;
+  enqueuedAt: string;
+}
+
+/** Tentatives transitoires tolérées pour un `ubx_upload` avant quarantaine. */
+const MAX_UPLOAD_ATTEMPTS = 10;
+
 /** Séquence + horodatage monotone pour des noms de fichiers FIFO stricts. */
 let seq = 0;
 let lastTs = 0;
@@ -151,23 +194,49 @@ async function ensureDir(): Promise<void> {
   }
 }
 
-/** Noms de fichiers d'opérations, triés en ordre FIFO (lexicographique). */
+/**
+ * Noms de fichiers d'opérations, triés en ordre FIFO (lexicographique).
+ * Le filtre `.json` écarte par construction le sous-dossier `quarantine/` et les
+ * `.tmp` d'écriture en cours (invisibles au drain tant qu'ils ne sont pas
+ * renommés — cf. `writeEnvelopeAtomic`).
+ */
 async function listOpFiles(): Promise<string[]> {
   const dir = queueDir();
   const info = await FileSystem.getInfoAsync(dir);
   if (!info.exists) return [];
   const names = await FileSystem.readDirectoryAsync(dir);
-  return names.filter((n) => n.endsWith('.json')).sort();
+  return names.filter((n) => n.endsWith('.json') && !n.includes('/')).sort();
 }
 
-async function readOp(fileName: string): Promise<CaptureQueueOp | null> {
+/**
+ * Relit une enveloppe. Accepte aussi une op « nue » écrite par une version
+ * antérieure de l'app : la file survit à une mise à jour en cours de journée.
+ */
+function parseEnvelope(raw: string): QueueEnvelope | null {
+  const parsed: unknown = JSON.parse(raw);
+  if (!parsed || typeof parsed !== 'object') return null;
+  const env = parsed as Partial<QueueEnvelope>;
+  if (env.op && typeof env.op === 'object' && typeof (env.op as CaptureQueueOp).type === 'string') {
+    return {
+      op: env.op as CaptureQueueOp,
+      attempts: typeof env.attempts === 'number' ? env.attempts : 0,
+      enqueuedAt: typeof env.enqueuedAt === 'string' ? env.enqueuedAt : '',
+    };
+  }
+  if (typeof (parsed as Partial<CaptureQueueOp>).type === 'string') {
+    return { op: parsed as CaptureQueueOp, attempts: 0, enqueuedAt: '' };
+  }
+  return null;
+}
+
+async function readOp(fileName: string): Promise<QueueEnvelope | null> {
   try {
     const raw = await FileSystem.readAsStringAsync(queueDir() + fileName, {
       encoding: FileSystem.EncodingType.UTF8,
     });
-    return JSON.parse(raw) as CaptureQueueOp;
+    return parseEnvelope(raw);
   } catch {
-    return null; // fichier illisible/corrompu → drop en amont
+    return null; // fichier illisible/corrompu → quarantaine en amont
   }
 }
 
@@ -179,6 +248,47 @@ async function deleteOp(fileName: string): Promise<void> {
   }
 }
 
+async function ensureQuarantineDir(): Promise<void> {
+  const dir = quarantineDir();
+  const info = await FileSystem.getInfoAsync(dir);
+  if (!info.exists) {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  }
+}
+
+/**
+ * Déplace une op abandonnée en quarantaine AU LIEU de la détruire. Best-effort :
+ * si le déplacement échoue, on laisse le fichier en place plutôt que de le
+ * supprimer — le prochain drain retentera. Ne jamais lever (silence en piste).
+ */
+async function quarantineOp(fileName: string): Promise<void> {
+  try {
+    await ensureQuarantineDir();
+    await FileSystem.moveAsync({
+      from: queueDir() + fileName,
+      to: quarantineDir() + fileName,
+    });
+  } catch (e) {
+    console.warn(`[OXV][capture-queue] mise en quarantaine KO (${fileName}) : ${errorMessage(e)}`);
+  }
+}
+
+/**
+ * Écrit une enveloppe de façon ATOMIQUE : fichier temporaire puis renommage.
+ * Le `.tmp` ne finit pas par `.json`, donc le drain ne le voit jamais ; le
+ * renommage rend le fichier visible d'un coup, complet ou pas du tout.
+ * Indispensable sur Android : `writeAsStringAsync` y écrit en flux, hors du
+ * thread JS — un fichier à demi écrit y était listable, donc lisible tronqué.
+ * (iOS écrit déjà atomiquement ; on unifie pour ne pas dépendre de l'OS.)
+ */
+async function writeEnvelopeAtomic(name: string, env: QueueEnvelope): Promise<void> {
+  const tmp = `${queueDir()}${name}.tmp`;
+  await FileSystem.writeAsStringAsync(tmp, JSON.stringify(env), {
+    encoding: FileSystem.EncodingType.UTF8,
+  });
+  await FileSystem.moveAsync({ from: tmp, to: queueDir() + name });
+}
+
 /**
  * Persiste une opération sur disque. Best-effort : lève si le disque est
  * indisponible (l'appelant décide — la capture ne doit jamais s'arrêter pour ça,
@@ -187,9 +297,26 @@ async function deleteOp(fileName: string): Promise<void> {
 export async function enqueue(op: CaptureQueueOp): Promise<void> {
   await ensureDir();
   const name = nextFileName(op.type);
-  await FileSystem.writeAsStringAsync(queueDir() + name, JSON.stringify(op), {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
+  await writeEnvelopeAtomic(name, { op, attempts: 0, enqueuedAt: new Date().toISOString() });
+}
+
+/**
+ * Balaie les `.tmp` orphelins (écriture torpillée par un crash/OOM). Ils ne sont
+ * pas drainables mais leurs octets peuvent être inspectés : quarantaine, jamais
+ * suppression.
+ */
+async function sweepOrphanTmp(): Promise<void> {
+  try {
+    const dir = queueDir();
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) return;
+    const names = await FileSystem.readDirectoryAsync(dir);
+    for (const n of names) {
+      if (n.endsWith('.tmp') && !n.includes('/')) await quarantineOp(n);
+    }
+  } catch {
+    /* best-effort : ne jamais bloquer la reprise */
+  }
 }
 
 // ============================================================================
@@ -224,15 +351,92 @@ function isNetworkFailure(err: unknown): boolean {
 }
 
 /**
- * Décide si une erreur justifie de DROP l'opération (log + suppression), par
- * opposition à un simple report réseau. Prudence : on ne DROP que sur erreur
- * NON-RÉSEAU CLAIRE — erreur logique Postgres (SQLSTATE/`code` présent) ou
- * fichier source disparu. Tout le reste est traité comme transitoire (conservé).
+ * Codes PostgREST TRANSITOIRES : 503 de la plateforme. PGRST002 (« Could not
+ * query the database for its schema cache ») survient notamment pendant les
+ * quelques secondes qui suivent l'application d'une migration — soit exactement
+ * la manœuvre prévue en prod le jour J. PGRST000/001 = pooler/connexion.
+ * Ces erreurs portent un `code` mais ne sont EN RIEN logiques.
  */
-function isPermanentFailure(err: unknown): boolean {
+const TRANSIENT_PGRST_CODES = new Set(['PGRST000', 'PGRST001', 'PGRST002']);
+
+/**
+ * Classes SQLSTATE TRANSITOIRES : 08 connexion, 40 rollback/sérialisation,
+ * 53 ressources épuisées (53300 « sorry, too many clients already » — le cas
+ * quand tous les pilotes synchronisent en fin de roulage), 57 intervention
+ * opérateur (57P03 arrêt/redémarrage de la base).
+ */
+const TRANSIENT_SQLSTATE_CLASSES = new Set(['08', '40', '53', '57']);
+
+/**
+ * Codes PostgREST réellement LOGIQUES : la requête ne peut pas aboutir au rejeu.
+ * PGRST202 = fonction RPC introuvable, PGRST205 = table absente du schéma.
+ */
+const DROPPABLE_PGRST_CODES = new Set(['PGRST202', 'PGRST205']);
+
+/**
+ * Classes SQLSTATE réellement LOGIQUES : 22 donnée invalide, 23 violation de
+ * contrainte, 42 syntaxe/type/privilège (dont 42501 RLS).
+ */
+const DROPPABLE_SQLSTATE_CLASSES = new Set(['22', '23', '42']);
+
+/**
+ * Classe un `code` d'erreur. LISTE BLANCHE d'abandon : on ne renvoie `true` que
+ * pour ce dont on est SÛR que le rejeu ne peut rien changer. Tout code inconnu
+ * est traité comme TRANSITOIRE — c'est l'inversion voulue (l'ancienne règle
+ * « tout code ⇒ abandon » faisait détruire une séance entière par un 503).
+ */
+function isDroppableCode(code: string): boolean {
+  if (TRANSIENT_PGRST_CODES.has(code)) return false;
+  if (DROPPABLE_PGRST_CODES.has(code)) return true;
+  // 23503 (foreign_key_violation) sur frames/laps n'est PAS une erreur de
+  // donnée : c'est un signal d'ORDONNANCEMENT — le `create_session` de la
+  // séance n'est pas encore passé. On conserve et on laisse le FIFO rejouer.
+  if (code === '23503') return false;
+  // 23505 (unique_violation) : soit les lignes sont déjà en base, soit le lot
+  // doit être absorbé en UPSERT (cf. insertFramesIdempotent). Jeter 50 trames
+  // pour une collision sur une seule serait absurde.
+  if (code === '23505') return false;
+  const cls = code.slice(0, 2);
+  if (TRANSIENT_SQLSTATE_CLASSES.has(cls)) return false;
+  if (DROPPABLE_SQLSTATE_CLASSES.has(cls)) return true;
+  return false;
+}
+
+/**
+ * Erreurs Supabase Storage : storage-js n'expose que `status`/`statusCode`, JAMAIS
+ * `.code` (asymétrie vérifiée avec postgrest-js, qui lui pose `.code`). La
+ * classification par SQLSTATE est donc aveugle ici, et un `ubx_upload` en échec
+ * dur bloquerait la file. On ne DROPPE que ce qui ne peut structurellement pas
+ * aboutir au rejeu : 400 (requête malformée), 413 (au-dessus de la limite du
+ * bucket), 415 (type refusé).
+ *
+ * SURTOUT PAS 401/403 : JWT expiré ou mauvais pilote connecté sont RÉCUPÉRABLES
+ * (rafraîchissement du jeton, reconnexion) — les dropper perdrait la télémétrie
+ * brute sur une erreur pourtant réparable. Idem 404 (bucket absent = config).
+ */
+function isStorageDroppable(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const status = (err as { status?: unknown }).status;
+  if (typeof status !== 'number') return false;
+  return status === 400 || status === 413 || status === 415;
+}
+
+/**
+ * Décide si une erreur justifie d'ABANDONNER l'opération (log + quarantaine),
+ * par opposition à la conserver pour un rejeu ultérieur.
+ */
+function isDroppableFailure(op: CaptureQueueOp, err: unknown): boolean {
+  // GARDE DURE : `create_session` n'est JAMAIS abandonnée, même sur une erreur
+  // parfaitement logique. La ligne de séance porte la FK de toutes les trames et
+  // de tous les tours (ON DELETE CASCADE) : l'abandonner fait tomber la séance
+  // ENTIÈRE, en silence. Mieux vaut une file bloquée — visible, réparable — que
+  // des heures de piste effacées.
+  if (op.type === 'create_session') return false;
   if (isNetworkFailure(err)) return false;
   if (MISSING_FILE_RE.test(errorMessage(err))) return true;
-  return errorCode(err).length > 0;
+  const code = errorCode(err);
+  if (code.length === 0) return isStorageDroppable(err);
+  return isDroppableCode(code);
 }
 
 // ============================================================================
@@ -240,10 +444,13 @@ function isPermanentFailure(err: unknown): boolean {
 // ============================================================================
 
 /**
- * Bascule STICKY (durée de vie de l'app) : passe à `true` dès qu'on constate que
- * la contrainte UNIQUE (session_id, elapsed_ms) n'existe pas encore en prod. On
- * cesse alors de tenter l'UPSERT (qui échouerait à chaque lot) et on insère
- * directement. Remis à `false` au (re)chargement du module.
+ * Bascule de repli : passe à `true` dès qu'on constate que la contrainte UNIQUE
+ * (session_id, elapsed_ms) n'existe pas encore en prod. On cesse alors de tenter
+ * l'UPSERT (qui échouerait à chaque lot) et on insère directement.
+ *
+ * NON définitive : un 23505 en mode repli prouve que la contrainte est apparue
+ * entre-temps (migration appliquée en cours de journée, sans redémarrage de
+ * l'app) et RÉ-ARME la bascule — cf. `insertFramesIdempotent`.
  */
 let framesUpsertUnsupported = false;
 /** Ne loguer le repli qu'UNE fois (pas à chaque lot). */
@@ -256,8 +463,11 @@ let framesUpsertFallbackLogged = false;
  */
 function isMissingConflictConstraint(err: unknown): boolean {
   if (errorCode(err) === '42P10') return true;
-  const m = errorMessage(err).toLowerCase();
-  return m.includes('no unique or exclusion constraint') || m.includes('on conflict');
+  // Détection RESSERRÉE : un simple `includes('on conflict')` enclencherait le
+  // repli sur n'importe quelle erreur mentionnant la clause (p. ex. un 23505,
+  // dont le message la cite parfois) — le repli doit rester réservé à l'absence
+  // AVÉRÉE de contrainte.
+  return errorMessage(err).toLowerCase().includes('no unique or exclusion constraint');
 }
 
 /**
@@ -293,7 +503,22 @@ async function insertFramesIdempotent(batch: TelemetryFrameInsert[]): Promise<vo
     }
   }
   const { error } = await supabase.from('telemetry_frames').insert(batch);
-  if (error) throw error;
+  if (!error) return;
+  // Un 23505 en mode repli est la PREUVE que la contrainte existe DÉSORMAIS : la
+  // migration a été appliquée pendant la vie de l'app. Laisser la bascule à
+  // `true` transformerait alors une collision sur UNE trame en abandon du lot
+  // ENTIER. On ré-arme et on rejoue en UPSERT : ON CONFLICT DO NOTHING absorbe
+  // aussi bien le rejeu de lot que l'ex æquo intra-lot.
+  if (errorCode(error) === '23505') {
+    framesUpsertUnsupported = false;
+    framesUpsertFallbackLogged = false;
+    const retry = await supabase
+      .from('telemetry_frames')
+      .upsert(batch, { onConflict: 'session_id,elapsed_ms', ignoreDuplicates: true });
+    if (retry.error) throw retry.error;
+    return;
+  }
+  throw error;
 }
 
 // ============================================================================
@@ -383,7 +608,7 @@ let processing = false;
 /**
  * Draine la file DANS L'ORDRE. Non réentrant (un drain concurrent renvoie
  * aussitôt). S'arrête au premier échec réseau/transitoire en gardant le reste ;
- * drop les échecs permanents clairs pour ne pas bloquer.
+ * met en quarantaine les échecs réellement logiques pour ne pas bloquer.
  */
 export async function processQueue(): Promise<ProcessResult> {
   if (processing) {
@@ -392,35 +617,63 @@ export async function processQueue(): Promise<ProcessResult> {
   processing = true;
   let processed = 0;
   let dropped = 0;
+  // Ops laissées sur disque sans bloquer la file (upload transitoire sauté).
+  let skipped = 0;
   try {
     const files = await listOpFiles();
     for (let i = 0; i < files.length; i += 1) {
       const name = files[i];
-      const op = await readOp(name);
-      if (!op) {
-        // Fichier illisible/corrompu : on le retire pour ne pas bloquer.
-        await deleteOp(name);
+      const env = await readOp(name);
+      if (!env) {
+        // Fichier illisible/corrompu (écriture torpillée, JSON tronqué) : on le
+        // sort de la file pour ne pas la bloquer, mais on le GARDE — ses octets
+        // sont peut-être un lot de trames récupérable à la main.
+        await quarantineOp(name);
         dropped += 1;
         continue;
       }
+      const { op } = env;
       try {
         await executeOp(op);
         await deleteOp(name);
         processed += 1;
       } catch (err) {
-        if (isPermanentFailure(err)) {
+        if (isDroppableFailure(op, err)) {
           console.warn(
-            `[OXV][capture-queue] op ${op.type} abandonnée (erreur permanente) : ${errorMessage(err)}`
+            `[OXV][capture-queue] op ${op.type} abandonnée (erreur logique) : ${errorMessage(err)}`
           );
-          await deleteOp(name);
+          await quarantineOp(name);
           dropped += 1;
           continue;
         }
+        if (op.type === 'ubx_upload') {
+          // Op FEUILLE : aucune autre op ne dépend d'elle (contrairement à
+          // create_session → frames/laps/complete). L'arrêter le drain entier
+          // ferait bloquer À VIE toutes les séances suivantes derrière un upload
+          // durablement en échec (403 du mauvais pilote, 413…). On la SAUTE et
+          // on la garde sur disque, en comptant la tentative.
+          const attempts = env.attempts + 1;
+          if (attempts >= MAX_UPLOAD_ATTEMPTS) {
+            console.warn(
+              `[OXV][capture-queue] ubx_upload en échec après ${attempts} tentatives — quarantaine : ${errorMessage(err)}`
+            );
+            await quarantineOp(name);
+            dropped += 1;
+            continue;
+          }
+          try {
+            await writeEnvelopeAtomic(name, { ...env, attempts });
+          } catch {
+            /* compteur non persisté : coûte une tentative de plus, rien de plus */
+          }
+          skipped += 1;
+          continue;
+        }
         // Réseau/transitoire : on s'ARRÊTE et on GARDE ce fichier + tous les suivants.
-        return { processed, dropped, remaining: files.length - i };
+        return { processed, dropped, remaining: files.length - i + skipped };
       }
     }
-    return { processed, dropped, remaining: 0 };
+    return { processed, dropped, remaining: skipped };
   } finally {
     processing = false;
   }
@@ -440,8 +693,8 @@ export async function pendingSessionIds(): Promise<string[]> {
   const files = await listOpFiles();
   const ids = new Set<string>();
   for (const name of files) {
-    const op = await readOp(name);
-    if (op) ids.add(op.sessionId);
+    const env = await readOp(name);
+    if (env) ids.add(env.op.sessionId);
   }
   return [...ids];
 }
@@ -453,6 +706,9 @@ export async function pendingSessionIds(): Promise<string[]> {
  */
 export async function resumeUnsyncedCaptures(): Promise<void> {
   try {
+    // Un crash pendant une écriture laisse un `.tmp` partiel : on l'évacue avant
+    // de drainer (il n'est pas listé par la file, donc jamais nettoyé sinon).
+    await sweepOrphanTmp();
     if (await hasPending()) {
       await processQueue();
     }

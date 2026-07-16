@@ -37,7 +37,7 @@ import type { TrackVizRecordingSample } from '@/trackviz/types';
 import type { Lap, RaceBoxData, TelemetrySession } from '@/types/telemetry';
 
 import { OxvEvent } from './analyticsEvents';
-import { computeMargin } from './marginCalculator';
+import { computeMargin, isMarginResolved } from './marginCalculator';
 import { upsertAnalysis } from './analysesService';
 import { generateSafeDebrief } from './debriefGenerator';
 import { computeAndPersistQdi } from './qdiService';
@@ -69,6 +69,19 @@ export interface AnalyzeSessionResult {
 
 const FRAMES_PAGE_SIZE = 1000;
 const TRACKVIZ_DOWNSAMPLE_MAX = 600;
+
+/**
+ * Une session n'est analysable qu'une fois CLOSE.
+ *
+ * `completed` est le seul statut où les agrégats de séance sont écrits et les
+ * tours remontés : en `recording` la clôture n'est pas encore drainée (elle
+ * passe par la file de synchro, donc potentiellement plusieurs minutes après
+ * l'arrêt), `aborted`/`processing` n'ont pas d'agrégats fiables. Analyser
+ * avant, c'est mesurer une séance qui n'a pas fini d'arriver.
+ */
+export function isAnalyzableSession(session: Pick<TelemetrySession, 'status'>): boolean {
+  return session.status === 'completed';
+}
 
 // ============================================================================
 // PIPELINE PRINCIPAL
@@ -185,23 +198,35 @@ export async function analyzeAndPersistSession(
       .eq('id', input.userId)
       .maybeSingle();
     computedFirstName = userRow?.first_name ?? null;
-    if (session) {
+    if (!session) {
+      notes.push('Session introuvable pour calcul de marge globale.');
+    } else if (!isAnalyzableSession(session)) {
+      // Verrou : la session n'est close (`completed`) qu'une fois l'op
+      // `complete` drainée par la file de synchro. Avant cela ses agrégats
+      // (max_g_lateral, tours) sont partiels ou absents — analyser ici
+      // figerait un chiffre faux à vie (upsert `onConflict`, jamais recalculé).
+      // Le bilan recalculera de lui-même une fois la synchro passée.
+      notes.push(`Session non close (${session.status}) — marge globale non calculée.`);
+    } else {
       const result = computeMargin({ session, laps });
-      marginGlobal = result.marginGlobal;
-      computedVehicle = result.marginVehicle;
-      computedPilot = result.marginPilot;
       computedCircuitName = session.circuit_name ?? 'Circuit';
       computedStartedAt = session.started_at;
       computedBestLap = session.best_lap_seconds ?? null;
       computedLapCount = laps.filter((l) => !l.is_outlap && !l.is_inlap).length;
-      await upsertAnalysis({
-        telemetrySessionId: input.telemetrySessionId,
-        userId: input.userId,
-        result,
-      });
-      notes.push(`Marge globale persistée : ${result.marginGlobal.toFixed(1)} %.`);
-    } else {
-      notes.push('Session introuvable pour calcul de marge globale.');
+      if (isMarginResolved(result)) {
+        marginGlobal = result.marginGlobal;
+        computedVehicle = result.marginVehicle;
+        computedPilot = result.marginPilot;
+        await upsertAnalysis({
+          telemetrySessionId: input.telemetrySessionId,
+          userId: input.userId,
+          result,
+        });
+        notes.push(`Marge globale persistée : ${result.marginGlobal.toFixed(1)} %.`);
+      } else {
+        // Données réelles : on ne persiste rien plutôt qu'un chiffre comblé.
+        notes.push('Marge globale non calculable (données absentes) — rien persisté.');
+      }
     }
   } catch (e) {
     notes.push(`Marge globale KO : ${errMsg(e)}`);
