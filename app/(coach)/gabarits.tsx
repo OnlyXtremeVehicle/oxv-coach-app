@@ -8,42 +8,60 @@
  *    pointillée « + Créer un gabarit ». Le rail (CoachRail) vient de `_layout.tsx`.
  *  - COMPAGNON téléphone (< seuil) : AppBar + une colonne compacte de cartes.
  *
- * Modèles de texte réutilisables pour accélérer la saisie des annotations du
- * coach. Confort de saisie côté coach ; les annotations restent cadrées par la
- * doctrine au moment où elles sont écrites, et la voix du coach reste attribuée.
+ * Refonte « plus intuitif » (retour fondateur build 23) :
+ *  - CRÉATION GUIDÉE : le composer s'ouvre en expansion douce (LayoutAnimation),
+ *    placeholders parlants, compteur réel (Field showCounter), et AMORCES DE
+ *    STRUCTURE — des boutons qui INSÈRENT un squelette de texte ÉDITABLE dans le
+ *    champ (« Observation / Ressenti / À creuser »…). Du texte inséré, pas une
+ *    nouvelle donnée ; formulations descriptives, jamais prescriptives.
+ *  - LISIBILITÉ : chaque carte montre un aperçu du body (2 lignes) + des
+ *    métadonnées RÉELLES portées par la table : longueur du texte
+ *    (`body.length`) et date (`updated_at`, seule date de la migration 0039).
+ *    Recherche client (nom + contenu, insensible aux accents) dès 6 gabarits,
+ *    avec compteur de résultats réel.
+ *  - ANIMATIONS : cartes en cascade (FadeInSection), création/suppression en
+ *    LayoutAnimation, bannière de confirmation animée + haptique de réussite.
+ *    Tout respecte useReduceMotion.
  *
  * Adaptations « données réelles » (ZÉRO nouvelle table/colonne) :
  *  - La maquette tague chaque gabarit d'une COULEUR QDI. La table
- *    `coach_annotation_template` (migration 0039) ne porte que `label` + `body` —
- *    aucune branche ni couleur QDI. Les puces restent donc NEUTRES : elles
- *    affichent le libellé du gabarit, pas une donnée QDI (une couleur = une
- *    donnée, jamais décoratif).
- *  - La maquette montre une icône « crayon » (édition). Aucun `updateTemplate`
- *    n'existe côté service ; l'action réelle est la suppression → pas de contrôle
- *    mort, seulement « Supprimer ».
- *  - « + Nouveau » / « + Créer un gabarit » révèlent le formulaire de création
- *    réel (createTemplate). Les textes/couleurs du PNG sont des EXEMPLES ; l'écran
- *    n'affiche que les gabarits réels du coach.
+ *    `coach_annotation_template` ne porte que `label` + `body` + `updated_at` —
+ *    aucune branche ni couleur QDI. Les puces restent donc NEUTRES (une couleur
+ *    = une donnée, jamais décoratif).
+ *  - Aucun `updateTemplate` côté service ; l'action réelle est la suppression →
+ *    pas de contrôle mort, seulement « Supprimer ».
+ *  - PAS de bouton « Utiliser » par carte : `annoter.tsx` n'accepte AUCUN param
+ *    texte (seulement pilotId/cornerIndex/sessionId, et sans pilotId l'écran ne
+ *    peut rien enregistrer) → un tel bouton serait mort. Le chemin réel existe
+ *    déjà DANS annoter : chaque gabarit y est proposé à l'insertion
+ *    (TemplateChips). L'écran le dit en clair au lieu de le simuler.
  *
  * Identité coach = rouge #E23A4E sur les CTA (jamais l'or, réservé au chrono —
- * absent ici). Vouvoiement, zéro emoji, descriptif jamais prescriptif. Logique
- * (templates, validation, CRUD) et RLS coach-only inchangées.
+ * absent ici). Vert = état validé uniquement (bannière de création, cf.
+ * ShareToggle ON). Vouvoiement, zéro emoji, descriptif jamais prescriptif.
+ * Logique (templates, validation, CRUD) et RLS coach-only inchangées.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  UIManager,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
+import { FadeInSection, useReduceMotion } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import * as haptics from '@/lib/haptics';
 import { type CoachAnnotationTemplate, validateTemplate } from '@/services/coachCurationLogic';
 import { createTemplate, deleteTemplate, listMyTemplates } from '@/services/coachCurationService';
 import { theme } from '@/theme/v2';
@@ -52,12 +70,55 @@ import { Field } from '@/ui/Field';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
+import { formatDateShort } from '@/utils/format';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
+
+// LayoutAnimation (expansion du composer, création/suppression de cartes) —
+// l'ancienne architecture Android exige l'activation explicite ; sans effet ailleurs.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+/** Limite réelle du corps de gabarit (validateTemplate + maxLength du champ). */
+const BODY_MAX = 1000;
+
+/** Seuil d'apparition de la recherche client (retour fondateur : dès 6 gabarits). */
+const SEARCH_THRESHOLD = 6;
+
+/**
+ * Amorces de structure : du TEXTE INSÉRÉ ÉDITABLE dans le champ, jamais une
+ * nouvelle donnée. Formulations descriptives/ouvertes (doctrine : le coach
+ * interprète, l'app décrit — aucune consigne).
+ */
+const STARTERS: { key: string; label: string; skeleton: string }[] = [
+  {
+    key: 'observation',
+    label: 'Observation · Ressenti · À creuser',
+    skeleton: 'Observation : \nRessenti : \nÀ creuser : ',
+  },
+  {
+    key: 'phases',
+    label: 'Entrée · Milieu · Sortie',
+    skeleton: 'À l’entrée : \nAu milieu : \nÀ la sortie : ',
+  },
+  {
+    key: 'constat',
+    label: 'Constat · Question ouverte',
+    skeleton: 'Ce que je vois : \nLa question que je vous pose : ',
+  },
+];
+
+/** Normalisation de recherche : minuscules, sans accents (client-side). */
+function normalizeSearch(input: string): string {
+  const COMBINING_MARKS = /[\u0300-\u036f]/g;
+  return input.normalize('NFD').replace(COMBINING_MARKS, '').toLowerCase().trim();
+}
 
 export default function CoachGabaritsScreen() {
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+  const reduceMotion = useReduceMotion();
 
   const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,6 +128,20 @@ export default function CoachGabaritsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [query, setQuery] = useState('');
+  const [justCreated, setJustCreated] = useState<string | null>(null);
+
+  /** Anime le prochain changement de layout (ouverture composer, cartes). */
+  const animateLayout = useCallback(() => {
+    if (reduceMotion) return;
+    LayoutAnimation.configureNext(
+      LayoutAnimation.create(
+        220,
+        LayoutAnimation.Types.easeInEaseOut,
+        LayoutAnimation.Properties.opacity
+      )
+    );
+  }, [reduceMotion]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -88,14 +163,31 @@ export default function CoachGabaritsScreen() {
   );
 
   const openForm = useCallback(() => {
+    animateLayout();
     setError(null);
     setShowForm(true);
-  }, []);
+  }, [animateLayout]);
 
   const closeForm = useCallback(() => {
+    animateLayout();
     setError(null);
     setShowForm(false);
-  }, []);
+  }, [animateLayout]);
+
+  const dismissCreated = useCallback(() => setJustCreated(null), []);
+
+  /** Insère une amorce (squelette éditable) à la suite du texte existant. */
+  function insertStarter(skeleton: string) {
+    const trimmedEnd = body.replace(/\s+$/, '');
+    const next = trimmedEnd.length > 0 ? `${trimmedEnd}\n${skeleton}` : skeleton;
+    if (next.length > BODY_MAX) {
+      setError('Plus assez de place pour insérer cette amorce (1000 caractères maximum).');
+      return;
+    }
+    setError(null);
+    haptics.tap();
+    setBody(next);
+  }
 
   async function onCreate() {
     const input = { label, body };
@@ -106,20 +198,44 @@ export default function CoachGabaritsScreen() {
     }
     setError(null);
     setSaving(true);
-    const result = await createTemplate(input);
+    const created = await createTemplate(input);
     setSaving(false);
-    if (result) {
-      setLabel('');
-      setBody('');
-      setShowForm(false);
+    if (!created) {
+      setError('Le gabarit n’a pas pu être enregistré. Vérifiez votre connexion et réessayez.');
+      return;
+    }
+    // Confirmation réelle : la ligne retournée par l'insert, pas une promesse.
+    haptics.success();
+    animateLayout();
+    setLabel('');
+    setBody('');
+    setShowForm(false);
+    setTemplates((prev) => [...prev, created].sort((a, b) => a.label.localeCompare(b.label, 'fr')));
+    setJustCreated(created.label);
+  }
+
+  async function onDelete(id: string) {
+    const ok = await deleteTemplate(id);
+    if (ok) {
+      haptics.tap();
+      animateLayout();
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } else {
       await reload();
     }
   }
 
-  async function onDelete(id: string) {
-    await deleteTemplate(id);
-    await reload();
-  }
+  // — Recherche client (dès SEARCH_THRESHOLD gabarits) —
+  const searchable = templates.length >= SEARCH_THRESHOLD;
+  const normalizedQuery = searchable ? normalizeSearch(query) : '';
+  const visibleTemplates = useMemo(() => {
+    if (!normalizedQuery) return templates;
+    return templates.filter(
+      (t) =>
+        normalizeSearch(t.label).includes(normalizedQuery) ||
+        normalizeSearch(t.body).includes(normalizedQuery)
+    );
+  }, [templates, normalizedQuery]);
 
   const listState: ScreenState = loading
     ? 'loading'
@@ -167,8 +283,15 @@ export default function CoachGabaritsScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView contentContainerStyle={isConsole ? s.consolePad : s.companionPad}>
+        <ScrollView
+          contentContainerStyle={isConsole ? s.consolePad : s.companionPad}
+          keyboardShouldPersistTaps="handled"
+        >
           {header}
+
+          {justCreated ? (
+            <CreatedBanner key={justCreated} label={justCreated} onDone={dismissCreated} />
+          ) : null}
 
           {showForm ? (
             <View style={s.formWrap}>
@@ -179,6 +302,7 @@ export default function CoachGabaritsScreen() {
                 saving={saving}
                 onChangeLabel={setLabel}
                 onChangeBody={setBody}
+                onInsertStarter={insertStarter}
                 onCancel={closeForm}
                 onSubmit={onCreate}
               />
@@ -195,30 +319,72 @@ export default function CoachGabaritsScreen() {
               errorCause="La liste des gabarits n'a pas pu être chargée."
               onRetry={reload}
             >
-              <View style={s.grid}>
-                {templates.map((t) => (
-                  <TemplateCard key={t.id} template={t} isConsole={isConsole} onDelete={onDelete} />
-                ))}
-                {showForm ? null : (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Créer un gabarit"
-                    onPress={openForm}
-                    style={({ pressed }) => [
-                      s.createCard,
-                      isConsole ? s.gridCell : s.fullCell,
-                      pressed && { opacity: 0.7 },
-                    ]}
+              <View>
+                <View style={s.libHead}>
+                  <Text style={s.libEyebrow}>VOTRE BIBLIOTHÈQUE</Text>
+                  <View
+                    style={s.countChip}
+                    accessibilityLabel={
+                      normalizedQuery
+                        ? `${visibleTemplates.length} gabarits sur ${templates.length}`
+                        : `${templates.length} gabarits`
+                    }
                   >
-                    <Text style={s.createTxt}>+ Créer un gabarit</Text>
-                  </Pressable>
+                    <Text style={s.countChipTxt}>
+                      {normalizedQuery
+                        ? `${visibleTemplates.length} / ${templates.length}`
+                        : `${templates.length}`}
+                    </Text>
+                  </View>
+                </View>
+
+                {searchable ? (
+                  <Field
+                    label="Rechercher un gabarit"
+                    value={query}
+                    onChangeText={setQuery}
+                    placeholder="Nom ou contenu"
+                    autoCorrect={false}
+                  />
+                ) : null}
+
+                {visibleTemplates.length === 0 && normalizedQuery ? (
+                  <Text style={s.noMatch}>Aucun gabarit ne correspond à votre recherche.</Text>
+                ) : (
+                  <View style={s.grid}>
+                    {visibleTemplates.map((t, i) => (
+                      <FadeInSection
+                        key={t.id}
+                        delay={Math.min(i, 8) * 45}
+                        disabled={normalizedQuery.length > 0}
+                        style={isConsole ? s.gridCell : s.fullCell}
+                      >
+                        <TemplateCard template={t} onDelete={onDelete} />
+                      </FadeInSection>
+                    ))}
+                    {showForm || normalizedQuery ? null : (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Créer un gabarit"
+                        onPress={openForm}
+                        style={({ pressed }) => [
+                          s.createCard,
+                          isConsole ? s.gridCell : s.fullCell,
+                          pressed && { opacity: 0.7 },
+                        ]}
+                      >
+                        <Text style={s.createTxt}>+ Créer un gabarit</Text>
+                      </Pressable>
+                    )}
+                  </View>
                 )}
               </View>
             </StateWrapper>
           </View>
 
           <Text style={s.doctrine}>
-            Vos gabarits accélèrent la saisie. Chaque mot reste le vôtre, attribué à vous.
+            Vos gabarits vous sont proposés à l'insertion au moment d'annoter un virage. Chaque mot
+            reste le vôtre, attribué à vous.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -230,15 +396,13 @@ export default function CoachGabaritsScreen() {
 
 function TemplateCard({
   template,
-  isConsole,
   onDelete,
 }: {
   template: CoachAnnotationTemplate;
-  isConsole: boolean;
   onDelete: (id: string) => void;
 }) {
   return (
-    <View style={[s.tplCard, isConsole ? s.gridCell : s.fullCell]}>
+    <View style={s.tplCard}>
       <View style={s.tplTop}>
         {/* Puce NEUTRE = libellé du gabarit (pas une branche QDI : la table ne
             porte aucune couleur — cf. en-tête de fichier). */}
@@ -257,7 +421,14 @@ function TemplateCard({
           <Text style={s.deleteTxt}>Supprimer</Text>
         </Pressable>
       </View>
-      <Text style={s.tplBody}>« {template.body} »</Text>
+      {/* Aperçu 2 lignes — le texte complet est proposé à l'insertion dans Annoter. */}
+      <Text style={s.tplBody} numberOfLines={2}>
+        « {template.body} »
+      </Text>
+      {/* Métadonnées RÉELLES : longueur du texte + date portée par la table. */}
+      <Text style={s.tplMetaTxt}>
+        {`${template.body.length} caractères · ${formatDateShort(template.updatedAt)}`}
+      </Text>
     </View>
   );
 }
@@ -269,6 +440,7 @@ function NewTemplateForm({
   saving,
   onChangeLabel,
   onChangeBody,
+  onInsertStarter,
   onCancel,
   onSubmit,
 }: {
@@ -278,6 +450,7 @@ function NewTemplateForm({
   saving: boolean;
   onChangeLabel: (v: string) => void;
   onChangeBody: (v: string) => void;
+  onInsertStarter: (skeleton: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
 }) {
@@ -288,16 +461,41 @@ function NewTemplateForm({
         label="Nom du gabarit"
         value={label}
         onChangeText={onChangeLabel}
-        placeholder="Sortie de virage"
+        placeholder="Sortie de virage, freinage tardif…"
+        helper="Le nom sous lequel ce gabarit vous sera proposé au moment d'annoter."
         maxLength={60}
       />
+
+      {/* Amorces : squelettes INSÉRÉS dans le champ, éditables — pas une donnée. */}
+      <View style={s.starterBlock}>
+        <Text style={s.starterEyebrow}>AMORCES DE STRUCTURE</Text>
+        <View style={s.starterRow}>
+          {STARTERS.map((st) => (
+            <Pressable
+              key={st.key}
+              accessibilityRole="button"
+              accessibilityLabel={`Insérer l'amorce ${st.label}`}
+              hitSlop={theme.hitSlop}
+              onPress={() => onInsertStarter(st.skeleton)}
+              style={({ pressed }) => [s.starterChip, pressed && { opacity: 0.7 }]}
+            >
+              <Text style={s.starterChipTxt}>+ {st.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={s.starterHint}>
+          Un squelette inséré dans votre texte, à remanier librement.
+        </Text>
+      </View>
+
       <Field
         label="Texte du gabarit"
         value={body}
         onChangeText={onChangeBody}
-        placeholder="Le texte du gabarit, sobre et descriptif."
+        placeholder="Ce que vous observez, formulé une fois pour toutes. Sobre, descriptif, ouvert."
         multiline
-        maxLength={1000}
+        numberOfLines={5}
+        maxLength={BODY_MAX}
         showCounter
       />
       {error ? <Text style={s.errorTxt}>{error}</Text> : null}
@@ -310,6 +508,63 @@ function NewTemplateForm({
         />
       </View>
     </View>
+  );
+}
+
+/**
+ * Bannière de confirmation de création — n'apparaît QUE sur une ligne réellement
+ * insérée (retour de createTemplate). Vert = état validé (cf. ShareToggle ON),
+ * fondu entrée/sortie, retrait automatique. Statique sous reduce motion.
+ */
+function CreatedBanner({ label, onDone }: { label: string; onDone: () => void }) {
+  const reduceMotion = useReduceMotion();
+  const progress = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) {
+      progress.setValue(1);
+      const id = setTimeout(onDone, 2000);
+      return () => clearTimeout(id);
+    }
+    const seq = Animated.sequence([
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.delay(1800),
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: 320,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]);
+    seq.start(({ finished }) => {
+      if (finished) onDone();
+    });
+    return () => seq.stop();
+  }, [onDone, progress, reduceMotion]);
+
+  return (
+    <Animated.View
+      accessibilityRole="alert"
+      style={[
+        s.banner,
+        {
+          opacity: progress,
+          transform: [
+            {
+              translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] }),
+            },
+          ],
+        },
+      ]}
+    >
+      <View style={s.bannerRing} />
+      <Text style={s.bannerTxt}>{`Gabarit « ${label} » ajouté.`}</Text>
+    </Animated.View>
   );
 }
 
@@ -389,6 +644,71 @@ const s = StyleSheet.create({
     marginTop: spacing.md,
   },
 
+  // Bannière de confirmation (création réelle)
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: palette.green,
+    backgroundColor: 'rgba(79,201,138,0.08)',
+  },
+  bannerRing: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.4,
+    borderColor: palette.green,
+  },
+  bannerTxt: {
+    flex: 1,
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.green,
+  },
+
+  // Bibliothèque (tête de liste + compteur réel)
+  libHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  libEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+  },
+  countChip: {
+    minWidth: 28,
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    backgroundColor: palette.card2,
+  },
+  countChipTxt: {
+    fontFamily: fonts.monoMedium,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: palette.creamSoft,
+  },
+  noMatch: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    paddingVertical: spacing.md,
+  },
+
   // Grille de gabarits
   grid: {
     flexDirection: 'row',
@@ -444,6 +764,14 @@ const s = StyleSheet.create({
     marginTop: spacing.md,
     lineHeight: fontSize.small * 1.55,
   },
+  tplMetaTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: palette.faint,
+    marginTop: spacing.md,
+  },
 
   // Carte pointillée de création
   createCard: {
@@ -493,6 +821,45 @@ const s = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: spacing.md,
     marginTop: spacing.xs,
+  },
+
+  // Amorces de structure
+  starterBlock: { marginBottom: spacing.lg },
+  starterEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: palette.creamMute,
+    marginBottom: spacing.sm,
+  },
+  starterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  starterChip: {
+    minHeight: 36,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card2,
+  },
+  starterChipTxt: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.6,
+    color: palette.creamSoft,
+  },
+  starterHint: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+    lineHeight: fontSize.small * 1.4,
   },
 
   // CTA coach

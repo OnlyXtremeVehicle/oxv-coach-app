@@ -2,13 +2,16 @@
  * Logique pure des repères de référence coach (§10.3c-A OXV Mirror).
  *
  * Aucune dépendance Supabase / RN : module unitairement testable (Jest).
- * Voir migration 20260526230000_0038_coach_corner_references.sql.
+ * Voir migrations 20260526230000_0038_coach_corner_references.sql et
+ * 20260716180000_corner_references_multicircuit.sql (un repère appartient
+ * à UN circuit : clé coach + circuit + virage).
  */
 
-/** Repère de référence d'un coach sur un virage (modèle domaine). */
+/** Repère de référence d'un coach sur un virage d'UN circuit (modèle domaine). */
 export interface CoachCornerReference {
   id: string;
   coachId: string;
+  circuitId: string;
   cornerIndex: number;
   brakingPointM: number | null;
   targetSpeedKmh: number | null;
@@ -54,6 +57,27 @@ export function validateCornerReference(input: CornerReferenceInput): string | n
     return 'La note de trajectoire est trop longue (280 caractères maximum).';
   }
   return null;
+}
+
+/**
+ * Compte les virages d'un circuit portant un repère POSÉ (au moins une
+ * information exploitable). Compteur RÉEL, jamais gonflé : seuls comptent les
+ * repères dont le virage figure dans la liste des virages du circuit (un
+ * repère orphelin d'un ancien découpage du tracé n'entre pas dans le compte),
+ * et chaque virage ne compte qu'une fois.
+ */
+export function countCornersWithReference(
+  references: readonly (CornerReferenceInput & { cornerIndex: number })[],
+  cornerIndexes: readonly number[]
+): number {
+  const listed = new Set(cornerIndexes);
+  const placed = new Set<number>();
+  for (const reference of references) {
+    if (listed.has(reference.cornerIndex) && referenceHasContent(reference)) {
+      placed.add(reference.cornerIndex);
+    }
+  }
+  return placed.size;
 }
 
 /** Comparaison factuelle vitesse pilote ↔ vitesse repère du coach. */

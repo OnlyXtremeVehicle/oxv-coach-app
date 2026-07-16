@@ -1,5 +1,6 @@
 import {
   compareSpeedToReference,
+  countCornersWithReference,
   referenceHasContent,
   validateCornerReference,
 } from '../coachReferenceLogic';
@@ -34,6 +35,62 @@ describe('validateCornerReference', () => {
 
   it('refuse une note trop longue', () => {
     expect(validateCornerReference({ trajectoryNote: 'a'.repeat(281) })).toMatch(/trop longue/i);
+  });
+});
+
+describe('countCornersWithReference — compteur réel par circuit', () => {
+  const listed = [1, 2, 3, 4, 5, 6, 7];
+
+  it('zéro repère → 0', () => {
+    expect(countCornersWithReference([], listed)).toBe(0);
+  });
+
+  it('ne compte que les repères qui portent une information', () => {
+    expect(
+      countCornersWithReference(
+        [
+          { cornerIndex: 1, brakingPointM: 110 },
+          { cornerIndex: 2 }, // vide : ne compte pas
+          { cornerIndex: 3, trajectoryNote: '   ' }, // blanc : ne compte pas
+        ],
+        listed
+      )
+    ).toBe(1);
+  });
+
+  it('exclut un repère orphelin d’un virage non listé sur ce tracé', () => {
+    // Un repère posé sur un « virage 12 » n'entre pas dans le compte d'un
+    // circuit qui n'en liste que 7 : le compteur reste honnête.
+    expect(
+      countCornersWithReference(
+        [
+          { cornerIndex: 12, targetSpeedKmh: 90 },
+          { cornerIndex: 4, targetSpeedKmh: 88 },
+        ],
+        listed
+      )
+    ).toBe(1);
+  });
+
+  it('un virage ne compte qu’une fois, même avec des doublons', () => {
+    expect(
+      countCornersWithReference(
+        [
+          { cornerIndex: 5, brakingPointM: 100 },
+          { cornerIndex: 5, targetSpeedKmh: 95 },
+        ],
+        listed
+      )
+    ).toBe(1);
+  });
+
+  it('tous posés → le total des virages listés', () => {
+    expect(
+      countCornersWithReference(
+        listed.map((cornerIndex) => ({ cornerIndex, brakingPointM: 100 })),
+        listed
+      )
+    ).toBe(7);
   });
 });
 

@@ -8,12 +8,33 @@
  *
  * RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13) :
  *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH) : deux colonnes — pilotes en
- *     grille à gauche, contexte (dernières 24 h · à faire · outils) à droite. Le
- *     rail vertical est fourni par `_layout.tsx`.
+ *     grille à gauche, contexte (activité · dernières 24 h · à faire · outils)
+ *     à droite. Le rail vertical est fourni par `_layout.tsx`.
  *   - COMPAGNON (téléphone) : une colonne — titre « Mes pilotes », recherche,
- *     liste verticale, puis à-faire/outils sous la ligne de flottaison. Les
- *     onglets bas sont fournis par `_layout.tsx`.
+ *     liste verticale, puis activité/à-faire/outils sous la ligne de
+ *     flottaison. Les onglets bas sont fournis par `_layout.tsx`.
  * Un seul composant, deux arrangements ; aucune navigation cassée.
+ *
+ * HUB VISUEL (retour fondateur build 23 : « des cases avec des insignes et de
+ * la couleur, un rappel visuel pour se relier » + graphiques + animations) :
+ *   - Les outils sont une GRILLE DE TUILES : insigne SVG fin (cohérent kit
+ *     CoachTabBar — 24×24, trait rond ~1.7), fond card2 teinté ~9 %, bord
+ *     d'accent, cascade d'entrée, scale pressé + haptique.
+ *   - FAMILLES D'OUTILS — couleurs d'IDENTITÉ DE NAVIGATION, PAS des couleurs
+ *     de donnée QDI :
+ *       lecture & studio    → rouge coach #E23A4E (palette.coachAccent)
+ *       agenda & programmes → neutre chaude #C89B7B (JAMAIS l'or #FFB703,
+ *                             réservé chrono/record)
+ *       business            → crème #F5F5F7 (palette.cream)
+ *       social & pilotes    → violet #A783F2 (teinte violette du thème ; ici
+ *                             repère de navigation, sans rapport avec la
+ *                             branche QDI régularité)
+ *     Le même insigne + couleur devra servir de RAPPEL en tête des écrans
+ *     cibles (passe future — ne rien modifier hors de ce hub ici).
+ *   - GRAPHIQUES RÉELS : sparkline-barres « séances reçues / jour » sur 7
+ *     jours (dérivée des startedAt de la file déjà chargée — zéro requête
+ *     nouvelle) + anneau « lues / à lire » (compteurs réels de groupQueue).
+ *     Valeur absente → graphique MASQUÉ, jamais de courbe plate inventée.
  *
  * Doctrine coach : vouvoiement, zéro emoji, DESCRIPTIF jamais prescriptif — le
  * coach LIT et oriente, l'app ne dicte pas le pilotage. Identité rouge coach
@@ -26,20 +47,32 @@
  * inventé — masqué. Lecture seule partout.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { router } from 'expo-router';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
+import { CountUpNumber, FadeInSection, useReduceMotion } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import * as haptics from '@/lib/haptics';
 import {
   type CoachDashboardSummary,
   type CoachPilotRow,
   listMyPilots,
   loadCoachDashboardSummary,
 } from '@/services/coachService';
-import { type QueueItem } from '@/services/coachQueueLogic';
+import { groupQueue, type QueueItem } from '@/services/coachQueueLogic';
 import { loadCoachQueue } from '@/services/coachQueueService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -55,6 +88,47 @@ const { palette, fonts, spacing, radius } = theme;
 /** Gouttière écran de la console (§5 handoff : 24 px horizontal). */
 const CONSOLE_GUTTER = 24;
 
+// ---------------------------------------------------------------------------
+// Familles d'outils — identité de navigation (cf. bloc doc en tête de fichier)
+// ---------------------------------------------------------------------------
+
+type ToolFamily = 'lecture' | 'agenda' | 'business' | 'pilotes';
+
+const TOOL_FAMILY_COLOR: Record<ToolFamily, string> = {
+  lecture: palette.coachAccent, // rouge coach — lecture & studio
+  agenda: '#C89B7B', // neutre chaude — agenda & programmes (pas l'or, réservé chrono)
+  business: palette.cream, // crème — business
+  pilotes: '#A783F2', // violet du thème — social & pilotes (navigation, pas QDI)
+};
+
+type ToolKey =
+  | 'demandes'
+  | 'comparer'
+  | 'cycles'
+  | 'reperes'
+  | 'gabarits'
+  | 'assistant'
+  | 'lecture'
+  | 'ar'
+  | 'roulages'
+  | 'business'
+  | 'facturation';
+
+interface ToolDef {
+  key: ToolKey;
+  label: string;
+  family: ToolFamily;
+  route: string;
+}
+
+/** rgba(...) depuis un hex #RRGGBB — teintes des tuiles (fond ~9 %, bord ~30 %). */
+function rgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
 /** Synthèse par pilote dérivée de la file de lecture (`coach_queue`). */
 interface PilotView {
   row: CoachPilotRow;
@@ -64,6 +138,21 @@ interface PilotView {
   latestAt: string | null;
   /** Circuit de cette séance la plus récente. */
   circuit: string | null;
+}
+
+/** Un jour de la sparkline d'activité (compte réel, jamais inventé). */
+interface DayCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+// Initiales des jours, indexées par `Date#getDay()` (0 = dimanche).
+const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'] as const;
+
+/** Clé calendaire locale (jour civil) pour grouper les startedAt. */
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 
 export default function CoachHubScreen() {
@@ -101,11 +190,11 @@ export default function CoachHubScreen() {
     setLoading(true);
     setError(false);
     Promise.all([listMyPilots(), loadCoachQueue(), loadCoachDashboardSummary()])
-      .then(([rows, q, s]) => {
+      .then(([rows, q, s2]) => {
         if (!cancelled) {
           setPilots(rows);
           setQueue(q);
-          setSummary(s);
+          setSummary(s2);
           setLoading(false);
         }
       })
@@ -167,6 +256,27 @@ export default function CoachHubScreen() {
   const topUnread = useMemo(() => queue.find((i) => i.status === 'unread') ?? null, [queue]);
   const draftCount = summary?.draftAnnotationCount ?? 0;
 
+  // Activité 7 jours : séances reçues par jour civil, dérivées des startedAt
+  // de la file déjà chargée — zéro requête supplémentaire, comptes réels.
+  const weekActivity = useMemo<DayCount[]>(() => {
+    const now = new Date();
+    const days: DayCount[] = [];
+    for (let back = 6; back >= 0; back--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+      days.push({ key: dayKey(d), label: DAY_LETTERS[d.getDay()], count: 0 });
+    }
+    const byKey = new Map(days.map((slot) => [slot.key, slot]));
+    for (const item of queue) {
+      const slot = byKey.get(dayKey(new Date(item.startedAt)));
+      if (slot) slot.count += 1;
+    }
+    return days;
+  }, [queue]);
+  const weekTotal = useMemo(() => weekActivity.reduce((n, d) => n + d.count, 0), [weekActivity]);
+
+  // Compteurs réels lues / à lire (groupQueue — les archivées sortent du ratio).
+  const queueCounts = useMemo(() => groupQueue(queue).counts, [queue]);
+
   const pilotsState: ScreenState = loading
     ? 'loading'
     : error
@@ -181,6 +291,60 @@ export default function CoachHubScreen() {
 
   const openPilot = (pilotId: string) =>
     router.push({ pathname: '/(coach)/pilote/[id]', params: { id: pilotId } } as never);
+
+  // Grille d'outils — mêmes routes et mêmes conditions d'accès qu'avant,
+  // regroupées par famille d'identité (cf. mapping en tête de fichier).
+  const tools = useMemo<ToolDef[]>(() => {
+    const list: ToolDef[] = [
+      { key: 'demandes', label: 'Demandes', family: 'pilotes', route: '/(coach)/demandes' },
+    ];
+    if (permissions.canViewPilots && pilots.length >= 2) {
+      list.push({
+        key: 'comparer',
+        label: 'Comparer deux pilotes',
+        family: 'pilotes',
+        route: '/(coach)/comparer-pilotes',
+      });
+    }
+    list.push(
+      { key: 'cycles', label: 'Programmes', family: 'agenda', route: '/(coach)/cycles' },
+      {
+        key: 'reperes',
+        label: 'Mes repères de virage',
+        family: 'lecture',
+        route: '/(coach)/reperes',
+      },
+      { key: 'gabarits', label: 'Mes gabarits', family: 'lecture', route: '/(coach)/gabarits' },
+      { key: 'assistant', label: 'Assistant IA', family: 'lecture', route: '/(coach)/assistant' },
+      { key: 'lecture', label: 'Ma lecture', family: 'lecture', route: '/(coach)/lecture' },
+      { key: 'ar', label: 'Vue AR (aperçu)', family: 'lecture', route: '/(coach)/ar' }
+    );
+    if (permissions.canManageOwnSessions) {
+      list.push({
+        key: 'roulages',
+        label: 'Mes roulages',
+        family: 'lecture',
+        route: '/(coach)/roulages',
+      });
+    }
+    if (permissions.canViewBusinessDashboard) {
+      list.push({
+        key: 'business',
+        label: 'Tableau de bord',
+        family: 'business',
+        route: '/(coach)/business',
+      });
+    }
+    if (billingOn) {
+      list.push({
+        key: 'facturation',
+        label: 'Facturation',
+        family: 'business',
+        route: '/(coach)/facturation',
+      });
+    }
+    return list;
+  }, [permissions, pilots.length, billingOn]);
 
   // ---- Blocs partagés entre les deux formats ------------------------------
 
@@ -223,94 +387,133 @@ export default function CoachHubScreen() {
     </StateWrapper>
   );
 
-  const feedBlock = ready ? (
-    <View style={s.panel}>
-      <SectionLabel>Dernières 24 h</SectionLabel>
-      <View style={{ marginTop: spacing.md, gap: spacing.md }}>
-        {recentFeed.length === 0 ? (
-          <Text style={s.calm}>Rien de neuf dans les dernières 24 h.</Text>
-        ) : (
-          recentFeed.map((i) => (
-            <View key={i.sessionId} style={s.feedRow}>
-              <View style={s.feedDot} accessibilityElementsHidden importantForAccessibility="no" />
-              <Text style={s.feedTxt}>
-                <Text style={s.feedName}>{i.pilotName}</Text>
-                {` · séance prête à lire · ${timeAgoFr(new Date(i.startedAt))}`}
-              </Text>
+  // Graphiques réels — masqués quand il n'y a rien à montrer (pas de courbe
+  // plate inventée) : sparkline si ≥ 1 séance reçue sur 7 jours, anneau si la
+  // file contient au moins une séance lue ou à lire.
+  const showSpark = weekTotal > 0;
+  const showRing = queueCounts.unread + queueCounts.read > 0;
+  const activityBlock =
+    ready && (showSpark || showRing) ? (
+      <FadeInSection delay={40}>
+        <View style={s.panel}>
+          <SectionLabel>Activité</SectionLabel>
+          <Card style={s.activityCard}>
+            <View style={s.activityRow}>
+              {showSpark ? (
+                <View
+                  style={s.sparkCol}
+                  accessible
+                  accessibilityLabel={`${weekTotal} séance${weekTotal > 1 ? 's' : ''} reçue${
+                    weekTotal > 1 ? 's' : ''
+                  } sur les 7 derniers jours. Par jour : ${weekActivity
+                    .map((d) => `${d.label} ${d.count}`)
+                    .join(', ')}.`}
+                >
+                  <Text style={s.chartEyebrow}>Séances reçues · 7 jours</Text>
+                  <CountUpNumber value={weekTotal} duration={700} style={s.chartValue} />
+                  <WeekSparkline days={weekActivity} />
+                </View>
+              ) : null}
+              {showSpark && showRing ? <View style={s.activityDivider} /> : null}
+              {showRing ? (
+                <View
+                  style={s.ringCol}
+                  accessible
+                  accessibilityLabel={`${queueCounts.unread} séance${
+                    queueCounts.unread > 1 ? 's' : ''
+                  } à lire, ${queueCounts.read} lue${queueCounts.read > 1 ? 's' : ''}.`}
+                >
+                  <ReadRing unread={queueCounts.unread} read={queueCounts.read} />
+                  <View style={s.ringLegend}>
+                    <View style={s.legendRow}>
+                      <View style={[s.legendDot, { backgroundColor: palette.coachAccent }]} />
+                      <Text style={s.legendTxt}>{queueCounts.unread} à lire</Text>
+                    </View>
+                    <View style={s.legendRow}>
+                      <View style={[s.legendDot, { backgroundColor: RING_TRACK }]} />
+                      <Text style={s.legendTxt}>
+                        {queueCounts.read} lue{queueCounts.read > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ) : null}
             </View>
-          ))
-        )}
+          </Card>
+        </View>
+      </FadeInSection>
+    ) : null;
+
+  const feedBlock = ready ? (
+    <FadeInSection delay={100}>
+      <View style={s.panel}>
+        <SectionLabel>Dernières 24 h</SectionLabel>
+        <View style={{ marginTop: spacing.md, gap: spacing.md }}>
+          {recentFeed.length === 0 ? (
+            <Text style={s.calm}>Rien de neuf dans les dernières 24 h.</Text>
+          ) : (
+            recentFeed.map((i) => (
+              <View key={i.sessionId} style={s.feedRow}>
+                <View
+                  style={s.feedDot}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+                <Text style={s.feedTxt}>
+                  <Text style={s.feedName}>{i.pilotName}</Text>
+                  {` · séance prête à lire · ${timeAgoFr(new Date(i.startedAt))}`}
+                </Text>
+              </View>
+            ))
+          )}
+        </View>
       </View>
-    </View>
+    </FadeInSection>
   ) : null;
 
   const todoBlock = ready ? (
-    <View style={s.panel}>
-      <SectionLabel>À faire</SectionLabel>
-      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-        {topUnread ? (
-          <ReadCTA
-            label={`Lire la séance de ${firstNameOf(topUnread.pilotName)}`}
-            onPress={() =>
-              router.push({
-                pathname: '/(coach)/studio',
-                params: { sessionId: topUnread.sessionId },
-              } as never)
-            }
+    <FadeInSection delay={160}>
+      <View style={s.panel}>
+        <SectionLabel>À faire</SectionLabel>
+        <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+          {topUnread ? (
+            <ReadCTA
+              label={`Lire la séance de ${firstNameOf(topUnread.pilotName)}`}
+              onPress={() =>
+                router.push({
+                  pathname: '/(coach)/studio',
+                  params: { sessionId: topUnread.sessionId },
+                } as never)
+              }
+            />
+          ) : (
+            <Text style={s.calm}>Rien à lire dans l'immédiat.</Text>
+          )}
+          <ToolRow
+            label="File de lecture"
+            onPress={() => router.push('/(coach)/file-lecture' as never)}
           />
-        ) : (
-          <Text style={s.calm}>Rien à lire dans l'immédiat.</Text>
-        )}
-        <ToolRow
-          label="File de lecture"
-          onPress={() => router.push('/(coach)/file-lecture' as never)}
-        />
-        {draftCount > 0 ? (
-          <Text style={s.calm}>
-            {draftCount === 1
-              ? '1 note en brouillon en attente de partage.'
-              : `${draftCount} notes en brouillon en attente de partage.`}
-          </Text>
-        ) : null}
+          {draftCount > 0 ? (
+            <Text style={s.calm}>
+              {draftCount === 1
+                ? '1 note en brouillon en attente de partage.'
+                : `${draftCount} notes en brouillon en attente de partage.`}
+            </Text>
+          ) : null}
+        </View>
       </View>
-    </View>
+    </FadeInSection>
   ) : null;
 
   const outilsBlock = (
     <View style={s.panel}>
       <SectionLabel>Outils</SectionLabel>
-      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-        <ToolRow label="Demandes" onPress={() => router.push('/(coach)/demandes' as never)} />
-        <ToolRow label="Programmes" onPress={() => router.push('/(coach)/cycles' as never)} />
-        <ToolRow
-          label="Mes repères de virage"
-          onPress={() => router.push('/(coach)/reperes' as never)}
-        />
-        <ToolRow label="Mes gabarits" onPress={() => router.push('/(coach)/gabarits' as never)} />
-        <ToolRow label="Assistant IA" onPress={() => router.push('/(coach)/assistant' as never)} />
-        <ToolRow label="Ma lecture" onPress={() => router.push('/(coach)/lecture' as never)} />
-        <ToolRow label="Vue AR (aperçu)" onPress={() => router.push('/(coach)/ar' as never)} />
-        {permissions.canViewPilots && pilots.length >= 2 ? (
-          <ToolRow
-            label="Comparer deux pilotes"
-            onPress={() => router.push('/(coach)/comparer-pilotes' as never)}
-          />
-        ) : null}
-        {permissions.canManageOwnSessions ? (
-          <ToolRow label="Mes roulages" onPress={() => router.push('/(coach)/roulages' as never)} />
-        ) : null}
-        {permissions.canViewBusinessDashboard ? (
-          <ToolRow
-            label="Tableau de bord"
-            onPress={() => router.push('/(coach)/business' as never)}
-          />
-        ) : null}
-        {billingOn ? (
-          <ToolRow
-            label="Facturation"
-            onPress={() => router.push('/(coach)/facturation' as never)}
-          />
-        ) : null}
+      <View style={s.toolGrid}>
+        {tools.map((tool, i) => (
+          <FadeInSection key={tool.key} delay={200 + i * 45} style={s.toolWrap}>
+            <ToolTile tool={tool} onPress={() => router.push(tool.route as never)} />
+          </FadeInSection>
+        ))}
       </View>
     </View>
   );
@@ -356,6 +559,7 @@ export default function CoachHubScreen() {
               <View style={{ marginTop: spacing.md }}>{pilotsBlock}</View>
             </View>
             <View style={s.sideCol}>
+              {activityBlock}
               {feedBlock}
               {todoBlock}
               {outilsBlock}
@@ -380,6 +584,7 @@ export default function CoachHubScreen() {
 
         <View style={{ marginTop: spacing.lg }}>{pilotsBlock}</View>
 
+        {activityBlock}
         {todoBlock}
         {outilsBlock}
         {footerBlock}
@@ -481,6 +686,257 @@ function ToolRow({ label, onPress }: { label: string; onPress: () => void }) {
         </Text>
       </View>
     </Card>
+  );
+}
+
+/**
+ * Tuile d'outil : insigne + couleur d'identité de famille, fond card2 teinté
+ * ~9 %, bord d'accent. Scale léger au pressé (ease-out, pas de spring —
+ * doctrine motion) + haptique discret, désactivés si « réduire les
+ * animations » est actif.
+ */
+function ToolTile({ tool, onPress }: { tool: ToolDef; onPress: () => void }) {
+  const reduceMotion = useReduceMotion();
+  const scale = useRef(new Animated.Value(1)).current;
+  const color = TOOL_FAMILY_COLOR[tool.family];
+
+  const pressTo = (v: number) => {
+    if (reduceMotion) return;
+    Animated.timing(scale, {
+      toValue: v,
+      duration: 110,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={tool.label}
+        onPressIn={() => pressTo(0.97)}
+        onPressOut={() => pressTo(1)}
+        onPress={() => {
+          haptics.tap();
+          onPress();
+        }}
+        style={[s.tile, { borderColor: rgba(color, 0.3) }]}
+      >
+        <View pointerEvents="none" style={[s.tileTint, { backgroundColor: rgba(color, 0.09) }]} />
+        <View style={[s.tileGlyph, { backgroundColor: rgba(color, 0.14) }]}>
+          <ToolGlyph name={tool.key} color={color} />
+        </View>
+        <Text style={s.tileLabel} numberOfLines={2}>
+          {tool.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/**
+ * Insignes SVG des outils — pictogrammes fins cohérents avec le kit
+ * (CoachTabBar : viewBox 24, trait rond ~1.7, fill none). Ces insignes sont
+ * les REPÈRES à réutiliser en tête des écrans cibles (passe future).
+ */
+function ToolGlyph({ name, color }: { name: ToolKey; color: string }) {
+  const p = {
+    stroke: color,
+    strokeWidth: 1.7,
+    fill: 'none' as const,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+  };
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      {name === 'demandes' ? (
+        <>
+          <Path d="M4 13.5 6.8 6h10.4L20 13.5V19H4z" {...p} />
+          <Path d="M4 13.5h4.6c0 1.9 1.5 3.4 3.4 3.4s3.4-1.5 3.4-3.4H20" {...p} />
+        </>
+      ) : null}
+      {name === 'comparer' ? (
+        <>
+          <Circle cx={9} cy={12} r={5.2} {...p} />
+          <Circle cx={15} cy={12} r={5.2} {...p} />
+        </>
+      ) : null}
+      {name === 'cycles' ? (
+        <>
+          <Path d="M6.2 6.2A8 8 0 0 1 19.7 10" {...p} />
+          <Path d="M19.8 3.8V8h-4.2" {...p} />
+          <Path d="M17.8 17.8A8 8 0 0 1 4.3 14" {...p} />
+          <Path d="M4.2 20.2V16h4.2" {...p} />
+        </>
+      ) : null}
+      {name === 'reperes' ? (
+        <>
+          <Path d="M5 20c0-8 4.5-14 14-15" {...p} />
+          <Circle cx={9.3} cy={11.2} r={1.9} fill={color} stroke="none" />
+        </>
+      ) : null}
+      {name === 'gabarits' ? (
+        <>
+          <Rect x={8} y={8} width={12} height={12} rx={2} {...p} />
+          <Path d="M16 4.5H6.5a2 2 0 0 0-2 2V16" {...p} />
+        </>
+      ) : null}
+      {name === 'assistant' ? (
+        <Path d="M12 3.5 13.9 10 20.5 12 13.9 14 12 20.5 10.1 14 3.5 12 10.1 10z" {...p} />
+      ) : null}
+      {name === 'lecture' ? (
+        <>
+          <Path
+            d="M12 6.3C10.2 4.8 7.3 4.4 4 5v13.4c3.3-.6 6.2-.2 8 1.3 1.8-1.5 4.7-1.9 8-1.3V5c-3.3-.6-6.2-.2-8 1.3z"
+            {...p}
+          />
+          <Path d="M12 6.3v13.4" {...p} />
+        </>
+      ) : null}
+      {name === 'ar' ? (
+        <>
+          <Path d="M4 8V6a2 2 0 0 1 2-2h2" {...p} />
+          <Path d="M16 4h2a2 2 0 0 1 2 2v2" {...p} />
+          <Path d="M20 16v2a2 2 0 0 1-2 2h-2" {...p} />
+          <Path d="M8 20H6a2 2 0 0 1-2-2v-2" {...p} />
+          <Circle cx={12} cy={12} r={2.3} {...p} />
+        </>
+      ) : null}
+      {name === 'roulages' ? (
+        <>
+          <Circle cx={12} cy={12} r={8} {...p} />
+          <Circle cx={12} cy={12} r={1.6} fill={color} stroke="none" />
+          <Path d="M4 12h5.8M14.2 12h5.8M12 14.2v5.8" {...p} />
+        </>
+      ) : null}
+      {name === 'business' ? (
+        <>
+          <Path d="M4 20h16" {...p} />
+          <Path d="M8 20v-6M12 20V10M16 20v-4" {...p} />
+        </>
+      ) : null}
+      {name === 'facturation' ? (
+        <>
+          <Rect x={5.5} y={3.5} width={13} height={17} rx={2} {...p} />
+          <Path d="M9 8.5h6M9 12h6M9 15.5h3.5" {...p} />
+        </>
+      ) : null}
+    </Svg>
+  );
+}
+
+// ---- Graphiques SVG maison (react-native-svg, zéro lib de charts) ----------
+
+// Géométrie de la sparkline (viewBox — l'axe X s'étire, l'axe Y reste 1:1).
+const SPARK_W = 308;
+const SPARK_H = 54;
+const SPARK_BASE = 50;
+const SPARK_TOP = 6;
+
+/**
+ * Sparkline-barres « séances reçues / jour » sur 7 jours. Un jour sans séance
+ * n'a PAS de barre (compte zéro honnête, pas de plancher visuel inventé).
+ * Barres crème neutres : « reçu » n'est ni une alerte (rouge) ni un chrono
+ * (or). Les lettres de jours sont rendues en RN (tokens texte) sous le SVG,
+ * alignées par colonnes égales.
+ */
+function WeekSparkline({ days }: { days: DayCount[] }) {
+  const max = Math.max(...days.map((d) => d.count));
+  const col = SPARK_W / days.length;
+  const barW = 16;
+  return (
+    <View style={{ marginTop: spacing.sm }}>
+      <Svg
+        width="100%"
+        height={SPARK_H}
+        viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
+        preserveAspectRatio="none"
+      >
+        <Line
+          x1={0}
+          y1={SPARK_BASE + 0.5}
+          x2={SPARK_W}
+          y2={SPARK_BASE + 0.5}
+          stroke={palette.line}
+          strokeWidth={1}
+        />
+        {days.map((d, i) => {
+          if (d.count === 0) return null;
+          const h = ((SPARK_BASE - SPARK_TOP) * d.count) / max;
+          return (
+            <Rect
+              key={d.key}
+              x={i * col + (col - barW) / 2}
+              y={SPARK_BASE - h}
+              width={barW}
+              height={h}
+              rx={2}
+              fill={palette.creamSoft}
+            />
+          );
+        })}
+      </Svg>
+      <View style={s.sparkDays}>
+        {days.map((d) => (
+          <Text key={d.key} style={s.sparkDayTxt}>
+            {d.label}
+          </Text>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// Piste neutre de l'anneau (≈ crème 18 % posée sur la carte) — même teinte
+// pour la pastille de légende « lues », pour que la légende dise vrai.
+const RING_TRACK = '#3A3A40';
+const RING_SIZE = 92;
+const RING_STROKE = 7;
+
+/**
+ * Anneau « lues / à lire » : l'arc rouge coach = séances à lire (cohérent avec
+ * le badge « À LIRE » des cartes pilote), la piste neutre = séances lues. Les
+ * valeurs exactes sont portées par la légende texte (jamais couleur seule) et
+ * le compteur central animé.
+ */
+function ReadRing({ unread, read }: { unread: number; read: number }) {
+  const total = unread + read;
+  if (total === 0) return null;
+  const r = (RING_SIZE - RING_STROKE) / 2;
+  const c = 2 * Math.PI * r;
+  const frac = unread / total;
+  const arc = c * frac;
+  return (
+    <View style={s.ringWrap}>
+      <Svg width={RING_SIZE} height={RING_SIZE} viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}>
+        <Circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={r}
+          stroke={RING_TRACK}
+          strokeWidth={RING_STROKE}
+          fill="none"
+        />
+        {unread > 0 ? (
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={r}
+            stroke={palette.coachAccent}
+            strokeWidth={RING_STROKE}
+            fill="none"
+            strokeDasharray={frac >= 1 ? undefined : `${arc} ${c - arc}`}
+            strokeLinecap={frac >= 1 ? undefined : 'round'}
+            transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+          />
+        ) : null}
+      </Svg>
+      <View style={s.ringCenter} pointerEvents="none">
+        <CountUpNumber value={unread} duration={700} style={s.ringValue} />
+        <Text style={s.ringSub}>à lire</Text>
+      </View>
+    </View>
   );
 }
 
@@ -628,6 +1084,53 @@ const s = StyleSheet.create({
     lineHeight: theme.fontSize.small * 1.5,
   },
 
+  // Activité (graphiques réels)
+  activityCard: { marginTop: spacing.md },
+  activityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sparkCol: { flex: 1 },
+  activityDivider: { width: 1, alignSelf: 'stretch', backgroundColor: palette.separator },
+  chartEyebrow: {
+    fontFamily: fonts.mono,
+    fontSize: 9.5,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
+  },
+  chartValue: {
+    fontFamily: fonts.king,
+    fontSize: 22,
+    letterSpacing: -0.5,
+    color: palette.cream,
+    marginTop: 2,
+  },
+  sparkDays: { flexDirection: 'row', marginTop: 4 },
+  sparkDayTxt: {
+    flex: 1,
+    textAlign: 'center',
+    fontFamily: fonts.mono,
+    fontSize: 9,
+    color: palette.eyebrow,
+  },
+  ringCol: { alignItems: 'center', gap: spacing.sm },
+  ringWrap: {
+    width: RING_SIZE,
+    height: RING_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ringCenter: { position: 'absolute', alignItems: 'center' },
+  ringValue: {
+    fontFamily: fonts.king,
+    fontSize: 20,
+    letterSpacing: -0.5,
+    color: palette.cream,
+  },
+  ringSub: { fontFamily: fonts.mono, fontSize: 9.5, color: palette.creamMute, marginTop: 1 },
+  ringLegend: { gap: 4, alignItems: 'flex-start' },
+  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendDot: { width: 7, height: 7, borderRadius: 3.5 },
+  legendTxt: { fontFamily: fonts.mono, fontSize: 10, color: palette.creamMute },
+
   // Feed 24 h
   feedRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   feedDot: {
@@ -661,7 +1164,7 @@ const s = StyleSheet.create({
     color: palette.cream,
   },
 
-  // Tool rows (neutres — le rouge reste aux actions/non-lus)
+  // Tool rows (neutres — utilisés hors grille, ex. « File de lecture »)
   toolRow: { paddingVertical: spacing.md, minHeight: 44 },
   toolRowInner: {
     flexDirection: 'row',
@@ -672,6 +1175,38 @@ const s = StyleSheet.create({
     fontFamily: fonts.bodyMedium,
     fontSize: theme.fontSize.body,
     color: palette.cream,
+  },
+
+  // Grille d'outils (tuiles à insigne)
+  toolGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  toolWrap: { flexBasis: '47%', flexGrow: 1, minWidth: 124 },
+  tile: {
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    minHeight: 96,
+    overflow: 'hidden',
+  },
+  tileTint: { ...StyleSheet.absoluteFillObject },
+  tileGlyph: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileLabel: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: 13,
+    color: palette.cream,
+    marginTop: spacing.sm,
+    lineHeight: 17,
   },
 
   // Header avatar

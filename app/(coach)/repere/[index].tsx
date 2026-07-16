@@ -1,14 +1,22 @@
 /**
  * Coach — Éditeur d'un repère de virage (§12 handoff · coach/08-reperes),
- * RESKIN refonte-v2 RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13).
+ * RESKIN refonte-v2 RESPONSIVE DEUX FORMATS (décision fondateur 2026-07-13),
+ * MULTI-CIRCUIT (build 23) : l'écran reçoit `circuitId` en paramètre et édite
+ * le repère de CE circuit.
  *
- * Le coach pose, pour CE virage, un point de freinage repère (rouge de donnée)
- * et une vitesse d'apex repère (bleu). Un seul jeu par coach et par virage
- * (coach_corner_reference, clé coach_id + corner_index) : il se superpose chez
- * TOUS ses pilotes consentis et leur apparaît ATTRIBUÉ à lui — « Repère de votre
+ * Le coach pose, pour CE virage de CE circuit, un point de freinage repère
+ * (rouge de donnée) et une vitesse d'apex repère (bleu). Un seul jeu par coach,
+ * par circuit et par virage (coach_corner_reference, clé coach_id + circuit_id
+ * + corner_index — migration 20260716180000) : il se superpose chez TOUS ses
+ * pilotes consentis et leur apparaît ATTRIBUÉ à lui — « Repère de votre
  * coach », jamais une consigne de l'app (doctrine miroir, §12 garde-fous). On
  * pose des repères, on n'écrit pas quoi faire : vocabulaire « repère », jamais
  * « consigne ».
+ *
+ * Le virage édité est RÉEL (src/circuit/circuitCorners) : nommé sur Haute
+ * Saintonge (topologie Beltoise), dérivé du tracé réel ailleurs (« Virage N
+ * (gauche/droite) »). Sans `circuitId` (ancienne navigation), on retombe sur
+ * le circuit officiel par défaut — jamais un repère orphelin de circuit.
  *
  *   - CONSOLE tablette (largeur ≥ COACH_CONSOLE_MIN_WIDTH, maquette
  *     coach/08-reperes) : deux colonnes — à gauche « Les deux repères » (saisie
@@ -23,8 +31,7 @@
  * contrôle mort. Couleurs QDI fixes : freinage = rouge de donnée (#F65B5B),
  * apex/trajectoire = bleu (#4F9DF7) ; identité coach = rouge d'accent (#E23A4E) ;
  * aucun or (pas de chrono ici). Données réelles : listMyCornerReferences /
- * upsertCornerReference (RLS) ; un champ vide reste « — ». Logique de chargement,
- * validation et upsert inchangée.
+ * upsertCornerReference (RLS, filtrés par circuit) ; un champ vide reste « — ».
  */
 
 import { useEffect, useState } from 'react';
@@ -40,8 +47,10 @@ import {
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { getCorner, type CornerTopology } from '@/lib/circuitTopology';
+import { type CircuitCorner, cornersForCircuit } from '@/circuit/circuitCorners';
+import { FadeInSection } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import { type Circuit, fetchCircuits, getDefaultCircuit } from '@/services/circuitsService';
 import { validateCornerReference } from '@/services/coachReferenceLogic';
 import { listMyCornerReferences, upsertCornerReference } from '@/services/coachReferenceService';
 import { theme } from '@/theme/v2';
@@ -56,9 +65,22 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
 
-/** Descripteur factuel du profil de virage (topologie réelle, jamais une consigne). */
-function paceLabel(pace: CornerTopology['pace']): string {
-  return pace === 'slow' ? 'Épingle' : pace === 'fast' ? 'Courbe rapide' : 'Virage moyen';
+/**
+ * Descripteur factuel du profil de virage. Topologie nommée (Haute Saintonge) :
+ * profil connu. Virage dérivé du tracé réel : le sens, rien d'autre — jamais
+ * une consigne, jamais une donnée inventée.
+ */
+function cornerMeta(corner: CircuitCorner): string | null {
+  if (corner.pace) {
+    return corner.pace === 'slow'
+      ? 'Épingle'
+      : corner.pace === 'fast'
+        ? 'Courbe rapide'
+        : 'Virage moyen';
+  }
+  if (corner.direction === 'left') return 'Virage à gauche';
+  if (corner.direction === 'right') return 'Virage à droite';
+  return null;
 }
 
 /** Parse une saisie FR (virgule ou point) → nombre, ou null si vide/invalide. */
@@ -75,38 +97,69 @@ function fr(n: number): string {
 }
 
 export default function RepereEditorScreen() {
-  const params = useLocalSearchParams<{ index?: string }>();
+  const params = useLocalSearchParams<{ index?: string; circuitId?: string }>();
   const cornerIndex = Number(params.index ?? '1');
-  const corner = getCorner(cornerIndex);
   const padded = String(cornerIndex).padStart(2, '0');
 
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
+  const [circuit, setCircuit] = useState<Circuit | null>(null);
+  const [corner, setCorner] = useState<CircuitCorner | null>(null);
   const [brakingPoint, setBrakingPoint] = useState('');
   const [targetSpeed, setTargetSpeed] = useState('');
   const [trajectoryNote, setTrajectoryNote] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
+  // Résolution du circuit (param → annuaire, sinon défaut), de son virage réel
+  // et du repère existant de CE circuit. Tout trace vers la base — si le
+  // circuit est introuvable, l'écran le dit au lieu d'éditer dans le vide.
   useEffect(() => {
     let cancelled = false;
-    listMyCornerReferences().then((rows) => {
-      if (cancelled) return;
-      const existing = rows.find((r) => r.cornerIndex === cornerIndex);
-      if (existing) {
-        setBrakingPoint(existing.brakingPointM != null ? String(existing.brakingPointM) : '');
-        setTargetSpeed(existing.targetSpeedKmh != null ? String(existing.targetSpeedKmh) : '');
-        setTrajectoryNote(existing.trajectoryNote ?? '');
+    setLoading(true);
+    setLoadError(false);
+    (async () => {
+      try {
+        const requestedId = typeof params.circuitId === 'string' ? params.circuitId : null;
+        const resolved = requestedId
+          ? ((await fetchCircuits()).find((c) => c.id === requestedId) ?? null)
+          : await getDefaultCircuit();
+        if (cancelled) return;
+        if (!resolved) {
+          setLoadError(true);
+          setLoading(false);
+          return;
+        }
+        const [corners, rows] = await Promise.all([
+          cornersForCircuit(resolved),
+          listMyCornerReferences(resolved.id),
+        ]);
+        if (cancelled) return;
+        setCircuit(resolved);
+        setCorner(corners.find((c) => c.index === cornerIndex) ?? null);
+        const existing = rows.find((r) => r.cornerIndex === cornerIndex);
+        if (existing) {
+          setBrakingPoint(existing.brakingPointM != null ? String(existing.brakingPointM) : '');
+          setTargetSpeed(existing.targetSpeedKmh != null ? String(existing.targetSpeedKmh) : '');
+          setTrajectoryNote(existing.trajectoryNote ?? '');
+        }
+        setLoading(false);
+      } catch {
+        if (!cancelled) {
+          setLoadError(true);
+          setLoading(false);
+        }
       }
-      setLoading(false);
-    });
+    })();
     return () => {
       cancelled = true;
     };
-  }, [cornerIndex]);
+  }, [cornerIndex, params.circuitId, reloadKey]);
 
   // Toute édition invalide la confirmation précédente et efface l'erreur en cours
   // (la logique de sauvegarde reste identique — ce n'est qu'un rafraîchissement
@@ -120,7 +173,7 @@ export default function RepereEditorScreen() {
   }
 
   async function onSave() {
-    if (saving) return;
+    if (saving || !circuit) return;
     const input = {
       brakingPointM: parseNum(brakingPoint),
       targetSpeedKmh: parseNum(targetSpeed),
@@ -134,13 +187,14 @@ export default function RepereEditorScreen() {
     setError(null);
     setSaving(true);
     setSaved(false);
-    const result = await upsertCornerReference(cornerIndex, input);
+    const result = await upsertCornerReference(circuit.id, cornerIndex, input);
     setSaving(false);
     if (result) setSaved(true);
     else setError("L'enregistrement a échoué. Réessayez dans un instant.");
   }
 
-  const formState: ScreenState = loading ? 'loading' : 'nominal';
+  const formState: ScreenState = loading ? 'loading' : loadError ? 'error' : 'nominal';
+  const meta = corner ? cornerMeta(corner) : null;
 
   // — Fragments partagés par les deux formats (une seule source de vérité) —
 
@@ -199,7 +253,12 @@ export default function RepereEditorScreen() {
         </Text>
       ) : null}
 
-      <Button label="Enregistrer le repère" onPress={onSave} loading={saving} disabled={saving} />
+      <Button
+        label="Enregistrer le repère"
+        onPress={onSave}
+        loading={saving}
+        disabled={saving || !circuit}
+      />
     </View>
   );
 
@@ -236,7 +295,11 @@ export default function RepereEditorScreen() {
 
   return (
     <Screen scroll={false}>
-      <AppBar title="REPÈRE" subtitle={`VIRAGE ${padded}`} onBack={() => router.back()} />
+      <AppBar
+        title="REPÈRE"
+        subtitle={circuit ? `${circuit.name.toUpperCase()} · VIRAGE ${padded}` : `VIRAGE ${padded}`}
+        onBack={() => router.back()}
+      />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -251,17 +314,20 @@ export default function RepereEditorScreen() {
             <RoleBadge role="coach" />
           </View>
 
-          {/* En-tête : contexte virage + intention ; « superposés » à droite sur console. */}
+          {/* En-tête : contexte circuit + virage + intention ; « superposés » à droite sur console. */}
           <View style={isConsole ? s.headerRow : undefined}>
             <View style={{ flex: 1 }}>
               <Text style={s.eyebrow}>REPÈRE · VIRAGE {padded}</Text>
               <Text style={s.title} accessibilityRole="header">
                 {corner?.name ?? `Virage ${cornerIndex}`}
               </Text>
-              {corner ? <Text style={s.meta}>{paceLabel(corner.pace)}</Text> : null}
+              {circuit || meta ? (
+                <Text style={s.meta}>{[circuit?.name, meta].filter(Boolean).join(' · ')}</Text>
+              ) : null}
               <Text style={s.manifest}>
-                Un point de freinage, une vitesse d&apos;apex. Ils se superposent chez vos pilotes
-                consentis, attribués à vous. Des repères, jamais des consignes.
+                Un point de freinage, une vitesse d&apos;apex — pour ce virage de ce circuit. Ils se
+                superposent chez vos pilotes consentis, attribués à vous. Des repères, jamais des
+                consignes.
               </Text>
             </View>
             {isConsole ? (
@@ -271,32 +337,39 @@ export default function RepereEditorScreen() {
             ) : null}
           </View>
 
-          <StateWrapper state={formState} skeletonLines={5}>
+          <StateWrapper
+            state={formState}
+            skeletonLines={5}
+            errorCause="Le circuit de ce repère n'a pas pu être identifié."
+            onRetry={() => setReloadKey((k) => k + 1)}
+          >
             {isConsole ? (
               <View style={s.columns}>
-                <View style={s.colLeft}>
+                <FadeInSection style={s.colLeft}>
                   <SectionLabel>LES DEUX REPÈRES</SectionLabel>
                   <View style={{ marginTop: spacing.md }}>{form}</View>
-                </View>
-                <View style={s.colRight}>
+                </FadeInSection>
+                <FadeInSection delay={120} style={s.colRight}>
                   <SectionLabel>APERÇU CÔTÉ PILOTE</SectionLabel>
                   <View style={{ marginTop: spacing.md, gap: spacing.lg }}>
                     {preview}
                     {doctrine}
                   </View>
-                </View>
+                </FadeInSection>
               </View>
             ) : (
               <View style={{ marginTop: spacing.lg }}>
-                <SectionLabel>LES DEUX REPÈRES</SectionLabel>
-                <View style={{ marginTop: spacing.md }}>{form}</View>
-                <View style={{ marginTop: spacing.xxl }}>
+                <FadeInSection>
+                  <SectionLabel>LES DEUX REPÈRES</SectionLabel>
+                  <View style={{ marginTop: spacing.md }}>{form}</View>
+                </FadeInSection>
+                <FadeInSection delay={120} style={{ marginTop: spacing.xxl }}>
                   <SectionLabel>APERÇU CÔTÉ PILOTE</SectionLabel>
                   <View style={{ marginTop: spacing.md, gap: spacing.lg }}>
                     {preview}
                     {doctrine}
                   </View>
-                </View>
+                </FadeInSection>
               </View>
             )}
           </StateWrapper>
