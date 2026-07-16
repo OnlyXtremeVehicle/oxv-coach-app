@@ -61,12 +61,24 @@ export function getRecordedLaps(): RecordedLap[] {
 export interface LapDetectionStartOptions {
   finishLineLat: number;
   finishLineLon: number;
+  /** Mode rayon : rayon du disque. Mode porte : DEMI-LARGEUR de la porte. */
   finishLineRadiusM?: number;
+  /**
+   * Cap de la piste au franchissement (degrés, 0 = nord). Fourni → détection par
+   * PORTE (segment perpendiculaire), seule capable d'exclure une voie des stands
+   * parallèle. Absent → repli sur le mode rayon historique.
+   */
+  finishLineHeadingDeg?: number | null;
 }
 
 export function startLapDetection(opts: LapDetectionStartOptions): void {
   stopLapDetection();
-  state = createLapDetector(opts.finishLineLat, opts.finishLineLon, opts.finishLineRadiusM ?? 30);
+  state = createLapDetector(
+    opts.finishLineLat,
+    opts.finishLineLon,
+    opts.finishLineRadiusM ?? 30,
+    opts.finishLineHeadingDeg ?? null
+  );
   previousLapWallMs = null;
   previousLapMonoMs = null;
   lastMonoMs = 0;

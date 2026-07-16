@@ -72,13 +72,23 @@ import {
   processQueue,
 } from './captureSyncQueue';
 
+/** Ligne d'arrivée passée à la détection de tours. Sans cap → mode rayon. */
+export interface CaptureFinishLineInput {
+  lat: number;
+  lon: number;
+  /** Mode rayon : rayon du disque. Mode porte : demi-largeur de la porte. */
+  radiusM?: number;
+  /** Cap de la piste au franchissement (degrés). Fourni → détection par PORTE. */
+  headingDeg?: number | null;
+}
+
 /**
  * Repli de DERNIER recours si l'appelant ne fournit pas la ligne d'arrivée du
  * circuit. Ces coordonnées ne correspondent à aucun circuit réel : si on retombe
  * dessus, les tours ne seront PAS comptés. Le flux normal passe `input.finishLine`
- * (cf. `placement.tsx` + `captureFinishLineFor`).
+ * (cf. `placement.tsx` + `captureFinishLineFor`). Sans cap → mode rayon historique.
  */
-export const BELTOISE_FINISH = { lat: 45.6004, lon: -0.141, radiusM: 40 };
+export const BELTOISE_FINISH: CaptureFinishLineInput = { lat: 45.6004, lon: -0.141, radiusM: 40 };
 
 const FLUSH_EVERY_FRAMES = 50;
 const FLUSH_INTERVAL_MS = 4_000;
@@ -223,7 +233,7 @@ export interface StartCaptureInput {
   circuitId?: string | null;
   circuitName?: string | null;
   vehicleId?: string | null;
-  finishLine?: { lat: number; lon: number; radiusM?: number };
+  finishLine?: CaptureFinishLineInput;
 }
 
 export interface StartCaptureResult {
@@ -352,10 +362,14 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // `state.unsubData` plus bas), donc pour une trame donnée il a déjà arbitré le
   // franchissement de ligne quand notre `onData` lit `getCurrentLapNumber()`.
   // C'est ce qui permet de rattacher chaque trame au bon tour sans redétecter.
+  //
+  // Le CAP commande le MODE : fourni → porte (segment perpendiculaire, seul moyen
+  // d'exclure une voie des stands parallèle) ; absent → rayon historique.
   startLapDetection({
     finishLineLat: finish.lat,
     finishLineLon: finish.lon,
     finishLineRadiusM: finish.radiusM,
+    finishLineHeadingDeg: finish.headingDeg,
   });
 
   // État de session partagé (compteurs live).
