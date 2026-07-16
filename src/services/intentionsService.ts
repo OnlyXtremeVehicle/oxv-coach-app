@@ -12,6 +12,7 @@
  * le partenaire n'accède jamais (cardinale §148).
  */
 
+import { STORAGE_KEYS, storage } from '@/lib/mmkv';
 import { supabase } from '@/lib/supabase';
 
 import { isPendingFresh, normalizeIntention } from './intentionLogic';
@@ -44,6 +45,86 @@ function mapIntention(r: Record<string, unknown>): SessionIntention {
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
   };
+}
+
+// ============================================================================
+// Marqueur LOCAL de l'intention en attente (survie hors-ligne)
+// ============================================================================
+
+/**
+ * Ce que l'on gèle sur l'appareil à l'écriture de l'intention. On ne stocke QUE
+ * des métadonnées (identifiant + date) : le TEXTE du pilote reste en base, sous
+ * RLS own-row — on ne le recopie pas dans un cache non chiffré.
+ */
+interface LocalPendingIntention {
+  id: string;
+  createdAt: string;
+}
+
+/**
+ * Gèle l'intention en attente LOCALEMENT, dès son écriture. C'est ce qui permet
+ * de la rattacher à une séance démarrée en MODE AVION : au démarrage de capture
+ * on ne peut pas se payer un SELECT (il échoue précisément quand on en a besoin),
+ * et une intention non rattachée reste « pending » — donc réattribuable à la
+ * séance SUIVANTE. Geler l'id à l'écriture supprime les deux problèmes.
+ */
+function rememberPendingIntention(id: string, createdAt: string): void {
+  try {
+    const entry: LocalPendingIntention = { id, createdAt };
+    storage.set(STORAGE_KEYS.PENDING_INTENTION, JSON.stringify(entry));
+  } catch (e) {
+    // Marqueur local indisponible : l'intention est écrite en base, seul le
+    // rattachement automatique est perdu. Jamais bloquant.
+    console.warn('[OXV][intention] marqueur local KO :', e instanceof Error ? e.message : e);
+  }
+}
+
+/** Oublie le marqueur local (intention consommée, ou périmée). */
+export function forgetPendingIntention(): void {
+  try {
+    storage.delete(STORAGE_KEYS.PENDING_INTENTION);
+  } catch {
+    /* sans effet */
+  }
+}
+
+/**
+ * Identifiant de l'intention en attente, lu LOCALEMENT — synchrone, ZÉRO réseau.
+ * À appeler au démarrage de capture pour enfiler le rattachement.
+ *
+ * Applique la MÊME borne de fraîcheur que `getPendingIntention` (24 h) : au-delà,
+ * une intention jamais rattachée n'est plus « celle du jour », on l'oublie plutôt
+ * que de la coller à une séance sans rapport.
+ *
+ * Pas de repli réseau si le marqueur est absent, et c'est DÉLIBÉRÉ : un
+ * `getPendingIntention()` de secours ressortirait une intention encore « pending »
+ * (parce que son rattachement dort dans la file, hors-ligne) et la rattacherait à
+ * la séance SUIVANTE — exactement la mauvaise attribution qu'on supprime. La
+ * doctrine préfère le silence au faux.
+ */
+export function peekPendingIntentionId(now: number = Date.now()): string | null {
+  let raw: string | undefined;
+  try {
+    raw = storage.getString(STORAGE_KEYS.PENDING_INTENTION);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  try {
+    const entry = JSON.parse(raw) as Partial<LocalPendingIntention>;
+    if (typeof entry.id !== 'string' || typeof entry.createdAt !== 'string') {
+      forgetPendingIntention();
+      return null;
+    }
+    if (!isPendingFresh(entry.createdAt, now)) {
+      forgetPendingIntention();
+      return null;
+    }
+    return entry.id;
+  } catch {
+    forgetPendingIntention();
+    return null;
+  }
 }
 
 /**
@@ -96,7 +177,11 @@ export async function savePendingIntention(input: {
         circuit_id: input.circuitId,
       } as never)
       .eq('id', existing.id);
-    return error ? { ok: false, error: error.message } : { ok: true, id: existing.id };
+    if (error) return { ok: false, error: error.message };
+    // Gèle l'id localement : le rattachement à la séance n'aura plus besoin du
+    // réseau (cf. peekPendingIntentionId).
+    rememberPendingIntention(existing.id, existing.createdAt);
+    return { ok: true, id: existing.id };
   }
 
   const { data: auth } = await supabase.auth.getUser();
@@ -111,10 +196,12 @@ export async function savePendingIntention(input: {
       body,
       shared_with_coach: input.sharedWithCoach,
     } as never)
-    .select('id')
+    .select('id, created_at')
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? 'Enregistrement impossible.' };
-  return { ok: true, id: (data as { id: string }).id };
+  const row = data as { id: string; created_at: string };
+  rememberPendingIntention(row.id, row.created_at);
+  return { ok: true, id: row.id };
 }
 
 /**
@@ -129,21 +216,22 @@ export async function setIntentionShared(id: string, shared: boolean): Promise<M
   return error ? { ok: false, error: error.message } : { ok: true, id };
 }
 
-/**
- * Rattache l'intention en attente (fraîche) du pilote à la séance qui vient
- * d'être créée. Best-effort, appelé à la création de capture. Sans intention en
- * attente fraîche, ne fait rien (l'intention est facultative). Non filtré par
- * circuit : on suit le pilote, pas le circuit (cf. getPendingIntention).
+/*
+ * Le rattachement intention → séance ne se fait PLUS ici.
+ *
+ * Il passait par un appel direct (SELECT puis UPDATE) au démarrage de capture —
+ * le SEUL appel du write-path resté hors file, et sans rejeu. Hors-ligne, le
+ * SELECT échouait le premier : aucun rattachement, aucune trace, et l'intention
+ * restait « pending » — donc réattribuée à la séance SUIVANTE, dont le Bilan
+ * présentait alors comme « intention du jour » un texte écrit pour une autre
+ * séance. Mauvaise attribution silencieuse, contraire à la doctrine.
+ *
+ * Désormais : l'id est gelé LOCALEMENT à l'écriture (rememberPendingIntention),
+ * lu sans réseau au démarrage (peekPendingIntentionId), et le rattachement est
+ * enfilé DERRIÈRE le create_session dans la file de capture (op
+ * `attach_intention`, cf. captureSyncQueue) — rejoué au retour du réseau comme
+ * le reste du write-path.
  */
-export async function attachPendingIntentionToSession(input: { sessionId: string }): Promise<void> {
-  const pending = await getPendingIntention();
-  if (!pending) return;
-  const { error } = await supabase
-    .from('session_intentions')
-    .update({ session_id: input.sessionId } as never)
-    .eq('id', pending.id);
-  if (error) console.warn('[OXV][intention] attachPendingIntentionToSession :', error.message);
-}
 
 /** L'intention rattachée à une séance (pour la juxtaposition Bilan/Trace). */
 export async function getIntentionForSession(sessionId: string): Promise<SessionIntention | null> {

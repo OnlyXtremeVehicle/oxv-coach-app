@@ -24,6 +24,14 @@ export const STORAGE_KEYS = {
   // File d'attente d'écritures
   OFFLINE_QUEUE: 'queue:offline',
 
+  /**
+   * Intention de séance posée en prépa et pas encore rattachée : `{id, createdAt}`
+   * gelés LOCALEMENT à l'écriture. Permet de rattacher l'intention à la séance
+   * SANS aucun appel réseau au démarrage de capture — donc y compris en mode
+   * avion, où le SELECT équivalent échouerait (cf. intentionsService).
+   */
+  PENDING_INTENTION: 'pending:intention',
+
   // Préférences UI persistées (par utilisateur, namespaced via suffix userId)
   PREF_DETAIL_LEVEL: 'pref:detail_level',
 } as const;

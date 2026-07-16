@@ -20,7 +20,8 @@
  * QUARANTAINE (log + déplacement sous `capture-queue/quarantine/`, JAMAIS de
  * suppression) une opération en échec réellement LOGIQUE, pour ne pas bloquer la
  * file. Toute erreur ambiguë est traitée prudemment comme transitoire (conservée,
- * jamais perdue).
+ * jamais perdue). Un drain concurrent ne perd pas son déclencheur : il est
+ * COALESCÉ et rejoué en fin de passe (cf. `processQueue`).
  *
  * CLASSIFICATION — liste BLANCHE d'abandon (cf. Valencia §1) :
  *   - DROP seulement sur erreur sans espoir de rejeu : SQLSTATE 22 (donnée
@@ -37,6 +38,8 @@
  *
  * IDEMPOTENCE au replay :
  *   - create_session : upsert onConflict 'id' (pose/replace la ligne) ;
+ *   - attach_intention : update .eq(id) posant `session_id` — idempotent par
+ *                      nature (même id d'intention, même séance à chaque rejeu) ;
  *   - frames         : upsert onConflict (session_id, elapsed_ms) ignoreDuplicates
  *                      (Valencia §4.6) — un rejeu de lot ne crée plus de doublon.
  *                      GARDE : si la contrainte UNIQUE n'est pas encore en prod
@@ -86,6 +89,10 @@
  * ce que l'iTOW est réellement — sans lui faire porter une unicité qu'il ne
  * garantit pas. Voir l'en-tête de cette fonction.
  *
+ * RÉTENTION DES .ubx : le brut local n'est PAS supprimé à l'upload — il reste le
+ * filet de reprise. Il est effacé par ÂGE (`gcOldCaptures`, 7 j) depuis
+ * `resumeUnsyncedCaptures`, et jamais tant qu'il peut encore servir.
+ *
  * Doctrine « silence en piste » : ce module n'affiche rien, ne notifie rien.
  */
 
@@ -115,6 +122,7 @@ export type LapInsert = Tables['laps']['Insert'];
  */
 export type CaptureQueueOp =
   | { type: 'create_session'; sessionId: string; row: CaptureSessionRow }
+  | { type: 'attach_intention'; sessionId: string; intentionId: string }
   | { type: 'frames'; sessionId: string; batch: TelemetryFrameInsert[] }
   | { type: 'laps'; sessionId: string; rows: LapInsert[] }
   | { type: 'complete'; sessionId: string; userId: string; updates: CaptureSessionUpdate }
@@ -267,15 +275,20 @@ function parseEnvelope(raw: string): QueueEnvelope | null {
   return null;
 }
 
-async function readOp(fileName: string): Promise<QueueEnvelope | null> {
+/** Relit une enveloppe à un chemin ABSOLU (file d'attente ou quarantaine). */
+async function readEnvelopeAt(path: string): Promise<QueueEnvelope | null> {
   try {
-    const raw = await FileSystem.readAsStringAsync(queueDir() + fileName, {
+    const raw = await FileSystem.readAsStringAsync(path, {
       encoding: FileSystem.EncodingType.UTF8,
     });
     return parseEnvelope(raw);
   } catch {
     return null; // fichier illisible/corrompu → quarantaine en amont
   }
+}
+
+async function readOp(fileName: string): Promise<QueueEnvelope | null> {
+  return readEnvelopeAt(queueDir() + fileName);
 }
 
 async function deleteOp(fileName: string): Promise<void> {
@@ -621,6 +634,24 @@ async function execCreateSession(op: Extract<CaptureQueueOp, { type: 'create_ses
   if (error) throw error;
 }
 
+/**
+ * Rattache l'intention posée en préparation à la séance (V9 §7).
+ *
+ * Passe par la FILE, comme tout le write-path : hors-ligne, l'UPDATE attend au
+ * lieu d'être perdu. Le FIFO garantit que le `create_session` de CETTE séance a
+ * déjà été joué quand on arrive ici — la FK `session_id` et le `with check` RLS
+ * (`session_id in (select id from telemetry_sessions where user_id = auth.uid())`)
+ * sont donc satisfaits. L'op ne porte QUE des identifiants : elle n'écrit jamais
+ * de contenu, ne suggère rien (doctrine).
+ */
+async function execAttachIntention(op: Extract<CaptureQueueOp, { type: 'attach_intention' }>) {
+  const { error } = await supabase
+    .from('session_intentions')
+    .update({ session_id: op.sessionId } as never)
+    .eq('id', op.intentionId);
+  if (error) throw error;
+}
+
 async function execFrames(op: Extract<CaptureQueueOp, { type: 'frames' }>) {
   if (op.batch.length === 0) return;
   await insertFramesIdempotent(op.batch);
@@ -672,6 +703,8 @@ async function executeOp(op: CaptureQueueOp): Promise<void> {
   switch (op.type) {
     case 'create_session':
       return execCreateSession(op);
+    case 'attach_intention':
+      return execAttachIntention(op);
     case 'frames':
       return execFrames(op);
     case 'laps':
@@ -692,78 +725,139 @@ async function executeOp(op: CaptureQueueOp): Promise<void> {
 // ============================================================================
 
 let processing = false;
+/**
+ * Un drain a été DEMANDÉ pendant qu'un autre était en vol. On COALESCE le
+ * déclencheur au lieu de l'avaler : le drain en cours re-listera la file avant
+ * de rendre la main. Voir `processQueue`.
+ */
+let rerunRequested = false;
+
+/** Bilan d'UNE passe de drain, plus le motif de sortie (cf. `processQueue`). */
+interface DrainPass {
+  processed: number;
+  dropped: number;
+  remaining: number;
+  /** Sortie sur échec RÉSEAU/TRANSITOIRE : la file est gardée, on ne rejoue PAS. */
+  stoppedOnNetwork: boolean;
+}
 
 /**
- * Draine la file DANS L'ORDRE. Non réentrant (un drain concurrent renvoie
- * aussitôt). S'arrête au premier échec réseau/transitoire en gardant le reste ;
- * met en quarantaine les échecs réellement logiques pour ne pas bloquer.
+ * UNE passe : liste la file une fois et la traite dans l'ordre. La liste est
+ * figée à l'entrée — les ops enqueuées PENDANT la passe ne sont pas vues ici
+ * (c'est `processQueue` qui les rattrape via le rejeu coalescé).
  */
-export async function processQueue(): Promise<ProcessResult> {
-  if (processing) {
-    return { processed: 0, dropped: 0, remaining: await countPending() };
-  }
-  processing = true;
+async function drainOnce(): Promise<DrainPass> {
   let processed = 0;
   let dropped = 0;
   // Ops laissées sur disque sans bloquer la file (upload transitoire sauté).
   let skipped = 0;
-  try {
-    const files = await listOpFiles();
-    for (let i = 0; i < files.length; i += 1) {
-      const name = files[i];
-      const env = await readOp(name);
-      if (!env) {
-        // Fichier illisible/corrompu (écriture torpillée, JSON tronqué) : on le
-        // sort de la file pour ne pas la bloquer, mais on le GARDE — ses octets
-        // sont peut-être un lot de trames récupérable à la main.
+  const files = await listOpFiles();
+  for (let i = 0; i < files.length; i += 1) {
+    const name = files[i];
+    const env = await readOp(name);
+    if (!env) {
+      // Fichier illisible/corrompu (écriture torpillée, JSON tronqué) : on le
+      // sort de la file pour ne pas la bloquer, mais on le GARDE — ses octets
+      // sont peut-être un lot de trames récupérable à la main.
+      await quarantineOp(name);
+      dropped += 1;
+      continue;
+    }
+    const { op } = env;
+    try {
+      await executeOp(op);
+      await deleteOp(name);
+      processed += 1;
+    } catch (err) {
+      if (isDroppableFailure(op, err)) {
+        console.warn(
+          `[OXV][capture-queue] op ${op.type} abandonnée (erreur logique) : ${errorMessage(err)}`
+        );
         await quarantineOp(name);
         dropped += 1;
         continue;
       }
-      const { op } = env;
-      try {
-        await executeOp(op);
-        await deleteOp(name);
-        processed += 1;
-      } catch (err) {
-        if (isDroppableFailure(op, err)) {
+      if (op.type === 'ubx_upload') {
+        // Op FEUILLE : aucune autre op ne dépend d'elle (contrairement à
+        // create_session → frames/laps/complete). L'arrêter le drain entier
+        // ferait bloquer À VIE toutes les séances suivantes derrière un upload
+        // durablement en échec (403 du mauvais pilote, 413…). On la SAUTE et
+        // on la garde sur disque, en comptant la tentative.
+        const attempts = env.attempts + 1;
+        if (attempts >= MAX_UPLOAD_ATTEMPTS) {
           console.warn(
-            `[OXV][capture-queue] op ${op.type} abandonnée (erreur logique) : ${errorMessage(err)}`
+            `[OXV][capture-queue] ubx_upload en échec après ${attempts} tentatives — quarantaine : ${errorMessage(err)}`
           );
           await quarantineOp(name);
           dropped += 1;
           continue;
         }
-        if (op.type === 'ubx_upload') {
-          // Op FEUILLE : aucune autre op ne dépend d'elle (contrairement à
-          // create_session → frames/laps/complete). L'arrêter le drain entier
-          // ferait bloquer À VIE toutes les séances suivantes derrière un upload
-          // durablement en échec (403 du mauvais pilote, 413…). On la SAUTE et
-          // on la garde sur disque, en comptant la tentative.
-          const attempts = env.attempts + 1;
-          if (attempts >= MAX_UPLOAD_ATTEMPTS) {
-            console.warn(
-              `[OXV][capture-queue] ubx_upload en échec après ${attempts} tentatives — quarantaine : ${errorMessage(err)}`
-            );
-            await quarantineOp(name);
-            dropped += 1;
-            continue;
-          }
-          try {
-            await writeEnvelopeAtomic(name, { ...env, attempts });
-          } catch {
-            /* compteur non persisté : coûte une tentative de plus, rien de plus */
-          }
-          skipped += 1;
-          continue;
+        try {
+          await writeEnvelopeAtomic(name, { ...env, attempts });
+        } catch {
+          /* compteur non persisté : coûte une tentative de plus, rien de plus */
         }
-        // Réseau/transitoire : on s'ARRÊTE et on GARDE ce fichier + tous les suivants.
-        return { processed, dropped, remaining: files.length - i + skipped };
+        skipped += 1;
+        continue;
+      }
+      // Réseau/transitoire : on s'ARRÊTE et on GARDE ce fichier + tous les suivants.
+      return {
+        processed,
+        dropped,
+        remaining: files.length - i + skipped,
+        stoppedOnNetwork: true,
+      };
+    }
+  }
+  return { processed, dropped, remaining: skipped, stoppedOnNetwork: false };
+}
+
+/**
+ * Draine la file DANS L'ORDRE. S'arrête au premier échec réseau/transitoire en
+ * gardant le reste ; met en quarantaine les échecs réellement logiques pour ne
+ * pas bloquer.
+ *
+ * NON RÉENTRANT, mais le déclencheur d'un appel concurrent n'est PAS AVALÉ : il
+ * est COALESCÉ (`rerunRequested`) et la passe en cours est REJOUÉE avant de
+ * rendre la main. Sans ce rejeu, une op enqueuée après le listing d'une passe en
+ * vol n'était vue ni par l'appelant (qui rendait la main aussitôt) ni par le
+ * drain en cours (dont la liste est figée) : elle dormait sur disque jusqu'au
+ * prochain démarrage à froid — alors même que le réseau était là. Deux cas réels
+ * et structurels : le retour de réseau pendant l'upload .ubx de fin de séance
+ * (le déclencheur était perdu, plus rien ne partait), et le `create_session` de
+ * la séance SUIVANTE enqueué pendant ce même upload (toute la séance 2 partait
+ * alors en FK 23503, lot par lot, sur disque).
+ *
+ * LE REJEU NE COUVRE QUE LA FIN DE LISTE NORMALE, JAMAIS L'ARRÊT RÉSEAU. Rejouer
+ * après un échec réseau ferait boucler en marteau sur un réseau absent, contre la
+ * doctrine du module (« on ne martèle pas un réseau tombé ») : dans ce cas on
+ * sort pour de bon et on attend le prochain déclencheur RÉEL (retour réseau,
+ * boot, capture).
+ *
+ * Terminaison garantie : `rerunRequested` est remis à zéro AVANT chaque passe —
+ * seul un appel concurrent survenu PENDANT la passe peut le ré-armer.
+ */
+export async function processQueue(): Promise<ProcessResult> {
+  if (processing) {
+    rerunRequested = true;
+    return { processed: 0, dropped: 0, remaining: await countPending() };
+  }
+  processing = true;
+  let processed = 0;
+  let dropped = 0;
+  try {
+    for (;;) {
+      rerunRequested = false;
+      const pass = await drainOnce();
+      processed += pass.processed;
+      dropped += pass.dropped;
+      if (pass.stoppedOnNetwork || !rerunRequested) {
+        return { processed, dropped, remaining: pass.remaining };
       }
     }
-    return { processed, dropped, remaining: skipped };
   } finally {
     processing = false;
+    rerunRequested = false;
   }
 }
 
@@ -787,6 +881,130 @@ export async function pendingSessionIds(): Promise<string[]> {
   return [...ids];
 }
 
+// ============================================================================
+// Rétention des .ubx bruts (GC par ÂGE)
+// ============================================================================
+
+/**
+ * Dossier des .ubx bruts. MIROIR de `captureMode.stopCapture` — on ne l'importe
+ * pas (captureMode tire tout `bluetoothService` derrière lui, hors sujet ici et
+ * dans les tests de file). Toute modification du chemin doit rester synchrone
+ * avec `src/ble/captureMode.ts`.
+ */
+function capturesDir(): string {
+  const base = FileSystem.documentDirectory ?? FileSystem.cacheDirectory ?? '';
+  return `${base}fixtures/`;
+}
+
+/**
+ * `racebox-capture-<YYYY-MM-DDTHH-MM-SS>.ubx` (cf. captureMode : `toISOString()`
+ * avec `:` et `.` remplacés par `-`, tronqué à 19 caractères). L'horodatage du
+ * NOM est notre seule source d'âge fiable et testable : `modificationTime` varie
+ * selon l'OS et n'est pas garanti par le mock d'`expo-file-system`.
+ */
+const UBX_NAME_RE = /^racebox-capture-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})\.ubx$/;
+
+/**
+ * Âge au-delà duquel un .ubx déjà synchronisé est effaçable. 7 jours couvrent
+ * largement une journée de piste ET une reprise manuelle a posteriori
+ * (`reimportUbxToFrames`), tout en bornant la croissance (~2,6 Mo/séance, sinon
+ * strictement monotone dans `documentDirectory` — invisible et non purgeable
+ * depuis l'app).
+ */
+const UBX_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Instant d'écriture lu dans le nom, ou `null` si le nom n'est pas des nôtres. */
+function parseCaptureTimestamp(fileName: string): number | null {
+  const m = UBX_NAME_RE.exec(fileName);
+  if (!m) return null;
+  const t = Date.UTC(
+    Number(m[1]),
+    Number(m[2]) - 1,
+    Number(m[3]),
+    Number(m[4]),
+    Number(m[5]),
+    Number(m[6])
+  );
+  return Number.isFinite(t) ? t : null;
+}
+
+/** Noms de fichiers directement contenus dans un dossier (jamais récursif). */
+async function listNamesIn(dir: string): Promise<string[]> {
+  const info = await FileSystem.getInfoAsync(dir);
+  if (!info.exists) return [];
+  const names = await FileSystem.readDirectoryAsync(dir);
+  return names.filter((n) => !n.includes('/'));
+}
+
+/**
+ * URI des .ubx encore RÉFÉRENCÉS par une op `ubx_upload`, en file ACTIVE comme en
+ * QUARANTAINE. La quarantaine compte double : un upload abandonné est justement
+ * le cas où le fichier local est le seul exemplaire du brut.
+ *
+ * On apparie par `fileUri` et non par séance : le nom `racebox-capture-<ts>.ubx`
+ * ne porte AUCUN sessionId, `pendingSessionIds()` est donc inutilisable ici.
+ */
+async function referencedUbxUris(): Promise<Set<string>> {
+  const out = new Set<string>();
+  for (const dir of [queueDir(), quarantineDir()]) {
+    for (const name of await listNamesIn(dir)) {
+      const env = await readEnvelopeAt(dir + name);
+      if (env?.op.type === 'ubx_upload') out.add(env.op.fileUri);
+    }
+  }
+  return out;
+}
+
+/**
+ * Supprime les .ubx ANCIENS et devenus inutiles. Best-effort et silencieux : ne
+ * lève jamais, n'affiche rien (silence en piste). Retourne le nombre de fichiers
+ * effacés.
+ *
+ * TROIS VERROUS, dans l'ordre de la règle fondateur (en cas de doute, CONSERVER).
+ * Un .ubx est le filet ultime d'une séance : on ne l'efface que si l'on est SÛR
+ * qu'il ne peut plus servir.
+ *
+ *   1. FILE NON VIDE ⇒ AUCUN GC. Une op en attente peut être le `create_session`,
+ *      un lot `frames` ou le `complete` d'une séance NON CONFIRMÉE en base : son
+ *      .ubx est alors le seul exemplaire du brut. Comme le nom du fichier ne
+ *      permet pas de savoir DE QUELLE séance il s'agit, on ne prend aucun risque
+ *      et on ne GC qu'une fois la file entièrement drainée.
+ *   2. RÉFÉRENCÉ ⇒ CONSERVÉ. Un `ubx_upload` encore en file ou en quarantaine
+ *      protège son fichier par URI (verrou redondant avec le 1 pour la file
+ *      active, mais SEUL rempart pour la quarantaine).
+ *   3. ÂGE ILLISIBLE ⇒ CONSERVÉ. Un nom qu'on ne sait pas dater n'autorise pas
+ *      à détruire la donnée d'un pilote.
+ *
+ * On ne supprime donc PAS à l'upload : entre l'upload et l'expiration, le
+ * fichier reste disponible comme filet de reprise (`reimportUbxToFrames`).
+ */
+export async function gcOldCaptures(now: number = Date.now()): Promise<number> {
+  try {
+    if (await hasPending()) return 0; // verrou 1
+    const dir = capturesDir();
+    const names = await listNamesIn(dir);
+    if (names.length === 0) return 0;
+    const referenced = await referencedUbxUris();
+    let removed = 0;
+    for (const name of names) {
+      const writtenAt = parseCaptureTimestamp(name);
+      if (writtenAt === null) continue; // verrou 3
+      if (now - writtenAt < UBX_MAX_AGE_MS) continue;
+      const uri = dir + name;
+      if (referenced.has(uri)) continue; // verrou 2
+      try {
+        await FileSystem.deleteAsync(uri, { idempotent: true });
+        removed += 1;
+      } catch {
+        /* best-effort : retenté à la prochaine reprise */
+      }
+    }
+    return removed;
+  } catch {
+    return 0; // ne JAMAIS faire échouer une reprise pour du ménage
+  }
+}
+
 /**
  * Reprise au lancement de l'app (ou au retour réseau) : draine la file si elle
  * n'est pas vide. Silencieux et non bloquant (silence en piste). À appeler en
@@ -800,6 +1018,9 @@ export async function resumeUnsyncedCaptures(): Promise<void> {
     if (await hasPending()) {
       await processQueue();
     }
+    // Ménage des .ubx périmés APRÈS le drain : si la file n'est pas vide, le GC
+    // se retire de lui-même (verrou 1).
+    await gcOldCaptures();
   } catch (e) {
     console.warn(`[OXV][capture-queue] reprise KO : ${errorMessage(e)}`);
   }

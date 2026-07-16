@@ -42,7 +42,7 @@ import {
   stopLapDetection,
 } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
-import { attachPendingIntentionToSession } from '@/services/intentionsService';
+import { forgetPendingIntention, peekPendingIntentionId } from '@/services/intentionsService';
 import { useSessionStore } from '@/store/useSessionStore';
 import type { RaceBoxData } from '@/types/telemetry';
 
@@ -248,15 +248,39 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
       e instanceof Error ? e.message : e
     );
   }
+
+  // Rattache l'intention posée en préparation (V9) à cette séance — par la FILE,
+  // comme tout le write-path. L'id est lu LOCALEMENT (aucun réseau : un SELECT
+  // ici échouerait précisément en mode avion, cas nominal Valence), et l'op est
+  // enfilée APRÈS le create_session : le FIFO garantit que la séance existe
+  // quand l'UPDATE part (FK + RLS with check satisfaites), et le rattachement
+  // est rejoué au retour du réseau au lieu d'être perdu.
+  //
+  // L'ORDRE D'ENQUEUE EST LA GARANTIE PORTEUSE, il est verrouillé par un test.
+  //
+  // Best-effort : l'intention est facultative et ne doit jamais retarder la
+  // capture ni la faire échouer.
+  const intentionId = peekPendingIntentionId();
+  if (intentionId) {
+    try {
+      await enqueue({ type: 'attach_intention', sessionId, intentionId });
+      // Marqueur PURGÉ dès l'enfilement : c'est ce point (et non la mise en file)
+      // qui empêche la séance SUIVANTE d'hériter de cette intention si le
+      // rattachement dort encore dans la file, hors-ligne.
+      forgetPendingIntention();
+    } catch (e) {
+      // Non enfilée : on GARDE le marqueur local (la prochaine capture rattachera,
+      // dans la fenêtre de fraîcheur). Ne jamais bloquer la piste pour ça.
+      console.warn(
+        "[OXV][capture] enqueue rattachement d'intention KO :",
+        e instanceof Error ? e.message : e
+      );
+    }
+  }
+
   // Draine en arrière-plan : si réseau, l'insert part tout de suite ; sinon il
   // attend dans la file. Best-effort, jamais bloquant.
   void processQueue().catch(() => undefined);
-
-  // Rattache l'intention posée en préparation (V9) à cette séance — best-effort,
-  // non bloquant : l'intention est facultative et ne doit jamais retarder la
-  // capture ni la faire échouer. Non filtré par circuit (la prépa et le
-  // lancement peuvent dériver le circuit différemment) ; borné par la fraîcheur.
-  void attachPendingIntentionToSession({ sessionId }).catch(() => undefined);
 
   const finish = input.finishLine ?? BELTOISE_FINISH;
   if (!input.finishLine) {
@@ -444,7 +468,8 @@ function logLinkGap(state: CaptureState): void {
  * l'UI affiche un terminal clair (et non un faux « en enregistrement »).
  */
 async function finalizeOnLostLink(): Promise<void> {
-  if (!current) return;
+  const mine = current;
+  if (!mine) return;
   try {
     await stopCaptureSession();
   } catch (e) {
@@ -453,6 +478,20 @@ async function finalizeOnLostLink(): Promise<void> {
       e instanceof Error ? e.message : e
     );
   }
+  // GARDE DE GÉNÉRATION — même idiome que `onData`, `onReconnectChange` et le
+  // timer d'interruption. `stopCaptureSession` remet `current` à null dès son
+  // ENTRÉE (avant son premier await) : une capture SUIVANTE peut donc démarrer
+  // pendant le drain, et elle a alors armé SON keep-awake, SA reconnexion
+  // illimitée et SON statut. Les trois cibles ci-dessous sont GLOBALES — les
+  // appliquer sans re-vérifier désarmerait la séance d'un autre : reconnexion
+  // ramenée en mode borné (une coupure BLE la clôturerait au lieu de reprendre),
+  // verrou d'écran relâché (l'auto-verrouillage coupe la radio, séance perdue),
+  // et « liaison perdue » affiché sur une séance qui enregistre.
+  //
+  // Le chemin terminal ne concerne QUE la séance qu'on vient de clore : si une
+  // autre a pris la main, on ne touche à rien. La garde couvre bien les TROIS
+  // effets, `setLinkStatus('lost')` compris.
+  if (current !== null) return;
   // Désarme la reconnexion illimitée : hors capture, on repasse en mode borné.
   // (stopCaptureSession le fait déjà ; explicite ici pour le chemin terminal.)
   bluetoothService.setUnlimitedReconnect(false);
@@ -463,17 +502,38 @@ async function finalizeOnLostLink(): Promise<void> {
 
 /**
  * Draine le buffer dans telemetry_frames. Non réentrant : un appel concurrent
- * renvoie la promesse du flush en cours. La boucle vide tout le buffer (y
- * compris les trames ajoutées pendant l'écriture), donc un flush final attendu
- * ne laisse aucune queue de session derrière lui.
+ * renvoie la promesse du flush en cours.
+ *
+ * DEUX RÉGIMES, et la distinction est essentielle :
+ *
+ *   - COURANT (`final = false`) : on ne traite que le BACKLOG PRÉSENT À L'ENTRÉE,
+ *     par lots bornés à FLUSH_EVERY_FRAMES. Les trames arrivées PENDANT
+ *     l'écriture attendent le prochain déclencheur (50 trames, ou le timer de
+ *     4 s). Drainer aussi ces trames-là faisait courir la boucle après un
+ *     producteur à 25 Hz : la taille de lot s'effondrait vers rate × RTT (≈ 4
+ *     lignes en 4G, ≈ 1 en Wi-Fi paddock) au lieu de 50 — FLUSH_EVERY_FRAMES
+ *     devenait un simple déclencheur inerte, et une séance de 20 min tirait des
+ *     dizaines de milliers de requêtes d'une poignée de lignes (radio jamais en
+ *     veille sous keep-awake, une transaction + un contrôle RLS PAR TRAME).
+ *
+ *   - FINAL (`final = true`, depuis `drain()` seulement) : on vide TOUT. C'est le
+ *     seul cas qui l'exige — et il est sûr, car `drain()` n'est appelé qu'APRÈS
+ *     `state.unsubData()` : plus aucune trame n'arrive, la boucle termine, et la
+ *     propriété « un flush final attendu ne laisse aucune queue de session
+ *     derrière lui » est préservée à l'identique.
+ *
+ * `remaining` (plutôt qu'un `break` sur un lot incomplet) laisse le timer de 4 s
+ * écouler un buffer partiel — sinon 30 trames en attente ne partiraient jamais.
  */
-function flush(state: CaptureState): Promise<void> {
+function flush(state: CaptureState, final = false): Promise<void> {
   if (state.flushing) return state.flushPromise ?? Promise.resolve();
   state.flushing = true;
   state.flushPromise = (async () => {
     try {
-      while (state.buffer.length > 0) {
-        const batch = state.buffer.splice(0); // prend tout, vide en place
+      let remaining = final ? Infinity : state.buffer.length;
+      while (state.buffer.length > 0 && remaining > 0) {
+        const batch = state.buffer.splice(0, FLUSH_EVERY_FRAMES);
+        remaining -= batch.length;
         try {
           const { error } = await supabase.from('telemetry_frames').insert(batch);
           if (error) throw error;
@@ -502,7 +562,12 @@ function flush(state: CaptureState): Promise<void> {
   return state.flushPromise;
 }
 
-/** Attend la fin d'un flush éventuellement en vol, puis draine ce qui reste. */
+/**
+ * Attend la fin d'un flush éventuellement en vol, puis draine INTÉGRALEMENT ce
+ * qui reste (flush FINAL). Appelé par `stopCaptureSession` APRÈS `unsubData()` et
+ * `clearInterval` : plus aucune trame n'arrive et aucun flush courant ne peut
+ * démarrer, la passe finale vide donc réellement le buffer.
+ */
 async function drain(state: CaptureState): Promise<void> {
   if (state.flushPromise) {
     try {
@@ -511,7 +576,7 @@ async function drain(state: CaptureState): Promise<void> {
       /* déjà loggé */
     }
   }
-  await flush(state);
+  await flush(state, true);
 }
 
 /** Construit les lignes `laps` à partir des tours détectés (transformation pure). */

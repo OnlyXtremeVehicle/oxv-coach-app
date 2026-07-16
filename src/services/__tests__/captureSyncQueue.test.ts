@@ -32,6 +32,12 @@ interface SbCtrl {
   selectRowsByTable: Record<string, any[]>;
   /** Erreur levée par l'upload Storage (souvent SANS `.code` : status seul). */
   uploadError: unknown;
+  /**
+   * Promesse BLOQUANTE par table : l'appel est enregistré tout de suite, mais ne
+   * se résout qu'une fois la promesse tenue. Sert à ouvrir une vraie fenêtre de
+   * concurrence (un drain « en vol ») sans dépendre du hasard d'ordonnancement.
+   */
+  gateByTable: Record<string, Promise<void>>;
 }
 function sbCtrl(): SbCtrl {
   const g = globalThis as any;
@@ -45,6 +51,7 @@ function sbCtrl(): SbCtrl {
       insertErrorByTable: {},
       selectRowsByTable: {},
       uploadError: null,
+      gateByTable: {},
     } as SbCtrl;
   }
   return g.__OXV_SB__;
@@ -142,30 +149,31 @@ jest.mock('@/lib/supabase', () => {
     then(resolve: (v: any) => any, reject?: (e: any) => any) {
       const c = ctrl();
       c.calls.push({ table: this.table, kind: this.kind, opts: this.opts, rows: this.rows });
-      const forcedUpsert = this.kind === 'upsert' ? c.upsertErrorByTable[this.table] : undefined;
-      const forcedInsert = this.kind === 'insert' ? c.insertErrorByTable[this.table] : undefined;
-      const forced = c.errorByTable[this.table];
-      let result: any;
-      if (forcedUpsert) {
-        result = { error: forcedUpsert, count: null, data: null };
-      } else if (forcedInsert) {
-        result = { error: forcedInsert, count: null, data: null };
-      } else if (forced) {
-        result = { error: forced, count: null, data: null };
-      } else if (c.remainingOk > 0) {
+      const compute = (): any => {
+        const forcedUpsert = this.kind === 'upsert' ? c.upsertErrorByTable[this.table] : undefined;
+        const forcedInsert = this.kind === 'insert' ? c.insertErrorByTable[this.table] : undefined;
+        const forced = c.errorByTable[this.table];
+        if (forcedUpsert) return { error: forcedUpsert, count: null, data: null };
+        if (forcedInsert) return { error: forcedInsert, count: null, data: null };
+        if (forced) return { error: forced, count: null, data: null };
+        if (c.remainingOk > 0) {
+          c.remainingOk -= 1;
+          const rows = this.kind === 'select' ? (c.selectRowsByTable[this.table] ?? null) : null;
+          return {
+            error: null,
+            count: this.kind === 'select' ? c.frameCount : null,
+            // Une page au-delà de la 1re est vide : la boucle de pagination sort.
+            data: this.offset > 0 ? [] : rows,
+          };
+        }
         c.remainingOk -= 1;
-        const rows = this.kind === 'select' ? (c.selectRowsByTable[this.table] ?? null) : null;
-        result = {
-          error: null,
-          count: this.kind === 'select' ? c.frameCount : null,
-          // Une page au-delà de la 1re est vide : la boucle de pagination sort.
-          data: this.offset > 0 ? [] : rows,
-        };
-      } else {
-        c.remainingOk -= 1;
-        result = { error: { message: 'Network request failed' }, count: null, data: null };
-      }
-      return Promise.resolve(result).then(resolve, reject);
+        return { error: { message: 'Network request failed' }, count: null, data: null };
+      };
+      const gate = c.gateByTable[this.table];
+      // Chemin nominal INCHANGÉ (résolution synchrone) ; chemin gaté : l'appel est
+      // déjà compté, le résultat n'arrive qu'à la levée de la barrière.
+      const p = gate ? gate.then(compute) : Promise.resolve(compute());
+      return p.then(resolve, reject);
     }
   }
   return {
@@ -192,6 +200,7 @@ import { RACEBOX_PROTOCOL } from '@/types/telemetry';
 import {
   type CaptureQueueOp,
   enqueue,
+  gcOldCaptures,
   hasPending,
   newUuid,
   pendingSessionIds,
@@ -211,7 +220,26 @@ beforeEach(() => {
   c.insertErrorByTable = {};
   c.selectRowsByTable = {};
   c.uploadError = null;
+  c.gateByTable = {};
 });
+
+/** Barrière manuelle : `promise` ne se tient que sur appel de `open()`. */
+function barrier(): { promise: Promise<void>; open: () => void } {
+  let open!: () => void;
+  const promise = new Promise<void>((r) => {
+    open = r;
+  });
+  return { promise, open };
+}
+
+/** Attend qu'une condition devienne vraie (macrotâches réelles), ou lève. */
+async function waitFor(pred: () => boolean, label: string): Promise<void> {
+  for (let i = 0; i < 500; i += 1) {
+    if (pred()) return;
+    await new Promise((r) => setTimeout(r, 0));
+  }
+  throw new Error(`condition jamais atteinte : ${label}`);
+}
 
 /** Fichiers présents sous `capture-queue/quarantine/`. */
 function quarantined(): string[] {
@@ -697,6 +725,126 @@ describe('complete : réconciliation total_frames', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Concurrence du drain (Valencia §7 + §13) : le déclencheur d'un appel concurrent
+// est COALESCÉ, jamais avalé — mais JAMAIS rejoué après un arrêt réseau.
+// ---------------------------------------------------------------------------
+describe('drain relançable : rejeu coalescé', () => {
+  it('une op enqueuée PENDANT un drain est drainée par une 2e passe, sans appel externe', async () => {
+    await enqueue(createOp('s1'));
+    const gate = barrier();
+    sbCtrl().gateByTable = { telemetry_sessions: gate.promise };
+
+    // Drain #1 : part et PEND sur le create_session (upload .ubx en vol, en vrai).
+    const inFlight = processQueue();
+    await waitFor(() => sbCtrl().calls.length >= 1, 'drain #1 en vol');
+
+    // La séance SUIVANTE arrive pendant ce drain : son op est écrite APRÈS le
+    // listing figé de la passe #1 — invisible pour elle.
+    await enqueue(lapsOp('s1'));
+    const concurrent = await processQueue();
+    expect(concurrent.processed).toBe(0); // non réentrant : rend la main…
+
+    gate.open();
+    const res = await inFlight;
+
+    // … mais le déclencheur n'est PAS perdu : la passe #1 re-liste avant de
+    // rendre la main. Avant correctif : processed=1 et l'op `laps` dormait sur
+    // disque jusqu'au prochain démarrage à froid, réseau pourtant présent.
+    expect(res.processed).toBe(2);
+    expect(res.remaining).toBe(0);
+    expect(await hasPending()).toBe(false);
+  });
+
+  it('arrêt RÉSEAU : aucun rejeu (on ne martèle pas un réseau tombé)', async () => {
+    await enqueue(createOp('s1'));
+    const gate = barrier();
+    sbCtrl().gateByTable = { telemetry_sessions: gate.promise };
+    sbCtrl().remainingOk = 0; // l'op en vol échouera réseau
+
+    const inFlight = processQueue();
+    await waitFor(() => sbCtrl().calls.length >= 1, 'drain #1 en vol');
+
+    await enqueue(lapsOp('s1'));
+    const concurrent = await processQueue();
+    expect(concurrent.processed).toBe(0);
+
+    gate.open();
+    const res = await inFlight;
+
+    // Le réseau est tombé : on sort POUR DE BON, MALGRÉ le rejeu armé.
+    //
+    // L'assertion PORTEUSE est le nombre de tentatives. Un rejeu naïf (qui
+    // rejouerait aussi après un arrêt réseau) passerait tous les autres contrôles
+    // ci-dessous : il re-liste et RETENTE aussitôt l'op sur un réseau toujours
+    // absent — le marteau que la doctrine du module interdit. Une seule
+    // tentative = on attend le prochain déclencheur RÉEL.
+    expect(sbCtrl().calls.filter((c) => c.table === 'telemetry_sessions').length).toBe(1);
+    expect(res.processed).toBe(0);
+    expect(res.dropped).toBe(0);
+    expect(sbCtrl().calls.filter((c) => c.table === 'laps')).toEqual([]);
+    // Rien n'est perdu : tout attend le prochain déclencheur RÉEL.
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
+
+  it('un déclencheur concurrent ne fait pas boucler le drain indéfiniment', async () => {
+    await enqueue(createOp('s1'));
+    const gate = barrier();
+    sbCtrl().gateByTable = { telemetry_sessions: gate.promise };
+
+    const inFlight = processQueue();
+    await waitFor(() => sbCtrl().calls.length >= 1, 'drain #1 en vol');
+    // Plusieurs déclencheurs concurrents → UN seul rejeu coalescé.
+    await processQueue();
+    await processQueue();
+    await processQueue();
+
+    gate.open();
+    const res = await inFlight;
+    expect(res.processed).toBe(1);
+    // La 2e passe a listé une file vide et s'est arrêtée : pas de 3e.
+    expect(sbCtrl().calls.filter((c) => c.table === 'telemetry_sessions').length).toBe(1);
+    expect(await hasPending()).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rattachement de l'intention (Valencia §12) : par la FILE, derrière create_session.
+// ---------------------------------------------------------------------------
+describe('attach_intention', () => {
+  it('CYCLE HORS-LIGNE → RETOUR RÉSEAU : le rattachement est rejoué, jamais perdu', async () => {
+    // 10:00, mode avion : la capture enfile create_session PUIS le rattachement.
+    await enqueue(createOp('s1'));
+    await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
+    sbCtrl().remainingOk = 0;
+
+    const offline = await processQueue();
+    expect(offline.processed).toBe(0);
+    expect(offline.dropped).toBe(0);
+    // Avant correctif : l'UPDATE partait hors file et se perdait ici, DÉFINITIVEMENT.
+    expect(await hasPending()).toBe(true);
+
+    // 11:00, réseau revenu : la file draine intégralement, DANS L'ORDRE.
+    sbCtrl().remainingOk = 1e9;
+    const online = await processQueue();
+    expect(online.processed).toBe(2);
+    expect(await hasPending()).toBe(false);
+
+    // Le FIFO garantit que la séance existe quand l'UPDATE part (FK + RLS).
+    expect(sbCtrl().calls.map((c) => `${c.table}:${c.kind}`)).toEqual([
+      'telemetry_sessions:upsert', // échec réseau
+      'telemetry_sessions:upsert', // rejeu OK
+      'session_intentions:update', // rattachement rejoué
+    ]);
+  });
+
+  it('remonte la séance dans pendingSessionIds tant qu’il n’est pas drainé', async () => {
+    await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
+    expect(await pendingSessionIds()).toEqual(['s1']);
+  });
+});
+
 describe('hasPending / pendingSessionIds', () => {
   it('remonte les séances distinctes encore en attente', async () => {
     await enqueue(createOp('s1'));
@@ -835,6 +983,89 @@ describe('ubx_upload', () => {
     expect(await hasPending()).toBe(false);
     expect(quarantined().length).toBe(1);
     warn.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Rétention des .ubx (Valencia §17) : GC par ÂGE, jamais un fichier utile.
+// ---------------------------------------------------------------------------
+describe('gcOldCaptures', () => {
+  const NOW = Date.parse('2026-07-16T12:00:00Z');
+  const OLD = '/oxv/fixtures/racebox-capture-2026-07-01T10-30-00.ubx'; // 15 j
+  const RECENT = '/oxv/fixtures/racebox-capture-2026-07-15T10-30-00.ubx'; // 1 j
+
+  function ubxFiles(): string[] {
+    return [...fsMap().keys()].filter((k) => k.startsWith('/oxv/fixtures/'));
+  }
+
+  it('supprime un .ubx ancien quand plus rien ne peut en avoir besoin', async () => {
+    fsMap().set(OLD, 'octets');
+    expect(await gcOldCaptures(NOW)).toBe(1);
+    expect(ubxFiles()).toEqual([]);
+  });
+
+  it('CONSERVE un .ubx récent (filet de la journée de piste en cours)', async () => {
+    fsMap().set(RECENT, 'octets');
+    expect(await gcOldCaptures(NOW)).toBe(0);
+    expect(ubxFiles()).toEqual([RECENT]);
+  });
+
+  it('CONSERVE un .ubx ancien encore référencé par un ubx_upload en file', async () => {
+    fsMap().set(OLD, 'octets');
+    await enqueue({ type: 'ubx_upload', sessionId: 's1', userId: 'user-1', fileUri: OLD });
+
+    expect(await gcOldCaptures(NOW)).toBe(0);
+    expect(ubxFiles()).toEqual([OLD]);
+  });
+
+  it('CONSERVE un .ubx ancien référencé par un ubx_upload en QUARANTAINE', async () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    fsMap().set(OLD, 'octets');
+    // Upload définitivement en échec (413) → quarantaine. Le brut local devient
+    // le SEUL exemplaire : la file est vide, mais le fichier reste protégé.
+    sbCtrl().uploadError = { name: 'StorageApiError', message: 'too big', status: 413 };
+    await enqueue({ type: 'ubx_upload', sessionId: 's1', userId: 'user-1', fileUri: OLD });
+    expect((await processQueue()).dropped).toBe(1);
+    expect(await hasPending()).toBe(false);
+
+    expect(await gcOldCaptures(NOW)).toBe(0);
+    expect(ubxFiles()).toEqual([OLD]);
+    warn.mockRestore();
+  });
+
+  it('CONSERVE tout tant que la file n’est pas vide (séance non confirmée en base)', async () => {
+    fsMap().set(OLD, 'octets');
+    // Le nom du .ubx ne porte aucun sessionId : impossible de savoir s'il est
+    // celui de cette séance encore en attente. En cas de doute, on conserve.
+    await enqueue(createOp('s-autre'));
+
+    expect(await gcOldCaptures(NOW)).toBe(0);
+    expect(ubxFiles()).toEqual([OLD]);
+  });
+
+  it('CONSERVE un fichier dont le nom n’est pas datable', async () => {
+    const odd = '/oxv/fixtures/racebox-capture-bizarre.ubx';
+    fsMap().set(odd, 'octets');
+    expect(await gcOldCaptures(NOW)).toBe(0);
+    expect(ubxFiles()).toEqual([odd]);
+  });
+
+  it('resumeUnsyncedCaptures fait le ménage APRÈS le drain, sans toucher au récent', async () => {
+    // Horloge figée : le GC de la reprise appelle Date.now() par défaut, le test
+    // ne doit pas dépendre du jour où il tourne.
+    const now = jest.spyOn(Date, 'now').mockReturnValue(NOW);
+    try {
+      fsMap().set(OLD, 'octets');
+      fsMap().set(RECENT, 'octets');
+      await enqueue(createOp('s1'));
+
+      await resumeUnsyncedCaptures(); // draine s1 → file vide → GC autorisé
+
+      expect(await hasPending()).toBe(false);
+      expect(ubxFiles()).toEqual([RECENT]);
+    } finally {
+      now.mockRestore();
+    }
   });
 });
 
