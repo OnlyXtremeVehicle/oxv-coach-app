@@ -21,14 +21,38 @@
  * tours (fetchSessionLaps) et la trace GPS (loadSessionTrajectory) en
  * best-effort. La carte et sa trace se remplissent avec les premières TRAMES du
  * boîtier ; sans trame, la topologie du circuit reste lisible. On n'invente rien.
+ *
+ * Motion (passe transversale, kit src/components/motion) : panneaux en cascade
+ * (Stagger, colonne par colonne en console), chiffre roi qui se construit
+ * (CountUpNumber sous un BreathingGlow discret — le héros de l'écran), tracé du
+ * circuit qui se dessine (DrawInPath sur les points de scène, même composition
+ * de couches que CoachPreset), actions en PressableScale. Durées et courbes =
+ * celles du kit ; reduce-motion respecté par construction.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CoachPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import {
+  CircuitMap,
+  CornersLayer,
+  StartArrowLayer,
+  TrajectoryLayer,
+  getScenePoints,
+  type TrajectoryPoint,
+} from '@/components/CircuitMap';
+import {
+  BreathingGlow,
+  CountUpNumber,
+  DrawInPath,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  polylineLength,
+  polylineToPathD,
+} from '@/components/motion';
 import { QdiRadar } from '@/components/QdiRadar';
 import { EmptyState } from '@/components/instruments';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
@@ -42,7 +66,6 @@ import type { Lap } from '@/types/telemetry';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
-import { KingNumber } from '@/ui/KingNumber';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
@@ -186,32 +209,36 @@ function StudioBody({
   const lapsPanel = <LapsPanel laps={timedLaps} bestLapNumber={bestLapNumber} />;
 
   if (isConsole) {
-    // Console : trois colonnes (gauche lecture · centre carte+chiffre · droite triage+tours).
+    // Console : trois colonnes (gauche lecture · centre carte+chiffre · droite
+    // triage+tours). Cascade diagonale : chaque colonne démarre un temps après
+    // la précédente, les panneaux d'une colonne se suivent (rythme du kit).
     return (
       <View>
-        {header}
+        <FadeInSection>{header}</FadeInSection>
         <View style={s.consoleRow}>
-          <View style={[s.col, { flex: 1 }]}>
+          <Stagger style={[s.col, { flex: 1 }]}>
             {qdiPanel}
             {readsPanel}
-          </View>
-          <View style={[s.col, { flex: 1.3 }]}>
+          </Stagger>
+          <Stagger style={[s.col, { flex: 1.3 }]} initialDelay={80}>
             {trajectoryPanel}
             {marginPanel}
-          </View>
-          <View style={[s.col, { flex: 1 }]}>
+          </Stagger>
+          <Stagger style={[s.col, { flex: 1 }]} initialDelay={160}>
             {watchPanel}
             {lapsPanel}
-          </View>
+          </Stagger>
         </View>
-        <DoctrineLine />
+        <FadeInSection delay={320}>
+          <DoctrineLine />
+        </FadeInSection>
       </View>
     );
   }
 
-  // Compagnon : une colonne, le chiffre roi en tête pour ancrer la lecture.
+  // Compagnon : une colonne cascadée, le chiffre roi en tête pour ancrer la lecture.
   return (
-    <View style={{ gap: spacing.xl }}>
+    <Stagger style={{ gap: spacing.xl }}>
       {header}
       {marginPanel}
       {qdiPanel}
@@ -220,7 +247,7 @@ function StudioBody({
       {lapsPanel}
       {readsPanel}
       <DoctrineLine />
-    </View>
+    </Stagger>
   );
 }
 
@@ -280,25 +307,21 @@ function StudioHeader({ data, isConsole }: { data: StudioSession; isConsole: boo
 
 function ReportButton({ sessionId, full }: { sessionId: string; full?: boolean }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel="Rédiger le rapport de la séance"
       hitSlop={8}
       onPress={() => router.push({ pathname: '/(coach)/rapport', params: { sessionId } } as never)}
-      style={({ pressed }) => [
-        s.reportBtn,
-        full ? { alignSelf: 'stretch' } : null,
-        pressed ? { opacity: 0.9 } : null,
-      ]}
+      style={[s.reportBtn, full ? { alignSelf: 'stretch' } : null]}
     >
       <Text style={s.reportBtnTxt}>Rédiger le rapport</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 function PresentationLink({ sessionId }: { sessionId: string }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel="Ouvrir le mode présentation du débrief"
       hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
@@ -306,7 +329,7 @@ function PresentationLink({ sessionId }: { sessionId: string }) {
       style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}
     >
       <Text style={s.link}>Mode présentation ›</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -372,6 +395,13 @@ function TrajectoryPanel({
   bestLapSeconds: number | null;
   height: number;
 }) {
+  // Tracé du circuit préparé pour <DrawInPath> (helpers purs du kit motion) —
+  // mêmes points de scène que TrackLayer, calculés une fois.
+  const track = useMemo(() => {
+    const pts = getScenePoints();
+    return { d: polylineToPathD(pts), length: polylineLength(pts) };
+  }, []);
+
   return (
     <View>
       <View style={s.panelHead}>
@@ -380,7 +410,31 @@ function TrajectoryPanel({
           <Text style={s.panelNote}>meilleur {formatLapTimeMs(bestLapSeconds)}</Text>
         ) : null}
       </View>
-      <CoachPreset trajectory={trajectory ?? undefined} zoneByIndex={zoneByIndex} height={height} />
+      {/* Même composition de couches que CoachPreset, mais le tracé du circuit
+          se DESSINE à l'entrée (DrawInPath du kit — reduce-motion : rendu
+          complet immédiat). Trajectoire, virages et couleurs : inchangés. */}
+      <CircuitMap height={height}>
+        <DrawInPath
+          d={track.d}
+          length={track.length}
+          stroke={palette.creamSoft}
+          strokeWidth={4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          opacity={0.4}
+        />
+        <StartArrowLayer />
+        {trajectory && trajectory.length > 1 ? (
+          <TrajectoryLayer points={trajectory} colorMode="speed-heatmap" />
+        ) : null}
+        <CornersLayer
+          colorMode="zone"
+          zoneByIndex={zoneByIndex}
+          selectedIndex={null}
+          showLabels={true}
+        />
+      </CircuitMap>
       {hasZones ? (
         <MarginLegendBar />
       ) : (
@@ -432,13 +486,23 @@ function MarginKingPanel({ margins }: { margins: StudioSession['margins'] }) {
     <CockpitPanel plain>
       <Text style={s.panelLabel}>Marge globale de la séance</Text>
       {/* Marge = dégradé §7.6 selon la zone (serré→rouge de donnée, moyen→or,
-          large→vert), jamais l'or par défaut. L'or reste au chrono/record. */}
-      <KingNumber
-        value={`${Math.round(margins.global)}`}
-        unit="%"
-        label="Marge"
-        color={marginZoneExportColor(margins.zone)}
-      />
+          large→vert), jamais l'or par défaut. L'or reste au chrono/record.
+          Le chiffre roi se CONSTRUIT (CountUpNumber) dans le canon typographique
+          de KingNumber (fonts.king 48, tabular-nums), sous une respiration
+          discrète (BreathingGlow — le seul de l'écran, réservé au héros). */}
+      <BreathingGlow>
+        <View style={s.kingRow}>
+          <CountUpNumber
+            value={Math.round(margins.global)}
+            duration={1000}
+            style={[s.kingNumber, { color: marginZoneExportColor(margins.zone) }]}
+          />
+          <View style={s.kingSide}>
+            <Text style={s.kingUnit}>%</Text>
+            <Text style={s.kingLabel}>Marge</Text>
+          </View>
+        </View>
+      </BreathingGlow>
     </CockpitPanel>
   );
 }
@@ -451,7 +515,7 @@ function WatchPanel({ triage, sessionId }: { triage: StudioSession['triage']; se
       <View style={s.panelHead}>
         <Text style={s.sectionLabel}>Où regarder</Text>
         {triage.length > 0 ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Voir le triage sur la carte"
             hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
@@ -460,7 +524,7 @@ function WatchPanel({ triage, sessionId }: { triage: StudioSession['triage']; se
             }
           >
             <Text style={s.link}>Sur la carte ›</Text>
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
       {triage.length === 0 ? (
@@ -654,6 +718,31 @@ const s = StyleSheet.create({
     color: palette.creamMute,
     lineHeight: theme.fontSize.small * 1.5,
     marginTop: spacing.xs,
+  },
+
+  // Chiffre roi animé — canon typographique de KingNumber (§5 handoff : 48,
+  // fonts.king, tabular-nums), répliqué ici car CountUpNumber anime le TEXTE
+  // (KingNumber prend une string déjà formée). Couleur = zone de marge §7.6.
+  kingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
+  kingNumber: {
+    fontFamily: theme.fonts.king,
+    fontSize: 48,
+    lineHeight: 48 * 0.96,
+    letterSpacing: -1.5,
+    fontVariant: ['tabular-nums'],
+  },
+  kingSide: { justifyContent: 'flex-end', paddingBottom: 6, gap: 2 },
+  kingUnit: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    color: palette.eyebrow,
+  },
+  kingLabel: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase',
+    color: palette.eyebrow,
   },
 
   // Lecture rapide

@@ -30,10 +30,11 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { PressableScale, Stagger } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import {
   PILOT_LEVELS,
@@ -274,234 +275,238 @@ export default function PilotProfileScreen() {
     <Screen>
       <AppBar title="Profil" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Carte d'identité — avatar initiales (convention app), nom, @handle. */}
-        <View style={s.hero}>
-          <View style={s.avatar} accessibilityElementsHidden importantForAccessibility="no">
-            {identity.avatarUrl ? (
-              <Image
-                source={{ uri: identity.avatarUrl }}
-                style={s.avatarImg}
-                resizeMode="cover"
-                accessibilityLabel="Votre photo de profil"
-              />
-            ) : (
-              <Text style={s.avatarText}>{initials}</Text>
-            )}
-          </View>
-          <Text style={s.name} accessibilityRole="header">
-            {fullName}
-          </Text>
-          <Text style={s.handle}>{handleLabel}</Text>
-        </View>
-
-        {/* Liste de lecture — reprise fidèle des lignes du maquette, au réel. */}
-        <Card style={s.readCard}>
-          <ReadRow label="Nom affiché" value={fullName} />
-          <ReadRow label="Identifiant" value={handleLabel} />
-          <ReadRow label="Ville" value={readValue(identity.city)} />
-          <ReadRow label="Niveau déclaré" value={level ? pilotLevelLabel(level) : '—'} last />
-        </Card>
-
-        {/* Note de visibilité — formulée au périmètre RLS réel (aucune lecture de
-            la ligne users par un ami ; seuls les bilans partagés le sont). */}
-        <Text style={s.privacyNote}>
-          Vos coordonnées restent privées. Vos amis ne voient que les bilans de séance que vous
-          partagez avec eux.
-        </Text>
-
-        {/* ---- Nom public unifié site/app (users.public_handle, UNIQUE) ---- */}
-        <View style={s.editBlock}>
-          <SectionLabel>Identité publique</SectionLabel>
-          {identity.handle === null ? (
-            <View style={s.handleInvite} accessibilityRole="text">
-              <Text style={s.handleInviteTitle}>Choisissez votre nom public</Text>
-              <Text style={s.handleInviteBody}>
-                Le même nom vous suit sur oxvehicle.fr et dans l&apos;app.
-              </Text>
+        {/* Cascade d'entrée : chaque section du profil se pose l'une après
+            l'autre (plafond du kit — la fin de page n'attend pas). */}
+        <Stagger>
+          {/* Carte d'identité — avatar initiales (convention app), nom, @handle. */}
+          <View style={s.hero}>
+            <View style={s.avatar} accessibilityElementsHidden importantForAccessibility="no">
+              {identity.avatarUrl ? (
+                <Image
+                  source={{ uri: identity.avatarUrl }}
+                  style={s.avatarImg}
+                  resizeMode="cover"
+                  accessibilityLabel="Votre photo de profil"
+                />
+              ) : (
+                <Text style={s.avatarText}>{initials}</Text>
+              )}
             </View>
-          ) : null}
-          <Field
-            label="Nom public"
-            value={handleInput}
-            onChangeText={(t) => {
-              setHandleInput(t.toLowerCase());
-              setHandleError(null);
-            }}
-            placeholder="votre-nom"
-            autoCapitalize="none"
-            autoCorrect={false}
-            maxLength={20}
-            error={handleError}
-            helper={
-              identity.handle
-                ? "Le même nom vous suit sur oxvehicle.fr et dans l'app."
-                : '3 à 20 caractères : minuscules, chiffres, tiret ou underscore.'
-            }
-            containerStyle={{ marginBottom: 0 }}
-          />
-        </View>
-
-        {/* ---- Édition (CRUD existant, restylé v2) ---- */}
-        <View style={s.editBlock}>
-          <SectionLabel>Niveau</SectionLabel>
-          <View style={s.pillRow}>
-            {PILOT_LEVELS.map((l) => {
-              const on = level === l.value;
-              return (
-                <Pressable
-                  key={l.value}
-                  onPress={() => setLevel(l.value)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={l.label}
-                  hitSlop={6}
-                  style={[s.pill, on ? s.pillOn : null]}
-                >
-                  <Text style={[s.pillT, on ? s.pillTOn : null]}>{l.label}</Text>
-                </Pressable>
-              );
-            })}
+            <Text style={s.name} accessibilityRole="header">
+              {fullName}
+            </Text>
+            <Text style={s.handle}>{handleLabel}</Text>
           </View>
-        </View>
 
-        <View style={{ marginTop: spacing.xl }}>
-          <Field
-            label="Années d'expérience"
-            optional
-            value={experience}
-            onChangeText={setExperience}
-            placeholder="ex. 5 ans, débuts en 2019…"
-          />
-          <Field
-            label="Licence FFSA"
-            optional
-            value={ffsa}
-            onChangeText={setFfsa}
-            placeholder="Numéro de licence"
-          />
-          <Field
-            label="Véhicule"
-            optional
-            value={vehicle}
-            onChangeText={setVehicle}
-            placeholder="Marque, modèle, préparation…"
-            multiline
-            maxLength={200}
-          />
-        </View>
+          {/* Liste de lecture — reprise fidèle des lignes du maquette, au réel. */}
+          <Card style={s.readCard}>
+            <ReadRow label="Nom affiché" value={fullName} />
+            <ReadRow label="Identifiant" value={handleLabel} />
+            <ReadRow label="Ville" value={readValue(identity.city)} />
+            <ReadRow label="Niveau déclaré" value={level ? pilotLevelLabel(level) : '—'} last />
+          </Card>
 
-        <View style={{ marginTop: spacing.lg }}>
-          <SectionLabel>Réseaux</SectionLabel>
-          <View style={{ marginTop: spacing.md }}>
-            <Field
-              label="Site web"
-              optional
-              value={website}
-              onChangeText={setWebsite}
-              placeholder="https://…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Field
-              label="Instagram"
-              optional
-              value={instagram}
-              onChangeText={setInstagram}
-              placeholder="https://instagram.com/…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-            <Field
-              label="YouTube"
-              optional
-              value={youtube}
-              onChangeText={setYoutube}
-              placeholder="https://youtube.com/…"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-            />
-          </View>
-        </View>
-
-        <View style={{ marginTop: spacing.xl }}>
-          <SectionLabel>Médias</SectionLabel>
-          <Text style={s.mediaHint}>
-            Photos et vidéos de votre profil, visibles par votre coach.
+          {/* Note de visibilité — formulée au périmètre RLS réel (aucune lecture de
+            la ligne users par un ami ; seuls les bilans partagés le sont). */}
+          <Text style={s.privacyNote}>
+            Vos coordonnées restent privées. Vos amis ne voient que les bilans de séance que vous
+            partagez avec eux.
           </Text>
 
-          {media.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={{ marginTop: spacing.md }}
-              contentContainerStyle={{ gap: spacing.sm }}
-            >
-              {media.map((m) => (
-                <View key={m.id} style={s.mediaTile}>
-                  {m.type === 'photo' && m.signedUrl ? (
-                    <Image
-                      source={{ uri: m.signedUrl }}
-                      style={s.mediaThumb}
-                      resizeMode="cover"
-                      accessibilityLabel="Photo du profil"
-                    />
-                  ) : (
-                    <View style={[s.mediaThumb, s.mediaCenter]}>
-                      <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
-                    </View>
-                  )}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Retirer ce média"
-                    hitSlop={6}
-                    onPress={() => onRemoveMedia(m.id)}
-                    style={s.mediaRemove}
-                  >
-                    <Text style={s.mediaRemoveT}>Retirer</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
-          )}
-
-          <View style={s.mediaActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ajouter une photo"
-              disabled={mediaBusy}
-              onPress={() => onAddMedia('photo')}
-              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-            >
-              <Text style={s.mediaBtnT}>Ajouter une photo</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Ajouter une vidéo"
-              disabled={mediaBusy}
-              onPress={() => onAddMedia('video')}
-              style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-            >
-              <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
-            </Pressable>
+          {/* ---- Nom public unifié site/app (users.public_handle, UNIQUE) ---- */}
+          <View style={s.editBlock}>
+            <SectionLabel>Identité publique</SectionLabel>
+            {identity.handle === null ? (
+              <View style={s.handleInvite} accessibilityRole="text">
+                <Text style={s.handleInviteTitle}>Choisissez votre nom public</Text>
+                <Text style={s.handleInviteBody}>
+                  Le même nom vous suit sur oxvehicle.fr et dans l&apos;app.
+                </Text>
+              </View>
+            ) : null}
+            <Field
+              label="Nom public"
+              value={handleInput}
+              onChangeText={(t) => {
+                setHandleInput(t.toLowerCase());
+                setHandleError(null);
+              }}
+              placeholder="votre-nom"
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              error={handleError}
+              helper={
+                identity.handle
+                  ? "Le même nom vous suit sur oxvehicle.fr et dans l'app."
+                  : '3 à 20 caractères : minuscules, chiffres, tiret ou underscore.'
+              }
+              containerStyle={{ marginBottom: 0 }}
+            />
           </View>
 
-          {mediaBusy ? (
-            <ActivityIndicator
-              color={palette.creamMute}
-              style={{ marginTop: spacing.md }}
-              accessibilityLabel="Envoi du média en cours"
-            />
-          ) : null}
-        </View>
+          {/* ---- Édition (CRUD existant, restylé v2) ---- */}
+          <View style={s.editBlock}>
+            <SectionLabel>Niveau</SectionLabel>
+            <View style={s.pillRow}>
+              {PILOT_LEVELS.map((l) => {
+                const on = level === l.value;
+                return (
+                  <PressableScale
+                    key={l.value}
+                    onPress={() => setLevel(l.value)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={l.label}
+                    hitSlop={6}
+                    style={[s.pill, on ? s.pillOn : null]}
+                  >
+                    <Text style={[s.pillT, on ? s.pillTOn : null]}>{l.label}</Text>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
 
-        <View style={{ marginTop: spacing.xl }}>
-          <Button label="Enregistrer mon profil" loading={saving} onPress={onSave} />
-        </View>
+          <View style={{ marginTop: spacing.xl }}>
+            <Field
+              label="Années d'expérience"
+              optional
+              value={experience}
+              onChangeText={setExperience}
+              placeholder="ex. 5 ans, débuts en 2019…"
+            />
+            <Field
+              label="Licence FFSA"
+              optional
+              value={ffsa}
+              onChangeText={setFfsa}
+              placeholder="Numéro de licence"
+            />
+            <Field
+              label="Véhicule"
+              optional
+              value={vehicle}
+              onChangeText={setVehicle}
+              placeholder="Marque, modèle, préparation…"
+              multiline
+              maxLength={200}
+            />
+          </View>
+
+          <View style={{ marginTop: spacing.lg }}>
+            <SectionLabel>Réseaux</SectionLabel>
+            <View style={{ marginTop: spacing.md }}>
+              <Field
+                label="Site web"
+                optional
+                value={website}
+                onChangeText={setWebsite}
+                placeholder="https://…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Field
+                label="Instagram"
+                optional
+                value={instagram}
+                onChangeText={setInstagram}
+                placeholder="https://instagram.com/…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+              <Field
+                label="YouTube"
+                optional
+                value={youtube}
+                onChangeText={setYoutube}
+                placeholder="https://youtube.com/…"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+              />
+            </View>
+          </View>
+
+          <View style={{ marginTop: spacing.xl }}>
+            <SectionLabel>Médias</SectionLabel>
+            <Text style={s.mediaHint}>
+              Photos et vidéos de votre profil, visibles par votre coach.
+            </Text>
+
+            {media.length > 0 ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginTop: spacing.md }}
+                contentContainerStyle={{ gap: spacing.sm }}
+              >
+                {media.map((m) => (
+                  <View key={m.id} style={s.mediaTile}>
+                    {m.type === 'photo' && m.signedUrl ? (
+                      <Image
+                        source={{ uri: m.signedUrl }}
+                        style={s.mediaThumb}
+                        resizeMode="cover"
+                        accessibilityLabel="Photo du profil"
+                      />
+                    ) : (
+                      <View style={[s.mediaThumb, s.mediaCenter]}>
+                        <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
+                      </View>
+                    )}
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityLabel="Retirer ce média"
+                      hitSlop={6}
+                      onPress={() => onRemoveMedia(m.id)}
+                      style={s.mediaRemove}
+                    >
+                      <Text style={s.mediaRemoveT}>Retirer</Text>
+                    </PressableScale>
+                  </View>
+                ))}
+              </ScrollView>
+            ) : (
+              <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
+            )}
+
+            <View style={s.mediaActions}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter une photo"
+                disabled={mediaBusy}
+                onPress={() => onAddMedia('photo')}
+                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+              >
+                <Text style={s.mediaBtnT}>Ajouter une photo</Text>
+              </PressableScale>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Ajouter une vidéo"
+                disabled={mediaBusy}
+                onPress={() => onAddMedia('video')}
+                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
+              >
+                <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
+              </PressableScale>
+            </View>
+
+            {mediaBusy ? (
+              <ActivityIndicator
+                color={palette.creamMute}
+                style={{ marginTop: spacing.md }}
+                accessibilityLabel="Envoi du média en cours"
+              />
+            ) : null}
+          </View>
+
+          <View style={{ marginTop: spacing.xl }}>
+            <Button label="Enregistrer mon profil" loading={saving} onPress={onSave} />
+          </View>
+        </Stagger>
       </View>
     </Screen>
   );

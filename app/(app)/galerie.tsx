@@ -16,22 +16,28 @@
  * sharedChangesNeeded si le client veut un vrai crédit d'origine.
  *
  * Vouvoiement, pas d'emoji, descriptif. EmptyState digne si aucune photo.
+ *
+ * Motion (kit src/components/motion) : héros en fondu, grille en fondu
+ * séquentiel (Stagger), tuiles en PressableScale, images en fondu au
+ * chargement. Courbes et durées du kit, reduce-motion respecté.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Dimensions,
-  Image,
-  Pressable,
+  Easing,
   StyleSheet,
   Text,
   View,
+  type ImageProps,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
 import { MediaModal } from '@/components/MediaGrid';
+import { FadeInSection, PressableScale, Stagger, useReduceMotion } from '@/components/motion';
 import { type SessionMediaItem, listAllPilotMedia } from '@/services/sessionMediaService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -42,6 +48,35 @@ const H_PADDING = theme.spacing.lg; // 16 — padding écran
 const GUTTER = theme.spacing.md; // 12 — gap grille (§5 : 10–12)
 const CONTENT_WIDTH = SCREEN_WIDTH - 2 * H_PADDING;
 const THUMB_SIZE = (CONTENT_WIDTH - GUTTER) / 2; // 2 colonnes de vignettes
+
+/**
+ * Image distante en fondu au chargement — opacity 0 → 1 sur onLoad (400 ms
+ * ease-out cubic, mêmes courbes/durées que le kit motion, useNativeDriver).
+ * Locale à l'écran : le kit ne porte pas de composant image et cette passe se
+ * limite aux écrans de la zone. Reduce-motion : l'image apparaît sans fondu.
+ */
+function FadeInImage({ style, onLoad, ...rest }: ImageProps) {
+  const reduceMotion = useReduceMotion();
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) opacity.setValue(1);
+  }, [reduceMotion, opacity]);
+
+  const handleLoad: NonNullable<ImageProps['onLoad']> = (event) => {
+    if (!reduceMotion) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+    onLoad?.(event);
+  };
+
+  return <Animated.Image {...rest} onLoad={handleLoad} style={[style, { opacity }]} />;
+}
 
 export default function GalerieScreen() {
   const [media, setMedia] = useState<SessionMediaItem[]>([]);
@@ -75,9 +110,11 @@ export default function GalerieScreen() {
     <Screen>
       <AppBar title="Galerie" onBack={() => router.back()} />
       <View style={s.body}>
-        <Text style={s.eyebrow} accessibilityRole="text">
-          {countLabel}
-        </Text>
+        <FadeInSection>
+          <Text style={s.eyebrow} accessibilityRole="text">
+            {countLabel}
+          </Text>
+        </FadeInSection>
 
         {loading ? (
           <View style={s.loadingWrap}>
@@ -87,18 +124,23 @@ export default function GalerieScreen() {
             />
           </View>
         ) : media.length === 0 ? (
-          <View style={s.emptyWrap}>
-            <EmptyState
-              label="Aucun souvenir"
-              message="Vos photos et vidéos de roulage apparaîtront ici. Elles sont déposées par OXV après chaque journée sur circuit."
-              source="session_media"
-            />
-          </View>
+          <FadeInSection delay={80}>
+            <View style={s.emptyWrap}>
+              <EmptyState
+                label="Aucun souvenir"
+                message="Vos photos et vidéos de roulage apparaîtront ici. Elles sont déposées par OXV après chaque journée sur circuit."
+                source="session_media"
+              />
+            </View>
+          </FadeInSection>
         ) : (
           <View style={s.mosaic}>
-            <HeroTile item={hero} index={0} onPress={() => setSelected(hero)} />
+            <FadeInSection delay={80}>
+              <HeroTile item={hero} index={0} onPress={() => setSelected(hero)} />
+            </FadeInSection>
             {rest.length > 0 ? (
-              <View style={s.grid}>
+              // Grille en fondu séquentiel — délais plafonnés par le kit.
+              <Stagger initialDelay={160} style={s.grid}>
                 {rest.map((item, i) => (
                   <ThumbTile
                     key={item.id}
@@ -107,7 +149,7 @@ export default function GalerieScreen() {
                     onPress={() => setSelected(item)}
                   />
                 ))}
-              </View>
+              </Stagger>
             ) : null}
           </View>
         )}
@@ -197,15 +239,16 @@ function MediaTileBase({
   const kind = item.mediaType === 'video' ? 'Vidéo' : 'Photo';
   const a11y = item.caption ? `${kind} ${index + 1} : ${item.caption}` : `${kind} ${index + 1}`;
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11y}
       onPress={onPress}
       hitSlop={4}
-      style={({ pressed }) => [s.tile, { width, height, opacity: pressed ? 0.82 : 1 }]}
+      haptic="tap"
+      style={[s.tile, { width, height }]}
     >
       {item.signedUrl ? (
-        <Image
+        <FadeInImage
           source={{ uri: item.signedUrl }}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
@@ -237,7 +280,7 @@ function MediaTileBase({
           </Text>
         </View>
       ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

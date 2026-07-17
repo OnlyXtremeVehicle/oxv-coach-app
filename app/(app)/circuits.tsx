@@ -23,11 +23,20 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
+import {
+  DrawInPath,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  polylineLength,
+  staggerDelay,
+  type Point2D,
+} from '@/components/motion';
 import { type Circuit, fetchCircuits } from '@/services/circuitsService';
 import { type CircuitAggregate, loadPilotStats } from '@/services/statsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -66,13 +75,48 @@ function circuitMeta(circuit: Circuit): string {
 }
 
 /**
+ * Points d'une polyline M/L absolue — la convention exacte de geoToSvg/
+ * polylineToPathD qui produit `track_svg_path`. Retourne null si le path
+ * contient autre chose (courbes, commandes relatives) : on ne devine pas la
+ * longueur d'une géométrie inconnue, le tracé est alors rendu statique.
+ */
+function pathPolylinePoints(d: string): Point2D[] | null {
+  if (!/^[ML\s,0-9.+-]+$/.test(d)) return null;
+  const nums = d.match(/-?\d*\.?\d+/g);
+  if (!nums || nums.length < 4 || nums.length % 2 !== 0) return null;
+  const points: Point2D[] = [];
+  for (let i = 0; i < nums.length; i += 2) {
+    const x = Number(nums[i]);
+    const y = Number(nums[i + 1]);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    points.push({ x, y });
+  }
+  return points;
+}
+
+/**
  * Mini-tracé du circuit. `track_svg_path` est un path SVG dans un viewBox
  * 0..1000 (même convention que userCircuitsService/geoToSvg). Trait plein
  * pour un circuit roulé, POINTILLÉ pour un circuit pas encore roulé (état
  * distinct de la maquette). Anneau neutre en repli si aucune géométrie.
+ *
+ * Motion : un tracé ROULÉ se dessine à l'apparition (DrawInPath, cascadé via
+ * `drawDelay`). Le pointillé « pas encore roulé » reste STATIQUE : son dash
+ * est une donnée d'état (maquette), incompatible avec la technique
+ * dasharray/dashoffset du dessin — le motion ne détruit pas un état.
  */
-function MiniTrace({ path, driven }: { path: string | null; driven: boolean }) {
+function MiniTrace({
+  path,
+  driven,
+  drawDelay,
+}: {
+  path: string | null;
+  driven: boolean;
+  drawDelay: number;
+}) {
   const stroke = driven ? palette.green : palette.faint;
+  const points = useMemo(() => (path && driven ? pathPolylinePoints(path) : null), [path, driven]);
+  const length = useMemo(() => (points ? polylineLength(points) : 0), [points]);
   if (!path) {
     return (
       <View style={s.thumb}>
@@ -88,22 +132,35 @@ function MiniTrace({ path, driven }: { path: string | null; driven: boolean }) {
   return (
     <View style={s.thumb}>
       <Svg width={44} height={44} viewBox="0 0 1000 1000">
-        <Path
-          d={path}
-          fill="none"
-          stroke={stroke}
-          strokeWidth={38}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeDasharray={driven ? undefined : '70 60'}
-        />
+        {driven && points && length > 0 ? (
+          <DrawInPath
+            d={path}
+            length={length}
+            delay={drawDelay}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={38}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ) : (
+          <Path
+            d={path}
+            fill="none"
+            stroke={stroke}
+            strokeWidth={38}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray={driven ? undefined : '70 60'}
+          />
+        )}
       </Svg>
     </View>
   );
 }
 
 /** Une carte circuit : mini-tracé, nom, méta, record OR (ou état pointillé). */
-function CircuitCard({ row }: { row: CircuitRow }) {
+function CircuitCard({ row, drawDelay }: { row: CircuitRow; drawDelay: number }) {
   const { circuit, driven, bestLapSeconds } = row;
   const meta = circuitMeta(circuit);
   const best = bestLapSeconds != null ? formatLapTime(bestLapSeconds) : '—';
@@ -115,19 +172,15 @@ function CircuitCard({ row }: { row: CircuitRow }) {
     : `${circuit.name}, pas encore roulé`;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11y}
       onPress={() =>
         router.push({ pathname: '/(app)/circuit/[id]', params: { id: circuit.id } } as never)
       }
-      style={({ pressed }) => [
-        s.card,
-        driven && s.cardDriven,
-        pressed && { opacity: 0.92, borderColor: palette.edge },
-      ]}
+      style={[s.card, driven && s.cardDriven]}
     >
-      <MiniTrace path={circuit.trackSvgPath} driven={driven} />
+      <MiniTrace path={circuit.trackSvgPath} driven={driven} drawDelay={drawDelay} />
 
       <View style={s.cardBody}>
         <Text style={s.name} numberOfLines={1}>
@@ -160,7 +213,7 @@ function CircuitCard({ row }: { row: CircuitRow }) {
           <View style={s.chev} />
         </View>
       )}
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -225,49 +278,66 @@ export default function CircuitsScreen() {
             <ActivityIndicator color={palette.creamMute} />
           </View>
         ) : circuits.length === 0 ? (
-          <View style={{ marginTop: spacing.xl }}>
-            <EmptyState
-              label="Annuaire à venir"
-              message="Les circuits référencés s'afficheront ici. Le référencement national avance circuit par circuit."
-              source="circuits"
-            />
-          </View>
+          <FadeInSection>
+            <View style={{ marginTop: spacing.xl }}>
+              <EmptyState
+                label="Annuaire à venir"
+                message="Les circuits référencés s'afficheront ici. Le référencement national avance circuit par circuit."
+                source="circuits"
+              />
+            </View>
+          </FadeInSection>
         ) : (
           <>
             {driven.length > 0 ? (
               <>
-                <View style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
-                  <SectionLabel>Vos tracés</SectionLabel>
-                </View>
-                <View style={{ gap: spacing.sm + 2 }}>
-                  {driven.map((row) => (
-                    <CircuitCard key={row.circuit.id} row={row} />
+                <FadeInSection>
+                  <View style={{ marginTop: spacing.xs, marginBottom: spacing.md }}>
+                    <SectionLabel>Vos tracés</SectionLabel>
+                  </View>
+                </FadeInSection>
+                {/* Cartes en cascade ; chaque mini-tracé se dessine au même
+                    tempo que l'arrivée de sa carte (délais partagés). */}
+                <Stagger initialDelay={80} style={{ gap: spacing.sm + 2 }}>
+                  {driven.map((row, i) => (
+                    <CircuitCard
+                      key={row.circuit.id}
+                      row={row}
+                      drawDelay={staggerDelay(i, { interval: 80, initialDelay: 80, maxDelay: 800 })}
+                    />
                   ))}
-                </View>
+                </Stagger>
               </>
             ) : null}
 
             {unseen.length > 0 ? (
               <>
-                <View
-                  style={{
-                    marginTop: driven.length > 0 ? spacing.xl : spacing.xs,
-                    marginBottom: spacing.md,
-                  }}
+                <FadeInSection delay={driven.length > 0 ? 160 : 0}>
+                  <View
+                    style={{
+                      marginTop: driven.length > 0 ? spacing.xl : spacing.xs,
+                      marginBottom: spacing.md,
+                    }}
+                  >
+                    <SectionLabel>À découvrir</SectionLabel>
+                  </View>
+                </FadeInSection>
+                <Stagger
+                  initialDelay={driven.length > 0 ? 240 : 80}
+                  style={{ gap: spacing.sm + 2 }}
                 >
-                  <SectionLabel>À découvrir</SectionLabel>
-                </View>
-                <View style={{ gap: spacing.sm + 2 }}>
                   {unseen.map((row) => (
-                    <CircuitCard key={row.circuit.id} row={row} />
+                    <CircuitCard key={row.circuit.id} row={row} drawDelay={0} />
                   ))}
-                </View>
+                </Stagger>
               </>
             ) : null}
 
-            <Text style={s.footnote}>
-              Votre meilleur temps par circuit. Le vôtre seul — aucun autre pilote.
-            </Text>
+            <FadeInSection delay={280}>
+              <Text style={s.footnote}>
+                Votre meilleur temps par circuit. Le vôtre seul — aucun autre pilote.
+              </Text>
+            </FadeInSection>
           </>
         )}
       </View>

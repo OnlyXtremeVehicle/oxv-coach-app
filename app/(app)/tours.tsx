@@ -26,12 +26,13 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { TrackStage } from '@/components/CircuitMap';
 import { LapTimeline } from '@/components/LapTimeline';
 import { EmptyState as DataEmptyState } from '@/components/instruments';
+import { FadeInSection, GrowBar, PressableScale, Stagger, staggerDelay } from '@/components/motion';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { buildLapTimeline } from '@/services/lapTimelineLogic';
 import { fetchSessionLaps } from '@/services/sessionsService';
@@ -137,31 +138,33 @@ export default function ToursScreen() {
         {/* ——— Bandeau récap (maquette #6a) : meilleur tour OR à gauche,
             moyenne crème à droite. Inline mono, sans panneau cockpit. ——— */}
         {bestLap ? (
-          <View
-            accessibilityRole="summary"
-            accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${
-              bestLap.lap_number
-            }. Moyenne des tours valides : ${
-              avgSeconds !== null ? formatLapTime(avgSeconds) : 'non disponible'
-            }.`}
-          >
-            <View style={s.recap}>
-              <View>
-                <Text style={s.eyebrow}>Meilleur tour</Text>
-                <Text style={s.recapBest}>{formatLapTime(bestLap.duration_seconds)}</Text>
+          <FadeInSection>
+            <View
+              accessibilityRole="summary"
+              accessibilityLabel={`Meilleur tour : ${formatLapTime(bestLap.duration_seconds)}, tour ${
+                bestLap.lap_number
+              }. Moyenne des tours valides : ${
+                avgSeconds !== null ? formatLapTime(avgSeconds) : 'non disponible'
+              }.`}
+            >
+              <View style={s.recap}>
+                <View>
+                  <Text style={s.eyebrow}>Meilleur tour</Text>
+                  <Text style={s.recapBest}>{formatLapTime(bestLap.duration_seconds)}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={s.eyebrow}>Moyenne</Text>
+                  <Text style={s.recapAvg}>
+                    {avgSeconds !== null ? formatLapTime(avgSeconds) : '—'}
+                  </Text>
+                </View>
               </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={s.eyebrow}>Moyenne</Text>
-                <Text style={s.recapAvg}>
-                  {avgSeconds !== null ? formatLapTime(avgSeconds) : '—'}
-                </Text>
-              </View>
+              <Text style={s.recapCaption}>
+                Moyenne calculée sur {validLaps.length} tour{validLaps.length > 1 ? 's' : ''} valide
+                {validLaps.length > 1 ? 's' : ''}.
+              </Text>
             </View>
-            <Text style={s.recapCaption}>
-              Moyenne calculée sur {validLaps.length} tour{validLaps.length > 1 ? 's' : ''} valide
-              {validLaps.length > 1 ? 's' : ''}.
-            </Text>
-          </View>
+          </FadeInSection>
         ) : null}
 
         {/* Toggle simple/détaillé pour les pilotes curieux */}
@@ -173,7 +176,7 @@ export default function ToursScreen() {
               marginBottom: theme.spacing.xs,
             }}
           >
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityState={{ expanded: level === 'detailed' }}
               hitSlop={theme.hitSlop}
@@ -183,7 +186,7 @@ export default function ToursScreen() {
               <Text style={s.toggle}>
                 {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
               </Text>
-            </Pressable>
+            </PressableScale>
           </View>
         ) : null}
 
@@ -196,7 +199,9 @@ export default function ToursScreen() {
           errorCause="Vos tours n'ont pas pu être chargés."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          <View>
+          {/* Cascade d'entrée des lignes (Stagger, plafonnée) ; la barre de
+              delta de chaque ligne s'étire juste après son apparition. */}
+          <Stagger interval={50} maxDelay={600}>
             {laps.map((lap, i) => (
               <LapRow
                 key={lap.id}
@@ -207,6 +212,7 @@ export default function ToursScreen() {
                 bestSeconds={bestLap?.duration_seconds ?? null}
                 maxDeltaSeconds={maxDeltaSeconds}
                 level={level}
+                growDelay={staggerDelay(i, { interval: 50, initialDelay: 150, maxDelay: 750 })}
                 onPress={() => {
                   if (!params.sessionId) return;
                   router.push({
@@ -219,7 +225,7 @@ export default function ToursScreen() {
                 }}
               />
             ))}
-          </View>
+          </Stagger>
         </StateWrapper>
 
         {/* ——— Sous la liste (parti A) : la substance existante hors-maquette
@@ -229,36 +235,40 @@ export default function ToursScreen() {
             de tour (table laps) : lisible AVANT toute frame du boîtier, là où le
             faisceau reste en attente. Au toucher : sélection liée à la liste. */}
         {!loading && validLaps.length >= 2 ? (
-          <View style={{ marginTop: theme.spacing.xxl }}>
-            <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>
-              Régularité, tour par tour
-            </Text>
-            <LapTimeline
-              model={timeline}
-              selectedLapNumber={selectedLap}
-              onSelect={(n) => setSelectedLap((cur) => (cur === n ? null : n))}
-            />
-          </View>
+          <FadeInSection delay={200}>
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <Text style={[s.eyebrow, { marginBottom: theme.spacing.md }]}>
+                Régularité, tour par tour
+              </Text>
+              <LapTimeline
+                model={timeline}
+                selectedLapNumber={selectedLap}
+                onSelect={(n) => setSelectedLap((cur) => (cur === n ? null : n))}
+              />
+            </View>
+          </FadeInSection>
         ) : null}
 
         {/* Faisceau : tous vos tours valides superposés sur le tracé (mode beam).
             La dispersion des lignes = votre régularité de trajectoire, vue d'en
             haut. Constat spatial, aucun jugement. */}
         {params.sessionId && validLaps.length > 0 ? (
-          <View style={{ marginTop: theme.spacing.xxl }}>
-            <LapsBeam sessionId={params.sessionId} laps={validLaps} />
-          </View>
+          <FadeInSection delay={280}>
+            <View style={{ marginTop: theme.spacing.xxl }}>
+              <LapsBeam sessionId={params.sessionId} laps={validLaps} />
+            </View>
+          </FadeInSection>
         ) : null}
 
         <View style={{ marginTop: theme.spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             hitSlop={theme.hitSlop}
             onPress={() => router.back()}
             style={s.backHit}
           >
             <Text style={s.back}>Retour</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Screen>
@@ -273,6 +283,7 @@ function LapRow({
   bestSeconds,
   maxDeltaSeconds,
   level,
+  growDelay,
   onPress,
 }: {
   lap: Lap;
@@ -282,6 +293,8 @@ function LapRow({
   bestSeconds: number | null;
   maxDeltaSeconds: number;
   level: 'simple' | 'detailed';
+  /** Délai d'étirement de la barre de delta (cascade alignée sur la ligne). */
+  growDelay: number;
   onPress: () => void;
 }) {
   const isExcluded = lap.is_outlap || lap.is_inlap;
@@ -308,73 +321,76 @@ function LapRow({
   }`;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11yLabel}
       accessibilityHint="Ouvre la télémétrie de ce tour"
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         s.row,
         isBest ? s.rowBest : null,
         !isBest && !isLast ? s.rowSep : null,
         isSelected && !isBest ? { backgroundColor: theme.palette.surface3 } : null,
-        isExcluded ? { opacity: 0.55 } : null,
-        pressed ? { opacity: 0.85 } : null,
       ]}
     >
-      <View style={s.rowMain}>
-        {/* N° de tour réel */}
-        <Text style={[s.rowNum, isBest ? s.rowNumBest : null]}>T{lap.lap_number}</Text>
+      {/* Voile des tours exclus porté par un conteneur interne : l'opacité
+          animée du PressableScale (retour tactile) ne l'écrase pas. */}
+      <View style={isExcluded ? { opacity: 0.55 } : null}>
+        <View style={s.rowMain}>
+          {/* N° de tour réel */}
+          <Text style={[s.rowNum, isBest ? s.rowNumBest : null]}>T{lap.lap_number}</Text>
 
-        {/* Barre de delta — décorative ; le delta chiffré porte l'information. */}
-        <View
-          style={s.track}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {isBest ? (
-            // Meilleur tour : delta nul → repère OR à l'origine de l'échelle
-            // (pas une valeur ; la maquette porte l'or sur cette ligne).
-            <View style={s.originMark} />
-          ) : delta !== null ? (
-            <View style={[s.fill, { width: `${fillPct}%` }]} />
-          ) : null}
+          {/* Barre de delta — décorative ; le delta chiffré porte l'information.
+            Elle S'ÉTIRE à l'apparition (GrowBar), cascadée avec sa ligne. */}
+          <View
+            style={s.track}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {isBest ? (
+              // Meilleur tour : delta nul → repère OR à l'origine de l'échelle
+              // (pas une valeur ; la maquette porte l'or sur cette ligne).
+              <View style={s.originMark} />
+            ) : delta !== null ? (
+              <GrowBar delay={growDelay} style={[s.fill, { width: `${fillPct}%` }]} />
+            ) : null}
+          </View>
+
+          {/* Chrono réel */}
+          <Text style={[s.rowTime, isBest ? s.rowTimeBest : null]}>
+            {formatLapTime(lap.duration_seconds)}
+          </Text>
+
+          {/* Écart compact / tag */}
+          <Text style={[s.rowDelta, isBest ? s.rowDeltaBest : null]}>
+            {isBest
+              ? 'meilleur'
+              : isExcluded
+                ? lap.is_outlap
+                  ? 'sortie'
+                  : 'rentrée'
+                : delta !== null
+                  ? formatDeltaCompact(delta)
+                  : '—'}
+          </Text>
         </View>
 
-        {/* Chrono réel */}
-        <Text style={[s.rowTime, isBest ? s.rowTimeBest : null]}>
-          {formatLapTime(lap.duration_seconds)}
-        </Text>
-
-        {/* Écart compact / tag */}
-        <Text style={[s.rowDelta, isBest ? s.rowDeltaBest : null]}>
-          {isBest
-            ? 'meilleur'
-            : isExcluded
-              ? lap.is_outlap
-                ? 'sortie'
-                : 'rentrée'
-              : delta !== null
-                ? formatDeltaCompact(delta)
-                : '—'}
-        </Text>
+        {/* Détails techniques (mode détaillé) — données réelles de la table laps */}
+        {level === 'detailed' && !isExcluded ? (
+          <View style={s.rowDetails}>
+            {lap.max_speed_kmh != null ? (
+              <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
+            ) : null}
+            {lap.max_g_lateral != null ? (
+              <Detail label="G lat" value={lap.max_g_lateral.toFixed(2).replace('.', ',')} />
+            ) : null}
+            {lap.max_g_braking != null ? (
+              <Detail label="Frein" value={lap.max_g_braking.toFixed(2).replace('.', ',')} />
+            ) : null}
+          </View>
+        ) : null}
       </View>
-
-      {/* Détails techniques (mode détaillé) — données réelles de la table laps */}
-      {level === 'detailed' && !isExcluded ? (
-        <View style={s.rowDetails}>
-          {lap.max_speed_kmh != null ? (
-            <Detail label="Vmax" value={`${Math.round(lap.max_speed_kmh)} km/h`} />
-          ) : null}
-          {lap.max_g_lateral != null ? (
-            <Detail label="G lat" value={lap.max_g_lateral.toFixed(2).replace('.', ',')} />
-          ) : null}
-          {lap.max_g_braking != null ? (
-            <Detail label="Frein" value={lap.max_g_braking.toFixed(2).replace('.', ',')} />
-          ) : null}
-        </View>
-      ) : null}
-    </Pressable>
+    </PressableScale>
   );
 }
 

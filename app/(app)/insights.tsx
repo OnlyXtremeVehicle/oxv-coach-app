@@ -23,6 +23,12 @@
  * Héritage GARDÉ : les six lectures du catalogue (routes /(app)/insight/<clé>
  * inchangées), transparence T5 et pied doctrinal. Héritage DROP : le héros
  * eyebrow+H1 (absent de la maquette).
+ *
+ * Motion (kit src/components/motion, courbes et durées du kit) : intro et
+ * ligne d'état en fondu, cartes de constats en cascade (Stagger), grille des
+ * six lectures cascadée par palier, transparence et pied en fondus décalés.
+ * Le toucher des cartes de lecture vit dans InsightCard (composant partagé).
+ * Reduce-motion : rendu direct, géré par le kit.
  */
 
 import { useEffect, useState } from 'react';
@@ -39,7 +45,7 @@ import {
 } from '@/components/insights/catalogue';
 import { Sparkline } from '@/components/insights/sparklines';
 import { BlindspotsBlock } from '@/components/InsightTransparency';
-import { FadeInSection } from '@/components/motion';
+import { FadeInSection, Stagger } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import {
   getOrComputeQdiForSession,
@@ -216,11 +222,13 @@ export default function InsightsScreen() {
             </Text>
           ) : (
             <>
-              <View style={styles.constatList}>
+              {/* Cartes en cascade courte (Stagger) — elles montent à
+                  l'arrivée des données réelles, jamais avant. */}
+              <Stagger style={styles.constatList} interval={60} maxDelay={600}>
                 {constats.map((c) => (
                   <ConstatCard key={c.key} constat={c} />
                 ))}
-              </View>
+              </Stagger>
               {/* Honnêteté capteurs (QDI, bloc méthode obligatoire) : des
                   accélérations subies, jamais des gestes. */}
               <Text style={styles.methodNote}>
@@ -238,25 +246,35 @@ export default function InsightsScreen() {
             — jamais une consigne.
           </Text>
         </FadeInSection>
-        {TIERS.map((tier, ti) => (
-          <FadeInSection key={tier.id} delay={Math.min(ti + 3, 4) * 80}>
-            <SectionRule label={tier.label} />
-            <View style={styles.constatList}>
-              {READINGS.filter((r) => r.tier === (tier.id as InsightTier)).map((r) => (
-                <InsightCard
-                  key={r.key}
-                  name={r.name}
-                  badge={r.badge}
-                  dimension={r.dimension}
-                  fact={r.fact}
-                  onPress={() => router.push(`/(app)/insight/${r.key}` as never)}
-                >
-                  <Sparkline reading={r.key} />
-                </InsightCard>
-              ))}
-            </View>
-          </FadeInSection>
-        ))}
+        {TIERS.map((tier, ti) => {
+          // Cadence du palier — la grille des six lectures cascade : le palier
+          // entre en fondu, puis ses cartes se suivent (Stagger synchronisé).
+          const tierDelay = Math.min(ti + 3, 4) * 80;
+          return (
+            <FadeInSection key={tier.id} delay={tierDelay}>
+              <SectionRule label={tier.label} />
+              <Stagger
+                style={styles.constatList}
+                interval={60}
+                initialDelay={tierDelay}
+                maxDelay={800}
+              >
+                {READINGS.filter((r) => r.tier === (tier.id as InsightTier)).map((r) => (
+                  <InsightCard
+                    key={r.key}
+                    name={r.name}
+                    badge={r.badge}
+                    dimension={r.dimension}
+                    fact={r.fact}
+                    onPress={() => router.push(`/(app)/insight/${r.key}` as never)}
+                  >
+                    <Sparkline reading={r.key} />
+                  </InsightCard>
+                ))}
+              </Stagger>
+            </FadeInSection>
+          );
+        })}
 
         {/* Transparence T5 (charte 11, obligatoire) : les limites explicites. */}
         <FadeInSection delay={400}>

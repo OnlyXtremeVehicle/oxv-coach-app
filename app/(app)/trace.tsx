@@ -14,11 +14,10 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { FadeInSection } from '@/components/motion';
-import * as haptics from '@/lib/haptics';
+import { BreathingGlow, FadeInSection, PressableScale } from '@/components/motion';
 import type { TraceOfDay } from '@/services/traceNarrativeLogic';
 import { loadTraceOfDay, type TraceOfDayResult } from '@/services/traceNarrativeService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -139,7 +138,10 @@ export default function TraceScreen() {
                 : 'Meilleur temps indisponible'
             }
           >
-            <Text style={[s.chrono, !hasBest && s.chronoAbsent]}>{chronoLabel}</Text>
+            {/* Le chiffre roi OR respire discrètement — jamais sur le « — ». */}
+            <BreathingGlow disabled={!hasBest}>
+              <Text style={[s.chrono, !hasBest && s.chronoAbsent]}>{chronoLabel}</Text>
+            </BreathingGlow>
             {toursLabel ? <Text style={s.chronoCaption}>{toursLabel}</Text> : null}
           </View>
         </FadeInSection>
@@ -147,37 +149,30 @@ export default function TraceScreen() {
         {/* Respiration entre le fait et les portes. */}
         <View style={{ flex: 1 }} />
 
-        {/* Les trois portes — Bilan (pleine), puis Signature | Data Lab. */}
+        {/* Les trois portes — Bilan (pleine), puis Signature | Data Lab.
+            L'haptique passe par PressableScale (haptic="tap", muette en piste). */}
         <FadeInSection delay={140}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Lire le bilan complet"
-            onPress={() => {
-              haptics.tap();
-              router.push(`/(app)/bilan?sessionId=${sessionId}` as never);
-            }}
-            style={({ pressed }) => [s.primary, { opacity: pressed ? 0.85 : 1 }]}
+            haptic="tap"
+            onPress={() => router.push(`/(app)/bilan?sessionId=${sessionId}` as never)}
+            style={s.primary}
           >
             <Text style={s.primaryLabel}>Lire le bilan complet</Text>
             <Text style={s.primaryArrow}>→</Text>
-          </Pressable>
+          </PressableScale>
 
           <View style={s.ghostRow}>
             <GhostDoor
               label="Signature"
               a11y="Ouvrir la signature de la séance"
-              onPress={() => {
-                haptics.tap();
-                router.push(`/(app)/signature?sessionId=${sessionId}` as never);
-              }}
+              onPress={() => router.push(`/(app)/signature?sessionId=${sessionId}` as never)}
             />
             <GhostDoor
               label="Data Lab"
               a11y="Ouvrir le Data Lab"
-              onPress={() => {
-                haptics.tap();
-                router.push(`/(app)/data-lab?sessionId=${sessionId}` as never);
-              }}
+              onPress={() => router.push(`/(app)/data-lab?sessionId=${sessionId}` as never)}
             />
           </View>
         </FadeInSection>
@@ -189,14 +184,15 @@ export default function TraceScreen() {
 /** Porte secondaire bordée (rangée du bas — maquette : Signature | Data Lab). */
 function GhostDoor({ label, a11y, onPress }: { label: string; a11y: string; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11y}
+      haptic="tap"
       onPress={onPress}
-      style={({ pressed }) => [s.ghost, s.ghostGrow, { opacity: pressed ? 0.85 : 1 }]}
+      style={[s.ghost, s.ghostGrow]}
     >
       <Text style={s.ghostLabel}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -207,19 +203,23 @@ function TraceEmpty() {
       <AppBar onBack={() => router.back()} />
       <View style={s.body}>
         <View style={{ flex: 1.2 }} />
-        <Text style={s.eyebrow}>Encore aucune trace</Text>
-        <Text style={s.phrase} accessibilityRole="header">
-          Votre première séance écrira la première ligne.
-        </Text>
+        <FadeInSection delay={40}>
+          <Text style={s.eyebrow}>Encore aucune trace</Text>
+          <Text style={s.phrase} accessibilityRole="header">
+            Votre première séance écrira la première ligne.
+          </Text>
+        </FadeInSection>
         <View style={{ flex: 1 }} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Retour à l'accueil"
-          onPress={() => router.replace('/(app)')}
-          style={({ pressed }) => [s.ghost, { opacity: pressed ? 0.85 : 1 }]}
-        >
-          <Text style={s.ghostLabel}>Retour à l’accueil</Text>
-        </Pressable>
+        <FadeInSection delay={140}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Retour à l'accueil"
+            onPress={() => router.replace('/(app)')}
+            style={s.ghost}
+          >
+            <Text style={s.ghostLabel}>Retour à l’accueil</Text>
+          </PressableScale>
+        </FadeInSection>
       </View>
     </Screen>
   );

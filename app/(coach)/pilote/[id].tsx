@@ -14,13 +14,18 @@
  * pas. Périmètre de consentement RLS (jamais email/téléphone/adresse). Logique,
  * services, états et navigation inchangés (comparaison FIFO, bilan, contexte,
  * annoter, priorités, plan). Données réelles uniquement ; absent → « — ».
+ *
+ * Motion (passe transversale, kit src/components/motion) : identité en fondu,
+ * colonnes console en cascade (Stagger), sections compagnon en fondus à délais
+ * fixes (blocs conditionnels → pas de cascade indexée), séances cascadées,
+ * toutes les actions en PressableScale. Durées et courbes = celles du kit ;
+ * reduce-motion respecté par construction.
  */
 
 import { useEffect, useState } from 'react';
 import {
   Image,
   Linking,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +35,7 @@ import {
 import Svg, { Polygon } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
@@ -188,7 +194,7 @@ export default function CoachPilotDetailScreen() {
     <View>
       <View style={s.rowBetween}>
         <SectionLabel>Ses séances</SectionLabel>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={
             mode === 'browse' ? 'Comparer deux séances' : 'Annuler la comparaison'
@@ -201,7 +207,7 @@ export default function CoachPilotDetailScreen() {
           style={{ minHeight: 44, justifyContent: 'center' }}
         >
           <Text style={s.action}>{mode === 'browse' ? 'Comparer 2 séances' : 'Annuler'}</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {mode === 'compare' ? (
@@ -218,7 +224,7 @@ export default function CoachPilotDetailScreen() {
         errorCause="La liste des séances n'a pas pu être chargée."
         onRetry={() => setReloadKey((k) => k + 1)}
       >
-        <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
+        <Stagger style={{ gap: theme.spacing.sm, marginTop: theme.spacing.md }}>
           {sessions.map((session) => (
             <SessionRow
               key={session.id}
@@ -229,7 +235,7 @@ export default function CoachPilotDetailScreen() {
               onToggle={() => toggleSelected(session.id)}
             />
           ))}
-        </View>
+        </Stagger>
       </StateWrapper>
 
       {mode === 'compare' ? (
@@ -269,7 +275,7 @@ export default function CoachPilotDetailScreen() {
 
   const backLink = (
     <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Retour à mes pilotes"
         hitSlop={theme.hitSlop}
@@ -277,7 +283,7 @@ export default function CoachPilotDetailScreen() {
         style={{ minHeight: 44, justifyContent: 'center' }}
       >
         <Text style={s.back}>Retour à mes pilotes</Text>
-      </Pressable>
+      </PressableScale>
     </View>
   );
 
@@ -288,7 +294,7 @@ export default function CoachPilotDetailScreen() {
     return (
       <Screen>
         <View style={s.consolePad}>
-          <View style={s.consoleHeader}>
+          <FadeInSection style={s.consoleHeader}>
             <Avatar initials={initials} size={52} />
             <View style={{ flex: 1 }}>
               <Text style={s.title} accessibilityRole="header" numberOfLines={1}>
@@ -297,10 +303,12 @@ export default function CoachPilotDetailScreen() {
               {sinceLabel ? <Text style={s.metaMuted}>{sinceLabel}</Text> : null}
             </View>
             {pilot ? consentBadge : null}
-          </View>
+          </FadeInSection>
 
+          {/* Deux colonnes cascadées — la droite (lecture courante) démarre un
+              temps après la gauche (identité), rythme du kit. */}
           <View style={s.columns}>
-            <View style={s.colLeft}>
+            <Stagger style={s.colLeft}>
               {pilot?.vehicle ? <VehiculeSection vehicle={pilot.vehicle} /> : null}
               {pilot ? <EmpreinteSection snapshots={sharedSnapshots} /> : null}
               {pilot ? (
@@ -308,13 +316,13 @@ export default function CoachPilotDetailScreen() {
               ) : null}
               {pilot ? <ProfileMetaSection pilot={pilot} /> : null}
               {pilotMedia.length > 0 ? <PilotMediaBlock media={pilotMedia} /> : null}
-            </View>
+            </Stagger>
 
-            <View style={s.colRight}>
+            <Stagger style={s.colRight} initialDelay={80}>
               {sessionsSection}
               {guidanceSection}
               {sharedNotes.length > 0 ? <SharedNotesSection notes={sharedNotes} /> : null}
-            </View>
+            </Stagger>
           </View>
 
           {backLink}
@@ -330,7 +338,7 @@ export default function CoachPilotDetailScreen() {
     <Screen>
       <AppBar title="Fiche pilote" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
-        <View style={s.companionIdentity}>
+        <FadeInSection style={s.companionIdentity}>
           <Avatar initials={initials} size={68} />
           <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">
             {fullName}
@@ -338,10 +346,12 @@ export default function CoachPilotDetailScreen() {
           {sinceLabel ? (
             <Text style={[s.metaMuted, { textAlign: 'center' }]}>{sinceLabel}</Text>
           ) : null}
-        </View>
+        </FadeInSection>
 
+        {/* Rangée de repères — record (or), régularité, séances — en fondu
+            juste après l'identité (les tuiles gardent leur flex de rangée). */}
         {pilot ? (
-          <View style={s.tilesRow}>
+          <FadeInSection delay={80} style={s.tilesRow}>
             <Tile
               value={bestOverall != null ? formatChronoTenths(bestOverall) : '—'}
               label="record"
@@ -353,47 +363,54 @@ export default function CoachPilotDetailScreen() {
               label="séances"
               color={theme.palette.cream}
             />
-          </View>
+          </FadeInSection>
         ) : null}
 
+        {/* Cascade de sections à délais FIXES par bloc (pas d'index) : un bloc
+            conditionnel absent laisse un silence de 40 ms imperceptible, et
+            l'arrivée des données ne fait jamais rejouer les blocs déjà posés. */}
         {pilot ? (
-          <View style={{ marginTop: theme.spacing.lg }}>
+          <FadeInSection delay={120} style={{ marginTop: theme.spacing.lg }}>
             <ConsentInfoCard text="Consenti · lecture seule. Aucune coordonnée visible." />
-          </View>
+          </FadeInSection>
         ) : null}
 
-        <View style={{ marginTop: theme.spacing.xl }}>{sessionsSection}</View>
+        <FadeInSection delay={160} style={{ marginTop: theme.spacing.xl }}>
+          {sessionsSection}
+        </FadeInSection>
 
-        <View style={{ marginTop: theme.spacing.xl }}>{guidanceSection}</View>
+        <FadeInSection delay={200} style={{ marginTop: theme.spacing.xl }}>
+          {guidanceSection}
+        </FadeInSection>
 
         {pilot ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <FadeInSection delay={240} style={{ marginTop: theme.spacing.xl }}>
             <EmpreinteSection snapshots={sharedSnapshots} />
-          </View>
+          </FadeInSection>
         ) : null}
 
         {sharedNotes.length > 0 ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <FadeInSection delay={280} style={{ marginTop: theme.spacing.xl }}>
             <SharedNotesSection notes={sharedNotes} />
-          </View>
+          </FadeInSection>
         ) : null}
 
         {pilot?.vehicle ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <FadeInSection delay={320} style={{ marginTop: theme.spacing.xl }}>
             <VehiculeSection vehicle={pilot.vehicle} />
-          </View>
+          </FadeInSection>
         ) : null}
 
         {pilot ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <FadeInSection delay={360} style={{ marginTop: theme.spacing.xl }}>
             <ProfileMetaSection pilot={pilot} />
-          </View>
+          </FadeInSection>
         ) : null}
 
         {pilotMedia.length > 0 ? (
-          <View style={{ marginTop: theme.spacing.xl }}>
+          <FadeInSection delay={400} style={{ marginTop: theme.spacing.xl }}>
             <PilotMediaBlock media={pilotMedia} />
-          </View>
+          </FadeInSection>
         ) : null}
 
         {backLink}
@@ -582,23 +599,22 @@ function ProfileMetaSection({ pilot }: { pilot: CoachPilotRow }) {
         {links.length > 0 ? (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>
             {links.map(([label, url]) => (
-              <Pressable
+              <PressableScale
                 key={label}
                 accessibilityRole="link"
                 accessibilityLabel={label}
                 onPress={() => url && Linking.openURL(url).catch(() => undefined)}
-                style={({ pressed }) => ({
+                style={{
                   minHeight: 44,
                   paddingHorizontal: theme.spacing.lg,
                   justifyContent: 'center',
                   borderRadius: theme.radius.sm,
                   borderWidth: 1,
                   borderColor: theme.palette.line,
-                  opacity: pressed ? 0.8 : 1,
-                })}
+                }}
               >
                 <Text style={s.profileLink}>{label}</Text>
-              </Pressable>
+              </PressableScale>
             ))}
           </View>
         ) : null}
@@ -619,29 +635,24 @@ function PilotMediaBlock({ media }: { media: PilotMediaView[] }) {
         >
           {media.map((m) =>
             m.type === 'photo' && m.signedUrl ? (
-              <Pressable
+              <PressableScale
                 key={m.id}
                 accessibilityRole="image"
                 accessibilityLabel="Photo du pilote"
                 onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
-                style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
               >
                 <Image source={{ uri: m.signedUrl }} resizeMode="cover" style={s.mediaThumb} />
-              </Pressable>
+              </PressableScale>
             ) : (
-              <Pressable
+              <PressableScale
                 key={m.id}
                 accessibilityRole="button"
                 accessibilityLabel={m.type === 'video' ? 'Ouvrir la vidéo' : 'Photo'}
                 onPress={() => m.signedUrl && Linking.openURL(m.signedUrl).catch(() => undefined)}
-                style={({ pressed }) => [
-                  s.mediaThumb,
-                  s.mediaCenter,
-                  { opacity: pressed ? 0.85 : 1 },
-                ]}
+                style={[s.mediaThumb, s.mediaCenter]}
               >
                 <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
-              </Pressable>
+              </PressableScale>
             )
           )}
         </ScrollView>
@@ -717,13 +728,12 @@ function SessionRow({
 
   if (mode === 'compare') {
     return (
-      <Pressable
+      <PressableScale
         accessibilityRole="checkbox"
         accessibilityLabel={rowA11yLabel}
         accessibilityHint="Sélectionner pour le comparatif"
         accessibilityState={{ checked: selected }}
         onPress={onToggle}
-        style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
       >
         <Card
           style={{
@@ -736,33 +746,32 @@ function SessionRow({
         >
           {rowContent}
         </Card>
-      </Pressable>
+      </PressableScale>
     );
   }
 
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`Ouvrir le bilan. ${rowA11yLabel}`}
         onPress={() =>
           router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
         }
-        style={({ pressed }) => ({
+        style={{
           padding: theme.spacing.md,
           minHeight: 44,
-          opacity: pressed ? 0.85 : 1,
           flexDirection: 'row',
           alignItems: 'center',
           gap: theme.spacing.md,
-        })}
+        }}
       >
         {rowContent}
-      </Pressable>
+      </PressableScale>
       {/* Lecture enrichie (§10.3) : depuis la séance, le coach pose le CONTEXTE
           et ANNOTE directement — la boucle lire → annoter, sans détour. */}
       <View style={s.sessionActions}>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Ajouter le contexte de cette séance"
           onPress={() =>
@@ -771,11 +780,11 @@ function SessionRow({
               params: { pilotId: pilotId ?? '', sessionId: session.id },
             } as never)
           }
-          style={({ pressed }) => [s.sessionAction, pressed && { opacity: 0.7 }]}
+          style={s.sessionAction}
         >
           <Text style={s.action}>Contexte</Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel="Annoter cette séance"
           onPress={() =>
@@ -784,14 +793,10 @@ function SessionRow({
               params: { pilotId: pilotId ?? '', sessionId: session.id },
             } as never)
           }
-          style={({ pressed }) => [
-            s.sessionAction,
-            s.sessionActionDivider,
-            pressed && { opacity: 0.7 },
-          ]}
+          style={[s.sessionAction, s.sessionActionDivider]}
         >
           <Text style={s.action}>Annoter</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Card>
   );

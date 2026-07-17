@@ -8,10 +8,11 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import {
   getDeviceHealthHistory,
@@ -215,18 +216,18 @@ function SettingsRow({
   last?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={value ? `${label}. ${value}.` : label}
-      style={({ pressed }) => [s.row, !last && s.rowSep, pressed && { opacity: 0.7 }]}
+      style={[s.row, !last && s.rowSep]}
     >
       <Icon />
       <Text style={s.rowLabel}>{label}</Text>
       <View style={{ flex: 1 }} />
       {value ? <Text style={s.rowValue}>{value}</Text> : null}
       <Chevron />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -353,65 +354,74 @@ export default function CompteHubScreen() {
       <AppBar title="Compte" />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         {/* Bloc profil — identité réelle (users), séances réelles. */}
-        <View style={s.profileRow}>
-          <View style={s.avatar} accessibilityElementsHidden importantForAccessibility="no">
-            <Text style={s.avatarText}>{initials}</Text>
+        <FadeInSection>
+          <View style={s.profileRow}>
+            <View style={s.avatar} accessibilityElementsHidden importantForAccessibility="no">
+              <Text style={s.avatarText}>{initials}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.name} accessibilityRole="header">
+                {fullName}
+              </Text>
+              {profileSub ? <Text style={s.profileSub}>{profileSub}</Text> : null}
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={s.name} accessibilityRole="header">
-              {fullName}
-            </Text>
-            {profileSub ? <Text style={s.profileSub}>{profileSub}</Text> : null}
-          </View>
-        </View>
+        </FadeInSection>
 
         {/* Carte boîtier OXV — masquée tant qu'aucun boîtier n'est affecté.
             Badge selon l'état BLE réel ; tuiles bornées aux mesures réelles. */}
         {device ? (
-          <Card
-            style={s.deviceCard}
-            onPress={() => router.push('/(app)/mon-equipement' as never)}
-            accessibilityLabel={`Boîtier OXV. ${deviceSub}. ${connected ? 'Connecté' : 'Non connecté'}.`}
-          >
-            <View style={s.deviceHeader}>
-              <IconDevice />
-              <View style={{ flex: 1 }}>
-                <Text style={s.deviceTitle}>Boîtier OXV</Text>
-                {deviceSub ? <Text style={s.deviceSub}>{deviceSub}</Text> : null}
+          <FadeInSection delay={80}>
+            <Card
+              style={s.deviceCard}
+              onPress={() => router.push('/(app)/mon-equipement' as never)}
+              accessibilityLabel={`Boîtier OXV. ${deviceSub}. ${connected ? 'Connecté' : 'Non connecté'}.`}
+            >
+              <View style={s.deviceHeader}>
+                <IconDevice />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.deviceTitle}>Boîtier OXV</Text>
+                  {deviceSub ? <Text style={s.deviceSub}>{deviceSub}</Text> : null}
+                </View>
+                <StatusPill
+                  label={connected ? 'CONNECTÉ' : 'NON CONNECTÉ'}
+                  tone={connected ? 'connected' : 'neutral'}
+                  live={connected}
+                />
               </View>
-              <StatusPill
-                label={connected ? 'CONNECTÉ' : 'NON CONNECTÉ'}
-                tone={connected ? 'connected' : 'neutral'}
-                live={connected}
-              />
-            </View>
-            <View style={s.stateRow}>
-              <StateTile
-                value={(device.batteryStatus && BATTERY_LABEL[device.batteryStatus]) ?? '—'}
-                label="batterie"
-              />
-              <StateTile
-                value={(device.healthStatus && HEALTH_LABEL[device.healthStatus]) ?? '—'}
-                label="santé"
-              />
-              <StateTile value={formatRssi(rssi)} label="signal" />
-            </View>
-          </Card>
+              <View style={s.stateRow}>
+                <StateTile
+                  value={(device.batteryStatus && BATTERY_LABEL[device.batteryStatus]) ?? '—'}
+                  label="batterie"
+                />
+                <StateTile
+                  value={(device.healthStatus && HEALTH_LABEL[device.healthStatus]) ?? '—'}
+                  label="santé"
+                />
+                <StateTile value={formatRssi(rssi)} label="signal" />
+              </View>
+            </Card>
+          </FadeInSection>
         ) : null}
 
-        {/* Liste de réglages — lignes canoniques + héritage, même style. */}
-        <Card style={s.listCard}>
-          {rows.map((row, i) => (
-            <SettingsRow
-              key={row.key}
-              label={row.label}
-              value={row.value}
-              Icon={row.Icon}
-              last={i === rows.length - 1}
-              onPress={() => router.push(row.href as never)}
-            />
-          ))}
-        </Card>
+        {/* Liste de réglages — lignes canoniques + héritage, même style.
+            Cascade discrète : la carte se pose, puis ses lignes suivent. */}
+        <FadeInSection delay={160}>
+          <Card style={s.listCard}>
+            <Stagger initialDelay={200} interval={60}>
+              {rows.map((row, i) => (
+                <SettingsRow
+                  key={row.key}
+                  label={row.label}
+                  value={row.value}
+                  Icon={row.Icon}
+                  last={i === rows.length - 1}
+                  onPress={() => router.push(row.href as never)}
+                />
+              ))}
+            </Stagger>
+          </Card>
+        </FadeInSection>
       </View>
     </Screen>
   );

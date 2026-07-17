@@ -19,7 +19,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Circle as SvgCircle, Polyline as SvgPolyline, Text as SvgText } from 'react-native-svg';
 
@@ -30,7 +30,13 @@ import {
   projectToScene,
 } from '@/components/CircuitMap';
 import { GForceBars } from '@/components/GForceBars';
-import { FadeInSection } from '@/components/motion';
+import {
+  DrawInPath,
+  FadeInSection,
+  PressableScale,
+  polylineLength,
+  polylineToPathD,
+} from '@/components/motion';
 import { getCorner, nextCornerIndex, previousCornerIndex } from '@/lib/circuitTopology';
 import { supabase } from '@/lib/supabase';
 import {
@@ -84,6 +90,9 @@ interface TrajectoryReading {
 
 /** Chute de vitesse minimale (km/h) pour considérer un freinage MESURÉ. */
 const MIN_MEASURED_DROP_KMH = 5;
+
+/** Durée totale du dessin de la trajectoire (toutes phases confondues). */
+const TRAJECTORY_DRAW_MS = 1500;
 
 /**
  * Découpe la trajectoire GPS réelle en phases (approche / freinage / virage /
@@ -169,14 +178,43 @@ function readTrajectory(
   return { phases, brakeIdx, apexIdx, hasExit };
 }
 
-/** Projette une portion de trajectoire en points SVG scène (mètres). */
-function toSceneStr(points: { lat: number; lon: number }[]): string {
-  return points
-    .map((p) => {
-      const sc = projectToScene(p);
-      return `${sc.x.toFixed(1)},${sc.y.toFixed(1)}`;
-    })
-    .join(' ');
+/** Un tracé de phase prêt à se dessiner (DrawInPath du kit motion). */
+interface PhaseDraw {
+  key: string;
+  color: string;
+  d: string;
+  length: number;
+  delay: number;
+  duration: number;
+}
+
+/**
+ * Prépare les phases pour le dessin progressif : `d` + longueur réelle de
+ * chaque portion (pathMath), délais cumulés pour que la trajectoire s'écrive
+ * dans l'ORDRE du roulage (approche → freinage → virage → sortie), sur
+ * TRAJECTORY_DRAW_MS au total. Pur : calculé une fois par chargement.
+ */
+function buildPhaseDraws(reading: TrajectoryReading, points: CornerTrajectoryPoint[]): PhaseDraw[] {
+  const scenes = reading.phases.map((ph) => ({
+    key: `${ph.from}-${ph.to}`,
+    color: ph.color,
+    scene: points.slice(ph.from, ph.to + 1).map((p) => projectToScene(p)),
+  }));
+  const lengths = scenes.map((sc) => polylineLength(sc.scene));
+  const total = lengths.reduce((sum, l) => sum + l, 0);
+  let covered = 0;
+  return scenes.map((sc, i) => {
+    const delay = total > 0 ? Math.round((covered / total) * TRAJECTORY_DRAW_MS) : 0;
+    covered += lengths[i];
+    return {
+      key: sc.key,
+      color: sc.color,
+      d: polylineToPathD(sc.scene, 1),
+      length: lengths[i],
+      delay,
+      duration: Math.max(1, Math.round(total > 0 ? (lengths[i] / total) * TRAJECTORY_DRAW_MS : 0)),
+    };
+  });
 }
 
 export default function VirageScreen() {
@@ -265,6 +303,13 @@ export default function VirageScreen() {
     () =>
       corner ? readTrajectory(trajectory, { lat: corner.apexLat, lon: corner.apexLon }) : null,
     [trajectory, corner]
+  );
+
+  // Tracés de phase prêts à se dessiner — mémoïsés : le dessin ne se rejoue
+  // pas à l'interaction, uniquement quand la trajectoire chargée change.
+  const phaseDraws = useMemo(
+    () => (reading ? buildPhaseDraws(reading, trajectory) : []),
+    [reading, trajectory]
   );
 
   if (!corner) {
@@ -421,11 +466,15 @@ export default function VirageScreen() {
                   strokeDasharray="5 6"
                   fill="none"
                 />
-                {/* Trajectoire réelle par phases mesurées. */}
-                {reading.phases.map((ph) => (
-                  <SvgPolyline
-                    key={`${ph.from}-${ph.to}`}
-                    points={toSceneStr(trajectory.slice(ph.from, ph.to + 1))}
+                {/* Trajectoire réelle par phases mesurées — chaque phase se
+                    DESSINE à son tour (DrawInPath), dans l'ordre du roulage. */}
+                {phaseDraws.map((ph) => (
+                  <DrawInPath
+                    key={ph.key}
+                    d={ph.d}
+                    length={ph.length}
+                    duration={ph.duration}
+                    delay={ph.delay}
                     stroke={ph.color}
                     strokeWidth={3.4}
                     strokeLinecap="round"
@@ -519,170 +568,178 @@ export default function VirageScreen() {
         ) : null}
 
         {/* ─────────────────────────────────────────────────────────────
-            Sous le héros : la substance existante, conservée (parti A).
+            Sous le héros : la substance existante, conservée (parti A) —
+            elle entre en fondu après le héros (même cadence kit).
             ───────────────────────────────────────────────────────────── */}
-
-        {/* Vitesses — le détail hors tuiles (point bas, écart, temps). */}
-        {stats ? (
-          <Section eyebrow="VITESSES — DÉTAIL">
-            <Card style={s.dataPanel}>
-              <StatRow
-                label="Au point bas"
-                value={stats.minSpeedKmh != null ? `${Math.round(stats.minSpeedKmh)} km/h` : '—'}
-              />
-              <StatRow
-                label="Écart entrée → sortie"
-                value={formatDelta(stats.entrySpeedKmh, stats.exitSpeedKmh, 'km/h')}
-                emphasis
-                last={stats.durationSeconds == null}
-              />
-              {stats.durationSeconds != null ? (
+        <FadeInSection delay={180}>
+          {/* Vitesses — le détail hors tuiles (point bas, écart, temps). */}
+          {stats ? (
+            <Section eyebrow="VITESSES — DÉTAIL">
+              <Card style={s.dataPanel}>
                 <StatRow
-                  label="Temps dans le virage"
-                  value={formatLapTime(stats.durationSeconds)}
+                  label="Au point bas"
+                  value={stats.minSpeedKmh != null ? `${Math.round(stats.minSpeedKmh)} km/h` : '—'}
+                />
+                <StatRow
+                  label="Écart entrée → sortie"
+                  value={formatDelta(stats.entrySpeedKmh, stats.exitSpeedKmh, 'km/h')}
+                  emphasis
+                  last={stats.durationSeconds == null}
+                />
+                {stats.durationSeconds != null ? (
+                  <StatRow
+                    label="Temps dans le virage"
+                    value={formatLapTime(stats.durationSeconds)}
+                    last
+                  />
+                ) : null}
+              </Card>
+            </Section>
+          ) : null}
+
+          {/* Forces vécues */}
+          <Section eyebrow="FORCES VÉCUES">
+            <GForceBars
+              lateralG={stats?.maxGLateral ?? null}
+              brakingG={stats?.maxGBraking ?? null}
+              accelG={stats?.maxGAccel ?? null}
+            />
+          </Section>
+
+          {/* Trajectoire */}
+          <Section eyebrow="TRAJECTOIRE">
+            {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
+              <Card style={s.dataPanel}>
+                <StatRow
+                  label="Écart latéral moyen"
+                  value={`${stats.avgLateralErrorM.toFixed(1)} m`}
+                />
+                <StatRow
+                  label="Écart latéral max"
+                  value={
+                    stats?.maxLateralErrorM != null ? `${stats.maxLateralErrorM.toFixed(1)} m` : '—'
+                  }
                   last
                 />
-              ) : null}
-            </Card>
+              </Card>
+            ) : (
+              <Text style={s.body}>
+                La trajectoire détaillée apparaîtra après votre première session enregistrée.
+              </Text>
+            )}
           </Section>
-        ) : null}
 
-        {/* Forces vécues */}
-        <Section eyebrow="FORCES VÉCUES">
-          <GForceBars
-            lateralG={stats?.maxGLateral ?? null}
-            brakingG={stats?.maxGBraking ?? null}
-            accelG={stats?.maxGAccel ?? null}
-          />
-        </Section>
+          {/* Annotations coach (si partagées) */}
+          {annotations.length > 0 ? (
+            <Section
+              eyebrow={annotations.length > 1 ? 'NOTES DE VOS COACHS' : 'NOTE DE VOTRE COACH'}
+            >
+              <View style={{ gap: spacing.sm }}>
+                {annotations.map((a) => (
+                  <Card key={a.id} style={{ borderColor: palette.coach }}>
+                    <Text style={s.coachNote}>« {a.body} »</Text>
+                    {a.audioUrl ? (
+                      <PressableScale
+                        accessibilityRole="button"
+                        accessibilityLabel="Écouter la note vocale de votre coach"
+                        hitSlop={6}
+                        haptic="tap"
+                        onPress={() => {
+                          const path = a.audioUrl;
+                          if (!path) return;
+                          getAnnotationAudioUrl(path).then((url) => {
+                            if (url) Linking.openURL(url).catch(() => undefined);
+                          });
+                        }}
+                        style={s.voiceNote}
+                      >
+                        <Text style={s.voiceNoteText}>Écouter la note vocale</Text>
+                      </PressableScale>
+                    ) : null}
+                    <Text style={[s.meta, { marginTop: spacing.sm }]}>
+                      {formatDateShort(a.createdAt)}
+                      {a.aiAssisted ? ' · Assistée par IA, validée par votre coach' : ''}
+                    </Text>
+                  </Card>
+                ))}
+              </View>
+            </Section>
+          ) : null}
 
-        {/* Trajectoire */}
-        <Section eyebrow="TRAJECTOIRE">
-          {stats?.avgLateralErrorM !== null && stats?.avgLateralErrorM !== undefined ? (
-            <Card style={s.dataPanel}>
-              <StatRow
-                label="Écart latéral moyen"
-                value={`${stats.avgLateralErrorM.toFixed(1)} m`}
-              />
-              <StatRow
-                label="Écart latéral max"
-                value={
-                  stats?.maxLateralErrorM != null ? `${stats.maxLateralErrorM.toFixed(1)} m` : '—'
-                }
-                last
-              />
-            </Card>
-          ) : (
-            <Text style={s.body}>
-              La trajectoire détaillée apparaîtra après votre première session enregistrée.
+          {/* Repères du coach (§10.3c-A) — superposés, étiquetés, factuels. */}
+          {coachReferences.length > 0 ? (
+            <Section
+              eyebrow={
+                coachReferences.length > 1 ? 'REPÈRES DE VOS COACHS' : 'REPÈRE DE VOTRE COACH'
+              }
+            >
+              <View style={{ gap: spacing.sm }}>
+                {coachReferences.map((ref) => (
+                  <CoachReferenceCard
+                    key={ref.id}
+                    reference={ref}
+                    apexKmh={stats?.apexSpeedKmh ?? null}
+                  />
+                ))}
+              </View>
+            </Section>
+          ) : null}
+
+          {/* Question ouverte — doctrine */}
+          <View style={{ marginBottom: spacing.xxl * 1.5, marginTop: spacing.xxl }}>
+            <Text style={[s.eyebrow, { marginBottom: spacing.md }]} accessibilityRole="header">
+              QUESTION
             </Text>
-          )}
-        </Section>
-
-        {/* Annotations coach (si partagées) */}
-        {annotations.length > 0 ? (
-          <Section eyebrow={annotations.length > 1 ? 'NOTES DE VOS COACHS' : 'NOTE DE VOTRE COACH'}>
-            <View style={{ gap: spacing.sm }}>
-              {annotations.map((a) => (
-                <Card key={a.id} style={{ borderColor: palette.coach }}>
-                  <Text style={s.coachNote}>« {a.body} »</Text>
-                  {a.audioUrl ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Écouter la note vocale de votre coach"
-                      hitSlop={6}
-                      onPress={() => {
-                        const path = a.audioUrl;
-                        if (!path) return;
-                        getAnnotationAudioUrl(path).then((url) => {
-                          if (url) Linking.openURL(url).catch(() => undefined);
-                        });
-                      }}
-                      style={({ pressed }) => [s.voiceNote, pressed && { opacity: 0.8 }]}
-                    >
-                      <Text style={s.voiceNoteText}>Écouter la note vocale</Text>
-                    </Pressable>
-                  ) : null}
-                  <Text style={[s.meta, { marginTop: spacing.sm }]}>
-                    {formatDateShort(a.createdAt)}
-                    {a.aiAssisted ? ' · Assistée par IA, validée par votre coach' : ''}
-                  </Text>
-                </Card>
-              ))}
-            </View>
-          </Section>
-        ) : null}
-
-        {/* Repères du coach (§10.3c-A) — superposés, étiquetés, factuels. */}
-        {coachReferences.length > 0 ? (
-          <Section
-            eyebrow={coachReferences.length > 1 ? 'REPÈRES DE VOS COACHS' : 'REPÈRE DE VOTRE COACH'}
-          >
-            <View style={{ gap: spacing.sm }}>
-              {coachReferences.map((ref) => (
-                <CoachReferenceCard
-                  key={ref.id}
-                  reference={ref}
-                  apexKmh={stats?.apexSpeedKmh ?? null}
-                />
-              ))}
-            </View>
-          </Section>
-        ) : null}
-
-        {/* Question ouverte — doctrine */}
-        <View style={{ marginBottom: spacing.xxl * 1.5, marginTop: spacing.xxl }}>
-          <Text style={[s.eyebrow, { marginBottom: spacing.md }]} accessibilityRole="header">
-            QUESTION
-          </Text>
-          <Text style={[s.manifest, { textAlign: 'center', marginVertical: spacing.lg }]}>
-            Était-ce volontaire&nbsp;?
-          </Text>
-        </View>
-
-        {/* CTA Comparaison */}
-        {params.sessionId ? (
-          <View style={{ marginBottom: spacing.md }}>
-            <Button
-              label="Comparer ce virage à une autre session"
-              variant="ghost"
-              onPress={onCompare}
-            />
+            <Text style={[s.manifest, { textAlign: 'center', marginVertical: spacing.lg }]}>
+              Était-ce volontaire&nbsp;?
+            </Text>
           </View>
-        ) : null}
 
-        {/* CTA Annoter (coach uniquement, et si pilotId résolu) */}
-        {isCoach && sessionPilotId ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Annoter ce virage"
-            hitSlop={theme.hitSlop}
-            onPress={() =>
-              router.push({
-                pathname: '/(coach)/annoter',
-                params: {
-                  pilotId: sessionPilotId,
-                  cornerIndex: String(cornerIndex),
-                  sessionId: params.sessionId ?? '',
-                },
-              } as never)
-            }
-            style={({ pressed }) => [s.coachCta, { opacity: pressed ? 0.85 : 1 }]}
-          >
-            <Text style={s.coachCtaTxt}>Annoter ce virage</Text>
-          </Pressable>
-        ) : null}
+          {/* CTA Comparaison */}
+          {params.sessionId ? (
+            <View style={{ marginBottom: spacing.md }}>
+              <Button
+                label="Comparer ce virage à une autre session"
+                variant="ghost"
+                onPress={onCompare}
+              />
+            </View>
+          ) : null}
 
-        <View style={{ marginTop: spacing.xxl * 1.5, alignItems: 'center' }}>
-          <Pressable
-            accessibilityRole="button"
-            hitSlop={theme.hitSlop}
-            onPress={() => router.back()}
-            style={s.backHit}
-          >
-            <Text style={s.back}>Retour à la carte</Text>
-          </Pressable>
-        </View>
+          {/* CTA Annoter (coach uniquement, et si pilotId résolu) */}
+          {isCoach && sessionPilotId ? (
+            <PressableScale
+              accessibilityRole="button"
+              accessibilityLabel="Annoter ce virage"
+              hitSlop={theme.hitSlop}
+              haptic="tap"
+              onPress={() =>
+                router.push({
+                  pathname: '/(coach)/annoter',
+                  params: {
+                    pilotId: sessionPilotId,
+                    cornerIndex: String(cornerIndex),
+                    sessionId: params.sessionId ?? '',
+                  },
+                } as never)
+              }
+              style={s.coachCta}
+            >
+              <Text style={s.coachCtaTxt}>Annoter ce virage</Text>
+            </PressableScale>
+          ) : null}
+
+          <View style={{ marginTop: spacing.xxl * 1.5, alignItems: 'center' }}>
+            <PressableScale
+              accessibilityRole="button"
+              hitSlop={theme.hitSlop}
+              onPress={() => router.back()}
+              style={s.backHit}
+            >
+              <Text style={s.back}>Retour à la carte</Text>
+            </PressableScale>
+          </View>
+        </FadeInSection>
       </View>
     </Screen>
   );
@@ -691,15 +748,16 @@ export default function VirageScreen() {
 /** Chevron rond ‹ › du header maquette — cible tactile 44 px. */
 function NavChevron({ dir, onPress }: { dir: 'prev' | 'next'; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={dir === 'prev' ? 'Virage précédent' : 'Virage suivant'}
       hitSlop={theme.hitSlop}
+      haptic="tap"
       onPress={onPress}
-      style={({ pressed }) => [s.navBtn, { opacity: pressed ? 0.7 : 1 }]}
+      style={s.navBtn}
     >
       <View style={[s.navGlyph, dir === 'prev' ? s.navGlyphPrev : s.navGlyphNext]} />
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -846,14 +904,14 @@ function VirageNotFound() {
         <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">
           Ce virage n&apos;existe pas.
         </Text>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           hitSlop={theme.hitSlop}
           onPress={() => router.back()}
           style={[s.backHit, { marginTop: spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Screen>
   );

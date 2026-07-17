@@ -17,16 +17,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-  Animated,
-  Easing,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  Text,
-  UIManager,
-  View,
-} from 'react-native';
+import { Animated, Easing, Text, View } from 'react-native';
 import Svg, {
   Circle,
   Defs,
@@ -40,7 +31,16 @@ import { router } from 'expo-router';
 
 import { SourceMethodBlock } from '@/components/InsightTransparency';
 import { EmptyState, Fact } from '@/components/instruments';
-import { useReduceMotion } from '@/components/motion';
+import {
+  AnimatedPresence,
+  BreathingGlow,
+  DrawInPath,
+  FadeInSection,
+  polylineLength,
+  PressableScale,
+  Stagger,
+  useReduceMotion,
+} from '@/components/motion';
 import { computeRegularity } from '@/services/regularityService';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -52,12 +52,6 @@ import { StateWrapper } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius, hitSlop } = theme;
-
-// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
-// Android exige l'activation explicite ; sans effet ailleurs.
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 /** Violet sombre des barres de constance (maquette §7.4). */
 const BAR_INACTIVE = '#3A2E52';
@@ -209,36 +203,41 @@ export default function ProgressionScreen() {
       <AppBar title="Progression" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         {/* ── MODULE 1 — MEILLEUR TOUR ─────────────────────────────────── */}
-        <Text style={[s.moduleEyebrow, { color: palette.gold }]}>
-          MEILLEUR TOUR · SÉANCE APRÈS SÉANCE
-        </Text>
-        {lastBest != null ? (
-          <>
-            <View style={s.kingRow}>
-              <Text style={[s.kingNumber, { color: palette.gold }]}>
-                {formatBestShort(lastBest)}
+        <FadeInSection>
+          <Text style={[s.moduleEyebrow, { color: palette.gold }]}>
+            MEILLEUR TOUR · SÉANCE APRÈS SÉANCE
+          </Text>
+          {lastBest != null ? (
+            <>
+              {/* Le chiffre roi OR respire discrètement (l'unique de l'écran). */}
+              <BreathingGlow style={s.kingRow}>
+                <Text style={[s.kingNumber, { color: palette.gold }]}>
+                  {formatBestShort(lastBest)}
+                </Text>
+                <Text style={s.kingSub}>dernière séance</Text>
+              </BreathingGlow>
+              {/* Lecture (retour build 23) — ce qu'on regarde, en une phrase simple.
+                  Descriptif, jamais prescriptif. */}
+              <Text style={s.lectureLine}>
+                Votre meilleur tour de la dernière séance sur ce circuit.
+                {sessions.length >= 3
+                  ? ' La courbe retrace ce chrono, séance après séance — quand il baisse, elle monte.'
+                  : ''}
               </Text>
-              <Text style={s.kingSub}>dernière séance</Text>
-            </View>
-            {/* Lecture (retour build 23) — ce qu'on regarde, en une phrase simple.
-                Descriptif, jamais prescriptif. */}
-            <Text style={s.lectureLine}>
-              Votre meilleur tour de la dernière séance sur ce circuit.
-              {sessions.length >= 3
-                ? ' La courbe retrace ce chrono, séance après séance — quand il baisse, elle monte.'
-                : ''}
-            </Text>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </FadeInSection>
 
         {sessions.length < 3 ? (
-          <View style={{ marginTop: spacing.lg }}>
-            <EmptyState
-              message={`Votre trajectoire apparaîtra après 3 séances complètes. ${sessions.length} enregistrée${sessions.length > 1 ? 's' : ''} pour l'instant.`}
-            />
-          </View>
+          <FadeInSection delay={80}>
+            <View style={{ marginTop: spacing.lg }}>
+              <EmptyState
+                message={`Votre trajectoire apparaîtra après 3 séances complètes. ${sessions.length} enregistrée${sessions.length > 1 ? 's' : ''} pour l'instant.`}
+              />
+            </View>
+          </FadeInSection>
         ) : (
-          <>
+          <FadeInSection delay={80}>
             <BestLapAreaChart points={points} />
             <View style={s.axisRow}>
               <Text style={s.axis}>{points[0] ? monthLabel(points[0].startedAt) : ''}</Text>
@@ -250,26 +249,30 @@ export default function ProgressionScreen() {
             <Text style={s.modulePhrase}>
               Votre meilleur tour, séance après séance. Juste vous, pas de classement.
             </Text>
-          </>
+          </FadeInSection>
         )}
 
         {/* ── MODULE 2 — CONSTANCE ─────────────────────────────────────── */}
         {lastLaps.length >= 2 && stdDevSeconds != null ? (
           <>
             <View style={s.separator} />
-            <Text style={[s.moduleEyebrow, { color: dataColors.regularity }]}>
-              CONSTANCE · VOS TOURS
-            </Text>
-            <View style={s.kingRow}>
-              <ConstancyKingNumber stdDevSeconds={stdDevSeconds} />
-              {/* Libellé vulgarisé SANS perdre le terme technique (build 23). */}
-              <Text style={s.kingSub}>s d&apos;écart-type (dispersion)</Text>
-            </View>
+            <FadeInSection delay={120}>
+              <Text style={[s.moduleEyebrow, { color: dataColors.regularity }]}>
+                CONSTANCE · VOS TOURS
+              </Text>
+              <View style={s.kingRow}>
+                <ConstancyKingNumber stdDevSeconds={stdDevSeconds} />
+                {/* Libellé vulgarisé SANS perdre le terme technique (build 23). */}
+                <Text style={s.kingSub}>s d&apos;écart-type (dispersion)</Text>
+              </View>
+            </FadeInSection>
             <ConstancyBars laps={lastLaps} />
             {/* Phrase DÉRIVÉE de la donnée (manifest du service), jamais figée. */}
-            <Text style={s.modulePhrase}>
-              {regularityManifest ?? 'Vos tours, tels quels.'} Le tour en or est votre meilleur.
-            </Text>
+            <FadeInSection delay={160}>
+              <Text style={s.modulePhrase}>
+                {regularityManifest ?? 'Vos tours, tels quels.'} Le tour en or est votre meilleur.
+              </Text>
+            </FadeInSection>
           </>
         ) : null}
 
@@ -309,7 +312,7 @@ export default function ProgressionScreen() {
         {/* ── Substance sous les modules (parti A) ─────────────────────── */}
 
         {lastDelta ? (
-          <View style={s.deltaPanel}>
+          <FadeInSection delay={200} style={s.deltaPanel}>
             <View style={{ flex: 1, paddingRight: spacing.md }}>
               <Text style={s.eyebrowSmall}>Depuis votre dernière séance</Text>
               <Text style={[s.deltaBody, { marginTop: spacing.xs }]}>
@@ -337,24 +340,26 @@ export default function ProgressionScreen() {
             >
               {Math.abs(lastDelta.delta) < 0.05 ? '±0,0 s' : formatDeltaSeconds(lastDelta.delta)}
             </Text>
-          </View>
+          </FadeInSection>
         ) : null}
 
         {sessions.length >= 3 ? (
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <FadeInSection delay={240} style={{ flexDirection: 'row', gap: spacing.sm }}>
             <Fact label="Séances" value={String(stats.count)} />
             <Fact label="Meilleur tour" value={formatLapTime(stats.best)} accent />
             {/* Médiane de vos MEILLEURS tours (une valeur par séance), pas le
                 tour médian d'une séance — le libellé dit la population. */}
             <Fact label="Médiane des meilleurs" value={formatLapTime(stats.median)} />
-          </View>
+          </FadeInSection>
         ) : null}
 
-        {/* Vos lectures — sous-vues de la zone. */}
-        <Text style={[s.eyebrowSmall, { marginTop: spacing.xxl, marginBottom: spacing.md }]}>
-          VOS LECTURES
-        </Text>
-        <View style={{ gap: spacing.sm }}>
+        {/* Vos lectures — sous-vues de la zone, en cascade (Stagger). */}
+        <FadeInSection delay={280}>
+          <Text style={[s.eyebrowSmall, { marginTop: spacing.xxl, marginBottom: spacing.md }]}>
+            VOS LECTURES
+          </Text>
+        </FadeInSection>
+        <Stagger initialDelay={320} style={{ gap: spacing.sm }}>
           {PROGRESSION_VIEWS.map((v) => (
             <Card
               key={v.href}
@@ -365,18 +370,18 @@ export default function ProgressionScreen() {
               <Text style={s.navHint}>{v.hint}</Text>
             </Card>
           ))}
-        </View>
+        </Stagger>
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="link"
             accessibilityLabel="Voir vos statistiques agrégées"
             hitSlop={hitSlop}
             onPress={() => router.push('/(app)/stats' as never)}
-            style={({ pressed }) => [s.linkPress, pressed && { opacity: 0.6 }]}
+            style={s.linkPress}
           >
             <Text style={s.link}>Voir vos statistiques agrégées</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Screen>
@@ -387,6 +392,8 @@ export default function ProgressionScreen() {
  * Courbe en AIRE du meilleur tour (maquette) : ligne OR + gradient sous la
  * ligne, points cerclés, dernier point plein labellisé « votre record ».
  * Convention maquette : l'amélioration MONTE (chrono plus bas = point plus haut).
+ * La ligne or SE DESSINE à l'apparition (DrawInPath) — le tracé final est la
+ * donnée réelle, l'animation n'est qu'un chemin vers elle.
  */
 function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
   const W = 320;
@@ -434,9 +441,12 @@ function BestLapAreaChart({ points }: { points: SessionPoint[] }) {
         </Defs>
         {/* aire sous la ligne (gradient or) */}
         <Path d={areaD} fill="url(#goldArea)" />
-        {/* ligne or */}
-        <Path
+        {/* ligne or — se dessine de la première à la dernière séance */}
+        <DrawInPath
           d={lineD}
+          length={polylineLength(xy)}
+          duration={1200}
+          delay={200}
           stroke={palette.gold}
           strokeWidth={2}
           strokeLinecap="round"
@@ -588,6 +598,10 @@ function ConstancyKingNumber({ stdDevSeconds }: { stdDevSeconds: number }) {
  * Les barres s'étirent depuis la ligne de base à l'apparition (transform seul,
  * 60 fps, ancrage bas via translateY compensé). « Réduire les animations » =
  * rendu direct, sans mouvement.
+ *
+ * Reste local : le kit GrowBar s'étire horizontalement (scaleX, ancre gauche) ;
+ * ici il faut un étirement VERTICAL ancré en bas, sur un SVG entier — mêmes
+ * durées/courbes que le kit (ease-out cubic, native driver).
  */
 function BarsReveal({ height, children }: { height: number; children: ReactNode }) {
   const reduceMotion = useReduceMotion();
@@ -625,34 +639,24 @@ function BarsReveal({ height, children }: { height: number; children: ReactNode 
   );
 }
 
-/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+/** Affordance fine « Comment lire cet écran » → panneau repliable (AnimatedPresence). */
 function HowToRead({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const reduceMotion = useReduceMotion();
   return (
     <View style={{ marginTop: spacing.lg }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         hitSlop={hitSlop}
-        onPress={() => {
-          if (!reduceMotion) {
-            LayoutAnimation.configureNext(
-              LayoutAnimation.create(
-                220,
-                LayoutAnimation.Types.easeInEaseOut,
-                LayoutAnimation.Properties.opacity
-              )
-            );
-          }
-          setOpen((o) => !o);
-        }}
-        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+        onPress={() => setOpen((o) => !o)}
+        style={s.howBtn}
       >
         <Text style={s.howLabel}>Comment lire cet écran</Text>
         <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
-      </Pressable>
-      {open ? <View style={s.howPanel}>{children}</View> : null}
+      </PressableScale>
+      <AnimatedPresence visible={open}>
+        <View style={s.howPanel}>{children}</View>
+      </AnimatedPresence>
     </View>
   );
 }

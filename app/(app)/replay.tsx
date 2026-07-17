@@ -27,7 +27,6 @@ import {
   type AccessibilityActionEvent,
   type LayoutChangeEvent,
   PanResponder,
-  Pressable,
   ScrollView,
   Text,
   View,
@@ -36,6 +35,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { TrackStage } from '@/components/CircuitMap';
 import { EmptyState as DataEmptyState, Fact } from '@/components/instruments';
+import { FadeInSection, PressableScale } from '@/components/motion';
 import { useDetailLevel } from '@/hooks/useDetailLevel';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames, type SessionFrame } from '@/services/sessionTelemetryService';
@@ -150,89 +150,96 @@ export default function ReplayScreen() {
       <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
         {/* Sélecteur de tour (héritage utile, chips au langage v2). */}
         {laps.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ marginBottom: theme.spacing.md }}
-            contentContainerStyle={{ gap: theme.spacing.xs, paddingHorizontal: 2 }}
-          >
-            {laps.map((l) => {
-              const on = selectedLap === l.lap_number;
-              const kind = l.is_best_lap
-                ? ', meilleur tour'
-                : l.is_outlap
-                  ? ', tour de sortie'
-                  : l.is_inlap
-                    ? ', tour de rentrée'
-                    : '';
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={`Tour ${l.lap_number}${kind}`}
-                  accessibilityHint="Sélectionne ce tour à rejouer"
-                  hitSlop={theme.hitSlop}
-                  key={l.id}
-                  onPress={() => setSelectedLap(l.lap_number)}
-                  style={({ pressed }) => ({
-                    minHeight: 36,
-                    justifyContent: 'center',
-                    paddingVertical: theme.spacing.xs,
-                    paddingHorizontal: theme.spacing.md,
-                    borderRadius: theme.radius.sm,
-                    borderWidth: 1,
-                    borderColor: on
-                      ? l.is_best_lap
-                        ? theme.palette.gold // tour de référence = chrono/record (or)
-                        : theme.palette.edge
-                      : theme.palette.line,
-                    backgroundColor: on ? 'rgba(255,255,255,0.07)' : theme.palette.card2,
-                    opacity: pressed ? 0.85 : l.is_outlap || l.is_inlap ? 0.6 : 1,
-                  })}
-                >
-                  <Text
-                    style={{
-                      fontFamily: theme.fonts.mono,
-                      color: on ? theme.palette.cream : theme.palette.creamMute,
-                      fontSize: theme.fontSize.small,
-                    }}
-                  >
-                    {l.lap_number}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          <FadeInSection>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: theme.spacing.md }}
+              contentContainerStyle={{ gap: theme.spacing.xs, paddingHorizontal: 2 }}
+            >
+              {laps.map((l) => {
+                const on = selectedLap === l.lap_number;
+                const kind = l.is_best_lap
+                  ? ', meilleur tour'
+                  : l.is_outlap
+                    ? ', tour de sortie'
+                    : l.is_inlap
+                      ? ', tour de rentrée'
+                      : '';
+                return (
+                  // Voile des tours exclus porté par l'enveloppe : l'opacité
+                  // animée du PressableScale (retour tactile) ne l'écrase pas.
+                  <View key={l.id} style={{ opacity: l.is_outlap || l.is_inlap ? 0.6 : 1 }}>
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: on }}
+                      accessibilityLabel={`Tour ${l.lap_number}${kind}`}
+                      accessibilityHint="Sélectionne ce tour à rejouer"
+                      hitSlop={theme.hitSlop}
+                      haptic="tap"
+                      onPress={() => setSelectedLap(l.lap_number)}
+                      style={{
+                        minHeight: 36,
+                        justifyContent: 'center',
+                        paddingVertical: theme.spacing.xs,
+                        paddingHorizontal: theme.spacing.md,
+                        borderRadius: theme.radius.sm,
+                        borderWidth: 1,
+                        borderColor: on
+                          ? l.is_best_lap
+                            ? theme.palette.gold // tour de référence = chrono/record (or)
+                            : theme.palette.edge
+                          : theme.palette.line,
+                        backgroundColor: on ? 'rgba(255,255,255,0.07)' : theme.palette.card2,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: theme.fonts.mono,
+                          color: on ? theme.palette.cream : theme.palette.creamMute,
+                          fontSize: theme.fontSize.small,
+                        }}
+                      >
+                        {l.lap_number}
+                      </Text>
+                    </PressableScale>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </FadeInSection>
         ) : null}
 
         {/* Fait du tour (chrono DB réel + type) à gauche, toggle détails à droite. */}
         {currentLap || canToggle ? (
-          <View style={s.metaRow}>
-            {currentLap ? (
-              <Text style={s.meta}>
-                <Text style={currentLap.is_best_lap ? { color: theme.palette.gold } : null}>
-                  {formatLapTime(currentLap.duration_seconds)}
+          <FadeInSection delay={60}>
+            <View style={s.metaRow}>
+              {currentLap ? (
+                <Text style={s.meta}>
+                  <Text style={currentLap.is_best_lap ? { color: theme.palette.gold } : null}>
+                    {formatLapTime(currentLap.duration_seconds)}
+                  </Text>
+                  {' · '}
+                  {lapKindLabel(currentLap)}
                 </Text>
-                {' · '}
-                {lapKindLabel(currentLap)}
-              </Text>
-            ) : (
-              <View />
-            )}
-            {canToggle && laps.length > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ expanded: level === 'detailed' }}
-                hitSlop={theme.hitSlop}
-                onPress={toggle}
-                style={s.toggleHit}
-              >
-                <Text style={s.toggle}>
-                  {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
+              ) : (
+                <View />
+              )}
+              {canToggle && laps.length > 0 ? (
+                <PressableScale
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: level === 'detailed' }}
+                  hitSlop={theme.hitSlop}
+                  onPress={toggle}
+                  style={s.toggleHit}
+                >
+                  <Text style={s.toggle}>
+                    {level === 'simple' ? 'Voir les détails techniques' : 'Vue simplifiée'}
+                  </Text>
+                </PressableScale>
+              ) : null}
+            </View>
+          </FadeInSection>
         ) : null}
 
         {/* Scène de rejeu */}
@@ -337,7 +344,9 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
   }
 
   return (
-    <View>
+    // La scène entre en fondu au chargement — le tracé lui-même vit dans
+    // TrackStage (composant partagé), qui porte déjà son propre rendu.
+    <FadeInSection delay={120}>
       {/* Carte surface : tracé + relevé vitesse de la frame courante (crème —
           la vitesse est une donnée, l'or reste au chrono). */}
       <View style={{ position: 'relative' }}>
@@ -418,25 +427,27 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
           réellement sur le curseur ; rien ne se lance tout seul. */}
       {totalMs > 0 ? (
         <View style={s.controls}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Reculer d'une seconde dans le tour"
             hitSlop={theme.hitSlop}
+            haptic="tap"
             onPress={() => stepBy(-1)}
-            style={({ pressed }) => [s.sideBtn, pressed && { opacity: 0.7 }]}
+            style={s.sideBtn}
           >
             <View style={s.chevLeft} />
-          </Pressable>
-          <Pressable
+          </PressableScale>
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel={playing ? 'Mettre en pause' : 'Lire le tour'}
             accessibilityHint="La lecture avance le curseur au rythme réel du tour"
             hitSlop={theme.hitSlop}
+            haptic="tap"
             onPress={() => {
               if (!playing && progress >= 1) setProgress(0);
               setPlaying((p) => !p);
             }}
-            style={({ pressed }) => [s.playBtn, pressed && { opacity: 0.85 }]}
+            style={s.playBtn}
           >
             {playing ? (
               <View style={s.pauseIcon}>
@@ -446,19 +457,20 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
             ) : (
               <View style={s.playIcon} />
             )}
-          </Pressable>
-          <Pressable
+          </PressableScale>
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Avancer d'une seconde dans le tour"
             hitSlop={theme.hitSlop}
+            haptic="tap"
             onPress={() => stepBy(1)}
-            style={({ pressed }) => [s.sideBtn, pressed && { opacity: 0.7 }]}
+            style={s.sideBtn}
           >
             <View style={s.chevRight} />
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
-    </View>
+    </FadeInSection>
   );
 }
 

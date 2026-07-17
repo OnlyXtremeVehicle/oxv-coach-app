@@ -18,14 +18,29 @@
  * SOUS le héros (parti A — rien ne se perd) : repères g max (lat/frein/accél),
  * superposition d'une autre séance sur le canal vitesse, note pédagogique.
  *
+ * Motion (kit src/components/motion, courbes et durées du kit) : la trace G-G
+ * se DESSINE une fois au chargement (DrawInPath sur le fil temporel des
+ * forces, pathMath), héros et canaux en fondus décalés, repères g max en
+ * cascade (Stagger), picker de superposition en AnimatedPresence, touchers en
+ * PressableScale. Reduce-motion : rendu direct, géré par le kit.
+ *
  * Doctrine : l'app montre, le pilote interprète. Aucun verbe prescriptif.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Circle, Line, Path, Text as SvgText } from 'react-native-svg';
 
+import {
+  AnimatedPresence,
+  DrawInPath,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  polylineLength,
+  polylineToPathD,
+} from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import {
   loadGGPoints,
@@ -238,7 +253,9 @@ export default function TelemetryScreen() {
     <Screen>
       <AppBar title="Télémétrie" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <Text style={s.eyebrow}>{eyebrowText}</Text>
+        <FadeInSection>
+          <Text style={s.eyebrow}>{eyebrowText}</Text>
+        </FadeInSection>
 
         {loading ? (
           <Text style={s.loading}>Chargement…</Text>
@@ -249,172 +266,196 @@ export default function TelemetryScreen() {
           </EmptyText>
         ) : (
           <>
-            {/* HÉROS — diagramme G-G + explication (fidèle au PNG) */}
-            <View style={s.ggRow}>
-              {ggPoints.length === 0 ? (
+            {/* HÉROS — diagramme G-G + explication (fidèle au PNG). Le fil des
+                forces se dessine dans le GGHero (DrawInPath), une fois au mount. */}
+            <FadeInSection>
+              <View style={s.ggRow}>
+                {ggPoints.length === 0 ? (
+                  <View style={{ flex: 1 }}>
+                    <EmptyText>Pas de données d’accélération sur cette séance.</EmptyText>
+                  </View>
+                ) : (
+                  <GGHero
+                    points={ggPoints}
+                    extreme={ggStats.extreme}
+                    extremeMag={ggStats.extremeMag}
+                  />
+                )}
                 <View style={{ flex: 1 }}>
-                  <EmptyText>Pas de données d’accélération sur cette séance.</EmptyText>
+                  <Text style={s.ggLabel}>DIAGRAMME G-G</Text>
+                  <Text style={s.ggBody}>
+                    Chaque point = une force subie dans le tour. Plus c’est large, plus vous
+                    exploitez l’adhérence.
+                  </Text>
                 </View>
-              ) : (
-                <GGHero
-                  points={ggPoints}
-                  extreme={ggStats.extreme}
-                  extremeMag={ggStats.extremeMag}
-                />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={s.ggLabel}>DIAGRAMME G-G</Text>
-                <Text style={s.ggBody}>
-                  Chaque point = une force subie dans le tour. Plus c’est large, plus vous exploitez
-                  l’adhérence.
-                </Text>
               </View>
-            </View>
+            </FadeInSection>
 
             <View style={s.separator} />
 
+            {/* Canaux en fondus décalés — même cadence que les écrans frères. */}
+
             {/* Canal VITESSE — courbe or (couleur maquette) */}
-            <View style={s.channel}>
-              <ChannelLabel color={palette.gold} label="Vitesse" />
-              {trace.length < 2 ? (
-                <EmptyText>Pas de données de vitesse exploitables.</EmptyText>
-              ) : (
-                <SpeedChannel points={trace} compare={compareTrace} />
-              )}
-            </View>
+            <FadeInSection delay={80}>
+              <View style={s.channel}>
+                <ChannelLabel color={palette.gold} label="Vitesse" />
+                {trace.length < 2 ? (
+                  <EmptyText>Pas de données de vitesse exploitables.</EmptyText>
+                ) : (
+                  <SpeedChannel points={trace} compare={compareTrace} />
+                )}
+              </View>
+            </FadeInSection>
 
             {/* Canal FREIN — aires rouges */}
-            <View style={s.channel}>
-              <ChannelLabel color={dataColors.brake} label="Frein" />
-              {throttleBrake.length < 2 ? (
-                <EmptyText>Pas de données de freinage exploitables.</EmptyText>
-              ) : (
-                <GAreaChannel points={throttleBrake} kind="brake" />
-              )}
-            </View>
+            <FadeInSection delay={140}>
+              <View style={s.channel}>
+                <ChannelLabel color={dataColors.brake} label="Frein" />
+                {throttleBrake.length < 2 ? (
+                  <EmptyText>Pas de données de freinage exploitables.</EmptyText>
+                ) : (
+                  <GAreaChannel points={throttleBrake} kind="brake" />
+                )}
+              </View>
+            </FadeInSection>
 
             {/* Canal GAZ — aires vertes */}
-            <View style={s.channel}>
-              <ChannelLabel color={dataColors.accel} label="Gaz" />
-              {throttleBrake.length < 2 ? (
-                <EmptyText>Pas de données d’accélération exploitables.</EmptyText>
-              ) : (
-                <GAreaChannel points={throttleBrake} kind="accel" />
-              )}
-            </View>
+            <FadeInSection delay={200}>
+              <View style={s.channel}>
+                <ChannelLabel color={dataColors.accel} label="Gaz" />
+                {throttleBrake.length < 2 ? (
+                  <EmptyText>Pas de données d’accélération exploitables.</EmptyText>
+                ) : (
+                  <GAreaChannel points={throttleBrake} kind="accel" />
+                )}
+              </View>
+            </FadeInSection>
 
             {/* ————— SOUS LE HÉROS — substance conservée ————— */}
 
-            {/* Repères g max (ex-récap du GGDiagram partagé) */}
+            {/* Repères g max (ex-récap du GGDiagram partagé) — tuiles en
+                cascade courte (Stagger), après l'entrée de la carte. */}
             {ggPoints.length > 0 ? (
-              <Card style={{ marginTop: spacing.xxl }}>
-                <Text style={s.cardCaption}>{ggPoints.length} mesures · enveloppe d’adhérence</Text>
-                <View style={s.statRow}>
-                  <Stat
-                    label="LAT MAX"
-                    value={ggStats.maxLat > 0 ? `${fmtG2(ggStats.maxLat)} g` : '—'}
-                  />
-                  <Stat
-                    label="FREIN MAX"
-                    value={ggStats.maxBrake > 0 ? `${fmtG2(ggStats.maxBrake)} g` : '—'}
-                  />
-                  <Stat
-                    label="ACCÉL MAX"
-                    value={ggStats.maxAccel > 0 ? `${fmtG2(ggStats.maxAccel)} g` : '—'}
-                  />
-                </View>
-              </Card>
+              <FadeInSection delay={260}>
+                <Card style={{ marginTop: spacing.xxl }}>
+                  <Text style={s.cardCaption}>
+                    {ggPoints.length} mesures · enveloppe d’adhérence
+                  </Text>
+                  <Stagger style={s.statRow} interval={60} initialDelay={320}>
+                    <Stat
+                      label="LAT MAX"
+                      value={ggStats.maxLat > 0 ? `${fmtG2(ggStats.maxLat)} g` : '—'}
+                    />
+                    <Stat
+                      label="FREIN MAX"
+                      value={ggStats.maxBrake > 0 ? `${fmtG2(ggStats.maxBrake)} g` : '—'}
+                    />
+                    <Stat
+                      label="ACCÉL MAX"
+                      value={ggStats.maxAccel > 0 ? `${fmtG2(ggStats.maxAccel)} g` : '—'}
+                    />
+                  </Stagger>
+                </Card>
+              </FadeInSection>
             ) : null}
 
             {/* Superposition d'une autre séance sur le canal vitesse */}
             {trace.length >= 2 ? (
-              <View style={{ marginTop: spacing.xxl }}>
-                <SectionLabel>Comparer</SectionLabel>
-                <Text style={s.compareHint}>
-                  La trace vitesse d’une autre séance s’affiche en gris sur le canal Vitesse.
-                </Text>
+              <FadeInSection delay={320}>
+                <View style={{ marginTop: spacing.xxl }}>
+                  <SectionLabel>Comparer</SectionLabel>
+                  <Text style={s.compareHint}>
+                    La trace vitesse d’une autre séance s’affiche en gris sur le canal Vitesse.
+                  </Text>
 
-                {!comparePickerOpen && !compareId ? (
-                  <View style={{ marginTop: spacing.lg }}>
-                    <Button
-                      label="Superposer une autre session"
-                      variant="ghost"
-                      onPress={() => setComparePickerOpen(true)}
-                    />
-                  </View>
-                ) : null}
-
-                {compareId ? (
-                  <View style={{ marginTop: spacing.lg }}>
-                    <Button
-                      label="Retirer la superposition"
-                      variant="ghost"
-                      onPress={() => {
-                        setCompareId(null);
-                        setComparePickerOpen(false);
-                      }}
-                    />
-                  </View>
-                ) : null}
-
-                {comparePickerOpen && !compareId ? (
-                  <View style={{ marginTop: spacing.lg, gap: spacing.xs }}>
-                    <View style={{ marginBottom: spacing.sm }}>
-                      <SectionLabel>Choisir la session à superposer</SectionLabel>
+                  {!comparePickerOpen && !compareId ? (
+                    <View style={{ marginTop: spacing.lg }}>
+                      <Button
+                        label="Superposer une autre session"
+                        variant="ghost"
+                        onPress={() => setComparePickerOpen(true)}
+                      />
                     </View>
-                    {compareOptions.length === 0 ? (
-                      <Text style={s.caption}>Aucune autre session disponible.</Text>
-                    ) : (
-                      compareOptions.map((o) => (
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Superposer la session du ${formatDateShort(o.startedAt)}`}
-                          hitSlop={theme.hitSlop}
-                          key={o.id}
-                          onPress={() => {
-                            setCompareId(o.id);
-                            setComparePickerOpen(false);
-                          }}
-                          style={({ pressed }) => ({
-                            minHeight: 44,
-                            justifyContent: 'center',
-                            padding: spacing.md,
-                            borderRadius: theme.radius.md,
-                            borderWidth: 1,
-                            borderColor: palette.line,
-                            backgroundColor: palette.card2,
-                            opacity: pressed ? 0.85 : 1,
-                          })}
-                        >
-                          <Text style={s.pickerRow}>{formatDateShort(o.startedAt)}</Text>
-                        </Pressable>
-                      ))
-                    )}
-                  </View>
-                ) : null}
-              </View>
+                  ) : null}
+
+                  {compareId ? (
+                    <View style={{ marginTop: spacing.lg }}>
+                      <Button
+                        label="Retirer la superposition"
+                        variant="ghost"
+                        onPress={() => {
+                          setCompareId(null);
+                          setComparePickerOpen(false);
+                        }}
+                      />
+                    </View>
+                  ) : null}
+
+                  {/* Le picker monte et se replie en fondu (AnimatedPresence) ;
+                      ses lignes entrent en cascade courte, toucher PressableScale. */}
+                  <AnimatedPresence visible={comparePickerOpen && !compareId}>
+                    <View style={{ marginTop: spacing.lg, gap: spacing.xs }}>
+                      <View style={{ marginBottom: spacing.sm }}>
+                        <SectionLabel>Choisir la session à superposer</SectionLabel>
+                      </View>
+                      {compareOptions.length === 0 ? (
+                        <Text style={s.caption}>Aucune autre session disponible.</Text>
+                      ) : (
+                        <Stagger interval={40} maxDelay={600} style={{ gap: spacing.xs }}>
+                          {compareOptions.map((o) => (
+                            <PressableScale
+                              accessibilityRole="button"
+                              accessibilityLabel={`Superposer la session du ${formatDateShort(o.startedAt)}`}
+                              hitSlop={theme.hitSlop}
+                              haptic="tap"
+                              key={o.id}
+                              onPress={() => {
+                                setCompareId(o.id);
+                                setComparePickerOpen(false);
+                              }}
+                              style={{
+                                minHeight: 44,
+                                justifyContent: 'center',
+                                padding: spacing.md,
+                                borderRadius: theme.radius.md,
+                                borderWidth: 1,
+                                borderColor: palette.line,
+                                backgroundColor: palette.card2,
+                              }}
+                            >
+                              <Text style={s.pickerRow}>{formatDateShort(o.startedAt)}</Text>
+                            </PressableScale>
+                          ))}
+                        </Stagger>
+                      )}
+                    </View>
+                  </AnimatedPresence>
+                </View>
+              </FadeInSection>
             ) : null}
           </>
         )}
 
         {/* Note pédagogique sobre */}
-        <Card style={{ marginTop: spacing.xxl }}>
-          <Text style={s.note}>
-            Le diagramme g-g représente toutes les accélérations vécues. Un cercle plein indique que
-            la voiture a exploité l’enveloppe d’adhérence à 360°. Un cercle creux indique des zones
-            inexploitées. La lecture appartient au pilote ou à son coach.
-          </Text>
-        </Card>
+        <FadeInSection delay={240}>
+          <Card style={{ marginTop: spacing.xxl }}>
+            <Text style={s.note}>
+              Le diagramme g-g représente toutes les accélérations vécues. Un cercle plein indique
+              que la voiture a exploité l’enveloppe d’adhérence à 360°. Un cercle creux indique des
+              zones inexploitées. La lecture appartient au pilote ou à son coach.
+            </Text>
+          </Card>
+        </FadeInSection>
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             hitSlop={theme.hitSlop}
             onPress={() => router.back()}
             style={s.backHit}
           >
             <Text style={s.backLink}>Retour</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Screen>
@@ -451,6 +492,13 @@ function GGHero({
       ),
     [points, extreme]
   );
+
+  // Fil temporel des forces (mêmes points réels, ordre du roulage), prêt à se
+  // DESSINER une fois au mount : d + longueur via pathMath pour DrawInPath.
+  const tracePath = useMemo(() => {
+    const scene = downsample(points, 320).map((p) => ({ x: p.gLat, y: -p.gLong }));
+    return { d: polylineToPathD(scene, 3), length: polylineLength(scene) };
+  }, [points]);
 
   // Étiquette du point extrême, ancrée vers le centre pour rester lisible.
   const labelAnchor = extreme && extreme.gLat > 0 ? 'end' : 'start';
@@ -530,6 +578,19 @@ function GGHero({
         >
           frein
         </SvgText>
+
+        {/* Trace G-G — le fil des forces s'écrit à l'entrée (DrawInPath),
+            discret sous le nuage de la maquette. */}
+        <DrawInPath
+          d={tracePath.d}
+          length={tracePath.length}
+          stroke={palette.gold}
+          strokeWidth={0.024}
+          opacity={0.3}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
 
         {/* Nuage OR — Y inversé (accélération en haut) */}
         {cloud.map((p, i) => (

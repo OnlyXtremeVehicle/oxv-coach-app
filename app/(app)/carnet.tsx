@@ -16,14 +16,19 @@
  * Zone volontairement SANS donnée de perf ni couleur QDI (doctrine Carnet).
  * Page blanche : l'app ne pré-remplit ni ne suggère JAMAIS le contenu (V5 P-E).
  * Ton OXV : vouvoiement, pas d'emoji, sobre.
+ *
+ * Motion (kit src/components/motion, courbes et durées du kit) : sections en
+ * fondu décalé, notes en cascade (Stagger), éléments conditionnels du composer
+ * en AnimatedPresence, actions en PressableScale. Reduce-motion respecté.
  */
 
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 
 import { ConsentSwitchRow } from '@/components/ConsentSwitchRow';
 import { EmptyState } from '@/components/instruments';
+import { AnimatedPresence, FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import {
   type SessionIntention,
   getIntentionForSession,
@@ -222,21 +227,23 @@ export default function CarnetScreen() {
       <AppBar
         title="Carnet"
         trailing={
-          <Pressable
+          <PressableScale
             onPress={onNewNote}
             accessibilityRole="button"
             accessibilityLabel="Nouvelle note"
             hitSlop={8}
-            style={({ pressed }) => [s.plusBtn, pressed && { opacity: 0.7 }]}
+            haptic="tap"
+            style={s.plusBtn}
           >
             <Text style={s.plusGlyph}>+</Text>
-          </Pressable>
+          </PressableScale>
         }
       />
 
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* ── CONDITIONS DU JOUR — masquée sans météo réelle captée aujourd'hui. */}
-        {conditionChips.length > 0 ? (
+        {/* ── CONDITIONS DU JOUR — masquée sans météo réelle captée aujourd'hui.
+            La section monte en fondu quand le snapshot arrive (AnimatedPresence). */}
+        <AnimatedPresence visible={conditionChips.length > 0}>
           <View style={s.section}>
             <Text style={s.eyebrow}>CONDITIONS DU JOUR</Text>
             <View style={s.chipsRow}>
@@ -247,12 +254,12 @@ export default function CarnetScreen() {
               ))}
             </View>
           </View>
-        ) : null}
+        </AnimatedPresence>
 
         {/* ── CE QUE VOUS AVEZ RESSENTI — la zone de note libre (maquette),
             c'est-à-dire le composer CRUD existant restylé. Aucun gabarit,
             aucune pré-saisie ; le trait de saisie vert est le seul accent. */}
-        <View style={s.section}>
+        <FadeInSection style={s.section}>
           <Text style={s.eyebrow}>CE QUE VOUS AVEZ RESSENTI</Text>
           <TextInput
             ref={inputRef}
@@ -267,9 +274,10 @@ export default function CarnetScreen() {
             accessibilityLabel="Votre note"
             style={s.noteInput}
           />
-          {sessionId && !editingId ? (
+          {/* Mention conditionnelle : fondu d'entrée/sortie plutôt qu'un saut. */}
+          <AnimatedPresence visible={Boolean(sessionId) && !editingId}>
             <Text style={s.linkHint}>Reliée à votre dernière séance.</Text>
-          ) : null}
+          </AnimatedPresence>
           <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
             <Button
               label={editingId ? 'Mettre à jour' : 'Enregistrer'}
@@ -277,61 +285,66 @@ export default function CarnetScreen() {
               loading={saving}
               disabled={!draft.trim()}
             />
-            {editingId ? (
+            {/* Le bouton d'annulation entre et sort en fondu avec le mode édition. */}
+            <AnimatedPresence visible={editingId != null}>
               <Button label="Annuler la modification" variant="ghost" onPress={onCancelEdit} />
-            ) : null}
+            </AnimatedPresence>
           </View>
 
-          {/* Notes enregistrées — l'héritage gardé, restylé v2. */}
-          <View style={{ marginTop: spacing.xl, gap: spacing.sm }}>
+          {/* Notes enregistrées — l'héritage gardé, restylé v2, entrées en cascade. */}
+          <View style={{ marginTop: spacing.xl }}>
             {!loading && notes.length === 0 ? (
               <EmptyState label="Aucune note" message="Ce carnet est à vous." />
             ) : (
-              notes.map((note) => (
-                <Card key={note.id} style={{ gap: spacing.sm }}>
-                  <Text style={s.noteDate}>{fmtDate(note.createdAt)}</Text>
-                  <Text style={s.noteBody}>{note.body}</Text>
+              <Stagger style={{ gap: spacing.sm }}>
+                {notes.map((note) => (
+                  <Card key={note.id} style={{ gap: spacing.sm }}>
+                    <Text style={s.noteDate}>{fmtDate(note.createdAt)}</Text>
+                    <Text style={s.noteBody}>{note.body}</Text>
 
-                  <ConsentSwitchRow
-                    label="Partagée avec mon coach"
-                    value={note.sharedWithCoach}
-                    onValueChange={(v) => onToggleShare(note, v)}
-                    accessibilityLabel="Partager cette note avec mon coach"
-                    style={s.shareRow}
-                  />
+                    <ConsentSwitchRow
+                      label="Partagée avec mon coach"
+                      value={note.sharedWithCoach}
+                      onValueChange={(v) => onToggleShare(note, v)}
+                      accessibilityLabel="Partager cette note avec mon coach"
+                      style={s.shareRow}
+                    />
 
-                  <View style={s.noteActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Modifier cette note"
-                      onPress={() => onEdit(note)}
-                      style={({ pressed }) => [s.noteAction, pressed && { opacity: 0.7 }]}
-                    >
-                      <Text style={s.noteActionTxt}>Modifier</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Supprimer cette note"
-                      onPress={() => onDelete(note)}
-                      style={({ pressed }) => [s.noteAction, pressed && { opacity: 0.7 }]}
-                    >
-                      <Text style={s.noteActionTxt}>Supprimer</Text>
-                    </Pressable>
-                  </View>
-                </Card>
-              ))
+                    <View style={s.noteActions}>
+                      <PressableScale
+                        accessibilityRole="button"
+                        accessibilityLabel="Modifier cette note"
+                        haptic="tap"
+                        onPress={() => onEdit(note)}
+                        style={s.noteAction}
+                      >
+                        <Text style={s.noteActionTxt}>Modifier</Text>
+                      </PressableScale>
+                      <PressableScale
+                        accessibilityRole="button"
+                        accessibilityLabel="Supprimer cette note"
+                        haptic="tap"
+                        onPress={() => onDelete(note)}
+                        style={s.noteAction}
+                      >
+                        <Text style={s.noteActionTxt}>Supprimer</Text>
+                      </PressableScale>
+                    </View>
+                  </Card>
+                ))}
+              </Stagger>
             )}
           </View>
-        </View>
+        </FadeInSection>
 
         {/* ── VOS REPÈRES — les intentions réelles du pilote, en lecture.
             Case cochée = intention portée en séance ; case vide = posée pour la
             prochaine fois. « Ajouter un repère » ouvre l'écran Prochaine fois,
             qui porte désormais la saisie réelle d'intention (maquette #7a). */}
-        <View style={s.section}>
+        <FadeInSection delay={120} style={s.section}>
           <Text style={s.eyebrow}>VOS REPÈRES</Text>
           {reperes.length > 0 ? (
-            <View style={{ marginTop: spacing.md, gap: spacing.md }}>
+            <Stagger style={{ marginTop: spacing.md, gap: spacing.md }}>
               {reperes.map(({ intention, carried }) => (
                 <View
                   key={intention.id}
@@ -349,17 +362,18 @@ export default function CarnetScreen() {
                   </Text>
                 </View>
               ))}
-            </View>
+            </Stagger>
           ) : null}
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Ajouter un repère"
+            haptic="tap"
             onPress={() => router.push('/(app)/prochaine-fois' as never)}
-            style={({ pressed }) => [s.addRepere, pressed && { opacity: 0.7 }]}
+            style={s.addRepere}
           >
             <Text style={s.addRepereTxt}>+ Ajouter un repère</Text>
-          </Pressable>
-        </View>
+          </PressableScale>
+        </FadeInSection>
       </View>
     </Screen>
   );

@@ -17,13 +17,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { CornerPanel, type CornerPanelData } from '@/components/CornerPanel';
 import { LayerToggle } from '@/components/LayerToggle';
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 import { type Circuit, getDefaultCircuit } from '@/services/circuitsService';
 import { selectFocusCorner } from '@/services/focusCorner';
@@ -162,32 +163,40 @@ export default function CarteScreen() {
     <Screen>
       <AppBar title="Carte du circuit" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Eyebrow une seule ligne (maquette) — circuit + nature de la lecture. */}
-        <Text style={s.eyebrow} numberOfLines={1}>
-          {circuit?.name ? `${circuit.name} · Trajectoire réelle` : 'Trajectoire réelle'}
-        </Text>
+        {/* Eyebrow une seule ligne (maquette) — circuit + nature de la lecture.
+            Le TRACÉ se dessine déjà à l'entrée : PilotPreset `animate` porte le
+            dessin progressif (même technique dash que DrawInPath du kit). */}
+        <FadeInSection>
+          <Text style={s.eyebrow} numberOfLines={1}>
+            {circuit?.name ? `${circuit.name} · Trajectoire réelle` : 'Trajectoire réelle'}
+          </Text>
 
-        {/* Tracé plein cadre (maquette) : pastilles colorées par marge. */}
-        <View accessible accessibilityLabel={mapA11yLabel}>
-          <PilotPreset
-            animate
-            trajectory={trajectory ?? undefined}
-            trajectoryColorMode={trajectoryColorMode}
-            zoneByIndex={zoneByIndex}
-            selectedIndex={selectedCorner}
-            height={340}
-            background={palette.night}
-          />
-        </View>
+          {/* Tracé plein cadre (maquette) : pastilles colorées par marge. */}
+          <View accessible accessibilityLabel={mapA11yLabel}>
+            <PilotPreset
+              animate
+              trajectory={trajectory ?? undefined}
+              trajectoryColorMode={trajectoryColorMode}
+              zoneByIndex={zoneByIndex}
+              selectedIndex={selectedCorner}
+              height={340}
+              background={palette.night}
+            />
+          </View>
+        </FadeInSection>
 
         {/* Barre de légende dégradée — seulement quand les marges colorent
             réellement les pastilles (honnêteté : pas de légende sans donnée). */}
-        {zoneByIndex && hasMargins ? <MarginLegendBar /> : null}
+        {zoneByIndex && hasMargins ? (
+          <FadeInSection delay={80}>
+            <MarginLegendBar />
+          </FadeInSection>
+        ) : null}
 
         {/* Carte accent rouge « Le virage à surveiller » — marge réelle la plus
             faible. Masquée sans marge disponible : rien d'inventé. */}
         {focus ? (
-          <>
+          <FadeInSection delay={140}>
             <View style={s.focusCard}>
               <View style={s.focusHead}>
                 <View style={s.focusDot}>
@@ -201,15 +210,16 @@ export default function CarteScreen() {
               </Text>
             </View>
 
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={`Ouvrir le virage ${focus.corner.index}`}
+              haptic="tap"
               onPress={() => openCornerDetail(focus.corner.index)}
-              style={({ pressed }) => [s.openBtn, { opacity: pressed ? 0.85 : 1 }]}
+              style={s.openBtn}
             >
               <Text style={s.openBtnTxt}>Ouvrir le virage {focus.corner.index} →</Text>
-            </Pressable>
-          </>
+            </PressableScale>
+          </FadeInSection>
         ) : null}
 
         {/* ─────────────────────────────────────────────────────────────
@@ -218,24 +228,30 @@ export default function CarteScreen() {
             ───────────────────────────────────────────────────────────── */}
 
         {/* Couches interactives (Data Lab NG) — choisir l'angle de lecture. */}
-        <Text style={s.sectionEyebrow}>Couches de lecture</Text>
-        <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
+        <FadeInSection delay={200}>
+          <Text style={s.sectionEyebrow}>Couches de lecture</Text>
+          <LayerToggle layers={layers} active={activeLayer} onSelect={setPickedLayer} />
+        </FadeInSection>
 
         {/* Accès par virage → aperçu CornerPanel (remplace l'ancienne liste
             verticale redondante par une rangée compacte de pastilles). */}
-        <Text style={s.sectionEyebrow}>Virages</Text>
-        <Text style={s.caption}>
-          {hasMargins
-            ? 'Aperçu au toucher, colorés par votre marge.'
-            : 'Aperçu au toucher — marges par virage indisponibles pour cette session.'}
-        </Text>
-        <View style={s.cornerRow}>
+        <FadeInSection delay={240}>
+          <Text style={s.sectionEyebrow}>Virages</Text>
+          <Text style={s.caption}>
+            {hasMargins
+              ? 'Aperçu au toucher, colorés par votre marge.'
+              : 'Aperçu au toucher — marges par virage indisponibles pour cette session.'}
+          </Text>
+        </FadeInSection>
+        {/* Pastilles en cascade courte (Stagger) — la rangée garde sa géométrie,
+            chaque pastille est un PressableScale du kit. */}
+        <Stagger style={s.cornerRow} interval={40} initialDelay={260}>
           {BELTOISE_CORNERS.map((corner) => {
             const zone = margins[corner.index] ?? null;
             const zoneLabel = zone ? marginLabelOf(zone) : null;
             const isSelected = selectedCorner === corner.index;
             return (
-              <Pressable
+              <PressableScale
                 key={corner.index}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isSelected }}
@@ -244,31 +260,31 @@ export default function CarteScreen() {
                     ? `Virage ${corner.index}, ${corner.name}, ${zoneLabel}`
                     : `Virage ${corner.index}, ${corner.name}`
                 }
+                haptic="tap"
                 onPress={() => onCornerTap(corner.index)}
                 // 40 px visibles + hitSlop 2 = cible tactile 44 px, sans chevauchement.
                 hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
-                style={({ pressed }) => [
+                style={[
                   s.cornerChip,
                   { backgroundColor: colorForZone(zone) },
                   isSelected ? s.cornerChipSelected : null,
-                  pressed ? { opacity: 0.85 } : null,
                 ]}
               >
                 <Text style={s.cornerIndex}>{corner.index}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
-        </View>
+        </Stagger>
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Retour au bilan"
             onPress={() => router.back()}
             hitSlop={theme.hitSlop}
           >
             <Text style={s.backLink}>Retour au bilan</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
 

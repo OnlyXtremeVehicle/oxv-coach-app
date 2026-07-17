@@ -26,11 +26,18 @@
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
+import {
+  BreathingGlow,
+  CountUpNumber,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+} from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import { NO_CIRCUIT, type Passport, loadPassport } from '@/services/passportService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -96,11 +103,18 @@ function CardGradient() {
   );
 }
 
-/** Colonne de stat de la carte (chiffre mono + label bas de casse, maquette). */
-function StatCol({ value, label }: { value: string; label: string }) {
+/**
+ * Colonne de stat de la carte (chiffre mono + label bas de casse, maquette).
+ * Le chiffre réel se construit en comptant (CountUpNumber) ; « — » si absent.
+ */
+function StatCol({ value, label }: { value: number | null; label: string }) {
   return (
-    <View style={{ flex: 1 }} accessible accessibilityLabel={`${value} ${label}`}>
-      <Text style={s.statValue}>{value}</Text>
+    <View style={{ flex: 1 }} accessible accessibilityLabel={`${value ?? '—'} ${label}`}>
+      {value != null ? (
+        <CountUpNumber value={value} style={s.statValue} />
+      ) : (
+        <Text style={s.statValue}>—</Text>
+      )}
       <Text style={s.statLabel}>{label}</Text>
     </View>
   );
@@ -171,60 +185,71 @@ export default function PasseportScreen() {
     <Screen>
       <AppBar title="Passeport piste" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* ── Carte d'identité (dégradé sombre, maquette) ─────────────────── */}
-        <View style={s.idCard}>
-          <CardGradient />
-          <View style={s.idHead}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.name} accessibilityRole="header">
-                {name}
-              </Text>
-              {since ? <Text style={s.since}>Membre depuis {since}</Text> : null}
-            </View>
-            {offerLabel ? (
-              <View style={s.palier} accessible accessibilityLabel={`Palier ${offerLabel}`}>
-                <Text style={[s.palierEyebrow, { color: offerColor }]}>PALIER</Text>
-                <Text style={[s.palierValue, { color: offerColor }]}>{offerLabel}</Text>
+        {/* ── Carte d'identité (dégradé sombre, maquette) — entre en fondu,
+            puis respire très discrètement (seul BreathingGlow de l'écran). ── */}
+        <FadeInSection>
+          <BreathingGlow minOpacity={0.92}>
+            <View style={s.idCard}>
+              <CardGradient />
+              <View style={s.idHead}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.name} accessibilityRole="header">
+                    {name}
+                  </Text>
+                  {since ? <Text style={s.since}>Membre depuis {since}</Text> : null}
+                </View>
+                {offerLabel ? (
+                  <View style={s.palier} accessible accessibilityLabel={`Palier ${offerLabel}`}>
+                    <Text style={[s.palierEyebrow, { color: offerColor }]}>PALIER</Text>
+                    <Text style={[s.palierValue, { color: offerColor }]}>{offerLabel}</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-          </View>
 
-          <View style={s.idHair} />
+              <View style={s.idHair} />
 
-          <View style={s.statRow}>
-            <StatCol
-              value={passport ? String(passport.stats.totalSessions) : '—'}
-              label={passport?.stats.totalSessions === 1 ? 'séance' : 'séances'}
-            />
-            <StatCol
-              value={passport ? String(passport.circuitCount) : '—'}
-              label={passport?.circuitCount === 1 ? 'circuit' : 'circuits'}
-            />
-            <StatCol
-              value={passport ? String(passport.stats.totalLaps) : '—'}
-              label={passport?.stats.totalLaps === 1 ? 'tour' : 'tours'}
-            />
-          </View>
-        </View>
+              <View style={s.statRow}>
+                <StatCol
+                  value={passport ? passport.stats.totalSessions : null}
+                  label={passport?.stats.totalSessions === 1 ? 'séance' : 'séances'}
+                />
+                <StatCol
+                  value={passport ? passport.circuitCount : null}
+                  label={passport?.circuitCount === 1 ? 'circuit' : 'circuits'}
+                />
+                <StatCol
+                  value={passport ? passport.stats.totalLaps : null}
+                  label={passport?.stats.totalLaps === 1 ? 'tour' : 'tours'}
+                />
+              </View>
+            </View>
+          </BreathingGlow>
+        </FadeInSection>
 
         {loading ? (
           <View style={{ paddingVertical: spacing.xxl, alignItems: 'center' }}>
             <ActivityIndicator color={palette.creamMute} />
           </View>
         ) : circuits.length === 0 ? (
-          <View style={{ marginTop: spacing.xl }}>
-            <EmptyState
-              label="Passeport à composer"
-              message="Vos circuits et vos temps s'inscriront ici au fil de vos séances analysées."
-            />
-          </View>
+          <FadeInSection delay={80}>
+            <View style={{ marginTop: spacing.xl }}>
+              <EmptyState
+                label="Passeport à composer"
+                message="Vos circuits et vos temps s'inscriront ici au fil de vos séances analysées."
+              />
+            </View>
+          </FadeInSection>
         ) : (
           <>
-            {/* ── Records par circuit — chronos RÉELS, en or (chrono seul) ── */}
-            <View style={{ marginTop: spacing.xl, marginBottom: spacing.md }}>
-              <SectionLabel>Vos circuits</SectionLabel>
-            </View>
-            <View style={{ gap: spacing.sm + 2 }}>
+            {/* ── Records par circuit — chronos RÉELS, en or (chrono seul).
+                Cartes en cascade ; le chrono se construit en comptant en ms
+                puis en formatant au canon M:SS.mmm (valeur finale inchangée). ── */}
+            <FadeInSection delay={80}>
+              <View style={{ marginTop: spacing.xl, marginBottom: spacing.md }}>
+                <SectionLabel>Vos circuits</SectionLabel>
+              </View>
+            </FadeInSection>
+            <Stagger initialDelay={160} style={{ gap: spacing.sm + 2 }}>
               {circuits.map((c) => (
                 <View
                   key={c.circuitName}
@@ -240,47 +265,52 @@ export default function PasseportScreen() {
                   <Text style={s.circuitName} numberOfLines={2}>
                     {c.circuitName}
                   </Text>
-                  <Text
-                    style={[
-                      s.circuitBest,
-                      c.bestLapSeconds === null && { color: palette.creamMute },
-                    ]}
-                  >
-                    {c.bestLapSeconds !== null ? formatLapTimeMs(c.bestLapSeconds) : '—'}
-                  </Text>
+                  {c.bestLapSeconds !== null ? (
+                    <CountUpNumber
+                      value={Math.round(c.bestLapSeconds * 1000)}
+                      format={(ms) => formatLapTimeMs(ms / 1000)}
+                      style={s.circuitBest}
+                    />
+                  ) : (
+                    <Text style={[s.circuitBest, { color: palette.creamMute }]}>—</Text>
+                  )}
                 </View>
               ))}
-            </View>
+            </Stagger>
 
-            <Text style={s.footnote}>
-              Votre meilleur temps par circuit. Le vôtre seul — aucun autre pilote.
-            </Text>
+            <FadeInSection delay={280}>
+              <Text style={s.footnote}>
+                Votre meilleur temps par circuit. Le vôtre seul — aucun autre pilote.
+              </Text>
+            </FadeInSection>
           </>
         )}
 
         {/* ── Héritage retravaillé : seuls accès Empreinte saison / Licence ── */}
         {!loading ? (
-          <View style={s.linkList}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Empreinte de saison"
-              onPress={() => router.push('/(app)/empreinte-saison' as never)}
-              style={({ pressed }) => [s.linkRow, pressed && { opacity: 0.7 }]}
-            >
-              <Text style={s.linkLabel}>Empreinte de saison</Text>
-              <ChevronRight />
-            </Pressable>
-            <View style={s.linkHair} />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Carte de licence"
-              onPress={() => router.push('/(app)/carte-licence' as never)}
-              style={({ pressed }) => [s.linkRow, pressed && { opacity: 0.7 }]}
-            >
-              <Text style={s.linkLabel}>Carte de licence</Text>
-              <ChevronRight />
-            </Pressable>
-          </View>
+          <FadeInSection delay={360}>
+            <View style={s.linkList}>
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Empreinte de saison"
+                onPress={() => router.push('/(app)/empreinte-saison' as never)}
+                style={s.linkRow}
+              >
+                <Text style={s.linkLabel}>Empreinte de saison</Text>
+                <ChevronRight />
+              </PressableScale>
+              <View style={s.linkHair} />
+              <PressableScale
+                accessibilityRole="button"
+                accessibilityLabel="Carte de licence"
+                onPress={() => router.push('/(app)/carte-licence' as never)}
+                style={s.linkRow}
+              >
+                <Text style={s.linkLabel}>Carte de licence</Text>
+                <ChevronRight />
+              </PressableScale>
+            </View>
+          </FadeInSection>
         ) : null}
       </View>
     </Screen>

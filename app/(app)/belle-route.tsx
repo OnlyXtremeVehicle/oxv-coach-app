@@ -20,12 +20,17 @@
  *
  * En tête : CTA sobre vers « Créer votre route » (planificateur GraphHopper,
  * retour fondateur build 23) — route `/(app)/creer-route`.
+ *
+ * Motion (kit src/components/motion) : entrée en fondu décalé, cartes route en
+ * cascade (Stagger), CTA en PressableScale. Courbes et durées du kit,
+ * reduce-motion respecté.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { type SavedScenicRoute, listCertifiedRoutes } from '@/services/routing/scenicRoutesService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -76,44 +81,59 @@ export default function BellesRoutesScreen() {
     <Screen>
       <AppBar title="Belles routes" onBack={() => router.back()} />
       <View style={s.body}>
-        <Text style={s.lede}>Des routes à savourer, loin du chrono.</Text>
+        <FadeInSection>
+          <Text style={s.lede}>Des routes à savourer, loin du chrono.</Text>
+        </FadeInSection>
 
         {/* CTA planificateur (retour fondateur build 23) — sobre, jamais d'or. */}
-        <Card
-          onPress={() => router.push('/(app)/creer-route' as never)}
-          accessibilityLabel="Créer votre route"
-          style={{ ...s.createCta, ...cockpitHalo }}
-        >
-          <View style={s.createBody}>
-            <Text style={s.createEyebrow}>Planificateur</Text>
-            <Text style={s.createTitle}>Créer votre route</Text>
-            <Text style={s.createHint}>
-              Composez un itinéraire sinueux depuis votre position, étape par étape.
-            </Text>
-          </View>
-          <View style={s.createChev} accessibilityElementsHidden importantForAccessibility="no" />
-        </Card>
+        <FadeInSection delay={80}>
+          <PressableScale
+            onPress={() => router.push('/(app)/creer-route' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Créer votre route"
+            haptic="tap"
+          >
+            <Card style={{ ...s.createCta, ...cockpitHalo }}>
+              <View style={s.createBody}>
+                <Text style={s.createEyebrow}>Planificateur</Text>
+                <Text style={s.createTitle}>Créer votre route</Text>
+                <Text style={s.createHint}>
+                  Composez un itinéraire sinueux depuis votre position, étape par étape.
+                </Text>
+              </View>
+              <View
+                style={s.createChev}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            </Card>
+          </PressableScale>
+        </FadeInSection>
 
         {routes.length === 0 ? (
-          <Card style={{ ...s.empty, ...cockpitHalo }}>
-            <Text style={s.emptyTitle}>Aucune route certifiée pour l&apos;instant.</Text>
-            <Text style={s.emptyHint}>
-              Les routes validées par OXV apparaîtront ici. Vos itinéraires enregistrés restent dans
-              « Mes belles routes ».
-            </Text>
-          </Card>
+          <FadeInSection delay={160}>
+            <Card style={{ ...s.empty, ...cockpitHalo }}>
+              <Text style={s.emptyTitle}>Aucune route certifiée pour l&apos;instant.</Text>
+              <Text style={s.emptyHint}>
+                Les routes validées par OXV apparaîtront ici. Vos itinéraires enregistrés restent
+                dans « Mes belles routes ».
+              </Text>
+            </Card>
+          </FadeInSection>
         ) : (
           <>
-            <StatusLine
-              label={`${routes.length} route${routes.length > 1 ? 's' : ''} certifiée${
-                routes.length > 1 ? 's' : ''
-              }`}
-            />
-            <View style={s.list}>
+            <FadeInSection delay={160}>
+              <StatusLine
+                label={`${routes.length} route${routes.length > 1 ? 's' : ''} certifiée${
+                  routes.length > 1 ? 's' : ''
+                }`}
+              />
+            </FadeInSection>
+            <Stagger initialDelay={240} style={s.list}>
               {routes.map((r) => (
                 <RouteCard key={r.id} route={r} />
               ))}
-            </View>
+            </Stagger>
           </>
         )}
       </View>

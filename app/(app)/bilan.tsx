@@ -14,18 +14,7 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  type DimensionValue,
-  Easing,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  Text,
-  UIManager,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Animated, type DimensionValue, Easing, Text, View } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import Svg, { Circle as SvgCircle, Line as SvgLine, Rect as SvgRect } from 'react-native-svg';
 
@@ -36,9 +25,15 @@ import {
   ProvenanceLine,
   SourceMethodBlock,
 } from '@/components/InsightTransparency';
-import { FadeInSection, useReduceMotion } from '@/components/motion';
+import {
+  AnimatedPresence,
+  BreathingGlow,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  useReduceMotion,
+} from '@/components/motion';
 import { CoachBand } from '@/components/instruments';
-import * as haptics from '@/lib/haptics';
 import { supabase } from '@/lib/supabase';
 import {
   type SessionAnalysis,
@@ -84,12 +79,6 @@ import { Screen } from '@/ui/Screen';
 import { formatDateShort, formatLapTimeMs } from '@/utils/format';
 
 const { palette, dataColors, spacing, radius, fonts } = theme;
-
-// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
-// Android exige l'activation explicite ; sans effet ailleurs.
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 /** Les 4 piliers de la maquette (la régularité est le héros, pas un pilier). */
 const PILLARS = [
@@ -405,7 +394,7 @@ export default function BilanScreen() {
         title="Bilan de séance"
         onBack={() => router.back()}
         trailing={
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Partager mon bilan"
             hitSlop={theme.hitSlop}
@@ -422,7 +411,7 @@ export default function BilanScreen() {
             ) : (
               <ShareIcon />
             )}
-          </Pressable>
+          </PressableScale>
         }
       />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
@@ -529,59 +518,58 @@ export default function BilanScreen() {
           </View>
         </FadeInSection>
 
-        {/* QUATRE PILIERS — pastille QDI + nom + barre + chip factuel coloré. */}
+        {/* QUATRE PILIERS — pastille QDI + nom + barre + chip factuel coloré.
+            Les rangées tombent en cascade (Stagger), après l'eyebrow. */}
         <FadeInSection delay={120}>
           <Text style={s.sectionEyebrow}>QUATRE PILIERS</Text>
-          <View style={{ gap: spacing.md }}>
-            {PILLARS.map((p) => {
-              const value = qdi ? (qdi[p.key as keyof QdiRecord] as number | null) : null;
-              return (
-                <PillarRow
-                  key={p.key}
-                  label={p.label}
-                  color={p.color}
-                  value={typeof value === 'number' ? value : null}
-                  showValue={qdiAccess === 'full'}
-                  href={`/(app)/signature?sessionId=${sessionId}`}
-                />
-              );
-            })}
-          </View>
         </FadeInSection>
+        <Stagger initialDelay={160} style={{ gap: spacing.md }}>
+          {PILLARS.map((p) => {
+            const value = qdi ? (qdi[p.key as keyof QdiRecord] as number | null) : null;
+            return (
+              <PillarRow
+                key={p.key}
+                label={p.label}
+                color={p.color}
+                value={typeof value === 'number' ? value : null}
+                showValue={qdiAccess === 'full'}
+                href={`/(app)/signature?sessionId=${sessionId}`}
+              />
+            );
+          })}
+        </Stagger>
 
         {/* Chips « moments » — faits saillants, jamais des consignes. Couleur par
             NATURE du moment : référence = or (chrono/record), passage engagé =
             rouge de donnée, variation = violet régularité. */}
         {keyMoments.length > 0 ? (
-          <FadeInSection delay={180}>
-            <View style={s.momentWrap}>
-              {keyMoments.slice(0, 3).map((m) => {
-                const color =
-                  m.key === 'reference'
-                    ? palette.gold
-                    : m.key === 'engaged'
-                      ? dataColors.brake
-                      : dataColors.regularity;
-                return (
-                  <View key={m.key} style={[s.momentChip, { borderColor: color }]}>
-                    <Text style={[s.momentTitle, { color }]}>{m.title}</Text>
-                    <Text style={s.momentFact}>{m.fact}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </FadeInSection>
+          <Stagger initialDelay={220} style={s.momentWrap}>
+            {keyMoments.slice(0, 3).map((m) => {
+              const color =
+                m.key === 'reference'
+                  ? palette.gold
+                  : m.key === 'engaged'
+                    ? dataColors.brake
+                    : dataColors.regularity;
+              return (
+                <View key={m.key} style={[s.momentChip, { borderColor: color }]}>
+                  <Text style={[s.momentTitle, { color }]}>{m.title}</Text>
+                  <Text style={s.momentFact}>{m.fact}</Text>
+                </View>
+              );
+            })}
+          </Stagger>
         ) : null}
 
         {/* Ouvrir le Data Lab — CTA de fin de héros (maquette). */}
-        <FadeInSection delay={240}>
-          <Pressable
+        <FadeInSection delay={280}>
+          <PressableScale
             accessibilityRole="button"
             onPress={() => router.push(`/(app)/data-lab?sessionId=${sessionId}` as never)}
-            style={({ pressed }) => [s.dataLabBtn, { opacity: pressed ? 0.85 : 1 }]}
+            style={s.dataLabBtn}
           >
             <Text style={s.dataLabTxt}>Ouvrir le Data Lab →</Text>
-          </Pressable>
+          </PressableScale>
         </FadeInSection>
 
         {/* ─────────────────────────────────────────────────────────────
@@ -837,11 +825,10 @@ function PillarRow({
   }, [pct, slide, reduceMotion]);
   return (
     <Link href={href as never} asChild>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`${label}${value != null ? `, ${Math.round(value)} sur 100` : ''}`}
-        onPressIn={() => haptics.tap()}
-        style={({ pressed }) => [{ opacity: pressed ? 0.9 : 1 }]}
+        haptic="tap"
       >
         {/* Niveau 1 (maquette) : pastille + nom à gauche, chip à droite. */}
         <View style={s.pillarHead}>
@@ -874,7 +861,7 @@ function PillarRow({
             />
           ) : null}
         </View>
-      </Pressable>
+      </PressableScale>
     </Link>
   );
 }
@@ -918,48 +905,41 @@ function useCountUpFr(value: number, decimals: number, duration = 900): string {
   return display;
 }
 
-/** Le chiffre roi violet (écart-type) — se construit à l'apparition. */
+/** Le chiffre roi violet (écart-type) — se construit à l'apparition, puis
+ *  respire discrètement (BreathingGlow : l'unique respiration de l'écran). */
 function SpreadKingNumber({ spreadSeconds }: { spreadSeconds: number }) {
   const display = useCountUpFr(spreadSeconds, 2);
   return (
-    <Text
-      style={s.regNumber}
-      accessibilityLabel={`Régularité au tour : ${formatSpread(spreadSeconds)} secondes d'écart-type`}
-    >
-      ±{display}
-      <Text style={s.regUnit}> s</Text>
-    </Text>
+    <BreathingGlow>
+      <Text
+        style={s.regNumber}
+        accessibilityLabel={`Régularité au tour : ${formatSpread(spreadSeconds)} secondes d'écart-type`}
+      >
+        ±{display}
+        <Text style={s.regUnit}> s</Text>
+      </Text>
+    </BreathingGlow>
   );
 }
 
-/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+/** Affordance fine « Comment lire cet écran » → panneau repliable (AnimatedPresence). */
 function HowToRead({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const reduceMotion = useReduceMotion();
   return (
     <View style={{ marginTop: spacing.lg }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         hitSlop={theme.hitSlop}
-        onPress={() => {
-          if (!reduceMotion) {
-            LayoutAnimation.configureNext(
-              LayoutAnimation.create(
-                220,
-                LayoutAnimation.Types.easeInEaseOut,
-                LayoutAnimation.Properties.opacity
-              )
-            );
-          }
-          setOpen((o) => !o);
-        }}
-        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+        onPress={() => setOpen((o) => !o)}
+        style={s.howBtn}
       >
         <Text style={s.howLabel}>Comment lire cet écran</Text>
         <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
-      </Pressable>
-      {open ? <View style={s.howPanel}>{children}</View> : null}
+      </PressableScale>
+      <AnimatedPresence visible={open}>
+        <View style={s.howPanel}>{children}</View>
+      </AnimatedPresence>
     </View>
   );
 }
@@ -990,13 +970,9 @@ function HowLegend({ items }: { items: readonly { label: string; color: string }
 
 function GhostCta({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [s.ctaGhost, { opacity: pressed ? 0.6 : 1 }]}
-    >
+    <PressableScale accessibilityRole="button" onPress={onPress} style={s.ctaGhost}>
       <Text style={s.ctaGhostTxt}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -1105,14 +1081,14 @@ function BilanEmpty() {
         <Text style={[s.contextEyebrow, { marginBottom: spacing.lg }]}>BILAN</Text>
         <Text style={[s.emptyTitle, { marginBottom: spacing.xl }]}>Aucune séance encore.</Text>
         <Text style={s.manifest}>Votre première séance écrira la première ligne.</Text>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           hitSlop={theme.hitSlop}
           onPress={() => router.back()}
           style={[s.backHit, { marginTop: spacing.xxl * 1.5 }]}
         >
           <Text style={s.back}>Retour à l&apos;accueil</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Screen>
   );
@@ -1127,14 +1103,14 @@ function BilanError({ message }: { message: string }) {
           Le bilan n&apos;a pas pu être chargé.
         </Text>
         <Text style={s.errorBody}>{message}</Text>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           hitSlop={theme.hitSlop}
           onPress={() => router.back()}
           style={s.backHit}
         >
           <Text style={s.back}>Retour</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Screen>
   );

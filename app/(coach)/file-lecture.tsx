@@ -17,12 +17,17 @@
  * (absent ici : la file ne porte ni meilleur tour ni régularité — cf. rapport).
  * Vouvoiement, zéro emoji, descriptif jamais prescriptif. Lecture seule côté
  * pilote — rien de ceci ne lui est exposé.
+ *
+ * Motion (passe transversale, kit src/components/motion) : en-tête en fondu,
+ * rangées en cascade (Stagger), toutes les actions en PressableScale. Durées et
+ * courbes = celles du kit (ease-out cubic), reduce-motion respecté par le kit.
  */
 
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { groupQueue, type QueueItem, type QueueStatus } from '@/services/coachQueueLogic';
@@ -116,7 +121,7 @@ export default function FileLectureScreen() {
       {FILTERS.map((f) => {
         const on = f.key === filter;
         return (
-          <Pressable
+          <PressableScale
             key={f.key}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
@@ -127,7 +132,7 @@ export default function FileLectureScreen() {
             <Text style={[s.chipLabel, on && s.chipLabelActive]}>
               {f.label} · {groups.counts[f.key]}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
@@ -144,31 +149,45 @@ export default function FileLectureScreen() {
       onRetry={reload}
     >
       {isConsole ? <ColumnHeader /> : null}
-      <View style={{ gap: spacing.sm }}>
-        {filter === 'unread' ? (
-          <>
-            {groups.unread.length === 0 ? (
-              <Text style={s.calmNote}>Rien à lire pour l’instant.</Text>
-            ) : (
-              groups.unread.map((item) => (
-                <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
-              ))
-            )}
-            {groups.read.length > 0 ? (
-              <>
-                <RecentlyReadDivider />
-                {groups.read.slice(0, RECENT_READ_LIMIT).map((item) => (
-                  <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
-                ))}
-              </>
-            ) : null}
-          </>
-        ) : (
-          primary.map((item) => (
-            <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
-          ))
-        )}
-      </View>
+      {/* Cascade d'entrée : chaque rangée est un enfant direct du Stagger
+          (tableaux plats, pas de fragments — sinon la cascade ne les voit pas). */}
+      <Stagger style={{ gap: spacing.sm }}>
+        {filter === 'unread'
+          ? [
+              ...(groups.unread.length === 0
+                ? [
+                    <Text key="calm" style={s.calmNote}>
+                      Rien à lire pour l’instant.
+                    </Text>,
+                  ]
+                : groups.unread.map((item) => (
+                    <QueueRow
+                      key={item.sessionId}
+                      item={item}
+                      isConsole={isConsole}
+                      onMark={mark}
+                    />
+                  ))),
+              ...(groups.read.length > 0
+                ? [
+                    <RecentlyReadDivider key="recent-divider" />,
+                    ...groups.read
+                      .slice(0, RECENT_READ_LIMIT)
+                      .map((item) => (
+                        <QueueRow
+                          key={item.sessionId}
+                          item={item}
+                          isConsole={isConsole}
+                          onMark={mark}
+                        />
+                      )),
+                  ]
+                : []),
+            ]
+          : primary.map((item) => (
+              <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
+            ))}
+      </Stagger>
     </StateWrapper>
   );
 
@@ -177,7 +196,7 @@ export default function FileLectureScreen() {
       {isConsole ? null : <AppBar title="FILE DE LECTURE" onBack={() => router.back()} />}
       <View style={isConsole ? s.consolePad : s.companionPad}>
         {isConsole ? (
-          <View style={s.consoleHead}>
+          <FadeInSection style={s.consoleHead}>
             <View style={{ flex: 1 }}>
               <Text style={s.eyebrow}>FILE DE LECTURE</Text>
               <Text style={s.title} accessibilityRole="header">
@@ -185,15 +204,15 @@ export default function FileLectureScreen() {
               </Text>
             </View>
             {renderFilters()}
-          </View>
+          </FadeInSection>
         ) : (
-          <>
+          <FadeInSection>
             <Text style={[s.eyebrow, { marginTop: spacing.sm }]}>À VOTRE RYTHME</Text>
             <Text style={s.title} accessibilityRole="header">
               {titleFor(filter, groups.counts)}
             </Text>
             <View style={{ marginTop: spacing.lg }}>{renderFilters()}</View>
-          </>
+          </FadeInSection>
         )}
 
         <View style={{ marginTop: spacing.lg }}>{renderList()}</View>
@@ -252,11 +271,11 @@ function QueueRow({
 
   return (
     <View style={[s.rowCard, item.status === 'unread' && s.rowCardUnread]}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel={a11y}
         onPress={openStudio}
-        style={({ pressed }) => [s.rowMain, pressed && { opacity: 0.85 }]}
+        style={s.rowMain}
       >
         <View style={s.avatar}>
           <Text style={s.avatarTxt}>{initialsOf(item.pilotName)}</Text>
@@ -295,7 +314,7 @@ function QueueRow({
         <View style={s.trailCol} accessibilityElementsHidden importantForAccessibility="no">
           <Trailing status={item.status} />
         </View>
-      </Pressable>
+      </PressableScale>
 
       {/* Marquage + accès — actions sobres selon le statut courant. */}
       <View style={s.actions}>
@@ -346,15 +365,15 @@ function Trailing({ status }: { status: QueueStatus }) {
 
 function RowAction({ label, onPress }: { label: string; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
       hitSlop={10}
       onPress={onPress}
-      style={({ pressed }) => [s.action, pressed && { opacity: 0.6 }]}
+      style={s.action}
     >
       <Text style={s.actionText}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 

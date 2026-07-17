@@ -20,9 +20,11 @@
  *     d'amitiés acceptées), La carte OXV (pictogramme, pas de fausse carte).
  *   - ROUTES (teinte verte, déjà portée par « Certifiée OXV ») : Belles routes,
  *     Mes routes, Créer une route, Créer un tracé (import OSM).
- * Animations : cascade FadeInSection sobre (contenu → club → routes), retour
- * haptique léger sur chaque accès. Compteurs RÉELS uniquement — un compte
- * indisponible ou nul est remplacé par un libellé descriptif, jamais inventé.
+ * Animations (kit src/components/motion) : cartes en cascade (Stagger), hub en
+ * fondu décalé (FadeInSection), toutes les actions en PressableScale (haptique
+ * incluse), images distantes en fondu au chargement. Courbes et durées du kit,
+ * reduce-motion respecté. Compteurs RÉELS uniquement — un compte indisponible
+ * ou nul est remplacé par un libellé descriptif, jamais inventé.
  *
  * Données RÉELLES uniquement : coachs publiés (coachMarketplaceService, RLS
  * `is_published`), partenaires validés + offres publiées (partnerService),
@@ -31,14 +33,22 @@
  * Doctrine : vouvoiement, aucun emoji, aucun classement, ton descriptif.
  */
 
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Text,
+  View,
+  type ImageProps,
+} from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
-import { FadeInSection } from '@/components/motion';
+import { FadeInSection, PressableScale, Stagger, useReduceMotion } from '@/components/motion';
 import { ReportButton } from '@/components/ReportButton';
 import * as haptics from '@/lib/haptics';
 import { type CoachListing, listPublishedCoaches } from '@/services/coachMarketplaceService';
@@ -88,6 +98,35 @@ const TABS: { key: DiscoverTab; label: string }[] = [
   { key: 'partenaires', label: 'Partenaires' },
   { key: 'roulages', label: 'Roulages' },
 ];
+
+/**
+ * Image distante en fondu au chargement — opacity 0 → 1 sur onLoad (400 ms
+ * ease-out cubic, mêmes courbes/durées que le kit motion, useNativeDriver).
+ * Locale à l'écran : le kit ne porte pas de composant image et cette passe se
+ * limite aux écrans de la zone. Reduce-motion : l'image apparaît sans fondu.
+ */
+function FadeInImage({ style, onLoad, ...rest }: ImageProps) {
+  const reduceMotion = useReduceMotion();
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reduceMotion) opacity.setValue(1);
+  }, [reduceMotion, opacity]);
+
+  const handleLoad: NonNullable<ImageProps['onLoad']> = (event) => {
+    if (!reduceMotion) {
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 400,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start();
+    }
+    onLoad?.(event);
+  };
+
+  return <Animated.Image {...rest} onLoad={handleLoad} style={[style, { opacity }]} />;
+}
 
 /** Libellés humains des catégories partenaires (mêmes clés que le site). */
 const TYPE_LABEL: Record<string, string> = {
@@ -197,24 +236,18 @@ export default function DecouverteScreen() {
           {TABS.map(({ key, label }) => {
             const active = key === tab;
             return (
-              <Pressable
+              <PressableScale
                 key={key}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
                 accessibilityLabel={label}
                 hitSlop={theme.hitSlop}
-                onPress={() => {
-                  haptics.tap();
-                  setTab(key);
-                }}
-                style={({ pressed }) => [
-                  s.pill,
-                  active && s.pillActive,
-                  pressed && !active && { opacity: 0.8 },
-                ]}
+                haptic="tap"
+                onPress={() => setTab(key)}
+                style={[s.pill, active && s.pillActive]}
               >
                 <Text style={[s.pillT, active && s.pillActiveT]}>{label}</Text>
-              </Pressable>
+              </PressableScale>
             );
           })}
         </View>
@@ -225,17 +258,16 @@ export default function DecouverteScreen() {
           </View>
         ) : (
           <>
-            {/* Cascade d'entrée sobre : contenu de l'onglet, puis le club,
-                puis les routes (FadeInSection, ease-out, jamais de bounce). */}
-            <FadeInSection>
-              {tab === 'coachs' ? (
-                <CoachsTab coaches={coaches} />
-              ) : tab === 'partenaires' ? (
-                <PartenairesTab partners={partners} requested={requested} onAsk={askPartner} />
-              ) : (
-                <RoulagesTab invitations={invitations} busyId={busyId} onRespond={respond} />
-              )}
-            </FadeInSection>
+            {/* Cascade d'entrée sobre : les cartes de l'onglet gèrent leur
+                propre Stagger (rejoué au changement d'onglet), le club puis
+                les routes suivent en fondu décalé — ease-out, jamais de bounce. */}
+            {tab === 'coachs' ? (
+              <CoachsTab coaches={coaches} />
+            ) : tab === 'partenaires' ? (
+              <PartenairesTab partners={partners} requested={requested} onAsk={askPartner} />
+            ) : (
+              <RoulagesTab invitations={invitations} busyId={busyId} onRespond={respond} />
+            )}
             <FadeInSection delay={120}>
               <ClubSection friendCount={friendCount} media={media} />
             </FadeInSection>
@@ -249,10 +281,9 @@ export default function DecouverteScreen() {
   );
 }
 
-/** Navigation du hub — retour haptique léger puis route (toutes existantes,
- *  zone `decouverte` de l'appMap). */
+/** Navigation du hub — routes toutes existantes (zone `decouverte` de
+ *  l'appMap). Le retour haptique léger est porté par PressableScale. */
 function openHubRoute(path: string): void {
-  haptics.tap();
   router.push(path as never);
 }
 
@@ -264,21 +295,25 @@ function CoachsTab({ coaches }: { coaches: CoachListing[] }) {
   return (
     <View style={s.tabBody}>
       {/* Compteur RÉEL (coachs publiés chargés) — masqué à zéro. */}
-      <Text style={s.sectionEyebrow}>
-        {coaches.length > 0 ? `Coachs · ${coaches.length}` : 'Coachs'}
-      </Text>
+      <FadeInSection>
+        <Text style={s.sectionEyebrow}>
+          {coaches.length > 0 ? `Coachs · ${coaches.length}` : 'Coachs'}
+        </Text>
+      </FadeInSection>
       {coaches.length === 0 ? (
-        <EmptyState
-          label="À venir"
-          message="Les coachs apparaîtront ici dès qu’ils ouvriront leur fiche."
-          source="coach_profiles"
-        />
+        <FadeInSection delay={80}>
+          <EmptyState
+            label="À venir"
+            message="Les coachs apparaîtront ici dès qu’ils ouvriront leur fiche."
+            source="coach_profiles"
+          />
+        </FadeInSection>
       ) : (
-        <View style={{ gap: spacing.md }}>
+        <Stagger initialDelay={80} style={{ gap: spacing.md }}>
           {coaches.map((coach) => (
             <CoachCard key={coach.coachId} coach={coach} />
           ))}
-        </View>
+        </Stagger>
       )}
     </View>
   );
@@ -314,7 +349,7 @@ function CoachCard({ coach }: { coach: CoachListing }) {
     <Card style={s.coachCard}>
       <View style={s.coachHead}>
         {coach.photoUrl ? (
-          <Image
+          <FadeInImage
             source={{ uri: coach.photoUrl }}
             style={s.avatar}
             accessibilityIgnoresInvertColors
@@ -343,22 +378,24 @@ function CoachCard({ coach }: { coach: CoachListing }) {
       </View>
 
       <View style={s.coachActions}>
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={`Voir la fiche de ${name}`}
+          haptic="tap"
           onPress={openFiche}
-          style={({ pressed }) => [s.btnGhost, pressed && { opacity: 0.85 }]}
+          style={s.btnGhost}
         >
           <Text style={s.btnGhostT}>Voir la fiche</Text>
-        </Pressable>
-        <Pressable
+        </PressableScale>
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={`Contacter ${name}`}
+          haptic="tap"
           onPress={openContact}
-          style={({ pressed }) => [s.btnCoach, pressed && { opacity: 0.85 }]}
+          style={s.btnCoach}
         >
           <Text style={s.btnCoachT}>Contacter</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Card>
   );
@@ -381,30 +418,37 @@ function PartenairesTab({
   const offerCount = partners.reduce((n, p) => n + p.offers.length, 0);
   return (
     <View style={s.tabBody}>
-      <Text style={s.sectionEyebrow}>
-        {offerCount > 0
-          ? `Partenaires · ${offerCount} ${offerCount > 1 ? 'offres' : 'offre'}`
-          : 'Partenaires'}
-      </Text>
+      <FadeInSection>
+        <Text style={s.sectionEyebrow}>
+          {offerCount > 0
+            ? `Partenaires · ${offerCount} ${offerCount > 1 ? 'offres' : 'offre'}`
+            : 'Partenaires'}
+        </Text>
+      </FadeInSection>
       {partners.length > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voir le catalogue des partenaires"
-          onPress={() => router.push('/(app)/catalogue' as never)}
-          style={({ pressed }) => [s.catalogueLink, pressed && { opacity: 0.85 }]}
-        >
-          <Text style={s.catalogueLinkT}>Voir le catalogue</Text>
-          <Text style={s.catalogueLinkChevron}>›</Text>
-        </Pressable>
+        <FadeInSection delay={80}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel="Voir le catalogue des partenaires"
+            haptic="tap"
+            onPress={() => router.push('/(app)/catalogue' as never)}
+            style={s.catalogueLink}
+          >
+            <Text style={s.catalogueLinkT}>Voir le catalogue</Text>
+            <Text style={s.catalogueLinkChevron}>›</Text>
+          </PressableScale>
+        </FadeInSection>
       ) : null}
       {partners.length === 0 ? (
-        <EmptyState
-          label="À venir"
-          message="Les partenaires OXV apparaîtront ici."
-          source="partner_accounts"
-        />
+        <FadeInSection delay={80}>
+          <EmptyState
+            label="À venir"
+            message="Les partenaires OXV apparaîtront ici."
+            source="partner_accounts"
+          />
+        </FadeInSection>
       ) : (
-        <View style={{ gap: spacing.md }}>
+        <Stagger initialDelay={160} style={{ gap: spacing.md }}>
           {partners.map((p) => {
             const done = requested.has(p.id);
             return (
@@ -420,7 +464,7 @@ function PartenairesTab({
                   </View>
                   {/* Logo RÉEL du partenaire s'il existe — jamais d'image factice. */}
                   {p.logoUrl ? (
-                    <Image
+                    <FadeInImage
                       source={{ uri: p.logoUrl }}
                       style={s.partnerLogo}
                       accessibilityIgnoresInvertColors
@@ -447,27 +491,28 @@ function PartenairesTab({
                   </View>
                 ) : null}
 
-                <Pressable
+                <PressableScale
                   accessibilityRole="button"
                   accessibilityLabel={
                     done ? 'Demande déjà envoyée' : `Demander le contact de ${p.displayName}`
                   }
                   accessibilityState={{ disabled: done }}
                   disabled={done}
+                  haptic="tap"
                   onPress={() => onAsk(p)}
-                  style={({ pressed }) => [s.btnPartner, pressed && !done && { opacity: 0.85 }]}
+                  style={s.btnPartner}
                 >
                   <Text style={[s.btnPartnerT, done && { color: palette.faint }]}>
                     {done ? 'Demande envoyée' : 'Demander le contact'}
                   </Text>
-                </Pressable>
+                </PressableScale>
                 <Text style={s.privacyNote}>
                   Vous choisissez de partager. Ni votre télémétrie, ni votre identité.
                 </Text>
               </Card>
             );
           })}
-        </View>
+        </Stagger>
       )}
     </View>
   );
@@ -489,17 +534,21 @@ function RoulagesTab({
   return (
     <View style={s.tabBody}>
       {/* Compteur RÉEL (invitations chargées) — masqué à zéro. */}
-      <Text style={s.sectionEyebrow}>
-        {invitations.length > 0 ? `Roulages · ${invitations.length}` : 'Roulages'}
-      </Text>
+      <FadeInSection>
+        <Text style={s.sectionEyebrow}>
+          {invitations.length > 0 ? `Roulages · ${invitations.length}` : 'Roulages'}
+        </Text>
+      </FadeInSection>
       {invitations.length === 0 ? (
-        <EmptyState
-          label="À venir"
-          message="Vos invitations aux roulages apparaîtront ici."
-          source="roulage_invitations"
-        />
+        <FadeInSection delay={80}>
+          <EmptyState
+            label="À venir"
+            message="Vos invitations aux roulages apparaîtront ici."
+            source="roulage_invitations"
+          />
+        </FadeInSection>
       ) : (
-        <View style={{ gap: spacing.md }}>
+        <Stagger initialDelay={80} style={{ gap: spacing.md }}>
           {invitations.map(({ invitation, roulage }) => {
             const pending = invitation.status === 'invited' && roulage.status === 'open';
             return (
@@ -546,7 +595,7 @@ function RoulagesTab({
               </Card>
             );
           })}
-        </View>
+        </Stagger>
       )}
     </View>
   );
@@ -653,61 +702,72 @@ function ClubSection({
       <Text style={s.sectionEyebrow}>Le club</Text>
 
       {/* Galerie — vitrine : votre première photo réelle en couverture. */}
-      <Card
+      <PressableScale
         onPress={() => openHubRoute('/(app)/galerie')}
+        accessibilityRole="button"
         accessibilityLabel="Ouvrir la galerie"
-        style={s.clubCard}
+        haptic="tap"
       >
-        {cover?.signedUrl ? (
-          <Image
-            source={{ uri: cover.signedUrl }}
-            style={s.galleryCover}
-            resizeMode="cover"
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <View style={[s.galleryCover, s.galleryCoverEmpty]}>
-            <PhotoPicto />
+        <Card style={s.clubCard}>
+          {cover?.signedUrl ? (
+            <FadeInImage
+              source={{ uri: cover.signedUrl }}
+              style={s.galleryCover}
+              resizeMode="cover"
+              accessibilityIgnoresInvertColors
+            />
+          ) : (
+            <View style={[s.galleryCover, s.galleryCoverEmpty]}>
+              <PhotoPicto />
+            </View>
+          )}
+          <View style={s.hubCardRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.hubCardTitle}>Galerie</Text>
+              <Text style={s.hubCardMeta} numberOfLines={1}>
+                {mediaCount > 0
+                  ? `${mediaCount} ${mediaCount > 1 ? 'médias' : 'média'}`
+                  : 'Vos photos et vidéos de journées OXV'}
+              </Text>
+            </View>
+            <Text style={s.hubChevron}>›</Text>
           </View>
-        )}
-        <View style={s.hubCardRow}>
-          <View style={{ flex: 1 }}>
-            <Text style={s.hubCardTitle}>Galerie</Text>
-            <Text style={s.hubCardMeta} numberOfLines={1}>
-              {mediaCount > 0
-                ? `${mediaCount} ${mediaCount > 1 ? 'médias' : 'média'}`
-                : 'Vos photos et vidéos de journées OXV'}
-            </Text>
-          </View>
-          <Text style={s.hubChevron}>›</Text>
-        </View>
-      </Card>
+        </Card>
+      </PressableScale>
 
       <View style={s.tileRow}>
-        <Card
+        <PressableScale
           onPress={() => openHubRoute('/(app)/amis')}
+          accessibilityRole="button"
           accessibilityLabel="Ouvrir vos amis"
-          style={[s.clubCard, s.tile]}
+          haptic="tap"
+          style={{ flex: 1 }}
         >
-          <PeoplePicto />
-          <Text style={s.tileTitle}>Amis</Text>
-          <Text style={s.tileMeta} numberOfLines={1}>
-            {friendCount != null && friendCount > 0
-              ? `${friendCount} ${friendCount > 1 ? 'amis' : 'ami'}`
-              : 'Pilote à pilote'}
-          </Text>
-        </Card>
-        <Card
+          <Card style={[s.clubCard, s.tile]}>
+            <PeoplePicto />
+            <Text style={s.tileTitle}>Amis</Text>
+            <Text style={s.tileMeta} numberOfLines={1}>
+              {friendCount != null && friendCount > 0
+                ? `${friendCount} ${friendCount > 1 ? 'amis' : 'ami'}`
+                : 'Pilote à pilote'}
+            </Text>
+          </Card>
+        </PressableScale>
+        <PressableScale
           onPress={() => openHubRoute('/(app)/carte-oxv')}
+          accessibilityRole="button"
           accessibilityLabel="Ouvrir la carte OXV"
-          style={[s.clubCard, s.tile]}
+          haptic="tap"
+          style={{ flex: 1 }}
         >
-          <PinPicto />
-          <Text style={s.tileTitle}>La carte OXV</Text>
-          <Text style={s.tileMeta} numberOfLines={1}>
-            Circuits et territoire
-          </Text>
-        </Card>
+          <Card style={[s.clubCard, s.tile]}>
+            <PinPicto />
+            <Text style={s.tileTitle}>La carte OXV</Text>
+            <Text style={s.tileMeta} numberOfLines={1}>
+              Circuits et territoire
+            </Text>
+          </Card>
+        </PressableScale>
       </View>
     </View>
   );
@@ -751,16 +811,13 @@ function RoutesSection() {
       <Text style={s.sectionEyebrow}>Routes</Text>
       <Card style={s.routesCard}>
         {ROUTE_LINKS.map(({ path, title, desc, create }, i) => (
-          <Pressable
+          <PressableScale
             key={path}
             accessibilityRole="button"
             accessibilityLabel={title}
+            haptic="tap"
             onPress={() => openHubRoute(path)}
-            style={({ pressed }) => [
-              s.routeRow,
-              i > 0 && s.routeRowBorder,
-              pressed && { opacity: 0.85 },
-            ]}
+            style={[s.routeRow, i > 0 && s.routeRowBorder]}
           >
             <View style={{ flex: 1 }}>
               <Text style={s.routeTitle}>{title}</Text>
@@ -769,7 +826,7 @@ function RoutesSection() {
               </Text>
             </View>
             <Text style={create ? s.routePlus : s.hubChevron}>{create ? '+' : '›'}</Text>
-          </Pressable>
+          </PressableScale>
         ))}
       </Card>
     </View>

@@ -24,20 +24,19 @@
  * et la doctrine « voix du coach attribuée en rouge » —, là où le PNG les place
  * à gauche. La carte « note vocale » du PNG et le bouton pièce-jointe ne sont pas
  * rendus : `coach_messages` ne porte que du texte (pas de contrôle mort).
+ *
+ * Motion (passe transversale, kit src/components/motion) : liste des fils en
+ * cascade (Stagger), chaque bulle monte en fondu+translation à son montage —
+ * l'historique fond d'un bloc à l'ouverture du fil, chaque NOUVEAU message
+ * arrive seul en fondu (append-only : rien ne rejoue). Fils, envoi et rangées
+ * en PressableScale. Durées et courbes = celles du kit ; reduce-motion respecté.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import * as haptics from '@/lib/haptics';
 import { useCoachThread } from '@/hooks/useCoachThread';
@@ -170,7 +169,8 @@ export default function MessagesScreen() {
       emptyMessage="Vos échanges avec vos pilotes consentis apparaîtront ici. Rien ne fuite : ni numéro, ni email."
       emptySource="coach_messages"
     >
-      <View style={asConsole ? undefined : { marginTop: spacing.md }}>
+      {/* Fils en cascade d'entrée (listes courtes — pilotes consentis). */}
+      <Stagger style={asConsole ? undefined : { marginTop: spacing.md }}>
         {threads.map((t, i) => (
           <ThreadRow
             key={t.coachPilotId}
@@ -181,7 +181,7 @@ export default function MessagesScreen() {
             onPress={() => (asConsole ? selectThread(t.coachPilotId) : openThread(t))}
           />
         ))}
-      </View>
+      </Stagger>
     </StateWrapper>
   );
 
@@ -191,9 +191,11 @@ export default function MessagesScreen() {
       <Screen scroll={false}>
         <View style={s.console}>
           <View style={s.listCol}>
-            <Text style={s.listTitle} accessibilityRole="header">
-              Messages
-            </Text>
+            <FadeInSection>
+              <Text style={s.listTitle} accessibilityRole="header">
+                Messages
+              </Text>
+            </FadeInSection>
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{ paddingBottom: spacing.xl }}
@@ -248,18 +250,19 @@ export default function MessagesScreen() {
                     multiline
                     accessibilityLabel="Écrire un message"
                   />
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Envoyer le message"
-                    disabled={!draft.trim() || sending}
-                    onPress={onSend}
-                    style={({ pressed }) => [
-                      s.send,
-                      { opacity: !draft.trim() || sending ? 0.4 : pressed ? 0.85 : 1 },
-                    ]}
-                  >
-                    <Text style={s.sendGlyph}>→</Text>
-                  </Pressable>
+                  {/* L'état désactivé vit sur le wrapper : l'opacité animée du
+                      PressableScale écraserait une opacité statique interne. */}
+                  <View style={!draft.trim() || sending ? s.sendDim : null}>
+                    <PressableScale
+                      accessibilityRole="button"
+                      accessibilityLabel="Envoyer le message"
+                      disabled={!draft.trim() || sending}
+                      onPress={onSend}
+                      style={s.send}
+                    >
+                      <Text style={s.sendGlyph}>→</Text>
+                    </PressableScale>
+                  </View>
                 </View>
               </>
             ) : (
@@ -281,12 +284,12 @@ export default function MessagesScreen() {
   return (
     <Screen>
       <View style={s.mobilePad}>
-        <View style={s.mobileHead}>
+        <FadeInSection style={s.mobileHead}>
           <Text style={s.mobileTitle} accessibilityRole="header">
             Messages
           </Text>
           <GuaranteePill label="SANS COORDONNÉES" />
-        </View>
+        </FadeInSection>
         {renderList(false)}
       </View>
     </Screen>
@@ -315,16 +318,15 @@ function ThreadRow({
       : '';
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityState={isConsole ? { selected } : undefined}
       accessibilityLabel={`Fil avec ${item.otherName}${unreadLabel}`}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={[
         isConsole ? s.rowConsole : s.rowMobile,
         isConsole && selected && s.rowConsoleActive,
         !isConsole && !isLast && s.rowMobileSep,
-        pressed && { opacity: 0.85 },
       ]}
     >
       <View style={[s.avatar, isConsole && selected && s.avatarActive]}>
@@ -342,7 +344,7 @@ function ThreadRow({
         {when ? <Text style={s.when}>{when}</Text> : null}
         {item.unread > 0 ? <View style={s.dot} /> : null}
       </View>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -357,7 +359,10 @@ function GuaranteePill({ label }: { label: string }) {
   );
 }
 
-/** Bulles du fil, groupées par jour (séparateurs dérivés de `created_at`). */
+/** Bulles du fil, groupées par jour (séparateurs dérivés de `created_at`).
+ *  Chaque bulle monte en fondu+translation À SON MONTAGE (FadeInSection) : le
+ *  fil est append-only, donc l'historique fond une fois à l'ouverture et seul
+ *  le NOUVEAU message s'anime ensuite — rien ne rejoue, rien n'est inventé. */
 function renderBubbles(
   messages: { id: string; senderId: string; body: string; createdAt: string }[],
   me: string | null,
@@ -371,21 +376,21 @@ function renderBubbles(
     if (key !== lastDay) {
       lastDay = key;
       out.push(
-        <Text key={`day-${key}`} style={s.daySep}>
-          {dayLabelFr(d)}
-        </Text>
+        <FadeInSection key={`day-${key}`}>
+          <Text style={s.daySep}>{dayLabelFr(d)}</Text>
+        </FadeInSection>
       );
     }
     const mine = m.senderId === me;
     out.push(
-      <View key={m.id} style={[s.bubbleRow, mine ? s.bubbleRowMine : s.bubbleRowOther]}>
+      <FadeInSection key={m.id} style={[s.bubbleRow, mine ? s.bubbleRowMine : s.bubbleRowOther]}>
         <View style={[s.bubble, mine ? s.bubbleMine : s.bubbleOther]}>
           <Text style={s.bubbleTxt}>{m.body}</Text>
         </View>
         <Text style={[s.bubbleMeta, mine ? s.metaMine : s.metaOther]}>
           {mine ? hhmm(m.createdAt) : `${otherName} · ${hhmm(m.createdAt)}`}
         </Text>
-      </View>
+      </FadeInSection>
     );
   }
   return out;
@@ -561,6 +566,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Atténuation « rien à envoyer » — portée par le wrapper du PressableScale.
+  sendDim: { opacity: 0.4 },
   sendGlyph: { fontFamily: fonts.mono, fontSize: 18, color: palette.cream },
 
   // ── Téléphone ──

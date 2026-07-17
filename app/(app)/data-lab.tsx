@@ -18,6 +18,7 @@ import { Text, View } from 'react-native';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
 import { BlindspotsBlock, SourceMethodBlock } from '@/components/InsightTransparency';
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { dataLabScreens } from '@/lib/appMap';
 import { OxvEvent } from '@/services/analyticsEvents';
 import { type DataConfidence, computeDataConfidence } from '@/services/dataConfidenceLogic';
@@ -27,7 +28,6 @@ import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 
 const { palette, dataColors, speedHeat, fonts, fontSize, spacing, radius } = theme;
@@ -256,29 +256,36 @@ export default function DataLabScreen() {
     <Screen>
       <AppBar title="Data Lab" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <Text style={s.title} accessibilityRole="header">
-          Allez voir de plus près.
-        </Text>
+        <FadeInSection>
+          <Text style={s.title} accessibilityRole="header">
+            Allez voir de plus près.
+          </Text>
 
-        {/* Confiance de lecture (T-2, PR-53) — la solidité de la donnée AVANT
-            d'ouvrir les couches. Honnête, descriptif, jamais un jugement. */}
-        <ConfidenceLine confidence={confidence} />
+          {/* Confiance de lecture (T-2, PR-53) — la solidité de la donnée AVANT
+              d'ouvrir les couches. Honnête, descriptif, jamais un jugement. */}
+          <ConfidenceLine confidence={confidence} />
+        </FadeInSection>
 
         {view?.emptyReason ? (
-          <View style={s.banner}>
-            <Text style={s.bannerText}>{view.emptyReason}</Text>
-          </View>
+          <FadeInSection delay={60}>
+            <View style={s.banner}>
+              <Text style={s.bannerText}>{view.emptyReason}</Text>
+            </View>
+          </FadeInSection>
         ) : null}
 
-        {/* Grille 2 colonnes de 6 tuiles (maquette §7.5). */}
-        <View style={s.grid}>
+        {/* Grille 2 colonnes de 6 tuiles (maquette §7.5) — cascade d'entrée
+            (Stagger) + retour tactile du kit (PressableScale). */}
+        <Stagger style={s.grid} itemStyle={s.gridItem} interval={70} initialDelay={120}>
           {GRID_TILES.filter((t) => known.has(t.screen)).map(({ screen, title, sub, Icon }) => {
             const available = !view || screenHasData(screen, view);
             return (
-              <Card
+              <PressableScale
                 key={screen}
-                style={s.tile}
+                style={[s.tileSurface, s.tile]}
+                haptic="tap"
                 onPress={() => openLayer(screen)}
+                accessibilityRole="button"
                 accessibilityLabel={`${title}. ${sub}`}
               >
                 <Icon />
@@ -289,20 +296,23 @@ export default function DataLabScreen() {
                     <Text style={s.noData}>Pas de données pour cette session</Text>
                   ) : null}
                 </View>
-              </Card>
+              </PressableScale>
             );
           })}
-        </View>
+        </Stagger>
 
-        {/* Deux tuiles larges Comparer / Insights (maquette §7.5). */}
-        <View style={s.grid}>
+        {/* Deux tuiles larges Comparer / Insights (maquette §7.5) — la cascade
+            continue après les 6 tuiles de la grille. */}
+        <Stagger style={s.grid} itemStyle={s.gridItem} interval={70} initialDelay={560}>
           {WIDE_TILES.filter((t) => known.has(t.screen)).map(({ screen, title, sub, Icon }) => {
             const available = !view || screenHasData(screen, view);
             return (
-              <Card
+              <PressableScale
                 key={screen}
-                style={s.wideTile}
+                style={[s.tileSurface, s.wideTile]}
+                haptic="tap"
                 onPress={() => openLayer(screen)}
+                accessibilityRole="button"
                 accessibilityLabel={`${title}. ${sub}`}
               >
                 <Icon />
@@ -312,59 +322,69 @@ export default function DataLabScreen() {
                     <Text style={s.noData}>Pas de données pour cette session</Text>
                   ) : null}
                 </View>
-              </Card>
+              </PressableScale>
             );
           })}
-        </View>
+        </Stagger>
 
         {/* Vue unifiée (Skia, aperçu technique) — un seul canvas tracé + trajectoire.
             Distincte des couches standard : à valider sur un build (rendu natif). */}
-        <Card
-          style={{ marginTop: spacing.md }}
-          onPress={() =>
-            router.push(
-              (sid ? `/(app)/data-lab-canvas?sessionId=${sid}` : '/(app)/data-lab-canvas') as never
-            )
-          }
-          accessibilityLabel="Vue unifiée. Le tracé et votre trajectoire sur une même vue."
-        >
-          <Text style={s.tileTitle}>Vue unifiée</Text>
-          <Text style={s.tileSub}>Le tracé et votre trajectoire, d’un seul tenant</Text>
-        </Card>
+        <FadeInSection delay={700}>
+          <PressableScale
+            style={[s.tileSurface, { marginTop: spacing.md }]}
+            haptic="tap"
+            onPress={() =>
+              router.push(
+                (sid
+                  ? `/(app)/data-lab-canvas?sessionId=${sid}`
+                  : '/(app)/data-lab-canvas') as never
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Vue unifiée. Le tracé et votre trajectoire sur une même vue."
+          >
+            <Text style={s.tileTitle}>Vue unifiée</Text>
+            <Text style={s.tileSub}>Le tracé et votre trajectoire, d’un seul tenant</Text>
+          </PressableScale>
+        </FadeInSection>
 
         {/* Transparence (charte 11 §T1/T5, obligatoire) : source/méthode + limites,
             pour cadrer toute la lecture détaillée comme descriptive, jamais un verdict. */}
-        <View style={{ marginTop: spacing.xxl }}>
-          <SourceMethodBlock
-            items={[
-              'Chaque couche est calculée à partir des trames de votre boîtier — votre séance, rien d’autre.',
-              'Les virages et les tours sont des estimations dérivées du tracé, pas une vérité du circuit.',
-            ]}
-          />
-          <BlindspotsBlock
-            items={[
-              'L’app montre ce qui s’est passé. Elle ne dit jamais ce qu’il fallait faire.',
-              'Elle ignore vos intentions, la trajectoire que vous visiez, votre ressenti.',
-              'Aucune couche n’est une note ni un classement.',
-            ]}
-          />
-        </View>
+        <FadeInSection delay={760}>
+          <View style={{ marginTop: spacing.xxl }}>
+            <SourceMethodBlock
+              items={[
+                'Chaque couche est calculée à partir des trames de votre boîtier — votre séance, rien d’autre.',
+                'Les virages et les tours sont des estimations dérivées du tracé, pas une vérité du circuit.',
+              ]}
+            />
+            <BlindspotsBlock
+              items={[
+                'L’app montre ce qui s’est passé. Elle ne dit jamais ce qu’il fallait faire.',
+                'Elle ignore vos intentions, la trajectoire que vous visiez, votre ressenti.',
+                'Aucune couche n’est une note ni un classement.',
+              ]}
+            />
+          </View>
+        </FadeInSection>
 
         {/* Souveraineté data (PR-66) : récupérer la donnée la plus brute du boîtier,
             lisible par n'importe quel tableur, sans dépendre d'OXV (anti-lock-in). */}
         {sid ? (
-          <View style={{ marginTop: spacing.xl }}>
-            <Button
-              label="Exporter les données brutes (CSV)"
-              variant="ghost"
-              loading={exporting}
-              onPress={onExportCsv}
-            />
-            <Text style={s.exportHint}>
-              Les trames du boîtier (25 points/seconde) de cette séance. Vos données vous
-              appartiennent.
-            </Text>
-          </View>
+          <FadeInSection delay={800}>
+            <View style={{ marginTop: spacing.xl }}>
+              <Button
+                label="Exporter les données brutes (CSV)"
+                variant="ghost"
+                loading={exporting}
+                onPress={onExportCsv}
+              />
+              <Text style={s.exportHint}>
+                Les trames du boîtier (25 points/seconde) de cette séance. Vos données vous
+                appartiennent.
+              </Text>
+            </View>
+          </FadeInSection>
         ) : null}
       </View>
     </Screen>
@@ -424,9 +444,23 @@ const s = {
     gap: spacing.md,
     marginTop: spacing.lg,
   },
-  tile: {
+  // Cellule de grille portée par le wrapper de cascade (Stagger.itemStyle) :
+  // la géométrie 2 colonnes reste identique, la tuile remplit sa cellule.
+  gridItem: {
     flexBasis: '47%' as const,
     flexGrow: 1,
+  },
+  // Surface de carte (mêmes tokens que ui/Card) — la tuile est désormais un
+  // PressableScale du kit motion, qui porte lui-même le retour tactile.
+  tileSurface: {
+    backgroundColor: palette.card,
+    borderWidth: 1,
+    borderColor: palette.line,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    minHeight: 44,
+  },
+  tile: {
     minHeight: 132,
     justifyContent: 'space-between' as const,
     gap: spacing.lg,
@@ -434,8 +468,6 @@ const s = {
     padding: spacing.lg,
   },
   wideTile: {
-    flexBasis: '47%' as const,
-    flexGrow: 1,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
     gap: spacing.md,

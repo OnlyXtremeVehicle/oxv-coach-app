@@ -24,12 +24,19 @@
  *
  * Doctrine : vouvoiement, zéro emoji, DESCRIPTIF jamais prescriptif — un agenda
  * qui se lit, pas un rappel qui presse. Lecture seule côté pilote.
+ *
+ * Motion (passe transversale, kit src/components/motion) : en-tête en fondu,
+ * grille semaine en fondu re-joué à chaque navigation de semaine (key), cartes
+ * agenda compagnon en cascade (Stagger), navigation et blocs en PressableScale.
+ * PAS de cascade sur les blocs positionnés en absolu (le wrapper les casserait).
+ * Durées et courbes = celles du kit ; reduce-motion respecté par construction.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   type CoachBooking,
@@ -342,7 +349,7 @@ function ConsoleCalendar({
   return (
     <Screen>
       <View style={{ paddingHorizontal: CONSOLE_GUTTER, paddingBottom: spacing.xxl }}>
-        <View style={s.consoleHead}>
+        <FadeInSection style={s.consoleHead}>
           <View style={{ flexShrink: 1 }}>
             <Text style={s.eyebrow}>CALENDRIER</Text>
             <View style={s.titleRow}>
@@ -357,7 +364,7 @@ function ConsoleCalendar({
             </Text>
           </View>
           <Legend />
-        </View>
+        </FadeInSection>
 
         <StateWrapper
           state={state}
@@ -368,7 +375,9 @@ function ConsoleCalendar({
           errorCause="Votre agenda n'a pas pu être chargé."
           onRetry={onRetry}
         >
-          <View style={s.gridRow}>
+          {/* La grille ENTIÈRE fond à l'arrivée, et re-fond à chaque changement
+              de semaine (key) — les blocs restent en absolu, jamais cascadés. */}
+          <FadeInSection key={weekStart.toISOString()} delay={80} style={s.gridRow}>
             {/* Gouttière horaire */}
             <View style={{ width: GUTTER_W }}>
               <View style={{ height: DAY_HEADER_H }} />
@@ -422,7 +431,7 @@ function ConsoleCalendar({
                 </View>
               );
             })}
-          </View>
+          </FadeInSection>
         </StateWrapper>
       </View>
     </Screen>
@@ -431,15 +440,15 @@ function ConsoleCalendar({
 
 function WeekNavButton({ dir, onPress }: { dir: -1 | 1; onPress: () => void }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={dir < 0 ? 'Semaine précédente' : 'Semaine suivante'}
       hitSlop={10}
       onPress={onPress}
-      style={({ pressed }) => [s.navBtn, pressed && { opacity: 0.6 }]}
+      style={s.navBtn}
     >
       <Text style={s.navChevron}>{dir < 0 ? '‹' : '›'}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -487,11 +496,11 @@ function ConsoleBlock({
       }${item.capacity ? ` ${item.capacity} place${plur(item.capacity)}.` : ''}`;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={a11y}
       onPress={item.onPress}
-      style={({ pressed }) => [
+      style={[
         s.block,
         isSession ? s.blockSession : s.blockSlot,
         {
@@ -500,7 +509,6 @@ function ConsoleBlock({
           left: `${(lane / laneCount) * 100}%`,
           width: `${100 / laneCount}%`,
         },
-        pressed && { opacity: 0.85 },
       ]}
     >
       <Text
@@ -515,7 +523,7 @@ function ConsoleBlock({
       >
         {frTimeRange(item.start, item.end)}
       </Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -537,9 +545,11 @@ function CompanionAgenda({
   return (
     <Screen>
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        <Text style={[s.title, { marginTop: spacing.md }]} accessibilityRole="header">
-          Agenda
-        </Text>
+        <FadeInSection>
+          <Text style={[s.title, { marginTop: spacing.md }]} accessibilityRole="header">
+            Agenda
+          </Text>
+        </FadeInSection>
 
         <View style={{ marginTop: spacing.lg }}>
           <StateWrapper
@@ -582,13 +592,14 @@ function AgendaSection({
   return (
     <View>
       <SectionLabel>{label}</SectionLabel>
-      <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+      {/* Cartes cascadées — la note calme entre au même rythme qu'une carte. */}
+      <Stagger style={{ marginTop: spacing.md, gap: spacing.sm }}>
         {items.length === 0 ? (
           <Text style={s.calmNote}>{emptyNote}</Text>
         ) : (
           items.map((it) => <AgendaRow key={it.key} item={it} />)
         )}
-      </View>
+      </Stagger>
     </View>
   );
 }

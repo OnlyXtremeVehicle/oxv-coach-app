@@ -15,13 +15,19 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { LayoutAnimation, Platform, Pressable, Switch, Text, UIManager, View } from 'react-native';
+import { Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { SourceMethodBlock } from '@/components/InsightTransparency';
 import { MiniQdiRadar } from '@/components/MiniQdiRadar';
 import { QdiRadar, type QdiAnnotations } from '@/components/QdiRadar';
-import { FadeInSection, useReduceMotion } from '@/components/motion';
+import {
+  AnimatedPresence,
+  BreathingGlow,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+} from '@/components/motion';
 import { EmptyState } from '@/components/instruments';
 import {
   getOrComputeQdiForSession,
@@ -50,12 +56,6 @@ import { Screen } from '@/ui/Screen';
 import { StateWrapper } from '@/ui/StateWrapper';
 
 const { palette, dataColors, spacing, radius, fonts } = theme;
-
-// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
-// Android exige l'activation explicite ; sans effet ailleurs.
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 /** Légende QDI du panneau pédagogique — mêmes couleurs que le radar (une couleur
  *  = une donnée, système §4 handoff). */
@@ -275,16 +275,19 @@ export default function SignatureScreen() {
             </Text>
 
             {/* RADAR — le portrait. Polygone séance blanc + points colorés,
-                empreinte self-only pointillée, annotation point fort. */}
+                empreinte self-only pointillée, annotation point fort. Le héros
+                respire discrètement (BreathingGlow : l'unique de l'écran). */}
             <FadeInSection>
               {qdi ? (
-                <QdiRadar
-                  current={qdi}
-                  reference={qdiReference?.branches ?? null}
-                  referenceSessions={qdiReference?.sessions}
-                  detail={qdiAccess === 'full'}
-                  annotations={qdiAnnotations}
-                />
+                <BreathingGlow>
+                  <QdiRadar
+                    current={qdi}
+                    reference={qdiReference?.branches ?? null}
+                    referenceSessions={qdiReference?.sessions}
+                    detail={qdiAccess === 'full'}
+                    annotations={qdiAnnotations}
+                  />
+                </BreathingGlow>
               ) : (
                 <EmptyState
                   label="QDI en préparation"
@@ -297,7 +300,8 @@ export default function SignatureScreen() {
                 Dérivées des traits mesurés (descriptif, jamais une consigne). */}
             {hasContent ? (
               <FadeInSection delay={80}>
-                <View style={s.lectureCard}>
+                {/* Les 3 lignes tombent en cascade dans la carte (Stagger). */}
+                <Stagger initialDelay={140} style={s.lectureCard}>
                   {/* Régularité d'abord (maquette : 1re ligne violette), puis les
                       autres traits mesurés. Libellé + valeur colorée + détail. */}
                   {[...signature.traits]
@@ -330,7 +334,7 @@ export default function SignatureScreen() {
                         </Text>
                       </View>
                     ))}
-                </View>
+                </Stagger>
               </FadeInSection>
             ) : null}
 
@@ -372,9 +376,18 @@ export default function SignatureScreen() {
             {/* VOTRE STYLE AU FIL DES SÉANCES — mini-radars mensuels juxtaposés,
                 le dernier surligné. Des constats, jamais une courbe. */}
             {monthly.length >= 2 ? (
-              <FadeInSection delay={140}>
-                <Text style={s.sectionEyebrow}>VOTRE STYLE AU FIL DES SÉANCES</Text>
-                <View style={s.monthRow}>
+              <>
+                <FadeInSection delay={140}>
+                  <Text style={s.sectionEyebrow}>VOTRE STYLE AU FIL DES SÉANCES</Text>
+                </FadeInSection>
+                {/* Les mois tombent l'un après l'autre — itemStyle porte le flex
+                    de rangée (les tuiles MiniQdiRadar comptent sur flex:1 pour
+                    leur LARGEUR : le wrapper doit donc rester une rangée). */}
+                <Stagger
+                  initialDelay={180}
+                  style={s.monthRow}
+                  itemStyle={{ flex: 1, flexDirection: 'row' }}
+                >
                   {monthly.map((m, i) => (
                     <MiniQdiRadar
                       key={m.monthKey}
@@ -383,8 +396,8 @@ export default function SignatureScreen() {
                       highlighted={i === monthly.length - 1}
                     />
                   ))}
-                </View>
-              </FadeInSection>
+                </Stagger>
+              </>
             ) : null}
 
             {/* ── Substance OXV sous le héros (parti A) ───────────────────── */}
@@ -488,34 +501,24 @@ export default function SignatureScreen() {
    faire. Aucune donnée ni logique modifiée — lisibilité et motion seulement.
    ───────────────────────────────────────────────────────────────────────────── */
 
-/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+/** Affordance fine « Comment lire cet écran » → panneau repliable (AnimatedPresence). */
 function HowToRead({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const reduceMotion = useReduceMotion();
   return (
     <View style={{ marginTop: spacing.lg }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         hitSlop={theme.hitSlop}
-        onPress={() => {
-          if (!reduceMotion) {
-            LayoutAnimation.configureNext(
-              LayoutAnimation.create(
-                220,
-                LayoutAnimation.Types.easeInEaseOut,
-                LayoutAnimation.Properties.opacity
-              )
-            );
-          }
-          setOpen((o) => !o);
-        }}
-        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+        onPress={() => setOpen((o) => !o)}
+        style={s.howBtn}
       >
         <Text style={s.howLabel}>Comment lire cet écran</Text>
         <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
-      </Pressable>
-      {open ? <View style={s.howPanel}>{children}</View> : null}
+      </PressableScale>
+      <AnimatedPresence visible={open}>
+        <View style={s.howPanel}>{children}</View>
+      </AnimatedPresence>
     </View>
   );
 }

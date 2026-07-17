@@ -28,12 +28,12 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
-import { FadeInSection } from '@/components/motion';
+import { AnimatedPresence, FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { type Vehicle, addVehicle, listMyVehicles } from '@/services/garageService';
 import { getMyVehicleCovers } from '@/services/pilotMediaService';
 import { theme } from '@/theme/v2';
@@ -156,21 +156,23 @@ export default function GarageScreen() {
         title="Garage"
         onBack={() => router.back()}
         trailing={
-          <Pressable
+          <PressableScale
             onPress={openComposer}
             accessibilityRole="button"
             accessibilityLabel="Ajouter un véhicule"
             hitSlop={8}
-            style={({ pressed }) => [s.plusBtn, pressed && { opacity: 0.7 }]}
+            haptic="tap"
+            style={s.plusBtn}
           >
             <Text style={s.plusGlyph}>+</Text>
-          </Pressable>
+          </PressableScale>
         }
       />
 
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* ── Composer d'ajout (CRUD existant, restylé v2). ─────────────── */}
-        {composing ? (
+        {/* ── Composer d'ajout (CRUD existant, restylé v2). Présence animée :
+            le panneau monte en fondu à l'ouverture, sort avant démontage. ── */}
+        <AnimatedPresence visible={composing}>
           <Card style={s.composer}>
             <SectionLabel>Nouveau véhicule</SectionLabel>
             <Field label="Marque" value={brand} onChangeText={setBrand} />
@@ -196,39 +198,48 @@ export default function GarageScreen() {
             />
             <Button label="Annuler" variant="ghost" onPress={() => setComposing(false)} />
           </Card>
-        ) : null}
+        </AnimatedPresence>
 
         {/* ── Contenu : vide / véhicule en tête + autres véhicules. ─────── */}
         {!loading && vehicles.length === 0 ? (
-          <View style={{ marginTop: composing ? spacing.xl : spacing.sm }}>
-            <EmptyState
-              label="Garage vide"
-              message="Ajoutez un véhicule pour le retrouver ici et consigner ses réglages."
-              source="vehicles"
-            />
-          </View>
+          <FadeInSection>
+            <View style={{ marginTop: composing ? spacing.xl : spacing.sm }}>
+              <EmptyState
+                label="Garage vide"
+                message="Ajoutez un véhicule pour le retrouver ici et consigner ses réglages."
+                source="vehicles"
+              />
+            </View>
+          </FadeInSection>
         ) : null}
 
         {primary ? (
           <>
             {/* Véhicule en tête — grande carte : VRAIE photo (cover signée) si
                 elle existe, silhouette sinon + méta réelle.
-                (Pas de badge PRINCIPALE : aucune colonne is_primary réelle.) */}
+                (Pas de badge PRINCIPALE : aucune colonne is_primary réelle.)
+                La photo de couverture arrive en fondu pur (translateY 0). */}
             <FadeInSection>
-              <Pressable
+              <PressableScale
                 onPress={() => openVehicle(primary.id)}
                 accessibilityRole="button"
                 accessibilityLabel={`${vehicleName(primary)}. ${metaLine(primary)}`}
-                style={({ pressed }) => [s.hero, pressed && s.pressed]}
+                style={s.hero}
               >
                 <View style={[s.heroArt, heroCover ? s.heroArtPhoto : null]}>
                   {heroCover ? (
-                    <Image
-                      source={{ uri: heroCover }}
-                      style={StyleSheet.absoluteFill}
-                      resizeMode="cover"
-                      accessible={false}
-                    />
+                    <FadeInSection
+                      key={heroCover}
+                      translateY={0}
+                      style={StyleSheet.absoluteFillObject}
+                    >
+                      <Image
+                        source={{ uri: heroCover }}
+                        style={StyleSheet.absoluteFill}
+                        resizeMode="cover"
+                        accessible={false}
+                      />
+                    </FadeInSection>
                   ) : (
                     <CarSilhouette />
                   )}
@@ -241,61 +252,66 @@ export default function GarageScreen() {
                     {metaLine(primary)}
                   </Text>
                 </View>
-              </Pressable>
+              </PressableScale>
             </FadeInSection>
 
             {others.length > 0 ? (
               <View style={s.othersBlock}>
                 <SectionLabel>Autres véhicules</SectionLabel>
-                <View style={{ gap: spacing.sm, marginTop: spacing.md }}>
-                  {others.map((v, i) => (
-                    <FadeInSection key={v.id} delay={120 + Math.min(i, 6) * 60}>
-                      <Pressable
-                        onPress={() => openVehicle(v.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel={`${vehicleName(v)}. ${metaLine(v)}`}
-                        style={({ pressed }) => [s.row, pressed && s.pressed]}
-                      >
-                        <View style={s.rowIcon} accessibilityElementsHidden>
-                          {covers[v.id] ? (
-                            <Image
-                              source={{ uri: covers[v.id] }}
-                              style={s.rowThumb}
-                              resizeMode="cover"
-                              accessible={false}
+                <Stagger
+                  initialDelay={120}
+                  interval={60}
+                  style={{ gap: spacing.sm, marginTop: spacing.md }}
+                >
+                  {others.map((v) => (
+                    <PressableScale
+                      key={v.id}
+                      onPress={() => openVehicle(v.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${vehicleName(v)}. ${metaLine(v)}`}
+                      style={s.row}
+                    >
+                      <View style={s.rowIcon} accessibilityElementsHidden>
+                        {covers[v.id] ? (
+                          <Image
+                            source={{ uri: covers[v.id] }}
+                            style={s.rowThumb}
+                            resizeMode="cover"
+                            accessible={false}
+                          />
+                        ) : (
+                          <Svg width={30} height={12} viewBox="0 0 30 12">
+                            <Path
+                              d="M2 9 C2 6 8 5 12 5 C15 3 20 3 24 5 C27 5 28 7 28 9"
+                              stroke={palette.creamMute}
+                              strokeWidth={1.4}
+                              strokeLinecap="round"
+                              fill="none"
                             />
-                          ) : (
-                            <Svg width={30} height={12} viewBox="0 0 30 12">
-                              <Path
-                                d="M2 9 C2 6 8 5 12 5 C15 3 20 3 24 5 C27 5 28 7 28 9"
-                                stroke={palette.creamMute}
-                                strokeWidth={1.4}
-                                strokeLinecap="round"
-                                fill="none"
-                              />
-                            </Svg>
-                          )}
-                        </View>
-                        <View style={s.rowBody}>
-                          <Text style={s.rowName} numberOfLines={1}>
-                            {vehicleName(v)}
-                          </Text>
-                          <Text style={s.rowMeta} numberOfLines={1}>
-                            {metaLine(v)}
-                          </Text>
-                        </View>
-                        <View style={s.chev} accessibilityElementsHidden />
-                      </Pressable>
-                    </FadeInSection>
+                          </Svg>
+                        )}
+                      </View>
+                      <View style={s.rowBody}>
+                        <Text style={s.rowName} numberOfLines={1}>
+                          {vehicleName(v)}
+                        </Text>
+                        <Text style={s.rowMeta} numberOfLines={1}>
+                          {metaLine(v)}
+                        </Text>
+                      </View>
+                      <View style={s.chev} accessibilityElementsHidden />
+                    </PressableScale>
                   ))}
-                </View>
+                </Stagger>
               </View>
             ) : null}
 
-            <Text style={s.footNote}>
-              Année et couleur telles que vous les avez renseignées. Ouvrez un véhicule pour ajouter
-              ses photos et consigner ses réglages.
-            </Text>
+            <FadeInSection delay={240}>
+              <Text style={s.footNote}>
+                Année et couleur telles que vous les avez renseignées. Ouvrez un véhicule pour
+                ajouter ses photos et consigner ses réglages.
+              </Text>
+            </FadeInSection>
           </>
         ) : null}
       </View>
@@ -413,8 +429,6 @@ const s = StyleSheet.create({
     borderColor: palette.faint,
     transform: [{ rotate: '45deg' }],
   },
-
-  pressed: { opacity: 0.92, borderColor: palette.edge },
 
   footNote: {
     fontFamily: fonts.body,

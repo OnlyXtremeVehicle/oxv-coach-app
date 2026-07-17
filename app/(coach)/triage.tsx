@@ -18,14 +18,20 @@
  * Couleur de marge = dégradé §7.6 (rouge de DONNÉE → or midpoint → vert), via
  * marginZoneExportColor — jamais le rouge de marque, jamais l'or décoratif.
  * SVG, pas Skia : tourne en Expo Go et au build.
+ *
+ * Motion (passe transversale, kit src/components/motion) : en-tête en fondu,
+ * liste des virages en cascade (Stagger), sélection en PressableScale — pendant
+ * que la carte se dessine (PilotPreset animate, déjà en place). Durées et
+ * courbes = celles du kit ; reduce-motion respecté par construction.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import { PilotPreset, type TrajectoryPoint } from '@/components/CircuitMap';
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { type TriageCorner } from '@/services/coachTriageLogic';
 import { getSessionTriage } from '@/services/coachTriageService';
@@ -115,11 +121,13 @@ export default function CoachTriageScreen() {
         <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>
-        <Text style={s.eyebrow}>Où regarder en premier</Text>
-        <Text style={s.title} accessibilityRole="header">
-          Les virages les plus serrés.
-        </Text>
-        <Text style={s.subtitle}>Classés par marge — un fait, pas une consigne.</Text>
+        <FadeInSection>
+          <Text style={s.eyebrow}>Où regarder en premier</Text>
+          <Text style={s.title} accessibilityRole="header">
+            Les virages les plus serrés.
+          </Text>
+          <Text style={s.subtitle}>Classés par marge — un fait, pas une consigne.</Text>
+        </FadeInSection>
 
         <StateWrapper
           state={state}
@@ -162,13 +170,15 @@ export default function CoachTriageScreen() {
                 {hasMargins ? <MarginLegend /> : null}
               </View>
 
-              <View style={{ gap: spacing.sm }}>
+              {/* Priorité de lecture cascadée — chaque virage entre à son tour,
+                  pendant que la carte se dessine à gauche. */}
+              <Stagger style={{ gap: spacing.sm }}>
                 {corners.map((c) => {
                   const active = selected === c.segmentIndex;
                   const zoneColor = c.marginZone ? marginZoneExportColor(c.marginZone) : null;
                   const pct = Math.round(c.marginPercent);
                   return (
-                    <Pressable
+                    <PressableScale
                       key={c.segmentIndex}
                       accessibilityRole="button"
                       accessibilityState={{ selected: active }}
@@ -176,7 +186,6 @@ export default function CoachTriageScreen() {
                       onPress={() =>
                         setSelected((cur) => (cur === c.segmentIndex ? null : c.segmentIndex))
                       }
-                      style={({ pressed }) => ({ opacity: pressed ? 0.85 : 1 })}
                     >
                       <Card style={{ borderColor: active ? palette.edge : palette.line }}>
                         <View style={s.row}>
@@ -208,10 +217,10 @@ export default function CoachTriageScreen() {
                           </Text>
                         </View>
                       </Card>
-                    </Pressable>
+                    </PressableScale>
                   );
                 })}
-              </View>
+              </Stagger>
 
               {/* Ouvrir la même séance dans le Studio (lecture dense). Route réelle. */}
               {sessionId ? (
@@ -231,9 +240,11 @@ export default function CoachTriageScreen() {
             </View>
           </View>
 
-          <Text style={s.doctrine}>
-            Le triage désigne où regarder. La cause, et la suite, restent à vous.
-          </Text>
+          <FadeInSection delay={240}>
+            <Text style={s.doctrine}>
+              Le triage désigne où regarder. La cause, et la suite, restent à vous.
+            </Text>
+          </FadeInSection>
         </StateWrapper>
       </View>
     </Screen>

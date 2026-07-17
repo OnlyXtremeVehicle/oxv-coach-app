@@ -14,22 +14,19 @@
  */
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import {
-  Animated,
-  Easing,
-  LayoutAnimation,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  UIManager,
-  View,
-} from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { Link } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { SourceMethodBlock } from '@/components/InsightTransparency';
-import { FadeInSection, useReduceMotion } from '@/components/motion';
+import {
+  AnimatedPresence,
+  BreathingGlow,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  useReduceMotion,
+} from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { supabase } from '@/lib/supabase';
 import { decidePaddockAction, type PaddockAction } from '@/services/paddockHeroLogic';
@@ -49,12 +46,6 @@ import { Screen } from '@/ui/Screen';
 import { timeAgoFr, timeBasedGreeting } from '@/utils/time';
 
 const { palette, fonts, spacing, radius, dataColors } = theme;
-
-// LayoutAnimation (panneau « Comment lire cet écran ») — l'ancienne architecture
-// Android exige l'activation explicite ; sans effet ailleurs.
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 /** Légende QDI du panneau pédagogique — mêmes couleurs que QdiBars (une couleur
  *  = une donnée, système §4 handoff). */
@@ -203,7 +194,7 @@ export default function HomeHubScreen() {
 
         {__DEV__ ? (
           <Link href="/(app)/debug-capture" asChild>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               style={{
                 minHeight: 44,
@@ -213,22 +204,17 @@ export default function HomeHubScreen() {
               }}
             >
               <Text style={s.footerLink}>Mode debug — capture UBX</Text>
-            </Pressable>
+            </PressableScale>
           </Link>
         ) : null}
 
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           onPress={signOut}
-          style={({ pressed }) => ({
-            height: 44,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: pressed ? 0.85 : 1,
-          })}
+          style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={s.footerLink}>Se déconnecter</Text>
-        </Pressable>
+        </PressableScale>
       </View>
     </Screen>
   );
@@ -246,24 +232,21 @@ function ModeEnroute() {
 
 function ModeCountdown({ firstName, action }: { firstName: string; action: PaddockAction | null }) {
   return (
-    <View style={s.modeWrap}>
+    <Stagger style={s.modeWrap}>
       <Text style={s.eyebrow}>Prochaine séance</Text>
       <Text style={s.modeTitle}>{firstName ? `À bientôt, ${firstName}.` : 'À bientôt.'}</Text>
       <Text style={s.modeManifest}>L'app vous tiendra au courant.</Text>
       {action ? (
         <Link href={action.href as never} asChild>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
-            style={({ pressed }) => [
-              s.primaryBtn,
-              { marginTop: spacing.xl, opacity: pressed ? 0.9 : 1 },
-            ]}
+            style={[s.primaryBtn, { marginTop: spacing.xl }]}
           >
             <Text style={s.primaryBtnText}>{action.label}</Text>
-          </Pressable>
+          </PressableScale>
         </Link>
       ) : null}
-    </View>
+    </Stagger>
   );
 }
 
@@ -379,16 +362,16 @@ function ModePassive({
                 href={{ pathname: '/(app)/bilan', params: { sessionId: recentSession.id } }}
                 asChild
               >
-                <Pressable
+                <PressableScale
                   accessibilityRole="button"
                   accessibilityLabel={`Votre meilleur tour, ${formatChronoMs(bestSeconds * 1000)}`}
-                  style={({ pressed }) => [s.bestCard, { opacity: pressed ? 0.9 : 1 }]}
+                  style={s.bestCard}
                 >
                   <View style={s.goldDot} />
                   <Text style={s.bestLabel}>Votre meilleur tour</Text>
                   <Text style={s.bestDash}> — </Text>
                   <Text style={s.bestChrono}>{formatChronoMs(bestSeconds * 1000)}</Text>
-                </Pressable>
+                </PressableScale>
               </Link>
             </FadeInSection>
           ) : null}
@@ -438,16 +421,12 @@ function ModePassive({
         {action?.hint ? <Text style={s.actionHint}>{action.hint}</Text> : null}
         {action ? (
           <Link href={action.href as never} asChild>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
-              style={({ pressed }) => [
-                s.primaryBtn,
-                action.hint ? { marginTop: spacing.md } : null,
-                { opacity: pressed ? 0.9 : 1 },
-              ]}
+              style={[s.primaryBtn, action.hint ? { marginTop: spacing.md } : null]}
             >
               <Text style={s.primaryBtnText}>{action.label} →</Text>
-            </Pressable>
+            </PressableScale>
           </Link>
         ) : null}
       </FadeInSection>
@@ -457,10 +436,10 @@ function ModePassive({
         <FadeInSection delay={240}>
           <View style={s.nextSeparator} />
           <Link href={'/(app)/preparation' as never} asChild>
-            <Pressable
+            <PressableScale
               accessibilityRole="button"
               accessibilityLabel={`Prochaine journée, ${shortDay(nextDay.date)}. Préparer`}
-              style={({ pressed }) => [s.nextRow, { opacity: pressed ? 0.85 : 1 }]}
+              style={s.nextRow}
             >
               <View>
                 <Text style={s.nextEyebrow}>PROCHAINE JOURNÉE</Text>
@@ -470,7 +449,7 @@ function ModePassive({
                 </Text>
               </View>
               <Text style={s.nextAction}>Préparer ›</Text>
-            </Pressable>
+            </PressableScale>
           </Link>
         </FadeInSection>
       ) : null}
@@ -538,48 +517,41 @@ function useCountUpFr(value: number, decimals: number, duration = 900): string {
   return display;
 }
 
-/** Le chiffre roi violet (régularité) — se construit à l'apparition. */
+/** Le chiffre roi violet (régularité) — se construit à l'apparition, puis
+ *  respire discrètement (BreathingGlow : l'unique respiration de l'écran). */
 function RegularityKingNumber({ stdDevSeconds }: { stdDevSeconds: number }) {
   const display = useCountUpFr(stdDevSeconds, 2);
   return (
-    <Text
-      style={s.regNumber}
-      accessibilityLabel={`Régularité au tour : plus ou moins ${fmtFr(stdDevSeconds, 2)} secondes`}
-    >
-      ±{display}
-      <Text style={s.regUnit}> s</Text>
-    </Text>
+    <BreathingGlow>
+      <Text
+        style={s.regNumber}
+        accessibilityLabel={`Régularité au tour : plus ou moins ${fmtFr(stdDevSeconds, 2)} secondes`}
+      >
+        ±{display}
+        <Text style={s.regUnit}> s</Text>
+      </Text>
+    </BreathingGlow>
   );
 }
 
-/** Affordance fine « Comment lire cet écran » → panneau repliable (LayoutAnimation). */
+/** Affordance fine « Comment lire cet écran » → panneau repliable (AnimatedPresence). */
 function HowToRead({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const reduceMotion = useReduceMotion();
   return (
     <View style={{ marginTop: spacing.lg }}>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         hitSlop={theme.hitSlop}
-        onPress={() => {
-          if (!reduceMotion) {
-            LayoutAnimation.configureNext(
-              LayoutAnimation.create(
-                220,
-                LayoutAnimation.Types.easeInEaseOut,
-                LayoutAnimation.Properties.opacity
-              )
-            );
-          }
-          setOpen((o) => !o);
-        }}
-        style={({ pressed }) => [s.howBtn, { opacity: pressed ? 0.7 : 1 }]}
+        onPress={() => setOpen((o) => !o)}
+        style={s.howBtn}
       >
         <Text style={s.howLabel}>Comment lire cet écran</Text>
         <Text style={[s.howChevron, open ? s.howChevronOpen : null]}>›</Text>
-      </Pressable>
-      {open ? <View style={s.howPanel}>{children}</View> : null}
+      </PressableScale>
+      <AnimatedPresence visible={open}>
+        <View style={s.howPanel}>{children}</View>
+      </AnimatedPresence>
     </View>
   );
 }

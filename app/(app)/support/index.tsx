@@ -15,11 +15,12 @@
  */
 
 import { useCallback, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path } from 'react-native-svg';
 
 import { EmptyState } from '@/components/instruments';
+import { AnimatedPresence, FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import {
   SUPPORT_CATEGORIES,
   type SupportCategory,
@@ -109,17 +110,18 @@ type ActionTileProps = {
 
 function ActionTile({ glyph, title, sub, onPress, accessibilityLabel }: ActionTileProps) {
   return (
-    <Pressable
+    <PressableScale
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       hitSlop={4}
-      style={({ pressed }) => [s.tile, pressed && s.tilePressed]}
+      haptic="tap"
+      style={s.tile}
     >
       <View style={s.tileIcon}>{glyph}</View>
       <Text style={s.tileTitle}>{title}</Text>
       <Text style={s.tileSub}>{sub}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -170,8 +172,9 @@ export default function SupportIndexScreen() {
     <Screen>
       <AppBar title="Support" onBack={() => router.back()} />
       <View style={s.body}>
-        {/* Deux tuiles d'action — cibles réelles : composer existant + site OXV. */}
-        <View style={s.tiles}>
+        {/* Deux tuiles d'action — cibles réelles : composer existant + site OXV.
+            Entrée en léger décalé gauche → droite (flex préservé par itemStyle). */}
+        <Stagger style={s.tiles} itemStyle={{ flex: 1 }}>
           <ActionTile
             glyph={<ChatGlyph />}
             title="Nous écrire"
@@ -191,17 +194,18 @@ export default function SupportIndexScreen() {
               Linking.openURL(SITE_URL).catch(() => undefined);
             }}
           />
-        </View>
+        </Stagger>
 
-        {/* Composer — flux de création conservé (services, états, validation). */}
-        {composing ? (
+        {/* Composer — flux de création conservé (services, états, validation).
+            Présence animée : monte en fondu, sort avant démontage. */}
+        <AnimatedPresence visible={composing}>
           <Card style={s.composer}>
             <SectionLabel>Catégorie</SectionLabel>
             <View style={s.pills}>
               {SUPPORT_CATEGORIES.map((c) => {
                 const on = c.value === category;
                 return (
-                  <Pressable
+                  <PressableScale
                     key={c.value}
                     onPress={() => setCategory(c.value)}
                     accessibilityRole="radio"
@@ -211,7 +215,7 @@ export default function SupportIndexScreen() {
                     style={[s.pill, on ? s.pillOn : null]}
                   >
                     <Text style={[s.pillTxt, on ? s.pillTxtOn : null]}>{c.label}</Text>
-                  </Pressable>
+                  </PressableScale>
                 );
               })}
             </View>
@@ -242,13 +246,15 @@ export default function SupportIndexScreen() {
             <Button label="Envoyer" onPress={onSend} loading={sending} disabled={!subject.trim()} />
             <Button label="Annuler" variant="ghost" onPress={() => setComposing(false)} />
           </Card>
-        ) : null}
+        </AnimatedPresence>
 
-        {/* Vos demandes réelles (support_tickets, RLS own-row). */}
-        <View style={s.listHead}>
-          <SectionLabel>Vos demandes</SectionLabel>
-        </View>
-        <View style={s.list}>
+        {/* Vos demandes réelles (support_tickets, RLS own-row) — en cascade. */}
+        <FadeInSection delay={160}>
+          <View style={s.listHead}>
+            <SectionLabel>Vos demandes</SectionLabel>
+          </View>
+        </FadeInSection>
+        <Stagger style={s.list}>
           {!loading && tickets.length === 0 ? (
             <EmptyState
               label="Aucune demande"
@@ -283,7 +289,7 @@ export default function SupportIndexScreen() {
               );
             })
           )}
-        </View>
+        </Stagger>
       </View>
     </Screen>
   );
@@ -310,10 +316,6 @@ const s = {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
     justifyContent: 'space-between' as const,
-  },
-  tilePressed: {
-    opacity: 0.92,
-    borderColor: palette.edge,
   },
   tileIcon: {
     width: 36,

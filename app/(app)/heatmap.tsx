@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -25,6 +25,7 @@ import {
   type TrajectoryPoint,
 } from '@/components/CircuitMap';
 import { EmptyState, Fact } from '@/components/instruments';
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
@@ -149,78 +150,99 @@ export default function HeatmapScreen() {
         ) : (
           <>
             {/* HÉROS — tracé coloré par vitesse froid → chaud (speedHeat). */}
-            <View
-              accessible
-              accessibilityRole="image"
-              accessibilityLabel={
-                stats
-                  ? `Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide. Vitesse la plus haute : ${Math.round(stats.max)} kilomètres heure.`
-                  : 'Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide.'
-              }
-            >
-              <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
-            </View>
+            <FadeInSection>
+              <View
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={
+                  stats
+                    ? `Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide. Vitesse la plus haute : ${Math.round(stats.max)} kilomètres heure.`
+                    : 'Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide.'
+                }
+              >
+                <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
+              </View>
+            </FadeInSection>
 
             {/* Légende PLEINE LARGEUR — LENT → RAPIDE (froid → chaud, jamais de rouge) */}
-            <View
-              style={s.legendRow}
-              accessible
-              accessibilityRole="text"
-              accessibilityLabel="Légende : du lent au rapide"
-            >
-              <Text style={s.gradLabel}>Lent</Text>
+            <FadeInSection delay={120}>
               <View
-                style={s.gradientBar}
-                accessibilityElementsHidden
-                importantForAccessibility="no-hide-descendants"
+                style={s.legendRow}
+                accessible
+                accessibilityRole="text"
+                accessibilityLabel="Légende : du lent au rapide"
               >
+                <Text style={s.gradLabel}>Lent</Text>
                 {/* Rampe froid → chaud partagée (theme.speedHeat) : bleu → cyan →
                     vert → jaune. Même source que le rendu (TrackStage) : la légende
-                    ne peut plus mentir. Jamais de rouge (alarme) ni d'or (chrono). */}
-                {speedHeat.map((c, i) => (
-                  <View key={i} style={[s.gradSeg, { backgroundColor: c }]} />
-                ))}
+                    ne peut plus mentir. Jamais de rouge (alarme) ni d'or (chrono).
+                    Les segments FONDENT en séquence (Stagger, fondu pur). */}
+                <View
+                  style={s.gradientBar}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants"
+                >
+                  <Stagger
+                    style={s.gradientTrack}
+                    itemStyle={s.gradSegItem}
+                    interval={90}
+                    initialDelay={160}
+                    translateY={0}
+                  >
+                    {speedHeat.map((c, i) => (
+                      <View key={i} style={[s.gradSeg, { backgroundColor: c }]} />
+                    ))}
+                  </Stagger>
+                </View>
+                {/* « RAPIDE » porte le bout chaud de la rampe (jaune, maquette). */}
+                <Text style={[s.gradLabel, { color: speedHeat[speedHeat.length - 1] }]}>
+                  Rapide
+                </Text>
               </View>
-              {/* « RAPIDE » porte le bout chaud de la rampe (jaune, maquette). */}
-              <Text style={[s.gradLabel, { color: speedHeat[speedHeat.length - 1] }]}>Rapide</Text>
-            </View>
+            </FadeInSection>
 
             {/* CARTE NARRATIVE unique (maquette) : puce or + constat factuel. */}
-            <View style={s.narrativeCard} accessible accessibilityRole="text">
-              <View style={s.narrativeDot} />
-              <Text style={s.narrativeText}>{narrative}</Text>
-            </View>
+            <FadeInSection delay={200}>
+              <View style={s.narrativeCard} accessible accessibilityRole="text">
+                <View style={s.narrativeDot} />
+                <Text style={s.narrativeText}>{narrative}</Text>
+              </View>
+            </FadeInSection>
 
             {/* Substance conservée sous le héros (parti A) — deux faits réels. */}
             {stats ? (
-              <View style={s.factsRow}>
-                <Fact
-                  label="Virage le plus lent"
-                  value={String(Math.round(stats.min))}
-                  unit="km/h"
-                />
-                <Fact
-                  label="Ligne la plus rapide"
-                  value={String(Math.round(stats.max))}
-                  unit="km/h"
-                />
-              </View>
+              <FadeInSection delay={280}>
+                <View style={s.factsRow}>
+                  <Fact
+                    label="Virage le plus lent"
+                    value={String(Math.round(stats.min))}
+                    unit="km/h"
+                  />
+                  <Fact
+                    label="Ligne la plus rapide"
+                    value={String(Math.round(stats.max))}
+                    unit="km/h"
+                  />
+                </View>
+              </FadeInSection>
             ) : null}
 
-            <Text style={s.manifest}>La donnée, sans un mot. À vous de la lire.</Text>
+            <FadeInSection delay={360}>
+              <Text style={s.manifest}>La donnée, sans un mot. À vous de la lire.</Text>
+            </FadeInSection>
           </>
         )}
 
         <View style={{ marginTop: spacing.xxl, alignItems: 'center' }}>
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel="Retour"
             hitSlop={hitSlop}
             onPress={() => router.back()}
-            style={({ pressed }) => [s.backLinkPress, pressed && { opacity: 0.6 }]}
+            style={s.backLinkPress}
           >
             <Text style={s.backLink}>Retour</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </View>
     </Screen>
@@ -247,13 +269,20 @@ const s = {
   },
   gradientBar: {
     flex: 1,
-    flexDirection: 'row' as const,
     height: 6,
     borderRadius: radius.pill,
     overflow: 'hidden' as const,
   },
-  gradSeg: {
+  // Rangée des segments (conteneur Stagger) — géométrie inchangée.
+  gradientTrack: {
+    flexDirection: 'row' as const,
+    height: 6,
+  },
+  // Cellule portée par le wrapper de cascade (Stagger.itemStyle).
+  gradSegItem: {
     flex: 1,
+  },
+  gradSeg: {
     height: 6,
   },
   gradLabel: {

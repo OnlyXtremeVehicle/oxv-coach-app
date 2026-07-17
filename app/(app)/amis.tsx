@@ -20,13 +20,18 @@
  *
  * Doctrine : aucun score, aucun classement, jamais de « gagnant ». La
  * comparaison est un partage consenti entre copains, pas du coaching.
+ *
+ * Motion (kit src/components/motion) : entrée en fondu, lignes ami en cascade
+ * (Stagger), lignes et actions en PressableScale (haptique incluse). Courbes
+ * et durées du kit, reduce-motion respecté.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import { listRecentAnalyses } from '@/services/analysesService';
 import { loadFriendSessionList } from '@/services/duelService';
 import {
@@ -238,49 +243,53 @@ export default function AmisScreen() {
       <AppBar title="Amis" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
         {/* Ajout par @handle — flux d'invitation existant, restylé v2 */}
-        <Field
-          label="Ajouter par @handle"
-          value={searchHandle}
-          onChangeText={setSearchHandle}
-          placeholder="@handle"
-          helper="Le pseudo public du pilote à inviter."
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="send"
-          onSubmitEditing={handleSendRequest}
-          containerStyle={{ marginBottom: spacing.sm }}
-        />
-        <Button
-          label="Envoyer la demande"
-          onPress={handleSendRequest}
-          loading={searching}
-          disabled={!searchHandle.trim()}
-        />
+        <FadeInSection>
+          <Field
+            label="Ajouter par @handle"
+            value={searchHandle}
+            onChangeText={setSearchHandle}
+            placeholder="@handle"
+            helper="Le pseudo public du pilote à inviter."
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="send"
+            onSubmitEditing={handleSendRequest}
+            containerStyle={{ marginBottom: spacing.sm }}
+          />
+          <Button
+            label="Envoyer la demande"
+            onPress={handleSendRequest}
+            loading={searching}
+            disabled={!searchHandle.trim()}
+          />
+        </FadeInSection>
 
         <View style={{ marginTop: spacing.xxl }}>
           <StateWrapper state={loading ? 'loading' : 'nominal'} skeletonLines={4}>
             {/* Demandes reçues */}
             {received.length > 0 && (
               <Section title={`Demandes reçues (${received.length})`}>
-                {received.map((f) => (
-                  <FriendRow
-                    key={f.friendshipId}
-                    entry={f}
-                    meta={metaPending(f)}
-                    actions={[
-                      {
-                        label: 'Accepter',
-                        kind: 'primary',
-                        onPress: () => handleAccept(f.friendshipId),
-                      },
-                      {
-                        label: 'Décliner',
-                        kind: 'subtle',
-                        onPress: () => handleDecline(f.friendshipId),
-                      },
-                    ]}
-                  />
-                ))}
+                <Stagger style={{ gap: spacing.sm }}>
+                  {received.map((f) => (
+                    <FriendRow
+                      key={f.friendshipId}
+                      entry={f}
+                      meta={metaPending(f)}
+                      actions={[
+                        {
+                          label: 'Accepter',
+                          kind: 'primary',
+                          onPress: () => handleAccept(f.friendshipId),
+                        },
+                        {
+                          label: 'Décliner',
+                          kind: 'subtle',
+                          onPress: () => handleDecline(f.friendshipId),
+                        },
+                      ]}
+                    />
+                  ))}
+                </Stagger>
               </Section>
             )}
 
@@ -292,48 +301,54 @@ export default function AmisScreen() {
                   apparaissent ici.
                 </Text>
               ) : (
-                accepted.map((f) => (
-                  <FriendRow
-                    key={f.friendshipId}
-                    entry={f}
-                    meta={metaAccepted(f, sharedByFriend[f.friendId])}
-                    onPress={() => router.push(`/(app)/cote-a-cote/${f.friendId}` as never)}
-                    actions={[
-                      {
-                        label: 'Révoquer',
-                        kind: 'subtle',
-                        onPress: () => handleRevoke(f.friendshipId),
-                      },
-                    ]}
-                  />
-                ))
+                <Stagger style={{ gap: spacing.sm }}>
+                  {accepted.map((f) => (
+                    <FriendRow
+                      key={f.friendshipId}
+                      entry={f}
+                      meta={metaAccepted(f, sharedByFriend[f.friendId])}
+                      onPress={() => router.push(`/(app)/cote-a-cote/${f.friendId}` as never)}
+                      actions={[
+                        {
+                          label: 'Révoquer',
+                          kind: 'subtle',
+                          onPress: () => handleRevoke(f.friendshipId),
+                        },
+                      ]}
+                    />
+                  ))}
+                </Stagger>
               )}
             </Section>
 
             {/* Demandes envoyées en attente */}
             {sent.length > 0 && (
               <Section title={`Demandes envoyées (${sent.length})`}>
-                {sent.map((f) => (
-                  <FriendRow
-                    key={f.friendshipId}
-                    entry={f}
-                    meta={metaPending(f)}
-                    actions={[
-                      {
-                        label: 'Annuler',
-                        kind: 'subtle',
-                        onPress: () => handleRevoke(f.friendshipId),
-                      },
-                    ]}
-                  />
-                ))}
+                <Stagger style={{ gap: spacing.sm }}>
+                  {sent.map((f) => (
+                    <FriendRow
+                      key={f.friendshipId}
+                      entry={f}
+                      meta={metaPending(f)}
+                      actions={[
+                        {
+                          label: 'Annuler',
+                          kind: 'subtle',
+                          onPress: () => handleRevoke(f.friendshipId),
+                        },
+                      ]}
+                    />
+                  ))}
+                </Stagger>
               </Section>
             )}
           </StateWrapper>
         </View>
 
         {/* Caption doctrinale de la maquette */}
-        <Text style={s.caption}>Aucun classement entre vous. Juste des repères communs.</Text>
+        <FadeInSection delay={120}>
+          <Text style={s.caption}>Aucun classement entre vous. Juste des repères communs.</Text>
+        </FadeInSection>
       </View>
     </Screen>
   );
@@ -395,11 +410,8 @@ function FriendRow({
 }) {
   const displayName = displayNameOf(entry);
 
-  return (
-    <Card
-      onPress={onPress}
-      accessibilityLabel={onPress ? `${displayName} — côte à côte` : undefined}
-    >
+  const body = (
+    <Card>
       <View style={s.rowHead}>
         <View style={s.avatar}>
           <Text style={s.avatarTxt}>{initialsOf(entry)}</Text>
@@ -418,24 +430,36 @@ function FriendRow({
       {actions.length > 0 && (
         <View style={s.actionsRow}>
           {actions.map((a) => (
-            <Pressable
+            <PressableScale
               key={a.label}
               accessibilityRole="button"
               accessibilityLabel={`${a.label} — ${displayName}`}
+              haptic="tap"
               onPress={a.onPress}
-              style={({ pressed }) => [
-                a.kind === 'primary' ? s.chipPrimary : s.chipSubtle,
-                { opacity: pressed ? 0.7 : 1 },
-              ]}
+              style={a.kind === 'primary' ? s.chipPrimary : s.chipSubtle}
             >
               <Text style={a.kind === 'primary' ? s.chipPrimaryTxt : s.chipSubtleTxt}>
                 {a.label}
               </Text>
-            </Pressable>
+            </PressableScale>
           ))}
         </View>
       )}
     </Card>
+  );
+
+  if (!onPress) return body;
+
+  // Ligne actionnable : le retour tactile du kit (scale + haptique légère).
+  return (
+    <PressableScale
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${displayName} — côte à côte`}
+      haptic="tap"
+    >
+      {body}
+    </PressableScale>
   );
 }
 
