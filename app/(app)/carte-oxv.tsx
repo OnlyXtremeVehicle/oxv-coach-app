@@ -1,52 +1,80 @@
 /**
  * Écran « La carte OXV » — écran UNIQUE du territoire OXV (carte + liste).
- * Reskin fidèle au langage refonte-v2 (§7bis, screens/34-carte-oxv-live.png).
+ * Reskin fidèle au langage refonte-v2 (§7bis, screens/34-carte-oxv-live.png),
+ * enrichi build 23 (carte intrigante, décision fondateur 2026-07-16) :
+ *
+ * - ONGLETS PAR CATÉGORIE en tête (Tout · Événements · Garages · Restaurants ·
+ *   Hôtels · Autres) — chips avec COMPTE RÉEL par catégorie, masquées à zéro ;
+ * - marqueurs différenciés par catégorie : pastille sombre cerclée de la
+ *   couleur d'identité + initiale mono (src/ui/carteIdentity.ts, documenté —
+ *   identité de lieu, jamais de la donnée, jamais l'or) ;
+ * - apparition des marqueurs en fondu séquentiel (rejoué au changement de
+ *   filtre), panneau de détail monté/démonté en AnimatedPresence ;
+ * - vue liste cascadée (Stagger) avec liserés par catégorie.
  *
  * ÉCART À LA MAQUETTE (assumé). Le PNG montre un mode LIVE (positions des
  * pilotes en temps réel, badge LIVE rouge, temps restant, nb de voitures) qui
  * N'EXISTE PAS côté pilote : le suivi en direct est réservé au Coach (décision
  * P5 ; §12 « En direct · centre de contrôle », coach-only). On NE simule donc
- * NI positions de pilotes NI badge LIVE. Ce qui est repris de la maquette :
- * le langage sombre v2 (surfaces, hairlines, eyebrows mono, liseré d'accent),
- * la carte réelle du territoire, et la note factuelle « repère, pas classement »
- * transposée aux points réels de la carte. Écart noté dans sharedChangesNeeded.
+ * NI positions de pilotes NI badge LIVE.
  *
  * Fusion (décision Gabin 2026-06) : les anciennes routes `social` /
  * `social-carte` / `lieux` ont été SUPPRIMÉES (PR-86) au profit de cet écran ;
- * le modèle `places` (partners/lodgings/restaurants, tables vides) est déprécié
- * au profit de `social_pings`. Voir `roadmap/rapports/pr-08-fusion-carte-oxv.md`.
- *
- * Deux vues via un bascule sobre : « Carte » (MapView, marqueurs circuits +
- * points du territoire, panneau « au clic ») et « Liste » (points groupés par
- * type, actions Direct/Détails/Contacter). En Expo Go la carte native est
- * indisponible → la vue Liste est rendue d'office.
+ * le modèle `places` est déprécié au profit de `social_pings`.
  *
  * Données RÉELLES uniquement : circuits (circuitsService) + points publiés
- * (social_pings, RLS membres validés). Chiffres/textes de la maquette = exemples.
+ * (social_pings, RLS membres validés). Les points partenaires n'apparaissent
+ * qu'une fois validés par OXV (is_published, workflow fondateur 2026-07-16).
  *
  * Doctrine : visualisation sobre, aucune gamification, aucun classement.
- * **or = chrono/record UNIQUEMENT** — un marqueur de circuit est un repère
- * d'identité (pas un temps), donc crème ; le bascule, les filtres, les puces de
- * groupe et les CTA restent gris/crème, jamais or.
+ * **or = chrono/record UNIQUEMENT** — les couleurs de catégorie sont des
+ * identités de lieu (carteIdentity.ts) ; bascule, chips et CTA jamais or.
  */
 
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Image,
+  Linking,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import {
+  AnimatedPresence,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+  useReduceMotion,
+} from '@/components/motion';
 import { isExpoGo } from '@/lib/runtime';
 import { type Circuit, fetchCircuits } from '@/services/circuitsService';
 import {
+  type CarteCategoryKey,
   type SocialPing,
+  CARTE_CATEGORIES,
   PING_KIND_LABELS,
+  categoryOfKind,
+  countPingsByCategory,
+  filterPingsByCategory,
   groupPingsByKind,
   listSocialPings,
 } from '@/services/socialPingsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
+import {
+  CARTE_CATEGORY_COLOR,
+  CARTE_CATEGORY_GLYPH,
+  CARTE_CIRCUIT_COLOR,
+} from '@/ui/carteIdentity';
 import { Screen } from '@/ui/Screen';
 import { formatDateLong } from '@/utils/format';
 
@@ -61,6 +89,7 @@ const DEFAULT_REGION = {
 };
 
 type ViewMode = 'carte' | 'liste';
+type CatFilter = 'tout' | CarteCategoryKey;
 type Selected = { type: 'circuit'; circuit: Circuit } | { type: 'ping'; ping: SocialPing } | null;
 
 export default function CarteOxvScreen() {
@@ -70,7 +99,10 @@ export default function CarteOxvScreen() {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [view, setView] = useState<ViewMode>('carte');
+  const [cat, setCat] = useState<CatFilter>('tout');
   const [selected, setSelected] = useState<Selected>(null);
+  // Contenu du panneau retenu pendant le fondu sortant (AnimatedPresence).
+  const [panelData, setPanelData] = useState<NonNullable<Selected> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,8 +126,20 @@ export default function CarteOxvScreen() {
     };
   }, []);
 
+  useEffect(() => {
+    if (selected) setPanelData(selected);
+  }, [selected]);
+
+  const counts = countPingsByCategory(pings);
+  const filtered = filterPingsByCategory(pings, cat);
   const showMap = canMap && view === 'carte';
-  const total = circuits.length + pings.length;
+  // Les circuits restent visibles quel que soit le filtre (repère maître).
+  const visibleCount = circuits.length + filtered.length;
+
+  const onCategoryChange = (next: CatFilter) => {
+    setCat(next);
+    setSelected(null);
+  };
 
   return (
     <Screen scroll={false}>
@@ -106,6 +150,7 @@ export default function CarteOxvScreen() {
       />
 
       {canMap ? <ViewToggle view={view} onChange={setView} /> : null}
+      <CategoryChips cat={cat} counts={counts} total={pings.length} onChange={onCategoryChange} />
 
       {showMap ? (
         <View style={{ flex: 1 }}>
@@ -119,26 +164,36 @@ export default function CarteOxvScreen() {
               toolbarEnabled={false}
               onPress={() => setSelected(null)}
             >
-              {circuits.map((c) => (
-                <Marker
+              {circuits.map((c, i) => (
+                <FadeMarker
                   key={`c-${c.id}`}
                   coordinate={{ latitude: c.finishLineLat, longitude: c.finishLineLon }}
-                  title={c.name}
-                  description="Circuit OXV"
-                  pinColor={palette.cream}
+                  index={i}
                   onPress={() => setSelected({ type: 'circuit', circuit: c })}
-                />
+                >
+                  <View style={s.markerCircuit}>
+                    <View style={s.markerCircuitCore} />
+                  </View>
+                </FadeMarker>
               ))}
-              {pings.map((p) => (
-                <Marker
-                  key={`p-${p.id}`}
-                  coordinate={{ latitude: p.lat, longitude: p.lon }}
-                  title={p.title}
-                  description={PING_KIND_LABELS[p.kind]}
-                  pinColor={palette.creamSoft}
-                  onPress={() => setSelected({ type: 'ping', ping: p })}
-                />
-              ))}
+              {filtered.map((p, i) => {
+                const key = categoryOfKind(p.kind);
+                const color = CARTE_CATEGORY_COLOR[key];
+                return (
+                  // La clé porte le filtre : le fondu séquentiel se rejoue à
+                  // chaque transition d'onglet.
+                  <FadeMarker
+                    key={`${cat}-p-${p.id}`}
+                    coordinate={{ latitude: p.lat, longitude: p.lon }}
+                    index={circuits.length + i}
+                    onPress={() => setSelected({ type: 'ping', ping: p })}
+                  >
+                    <View style={[s.markerDot, { borderColor: color }]}>
+                      <Text style={[s.markerGlyph, { color }]}>{CARTE_CATEGORY_GLYPH[key]}</Text>
+                    </View>
+                  </FadeMarker>
+                );
+              })}
             </MapView>
 
             {loading ? (
@@ -152,10 +207,14 @@ export default function CarteOxvScreen() {
               </View>
             ) : null}
 
-            {/* Légende sobre */}
+            {/* Légende : circuits + catégories réellement affichées. */}
             <View style={s.legend}>
-              <LegendItem color={palette.cream} label="Circuits" />
-              <LegendItem color={palette.creamSoft} label="Lieux & événements" />
+              <LegendItem color={CARTE_CIRCUIT_COLOR} label="Circuits" />
+              {CARTE_CATEGORIES.filter((c) =>
+                cat === 'tout' ? counts[c.key] > 0 : c.key === cat
+              ).map((c) => (
+                <LegendItem key={c.key} color={CARTE_CATEGORY_COLOR[c.key]} label={c.label} />
+              ))}
             </View>
           </View>
 
@@ -167,11 +226,15 @@ export default function CarteOxvScreen() {
             </Text>
           </View>
 
-          {/* Panneau « au clic » */}
-          {selected ? <DetailPanel selected={selected} onClose={() => setSelected(null)} /> : null}
+          {/* Panneau « au clic » — monté/démonté en fondu (AnimatedPresence). */}
+          {panelData ? (
+            <AnimatedPresence visible={selected !== null} style={s.panelWrap}>
+              <DetailPanel selected={panelData} onClose={() => setSelected(null)} />
+            </AnimatedPresence>
+          ) : null}
         </View>
       ) : (
-        <TerritoryList loading={loading} failed={failed} pings={pings} />
+        <TerritoryList loading={loading} failed={failed} pings={filtered} filterKey={cat} />
       )}
 
       <View style={s.actionBar}>
@@ -184,11 +247,62 @@ export default function CarteOxvScreen() {
         >
           <Text style={s.action}>Les circuits en liste</Text>
         </Pressable>
-        <Text style={s.count} accessibilityLabel={`${total} points sur la carte`}>
-          <Text style={s.countNum}>{total}</Text> points
+        <Text style={s.count} accessibilityLabel={`${visibleCount} points sur la carte`}>
+          <Text style={s.countNum}>{visibleCount}</Text> points
         </Text>
       </View>
     </Screen>
+  );
+}
+
+/**
+ * Marqueur en fondu séquentiel. `tracksViewChanges` reste actif le temps du
+ * fondu (les enfants du Marker sont rasterisés par react-native-maps) puis
+ * se coupe pour la performance. Reduce-motion : rendu direct.
+ */
+function FadeMarker({
+  coordinate,
+  index,
+  onPress,
+  children,
+}: {
+  coordinate: { latitude: number; longitude: number };
+  index: number;
+  onPress: () => void;
+  children: ReactNode;
+}) {
+  const reduceMotion = useReduceMotion();
+  const opacity = useRef(new Animated.Value(0)).current;
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      opacity.setValue(1);
+      setSettled(true);
+      return;
+    }
+    const anim = Animated.timing(opacity, {
+      toValue: 1,
+      duration: 320,
+      delay: Math.min(index * 60, 900),
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    });
+    anim.start(({ finished }) => {
+      if (finished) setSettled(true);
+    });
+    return () => anim.stop();
+  }, [reduceMotion, index, opacity]);
+
+  return (
+    <Marker
+      coordinate={coordinate}
+      anchor={{ x: 0.5, y: 0.5 }}
+      tracksViewChanges={!settled}
+      onPress={onPress}
+    >
+      <Animated.View style={{ opacity }}>{children}</Animated.View>
+    </Marker>
   );
 }
 
@@ -198,22 +312,89 @@ function ViewToggle({ view, onChange }: { view: ViewMode; onChange: (v: ViewMode
       {(['carte', 'liste'] as const).map((mode) => {
         const on = view === mode;
         return (
-          <Pressable
+          <PressableScale
             key={mode}
             accessibilityRole="button"
             accessibilityState={{ selected: on }}
             accessibilityLabel={mode === 'carte' ? 'Vue carte' : 'Vue liste'}
             hitSlop={theme.hitSlop}
+            haptic="tap"
             onPress={() => onChange(mode)}
             style={[s.toggleBtn, on ? s.toggleBtnOn : null]}
           >
             <Text style={[s.toggleT, on ? s.toggleTOn : null]}>
               {mode === 'carte' ? 'Carte' : 'Liste'}
             </Text>
-          </Pressable>
+          </PressableScale>
         );
       })}
     </View>
+  );
+}
+
+/**
+ * Onglets par catégorie — comptes RÉELS, chips masquées à zéro. Masqué
+ * entièrement tant qu'aucun point n'est publié (rien à filtrer).
+ */
+function CategoryChips({
+  cat,
+  counts,
+  total,
+  onChange,
+}: {
+  cat: CatFilter;
+  counts: Record<CarteCategoryKey, number>;
+  total: number;
+  onChange: (c: CatFilter) => void;
+}) {
+  if (total === 0) return null;
+
+  const items: { key: CatFilter; label: string; count: number; color: string | null }[] = [
+    { key: 'tout', label: 'Tout', count: total, color: null },
+    ...CARTE_CATEGORIES.filter((c) => counts[c.key] > 0).map((c) => ({
+      key: c.key as CatFilter,
+      label: c.label,
+      count: counts[c.key],
+      color: CARTE_CATEGORY_COLOR[c.key],
+    })),
+  ];
+
+  return (
+    <FadeInSection>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.chipsRow}
+      >
+        {items.map((item) => {
+          const on = cat === item.key;
+          return (
+            <PressableScale
+              key={item.key}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              accessibilityLabel={`${item.label} — ${item.count} ${
+                item.count > 1 ? 'points' : 'point'
+              }`}
+              hitSlop={theme.hitSlop}
+              haptic="tap"
+              onPress={() => onChange(item.key)}
+              style={[s.chip, on ? s.chipOn : null]}
+            >
+              {item.color ? (
+                <View
+                  style={[s.chipDot, { backgroundColor: item.color }]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              ) : null}
+              <Text style={[s.chipT, on ? s.chipTOn : null]}>{item.label}</Text>
+              <Text style={[s.chipCount, on ? s.chipCountOn : null]}>{item.count}</Text>
+            </PressableScale>
+          );
+        })}
+      </ScrollView>
+    </FadeInSection>
   );
 }
 
@@ -221,10 +402,12 @@ function TerritoryList({
   loading,
   failed,
   pings,
+  filterKey,
 }: {
   loading: boolean;
   failed: boolean;
   pings: SocialPing[];
+  filterKey: CatFilter;
 }) {
   if (loading) {
     return (
@@ -264,26 +447,40 @@ function TerritoryList({
   const groups = groupPingsByKind(pings);
   return (
     <ScrollView contentContainerStyle={s.listContent}>
-      {groups.map((group) => (
-        <View key={group.kind} style={s.group}>
-          <View style={s.headRow}>
-            <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text style={s.groupEyebrow}>{PING_KIND_LABELS[group.kind]}</Text>
-            <View style={s.headLine} accessibilityElementsHidden importantForAccessibility="no" />
-            <Text style={s.groupCount}>{group.items.length}</Text>
-          </View>
-          <View style={{ gap: spacing.sm }}>
-            {group.items.map((ping) => (
-              <PingCard key={ping.id} ping={ping} />
-            ))}
-          </View>
-        </View>
-      ))}
+      {/* La clé porte le filtre : la cascade se rejoue à chaque onglet. */}
+      <Stagger key={filterKey} interval={70}>
+        {groups.map((group) => {
+          const color = CARTE_CATEGORY_COLOR[categoryOfKind(group.kind)];
+          return (
+            <View key={group.kind} style={s.group}>
+              <View style={s.headRow}>
+                <View
+                  style={[s.headDot, { backgroundColor: color }]}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+                <Text style={s.groupEyebrow}>{PING_KIND_LABELS[group.kind]}</Text>
+                <View
+                  style={s.headLine}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+                <Text style={s.groupCount}>{group.items.length}</Text>
+              </View>
+              <View style={{ gap: spacing.sm }}>
+                {group.items.map((ping) => (
+                  <PingCard key={ping.id} ping={ping} accent={color} />
+                ))}
+              </View>
+            </View>
+          );
+        })}
+      </Stagger>
     </ScrollView>
   );
 }
 
-function PingCard({ ping }: { ping: SocialPing }) {
+function PingCard({ ping, accent }: { ping: SocialPing; accent: string }) {
   const openUrl = (url: string | null) => {
     if (url) Linking.openURL(url).catch(() => undefined);
   };
@@ -292,7 +489,7 @@ function PingCard({ ping }: { ping: SocialPing }) {
   };
 
   return (
-    <Card style={s.pingCard}>
+    <Card style={[s.pingCard, { borderLeftColor: accent }]}>
       <Text style={s.pingTitle}>{ping.title}</Text>
       <View style={s.pingMetas}>
         {ping.startsAt ? <PingMeta label="date" value={formatDateLong(ping.startsAt)} /> : null}
@@ -351,15 +548,16 @@ function PingAction({
   primary?: boolean;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       hitSlop={theme.hitSlop}
+      haptic="tap"
       onPress={onPress}
-      style={({ pressed }) => [s.btn, primary ? s.btnPrimary : s.btnGhost, pressed && s.btnPressed]}
+      style={[s.btn, primary ? s.btnPrimary : s.btnGhost]}
     >
       <Text style={[s.btnT, primary ? s.btnTPrimary : null]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
@@ -386,8 +584,13 @@ function DetailPanel({
   if (selected.type === 'circuit') {
     const c = selected.circuit;
     return (
-      <Card style={s.panel}>
-        <PanelHead label="Circuit OXV" title={c.name} onClose={onClose} />
+      <Card style={[s.panel, { borderTopColor: CARTE_CIRCUIT_COLOR }]}>
+        <PanelHead
+          label="Circuit OXV"
+          accent={CARTE_CIRCUIT_COLOR}
+          title={c.name}
+          onClose={onClose}
+        />
         {c.lengthKm ? (
           <View style={s.panelMetas}>
             <PingMeta label="longueur" value={`${c.lengthKm.toFixed(1).replace('.', ',')} km`} />
@@ -407,10 +610,16 @@ function DetailPanel({
   }
 
   const p = selected.ping;
+  const accent = CARTE_CATEGORY_COLOR[categoryOfKind(p.kind)];
   const isEvent = p.kind === 'event_oxv' || p.kind === 'event_partner' || p.kind === 'soiree';
   return (
-    <Card style={s.panel}>
-      <PanelHead label={PING_KIND_LABELS[p.kind]} title={p.title} onClose={onClose} />
+    <Card style={[s.panel, { borderTopColor: accent }]}>
+      <PanelHead
+        label={PING_KIND_LABELS[p.kind]}
+        accent={accent}
+        title={p.title}
+        onClose={onClose}
+      />
       {p.imageUrl ? (
         <Image
           source={{ uri: p.imageUrl }}
@@ -460,20 +669,29 @@ function open(url: string | null) {
 
 function PanelHead({
   label,
+  accent,
   title,
   onClose,
 }: {
   label: string;
+  accent: string;
   title: string;
   onClose: () => void;
 }) {
   return (
     <View style={s.panelHead}>
       <View style={{ flex: 1 }}>
-        <Text style={s.panelEyebrow}>{label}</Text>
+        <View style={s.panelEyebrowRow}>
+          <View
+            style={[s.panelEyebrowDot, { backgroundColor: accent }]}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text style={s.panelEyebrow}>{label}</Text>
+        </View>
         <Text style={s.panelTitle}>{title}</Text>
       </View>
-      <Pressable
+      <PressableScale
         accessibilityRole="button"
         accessibilityLabel="Fermer"
         hitSlop={theme.hitSlop}
@@ -481,7 +699,7 @@ function PanelHead({
         style={s.panelClose}
       >
         <View style={s.panelCloseX} accessibilityElementsHidden importantForAccessibility="no" />
-      </Pressable>
+      </PressableScale>
     </View>
   );
 }
@@ -496,21 +714,22 @@ function PanelAction({
   onPress: () => void;
 }) {
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={label}
+      haptic="tap"
       onPress={onPress}
-      style={({ pressed }) => [s.btn, primary ? s.btnPrimary : s.btnGhost, pressed && s.btnPressed]}
+      style={[s.btn, primary ? s.btnPrimary : s.btnGhost]}
     >
       <Text style={[s.btnT, primary ? s.btnTPrimary : null]}>{label}</Text>
-    </Pressable>
+    </PressableScale>
   );
 }
 
 /* ------------------------------------------------------------------ */
 /* Styles — langage refonte-v2 : surfaces sombres, hairlines,          */
-/* eyebrows mono, cadre de carte, liseré d'accent crème (identité,     */
-/* jamais l'or). Cibles tactiles ≥ 44 px.                              */
+/* eyebrows mono, cadre de carte, identités de catégorie               */
+/* (carteIdentity.ts — jamais l'or). Cibles tactiles ≥ 44 px.          */
 /* ------------------------------------------------------------------ */
 
 const s = {
@@ -548,6 +767,42 @@ const s = {
   },
   toggleTOn: { color: palette.cream },
 
+  // — Onglets par catégorie (chips à compte réel, point d'identité) —
+  chipsRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card,
+  },
+  chipOn: { backgroundColor: palette.card2, borderColor: palette.cardBorderProminent },
+  chipDot: { width: 7, height: 7, borderRadius: 3.5 },
+  chipT: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  chipTOn: { color: palette.cream },
+  chipCount: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.5,
+    color: palette.faint,
+  },
+  chipCountOn: { color: palette.creamSoft },
+
   // — Vue carte (cadre sombre v2 autour du MapView) —
   mapFrame: {
     flex: 1,
@@ -580,6 +835,38 @@ const s = {
     color: palette.creamMute,
   },
 
+  // — Marqueurs par catégorie (pastille sombre + initiale mono) —
+  markerDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    backgroundColor: 'rgba(11,11,13,0.92)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  markerGlyph: {
+    fontFamily: fonts.monoSemi,
+    fontSize: 11,
+    letterSpacing: 0,
+  },
+  markerCircuit: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: CARTE_CIRCUIT_COLOR,
+    backgroundColor: 'rgba(11,11,13,0.92)',
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  markerCircuitCore: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: CARTE_CIRCUIT_COLOR,
+  },
+
   // — Liste territoire —
   listContent: {
     paddingHorizontal: spacing.lg,
@@ -592,12 +879,11 @@ const s = {
     gap: spacing.sm,
     marginBottom: spacing.xs,
   },
-  // Doctrine : puce de groupe en gris (creamMute), jamais or.
+  // Point d'identité de catégorie (couleur posée inline — jamais or).
   headDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: palette.creamMute,
   },
   groupEyebrow: {
     fontFamily: fonts.mono,
@@ -618,7 +904,7 @@ const s = {
     color: palette.faint,
   },
 
-  // — Carte d'un point (liseré gauche crème = identité territoire, jamais or) —
+  // — Carte d'un point (liseré gauche = identité de catégorie, jamais or) —
   pingCard: {
     backgroundColor: palette.card2,
     borderLeftWidth: 2,
@@ -681,7 +967,6 @@ const s = {
   // (card2) + bordure prominente, jamais par l'or.
   btnPrimary: { backgroundColor: palette.card2, borderColor: palette.cardBorderProminent },
   btnGhost: { borderColor: palette.line },
-  btnPressed: { opacity: 0.85 },
   btnT: {
     fontFamily: fonts.mono,
     fontSize: 11,
@@ -735,12 +1020,14 @@ const s = {
     color: palette.creamSoft,
   },
 
-  // — Panneau « au clic » (liseré haut crème, hairlines, eyebrow) —
-  panel: {
+  // — Panneau « au clic » (liseré haut = identité, hairlines, eyebrow) —
+  panelWrap: {
     position: 'absolute' as const,
     left: spacing.lg,
     right: spacing.lg,
     bottom: spacing.lg,
+  },
+  panel: {
     backgroundColor: palette.card2,
     borderTopWidth: 2,
     borderTopColor: palette.edge,
@@ -758,13 +1045,19 @@ const s = {
     alignItems: 'flex-start' as const,
     gap: spacing.md,
   },
+  panelEyebrowRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    marginBottom: 4,
+  },
+  panelEyebrowDot: { width: 6, height: 6, borderRadius: 3 },
   panelEyebrow: {
     fontFamily: fonts.mono,
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase' as const,
     color: palette.eyebrow,
-    marginBottom: 4,
   },
   panelTitle: {
     fontFamily: fonts.display,

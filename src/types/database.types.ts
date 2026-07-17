@@ -1837,6 +1837,7 @@ export type Database = {
           payment_link: string | null
           photo_url: string | null
           season_price_eur: number | null
+          session_price_eur: number | null
           socials: Json
           specialties: string[]
           updated_at: string
@@ -1863,6 +1864,7 @@ export type Database = {
           payment_link?: string | null
           photo_url?: string | null
           season_price_eur?: number | null
+          session_price_eur?: number | null
           socials?: Json
           specialties?: string[]
           updated_at?: string
@@ -1889,6 +1891,7 @@ export type Database = {
           payment_link?: string | null
           photo_url?: string | null
           season_price_eur?: number | null
+          session_price_eur?: number | null
           socials?: Json
           specialties?: string[]
           updated_at?: string

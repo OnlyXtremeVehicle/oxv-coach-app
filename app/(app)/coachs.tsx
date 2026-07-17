@@ -6,8 +6,11 @@
  * Maquette (10-decouverte.png) : titre « Découverte » inline (sans retour) +
  * onglets PILLS « Coachs / Partenaires / Roulages » (état local, Coachs actif
  * par défaut). Onglet Coachs : cartes coach à ACCENT HAUT rouge coach
- * (`palette.coachAccent`), avatar initiales, nom, spécialité, prix réel s'il
- * existe, boutons « Voir la fiche » (bordé) / « Contacter » (plein rouge).
+ * (`palette.coachAccent`), photo réelle du coach (repli : initiales cerclées
+ * rouge), nom, spécialités réelles, PRIX À LA SESSION réel en heritageGold
+ * (décision fondateur 2026-07-16 — saison en secondaire discret si renseignée,
+ * prix absent = pas de ligne), boutons « Voir la fiche » (bordé) /
+ * « Contacter » (plein rouge).
  * Onglet Partenaires : cartes à accent haut BLEU (`roleColors.partner`), logo
  * réel s'il existe, badge catégorie, bouton bleu « Demander le contact » (lead
  * CONSENTI §8.1, flux existant) + note de confidentialité. Onglet Roulages :
@@ -330,9 +333,18 @@ function CoachCard({ coach }: { coach: CoachListing }) {
   const name = coach.headline ?? 'Coach OXV';
   // Sous-titre maquette « spécialité · circuit » : premières valeurs réelles.
   const subtitle = [...coach.specialties, ...coach.circuits].slice(0, 2).join(' · ');
-  // Tarif réel (season_price_eur). Absent = rien (jamais inventé). Le libellé
-  // « saison » est honnête : c'est un tarif de saison, pas de séance.
-  const price = coach.seasonPriceEur !== null ? `${Math.round(coach.seasonPriceEur)} €` : null;
+  // Prix RÉELS (décision fondateur 2026-07-16, session_price_eur en prod) :
+  // LE prix affiché est À LA SESSION, registre d'offre heritageGold ; la
+  // saison reste en secondaire discret si renseignée. Un prix absent n'a pas
+  // de ligne (jamais inventé).
+  const sessionPrice =
+    coach.sessionPriceEur !== null
+      ? `${Math.round(coach.sessionPriceEur).toLocaleString('fr-FR')} €`
+      : null;
+  const seasonPrice =
+    coach.seasonPriceEur !== null
+      ? `${Math.round(coach.seasonPriceEur).toLocaleString('fr-FR')} €`
+      : null;
 
   const openFiche = () =>
     router.push({ pathname: '/(app)/coach/[id]', params: { id: coach.coachId } } as never);
@@ -369,10 +381,27 @@ function CoachCard({ coach }: { coach: CoachListing }) {
             </Text>
           ) : null}
         </View>
-        {price ? (
+        {sessionPrice || seasonPrice ? (
           <View style={{ alignItems: 'flex-end' }}>
-            <Text style={s.coachPrice}>{price}</Text>
-            <Text style={s.coachPriceLabel}>saison</Text>
+            {sessionPrice ? (
+              // LE prix : à la session, registre d'offre heritageGold (l'or
+              // système #FFB703 reste réservé au chrono/record).
+              <View
+                style={{ alignItems: 'flex-end' }}
+                accessibilityLabel={`${sessionPrice} par session`}
+              >
+                <Text style={s.coachPrice}>{sessionPrice}</Text>
+                <Text style={s.coachPriceLabel}>/ session</Text>
+              </View>
+            ) : null}
+            {seasonPrice ? (
+              <Text
+                style={[s.coachSeason, sessionPrice ? { marginTop: spacing.xs } : null]}
+                accessibilityLabel={`Saison ${seasonPrice}`}
+              >
+                saison {seasonPrice}
+              </Text>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -452,7 +481,20 @@ function PartenairesTab({
           {partners.map((p) => {
             const done = requested.has(p.id);
             return (
-              <Card key={p.id} style={s.partnerCard}>
+              // La carte OUVRE la fiche partenaire (build 23 : « le partenaire
+              // en lui-même ») ; le bouton « Demander le contact » reste
+              // prioritaire au toucher (pressable enfant).
+              <Card
+                key={p.id}
+                style={s.partnerCard}
+                accessibilityLabel={`Ouvrir la fiche de ${p.displayName}`}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(app)/partenaire/[id]',
+                    params: { id: p.id },
+                  } as never)
+                }
+              >
                 <View style={s.partnerHead}>
                   <View style={{ flex: 1 }}>
                     <View style={s.partnerBadge}>
@@ -893,11 +935,12 @@ const s = {
     borderRadius: 20,
     backgroundColor: palette.card2,
   },
+  // Sans photo : initiales CERCLÉES ROUGE (repli identitaire, build 23).
   avatarFallback: {
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
-    borderWidth: 1,
-    borderColor: palette.line,
+    borderWidth: 1.5,
+    borderColor: palette.coachAccent,
   },
   avatarInitials: {
     fontFamily: fonts.mono,
@@ -916,10 +959,12 @@ const s = {
     color: palette.creamMute,
     marginTop: 2,
   },
+  // LE prix (à la session) : registre d'offre heritageGold — l'or système
+  // (#FFB703) reste réservé au chrono/record.
   coachPrice: {
     fontFamily: fonts.monoSemi,
     fontSize: fontSize.h3,
-    color: palette.cream,
+    color: palette.heritageGold,
   },
   coachPriceLabel: {
     fontFamily: fonts.mono,
@@ -928,6 +973,13 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.faint,
     marginTop: 2,
+  },
+  // La saison, secondaire discret (si renseignée).
+  coachSeason: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    color: palette.faint,
   },
   coachActions: {
     flexDirection: 'row' as const,

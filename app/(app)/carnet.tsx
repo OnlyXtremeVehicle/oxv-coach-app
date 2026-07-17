@@ -1,34 +1,48 @@
 /**
- * Carnet — espace perso du pilote, onglet racine. Reskin FIDÈLE à la maquette
- * refonte-v2 §7.9 (screens/09-carnet.png), règle fondateur : le graphique v2
- * fait loi, l'héritage utile est retravaillé, jamais collé.
+ * Carnet — espace perso du pilote, onglet racine. Base : reskin fidèle
+ * refonte-v2 §7.9 (screens/09-carnet.png). DÉVELOPPÉ build 23 phase 2
+ * (chantier carnet-developpe) : la page se comprend d'elle-même.
  *
- * Maquette : header « Carnet » (racine, pas de retour) + bouton rond « + »
- * (nouvelle note) · eyebrow « CONDITIONS DU JOUR » + chips météo RÉELLES
- * (snapshot capté sur la séance du jour — section MASQUÉE sinon, jamais de
- * météo inventée) · eyebrow « CE QUE VOUS AVEZ RESSENTI » + zone de note libre
- * (= le composer CRUD existant restylé, trait de saisie vert discret) + notes
- * enregistrées dessous (partage coach opt-in par note, révocable) · eyebrow
- * « VOS REPÈRES » = les intentions réelles du pilote (session_intentions) en
- * checklist de lecture + « Ajouter un repère » vers l'écran Prochaine fois
- * (qui porte la saisie réelle d'intention).
+ * Ouverture : une phrase qui dit la raison d'être du Carnet + trois repères
+ * visuels (ressenti · conditions · intentions) avec insignes SVG — de simples
+ * pictos de présentation, jamais de fausse donnée.
  *
- * Zone volontairement SANS donnée de perf ni couleur QDI (doctrine Carnet).
- * Page blanche : l'app ne pré-remplit ni ne suggère JAMAIS le contenu (V5 P-E).
- * Ton OXV : vouvoiement, pas d'emoji, sobre.
+ * Sections parlantes, chacune : eyebrow + sous-titre d'usage.
+ *  - CONDITIONS DU JOUR : snapshot météo RÉEL capté aujourd'hui sur la séance
+ *    (weather_snapshots) en chips iconées + heure réelle du relevé. Section
+ *    MASQUÉE sinon — jamais de météo inventée ni périmée sous « du jour ».
+ *  - CE QUE VOUS AVEZ RESSENTI : le composer CRUD existant mis en scène
+ *    (panneau, en-tête plume, invite chaleureuse quand le carnet est blanc).
+ *    Aucun gabarit, aucune pré-saisie : l'app ne suggère JAMAIS le contenu.
+ *  - VOS DERNIÈRES NOTES : les entrées réelles (pilotNotesService) en fil
+ *    chronologique animé (Stagger + rail), compteur réel de notes, chaque note
+ *    datée, partage coach opt-in par note, révocable. Vide = invitation.
+ *  - VOS REPÈRES : intentions réelles (session_intentions) en checklist de
+ *    lecture datée + lien réel vers l'écran Prochaine fois (saisie d'intention).
  *
- * Motion (kit src/components/motion, courbes et durées du kit) : sections en
- * fondu décalé, notes en cascade (Stagger), éléments conditionnels du composer
- * en AnimatedPresence, actions en PressableScale. Reduce-motion respecté.
+ * Zone volontairement SANS donnée de perf ni couleur QDI (doctrine Carnet) ;
+ * le vert discret (caret, coche) est l'accent canon de la maquette carnet.
+ * Ton OXV : vouvoiement, pas d'emoji, descriptif jamais prescriptif.
+ *
+ * Motion (kit src/components/motion, courbes et durées du kit) : hero et
+ * sections en fondu décalé, insignes et notes en cascade (Stagger), compteur
+ * de notes en CountUpNumber, éléments conditionnels en AnimatedPresence,
+ * actions en PressableScale. Reduce-motion respecté par le kit.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import { Alert, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
 import { ConsentSwitchRow } from '@/components/ConsentSwitchRow';
-import { EmptyState } from '@/components/instruments';
-import { AnimatedPresence, FadeInSection, PressableScale, Stagger } from '@/components/motion';
+import {
+  AnimatedPresence,
+  CountUpNumber,
+  FadeInSection,
+  PressableScale,
+  Stagger,
+} from '@/components/motion';
 import {
   type SessionIntention,
   getIntentionForSession,
@@ -43,7 +57,12 @@ import {
   updateNoteBody,
 } from '@/services/pilotNotesService';
 import { fetchAllSessions } from '@/services/sessionsService';
-import { type WeatherData, fetchSessionWeather, trackConditions } from '@/services/weatherService';
+import {
+  type WeatherData,
+  fetchSessionWeather,
+  trackConditions,
+  windDirectionCardinal,
+} from '@/services/weatherService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -61,6 +80,16 @@ function fmtDate(iso: string): string {
   });
 }
 
+/** « 12 juillet » — date courte pour les méta de repère. */
+function fmtDayMonth(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+}
+
+/** « 14:32 » — heure réelle du relevé météo. */
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
 /** La date ISO tombe-t-elle sur le jour calendaire local courant ? */
 function isSameLocalDay(iso: string, now: Date): boolean {
   if (!iso) return false;
@@ -72,6 +101,163 @@ function isSameLocalDay(iso: string, now: Date): boolean {
   );
 }
 
+/** Format stable du compteur de notes (module scope : ne relance pas l'anim). */
+const notesCountFormat = (n: number): string => `×${Math.round(n)}`;
+
+/* ------------------------------------------------------------------ */
+/* Insignes SVG — pictos de présentation (décor, cachés aux lecteurs   */
+/* d'écran). Trait fin creamMute, langage ligne du reste de l'app.     */
+/* ------------------------------------------------------------------ */
+
+const ICON_STROKE = 1.4;
+
+/** Plume — le ressenti, les mots du pilote. */
+function PenIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M3.2 12.8 L4.1 9.7 L10.4 3.4 A1.35 1.35 0 0 1 12.3 5.3 L6 11.6 L3.2 12.8 Z"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Path d="M9.4 4.4 L11.3 6.3" stroke={color} strokeWidth={ICON_STROKE} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/** Nuage — le ciel du jour. */
+function CloudIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M4.6 11.2 H11 A2.3 2.3 0 0 0 11.3 6.6 A3.3 3.3 0 0 0 4.9 6.9 A2.3 2.3 0 0 0 4.6 11.2 Z"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Case cochée — les intentions, les repères. */
+function CheckSquareIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Rect
+        x={2.7}
+        y={2.7}
+        width={10.6}
+        height={10.6}
+        rx={2.6}
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        fill="none"
+      />
+      <Path
+        d="M5.4 8.3 L7.2 10.1 L10.6 6"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Thermomètre — température captée. */
+function ThermoIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M6.9 8.8 V3.7 A1.3 1.3 0 0 1 9.5 3.7 V8.8 A2.7 2.7 0 1 1 6.9 8.8 Z"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinejoin="round"
+        fill="none"
+      />
+      <Circle cx={8.2} cy={10.8} r={1.1} fill={color} />
+    </Svg>
+  );
+}
+
+/** Route à médiane pointillée — l'état de la piste. */
+function TrackIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M4.2 13 C6 9.6 6.2 6.6 5.2 3"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Path
+        d="M11.8 13 C10 9.6 9.8 6.6 10.8 3"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Line x1={8} y1={4.4} x2={8} y2={6} stroke={color} strokeWidth={1.2} strokeLinecap="round" />
+      <Line x1={8} y1={8} x2={8} y2={9.6} stroke={color} strokeWidth={1.2} strokeLinecap="round" />
+      <Line
+        x1={8}
+        y1={11.6}
+        x2={8}
+        y2={13}
+        stroke={color}
+        strokeWidth={1.2}
+        strokeLinecap="round"
+      />
+    </Svg>
+  );
+}
+
+/** Filets de vent. */
+function WindIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M2.6 6.2 H9.2 A1.7 1.7 0 1 0 7.5 4.5"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinecap="round"
+        fill="none"
+      />
+      <Path
+        d="M2.6 9.4 H11 A1.7 1.7 0 1 1 9.3 11.1"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/** Goutte — humidité. */
+function DropletIcon({ color = palette.creamMute }: { color?: string }) {
+  return (
+    <Svg width={16} height={16} viewBox="0 0 16 16" accessibilityElementsHidden>
+      <Path
+        d="M8 2.8 C6.2 5.5 5 7.3 5 8.9 A3 3 0 0 0 11 8.9 C11 7.3 9.8 5.5 8 2.8 Z"
+        stroke={color}
+        strokeWidth={ICON_STROKE}
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </Svg>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Écran                                                               */
+/* ------------------------------------------------------------------ */
+
 /**
  * Repère = une intention réelle du pilote. `carried` : l'intention a été
  * rattachée à une séance terminée (elle a été portée en piste) → case cochée.
@@ -80,6 +266,12 @@ function isSameLocalDay(iso: string, now: Date): boolean {
 interface RepereItem {
   intention: SessionIntention;
   carried: boolean;
+}
+
+interface ConditionChip {
+  key: string;
+  label: string;
+  icon: ReactNode;
 }
 
 export default function CarnetScreen() {
@@ -211,15 +403,42 @@ export default function CarnetScreen() {
     ]);
   }
 
-  // Chips météo : uniquement des valeurs captées (weather_snapshots) + la
-  // lecture piste dérivée par le service partagé trackConditions.
-  const conditionChips = todayWeather
-    ? [
-        `${Math.round(todayWeather.temperatureC)} °C`,
-        trackConditions(todayWeather).label,
-        `Vent ${Math.round(todayWeather.windSpeedKmh)} km/h`,
-      ]
-    : [];
+  // Chips météo iconées : uniquement des valeurs captées (weather_snapshots)
+  // + la lecture piste dérivée par le service partagé trackConditions. Une
+  // valeur absente (0 par défaut de colonne nullable) n'invente pas de chip.
+  const conditionChips: ConditionChip[] = [];
+  if (todayWeather) {
+    const sky = todayWeather.weatherLabel.trim();
+    if (sky) conditionChips.push({ key: 'ciel', label: sky, icon: <CloudIcon /> });
+    conditionChips.push({
+      key: 'temp',
+      label: `${Math.round(todayWeather.temperatureC)} °C`,
+      icon: <ThermoIcon />,
+    });
+    conditionChips.push({
+      key: 'piste',
+      label: trackConditions(todayWeather).label,
+      icon: <TrackIcon />,
+    });
+    const cardinal =
+      todayWeather.windSpeedKmh > 0
+        ? ` ${windDirectionCardinal(todayWeather.windDirectionDeg)}`
+        : '';
+    conditionChips.push({
+      key: 'vent',
+      label: `Vent ${Math.round(todayWeather.windSpeedKmh)} km/h${cardinal}`,
+      icon: <WindIcon />,
+    });
+    if (todayWeather.humidityPct > 0) {
+      conditionChips.push({
+        key: 'humidite',
+        label: `Humidité ${Math.round(todayWeather.humidityPct)} %`,
+        icon: <DropletIcon />,
+      });
+    }
+  }
+
+  const carnetBlanc = !loading && notes.length === 0;
 
   return (
     <Screen>
@@ -241,15 +460,58 @@ export default function CarnetScreen() {
       />
 
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+        {/* ── OUVERTURE — la raison d'être du Carnet en une phrase, puis trois
+            repères visuels de ce qu'on y fait (insignes en cascade). ───────── */}
+        <FadeInSection style={s.hero}>
+          <Text style={s.heroLead}>
+            Votre mémoire de pilote : ce que vous ressentez, ce que vous voulez garder.
+          </Text>
+          <Stagger
+            interval={70}
+            initialDelay={140}
+            style={s.heroBadges}
+            itemStyle={s.heroBadgeItem}
+          >
+            <View style={s.badge}>
+              <View style={s.badgeIcon}>
+                <PenIcon color={palette.creamSoft} />
+              </View>
+              <Text style={s.badgeLabel}>Ressenti</Text>
+              <Text style={s.badgeCaption}>Vos mots</Text>
+            </View>
+            <View style={s.badge}>
+              <View style={s.badgeIcon}>
+                <CloudIcon color={palette.creamSoft} />
+              </View>
+              <Text style={s.badgeLabel}>Conditions</Text>
+              <Text style={s.badgeCaption}>La piste du jour</Text>
+            </View>
+            <View style={s.badge}>
+              <View style={s.badgeIcon}>
+                <CheckSquareIcon color={palette.creamSoft} />
+              </View>
+              <Text style={s.badgeLabel}>Intentions</Text>
+              <Text style={s.badgeCaption}>Vos repères</Text>
+            </View>
+          </Stagger>
+        </FadeInSection>
+
         {/* ── CONDITIONS DU JOUR — masquée sans météo réelle captée aujourd'hui.
             La section monte en fondu quand le snapshot arrive (AnimatedPresence). */}
         <AnimatedPresence visible={conditionChips.length > 0}>
           <View style={s.section}>
             <Text style={s.eyebrow}>CONDITIONS DU JOUR</Text>
+            {todayWeather ? (
+              <Text style={s.sub}>
+                Relevées en bord de piste à {fmtTime(todayWeather.capturedAt)}, sur votre séance du
+                jour.
+              </Text>
+            ) : null}
             <View style={s.chipsRow}>
               {conditionChips.map((chip) => (
-                <View key={chip} style={s.chip}>
-                  <Text style={s.chipText}>{chip}</Text>
+                <View key={chip.key} style={s.chip}>
+                  <View accessibilityElementsHidden>{chip.icon}</View>
+                  <Text style={s.chipText}>{chip.label}</Text>
                 </View>
               ))}
             </View>
@@ -257,48 +519,95 @@ export default function CarnetScreen() {
         </AnimatedPresence>
 
         {/* ── CE QUE VOUS AVEZ RESSENTI — la zone de note libre (maquette),
-            c'est-à-dire le composer CRUD existant restylé. Aucun gabarit,
+            c'est-à-dire le composer CRUD existant mis en scène. Aucun gabarit,
             aucune pré-saisie ; le trait de saisie vert est le seul accent. */}
-        <FadeInSection style={s.section}>
+        <FadeInSection delay={80} style={s.section}>
           <Text style={s.eyebrow}>CE QUE VOUS AVEZ RESSENTI</Text>
-          <TextInput
-            ref={inputRef}
-            value={draft}
-            onChangeText={setDraft}
-            multiline
-            maxLength={5000}
-            placeholder="Écrivez ici, si vous le souhaitez."
-            placeholderTextColor={palette.faint}
-            selectionColor={palette.green}
-            cursorColor={palette.green}
-            accessibilityLabel="Votre note"
-            style={s.noteInput}
-          />
-          {/* Mention conditionnelle : fondu d'entrée/sortie plutôt qu'un saut. */}
-          <AnimatedPresence visible={Boolean(sessionId) && !editingId}>
-            <Text style={s.linkHint}>Reliée à votre dernière séance.</Text>
-          </AnimatedPresence>
-          <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
-            <Button
-              label={editingId ? 'Mettre à jour' : 'Enregistrer'}
-              onPress={onSave}
-              loading={saving}
-              disabled={!draft.trim()}
-            />
-            {/* Le bouton d'annulation entre et sort en fondu avec le mode édition. */}
-            <AnimatedPresence visible={editingId != null}>
-              <Button label="Annuler la modification" variant="ghost" onPress={onCancelEdit} />
+          <Text style={s.sub}>
+            À chaud ou plus tard, vos mots restent les vôtres. Le partage avec votre coach se décide
+            note par note, et se retire de même.
+          </Text>
+
+          <Card style={s.composer}>
+            <View style={s.composerHead}>
+              <View style={s.composerIcon} accessibilityElementsHidden>
+                <PenIcon />
+              </View>
+              <Text style={s.composerMode}>{editingId ? 'MODIFICATION' : 'NOUVELLE NOTE'}</Text>
+            </View>
+
+            {/* Invite chaleureuse quand le carnet est encore blanc. */}
+            <AnimatedPresence visible={carnetBlanc && !editingId && draft.trim().length === 0}>
+              <Text style={s.composerInvite}>
+                Votre première note peut tenir en une phrase. Elle n'appartient qu'à vous.
+              </Text>
             </AnimatedPresence>
+
+            <TextInput
+              ref={inputRef}
+              value={draft}
+              onChangeText={setDraft}
+              multiline
+              maxLength={5000}
+              placeholder="Écrivez ici, si vous le souhaitez."
+              placeholderTextColor={palette.faint}
+              selectionColor={palette.green}
+              cursorColor={palette.green}
+              accessibilityLabel="Votre note"
+              style={s.noteInput}
+            />
+            {/* Mention conditionnelle : fondu d'entrée/sortie plutôt qu'un saut. */}
+            <AnimatedPresence visible={Boolean(sessionId) && !editingId}>
+              <Text style={s.linkHint}>Reliée à votre dernière séance.</Text>
+            </AnimatedPresence>
+            <View style={{ marginTop: spacing.md, gap: spacing.sm }}>
+              <Button
+                label={editingId ? 'Mettre à jour' : 'Enregistrer'}
+                onPress={onSave}
+                loading={saving}
+                disabled={!draft.trim()}
+              />
+              {/* Le bouton d'annulation entre et sort en fondu avec le mode édition. */}
+              <AnimatedPresence visible={editingId != null}>
+                <Button label="Annuler la modification" variant="ghost" onPress={onCancelEdit} />
+              </AnimatedPresence>
+            </View>
+          </Card>
+        </FadeInSection>
+
+        {/* ── VOS DERNIÈRES NOTES — le fil réel du carnet (pilot_notes), du plus
+            récent au plus ancien, en cascade le long d'un rail. Compteur réel.
+            Vide = invitation, jamais un blanc muet. */}
+        <FadeInSection delay={160} style={s.section}>
+          <View style={s.sectionHeadRow}>
+            <Text style={s.eyebrow}>VOS DERNIÈRES NOTES</Text>
+            {notes.length > 0 ? (
+              <CountUpNumber
+                value={notes.length}
+                duration={700}
+                format={notesCountFormat}
+                style={s.countBadge}
+              />
+            ) : null}
           </View>
 
-          {/* Notes enregistrées — l'héritage gardé, restylé v2, entrées en cascade. */}
-          <View style={{ marginTop: spacing.xl }}>
-            {!loading && notes.length === 0 ? (
-              <EmptyState label="Aucune note" message="Ce carnet est à vous." />
-            ) : (
-              <Stagger style={{ gap: spacing.sm }}>
-                {notes.map((note) => (
-                  <Card key={note.id} style={{ gap: spacing.sm }}>
+          {carnetBlanc ? (
+            <View style={s.invite}>
+              <Text style={s.inviteLabel}>PREMIÈRE PAGE</Text>
+              <Text style={s.inviteText}>
+                Encore aucune note dans le fil. La première s'écrit ci-dessus, quand vous le
+                souhaitez — personne ne la lira sans votre accord.
+              </Text>
+            </View>
+          ) : (
+            <Stagger interval={70} style={{ marginTop: spacing.md, gap: spacing.sm }}>
+              {notes.map((note, index) => (
+                <View key={note.id} style={s.threadRow}>
+                  <View style={s.threadRail} accessibilityElementsHidden>
+                    <View style={s.threadDot} />
+                    {index < notes.length - 1 ? <View style={s.threadLine} /> : null}
+                  </View>
+                  <Card style={s.threadCard}>
                     <Text style={s.noteDate}>{fmtDate(note.createdAt)}</Text>
                     <Text style={s.noteBody}>{note.body}</Text>
 
@@ -331,18 +640,21 @@ export default function CarnetScreen() {
                       </PressableScale>
                     </View>
                   </Card>
-                ))}
-              </Stagger>
-            )}
-          </View>
+                </View>
+              ))}
+            </Stagger>
+          )}
         </FadeInSection>
 
-        {/* ── VOS REPÈRES — les intentions réelles du pilote, en lecture.
+        {/* ── VOS REPÈRES — les intentions réelles du pilote, en lecture datée.
             Case cochée = intention portée en séance ; case vide = posée pour la
-            prochaine fois. « Ajouter un repère » ouvre l'écran Prochaine fois,
-            qui porte désormais la saisie réelle d'intention (maquette #7a). */}
-        <FadeInSection delay={120} style={s.section}>
+            prochaine fois. Le lien réel ouvre l'écran Prochaine fois, qui porte
+            la saisie d'intention (maquette #7a). */}
+        <FadeInSection delay={240} style={s.section}>
           <Text style={s.eyebrow}>VOS REPÈRES</Text>
+          <Text style={s.sub}>
+            Posés avant la séance, relus après. Une coche signale un repère porté en piste.
+          </Text>
           {reperes.length > 0 ? (
             <Stagger style={{ marginTop: spacing.md, gap: spacing.md }}>
               {reperes.map(({ intention, carried }) => (
@@ -352,26 +664,35 @@ export default function CarnetScreen() {
                   accessible
                   accessibilityLabel={`Repère : ${intention.body}. ${
                     carried ? 'Porté en séance.' : 'Posé pour la prochaine fois.'
-                  }`}
+                  } Posé le ${fmtDayMonth(intention.createdAt)}.`}
                 >
                   <View style={[s.checkBox, carried && s.checkBoxOn]}>
                     {carried ? <View style={s.checkGlyph} /> : null}
                   </View>
-                  <Text style={[s.repereText, !carried && s.repereTextPending]}>
-                    {intention.body}
-                  </Text>
+                  <View style={s.repereBody}>
+                    <Text style={[s.repereText, !carried && s.repereTextPending]}>
+                      {intention.body}
+                    </Text>
+                    <Text style={s.repereMeta}>
+                      {carried ? 'Porté en séance' : 'Pour la prochaine fois'} · posé le{' '}
+                      {fmtDayMonth(intention.createdAt)}
+                    </Text>
+                  </View>
                 </View>
               ))}
             </Stagger>
-          ) : null}
+          ) : (
+            <Text style={s.repereEmpty}>Aucun repère posé pour l'instant.</Text>
+          )}
           <PressableScale
             accessibilityRole="button"
-            accessibilityLabel="Ajouter un repère"
+            accessibilityLabel="Poser un repère pour la prochaine fois"
             haptic="tap"
             onPress={() => router.push('/(app)/prochaine-fois' as never)}
             style={s.addRepere}
           >
-            <Text style={s.addRepereTxt}>+ Ajouter un repère</Text>
+            <Text style={s.addRepereGlyph}>+</Text>
+            <Text style={s.addRepereTxt}>Poser un repère pour la prochaine fois</Text>
           </PressableScale>
         </FadeInSection>
       </View>
@@ -388,7 +709,20 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.eyebrow,
   },
+  // Sous-titre d'usage sous l'eyebrow — chaque section dit à quoi elle sert.
+  sub: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.55,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
+  },
   section: { marginTop: spacing.xl },
+  sectionHeadRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+  },
 
   // Bouton rond « + » du header (pastille surface-2, comme le retour AppBar).
   plusBtn: {
@@ -408,7 +742,56 @@ const s = {
     color: palette.creamSoft,
   },
 
-  // Chips météo — fines, surface sombre, sans couleur de donnée (zone Carnet).
+  // Ouverture — phrase de raison d'être + trois insignes d'usage.
+  hero: { marginTop: spacing.sm },
+  heroLead: {
+    fontFamily: fonts.display,
+    fontSize: fontSize.h3,
+    lineHeight: fontSize.h3 * 1.45,
+    color: palette.creamSoft,
+  },
+  heroBadges: {
+    flexDirection: 'row' as const,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+  },
+  heroBadgeItem: { flex: 1 },
+  badge: {
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.line,
+    backgroundColor: palette.card,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    alignItems: 'center' as const,
+    gap: spacing.xs,
+  },
+  badgeIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    marginBottom: 2,
+  },
+  badgeLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.creamSoft,
+  },
+  badgeCaption: {
+    fontFamily: fonts.body,
+    fontSize: 10.5,
+    color: palette.creamMute,
+    textAlign: 'center' as const,
+  },
+
+  // Chips météo — fines, iconées, surface sombre, sans couleur de donnée.
   chipsRow: {
     flexDirection: 'row' as const,
     flexWrap: 'wrap' as const,
@@ -416,6 +799,9 @@ const s = {
     marginTop: spacing.md,
   },
   chip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
     backgroundColor: palette.card,
     borderWidth: 1,
     borderColor: palette.line,
@@ -429,15 +815,47 @@ const s = {
     color: palette.creamSoft,
   },
 
-  // Zone de note libre — panneau sombre arrondi (maquette : fond card, le
-  // trait de saisie vert vient de selectionColor/cursorColor).
+  // Composer mis en scène — panneau carte, en-tête plume, saisie intérieure.
+  composer: {
+    marginTop: spacing.md,
+    padding: spacing.lg,
+  },
+  composerHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+  },
+  composerIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: palette.card2,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  composerMode: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.creamMute,
+  },
+  composerInvite: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.55,
+    color: palette.creamMute,
+    marginTop: spacing.md,
+  },
   noteInput: {
     marginTop: spacing.md,
     minHeight: 132,
-    borderRadius: radius.lg,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.card,
+    borderColor: palette.separator,
+    backgroundColor: palette.surface3,
     padding: spacing.lg,
     fontFamily: fonts.body,
     fontSize: fontSize.body,
@@ -450,6 +868,68 @@ const s = {
     fontSize: fontSize.small,
     color: palette.creamMute,
     marginTop: spacing.sm,
+  },
+
+  // Compteur réel de notes (fil) — mono discret.
+  countBadge: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.6,
+    color: palette.creamMute,
+  },
+
+  // Fil chronologique — rail à points le long des notes.
+  threadRow: {
+    flexDirection: 'row' as const,
+    gap: spacing.md,
+  },
+  threadRail: {
+    width: 14,
+    alignItems: 'center' as const,
+    paddingTop: spacing.lg,
+  },
+  threadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.4,
+    borderColor: palette.green,
+    backgroundColor: palette.card,
+  },
+  threadLine: {
+    flex: 1,
+    width: 1,
+    backgroundColor: palette.separator,
+    marginTop: spacing.xs,
+  },
+  threadCard: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+
+  // Invitation quand le carnet est blanc — jamais un vide muet.
+  invite: {
+    marginTop: spacing.md,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderStyle: 'dashed' as const,
+    borderColor: palette.cardBorderProminent,
+    backgroundColor: palette.card,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  inviteLabel: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase' as const,
+    color: palette.eyebrow,
+  },
+  inviteText: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.55,
+    color: palette.creamMute,
   },
 
   // Notes enregistrées.
@@ -515,8 +995,8 @@ const s = {
     transform: [{ rotate: '-45deg' }],
     marginTop: -2,
   },
+  repereBody: { flex: 1, gap: 2 },
   repereText: {
-    flex: 1,
     fontFamily: fonts.body,
     fontSize: fontSize.body,
     color: palette.cream,
@@ -525,15 +1005,40 @@ const s = {
   repereTextPending: {
     color: palette.creamMute,
   },
-  addRepere: {
-    minHeight: 44,
-    justifyContent: 'center' as const,
-    marginTop: spacing.sm,
-    alignSelf: 'flex-start' as const,
+  repereMeta: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: palette.eyebrow,
   },
-  addRepereTxt: {
+  repereEmpty: {
     fontFamily: fonts.body,
     fontSize: fontSize.small,
     color: palette.creamMute,
+    marginTop: spacing.md,
+  },
+  addRepere: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: spacing.sm,
+    alignSelf: 'flex-start' as const,
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+    backgroundColor: palette.card2,
+  },
+  addRepereGlyph: {
+    fontFamily: fonts.body,
+    fontSize: 17,
+    lineHeight: 19,
+    color: palette.creamSoft,
+  },
+  addRepereTxt: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: fontSize.small,
+    color: palette.creamSoft,
   },
 };

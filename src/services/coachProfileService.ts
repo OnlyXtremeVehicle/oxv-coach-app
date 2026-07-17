@@ -6,8 +6,9 @@
  * `coach_profiles_owner_all` ((coach_id = auth.uid()) AND is_coach()) borne
  * tout au coach courant.
  *
- * Doctrine : sobre, vouvoiement. La fiche est l'image du coach ; le tarif de
- * saison est indicatif (jamais transactionnel). La publication (`is_published`)
+ * Doctrine : sobre, vouvoiement. La fiche est l'image du coach ; les tarifs
+ * (session — LE prix affiché, décision fondateur 2026-07-16 — et saison en
+ * secondaire) sont indicatifs, jamais transactionnels. La publication (`is_published`)
  * décide si la fiche apparaît dans la découverte pilote. Média photo/vidéo :
  * upload à venir (incrément suivant) — non géré ici.
  */
@@ -21,6 +22,8 @@ export interface MyCoachProfile {
   palmares: string | null;
   specialties: string[];
   circuits: string[];
+  /** Prix d'une session (euros) — LE prix affiché aux pilotes (fondateur 2026-07-16). */
+  sessionPriceEur: number | null;
   seasonPriceEur: number | null;
   photoUrl: string | null;
   websiteUrl: string | null;
@@ -36,6 +39,7 @@ export interface UpdateCoachProfileInput {
   palmares?: string | null;
   specialties?: string[];
   circuits?: string[];
+  sessionPriceEur?: number | null;
   seasonPriceEur?: number | null;
   websiteUrl?: string | null;
   instagramUrl?: string | null;
@@ -51,6 +55,7 @@ type CoachProfilePatch = {
   palmares?: string | null;
   specialties?: string[];
   circuits?: string[];
+  session_price_eur?: number | null;
   season_price_eur?: number | null;
   website_url?: string | null;
   instagram_url?: string | null;
@@ -64,6 +69,7 @@ const EMPTY: MyCoachProfile = {
   palmares: null,
   specialties: [],
   circuits: [],
+  sessionPriceEur: null,
   seasonPriceEur: null,
   photoUrl: null,
   websiteUrl: null,
@@ -84,7 +90,7 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile> {
   const { data, error } = await supabase
     .from('coach_profiles')
     .select(
-      'headline, bio, palmares, specialties, circuits, season_price_eur, photo_url, website_url, instagram_url, youtube_url, is_published'
+      'headline, bio, palmares, specialties, circuits, session_price_eur, season_price_eur, photo_url, website_url, instagram_url, youtube_url, is_published'
     )
     .eq('coach_id', coachId)
     .maybeSingle();
@@ -101,6 +107,7 @@ export async function getMyCoachProfile(): Promise<MyCoachProfile> {
     palmares: data.palmares ?? null,
     specialties: Array.isArray(data.specialties) ? data.specialties : [],
     circuits: Array.isArray(data.circuits) ? data.circuits : [],
+    sessionPriceEur: data.session_price_eur ?? null,
     seasonPriceEur: data.season_price_eur ?? null,
     photoUrl: data.photo_url ?? null,
     websiteUrl: data.website_url ?? null,
@@ -131,6 +138,7 @@ export async function updateMyCoachProfile(
   if (input.palmares !== undefined) patch.palmares = input.palmares?.trim() || null;
   if (input.specialties !== undefined) patch.specialties = input.specialties;
   if (input.circuits !== undefined) patch.circuits = input.circuits;
+  if (input.sessionPriceEur !== undefined) patch.session_price_eur = input.sessionPriceEur;
   if (input.seasonPriceEur !== undefined) patch.season_price_eur = input.seasonPriceEur;
   if (input.websiteUrl !== undefined) patch.website_url = input.websiteUrl?.trim() || null;
   if (input.instagramUrl !== undefined) patch.instagram_url = input.instagramUrl?.trim() || null;

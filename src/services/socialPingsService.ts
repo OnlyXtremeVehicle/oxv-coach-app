@@ -2,9 +2,12 @@
  * Service volet social — pings de localisation (§7 OXV Mirror).
  *
  * Lecture des points de la carte sociale, réservée aux membres validés
- * (RLS is_validated_member). Aucune écriture côté pilote (admin only).
+ * (RLS is_validated_member). Écritures : admin (tout) et partenaire VALIDÉ
+ * (son point uniquement, toujours en non-publié — la publication est LA
+ * validation admin ; décision fondateur 2026-07-16).
  *
- * Voir migration 20260526180000_0033_social_pings.sql.
+ * Voir migrations 20260526180000_0033_social_pings.sql et
+ * 20260716200000_coach_session_price_and_partner_pings.sql.
  */
 
 import { supabase } from '@/lib/supabase';
@@ -15,7 +18,12 @@ export type SocialPingKind =
   | 'soiree'
   | 'partner_location'
   | 'filming_location'
-  | 'host_experience';
+  | 'host_experience'
+  // Catégories fondateur (build 23) — points créés par les partenaires.
+  | 'garage'
+  | 'restaurant'
+  | 'hotel'
+  | 'autre';
 
 export interface SocialPing {
   id: string;
@@ -37,6 +45,8 @@ export interface SocialPing {
   youtubeUrl: string | null;
   imageUrl: string | null;
   isPublished: boolean;
+  /** Partenaire propriétaire du point (NULL = point OXV/admin). */
+  partnerId: string | null;
 }
 
 interface DbRow {
@@ -58,6 +68,7 @@ interface DbRow {
   youtube_url: string | null;
   image_url: string | null;
   is_published: boolean;
+  partner_id?: string | null;
 }
 
 /** Libellés FR des types de ping (sobres, doctrine OXV). */
@@ -68,6 +79,10 @@ export const PING_KIND_LABELS: Record<SocialPingKind, string> = {
   partner_location: 'Partenaire',
   filming_location: 'Tournage',
   host_experience: 'Chez un hôte',
+  garage: 'Garage',
+  restaurant: 'Restaurant',
+  hotel: 'Hôtel',
+  autre: 'Autre',
 };
 
 function mapRow(row: DbRow): SocialPing {
@@ -90,6 +105,7 @@ function mapRow(row: DbRow): SocialPing {
     youtubeUrl: row.youtube_url,
     imageUrl: row.image_url,
     isPublished: row.is_published,
+    partnerId: row.partner_id ?? null,
   };
 }
 
@@ -123,13 +139,65 @@ export function groupPingsByKind(
     'event_oxv',
     'event_partner',
     'soiree',
+    'garage',
+    'restaurant',
+    'hotel',
     'partner_location',
     'filming_location',
     'host_experience',
+    'autre',
   ];
   return order
     .map((kind) => ({ kind, items: pings.filter((p) => p.kind === kind) }))
     .filter((g) => g.items.length > 0);
+}
+
+// ─── Catégories de La carte OXV (onglets fondateur, build 23) ───────────────
+// « affichage sur carte et dans un onglet événement, garage, restaurant,
+// hôtel ou autre » — décision fondateur 2026-07-16. Logique pure (testée).
+
+export type CarteCategoryKey = 'evenements' | 'garages' | 'restaurants' | 'hotels' | 'autres';
+
+/** Onglets de la carte, dans l'ordre d'affichage. */
+export const CARTE_CATEGORIES: { key: CarteCategoryKey; label: string; kinds: SocialPingKind[] }[] =
+  [
+    { key: 'evenements', label: 'Événements', kinds: ['event_oxv', 'event_partner', 'soiree'] },
+    { key: 'garages', label: 'Garages', kinds: ['garage'] },
+    { key: 'restaurants', label: 'Restaurants', kinds: ['restaurant'] },
+    { key: 'hotels', label: 'Hôtels', kinds: ['hotel'] },
+    {
+      key: 'autres',
+      label: 'Autres',
+      kinds: ['partner_location', 'filming_location', 'host_experience', 'autre'],
+    },
+  ];
+
+/** Catégorie (onglet) d'un kind. Tout kind appartient à exactement une catégorie. */
+export function categoryOfKind(kind: SocialPingKind): CarteCategoryKey {
+  const found = CARTE_CATEGORIES.find((c) => c.kinds.includes(kind));
+  return found ? found.key : 'autres';
+}
+
+/** Comptes RÉELS par catégorie (les chips à zéro sont masquées à l'affichage). */
+export function countPingsByCategory(pings: SocialPing[]): Record<CarteCategoryKey, number> {
+  const counts: Record<CarteCategoryKey, number> = {
+    evenements: 0,
+    garages: 0,
+    restaurants: 0,
+    hotels: 0,
+    autres: 0,
+  };
+  for (const p of pings) counts[categoryOfKind(p.kind)] += 1;
+  return counts;
+}
+
+/** Filtre par onglet ; `'tout'` renvoie la liste inchangée. */
+export function filterPingsByCategory(
+  pings: SocialPing[],
+  category: CarteCategoryKey | 'tout'
+): SocialPing[] {
+  if (category === 'tout') return pings;
+  return pings.filter((p) => categoryOfKind(p.kind) === category);
 }
 
 // ─── Admin (RLS social_pings_admin_all : is_admin) ──────────────────────────
@@ -216,6 +284,103 @@ export async function deletePing(id: string): Promise<{ ok: boolean }> {
   const { error } = await supabase.from('social_pings').delete().eq('id', id);
   if (error) {
     console.warn('[socialPings] delete error:', error.message);
+    return { ok: false };
+  }
+  return { ok: true };
+}
+
+// ─── Partenaire (RLS social_pings_partner_*, migration 2026-07-16) ──────────
+// Le partenaire VALIDÉ crée et modifie SON point ; la RLS force is_published
+// = false à chaque écriture : toute édition repasse par la validation admin.
+
+/** Entrée du formulaire partenaire « Mon point sur la carte ». */
+export interface PartnerPingInput {
+  id?: string | null;
+  partnerId: string;
+  kind: SocialPingKind;
+  title: string;
+  description: string | null;
+  address: string | null;
+  lat: number;
+  lon: number;
+}
+
+/** Partenaire : SES points (publiés ou en attente), triés par titre. */
+export async function listMyPartnerPings(partnerId: string): Promise<SocialPing[]> {
+  // Colonne partner_id (migration 2026-07-16) absente des types générés :
+  // accès non typé localisé, même précédent que circuits.centerline_latlon.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = supabase.from('social_pings') as any;
+  const { data, error } = await table
+    .select('*')
+    .eq('partner_id', partnerId)
+    .order('title', { ascending: true });
+  if (error || !data) {
+    if (error) console.warn('[socialPings] listMyPartnerPings error:', error.message);
+    return [];
+  }
+  return (data as unknown as DbRow[]).map(mapRow);
+}
+
+/**
+ * Partenaire : crée (sans id) ou modifie (avec id) SON point. `is_published`
+ * est TOUJOURS false côté écriture (exigé par la RLS) : le point repasse en
+ * « En attente de validation OXV » à chaque enregistrement.
+ */
+export async function upsertMyPartnerPing(
+  input: PartnerPingInput
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const row = {
+    partner_id: input.partnerId,
+    kind: input.kind,
+    title: input.title,
+    description: input.description,
+    address: input.address,
+    lat: input.lat,
+    lon: input.lon,
+    is_published: false, // la publication appartient à l'admin
+  } as never;
+  if (input.id) {
+    const { error } = await supabase.from('social_pings').update(row).eq('id', input.id);
+    if (error) {
+      console.warn('[socialPings] partner update error:', error.message);
+      return { ok: false, error: "Le point n'a pas pu être enregistré." };
+    }
+    return { ok: true, id: input.id };
+  }
+  const { data, error } = await supabase.from('social_pings').insert(row).select('id').single();
+  if (error || !data) {
+    console.warn('[socialPings] partner insert error:', error?.message);
+    return { ok: false, error: "Le point n'a pas pu être créé." };
+  }
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+/** Admin : points partenaires en attente de validation (non publiés). */
+export async function listPendingPartnerPings(): Promise<SocialPing[]> {
+  // Colonne partner_id absente des types générés : accès non typé localisé.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = supabase.from('social_pings') as any;
+  const { data, error } = await table
+    .select('*')
+    .eq('is_published', false)
+    .not('partner_id', 'is', null)
+    .order('title', { ascending: true });
+  if (error || !data) {
+    if (error) console.warn('[socialPings] listPending error:', error.message);
+    return [];
+  }
+  return (data as unknown as DbRow[]).map(mapRow);
+}
+
+/** Admin : valide un point (le rend visible sur La carte OXV). */
+export async function publishPing(id: string): Promise<{ ok: boolean }> {
+  const { error } = await supabase
+    .from('social_pings')
+    .update({ is_published: true } as never)
+    .eq('id', id);
+  if (error) {
+    console.warn('[socialPings] publish error:', error.message);
     return { ok: false };
   }
   return { ok: true };

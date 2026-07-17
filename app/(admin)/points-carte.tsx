@@ -5,7 +5,11 @@
  * carte. Écriture réservée aux admins (RLS `social_pings_admin_all`). Le layout
  * (admin) garde déjà la section sur `is_admin`.
  *
- * Doctrine : sobre, vouvoiement, accent bronze (rôle admin), aucun emoji. Deux
+ * Build 23 (décision fondateur 2026-07-16) : les partenaires validés créent
+ * leur point (partner_id, toujours non-publié). La section « En attente de
+ * validation » liste ces points ; « Valider » les publie sur La carte OXV.
+ *
+ * Doctrine : sobre, vouvoiement, accent cyan (rôle admin), aucun emoji. Deux
  * vues dans le même écran : liste des points, puis formulaire d'un point.
  */
 
@@ -14,19 +18,23 @@ import { Alert, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
+import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import {
   type SocialPing,
   type SocialPingKind,
   type UpsertPingInput,
   PING_KIND_LABELS,
+  categoryOfKind,
   deletePing,
   listAllPings,
+  publishPing,
   upsertPing,
 } from '@/services/socialPingsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
+import { CARTE_CATEGORY_COLOR, CARTE_CATEGORY_GLYPH } from '@/ui/carteIdentity';
 import { Field } from '@/ui/Field';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
@@ -41,9 +49,13 @@ const KIND_ORDER: SocialPingKind[] = [
   'event_oxv',
   'event_partner',
   'soiree',
+  'garage',
+  'restaurant',
+  'hotel',
   'partner_location',
   'filming_location',
   'host_experience',
+  'autre',
 ];
 
 interface Draft {
@@ -114,6 +126,7 @@ export default function AdminCartePointsScreen() {
   const [error, setError] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null); // null = vue liste
   const [saving, setSaving] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     setLoading(true);
@@ -179,6 +192,19 @@ export default function AdminCartePointsScreen() {
     }
     Toast.show({ type: 'success', text1: 'Point enregistré.' });
     setDraft(null);
+    reload();
+  }
+
+  /** Valide un point partenaire en attente : is_published = true. */
+  async function onPublish(p: SocialPing) {
+    setPublishingId(p.id);
+    const res = await publishPing(p.id);
+    setPublishingId(null);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: "La validation n'a pas pu être enregistrée." });
+      return;
+    }
+    Toast.show({ type: 'success', text1: 'Point validé. Il apparaît sur La carte OXV.' });
     reload();
   }
 
@@ -440,6 +466,10 @@ export default function AdminCartePointsScreen() {
         ? 'empty'
         : 'nominal';
 
+  // Points partenaires en attente de validation (workflow fondateur 2026-07-16).
+  const pending = pings.filter((p) => !p.isPublished && p.partnerId);
+  const others = pings.filter((p) => p.isPublished || !p.partnerId);
+
   return (
     <Screen>
       <AppBar title="POINTS DE LA CARTE" onBack={() => router.back()} />
@@ -464,14 +494,71 @@ export default function AdminCartePointsScreen() {
           errorCause="La liste des points n'a pas pu être chargée."
           onRetry={reload}
         >
+          {pending.length > 0 ? (
+            <FadeInSection style={{ marginBottom: theme.spacing.xl }}>
+              <View style={s.pendingHead}>
+                <Text style={s.pendingEyebrow}>EN ATTENTE DE VALIDATION</Text>
+                <Text style={s.pendingCount}>{pending.length}</Text>
+              </View>
+              <Stagger interval={70} style={{ gap: theme.spacing.sm }}>
+                {pending.map((p) => {
+                  const catKey = categoryOfKind(p.kind);
+                  const color = CARTE_CATEGORY_COLOR[catKey];
+                  return (
+                    <Card
+                      key={p.id}
+                      onPress={() => setDraft(draftFromPing(p))}
+                      accessibilityLabel={`${p.title}. ${PING_KIND_LABELS[p.kind]}. Point partenaire en attente de validation.`}
+                      style={[s.pendingCard, { borderLeftColor: color }]}
+                    >
+                      <View style={s.rowBetween}>
+                        <View style={s.glyphAndTitle}>
+                          <View style={[s.glyphBadge, { borderColor: color }]}>
+                            <Text style={[s.glyphT, { color }]}>
+                              {CARTE_CATEGORY_GLYPH[catKey]}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.cardTitle} numberOfLines={1}>
+                              {p.title}
+                            </Text>
+                            <Text style={s.cardMeta}>
+                              {PING_KIND_LABELS[p.kind]} · point partenaire
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      {p.address ? <Text style={s.cardMeta}>{p.address}</Text> : null}
+                      <View style={s.pendingActions}>
+                        <PressableScale
+                          accessibilityRole="button"
+                          accessibilityLabel={`Valider ${p.title} pour affichage sur la carte`}
+                          hitSlop={theme.hitSlop}
+                          haptic="confirm"
+                          disabled={publishingId === p.id}
+                          onPress={() => onPublish(p)}
+                          style={s.validateBtn}
+                        >
+                          <Text style={s.validateT}>
+                            {publishingId === p.id ? 'Validation…' : 'Valider'}
+                          </Text>
+                        </PressableScale>
+                      </View>
+                    </Card>
+                  );
+                })}
+              </Stagger>
+            </FadeInSection>
+          ) : null}
+
           <View style={{ gap: theme.spacing.sm }}>
-            {pings.map((p) => (
+            {others.map((p) => (
               <Card
                 key={p.id}
                 onPress={() => setDraft(draftFromPing(p))}
                 accessibilityLabel={`${p.title}. ${PING_KIND_LABELS[p.kind]}. ${
                   p.isPublished ? 'Publié' : 'Masqué'
-                }`}
+                }${p.partnerId ? '. Point partenaire.' : ''}`}
                 style={{ borderColor: ADMIN }}
               >
                 <View style={s.rowBetween}>
@@ -482,7 +569,10 @@ export default function AdminCartePointsScreen() {
                     {p.isPublished ? 'PUBLIÉ' : 'MASQUÉ'}
                   </Text>
                 </View>
-                <Text style={s.cardMeta}>{PING_KIND_LABELS[p.kind]}</Text>
+                <Text style={s.cardMeta}>
+                  {PING_KIND_LABELS[p.kind]}
+                  {p.partnerId ? ' · point partenaire' : ''}
+                </Text>
               </Card>
             ))}
           </View>
@@ -553,6 +643,71 @@ const s = {
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     gap: theme.spacing.sm,
+  },
+  // — Section « En attente de validation » (points partenaires) —
+  pendingHead: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'space-between' as const,
+    marginBottom: theme.spacing.md,
+  },
+  pendingEyebrow: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
+    color: ADMIN,
+  },
+  pendingCount: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.creamSoft,
+  },
+  // Liseré gauche = identité de catégorie (partagée avec la carte pilote).
+  pendingCard: {
+    backgroundColor: theme.palette.card2,
+    borderLeftWidth: 2,
+    padding: theme.spacing.lg,
+  },
+  glyphAndTitle: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: theme.spacing.md,
+  },
+  glyphBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1.5,
+    backgroundColor: theme.palette.card,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+  },
+  glyphT: {
+    fontFamily: theme.fonts.monoSemi,
+    fontSize: 12,
+  },
+  pendingActions: {
+    flexDirection: 'row' as const,
+    marginTop: theme.spacing.md,
+  },
+  validateBtn: {
+    minHeight: 44,
+    paddingHorizontal: theme.spacing.lg,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    borderColor: ADMIN,
+    backgroundColor: 'rgba(34,211,238,0.12)',
+  },
+  validateT: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase' as const,
+    color: theme.palette.cream,
   },
   cardTitle: {
     fontFamily: theme.fonts.bodyMedium,

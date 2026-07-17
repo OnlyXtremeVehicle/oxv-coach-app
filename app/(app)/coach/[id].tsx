@@ -10,9 +10,11 @@
  * Données RÉELLES uniquement (coachMarketplaceService, RLS `is_published`) :
  * - stats = nombre de circuits / spécialités EN BASE (l'« expérience » de la
  *   maquette n'existe pas en base → non affichée) ;
- * - prix = `season_price_eur` réel, registre tarif d'offre heritageGold
- *   (décision Gabin 2026-07-11 — l'or système reste au chrono) ; la maquette
- *   dit « la séance », la base porte un tarif de SAISON → libellé honnête ;
+ * - prix héros = `session_price_eur` réel, À LA SESSION (décision fondateur
+ *   2026-07-16, migration 20260716200000), registre tarif d'offre heritageGold
+ *   (décision Gabin 2026-07-11 — l'or système reste au chrono) ; la saison
+ *   (`season_price_eur`) passe en secondaire discret si renseignée ; un prix
+ *   absent n'a pas de ligne (jamais inventé) ;
  * - dispo verte = créneaux `open` à venir réels (`coach_availability`) ;
  * - pastille de partage de la maquette : DROP (aucun flux de partage réel).
  *
@@ -29,6 +31,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import { FadeInSection, PressableScale } from '@/components/motion';
 import { ReportButton } from '@/components/ReportButton';
 import {
   type AvailabilityStatus,
@@ -163,11 +166,16 @@ export default function CoachDetailScreen() {
   // Tuiles stats — uniquement ce qui EXISTE en base (jamais de chiffre inventé).
   const circuitCount = profile.circuits.length;
   const specialtyCount = profile.specialties.length;
-  const price =
+  // Prix héros À LA SESSION (fondateur 2026-07-16) ; saison en secondaire.
+  const sessionPrice =
+    profile.sessionPriceEur !== null
+      ? `${Math.round(profile.sessionPriceEur).toLocaleString('fr-FR')} €`
+      : null;
+  const seasonPrice =
     profile.seasonPriceEur !== null
       ? `${Math.round(profile.seasonPriceEur).toLocaleString('fr-FR')} €`
       : null;
-  const hasStats = circuitCount > 0 || specialtyCount > 0 || price !== null;
+  const hasStats = circuitCount > 0 || specialtyCount > 0 || sessionPrice !== null;
 
   // Disponibilité réelle : créneaux `open` à venir (getCoachProfile ne lit que
   // les créneaux futurs `open`/`full` — RLS côté base).
@@ -181,52 +189,66 @@ export default function CoachDetailScreen() {
     <Screen>
       <AppBar title="Fiche coach" onBack={() => router.back()} />
       <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Héros centré — avatar cerclé rouge, nom, eyebrow rouge (maquette). */}
-        <View style={s.hero}>
-          <View style={s.avatarRing}>
-            {profile.photoUrl ? (
-              <Image
-                source={{ uri: profile.photoUrl }}
-                style={s.avatar}
-                accessibilityIgnoresInvertColors
-              />
-            ) : (
-              <View style={[s.avatar, s.avatarFallback]}>
-                <Text style={s.avatarInitials}>{initialsOf(profile.headline)}</Text>
-              </View>
-            )}
+        {/* Héros centré — avatar cerclé rouge, nom, eyebrow rouge (maquette).
+            Entrée en fondu sobre (kit motion, reduce-motion respecté). */}
+        <FadeInSection>
+          <View style={s.hero}>
+            <View style={s.avatarRing}>
+              {profile.photoUrl ? (
+                <Image
+                  source={{ uri: profile.photoUrl }}
+                  style={s.avatar}
+                  accessibilityIgnoresInvertColors
+                />
+              ) : (
+                <View style={[s.avatar, s.avatarFallback]}>
+                  <Text style={s.avatarInitials}>{initialsOf(profile.headline)}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={s.name}>{name}</Text>
+            <Text style={s.roleEyebrow}>Coach OXV</Text>
           </View>
-          <Text style={s.name}>{name}</Text>
-          <Text style={s.roleEyebrow}>Coach OXV</Text>
-        </View>
+        </FadeInSection>
 
         {/* Stats réelles. L'« expérience » de la maquette n'est pas en base → absente. */}
-        {hasStats ? (
-          <View style={s.statsRow}>
-            {circuitCount > 0 ? (
-              <View style={s.statTile}>
-                <Text style={s.statValue}>{circuitCount}</Text>
-                <Text style={s.statLabel}>circuit{circuitCount > 1 ? 's' : ''}</Text>
-              </View>
-            ) : null}
-            {specialtyCount > 0 ? (
-              <View style={s.statTile}>
-                <Text style={s.statValue}>{specialtyCount}</Text>
-                <Text style={s.statLabel}>spécialité{specialtyCount > 1 ? 's' : ''}</Text>
-              </View>
-            ) : null}
-            {price ? (
-              // Chiffre dominant unique de l'écran : le tarif. Registre tarif
-              // d'offre heritageGold (décision Gabin 2026-07-11) — l'or système
-              // (#FFB703) reste réservé au chrono/record.
-              <View style={s.statTile} accessibilityLabel={`Tarif de saison ${price}`}>
-                <Text style={[s.statValue, { color: palette.heritageGold }]}>{price}</Text>
-                <Text style={s.statLabel}>la saison</Text>
-              </View>
-            ) : null}
-          </View>
-        ) : null}
-        {price ? <Text style={s.tariffNote}>Tarif indicatif · réglé hors application</Text> : null}
+        <FadeInSection delay={80}>
+          {hasStats ? (
+            <View style={s.statsRow}>
+              {circuitCount > 0 ? (
+                <View style={s.statTile}>
+                  <Text style={s.statValue}>{circuitCount}</Text>
+                  <Text style={s.statLabel}>circuit{circuitCount > 1 ? 's' : ''}</Text>
+                </View>
+              ) : null}
+              {specialtyCount > 0 ? (
+                <View style={s.statTile}>
+                  <Text style={s.statValue}>{specialtyCount}</Text>
+                  <Text style={s.statLabel}>spécialité{specialtyCount > 1 ? 's' : ''}</Text>
+                </View>
+              ) : null}
+              {sessionPrice ? (
+                // Chiffre dominant unique de l'écran : le prix À LA SESSION
+                // (fondateur 2026-07-16). Registre tarif d'offre heritageGold
+                // (décision Gabin 2026-07-11) — l'or système (#FFB703) reste
+                // réservé au chrono/record.
+                <View style={s.statTile} accessibilityLabel={`${sessionPrice} par session`}>
+                  <Text style={[s.statValue, { color: palette.heritageGold }]}>{sessionPrice}</Text>
+                  <Text style={s.statLabel}>la session</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+          {seasonPrice ? (
+            // La saison, secondaire discret (si renseignée).
+            <Text style={s.seasonNote} accessibilityLabel={`Tarif de saison ${seasonPrice}`}>
+              Saison : {seasonPrice}
+            </Text>
+          ) : null}
+          {sessionPrice || seasonPrice ? (
+            <Text style={s.tariffNote}>Tarif indicatif · réglé hors application</Text>
+          ) : null}
+        </FadeInSection>
 
         {/* Bio réelle en carte (maquette). Absente = masquée. */}
         {profile.bio ? (
@@ -243,16 +265,18 @@ export default function CoachDetailScreen() {
           <Text style={[s.dispoT, openSlots > 0 && { color: palette.green }]}>{dispoLabel}</Text>
         </View>
 
-        {/* CTA rouge (maquette) → ouvre le formulaire réel de demande. */}
+        {/* CTA rouge (maquette) → ouvre le formulaire réel de demande.
+            PressableScale du kit : appui pesé, haptique légère. */}
         {!formOpen ? (
-          <Pressable
+          <PressableScale
             accessibilityRole="button"
             accessibilityLabel={`Demander une séance à ${name}`}
+            haptic="tap"
             onPress={() => setFormOpen(true)}
-            style={({ pressed }) => [s.cta, pressed && { opacity: 0.85 }]}
+            style={s.cta}
           >
             <Text style={s.ctaT}>Demander une séance</Text>
-          </Pressable>
+          </PressableScale>
         ) : (
           <Card style={{ marginTop: spacing.lg }}>
             <Text style={s.formTitle}>Votre demande</Text>
@@ -598,6 +622,15 @@ const s = {
     textTransform: 'uppercase' as const,
     color: palette.faint,
     marginTop: spacing.xs,
+  },
+  // La saison en secondaire discret (fondateur 2026-07-16 : le héros est la session).
+  seasonNote: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    textAlign: 'center' as const,
+    marginTop: spacing.md,
   },
   tariffNote: {
     fontFamily: fonts.mono,

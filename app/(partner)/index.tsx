@@ -138,6 +138,13 @@ export default function PartnerHubScreen() {
                   <Text style={s.cardHint}>Votre zone et votre description.</Text>
                 </Card>
                 <Card
+                  onPress={() => router.push('/(partner)/point' as never)}
+                  accessibilityLabel="Mon point sur la carte. Votre établissement sur La carte OXV."
+                >
+                  <Text style={s.cardTitle}>Mon point sur la carte</Text>
+                  <Text style={s.cardHint}>Votre établissement sur La carte OXV.</Text>
+                </Card>
+                <Card
                   onPress={() => router.push('/(partner)/offres' as never)}
                   accessibilityLabel="Mes offres. Créer et publier vos offres."
                 >

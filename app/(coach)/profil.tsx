@@ -18,14 +18,15 @@
  *     formulaire et « Enregistrer » en bas. Le rail (console) / les onglets
  *     (téléphone) viennent du layout : cet écran n'affiche que son corps.
  *
- * Adaptations honnêtes vis-à-vis de la maquette (backend inchangé, ZÉRO table) :
- *   - la maquette montre trois formules (séance / journée / programme) : la base
- *     ne porte qu'UN `season_price_eur` → un seul tarif de saison, indicatif ; le
- *     détail des formules se convient de gré à gré (noté sous le champ).
+ * Adaptations honnêtes vis-à-vis de la maquette (backend inchangé côté app) :
+ *   - la base porte DEUX tarifs (décision fondateur 2026-07-16, migration
+ *     20260716200000) : `session_price_eur` — LE prix affiché aux pilotes, à la
+ *     session — et `season_price_eur` en secondaire discret ; le détail des
+ *     autres formules se convient de gré à gré (noté sous les champs).
  *   - « 12 ans / certifié » ne sont pas en base → non affichés ; les stats de
  *     l'aperçu sont dérivées du réel (nombre de circuits / spécialités saisis + le
  *     tarif). L'identité (nom, initiales) vient du profil de session (`users`).
- *   - le tarif de saison porte le registre d'offre heritageGold (décision Gabin
+ *   - le prix par session porte le registre d'offre heritageGold (décision Gabin
  *     2026-07-11) — l'or système (#FFB703) reste réservé au chrono/record.
  *
  * Doctrine : vouvoiement, aucun emoji, descriptif jamais prescriptif. Le tarif est
@@ -69,11 +70,17 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
 
-/** Tarif de saison saisi → « 1 500 € » (fr, sans décimale), ou null si vide/invalide. */
-function formatSeasonPrice(raw: string): string | null {
+/** Tarif saisi → « 1 500 € » (fr, sans décimale), ou null si vide/invalide. */
+function formatEuro(raw: string): string | null {
   const n = raw.trim() ? Number(raw.replace(',', '.').replace(/\s/g, '')) : NaN;
   if (!Number.isFinite(n) || n <= 0) return null;
   return `${Math.round(n).toLocaleString('fr-FR')} €`;
+}
+
+/** Tarif saisi → entier ≥ 0 pour la sauvegarde, ou null si vide/invalide. */
+function parseEuroInt(raw: string): number | null {
+  const n = raw.trim() ? Number(raw.replace(',', '.').replace(/\s/g, '')) : null;
+  return n != null && Number.isFinite(n) ? Math.max(0, Math.round(n)) : null;
 }
 
 export default function CoachProfileScreen() {
@@ -98,6 +105,7 @@ export default function CoachProfileScreen() {
   const [palmares, setPalmares] = useState('');
   const [specialties, setSpecialties] = useState('');
   const [circuits, setCircuits] = useState('');
+  const [sessionPrice, setSessionPrice] = useState('');
   const [price, setPrice] = useState('');
   const [website, setWebsite] = useState('');
   const [instagram, setInstagram] = useState('');
@@ -121,6 +129,7 @@ export default function CoachProfileScreen() {
         setPalmares(p.palmares ?? '');
         setSpecialties(p.specialties.join(', '));
         setCircuits(p.circuits.join(', '));
+        setSessionPrice(p.sessionPriceEur != null ? String(p.sessionPriceEur) : '');
         setPrice(p.seasonPriceEur != null ? String(p.seasonPriceEur) : '');
         setWebsite(p.websiteUrl ?? '');
         setInstagram(p.instagramUrl ?? '');
@@ -143,15 +152,15 @@ export default function CoachProfileScreen() {
 
   async function onSave() {
     setSaving(true);
-    const raw = price.trim() ? Number(price.replace(',', '.')) : null;
-    const priceNum = raw != null && Number.isFinite(raw) ? Math.max(0, Math.round(raw)) : null;
     const res = await updateMyCoachProfile({
       headline,
       bio,
       palmares,
       specialties: parseTagList(specialties),
       circuits: parseTagList(circuits),
-      seasonPriceEur: priceNum,
+      // Entiers ≥ 0, ou null si vide/invalide (jamais de valeur fabriquée).
+      sessionPriceEur: parseEuroInt(sessionPrice),
+      seasonPriceEur: parseEuroInt(price),
       websiteUrl: website,
       instagramUrl: instagram,
       youtubeUrl: youtube,
@@ -194,8 +203,10 @@ export default function CoachProfileScreen() {
   // Aperçu vivant : dérivé du réel (session + saisie en cours), jamais un exemple.
   const specialtyList = parseTagList(specialties);
   const circuitList = parseTagList(circuits);
-  const priceLabel = formatSeasonPrice(price);
-  const hasStats = circuitList.length > 0 || specialtyList.length > 0 || priceLabel !== null;
+  // LE prix des pilotes : à la session (fondateur 2026-07-16) ; saison secondaire.
+  const sessionLabel = formatEuro(sessionPrice);
+  const seasonLabel = formatEuro(price);
+  const hasStats = circuitList.length > 0 || specialtyList.length > 0 || sessionLabel !== null;
 
   // — Aperçu (ce que les pilotes voient) : identité + tarif d'offre —
   const preview = (
@@ -222,19 +233,26 @@ export default function CoachProfileScreen() {
               <Text style={s.statLabel}>spécialité{specialtyList.length > 1 ? 's' : ''}</Text>
             </View>
           ) : null}
-          {priceLabel ? (
-            // Chiffre dominant : le tarif. Registre d'offre heritageGold — l'or
-            // système (#FFB703) reste réservé au chrono/record.
-            <View style={s.statTile} accessibilityLabel={`Tarif de saison ${priceLabel}`}>
-              <Text style={[s.statValue, s.statValueGold]}>{priceLabel}</Text>
-              <Text style={s.statLabel}>la saison</Text>
+          {sessionLabel ? (
+            // Chiffre dominant : le prix À LA SESSION (fondateur 2026-07-16).
+            // Registre d'offre heritageGold — l'or système (#FFB703) reste
+            // réservé au chrono/record.
+            <View style={s.statTile} accessibilityLabel={`${sessionLabel} par session`}>
+              <Text style={[s.statValue, s.statValueGold]}>{sessionLabel}</Text>
+              <Text style={s.statLabel}>la session</Text>
             </View>
           ) : null}
         </View>
       ) : (
         <Text style={s.previewEmpty}>Complétez votre fiche pour l’aperçu.</Text>
       )}
-      {priceLabel ? (
+      {seasonLabel ? (
+        // La saison, secondaire discret — même règle que la fiche pilote.
+        <Text style={s.seasonNote} accessibilityLabel={`Tarif de saison ${seasonLabel}`}>
+          Saison : {seasonLabel}
+        </Text>
+      ) : null}
+      {sessionLabel || seasonLabel ? (
         <Text style={s.tariffNote}>Tarif indicatif · réglé hors application</Text>
       ) : null}
     </Card>
@@ -327,6 +345,16 @@ export default function CoachProfileScreen() {
         <SectionLabel>Formule & tarif</SectionLabel>
         <View style={s.sectionBody}>
           <Field
+            label="Prix par session"
+            optional
+            value={sessionPrice}
+            onChangeText={setSessionPrice}
+            placeholder="120"
+            keyboardType="number-pad"
+            unit="€"
+            helper="Réglé hors application."
+          />
+          <Field
             label="Tarif de saison"
             optional
             value={price}
@@ -334,11 +362,11 @@ export default function CoachProfileScreen() {
             placeholder="1500"
             keyboardType="number-pad"
             unit="€"
-            helper="Indicatif. Le règlement se fait de gré à gré, hors application."
+            helper="Indicatif, affiché en secondaire. Réglé hors application."
           />
           <Text style={s.formulaNote}>
-            L’application porte un seul tarif de saison. Le détail des formules (séance, journée,
-            programme) se convient de gré à gré, hors application.
+            Le prix par session est celui que voient les pilotes ; la saison reste en secondaire. Le
+            détail des formules (journée, programme) se convient de gré à gré, hors application.
           </Text>
         </View>
       </View>
@@ -654,6 +682,15 @@ const s = StyleSheet.create({
     color: palette.creamMute,
     textAlign: 'center',
     marginTop: spacing.lg,
+  },
+  // La saison en secondaire discret (le chiffre dominant est la session).
+  seasonNote: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.small,
+    letterSpacing: 0.4,
+    color: palette.creamMute,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
   tariffNote: {
     fontFamily: fonts.mono,

@@ -48,7 +48,13 @@ export interface CoachListing {
   photoUrl: string | null;
   circuits: string[];
   specialties: string[];
-  /** Tarif indicatif de saison (euros). Affiché, jamais transactionnel. */
+  /**
+   * Prix d'une session de coaching (euros) — LE prix affiché aux pilotes
+   * (décision fondateur 2026-07-16, migration 20260716200000). Indicatif,
+   * jamais transactionnel : réglé hors application.
+   */
+  sessionPriceEur: number | null;
+  /** Tarif indicatif de saison (euros), secondaire à l'affichage. */
   seasonPriceEur: number | null;
 }
 
@@ -250,7 +256,7 @@ export interface CreateReviewInput {
 }
 
 const COACH_PROFILE_FIELDS =
-  'coach_id, headline, bio, photo_url, circuits, specialties, season_price_eur';
+  'coach_id, headline, bio, photo_url, circuits, specialties, session_price_eur, season_price_eur';
 
 function toListing(row: {
   coach_id: string;
@@ -259,6 +265,7 @@ function toListing(row: {
   photo_url: string | null;
   circuits: string[] | null;
   specialties: string[] | null;
+  session_price_eur: number | null;
   season_price_eur: number | null;
 }): CoachListing {
   return {
@@ -268,6 +275,7 @@ function toListing(row: {
     photoUrl: row.photo_url ?? null,
     circuits: Array.isArray(row.circuits) ? row.circuits : [],
     specialties: Array.isArray(row.specialties) ? row.specialties : [],
+    sessionPriceEur: row.session_price_eur ?? null,
     seasonPriceEur: row.season_price_eur ?? null,
   };
 }
