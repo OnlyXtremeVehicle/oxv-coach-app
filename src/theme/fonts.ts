@@ -31,6 +31,15 @@ import {
   HankenGrotesk_700Bold,
   HankenGrotesk_800ExtraBold,
 } from '@expo-google-fonts/hanken-grotesk';
+// Lot PROFIL_CARTES (spec 17/07/2026) : Syncopate (display) + Inter (corps)
+// pour les écrans Profil / Panel de cartes — paquets déjà en dépendances.
+import {
+  Inter_400Regular,
+  Inter_400Regular_Italic,
+  Inter_500Medium,
+  Inter_600SemiBold,
+} from '@expo-google-fonts/inter';
+import { Syncopate_400Regular, Syncopate_700Bold } from '@expo-google-fonts/syncopate';
 
 /**
  * Charte NG (refonte 2026-07-06) : Geist (titres/corps) + Rajdhani (CHIFFRE ROI,
@@ -53,6 +62,13 @@ export function useAppFonts() {
     JetBrainsMono_500Medium,
     JetBrainsMono_600SemiBold,
     JetBrainsMono_700Bold,
+    // Lot PROFIL_CARTES : Syncopate + Inter (écrans Profil / Panel de cartes).
+    Syncopate_400Regular,
+    Syncopate_700Bold,
+    Inter_400Regular,
+    Inter_400Regular_Italic,
+    Inter_500Medium,
+    Inter_600SemiBold,
     // Conservées en secours (anciens tokens éventuels non migrés).
     Geist_300Light,
     Geist_400Regular,

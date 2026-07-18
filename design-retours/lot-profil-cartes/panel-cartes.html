@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV — Panel de cartes (maquette app)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     OXV — MAQUETTE PANEL DE CARTES DE SESSION (APPLICATION)
+     Format cible : 390 × 844
+     Espace PRIVÉ : visible uniquement par le pilote et son coach.
+     Les chronos sont autorisés ici — comparaison self vs self
+     exclusivement. Aucune référence à d'autres pilotes.
+     Doctrine Miroir : données factuelles, aucun langage prescriptif.
+     Palette : #0A0A0A / #FFFFFF / #C8102E
+     Typo : Syncopate / Inter / JetBrains Mono
+     ============================================================ */
+
+  :root {
+    --noir: #0A0A0A;
+    --blanc: #FFFFFF;
+    --rouge: #C8102E;
+    --surface: #141414;
+    --surface-2: #1C1C1C;
+    --ligne: #262626;
+    --gris: #8A8A8A;
+    --gris-sombre: #555555;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050505;
+    font-family: 'Inter', sans-serif;
+    color: var(--blanc);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 32px 0;
+  }
+
+  .phone {
+    width: 390px;
+    background: var(--noir);
+    border: 1px solid var(--ligne);
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .screen {
+    height: 844px;
+    overflow-y: auto;
+    scrollbar-width: none;
+    padding-bottom: 96px; /* espace pour la barre de comparaison */
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ============ EN-TÊTE ============ */
+  .entete {
+    padding: 24px 20px 0;
+  }
+
+  .entete .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  .entete h1 {
+    font-family: 'Syncopate', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 8px;
+  }
+
+  .entete .total {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--gris);
+    margin-top: 6px;
+    letter-spacing: 0.06em;
+  }
+
+  .entete .total b {
+    color: var(--blanc);
+    font-weight: 700;
+  }
+
+  /* ============ FILTRES ============ */
+  .filtres {
+    display: flex;
+    gap: 8px;
+    padding: 18px 20px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filtres::-webkit-scrollbar { display: none; }
+
+  .filtre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gris);
+    border: 1px solid var(--ligne);
+    background: transparent;
+    padding: 8px 14px;
+    border-radius: 2px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .filtre.actif {
+    color: var(--blanc);
+    border-color: var(--blanc);
+  }
+
+  /* ============ BANDEAU MODE COMPARAISON ============ */
+  .mode-info {
+    margin: 18px 20px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--gris-sombre);
+    text-transform: uppercase;
+  }
+
+  /* ============ CARTES ============ */
+  .cartes {
+    padding: 14px 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .carte {
+    background: var(--surface);
+    border: 1px solid var(--ligne);
+    border-radius: 5px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Tracé filigrane sur chaque carte */
+  .carte svg.mini-trace {
+    position: absolute;
+    right: -20px;
+    bottom: -18px;
+    width: 150px;
+    opacity: 0.07;
+    pointer-events: none;
+  }
+
+  .carte .haut {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .carte .num-carte {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: var(--gris);
+    text-transform: uppercase;
+  }
+
+  .carte .date {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 5px;
+  }
+
+  .carte .selecteur {
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--ligne);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .carte.selectionnee {
+    border-color: var(--rouge);
+  }
+
+  .carte.selectionnee .selecteur {
+    border-color: var(--rouge);
+    background: var(--rouge);
+    position: relative;
+  }
+
+  .carte.selectionnee .selecteur::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(45deg, transparent 42%, var(--blanc) 42%, var(--blanc) 56%, transparent 56%) no-repeat 55% 52% / 12px 9px,
+      linear-gradient(-52deg, transparent 46%, var(--blanc) 46%, var(--blanc) 62%, transparent 62%) no-repeat 28% 60% / 7px 8px;
+  }
+
+  .carte .badge-ref {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--noir);
+    background: var(--blanc);
+    padding: 3px 7px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-top: 8px;
+  }
+
+  /* Grille de données de la carte */
+  .donnees {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .donnee .label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gris-sombre);
+  }
+
+  .donnee .valeur {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 4px;
+    letter-spacing: 0.02em;
+  }
+
+  .donnee .valeur.temps { font-size: 17px; }
+
+  .donnee .valeur .delta-neg { color: #D6D6D6; font-size: 10px; font-weight: 500; }
+  .donnee .valeur.delta-val { font-size: 13px; color: #D6D6D6; }
+
+  .carte .pied {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--ligne);
+    position: relative;
+    z-index: 1;
+  }
+
+  .carte .meteo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gris);
+    letter-spacing: 0.06em;
+  }
+
+  .carte .ouvrir {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blanc);
+  }
+
+  .carte .ouvrir::after {
+    content: " →";
+    color: var(--rouge);
+  }
+
+  /* ============ BARRE DE COMPARAISON (fixe) ============ */
+  .barre-comparaison {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(10,10,10,0.94);
+    border-top: 1px solid var(--ligne);
+    backdrop-filter: blur(8px);
+    padding: 14px 20px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+  }
+
+  .barre-comparaison .selection {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--gris);
+    text-transform: uppercase;
+    line-height: 1.6;
+  }
+
+  .barre-comparaison .selection b {
+    color: var(--blanc);
+  }
+
+  .btn-comparer {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blanc);
+    background: var(--rouge);
+    border: none;
+    padding: 13px 22px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+
+    <!-- EN-TÊTE -->
+    <div class="entete">
+      <div class="eyebrow">Espace Pilote · Privé</div>
+      <h1>Mes Cartes</h1>
+      <div class="total"><b>24</b> cartes · Circuit de Haute Saintonge</div>
+    </div>
+
+    <!-- FILTRES -->
+    <div class="filtres">
+      <button class="filtre actif">Toutes</button>
+      <button class="filtre">2027</button>
+      <button class="filtre">Sec</button>
+      <button class="filtre">Pluie</button>
+      <button class="filtre">Par voiture</button>
+    </div>
+
+    <div class="mode-info">Sélectionnez deux cartes pour les comparer</div>
+
+    <!-- CARTES -->
+    <div class="cartes">
+
+      <!-- Carte 1 — sélectionnée, référence personnelle -->
+      <div class="carte selectionnee">
+        <svg class="mini-trace" viewBox="0 0 340 220" fill="none">
+          <path d="M30 180 L120 180 Q140 180 145 165 L155 120 Q160 105 175 105 L230 105 Q250 105 250 88 L250 60 Q250 42 268 42 L300 42 Q318 42 315 62 L305 140 Q302 158 285 162 L120 200 Q95 206 80 195 L35 192 Q22 190 30 180 Z" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+        <div class="haut">
+          <div>
+            <div class="num-carte">Carte 024</div>
+            <div class="date">Jeu. 08 Juil. 2027</div>
+            <div class="badge-ref">Référence personnelle</div>
+          </div>
+          <div class="selecteur"></div>
+        </div>
+        <div class="donnees">
+          <div class="donnee">
+            <div class="label">Meilleur tour</div>
+            <div class="valeur temps">1:52.418</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Tours</div>
+            <div class="valeur">31</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Voiture</div>
+            <div class="valeur" style="font-size:11px; line-height:1.4;">911 GT3</div>
+          </div>
+        </div>
+        <div class="pied">
+          <span class="meteo">Sec · Piste 34°C · Air 26°C</span>
+          <span class="ouvrir">Ouvrir</span>
+        </div>
+      </div>
+
+      <!-- Carte 2 — sélectionnée -->
+      <div class="carte selectionnee">
+        <svg class="mini-trace" viewBox="0 0 340 220" fill="none">
+          <path d="M30 180 L120 180 Q140 180 145 165 L155 120 Q160 105 175 105 L230 105 Q250 105 250 88 L250 60 Q250 42 268 42 L300 42 Q318 42 315 62 L305 140 Q302 158 285 162 L120 200 Q95 206 80 195 L35 192 Q22 190 30 180 Z" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+        <div class="haut">
+          <div>
+            <div class="num-carte">Carte 021</div>
+            <div class="date">Lun. 14 Juin 2027</div>
+          </div>
+          <div class="selecteur"></div>
+        </div>
+        <div class="donnees">
+          <div class="donnee">
+            <div class="label">Meilleur tour</div>
+            <div class="valeur temps">1:53.102</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Écart réf.</div>
+            <div class="valeur delta-val">+0.684</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Tours</div>
+            <div class="valeur">27</div>
+          </div>
+        </div>
+        <div class="pied">
+          <span class="meteo">Sec · Piste 41°C · Air 30°C</span>
+          <span class="ouvrir">Ouvrir</span>
+        </div>
+      </div>
+
+      <!-- Carte 3 -->
+      <div class="carte">
+        <svg class="mini-trace" viewBox="0 0 340 220" fill="none">
+          <path d="M30 180 L120 180 Q140 180 145 165 L155 120 Q160 105 175 105 L230 105 Q250 105 250 88 L250 60 Q250 42 268 42 L300 42 Q318 42 315 62 L305 140 Q302 158 285 162 L120 200 Q95 206 80 195 L35 192 Q22 190 30 180 Z" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+        <div class="haut">
+          <div>
+            <div class="num-carte">Carte 019</div>
+            <div class="date">Lun. 17 Mai 2027</div>
+          </div>
+          <div class="selecteur"></div>
+        </div>
+        <div class="donnees">
+          <div class="donnee">
+            <div class="label">Meilleur tour</div>
+            <div class="valeur temps">1:55.870</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Écart réf.</div>
+            <div class="valeur delta-val">+3.452</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Tours</div>
+            <div class="valeur">22</div>
+          </div>
+        </div>
+        <div class="pied">
+          <span class="meteo">Pluie · Piste 19°C · Air 16°C</span>
+          <span class="ouvrir">Ouvrir</span>
+        </div>
+      </div>
+
+      <!-- Carte 4 -->
+      <div class="carte">
+        <svg class="mini-trace" viewBox="0 0 340 220" fill="none">
+          <path d="M30 180 L120 180 Q140 180 145 165 L155 120 Q160 105 175 105 L230 105 Q250 105 250 88 L250 60 Q250 42 268 42 L300 42 Q318 42 315 62 L305 140 Q302 158 285 162 L120 200 Q95 206 80 195 L35 192 Q22 190 30 180 Z" stroke="#FFFFFF" stroke-width="3"/>
+        </svg>
+        <div class="haut">
+          <div>
+            <div class="num-carte">Carte 016</div>
+            <div class="date">Jeu. 22 Avr. 2027</div>
+          </div>
+          <div class="selecteur"></div>
+        </div>
+        <div class="donnees">
+          <div class="donnee">
+            <div class="label">Meilleur tour</div>
+            <div class="valeur temps">1:54.226</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Écart réf.</div>
+            <div class="valeur delta-val">+1.808</div>
+          </div>
+          <div class="donnee">
+            <div class="label">Tours</div>
+            <div class="valeur">29</div>
+          </div>
+        </div>
+        <div class="pied">
+          <span class="meteo">Sec · Piste 28°C · Air 21°C</span>
+          <span class="ouvrir">Ouvrir</span>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- BARRE DE COMPARAISON -->
+  <div class="barre-comparaison">
+    <div class="selection">
+      <b>2 cartes sélectionnées</b><br>
+      024 · 021
+    </div>
+    <button class="btn-comparer">Comparer</button>
+  </div>
+</div>
+
+</body>
+</html>

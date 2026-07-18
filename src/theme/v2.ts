@@ -122,3 +122,35 @@ export const theme = {
   hitSlop,
 };
 export type ThemeV2 = typeof theme;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOT PROFIL & PANEL DE CARTES (spec fondateur 17/07/2026) — tokens ADDITIFS.
+// Palette et typos imposées par les références HTML du lot (profil.html,
+// panel-cartes.html). N'altère AUCUN token v2 existant ; réservé aux écrans
+// du lot (profil, profil-edition, cartes). L'or Heritage reste INTERDIT sur
+// ces écrans ; les écarts de temps y sont en gris NEUTRE (deltaNeutre).
+// Polices : Syncopate / Inter / JetBrains Mono (déjà en dépendances,
+// chargées dans src/theme/fonts.ts).
+export const lotProfilTokens = {
+  noir: '#0A0A0A', // fond global
+  blanc: '#FFFFFF', // texte principal
+  rouge: '#C8102E', // insigne, liseré, sélection, CTA
+  surface: '#141414', // cartes, blocs
+  surface2: '#1C1C1C', // éléments imbriqués
+  ligne: '#262626', // bordures
+  gris: '#8A8A8A', // texte secondaire
+  grisSombre: '#555555', // labels, légendes
+  deltaNeutre: '#D6D6D6', // écarts de temps — gris NEUTRE, jamais un jugement
+  fonts: {
+    display: 'Syncopate_700Bold', // titres, nom du pilote, dates, bouton Comparer
+    displayReg: 'Syncopate_400Regular',
+    corps: 'Inter_400Regular', // corps, bio
+    corpsItalique: 'Inter_400Regular_Italic', // manifeste
+    corpsMedium: 'Inter_500Medium',
+    corpsSemi: 'Inter_600SemiBold',
+    mono: 'JetBrainsMono_400Regular', // données chiffrées, eyebrows, labels
+    monoMedium: 'JetBrainsMono_500Medium',
+    monoBold: 'JetBrainsMono_700Bold', // odomètre, valeurs
+  },
+} as const;
+export type LotProfilTokens = typeof lotProfilTokens;

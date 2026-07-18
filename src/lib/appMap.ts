@@ -54,6 +54,8 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   'empreinte-saison': 'miroir',
   passeport: 'miroir',
   'carte-licence': 'miroir',
+  // Panel de cartes (lot PROFIL_CARTES) : la lecture de soi — self vs self.
+  cartes: 'miroir',
   // Amorce/fin de séance (la barre s'efface pendant le flux, cf. CAPTURE_FLOW) —
   // rattachées au Miroir (le pipeline séance → bilan).
   session: 'miroir',
@@ -109,6 +111,7 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   // ── COMPTE — réglages (5e onglet dans les maquettes)
   compte: 'compte',
   profil: 'compte',
+  'profil-edition': 'compte',
   settings: 'compte',
   'mon-equipement': 'compte',
   consentements: 'compte',

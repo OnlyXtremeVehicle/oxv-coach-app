@@ -1,697 +1,751 @@
+// DIVERGENCE_SCHEMA: adaptations au repo réel (spec lot PROFIL_CARTES §3) —
+//  - espace pilote réel = `app/(app)/` (pas `(pilote)/profil/index.tsx`) :
+//    cet écran EXISTANT devient la CONSULTATION fidèle à profil.html ;
+//    l'ÉDITION vit dans `app/(app)/profil-edition.tsx` (appMap : compte) ;
+//  - COUVERTURE : aucune donnée réelle (users.media est un TABLEAU de médias,
+//    pas d'objet { cover_url }) → fond dégradé par défaut du HTML, aucune clé
+//    inventée, pas de bouton « Modifier la couverture » (aucun write-path) ;
+//  - GALERIE : médias de PROFIL réels (pilotMediaService, URLs signées) ;
+//  - bio / car_number / pavilion_name_optin : migration
+//    20260717000000_profil_pavillon.sql NON APPLIQUÉE → repli §5.4 (blocs
+//    masqués + console.warn), codé dans src/lib/queries/profil.ts ;
+//  - l'édition du @handle est CONSERVÉE là où la référence met le pseudo
+//    (users.public_handle, nom public unifié site/app).
 /**
- * Écran Pilote — Mon profil (reskin fidèle refonte-v2 §7bis, 38-profil.png).
+ * Profil pilote — CONSULTATION (référence profil.html, pixel par pixel).
  *
- * Maquette : carte d'identité en tête (avatar initiales, nom, @handle), puis une
- * liste de champs en lecture (nom affiché, identifiant, ville, niveau déclaré) et
- * une note de visibilité amis. Ce que le maquette montre en « lecture » est ici
- * gardé au réel ; l'édition existante (niveau, expérience, licence, véhicule,
- * réseaux, médias) est PRÉSERVÉE dessous, restylée au langage v2.
+ * Doctrine Miroir : aucun chrono, aucun classement, aucune donnée
+ * télémétrique sur le profil. Seul le NOMBRE de cartes est public — et
+ * l'odomètre est LE point d'entrée du Panel de cartes (/(app)/cartes).
  *
- * Données réelles uniquement :
- *  - identité (nom, @handle, ville, avatar) : `users` (RLS self-read/self-update) ;
- *  - niveau/expérience/licence/véhicule/réseaux : pilotProfileService ;
- *  - médias : pilotMediaService (bucket privé `pilot-media`, URLs signées).
- * Toute valeur absente est rendue « — » (jamais inventée).
- *
- * Nom public unifié site/app : `users.public_handle` (TEXT UNIQUE) est LA source
- * du pseudo partagé entre oxvehicle.fr et l'app — éditable ici. Validation via
- * la règle handle existante (src/utils/validation.ts), normalisation minuscules.
- * L'unicité est garantie par la contrainte UNIQUE : pas de vérification
- * préalable (racée) — une violation renvoie Postgres 23505, rendu « Ce nom est
- * déjà pris. ». Voir docs/COORDINATION_SITE_HANDLE.md pour le contrat côté site.
- *
- * Note visibilité amis : le périmètre RLS réel n'ouvre AUCUNE lecture de la ligne
- * `users` à un ami (policy `users_select_own_or_admin`). Ce qu'un ami accepté peut
- * lire, ce sont les bilans de séance partagés (are_friends), jamais les
- * coordonnées. La phrase est formulée à ce réel.
- *
- * Doctrine : sobre, vouvoiement, pas d'emoji, descriptif jamais prescriptif ;
- * l'or reste au chrono (absent ici). Le vocabulaire de niveau est figé.
+ * Données réelles uniquement (RLS self-read, filtres user_id explicites) :
+ * identité `users`, garage `vehicles`, compteur telemetry_sessions
+ * (status 'completed'), circuit principal `circuits`, galerie
+ * pilotMediaService, réseaux `users.socials`. Valeur absente → bloc masqué.
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, ScrollView, Text, TextInput, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 import Toast from 'react-native-toast-message';
 
-import { PressableScale, Stagger } from '@/components/motion';
-import { supabase } from '@/lib/supabase';
+import { AnimatedPresence, PressableScale, Stagger } from '@/components/motion';
+import { CompteurCartes } from '@/components/profil/CompteurCartes';
+import { GalerieGrille } from '@/components/profil/GalerieGrille';
+import { GarageListe } from '@/components/profil/GarageListe';
+import { OptinPavillon } from '@/components/profil/OptinPavillon';
 import {
-  PILOT_LEVELS,
-  getMyPilotProfile,
-  pilotLevelLabel,
-  updateMyPilotProfile,
-} from '@/services/pilotProfileService';
+  type DonneesProfil,
+  changerNomPublic,
+  getProfil,
+  setPavillonOptin,
+} from '@/lib/queries/profil';
 import {
   addMyPilotMedia,
-  type PilotMediaType,
-  type PilotMediaView,
   listMyPilotMedia,
-  removeMyPilotMedia,
+  type PilotMediaView,
 } from '@/services/pilotMediaService';
-import { useAuthStore } from '@/store/useAuthStore';
-import { theme } from '@/theme/v2';
-import { isValidHandle } from '@/utils/validation';
+import { lotProfilTokens as t } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
-import { Card } from '@/ui/Card';
-import { Field } from '@/ui/Field';
-import { Screen } from '@/ui/Screen';
-import { SectionLabel } from '@/ui/SectionLabel';
+import { isValidHandle } from '@/utils/validation';
 
-const { palette, fonts, fontSize, spacing, radius } = theme;
+const MOIS_LONGS = [
+  'janvier',
+  'février',
+  'mars',
+  'avril',
+  'mai',
+  'juin',
+  'juillet',
+  'août',
+  'septembre',
+  'octobre',
+  'novembre',
+  'décembre',
+] as const;
 
-/** Identité en lecture (source `users`, RLS self-read). */
-interface Identity {
-  handle: string | null;
-  city: string | null;
-  avatarUrl: string | null;
+/** « depuis avril 2027 » — mois/année de users.created_at. */
+function depuisTexte(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `depuis ${MOIS_LONGS[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-const EMPTY_IDENTITY: Identity = { handle: null, city: null, avatarUrl: null };
-
-/** Valeur d'une ligne de la carte d'identité — « — » si absente. */
-function readValue(v: string | null | undefined): string {
-  const t = v?.trim();
-  return t && t.length > 0 ? t : '—';
-}
-
-/** Ligne de lecture (label à gauche, valeur factuelle à droite). */
-function ReadRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+/** Insigne OXV (placeholder géométrique de la référence — asset à venir). */
+function InsigneOxv() {
   return (
-    <View
-      style={[s.readRow, !last && s.readRowSep]}
-      accessibilityRole="text"
-      accessibilityLabel={`${label} : ${value}`}
-    >
-      <Text style={s.readLabel}>{label}</Text>
-      <Text style={s.readValue} numberOfLines={1}>
-        {value}
-      </Text>
+    <Svg width={26} height={30} viewBox="0 0 26 30" fill="none">
+      <Path
+        d="M2 4 L13 1 L24 4 L24 16 Q24 25 13 29 Q2 25 2 16 Z"
+        stroke={t.rouge}
+        strokeWidth={1.6}
+      />
+      <Path d="M8 10 L18 20 M18 10 L8 20" stroke={t.rouge} strokeWidth={1.6} />
+      <Path d="M13 20 L13 24" stroke={t.rouge} strokeWidth={1.6} />
+    </Svg>
+  );
+}
+
+/** Titre de section avec filet (référence .section-titre). */
+function SectionTitre({ children }: { children: string }) {
+  return (
+    <View style={s.sectionTitre}>
+      <Text style={s.sectionTitreTexte}>{children}</Text>
+      <View style={s.sectionTitreFilet} />
     </View>
   );
 }
 
-export default function PilotProfileScreen() {
-  const profile = useAuthStore((state) => state.profile);
+type Etat =
+  | { phase: 'chargement' }
+  | { phase: 'erreur' }
+  | { phase: 'pret'; donnees: DonneesProfil };
 
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+export default function ProfilScreen() {
+  const insets = useSafeAreaInsets();
+  const [etat, setEtat] = useState<Etat>({ phase: 'chargement' });
+  const [medias, setMedias] = useState<PilotMediaView[]>([]);
+  const [mediaEnCours, setMediaEnCours] = useState(false);
 
-  const [identity, setIdentity] = useState<Identity>(EMPTY_IDENTITY);
-  const [handleInput, setHandleInput] = useState('');
-  const [handleError, setHandleError] = useState<string | null>(null);
-  const [level, setLevel] = useState<string | null>(null);
-  const [experience, setExperience] = useState('');
-  const [ffsa, setFfsa] = useState('');
-  const [vehicle, setVehicle] = useState('');
-  const [website, setWebsite] = useState('');
-  const [instagram, setInstagram] = useState('');
-  const [youtube, setYoutube] = useState('');
-  const [media, setMedia] = useState<PilotMediaView[]>([]);
-  const [mediaBusy, setMediaBusy] = useState(false);
+  // Édition inline du nom public (conservée là où la référence met le pseudo).
+  const [editionHandle, setEditionHandle] = useState(false);
+  const [handleSaisie, setHandleSaisie] = useState('');
+  const [handleErreur, setHandleErreur] = useState<string | null>(null);
+  const [handleEnCours, setHandleEnCours] = useState(false);
 
-  const userId = profile?.id;
+  const [pavillonEnCours, setPavillonEnCours] = useState(false);
+
+  const charger = useCallback(() => {
+    setEtat({ phase: 'chargement' });
+    Promise.all([getProfil(), listMyPilotMedia()])
+      .then(([donnees, mediasCharges]) => {
+        setEtat({ phase: 'pret', donnees });
+        setMedias(mediasCharges);
+        setHandleSaisie(donnees.profil.handle ?? '');
+        setHandleErreur(null);
+      })
+      .catch(() => setEtat({ phase: 'erreur' }));
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-      setLoading(true);
-
-      listMyPilotMedia().then((m) => {
-        if (!cancelled) setMedia(m);
-      });
-
-      // Identité en lecture (users.public_handle / address_city / avatar_url,
-      // RLS self-read) — même pattern que le hub Compte.
-      if (userId) {
-        (async () => {
-          const { data } = await supabase
-            .from('users')
-            .select('public_handle, address_city, avatar_url')
-            .eq('id', userId)
-            .maybeSingle();
-          if (cancelled) return;
-          const row = data as {
-            public_handle?: string | null;
-            address_city?: string | null;
-            avatar_url?: string | null;
-          } | null;
-          setIdentity({
-            handle: row?.public_handle ?? null,
-            city: row?.address_city ?? null,
-            avatarUrl: row?.avatar_url ?? null,
-          });
-          setHandleInput(row?.public_handle ?? '');
-          setHandleError(null);
-        })().catch(() => undefined);
-      }
-
-      getMyPilotProfile()
-        .then((p) => {
-          if (cancelled) return;
-          setLevel(p.pilotLevel);
-          setExperience(p.experienceYears ?? '');
-          setFfsa(p.ffsaLicense ?? '');
-          setVehicle(p.vehicle ?? '');
-          setWebsite(p.socials.website ?? '');
-          setInstagram(p.socials.instagram ?? '');
-          setYoutube(p.socials.youtube ?? '');
-          setLoading(false);
-        })
-        .catch(() => {
-          if (!cancelled) setLoading(false);
-        });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [userId])
+      charger();
+    }, [charger])
   );
 
-  async function onSave() {
-    // Nom public — normalisation minuscules (la base stocke la forme minuscule,
-    // le @ est un préfixe d'affichage, jamais stocké).
-    const nextHandle = handleInput.trim().replace(/^@+/, '').toLowerCase();
-    const currentHandle = identity.handle ?? '';
-    const handleChanged = nextHandle !== currentHandle;
-
-    // Validation locale (règle partagée site/app, src/utils/validation.ts).
-    // Un champ vidé alors qu'un nom existe échoue aussi : le nom public se
-    // remplace, il ne se retire pas depuis l'app.
-    if (handleChanged && !isValidHandle(nextHandle)) {
-      setHandleError('3 à 20 caractères : minuscules, chiffres, tiret ou underscore.');
+  async function enregistrerHandle() {
+    if (etat.phase !== 'pret') return;
+    const prochain = handleSaisie.trim().replace(/^@+/, '').toLowerCase();
+    if (prochain === (etat.donnees.profil.handle ?? '')) {
+      setEditionHandle(false);
       return;
     }
-
-    setSaving(true);
-
-    // Écriture users.public_handle (RLS self-update). Pas de vérification
-    // préalable d'unicité — racée : la contrainte UNIQUE est la vérité, une
-    // violation renvoie Postgres 23505.
-    if (handleChanged && userId) {
-      const { error } = await supabase
-        .from('users')
-        .update({ public_handle: nextHandle })
-        .eq('id', userId);
-      if (error) {
-        setSaving(false);
-        if (error.code === '23505') {
-          setHandleError('Ce nom est déjà pris.');
-          return;
-        }
-        console.warn('[OXV][profil] update public_handle :', error.message);
-        Toast.show({
-          type: 'error',
-          text1: "Votre nom public n'a pas pu être enregistré. Réessayez dans un instant.",
-        });
-        return;
-      }
-      setIdentity((prev) => ({ ...prev, handle: nextHandle }));
-      setHandleInput(nextHandle);
-      setHandleError(null);
+    if (!isValidHandle(prochain)) {
+      setHandleErreur('3 à 20 caractères : minuscules, chiffres, tiret ou underscore.');
+      return;
     }
-
-    const res = await updateMyPilotProfile({
-      pilotLevel: level,
-      experienceYears: experience,
-      ffsaLicense: ffsa,
-      vehicle,
-      socials: { website, instagram, youtube },
+    setHandleEnCours(true);
+    const res = await changerNomPublic(prochain);
+    setHandleEnCours(false);
+    if (!res.ok) {
+      setHandleErreur(res.error);
+      return;
+    }
+    setEtat({
+      phase: 'pret',
+      donnees: {
+        ...etat.donnees,
+        profil: { ...etat.donnees.profil, handle: prochain },
+      },
     });
-    setSaving(false);
+    setHandleSaisie(prochain);
+    setHandleErreur(null);
+    setEditionHandle(false);
+    Toast.show({ type: 'success', text1: 'Nom public enregistré.' });
+  }
+
+  async function basculerPavillon() {
+    if (etat.phase !== 'pret') return;
+    const actuel = etat.donnees.profil.pavillonOptin ?? false;
+    setPavillonEnCours(true);
+    const res = await setPavillonOptin(!actuel);
+    setPavillonEnCours(false);
     if (!res.ok) {
       Toast.show({ type: 'error', text1: res.error });
       return;
     }
-    Toast.show({ type: 'success', text1: 'Profil enregistré.' });
+    setEtat({
+      phase: 'pret',
+      donnees: {
+        ...etat.donnees,
+        profil: { ...etat.donnees.profil, pavillonOptin: !actuel },
+      },
+    });
   }
 
-  async function onAddMedia(type: PilotMediaType) {
-    setMediaBusy(true);
-    const res = await addMyPilotMedia(type);
-    setMediaBusy(false);
+  async function ajouterPhoto() {
+    setMediaEnCours(true);
+    const res = await addMyPilotMedia('photo');
+    setMediaEnCours(false);
     if (res.ok) {
-      setMedia(res.items);
-      Toast.show({
-        type: 'success',
-        text1: type === 'video' ? 'Vidéo ajoutée.' : 'Photo ajoutée.',
-      });
+      setMedias(res.items);
+      Toast.show({ type: 'success', text1: 'Photo ajoutée.' });
     } else if (!('cancelled' in res)) {
       Toast.show({ type: 'error', text1: res.error });
     }
   }
 
-  async function onRemoveMedia(id: string) {
-    const res = await removeMyPilotMedia(id);
-    if (res.ok) {
-      setMedia(res.items);
-    } else {
-      Toast.show({ type: 'error', text1: res.error });
-    }
-  }
-
-  if (loading) {
+  if (etat.phase === 'chargement') {
     return (
-      <Screen scroll={false}>
-        <AppBar title="Profil" onBack={() => router.back()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator color={palette.creamMute} accessibilityLabel="Chargement" />
+      <View style={[s.ecran, { paddingTop: insets.top }]}>
+        <AppBar onBack={() => router.back()} />
+        <View style={s.centre}>
+          <ActivityIndicator color={t.gris} accessibilityLabel="Chargement du profil" />
         </View>
-      </Screen>
+      </View>
     );
   }
 
-  // Identité affichée — nom réel (users via authStore), initiales, @handle.
-  const firstName = profile?.first_name?.trim() ?? '';
-  const lastName = profile?.last_name?.trim() ?? '';
-  const initials =
-    `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase() ||
-    (profile?.email?.charAt(0).toUpperCase() ?? '—');
-  const fullName = [firstName, lastName].filter(Boolean).join(' ') || (profile?.email ?? '—');
-  const handleLabel = identity.handle ? `@${identity.handle}` : '—';
+  if (etat.phase === 'erreur') {
+    return (
+      <View style={[s.ecran, { paddingTop: insets.top }]}>
+        <AppBar onBack={() => router.back()} />
+        <View style={s.centre}>
+          <View style={s.bandeauErreur}>
+            <Text style={s.erreurTexte}>
+              Votre profil n&apos;a pas pu être chargé. Vérifiez votre connexion.
+            </Text>
+            <PressableScale
+              onPress={charger}
+              accessibilityRole="button"
+              accessibilityLabel="Réessayer le chargement"
+              pressedOpacity={0.7}
+              style={s.boutonReessayer}
+            >
+              <Text style={s.boutonReessayerTexte}>Réessayer</Text>
+            </PressableScale>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  const { profil, vehicules, compteurCartes, circuitPrincipal } = etat.donnees;
+
+  const nomComplet =
+    [profil.prenom, profil.nom].filter(Boolean).join(' ').trim() || (profil.handle ?? '—');
+  const initiales =
+    `${profil.prenom?.charAt(0) ?? ''}${profil.nom?.charAt(0) ?? ''}`.toUpperCase() || '—';
+  const depuis = depuisTexte(profil.creeLe);
+
+  // Sous-ligne du compteur : lieu officiel · tracé (valeurs réelles `circuits`).
+  const sousLigneCompteur = circuitPrincipal
+    ? [circuitPrincipal.officialName, circuitPrincipal.name]
+        .filter((v, i, tab): v is string => Boolean(v) && tab.indexOf(v) === i)
+        .join(' · ') || null
+    : null;
+
+  const reseaux = [
+    { cle: 'instagram', libelle: 'Instagram', url: profil.reseaux.instagram },
+    { cle: 'youtube', libelle: 'YouTube', url: profil.reseaux.youtube },
+    { cle: 'linkedin', libelle: 'LinkedIn', url: profil.reseaux.linkedin },
+  ].filter((r) => r.url !== null);
 
   return (
-    <Screen>
-      <AppBar title="Profil" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
-        {/* Cascade d'entrée : chaque section du profil se pose l'une après
-            l'autre (plafond du kit — la fin de page n'attend pas). */}
-        <Stagger>
-          {/* Carte d'identité — avatar initiales (convention app), nom, @handle. */}
-          <View style={s.hero}>
-            <View style={s.avatar} accessibilityElementsHidden importantForAccessibility="no">
-              {identity.avatarUrl ? (
+    <View style={[s.ecran, { paddingTop: insets.top }]}>
+      <AppBar onBack={() => router.back()} />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
+        {/* ── COVER — dégradé par défaut de la référence (aucune donnée cover
+            en base) + filigrane du tracé RÉEL du circuit principal. */}
+        <View style={s.cover}>
+          <Svg width="100%" height="100%" style={s.coverFond}>
+            <Defs>
+              <LinearGradient id="coverGrad" x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0" stopColor="#101010" />
+                <Stop offset="1" stopColor={t.noir} />
+              </LinearGradient>
+            </Defs>
+            <Rect x="0" y="0" width="100%" height="100%" fill="url(#coverGrad)" />
+          </Svg>
+          {circuitPrincipal?.trackSvgPath ? (
+            <View style={s.coverTrace} pointerEvents="none">
+              <Svg width={340} height={340} viewBox="0 0 1000 1000">
+                <Path
+                  d={circuitPrincipal.trackSvgPath}
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeWidth={8}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </View>
+          ) : null}
+          <View style={s.insigne} pointerEvents="none">
+            <InsigneOxv />
+          </View>
+        </View>
+
+        {/* ── IDENTITÉ */}
+        <View style={s.identite}>
+          <View style={s.avatarRow}>
+            <View style={s.avatar}>
+              {profil.avatarUrl ? (
                 <Image
-                  source={{ uri: identity.avatarUrl }}
+                  source={{ uri: profil.avatarUrl }}
                   style={s.avatarImg}
                   resizeMode="cover"
                   accessibilityLabel="Votre photo de profil"
                 />
               ) : (
-                <Text style={s.avatarText}>{initials}</Text>
+                <Text style={s.avatarInitiales}>{initiales}</Text>
               )}
             </View>
-            <Text style={s.name} accessibilityRole="header">
-              {fullName}
-            </Text>
-            <Text style={s.handle}>{handleLabel}</Text>
+            <PressableScale
+              onPress={() => router.push('/(app)/profil-edition' as never)}
+              accessibilityRole="button"
+              accessibilityLabel="Modifier le profil"
+              pressedOpacity={0.7}
+              style={s.btnModifier}
+            >
+              <Text style={s.btnModifierTexte}>Modifier le profil</Text>
+            </PressableScale>
           </View>
 
-          {/* Liste de lecture — reprise fidèle des lignes du maquette, au réel. */}
-          <Card style={s.readCard}>
-            <ReadRow label="Nom affiché" value={fullName} />
-            <ReadRow label="Identifiant" value={handleLabel} />
-            <ReadRow label="Ville" value={readValue(identity.city)} />
-            <ReadRow label="Niveau déclaré" value={level ? pilotLevelLabel(level) : '—'} last />
-          </Card>
-
-          {/* Note de visibilité — formulée au périmètre RLS réel (aucune lecture de
-            la ligne users par un ami ; seuls les bilans partagés le sont). */}
-          <Text style={s.privacyNote}>
-            Vos coordonnées restent privées. Vos amis ne voient que les bilans de séance que vous
-            partagez avec eux.
+          <Text style={s.nom} accessibilityRole="header">
+            {nomComplet}
           </Text>
 
-          {/* ---- Nom public unifié site/app (users.public_handle, UNIQUE) ---- */}
-          <View style={s.editBlock}>
-            <SectionLabel>Identité publique</SectionLabel>
-            {identity.handle === null ? (
-              <View style={s.handleInvite} accessibilityRole="text">
-                <Text style={s.handleInviteTitle}>Choisissez votre nom public</Text>
-                <Text style={s.handleInviteBody}>
-                  Le même nom vous suit sur oxvehicle.fr et dans l&apos;app.
-                </Text>
+          <View style={s.pseudoRow}>
+            {profil.carNumber !== null ? (
+              <View style={s.badgeNum}>
+                <Text style={s.badgeNumTexte}>N° {profil.carNumber}</Text>
               </View>
             ) : null}
-            <Field
-              label="Nom public"
-              value={handleInput}
-              onChangeText={(t) => {
-                setHandleInput(t.toLowerCase());
-                setHandleError(null);
+            <PressableScale
+              onPress={() => {
+                setEditionHandle((v) => !v);
+                setHandleErreur(null);
               }}
-              placeholder="votre-nom"
-              autoCapitalize="none"
-              autoCorrect={false}
-              maxLength={20}
-              error={handleError}
-              helper={
-                identity.handle
-                  ? "Le même nom vous suit sur oxvehicle.fr et dans l'app."
-                  : '3 à 20 caractères : minuscules, chiffres, tiret ou underscore.'
+              accessibilityRole="button"
+              accessibilityLabel={
+                profil.handle
+                  ? `Votre pseudonyme, ${profil.handle}. Modifier`
+                  : 'Choisir votre nom public'
               }
-              containerStyle={{ marginBottom: 0 }}
-            />
+              hitSlop={8}
+              pressedOpacity={0.7}
+            >
+              <Text style={s.pseudo}>
+                {profil.handle ? `@${profil.handle}` : 'Choisir un nom public'}
+              </Text>
+            </PressableScale>
           </View>
 
-          {/* ---- Édition (CRUD existant, restylé v2) ---- */}
-          <View style={s.editBlock}>
-            <SectionLabel>Niveau</SectionLabel>
-            <View style={s.pillRow}>
-              {PILOT_LEVELS.map((l) => {
-                const on = level === l.value;
-                return (
-                  <PressableScale
-                    key={l.value}
-                    onPress={() => setLevel(l.value)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: on }}
-                    accessibilityLabel={l.label}
-                    hitSlop={6}
-                    style={[s.pill, on ? s.pillOn : null]}
-                  >
-                    <Text style={[s.pillT, on ? s.pillTOn : null]}>{l.label}</Text>
-                  </PressableScale>
-                );
-              })}
+          {/* Édition inline du nom public — validation partagée site/app. */}
+          <AnimatedPresence visible={editionHandle}>
+            <View style={s.handleEditeur}>
+              <TextInput
+                value={handleSaisie}
+                onChangeText={(v) => {
+                  setHandleSaisie(v.toLowerCase());
+                  setHandleErreur(null);
+                }}
+                placeholder="votre-nom"
+                placeholderTextColor={t.grisSombre}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+                style={s.handleChamp}
+                accessibilityLabel="Nom public"
+              />
+              <PressableScale
+                onPress={enregistrerHandle}
+                disabled={handleEnCours}
+                accessibilityRole="button"
+                accessibilityLabel="Enregistrer le nom public"
+                pressedOpacity={0.7}
+                style={[s.handleBouton, handleEnCours ? { opacity: 0.5 } : null]}
+              >
+                <Text style={s.handleBoutonTexte}>Enregistrer</Text>
+              </PressableScale>
             </View>
-          </View>
-
-          <View style={{ marginTop: spacing.xl }}>
-            <Field
-              label="Années d'expérience"
-              optional
-              value={experience}
-              onChangeText={setExperience}
-              placeholder="ex. 5 ans, débuts en 2019…"
-            />
-            <Field
-              label="Licence FFSA"
-              optional
-              value={ffsa}
-              onChangeText={setFfsa}
-              placeholder="Numéro de licence"
-            />
-            <Field
-              label="Véhicule"
-              optional
-              value={vehicle}
-              onChangeText={setVehicle}
-              placeholder="Marque, modèle, préparation…"
-              multiline
-              maxLength={200}
-            />
-          </View>
-
-          <View style={{ marginTop: spacing.lg }}>
-            <SectionLabel>Réseaux</SectionLabel>
-            <View style={{ marginTop: spacing.md }}>
-              <Field
-                label="Site web"
-                optional
-                value={website}
-                onChangeText={setWebsite}
-                placeholder="https://…"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-              <Field
-                label="Instagram"
-                optional
-                value={instagram}
-                onChangeText={setInstagram}
-                placeholder="https://instagram.com/…"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-              <Field
-                label="YouTube"
-                optional
-                value={youtube}
-                onChangeText={setYoutube}
-                placeholder="https://youtube.com/…"
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="url"
-              />
-            </View>
-          </View>
-
-          <View style={{ marginTop: spacing.xl }}>
-            <SectionLabel>Médias</SectionLabel>
-            <Text style={s.mediaHint}>
-              Photos et vidéos de votre profil, visibles par votre coach.
+            {handleErreur ? <Text style={s.handleErreur}>{handleErreur}</Text> : null}
+            <Text style={s.handleAide}>
+              Le même nom vous suit sur oxvehicle.fr et dans l&apos;app.
             </Text>
+          </AnimatedPresence>
 
-            {media.length > 0 ? (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ marginTop: spacing.md }}
-                contentContainerStyle={{ gap: spacing.sm }}
-              >
-                {media.map((m) => (
-                  <View key={m.id} style={s.mediaTile}>
-                    {m.type === 'photo' && m.signedUrl ? (
-                      <Image
-                        source={{ uri: m.signedUrl }}
-                        style={s.mediaThumb}
-                        resizeMode="cover"
-                        accessibilityLabel="Photo du profil"
-                      />
-                    ) : (
-                      <View style={[s.mediaThumb, s.mediaCenter]}>
-                        <Text style={s.mediaTileT}>{m.type === 'video' ? 'Vidéo' : 'Photo'}</Text>
-                      </View>
-                    )}
-                    <PressableScale
-                      accessibilityRole="button"
-                      accessibilityLabel="Retirer ce média"
-                      hitSlop={6}
-                      onPress={() => onRemoveMedia(m.id)}
-                      style={s.mediaRemove}
-                    >
-                      <Text style={s.mediaRemoveT}>Retirer</Text>
-                    </PressableScale>
-                  </View>
-                ))}
-              </ScrollView>
-            ) : (
-              <Text style={s.mediaEmpty}>Aucun média pour l&apos;instant.</Text>
-            )}
+          {/* TODO_ARBITRAGE: statut Fondateur — colonne ou table dédiée à trancher
+              (spec §5.5 : « Membre · depuis {mois année} », sans la mention). */}
+          <Text style={s.membreDepuis}>{depuis ? `Membre · ${depuis}` : 'Membre'}</Text>
+        </View>
 
-            <View style={s.mediaActions}>
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel="Ajouter une photo"
-                disabled={mediaBusy}
-                onPress={() => onAddMedia('photo')}
-                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-              >
-                <Text style={s.mediaBtnT}>Ajouter une photo</Text>
-              </PressableScale>
-              <PressableScale
-                accessibilityRole="button"
-                accessibilityLabel="Ajouter une vidéo"
-                disabled={mediaBusy}
-                onPress={() => onAddMedia('video')}
-                style={[s.mediaBtn, mediaBusy ? { opacity: 0.5 } : null]}
-              >
-                <Text style={s.mediaBtnT}>Ajouter une vidéo</Text>
-              </PressableScale>
-            </View>
-
-            {mediaBusy ? (
-              <ActivityIndicator
-                color={palette.creamMute}
-                style={{ marginTop: spacing.md }}
-                accessibilityLabel="Envoi du média en cours"
-              />
-            ) : null}
+        <Stagger>
+          {/* ── COMPTEUR CARTES — seule statistique publique, entrée du panel. */}
+          <View style={s.blocCompteur}>
+            <CompteurCartes
+              total={compteurCartes}
+              sousLigne={sousLigneCompteur}
+              onPress={() => router.push('/(app)/cartes' as never)}
+            />
           </View>
 
-          <View style={{ marginTop: spacing.xl }}>
-            <Button label="Enregistrer mon profil" loading={saving} onPress={onSave} />
+          {/* ── BIO (migration requise ; masquée si vide — l'invitation vit en
+              mode édition uniquement). */}
+          {profil.bio ? (
+            <View style={s.section}>
+              <SectionTitre>Bio</SectionTitre>
+              <Text style={s.bio}>{profil.bio}</Text>
+            </View>
+          ) : null}
+
+          {/* ── GARAGE — masqué sans véhicule. */}
+          {vehicules.length > 0 ? (
+            <View style={s.section}>
+              <SectionTitre>Garage</SectionTitre>
+              <GarageListe vehicules={vehicules} />
+            </View>
+          ) : null}
+
+          {/* ── GALERIE — médias de profil réels + ajout réel. */}
+          <View style={s.section}>
+            <SectionTitre>Galerie</SectionTitre>
+            <GalerieGrille medias={medias} onAjouter={ajouterPhoto} ajoutEnCours={mediaEnCours} />
+          </View>
+
+          {/* ── RÉSEAUX — seules les clés renseignées apparaissent. */}
+          {reseaux.length > 0 ? (
+            <View style={s.section}>
+              <SectionTitre>Réseaux</SectionTitre>
+              <View style={s.reseaux}>
+                {reseaux.map((r) => (
+                  <PressableScale
+                    key={r.cle}
+                    onPress={() => {
+                      if (r.url && /^https?:\/\//i.test(r.url)) {
+                        Linking.openURL(r.url).catch(() => undefined);
+                      }
+                    }}
+                    accessibilityRole="link"
+                    accessibilityLabel={`Ouvrir votre profil ${r.libelle}`}
+                    pressedOpacity={0.7}
+                    style={s.reseau}
+                  >
+                    <Text style={s.reseauTexte}>{r.libelle}</Text>
+                  </PressableScale>
+                ))}
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── RÉGLAGE PAVILLON — monté seulement si la migration est là. */}
+          {profil.migrationPavillon && profil.pavillonOptin !== null ? (
+            <View style={s.section}>
+              <SectionTitre>Affichage Pavillon</SectionTitre>
+              <OptinPavillon
+                actif={profil.pavillonOptin}
+                enCours={pavillonEnCours}
+                onBasculer={basculerPavillon}
+              />
+            </View>
+          ) : null}
+
+          {/* ── MANIFESTE */}
+          <View style={s.manifeste}>
+            <Text style={s.manifesteTexte}>
+              « Vous ne pilotez contre personne d&apos;autre que vous-même. »
+            </Text>
+            <Text style={s.manifestePrincipe}>Le principe OXV</Text>
           </View>
         </Stagger>
-      </View>
-    </Screen>
+      </ScrollView>
+    </View>
   );
 }
 
 const s = {
-  /* Carte d'identité (hero) — avatar centré, nom, @handle. */
-  hero: {
+  ecran: {
+    flex: 1,
+    backgroundColor: t.noir,
+  },
+  centre: {
+    flex: 1,
     alignItems: 'center' as const,
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    marginBottom: spacing.xl,
+    justifyContent: 'center' as const,
+    padding: 20,
+  },
+
+  /* ── Cover */
+  cover: {
+    height: 210,
+    overflow: 'hidden' as const,
+    position: 'relative' as const,
+  },
+  coverFond: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  coverTrace: {
+    position: 'absolute' as const,
+    top: -10,
+    right: -40,
+    opacity: 0.16,
+  },
+  insigne: {
+    position: 'absolute' as const,
+    top: 18,
+    left: 20,
+  },
+
+  /* ── Identité */
+  identite: {
+    paddingHorizontal: 20,
+    marginTop: -52,
+    zIndex: 2,
+  },
+  avatarRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-end' as const,
+    justifyContent: 'space-between' as const,
   },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: palette.card2,
-    borderWidth: 1,
-    borderColor: palette.line,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2,
+    borderColor: t.rouge,
+    backgroundColor: t.surface2,
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
     overflow: 'hidden' as const,
-    marginBottom: spacing.sm,
   },
-  avatarImg: { width: 88, height: 88 },
-  avatarText: {
-    fontFamily: fonts.bodySemi,
-    fontSize: theme.fontSize.value,
+  avatarImg: { width: 92, height: 92, borderRadius: 46 },
+  avatarInitiales: {
+    fontFamily: t.fonts.display,
+    fontSize: 24,
     letterSpacing: 1,
-    color: palette.creamSoft,
+    color: t.blanc,
   },
-  name: {
-    fontFamily: fonts.display,
-    fontSize: fontSize.h2,
-    letterSpacing: 0.2,
-    color: palette.cream,
-    textAlign: 'center' as const,
+  btnModifier: {
+    borderWidth: 1,
+    borderColor: t.rouge,
+    borderRadius: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
   },
-  handle: {
-    fontFamily: fonts.mono,
-    fontSize: fontSize.small,
-    letterSpacing: 0.6,
-    color: palette.creamMute,
+  btnModifierTexte: {
+    fontFamily: t.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase' as const,
+    color: t.blanc,
   },
-
-  /* Liste de lecture. */
-  readCard: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 0,
+  nom: {
+    fontFamily: t.fonts.display,
+    fontSize: 21,
+    letterSpacing: 0.84,
+    lineHeight: 26,
+    textTransform: 'uppercase' as const,
+    color: t.blanc,
+    marginTop: 16,
   },
-  readRow: {
+  pseudoRow: {
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
-    gap: spacing.md,
-    minHeight: 52,
-    paddingVertical: spacing.md,
+    gap: 10,
+    marginTop: 6,
   },
-  readRowSep: {
-    borderBottomWidth: 1,
-    borderBottomColor: palette.separator,
+  badgeNum: {
+    backgroundColor: t.blanc,
+    paddingVertical: 2,
+    paddingHorizontal: 7,
+    borderRadius: 2,
   },
-  readLabel: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.body,
-    color: palette.creamMute,
-  },
-  readValue: {
-    flex: 1,
-    textAlign: 'right' as const,
-    fontFamily: fonts.bodySemi,
-    fontSize: fontSize.body,
-    color: palette.cream,
-  },
-  privacyNote: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    lineHeight: fontSize.small * 1.6,
-    color: palette.eyebrow,
-    marginTop: spacing.lg,
-  },
-
-  /* Nom public — invite visible tant que le pilote n'a pas choisi. */
-  handleInvite: {
-    borderWidth: 1,
-    borderColor: palette.edge,
-    borderRadius: radius.md,
-    backgroundColor: palette.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    gap: spacing.xs,
-  },
-  handleInviteTitle: {
-    fontFamily: fonts.bodySemi,
-    fontSize: fontSize.body,
-    color: palette.cream,
-  },
-  handleInviteBody: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    lineHeight: fontSize.small * 1.5,
-    color: palette.creamMute,
-  },
-
-  /* Édition. */
-  editBlock: { marginTop: spacing.xxl, gap: spacing.md },
-  pillRow: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: spacing.sm },
-  pill: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    minHeight: 44,
-    justifyContent: 'center' as const,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.card2,
-  },
-  pillOn: { borderColor: palette.edge, backgroundColor: palette.card },
-  pillT: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.body,
-    color: palette.creamMute,
-  },
-  pillTOn: { color: palette.cream },
-
-  /* Médias. */
-  mediaHint: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    color: palette.creamMute,
-    lineHeight: fontSize.small * 1.5,
-    marginTop: spacing.xs,
-  },
-  mediaEmpty: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    color: palette.faint,
-    marginTop: spacing.md,
-  },
-  mediaTile: { width: 120 },
-  mediaThumb: {
-    width: 120,
-    height: 120,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.card2,
-  },
-  mediaCenter: { alignItems: 'center' as const, justifyContent: 'center' as const },
-  mediaTileT: {
-    fontFamily: fonts.mono,
+  badgeNumTexte: {
+    fontFamily: t.fonts.monoBold,
     fontSize: 11,
+    letterSpacing: 0.44,
+    color: t.noir,
+  },
+  pseudo: {
+    fontFamily: t.fonts.mono,
+    fontSize: 12,
+    color: t.gris,
+    letterSpacing: 0.72,
+  },
+  membreDepuis: {
+    fontFamily: t.fonts.mono,
+    fontSize: 10,
+    color: t.grisSombre,
     letterSpacing: 1.2,
     textTransform: 'uppercase' as const,
-    color: palette.creamMute,
+    marginTop: 10,
   },
-  mediaRemove: {
-    minHeight: 36,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
-    marginTop: spacing.xs,
-  },
-  mediaRemoveT: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.small,
-    color: palette.creamMute,
-  },
-  mediaActions: {
+
+  /* ── Édition inline du nom public */
+  handleEditeur: {
     flexDirection: 'row' as const,
-    flexWrap: 'wrap' as const,
-    gap: spacing.sm,
-    marginTop: spacing.lg,
+    gap: 8,
+    marginTop: 12,
   },
-  mediaBtn: {
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-    justifyContent: 'center' as const,
-    borderRadius: radius.md,
+  handleChamp: {
+    flex: 1,
+    fontFamily: t.fonts.mono,
+    fontSize: 12,
+    color: t.blanc,
+    backgroundColor: t.surface,
     borderWidth: 1,
-    borderColor: palette.edge,
+    borderColor: t.ligne,
+    borderRadius: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
   },
-  mediaBtnT: {
-    fontFamily: fonts.bodyMedium,
-    fontSize: fontSize.small,
-    letterSpacing: 0.3,
-    color: palette.cream,
+  handleBouton: {
+    borderWidth: 1,
+    borderColor: t.rouge,
+    borderRadius: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    justifyContent: 'center' as const,
+  },
+  handleBoutonTexte: {
+    fontFamily: t.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase' as const,
+    color: t.blanc,
+  },
+  handleErreur: {
+    fontFamily: t.fonts.corps,
+    fontSize: 11,
+    color: t.rouge,
+    marginTop: 6,
+  },
+  handleAide: {
+    fontFamily: t.fonts.corps,
+    fontSize: 11,
+    color: t.grisSombre,
+    marginTop: 6,
+  },
+
+  /* ── Compteur + sections */
+  blocCompteur: {
+    marginTop: 24,
+    marginHorizontal: 20,
+  },
+  section: {
+    marginTop: 28,
+    marginHorizontal: 20,
+  },
+  sectionTitre: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginBottom: 14,
+  },
+  sectionTitreTexte: {
+    fontFamily: t.fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1.8,
+    textTransform: 'uppercase' as const,
+    color: t.gris,
+  },
+  sectionTitreFilet: {
+    flex: 1,
+    height: 1,
+    backgroundColor: t.ligne,
+  },
+  bio: {
+    fontFamily: t.fonts.corps,
+    fontSize: 14,
+    lineHeight: 23,
+    color: t.deltaNeutre,
+  },
+  reseaux: {
+    flexDirection: 'row' as const,
+    gap: 10,
+  },
+  reseau: {
+    flex: 1,
+    backgroundColor: t.surface,
+    borderWidth: 1,
+    borderColor: t.ligne,
+    borderRadius: 4,
+    paddingVertical: 12,
+    alignItems: 'center' as const,
+  },
+  reseauTexte: {
+    fontFamily: t.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 0.66,
+    color: t.deltaNeutre,
+  },
+
+  /* ── Manifeste */
+  manifeste: {
+    marginTop: 36,
+    marginHorizontal: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: t.ligne,
+    alignItems: 'center' as const,
+  },
+  manifesteTexte: {
+    fontFamily: t.fonts.corpsItalique,
+    fontSize: 12,
+    lineHeight: 19,
+    color: t.gris,
+    textAlign: 'center' as const,
+  },
+  manifestePrincipe: {
+    fontFamily: t.fonts.mono,
+    fontSize: 9,
+    letterSpacing: 1.44,
+    textTransform: 'uppercase' as const,
+    color: t.grisSombre,
+    marginTop: 8,
+  },
+
+  /* ── Erreur */
+  bandeauErreur: {
+    alignSelf: 'stretch' as const,
+    backgroundColor: t.surface,
+    borderWidth: 1,
+    borderColor: t.ligne,
+    borderRadius: 5,
+    padding: 20,
+    alignItems: 'center' as const,
+    gap: 14,
+  },
+  erreurTexte: {
+    fontFamily: t.fonts.corps,
+    fontSize: 13,
+    lineHeight: 21,
+    color: t.gris,
+    textAlign: 'center' as const,
+  },
+  boutonReessayer: {
+    borderWidth: 1,
+    borderColor: t.rouge,
+    borderRadius: 2,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+  },
+  boutonReessayerTexte: {
+    fontFamily: t.fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.1,
+    textTransform: 'uppercase' as const,
+    color: t.blanc,
   },
 };

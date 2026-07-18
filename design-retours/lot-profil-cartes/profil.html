@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OXV — Profil Pilote (maquette app)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     OXV — MAQUETTE PROFIL PILOTE (APPLICATION)
+     Format cible : 390 × 844 (iPhone 14/15 base)
+     Palette : #0A0A0A / #FFFFFF / #C8102E — or #C4A459 réservé Heritage
+     Typo : Syncopate (display) / Inter (corps) / JetBrains Mono (data)
+     Doctrine Miroir : aucun chrono, aucun classement, aucune donnée
+     télémétrique sur le profil. Seul le NOMBRE de cartes est public.
+     ============================================================ */
+
+  :root {
+    --noir: #0A0A0A;
+    --blanc: #FFFFFF;
+    --rouge: #C8102E;
+    --surface: #141414;
+    --surface-2: #1C1C1C;
+    --ligne: #262626;
+    --gris: #8A8A8A;
+    --gris-sombre: #555555;
+    /* --or-heritage: #C4A459;  À activer uniquement si membre Heritage */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050505;
+    font-family: 'Inter', sans-serif;
+    color: var(--blanc);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 32px 0;
+  }
+
+  /* ---- Cadre téléphone (aide à la revue, hors spec app) ---- */
+  .phone {
+    width: 390px;
+    background: var(--noir);
+    border: 1px solid var(--ligne);
+    border-radius: 24px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .screen {
+    height: 844px;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ============ COVER ============ */
+  .cover {
+    position: relative;
+    height: 210px;
+    background: linear-gradient(180deg, #101010 0%, var(--noir) 100%);
+    overflow: hidden;
+  }
+
+  .cover svg.trace {
+    position: absolute;
+    top: -10px;
+    right: -40px;
+    width: 340px;
+    opacity: 0.16;
+  }
+
+  .cover .insigne {
+    position: absolute;
+    top: 18px;
+    left: 20px;
+    width: 26px;
+    height: 30px;
+  }
+
+  .cover .edit-cover {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--gris);
+    border: 1px solid var(--ligne);
+    background: rgba(10,10,10,0.6);
+    padding: 6px 10px;
+    border-radius: 2px;
+  }
+
+  /* ============ IDENTITÉ ============ */
+  .identite {
+    padding: 0 20px;
+    margin-top: -52px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .avatar-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+
+  .avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 2px solid var(--rouge);
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" fill="%231C1C1C"/><circle cx="48" cy="38" r="16" fill="%23333"/><path d="M20 88 Q48 58 76 88" fill="%23333"/></svg>') center/cover;
+  }
+
+  .btn-modifier {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--blanc);
+    background: transparent;
+    border: 1px solid var(--rouge);
+    padding: 9px 16px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .nom {
+    font-family: 'Syncopate', sans-serif;
+    font-weight: 700;
+    font-size: 21px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-top: 16px;
+    line-height: 1.25;
+  }
+
+  .pseudo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .pseudo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gris);
+    letter-spacing: 0.06em;
+  }
+
+  .badge-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--noir);
+    background: var(--blanc);
+    padding: 2px 7px;
+    border-radius: 2px;
+    letter-spacing: 0.04em;
+  }
+
+  .membre-depuis {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gris-sombre);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+
+  /* ============ COMPTEUR CARTES — élément signature ============ */
+  .compteur {
+    margin: 24px 20px 0;
+    border: 1px solid var(--ligne);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .compteur::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--rouge);
+  }
+
+  .compteur .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  .odometre {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .odometre .digits {
+    display: flex;
+    gap: 4px;
+  }
+
+  .odometre .digit {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 44px;
+    line-height: 1;
+    background: var(--noir);
+    border: 1px solid var(--ligne);
+    border-radius: 3px;
+    padding: 8px 10px;
+    min-width: 44px;
+    text-align: center;
+  }
+
+  .odometre .unite {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gris);
+  }
+
+  .compteur .sous-ligne {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--gris-sombre);
+    letter-spacing: 0.08em;
+    margin-top: 12px;
+  }
+
+  /* ============ SECTIONS ============ */
+  .section {
+    margin: 28px 20px 0;
+  }
+
+  .section-titre {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gris);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .section-titre::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--ligne);
+  }
+
+  .bio {
+    font-size: 14px;
+    line-height: 1.65;
+    color: #D6D6D6;
+    font-weight: 400;
+  }
+
+  /* ---- Garage ---- */
+  .voiture {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+    border: 1px solid var(--ligne);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  .voiture .modele {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .voiture .annee {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--gris);
+  }
+
+  /* ---- Galerie ---- */
+  .galerie {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .galerie .photo {
+    aspect-ratio: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--ligne);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--gris-sombre);
+  }
+
+  .galerie .photo.ajout {
+    border-style: dashed;
+    color: var(--gris);
+    font-size: 20px;
+    font-weight: 300;
+  }
+
+  /* ---- Réseaux ---- */
+  .reseaux {
+    display: flex;
+    gap: 10px;
+  }
+
+  .reseau {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--ligne);
+    border-radius: 4px;
+    padding: 12px 0;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: #D6D6D6;
+  }
+
+  /* ---- Réglage Pavillon (opt-in) ---- */
+  .optin {
+    background: var(--surface);
+    border: 1px solid var(--ligne);
+    border-radius: 4px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .optin .txt .titre {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .optin .txt .desc {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--gris);
+  }
+
+  .toggle {
+    width: 46px;
+    height: 26px;
+    border-radius: 13px;
+    background: var(--surface-2);
+    border: 1px solid var(--ligne);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .toggle .dot {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--gris-sombre);
+  }
+
+  .optin .etat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--gris-sombre);
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  /* ---- Manifeste ---- */
+  .manifeste {
+    margin: 36px 20px 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--ligne);
+    text-align: center;
+  }
+
+  .manifeste p {
+    font-family: 'Inter', sans-serif;
+    font-style: italic;
+    font-size: 12px;
+    color: var(--gris);
+    line-height: 1.6;
+  }
+
+  .manifeste .principe {
+    font-family: 'JetBrains Mono', monospace;
+    font-style: normal;
+    font-size: 9px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gris-sombre);
+    margin-top: 8px;
+  }
+
+  .fin { height: 40px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+
+    <!-- COVER -->
+    <div class="cover">
+      <!-- Insigne OXV (placeholder géométrique — remplacer par l'asset définitif) -->
+      <svg class="insigne" viewBox="0 0 26 30" fill="none">
+        <path d="M2 4 L13 1 L24 4 L24 16 Q24 25 13 29 Q2 25 2 16 Z" stroke="#C8102E" stroke-width="1.6"/>
+        <path d="M8 10 L18 20 M18 10 L8 20" stroke="#C8102E" stroke-width="1.6"/>
+        <path d="M13 20 L13 24" stroke="#C8102E" stroke-width="1.6"/>
+      </svg>
+
+      <!-- Tracé Jean-Pierre Beltoise en filigrane (schématique) -->
+      <svg class="trace" viewBox="0 0 340 220" fill="none">
+        <path d="M30 180 L120 180 Q140 180 145 165 L155 120 Q160 105 175 105 L230 105 Q250 105 250 88 L250 60 Q250 42 268 42 L300 42 Q318 42 315 62 L305 140 Q302 158 285 162 L120 200 Q95 206 80 195 L35 192 Q22 190 30 180 Z" stroke="#FFFFFF" stroke-width="2.5"/>
+        <circle cx="30" cy="180" r="4" fill="#C8102E"/>
+      </svg>
+
+      <div class="edit-cover">MODIFIER LA COUVERTURE</div>
+    </div>
+
+    <!-- IDENTITÉ -->
+    <div class="identite">
+      <div class="avatar-row">
+        <div class="avatar"></div>
+        <button class="btn-modifier">Modifier le profil</button>
+      </div>
+
+      <h1 class="nom">Antoine Verlaine</h1>
+
+      <div class="pseudo-row">
+        <span class="badge-num">N° 27</span>
+        <span class="pseudo">@averlaine</span>
+      </div>
+
+      <div class="membre-depuis">Membre Fondateur · depuis avril 2027</div>
+    </div>
+
+    <!-- COMPTEUR CARTES — seule statistique publique -->
+    <div class="compteur">
+      <div class="eyebrow">Cartes de session</div>
+      <div class="odometre">
+        <div class="digits">
+          <span class="digit">0</span><span class="digit">2</span><span class="digit">4</span>
+        </div>
+        <span class="unite">Cartes</span>
+      </div>
+      <div class="sous-ligne">Circuit de Haute Saintonge · Tracé Jean-Pierre Beltoise</div>
+    </div>
+
+    <!-- BIO -->
+    <div class="section">
+      <div class="section-titre">Bio</div>
+      <p class="bio">Pilotage sur circuit depuis 2019. Recherche de la régularité avant la performance. Chaque session est une conversation avec le tracé.</p>
+    </div>
+
+    <!-- GARAGE -->
+    <div class="section">
+      <div class="section-titre">Garage</div>
+      <div class="voiture">
+        <span class="modele">Porsche 911 GT3</span>
+        <span class="annee">992 · 2023</span>
+      </div>
+      <div class="voiture">
+        <span class="modele">Alpine A110 R</span>
+        <span class="annee">2024</span>
+      </div>
+    </div>
+
+    <!-- GALERIE -->
+    <div class="section">
+      <div class="section-titre">Galerie</div>
+      <div class="galerie">
+        <div class="photo">IMG 01</div>
+        <div class="photo">IMG 02</div>
+        <div class="photo">IMG 03</div>
+        <div class="photo">IMG 04</div>
+        <div class="photo">IMG 05</div>
+        <div class="photo ajout">+</div>
+      </div>
+    </div>
+
+    <!-- RÉSEAUX -->
+    <div class="section">
+      <div class="section-titre">Réseaux</div>
+      <div class="reseaux">
+        <div class="reseau">Instagram</div>
+        <div class="reseau">YouTube</div>
+        <div class="reseau">LinkedIn</div>
+      </div>
+    </div>
+
+    <!-- RÉGLAGE PAVILLON — opt-in désactivé par défaut -->
+    <div class="section">
+      <div class="section-titre">Affichage Pavillon</div>
+      <div class="optin">
+        <div class="txt">
+          <div class="titre">Afficher mon nom sur les écrans du Pavillon</div>
+          <div class="desc">Par défaut, seuls votre numéro et votre pseudonyme apparaissent sur les écrans publics pendant les sessions.</div>
+          <div class="etat">Désactivé</div>
+        </div>
+        <div class="toggle"><div class="dot"></div></div>
+      </div>
+    </div>
+
+    <!-- MANIFESTE -->
+    <div class="manifeste">
+      <p>« Vous ne pilotez contre personne d'autre que vous-même. »</p>
+      <p class="principe">Le principe OXV</p>
+    </div>
+
+    <div class="fin"></div>
+
+  </div>
+</div>
+
+</body>
+</html>
