@@ -1,5 +1,9 @@
--- ⚠ NON APPLIQUÉE (règle du lot : exécution APRÈS validation M. Fillat).
--- Jointe au repo pour revue — le code du lot tolère l'absence des colonnes (42703).
+-- ✅ APPLIQUÉE EN PROD le 2026-07-17 (validation explicite fondateur, via MCP
+-- apply_migration). Contrôle post-application : 4 colonnes posées, trigger actif.
+-- NOTE RLS constatée : users est en SELECT own-or-admin — bio/car_number ne
+-- sont PAS lisibles par les autres membres ni par les écrans TV du Pavillon en
+-- l'état ; un chemin de lecture dédié (vue filtrée par pavilion_name_optin)
+-- sera nécessaire côté site. Point de coordination consigné.
 -- ============================================================
 -- OXV — Migration : champs profil + opt-in Pavillon
 -- Lot : PROFIL_CARTES
