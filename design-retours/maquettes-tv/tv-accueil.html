@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>OXV — Le Pavillon · Accueil TV (maquette site web)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     OXV — MAQUETTE TV-ACCUEIL (SITE WEB · ÉCRANS DU PAVILLON)
+     Format cible : 1920 × 1080 (TV paysage, plein écran, passif)
+     Palette : #0A0A0A / #FFFFFF / #C8102E — or #C4A459 réservé Heritage
+     Typo : Syncopate (display) / Inter (corps) / JetBrains Mono (data)
+
+     DOCTRINE MIROIR (juridique, non négociable) :
+       - LE MUR DES CARTES est CHRONOLOGIQUE (ordre d'arrivée en piste).
+         Ce n'est JAMAIS un classement : pas de rang, pas de tri par chrono,
+         pas de « meilleur pilote ». Le libellé « ordre d'arrivée » est
+         affiché à l'écran pour que la nature du mur soit lisible de tous.
+       - IDENTITÉ NOMINATIVE : le nom du pilote n'apparaît QUE si
+         users.pavilion_name_optin = true (migration 20260717, RGPD).
+         Sinon : « N°{car_number} » (users.car_number), et à défaut
+         « Pilote OXV ». Aucune photo de pilote sans opt-in.
+       - Données réelles uniquement : chaque zone porte sa source en
+         commentaire <!-- data: table.colonne -->. Les valeurs visibles
+         ici sont des EXEMPLES de maquette, jamais des valeurs à coder.
+       - Aucun emoji. Aucun langage prescriptif. Écarts en gris neutre.
+
+     LIAISONS PRÉVUES (implémentation site, hors maquette) :
+       - Supabase Realtime sur telemetry_sessions (cartes du jour) et
+         presence live (« EN PISTE ») ;
+       - weather_snapshots (météo piste/air) ;
+       - social_pings publiés (événements du jour) ;
+       - partner_accounts validés (bandeau partenaires) ;
+       - rotation automatique des cartes toutes les 12 s si > 6 cartes.
+     ============================================================ */
+
+  :root {
+    --noir: #0A0A0A;
+    --blanc: #FFFFFF;
+    --rouge: #C8102E;
+    --surface: #141414;
+    --surface-2: #1C1C1C;
+    --ligne: #262626;
+    --gris: #8A8A8A;
+    --gris-sombre: #555555;
+    --delta: #D6D6D6; /* écarts : gris neutre, jamais vert/rouge */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #050505;
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh; font-family: 'Inter', sans-serif; color: var(--blanc);
+  }
+
+  /* Cadre TV 1920×1080 (aide à la revue — l'écran réel est plein écran) */
+  .tv {
+    width: 1920px; height: 1080px; background: var(--noir);
+    position: relative; overflow: hidden; border: 1px solid var(--ligne);
+    display: flex; flex-direction: column;
+  }
+
+  /* Filigrane circuit plein fond — data: circuits.track_svg_path (opacity .05) */
+  .tv .watermark {
+    position: absolute; inset: -8%; opacity: .05; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tv .watermark svg { width: 120%; height: 120%; }
+
+  /* ── HEADER ─────────────────────────────────────────────── */
+  header {
+    display: flex; align-items: center; gap: 40px;
+    padding: 36px 64px 28px; border-bottom: 1px solid var(--ligne);
+    position: relative; z-index: 2;
+  }
+  .brand { display: flex; align-items: baseline; gap: 22px; }
+  .brand .oxv {
+    font-family: 'Syncopate', sans-serif; font-weight: 700;
+    font-size: 40px; letter-spacing: .18em;
+  }
+  .brand .oxv em { color: var(--rouge); font-style: normal; }
+  .brand .pav {
+    font-family: 'Syncopate', sans-serif; font-weight: 400;
+    font-size: 17px; letter-spacing: .42em; color: var(--gris);
+    text-transform: uppercase;
+  }
+  header .sep { width: 1px; height: 44px; background: var(--ligne); }
+
+  /* data: horloge locale + circuits.official_name */
+  .now { display: flex; flex-direction: column; gap: 6px; }
+  .now .clock {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 40px; letter-spacing: .04em; font-variant-numeric: tabular-nums;
+  }
+  .now .date {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    letter-spacing: .22em; color: var(--gris); text-transform: uppercase;
+  }
+
+  header .spacer { flex: 1; }
+
+  /* data: weather_snapshots (dernier relevé du jour) — masqué sans relevé */
+  .weather { display: flex; gap: 36px; }
+  .weather .cell { display: flex; flex-direction: column; gap: 7px; align-items: flex-end; }
+  .weather .k {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: .3em; color: var(--gris-sombre); text-transform: uppercase;
+  }
+  .weather .v {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 26px;
+    font-variant-numeric: tabular-nums;
+  }
+  .weather .v small { font-size: 15px; color: var(--gris); font-weight: 400; }
+
+  /* ── BANDE EN PISTE ─────────────────────────────────────── */
+  .live {
+    display: flex; align-items: center; gap: 28px;
+    padding: 22px 64px; border-bottom: 1px solid var(--ligne);
+    background: linear-gradient(90deg, rgba(200,16,46,.10), transparent 45%);
+    position: relative; z-index: 2;
+  }
+  .live .dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--rouge);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+  .live .label {
+    font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 20px;
+    letter-spacing: .34em; text-transform: uppercase;
+  }
+  /* data: presence live (nb de voitures) + créneau courant (events) */
+  .live .fact {
+    font-family: 'JetBrains Mono', monospace; font-size: 19px; color: var(--gris);
+    letter-spacing: .06em;
+  }
+  .live .fact b { color: var(--blanc); font-weight: 700; }
+  .live .slot {
+    margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 16px;
+    letter-spacing: .18em; color: var(--gris); text-transform: uppercase;
+  }
+  .live .slot b { color: var(--blanc); }
+
+  /* ── CORPS : MUR + COLONNE ──────────────────────────────── */
+  main { flex: 1; display: flex; min-height: 0; position: relative; z-index: 2; }
+
+  .wall { flex: 1; padding: 44px 24px 24px 64px; display: flex; flex-direction: column; min-width: 0; }
+  .wall .head { display: flex; align-items: baseline; gap: 26px; margin-bottom: 30px; }
+  .wall h2 {
+    font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 30px;
+    letter-spacing: .22em; text-transform: uppercase;
+  }
+  /* Libellé doctrinal AFFICHÉ : la nature chronologique du mur est publique */
+  .wall .order {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    letter-spacing: .3em; color: var(--gris-sombre); text-transform: uppercase;
+  }
+  .wall .count {
+    margin-left: auto; font-family: 'JetBrains Mono', monospace;
+    font-size: 15px; letter-spacing: .2em; color: var(--gris);
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; align-content: start; }
+
+  /* Une carte = une session du jour — même objet visuel que le panel app */
+  .card {
+    background: var(--surface); border: 1px solid var(--ligne);
+    padding: 26px 28px 24px; position: relative; overflow: hidden;
+    animation: cardIn .7s ease-out backwards;
+  }
+  .card:nth-child(1){animation-delay:.05s}.card:nth-child(2){animation-delay:.15s}
+  .card:nth-child(3){animation-delay:.25s}.card:nth-child(4){animation-delay:.35s}
+  .card:nth-child(5){animation-delay:.45s}.card:nth-child(6){animation-delay:.55s}
+  @keyframes cardIn { from { opacity: 0; transform: translateY(14px); } }
+
+  .card .fil {
+    position: absolute; right: -12%; bottom: -18%; width: 62%; opacity: .07;
+    pointer-events: none;
+  }
+  .card .num {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    letter-spacing: .3em; color: var(--gris-sombre);
+  }
+  /* Identité : pavilion_name_optin ? nom : « N°car_number » (sinon Pilote OXV) */
+  .card .who {
+    font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 21px;
+    letter-spacing: .08em; margin-top: 12px; text-transform: uppercase;
+  }
+  .card .who .badge {
+    display: inline-block; font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; letter-spacing: .12em; color: var(--blanc);
+    background: var(--rouge); padding: 3px 10px; margin-right: 12px;
+    vertical-align: 3px;
+  }
+  .card .meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--gris);
+    letter-spacing: .1em; margin-top: 9px;
+  }
+  .card .lap { display: flex; align-items: baseline; gap: 14px; margin-top: 20px; }
+  /* data: telemetry_sessions.best_lap_seconds — NULL → « — » */
+  .card .lap .t {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 42px;
+    font-variant-numeric: tabular-nums; letter-spacing: .01em;
+  }
+  .card .lap .k {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: .26em; color: var(--gris-sombre); text-transform: uppercase;
+  }
+  .card .laps {
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--gris);
+    margin-top: 8px; letter-spacing: .08em;
+  }
+
+  /* ── COLONNE DROITE ─────────────────────────────────────── */
+  aside {
+    width: 440px; border-left: 1px solid var(--ligne);
+    padding: 44px 64px 24px 40px; display: flex; flex-direction: column; gap: 40px;
+  }
+  aside h3 {
+    font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 17px;
+    letter-spacing: .3em; text-transform: uppercase; margin-bottom: 20px;
+  }
+  /* data: events du jour + social_pings publiés (starts_at aujourd'hui) */
+  .agenda { display: flex; flex-direction: column; gap: 0; }
+  .agenda .row {
+    display: flex; gap: 22px; padding: 15px 0; border-bottom: 1px solid var(--ligne);
+    align-items: baseline;
+  }
+  .agenda .h {
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 19px;
+    font-variant-numeric: tabular-nums; min-width: 74px;
+  }
+  .agenda .what { font-size: 16px; color: var(--blanc); font-weight: 500; }
+  .agenda .where {
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: .18em; color: var(--gris-sombre); text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .agenda .row.past { opacity: .38; }
+  .agenda .row.now .h { color: var(--rouge); }
+
+  /* QR — la communication tranquille : rejoindre, pas vendre */
+  .join {
+    margin-top: auto; display: flex; gap: 24px; align-items: center;
+    background: var(--surface); border: 1px solid var(--ligne); padding: 24px;
+  }
+  .join .qr {
+    width: 108px; height: 108px; background: var(--blanc); flex: none;
+    display: grid; place-items: center;
+  }
+  .join .qr svg { width: 88px; height: 88px; }
+  .join .txt .t1 {
+    font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 15px;
+    letter-spacing: .14em; text-transform: uppercase;
+  }
+  .join .txt .t2 { font-size: 13.5px; color: var(--gris); margin-top: 8px; line-height: 1.5; }
+
+  /* ── FOOTER PARTENAIRES ─────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--ligne); padding: 20px 64px;
+    display: flex; align-items: center; gap: 48px; position: relative; z-index: 2;
+  }
+  footer .k {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    letter-spacing: .34em; color: var(--gris-sombre); text-transform: uppercase;
+  }
+  /* data: partner_accounts.logo_url (status validated) — logos réels only */
+  footer .logos { display: flex; gap: 44px; align-items: center; flex: 1; }
+  footer .logo {
+    font-family: 'Syncopate', sans-serif; font-size: 14px; letter-spacing: .18em;
+    color: var(--gris); text-transform: uppercase;
+  }
+  footer .site {
+    font-family: 'JetBrains Mono', monospace; font-size: 13px;
+    letter-spacing: .22em; color: var(--gris);
+  }
+</style>
+</head>
+<body>
+<div class="tv">
+
+  <!-- Filigrane — data: circuits.track_svg_path du circuit du jour -->
+  <div class="watermark">
+    <svg viewBox="0 0 900 500" fill="none">
+      <path d="M120 380 C 60 340, 70 250, 150 230 L 320 190 C 400 170, 420 120, 520 110 L 700 95 C 790 90, 830 150, 800 210 L 740 330 C 715 385, 640 400, 560 390 L 260 405 C 200 410, 160 400, 120 380 Z"
+            stroke="#FFFFFF" stroke-width="3"/>
+    </svg>
+  </div>
+
+  <header>
+    <div class="brand">
+      <div class="oxv">OXV<em>.</em></div>
+      <div class="pav">Le Pavillon</div>
+    </div>
+    <div class="sep"></div>
+    <div class="now">
+      <!-- data: horloge locale -->
+      <div class="clock">14:37</div>
+      <!-- data: date locale + circuits.official_name -->
+      <div class="date">Jeu. 17 juil. 2026 · Circuit de Haute Saintonge</div>
+    </div>
+    <div class="spacer"></div>
+    <!-- data: weather_snapshots (dernier relevé) — bloc masqué sans relevé -->
+    <div class="weather">
+      <div class="cell"><span class="k">Piste</span><span class="v">41<small> °C</small></span></div>
+      <div class="cell"><span class="k">Air</span><span class="v">27<small> °C</small></span></div>
+      <div class="cell"><span class="k">Vent</span><span class="v">12<small> km/h NO</small></span></div>
+    </div>
+  </header>
+
+  <div class="live">
+    <div class="dot"></div>
+    <div class="label">En piste</div>
+    <!-- data: presence live (compte réel) — bande masquée hors roulage -->
+    <div class="fact"><b>6</b> voitures · session libre</div>
+    <!-- data: créneau courant (events) -->
+    <div class="slot">Créneau <b>14:00 – 15:00</b> · prochain <b>15:15</b></div>
+  </div>
+
+  <main>
+    <section class="wall">
+      <div class="head">
+        <h2>Le mur des cartes</h2>
+        <!-- Libellé doctrinal affiché : jamais un classement -->
+        <div class="order">Ordre d'arrivée · aujourd'hui</div>
+        <!-- data: count telemetry_sessions du jour -->
+        <div class="count">9 cartes · rotation auto</div>
+      </div>
+
+      <div class="cards">
+        <!-- Une carte = telemetry_sessions du jour, ordre chronologique.
+             Identité : pavilion_name_optin ? prénom+nom : « N°car_number ».
+             Chrono : best_lap_seconds (NULL → « — »). Exemples de maquette. -->
+        <div class="card">
+          <svg class="fil" viewBox="0 0 300 170" fill="none"><path d="M40 130 C 20 115, 25 85, 50 78 L 110 65 C 135 58, 142 42, 175 38 L 235 33 C 265 31, 278 51, 268 71 L 248 111 C 240 129, 215 134, 188 131 L 88 136 C 68 138, 55 135, 40 130 Z" stroke="#FFF" stroke-width="2"/></svg>
+          <div class="num">CARTE 031 · 14:22</div>
+          <div class="who"><span class="badge">N°17</span>A. MARCHAND</div>
+          <div class="meta">Porsche 718 Cayman · Session libre</div>
+          <div class="lap"><span class="t">1:52.418</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">14 tours</div>
+        </div>
+
+        <div class="card">
+          <div class="num">CARTE 030 · 14:05</div>
+          <!-- opt-in refusé → numéro seul, pas de nom -->
+          <div class="who"><span class="badge">N°42</span>—</div>
+          <div class="meta">Alpine A110 · Session libre</div>
+          <div class="lap"><span class="t">1:55.207</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">11 tours</div>
+        </div>
+
+        <div class="card">
+          <div class="num">CARTE 029 · 13:48</div>
+          <div class="who"><span class="badge">N°8</span>C. LEFÈVRE</div>
+          <div class="meta">BMW M2 · Coaching</div>
+          <!-- best_lap NULL → tiret, jamais un chiffre inventé -->
+          <div class="lap"><span class="t">—</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">6 tours</div>
+        </div>
+
+        <div class="card">
+          <div class="num">CARTE 028 · 13:31</div>
+          <div class="who"><span class="badge">N°23</span>PILOTE OXV</div>
+          <div class="meta">Mégane RS · Session libre</div>
+          <div class="lap"><span class="t">1:58.940</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">17 tours</div>
+        </div>
+
+        <div class="card">
+          <div class="num">CARTE 027 · 12:54</div>
+          <div class="who"><span class="badge">N°5</span>J. BERTIN</div>
+          <div class="meta">Clio Cup · Session libre</div>
+          <div class="lap"><span class="t">2:01.315</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">12 tours</div>
+        </div>
+
+        <div class="card">
+          <div class="num">CARTE 026 · 12:38</div>
+          <div class="who"><span class="badge">N°66</span>M. ROUX</div>
+          <div class="meta">Cayman GT4 · Coaching</div>
+          <div class="lap"><span class="t">1:50.882</span><span class="k">Meilleur tour</span></div>
+          <div class="laps">15 tours</div>
+        </div>
+      </div>
+    </section>
+
+    <aside>
+      <div>
+        <h3>Aujourd'hui</h3>
+        <!-- data: events + social_pings publiés du jour (starts_at) -->
+        <div class="agenda">
+          <div class="row past"><span class="h">09:00</span><div><div class="what">Briefing pilotes</div><div class="where">Le Pavillon</div></div></div>
+          <div class="row past"><span class="h">10:00</span><div><div class="what">Sessions libres</div><div class="where">Piste</div></div></div>
+          <div class="row now"><span class="h">14:00</span><div><div class="what">Session libre</div><div class="where">Piste</div></div></div>
+          <div class="row"><span class="h">15:15</span><div><div class="what">Roulage coaché</div><div class="where">Piste</div></div></div>
+          <div class="row"><span class="h">18:30</span><div><div class="what">Soirée membres</div><div class="where">Le Pavillon</div></div></div>
+        </div>
+      </div>
+
+      <div class="join">
+        <div class="qr">
+          <!-- QR réel généré côté site → oxvehicle.fr (communication tranquille) -->
+          <svg viewBox="0 0 88 88"><rect width="88" height="88" fill="#FFF"/><path d="M8 8h24v24H8zM56 8h24v24H56zM8 56h24v24H8zM14 14h12v12H14zM62 14h12v12H62zM14 62h12v12H14zM44 8h6v6h-6zM44 20h6v12h-6zM56 44h6v6h-6zM68 44h12v6H68zM44 44h6v6h-6zM50 56h12v6H50zM68 56h6v12h-6zM44 68h6v12h-6zM56 74h12v6H56z" fill="#0A0A0A"/></svg>
+        </div>
+        <div class="txt">
+          <div class="t1">Rejoindre OXV</div>
+          <div class="t2">Votre journée, vos données, votre carte.<br>oxvehicle.fr</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <span class="k">Partenaires</span>
+    <!-- data: partner_accounts validés (logo_url réels) — exemples typographiques -->
+    <div class="logos">
+      <span class="logo">Garage Delmas</span>
+      <span class="logo">Hôtel des Vignes</span>
+      <span class="logo">Photo Ligne Droite</span>
+      <span class="logo">Transports Guérin</span>
+    </div>
+    <span class="site">OXVEHICLE.FR</span>
+  </footer>
+
+</div>
+</body>
+</html>
