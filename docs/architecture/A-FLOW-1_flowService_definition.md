@@ -1,11 +1,17 @@
-# A-FLOW-1 — Définition du `flowService` (à valider AVANT toute ligne de code)
+# A-FLOW-1 — Définition du `flowService`
 
-> Statut : **PROPOSITION, EN ATTENTE DE VALIDATION FONDATEUR.**
-> Tant que ce document n'est pas validé, **FlowViz reste une démonstration**
-> (bandeau scoped). On ne débloque pas le bandeau par un calcul approximatif.
-> Séquencement : implémentation **après** la gate piste (smoke test) qui confirme
-> qu'on capture des trames IMU exploitables — pas avant (calibrer un seuil sur des
-> trames synthétiques qu'il faudrait re-régler sur le réel n'a pas de sens).
+> Statut : **DÉFINITION VALIDÉE (fondateur, 19/07/2026).** Le **service reste à
+> écrire APRÈS la gate piste** (smoke test) qui confirme qu'on capture des trames
+> IMU exploitables et qui donne le bruit réel du boîtier — **pas maintenant**
+> (calibrer sur du synthétique = à re-régler sur le réel). **FlowViz reste une
+> démonstration** (bandeau scoped) jusqu'à cette implémentation post-piste. On ne
+> débloque jamais le bandeau par un calcul approximatif.
+>
+> Décisions fondateur (19/07) intégrées ci-dessous : (1) grandeur = jerk IMU **mais
+> normalisé par la sévérité de trajectoire** (§2.1) ; (2) anti-bruit **causal,
+> déterministe, fenêtre = paramètre exposé** (§2.2) ; (3) sortie sans score, nombre
+> unique = mesure en g/s (§3) ; (4) **seuil « fluide » reporté au post-piste** — il
+> émerge des percentiles réels, il n'est pas décrété (§3).
 
 ---
 
@@ -47,24 +53,57 @@ discontinuités d'accélération**. La grandeur physique correspondante est le *
   |jerk|    = sqrt(jerkLat² + jerkLong²)                     (g/s, magnitude)
   ```
 
-- **Fluide = |jerk| faible et resserré.** On ne récompense rien : on **mesure** la
-  distribution de |jerk|. Un tracé rapide et propre a une distribution basse et
-  étroite ; un tracé haché a des pics.
+- Le jerk **absolu**, seul, N'EST PAS la mesure de fluidité (voir §2.1). On
+  **mesure** une distribution, on ne récompense rien.
 
-### Caveat technique honnête — bruit capteur
+### 2.1 — Normaliser par la sévérité : mesurer le jerk INATTENDU (décision fondateur, verrou)
+
+**Réserve de conception non négociable.** Le jerk seul confond deux choses
+distinctes :
+
+- le pilote **brusque** — à-coups de commande, mauvaise fluidité ;
+- le pilote **rapide sur circuit exigeant** — jerk élevé parce que les vraies
+  transitions physiques sont violentes (gros freinage, mise en appui, changement
+  d'appui). Un ralentisseur / un enchaînement pris fort génère du jerk **sans** que
+  ce soit un défaut de fluidité.
+
+Mesurer le jerk **absolu** punirait les pilotes rapides et récompenserait les lents :
+c'est **faux** et **anti-doctrine** (un jugement déguisé en mesure). La fluidité n'est
+donc PAS le jerk absolu mais le **jerk INATTENDU** — la discontinuité d'accélération
+**qui n'est pas expliquée par la géométrie de la trajectoire à cet instant**.
+
+**Contrainte de conception :** le jerk doit être **rapporté à la sévérité de la
+trajectoire** au même instant (vitesse, rayon, niveau d'accélération soutenue `|g|`).
+Un pic de jerk cohérent avec une vraie transition physique n'est pas un défaut ; un
+pic **sans** justification géométrique en est un. La sortie décrit le jerk *résiduel*
+(inexpliqué), pas le jerk brut.
+
+C'est **posé maintenant** comme contrainte ; le **calage fin** (fonction de sévérité,
+pondération) se fait sur le **réel** (smoke test / distribution Beltoise), jamais sur
+du synthétique. Les tests synthétiques vérifient l'INVARIANT, pas le seuil : une
+transition franche mais géométriquement justifiée → jerk résiduel ≈ 0 ; un à-coup
+injustifié → jerk résiduel élevé.
+
+### 2.2 — Anti-bruit : causal, déterministe, fenêtre = paramètre EXPOSÉ (décision fondateur)
+
 Le jerk est une dérivée : il **amplifie le bruit** de l'IMU à 25 Hz. Une différence
 brute de deux trames mesurerait autant le bruit capteur que le geste du pilote. La
-définition DOIT donc préciser un **traitement anti-bruit déterministe** avant de
-parler de « fluidité du pilote » :
+définition impose donc un **traitement anti-bruit** avant de parler de « fluidité » :
 
-- soit un léger lissage passe-bas de `gLat`/`gLong` (fenêtre courte, p. ex. 3-5
-  trames = 120-200 ms) **avant** dérivation ;
-- soit un jerk calculé sur un intervalle fixe (p. ex. Δt = 120 ms) plutôt que trame
-  à trame.
+- lissage passe-bas court de `gLat`/`gLong` **avant** dérivation (fenêtre courte,
+  ordre de grandeur 3-5 trames ≈ 120-200 ms), OU jerk calculé sur un Δt fixe.
+- **Exigences de méthode (verrou fondateur) :**
+  1. **Causal** — le filtre ne regarde QUE le passé (pas de fenêtre centrée /
+     lecture de l'avenir), sinon une séance passée n'est pas recalculable à
+     l'identique et ça bloquerait un futur temps réel.
+  2. **Déterministe / rejouable** — même entrée → même sortie, bit pour bit.
+  3. **Fenêtre = PARAMÈTRE EXPOSÉ**, pas une constante magique enfouie : on la
+     re-règlera après le smoke test **sans rouvrir le cœur du service** (ex.
+     `smoothingWindowMs` en argument de la fonction pure, valeur par défaut
+     documentée mais surchargeable).
 
-Le choix (et sa fenêtre) fait partie de la définition à valider — il détermine ce
-qui compte comme « geste réel » vs « tremblement du capteur ». **À trancher avec le
-réel** (le smoke test dira le niveau de bruit effectif du boîtier).
+La valeur de la fenêtre se **tranche sur le réel** (le smoke test dira le bruit
+effectif du boîtier).
 
 Trames à exclure du calcul, sans les fabriquer : `dt ≤ 0` ou aberrant (trou GPS/IMU),
 `gLat`/`gLong` null, out-lap / in-lap. Une séance sans assez de trames valides →
@@ -91,27 +130,45 @@ nulle part dans l'API ni l'UI. Garde-fou possible : étendre le test lexical
 `coachDomainNoScore`-style au domaine flow (bannir `score`, `note`, `rating` sur la
 sortie du service).
 
-**Le seuil de ce qui compte comme « fluide » pour un pilote de club est un CHOIX
-PRODUIT — il vous revient.** Le service ne pose PAS de seuil de jugement : il rend
-la mesure. Si une UI veut colorer « resserré / dispersé », le seuil de cette échelle
-descriptive est un arbitrage à valider sur données réelles (pas un défaut inventé).
+### Seuil « fluide » — REPORTÉ AU POST-PISTE (décision fondateur)
+
+Le seuil de ce qui compte comme « fluide » **n'est PAS posé maintenant.** Deux
+raisons :
+
+1. Poser un seuil sur du **synthétique**, c'est inventer une frontière que le smoke
+   test invalidera.
+2. Un seuil est **déjà à demi un jugement** : dès qu'on décrète « en dessous de X g/s
+   c'est fluide », on note.
+
+**Position retenue :** le service sort la **mesure brute, sans aucun seuil** — la
+matière descriptive (distribution / trace / intensité par segment) existe, le
+jugement attend. Le « seuil » **émergera d'une lecture de la distribution RÉELLE**
+(les percentiles observés sur plusieurs pilotes, p. ex. sur Beltoise), **pas d'une
+valeur décrétée**. Le fondateur posera l'arbitrage produit **devant les vraies
+données, à froid** — c'est là que sa connaissance du pilote de club vaut le plus.
+Tant que ce n'est pas fait, aucune échelle « resserré / dispersé » n'est colorée par
+un seuil inventé.
 
 ---
 
 ## 4. Forme du code (patron du reste du programme)
 
 - **Logique pure séparée** : `src/services/flowLogic.ts` (aucun React/RN/Supabase),
-  fonctions déterministes prenant des `SessionFrame[]` (± bornes de segments) et
-  rendant la distribution / trace / intensités. `src/services/flowService.ts` = fin
-  loader SELECT-only (loadLapFrames) + ré-exports.
+  fonctions déterministes prenant des `SessionFrame[]` (± bornes de segments) **+ un
+  paramètre de lissage EXPOSÉ** (`smoothingWindowMs`, §2.2) et rendant la distribution
+  / trace / intensités du **jerk RÉSIDUEL** (normalisé par la sévérité, §2.1).
+  `src/services/flowService.ts` = fin loader SELECT-only (loadLapFrames) + ré-exports.
 - **Testable sans matériel** : `flowLogic.test.ts` avec des **jeux de trames
-  synthétiques** → sortie attendue :
+  synthétiques** → sortie attendue (on teste des **invariants**, jamais un seuil) :
   - trace parfaitement lisse (g constant, ou rampe linéaire) → |jerk| ≈ 0 ;
   - créneau franc (saut de g) → un pic de jerk localisé, valeur = Δg/dt attendue ;
-  - bruit ajouté → vérifie que le lissage choisi le rejette sous un seuil ;
+  - **transition franche mais géométriquement JUSTIFIÉE → jerk RÉSIDUEL ≈ 0 ;
+    à-coup INJUSTIFIÉ (même amplitude, sans justification) → résiduel élevé** (§2.1) ;
+  - bruit ajouté → le lissage **causal** le rejette ; **MÊME entrée → MÊME sortie**
+    (déterministe, rejouable) ; `smoothingWindowMs` variable → sortie qui suit ;
   - trames insuffisantes / dt aberrant → vide honnête (jamais 0 fabriqué).
 - Mêmes gardes que L3 : `strict`/vide honnête, `Number.isFinite` partout, pas de
-  `any`, pas de valeur par défaut qui invente.
+  `any`, pas de valeur par défaut qui invente, **aucun seuil de jugement en dur**.
 
 ---
 
@@ -127,19 +184,20 @@ les 5 autres lectures s'alimentent aussi en réel). Pas avant.
 
 ---
 
-## 6. Ce que j'attends de vous (validation)
+## 6. Décisions tranchées (fondateur, 19/07/2026)
 
-Avant que j'écrive une ligne de `flowService` :
+1. **Grandeur** : jerk IMU en g/s — **validé**, avec la contrainte **§2.1** :
+   normaliser par la sévérité de trajectoire, mesurer le **jerk inattendu**, jamais
+   le jerk absolu (sinon on punit les pilotes rapides — jugement déguisé).
+2. **Anti-bruit** : **validé** — lissage **causal, déterministe, rejouable**, fenêtre
+   `smoothingWindowMs` **paramètre exposé** (pas une constante en dur), réglée sur le
+   réel (§2.2).
+3. **Sortie** : **validé sans réserve** — distribution + trace + intensité par
+   segment ; **aucun score** ; nombre unique éventuel = mesure nommée en g/s (§3).
+4. **Seuil « fluide »** : **reporté au post-piste** — il émerge des percentiles
+   RÉELS (Beltoise), jamais décrété ; d'ici là le service sort la mesure brute sans
+   seuil (§3).
 
-1. **La grandeur** : jerk IMU |jerk| en g/s — OK, ou vous préférez une autre lecture
-   physique de la douceur (p. ex. dérivée de l'angle volant si un canal volant
-   existait — il n'existe PAS ici, donc IMU) ?
-2. **L'anti-bruit** : lissage passe-bas court avant dérivation, OU jerk sur Δt fixe —
-   fenêtre à fixer au smoke test. D'accord sur le principe ?
-3. **La sortie** : distribution + trace + intensité par segment, **sans score** ;
-   nombre unique éventuel = mesure nommée en g/s. D'accord ?
-4. **Le seuil « fluide »** (échelle descriptive) : c'est votre arbitrage produit —
-   le posez-vous maintenant (sur quelle base ?) ou après avoir vu des données
-   réelles ?
-
-Tant que ces quatre points ne sont pas validés, FlowViz reste démo.
+**La définition est arrêtée. Le service N'EST PAS écrit** : il reste séquencé
+**après la gate piste** (§5) — on calibre sur le réel, on n'invente pas sur le
+synthétique. **FlowViz reste démo** (bandeau scoped) jusqu'à cette implémentation.
