@@ -243,9 +243,9 @@ function FounderApproved() {
 
 function FounderGaugeCard({ founder }: { founder: VousFounder }) {
   const fv = useFirstViewport(true);
-  const { filled, remaining } = founder.gauge;
+  const gauge = founder.gauge;
   const pending = founder.state === 'pending';
-  const gaugeLabel = `${filled}/${FOUNDERS_MAX}`;
+  const gaugeLabel = gauge !== null ? `${gauge.filled}/${FOUNDERS_MAX}` : null;
 
   return (
     <View style={styles.founderCard}>
@@ -259,23 +259,30 @@ function FounderGaugeCard({ founder }: { founder: VousFounder }) {
         ) : null}
       </View>
 
-      <View ref={fv.ref} style={styles.gaugeRow}>
-        <View style={styles.gaugeTrack}>
-          <View style={[styles.gaugeFill, { flex: filled }]} />
-          <View style={{ flex: remaining }} />
-        </View>
-        <RollingCounter
-          value={fv.visible ? gaugeLabel : zeroLike(gaugeLabel)}
-          fontSize={13}
-          color={colors.text.mid}
-        />
-      </View>
+      {/* Jauge/libellé seulement si le compteur est connu (jamais un 0 d'erreur). */}
+      {gauge !== null && gaugeLabel !== null ? (
+        <>
+          <View ref={fv.ref} style={styles.gaugeRow}>
+            <View style={styles.gaugeTrack}>
+              <View style={[styles.gaugeFill, { flex: gauge.filled }]} />
+              <View style={{ flex: gauge.remaining }} />
+            </View>
+            <RollingCounter
+              value={fv.visible ? gaugeLabel : zeroLike(gaugeLabel)}
+              fontSize={13}
+              color={colors.text.mid}
+            />
+          </View>
 
-      <Text style={styles.founderRemaining}>
-        {remaining > 0
-          ? `${remaining} place${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}`
-          : 'Complet'}
-      </Text>
+          <Text style={styles.founderRemaining}>
+            {gauge.remaining > 0
+              ? `${gauge.remaining} place${gauge.remaining > 1 ? 's' : ''} restante${
+                  gauge.remaining > 1 ? 's' : ''
+                }`
+              : 'Complet'}
+          </Text>
+        </>
+      ) : null}
 
       {founder.state === 'candidater' ? (
         <PressScale

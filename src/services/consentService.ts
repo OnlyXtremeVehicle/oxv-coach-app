@@ -10,6 +10,20 @@
  *
  * Le gate réel est côté serveur (edge functions) ; ici on persiste le choix, ce
  * qui rend vraie la promesse RGPD « désactivable dans vos paramètres ».
+ *
+ * DIVERGENCE DE COUVERTURE (contrat, à connaître) — deux écrans écrivent par ce
+ * service, MAIS n'exposent pas le même jeu de consentements :
+ *   - IA débrief + IA coach : présents dans les DEUX (Réglages app2 ET Centre de
+ *     consentement unifié v1, app/(app)/consentements.tsx) — même write-path, pas
+ *     de seconde source de vérité. Bon.
+ *   - BIOMÉTRIE (capture + partage cardio = donnée de SANTÉ, la plus sensible) :
+ *     exposée UNIQUEMENT dans Réglages (app2). Le Centre unifié v1 — qui se
+ *     présente pourtant comme exhaustif (« chacun de ses consentements ») — ne la
+ *     référence PAS. Sa revendication d'exhaustivité est donc inexacte pour le
+ *     consentement le plus sensible tant que la section biométrie n'y est pas
+ *     ajoutée (via ces MÊMES setters). Décision produit ouverte (surface
+ *     juridique art. 7-3) — à trancher par Gabin : ajouter la section au Centre,
+ *     ou atténuer sa revendication d'exhaustivité.
  */
 
 import { supabase } from '@/lib/supabase';
@@ -19,6 +33,21 @@ export interface AiConsents {
   aiDebriefEnabled: boolean;
   /** Assistant IA du coach sur vos données (hors UE). Opt-in, défaut désactivé. */
   coachAiEnabled: boolean;
+}
+
+/**
+ * Résultat d'une écriture de consentement. supabase-js ne rejette PAS sur une
+ * erreur RLS/contrainte : il renvoie `{ error }`. Ces setters l'inspectent et le
+ * renvoient ici, pour que l'appelant puisse annuler l'état optimiste et le
+ * signaler (ne jamais afficher « activé » si l'écriture a raté). `error` porte le
+ * message brut Supabase (diagnostic) ; l'UI le traduit en texte pilote.
+ *
+ * Rétro-compatibilité : l'ancienne signature était `Promise<void>`. Un appelant
+ * v1 (ex. Centre de consentement unifié) qui ignore ce retour reste valide.
+ */
+export interface ConsentWriteResult {
+  ok: boolean;
+  error?: string;
 }
 
 export async function loadAiConsents(userId: string): Promise<AiConsents> {
@@ -37,18 +66,26 @@ export async function loadAiConsents(userId: string): Promise<AiConsents> {
   };
 }
 
-export async function setAiDebriefConsent(userId: string, next: boolean): Promise<void> {
-  await supabase
+export async function setAiDebriefConsent(
+  userId: string,
+  next: boolean
+): Promise<ConsentWriteResult> {
+  const { error } = await supabase
     .from('users')
     .update({ ai_debrief_enabled: next } as never)
     .eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
-export async function setCoachAiConsent(userId: string, next: boolean): Promise<void> {
-  await supabase
+export async function setCoachAiConsent(
+  userId: string,
+  next: boolean
+): Promise<ConsentWriteResult> {
+  const { error } = await supabase
     .from('users')
     .update({ coach_ai_enabled: next } as never)
     .eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 // ============================================================================
@@ -101,7 +138,10 @@ export async function loadBiometryConsents(userId: string): Promise<BiometryCons
  * CAPTURE cardio. Révoquer la capture révoque aussi le partage coach (garde-fou
  * d'invariant : impossible de partager un cardio qu'on ne capte plus).
  */
-export async function setBiometryCaptureConsent(userId: string, next: boolean): Promise<void> {
+export async function setBiometryCaptureConsent(
+  userId: string,
+  next: boolean
+): Promise<ConsentWriteResult> {
   const patch: {
     biometry_capture_consent_at: string | null;
     biometry_coach_share_consent_at?: string | null;
@@ -110,10 +150,11 @@ export async function setBiometryCaptureConsent(userId: string, next: boolean): 
     // Révocation en cascade du partage.
     patch.biometry_coach_share_consent_at = null;
   }
-  await supabase
+  const { error } = await supabase
     .from('users')
     .update(patch as never)
     .eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }
 
 /**
@@ -121,13 +162,16 @@ export async function setBiometryCaptureConsent(userId: string, next: boolean): 
  * PARTAGE coach. Activer le partage active la capture si elle était absente
  * (garde-fou d'invariant), sans écraser une date de capture déjà posée.
  */
-export async function setBiometryCoachShareConsent(userId: string, next: boolean): Promise<void> {
+export async function setBiometryCoachShareConsent(
+  userId: string,
+  next: boolean
+): Promise<ConsentWriteResult> {
   if (!next) {
-    await supabase
+    const { error } = await supabase
       .from('users')
       .update({ biometry_coach_share_consent_at: null } as never)
       .eq('id', userId);
-    return;
+    return error ? { ok: false, error: error.message } : { ok: true };
   }
 
   const nowIso = new Date().toISOString();
@@ -140,8 +184,9 @@ export async function setBiometryCoachShareConsent(userId: string, next: boolean
     // Le partage implique la capture : on la pose maintenant.
     patch.biometry_capture_consent_at = nowIso;
   }
-  await supabase
+  const { error } = await supabase
     .from('users')
     .update(patch as never)
     .eq('id', userId);
+  return error ? { ok: false, error: error.message } : { ok: true };
 }

@@ -91,13 +91,16 @@ export async function getMyApplication(): Promise<MyFounderApplication | null> {
 
 /**
  * Nombre de fondateurs validés (candidatures `approved`), via la fonction RPC
- * `founders_count`. Retourne 0 après log si l'appel échoue.
+ * `founders_count`. Retourne `null` (jamais 0) si l'appel échoue ou renvoie une
+ * valeur inattendue : un vrai « 0 fondateur » ne doit pas être confondu avec un
+ * compteur inconnu. Les vues MASQUENT la jauge/le libellé quand la valeur est
+ * null (jamais peindre « 0/30 · 30 places » sur une erreur = fausse rareté).
  */
-export async function getFoundersCount(): Promise<number> {
+export async function getFoundersCount(): Promise<number | null> {
   const { data, error } = await supabase.rpc('founders_count');
   if (error) {
     console.warn('[OXV][founder] getFoundersCount :', error.message);
-    return 0;
+    return null;
   }
-  return typeof data === 'number' ? data : 0;
+  return typeof data === 'number' ? data : null;
 }

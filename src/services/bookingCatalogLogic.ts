@@ -188,21 +188,36 @@ export interface PricingRow {
 }
 
 /**
+ * Formats de demi-journée du site (`sessions.format`) mappés vers la clé
+ * `pricing.format = 'half_day'`. Sans ce mapping, une demi-journée ne trouverait
+ * aucune ligne et serait facturée au plein tarif — surfacturation silencieuse.
+ */
+const HALF_DAY_FORMATS = new Set(['half_day', 'morning', 'afternoon']);
+
+/** Normalise un format de session vers la clé `pricing.format` correspondante. */
+function normalizePricingFormat(format: string): string {
+  return HALF_DAY_FORMATS.has(format) ? 'half_day' : format;
+}
+
+/**
  * Prix « première séance » (cents) d'une offre pour une journée. Match strict
- * (season, offer, format), la ligne active primant sur l'inactive ; à défaut
- * de format exact, repli sur `full_day`. Aucune correspondance → `null` (le
- * prix s'affiche « — », jamais un montant inventé).
+ * (season, offer, format), en ne retenant QUE les lignes actives — jamais un
+ * prix archivé. Les demi-journées ('morning'/'afternoon') sont normalisées vers
+ * 'half_day' AVANT résolution ; aucun repli sur 'full_day' (qui surfacturerait
+ * une demi-journée). Aucune correspondance active → `null` (le prix s'affiche
+ * « — », jamais un montant inventé).
  */
 export function resolveOfferPriceCents(
   rows: PricingRow[],
   opts: { season: string; offerKey: string; format: string }
 ): number | null {
-  const pickIn = (format: string): PricingRow | undefined => {
-    const matches = rows.filter(
-      (r) => r.season === opts.season && r.offer_key === opts.offerKey && r.format === format
-    );
-    return matches.find((r) => r.active === true) ?? matches[0];
-  };
-  const pick = pickIn(opts.format) ?? (opts.format !== 'full_day' ? pickIn('full_day') : undefined);
+  const format = normalizePricingFormat(opts.format);
+  const pick = rows.find(
+    (r) =>
+      r.active === true &&
+      r.season === opts.season &&
+      r.offer_key === opts.offerKey &&
+      r.format === format
+  );
   return pick ? pick.price_first_session_cents : null;
 }

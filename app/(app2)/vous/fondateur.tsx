@@ -29,7 +29,11 @@ import {
   getFoundersCount,
   getMyApplication,
 } from '@/services/v2/founderService';
-import { FOUNDER_MOTIVATION_MAX, validateMotivation } from '@/services/v2/founderLogic';
+import {
+  FOUNDER_MOTIVATION_MAX,
+  founderStatusLabel,
+  validateMotivation,
+} from '@/services/v2/founderLogic';
 import {
   colors,
   GlowStroke,
@@ -56,7 +60,7 @@ export default function FondateurScreen() {
   const alive = useRef(true);
 
   const [flagState, setFlagState] = useState<FlagState>('loading');
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState<number | null>(null);
   const [motivation, setMotivation] = useState('');
   const [referrer, setReferrer] = useState(
     typeof params.referrer === 'string' ? params.referrer : ''
@@ -64,6 +68,7 @@ export default function FondateurScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [declined, setDeclined] = useState(false);
 
   useEffect(() => {
     alive.current = true;
@@ -76,15 +81,16 @@ export default function FondateurScreen() {
       if (!alive.current) return;
       // Fail-closed : toute panne de lecture du flag ferme l'écran.
       setFlagState(flagR.status === 'fulfilled' && flagR.value === true ? 'on' : 'off');
+      // Compteur : null si inconnu (jauge masquée, jamais un « 0/30 » d'erreur).
       if (countR.status === 'fulfilled') setCount(countR.value);
-      // Déjà candidat (en examen ou retenu) : on montre l'état soumis, pas un
-      // formulaire qui échouerait à l'insert (unicité par utilisateur).
-      if (
-        existingR.status === 'fulfilled' &&
-        existingR.value !== null &&
-        (existingR.value.status === 'pending' || existingR.value.status === 'approved')
-      ) {
-        setSubmitted(true);
+      // Déjà candidat : on montre l'état terminal correspondant, jamais un
+      // formulaire qui échouerait à l'insert (unicité par utilisateur) —
+      //   pending/approved → « transmise » ; declined → « non retenue » (pas de
+      //   re-candidature en impasse : l'insert unique 23505 échouerait).
+      if (existingR.status === 'fulfilled' && existingR.value !== null) {
+        const status = existingR.value.status;
+        if (status === 'pending' || status === 'approved') setSubmitted(true);
+        else if (status === 'declined') setDeclined(true);
       }
     })().catch(() => {
       if (alive.current) setFlagState('off');
@@ -116,7 +122,7 @@ export default function FondateurScreen() {
     setSubmitted(true);
   };
 
-  const gauge = foundersGauge(count);
+  const gauge = count !== null ? foundersGauge(count) : null;
 
   return (
     <Animated.View style={[styles.root, { paddingTop: insets.top + space.sm }, door]}>
@@ -132,6 +138,12 @@ export default function FondateurScreen() {
             state="empty"
             emptyMessage="Les candidatures Membre Fondateur ouvriront prochainement."
           />
+        </View>
+      ) : declined ? (
+        <View style={styles.centered}>
+          <Insigne draw={false} />
+          <Text style={styles.submittedTitle}>Candidature examinée.</Text>
+          <Text style={styles.submittedBody}>{founderStatusLabel('declined')}</Text>
         </View>
       ) : submitted ? (
         <View style={styles.centered}>
@@ -157,17 +169,20 @@ export default function FondateurScreen() {
 
           <Text style={styles.manifesto}>30 membres. Jamais plus.</Text>
 
-          <View style={styles.gaugeBlock}>
-            <View style={styles.gaugeTrack}>
-              <View style={[styles.gaugeFill, { flex: gauge.filled }]} />
-              <View style={{ flex: gauge.remaining }} />
+          {/* Jauge seulement si le compteur est connu (jamais un « 0/30 » d'erreur). */}
+          {gauge !== null ? (
+            <View style={styles.gaugeBlock}>
+              <View style={styles.gaugeTrack}>
+                <View style={[styles.gaugeFill, { flex: gauge.filled }]} />
+                <View style={{ flex: gauge.remaining }} />
+              </View>
+              <Text style={styles.gaugeLabel}>
+                {`${gauge.filled}/${FOUNDERS_MAX} · ${gauge.remaining} place${
+                  gauge.remaining > 1 ? 's' : ''
+                } restante${gauge.remaining > 1 ? 's' : ''}`}
+              </Text>
             </View>
-            <Text style={styles.gaugeLabel}>
-              {`${gauge.filled}/${FOUNDERS_MAX} · ${gauge.remaining} place${
-                gauge.remaining > 1 ? 's' : ''
-              } restante${gauge.remaining > 1 ? 's' : ''}`}
-            </Text>
-          </View>
+          ) : null}
 
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>VOTRE MOTIVATION</Text>

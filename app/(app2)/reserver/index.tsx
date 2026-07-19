@@ -131,7 +131,10 @@ export default function ReserverCatalogScreen() {
           />
         </View>
       ) : state.access === 'closed' ? (
-        <ReserverClosedView foundersCount={state.foundersCount} />
+        <ReserverClosedView
+          foundersCount={state.foundersCount}
+          foundersEnabled={state.foundersEnabled}
+        />
       ) : (
         <FlashList
           data={state.days}

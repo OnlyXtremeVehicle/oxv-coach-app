@@ -7,9 +7,10 @@
  *     circuit joint + capacités + `available_offers`.
  *   - `session_availability` (vue, SELECT authenticated/anon) : places prises
  *     par offre (`taken_*`) et total (`taken_total`).
- *   - `pricing` (table, RLS SELECT public WHERE active) : prix par
- *     (season, offer_key, format). Un pilote ne voit que les lignes actives —
- *     un prix absent rend « — », jamais un montant inventé.
+ *   - `pricing` (table) : prix par (season, offer_key, format). On filtre
+ *     `active = true` DANS la requête (jamais en s'appuyant sur le RLS : une
+ *     policy `pricing_select_public USING (true)` laisse fuir les lignes
+ *     archivées) — un prix absent rend « — », jamais un montant inventé.
  *
  * Toutes les décisions de calcul (prix, places, offres) vivent dans
  * `bookingCatalogLogic.ts` (pur, testé). Ici : uniquement l'I/O et le mapping.
@@ -61,7 +62,8 @@ export interface AvailableDay {
   startTime: string | null;
   endTime: string | null;
   offers: AvailableOffer[];
-  places: PlacesGauge;
+  /** Jauge de places, ou null si la capacité réelle est inconnue (jauge masquée). */
+  places: PlacesGauge | null;
 }
 
 interface SessionRow {
@@ -98,16 +100,23 @@ function todayLocalIso(): string {
   ).padStart(2, '0')}`;
 }
 
-/** Capacité totale de la journée : max_capacity, à défaut somme des capacités d'offre. */
-function dayCapacity(s: SessionRow): number {
-  if (s.max_capacity != null) return s.max_capacity;
-  return (s.capacity_access ?? 0) + (s.capacity_signature ?? 0) + (s.capacity_promotion ?? 0);
+/**
+ * Capacité totale de la journée. On ne renvoie un nombre QUE si `max_capacity`
+ * est renseigné : c'est la seule valeur comparable à `taken_total` (qui compte
+ * TOUTES les inscriptions, y compris heritage — or `sessions_public` n'expose
+ * pas de `capacity_heritage`, donc sommer les capacités d'offre sous-estimerait
+ * la capacité et fabriquerait une fausse « liste d'attente »). Absent → null :
+ * l'écran masque la jauge (« — ») plutôt que d'inventer un état de rareté.
+ */
+function dayCapacity(s: SessionRow): number | null {
+  return s.max_capacity != null ? s.max_capacity : null;
 }
 
 /** Construit le récap d'une journée à partir des trois sources déjà lues. */
 function buildDay(s: SessionRow, avail: AvailRow | undefined, pricing: PricingRow[]): AvailableDay {
   const season = seasonForDate(s.date);
   const format = s.format ?? 'full_day';
+  const capacity = dayCapacity(s);
   const offers: AvailableOffer[] = availableOfferKeys(s.available_offers).map((key) => {
     const priceCents = resolveOfferPriceCents(pricing, { season, offerKey: key, format });
     return { key, label: OFFER_LABELS[key], priceCents, priceLabel: formatPriceEur(priceCents) };
@@ -121,15 +130,19 @@ function buildDay(s: SessionRow, avail: AvailRow | undefined, pricing: PricingRo
     startTime: s.start_time,
     endTime: s.end_time,
     offers,
-    places: placesGauge(dayCapacity(s), avail?.taken_total ?? 0),
+    places: capacity == null ? null : placesGauge(capacity, avail?.taken_total ?? 0),
   };
 }
 
-/** Lit toutes les lignes pricing lisibles (RLS = actives). Défaut sûr : []. */
+/**
+ * Lit les lignes pricing ACTIVES. Le filtre `active = true` est explicite (la
+ * vérité métier ne dépend jamais du RLS). Défaut sûr : [].
+ */
 async function loadPricing(): Promise<PricingRow[]> {
   const { data, error } = await supabase
     .from('pricing')
-    .select('season, offer_key, format, price_first_session_cents, price_subsequent_cents, active');
+    .select('season, offer_key, format, price_first_session_cents, price_subsequent_cents, active')
+    .eq('active', true);
   if (error) {
     console.warn('[OXV][booking] loadPricing :', error.message);
     return [];

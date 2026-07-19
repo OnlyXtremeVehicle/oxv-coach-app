@@ -61,8 +61,8 @@ export interface VousFounder {
   flagOn: boolean;
   /** État de la carte (absent = non rendue). */
   state: FounderCardState;
-  /** Compteur x/30 réel (founders_count). */
-  gauge: FoundersGauge;
+  /** Compteur x/30 réel (founders_count), ou null si inconnu → jauge masquée. */
+  gauge: FoundersGauge | null;
 }
 
 export interface VousReferral {
@@ -105,7 +105,7 @@ const INITIAL: VousHubState = {
   vehiclePhotoUrl: null,
   heritage: { isHeritage: false },
   statsLine: null,
-  founder: { flagOn: false, state: 'absent', gauge: foundersGauge(0) },
+  founder: { flagOn: false, state: 'absent', gauge: null },
   referral: { code: null, crew: null },
 };
 
@@ -216,7 +216,7 @@ export function useVousHub(userId: string | null): VousHub {
       const covers = settled(coversR, {});
       const flagOn = settled(flagR, false); // fail-closed
       const application = settled<MyFounderApplication | null>(applicationR, null);
-      const foundersCountValue = settled(foundersCountR, 0);
+      const foundersCountValue = settled<number | null>(foundersCountR, null);
       const code = settled<string | null>(codeR, null);
       const crew = settled(crewR, null);
 
@@ -237,7 +237,7 @@ export function useVousHub(userId: string | null): VousHub {
         founder: {
           flagOn,
           state: founderCardState(flagOn, application),
-          gauge: foundersGauge(foundersCountValue),
+          gauge: foundersCountValue === null ? null : foundersGauge(foundersCountValue),
         },
         referral: {
           code: typeof code === 'string' && code.trim().length > 0 ? code.trim() : null,

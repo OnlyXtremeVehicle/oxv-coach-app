@@ -25,7 +25,10 @@ type Phase = 'checking' | 'ready' | 'error';
 export interface ReserverPaymentState {
   access: BookingAccess | null;
   phase: Phase;
-  foundersCount: number;
+  /** Flag `founders` (fail-closed) : gate la jauge/CTA de l'écran fermé. */
+  foundersEnabled: boolean;
+  /** Compteur fondateurs réel, ou null si inconnu (jauge masquée). */
+  foundersCount: number | null;
   day: AvailableDay | null;
   offer: AvailableOffer | null;
 }
@@ -34,7 +37,8 @@ export function useReserverPayment(sessionId: string | undefined, offerKey: stri
   const [state, setState] = useState<ReserverPaymentState>({
     access: null,
     phase: 'checking',
-    foundersCount: 0,
+    foundersEnabled: false,
+    foundersCount: null,
     day: null,
     offer: null,
   });
@@ -52,12 +56,18 @@ export function useReserverPayment(sessionId: string | undefined, offerKey: stri
           trackEvent(RESERVE_FUNNEL_EVENTS.payment, { access });
         }
         if (access === 'closed') {
-          const foundersCount = await getFoundersCount();
-          if (!cancelled) setState((s) => ({ ...s, access, phase: 'ready', foundersCount }));
+          const foundersEnabled = await isFlagEnabled('founders');
+          const foundersCount = foundersEnabled ? await getFoundersCount() : null;
+          if (!cancelled)
+            setState((s) => ({ ...s, access, phase: 'ready', foundersEnabled, foundersCount }));
           return;
         }
         const day = sessionId ? await getDay(sessionId) : null;
-        const offer = day?.offers.find((o) => o.key === offerKey) ?? day?.offers[0] ?? null;
+        // L'offre choisie DOIT être présente dans la journée relue. Si elle n'y
+        // est plus (retirée / complète), offer=null → l'écran affiche « offre
+        // indisponible » ; jamais de substitution silencieuse par offers[0]
+        // (le pilote paierait une autre offre que celle sélectionnée).
+        const offer = day?.offers.find((o) => o.key === offerKey) ?? null;
         if (!cancelled) setState((s) => ({ ...s, access, phase: 'ready', day, offer }));
       } catch {
         if (!cancelled) setState((s) => ({ ...s, phase: 'error' }));

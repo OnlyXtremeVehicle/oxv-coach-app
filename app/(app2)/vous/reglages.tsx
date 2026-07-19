@@ -13,9 +13,12 @@
  *      confirmation).
  *   4. Session — déconnexion.
  *
- * Données réelles : chaque valeur trace vers une source (useReglages). Le
- * switch est monochrome (piste claire = activé) — aucun accent rouge dispersé,
- * l'accent reste réservé aux actions destructrices confirmées.
+ * Données réelles : chaque valeur trace vers une source (useReglages). Aucune
+ * bascule n'affiche un état non confirmé par le serveur : sur échec d'écriture,
+ * le hook annule l'état optimiste et pose `lastError`, rendu ici en bandeau
+ * sobre. La révocation de la capture cardio (santé) ne passe OFF qu'après succès
+ * serveur. Le switch est monochrome (piste claire = activé) — aucun accent rouge
+ * dispersé, l'accent reste réservé aux actions destructrices confirmées.
  *
  * Doctrine : sobre, vouvoiement, zéro emoji, jamais prescriptif.
  */
@@ -147,6 +150,7 @@ export default function ReglagesScreen() {
 
   const [bioConfirm, setBioConfirm] = useState(false);
   const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   // Phase LOCALE de l'export : indépendante du flag async du hook, pour éviter
   // un flash « prêt » entre l'ouverture du Sheet et le passage en « busy ».
   const [exportPhase, setExportPhase] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
@@ -183,9 +187,26 @@ export default function ReglagesScreen() {
 
   async function confirmDelete() {
     haptic('warn');
+    setDeleteError(null);
     const res = await r.deleteAccount();
-    if (!res.ok) setDeleteStep(0);
+    if (!res.ok) {
+      // Échec honnête : on ne ferme pas le Sheet sans un mot (ce serait laisser
+      // croire la demande enregistrée). Le pilote reste sur la confirmation avec
+      // le message d'échec et peut réessayer.
+      setDeleteError(res.error ?? 'La demande n’a pas pu être enregistrée. Réessayez.');
+      return;
+    }
     // Succès : deleteAccount() déconnecte (redirection par la garde du layout).
+  }
+
+  function openDelete() {
+    setDeleteError(null);
+    setDeleteStep(1);
+  }
+
+  function closeDelete() {
+    setDeleteError(null);
+    setDeleteStep(0);
   }
 
   return (
@@ -212,6 +233,15 @@ export default function ReglagesScreen() {
           paddingBottom: tabBarSpace(insets.bottom) + space.xxl,
         }}
       >
+        {/* Échec d'écriture : bandeau sobre (neutre, jamais l'accent rouge —
+            réservé aux actions destructrices). Se dissipe au prochain
+            enregistrement réussi. */}
+        {s.lastError ? (
+          <View style={styles.errorBanner} accessibilityRole="alert">
+            <Text style={styles.errorBannerText}>{s.lastError}</Text>
+          </View>
+        ) : null}
+
         {/* 1 — NOTIFICATIONS */}
         <Group eyebrow="NOTIFICATIONS">
           <ToggleRow
@@ -323,7 +353,7 @@ export default function ReglagesScreen() {
             caption="Suppression définitive après 30 jours."
             danger
             divider={false}
-            onPress={() => setDeleteStep(1)}
+            onPress={openDelete}
           />
         </Group>
 
@@ -365,7 +395,7 @@ export default function ReglagesScreen() {
       </Sheet>
 
       {/* Sheet — suppression de compte, double confirmation */}
-      <Sheet visible={deleteStep !== 0} onClose={() => setDeleteStep(0)} snapHeight={340}>
+      <Sheet visible={deleteStep !== 0} onClose={closeDelete} snapHeight={340}>
         {deleteStep === 1 ? (
           <>
             <Text style={styles.sheetTitle}>Supprimer mon compte</Text>
@@ -376,7 +406,7 @@ export default function ReglagesScreen() {
             </Text>
             <View style={styles.sheetActions}>
               <PressScale
-                onPress={() => setDeleteStep(0)}
+                onPress={closeDelete}
                 accessibilityLabel="Annuler"
                 containerStyle={styles.ghostContainer}
                 style={styles.ghostBtn}
@@ -400,9 +430,10 @@ export default function ReglagesScreen() {
               Cette demande lance la suppression définitive, effective sous 30 jours. Vous serez
               déconnecté.
             </Text>
+            {deleteError ? <Text style={styles.sheetError}>{deleteError}</Text> : null}
             <View style={styles.sheetActions}>
               <PressScale
-                onPress={() => setDeleteStep(0)}
+                onPress={closeDelete}
                 accessibilityLabel="Non, revenir"
                 containerStyle={styles.ghostContainer}
                 style={styles.ghostBtn}
@@ -416,7 +447,9 @@ export default function ReglagesScreen() {
                 containerStyle={styles.primaryContainer}
                 style={[styles.dangerBtn, s.deleting && styles.btnDisabled]}
               >
-                <Text style={styles.dangerLabel}>{s.deleting ? 'En cours…' : 'Supprimer'}</Text>
+                <Text style={styles.dangerLabel}>
+                  {s.deleting ? 'En cours…' : deleteError ? 'Réessayer' : 'Supprimer'}
+                </Text>
               </PressScale>
             </View>
           </>
@@ -556,6 +589,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
   },
 
+  // Bandeau d'échec d'écriture — neutre (jamais l'accent rouge, réservé au
+  // destructif). Même langage sobre que le bandeau offline du kit.
+  errorBanner: {
+    backgroundColor: colors.bg.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.strong,
+    borderRadius: radius.cell,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    marginBottom: space.sm,
+  },
+  errorBannerText: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.mid,
+  },
+
   // Sheets
   sheetTitle: {
     fontFamily: typo.display,
@@ -569,6 +620,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     color: colors.text.mid,
+    marginTop: space.md,
+  },
+  // Échec de la demande de suppression : lisible mais neutre (le bouton
+  // destructif porte déjà l'unique accent de la zone).
+  sheetError: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.hi,
     marginTop: space.md,
   },
   sheetActions: {

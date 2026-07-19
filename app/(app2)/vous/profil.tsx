@@ -561,7 +561,10 @@ function ProfilBody(props: BodyProps) {
                   value={profil.pavillonOptin}
                   onValueChange={props.onTogglePavillon}
                   disabled={props.pavillonBusy}
-                  trackColor={{ true: colors.accent, false: colors.border.strong }}
+                  // Piste ON NEUTRE (jamais l'accent rouge) : un consentement
+                  // n'est pas une alerte. Aligné sur les switches de consentement
+                  // (reglages) et de partage de note (carnet).
+                  trackColor={{ true: colors.text.mid, false: colors.border.strong }}
                   thumbColor={colors.text.hi}
                   accessibilityLabel="Afficher mon nom au Pavillon"
                 />

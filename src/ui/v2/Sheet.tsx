@@ -18,7 +18,14 @@
  */
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Platform, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -84,6 +91,18 @@ export function Sheet({ visible, onClose, children, snapHeight }: SheetProps) {
       }
     );
   }, [visible, mounted, height, reduce, ty, backdrop]);
+
+  // Bouton retour matériel Android : ferme le sheet plutôt que de quitter
+  // l'écran (vérif L4 [16]) — sans lui, « retour » dépilerait la route sous le
+  // sheet ouvert. iOS n'a pas de bouton retour matériel : no-op.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true; // événement consommé
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
   useEffect(() => {
     if (!visible || !mounted) return;

@@ -27,7 +27,10 @@ type Phase = 'checking' | 'ready' | 'error';
 export interface ReserverCatalogState {
   access: BookingAccess | null;
   phase: Phase;
-  foundersCount: number;
+  /** Flag `founders` (fail-closed) : gate la jauge/CTA de l'écran fermé. */
+  foundersEnabled: boolean;
+  /** Compteur fondateurs réel, ou null si inconnu (jauge masquée). */
+  foundersCount: number | null;
   days: AvailableDay[];
   refreshing: boolean;
 }
@@ -36,7 +39,8 @@ export function useReserverCatalog() {
   const [state, setState] = useState<ReserverCatalogState>({
     access: null,
     phase: 'checking',
-    foundersCount: 0,
+    foundersEnabled: false,
+    foundersCount: null,
     days: [],
     refreshing: false,
   });
@@ -52,8 +56,17 @@ export function useReserverCatalog() {
         trackEvent(RESERVE_FUNNEL_EVENTS.catalog, { access });
       }
       if (access === 'closed') {
-        const foundersCount = await getFoundersCount();
-        setState((s) => ({ ...s, access, phase: 'ready', foundersCount, refreshing: false }));
+        // Le programme fondateur a son propre drapeau : jauge/CTA seulement si ON.
+        const foundersEnabled = await isFlagEnabled('founders');
+        const foundersCount = foundersEnabled ? await getFoundersCount() : null;
+        setState((s) => ({
+          ...s,
+          access,
+          phase: 'ready',
+          foundersEnabled,
+          foundersCount,
+          refreshing: false,
+        }));
         return;
       }
       const days = await listAvailableDays();

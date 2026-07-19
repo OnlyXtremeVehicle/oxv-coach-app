@@ -25,7 +25,10 @@ type Phase = 'checking' | 'ready' | 'error';
 export interface ReserverDayState {
   access: BookingAccess | null;
   phase: Phase;
-  foundersCount: number;
+  /** Flag `founders` (fail-closed) : gate la jauge/CTA de l'écran fermé. */
+  foundersEnabled: boolean;
+  /** Compteur fondateurs réel, ou null si inconnu (jauge masquée). */
+  foundersCount: number | null;
   day: AvailableDay | null;
   selectedOffer: OfferKey | null;
 }
@@ -34,7 +37,8 @@ export function useReserverDay(sessionId: string | undefined) {
   const [state, setState] = useState<ReserverDayState>({
     access: null,
     phase: 'checking',
-    foundersCount: 0,
+    foundersEnabled: false,
+    foundersCount: null,
     day: null,
     selectedOffer: null,
   });
@@ -52,8 +56,10 @@ export function useReserverDay(sessionId: string | undefined) {
           trackEvent(RESERVE_FUNNEL_EVENTS.day, { access });
         }
         if (access === 'closed') {
-          const foundersCount = await getFoundersCount();
-          if (!cancelled) setState((s) => ({ ...s, access, phase: 'ready', foundersCount }));
+          const foundersEnabled = await isFlagEnabled('founders');
+          const foundersCount = foundersEnabled ? await getFoundersCount() : null;
+          if (!cancelled)
+            setState((s) => ({ ...s, access, phase: 'ready', foundersEnabled, foundersCount }));
           return;
         }
         const day = sessionId ? await getDay(sessionId) : null;

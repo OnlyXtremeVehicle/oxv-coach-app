@@ -12,9 +12,18 @@
  *   - Données : export (dataExportService), suppression J+30 (accountService)
  *     puis déconnexion.
  *
- * Écritures optimistes : l'état local bascule d'abord, l'I/O suit ; un échec
- * n'est pas masqué (remonté via `lastError`). Données réelles : une préférence
- * absente prend son défaut documenté, jamais une valeur inventée.
+ * Écritures optimistes : l'état local bascule d'abord, l'I/O suit. supabase-js
+ * ne rejette PAS sur erreur RLS/contrainte — chaque bascule inspecte donc le
+ * retour (`{ error }` direct, ou `{ ok }` des setters de service) et, sur échec,
+ * ANNULE l'état optimiste (rollback vers la valeur précédente) puis pose
+ * `lastError`. Rien n'est jamais affiché comme « activé » si l'écriture a raté.
+ *
+ * Exception PESSIMISTE — révocation de la capture cardio (donnée de santé) :
+ * l'UI ne passe OFF qu'APRÈS confirmation serveur, jamais avant (on ne prétend
+ * pas avoir coupé une collecte de santé qui resterait horodatée en base).
+ *
+ * Données réelles : une préférence absente prend son défaut documenté, jamais
+ * une valeur inventée.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -65,6 +74,12 @@ export interface ReglagesState {
   deleting: boolean;
   lastError: string | null;
 }
+
+// Messages d'échec (factuels, vouvoiement, sans emoji, non prescriptifs). Posés
+// dans `lastError` quand une écriture Supabase renvoie `{ error }` : l'état
+// optimiste est alors annulé (rollback) et l'écran affiche ce message.
+const WRITE_ERROR = 'Réglage non enregistré. Vérifiez votre connexion et réessayez.';
+const REVOKE_ERROR = 'La collecte n’a pas pu être arrêtée. Réessayez.';
 
 const INITIAL: ReglagesState = {
   loaded: false,
@@ -141,27 +156,39 @@ export function useReglages() {
   const toggleMasterPush = useCallback(
     async (next: boolean) => {
       if (!userId) return;
+      const prev = state.pushEnabled;
       patch({ pushEnabled: next });
-      await supabase
+      const { error } = await supabase
         .from('users')
         .update({ push_notif_enabled: next } as never)
         .eq('id', userId);
+      if (error) {
+        patch({ pushEnabled: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
       if (!next) await cancelAllOxvNotifications();
     },
-    [userId, patch]
+    [userId, state.pushEnabled, patch]
   );
 
   /** Écrit une clé du JSONB (canal « reminder » ou rituel) en préservant le reste. */
   const writeNotifKey = useCallback(
     async (updated: Record<string, unknown>) => {
       if (!userId) return;
+      const prev = state.notifPrefs;
       patch({ notifPrefs: updated });
-      await supabase
+      const { error } = await supabase
         .from('users')
         .update({ notification_preferences: updated } as never)
         .eq('id', userId);
+      if (error) {
+        patch({ notifPrefs: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
-    [userId, patch]
+    [userId, state.notifPrefs, patch]
   );
 
   const toggleReminder = useCallback(
@@ -182,13 +209,19 @@ export function useReglages() {
   const toggleOffers = useCallback(
     async (next: boolean) => {
       if (!userId) return;
+      const prev = state.offersEnabled;
       patch({ offersEnabled: next });
-      await supabase
+      const { error } = await supabase
         .from('users')
         .update({ notif_offers: next } as never)
         .eq('id', userId);
+      if (error) {
+        patch({ offersEnabled: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
-    [userId, patch]
+    [userId, state.offersEnabled, patch]
   );
 
   // --- Consentements IA / audience ----------------------------------------
@@ -196,19 +229,31 @@ export function useReglages() {
   const toggleAiDebrief = useCallback(
     async (next: boolean) => {
       if (!userId) return;
+      const prev = state.aiDebrief;
       patch({ aiDebrief: next });
-      await setAiDebriefConsent(userId, next);
+      const res = await setAiDebriefConsent(userId, next);
+      if (!res.ok) {
+        patch({ aiDebrief: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
-    [userId, patch]
+    [userId, state.aiDebrief, patch]
   );
 
   const toggleCoachAi = useCallback(
     async (next: boolean) => {
       if (!userId) return;
+      const prev = state.coachAi;
       patch({ coachAi: next });
-      await setCoachAiConsent(userId, next);
+      const res = await setCoachAiConsent(userId, next);
+      if (!res.ok) {
+        patch({ coachAi: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
-    [userId, patch]
+    [userId, state.coachAi, patch]
   );
 
   const toggleAnalytics = useCallback(
@@ -223,20 +268,53 @@ export function useReglages() {
 
   const toggleLiveCoach = useCallback(
     async (next: boolean) => {
+      const prev = state.liveCoach;
       patch({ liveCoach: next });
-      await Promise.all(liveAssignmentIds.map((id) => setLiveSharing(id, next)));
+      const results = await Promise.all(liveAssignmentIds.map((id) => setLiveSharing(id, next)));
+      if (results.some((r) => !r.ok)) {
+        patch({ liveCoach: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
-    [liveAssignmentIds, patch]
+    [liveAssignmentIds, state.liveCoach, patch]
   );
 
   // --- Biométrie (invariant capture ⇒ partage) -----------------------------
 
-  /** Applique la capture (true active, false révoque en cascade le partage). */
+  /**
+   * Applique la capture cardio (donnée de santé, RGPD).
+   *   - Activation (opt-in) : état optimiste, un tap affirmatif suffit ; rollback
+   *     si l'écriture échoue.
+   *   - Révocation : flux PESSIMISTE — l'UI ne passe OFF qu'APRÈS confirmation
+   *     serveur (le Sheet reste bloquant avant l'appel). On ne prétend jamais
+   *     avoir coupé une collecte de santé qui reste horodatée en base. La
+   *     révocation coupe AUSSI le partage coach : le service le fait en cascade
+   *     (un seul update), et l'état cible calculé ici met coachShare=false —
+   *     double garde-fou BE-1.
+   */
   const applyBiometryCapture = useCallback(
     async (next: boolean) => {
       if (!userId) return;
-      patch({ biometry: nextBiometryConsents(state.biometry, { which: 'capture', value: next }) });
-      await setBiometryCaptureConsent(userId, next);
+      const prev = state.biometry;
+      const target = nextBiometryConsents(prev, { which: 'capture', value: next });
+      if (next) {
+        patch({ biometry: target });
+        const res = await setBiometryCaptureConsent(userId, true);
+        if (!res.ok) {
+          patch({ biometry: prev, lastError: WRITE_ERROR });
+          return;
+        }
+        patch({ lastError: null });
+        return;
+      }
+      // Révocation : n'écrit rien à l'écran tant que le serveur n'a pas confirmé.
+      const res = await setBiometryCaptureConsent(userId, false);
+      if (!res.ok) {
+        patch({ lastError: REVOKE_ERROR });
+        return;
+      }
+      patch({ biometry: target, lastError: null });
     },
     [userId, state.biometry, patch]
   );
@@ -244,10 +322,14 @@ export function useReglages() {
   const toggleBiometryCoachShare = useCallback(
     async (next: boolean) => {
       if (!userId) return;
-      patch({
-        biometry: nextBiometryConsents(state.biometry, { which: 'coachShare', value: next }),
-      });
-      await setBiometryCoachShareConsent(userId, next);
+      const prev = state.biometry;
+      patch({ biometry: nextBiometryConsents(prev, { which: 'coachShare', value: next }) });
+      const res = await setBiometryCoachShareConsent(userId, next);
+      if (!res.ok) {
+        patch({ biometry: prev, lastError: WRITE_ERROR });
+        return;
+      }
+      patch({ lastError: null });
     },
     [userId, state.biometry, patch]
   );

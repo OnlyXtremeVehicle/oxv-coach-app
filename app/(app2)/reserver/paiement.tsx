@@ -96,10 +96,20 @@ export default function ReserverPaymentScreen() {
           <StateView state="error" errorMessage="Le récapitulatif n'a pas pu se charger." />
         </View>
       ) : state.access === 'closed' ? (
-        <ReserverClosedView foundersCount={state.foundersCount} />
+        <ReserverClosedView
+          foundersCount={state.foundersCount}
+          foundersEnabled={state.foundersEnabled}
+        />
       ) : day === null ? (
         <View style={styles.body}>
           <StateView state="empty" emptyMessage="Journée introuvable." />
+        </View>
+      ) : state.offer === null ? (
+        <View style={styles.body}>
+          <StateView
+            state="empty"
+            emptyMessage="Cette offre n'est plus disponible pour cette journée."
+          />
         </View>
       ) : (
         <>

@@ -114,8 +114,11 @@ export default function ReserverDayScreen() {
   const { state, selectOffer } = useReserverDay(sessionId);
 
   const day = state.day;
+  // Uniquement l'offre réellement sélectionnée (pré-sélection = offers[0] côté
+  // hook). Pas de repli silencieux sur offers[0] ici : une clé qui ne matche
+  // aucune offre rend null (CTA désactivé), jamais une autre offre/prix.
   const selected: AvailableOffer | null =
-    day?.offers.find((o) => o.key === state.selectedOffer) ?? day?.offers[0] ?? null;
+    day?.offers.find((o) => o.key === state.selectedOffer) ?? null;
 
   function goToPayment() {
     if (!day || !selected) return;
@@ -150,7 +153,10 @@ export default function ReserverDayScreen() {
           <StateView state="error" errorMessage="Cette journée n'a pas pu se charger." />
         </View>
       ) : state.access === 'closed' ? (
-        <ReserverClosedView foundersCount={state.foundersCount} />
+        <ReserverClosedView
+          foundersCount={state.foundersCount}
+          foundersEnabled={state.foundersEnabled}
+        />
       ) : day === null ? (
         <View style={styles.body}>
           <StateView state="empty" emptyMessage="Journée introuvable." />

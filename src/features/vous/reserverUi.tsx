@@ -47,8 +47,12 @@ export function CircuitFallback() {
 /**
  * Jauge de places : segments pris (text.dim) puis restants (accent). Complet →
  * pastille « LISTE D'ATTENTE » (bord border.strong). Sous la jauge, « n places ».
+ * Capacité inconnue (gauge null) → « — » : on n'invente jamais un état de rareté.
  */
-export function PlacesGaugeBar({ gauge }: { gauge: PlacesGauge }) {
+export function PlacesGaugeBar({ gauge }: { gauge: PlacesGauge | null }) {
+  if (gauge === null) {
+    return <Text style={styles.gaugeLabel}>—</Text>;
+  }
   if (gauge.isWaitlist) {
     return (
       <View style={styles.waitlistPill}>
@@ -93,14 +97,30 @@ export function OfferChips({ labels }: { labels: string[] }) {
 
 /**
  * Écran « Réservations à l'ouverture » (drapeau app_payments OFF) : jauge
- * fondateurs 12/30 (or, borne dure) + CTA candidature → Sheet fondateur.
+ * fondateurs x/30 + CTA candidature → écran fondateur.
+ *
+ * Gating cohérent : la jauge et le CTA ne s'affichent QUE si le flag `founders`
+ * est ON (`foundersEnabled`) — sinon tout est fermé, on n'invite pas vers une
+ * porte close. La jauge/le libellé sont masqués si le compteur est inconnu
+ * (`foundersCount === null`, erreur RPC) : jamais un « 0/30 » d'erreur.
+ *
+ * Tons NEUTRES (titane / border.strong) : `heritage.gold` reste exclusif au
+ * tier Heritage — cohérent avec la carte fondateur du hub et l'écran
+ * candidature. L'unique accent de l'écran est le CTA CANDIDATER.
  */
-export function ReserverClosedView({ foundersCount }: { foundersCount: number }) {
-  const filled = Math.max(0, Math.min(Math.floor(foundersCount), FOUNDER_TOTAL));
+export function ReserverClosedView({
+  foundersCount,
+  foundersEnabled,
+}: {
+  foundersCount: number | null;
+  foundersEnabled: boolean;
+}) {
+  const filled =
+    foundersCount !== null ? Math.max(0, Math.min(Math.floor(foundersCount), FOUNDER_TOTAL)) : 0;
   const segments = Array.from({ length: FOUNDER_TOTAL });
   return (
     <View style={styles.closedRoot}>
-      <OxvIcon name="insigne" size={40} color={colors.heritage.gold} />
+      <OxvIcon name="insigne" size={40} color={colors.text.mid} />
       <Text style={styles.closedEyebrow}>RÉSERVATIONS</Text>
       <Text style={styles.closedTitle}>À l'ouverture.</Text>
       <Text style={styles.closedBody}>
@@ -108,27 +128,33 @@ export function ReserverClosedView({ foundersCount }: { foundersCount: number })
         plus.
       </Text>
 
-      <View style={styles.foundersGaugeRow}>
-        {segments.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.foundersSeg,
-              { backgroundColor: i < filled ? colors.heritage.gold : colors.border.strong },
-            ]}
-          />
-        ))}
-      </View>
-      <Text style={styles.foundersLabel}>{foundersProgressLabel(foundersCount)}</Text>
+      {foundersEnabled && foundersCount !== null ? (
+        <>
+          <View style={styles.foundersGaugeRow}>
+            {segments.map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.foundersSeg,
+                  { backgroundColor: i < filled ? colors.text.mid : colors.border.strong },
+                ]}
+              />
+            ))}
+          </View>
+          <Text style={styles.foundersLabel}>{foundersProgressLabel(foundersCount)}</Text>
+        </>
+      ) : null}
 
-      <PressScale
-        onPress={() => router.navigate('/(app2)/vous/fondateur' as never)}
-        accessibilityLabel="Candidater comme membre fondateur"
-        containerStyle={styles.ctaContainer}
-        style={styles.ctaBtn}
-      >
-        <Text style={styles.ctaLabel}>CANDIDATER</Text>
-      </PressScale>
+      {foundersEnabled ? (
+        <PressScale
+          onPress={() => router.navigate('/(app2)/vous/fondateur' as never)}
+          accessibilityLabel="Candidater comme membre fondateur"
+          containerStyle={styles.ctaContainer}
+          style={styles.ctaBtn}
+        >
+          <Text style={styles.ctaLabel}>CANDIDATER</Text>
+        </PressScale>
+      ) : null}
     </View>
   );
 }
@@ -176,7 +202,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: colors.heritage.gold,
+    color: colors.text.low,
     marginTop: space.md,
   },
   closedTitle: {
