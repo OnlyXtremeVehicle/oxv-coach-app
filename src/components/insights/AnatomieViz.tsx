@@ -22,6 +22,7 @@ import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg
 
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
+import type { AnatomyCorner } from '@/circuit/sessionInsights';
 
 const C = theme.dataColors;
 // V3 : vitesse = donnée de perf → neutre crème (l'or reste au chrono/record).
@@ -36,35 +37,22 @@ interface Phase {
   value: string;
 }
 
-// Données DÉMO du virage 3 (maquette N2-1).
-const PHASES: Phase[] = [
-  {
-    color: C.brake,
-    label: 'Freinage',
-    text: 'Freinage sur **95 m**, de 182 à 78 km/h',
-    value: '−1,08 g',
-  },
-  {
-    color: CREAM,
-    label: 'Corde',
-    text: 'Vitesse mini à la corde : **78 km/h**',
-    value: '1,12 g lat.',
-  },
-  {
-    color: C.accel,
-    label: 'Réaccél.',
-    text: 'Réaccélération sur **140 m** jusqu’à la prochaine zone',
-    value: '+0,74 g',
-  },
-];
+export interface AnatomieVizProps {
+  /** Anatomie réelle par virage de la séance (null/vide → état sobre). */
+  anatomy: AnatomyCorner[] | null;
+}
 
-const ZONES = [
-  { label: 'Freinage', value: '95 m', color: C.brake },
-  { label: 'Corde', value: '78 km/h', color: CREAM },
-  { label: 'Réaccél.', value: '140 m', color: C.accel },
-];
+/** Entier en français (séparateur d'unités implicite, arrondi km/h & m). */
+function frInt(n: number): string {
+  return String(Math.round(n));
+}
 
-export function AnatomieViz() {
+/** Décimal en français (virgule) — utilisé pour les g. */
+function frDec(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace('.', ',');
+}
+
+export function AnatomieViz({ anatomy }: AnatomieVizProps) {
   // Point de statut « vivant ».
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -78,6 +66,51 @@ export function AnatomieViz() {
     return () => loop.stop();
   }, [blink]);
 
+  // HONNÊTE-VIDE : sans virage exploitable, on ne fabrique aucun profil.
+  const corner = anatomy && anatomy.length > 0 ? anatomy[0] : null;
+  if (!corner) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.emptyText}>Données insuffisantes sur cette séance</Text>
+      </View>
+    );
+  }
+
+  // Dérivation des entrées du rendu depuis la tranche réelle (un virage).
+  const apex = frInt(corner.apex_speed_kmh);
+  const brake = frInt(corner.brake_dist_m);
+  const accel = frInt(corner.accel_dist_m);
+  const gLat = frDec(corner.g_lat_apex, 2);
+
+  // Trois temps : freinage (distance) / corde (vitesse mini + g lat.) / réaccél.
+  // (distance). Le g d'entrée/sortie n'est pas dans la tranche → non fabriqué.
+  const PHASES: Phase[] = [
+    {
+      color: C.brake,
+      label: 'Freinage',
+      text: `Freinage sur **${brake} m** avant la corde`,
+      value: `${brake} m`,
+    },
+    {
+      color: CREAM,
+      label: 'Corde',
+      text: `Vitesse mini à la corde : **${apex} km/h**`,
+      value: `${gLat} g lat.`,
+    },
+    {
+      color: C.accel,
+      label: 'Réaccél.',
+      text: `Réaccélération sur **${accel} m** jusqu’à la prochaine zone`,
+      value: `${accel} m`,
+    },
+  ];
+
+  const ZONES = [
+    { label: 'Freinage', value: `${brake} m`, color: C.brake },
+    { label: 'Corde', value: `${apex} km/h`, color: CREAM },
+    { label: 'Réaccél.', value: `${accel} m`, color: C.accel },
+  ];
+
   return (
     <View>
       <View style={styles.card}>
@@ -87,13 +120,13 @@ export function AnatomieViz() {
             <Animated.View style={[styles.dotLive, { opacity: blink }]} />
             <Text style={styles.statusLabel}>Anatomie de virage</Text>
           </View>
-          <Text style={styles.statusRight}>VIRAGE 3 · 18 TOURS</Text>
+          <Text style={styles.statusRight}>VIRAGE {corner.corner_index}</Text>
         </View>
 
         {/* Nombre héros : vitesse à la corde (le minimum, signature du virage). */}
         <View style={styles.hero}>
           <Text style={styles.heroNum}>
-            78
+            {apex}
             <Text style={styles.heroUnit}> km/h</Text>
           </Text>
           <Text style={styles.heroLabel}>VITESSE À LA CORDE · MINIMUM</Text>
@@ -143,12 +176,10 @@ export function AnatomieViz() {
           <Circle cx={140} cy={100} r={9} fill={CREAM} opacity={0.16} />
           <Circle cx={140} cy={100} r={3.4} fill={CREAM} />
 
-          {/* Repères de vitesse (mono). */}
-          <SvgText x={8} y={18} fontSize={8} fill={C.brake} fontFamily={theme.fonts.mono}>
-            182 km/h
-          </SvgText>
+          {/* Repère de vitesse à la corde (mono). La vitesse d'entrée n'est pas
+              dans la tranche → aucun repère fabriqué. */}
           <SvgText x={118} y={124} fontSize={8} fill={CREAM} fontFamily={theme.fonts.mono}>
-            78 km/h
+            {apex} km/h
           </SvgText>
         </Svg>
 
@@ -194,6 +225,14 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.md,
+  },
+  emptyText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.md,
   },
   status: {
     flexDirection: 'row',

@@ -10,8 +10,9 @@
  * un nombre central — le taux de remplissage de l'enveloppe — à lueur dorée.
  *
  * Doctrine : l'or est la donnée (neutre). Pas de rouge (réservé marque/coach),
- * pas de heritageGold (réservé Heritage / numéros de virage). Nuage DÉMO figé,
- * déterministe, autonome — telemetry_frames vide jusqu'à Valence.
+ * pas de heritageGold (réservé Heritage / numéros de virage). Nuage câblé sur le
+ * VRAI g-g de la séance (loadGGPoints → prop `points`). Aucune valeur inventée :
+ * si le nuage est trop maigre (< 20 points), vide honnête, jamais un chart fabriqué.
  */
 
 import { useEffect, useRef } from 'react';
@@ -33,6 +34,15 @@ const R_LIM = 92; // cercle-limite (enveloppe d'adhérence max).
 const R_MID = 68;
 const R_IN = 42;
 
+// Le cercle-limite (dashed doré, gradué « 1,5 g ») matérialise l'enveloppe.
+// L'échelle est ancrée dessus : R_LIM px ↔ G_MAX g. Sert au placement ET au
+// nombre central (taux de remplissage = pic atteint / enveloppe).
+const G_MAX = 1.5;
+const PX_PER_G = R_LIM / G_MAX;
+
+// Nuage insuffisant sous ce seuil → vide honnête (pas de signature lisible).
+const MIN_POINTS = 20;
+
 type Tier = 'edge' | 'mid' | 'inner';
 interface Pt {
   x: number;
@@ -41,51 +51,83 @@ interface Pt {
   tier: Tier;
 }
 
-/**
- * Nuage DÉMO déterministe « axes purs » : dense et au bord sur chaque axe
- * (freiner OU tourner), clairsemé et rentré dans les diagonales (le combiné se
- * creuse). Aucun Math.random → rendu stable. Le tier dérive du rayon atteint :
- * bord (allumé), cœur, intérieur (sombre).
- */
-function buildPoints(): Pt[] {
-  const pts: Pt[] = [];
-  const total = 132;
-  for (let i = 0; i < total; i++) {
-    const theta = (i / total) * Math.PI * 2;
-    // « axisness » : 1 sur les axes, 0 dans les diagonales (combiné).
-    const axisness = Math.abs(Math.cos(2 * theta));
-    // Densité : on saute la plupart des points hors-axe.
-    const keep = 0.24 + 0.76 * axisness;
-    if ((i * 0.6180339887) % 1 > keep) continue;
-    // Rayon limite local : grand sur l'axe, réduit dans le combiné.
-    const rlim = R_LIM * (0.46 + 0.54 * axisness);
-    // Position pseudo-déterministe dans [0.40..1] du rayon limite.
-    const frac = 0.4 + 0.6 * ((i * 0.7548776662) % 1);
-    const r = rlim * frac;
-    const reach = r / R_LIM; // 0 centre → ~1 bord absolu.
-    const tier: Tier = reach > 0.74 ? 'edge' : reach > 0.5 ? 'mid' : 'inner';
-    pts.push({
-      x: CX + r * Math.cos(theta),
-      y: CY - r * Math.sin(theta),
-      r: tier === 'edge' ? 2.1 : tier === 'mid' ? 1.8 : 1.6,
-      tier,
-    });
-  }
-  return pts;
+/** Point g-g réel (loadGGPoints). Conventions gLat/gLong : sessionTelemetryMapping. */
+export interface GGPoint {
+  gLat: number;
+  gLong: number;
+  speedKmh: number | null;
 }
 
-const POINTS = buildPoints();
+export interface GGVizProps {
+  /** Nuage g-g réel de la séance (loadGGPoints). Absent/null/maigre → vide honnête. */
+  points?: GGPoint[] | null;
+}
 
-// Taux de remplissage de l'enveloppe (DÉMO) — le chiffre dominant.
-const ENVELOPPE_PCT = 72;
+interface GGModel {
+  pts: Pt[];
+  envelopePct: number;
+  stats: { label: string; value: string; unit: string; tone: 'gold' | 'mute' }[];
+}
 
-const STATS = [
-  { label: 'G latéral', value: '1,3', unit: 'g', tone: 'gold' as const },
-  { label: 'G frein', value: '1,1', unit: 'g', tone: 'gold' as const },
-  { label: 'Combiné', value: '0,7', unit: 'g', tone: 'mute' as const },
-];
+/** g → libellé français « 1,3 » (une décimale, virgule). */
+function fmtG(g: number): string {
+  return g.toFixed(1).replace('.', ',');
+}
 
-export function GGViz() {
+/** Valeur au 95e centile d'une liste (robuste aux pointes IMU/GPS). */
+function p95(sortedAsc: number[]): number {
+  if (sortedAsc.length === 0) return 0;
+  const idx = Math.floor(0.95 * (sortedAsc.length - 1));
+  return sortedAsc[idx];
+}
+
+/**
+ * Dérive le rendu (nuage + nombre central + 3 mesures) du VRAI g-g.
+ * - Placement : gLat → axe G/D (x), gLong → axe FREIN/ACCÉL (y, accél vers le haut).
+ * - Tier (halo bord / cœur / intérieur) : rayon atteint / R_LIM, mêmes seuils que
+ *   l'ancienne démo — la couche visuelle est intacte.
+ * - Enveloppe % : pic (p95) de la magnitude g rapporté à G_MAX, borné [0..100].
+ * - Mesures : |G lat| max, freinage max, et « combiné » = max min(|lat|,|long|)
+ *   (l'appui simultané réel se creuse dans les diagonales — signature g-g).
+ * Renvoie null si le nuage est trop maigre → vide honnête.
+ */
+function deriveModel(points: GGPoint[] | null | undefined): GGModel | null {
+  if (!points || points.length < MIN_POINTS) return null;
+
+  const pts: Pt[] = [];
+  const mags: number[] = [];
+  let maxLat = 0;
+  let maxBrake = 0;
+  let maxCombined = 0;
+
+  for (const p of points) {
+    const x = CX + p.gLat * PX_PER_G; // + = droite (D), − = gauche (G)
+    const y = CY - p.gLong * PX_PER_G; // + gLong = accél (haut), − = frein (bas)
+    const mag = Math.hypot(p.gLat, p.gLong);
+    const reach = (mag * PX_PER_G) / R_LIM; // 0 centre → ~1 bord de l'enveloppe
+    const tier: Tier = reach > 0.74 ? 'edge' : reach > 0.5 ? 'mid' : 'inner';
+    pts.push({ x, y, r: tier === 'edge' ? 2.1 : tier === 'mid' ? 1.8 : 1.6, tier });
+
+    mags.push(mag);
+    if (Math.abs(p.gLat) > maxLat) maxLat = Math.abs(p.gLat);
+    if (p.gLong < 0 && -p.gLong > maxBrake) maxBrake = -p.gLong; // freinage = gLong négatif
+    const combined = Math.min(Math.abs(p.gLat), Math.abs(p.gLong));
+    if (combined > maxCombined) maxCombined = combined;
+  }
+
+  mags.sort((a, b) => a - b);
+  const envelopePct = Math.max(0, Math.min(100, Math.round((p95(mags) / G_MAX) * 100)));
+
+  const stats: GGModel['stats'] = [
+    { label: 'G latéral', value: fmtG(maxLat), unit: 'g', tone: 'gold' },
+    { label: 'G frein', value: fmtG(maxBrake), unit: 'g', tone: 'gold' },
+    { label: 'Combiné', value: fmtG(maxCombined), unit: 'g', tone: 'mute' },
+  ];
+
+  return { pts, envelopePct, stats };
+}
+
+export function GGViz({ points }: GGVizProps) {
   // Point de statut « vivant » (respiration douce, pas une alarme).
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -98,6 +140,21 @@ export function GGViz() {
     loop.start();
     return () => loop.stop();
   }, [blink]);
+
+  const model = deriveModel(points);
+
+  // Vide honnête : nuage absent ou trop maigre → une ligne sobre, jamais un chart
+  // fabriqué (prod quasi sans télémétrie jusqu'à Valence).
+  if (!model) {
+    return (
+      <View style={styles.graph}>
+        <View style={styles.empty}>
+          <Text style={styles.emptyText}>Données insuffisantes sur cette séance</Text>
+        </View>
+      </View>
+    );
+  }
+  const { pts, envelopePct, stats } = model;
 
   return (
     <View>
@@ -163,7 +220,7 @@ export function GGViz() {
 
             {/* Nuage : halo doré sur le bord, dégradé d'opacité vers le centre. */}
             <G>
-              {POINTS.map((p, i) =>
+              {pts.map((p, i) =>
                 p.tier === 'edge' ? (
                   <G key={i}>
                     <Circle cx={p.x} cy={p.y} r={p.r * 2.7} fill={GOLD} opacity={0.16} />
@@ -248,7 +305,7 @@ export function GGViz() {
           {/* Nombre central : remplissage d'enveloppe, à lueur dorée. */}
           <View style={styles.core} pointerEvents="none">
             <Text style={styles.coreNum}>
-              {ENVELOPPE_PCT}
+              {envelopePct}
               <Text style={styles.corePct}> %</Text>
             </Text>
             <Text style={styles.coreSub}>ENVELOPPE</Text>
@@ -258,7 +315,7 @@ export function GGViz() {
 
       {/* Trois mesures clés. */}
       <View style={styles.stats}>
-        {STATS.map((st) => (
+        {stats.map((st) => (
           <View key={st.label} style={styles.stat}>
             <Text style={styles.statLabel}>{st.label}</Text>
             <Text
@@ -281,6 +338,19 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.lg,
+  },
+  empty: {
+    minHeight: VB,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: theme.spacing.lg,
+  },
+  emptyText: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    textAlign: 'center',
+    color: theme.palette.creamMute,
   },
   status: {
     flexDirection: 'row',

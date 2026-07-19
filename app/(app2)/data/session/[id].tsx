@@ -26,7 +26,7 @@
  * propre section — le montage reste léger.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Canvas, Circle, Group, Path, Rect } from '@shopify/react-native-skia';
@@ -68,11 +68,13 @@ import { formatDeltaMs } from '@/features/data/comparerLogic';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
 import { DispersionViz } from '@/components/insights/DispersionViz';
 import { FlowViz } from '@/components/insights/FlowViz';
-import { GGViz } from '@/components/insights/GGViz';
+import { GGViz, type GGPoint } from '@/components/insights/GGViz';
 import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { DemoBanner } from '@/components/insights/InsightCard';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
+import { fetchSessionInsights } from '@/services/sessionInsightsService';
+import type { SessionInsights } from '@/circuit/sessionInsights';
 import { supabase } from '@/lib/supabase';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { loadCornerEvolution } from '@/services/cornerEvolutionService';
@@ -137,6 +139,10 @@ interface SeanceData {
   circuitSessionIds: string[];
   /** Tour retenu par séance pour la superposition (best_lap_number, sinon 1). */
   lapNumberBySession: Record<string, number>;
+  /** Lectures Insight RÉELLES (session_insights) — null tant que non calculées. */
+  insights: SessionInsights | null;
+  /** Nuage g-g RÉEL (loadGGPoints) — vide si trames insuffisantes. */
+  ggPoints: GGPoint[];
   /** Sections dont le chargement a ÉCHOUÉ (erreur DB) — distinct de « vide ». */
   failed: Record<string, boolean>;
 }
@@ -215,11 +221,13 @@ function useSeance(id: string | undefined) {
       }
 
       // Sections indépendantes — l'échec de l'une n'entache pas les autres.
-      const [lapsR, segmentsR, weatherR, correlationR] = await Promise.allSettled([
+      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR] = await Promise.allSettled([
         fetchSessionLaps(id, { strict: true }),
         listSegmentAnalysesForSession(id),
         loadSeanceWeather(id),
         loadWeatherCorrelation(userId, session.circuit_id ?? undefined),
+        fetchSessionInsights(id),
+        loadGGPoints(id),
       ]);
       if (cancelled) return;
 
@@ -240,6 +248,16 @@ function useSeance(id: string | undefined) {
       if (correlationR.status === 'fulfilled') correlation = correlationR.value;
       else failed.conditions = true;
 
+      // Insights RÉELS : absence honnête (null) tant que le moteur n'a pas tourné
+      // sur des trames denses. Panne DB → section Constats en erreur, jamais un
+      // rendu démo passé pour réel.
+      let insights: SessionInsights | null = null;
+      if (insightsR.status === 'fulfilled') insights = insightsR.value;
+      else failed.constats = true;
+
+      let ggPoints: GGPoint[] = [];
+      if (ggR.status === 'fulfilled') ggPoints = ggR.value;
+
       setData({
         session,
         laps,
@@ -248,6 +266,8 @@ function useSeance(id: string | undefined) {
         correlation,
         circuitSessionIds,
         lapNumberBySession,
+        insights,
+        ggPoints,
         failed,
       });
       setStatus('ready');
@@ -495,7 +515,11 @@ export default function SeanceScreen() {
         {/* ── 5 · CONSTATS ────────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(4)}>
           <SectionHeader eyebrow="CONSTATS" title="Les lectures approfondies" />
-          <ConstatsSection />
+          <ConstatsSection
+            insights={data.insights}
+            ggPoints={data.ggPoints}
+            insightsFailed={data.failed.constats === true}
+          />
         </View>
 
         {/* ── 6 · CŒUR ────────────────────────────────────────────────── */}
@@ -1424,30 +1448,58 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
 // 5 · CONSTATS — les six lectures (DÉMO) montées dans un Sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Les visualisations Insight — composants DÉMO zéro-prop (non recâblés). */
-const VIZ_BY_KEY: Record<ReadingKey, ComponentType> = {
-  anatomie: AnatomieViz,
-  gg: GGViz,
-  dispersion: DispersionViz,
-  'tour-ideal': TourIdealViz,
-  flow: FlowViz,
-  transfert: TransfertViz,
-};
+/**
+ * Monte la visualisation d'une lecture avec sa tranche RÉELLE d'insights (ou son
+ * nuage g-g réel), en état vide honnête si la donnée manque. `flow` reste une
+ * DÉMONSTRATION : aucune source d'insight « fluidité » n'existe (il faudrait un
+ * calcul dédié dérivé des trames) → bandeau DemoBanner limité à cette lecture.
+ */
+function renderReadingViz(key: ReadingKey, insights: SessionInsights | null, ggPoints: GGPoint[]) {
+  switch (key) {
+    case 'anatomie':
+      return <AnatomieViz anatomy={insights?.anatomy ?? null} />;
+    case 'gg':
+      return <GGViz points={ggPoints} />;
+    case 'dispersion':
+      return <DispersionViz dispersion={insights?.dispersion ?? null} />;
+    case 'tour-ideal':
+      return <TourIdealViz ideal={insights?.ideal_lap ?? null} />;
+    case 'flow':
+      return <FlowViz />;
+    case 'transfert':
+      return <TransfertViz transfer={insights?.load_transfer ?? null} />;
+    default:
+      return null;
+  }
+}
 
-function ConstatsSection() {
+function ConstatsSection({
+  insights,
+  ggPoints,
+  insightsFailed,
+}: {
+  insights: SessionInsights | null;
+  ggPoints: GGPoint[];
+  insightsFailed: boolean;
+}) {
   const [open, setOpen] = useState<ReadingKey | null>(null);
-  const Viz = open ? VIZ_BY_KEY[open] : null;
   const reading = open ? (READINGS.find((r) => r.key === open) ?? null) : null;
 
+  // Panne DB de la lecture insights : erreur honnête (distincte de « vide »).
+  if (insightsFailed) {
+    return <StateView state="error" emptyMessage="Lectures indisponibles pour le moment." />;
+  }
+
+  // Le sous-libellé est le NIVEAU de la lecture (neutre, factuel) — jamais l'ancien
+  // `fact` de démo (chiffres fabriqués). La donnée réelle vit dans la viz du Sheet.
   return (
     <View>
-      <DemoBanner />
       <View style={styles.constatsList}>
         {READINGS.map((r) => (
           <ListRow
             key={r.key}
             label={r.name}
-            sublabel={r.fact.split('**').join('')}
+            sublabel={r.eyebrow}
             onPress={() => {
               haptic('tap');
               setOpen(r.key);
@@ -1461,12 +1513,12 @@ function ConstatsSection() {
         {reading ? (
           <ScrollView showsVerticalScrollIndicator={false}>
             <SectionHeader eyebrow={reading.eyebrow} title={reading.name} />
-            <View style={styles.constatDemo}>
-              <DemoBanner />
-            </View>
-            {Viz ? <Viz /> : null}
-            <Text style={styles.constatReading}>{reading.reading}</Text>
-            <Text style={styles.constatSource}>{reading.source}</Text>
+            {open === 'flow' ? (
+              <View style={styles.constatDemo}>
+                <DemoBanner />
+              </View>
+            ) : null}
+            {open ? renderReadingViz(open, insights, ggPoints) : null}
           </ScrollView>
         ) : null}
       </Sheet>
@@ -1815,20 +1867,6 @@ const styles = StyleSheet.create({
   constatDemo: {
     marginTop: space.md,
     marginBottom: space.md,
-  },
-  constatReading: {
-    fontFamily: typo.body,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.text.hi,
-    marginTop: space.lg,
-  },
-  constatSource: {
-    fontFamily: typo.mono,
-    fontSize: 10,
-    lineHeight: 16,
-    color: colors.text.low,
-    marginTop: space.md,
   },
   // ── Conditions ──
   condCard: {

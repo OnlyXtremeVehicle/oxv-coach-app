@@ -30,6 +30,7 @@ import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { ConstatTag, DemoBanner } from '@/components/insights/InsightCard';
 import { dimensionColor, getReading, type ReadingKey } from '@/components/insights/catalogue';
+import { DEMO_SESSION_INSIGHTS } from '@/circuit/sessionInsights';
 import { FadeInSection } from '@/components/motion';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -129,19 +130,23 @@ export default function InsightDetailScreen() {
  * tant que les clés du catalogue sont couvertes.
  */
 function ReadingViz({ reading }: { reading: ReadingKey }) {
+  // Galerie de DÉMONSTRATION v1 (bandeau DemoBanner présent, écran voué à la
+  // suppression en L6) : on alimente les viz recâblées avec les tranches DÉMO
+  // (`DEMO_SESSION_INSIGHTS`). GGViz (nuage g-g issu des trames) n'a pas de
+  // source démo → état vide honnête. Le câblage RÉEL vit dans (app2)/data/session.
   switch (reading) {
     case 'anatomie':
-      return <AnatomieViz />;
+      return <AnatomieViz anatomy={DEMO_SESSION_INSIGHTS.anatomy} />;
     case 'gg':
-      return <GGViz />;
+      return <GGViz points={null} />;
     case 'dispersion':
-      return <DispersionViz />;
+      return <DispersionViz dispersion={DEMO_SESSION_INSIGHTS.dispersion} />;
     case 'tour-ideal':
-      return <TourIdealViz />;
+      return <TourIdealViz ideal={DEMO_SESSION_INSIGHTS.ideal_lap} />;
     case 'flow':
       return <FlowViz />;
     case 'transfert':
-      return <TransfertViz />;
+      return <TransfertViz transfer={DEMO_SESSION_INSIGHTS.load_transfer} />;
     default:
       return <ReadingPlaceholder />;
   }

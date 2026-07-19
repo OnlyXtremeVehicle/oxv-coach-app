@@ -6,15 +6,21 @@
  * Spec     : 02_moteur_insights.md §3.2.
  *
  * Assemble le meilleur micro-secteur de chaque tour en un « tour théorique »
- * (1:41.2, −1,6 s sous le meilleur tour réel). Cockpit : barre de statut, chrono
- * idéal en nombre héros (lueur dorée) avec le réel en référence, barre de
- * provenance des secteurs, puis répartition du temps perdu (80 % en S2).
+ * (chrono idéal sous le meilleur tour réel). Cockpit : barre de statut, chrono
+ * idéal en nombre héros (lueur discrète) avec le réel en référence, puis
+ * répartition du temps perdu par secteur.
  *
- * DÉMO : valeurs figées (1:42.8 / 1:41.2 ; S2 80 %), telemetry_frames vide.
+ * DONNÉES : alimenté par le bloc `ideal_lap` (IdealLap) de session_insights.
+ * Aucune valeur figée. Si `ideal` est absent (ou chronos non calculés), un état
+ * vide sobre s'affiche — jamais de chiffre inventé.
  *
- * Doctrine : constate où le temps se loge (« 80 % en S2 »). Ne dit jamais d'y
- * travailler. L'or est réservé au chrono/record (nombre héros) ; le secteur qui
- * concentre la perte est en crème (donnée neutre). Aucune couleur heritage.
+ * NOTE : la barre de provenance des micro-secteurs (maquette N3-2) exigeait la
+ * source (n° de tour) de chaque secteur, absente d'IdealLap. Elle est retirée
+ * plutôt que fabriquée (doctrine « données réelles câblées »).
+ *
+ * Doctrine : constate où le temps se loge. Ne dit jamais d'y travailler. L'or est
+ * réservé au chrono/record (nombre héros) ; le secteur qui concentre la perte est
+ * en crème (donnée neutre). Aucune couleur heritage.
  */
 
 import { useEffect, useRef } from 'react';
@@ -22,46 +28,31 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
+import type { IdealLap } from '@/circuit/sessionInsights';
 
 const C = theme.dataColors;
 // Secteur qui concentre la perte : donnée principale en crème (neutre V3).
 // L'or reste réservé au chrono/record (nombre héros).
 const HOT = theme.palette.cream;
 
-// Deux chronos DÉMO (maquette N3-2).
-const REAL_BEST = '1:42.8';
-const IDEAL = '1:41.2';
-const DELTA = '−1,6 s';
-
-// Provenance de chaque secteur du tour idéal (largeur = part de tour).
-interface Segment {
-  sector: string;
-  from: string;
-  width: number;
-  accent: string;
-  tint: string;
+export interface TourIdealVizProps {
+  /** Bloc `ideal_lap` de la séance, ou null s'il n'a pas été calculé. */
+  ideal: IdealLap | null;
 }
-const SEGMENTS: Segment[] = [
-  { sector: 'S1', from: 'tour 9', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
-  { sector: 'S2', from: 'tour 14', width: 38, accent: C.brake, tint: 'rgba(230,57,70,0.16)' },
-  { sector: 'S3', from: 'tour 11', width: 31, accent: C.accel, tint: 'rgba(74,222,128,0.16)' },
-];
 
-// Répartition du temps perdu (où se loge l'écart de 1,6 s).
-interface Lost {
-  sector: string;
-  pct: number;
-  label: string;
-  color: string;
-  hot: boolean;
+/** Chrono au format m:ss.mmm depuis un total de secondes. */
+function fmtChrono(totalSec: number): string {
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec - m * 60;
+  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
 }
-const LOST: Lost[] = [
-  { sector: 'S2', pct: 80, label: '80 % · 1,28 s', color: HOT, hot: true },
-  { sector: 'S1', pct: 13, label: '13 % · 0,21 s', color: C.flow, hot: false },
-  { sector: 'S3', pct: 7, label: '7 % · 0,11 s', color: C.flow, hot: false },
-];
 
-export function TourIdealViz() {
+/** Nombre en écriture française (virgule décimale). */
+function fmtFr(n: number, decimals: number): string {
+  return n.toFixed(decimals).replace('.', ',');
+}
+
+export function TourIdealViz({ ideal }: TourIdealVizProps) {
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -73,6 +64,38 @@ export function TourIdealViz() {
     loop.start();
     return () => loop.stop();
   }, [blink]);
+
+  // Honnêteté : sans chronos calculés, aucun tour idéal à composer.
+  if (!ideal || !Number.isFinite(ideal.ideal_time_s) || !Number.isFinite(ideal.real_best_s)) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.empty}>Données insuffisantes sur cette séance</Text>
+      </View>
+    );
+  }
+
+  const idealStr = fmtChrono(ideal.ideal_time_s);
+  const realStr = fmtChrono(ideal.real_best_s);
+  // gap_s = écart réel − idéal ; repli par soustraction si le bloc l'omet.
+  const gap = Number.isFinite(ideal.gap_s) ? ideal.gap_s : ideal.real_best_s - ideal.ideal_time_s;
+  const deltaStr = `−${fmtFr(gap, 1)} s`;
+
+  // Répartition du temps perdu : un secteur par entrée de loss_by_sector_pct
+  // (secondes = part du gap). worst_sector (index 1-based) = point chaud (crème).
+  const lost = (ideal.loss_by_sector_pct ?? [])
+    .map((pct, i) => {
+      const sectorNum = i + 1;
+      const hot = sectorNum === ideal.worst_sector;
+      return {
+        sector: `S${sectorNum}`,
+        pct,
+        label: `${fmtFr(pct, 0)} % · ${fmtFr((gap * pct) / 100, 2)} s`,
+        color: hot ? HOT : C.flow,
+        hot,
+      };
+    })
+    .filter((l) => l.pct > 0)
+    .sort((a, b) => b.pct - a.pct);
 
   return (
     <View>
@@ -87,58 +110,39 @@ export function TourIdealViz() {
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.heroNum}>{IDEAL}</Text>
-          <Text style={styles.heroLabel}>TOUR IDÉAL · {DELTA} SOUS VOTRE MEILLEUR RÉEL</Text>
+          <Text style={styles.heroNum}>{idealStr}</Text>
+          <Text style={styles.heroLabel}>TOUR IDÉAL · {deltaStr} SOUS VOTRE MEILLEUR RÉEL</Text>
         </View>
 
         <View style={styles.refRow}>
           <Text style={styles.refKey}>Meilleur tour réel</Text>
-          <Text style={styles.refVal}>{REAL_BEST}</Text>
+          <Text style={styles.refVal}>{realStr}</Text>
         </View>
       </View>
 
-      {/* Barre composite : provenance de chaque secteur du tour idéal. */}
-      <View style={styles.card}>
-        <Text style={styles.cap}>Provenance de chaque secteur du tour idéal</Text>
-        <View style={styles.secbar}>
-          {SEGMENTS.map((seg) => (
-            <View
-              key={seg.sector}
-              style={[styles.seg, { flex: seg.width, backgroundColor: seg.tint }]}
-            >
-              <View style={[styles.segAccent, { backgroundColor: seg.accent }]} />
-              <Text style={styles.segName}>{seg.sector}</Text>
-              <Text style={styles.segFrom}>{seg.from}</Text>
+      {/* Où se loge l'écart — constat, pas consigne. */}
+      {lost.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cap}>Où se loge l’écart de {fmtFr(gap, 1)} s</Text>
+          {lost.map((l) => (
+            <View key={l.sector} style={styles.lrow}>
+              <Text style={styles.lab}>{l.sector}</Text>
+              <View style={styles.track}>
+                <View
+                  style={[
+                    styles.fill,
+                    { width: `${l.pct}%`, backgroundColor: l.color },
+                    l.hot && styles.fillHot,
+                  ]}
+                />
+              </View>
+              <Text style={[styles.pct, { color: l.hot ? l.color : theme.palette.creamMute }]}>
+                {l.label}
+              </Text>
             </View>
           ))}
         </View>
-        <View style={styles.secLegend}>
-          <Text style={styles.secLegendText}>Départ</Text>
-          <Text style={styles.secLegendText}>Ligne d’arrivée</Text>
-        </View>
-      </View>
-
-      {/* Où se loge l'écart de 1,6 s — constat, pas consigne. */}
-      <View style={styles.card}>
-        <Text style={styles.cap}>Où se loge l’écart de 1,6 s</Text>
-        {LOST.map((l) => (
-          <View key={l.sector} style={styles.lrow}>
-            <Text style={styles.lab}>{l.sector}</Text>
-            <View style={styles.track}>
-              <View
-                style={[
-                  styles.fill,
-                  { width: `${l.pct}%`, backgroundColor: l.color },
-                  l.hot && styles.fillHot,
-                ]}
-              />
-            </View>
-            <Text style={[styles.pct, { color: l.hot ? l.color : theme.palette.creamMute }]}>
-              {l.label}
-            </Text>
-          </View>
-        ))}
-      </View>
+      )}
     </View>
   );
 }
@@ -149,6 +153,14 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.md,
+  },
+  empty: {
+    fontFamily: theme.fonts.mono,
+    fontSize: 12,
+    letterSpacing: 0.4,
+    color: theme.palette.creamMute,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.lg,
   },
   status: {
     flexDirection: 'row',
@@ -225,50 +237,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
-  },
-  secbar: {
-    flexDirection: 'row',
-    height: 46,
-    borderRadius: theme.radius.sm,
-    borderColor: theme.palette.line,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  seg: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: theme.palette.line,
-  },
-  segAccent: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 2,
-  },
-  segName: {
-    fontFamily: theme.fonts.monoMedium,
-    fontSize: 11,
-    color: theme.palette.cream,
-  },
-  segFrom: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    color: theme.palette.creamMute,
-    marginTop: 2,
-  },
-  secLegend: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: theme.spacing.sm,
-  },
-  secLegendText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    color: theme.palette.creamMute,
   },
   lrow: {
     flexDirection: 'row',
