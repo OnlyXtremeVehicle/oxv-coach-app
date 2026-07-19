@@ -2,16 +2,16 @@
  * Logique pure du COACHING (V2-L5, écran 2/7) — sans réseau, testable seule.
  *
  * Cœur doctrinal : une fiche coach ne CLASSE personne. `coachCardMap` et
- * `reviewCitations` construisent leurs sorties par LISTE BLANCHE : aucune note
- * moyenne étoilée, aucun score, aucun vocabulaire de classement ne peut
- * traverser — même si le service marketplace expose `rating` / `average`. Les
- * avis ne sortent qu'en CITATIONS factuelles (le texte de l'avis + son auteur),
- * jamais une étoile. Les tests doctrinaux verrouillent ces deux invariants.
+ * `testimonialCitations` construisent leurs sorties par LISTE BLANCHE : aucune
+ * note, aucun score, aucun vocabulaire de classement ne peut traverser. La table
+ * `coach_testimonials` ne porte AUCUN champ chiffré (garde-fou verrouillé par
+ * coachDomainNoScore.test.ts) — les témoignages ne sortent qu'en CITATIONS
+ * factuelles (le texte + son auteur), jamais une étoile.
  *
  * Aucune I/O ici : les appels Supabase vivent dans `useCoaching`.
  */
 
-import type { CoachListing, CoachReview } from '@/services/coachMarketplaceService';
+import type { CoachListing, CoachTestimonial } from '@/services/coachMarketplaceService';
 
 // ---------------------------------------------------------------------------
 // Onglets — Trouver · Mon coach · Demandes
@@ -98,7 +98,8 @@ export function sortCoachCards(cards: readonly CoachCardVM[]): CoachCardVM[] {
 // Avis en CITATIONS — jamais d'étoile, jamais de note.
 // ---------------------------------------------------------------------------
 
-/** Une citation d'avis : le TEXTE et son auteur. La note est délibérément absente. */
+/** Une citation de témoignage : le TEXTE et son auteur. Aucune note — la source
+ *  n'en porte aucune. */
 export interface ReviewCitationVM {
   id: string;
   quote: string;
@@ -106,17 +107,20 @@ export interface ReviewCitationVM {
 }
 
 /**
- * Transforme les avis en citations factuelles — par LISTE BLANCHE. Un avis sans
- * texte (note seule) N'EST PAS une citation : on ne le montre pas (une étoile
- * nue n'a rien à dire). L'attribut `rating` n'apparaît jamais en sortie.
+ * Transforme les témoignages en citations factuelles — par LISTE BLANCHE. Un
+ * témoignage sans texte N'EST PAS une citation : on ne le montre pas. La sortie
+ * ne porte que `quote` + `author` : il n'existe aucun champ de note à laisser
+ * fuir (la table `coach_testimonials` n'en a pas — garde-fou verrouillé).
  */
-export function reviewCitations(reviews: readonly CoachReview[]): ReviewCitationVM[] {
+export function testimonialCitations(
+  testimonials: readonly CoachTestimonial[]
+): ReviewCitationVM[] {
   const out: ReviewCitationVM[] = [];
-  for (const r of reviews) {
-    const quote = r.comment?.trim();
-    if (!quote) continue; // note seule, aucun propos → pas de citation
-    const author = r.pilotFirstName?.trim() ? r.pilotFirstName.trim() : 'Un pilote';
-    out.push({ id: r.id, quote, author });
+  for (const t of testimonials) {
+    const quote = t.body?.trim();
+    if (!quote) continue; // aucun propos → pas de citation
+    const author = t.authorFirstName?.trim() ? t.authorFirstName.trim() : 'Un pilote';
+    out.push({ id: t.id, quote, author });
   }
   return out;
 }

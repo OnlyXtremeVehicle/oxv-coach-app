@@ -14,9 +14,9 @@
  *     demande QUE vers `cancelled` (`coaching_bookings_pilot_cancel`).
  *   - un coach ne lit/répond qu'aux demandes où `coach_id = auth.uid()`
  *     (`coaching_bookings_coach_select` / `_coach_respond`).
- *   - les avis d'un coach PUBLIÉ sont lisibles par tout authentifié
- *     (`coach_reviews_select_published`) ; un pilote n'écrit QUE son avis et
- *     seulement s'il a une séance acceptée/complétée (`coach_reviews_pilot_write`).
+ *   - les témoignages PUBLIÉS d'un coach PUBLIÉ sont lisibles par tout authentifié
+ *     (`coach_testimonials_public_read`) ; un pilote n'écrit QUE son témoignage et
+ *     seulement s'il a une séance acceptée/complétée (`coach_testimonials_author_write`).
  * Aucune donnée pilote n'est exposée par la découverte (RGPD, spec §4). Une
  * demande `pending` n'ouvre aucun accès : l'affiliation `coach_pilots` reste le
  * seul vecteur de consentement, et n'est PAS touchée ici.
@@ -217,42 +217,33 @@ export interface RequestBookingInput {
   pilotFirstName?: string | null;
 }
 
-/** Borne valide d'une note d'avis (1 à 5). */
-export type ReviewRating = 1 | 2 | 3 | 4 | 5;
-
-/** Un avis laissé par un pilote sur un coach (lecture, fiche publiée). */
-export interface CoachReview {
+/**
+ * Un témoignage laissé par un pilote sur un coach (lecture, fiche publiée).
+ * CITATION FACTUELLE : le texte et son auteur, JAMAIS une note, un score ou une
+ * échelle. La table `coach_testimonials` ne porte AUCUNE colonne de notation
+ * (garde-fou verrouillé par test) — il n'y a donc rien de chiffré à exposer.
+ */
+export interface CoachTestimonial {
   id: string;
-  rating: number;
-  comment: string | null;
-  /** Prénom dénormalisé du pilote (fourni par lui-même), repli « Pilote ». */
-  pilotFirstName: string | null;
+  body: string;
+  /** Prénom dénormalisé de l'auteur (fourni par lui-même) ; repli côté logique. */
+  authorFirstName: string | null;
   createdAt: string;
 }
 
-/** Agrégat des avis d'UN coach. Jamais comparé à d'autres coachs (doctrine). */
-export interface CoachReviewsSummary {
-  /** Moyenne des notes (1 décimale), `null` si aucun avis. */
-  average: number | null;
-  /** Nombre d'avis. */
-  count: number;
-}
-
-/** L'avis du pilote courant sur un coach (pour pré-remplir l'édition). */
-export interface MyReview {
+/** Le témoignage du pilote courant sur un coach (pour pré-remplir l'édition). */
+export interface MyTestimonial {
   id: string;
-  rating: number;
-  comment: string | null;
+  body: string;
 }
 
-/** Entrée de création / mise à jour d'un avis. `pilot_id` est posé à
- *  `auth.uid()` ; la note est bornée 1-5 ; le prénom est dénormalisé. */
-export interface CreateReviewInput {
+/** Entrée de création / mise à jour d'un témoignage. `author_user_id` est posé à
+ *  `auth.uid()` ; le texte est borné (1-1500) ; le prénom est dénormalisé.
+ *  AUCUNE note : un témoignage est un propos, pas un score. */
+export interface CreateTestimonialInput {
   coachId: string;
-  bookingId?: string | null;
-  rating: number;
-  comment?: string | null;
-  pilotFirstName?: string | null;
+  body: string;
+  authorFirstName?: string | null;
 }
 
 const COACH_PROFILE_FIELDS =
@@ -650,122 +641,104 @@ export async function updateAvailabilityStatus(
   return { ok: true };
 }
 
-/** Normalise une note arbitraire en entier borné 1-5. */
-function clampRating(rating: number): ReviewRating {
-  const r = Math.round(rating);
-  if (!Number.isFinite(r)) return 1;
-  return Math.min(5, Math.max(1, r)) as ReviewRating;
-}
-
 /**
- * Dépose ou met à jour l'avis du pilote courant sur un coach (Phase 2). Un seul
- * avis par pilote par coach : on UPSERT sur la contrainte `coach_id,pilot_id`
- * (l'avis est donc éditable). Le `pilot_id` est posé à `auth.uid()` ; la RLS
- * `coach_reviews_pilot_write` vérifie en plus qu'une séance acceptée/complétée
- * existe. La note est bornée 1-5, le commentaire et le prénom sont nettoyés.
- * Renvoie un résultat défensif, jamais d'exception remontée à l'écran.
+ * Dépose ou met à jour le témoignage du pilote courant sur un coach. Un seul
+ * témoignage par pilote par coach : UPSERT sur la contrainte
+ * `coach_id,author_user_id` (donc éditable). `author_user_id` est posé à
+ * `auth.uid()` ; la RLS `coach_testimonials_author_write` vérifie EN PLUS qu'une
+ * séance acceptée/complétée existe. Le texte est requis (non vide) et le prénom
+ * est dénormalisé. AUCUNE note. Renvoie un résultat défensif, jamais d'exception.
  */
-export async function createReview(
-  input: CreateReviewInput
+export async function createTestimonial(
+  input: CreateTestimonialInput
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const { data: auth } = await supabase.auth.getUser();
-  const pilotId = auth.user?.id;
-  if (!pilotId) {
-    return { ok: false, error: 'Vous devez être connecté pour laisser un avis.' };
+  const authorId = auth.user?.id;
+  if (!authorId) {
+    return { ok: false, error: 'Vous devez être connecté pour laisser un témoignage.' };
   }
 
-  const rating = clampRating(input.rating);
-  const comment = input.comment?.trim() || null;
-  const pilotFirstName = input.pilotFirstName?.trim() || null;
+  const body = input.body?.trim() || '';
+  if (body.length === 0) {
+    return { ok: false, error: 'Le témoignage ne peut pas être vide.' };
+  }
+  const authorFirstName = input.authorFirstName?.trim() || null;
 
   const { data, error } = await supabase
-    .from('coach_reviews')
+    .from('coach_testimonials')
     .upsert(
       {
         coach_id: input.coachId,
-        pilot_id: pilotId,
-        booking_id: input.bookingId ?? null,
-        rating,
-        comment,
-        pilot_first_name: pilotFirstName,
+        author_user_id: authorId,
+        author_first_name: authorFirstName,
+        body,
       },
-      { onConflict: 'coach_id,pilot_id' }
+      { onConflict: 'coach_id,author_user_id' }
     )
     .select('id')
     .single();
 
   if (error || !data) {
-    console.warn('[OXV][marketplace] createReview :', error?.message);
-    return { ok: false, error: "L'avis n'a pas pu être enregistré. Réessayez dans un instant." };
+    console.warn('[OXV][marketplace] createTestimonial :', error?.message);
+    return {
+      ok: false,
+      error: "Le témoignage n'a pas pu être enregistré. Réessayez dans un instant.",
+    };
   }
 
   return { ok: true, id: data.id };
 }
 
 /**
- * Liste les avis d'un coach publié (les plus récents d'abord) et leur agrégat
- * { moyenne, nombre }. La RLS `coach_reviews_select_published` borne la lecture
- * aux fiches publiées. La moyenne est arrondie à une décimale et ne sert qu'à
- * décrire CE coach — jamais à le classer face à d'autres (doctrine).
- * Best-effort : en cas d'erreur on renvoie une liste vide et un agrégat nul.
+ * Liste les témoignages d'un coach publié (les plus récents d'abord). La RLS
+ * `coach_testimonials_public_read` borne la lecture aux fiches publiées et aux
+ * témoignages publiés. AUCUN agrégat : pas de moyenne, pas de compteur de note —
+ * il n'y a rien de chiffré à agréger (doctrine, verrouillé par test).
+ * Best-effort : en cas d'erreur on renvoie une liste vide.
  */
-export async function listCoachReviews(
-  coachId: string
-): Promise<{ reviews: CoachReview[]; summary: CoachReviewsSummary }> {
-  const empty = { reviews: [], summary: { average: null, count: 0 } };
-
+export async function listCoachTestimonials(coachId: string): Promise<CoachTestimonial[]> {
   const { data, error } = await supabase
-    .from('coach_reviews')
-    .select('id, rating, comment, pilot_first_name, created_at')
+    .from('coach_testimonials')
+    .select('id, body, author_first_name, created_at')
     .eq('coach_id', coachId)
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.warn('[OXV][marketplace] listCoachReviews :', error.message);
-    return empty;
+    console.warn('[OXV][marketplace] listCoachTestimonials :', error.message);
+    return [];
   }
 
-  const rows = data ?? [];
-  const reviews: CoachReview[] = rows.map((row) => ({
+  return (data ?? []).map((row) => ({
     id: row.id,
-    rating: row.rating,
-    comment: row.comment ?? null,
-    pilotFirstName: row.pilot_first_name?.trim() || null,
+    body: row.body,
+    authorFirstName: row.author_first_name?.trim() || null,
     createdAt: row.created_at,
   }));
-
-  const count = reviews.length;
-  const average =
-    count > 0
-      ? Math.round((reviews.reduce((sum, r) => sum + r.rating, 0) / count) * 10) / 10
-      : null;
-
-  return { reviews, summary: { average, count } };
 }
 
 /**
- * Renvoie l'avis existant du pilote courant sur un coach (pour pré-remplir le
- * formulaire d'édition), ou `null` s'il n'en a pas encore laissé. La RLS borne
- * déjà à `pilot_id = auth.uid()` ; on le filtre explicitement par robustesse.
+ * Renvoie le témoignage existant du pilote courant sur un coach (pour pré-remplir
+ * le formulaire d'édition), ou `null` s'il n'en a pas encore laissé. La RLS borne
+ * déjà à `author_user_id = auth.uid()` ; on le filtre explicitement par robustesse.
  * Best-effort : en cas d'erreur on renvoie `null`.
  */
-export async function getMyReviewFor(coachId: string): Promise<MyReview | null> {
+export async function getMyTestimonialFor(coachId: string): Promise<MyTestimonial | null> {
   const { data: auth } = await supabase.auth.getUser();
-  const pilotId = auth.user?.id;
-  if (!pilotId) return null;
+  const authorId = auth.user?.id;
+  if (!authorId) return null;
 
   const { data, error } = await supabase
-    .from('coach_reviews')
-    .select('id, rating, comment')
+    .from('coach_testimonials')
+    .select('id, body')
     .eq('coach_id', coachId)
-    .eq('pilot_id', pilotId)
+    .eq('author_user_id', authorId)
     .maybeSingle();
 
   if (error) {
-    console.warn('[OXV][marketplace] getMyReviewFor :', error.message);
+    console.warn('[OXV][marketplace] getMyTestimonialFor :', error.message);
     return null;
   }
   if (!data) return null;
 
-  return { id: data.id, rating: data.rating, comment: data.comment ?? null };
+  return { id: data.id, body: data.body };
 }

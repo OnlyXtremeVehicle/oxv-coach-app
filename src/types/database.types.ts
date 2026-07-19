@@ -2491,86 +2491,73 @@ export type Database = {
           },
         ]
       }
-      coach_reviews: {
+      coach_testimonials: {
         Row: {
-          booking_id: string | null
+          author_first_name: string | null
+          author_user_id: string
+          body: string
           coach_id: string
-          comment: string | null
           created_at: string
           id: string
-          pilot_first_name: string | null
-          pilot_id: string
-          rating: number
-          updated_at: string
+          published: boolean
         }
         Insert: {
-          booking_id?: string | null
+          author_first_name?: string | null
+          author_user_id: string
+          body: string
           coach_id: string
-          comment?: string | null
           created_at?: string
           id?: string
-          pilot_first_name?: string | null
-          pilot_id: string
-          rating: number
-          updated_at?: string
+          published?: boolean
         }
         Update: {
-          booking_id?: string | null
+          author_first_name?: string | null
+          author_user_id?: string
+          body?: string
           coach_id?: string
-          comment?: string | null
           created_at?: string
           id?: string
-          pilot_first_name?: string | null
-          pilot_id?: string
-          rating?: number
-          updated_at?: string
+          published?: boolean
         }
         Relationships: [
           {
-            foreignKeyName: "coach_reviews_booking_id_fkey"
-            columns: ["booking_id"]
-            isOneToOne: false
-            referencedRelation: "coaching_bookings"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coach_reviews_coach_id_fkey"
-            columns: ["coach_id"]
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "coach_reviews_coach_id_fkey"
-            columns: ["coach_id"]
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
             isOneToOne: false
             referencedRelation: "coach_pilots_view"
             referencedColumns: ["pilot_id"]
           },
           {
-            foreignKeyName: "coach_reviews_coach_id_fkey"
-            columns: ["coach_id"]
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "coach_reviews_pilot_id_fkey"
-            columns: ["pilot_id"]
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "admin_ritual_dispatches_view"
             referencedColumns: ["user_id"]
           },
           {
-            foreignKeyName: "coach_reviews_pilot_id_fkey"
-            columns: ["pilot_id"]
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "coach_pilots_view"
             referencedColumns: ["pilot_id"]
           },
           {
-            foreignKeyName: "coach_reviews_pilot_id_fkey"
-            columns: ["pilot_id"]
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

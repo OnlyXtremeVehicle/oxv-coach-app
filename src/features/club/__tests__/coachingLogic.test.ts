@@ -1,10 +1,11 @@
 /**
  * Tests — logique pure du COACHING (V2-L5). Verrous DOCTRINAUX :
  *  - une carte coach n'expose AUCUN score / note / classement ;
- *  - un avis ne sort qu'en CITATION (texte + auteur), jamais sa note étoilée.
+ *  - un témoignage ne sort qu'en CITATION (texte + auteur) ; la source
+ *    `coach_testimonials` ne porte AUCUNE note (cf. coachDomainNoScore.test.ts).
  */
 
-import type { CoachListing, CoachReview } from '@/services/coachMarketplaceService';
+import type { CoachListing, CoachTestimonial } from '@/services/coachMarketplaceService';
 
 import {
   bookingIsPast,
@@ -13,10 +14,10 @@ import {
   coachCardMap,
   COACHING_TABS,
   euroLabel,
-  reviewCitations,
   sortCoachCards,
   tabIndexOf,
   tabKeyFromIndex,
+  testimonialCitations,
 } from '../coachingLogic';
 
 describe('onglets', () => {
@@ -107,37 +108,35 @@ describe('coachCardMap — DOCTRINE : zéro score', () => {
   });
 });
 
-describe('reviewCitations — DOCTRINE : citations, jamais d’étoile', () => {
-  function review(partial: Partial<CoachReview>): CoachReview {
+describe('testimonialCitations — DOCTRINE : citations, jamais de note', () => {
+  function testimonial(partial: Partial<CoachTestimonial>): CoachTestimonial {
     return {
-      id: partial.id ?? 'r',
-      rating: partial.rating ?? 3,
-      comment: partial.comment ?? null,
-      pilotFirstName: partial.pilotFirstName ?? null,
+      id: partial.id ?? 't',
+      body: partial.body ?? '',
+      authorFirstName: partial.authorFirstName ?? null,
       createdAt: partial.createdAt ?? '2026-07-16T10:00:00Z',
     };
   }
 
-  it('ne retient que les avis AVEC texte, et n’expose jamais la note', () => {
-    const reviews: CoachReview[] = [
-      review({ id: 'r1', rating: 5, comment: 'Très pédagogue', pilotFirstName: 'Marie' }),
-      review({ id: 'r2', rating: 1, comment: null, pilotFirstName: 'Luc' }), // note seule → écartée
-      review({ id: 'r3', rating: 3, comment: '   ', pilotFirstName: null }), // vide → écartée
-      review({ id: 'r4', rating: 4, comment: 'Au top', pilotFirstName: null }), // auteur repli
+  it('ne retient que les témoignages AVEC texte, et n’expose aucune note', () => {
+    const testimonials: CoachTestimonial[] = [
+      testimonial({ id: 't1', body: 'Très pédagogue', authorFirstName: 'Marie' }),
+      testimonial({ id: 't2', body: '', authorFirstName: 'Luc' }), // vide → écarté
+      testimonial({ id: 't3', body: '   ', authorFirstName: null }), // blancs → écarté
+      testimonial({ id: 't4', body: 'Au top', authorFirstName: null }), // auteur repli
     ];
-    const citations = reviewCitations(reviews);
+    const citations = testimonialCitations(testimonials);
     expect(citations).toHaveLength(2);
-    expect(citations[0]).toEqual({ id: 'r1', quote: 'Très pédagogue', author: 'Marie' });
+    expect(citations[0]).toEqual({ id: 't1', quote: 'Très pédagogue', author: 'Marie' });
     expect(citations[1].author).toBe('Un pilote');
 
     for (const c of citations) {
       expect(c).not.toHaveProperty('rating');
       expect(Object.keys(c).sort()).toEqual(['author', 'id', 'quote']);
     }
-    // La note étoilée n'apparaît nulle part.
+    // Aucune note nulle part (la source n'en porte aucune).
     const serialized = JSON.stringify(citations);
     expect(serialized).not.toContain('rating');
-    expect(serialized).not.toContain('"5"');
   });
 });
 

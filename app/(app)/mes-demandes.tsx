@@ -7,32 +7,33 @@
  * attente, le pilote peut l'annuler (RLS `coaching_bookings_pilot_cancel`, qui
  * n'autorise QUE la transition vers `cancelled`).
  *
- * Phase 2 : sur une demande `accepted` ou `completed`, le pilote peut laisser un
- * avis (note 1-5 + texte) — ou le modifier s'il en a déjà un (pré-rempli). Un
- * seul avis par coach (`coach_reviews`, UPSERT sur `coach_id,pilot_id`). On
- * fournit son PRÉNOM (depuis `useAuthStore`) à la création, dénormalisé.
+ * Sur une demande `accepted` ou `completed`, le pilote peut laisser un
+ * TÉMOIGNAGE (texte seul, AUCUNE note) — ou le modifier s'il en a déjà un
+ * (pré-rempli). Un seul témoignage par coach (`coach_testimonials`, UPSERT sur
+ * `coach_id,author_user_id`). On fournit son PRÉNOM (depuis `useAuthStore`) à la
+ * création, dénormalisé — la moitié « auteur » de la citation.
  *
  * Le coach est résolu via `coach_profiles` (fiche publiée), jamais via `users`.
  * Si la fiche n'est plus publiée, on retombe sur un libellé générique.
  *
- * Doctrine : vouvoiement, aucun emoji (note en chiffres/pastilles, pas d'étoiles),
- * sobre/premium, la note est un fait de l'avis et jamais un classement de
- * personnes. Réutilise le kit (Screen, AppBar, Card, Button, Field, SectionLabel).
+ * Doctrine : vouvoiement, aucun emoji, sobre/premium. Un témoignage est un PROPOS,
+ * pas un score : ni note, ni étoile, ni classement de personnes. Réutilise le kit
+ * (Screen, AppBar, Card, Button, Field, SectionLabel).
  */
 
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import {
   bookingStatusLabel,
   cancelBooking,
-  createReview,
-  getMyReviewFor,
+  createTestimonial,
+  getMyTestimonialFor,
   listMyBookings,
   type MyBooking,
-  type MyReview,
+  type MyTestimonial,
 } from '@/services/coachMarketplaceService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
@@ -206,63 +207,49 @@ function BookingCard({
 
       {/* Phase 2 : sur une séance actée, le pilote peut laisser/modifier un avis. */}
       {isReviewable(booking.status) && onReviewed ? (
-        <ReviewBlock coachId={booking.coachId} bookingId={booking.id} onDone={onReviewed} />
+        <ReviewBlock coachId={booking.coachId} onDone={onReviewed} />
       ) : null}
     </Card>
   );
 }
 
-/** Bloc « laisser / modifier un avis » sur une demande actée (Phase 2). */
-function ReviewBlock({
-  coachId,
-  bookingId,
-  onDone,
-}: {
-  coachId: string;
-  bookingId: string;
-  onDone: () => void;
-}) {
+/** Bloc « laisser / modifier un témoignage » sur une demande actée. La séance
+ *  acceptée/complétée est vérifiée côté RLS (author_write) — pas besoin du booking. */
+function ReviewBlock({ coachId, onDone }: { coachId: string; onDone: () => void }) {
   const firstName = useAuthStore((st) => st.profile?.first_name ?? null);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [existing, setExisting] = useState<MyReview | null>(null);
-  const [rating, setRating] = useState(0);
+  const [existing, setExisting] = useState<MyTestimonial | null>(null);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
 
   async function openForm() {
     if (!loaded) {
-      const mine = await getMyReviewFor(coachId);
+      const mine = await getMyTestimonialFor(coachId);
       setExisting(mine);
-      if (mine) {
-        setRating(mine.rating);
-        setComment(mine.comment ?? '');
-      }
+      if (mine) setComment(mine.body);
       setLoaded(true);
     }
     setOpen(true);
   }
 
   async function submit() {
-    if (rating < 1) {
-      Toast.show({ type: 'error', text1: 'Choisissez une note de 1 à 5.' });
+    const body = comment.trim();
+    if (body.length === 0) {
+      Toast.show({ type: 'error', text1: 'Écrivez quelques mots avant de publier.' });
       return;
     }
     setBusy(true);
-    const res = await createReview({
-      coachId,
-      bookingId,
-      rating,
-      comment,
-      pilotFirstName: firstName,
-    });
+    // Témoignage = propos + auteur, AUCUNE note. La RLS author_write vérifie qu'une
+    // séance acceptée/complétée existe (le bookingId n'a plus besoin d'être stocké).
+    const res = await createTestimonial({ coachId, body, authorFirstName: firstName });
     setBusy(false);
     if (!res.ok) {
       Toast.show({ type: 'error', text1: res.error });
       return;
     }
-    Toast.show({ type: 'success', text1: 'Avis enregistré.' });
-    setExisting({ id: existing?.id ?? '', rating, comment: comment.trim() || null });
+    Toast.show({ type: 'success', text1: 'Témoignage enregistré.' });
+    setExisting({ id: existing?.id ?? '', body });
     setOpen(false);
     onDone();
   }
@@ -281,33 +268,11 @@ function ReviewBlock({
 
   return (
     <View style={s.reviewForm}>
-      <Text style={s.reviewLabel}>Votre note</Text>
-      <View style={s.ratingRow} accessibilityRole="radiogroup">
-        {[1, 2, 3, 4, 5].map((n) => {
-          const on = n <= rating;
-          return (
-            <Pressable
-              key={n}
-              onPress={() => setRating(n)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: rating === n }}
-              accessibilityLabel={`${n} sur 5`}
-              hitSlop={6}
-              style={[s.ratingDot, on ? s.ratingDotOn : null]}
-            >
-              <Text style={[s.ratingNum, on ? s.ratingNumOn : null]}>{n}</Text>
-            </Pressable>
-          );
-        })}
-        <Text style={s.ratingScale}>sur 5</Text>
-      </View>
-
       <Field
-        label="Votre avis"
-        optional
+        label="Votre témoignage"
         value={comment}
         onChangeText={setComment}
-        placeholder="Quelques mots sur la séance…"
+        placeholder="En quelques mots, ce que cette séance vous a apporté…"
         multiline
         maxLength={500}
         showCounter
@@ -456,47 +421,6 @@ const s = {
     borderTopWidth: 1,
     borderTopColor: theme.palette.line,
     gap: theme.spacing.md,
-  },
-  reviewLabel: {
-    fontFamily: theme.fonts.bodyMedium,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamSoft,
-  },
-  ratingRow: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    gap: theme.spacing.sm,
-  },
-  ratingDot: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: theme.palette.line,
-    backgroundColor: theme.palette.card2,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
-  },
-  ratingDotOn: {
-    // Note d'avis : or ATTÉNUÉ (goldText), pas l'or record/chrono réservé au rythme.
-    borderColor: theme.palette.goldText,
-    backgroundColor: 'rgba(217,174,0,0.12)',
-  },
-  ratingNum: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.body,
-    color: theme.palette.creamMute,
-  },
-  ratingNumOn: {
-    // Note d'avis : or atténué, une note n'est pas un chrono/record.
-    color: theme.palette.goldText,
-  },
-  ratingScale: {
-    fontFamily: theme.fonts.mono,
-    fontSize: theme.fontSize.small,
-    letterSpacing: 0.6,
-    color: theme.palette.creamMute,
-    marginLeft: theme.spacing.xs,
   },
   reviewActions: {
     flexDirection: 'row' as const,

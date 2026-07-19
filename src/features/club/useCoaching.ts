@@ -17,9 +17,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   cancelBooking,
-  createReview,
+  createTestimonial,
   getCoachProfile,
-  listCoachReviews,
+  listCoachTestimonials,
   listMyBookings,
   listPublishedCoaches,
   requestBooking,
@@ -41,7 +41,7 @@ import {
 
 import {
   coachCardMap,
-  reviewCitations,
+  testimonialCitations,
   sortCoachCards,
   type CoachCardVM,
   type ReviewCitationVM,
@@ -154,9 +154,9 @@ export function useCoaching(): Coaching {
   }, [load]);
 
   const loadFiche = useCallback(async (coachId: string): Promise<CoachFiche | null> => {
-    const [profileRes, reviewsRes] = await Promise.all([
+    const [profileRes, testimonials] = await Promise.all([
       getCoachProfile(coachId),
-      listCoachReviews(coachId),
+      listCoachTestimonials(coachId),
     ]);
     if (profileRes === null) return null;
     const { profile, availability } = profileRes;
@@ -167,8 +167,9 @@ export function useCoaching(): Coaching {
       bio: profile.bio ?? null,
       specialties: profile.specialties,
       circuits: profile.circuits,
-      // DOCTRINE : citations factuelles uniquement, jamais la moyenne étoilée.
-      citations: reviewCitations(reviewsRes.reviews),
+      // DOCTRINE : citations factuelles uniquement, jamais de moyenne (la source
+      // n'en porte aucune — il n'y a rien de chiffré à agréger).
+      citations: testimonialCitations(testimonials),
       availability,
     };
   }, []);
@@ -239,15 +240,13 @@ export function useCoaching(): Coaching {
       comment: string;
       pilotFirstName?: string | null;
     }) => {
-      const res = await createReview({
+      // Témoignage = propos + auteur, AUCUNE note. La table coach_testimonials
+      // ne porte plus aucun champ chiffré : il n'y a plus de « 3 neutre » à
+      // fabriquer (l'ancienne contrainte NOT NULL rating a disparu).
+      const res = await createTestimonial({
         coachId: input.coachId,
-        bookingId: input.bookingId ?? null,
-        // La note n'est pas un classement : on dépose une note neutre stable (3)
-        // pour satisfaire la contrainte NOT NULL de la table, mais elle n'est
-        // JAMAIS affichée (doctrine : citations uniquement, aucune étoile).
-        rating: 3,
-        comment: input.comment,
-        pilotFirstName: input.pilotFirstName ?? null,
+        body: input.comment,
+        authorFirstName: input.pilotFirstName ?? null,
       });
       return res.ok ? { ok: true } : { ok: false, error: res.error };
     },

@@ -38,10 +38,9 @@ import {
   availabilityStatusLabel,
   type CoachAvailabilitySlot,
   type CoachProfileDetail,
-  type CoachReview,
-  type CoachReviewsSummary,
+  type CoachTestimonial,
   getCoachProfile,
-  listCoachReviews,
+  listCoachTestimonials,
   requestBooking,
 } from '@/services/coachMarketplaceService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -71,11 +70,7 @@ export default function CoachDetailScreen() {
 
   const [profile, setProfile] = useState<CoachProfileDetail | null>(null);
   const [availability, setAvailability] = useState<CoachAvailabilitySlot[]>([]);
-  const [reviews, setReviews] = useState<CoachReview[]>([]);
-  const [reviewsSummary, setReviewsSummary] = useState<CoachReviewsSummary>({
-    average: null,
-    count: 0,
-  });
+  const [testimonials, setTestimonials] = useState<CoachTestimonial[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Formulaire de demande. `demande=1` (poussé par « Contacter » depuis la
@@ -88,15 +83,14 @@ export default function CoachDetailScreen() {
   useEffect(() => {
     if (!coachId) return;
     let cancelled = false;
-    Promise.all([getCoachProfile(coachId), listCoachReviews(coachId)])
-      .then(([res, rev]) => {
+    Promise.all([getCoachProfile(coachId), listCoachTestimonials(coachId)])
+      .then(([res, testis]) => {
         if (cancelled) return;
         if (res) {
           setProfile(res.profile);
           setAvailability(res.availability);
         }
-        setReviews(rev.reviews);
-        setReviewsSummary(rev.summary);
+        setTestimonials(testis);
         setLoading(false);
       })
       .catch(() => {
@@ -444,8 +438,9 @@ export default function CoachDetailScreen() {
           </Section>
         ) : null}
 
-        {/* Avis — agrégat de CE coach uniquement, jamais un classement. */}
-        <ReviewsSection reviews={reviews} summary={reviewsSummary} />
+        {/* Témoignages — les propos des pilotes accompagnés, sans note ni
+            moyenne. Jamais un classement. */}
+        <TestimonialsSection testimonials={testimonials} />
       </View>
     </Screen>
   );
@@ -461,79 +456,38 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 /**
- * Note rendue en pastilles (PAS d'étoiles emoji) : `count` pastilles pleines sur
- * 5, doublées d'un libellé chiffré porté à côté. Décoratif et muet pour les
- * lecteurs d'écran — le sens passe par le texte « n sur 5 ».
+ * Section « Témoignages » : les propos des pilotes accompagnés (prénom · texte ·
+ * date), SANS note, SANS moyenne, SANS échelle — la table `coach_testimonials`
+ * ne porte aucun champ chiffré. État vide honnête. Jamais un classement.
  */
-function RatingDots({ value }: { value: number }) {
-  const filled = Math.min(5, Math.max(0, Math.round(value)));
+function TestimonialsSection({ testimonials }: { testimonials: CoachTestimonial[] }) {
   return (
-    <View style={s.dots} accessibilityElementsHidden importantForAccessibility="no">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <View key={i} style={[s.dot, i <= filled ? s.dotOn : s.dotOff]} />
-      ))}
-    </View>
-  );
-}
-
-/**
- * Section « Avis » : moyenne /5 (fait sobre, chiffre + libellé), nombre d'avis,
- * et la liste des témoignages (prénom · note · texte · date). État vide honnête.
- * Aucun classement inter-coachs : seulement l'agrégat de CE coach.
- */
-function ReviewsSection({
-  reviews,
-  summary,
-}: {
-  reviews: CoachReview[];
-  summary: CoachReviewsSummary;
-}) {
-  const countLabel =
-    summary.count === 0 ? 'Aucun avis' : summary.count === 1 ? '1 avis' : `${summary.count} avis`;
-
-  return (
-    <Section label="Avis">
-      {summary.average === null ? (
+    <Section label="Témoignages">
+      {testimonials.length === 0 ? (
         <EmptyState
-          label="Aucun avis"
+          label="Aucun témoignage"
           message="Les pilotes accompagnés par ce coach pourront partager leur retour ici."
-          source="coach_reviews"
+          source="coach_testimonials"
         />
       ) : (
-        <>
-          <View style={s.avgBlock}>
-            <View style={s.avgRow}>
-              <Text style={s.avgValue}>
-                {summary.average.toLocaleString('fr-FR', { minimumFractionDigits: 1 })}
-              </Text>
-              <Text style={s.avgScale}>sur 5</Text>
-            </View>
-            <RatingDots value={summary.average} />
-            <Text style={s.avgCount}>{countLabel}</Text>
-          </View>
-
-          <View style={{ gap: spacing.md, marginTop: spacing.lg }}>
-            {reviews.map((r) => (
-              <Card key={r.id}>
-                <View style={s.reviewHead}>
-                  <Text style={[s.reviewName, { flex: 1 }]} numberOfLines={1}>
-                    {r.pilotFirstName?.trim() || 'Pilote'}
-                  </Text>
-                  {/* Note = fait de l'avis : chiffre (mono) doublé d'un libellé. */}
-                  <Text style={s.reviewRating} accessibilityLabel={`Note ${r.rating} sur 5`}>
-                    {r.rating}
-                    <Text style={s.reviewRatingScale}>/5</Text>
-                  </Text>
-                </View>
-                {r.comment ? <Text style={s.reviewComment}>{r.comment}</Text> : null}
-                <View style={s.reviewFooter}>
-                  <Text style={s.reviewDate}>{formatDateShort(r.createdAt)}</Text>
-                  <ReportButton targetType="coach_review" targetId={r.id} />
-                </View>
-              </Card>
-            ))}
-          </View>
-        </>
+        <View style={{ gap: spacing.md }}>
+          {testimonials.map((t) => (
+            <Card key={t.id}>
+              <View style={s.reviewHead}>
+                <Text style={[s.reviewName, { flex: 1 }]} numberOfLines={1}>
+                  {t.authorFirstName?.trim() || 'Un pilote'}
+                </Text>
+              </View>
+              {t.body ? <Text style={s.reviewComment}>{t.body}</Text> : null}
+              <View style={s.reviewFooter}>
+                <Text style={s.reviewDate}>{formatDateShort(t.createdAt)}</Text>
+                {/* « coach_review » = catégorie de signalement (modération),
+                    pas une note ; elle couvre désormais les témoignages. */}
+                <ReportButton targetType="coach_review" targetId={t.id} />
+              </View>
+            </Card>
+          ))}
+        </View>
       )}
     </Section>
   );
