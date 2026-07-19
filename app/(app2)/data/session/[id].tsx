@@ -38,6 +38,7 @@ import Animated, {
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import Svg, { Path as SvgPath } from 'react-native-svg';
@@ -1200,7 +1201,15 @@ function GGScatter({
 
 const CHAN_H = 96;
 
-/** Deux canaux empilés (vitesse + G long) avec un curseur au doigt (BASIC). */
+// A-SCRUB — Port scrubbing 60 fps : le curseur des canaux est piloté par une
+// SharedValue Reanimated sur le THREAD UI (Skia la consomme directement, cf.
+// GlowStroke), sans re-render React par frame pour la ligne. C'est une HYPOTHÈSE
+// tant qu'elle n'est pas MESURÉE à 60 fps sur un iPhone RÉEL (le simulateur ment
+// sur le frame-rate) : l'ancien chemin (curseur = état React) reste accessible en
+// basculant ce drapeau à `false` — revert propre, sans autre changement.
+const UI_THREAD_SCRUB = true;
+
+/** Deux canaux empilés (vitesse + G long) avec un curseur au doigt. */
 function ChannelsChart({
   speed,
   brake,
@@ -1209,62 +1218,79 @@ function ChannelsChart({
   brake: { progress: number; gLong: number }[];
 }) {
   const [width, setWidth] = useState(0);
+  // `cursor` (état React) ne pilote plus que les LIBELLÉS (texte, bon marché).
+  // La LIGNE de curseur suit `cursorSV` sur le THREAD UI. Les deux sont mis à
+  // jour par le même geste. TOUS les hooks AVANT le retour anticipé (règles hooks).
   const [cursor, setCursor] = useState(0.5); // 0..1
+  const cursorSV = useSharedValue(0.5);
+  // x du curseur dérivé sur le thread UI — Skia le consomme directement (patron
+  // GlowStroke : `end={progress}` accepte number | SharedValue).
+  const cursorXSV = useDerivedValue(() => cursorSV.value * width - 0.5);
+
+  const maxSpeed = useMemo(
+    () => (speed.length > 0 ? Math.max(...speed.map((p) => p.speedKmh)) : 1),
+    [speed]
+  );
+  // Dérivations LOURDES mémoïsées sur [speed, brake, width] : un re-render de
+  // libellé (par frame, via setCursor) ne les recalcule PAS — sinon le scrubbing
+  // raboterait autant que l'ancien chemin. polylinePath rend '' sous 2 points
+  // (séance GPS-only → brake vide) : le <Path> n'est peint que si non vide.
+  const { speedPath, brakePath } = useMemo(() => {
+    const sp =
+      width > 0
+        ? speed.map((p) => ({
+            x: p.progress * width,
+            y: CHAN_H - (p.speedKmh / Math.max(1, maxSpeed)) * (CHAN_H - 6) - 3,
+          }))
+        : [];
+    const bp =
+      width > 0
+        ? brake.map((p) => ({
+            // gLong ∈ [-1.5, 1.5] ; 0 au centre.
+            x: p.progress * width,
+            y: CHAN_H / 2 - clamp(p.gLong / 1.5, -1, 1) * (CHAN_H / 2 - 4),
+          }))
+        : [];
+    return { speedPath: polylinePath(sp), brakePath: polylinePath(bp) };
+  }, [speed, brake, width, maxSpeed]);
+
+  // Geste : la ligne va sur le thread UI (cursorSV), les libellés suivent en JS
+  // (runOnJS). Math.min/max inlinés (worklet-safe). A-SCRUB : port 60 fps.
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .onBegin((e) => {
+          'worklet';
+          if (width <= 0) return;
+          const frac = Math.min(1, Math.max(0, e.x / width));
+          cursorSV.value = frac;
+          runOnJS(setCursor)(frac);
+        })
+        .onUpdate((e) => {
+          'worklet';
+          if (width <= 0) return;
+          const frac = Math.min(1, Math.max(0, e.x / width));
+          cursorSV.value = frac;
+          runOnJS(setCursor)(frac);
+        }),
+    [width, cursorSV]
+  );
 
   if (speed.length < 2 && brake.length < 2) {
     return <StateView state="empty" emptyMessage="Canaux indisponibles." />;
   }
 
-  const maxSpeed = speed.length > 0 ? Math.max(...speed.map((p) => p.speedKmh)) : 1;
-  const speedPts =
-    width > 0
-      ? speed.map((p) => ({
-          x: p.progress * width,
-          y: CHAN_H - (p.speedKmh / Math.max(1, maxSpeed)) * (CHAN_H - 6) - 3,
-        }))
-      : [];
-  const brakePts =
-    width > 0
-      ? brake.map((p) => ({
-          // gLong ∈ [-1.5, 1.5] ; 0 au centre.
-          x: p.progress * width,
-          y: CHAN_H / 2 - clamp(p.gLong / 1.5, -1, 1) * (CHAN_H / 2 - 4),
-        }))
-      : [];
-
-  // Valeurs au curseur — le point réel le plus proche (pas d'interpolation).
-  const nearest = <T extends { progress: number }>(arr: T[]): T | null => {
+  // Libellés au curseur : index le plus proche en O(1) (progress = i/(n−1), pas
+  // uniforme et croissant → l'index = round(cursor·(n−1))). Pas d'interpolation.
+  function nearestAt<T>(arr: T[]): T | null {
     if (arr.length === 0) return null;
-    let best = arr[0];
-    let bestD = Math.abs(arr[0].progress - cursor);
-    for (const p of arr) {
-      const d = Math.abs(p.progress - cursor);
-      if (d < bestD) {
-        bestD = d;
-        best = p;
-      }
-    }
-    return best;
-  };
-  const curSpeed = nearest(speed);
-  const curBrake = nearest(brake);
-  const cursorX = cursor * width;
-
-  // polylinePath rend '' sous 2 points (ex. séance GPS-only sans g-force → brake
-  // vide). Un <Path path="" /> lève « Invalid path » côté Skia : on ne peint le
-  // tracé QUE si la chaîne est non vide (le curseur/axe restent, honnêtement).
-  const speedPath = polylinePath(speedPts);
-  const brakePath = polylinePath(brakePts);
-
-  // TODO device-tune : curseur piloté par état React (runOnJS) — passer le
-  // suivi sur le thread UI (Skia reactive value) pour un scrubbing 60fps.
-  const pan = Gesture.Pan()
-    .onBegin((e) => {
-      if (width > 0) runOnJS(setCursor)(clamp(e.x / width, 0, 1));
-    })
-    .onUpdate((e) => {
-      if (width > 0) runOnJS(setCursor)(clamp(e.x / width, 0, 1));
-    });
+    return arr[Math.round(cursor * (arr.length - 1))] ?? null;
+  }
+  const curSpeed = nearestAt(speed);
+  const curBrake = nearestAt(brake);
+  // A-SCRUB : le drapeau bascule entre curseur UI-thread (SharedValue) et
+  // l'ancien curseur piloté par l'état React (fallback propre — cf. entête).
+  const cursorXProp = UI_THREAD_SCRUB ? cursorXSV : cursor * width - 0.5;
 
   return (
     <View>
@@ -1292,7 +1318,7 @@ function ChannelsChart({
                     color={colors.qdi.trajectoire}
                   />
                 ) : null}
-                <Rect x={cursorX - 0.5} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
+                <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
               </Canvas>
             ) : null}
           </View>
@@ -1318,7 +1344,7 @@ function ChannelsChart({
                     color={colors.qdi.freinage}
                   />
                 ) : null}
-                <Rect x={cursorX - 0.5} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
+                <Rect x={cursorXProp} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
               </Canvas>
             ) : null}
           </View>
