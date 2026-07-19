@@ -6,9 +6,11 @@
  * stricte : un logotype, un chiffre dominant, un tracé, une signature. Format
  * 4:5, capturable en image (forwardRef sur le View racine → react-native-view-shot).
  *
- * Le tracé réutilise la même géométrie que le héros du bilan (centerline du
- * circuit via generateCircuit, repli Haute Saintonge) mais rendu STATIQUE en
- * polyline SVG : le rendu 3D animé/interactif (CircuitTrace) ne se capture pas.
+ * Le tracé réutilise la même géométrie que le héros du bilan (centerline RÉELLE
+ * du circuit de la séance) mais rendu STATIQUE en polyline SVG : le rendu 3D
+ * animé/interactif (CircuitTrace) ne se capture pas. Géométrie absente → AUCUN
+ * tracé (jamais la silhouette de substitution d'un autre circuit — cette carte
+ * est publique et « données réelles » l'emporte sur « jamais vide »).
  *
  * Doctrine / code couleur : le meilleur tour est un FAIT (pas un classement,
  * pas de « mieux que »). gold = l'or du chrono/record — libellé, tracé ET le
@@ -22,7 +24,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Defs, Polyline, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 import { type Circuit, generateCircuit, type LatLon } from '@/circuit/circuitGenerator';
-import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
 import { ExportWatermark } from '@/components/ExportWatermark';
 import { theme } from '@/theme/v2';
 
@@ -38,7 +39,8 @@ export interface TrophyCardProps {
   dateLabel: string;
   /** Ligne méta du héros, p. ex. « Tracé Beltoise · 42 tours ». */
   subLabel: string;
-  /** Géométrie du tracé (centerline lat/lon). Repli Haute Saintonge si absent. */
+  /** Géométrie RÉELLE du tracé (centerline lat/lon) de la séance. Absente →
+   *  aucun tracé rendu ; JAMAIS la silhouette de substitution d'un autre circuit. */
   tracePoints?: LatLon[] | null;
 }
 
@@ -103,11 +105,14 @@ export const TrophyCard = forwardRef<View, TrophyCardProps>(function TrophyCard(
   { bestLapLabel, circuitName, dateLabel, subLabel, tracePoints },
   ref
 ) {
-  // Même source que CircuitTraceHero : géométrie réelle si fournie, sinon le
-  // tracé officiel Haute Saintonge — aucune carte vide, aucune donnée inventée.
+  // Données réelles : le tracé n'est rendu QUE si la géométrie RÉELLE du circuit
+  // de la séance est fournie. Aucune silhouette de substitution — le repli Haute
+  // Saintonge historique peignait le tracé d'un AUTRE circuit sous le chrono, ce
+  // qui, sur l'objet le plus PUBLIC d'OXV, viole « données réelles ». Absente →
+  // le tracé disparaît (la carte reste légitime : chrono, circuit et date réels).
   const trace = useMemo(() => {
-    const pts = tracePoints && tracePoints.length > 3 ? tracePoints : HAUTE_SAINTONGE_POINTS;
-    return buildTracePolyline(generateCircuit(pts));
+    if (!tracePoints || tracePoints.length <= 3) return null;
+    return buildTracePolyline(generateCircuit(tracePoints));
   }, [tracePoints]);
 
   return (
