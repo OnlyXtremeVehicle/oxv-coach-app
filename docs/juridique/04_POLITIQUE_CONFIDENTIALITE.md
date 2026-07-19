@@ -18,15 +18,15 @@ Elle est rédigée en conformité avec le **Règlement Général sur la Protecti
 
 ## 1. Identité du responsable de traitement
 
-| Information | Détail |
-|---|---|
-| **Raison sociale** | OXV (SASU) |
-| **Forme juridique** | Société par actions simplifiée à associé unique |
-| **Siège social** | [Adresse à compléter] |
-| **SIRET** | [À compléter] |
-| **Contact général** | contact@oxvehicle.fr |
-| **Contact protection des données** | contact@oxvehicle.fr |
-| **Site web** | oxvehicle.fr |
+| Information                        | Détail                                          |
+| ---------------------------------- | ----------------------------------------------- |
+| **Raison sociale**                 | OXV (SASU)                                      |
+| **Forme juridique**                | Société par actions simplifiée à associé unique |
+| **Siège social**                   | [Adresse à compléter]                           |
+| **SIRET**                          | [À compléter]                                   |
+| **Contact général**                | contact@oxvehicle.fr                            |
+| **Contact protection des données** | contact@oxvehicle.fr                            |
+| **Site web**                       | oxvehicle.fr                                    |
 
 OXV est responsable du traitement de vos données personnelles au sens du RGPD.
 
@@ -79,25 +79,25 @@ Vous pouvez vous désinscrire à tout moment via le lien présent dans chaque em
 
 Lors de la création d'un compte pilote sur oxvehicle.fr, nous collectons :
 
-| Catégorie | Données précises | Pourquoi |
-|---|---|---|
-| **Identification** | Nom, prénom, date de naissance, adresse postale, numéro de téléphone | Nécessaires à la prestation track day et à la facturation |
-| **Authentification** | Adresse email, mot de passe (stocké chiffré) | Accès sécurisé à votre compte |
-| **Documents KYC** | Permis de conduire, pièce d'identité, assurance circuit | Obligation légale de vérification d'identité |
-| **Véhicules** | Marque, modèle, immatriculation, photos | Préparation de la session et contrôles techniques |
-| **Contact d'urgence** | Nom et téléphone de la personne à prévenir | Sécurité en cas d'incident |
+| Catégorie             | Données précises                                                     | Pourquoi                                                  |
+| --------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| **Identification**    | Nom, prénom, date de naissance, adresse postale, numéro de téléphone | Nécessaires à la prestation track day et à la facturation |
+| **Authentification**  | Adresse email, mot de passe (stocké chiffré)                         | Accès sécurisé à votre compte                             |
+| **Documents KYC**     | Permis de conduire, pièce d'identité, assurance circuit              | Obligation légale de vérification d'identité              |
+| **Véhicules**         | Marque, modèle, immatriculation, photos                              | Préparation de la session et contrôles techniques         |
+| **Contact d'urgence** | Nom et téléphone de la personne à prévenir                           | Sécurité en cas d'incident                                |
 
 ### 3.5 — Utilisation de l'application OXV Mirror
 
 Lorsque vous utilisez l'application OXV Mirror pendant et après une session, nous collectons :
 
-| Catégorie | Données précises | Pourquoi |
-|---|---|---|
-| **Données télémétriques** | Position GPS, vitesse, accélération, orientation, depuis l'équipement de télémétrie | Cœur du service de l'application |
-| **Profil pilote** | Niveau déclaré, véhicule utilisé | Calibration des analyses |
-| **Préférences** | Unités, références favorites, paramètres de notifications | Personnalisation de l'expérience |
-| **Données techniques** | Modèle de smartphone, version OS, identifiant équipement | Support technique et débogage |
-| **Acceptations** | Date d'acceptation des CGU, du pacte de pilotage, de la politique de confidentialité | Preuve de consentement |
+| Catégorie                 | Données précises                                                                     | Pourquoi                         |
+| ------------------------- | ------------------------------------------------------------------------------------ | -------------------------------- |
+| **Données télémétriques** | Position GPS, vitesse, accélération, orientation, depuis l'équipement de télémétrie  | Cœur du service de l'application |
+| **Profil pilote**         | Niveau déclaré, véhicule utilisé                                                     | Calibration des analyses         |
+| **Préférences**           | Unités, références favorites, paramètres de notifications                            | Personnalisation de l'expérience |
+| **Données techniques**    | Modèle de smartphone, version OS, identifiant équipement                             | Support technique et débogage    |
+| **Acceptations**          | Date d'acceptation des CGU, du pacte de pilotage, de la politique de confidentialité | Preuve de consentement           |
 
 ### 3.6 — Paiements
 
@@ -115,16 +115,16 @@ OXV ne stocke **aucune coordonnée bancaire complète** (RIB, IBAN du payeur). C
 
 Les finalités de traitement, et leurs bases légales au sens du RGPD, sont les suivantes :
 
-| Finalité | Base légale RGPD | Article |
-|---|---|---|
-| Fourniture du service de track day | Exécution du contrat | Article 6.1.b |
-| Fonctionnement de l'application OXV Mirror | Exécution du contrat | Article 6.1.b |
-| Facturation et obligations comptables | Obligation légale | Article 6.1.c |
-| Vérification KYC (identité, assurance) | Obligation légale et contractuelle | Article 6.1.c |
-| Communication commerciale (newsletter) | Consentement explicite | Article 6.1.a |
-| Amélioration des algorithmes (données anonymisées) | Intérêt légitime | Article 6.1.f |
-| Sécurité du site et détection de fraude | Intérêt légitime | Article 6.1.f |
-| Conservation des données pour défense d'OXV en cas de litige | Intérêt légitime | Article 6.1.f |
+| Finalité                                                     | Base légale RGPD                   | Article       |
+| ------------------------------------------------------------ | ---------------------------------- | ------------- |
+| Fourniture du service de track day                           | Exécution du contrat               | Article 6.1.b |
+| Fonctionnement de l'application OXV Mirror                   | Exécution du contrat               | Article 6.1.b |
+| Facturation et obligations comptables                        | Obligation légale                  | Article 6.1.c |
+| Vérification KYC (identité, assurance)                       | Obligation légale et contractuelle | Article 6.1.c |
+| Communication commerciale (newsletter)                       | Consentement explicite             | Article 6.1.a |
+| Amélioration des algorithmes (données anonymisées)           | Intérêt légitime                   | Article 6.1.f |
+| Sécurité du site et détection de fraude                      | Intérêt légitime                   | Article 6.1.f |
+| Conservation des données pour défense d'OXV en cas de litige | Intérêt légitime                   | Article 6.1.f |
 
 ---
 
@@ -144,14 +144,14 @@ Tous les accès sont tracés et journalisés. Les accès aux données les plus s
 
 Nous faisons appel à un nombre limité de prestataires techniques nécessaires au fonctionnement du service. Ces prestataires agissent en tant que **sous-traitants au sens du RGPD** (article 28) et sont liés à OXV par des contrats de traitement des données (DPA).
 
-| Prestataire | Rôle | Localisation des données |
-|---|---|---|
-| **Supabase** | Hébergement de la base de données et stockage de fichiers | Frankfurt, Allemagne (UE) |
-| **Vercel** | Hébergement du site oxvehicle.fr | Infrastructure globale, données techniques principalement en Europe |
-| **Resend** | Envoi des emails transactionnels (confirmations, factures) | Infrastructure Europe |
-| **OpenAI** | Génération du texte de debrief après session, à partir de vos données de roulage (sans prénom ni identifiant) | États-Unis (avec clauses contractuelles types validées par la Commission européenne) |
-| **ElevenLabs** | Synthèse vocale des messages audio | États-Unis (avec clauses contractuelles types) |
-| **Stripe (à venir)** | Traitement des paiements par carte (quand activé) | Irlande, Union européenne |
+| Prestataire          | Rôle                                                                                                          | Localisation des données                                                             |
+| -------------------- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Supabase**         | Hébergement de la base de données et stockage de fichiers                                                     | Frankfurt, Allemagne (UE)                                                            |
+| **Vercel**           | Hébergement du site oxvehicle.fr                                                                              | Infrastructure globale, données techniques principalement en Europe                  |
+| **Resend**           | Envoi des emails transactionnels (confirmations, factures)                                                    | Infrastructure Europe                                                                |
+| **OpenAI**           | Génération du texte de debrief après session, à partir de vos données de roulage (sans prénom ni identifiant) | États-Unis (avec clauses contractuelles types validées par la Commission européenne) |
+| **ElevenLabs**       | Synthèse vocale des messages audio                                                                            | États-Unis (avec clauses contractuelles types)                                       |
+| **Stripe (à venir)** | Traitement des paiements par carte (quand activé)                                                             | Irlande, Union européenne                                                            |
 
 ### 5.3 — Tiers en cas d'obligation légale
 
@@ -172,18 +172,18 @@ Vous restez seul responsable du choix du destinataire. Vous pouvez **révoquer c
 
 ## 6. Combien de temps conservons-nous vos données
 
-| Catégorie de donnée | Durée de conservation | Justification |
-|---|---|---|
-| **Compte pilote actif** | Pendant toute la durée d'activité | Nécessaire au service |
-| **Compte pilote inactif** | 3 ans après la dernière connexion | Délai de prescription commerciale courante |
-| **Documents KYC** | 5 ans après la dernière session | Obligation légale en matière de vérification d'identité |
-| **Données télémétriques brutes** (trames du boîtier) | 12 mois (environ une saison) | Données volumineuses ; minimisation au-delà de leur utilité directe |
-| **Analyses et lectures de session dérivées** (marges, anatomie, tracé) | Pendant toute la durée d'activité du compte | Cœur du service ; votre historique de progression |
-| **Factures et données comptables** | 10 ans | Obligation légale française |
-| **Newsletter (avec consentement)** | Jusqu'à votre désinscription | Consentement |
-| **Logs techniques** | 12 mois | Sécurité et débogage |
-| **Données anonymisées (statistiques)** | Sans limitation | Plus de données personnelles |
-| **Litige en cours** | Jusqu'à la résolution + 1 an | Défense des intérêts d'OXV |
+| Catégorie de donnée                                                    | Durée de conservation                       | Justification                                                       |
+| ---------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------- |
+| **Compte pilote actif**                                                | Pendant toute la durée d'activité           | Nécessaire au service                                               |
+| **Compte pilote inactif**                                              | 3 ans après la dernière connexion           | Délai de prescription commerciale courante                          |
+| **Documents KYC**                                                      | 5 ans après la dernière session             | Obligation légale en matière de vérification d'identité             |
+| **Données télémétriques brutes** (trames du boîtier)                   | 12 mois (environ une saison)                | Données volumineuses ; minimisation au-delà de leur utilité directe |
+| **Analyses et lectures de session dérivées** (marges, anatomie, tracé) | Pendant toute la durée d'activité du compte | Cœur du service ; votre historique de progression                   |
+| **Factures et données comptables**                                     | 10 ans                                      | Obligation légale française                                         |
+| **Newsletter (avec consentement)**                                     | Jusqu'à votre désinscription                | Consentement                                                        |
+| **Logs techniques**                                                    | 12 mois                                     | Sécurité et débogage                                                |
+| **Données anonymisées (statistiques)**                                 | Sans limitation                             | Plus de données personnelles                                        |
+| **Litige en cours**                                                    | Jusqu'à la résolution + 1 an                | Défense des intérêts d'OXV                                          |
 
 À l'issue de ces durées, les données sont soit **supprimées définitivement**, soit **anonymisées de manière irréversible** (impossible de remonter à votre identité).
 
@@ -239,11 +239,11 @@ Vous pouvez définir des directives concernant la conservation, l'effacement et 
 
 Si vous estimez que vos droits ne sont pas respectés par OXV malgré vos demandes, vous pouvez introduire une réclamation auprès de la **Commission Nationale de l'Informatique et des Libertés (CNIL)** :
 
-| Coordonnée | Détail |
-|---|---|
-| **Adresse** | 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 |
-| **Téléphone** | 01 53 73 22 22 |
-| **Site web** | cnil.fr |
+| Coordonnée    | Détail                                               |
+| ------------- | ---------------------------------------------------- |
+| **Adresse**   | 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 |
+| **Téléphone** | 01 53 73 22 22                                       |
+| **Site web**  | cnil.fr                                              |
 
 ---
 
@@ -257,11 +257,11 @@ Un cookie est un petit fichier déposé sur votre navigateur lorsque vous visite
 
 À ce jour, oxvehicle.fr n'utilise **que des cookies strictement techniques**, indispensables au fonctionnement du site.
 
-| Cookie | Finalité | Durée |
-|---|---|---|
-| **Session** | Maintien de votre connexion pendant votre visite | Session (effacé à la fermeture du navigateur) |
-| **CSRF** | Protection contre les attaques cross-site request forgery | Session |
-| **Cookie consent** | Mémorise votre choix concernant les cookies | 6 mois |
+| Cookie             | Finalité                                                  | Durée                                         |
+| ------------------ | --------------------------------------------------------- | --------------------------------------------- |
+| **Session**        | Maintien de votre connexion pendant votre visite          | Session (effacé à la fermeture du navigateur) |
+| **CSRF**           | Protection contre les attaques cross-site request forgery | Session                                       |
+| **Cookie consent** | Mémorise votre choix concernant les cookies               | 6 mois                                        |
 
 Ces cookies sont exonérés de consentement préalable selon l'article 82 de la loi Informatique et Libertés, car ils sont strictement nécessaires au service.
 
@@ -356,11 +356,11 @@ La date de dernière mise à jour est affichée en tête de ce document.
 
 Pour toute question, demande ou réclamation relative à la protection de vos données :
 
-| Canal | Coordonnée |
-|---|---|
-| **Email principal** | contact@oxvehicle.fr |
-| **Courrier postal** | [Siège social à compléter] |
-| **Délai de réponse** | 30 jours maximum à compter de la réception |
+| Canal                       | Coordonnée                                                               |
+| --------------------------- | ------------------------------------------------------------------------ |
+| **Email principal**         | contact@oxvehicle.fr                                                     |
+| **Courrier postal**         | [Siège social à compléter]                                               |
+| **Délai de réponse**        | 30 jours maximum à compter de la réception                               |
 | **Vérification d'identité** | Une preuve d'identité peut vous être demandée pour traiter votre demande |
 
 ---
@@ -371,12 +371,12 @@ Pour toute question, demande ou réclamation relative à la protection de vos do
 
 ---
 
-*Dernière mise à jour : [date à compléter]*
+_Dernière mise à jour : [date à compléter]_
 
-*OXV — Only Xtreme Vehicle*
-*SASU au capital de [à compléter] euros*
-*[SIRET à compléter] — [RCS à compléter]*
+_OXV — Only Xtreme Vehicle_
+_SASU au capital de [à compléter] euros_
+_[SIRET à compléter] — [RCS à compléter]_
 
 ---
 
-*Cette politique de confidentialité est complémentaire des autres documents juridiques OXV : CGV (prestations track day), CGU (application OXV Mirror) et Pacte de pilotage. En cas de divergence d'interprétation, les dispositions les plus protectrices de vos droits prévalent.*
+_Cette politique de confidentialité est complémentaire des autres documents juridiques OXV : CGV (prestations track day), CGU (application OXV Mirror) et Pacte de pilotage. En cas de divergence d'interprétation, les dispositions les plus protectrices de vos droits prévalent._

@@ -140,17 +140,13 @@ import { BleManager } from 'react-native-ble-plx';
 const bleManager = new BleManager();
 
 // Scan pour trouver le RaceBox
-bleManager.startDeviceScan(
-  [RACEBOX_SERVICE_UUID],
-  null,
-  (error, device) => {
-    if (error) return handleError(error);
-    if (device?.name?.startsWith('RaceBox')) {
-      bleManager.stopDeviceScan();
-      connectToDevice(device);
-    }
+bleManager.startDeviceScan([RACEBOX_SERVICE_UUID], null, (error, device) => {
+  if (error) return handleError(error);
+  if (device?.name?.startsWith('RaceBox')) {
+    bleManager.stopDeviceScan();
+    connectToDevice(device);
   }
-);
+});
 ```
 
 ---
@@ -160,6 +156,7 @@ bleManager.startDeviceScan(
 ### 2.1. Recommandation matérielle
 
 Le bouton BLE doit être :
+
 - Petit (fixable au volant ou sur le levier de vitesse)
 - Résistant aux vibrations
 - Autonomie minimale 3-6 mois sur pile
@@ -167,11 +164,11 @@ Le bouton BLE doit être :
 
 **Modèles candidats** (à valider compatibilité React Native) :
 
-| Modèle | Format | Protocole | Prix indicatif |
-|---|---|---|---|
-| **Flic 2** (Shortcut Labs) | Pastille adhésive | BLE custom + SDK | ~35-45€ |
-| **Satechi Button** | Pastille volume | BLE HID | ~25-30€ |
-| **Bouton custom Adafruit nRF52** | DIY | BLE BTLE | ~15-20€ |
+| Modèle                           | Format            | Protocole        | Prix indicatif |
+| -------------------------------- | ----------------- | ---------------- | -------------- |
+| **Flic 2** (Shortcut Labs)       | Pastille adhésive | BLE custom + SDK | ~35-45€        |
+| **Satechi Button**               | Pastille volume   | BLE HID          | ~25-30€        |
+| **Bouton custom Adafruit nRF52** | DIY               | BLE BTLE         | ~15-20€        |
 
 Mon choix recommandé : **Flic 2**. Le SDK Flic est mature, supporté React Native, et la build qualité est suffisante pour environnement automobile. À tester côté humidité et vibrations sur 2-3 sessions.
 
@@ -196,7 +193,7 @@ flicManager.onButtonClick((button) => {
   currentSession.markers.push({
     timestamp_ms: timestamp,
     button_id: button.uuid,
-    kind: 'pilot_marker',  // type par défaut
+    kind: 'pilot_marker', // type par défaut
   });
 });
 
@@ -206,7 +203,7 @@ flicManager.onButtonDoubleClick((button) => {
   currentSession.markers.push({
     timestamp_ms: timestamp,
     button_id: button.uuid,
-    kind: 'incident',  // pour les sorties de piste, etc.
+    kind: 'incident', // pour les sorties de piste, etc.
   });
 });
 
@@ -223,6 +220,7 @@ flicManager.onButtonTripleClick((button) => {
 ### 2.4. Affichage des tours marqués
 
 Dans l'écran 2 (Tour par tour), les tours qui contiennent au moins un marqueur affichent une **petite icône** à côté de leur numéro :
+
 - ⭐ Marqueur simple (`pilot_marker`)
 - ⚠️ Incident (`incident`)
 - ❓ Question (`question`)
@@ -271,6 +269,7 @@ Au circuit de Haute Saintonge, la couverture 4G est intermittente. Une app qui e
 ### 3.3. Stratégie de sync
 
 WatermelonDB a un système de sync intégré basé sur :
+
 - **Timestamps** (`_changed`, `_status`)
 - **Conflit resolution** au niveau ligne
 
@@ -327,28 +326,31 @@ class UbxUploadQueue {
   }
 
   private async processQueue(): Promise<void> {
-    if (!await isOnline()) return;
+    if (!(await isOnline())) return;
 
-    const pending = await database.get('ubx_upload_queue')
+    const pending = await database
+      .get('ubx_upload_queue')
       .query(Q.where('status', 'pending'))
       .fetch();
 
     for (const entry of pending) {
       try {
-        await entry.update(e => { e.status = 'uploading'; });
+        await entry.update((e) => {
+          e.status = 'uploading';
+        });
         const fileData = await FileSystem.readAsArrayBufferAsync(entry.localPath);
 
-        await supabase.storage
-          .from('telemetry_raw')
-          .upload(`${entry.sessionId}.ubx`, fileData, {
-            contentType: 'application/octet-stream',
-            upsert: true,
-          });
+        await supabase.storage.from('telemetry_raw').upload(`${entry.sessionId}.ubx`, fileData, {
+          contentType: 'application/octet-stream',
+          upsert: true,
+        });
 
-        await entry.update(e => { e.status = 'completed'; });
-        await FileSystem.deleteAsync(entry.localPath);  // libère l'espace
+        await entry.update((e) => {
+          e.status = 'completed';
+        });
+        await FileSystem.deleteAsync(entry.localPath); // libère l'espace
       } catch (e) {
-        await entry.update(en => {
+        await entry.update((en) => {
           en.attempts++;
           en.status = en.attempts > 3 ? 'failed' : 'pending';
         });
@@ -373,17 +375,18 @@ La sync se déclenche automatiquement :
 
 ### 4.1. Permissions requises
 
-| Permission | iOS | Android | Usage |
-|---|---|---|---|
-| Bluetooth | `NSBluetoothAlwaysUsageDescription` | `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` | RaceBox + bouton marquage |
-| Location | `NSLocationWhenInUseUsageDescription` | `ACCESS_FINE_LOCATION` | Requis pour BLE scan sur Android |
-| Location background | `NSLocationAlwaysAndWhenInUseUsageDescription` | `ACCESS_BACKGROUND_LOCATION` | Logging quand téléphone verrouillé |
-| Storage | n/a | `WRITE_EXTERNAL_STORAGE` (API < 29) | Cache fichiers UBX |
-| Network state | n/a | `ACCESS_NETWORK_STATE` | Détection online/offline |
+| Permission          | iOS                                            | Android                               | Usage                              |
+| ------------------- | ---------------------------------------------- | ------------------------------------- | ---------------------------------- |
+| Bluetooth           | `NSBluetoothAlwaysUsageDescription`            | `BLUETOOTH_CONNECT`, `BLUETOOTH_SCAN` | RaceBox + bouton marquage          |
+| Location            | `NSLocationWhenInUseUsageDescription`          | `ACCESS_FINE_LOCATION`                | Requis pour BLE scan sur Android   |
+| Location background | `NSLocationAlwaysAndWhenInUseUsageDescription` | `ACCESS_BACKGROUND_LOCATION`          | Logging quand téléphone verrouillé |
+| Storage             | n/a                                            | `WRITE_EXTERNAL_STORAGE` (API < 29)   | Cache fichiers UBX                 |
+| Network state       | n/a                                            | `ACCESS_NETWORK_STATE`                | Détection online/offline           |
 
 ### 4.2. Spécificité Android
 
 Android 12+ a **rendu le BLE scanning plus strict** :
+
 - `BLUETOOTH_SCAN` doit être déclaré dans `AndroidManifest.xml`
 - Requiert `ACCESS_FINE_LOCATION` pour scanner (sauf si `neverForLocation` flag)
 - Background scan requiert un service en foreground avec notification persistante
@@ -391,6 +394,7 @@ Android 12+ a **rendu le BLE scanning plus strict** :
 ### 4.3. Spécificité iOS
 
 iOS gère bien le BLE en background si :
+
 - L'app déclare `bluetooth-central` dans `UIBackgroundModes`
 - L'app est dans la liste des apps connectables au démarrage
 
@@ -464,12 +468,14 @@ Refus de la première = blocage de l'app. Refus de la troisième = mode "télép
 ### 5.3. Build cloud EAS
 
 Avantages d'EAS Build :
+
 - Pas de Mac requis pour builder iOS
 - Cache automatique des dépendances
 - Builds parallélisés iOS + Android
 - Stockage des `.aab` et `.ipa` 30 jours
 
 Temps de build typique :
+
 - iOS : 15-25 min
 - Android : 10-15 min
 
@@ -486,14 +492,10 @@ useEffect(() => {
     const { isAvailable } = await Updates.checkForUpdateAsync();
     if (isAvailable) {
       await Updates.fetchUpdateAsync();
-      Alert.alert(
-        'Mise à jour disponible',
-        'Redémarrer l\'app pour appliquer ?',
-        [
-          { text: 'Plus tard', style: 'cancel' },
-          { text: 'Redémarrer', onPress: () => Updates.reloadAsync() }
-        ]
-      );
+      Alert.alert('Mise à jour disponible', "Redémarrer l'app pour appliquer ?", [
+        { text: 'Plus tard', style: 'cancel' },
+        { text: 'Redémarrer', onPress: () => Updates.reloadAsync() },
+      ]);
     }
   }
   checkForUpdates();
@@ -526,6 +528,7 @@ Workflow :
 **Avantages** : 90 jours de test illimité, jusqu'à 10000 testeurs externes (avec review Apple beta), tests crash automatiques.
 
 **Workflow OXV recommandé** :
+
 - **Bêta interne** : 5-10 pilotes Heritage (les plus engagés)
 - **Bêta publique restreinte** : 30-50 pilotes Signature + Promotion
 - **Lancement public** : tous pilotes OXV
@@ -693,30 +696,30 @@ Quand un pilote supprime son compte OXV :
 
 ### 9.1. Services techniques
 
-| Service | Plan | Coût annuel | Justification |
-|---|---|---|---|
-| Supabase Pro | Pro | 300 € | Backend complet (DB, Storage, Auth, Functions) |
-| Apple Developer | Standard | 99 USD ≈ 92 € | Publication App Store |
-| Google Play | One-time 25 USD | Amorti | À payer une seule fois |
-| Expo EAS Build | Production | 0 à 999 € | Plan Free suffisant si <30 builds/mois |
-| Expo EAS Update | Production | Inclus dans EAS | OTA updates |
-| Domaine `oxvehicle.fr` | Déjà payé | 0 € | Pas de surcoût |
-| Monitoring (Sentry) | Team plan | 312 € | 26€/mois, crash reporting + perf |
-| Analytics (PostHog ou Mixpanel) | Growth | 0 à 240 € | Plan free souvent suffisant |
-| Hébergement docs privacy | Vercel | 0 € | Sur le site existant |
+| Service                         | Plan            | Coût annuel     | Justification                                  |
+| ------------------------------- | --------------- | --------------- | ---------------------------------------------- |
+| Supabase Pro                    | Pro             | 300 €           | Backend complet (DB, Storage, Auth, Functions) |
+| Apple Developer                 | Standard        | 99 USD ≈ 92 €   | Publication App Store                          |
+| Google Play                     | One-time 25 USD | Amorti          | À payer une seule fois                         |
+| Expo EAS Build                  | Production      | 0 à 999 €       | Plan Free suffisant si <30 builds/mois         |
+| Expo EAS Update                 | Production      | Inclus dans EAS | OTA updates                                    |
+| Domaine `oxvehicle.fr`          | Déjà payé       | 0 €             | Pas de surcoût                                 |
+| Monitoring (Sentry)             | Team plan       | 312 €           | 26€/mois, crash reporting + perf               |
+| Analytics (PostHog ou Mixpanel) | Growth          | 0 à 240 €       | Plan free souvent suffisant                    |
+| Hébergement docs privacy        | Vercel          | 0 €             | Sur le site existant                           |
 
 **Total services techniques : ~700-1200 €/an**
 
 ### 9.2. Coûts ponctuels (one-time)
 
-| Item | Coût | Note |
-|---|---|---|
-| Apple Developer (1ère année) | 92 € | Renouvelable |
-| Google Play Console | 23 € | À vie |
-| Boutons Flic 2 (10 unités) | 400-450 € | Distribués aux Heritage |
-| Calibration circuit (session) | 0-1500 € | Selon présence Julien Beltoise |
-| Audit RGPD (avocat) | 800-1500 € | Optionnel mais recommandé |
-| Audit télémétrie (consultant) | 4000-8000 € | Recommandé Partie 2 |
+| Item                          | Coût        | Note                           |
+| ----------------------------- | ----------- | ------------------------------ |
+| Apple Developer (1ère année)  | 92 €        | Renouvelable                   |
+| Google Play Console           | 23 €        | À vie                          |
+| Boutons Flic 2 (10 unités)    | 400-450 €   | Distribués aux Heritage        |
+| Calibration circuit (session) | 0-1500 €    | Selon présence Julien Beltoise |
+| Audit RGPD (avocat)           | 800-1500 €  | Optionnel mais recommandé      |
+| Audit télémétrie (consultant) | 4000-8000 € | Recommandé Partie 2            |
 
 **Total one-time : ~5500-11500 €**
 
@@ -726,12 +729,12 @@ Voir section 10 ci-dessous.
 
 ### 9.4. Coûts variables avec l'usage
 
-| Item | Coût | Calcul |
-|---|---|---|
-| Supabase Storage UBX | Inclus Pro | 5 Go/an, plan Pro = 100 Go |
-| Supabase Database | Inclus Pro | <1 Go pour les métadonnées |
-| Supabase Realtime | Inclus Pro | Pas utilisé sauf si live HUD |
-| Bandwidth | Inclus Pro | 250 Go/mois inclus |
+| Item                 | Coût       | Calcul                       |
+| -------------------- | ---------- | ---------------------------- |
+| Supabase Storage UBX | Inclus Pro | 5 Go/an, plan Pro = 100 Go   |
+| Supabase Database    | Inclus Pro | <1 Go pour les métadonnées   |
+| Supabase Realtime    | Inclus Pro | Pas utilisé sauf si live HUD |
+| Bandwidth            | Inclus Pro | 250 Go/mois inclus           |
 
 Conclusion : **les coûts opérationnels restent stables même avec 200-500 sessions/an**.
 
@@ -741,47 +744,47 @@ Conclusion : **les coûts opérationnels restent stables même avec 200-500 sess
 
 ### 10.1. Modules de développement (heures)
 
-| Module | Min | Max | Note |
-|---|---|---|---|
-| **Setup projet** | 15 | 25 | Expo init, structure, Supabase config |
-| **Auth + onboarding** | 25 | 35 | Login, signup, palier déclaré, permissions |
-| **BLE connection (RaceBox)** | 35 | 50 | Connexion, reconnexion, état machine |
-| **BLE bouton marquage** | 15 | 25 | Jumelage Flic, écoute événements |
-| **Parser UBX (Rust → WASM)** | 40 | 60 | Plus complexe si nouveau au Rust |
-| **Stockage local + Sync (WatermelonDB)** | 30 | 45 | Schema, sync engine, conflict resolution |
-| **Algorithmes de marge (V1 simple)** | 25 | 35 | Vehicle margin + pilot margin basique |
-| **Détection virages + secteurs** | 20 | 30 | Algorithme basé sur yaw rate |
-| **Filtre de Kalman** | 25 | 40 | Implémentation EKF, calibration |
-| **Comparateur Ghost** | 25 | 35 | Alignement spatial, superposition |
-| **Détection anomalies (méthode 3)** | 20 | 30 | 6 détecteurs, scoring, sélection |
-| **Recommandation algorithme** | 15 | 25 | Scoring multicritère |
-| **UI Écran 1 (Bilan)** | 20 | 30 | Vue d'entrée post-session |
-| **UI Écran 2 (Carte circuit)** | 25 | 40 | SVG dynamique, interactions |
-| **UI Écran 3 (Zoom virage)** | 30 | 45 | Le plus complexe, charts |
-| **UI Écran 4 (Prochaine fois)** | 15 | 25 | Présentation recommandation |
-| **UI Écran 5 (Progression)** | 25 | 35 | Historique, courbes multi-sessions |
-| **Onboarding flow** | 15 | 25 | 4-5 écrans de bienvenue |
-| **Settings et préférences** | 10 | 15 | Permissions, RGPD, paramètres |
-| **Partage de progression (social)** | 20 | 35 | Génération images, liens partagés |
-| **Tests unitaires** | 30 | 50 | Couverture business logic |
-| **Tests E2E** | 20 | 30 | Flows critiques (Maestro) |
-| **CI/CD setup** | 10 | 15 | GitHub Actions, EAS Build |
-| **Onboarding stores (review)** | 10 | 20 | Apple + Google submissions |
-| **Documentation utilisateur** | 15 | 25 | Aide intégrée, FAQ |
-| **Calibration circuit Beltoise** | 20 | 30 | Session relevé + analyse |
-| **Polish / debugging** | 30 | 50 | Inévitable |
+| Module                                   | Min | Max | Note                                       |
+| ---------------------------------------- | --- | --- | ------------------------------------------ |
+| **Setup projet**                         | 15  | 25  | Expo init, structure, Supabase config      |
+| **Auth + onboarding**                    | 25  | 35  | Login, signup, palier déclaré, permissions |
+| **BLE connection (RaceBox)**             | 35  | 50  | Connexion, reconnexion, état machine       |
+| **BLE bouton marquage**                  | 15  | 25  | Jumelage Flic, écoute événements           |
+| **Parser UBX (Rust → WASM)**             | 40  | 60  | Plus complexe si nouveau au Rust           |
+| **Stockage local + Sync (WatermelonDB)** | 30  | 45  | Schema, sync engine, conflict resolution   |
+| **Algorithmes de marge (V1 simple)**     | 25  | 35  | Vehicle margin + pilot margin basique      |
+| **Détection virages + secteurs**         | 20  | 30  | Algorithme basé sur yaw rate               |
+| **Filtre de Kalman**                     | 25  | 40  | Implémentation EKF, calibration            |
+| **Comparateur Ghost**                    | 25  | 35  | Alignement spatial, superposition          |
+| **Détection anomalies (méthode 3)**      | 20  | 30  | 6 détecteurs, scoring, sélection           |
+| **Recommandation algorithme**            | 15  | 25  | Scoring multicritère                       |
+| **UI Écran 1 (Bilan)**                   | 20  | 30  | Vue d'entrée post-session                  |
+| **UI Écran 2 (Carte circuit)**           | 25  | 40  | SVG dynamique, interactions                |
+| **UI Écran 3 (Zoom virage)**             | 30  | 45  | Le plus complexe, charts                   |
+| **UI Écran 4 (Prochaine fois)**          | 15  | 25  | Présentation recommandation                |
+| **UI Écran 5 (Progression)**             | 25  | 35  | Historique, courbes multi-sessions         |
+| **Onboarding flow**                      | 15  | 25  | 4-5 écrans de bienvenue                    |
+| **Settings et préférences**              | 10  | 15  | Permissions, RGPD, paramètres              |
+| **Partage de progression (social)**      | 20  | 35  | Génération images, liens partagés          |
+| **Tests unitaires**                      | 30  | 50  | Couverture business logic                  |
+| **Tests E2E**                            | 20  | 30  | Flows critiques (Maestro)                  |
+| **CI/CD setup**                          | 10  | 15  | GitHub Actions, EAS Build                  |
+| **Onboarding stores (review)**           | 10  | 20  | Apple + Google submissions                 |
+| **Documentation utilisateur**            | 15  | 25  | Aide intégrée, FAQ                         |
+| **Calibration circuit Beltoise**         | 20  | 30  | Session relevé + analyse                   |
+| **Polish / debugging**                   | 30  | 50  | Inévitable                                 |
 
 ### 10.2. Total
 
-| Catégorie | Min | Max |
-|---|---|---|
-| **Hardware connectivity** | 50 | 75 |
-| **Data layer** | 70 | 105 |
-| **Algorithmes** | 130 | 195 |
-| **UI / UX** | 130 | 195 |
-| **Infrastructure** | 50 | 75 |
-| **Polish** | 60 | 100 |
-| **TOTAL** | **490 h** | **745 h** |
+| Catégorie                 | Min       | Max       |
+| ------------------------- | --------- | --------- |
+| **Hardware connectivity** | 50        | 75        |
+| **Data layer**            | 70        | 105       |
+| **Algorithmes**           | 130       | 195       |
+| **UI / UX**               | 130       | 195       |
+| **Infrastructure**        | 50        | 75        |
+| **Polish**                | 60        | 100       |
+| **TOTAL**                 | **490 h** | **745 h** |
 
 À ~80€/h tarif freelance senior, soit **40 000 € à 60 000 €** de dev pure.
 
@@ -847,6 +850,7 @@ Mois 6 — Submission + Lancement
 Voir planning section 10.4.
 
 Jalons clés :
+
 - **Mois 2** : prototype BLE fonctionnel sur dev device
 - **Mois 3** : première session complète enregistrée et analysée
 - **Mois 4** : UI complète sur device de dev
@@ -880,13 +884,14 @@ Jalons clés :
 
 Vous disposez maintenant d'un dossier d'architecture complet de **3 documents totalisant 50+ pages** :
 
-| Partie | Contenu | Pour qui |
-|---|---|---|
-| **Partie 1** | Stack, couches, Supabase, parsing UBX | Tech lead / Dev senior |
+| Partie                 | Contenu                                        | Pour qui                         |
+| ---------------------- | ---------------------------------------------- | -------------------------------- |
+| **Partie 1**           | Stack, couches, Supabase, parsing UBX          | Tech lead / Dev senior           |
 | **Partie 2 augmentée** | Algorithmes pédagogiques + modèles competition | Consultant télémétrie + Dev algo |
-| **Partie 3** | Connectivité, déploiement, RGPD, coûts | Vous (décisionnel) + Dev mobile |
+| **Partie 3**           | Connectivité, déploiement, RGPD, coûts         | Vous (décisionnel) + Dev mobile  |
 
 **Coût total à investir** :
+
 - Développement : **40 000 à 60 000 €** (one-time)
 - Hardware + audit : **5 500 à 11 500 €** (one-time)
 - Services récurrents : **700 à 1 200 €/an**
@@ -899,4 +904,4 @@ Si vous voulez attaquer plus modeste, on peut revenir sur le périmètre A (MVP 
 
 ---
 
-*Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_3.md`.*
+_Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_3.md`._

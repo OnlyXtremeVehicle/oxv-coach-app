@@ -41,14 +41,16 @@ livré comme référence d'allure — à porter en React Three Fiber dans l'app 
 `@react-three/fiber` + `@react-three/drei` + `expo-gl`).
 
 ### Entrées
-| Prop | Type | Source |
-|------|------|--------|
-| `circuit` | objet | `generateCircuit(points, opts)` → `{centerline, corners, ribbon, length_m}` |
-| `session` | objet | une ligne de `session_insights` (cf. contrat JSON) |
-| `layers` | string[] | liste ordonnée des couches à proposer dans le sélecteur |
-| `role` | 'pilot' \| 'coach' | détermine le set par défaut + l'accès aux couches coach |
+
+| Prop      | Type               | Source                                                                      |
+| --------- | ------------------ | --------------------------------------------------------------------------- |
+| `circuit` | objet              | `generateCircuit(points, opts)` → `{centerline, corners, ribbon, length_m}` |
+| `session` | objet              | une ligne de `session_insights` (cf. contrat JSON)                          |
+| `layers`  | string[]           | liste ordonnée des couches à proposer dans le sélecteur                     |
+| `role`    | 'pilot' \| 'coach' | détermine le set par défaut + l'accès aux couches coach                     |
 
 ### Comportement
+
 - Sélecteur de couches en haut (chips). Le pilote choisit librement ce qu'il veut
   voir sur SA piste — l'app ne décide pas pour lui.
 - Chaque virage du ruban se colore selon la couche active.
@@ -64,22 +66,22 @@ livré comme référence d'allure — à porter en React Three Fiber dans l'app 
 
 ### Couches PILOTE (factuelles — accès libre)
 
-| Couche | Clé du contrat | Mapping couleur | État vide si |
-|--------|----------------|-----------------|--------------|
-| **Vitesse d'apex** | `anatomy[].apex_speed_kmh` | lent→rapide (vert→rouge inversé) | `anatomy` absent |
-| **Anatomie freinage** | `anatomy[].brake_dist_m` | court→long | idem |
-| **Régularité** | `dispersion[corner_N]` | dispersion faible=vert, forte=rouge | `dispersion` vide |
-| **Équilibre châssis** | `chassis_balance[corner_N]` | sous-virage (−) bleu / neutre / survirage (+) rouge | gyroscope absent |
-| **Transfert de charge** | `load_transfer[corner_N]` | rapide→lent (s) | `load_transfer` vide |
+| Couche                  | Clé du contrat              | Mapping couleur                                     | État vide si         |
+| ----------------------- | --------------------------- | --------------------------------------------------- | -------------------- |
+| **Vitesse d'apex**      | `anatomy[].apex_speed_kmh`  | lent→rapide (vert→rouge inversé)                    | `anatomy` absent     |
+| **Anatomie freinage**   | `anatomy[].brake_dist_m`    | court→long                                          | idem                 |
+| **Régularité**          | `dispersion[corner_N]`      | dispersion faible=vert, forte=rouge                 | `dispersion` vide    |
+| **Équilibre châssis**   | `chassis_balance[corner_N]` | sous-virage (−) bleu / neutre / survirage (+) rouge | gyroscope absent     |
+| **Transfert de charge** | `load_transfer[corner_N]`   | rapide→lent (s)                                     | `load_transfer` vide |
 
 ### Couches COACH (comparatives / interprétatives — débloquées pour le coach)
 
-| Couche | Clé du contrat | Spécificité |
-|--------|----------------|-------------|
-| **Perte de temps** | `ideal_lap.loss_by_sector_pct[]` | ⚠️ par SECTEUR, pas par virage (cf. §5) |
-| **Dispersion détaillée** | `dispersion` + tours bruts | nuage de trajectoires superposées |
-| **Annotations coach** | `coach_annotations` (table existante) | texte attribué au coach, sur un virage |
-| **Référence coach** | `coach_corner_reference` (table, vide pour l'instant) | point de freinage / vitesse cible |
+| Couche                   | Clé du contrat                                        | Spécificité                             |
+| ------------------------ | ----------------------------------------------------- | --------------------------------------- |
+| **Perte de temps**       | `ideal_lap.loss_by_sector_pct[]`                      | ⚠️ par SECTEUR, pas par virage (cf. §5) |
+| **Dispersion détaillée** | `dispersion` + tours bruts                            | nuage de trajectoires superposées       |
+| **Annotations coach**    | `coach_annotations` (table existante)                 | texte attribué au coach, sur un virage  |
+| **Référence coach**      | `coach_corner_reference` (table, vide pour l'instant) | point de freinage / vitesse cible       |
 
 ---
 
@@ -90,6 +92,7 @@ livré comme référence d'allure — à porter en React Three Fiber dans l'app 
 > suivre aussi pour les écrans à créer (§6).
 
 ### 4.1 — `maquette_20.1_synthese.html` (synthèse de session, écran pilote)
+
 - **Rôle** : vue d'entrée après une session. Aujourd'hui : cartes de stats.
 - **Intégration tracé** : ajouter le tracé en **héro** en haut de l'écran, couche
   par défaut = « Régularité ». Le pilote bascule de couche depuis là.
@@ -97,24 +100,28 @@ livré comme référence d'allure — à porter en React Three Fiber dans l'app 
 - **Liaison** : tap sur un virage → scroll vers la carte d'insight correspondante.
 
 ### 4.2 — `maquette_20.2_signature.html` (signature de pilotage)
+
 - **Rôle** : les 4 piliers factuels du pilote.
 - **Intégration tracé** : tracé en couche « Vitesse d'apex » + « Anatomie freinage »,
   illustrant la signature sur la piste.
 - **Clé** : `anatomy[]`.
 
 ### 4.3 — `maquette_60.2_comparaison.html` (comparaison, écran coach)
+
 - **Rôle** : comparer tours / pilotes. C'est l'écran COACH par excellence.
 - **Intégration tracé** : tracé partagé avec **couches coach débloquées**
   (perte de temps par secteur, dispersion détaillée). Badge « Coach ».
 - **Clé** : `ideal_lap`, `dispersion`, `session_drift`.
 
 ### 4.4 — `maquette_E0.2_ar_coach.html` (vue AR coach)
+
 - **Rôle** : restitution augmentée, attribuée au coach.
 - **Intégration tracé** : le tracé 3D EST le support AR. Couches coach +
   annotations posées sur les virages.
 - **Clé** : `coach_annotations` + géométrie circuit.
 
 ### 4.5 — Maquettes d'insight individuelles (N2-1 → N4-5)
+
 Chacune garde son SVG 2D détaillé (déjà figé, fidèle pixel). Le tracé 3D vient
 en COMPLÉMENT, pas en remplacement : un mini-tracé qui localise l'insight sur la
 piste. Mapping :
@@ -134,6 +141,7 @@ piste. Mapping :
 ## 5. ⚠️ DEUX RÉSERVES STRUCTURELLES (à résoudre, pas à masquer)
 
 ### 5.1 — Désalignement du nombre de virages
+
 Le moteur d'insights actuel détecte les virages par **minima de vitesse** →
 13 virages (corner_1..13) sur le contrat d'exemple. Le générateur de circuit
 détecte par **courbure** → 7 virages sur le même tracé OSM. **Les couleurs ne
@@ -146,6 +154,7 @@ définitif des couleurs par virage avant cet alignement — utiliser une session
 démo alignée 7 virages en attendant.
 
 ### 5.2 — Perte de temps : secteur ≠ virage
+
 `ideal_lap.loss_by_sector_pct` est découpé en N secteurs temporels égaux, pas en
 virages. Tant qu'on n'a pas la correspondance secteur→virages d'un circuit donné,
 la couche « Perte de temps » s'affiche par SECTEUR (zones du tracé), pas par
@@ -169,6 +178,7 @@ Pour tout nouvel écran, remplir cette fiche AVANT de coder (même structure que
 ```
 
 Écrans identifiés comme manquants (à concevoir — PAS de maquette existante) :
+
 - **Espace COACH complet** : tables existent (`coach_pilots`, `coach_annotations`,
   `coach_corner_reference`, `coach_permissions`, `coach_roulages`...). À CODER une
   fois les vues définies.

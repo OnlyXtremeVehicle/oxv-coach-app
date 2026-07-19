@@ -15,22 +15,22 @@ Le **trace schematique du circuit est le langage commun de l'app**. Un pilote pe
 
 ## Index des blocs
 
-| Fichier | Bloc | Ecrans |
-|---|---|---|
-| `specs/10_onboarding.md` | Onboarding | 3 |
-| `specs/20_coeur_restitution.md` | Coeur — restitution post-session | 8 |
-| `specs/30_detail_data.md` | Detail data (l'arme concurrentielle) | 5 |
-| `specs/40_sessions_historique.md` | Sessions & historique | 3 |
-| `specs/50_circuits_traces.md` | Circuits & traces | 3 |
-| `specs/60_communaute.md` | Communaute — cercle filtre | 3 |
-| `specs/70_identite_avatar.md` | Identite pilote / Avatar | 3 |
-| `specs/80_garage.md` | Garage | 3 |
-| `specs/90_fonctionnalites_neuves.md` | Fonctionnalites neuves | 4 |
-| `specs/A0_compte.md` | Compte | 3 |
-| `specs/B0_etats_limites.md` | Etats limites | 2 |
-| `specs/C0_coach.md` | Coach (SaaS coachs agrees) | 5 |
-| `specs/D0_map_partenaires.md` | Map & ecosysteme partenaires | 4 |
-| `specs/E0_ar_coach.md` | Vue AR coach (lunettes, preview) | 2 |
+| Fichier                              | Bloc                                 | Ecrans |
+| ------------------------------------ | ------------------------------------ | ------ |
+| `specs/10_onboarding.md`             | Onboarding                           | 3      |
+| `specs/20_coeur_restitution.md`      | Coeur — restitution post-session     | 8      |
+| `specs/30_detail_data.md`            | Detail data (l'arme concurrentielle) | 5      |
+| `specs/40_sessions_historique.md`    | Sessions & historique                | 3      |
+| `specs/50_circuits_traces.md`        | Circuits & traces                    | 3      |
+| `specs/60_communaute.md`             | Communaute — cercle filtre           | 3      |
+| `specs/70_identite_avatar.md`        | Identite pilote / Avatar             | 3      |
+| `specs/80_garage.md`                 | Garage                               | 3      |
+| `specs/90_fonctionnalites_neuves.md` | Fonctionnalites neuves               | 4      |
+| `specs/A0_compte.md`                 | Compte                               | 3      |
+| `specs/B0_etats_limites.md`          | Etats limites                        | 2      |
+| `specs/C0_coach.md`                  | Coach (SaaS coachs agrees)           | 5      |
+| `specs/D0_map_partenaires.md`        | Map & ecosysteme partenaires         | 4      |
+| `specs/E0_ar_coach.md`               | Vue AR coach (lunettes, preview)     | 2      |
 
 Total : ~51 ecrans repartis en 14 blocs.
 

@@ -16,16 +16,18 @@ accessibles hors Data Lab.
 ## Cible par rôle
 
 ### Pilote (5 onglets verrouillés + Compte icône — INCHANGÉ)
-| Hub / section | Contenu cible | Écart vs aujourd'hui |
-|---------------|---------------|----------------------|
-| **Paddock** (hub) | action contextuelle par état (fait, `paddockHeroLogic`) + dernier bilan/QDI + statut boîtier | ajouter les 2 cartes de rappel (bilan récent, Mon boîtier) |
-| **Session** | flux capture linéaire préparation→équipement→placement→roulage→fin (fait) | rien |
-| **Bilan** | bilan → Data Lab (8 vues + Vue unifiée) → débrief/trace | `conditions`, `partage`, `carte-trophee` restent des sous-vues du bilan (déjà le cas) |
-| **Progression** | **signature = maison du QDI** (fait M1) → régularité/comparateur/stats/objectifs/carnet/passeport | `empreinte-saison`, `carte-licence`, `roulages` inchangés |
-| **Club** | coachs/amis/carte OXV/partenaires/routes (fait) | rien |
-| **Compte** | profil/settings/Mon boîtier/garage/consentements/support/légal (fait) | rien |
+
+| Hub / section     | Contenu cible                                                                                     | Écart vs aujourd'hui                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **Paddock** (hub) | action contextuelle par état (fait, `paddockHeroLogic`) + dernier bilan/QDI + statut boîtier      | ajouter les 2 cartes de rappel (bilan récent, Mon boîtier)                            |
+| **Session**       | flux capture linéaire préparation→équipement→placement→roulage→fin (fait)                         | rien                                                                                  |
+| **Bilan**         | bilan → Data Lab (8 vues + Vue unifiée) → débrief/trace                                           | `conditions`, `partage`, `carte-trophee` restent des sous-vues du bilan (déjà le cas) |
+| **Progression**   | **signature = maison du QDI** (fait M1) → régularité/comparateur/stats/objectifs/carnet/passeport | `empreinte-saison`, `carte-licence`, `roulages` inchangés                             |
+| **Club**          | coachs/amis/carte OXV/partenaires/routes (fait)                                                   | rien                                                                                  |
+| **Compte**        | profil/settings/Mon boîtier/garage/consentements/support/légal (fait)                             | rien                                                                                  |
 
 ### Coach / Partenaire / Admin
+
 Hubs déjà réels (audit M0 : dashboards câblés). Cible = inchangée, aucune
 réorganisation nécessaire.
 
@@ -42,11 +44,13 @@ réorganisation nécessaire.
    depuis Bilan (déjà le cas) — pas de changement.
 
 ## Ce que ce schéma NE fait PAS
+
 - Pas de suppression d'écran, pas de renommage de route (les deep links et
   l'appMap testée restent stables).
 - Pas de refonte des onglets (décision verrouillée : Paddock · Session ·
   Bilan · Progression · Club + Compte icône).
 
 ## Décision attendue du fondateur
+
 - GO / NO-GO sur les déplacements 1 et 2 (le 3 est un constat).
 - Si GO : exécution en un lot dédié, avec l'inventaire lien-par-lien AVANT.

@@ -16,13 +16,13 @@
 
 ### Tables et fonctions disponibles
 
-| Objet | Type | Schéma | Notes |
-|---|---|---|---|
-| `coach_pilots` | table | `public` | Assignation coach ↔ pilote |
-| `coach_pilots_view` | view INVOKER | `public` | Liste filtrée par RLS — utilisable directement |
-| `is_coach_of(uuid)` | function | `public` | Helper utilisable dans RLS custom |
-| `log_coach_view(uuid, text, uuid)` | function | `public` | Audit RGPD, à appeler côté web aussi |
-| `users.role` | enum | `public` | Inclut `'coach'` |
+| Objet                              | Type         | Schéma   | Notes                                          |
+| ---------------------------------- | ------------ | -------- | ---------------------------------------------- |
+| `coach_pilots`                     | table        | `public` | Assignation coach ↔ pilote                     |
+| `coach_pilots_view`                | view INVOKER | `public` | Liste filtrée par RLS — utilisable directement |
+| `is_coach_of(uuid)`                | function     | `public` | Helper utilisable dans RLS custom              |
+| `log_coach_view(uuid, text, uuid)` | function     | `public` | Audit RGPD, à appeler côté web aussi           |
+| `users.role`                       | enum         | `public` | Inclut `'coach'`                               |
 
 ### Policies RLS coach déjà en place
 
@@ -36,7 +36,7 @@
 
 **Route** : `/admin/coachs`
 **Permission** : admin OXV uniquement (`is_admin()`)
-**Référence app mobile** : [`app/(admin)/coachs.tsx`](../../app/(admin)/coachs.tsx) + [`app/(admin)/coachs/[id].tsx`](../../app/(admin)/coachs/[id].tsx)
+**Référence app mobile** : [`app/(admin)/coachs.tsx`](<../../app/(admin)/coachs.tsx>) + [`app/(admin)/coachs/[id].tsx`](<../../app/(admin)/coachs/[id].tsx>)
 
 #### Sous-pages
 
@@ -73,7 +73,7 @@ Réutilisez tel quel en changeant `from '@/lib/supabase'` par votre chemin d'imp
 
 **Route** : `/espace/mon-coach` (ou `/account/coach` selon votre URL scheme)
 **Permission** : pilote authentifié
-**Référence app mobile** : [`app/(app)/mon-coach.tsx`](../../app/(app)/mon-coach.tsx)
+**Référence app mobile** : [`app/(app)/mon-coach.tsx`](<../../app/(app)/mon-coach.tsx>)
 
 #### Contenu
 
@@ -81,7 +81,7 @@ Réutilisez tel quel en changeant `from '@/lib/supabase'` par votre chemin d'imp
 - Pour chaque coach : nom, date assignation, statut consentement
 - Toggle "Autoriser ce coach à voir mes sessions"
 - Card explicative "CE QUE LE COACH VOIT" (sessions, analyses, progression) / "CE QU'IL NE VOIT JAMAIS" (email, tel, docs)
-- Phrase doctrinale : *"Vous pouvez retirer votre accord à tout moment."*
+- Phrase doctrinale : _"Vous pouvez retirer votre accord à tout moment."_
 
 #### Code source disponible
 
@@ -98,7 +98,7 @@ revokeConsent(assignmentId) — UPDATE pilot_consent_at = NULL
 Pour permettre aux coachs de consulter sans installer l'app mobile.
 
 **Route** : `/espace-coach` (auto-redirect depuis `/` si `role='coach'`)
-**Référence app mobile** : [`app/(coach)/index.tsx`](../../app/(coach)/index.tsx) + [`app/(coach)/pilote/[id].tsx`](../../app/(coach)/pilote/[id].tsx)
+**Référence app mobile** : [`app/(coach)/index.tsx`](<../../app/(coach)/index.tsx>) + [`app/(coach)/pilote/[id].tsx`](<../../app/(coach)/pilote/[id].tsx>)
 
 #### Contenu
 
@@ -121,14 +121,15 @@ logCoachView(pilotId) — RPC log_coach_view (RGPD audit)
 
 ## Charte visuelle (à respecter)
 
-| Persona | Couleur accent | Hex | Usage |
-|---|---|---|---|
-| Pilote | Rouge OXV | `#C8102E` | Mode standard |
-| Admin | Bronze | `#B87333` | Backoffice |
-| **Coach** | **Bleu nuit** | **`#1E3A5F`** | Espace coach |
-| Heritage | Or | `#C4A459` | Pack héritage |
+| Persona   | Couleur accent | Hex           | Usage         |
+| --------- | -------------- | ------------- | ------------- |
+| Pilote    | Rouge OXV      | `#C8102E`     | Mode standard |
+| Admin     | Bronze         | `#B87333`     | Backoffice    |
+| **Coach** | **Bleu nuit**  | **`#1E3A5F`** | Espace coach  |
+| Heritage  | Or             | `#C4A459`     | Pack héritage |
 
 **Doctrine éditoriale** :
+
 - Vouvoiement systématique
 - Pas d'emoji
 - Phrases courtes
@@ -146,6 +147,7 @@ logCoachView(pilotId) — RPC log_coach_view (RGPD audit)
 ### Audit logs
 
 À consulter dans `admin_audit` :
+
 ```sql
 SELECT * FROM admin_audit
 WHERE action LIKE 'coach_view%'

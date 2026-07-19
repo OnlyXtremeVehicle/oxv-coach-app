@@ -26,16 +26,16 @@ Le modèle est **mono-rôle** : un compte porte une seule valeur `role`. Excepti
 
 ### 1.2 Les flags et le cumul
 
-| Mécanisme | Colonne / fonction | Sens réel |
-|---|---|---|
-| `users.is_admin` | `boolean DEFAULT false` (`database.types.ts:4451`) | Cumul d'accès admin **par-dessus** un autre rôle. Sert le compte unique `administration@oxvehicle.fr` (admin + coach). |
-| `is_admin()` | `STABLE SECURITY DEFINER` | **Après** migration `0041` : `role = 'admin' OR is_admin = true` (`20260617000000_0041_is_admin_honor_flag.sql`). Avant : `role = 'admin'` seul. |
-| `is_coach()` | `STABLE SECURITY DEFINER` | `EXISTS (… users WHERE id = auth.uid() AND role = 'coach')` (`20260526190000_0034_coach_roulages.sql:29`). |
-| `is_coach_of(pilot_uuid)` | `STABLE SECURITY DEFINER` | Vrai si auth.uid() est coach **actif ET consenti** du pilote (`20260525114148`). **C'est le vrai vecteur d'accès data coach**, pas `is_coach()`. |
-| `is_my_coach(coach_uuid)` | `STABLE SECURITY DEFINER` | Réciproque côté pilote (`20260526230000_0038`). |
-| `is_validated_member()` | `STABLE SECURITY DEFINER` | `kyc_status = 'validated'` (`20260526180000_0033`). Gate le volet social, **pas** un rôle. |
-| `coach_has_permission(uuid, name)` | `SECURITY DEFINER`, fail-safe `false` | Permissions modulaires coach (`20260526170000_0032`). |
-| `are_friends(a, b)` | — | Amitié réciproque (`database.types.ts:5087`). |
+| Mécanisme                          | Colonne / fonction                                 | Sens réel                                                                                                                                        |
+| ---------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `users.is_admin`                   | `boolean DEFAULT false` (`database.types.ts:4451`) | Cumul d'accès admin **par-dessus** un autre rôle. Sert le compte unique `administration@oxvehicle.fr` (admin + coach).                           |
+| `is_admin()`                       | `STABLE SECURITY DEFINER`                          | **Après** migration `0041` : `role = 'admin' OR is_admin = true` (`20260617000000_0041_is_admin_honor_flag.sql`). Avant : `role = 'admin'` seul. |
+| `is_coach()`                       | `STABLE SECURITY DEFINER`                          | `EXISTS (… users WHERE id = auth.uid() AND role = 'coach')` (`20260526190000_0034_coach_roulages.sql:29`).                                       |
+| `is_coach_of(pilot_uuid)`          | `STABLE SECURITY DEFINER`                          | Vrai si auth.uid() est coach **actif ET consenti** du pilote (`20260525114148`). **C'est le vrai vecteur d'accès data coach**, pas `is_coach()`. |
+| `is_my_coach(coach_uuid)`          | `STABLE SECURITY DEFINER`                          | Réciproque côté pilote (`20260526230000_0038`).                                                                                                  |
+| `is_validated_member()`            | `STABLE SECURITY DEFINER`                          | `kyc_status = 'validated'` (`20260526180000_0033`). Gate le volet social, **pas** un rôle.                                                       |
+| `coach_has_permission(uuid, name)` | `SECURITY DEFINER`, fail-safe `false`              | Permissions modulaires coach (`20260526170000_0032`).                                                                                            |
+| `are_friends(a, b)`                | —                                                  | Amitié réciproque (`database.types.ts:5087`).                                                                                                    |
 
 Toutes ces fonctions sont `SECURITY DEFINER` avec `search_path` épinglé (durci par `20260615190000_harden_function_search_path_and_revoke_internal.sql`) et `REVOKE … FROM PUBLIC, anon`. Ne pas les redéfinir sans accord.
 
@@ -43,24 +43,24 @@ Toutes ces fonctions sont `SECURITY DEFINER` avec `search_path` épinglé (durci
 
 Le rôle `coach` n'est **pas** monolithique (`20260526170000_0032`). Une ligne par coach, flags booléens :
 
-| Flag | Défaut | Gate |
-|---|---|---|
-| `can_view_pilots` | `true` | Consulter la data des pilotes assignés+consentis (la RLS data reste sur `is_coach_of`). |
-| `can_manage_own_sessions` | `false` | Gérer ses propres roulages OXV. |
-| `can_view_business_dashboard` | `false` | Tableau de bord business (revenus). |
+| Flag                          | Défaut  | Gate                                                                                    |
+| ----------------------------- | ------- | --------------------------------------------------------------------------------------- |
+| `can_view_pilots`             | `true`  | Consulter la data des pilotes assignés+consentis (la RLS data reste sur `is_coach_of`). |
+| `can_manage_own_sessions`     | `false` | Gérer ses propres roulages OXV.                                                         |
+| `can_view_business_dashboard` | `false` | Tableau de bord business (revenus).                                                     |
 
 Ces flags **gatent des features**, pas la RLS data de base. Un trigger `ensure_coach_permissions` crée la ligne à la promotion en coach. Activation à la carte = **admin only**.
 
 ### 1.4 Synthèse — qui est qui
 
-| Rôle / capacité | Comment c'est porté | Espace app |
-|---|---|---|
-| Pilote | `role = 'pilot'` | `app/(app)` |
-| Coach | `role = 'coach'` + `coach_pilots` (affiliation) + `coach_permissions` | `app/(coach)` |
-| Admin | `role = 'admin'` **ou** `is_admin = true` | `app/(admin)` |
-| Admin + coach (compte unique) | `role = 'coach'` + `is_admin = true` | les deux |
-| Partenaire | `role = 'partner'` (enum) — **rien d'autre n'existe** | `app/(partner)` **inexistant** |
-| Super-admin | **inexistant** | — |
+| Rôle / capacité               | Comment c'est porté                                                   | Espace app                     |
+| ----------------------------- | --------------------------------------------------------------------- | ------------------------------ |
+| Pilote                        | `role = 'pilot'`                                                      | `app/(app)`                    |
+| Coach                         | `role = 'coach'` + `coach_pilots` (affiliation) + `coach_permissions` | `app/(coach)`                  |
+| Admin                         | `role = 'admin'` **ou** `is_admin = true`                             | `app/(admin)`                  |
+| Admin + coach (compte unique) | `role = 'coach'` + `is_admin = true`                                  | les deux                       |
+| Partenaire                    | `role = 'partner'` (enum) — **rien d'autre n'existe**                 | `app/(partner)` **inexistant** |
+| Super-admin                   | **inexistant**                                                        | —                              |
 
 ---
 
@@ -69,24 +69,24 @@ Ces flags **gatent des features**, pas la RLS data de base. Un trigger `ensure_c
 Légende : **R** = SELECT autorisé · **W** = INSERT/UPDATE/DELETE autorisé (préciser si partiel) · **—** = aucun accès via RLS · `auth` = `TO authenticated`.
 « Coach » signifie ici **coach actif + consentement pilote** (`is_coach_of`), sauf mention contraire. Toutes ces policies sont **déjà en prod**.
 
-| Table | Pilote (propriétaire) | Coach affilié+consenti | Admin | Partner | Source |
-|---|---|---|---|---|---|
-| `users` | R/W **soi** (`id = auth.uid()`) ; DELETE admin only | **—** directement → passe par `coach_pilots_view` (colonnes limitées) | R/W tout ; DELETE | — | `06_RLS_…sql:257` |
-| `telemetry_sessions` | R/W **soi** (CRUD complet) | **R** (`is_coach_of(user_id)`) | — (pas de policy admin par défaut) | — | base + `20260525114148:116` |
-| `app_session_analyses` | R **soi** (le bilan) | **R** (`is_coach_of(user_id)`) | — | — | `20260524190918_0009` + `…114148:144` |
-| `app_segment_analyses` | R **soi** (virages) | **R** | — | — | `20260525150003_0022`, `…114148:150` |
-| `laps` / `telemetry_frames` / `weather_snapshots` | R/W via session **soi** | **R** via session du pilote | — | — | `06_RLS_…sql:98/223/291` + `…114148:122/133` |
-| `vehicles` | R/W **soi** ou admin | **R** (`is_coach_of(user_id)`) | R/W | — | `06_RLS_…sql:274` + `…114148:156` |
-| `app_progression_shares` | R/W **soi** | **R** | (selon partage sécurisé) | — | `20260524230007_0011`, `…114148:162` |
-| `coach_pilots` | **R** ses affiliations + **W** consentement seul (`pilot_consent_at`) | **R** ses affiliations | R/W tout (assignation) | — | `20260525114148:54-82` |
-| `coach_pilots_view` (VUE, security_invoker) | — | **R** : ses pilotes consentis, colonnes non sensibles (`first_name, last_name, pilot_level, avatar_url`) — **jamais** email/tel/docs | — | — | `…114148:175` |
-| `coach_annotations` | **R** notes `shared` non supprimées **soi** | R/W **ses** notes si `is_coach_of(pilot)` | R (audit RGPD) | — | `20260525150001_0020:80-99` |
-| `coach_availability` | **R** créneaux des coachs **publiés** | R/W **ses** créneaux | R/W | — | `0007_coaching_marketplace.sql:104` |
-| `coaching_bookings` | R **ses** demandes ; **INSERT** `pending` (coach publié) ; UPDATE → `cancelled` seul | R **ses** demandes ; UPDATE (accepter/décliner) | R/W tout | — | `0007:133-174` |
-| `coach_reviews` | R avis des coachs **publiés** ; W **son** avis si booking `accepted`/`completed` | R (avis le concernant via fiche publiée) | R/W tout | — | `0008_coaching_reviews.sql:38-62` |
-| `social_pings` | **R** si `is_published AND is_validated_member()` | idem (s'il est membre validé) | R/W tout (brouillons inclus) | — | `20260526180000_0033:106-115` |
-| `session_media` | **R soi** (non supprimé) | **R** (`is_coach_of`) | R/W (upload/réordonner/soft-delete) | — | `20260526160000_0031:82-121` |
-| `circuits` | R **soi** OU `is_official = true` ; W **soi** | (lecture via `is_official`) | implicite via propriété | — | `06_RLS_…sql:31-41` |
+| Table                                             | Pilote (propriétaire)                                                                | Coach affilié+consenti                                                                                                               | Admin                               | Partner | Source                                       |
+| ------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | ------- | -------------------------------------------- |
+| `users`                                           | R/W **soi** (`id = auth.uid()`) ; DELETE admin only                                  | **—** directement → passe par `coach_pilots_view` (colonnes limitées)                                                                | R/W tout ; DELETE                   | —       | `06_RLS_…sql:257`                            |
+| `telemetry_sessions`                              | R/W **soi** (CRUD complet)                                                           | **R** (`is_coach_of(user_id)`)                                                                                                       | — (pas de policy admin par défaut)  | —       | base + `20260525114148:116`                  |
+| `app_session_analyses`                            | R **soi** (le bilan)                                                                 | **R** (`is_coach_of(user_id)`)                                                                                                       | —                                   | —       | `20260524190918_0009` + `…114148:144`        |
+| `app_segment_analyses`                            | R **soi** (virages)                                                                  | **R**                                                                                                                                | —                                   | —       | `20260525150003_0022`, `…114148:150`         |
+| `laps` / `telemetry_frames` / `weather_snapshots` | R/W via session **soi**                                                              | **R** via session du pilote                                                                                                          | —                                   | —       | `06_RLS_…sql:98/223/291` + `…114148:122/133` |
+| `vehicles`                                        | R/W **soi** ou admin                                                                 | **R** (`is_coach_of(user_id)`)                                                                                                       | R/W                                 | —       | `06_RLS_…sql:274` + `…114148:156`            |
+| `app_progression_shares`                          | R/W **soi**                                                                          | **R**                                                                                                                                | (selon partage sécurisé)            | —       | `20260524230007_0011`, `…114148:162`         |
+| `coach_pilots`                                    | **R** ses affiliations + **W** consentement seul (`pilot_consent_at`)                | **R** ses affiliations                                                                                                               | R/W tout (assignation)              | —       | `20260525114148:54-82`                       |
+| `coach_pilots_view` (VUE, security_invoker)       | —                                                                                    | **R** : ses pilotes consentis, colonnes non sensibles (`first_name, last_name, pilot_level, avatar_url`) — **jamais** email/tel/docs | —                                   | —       | `…114148:175`                                |
+| `coach_annotations`                               | **R** notes `shared` non supprimées **soi**                                          | R/W **ses** notes si `is_coach_of(pilot)`                                                                                            | R (audit RGPD)                      | —       | `20260525150001_0020:80-99`                  |
+| `coach_availability`                              | **R** créneaux des coachs **publiés**                                                | R/W **ses** créneaux                                                                                                                 | R/W                                 | —       | `0007_coaching_marketplace.sql:104`          |
+| `coaching_bookings`                               | R **ses** demandes ; **INSERT** `pending` (coach publié) ; UPDATE → `cancelled` seul | R **ses** demandes ; UPDATE (accepter/décliner)                                                                                      | R/W tout                            | —       | `0007:133-174`                               |
+| `coach_reviews`                                   | R avis des coachs **publiés** ; W **son** avis si booking `accepted`/`completed`     | R (avis le concernant via fiche publiée)                                                                                             | R/W tout                            | —       | `0008_coaching_reviews.sql:38-62`            |
+| `social_pings`                                    | **R** si `is_published AND is_validated_member()`                                    | idem (s'il est membre validé)                                                                                                        | R/W tout (brouillons inclus)        | —       | `20260526180000_0033:106-115`                |
+| `session_media`                                   | **R soi** (non supprimé)                                                             | **R** (`is_coach_of`)                                                                                                                | R/W (upload/réordonner/soft-delete) | —       | `20260526160000_0031:82-121`                 |
+| `circuits`                                        | R **soi** OU `is_official = true` ; W **soi**                                        | (lecture via `is_official`)                                                                                                          | implicite via propriété             | —       | `06_RLS_…sql:31-41`                          |
 
 ### 2.1 Lignes de force à retenir
 
@@ -103,16 +103,16 @@ Légende : **R** = SELECT autorisé · **W** = INSERT/UPDATE/DELETE autorisé (p
 
 Aucune des entités ci-dessous n'existe en base. Chacune **nécessite l'accord explicite de Gabin** (schéma + RLS) avant migration. Ne jamais présenter ces lignes comme acquises.
 
-| Domaine | Manque réel | Rôles concernés | Statut |
-|---|---|---|---|
-| **Partenaires (offres/leads)** | La table **`partners` EXISTE** (`database.types.ts:2612` : `owner_id`, `is_published`, `is_official_partner`, `partner_type`, `circuit_id`, lat/lon) et le helper **`is_partner()` EXISTE** (`:5155`, utilisé p. ex. par les RLS de `social_pings`). Ce qui MANQUE : `partner_offers`, `partner_leads`, `partner_bookings` et l'espace `app/(partner)` (net-neuf). | partner, admin | tables offres/leads à créer — **NÉCESSITE ACCORD** |
-| **Super-admin** | Valeur absente de l'enum `user_role`. Aucun `is_super_admin()`. Le cumul admin se fait via `users.is_admin` (§1.2). **Hors périmètre** : 4 comptes au cadrage, pas de 5e rôle (`00 §2`). | — | non prévu (ne pas créer) |
-| **Passeport pilote** | Pas de table. (V1.5, `03_MVP_SCOPE.md`.) | pilot (R soi), coach (R), admin | à créer — **NÉCESSITE ACCORD** |
-| **Programmes / cycles coach** | Pas de table cycles/objectifs structurés côté coach (`pilot_goals` existe — `0023` — mais pas un programme coach complet). | coach (W), pilot (R) | à créer — **NÉCESSITE ACCORD** |
-| **Garage pilote** | `vehicles` existe (R/W propriétaire) mais pas l'entité « garage » enrichie (carnet, diagnostic). | pilot, admin | à créer — **NÉCESSITE ACCORD** |
-| **Carnet pilote** | Pas de table. (V1.5.) | pilot | à créer — **NÉCESSITE ACCORD** |
-| **Pass OXV (QR événement)** | Pas de table. (V1.5.) | pilot, admin | à créer — **NÉCESSITE ACCORD** |
-| **Qualité data / incidents (admin)** | Pas de table dédiée. | admin | à créer — **NÉCESSITE ACCORD** |
+| Domaine                              | Manque réel                                                                                                                                                                                                                                                                                                                                                        | Rôles concernés                 | Statut                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------- | -------------------------------------------------- |
+| **Partenaires (offres/leads)**       | La table **`partners` EXISTE** (`database.types.ts:2612` : `owner_id`, `is_published`, `is_official_partner`, `partner_type`, `circuit_id`, lat/lon) et le helper **`is_partner()` EXISTE** (`:5155`, utilisé p. ex. par les RLS de `social_pings`). Ce qui MANQUE : `partner_offers`, `partner_leads`, `partner_bookings` et l'espace `app/(partner)` (net-neuf). | partner, admin                  | tables offres/leads à créer — **NÉCESSITE ACCORD** |
+| **Super-admin**                      | Valeur absente de l'enum `user_role`. Aucun `is_super_admin()`. Le cumul admin se fait via `users.is_admin` (§1.2). **Hors périmètre** : 4 comptes au cadrage, pas de 5e rôle (`00 §2`).                                                                                                                                                                           | —                               | non prévu (ne pas créer)                           |
+| **Passeport pilote**                 | Pas de table. (V1.5, `03_MVP_SCOPE.md`.)                                                                                                                                                                                                                                                                                                                           | pilot (R soi), coach (R), admin | à créer — **NÉCESSITE ACCORD**                     |
+| **Programmes / cycles coach**        | Pas de table cycles/objectifs structurés côté coach (`pilot_goals` existe — `0023` — mais pas un programme coach complet).                                                                                                                                                                                                                                         | coach (W), pilot (R)            | à créer — **NÉCESSITE ACCORD**                     |
+| **Garage pilote**                    | `vehicles` existe (R/W propriétaire) mais pas l'entité « garage » enrichie (carnet, diagnostic).                                                                                                                                                                                                                                                                   | pilot, admin                    | à créer — **NÉCESSITE ACCORD**                     |
+| **Carnet pilote**                    | Pas de table. (V1.5.)                                                                                                                                                                                                                                                                                                                                              | pilot                           | à créer — **NÉCESSITE ACCORD**                     |
+| **Pass OXV (QR événement)**          | Pas de table. (V1.5.)                                                                                                                                                                                                                                                                                                                                              | pilot, admin                    | à créer — **NÉCESSITE ACCORD**                     |
+| **Qualité data / incidents (admin)** | Pas de table dédiée.                                                                                                                                                                                                                                                                                                                                               | admin                           | à créer — **NÉCESSITE ACCORD**                     |
 
 Règle pour Claude Code : **`is_partner()` et `partners` existent — utilise-les.** En revanche, **n'invente pas** `partner_offers`/`partner_leads`/`partner_bookings` ni un rôle `super_admin`. Si une PR a besoin des tables d'offres/leads partenaire, elle s'arrête et demande le schéma à Gabin.
 

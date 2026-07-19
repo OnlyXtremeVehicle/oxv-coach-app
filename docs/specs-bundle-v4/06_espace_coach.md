@@ -14,6 +14,7 @@
 ## 1. RAISON D'ÊTRE (décision fondateur)
 
 Espace coach version 1 = **LIRE + ANNOTER + GÉRER**.
+
 - LIRE : voir ses pilotes rattachés et leurs données de session (tracé + insights).
 - ANNOTER : poser des notes attribuées au coach sur des virages précis.
 - GÉRER : créer/administrer des roulages, un planning, rattacher des pilotes.
@@ -29,6 +30,7 @@ attribué au coach** (badge « Coach », liseré or `--oxv-gold`), pour qu'un pi
 confonde jamais un constat factuel de l'app avec une consigne humaine du coach.
 
 ### Conséquence sur deux tables (décision fondateur : RÉSERVÉES AU COACH, on les garde)
+
 - `coach_reading_weights` (w_vehicle, w_pilot, w_regularity, w_smoothness) :
   pondérations héritées du QDI. **Réservées au coach** — c'est SA grille de lecture
   personnelle, pas un score affiché au pilote. Ne JAMAIS exposer ces poids ni un
@@ -42,18 +44,18 @@ confonde jamais un constat factuel de l'app avec une consigne humaine du coach.
 
 ## 3. STRUCTURE DES TABLES (vérifiée en base)
 
-| Table | Rôle | Colonnes clés |
-|-------|------|---------------|
-| `coach_permissions` | droits d'un user coach | can_view_pilots, can_manage_own_sessions, can_view_business_dashboard, granted_by |
-| `coach_pilots` | rattachement coach↔pilote | coach_id, pilot_id, active, **pilot_consent_at**, notes |
-| `coach_session_context` | contexte d'une session | pilot_level, objective, equipment, weather_note |
-| `coach_annotations` | notes sur un virage | corner_index, body, **visibility**, deleted_at |
-| `coach_annotation_template` | gabarits de notes réutilisables | label, body |
-| `coach_corner_reference` | référence virage (prescriptive, coach) | braking_point_m, target_speed_kmh, trajectory_note |
-| `coach_pilot_highlight` | virages mis en avant pour un pilote | highlight_corner_indexes[], note |
-| `coach_reading_weights` | grille de lecture perso (coach) | w_* (réservé coach) |
-| `coach_roulages` | sessions/événements organisés | title, circuit_name, starts_at, max_pilots, status, price_per_pilot |
-| `coach_pilots_view` | vue agrégée | (vue SQL existante à inspecter) |
+| Table                       | Rôle                                   | Colonnes clés                                                                     |
+| --------------------------- | -------------------------------------- | --------------------------------------------------------------------------------- |
+| `coach_permissions`         | droits d'un user coach                 | can_view_pilots, can_manage_own_sessions, can_view_business_dashboard, granted_by |
+| `coach_pilots`              | rattachement coach↔pilote              | coach_id, pilot_id, active, **pilot_consent_at**, notes                           |
+| `coach_session_context`     | contexte d'une session                 | pilot_level, objective, equipment, weather_note                                   |
+| `coach_annotations`         | notes sur un virage                    | corner_index, body, **visibility**, deleted_at                                    |
+| `coach_annotation_template` | gabarits de notes réutilisables        | label, body                                                                       |
+| `coach_corner_reference`    | référence virage (prescriptive, coach) | braking_point_m, target_speed_kmh, trajectory_note                                |
+| `coach_pilot_highlight`     | virages mis en avant pour un pilote    | highlight_corner_indexes[], note                                                  |
+| `coach_reading_weights`     | grille de lecture perso (coach)        | w\_\* (réservé coach)                                                             |
+| `coach_roulages`            | sessions/événements organisés          | title, circuit_name, starts_at, max_pilots, status, price_per_pilot               |
+| `coach_pilots_view`         | vue agrégée                            | (vue SQL existante à inspecter)                                                   |
 
 ---
 
@@ -64,6 +66,7 @@ Un coach accède aux données télémétriques d'un pilote = donnée personnelle
 données d'un pilote que si `active = true` ET `pilot_consent_at` est renseigné.**
 
 Règles de conception non négociables :
+
 - Pas de `pilot_consent_at` → aucune donnée du pilote visible. Filtre côté requête
   ET côté RLS (ne pas se reposer sur l'UI seule).
 - Le pilote peut révoquer (passe `active=false` ou efface le consentement) → le coach
@@ -78,12 +81,14 @@ Règles de conception non négociables :
 ## 5. ÉCRANS DE L'ESPACE COACH (sous-fiches)
 
 ### 5.1 — Tableau de bord coach (accueil)
+
 - Rôle : point d'entrée. Liste des pilotes rattachés (consentis), prochains roulages.
 - Données : `coach_pilots` (active + consent), `coach_roulages` (status, starts_at).
 - Tracé : aucun ici (vue liste).
 - Garde : si `coach_permissions.can_view_pilots = false` → écran restreint.
 
 ### 5.2 — Fiche pilote (vue d'un pilote par le coach)
+
 - Rôle : voir les sessions d'un pilote rattaché.
 - Données : sessions du pilote + `coach_session_context` + `session_insights`.
 - Tracé : **tracé partagé**, couches coach débloquées (cf. §3 de
@@ -92,6 +97,7 @@ Règles de conception non négociables :
 - Garde RGPD : `pilot_consent_at` obligatoire (cf. §4).
 
 ### 5.3 — Annotation de session (lire + annoter)
+
 - Rôle : le coach lit une session sur le tracé et pose des notes sur des virages.
 - Données : écriture dans `coach_annotations` (corner_index, body, visibility) ;
   gabarits depuis `coach_annotation_template`.
@@ -101,6 +107,7 @@ Règles de conception non négociables :
   nom du coach).
 
 ### 5.4 — Gestion des roulages (gérer)
+
 - Rôle : créer/éditer des roulages, fixer date/lieu/places/prix, suivre le statut.
 - Données : CRUD sur `coach_roulages`.
 - Tracé : optionnel (afficher le circuit du roulage si `circuit_name` connu).
@@ -108,6 +115,7 @@ Règles de conception non négociables :
   la base, cf. règle prix Heritage en centimes).
 
 ### 5.5 — Rattachement de pilotes (gérer)
+
 - Rôle : inviter/rattacher un pilote, suivre le consentement.
 - Données : écriture `coach_pilots` ; le consentement (`pilot_consent_at`) est posé
   PAR LE PILOTE, pas par le coach (côté app pilote).

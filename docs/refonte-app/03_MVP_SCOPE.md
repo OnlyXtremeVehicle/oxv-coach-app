@@ -5,36 +5,36 @@
 
 ## Tableau de priorisation
 
-| Fonction | V1 | V1.5 | V2 | Plus tard |
-|---|:--:|:--:|:--:|:--:|
-| Navigation 5 zones (tabs) | ✅ | | | |
-| Paddock contextuel | ✅ | | | |
-| Flux Session + silence en piste | ✅ | | | |
-| Bilan à divulgation progressive | ✅ | | | |
-| Data Lab simple (carte + tours + couches) | ✅ | | | |
-| Replay synchronisé | ◐ simple | ✅ avancé | | |
-| Virage Explorer | ✅ | | | |
-| Comparateur personnel (soi vs soi) | ✅ | | | |
-| Coach affilié visible + consentement | ✅ | | | |
-| Notes coach sur la data (overlay) | ✅ | | | |
-| Programme coach (cycles) | | ✅ | | |
-| Réservation coach | | ✅ | | |
-| Passeport pilote | ◐ lecture | ✅ complet | | |
-| Garage pilote | | ✅ | | |
-| Carnet pilote (avant/après) | | ✅ | | |
-| Partenaires — annuaire | ✅ | | | |
-| Partenaires — offres / leads | | ✅ | | |
-| Pass OXV (QR événement) | | ✅ | | |
-| Médias de session + OXV Moment | ◐ partage | ✅ galerie | | |
-| Admin opérations + qualité data | ✅ | | | |
-| Espace Partenaire (dashboard) | | ✅ | | |
-| Paiement coach intégré (Stripe) | | | ✅ | |
-| Marketplace coach complète | | | ✅ | |
-| Commission partenaires | | | ✅ | |
-| Synchro vidéo ↔ télémétrie avancée | | | ✅ | |
-| Analyse multi-circuits | | | ✅ | |
-| Portail web admin / partenaires | | | | ✅ |
-| Dashboard business OXV | | | | ✅ |
+| Fonction                                  |    V1     |    V1.5    | V2  | Plus tard |
+| ----------------------------------------- | :-------: | :--------: | :-: | :-------: |
+| Navigation 5 zones (tabs)                 |    ✅     |            |     |           |
+| Paddock contextuel                        |    ✅     |            |     |           |
+| Flux Session + silence en piste           |    ✅     |            |     |           |
+| Bilan à divulgation progressive           |    ✅     |            |     |           |
+| Data Lab simple (carte + tours + couches) |    ✅     |            |     |           |
+| Replay synchronisé                        | ◐ simple  | ✅ avancé  |     |           |
+| Virage Explorer                           |    ✅     |            |     |           |
+| Comparateur personnel (soi vs soi)        |    ✅     |            |     |           |
+| Coach affilié visible + consentement      |    ✅     |            |     |           |
+| Notes coach sur la data (overlay)         |    ✅     |            |     |           |
+| Programme coach (cycles)                  |           |     ✅     |     |           |
+| Réservation coach                         |           |     ✅     |     |           |
+| Passeport pilote                          | ◐ lecture | ✅ complet |     |           |
+| Garage pilote                             |           |     ✅     |     |           |
+| Carnet pilote (avant/après)               |           |     ✅     |     |           |
+| Partenaires — annuaire                    |    ✅     |            |     |           |
+| Partenaires — offres / leads              |           |     ✅     |     |           |
+| Pass OXV (QR événement)                   |           |     ✅     |     |           |
+| Médias de session + OXV Moment            | ◐ partage | ✅ galerie |     |           |
+| Admin opérations + qualité data           |    ✅     |            |     |           |
+| Espace Partenaire (dashboard)             |           |     ✅     |     |           |
+| Paiement coach intégré (Stripe)           |           |            | ✅  |           |
+| Marketplace coach complète                |           |            | ✅  |           |
+| Commission partenaires                    |           |            | ✅  |           |
+| Synchro vidéo ↔ télémétrie avancée        |           |            | ✅  |           |
+| Analyse multi-circuits                    |           |            | ✅  |           |
+| Portail web admin / partenaires           |           |            |     |    ✅     |
+| Dashboard business OXV                    |           |            |     |    ✅     |
 
 (◐ = version réduite.)
 
@@ -53,13 +53,13 @@
 
 ## Lien avec la monétisation (cf. `16_MODELE_ECONOMIQUE.md`)
 
-| Source | Fonction app liée | Monétisation |
-|---|---|---|
-| Track day | Pass OXV | inscription événement |
-| Coach | Réservation coach | commission OXV |
-| Partenaire | Offre partenaire | lead / abonnement / commission |
-| Média | Photos / vidéos | vente pack média |
-| Garage | Diagnostic piste | offre B2B |
-| Premium pilote | Data Lab avancé | abonnement / pack |
+| Source         | Fonction app liée | Monétisation                   |
+| -------------- | ----------------- | ------------------------------ |
+| Track day      | Pass OXV          | inscription événement          |
+| Coach          | Réservation coach | commission OXV                 |
+| Partenaire     | Offre partenaire  | lead / abonnement / commission |
+| Média          | Photos / vidéos   | vente pack média               |
+| Garage         | Diagnostic piste  | offre B2B                      |
+| Premium pilote | Data Lab avancé   | abonnement / pack              |
 
 Chaque fonction V1 doit pointer vers au moins une colonne ci-dessus, ou être reportée.

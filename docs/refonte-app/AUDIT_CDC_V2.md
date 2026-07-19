@@ -9,18 +9,18 @@
 
 ## Verdict — readiness V1 alpha (Valence, juillet 2026)
 
-**PARTIELLEMENT PRÊTE.** Le noyau MVP strict (§1) — boucle pilote *capture → bilan → Data Lab*,
+**PARTIELLEMENT PRÊTE.** Le noyau MVP strict (§1) — boucle pilote _capture → bilan → Data Lab_,
 espace coach avec consentement RLS, admin de session — est **implémenté et fidèle à la doctrine**
 (miroir descriptif, vouvoiement, zéro verbe prescriptif vérifié en code, un chiffre/écran,
-EmptyState honnêtes, télémétrie jamais exposée au partenaire par *deny-by-default*).
+EmptyState honnêtes, télémétrie jamais exposée au partenaire par _deny-by-default_).
 
 **Deux bloqueurs P0** (doctrine / sécurité) empêchent la sortie d'alpha, plus **un jalon** dépendant du terrain :
 
-| # | Bloqueur | DoD | Statut |
-|---|---|---|---|
-| **P0-1** | Silence en piste non garanti (handler de notif) | §30.3 / Principe 3 | **FERMÉ** — PR-A (`315ba93`), cf. [pr-09](../../roadmap/rapports/pr-09-coach-graded-access.md) |
-| **P0-2** | Contrat de lecture coach aplati + tests RLS 3/60 | §30.2 / §6 / §23 | **CŒUR FERMÉ** — PR-B (gradué, migration `0014`). Reste P1 : étendre la matrice de tests RLS |
-| **Jalon** | Build preview iOS+Android + test terrain bout-en-bout | §30.8-9 | dépend de Valence (non codable) |
+| #         | Bloqueur                                              | DoD                | Statut                                                                                         |
+| --------- | ----------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------- |
+| **P0-1**  | Silence en piste non garanti (handler de notif)       | §30.3 / Principe 3 | **FERMÉ** — PR-A (`315ba93`), cf. [pr-09](../../roadmap/rapports/pr-09-coach-graded-access.md) |
+| **P0-2**  | Contrat de lecture coach aplati + tests RLS 3/60      | §30.2 / §6 / §23   | **CŒUR FERMÉ** — PR-B (gradué, migration `0014`). Reste P1 : étendre la matrice de tests RLS   |
+| **Jalon** | Build preview iOS+Android + test terrain bout-en-bout | §30.8-9            | dépend de Valence (non codable)                                                                |
 
 > **Réserve transverse** : `telemetry_frames = 0` en prod → toute la profondeur Data Lab tourne en
 > **mode DÉMO** jusqu'à la première capture à Valence. La chaîne complète n'est pas validable avant.
@@ -32,11 +32,12 @@ l'alpha** (P1/P2, cohérent backlog §19).
 
 ## P0 — bloqueurs alpha
 
-### P0-1 · Passerelle « silence en piste » sur le handler de notifications  *(S, zéro schéma)*
+### P0-1 · Passerelle « silence en piste » sur le handler de notifications _(S, zéro schéma)_
+
 - **Existe** : `pushNotificationsService.ts` L34-40 — `setNotificationHandler` renvoie
   `{shouldShowAlert:true, …}` **en dur**. La tab bar est bien masquée en `S6_roulage`
   (`appMap.shouldShowTabBar`), le son est déjà coupé.
-- **Manque** : `handleNotification` **ne consulte jamais l'état pilote**. Un push *remote*
+- **Manque** : `handleNotification` **ne consulte jamais l'état pilote**. Un push _remote_
   (coach/ami) reçu en roulage afficherait une bannière → **violation Principe 3** (non négociable).
   Aucun garde-fou non plus côté programmation locale (le service note L12-14 que c'est « la
   responsabilité de l'appelant », jamais vérifiée).
@@ -44,7 +45,8 @@ l'alpha** (P1/P2, cohérent backlog §19).
   en roulage ; idem garde-fou sur `scheduleSessionReminder/Debrief`. Test « push reçu en S6 ne s'affiche pas ».
   **Aucun accord requis** (bug doctrine). À faire **avant tout test terrain**.
 
-### P0-2 · Contrat de lecture coach gradué + tests RLS par rôle  *(S→M, schéma si gradué — DÉCISION GABIN)*
+### P0-2 · Contrat de lecture coach gradué + tests RLS par rôle _(S→M, schéma si gradué — DÉCISION GABIN)_
+
 - **Existe** : accès **binaire** `coach_pilots.active + pilot_consent_at`, gate `is_coach_of()`
   (`SECURITY DEFINER`) — coupe immédiatement à la révocation (couvre §10.1 cas 1&2). RLS active sur **60/60** tables.
 - **Manque** : `coach_pilots` **n'a pas de colonne `level`** (vérifié `database.types.ts` L1120-1133) ;
@@ -52,8 +54,8 @@ l'alpha** (P1/P2, cohérent backlog §19).
   `is_coach_of()` **sans niveau** (migration `20260525114148` L116-129). Donc **tout coach consenti
   voit TOUTES les frames**, contrairement à §23 (frames seulement si `lecture_detaillee/programme`).
   Et seules **3 tables sur 60** ont un test RLS (`coachSessions`, `coachAnnotations`, `pilotFriendships`).
-- **Décision Gabin requise** : **(a)** conserver le binaire (plus simple, conforme MVP — *documenter + tester*)
-  **ou (b)** ajouter `coach_pilots.level` + policies frames≠sessions différenciées (*migration prod → accord*).
+- **Décision Gabin requise** : **(a)** conserver le binaire (plus simple, conforme MVP — _documenter + tester_)
+  **ou (b)** ajouter `coach_pilots.level` + policies frames≠sessions différenciées (_migration prod → accord_).
 - **Dans les deux cas** : étendre la suite RLS (`src/__tests__/rls/`) aux tables sensibles non couvertes
   (`app_session_analyses`, `telemetry_frames` accès ami, `session_media`, `pilot_goals`, `duels`, `coach_*`),
   matrice rôle-par-rôle incluant « partner ne voit jamais de télémétrie » et « admin pas de lecture sauvage des frames ».
@@ -62,35 +64,35 @@ l'alpha** (P1/P2, cohérent backlog §19).
 
 ## P1 — post-alpha proche (backlog §19)
 
-| Item | Existe déjà | Manque | Effort | Schéma |
-|---|---|---|---|---|
-| **Instrumentation KPI §27** — **FAIT (PR-C)** | `OxvEvent` catalogue + 6 events câblés (`onboarding_termine`, `capture_reussie/echouee`, `bilan_ouvert`, `datalab_couche_ouverte`, `coach_consentement_donne`, `coach_note_envoyee`) | Reste : config `EXPO_PUBLIC_PLAUSIBLE_DOMAIN` (sinon no-op) ; `data_anomaly_rate`/`partner_lead_rate` attendent leurs tables | — | non |
-| **Audit changement de rôle** — **FAIT (PR-A')** | trigger `trg_audit_user_role_change` → `admin_audit` (migration `0015`) | — | — | — |
-| **Admin Qualité Data** — **FAIT (PR-D)** | écran `qualite-data` + `adminQualityService` (détection dérivée) + table `data_quality_reports` (migration `0016`) | Reste : notif admin « Anomalie data » ; `data_anomaly_rate` mesurable une fois des reports créés | — | — |
-| **Tables `devices` + `device_assignments`** — **FAIT (PR-D)** | tables créées + `source_device_id` (migration `0016`) | Reste : écran Équipements (CRUD/affectations) — ébauche, tables prêtes | — | — |
-| **`dataLabService` (orchestrateur)** — **FAIT (PR-E)** | agrégateur `getDataLabSessionView` + `dataLabLogic` (pur, testé) ; `data-lab.tsx` affiche état vide honnête + disponibilité par couche | Reste : workspace unifié (graphes synchronisés sur une même vue) — refinement build | — | non |
-| **File de lecture coach §6.2** — **FAIT (PR-E)** | écran `(coach)/file-lecture` (À lire / déjà lues, dérivé des annotations) + lien hub coach | Reste : filtres anomalie/média, deep-link session, hub « Piste » pilote | — | non |
-| **`coachAccessService`** | contrôle d'accès 100% en RLS | Pas de service `{accessLevel, allowed}` testable au niveau code (couplé à P0-2) | S | non |
+| Item                                                          | Existe déjà                                                                                                                                                                          | Manque                                                                                                                       | Effort | Schéma |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| **Instrumentation KPI §27** — **FAIT (PR-C)**                 | `OxvEvent` catalogue + 6 events câblés (`onboarding_termine`, `capture_reussie/echouee`, `bilan_ouvert`, `datalab_couche_ouverte`, `coach_consentement_donne`, `coach_note_envoyee`) | Reste : config `EXPO_PUBLIC_PLAUSIBLE_DOMAIN` (sinon no-op) ; `data_anomaly_rate`/`partner_lead_rate` attendent leurs tables | —      | non    |
+| **Audit changement de rôle** — **FAIT (PR-A')**               | trigger `trg_audit_user_role_change` → `admin_audit` (migration `0015`)                                                                                                              | —                                                                                                                            | —      | —      |
+| **Admin Qualité Data** — **FAIT (PR-D)**                      | écran `qualite-data` + `adminQualityService` (détection dérivée) + table `data_quality_reports` (migration `0016`)                                                                   | Reste : notif admin « Anomalie data » ; `data_anomaly_rate` mesurable une fois des reports créés                             | —      | —      |
+| **Tables `devices` + `device_assignments`** — **FAIT (PR-D)** | tables créées + `source_device_id` (migration `0016`)                                                                                                                                | Reste : écran Équipements (CRUD/affectations) — ébauche, tables prêtes                                                       | —      | —      |
+| **`dataLabService` (orchestrateur)** — **FAIT (PR-E)**        | agrégateur `getDataLabSessionView` + `dataLabLogic` (pur, testé) ; `data-lab.tsx` affiche état vide honnête + disponibilité par couche                                               | Reste : workspace unifié (graphes synchronisés sur une même vue) — refinement build                                          | —      | non    |
+| **File de lecture coach §6.2** — **FAIT (PR-E)**              | écran `(coach)/file-lecture` (À lire / déjà lues, dérivé des annotations) + lien hub coach                                                                                           | Reste : filtres anomalie/média, deep-link session, hub « Piste » pilote                                                      | —      | non    |
+| **`coachAccessService`**                                      | contrôle d'accès 100% en RLS                                                                                                                                                         | Pas de service `{accessLevel, allowed}` testable au niveau code (couplé à P0-2)                                              | S      | non    |
 
 ---
 
 ## P2 / later — V1.5+
 
 - **`src/navigation/spaces.ts` + maps par rôle** (T02) : multi-espaces déjà via groupes expo-router + role-guards ;
-  manque la couche déclarative `pilotMap/coachMap/adminMap/partnerMap` (artefact spec, pas une réécriture). *(P2)*
+  manque la couche déclarative `pilotMap/coachMap/adminMap/partnerMap` (artefact spec, pas une réécriture). _(P2)_
 - **Passeport OXV + Pass OXV §25** : passeport éclaté (signature/progression/profil) ; **Pass OXV totalement absent**
-  (écran/route/service/QR check-in). *(P2/V1.5, schéma)*
+  (écran/route/service/QR check-in). _(P2/V1.5, schéma)_
 - **Programmes/cycles coach + `developmentCycleService`** : `coach_objectives` existe mais **orpheline** (aucun service) ;
-  pas de cycle à étapes. Risque double source de vérité (`pilot_goals` vs `coach_objectives`). *(P2)*
-- **Demande d'affiliation pilote↔coach + accès borné événement** : affiliation admin-driven ; pas de `valid_from/valid_until`. *(P2, schéma)*
+  pas de cycle à étapes. Risque double source de vérité (`pilot_goals` vs `coach_objectives`). _(P2)_
+- **Demande d'affiliation pilote↔coach + accès borné événement** : affiliation admin-driven ; pas de `valid_from/valid_until`. _(P2, schéma)_
 - **`oxvMomentService` nommé + note vocale coach (`audio_url`) + comparaison tour-vs-tour** : rendu OXV Moment existe
-  (`carte-trophee`) mais service non unifié ; `virage-comparer` compare 2 *sessions* au lieu de 2 *tours*. *(cosmétique/V1.5)*
-- **Modèle économique + portail web partenaire §9/§17** : hors app RN par design (micro-entreprise étape A). *(later, schéma)*
-- **Quiet hours / geofence arrivée / galerie événement / vidéo embarquée synchronisée** : V1.5 explicite « ne pas bloquer V1 ». *(later)*
+  (`carte-trophee`) mais service non unifié ; `virage-comparer` compare 2 _sessions_ au lieu de 2 _tours_. _(cosmétique/V1.5)_
+- **Modèle économique + portail web partenaire §9/§17** : hors app RN par design (micro-entreprise étape A). _(later, schéma)_
+- **Quiet hours / geofence arrivée / galerie événement / vidéo embarquée synchronisée** : V1.5 explicite « ne pas bloquer V1 ». _(later)_
 
 ---
 
-## Le plus gros manque structurel — Espace Partenaire  *(FONDATION FAITE — PR-F1)*
+## Le plus gros manque structurel — Espace Partenaire _(FONDATION FAITE — PR-F1)_
 
 > **PR-F1 livré** (décision Gabin : marketplace complète + dashboard RN, sans encaissement) :
 > tables `partner_accounts`/`partner_offers`/`partner_leads` (migration `0017`, RLS stricte +
@@ -98,7 +100,6 @@ l'alpha** (P1/P2, cohérent backlog §19).
 > **F2/F3/F4 livrés** : offres CRUD partenaire · pilote « demander contact » (lead consenti) · validation
 > admin + supervision leads. **Boucle marketplace complète** (sans encaissement in-app).
 > Détail : [pr-14](../../roadmap/rapports/pr-14-partner-foundation.md) · [pr-15](../../roadmap/rapports/pr-15-partner-offers.md) · [pr-16](../../roadmap/rapports/pr-16-partner-pilot-lead.md) · [pr-17](../../roadmap/rapports/pr-17-partner-admin.md).
-
 
 - **Existe** : enum `user_role` inclut `'partner'` + helper `is_partner()` ; annuaire écosystème fonctionnel
   (`circuit_services` + `ecosystemService` + zone Club + `carte-oxv`) ; règle d'or « partenaire ne voit jamais
@@ -109,7 +110,7 @@ l'alpha** (P1/P2, cohérent backlog §19).
 - **Décisions Gabin requises avant toute table** : (1) revient-on sur « annuaire sans encaissement » (contrainte
   micro-entreprise) ? (2) dashboard partenaire en **app RN** ou en **portail web** (§17) ? (3) réconcilier les **deux
   notions « partner »** (annuaire circuit `circuit_services` vs compte business). Le **seul** morceau réellement P1 est
-  le **consentement RGPD du lead** *si* une offre est exposée ; le reste est P2/later.
+  le **consentement RGPD du lead** _si_ une offre est exposée ; le reste est P2/later.
 
 ---
 
@@ -126,15 +127,15 @@ l'alpha** (P1/P2, cohérent backlog §19).
 
 ## Séquence de PR recommandée
 
-| PR | Scope | P | Schéma | Accord |
-|---|---|---|---|---|
-| **PR-A** | Passerelle silence en piste (handler + garde-fous locaux + test) | P0 | non | **non** |
-| **PR-B** | Décision modèle coach + tests RLS rôle-par-rôle (matrice 60 tables sensibles) | P0 | si gradué | **oui** |
-| **PR-C** | Instrumentation KPI §27 (events aux moments clés, opt-out respecté) | P1 | non | non |
-| **PR-A'** | Trigger `admin_audit` sur changement de rôle (cas §10.1.4, modèle existant) | P1 | oui (trigger) | oui |
-| **PR-D** | Admin Qualité Data + `devices`/`device_assignments` (4 tables) | P1 | **oui** | **oui** |
-| **PR-E** | `dataLabService` (agrégateur) + file de lecture coach | P1 | non | non |
-| **PR-F** | Espace Partenaire (selon décisions produit) | P1/P2 | **oui** | **oui** |
+| PR        | Scope                                                                         | P     | Schéma        | Accord  |
+| --------- | ----------------------------------------------------------------------------- | ----- | ------------- | ------- |
+| **PR-A**  | Passerelle silence en piste (handler + garde-fous locaux + test)              | P0    | non           | **non** |
+| **PR-B**  | Décision modèle coach + tests RLS rôle-par-rôle (matrice 60 tables sensibles) | P0    | si gradué     | **oui** |
+| **PR-C**  | Instrumentation KPI §27 (events aux moments clés, opt-out respecté)           | P1    | non           | non     |
+| **PR-A'** | Trigger `admin_audit` sur changement de rôle (cas §10.1.4, modèle existant)   | P1    | oui (trigger) | oui     |
+| **PR-D**  | Admin Qualité Data + `devices`/`device_assignments` (4 tables)                | P1    | **oui**       | **oui** |
+| **PR-E**  | `dataLabService` (agrégateur) + file de lecture coach                         | P1    | non           | non     |
+| **PR-F**  | Espace Partenaire (selon décisions produit)                                   | P1/P2 | **oui**       | **oui** |
 
 > Méthode projet respectée : 1 PR = 1 scope validé, schéma uniquement avec accord, doctrine en garde-fou.
 > Seuls **PR-A** et **PR-B** sont des bloqueurs alpha réels ; le reste est post-alpha cohérent avec §19.

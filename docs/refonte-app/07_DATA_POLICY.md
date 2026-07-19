@@ -30,16 +30,16 @@ Source unique en V1 : le boîtier **RaceBox Mini** via BLE, parsé localement (`
 
 Échantillon haute fréquence (~5–25 Hz selon config RaceBox). Colonnes réelles (cf. `database.types.ts` L4202 et `05_SCHEMA §telemetry_frames`) :
 
-| Donnée | Colonne(s) | Nature |
-|---|---|---|
-| Position GPS | `latitude`, `longitude`, `altitude_m` | trajectoire absolue |
-| Vitesse | `speed_kmh`, `speed_ms` | instantanée |
-| Accélérations (G) | `g_force_x`, `g_force_y`, `g_force_z` | latéral / longitudinal / vertical |
-| Rotation (gyro) | `rotation_x/y/z` | inertiel |
-| Cap | `heading`, `heading_accuracy` | orientation |
-| Temps | `elapsed_ms`, `itow_ms` | horloge relative + GPS Time-Of-Week |
-| Qualité GPS | `gps_fix`, `fix_valid`, `gps_accuracy_m`, `satellites`, `pdop`, `speed_accuracy` | fiabilité du point |
-| Équipement | `battery_level` | état du boîtier au moment de la trame |
+| Donnée            | Colonne(s)                                                                       | Nature                                |
+| ----------------- | -------------------------------------------------------------------------------- | ------------------------------------- |
+| Position GPS      | `latitude`, `longitude`, `altitude_m`                                            | trajectoire absolue                   |
+| Vitesse           | `speed_kmh`, `speed_ms`                                                          | instantanée                           |
+| Accélérations (G) | `g_force_x`, `g_force_y`, `g_force_z`                                            | latéral / longitudinal / vertical     |
+| Rotation (gyro)   | `rotation_x/y/z`                                                                 | inertiel                              |
+| Cap               | `heading`, `heading_accuracy`                                                    | orientation                           |
+| Temps             | `elapsed_ms`, `itow_ms`                                                          | horloge relative + GPS Time-Of-Week   |
+| Qualité GPS       | `gps_fix`, `fix_valid`, `gps_accuracy_m`, `satellites`, `pdop`, `speed_accuracy` | fiabilité du point                    |
+| Équipement        | `battery_level`                                                                  | état du boîtier au moment de la trame |
 
 La trame brute n'est **jamais** affichée telle quelle au pilote. Elle est la matière première de l'analyse (`fetchSamplesFromFrames`, `analyzeSessionService.ts` L334). La fonction de purge `cleanup_old_telemetry_frames` existe déjà côté base — la rétention des trames brutes est donc déjà un sujet traité côté infra.
 
@@ -47,15 +47,15 @@ La trame brute n'est **jamais** affichée telle quelle au pilote. Elle est la ma
 
 Agrégats dérivés par le pipeline, lisibles par le pilote :
 
-| Donnée | Table.colonne | Sert |
-|---|---|---|
-| Vitesse max / moyenne session | `telemetry_sessions.max_speed_kmh`, `avg_speed_kmh` | Bilan, stats globales |
-| G max latéral / longitudinal | `telemetry_sessions.max_g_lateral`, `max_g_longitudinal` | Bilan, évolution |
-| Meilleur tour | `telemetry_sessions.best_lap_seconds` | Bilan, comparateur perso |
-| Tours valides | `telemetry_sessions.n_valid_laps`, `lap_count` | comptage |
-| Distance / durée | `distance_km`, `duration_seconds` | stats globales |
-| Tour par tour | `laps.*` (`lap_number`, `duration_seconds`, `avg_speed_kmh`, `max_speed_kmh`, `is_outlap`, `is_inlap`) | vue Tours, échantillons vitesse (`fetchSpeedSamples`) |
-| Météo session | `weather_snapshots` (existe) | contexte du Bilan |
+| Donnée                        | Table.colonne                                                                                          | Sert                                                  |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
+| Vitesse max / moyenne session | `telemetry_sessions.max_speed_kmh`, `avg_speed_kmh`                                                    | Bilan, stats globales                                 |
+| G max latéral / longitudinal  | `telemetry_sessions.max_g_lateral`, `max_g_longitudinal`                                               | Bilan, évolution                                      |
+| Meilleur tour                 | `telemetry_sessions.best_lap_seconds`                                                                  | Bilan, comparateur perso                              |
+| Tours valides                 | `telemetry_sessions.n_valid_laps`, `lap_count`                                                         | comptage                                              |
+| Distance / durée              | `distance_km`, `duration_seconds`                                                                      | stats globales                                        |
+| Tour par tour                 | `laps.*` (`lap_number`, `duration_seconds`, `avg_speed_kmh`, `max_speed_kmh`, `is_outlap`, `is_inlap`) | vue Tours, échantillons vitesse (`fetchSpeedSamples`) |
+| Météo session                 | `weather_snapshots` (existe)                                                                           | contexte du Bilan                                     |
 
 Concepts capturés mais **dérivés**, pas stockés en colonne dédiée : **virages** (segmentation calculée, cf. §2), **moments marqués** (un marquage volontaire du pilote — fonctionnalité de marquage à câbler, table dédiée **nécessite accord**).
 
@@ -69,13 +69,13 @@ Calculées après session par le pipeline `analyzeAndPersistSession` (`analyzeSe
 
 Produit par `analyzeTrackVizSession()`, persisté par `upsertSegmentAnalyses` (max ~14 segments/session, `algo_version = trackviz-v1.0`). Champs (cf. `segmentAnalysesService.ts` L18) :
 
-| Famille | Champs |
-|---|---|
-| Identité segment | `segment_index`, `segment_name`, `kind`, `start_progress`, `end_progress`, `sample_count`, `duration_seconds` |
-| Vitesses par virage | `entry_speed_kmh`, `apex_speed_kmh`, `exit_speed_kmh`, `min_speed_kmh`, `max_speed_kmh`, `avg_speed_kmh` |
-| Sollicitations estimées | `max_g_lateral`, `max_g_braking` (freinage estimé), `max_g_accel` (accélération estimée) |
-| Dispersion trajectoire | `avg_lateral_error_m`, `max_lateral_error_m` (écart à la trajectoire de référence) |
-| Lecture | `margin_percent`, `margin_zone` (`green` / `yellow` / `red`) |
+| Famille                 | Champs                                                                                                        |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Identité segment        | `segment_index`, `segment_name`, `kind`, `start_progress`, `end_progress`, `sample_count`, `duration_seconds` |
+| Vitesses par virage     | `entry_speed_kmh`, `apex_speed_kmh`, `exit_speed_kmh`, `min_speed_kmh`, `max_speed_kmh`, `avg_speed_kmh`      |
+| Sollicitations estimées | `max_g_lateral`, `max_g_braking` (freinage estimé), `max_g_accel` (accélération estimée)                      |
+| Dispersion trajectoire  | `avg_lateral_error_m`, `max_lateral_error_m` (écart à la trajectoire de référence)                            |
+| Lecture                 | `margin_percent`, `margin_zone` (`green` / `yellow` / `red`)                                                  |
 
 `aggregateSegmentStats()` agrège par virage la marge moyenne et la **distribution de zones** sur plusieurs sessions — usage pilote (soi vs soi) ou admin (`userId` omis → tous pilotes, réservé admin).
 
@@ -89,12 +89,12 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 
 ### 2.4 Lexique de précision (à employer partout)
 
-| Calcul | Statut | Mot juste |
-|---|---|---|
-| Freinage / accélération (`max_g_braking`, `max_g_accel`) | **estimé** depuis l'IMU | « freinage estimé », jamais « freinage mesuré » |
-| Dispersion trajectoire (`*_lateral_error_m`) | écart à une **référence dérivée** | « dispersion », « régularité de trajectoire » |
-| Marge (`margin_percent`) | indice composite | « marge », jamais « note », jamais « score de pilotage » |
-| Zone (`margin_zone`) | seuil sur la marge | « à observer » (yellow/red côté pilote), « à conserver » (green) |
+| Calcul                                                   | Statut                            | Mot juste                                                        |
+| -------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------- |
+| Freinage / accélération (`max_g_braking`, `max_g_accel`) | **estimé** depuis l'IMU           | « freinage estimé », jamais « freinage mesuré »                  |
+| Dispersion trajectoire (`*_lateral_error_m`)             | écart à une **référence dérivée** | « dispersion », « régularité de trajectoire »                    |
+| Marge (`margin_percent`)                                 | indice composite                  | « marge », jamais « note », jamais « score de pilotage »         |
+| Zone (`margin_zone`)                                     | seuil sur la marge                | « à observer » (yellow/red côté pilote), « à conserver » (green) |
 
 ---
 
@@ -105,6 +105,7 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 **Quoi.** Sa propre session, entière et détaillée. Le pilote est le seul à voir **toute** sa donnée brute lisible (Data Lab) et toutes ses analyses.
 
 **Comment.**
+
 - **Un seul chiffre dominant** par écran (la marge globale au Bilan ; au Data Lab, le chiffre central est celui de la sous-vue ouverte).
 - **Divulgation progressive** : retenir → où regarder → pourquoi → détails techniques sur demande (`01 §Bilan`). Les sous-vues (Carte, Virages, Tours, Heatmap, Insights, Replay, Telemetry brute) sont **rangées** sous Data Lab, jamais en entrées parallèles (cf. `02_AUDIT_ROUTES`).
 - **Formulation neutre, zéro conseil.** Deux constats max : « une zone à observer » / « une zone à conserver ». Questions ouvertes (« était-ce volontaire ? »). La **seule** zone prescriptive de l'écran est la bande coach (rouge), si et seulement si un coach affilié a annoté (§4).
@@ -125,6 +126,7 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 **Quoi (selon le niveau accordé).** Lecture des analyses du pilote (marge globale, segments, tours), pour annoter. L'**annotation coach** s'appuie sur la table **`coach_annotations` qui EXISTE déjà** (cf. `17 §0`) et produit le contenu de la **bande coach** rouge du Bilan pilote. Reste à faire = l'**overlay UI** des notes sur la data (pas la table) ; toute extension de `coach_annotations` **nécessite accord**.
 
 **Limites doctrinales propres au coach.**
+
 - La bande coach est le **seul** espace où une formulation peut orienter — et même là, on privilégie la **question ouverte** (`04_DESIGN_CANON §Bande coach` : citation Instrument Serif, eyebrow « DE VOTRE COACH »).
 - **Pas de coaching live.** Aucune donnée n'est poussée au coach pendant que le pilote roule.
 - Le coach ne voit **aucun** pilote hors de son périmètre affilié — pas de vue « tous les pilotes du circuit ».
@@ -153,35 +155,35 @@ Calculées **côté serveur** uniquement (edge function `compute-session-insight
 
 ## 7. Limites doctrinales (récapitulatif opposable)
 
-| # | Limite | Conséquence concrète |
-|---|---|---|
-| 1 | Pas de donnée en piste | Aucun rendu pendant `roulage` ; analyse et affichage **après** seulement |
-| 2 | L'estimation reste estimation | `max_g_braking`/`max_g_accel` = « freinage/accélération **estimé** » ; `margin_percent` = lecture, pas verdict |
-| 3 | Pas de note de performance | `margin_percent` n'est jamais présenté comme un score ; pas de note /20, pas d'étoiles |
-| 4 | Pas de classement | Aucun leaderboard ; comparaison uniquement **soi vs soi** ou **consentie** entre amis |
-| 5 | Zéro prescriptif côté pilote | Sous-vues Data Lab et Bilan : « à observer », « était-ce volontaire ? » — jamais « corrigez/freinez/erreur » |
-| 6 | Coach borné | Lecture **selon consentement**, **affiliés seulement**, pas de live, bande coach = seul espace orientant |
-| 7 | Partenaire aveugle à l'individuel | Uniquement stats anonymisées agrégées |
-| 8 | Couleur sémantique | Or = donnée · rouge = coach/REC · `green/yellow/red` = « à conserver / à observer », pas « bien / mal » |
-| 9 | Schéma sous accord | Toute table nouvelle (consentement coach, notes coach, équipements, partenaire, marquage de moments) est **à soumettre à Gabin** |
+| #   | Limite                            | Conséquence concrète                                                                                                             |
+| --- | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Pas de donnée en piste            | Aucun rendu pendant `roulage` ; analyse et affichage **après** seulement                                                         |
+| 2   | L'estimation reste estimation     | `max_g_braking`/`max_g_accel` = « freinage/accélération **estimé** » ; `margin_percent` = lecture, pas verdict                   |
+| 3   | Pas de note de performance        | `margin_percent` n'est jamais présenté comme un score ; pas de note /20, pas d'étoiles                                           |
+| 4   | Pas de classement                 | Aucun leaderboard ; comparaison uniquement **soi vs soi** ou **consentie** entre amis                                            |
+| 5   | Zéro prescriptif côté pilote      | Sous-vues Data Lab et Bilan : « à observer », « était-ce volontaire ? » — jamais « corrigez/freinez/erreur »                     |
+| 6   | Coach borné                       | Lecture **selon consentement**, **affiliés seulement**, pas de live, bande coach = seul espace orientant                         |
+| 7   | Partenaire aveugle à l'individuel | Uniquement stats anonymisées agrégées                                                                                            |
+| 8   | Couleur sémantique                | Or = donnée · rouge = coach/REC · `green/yellow/red` = « à conserver / à observer », pas « bien / mal »                          |
+| 9   | Schéma sous accord                | Toute table nouvelle (consentement coach, notes coach, équipements, partenaire, marquage de moments) est **à soumettre à Gabin** |
 
 ---
 
 ## 8. Tables — état réel et ce qui reste à arbitrer
 
-| Table | Statut | Rôle |
-|---|---|---|
-| `telemetry_frames` | **existe** | trame brute haute fréquence (non affichée brute au pilote) |
-| `telemetry_sessions` | **existe** | session agrégée |
-| `laps` | **existe** | tour par tour |
-| `weather_snapshots` | **existe** | contexte météo session |
-| `app_segment_analyses` | **existe** | analyse par virage (vitesses, G estimés, dispersion, marge/zone) |
-| `app_session_analyses` | **existe** | marge globale + debrief J+1 |
-| `session_insights` | **existe** | lectures qualitatives (écriture serveur seule) |
-| Affiliation + consentement coach↔pilote (binaire) | **existe** (`coach_pilots` + `pilot_consent_at`) | seuls les **niveaux** granulaires du §4 nécessitent accord |
-| Table d'annotations coach | **existe** (`coach_annotations`) | reste : l'overlay UI ; toute extension nécessite accord |
-| Registre équipements RaceBox | **nécessite accord** | suivi état boîtiers (§5) |
-| Marquage de « moments » par le pilote | **nécessite accord** | §1.2 |
-| Schéma partenaire (stats agrégées) | **nécessite accord** | §6 |
+| Table                                             | Statut                                           | Rôle                                                             |
+| ------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------- |
+| `telemetry_frames`                                | **existe**                                       | trame brute haute fréquence (non affichée brute au pilote)       |
+| `telemetry_sessions`                              | **existe**                                       | session agrégée                                                  |
+| `laps`                                            | **existe**                                       | tour par tour                                                    |
+| `weather_snapshots`                               | **existe**                                       | contexte météo session                                           |
+| `app_segment_analyses`                            | **existe**                                       | analyse par virage (vitesses, G estimés, dispersion, marge/zone) |
+| `app_session_analyses`                            | **existe**                                       | marge globale + debrief J+1                                      |
+| `session_insights`                                | **existe**                                       | lectures qualitatives (écriture serveur seule)                   |
+| Affiliation + consentement coach↔pilote (binaire) | **existe** (`coach_pilots` + `pilot_consent_at`) | seuls les **niveaux** granulaires du §4 nécessitent accord       |
+| Table d'annotations coach                         | **existe** (`coach_annotations`)                 | reste : l'overlay UI ; toute extension nécessite accord          |
+| Registre équipements RaceBox                      | **nécessite accord**                             | suivi état boîtiers (§5)                                         |
+| Marquage de « moments » par le pilote             | **nécessite accord**                             | §1.2                                                             |
+| Schéma partenaire (stats agrégées)                | **nécessite accord**                             | §6                                                               |
 
 Les droits ligne-à-ligne (RLS) qui matérialisent les §3–6 sont spécifiés dans `05_ROLES_PERMISSIONS.md` ; les RLS déjà en place sont dans `docs/architecture/06_RLS_POLICIES_ACTUELLES.sql`. **Aucune** policy ni migration n'est créée sans accord explicite de Gabin.

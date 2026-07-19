@@ -5,6 +5,7 @@
 > et `07_social_rgpd.md`.
 >
 > ⚠️ État réel vérifié en base (`fouvuqkdxarjpjbqnsjq`) :
+>
 > - `circuits` : **3 lignes** — dont « Circuit de Haute-Saintonge Jean-Pierre
 >   Beltoise », La Genétouze (17), 2,20 km, **7 virages**. C'EST le tracé OSM validé.
 > - `circuit_services` : **vide** (schéma riche déjà en place).
@@ -16,6 +17,7 @@
 ## 1. PÉRIMÈTRE (décision fondateur)
 
 Carte version 1 = **les deux niveaux** + **création de tracé par l'utilisateur**.
+
 - Niveau 1 — CIRCUITS comme ancres : explorer les circuits (dont Haute Saintonge).
 - Niveau 2 — LIEUX & ÉVÉNEMENTS posés autour : hébergements, restaurants,
   partenaires, événements ponctuels.
@@ -30,12 +32,12 @@ restaurants), pas tout entassé dans `circuit_services`.
 
 ## 2. ARCHITECTURE — quatre briques, dont deux existent déjà
 
-| Brique | Table | État | Rôle sur la carte |
-|--------|-------|------|-------------------|
-| Circuits (ancres) | `circuits` | existe, 3 lignes | points d'ancrage + géométrie 3D |
-| Services circuit | `circuit_services` | existe, vide | services liés au circuit (paddock, écurie…) |
-| Lieux dédiés | `partners` / `lodgings` / `restaurants` | **à créer** | hébergements, restos, partenaires |
-| Événements | `social_pings` | existe, vide | événements ponctuels datés (lat/lon) |
+| Brique            | Table                                   | État             | Rôle sur la carte                           |
+| ----------------- | --------------------------------------- | ---------------- | ------------------------------------------- |
+| Circuits (ancres) | `circuits`                              | existe, 3 lignes | points d'ancrage + géométrie 3D             |
+| Services circuit  | `circuit_services`                      | existe, vide     | services liés au circuit (paddock, écurie…) |
+| Lieux dédiés      | `partners` / `lodgings` / `restaurants` | **à créer**      | hébergements, restos, partenaires           |
+| Événements        | `social_pings`                          | existe, vide     | événements ponctuels datés (lat/lon)        |
 
 > `social_pings` trouve ENFIN sa place ici (renvoyé depuis la fiche social 07) :
 > c'est de la donnée de lieu/événement, pas du social entre pilotes.
@@ -47,13 +49,14 @@ restaurants), pas tout entassé dans `circuit_services`.
 Le générateur `circuit-generator.mjs` (déjà livré, testé) EST le moteur de cette
 fonctionnalité. Trois entrées possibles vers la même chaîne :
 
-| Entrée | Comment | Sortie |
-|--------|---------|--------|
-| **Import OSM** | l'utilisateur saisit/sélectionne un way OpenStreetMap | `fetchOsmWay()` → `generateCircuit()` |
-| **Tracé manuel** | l'utilisateur place des points sur la carte | tableau {lat,lon} → `generateCircuit()` |
-| **Depuis une session** | à partir du GPS d'une session roulée | frames → `generateCircuit()` |
+| Entrée                 | Comment                                               | Sortie                                  |
+| ---------------------- | ----------------------------------------------------- | --------------------------------------- |
+| **Import OSM**         | l'utilisateur saisit/sélectionne un way OpenStreetMap | `fetchOsmWay()` → `generateCircuit()`   |
+| **Tracé manuel**       | l'utilisateur place des points sur la carte           | tableau {lat,lon} → `generateCircuit()` |
+| **Depuis une session** | à partir du GPS d'une session roulée                  | frames → `generateCircuit()`            |
 
 **Ce que la chaîne produit** (à écrire dans `circuits`) :
+
 - `track_svg_path` ← tracé débruité (centerline projetée en chemin SVG)
 - `turns_count` ← nombre de virages détectés (courbure)
 - `bbox_min/max_lat/lon` ← cadre du tracé
@@ -63,6 +66,7 @@ fonctionnalité. Trois entrées possibles vers la même chaîne :
 > Attribution OBLIGATOIRE si source OSM : « © contributeurs OpenStreetMap ».
 
 ### ⚠️ Arbitrage à trancher (cf. §6)
+
 `circuits` distingue déjà `is_official` / `is_default` / `user_id`. Un tracé créé par
 un utilisateur est-il **privé** (visible de lui seul) ou **partageable / promouvable**
 en circuit officiel par OXV ? À décider AVANT de coder la visibilité.
@@ -139,6 +143,7 @@ create table public.restaurants (
 ## 5. ÉCRANS DE LA CARTE (sous-fiches)
 
 ### 5.1 — Carte principale
+
 - Rôle : vue d'ensemble. Circuits en ancres ; lieux & événements en marqueurs typés.
 - Données : `circuits`, `partners`, `lodgings`, `restaurants`, `social_pings`
   (filtrés `is_published = true`).
@@ -146,6 +151,7 @@ create table public.restaurants (
 - Filtres : par type de lieu, par proximité d'un circuit.
 
 ### 5.2 — Fiche circuit
+
 - Rôle : détail d'un circuit + ses lieux autour + son tracé 3D.
 - Données : `circuits` + lieux rattachés (`circuit_id`) + `circuit_services`.
 - Tracé : **tracé 3D** via `<CircuitTrace>` (cf. fiche 05). Sur Haute Saintonge, les
@@ -153,12 +159,14 @@ create table public.restaurants (
 - Liaison : depuis une session, « voir le circuit » ouvre cette fiche.
 
 ### 5.3 — Créer un tracé (le point innovant)
+
 - Rôle : l'utilisateur définit son circuit (import OSM / tracé manuel / depuis session).
 - Données : écriture dans `circuits` (cf. §3) via le générateur.
 - Tracé : prévisualisation 3D immédiate du résultat avant enregistrement.
 - Garde : `is_official=false`, scope à définir (§3 / §6).
 
 ### 5.4 — Fiche lieu
+
 - Rôle : détail d'un hébergement / resto / partenaire.
 - Données : la table dédiée correspondante.
 - Visuel : `is_premium` met en avant (liseré — PAS l'or Heritage `#C4A459`,

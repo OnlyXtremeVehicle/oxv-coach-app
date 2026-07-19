@@ -3,6 +3,7 @@
 > **STATUT : ✅ VALIDÉ + APPLIQUÉ (2026-07-12).** Gabin a validé les deux actions
 > (« je valide tous et conformité »). Les deux migrations sont appliquées en prod
 > et mirrorées dans `supabase/migrations/` :
+>
 > - `20260712090000_harden_next_coach_invoice_number_authz.sql`
 > - `20260712090500_coach_invoices_buyer_name_snapshot.sql`
 >

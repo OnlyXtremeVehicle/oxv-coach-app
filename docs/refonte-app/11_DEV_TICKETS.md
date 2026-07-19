@@ -32,12 +32,14 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Centraliser le mapping route → zone (Paddock · Session · Bilan · Progression · Club · Compte) pour que la nav, le Paddock contextuel et le futur Data Lab lisent la même table.
 
 **Fichiers concernés**
+
 - `src/lib/appMap.ts` _(net-neuf)_ — exporte `type Zone`, `ROUTE_TO_ZONE`, `TAB_ORDER`, helpers `zoneOfRoute(path)`, `dataLabScreens()`.
 - Aucun écran modifié dans ce ticket : `appMap.ts` est consommé en A2.
 
 **Données** — aucune. Pur mapping statique, dérivé de `02_AUDIT_ROUTES.md` (colonnes « Zone cible »).
 
 **Critères d'acceptation**
+
 - `TAB_ORDER` = `['paddock','session','bilan','progression','club']` exactement, dans cet ordre.
 - Chaque route réelle de `app/(app)/*` listée dans `02_AUDIT_ROUTES.md` a une entrée dans `ROUTE_TO_ZONE` (test : aucune route orpheline).
 - `compte` n'est PAS dans `TAB_ORDER` (icône haut-droite, pas un onglet).
@@ -53,6 +55,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Remplacer le `Stack` actuel de `app/(app)/_layout.tsx` par une navigation 5 onglets conforme à la décision verrouillée, sans casser les routes existantes.
 
 **Fichiers concernés**
+
 - `app/(app)/_layout.tsx` — aujourd'hui un `Stack` (redirect auth + `animation: 'fade'`). À convertir en `Tabs` Expo Router OU `Stack` + barre custom persistante. Conserver la garde `status === 'unauthenticated' → Redirect /(auth)/login`.
 - `src/components/AppTabBar.tsx` _(net-neuf)_ — barre custom (le canon impose des specs précises non couvertes par la tab bar par défaut).
 - `app/(app)/index.tsx` → écran de l'onglet **Paddock** (déjà le hub d'accueil, cf. A3).
@@ -61,6 +64,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Données** — `useAppStateStore` (état `S5_approche`/`S6_roulage` masque la tab bar, cf. A6/B-session). `useAuthStore` pour la garde.
 
 **Critères d'acceptation**
+
 - Tab bar : hauteur 88, fond `rgba(5,5,5,0.9)` flouté, border-top `#1C1C20`, 5 items icône 21 stroke 1.65 + label Geist Mono 8.5 ls 0.05em (`04_DESIGN_CANON §4`).
 - Actif `#F8F9FA`, inactif `#54545C`. **Aucune trace d'or sur la nav** (grep `#FFB703` dans `AppTabBar.tsx` → 0 résultat).
 - Compte = icône en haut à droite (via `SpaceSwitcher`/header), jamais un 6e onglet.
@@ -79,16 +83,19 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Un seul Paddock qui montre « ce qui compte maintenant » selon l'état pilote, avec une action principale contextuelle.
 
 **Fichiers concernés**
+
 - `app/(app)/index.tsx` — déjà 3 modes (`enroute` / `countdown` / `passive`) câblés sur `useAppStateStore`. À aligner sur les 6 états produit de `01_ORGANISATION_PRODUIT` (aucune session / session prévue / arrivée circuit / en piste / après roulage / hors événement).
 - `app/(app)/paddock.tsx` — **doublon** à fusionner dans `index.tsx` (cf. `02_AUDIT_ROUTES` : « un seul Paddock »). Ne pas supprimer le fichier en PR 2 ; le rediriger vers `index` puis dédupliquer en PR de migration (`10_PLAN_MIGRATION.md`).
 - `src/components/SpaceSwitcher.tsx` — conservé (bascule espaces).
 
 **Données**
+
 - `useAppStateStore` (`state: PilotState` S1..S10, dérivé par `determineState()`).
 - `regularityService.computeRegularity` + `sessionsService.fetchSessionLaps` (chiffre héros actuel = régularité au tour, fait factuel — déjà en place).
 - Dernier bilan : `analysesService` / `sessionsService.fetchPreviousSessions`.
 
 **Critères d'acceptation**
+
 - Un seul chiffre dominant à l'écran (régularité au tour en Geist Mono ; PAS la marge globale — réservée au Bilan).
 - Action principale dérivée de l'état (`01_ORGANISATION_PRODUIT`) : avant → « Préparer ma session » · arrivée → « Connecter l'équipement » · après roulage → « Découvrir mon bilan » · hors événement → « Voir ma progression ». Max 2–3 raccourcis.
 - En `S6_roulage` : aucun contenu utile, aucune notif, aucun son (renvoi à l'état « en piste », cf. B-session).
@@ -106,17 +113,20 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Le Bilan est la première chose vue après une session : un chiffre dominant, une phrase miroir, 2 constats, une bande coach — et le détail seulement au toucher.
 
 **Fichiers concernés**
+
 - `app/(app)/bilan.tsx` — existe (charge la session cible, calcule/persiste l'analyse, affiche gauge + cards). À recadrer sur l'ordre de révélation `01_ORGANISATION_PRODUIT` : **retenir → où regarder → pourquoi → détails sur demande**.
 - `src/components/instruments` (`GaugeInstrument`, `CoachBand`, `MeterBar`, `EmptyState`) — réutilisés tels quels.
 - `src/components/InsightTransparency` (`DataQualityBanner`, `ProvenanceLine`, `SourceMethodBlock`, `BlindspotsBlock`) — conservés (charte transparence).
 
 **Données**
+
 - `analysesService.getAnalysisForSession` / `upsertAnalysis`.
 - `marginCalculator.computeMargin` (marge globale = LE chiffre dominant du Bilan).
 - `regularityService.computeRegularity`, `sessionsService.fetchSessionLaps`/`fetchPreviousSessions`.
 - Couche coach : `coachCurationService.listHighlightsForMe`, `coachReadingService`, `coachContextLogic.buildContextRows`, `coachSessionContextService.getSessionContext`.
 
 **Critères d'acceptation**
+
 - Un seul chiffre dominant : la marge globale via `GaugeInstrument` (arc 270°, or `#FFB703`, taille ≈ 226–230 — `04_DESIGN_CANON §3`).
 - Exactement 2 constats factuels max en surface : puce or « à observer » / puce verte « à conserver » (`04_DESIGN_CANON §4` Fact).
 - Bande coach = SEUL espace prescriptif, en rouge (`#C8102E`, bordure `#5A1A22`), citation en Instrument Serif, question ouverte. Si pas de coach affilié → absente, pas de placeholder rouge.
@@ -135,6 +145,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Regrouper les écrans d'analyse détaillée existants sous une seule porte « lecture détaillée », sans réécrire les écrans.
 
 **Fichiers concernés**
+
 - `app/(app)/data-lab.tsx` _(net-neuf)_ — hub d'assemblage. Liste de lignes (`04_DESIGN_CANON §4` Ligne de liste) vers les écrans RANGÉS, lues depuis `appMap.dataLabScreens()` (A1).
 - Écrans RANGÉS **réutilisés tels quels** (existent déjà) : `carte.tsx`, `virage.tsx`, `virage-comparer.tsx`, `tours.tsx`, `heatmap.tsx`, `replay.tsx`, `telemetry.tsx`, `insights.tsx`, `insight/[reading].tsx`.
 - `app/(app)/bilan.tsx` — un point d'entrée « Data Lab » remplace les 4 cards éparses.
@@ -142,6 +153,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Données** — aucune donnée nouvelle ; chaque écran cible garde ses propres services (`segmentAnalysesService`, `brakingPointsService`, `cornerDeepDiveService`, `sessionTelemetryService`, `sessionInsightsService`…).
 
 **Critères d'acceptation**
+
 - Le Data Lab n'introduit **aucune** logique d'analyse propre : c'est un index de navigation.
 - Chaque ligne ouvre l'écran existant avec le `sessionId` courant en paramètre (continuité de session).
 - Réplique simple V1 (`03_MVP_SCOPE` : « Data Lab simple — carte + tours + couches » en V1 ; replay avancé en V1.5).
@@ -157,15 +169,18 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Lecture seule d'un virage : carte zoomée, vitesses, forces vécues, écart au tracé, question ouverte. Le pilote pro lit les chiffres, le particulier lit les formes.
 
 **Fichiers concernés**
+
 - `app/(app)/virage.tsx` — existe (écran #15) : `CircuitMap` + couches (`CornersLayer`, `TrackLayer`, `TrajectoryLayer`, `getCornerViewBox`), `GForceBars`, navigation virage précédent/suivant (`nextCornerIndex`/`previousCornerIndex` de `circuitTopology`).
 - `app/(app)/virage-comparer.tsx` — existe : comparaison du virage avec une 2e session (picker).
 
 **Données**
+
 - `cornerDeepDiveService.loadCornerDeepDive` (`CornerDeepDive`, `CornerTrajectoryPoint`).
 - `circuitTopology.getCorner` / `nextCornerIndex` / `previousCornerIndex`.
 - `coachAnnotationsService.listVisibleAnnotationsForCorner` (couche coach sur le virage).
 
 **Critères d'acceptation**
+
 - Lecture seule stricte : la vue décrit (vitesses entrée/min/apex/sortie, delta, G latéral/freinage/accélération, écart latéral moyen/max), elle ne juge pas.
 - Question ouverte de clôture en registre miroir (« Était-ce volontaire ? »), pas de consigne.
 - Annotations coach affichées en rouge (`#C8102E`) et distinctes de la donnée (or). Aucune annotation coach rendue en or.
@@ -183,17 +198,20 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Un parcours rassurant et prévisible : Équipement → Placement → Capture → Retour stands → Bilan prêt.
 
 **Fichiers concernés** (tous existent, réutilisés)
+
 - `app/(app)/equipement.tsx` (étape 1, appairage BLE) · `placement.tsx` (étape 2) · `roulage.tsx` (état en piste) · `entre-runs.tsx` (inter-runs) · `pilotage-fini.tsx` (retour stands) · `bilan-pret.tsx` (transition Bilan).
 - `app/(app)/session/index.tsx` _(net-neuf, du Lot A)_ — hub de l'onglet Session qui oriente vers l'étape courante selon l'état.
 
 **Données**
+
 - `useAppStateStore` (`activeRecording: RecordingState`, `setActiveRecording`, `position`, `recompute()`).
 - `src/ble/bluetoothService.ts` (appairage / flux) — réutilisé tel quel.
 - `captureSessionService`, `captureFrameMapping`, `sessionTelemetryService`, `telemetryStorage`, `offlineQueue`.
 
 **Critères d'acceptation**
+
 - L'onglet Session ouvre toujours l'étape correspondant à l'état courant (`equipement` en `S5_approche`, etc.) — pas un menu.
-- Erreurs BLE : chaque message répond à *que s'est-il passé ? / qu'est-ce qui est préservé ? / que puis-je faire maintenant ?* (`01_ORGANISATION_PRODUIT` Session). Aucun jargon brut non traduit.
+- Erreurs BLE : chaque message répond à _que s'est-il passé ? / qu'est-ce qui est préservé ? / que puis-je faire maintenant ?_ (`01_ORGANISATION_PRODUIT` Session). Aucun jargon brut non traduit.
 - Offline : la capture se met en file via `offlineQueue` ; aucune perte silencieuse.
 - Vouvoiement, aucun emoji, aucun verbe prescriptif.
 
@@ -206,6 +224,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Pendant le roulage, l'app s'efface totalement : aucun écran utile, aucune notif, aucun son.
 
 **Fichiers concernés**
+
 - `app/(app)/roulage.tsx` — écran d'état « en piste ».
 - `app/(app)/_layout.tsx` + `src/components/AppTabBar.tsx` (Lot A) — masquage de la tab bar.
 - `app/(app)/index.tsx` — mode `enroute` déjà présent (« Coupez l'app. Je conduis. ») à aligner sur le canon.
@@ -213,6 +232,7 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Données** — `useAppStateStore` (`state === 'S6_roulage'`, dérivé par `determineState()` via `position.speed >= drivingMinSpeedKmh`). Aucune lecture data affichée.
 
 **Critères d'acceptation**
+
 - Conforme `04_DESIGN_CANON §6` : fond `#020202`, voyant rouge 16px `#C8102E` qui pulse, « EN PISTE » Mono ls 0.4em, « L'app s'efface. » Instrument Serif, « Aucun écran. Aucun son. Conduisez. ».
 - **Pas de tab bar, pas de données, pas de chrono, pas de carte.**
 - Seule animation tolérée : voyant REC qui pulse lentement + anneau qui s'évase (`04_DESIGN_CANON §5`). Aucune autre animation.
@@ -230,17 +250,20 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Regrouper coach affilié, découverte coachs, partenaires, carte OXV et communauté sous une seule zone, sans réseau social généraliste.
 
 **Fichiers concernés** (existent, à ranger sous le hub)
+
 - `app/(app)/club/index.tsx` _(net-neuf, du Lot A)_ — hub.
 - `mon-coach.tsx` (affiliation **mise en avant**) · `coachs.tsx` (découverte) · `coach/[id].tsx` (fiche) · `mes-demandes.tsx` (demandes).
 - `amis.tsx` (communauté) · `cote-a-cote/[friendId].tsx` (comparaison **consentie**) · `carte-oxv.tsx` (La carte OXV).
 - À FUSIONNER (cf. `02_AUDIT_ROUTES`, doublons) : `social.tsx`→`amis`, `social-carte.tsx`+`lieux.tsx`→`carte-oxv`. Fusion réalisée en PR de migration, pas ici ; en PR 6 on range et on redirige.
 
 **Données**
+
 - `coachMarketplaceService`, `coachService`, `coachProfileService`, `pilotConsentService` (affiliation/consentement coach).
 - `friendshipsService`, `socialPingsService`, `duelService` (`cote-a-cote`, comparaison consentie).
 - `placesService`, `ecosystemService`/`ecosystemLogic` (carte OXV, partenaires — annuaire V1).
 
 **Critères d'acceptation**
+
 - « Mon coach » est l'élément le plus proéminent du hub (affiliation en avant) ; la découverte (`coachs`) est secondaire.
 - Comparaison entre pilotes **uniquement consentie** (`pilotConsentService`/`friendshipsService`) ; aucun classement, aucun leaderboard.
 - Une seule carte (« La carte OXV ») — `social-carte` et `lieux` ne sont plus des destinations parallèles.
@@ -258,12 +281,14 @@ Garde-fous transverses (valent pour tous les tickets) :
 **Objectif** — Regrouper profil, réglages, notifications, données/RGPD et légal derrière l'icône haut-droite, rangé et discret.
 
 **Fichiers concernés** (existent)
+
 - `app/(app)/compte/index.tsx` _(net-neuf, optionnel)_ — hub listant les destinations, OU header `SpaceSwitcher` ouvrant directement les écrans.
 - `profil.tsx` · `settings.tsx` · `notifications.tsx` · `donnees-securite.tsx` (RGPD) · `legal/[doc].tsx`.
 
 **Données** — `accountService`, `pilotProfileService`, `notifPreferencesLogic`, `pushNotificationsService`, `dataExportService` (RGPD — export/suppression).
 
 **Critères d'acceptation**
+
 - Compte accessible via l'**icône en haut à droite uniquement** — jamais comme 6e onglet (`00_PLATEFORME_OXV §4`).
 - Lignes de liste conformes (`04_DESIGN_CANON §4`) : h ~50, icône stroke 1.6 `#9A9AA3`, chevron `#54545C`, séparateur `#161618`.
 - `donnees-securite` expose les droits RGPD (export via `dataExportService`, accès aux documents légaux via `legal/[doc]`).
@@ -278,16 +303,16 @@ Garde-fous transverses (valent pour tous les tickets) :
 
 > Ces tickets ne sont PAS à coder dans les premières PR. Ils sont listés pour traçabilité ; ils dépendent d'un schéma **non encore validé**.
 
-| Ticket futur | Écran(s) net-neuf | Migration | Statut schéma |
-|---|---|---|---|
-| Passeport pilote (lecture V1) | `app/(app)/passeport.tsx` | table passeport / signature | **nécessite accord Gabin** |
-| Garage pilote | `app/(app)/garage.tsx` | table véhicules pilote | **nécessite accord Gabin** |
-| Cycles de progression | `app/(app)/cycles.tsx` | tables cycles / axes | **nécessite accord Gabin** |
-| Carnet (avant/après) | `app/(app)/carnet.tsx` | table carnet | **nécessite accord Gabin** |
-| Pass OXV (QR événement) | `app/(app)/pass-oxv.tsx` | table pass / événement | **nécessite accord Gabin** |
-| Notes coach overlay sur data | overlay dans `virage`/`bilan` | extension `coach_annotations` | **nécessite accord Gabin** |
-| Espace Partenaire | `app/(partner)/*` (net-neuf complet) | tables partenaires / offres / leads | **nécessite accord Gabin** |
-| Admin qualité data / incidents | `app/(admin)/qualite-data.tsx`, `incidents.tsx` | tables qualité / incidents | **nécessite accord Gabin** |
+| Ticket futur                   | Écran(s) net-neuf                               | Migration                           | Statut schéma              |
+| ------------------------------ | ----------------------------------------------- | ----------------------------------- | -------------------------- |
+| Passeport pilote (lecture V1)  | `app/(app)/passeport.tsx`                       | table passeport / signature         | **nécessite accord Gabin** |
+| Garage pilote                  | `app/(app)/garage.tsx`                          | table véhicules pilote              | **nécessite accord Gabin** |
+| Cycles de progression          | `app/(app)/cycles.tsx`                          | tables cycles / axes                | **nécessite accord Gabin** |
+| Carnet (avant/après)           | `app/(app)/carnet.tsx`                          | table carnet                        | **nécessite accord Gabin** |
+| Pass OXV (QR événement)        | `app/(app)/pass-oxv.tsx`                        | table pass / événement              | **nécessite accord Gabin** |
+| Notes coach overlay sur data   | overlay dans `virage`/`bilan`                   | extension `coach_annotations`       | **nécessite accord Gabin** |
+| Espace Partenaire              | `app/(partner)/*` (net-neuf complet)            | tables partenaires / offres / leads | **nécessite accord Gabin** |
+| Admin qualité data / incidents | `app/(admin)/qualite-data.tsx`, `incidents.tsx` | tables qualité / incidents          | **nécessite accord Gabin** |
 
 Réf. existant à réutiliser pour ces couches : `pilotSignatureService`, `pilotGoalsService`, `coachAnnotationsService`, `coachBusinessService`, `coachAdminService`. Toute extension de leurs tables passe par une migration explicitement validée.
 

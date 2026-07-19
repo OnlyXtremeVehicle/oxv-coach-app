@@ -12,20 +12,20 @@
 
 ### Choix retenus
 
-| Couche | Technologie | Version | Raison |
-|---|---|---|---|
-| **Framework** | React Native | 0.74+ | Cross-platform iOS/Android, écosystème mature, équipe peut réutiliser ses connaissances JS |
-| **Toolchain** | Expo SDK | 51+ | Build cloud (EAS), OTA updates, gestion certificats simplifiée |
-| **Langage** | TypeScript | 5.4+ | Type safety obligatoire vu la complexité métier (marges, télémétrie, sectoriels) |
-| **State management** | Zustand | 4.5+ | Léger, sans boilerplate, parfait pour un app de cette taille |
-| **Navigation** | React Navigation | 6.x | Standard de facto, support natif des transitions iOS/Android |
-| **Charts** | Victory Native + Skia | 36.x / latest | Performance native pour les courbes télémétriques 25-200 Hz |
-| **Maps** | React Native Maps | 1.14+ | Tracé du circuit en overlay sur carte satellite |
-| **BLE** | react-native-ble-plx | 3.x | Librairie BLE la plus mature pour les deux OS |
-| **Storage local** | MMKV | 2.x | Plus rapide qu'AsyncStorage, parfait pour le cache |
-| **DB locale** | WatermelonDB | 0.27+ | Sync offline-first avec Supabase, optimisé pour gros volumes |
-| **Backend** | Supabase | Latest | Auth, Postgres, Storage, Realtime, Edge Functions — déjà votre stack |
-| **Parsing UBX** | Custom Rust → WASM | N/A | Performance native, voir section 4 |
+| Couche               | Technologie           | Version       | Raison                                                                                     |
+| -------------------- | --------------------- | ------------- | ------------------------------------------------------------------------------------------ |
+| **Framework**        | React Native          | 0.74+         | Cross-platform iOS/Android, écosystème mature, équipe peut réutiliser ses connaissances JS |
+| **Toolchain**        | Expo SDK              | 51+           | Build cloud (EAS), OTA updates, gestion certificats simplifiée                             |
+| **Langage**          | TypeScript            | 5.4+          | Type safety obligatoire vu la complexité métier (marges, télémétrie, sectoriels)           |
+| **State management** | Zustand               | 4.5+          | Léger, sans boilerplate, parfait pour un app de cette taille                               |
+| **Navigation**       | React Navigation      | 6.x           | Standard de facto, support natif des transitions iOS/Android                               |
+| **Charts**           | Victory Native + Skia | 36.x / latest | Performance native pour les courbes télémétriques 25-200 Hz                                |
+| **Maps**             | React Native Maps     | 1.14+         | Tracé du circuit en overlay sur carte satellite                                            |
+| **BLE**              | react-native-ble-plx  | 3.x           | Librairie BLE la plus mature pour les deux OS                                              |
+| **Storage local**    | MMKV                  | 2.x           | Plus rapide qu'AsyncStorage, parfait pour le cache                                         |
+| **DB locale**        | WatermelonDB          | 0.27+         | Sync offline-first avec Supabase, optimisé pour gros volumes                               |
+| **Backend**          | Supabase              | Latest        | Auth, Postgres, Storage, Realtime, Edge Functions — déjà votre stack                       |
+| **Parsing UBX**      | Custom Rust → WASM    | N/A           | Performance native, voir section 4                                                         |
 
 ### Alternatives écartées et pourquoi
 
@@ -504,12 +504,12 @@ Ce module tourne **après** le parser UBX brut, en JavaScript natif (pas WASM), 
 
 ### 4.7. Coût de stockage
 
-| Élément | Taille | Pour 50 pilotes × 4 sessions/an | Total annuel |
-|---|---|---|---|
-| Fichier UBX brut | ~25 Mo / session | 200 sessions × 25 Mo | 5 Go |
-| Données dérivées (Postgres) | ~50 Ko / session | 200 × 50 Ko | 10 Mo |
-| Images partage social | ~500 Ko / partage | 50 partages | 25 Mo |
-| **Total** | | | **~5 Go/an** |
+| Élément                     | Taille            | Pour 50 pilotes × 4 sessions/an | Total annuel |
+| --------------------------- | ----------------- | ------------------------------- | ------------ |
+| Fichier UBX brut            | ~25 Mo / session  | 200 sessions × 25 Mo            | 5 Go         |
+| Données dérivées (Postgres) | ~50 Ko / session  | 200 × 50 Ko                     | 10 Mo        |
+| Images partage social       | ~500 Ko / partage | 50 partages                     | 25 Mo        |
+| **Total**                   |                   |                                 | **~5 Go/an** |
 
 Le plan Supabase Pro inclut **100 Go de Storage**, on est à 5% d'usage. Aucun souci de scaling avant plusieurs années.
 
@@ -520,12 +520,14 @@ Le plan Supabase Pro inclut **100 Go de Storage**, on est à 5% d'usage. Aucun s
 Cette **Partie 1** couvre les fondations. Les parties suivantes traiteront :
 
 **Partie 2 — Algorithmes de marge et logique métier**
+
 - Formules précises de calcul de marge véhicule et pilote
 - Détection des anomalies (méthode 3 — coasting, freinage tardif, etc.)
 - Comparateur Ghost (réel vs référence)
 - Algorithme de recommandation pour "La prochaine fois"
 
 **Partie 3 — Connectivité, déploiement, sécurité**
+
 - Connexion BLE RaceBox Mini (états, reconnexion, gestion d'erreurs)
 - Bouton BLE de marquage tour
 - Sync offline-first WatermelonDB ↔ Supabase
@@ -537,4 +539,4 @@ Cette **Partie 1** couvre les fondations. Les parties suivantes traiteront :
 
 ---
 
-*Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_1.md`.*
+_Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_1.md`._

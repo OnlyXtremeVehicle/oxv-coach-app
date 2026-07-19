@@ -34,6 +34,7 @@ L'auto-observation est cruciale parce que **vos amis ne vous diront pas tout**. 
 **8h45 — Arrivée des premiers amis**
 
 Notez pour chaque ami qui arrive :
+
 - Est-il à l'heure ?
 - A-t-il l'air détendu ou stressé ?
 - A-t-il un commentaire spontané sur les emails J-7/J-2/J-1 reçus ?
@@ -46,6 +47,7 @@ Cherchez des **mots spontanés** : "j'ai trouvé ça classe", "j'ai été un peu
 Notez les **conversations entre amis** sans les amis. Tendez l'oreille. Que se disent-ils sur OXV ? Sur ce qu'ils attendent ? Sur ce qu'ils ont reçu par email ?
 
 Cherchez les phrases qui commencent par :
+
 - "C'est bizarre que..."
 - "J'avais cru que..."
 - "Du coup, on fait quoi exactement ?"
@@ -53,6 +55,7 @@ Cherchez les phrases qui commencent par :
 **9h30 — Pendant le briefing**
 
 Pendant que vous parlez, observez **les réactions non-verbales** :
+
 - Qui sourit, qui fronce les sourcils
 - Qui prend des notes, qui regarde son téléphone
 - Qui pose des questions, qui reste muet
@@ -64,6 +67,7 @@ Le silence est souvent le signal le plus précieux. Un ami qui ne pose pas de qu
 Chronométrez **combien de temps prend l'installation pour chaque ami**. C'est crucial.
 
 Si la moyenne est :
+
 - Moins de 2 minutes : le jumelage est fluide
 - 2-5 minutes : il y a friction, à creuser
 - Plus de 5 minutes : c'est un vrai problème UX à corriger
@@ -73,6 +77,7 @@ Notez aussi les **erreurs de placement** : qui pose le boîtier au mauvais endro
 **Pendant la balade (10h00-12h00)**
 
 Vous conduisez, mais ayez un œil sur :
+
 - Le **niveau d'engagement du peloton** : les voitures restent groupées ou se distancent
 - Les **arrêts imprévus** (panne, désistement, problème technique)
 - L'**ambiance générale** ressentie quand vous croisez le regard des autres
@@ -82,6 +87,7 @@ Vous conduisez, mais ayez un œil sur :
 **13h00 — Restitution des équipements**
 
 Notez pour chaque ami :
+
 - A-t-il regardé l'app sur son téléphone pendant la balade ? (Cela ne devrait jamais arriver pendant la conduite, mais ils peuvent l'avoir consultée à un arrêt)
 - A-t-il ouvert l'app à l'arrivée pour voir son bilan ?
 - Quelle est sa réaction faciale en voyant le bilan ?
@@ -100,7 +106,7 @@ Vous distribuez la Grille 2 (questionnaire participant) et laissez les gens rép
 
 Imprimez 12 exemplaires sur du beau papier (A4 plié en deux pour faire un livret 4 pages). Distribuez-les au début du déjeuner avec un stylo.
 
-Annoncez : *"J'aimerais avoir vos retours honnêtes. Soyez francs, ça m'aide vraiment. Vous avez 20 minutes pour le remplir, on en discute ensuite."*
+Annoncez : _"J'aimerais avoir vos retours honnêtes. Soyez francs, ça m'aide vraiment. Vous avez 20 minutes pour le remplir, on en discute ensuite."_
 
 ### Contenu du questionnaire
 
@@ -310,21 +316,21 @@ Le lendemain (lundi 6 juillet) ou en début de semaine suivante. Vous avez colle
 
 Pour chaque ami participant, listez :
 
-| Pilote | RaceBox ID | Durée enregistrement | Données complètes ? | Bugs constatés |
-|---|---|---|---|---|
-| Ami 1 | OXV-A12 | 1h47 | Oui | — |
-| Ami 2 | OXV-A19 | 1h44 | Non, coupure à 11h23 | À investiguer |
-| ... | ... | ... | ... | ... |
+| Pilote | RaceBox ID | Durée enregistrement | Données complètes ?  | Bugs constatés |
+| ------ | ---------- | -------------------- | -------------------- | -------------- |
+| Ami 1  | OXV-A12    | 1h47                 | Oui                  | —              |
+| Ami 2  | OXV-A19    | 1h44                 | Non, coupure à 11h23 | À investiguer  |
+| ...    | ...        | ...                  | ...                  | ...            |
 
 **Indicateurs techniques à mesurer**
 
-| Indicateur | Valeur attendue | Valeur réelle | Verdict |
-|---|---|---|---|
-| Connexion BLE moyenne | > 95% | __% | __ |
-| Fichiers UBX intègres | 12/12 | __/12 | __ |
-| Temps de jumelage moyen | < 2 min | __ min | __ |
-| Sync vers Supabase OK | 12/12 | __/12 | __ |
-| Erreurs critiques en session | 0 | __ | __ |
+| Indicateur                   | Valeur attendue | Valeur réelle | Verdict |
+| ---------------------------- | --------------- | ------------- | ------- |
+| Connexion BLE moyenne        | > 95%           | \_\_%         | \_\_    |
+| Fichiers UBX intègres        | 12/12           | \_\_/12       | \_\_    |
+| Temps de jumelage moyen      | < 2 min         | \_\_ min      | \_\_    |
+| Sync vers Supabase OK        | 12/12           | \_\_/12       | \_\_    |
+| Erreurs critiques en session | 0               | \_\_          | \_\_    |
 
 **Comportement des algorithmes**
 
@@ -335,6 +341,7 @@ Comme les algorithmes sont calibrés pour Beltoise et que vous avez roulé en ca
 - Quels conseils "Une chose à creuser" il propose (probablement non pertinents)
 
 C'est précieux : cela vous dit comment l'algo se comporte sur des données hors-domaine. Vous pouvez en déduire :
+
 - Faut-il un mode dégradé "non-circuit" ?
 - Faut-il bloquer certains calculs hors circuit ?
 - Faut-il afficher un message d'avertissement (que vous avez prévu dans la spec) ?
@@ -353,6 +360,7 @@ C'est précieux : cela vous dit comment l'algo se comporte sur des données hors
 ### Quand l'utiliser
 
 À J+7 (vers le 12 juillet), une fois que vous avez :
+
 - Vos notes personnelles
 - Les 12 questionnaires remplis
 - L'analyse technique
@@ -367,6 +375,7 @@ Vous transformez tout ça en **décisions concrètes**.
 C'est tentant de se concentrer sur les bugs, mais commencez par identifier ce qui a généré des **réactions positives spontanées**.
 
 Cherchez les phrases du type :
+
 - "Putain c'est classe"
 - "J'avais jamais vu ça"
 - "Ça fait premium"
@@ -378,11 +387,13 @@ Décision à prendre : ces moments-clés doivent être **renforcés** dans la co
 **Question 2 — Qu'est-ce qui a friction-né ?**
 
 Identifiez les 3 ou 4 frictions principales. Une friction se caractérise par :
+
 - Plusieurs amis qui ont signalé le même problème
 - Ou un ami qui a mis du temps à faire une action évidente
 - Ou un moment où vous avez vu un sourcil se froncer
 
 Pour chaque friction, classez :
+
 - **Sévérité** : bloquante / gênante / mineure
 - **Effort de correction** : 1h / 1 jour / 1 semaine / plus
 - **Décision** : à corriger avant lancement / à mettre dans la V1.1 / à reporter
@@ -392,6 +403,7 @@ Pour chaque friction, classez :
 Notez les surprises. Ce sont les apprentissages les plus précieux parce qu'ils contredisent vos hypothèses initiales.
 
 Exemples possibles :
+
 - "Je pensais que le pacte serait pris à la rigolade, mais 3 amis m'ont dit que c'était la partie qu'ils ont préférée"
 - "Je pensais que l'audio J-2 serait un gadget, mais 8 amis sur 12 l'ont écouté plusieurs fois"
 - "Je pensais que la balade serait conviviale, mais le silence en piste a fait que les amis n'ont pas eu d'échange spontané pendant la conduite"
@@ -412,17 +424,17 @@ Ne tombez pas dans le piège du "tout corriger". Priorisez ruthlessly.
 
 Pour vous donner une vue d'ensemble, voici ce qu'il faut sortir de cette journée en synthèse :
 
-| Domaine | Indicateur | Cible | Réel |
-|---|---|---|---|
-| Inscription | Amis ayant complété le parcours sans aide | 10/12 | __ |
-| Rituels | Emails J-7/J-2/J-1 reçus | 12/12 | __ |
-| Audio J-2 | Écouté par au moins | 8/12 | __ |
-| Jumelage | Temps moyen d'installation | < 2 min | __ |
-| Roulage | Sessions enregistrées sans bug | 12/12 | __ |
-| App post-balade | Amis ayant ouvert le bilan | 10/12 | __ |
-| Doctrine | Amis ayant compris le pacte | 9/12 | __ |
-| Tonalité | Amis trouvant le ton "premium" | 8/12 | __ |
-| Recommandation | NPS moyen | > 7/10 | __ |
+| Domaine         | Indicateur                                | Cible   | Réel |
+| --------------- | ----------------------------------------- | ------- | ---- |
+| Inscription     | Amis ayant complété le parcours sans aide | 10/12   | \_\_ |
+| Rituels         | Emails J-7/J-2/J-1 reçus                  | 12/12   | \_\_ |
+| Audio J-2       | Écouté par au moins                       | 8/12    | \_\_ |
+| Jumelage        | Temps moyen d'installation                | < 2 min | \_\_ |
+| Roulage         | Sessions enregistrées sans bug            | 12/12   | \_\_ |
+| App post-balade | Amis ayant ouvert le bilan                | 10/12   | \_\_ |
+| Doctrine        | Amis ayant compris le pacte               | 9/12    | \_\_ |
+| Tonalité        | Amis trouvant le ton "premium"            | 8/12    | \_\_ |
+| Recommandation  | NPS moyen                                 | > 7/10  | \_\_ |
 
 Si vous atteignez 80% des cibles : l'app est mûre pour le vrai lancement.
 Si vous êtes entre 60-80% : V1.1 nécessaire avant lancement.
@@ -432,10 +444,10 @@ Si vous êtes sous 60% : retour planche à dessin sur les points faibles.
 
 ## En une phrase
 
-> *Une demi-journée d'observation et de recueil méthodique vaut six mois de spéculation produit. Profitez-en pleinement, votre app en sortira plus forte.*
+> _Une demi-journée d'observation et de recueil méthodique vaut six mois de spéculation produit. Profitez-en pleinement, votre app en sortira plus forte._
 
 ---
 
-*Grille d'observation — Test alpha OXV — Version 1.0 — Mai 2026*
+_Grille d'observation — Test alpha OXV — Version 1.0 — Mai 2026_
 
-*À utiliser avec le plan opérationnel (livrable 1) et la spécification admin (livrable 2).*
+_À utiliser avec le plan opérationnel (livrable 1) et la spécification admin (livrable 2)._

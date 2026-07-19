@@ -38,11 +38,14 @@ C'est la regle de tri de **toute** decision produit et de **tout** texte affiche
 - **En cas de doute : on retire.** Le silence est conforme ; la prescription ne l'est pas.
 
 ### Test de conformite d'un texte affiche
+
 Toute chaine affichee (y compris generee par la chaine de mise en forme) doit passer ce test :
+
 - Commence par « vous devriez… », « il faut… », « pour progresser… » → **BLOQUE.**
 - Commence par « voici… », « sur ce tour… », « par rapport a votre session precedente… » → **OK.**
 
 ### Raison juridique (ne pas l'oublier)
+
 La doctrine est aussi la ligne de defense du produit. OXV conserve la responsabilite
 **technique** (l'app marche, la donnee est exacte) mais decline la responsabilite
 **pedagogique** (le pilote interprete et decide seul). Ne jamais ecrire de copie qui
@@ -78,53 +81,59 @@ Deux familles de variables coexistent **volontairement** : les variables d'UI ge
 reservees aux moments d'identite (insigne, focus de marque). Ne pas les confondre ni les fusionner.
 
 ### Palette de fond (Noir Abysse / Carbone)
-| Token | Valeur | Usage |
-|---|---|---|
-| `--night` | `#050505` | Noir Abysse — fond principal |
-| `--night-deep` | `#000000` | Fond le plus profond |
-| `--night-soft` | `#0E0E0E` | Fond adouci |
+
+| Token          | Valeur    | Usage                          |
+| -------------- | --------- | ------------------------------ |
+| `--night`      | `#050505` | Noir Abysse — fond principal   |
+| `--night-deep` | `#000000` | Fond le plus profond           |
+| `--night-soft` | `#0E0E0E` | Fond adouci                    |
 | `--night-card` | `#121212` | Carbone Verre — surfaces Bento |
-| `--oxv-night` | `#0A0A0A` | Fond marque |
+| `--oxv-night`  | `#0A0A0A` | Fond marque                    |
 
 ### Texte (Blanc Pur / Gris Titane)
-| Token | Valeur | Usage |
-|---|---|---|
-| `--cream` | `#F8F9FA` | Blanc Pur — titres et data |
-| `--cream-soft` | `#E5E5E5` | Texte clair adouci |
-| `--cream-mute` | `#A1A1AA` | Gris Titane — secondaire |
-| `--cream-faint` | `rgba(248,249,250,0.50)` | Texte tres discret |
-| `--cream-line` | `rgba(255,255,255,0.05)` | Bordure Bento |
-| `--cream-edge` | `rgba(255,255,255,0.15)` | Bordure Bento (hover) |
+
+| Token           | Valeur                   | Usage                      |
+| --------------- | ------------------------ | -------------------------- |
+| `--cream`       | `#F8F9FA`                | Blanc Pur — titres et data |
+| `--cream-soft`  | `#E5E5E5`                | Texte clair adouci         |
+| `--cream-mute`  | `#A1A1AA`                | Gris Titane — secondaire   |
+| `--cream-faint` | `rgba(248,249,250,0.50)` | Texte tres discret         |
+| `--cream-line`  | `rgba(255,255,255,0.05)` | Bordure Bento              |
+| `--cream-edge`  | `rgba(255,255,255,0.15)` | Bordure Bento (hover)      |
 
 ### Accents
-| Token | Valeur | Usage |
-|---|---|---|
+
+| Token                 | Valeur    | Usage                                                       |
+| --------------------- | --------- | ----------------------------------------------------------- |
 | `--gold` / `--copper` | `#FFB703` | Or Dore — performance, QDI, succes, accents principaux, CTA |
-| `--copper-glow` | `#FFC93C` | Variante claire de l'Or (gradients, glow) |
-| `--copper-deep` | `#C68B00` | Variante sombre de l'Or |
-| `--red` | `#E63946` | Rouge Adrenaline — alertes, urgent, erreurs, accents UI |
-| `--blue-tech` | `#60A5FA` | Bleu technique (freinage) |
-| `--green-perf` | `#4ADE80` | Vert performance (acceleration) |
-| `--purple-tech` | `#C084FC` | Violet (regularite) |
-| `--steel` | `#5C5C66` | Gris acier |
+| `--copper-glow`       | `#FFC93C` | Variante claire de l'Or (gradients, glow)                   |
+| `--copper-deep`       | `#C68B00` | Variante sombre de l'Or                                     |
+| `--red`               | `#E63946` | Rouge Adrenaline — alertes, urgent, erreurs, accents UI     |
+| `--blue-tech`         | `#60A5FA` | Bleu technique (freinage)                                   |
+| `--green-perf`        | `#4ADE80` | Vert performance (acceleration)                             |
+| `--purple-tech`       | `#C084FC` | Violet (regularite)                                         |
+| `--steel`             | `#5C5C66` | Gris acier                                                  |
 
 ### Marque OXV (strict — moments d'identite uniquement)
-| Token | Valeur | Usage |
-|---|---|---|
-| `--oxv-red` | `#C8102E` | **Rouge insigne** — Access, Signature, Promotion ; focus de marque |
-| `--oxv-gold` | `#C4A459` | **Or Heritage STRICT** — reserve a Heritage. Jamais ailleurs |
-| `--oxv-cream` | `#F8F9FA` | Texte marque |
+
+| Token         | Valeur    | Usage                                                              |
+| ------------- | --------- | ------------------------------------------------------------------ |
+| `--oxv-red`   | `#C8102E` | **Rouge insigne** — Access, Signature, Promotion ; focus de marque |
+| `--oxv-gold`  | `#C4A459` | **Or Heritage STRICT** — reserve a Heritage. Jamais ailleurs       |
+| `--oxv-cream` | `#F8F9FA` | Texte marque                                                       |
 
 ### Couleurs piliers QDI (intouchables — ne pas renommer ni reaffecter)
-| Token | Valeur | Dimension |
-|---|---|---|
-| `--qdi-trajectory` | `#E63946` | Trajectoire |
-| `--qdi-fluidity` | `#FFB703` | Fluidite |
-| `--qdi-braking` | `#60A5FA` | Freinage |
+
+| Token                | Valeur    | Dimension    |
+| -------------------- | --------- | ------------ |
+| `--qdi-trajectory`   | `#E63946` | Trajectoire  |
+| `--qdi-fluidity`     | `#FFB703` | Fluidite     |
+| `--qdi-braking`      | `#60A5FA` | Freinage     |
 | `--qdi-acceleration` | `#4ADE80` | Acceleration |
-| `--qdi-regularity` | `#C084FC` | Regularite |
+| `--qdi-regularity`   | `#C084FC` | Regularite   |
 
 ### Regles d'usage fermes
+
 - **`--oxv-gold #C4A459` = Heritage et rien d'autre.** Ne jamais l'appliquer a Access,
   Signature, Promotion ou a un accent decoratif. (A distinguer de `--gold #FFB703`, l'Or Dore
   d'UI generale, lui largement utilise.)
@@ -134,11 +143,12 @@ reservees aux moments d'identite (insigne, focus de marque). Ne pas les confondr
   c'est l'usage qui compte). En cas de doute, reprendre la valeur exacte du `:root` d'`index.html`.
 
 ### Typographie (variables du site)
-| Variable | Police | Usage |
-|---|---|---|
-| `--display` | `Syncopate` (fallback Inter) | Titres, chiffres geants, eyebrows, data — l'identite forte |
-| `--sans` / `--serif` | `Inter` | Corps de texte (note : `--serif` est mappe sur Inter pour la lisibilite) |
-| `--mono` | `JetBrains Mono` | Eyebrows, donnees, labels mono (9-11px, letter-spacing 0.18-0.32em, uppercase) |
+
+| Variable             | Police                       | Usage                                                                          |
+| -------------------- | ---------------------------- | ------------------------------------------------------------------------------ |
+| `--display`          | `Syncopate` (fallback Inter) | Titres, chiffres geants, eyebrows, data — l'identite forte                     |
+| `--sans` / `--serif` | `Inter`                      | Corps de texte (note : `--serif` est mappe sur Inter pour la lisibilite)       |
+| `--mono`             | `JetBrains Mono`             | Eyebrows, donnees, labels mono (9-11px, letter-spacing 0.18-0.32em, uppercase) |
 
 - Style editorial : minimalisme sec facon Ferrari, dense et lumineux (refs internes : Apple TV,
   Bloomberg Terminal, F1 TV Pro). Sobre, dense en sens, pauvre en decoration.
@@ -172,6 +182,7 @@ reservees aux moments d'identite (insigne, focus de marque). Ne pas les confondr
   tant que Meta n'a pas ouvert la disponibilite generale**. Voir `specs/E0_ar_coach.md`.
 
 ### Etat critique a connaitre
+
 `telemetry_frames` est **vide (0 ligne)** : la capture n'est pas encore branchee en
 production. **Consequence directe** : toute restitution est aujourd'hui une **maquette de
 demonstration**, pas un bug. La premiere vraie capture est prevue a **Valence (Espagne),
@@ -185,16 +196,17 @@ juillet 2026**. Concois les ecrans pour qu'ils degradent proprement quand la don
 13 blocs principaux + 1 bloc preview (detail dans `specs/`) :
 
 1. Onboarding · 2. Coeur (restitution post-session) · 3. Detail data · 4. Sessions &
-historique · 5. Circuits & traces · 6. Communaute · 7. Identite/Avatar · 8. Garage ·
-9. Fonctionnalites neuves · 10. Compte · 11. Etats limites · 12. **Coach (SaaS coachs
-agrees)** · 13. **Map & ecosysteme partenaires** · 14. **Vue AR coach (lunettes — preview
-Meta, prototypable, non publiable tant que Meta n'a pas ouvert la GA)**.
+   historique · 5. Circuits & traces · 6. Communaute · 7. Identite/Avatar · 8. Garage ·
+2. Fonctionnalites neuves · 10. Compte · 11. Etats limites · 12. **Coach (SaaS coachs
+   agrees)** · 13. **Map & ecosysteme partenaires** · 14. **Vue AR coach (lunettes — preview
+   Meta, prototypable, non publiable tant que Meta n'a pas ouvert la GA)**.
 
 L'entree apres une session est **la Synthese de session** (bloc 2). Le reste se navigue
 depuis une barre principale sobre. Ne surcharge pas la navigation : un pilote consulte
 l'app au paddock, entre deux relais, avec des gants.
 
 ### Deux types de comptes
+
 L'app sert **deux roles** : le **pilote** (parcours principal) et le **coach agree** (bloc
 12, ecrans C0.2 a C0.5 reserves aux comptes coach). Prevois la distinction de role des le
 modele d'auth : un coach a un abonnement SaaS (750 EUR/saison) et n'accede qu'aux eleves qui
@@ -206,6 +218,7 @@ pas au nom d'OXV).
 ## 6. Heritage V1 — ce qu'on garde, ce qu'on jette
 
 ### GARDER (briques validees en conditions reelles)
+
 - **Parser UBX** RaceBox (checksums Fletcher-8, trames 88 octets). **Ne pas modifier.**
 - **Service BLE** (scan + connexion + notifications + reconnexion). Garder, simplifiable.
 - **Types telemetrie** (alignes sur la base). Garder.
@@ -215,6 +228,7 @@ pas au nom d'OXV).
 - **Migrations Supabase deja appliquees** (circuits, laps, weather_snapshots). **Ne pas recreer.**
 
 ### JETER (conflit doctrinal ou dette)
+
 - **Systeme QDI** (`drivingQuality.ts` et derives) : note Elite/Solide/A travailler →
   contredit la doctrine. **Supprimer.**
 - **Charte couleur V1** : la V1 mixait des valeurs hors `:root` officiel. **Reprendre la

@@ -9,6 +9,7 @@
 Votre backend Supabase est **déjà opérationnel** sur oxvehicle.fr depuis plusieurs mois. L'app OXV Mirror doit s'y connecter, lire les mêmes tables (users, sessions, etc.) et écrire dans les nouvelles tables qu'on va créer (app_sessions, app_circuit_references, etc.).
 
 Ce guide explique :
+
 1. Comment **récupérer vos credentials** Supabase de façon sécurisée
 2. Comment **les configurer** dans l'app React Native
 3. Comment **exporter votre schéma actuel** pour le donner à Claude Code
@@ -30,18 +31,21 @@ Ce guide explique :
 3. Vous voyez trois informations importantes :
 
 **Project URL** :
+
 - Format : `https://fouvuqkdxarjpjbqnsjq.supabase.co`
 - C'est **public**, peut être partagée
 
 **Project API keys** :
 
 **(a) `anon public`** :
+
 - Une longue chaîne commençant par `eyJ...`
 - C'est la clé **publique**, utilisée par l'app mobile
 - Peut être commitée dans le code (Supabase RLS protège les données)
 - À copier dans `EXPO_PUBLIC_SUPABASE_ANON_KEY` du fichier `.env`
 
 **(b) `service_role`** :
+
 - Une autre longue chaîne `eyJ...`
 - C'est la clé **admin**, ne JAMAIS exposer
 - À utiliser uniquement côté serveur (Edge Functions)
@@ -55,6 +59,7 @@ Ce guide explique :
 - `service_role` : un attaquant a **accès admin complet** (lecture, écriture, suppression de tout)
 
 **Bonnes pratiques** :
+
 - Ne jamais commiter `.env`
 - Ne jamais coller la `service_role` dans un message public
 - Stocker `service_role` dans un gestionnaire de mots de passe (1Password, Bitwarden)
@@ -92,15 +97,15 @@ npx expo install @supabase/supabase-js @react-native-async-storage/async-storage
 Créer le fichier `src/lib/supabase.ts` (Claude Code le fera, mais voici le modèle) :
 
 ```typescript
-import 'react-native-url-polyfill/auto'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { createClient } from '@supabase/supabase-js'
+import 'react-native-url-polyfill/auto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Variables Supabase manquantes dans .env')
+  throw new Error('Variables Supabase manquantes dans .env');
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -110,7 +115,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     persistSession: true,
     detectSessionInUrl: false,
   },
-})
+});
 ```
 
 ### 2.4 — Tester la connexion
@@ -131,7 +136,7 @@ export default function TestSupabase() {
         .from('users')
         .select('count')
         .limit(1)
-      
+
       if (error) {
         setStatus(`Erreur : ${error.message}`)
       } else {
@@ -168,6 +173,7 @@ C'est l'étape la plus importante : donner à Claude Code une vue **exacte** de 
 7. Vous voyez la liste de vos tables
 
 **Pour chaque table importante** (users, sessions, registrations, vehicles, etc.) :
+
 1. Cliquer sur la table
 2. Cliquer sur **Definition** dans l'onglet
 3. Copier le SQL affiché (CREATE TABLE statement)
@@ -181,11 +187,11 @@ C'est l'étape la plus importante : donner à Claude Code une vue **exacte** de 
 
 ```sql
 -- Export du schéma public complet
-SELECT 
+SELECT
   'CREATE TABLE ' || schemaname || '.' || tablename || ' (' || E'\n' ||
   string_agg(
     '  ' || column_name || ' ' || data_type ||
-    CASE 
+    CASE
       WHEN character_maximum_length IS NOT NULL THEN '(' || character_maximum_length || ')'
       ELSE ''
     END ||
@@ -243,7 +249,7 @@ Les Row Level Security policies sont **critiques** pour la sécurité. Claude Co
 ### Via SQL
 
 ```sql
-SELECT 
+SELECT
   schemaname,
   tablename,
   policyname,
@@ -321,17 +327,20 @@ Si Claude Code peut le faire **sans hésitation et sans inventer**, c'est que la
 ## Sécurité — Récapitulatif
 
 **À NE JAMAIS commiter** :
+
 - `.env` (credentials)
 - Tout fichier contenant la `service_role` key
 - Tout backup contenant des données utilisateurs réelles
 
 **À commiter** :
+
 - `.env.example` (placeholders)
 - Schéma SQL (structure sans données)
 - RLS policies (logique de sécurité)
 - Code Edge Functions (logique métier)
 
 **À garder dans un gestionnaire de mots de passe** :
+
 - `service_role` key
 - Mots de passe admin Supabase
 - Comptes Apple Developer / Google Play
@@ -341,19 +350,22 @@ Si Claude Code peut le faire **sans hésitation et sans inventer**, c'est que la
 ## En cas de problème
 
 **Erreur de connexion** :
+
 - Vérifier que `.env` est bien à la racine
 - Vérifier que les variables ont le bon préfixe (`EXPO_PUBLIC_` pour client)
 - Vérifier que les clés sont copiées intégralement (pas tronquées)
 
 **RLS bloque les requêtes** :
+
 - L'utilisateur n'est peut-être pas authentifié
 - Les policies actuelles ne couvrent pas le cas d'usage
 - Tester avec la `service_role` (en dev uniquement) pour vérifier
 
 **Tables manquantes** :
+
 - Le schéma actuel ne contient peut-être pas encore les tables `app_*`
 - Voir Partie 1 de l'architecture pour les CREATE TABLE à exécuter
 
 ---
 
-*Guide Supabase Connection — OXV Mirror — Mai 2026*
+_Guide Supabase Connection — OXV Mirror — Mai 2026_

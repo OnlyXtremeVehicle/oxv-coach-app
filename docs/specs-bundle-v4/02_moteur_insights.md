@@ -10,11 +10,11 @@ deduit** des donnees, pas seulement ce qu'elle affiche. C'est l'etage au-dessus 
 Un insight peut etre **profond, causal, impressionnant** sans jamais diriger. La frontiere
 n'est pas la complexite du calcul — c'est le **temps du verbe**.
 
-| Meme donnee | Fait analytique (OUI, cote app) | Prescription (NON, cote app) |
-|---|---|---|
-| Relachement frein S2 | « Vous relachez les freins 8 m avant la corde en S2 ; c'est la que se loge l'ecart de 0,3 s avec votre meilleur tour. » | « Freinez 8 m plus tard en S2. » |
-| Variabilite de trajectoire | « Votre point de corde au virage 4 varie de 1,8 m entre vos tours. » | « Visez la corde plus regulierement. » |
-| Gestion des gaz | « Vous remettez les gaz progressivement en S1, brutalement en S3. » | « Remettez les gaz plus tot en S3. » |
+| Meme donnee                | Fait analytique (OUI, cote app)                                                                                         | Prescription (NON, cote app)           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| Relachement frein S2       | « Vous relachez les freins 8 m avant la corde en S2 ; c'est la que se loge l'ecart de 0,3 s avec votre meilleur tour. » | « Freinez 8 m plus tard en S2. »       |
+| Variabilite de trajectoire | « Votre point de corde au virage 4 varie de 1,8 m entre vos tours. »                                                    | « Visez la corde plus regulierement. » |
+| Gestion des gaz            | « Vous remettez les gaz progressivement en S1, brutalement en S3. »                                                     | « Remettez les gaz plus tot en S3. »   |
 
 **Regle ferme :** l'app **decrit ce qui EST** (constat, mesure, correlation observee). Elle ne
 dit **jamais ce qu'il FAUT faire**. Le constat causal (« X se produit parce que Y est mesure »)
@@ -72,12 +72,14 @@ Chaque insight liste : **ce qu'on deduit**, **la donnee source**, **le phrasing 
 la **prescription interdite** (le miroir a ne pas franchir cote app).
 
 ### NIVEAU 1 — Lecture directe (table stakes, ce que tout le monde fait)
+
 Vitesse, temps au tour, secteurs, vitesse maxi/mini. Necessaire mais pas differenciant. On le
 fait proprement (cf. bloc 30) et on passe vite au-dessus.
 
 ### NIVEAU 2 — Décomposition (la donnee derivee)
 
 **2.1 — Anatomie d'un virage**
+
 - Deduit : phase de freinage / point de corde (vitesse mini) / phase de reaccel, virage par
   virage.
 - Source : vitesse + G long + G lat + cap. Le point de corde = minimum local de vitesse
@@ -86,6 +88,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 - Interdit : « Freinez plus tard / portez plus de vitesse a la corde. »
 
 **2.2 — Diagramme G-G (l'empreinte d'adherence)**
+
 - Deduit : l'enveloppe d'acceleration utilisee (combien le pilote exploite le grip
   disponible, en combine freinage+virage+accel).
 - Source : nuage de points (G long, G lat) sur tout le tour.
@@ -94,6 +97,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 - Interdit : « Travaillez le trail-braking. » (constat OUI, consigne NON)
 
 **2.3 — Profil de gaz et de frein**
+
 - Deduit : progressivite vs brutalite des transitions (release de frein, mise de gaz).
 - Source : derivee du G longitudinal dans le temps (a-coups = pics de jerk).
 - Factuel : « Vos remises de gaz en S1 sont progressives ; en S3, plus abruptes (3 a-coups
@@ -103,15 +107,17 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 ### NIVEAU 3 — Consistance & dispersion (soi contre soi, fin)
 
 **3.1 — Dispersion de trajectoire**
+
 - Deduit : a quel point le pilote repete la meme ligne, virage par virage.
 - Source : superposition des traces GPS de tous les tours ; ecart-type lateral en chaque point.
 - Factuel : « Au virage 4, votre point de corde varie de 1,8 m d'un tour a l'autre — c'est
   votre virage le moins reproductible. Le virage 1 ne varie que de 0,3 m. »
 - Interdit : « Soyez plus regulier au virage 4. »
-- **Impressionnant** : personne dans le grand public ne montre la *variabilite spatiale* par
+- **Impressionnant** : personne dans le grand public ne montre la _variabilite spatiale_ par
   virage. C'est un insight pur soi-contre-soi.
 
 **3.2 — Ou se loge le temps perdu (theoretical best)**
+
 - Deduit : le « tour ideal compose » = meilleur secteur de chaque tour assemble, et l'ecart
   au meilleur tour reel.
 - Source : decoupage micro-sectoriel + comparaison intra-session.
@@ -120,6 +126,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 - Interdit : « Concentrez-vous sur S2. » (le fait « 80 % en S2 » suffit ; le pilote conclut)
 
 **3.3 — Derive sur la session (fatigue / montee en gomme / temperature)**
+
 - Deduit : comment les temps et la trajectoire evoluent du debut a la fin de session.
 - Source : serie temporelle des tours + meteo (Open-Meteo) + heure.
 - Factuel : « Vos tours s'ameliorent jusqu'au tour 9 puis se stabilisent ; la dispersion de
@@ -129,6 +136,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 ### NIVEAU 4 — Correlations causales (l'intelligence qui impressionne)
 
 **4.1 — Le lien cause→effet mesure**
+
 - Deduit : relier un comportement a un resultat chiffre, factuellement.
 - Source : croisement multi-canaux (release de frein × vitesse de corde × temps de secteur).
 - Factuel : « Les tours ou vous relachez les freins plus tot au virage 6 sont aussi vos tours
@@ -138,12 +146,14 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
   mais formule comme une observation, pas une instruction.
 
 **4.2 — Signature d'adherence vs conditions**
+
 - Deduit : comment l'enveloppe G-G se reduit quand la piste change (pluie, froid).
 - Source : G-G × weather_snapshots × heure.
 - Factuel : « Sous 15 °C, votre G lateral maxi observe descend de 1,15 a 0,98 g. »
 - Interdit : toute consigne d'adaptation.
 
 **4.3 — Coherence du rythme (le « flow »)**
+
 - Deduit : enchainement fluide vs hache, mesure par la regularite des transitions sur un tour.
 - Source : jerk (derivee de l'acceleration) lisse sur le tour.
 - Factuel : « Vos tours les plus rapides sont aussi vos plus fluides (moins d'a-coups), pas
@@ -151,6 +161,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
 - Interdit : « Soyez plus fluide. »
 
 **4.4 — Equilibre de la voiture : signature survirage / sous-virage (yaw vs trajectoire)**
+
 - Deduit : a chaque virage, la voiture pivote-t-elle plus ou moins vite que ce que sa
   trajectoire impose ? C'est la signature objective de l'equilibre.
 - Source : **gyroscope Z (yaw reel, deg/s)** croise avec le **taux de rotation geometrique**
@@ -164,6 +175,7 @@ fait proprement (cf. bloc 30) et on passe vite au-dessus.
   capteurs permet.
 
 **4.5 — Transfert de charge : vitesse de mise en appui (pitch / roll + G)**
+
 - Deduit : combien de temps la masse met a se transferer — plongee avant au freinage, prise de
   roulis en entree de courbe, cabrage a la reaccel.
 - Source : **gyroscope Y (pitch)** correle au G longitudinal pour le tangage ; **gyroscope X
@@ -181,18 +193,21 @@ Le coach ajoute ce que le capteur ne capte pas. L'app **fusionne** sa contributi
 factuelles, **attribuee au coach** (cf. `C0.4`).
 
 **5.1 — Reperes contextuels**
+
 - Le coach annote un point du trace (« ici, reference de freinage = panneau 100 m »). L'app
   superpose ce repere a la donnee GPS du pilote.
 - Resultat : « Votre freinage reel au virage 3 commence 12 m avant le repere note par votre
   coach. » (fait ; le **conseil** eventuel vient du coach, signe).
 
 **5.2 — Donnees mecaniques externes**
+
 - Le coach saisit pression pneus, reglages, ressenti chassis. L'app les met en regard de la
   signature d'adherence.
 - Resultat : « Avec la pression avant a 1,9 bar (notee par le coach), votre G lateral maxi en
   S2 etait de 1,12 g ; a 2,1 bar, 1,05 g. » (correlation factuelle observee).
 
 **5.3 — Le debrief augmente**
+
 - Le coach redige (C0.5) en s'appuyant sur les insights N1–N4, et peut **prescrire** (son
   role). L'app porte ce texte, signe du coach, jamais fondu dans une sortie OXV.
 
@@ -221,7 +236,7 @@ factuelles, **attribuee au coach** (cf. `C0.4`).
   jamais prescrire. C'est plus profond que RaceChrono ET plus prudent que Catalyst.
 - L'asymetrie coach permet la prescription la ou elle est legitime (le coach agree), enrichie
   par des donnees que personne d'autre ne fusionne.
-- Resultat : l'app est *intelligente* sans etre *directive*. C'est exactement la ligne que
+- Resultat : l'app est _intelligente_ sans etre _directive_. C'est exactement la ligne que
   vous voulez tenir — profondeur maximale, prescription zero (cote OXV).
 
 ---
@@ -234,6 +249,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
 `lat/lon = raw / 1e7`, `speed_ms = raw_mm_s / 1000`.
 
 ### Pre-traitement commun
+
 - **Detection de tour** : franchissement de la ligne start/finish (geofence sur lat/lon du
   trace). Decoupage en tours, puis micro-secteurs (N segments egaux en distance curviligne).
 - **Distance curviligne** : integration de la vitesse dans le temps (sum speed_ms × dt, dt
@@ -242,6 +258,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
   derivation, pour le jerk. Le signal est deja propre (1 kHz → 25 Hz interne) donc lissage leger.
 
 ### 3.1 — Dispersion de trajectoire par virage
+
 - Aligner tous les tours sur la distance curviligne (rationnel : comparer le meme point
   geographique, pas le meme instant).
 - En chaque point d'echantillonnage curviligne s, calculer l'**ecart lateral** de chaque tour a
@@ -251,6 +268,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
 - Sortie factuelle : virage le plus disperse vs le plus reproductible. AUCUNE consigne.
 
 ### 3.2 — Tour ideal compose & localisation du temps perdu
+
 - Pour chaque micro-secteur k, retenir `t_best[k] = min` sur tous les tours.
 - **Tour ideal = somme(t_best[k])**. Ecart au meilleur tour reel = best_lap − ideal.
 - **Repartition du temps perdu** : pour le meilleur tour reel, perte[k] = t_reel[k] − t_best[k] ;
@@ -258,12 +276,14 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
 - Strictement descriptif (« le temps se loge ici »), jamais « travaillez ce secteur ».
 
 ### 3.3 — Derive sur la session
+
 - Serie temporelle : temps au tour vs index de tour. Tendance (regression lineaire simple ou
   moyenne mobile) + detection du point d'inflexion (ou les temps cessent de progresser).
 - Croiser avec dispersion de trajectoire par tour (3.1 applique tour a tour) pour montrer si la
   ligne devient plus variable en fin de session. Optionnel : meteo (weather_snapshots) et heure.
 
 ### 4.1 — Correlation cause→effet
+
 - Choisir une variable comportementale (ex. point de release frein au virage V = distance avant
   corde ou le G long repasse au-dessus de −0,1 g) et une variable resultat (temps du secteur
   contenant V).
@@ -272,6 +292,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
 - Sortie : nuage de points + phrase « vos tours ou X … sont aussi … ». Constat, pas consigne.
 
 ### 4.4 — Survirage / sous-virage (yaw vs trajectoire)
+
 - **Yaw reel** : gyroscope Z en deg/s (deja disponible, /100).
 - **Yaw geometrique** : derivee du cap GPS, `d(heading)/dt`, attention au passage 360°→0°
   (calculer la difference angulaire signee la plus courte). Lisser legerement.
@@ -281,6 +302,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
   factuelle uniquement (« la voiture pivote N % plus vite que la trajectoire »).
 
 ### 4.5 — Transfert de charge (temps de mise en appui)
+
 - **Tangage** : detecter le debut d'une phase de freinage (G long franchit un seuil negatif) ;
   mesurer le temps jusqu'a stabilisation du **pitch (gyro Y)** autour de zero (la plongee est
   finie quand la vitesse de tangage revient sous un seuil). Duree = temps de mise en charge avant.
@@ -290,6 +312,7 @@ Toutes ces formules s'appliquent cote Supabase sur la table `telemetry_frames` (
   secondes. Jamais de consigne.
 
 ### Regles transverses de calcul
+
 - **Toujours cote serveur** (edge function / SQL), jamais dans l'app mobile.
 - **Seuil de donnees** : un insight n'est calcule et affiche que si l'echantillon le permet
   (nombre de tours minimal, canaux presents, correlation significative). Sinon EmptyState.

@@ -14,6 +14,7 @@ mais ils n'ont rien à mâcher tant qu'il n'y a pas de frames.
 
 Conséquence : un template « tiré de vraies données » n'existe pas encore. Deux sources
 de vérité de forme en attendant :
+
 1. **`CONTRAT_DONNEES_session_insights.json`** — la forme exacte produite par le moteur
    (sur données synthétiques 6 tours ; attention : 13 virages sur-segmentés, cf. §5.1
    de la fiche 05).
@@ -57,11 +58,13 @@ Le jour où Valence remplit `telemetry_frames` pour cette session, le moteur fai
 à `mirror-insights-v1`. Rien à nettoyer : la transition est automatique.
 
 Pour distinguer démo et réel à tout moment :
+
 ```sql
 select telemetry_session_id, engine_version, computed_at
 from session_insights
 order by computed_at desc;
 ```
+
 `mirror-insights-demo` = template ; `mirror-insights-v1` = vraie donnée calculée.
 
 ---
@@ -71,6 +74,7 @@ order by computed_at desc;
 ```sql
 delete from session_insights where engine_version = 'mirror-insights-demo';
 ```
+
 Sans danger : ne touche aucune vraie donnée (il n'y en a pas encore).
 
 ---
@@ -80,6 +84,7 @@ Sans danger : ne touche aucune vraie donnée (il n'y en a pas encore).
 La démo remplit TOUTES les clés pour montrer leur forme. Mais en vraie donnée précoce
 (début Valence), trois insights seront souvent vides — décision fondateur : **état
 vide explicite**, pas de remplissage artificiel :
+
 - `throttle_brake` = `null` (câblé côté écran depuis le jerk longitudinal).
 - `dispersion` = `{}` tant qu'il n'y a pas assez de tours comparables.
 - `load_transfer` = `{}` tant que le gyroscope n'a pas assez de matière.

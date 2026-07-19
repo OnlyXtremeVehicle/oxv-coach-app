@@ -53,7 +53,7 @@ OXV Mirror met à votre disposition :
 - L'accès en lecture aux mêmes écrans d'analyse que le pilote concerné (bilan, carte du circuit, zoom virage, progression)
 - Un historique des sessions du pilote sur 90 jours minimum
 
-L'application **ne génère pas pour vous** de recommandations, de scores ou d'instructions à transmettre au pilote. La doctrine OXV — *l'app est un miroir, pas un coach* — s'applique aussi à vous : vous interprétez la donnée à votre manière, et c'est votre travail, pas celui de l'application.
+L'application **ne génère pas pour vous** de recommandations, de scores ou d'instructions à transmettre au pilote. La doctrine OXV — _l'app est un miroir, pas un coach_ — s'applique aussi à vous : vous interprétez la donnée à votre manière, et c'est votre travail, pas celui de l'application.
 
 ---
 
@@ -131,4 +131,4 @@ Le présent pacte est conservé sous forme numérique avec horodatage par OXV po
 
 ---
 
-*OXV Mirror — Pacte de coaching — Version 1.0*
+_OXV Mirror — Pacte de coaching — Version 1.0_

@@ -13,7 +13,7 @@ Le handoff décrit **deux surfaces** :
 - **Téléphone** (`OXV Coach Mobile`) — au bord de piste. **C'est la surface de la
   reskin RN V3** (l'app est mobile). Tab bar basse 5 onglets, actif **rouge doux
   coach `#E2685A`** (jamais le blanc pilote), inactif `faint #55555C`, labels
-  9-10px JetBrains Mono, logo « OXV **coach** » (mot *coach* en `#E2685A`).
+  9-10px JetBrains Mono, logo « OXV **coach** » (mot _coach_ en `#E2685A`).
 - **Tablette** (`OXV Coach`) — console au stand, rail vertical 198px. **Hors scope
   reskin RN immédiate** (paysage, non prioritaire alpha juillet 2026). Cible future.
 
@@ -23,13 +23,13 @@ brancher les routes existantes dessous.
 
 ### Répartition des 31 écrans sous les 5 onglets
 
-| Onglet | Actif | Écrans |
-| --- | --- | --- |
-| **En direct** | live P5 (reporté) + états | live (placeholder), vide, hors-ligne |
-| **Pilotes** | cœur métier | index (Poste), pilote/[id], file-lecture, studio, triage, debrief, comparer, comparer-pilotes, priorites, annoter, lecture, rapport, gabarits, assistant, contexte, plan, cycles(+[id]), repere(s) |
-| **Messages** | à créer (PR live) | messagerie coach↔pilote attribuée, sans coordonnées |
-| **Agenda** | planning | calendrier, disponibilites, demandes, roulages(index/nouveau/[id]) |
-| **Moi** | compte pro | profil, business, facturation, ar, abonnement Pro |
+| Onglet        | Actif                     | Écrans                                                                                                                                                                                             |
+| ------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **En direct** | live P5 (reporté) + états | live (placeholder), vide, hors-ligne                                                                                                                                                               |
+| **Pilotes**   | cœur métier               | index (Poste), pilote/[id], file-lecture, studio, triage, debrief, comparer, comparer-pilotes, priorites, annoter, lecture, rapport, gabarits, assistant, contexte, plan, cycles(+[id]), repere(s) |
+| **Messages**  | à créer (PR live)         | messagerie coach↔pilote attribuée, sans coordonnées                                                                                                                                                |
+| **Agenda**    | planning                  | calendrier, disponibilites, demandes, roulages(index/nouveau/[id])                                                                                                                                 |
+| **Moi**       | compte pro                | profil, business, facturation, ar, abonnement Pro                                                                                                                                                  |
 
 ## 2. Sémantique couleur propre au coach
 
@@ -37,14 +37,14 @@ Les **branches QDI** (traj bleu · frein rouge · accél vert · flui jaune · r
 violet) et la **marge §7.6** sont **identiques au pilote** quand le coach regarde
 la donnée d'un pilote. Le reste :
 
-| Sujet | Décision | Statut |
-| --- | --- | --- |
-| **Rouge de RÔLE coach** (`roleColors.coach #C8102E` · `coachAccent #E23A4E` · `coachAlert #E2685A`) | Légitime, distinct du rouge-donnée `#F65B5B`. Réservé à l'**identité** (RoleBadge, onglet actif, logo) et au **prescriptif** (CTA d'action, bande des notes/priorités attribuées au pilote, rec vocal actif, suppression). **Jamais** sur un instrument de donnée. | Canon |
-| **`palette.coach` (#E6E6E8 crème)** | Reste UNIQUEMENT la **citation coach neutre** (bande de texte montrée au pilote, sobre). | Canon |
-| **Branches QDI en vue coach** | Identiques au pilote, sans exception. | ✅ conforme (pilote/[id], comparer×2, studio, debrief) |
-| **heritageGold #C4A459 du n° de virage (`reperes`)** | Gardé (registre « référence » décoratif). Les **contrôles** de repère (sliders) portent les couleurs QDI : freinage `brake`, apex/vitesse `trajectory`. | Garder + brancher sliders |
-| **Montant facturé / CA / revenus** | **Recommandation : crème neutre** (canon strict : or = chrono seul ; l'argent n'est pas un chrono). | ⚠ ARBITRAGE Gabin |
-| **Tarifs d'offre** (formules coach, abonnement Pro 750 €/an) | **Recommandation : heritageGold `#C4A459`** (registre offre/heritage, distinct de l'or système). | ⚠ ARBITRAGE Gabin |
+| Sujet                                                                                               | Décision                                                                                                                                                                                                                                                           | Statut                                                 |
+| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| **Rouge de RÔLE coach** (`roleColors.coach #C8102E` · `coachAccent #E23A4E` · `coachAlert #E2685A`) | Légitime, distinct du rouge-donnée `#F65B5B`. Réservé à l'**identité** (RoleBadge, onglet actif, logo) et au **prescriptif** (CTA d'action, bande des notes/priorités attribuées au pilote, rec vocal actif, suppression). **Jamais** sur un instrument de donnée. | Canon                                                  |
+| **`palette.coach` (#E6E6E8 crème)**                                                                 | Reste UNIQUEMENT la **citation coach neutre** (bande de texte montrée au pilote, sobre).                                                                                                                                                                           | Canon                                                  |
+| **Branches QDI en vue coach**                                                                       | Identiques au pilote, sans exception.                                                                                                                                                                                                                              | ✅ conforme (pilote/[id], comparer×2, studio, debrief) |
+| **heritageGold #C4A459 du n° de virage (`reperes`)**                                                | Gardé (registre « référence » décoratif). Les **contrôles** de repère (sliders) portent les couleurs QDI : freinage `brake`, apex/vitesse `trajectory`.                                                                                                            | Garder + brancher sliders                              |
+| **Montant facturé / CA / revenus**                                                                  | **Recommandation : crème neutre** (canon strict : or = chrono seul ; l'argent n'est pas un chrono).                                                                                                                                                                | ⚠ ARBITRAGE Gabin                                      |
+| **Tarifs d'offre** (formules coach, abonnement Pro 750 €/an)                                        | **Recommandation : heritageGold `#C4A459`** (registre offre/heritage, distinct de l'or système).                                                                                                                                                                   | ⚠ ARBITRAGE Gabin                                      |
 
 ## 3. Deux bugs de canon à corriger (sans arbitrage)
 
@@ -77,7 +77,7 @@ Transport = **Supabase Realtime** (déjà dans la stack), en deux canaux :
 
 1. **Presence** `live:roster` — le « qui est en piste ». L'app **pilote**, quand
    une capture démarre, rejoint la presence (`{pilotId, prénom, sessionId,
-   circuit, since}`) ; à l'arrêt/déconnexion, la quitte. Le **coach** lit la
+circuit, since}`) ; à l'arrêt/déconnexion, la quitte. Le **coach** lit la
    presence → liste des pilotes live + statut au stand/en piste. Éphémère, zéro
    table.
 2. **Broadcast** `live:session:<sessionId>` — le flux télémétrique. L'app
@@ -95,7 +95,7 @@ besoin — **STOP schéma** avant toute DDL.
   en roster, machine d'états de connexion vivant/reconnexion/coupé, dérivation
   d'alerte « virage à surveiller » factuelle) + tests.
 - **Service** : `liveSessionService.ts` (canaux presence + broadcast ; `join/
-  leaveRoster`, `publishFrame` côté pilote ; `subscribeRoster`, `subscribePilot`
+leaveRoster`, `publishFrame` côté pilote ; `subscribeRoster`, `subscribePilot`
   côté coach). Simulateur de flux pour le dev (aucun RaceBox requis).
 - **Store** : `useLiveStore` (roster, flux courant, état de connexion).
 - **UI coach** : onglet En direct (roster + états vide/hors-ligne robustes),
@@ -115,15 +115,15 @@ reconnexion auto, télémétrie gardée sur le boîtier ».
 
 ## 5. Priorités de reskin
 
-| Prio | Écran | Action clé |
-| --- | --- | --- |
-| **P0** | `studio.tsx` | Lecture dense (cœur valeur coach) : KingNumber marge OR→§7.6 ; wording Skia→SVG. Donne le ton (QdiRadar+KingNumber). |
-| **Haute** | `debrief.tsx` | Miroir montré au pilote : KingNumber marge §7.6 ; calme, RoleBadge seul, aucun rouge de rôle sur le contenu. |
-| **Haute** | `index.tsx` (Poste) | Hub d'entrée : cartes pilotes (record or / régul violet / à-lire rouge doux), fil 24h à pastilles de rôle, CTA `#E23A4E`. |
-| Moyenne | `triage.tsx` | zoneByIndex sur §7.6 ; commentaire « ambre » obsolète. |
-| Moyenne | `annoter.tsx` | Accents contrôles crème→coachAccent ; rouge de rôle sur notes partagées. |
-| Basse | `pilote/[id]`, `comparer`(×2), `file-lecture`, `lecture` | Eyebrows/bordures crème→rouge de rôle ; couleur d'entité A ; RoleBadge en tête. |
-| Basse | `facturation`, `business`, `profil`, `reperes` | **Dépendent des arbitrages money/tarifs** avant reskin définitive. |
+| Prio      | Écran                                                    | Action clé                                                                                                                |
+| --------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **P0**    | `studio.tsx`                                             | Lecture dense (cœur valeur coach) : KingNumber marge OR→§7.6 ; wording Skia→SVG. Donne le ton (QdiRadar+KingNumber).      |
+| **Haute** | `debrief.tsx`                                            | Miroir montré au pilote : KingNumber marge §7.6 ; calme, RoleBadge seul, aucun rouge de rôle sur le contenu.              |
+| **Haute** | `index.tsx` (Poste)                                      | Hub d'entrée : cartes pilotes (record or / régul violet / à-lire rouge doux), fil 24h à pastilles de rôle, CTA `#E23A4E`. |
+| Moyenne   | `triage.tsx`                                             | zoneByIndex sur §7.6 ; commentaire « ambre » obsolète.                                                                    |
+| Moyenne   | `annoter.tsx`                                            | Accents contrôles crème→coachAccent ; rouge de rôle sur notes partagées.                                                  |
+| Basse     | `pilote/[id]`, `comparer`(×2), `file-lecture`, `lecture` | Eyebrows/bordures crème→rouge de rôle ; couleur d'entité A ; RoleBadge en tête.                                           |
+| Basse     | `facturation`, `business`, `profil`, `reperes`           | **Dépendent des arbitrages money/tarifs** avant reskin définitive.                                                        |
 
 ## 6. Garde-fous doctrine coach (à conserver)
 

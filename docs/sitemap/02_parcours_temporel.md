@@ -27,6 +27,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 **Canal** : email + notification push si app installée
 
 **Contenu** :
+
 - Confirmation de la session
 - Liens vers playlist Spotify OXV
 - Rappel logistique (heure, lieu, documents à apporter)
@@ -54,6 +55,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 **Canal** : email + notification push
 
 **Contenu** :
+
 - Rappel des consignes
 - Météo annoncée
 - Briefing horaire
@@ -70,7 +72,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 
 **Écran** : #21 — Accueil en route (variante de #20 mode B)
 
-**Contenu** : *"Bon trajet vers Beltoise. Coupez l'app. Je conduis."*
+**Contenu** : _"Bon trajet vers Beltoise. Coupez l'app. Je conduis."_
 
 **État du pilote** : S5 (Approche)
 
@@ -85,6 +87,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 **Écrans** : #07 → #08 → #09 (séquence paddock)
 
 **Contenu** :
+
 - Bienvenue au circuit
 - Jumelage équipement
 - Instructions de placement
@@ -114,6 +117,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 **Écrans** : #10 → #11 → #12 → #13 (séquence retour stands + ouverture bilan)
 
 **Contenu** :
+
 - Reconnaissance émotionnelle ("Vous avez piloté")
 - Préservation des données
 - Annonce du bilan disponible
@@ -133,7 +137,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 
 **État du pilote** : S9 (Décantation)
 
-**Signature** : *"L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause."*
+**Signature** : _"L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause."_
 
 ---
 
@@ -142,6 +146,7 @@ J-7 ───── J-2 ───── J-1 ───── J0 ───── J
 Du jour J+2 au jour précédant la prochaine réservation, **l'app se met en silence**. Pas de notifications. Pas de relance. Pas de prompt commercial.
 
 Le pilote peut ouvrir l'app à tout moment pour consulter :
+
 - #17 Progression
 - #18 Comparateur
 - Ses anciens bilans
@@ -172,22 +177,22 @@ S10 (Repos)
 
 ### Triggers temporels (côté Supabase Edge Functions)
 
-| Moment | Type | Mécanisme |
-|---|---|---|
-| J-7 | Email + push | Cron job quotidien à 9h |
-| J-2 | Email avec audio | Cron job + génération OpenAI/ElevenLabs |
-| J-1 | Email + push | Cron job |
-| J+1 | Push + génération | Cron job 24h après fin de session |
+| Moment | Type              | Mécanisme                               |
+| ------ | ----------------- | --------------------------------------- |
+| J-7    | Email + push      | Cron job quotidien à 9h                 |
+| J-2    | Email avec audio  | Cron job + génération OpenAI/ElevenLabs |
+| J-1    | Email + push      | Cron job                                |
+| J+1    | Push + génération | Cron job 24h après fin de session       |
 
 ### Triggers contextuels (côté app)
 
-| Moment | Type | Mécanisme |
-|---|---|---|
-| J0 en route | Géolocalisation | API Expo Location |
-| J0 paddock | Geo + vitesse | Calcul en temps réel |
-| J0 roulage | Vitesse | Seuil 60 km/h |
-| J0 fin | Vitesse + timer | Seuil 0 + 5 min |
+| Moment      | Type            | Mécanisme            |
+| ----------- | --------------- | -------------------- |
+| J0 en route | Géolocalisation | API Expo Location    |
+| J0 paddock  | Geo + vitesse   | Calcul en temps réel |
+| J0 roulage  | Vitesse         | Seuil 60 km/h        |
+| J0 fin      | Vitesse + timer | Seuil 0 + 5 min      |
 
 ---
 
-*Carte 2/4 — Parcours temporel — Mai 2026*
+_Carte 2/4 — Parcours temporel — Mai 2026_

@@ -44,6 +44,7 @@ COMMENT ON COLUMN public.coach_pilots.live_sharing_at IS
   Sans ça, aucune trame n'est émise (silence réseau, pas juste UI masquée).
 
 ### App-side (après validation)
+
 - **Mon coach** (`app/(app)/mon-coach.tsx`) : un 3ᵉ toggle « Partage en direct »
   (en plus de Télémétrie / Analyses), OFF par défaut, texte RGPD explicite
   (« Votre position et votre télémétrie en temps réel, uniquement pendant que
@@ -114,6 +115,7 @@ temps réel d'affichage via **Supabase Realtime** (postgres_changes sur
 le « live » du fil est un abonnement, pas une seconde source de vérité.
 
 ### App-side (après validation)
+
 - **`coachMessagesService`** : `listThread(coachPilotId)`, `sendMessage(...)`,
   `markRead(id)` + un hook `useCoachThread` (Realtime postgres_changes).
 - **Écran** : remplacer le placeholder `app/(coach)/messages.tsx` (liste des
@@ -138,6 +140,7 @@ audience désormais scopée au binôme consenti, côté serveur (RLS), pas seule
 côté client.
 
 **Appliqué (3 volets) :**
+
 1. **Canaux privés** app-side : `supabase.channel(topic, { config: { private: true } })`
    à l'émission ET à la réception (`liveSessionService`). Un canal privé délègue
    l'autorisation à la RLS `realtime.messages` (au lieu de tout laisser passer).
@@ -172,6 +175,7 @@ sur build + réseau circuit) — non testable en headless. Bloqueur levé côté
 ## État (2026-07-11) — livré
 
 Validé par Gabin (« 1-B et 2-A », « je valide », « go »). Appliqué :
+
 - **§1** `telemetry_sessions.live_sharing_at` + toggle « Partage en direct » (mon-coach),
   gate d'émission dans `liveRelayRunner`.
 - **§2** table `coach_messages` + RLS + service/hook/écrans messagerie (durable).

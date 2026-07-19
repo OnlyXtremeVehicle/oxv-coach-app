@@ -121,7 +121,7 @@ En cochant la case d'acceptation, vous déclarez sur l'honneur :
 
 ---
 
-*Document conservé dans votre espace pilote et consultable à tout moment depuis vos paramètres.*
+_Document conservé dans votre espace pilote et consultable à tout moment depuis vos paramètres._
 
-*OXV — Only Xtreme Vehicle*
-*[Coordonnées juridiques à compléter au moment de la création du SIRET]*
+_OXV — Only Xtreme Vehicle_
+_[Coordonnées juridiques à compléter au moment de la création du SIRET]_

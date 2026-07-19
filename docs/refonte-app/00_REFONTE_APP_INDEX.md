@@ -19,6 +19,7 @@ Principe directeur : **pas plus de texte ni plus de couleurs — plus d'instrume
 Tout fichier reprend la même base. Les valeurs ci-dessous sont **normatives**.
 
 ### Fond cockpit
+
 ```
 background:
   radial-gradient(halo gold diffus, centré sur l'instrument)   /* présence */
@@ -28,19 +29,21 @@ background:
 ```
 
 ### Tokens (inchangés)
-| token | hex | usage |
-|---|---|---|
-| night / fond | `#040406`–`#0E0E14` | fond cockpit |
-| line | `#1C1C20` | bordures |
-| cream | `#F8F9FA` | texte primaire |
-| mute / faint | `#9A9AA3` / `#54545C` | texte secondaire / labels |
-| **gold** | **`#FFB703`** | **données quotidiennes** (chiffre dominant, jauges, traces) |
-| **heritage** | **`#C4A459`** | **tier Heritage UNIQUEMENT** + virage signature. Jamais ailleurs. |
-| **red** | **`#C8102E`** | **marque + bande coach (prescriptif) UNIQUEMENT** |
-| green | `#4ADE80` | tendance positive, secteur le plus fort |
-| polices | Geist / Geist Mono | mono pour tous les chiffres et labels HUD |
+
+| token        | hex                   | usage                                                             |
+| ------------ | --------------------- | ----------------------------------------------------------------- |
+| night / fond | `#040406`–`#0E0E14`   | fond cockpit                                                      |
+| line         | `#1C1C20`             | bordures                                                          |
+| cream        | `#F8F9FA`             | texte primaire                                                    |
+| mute / faint | `#9A9AA3` / `#54545C` | texte secondaire / labels                                         |
+| **gold**     | **`#FFB703`**         | **données quotidiennes** (chiffre dominant, jauges, traces)       |
+| **heritage** | **`#C4A459`**         | **tier Heritage UNIQUEMENT** + virage signature. Jamais ailleurs. |
+| **red**      | **`#C8102E`**         | **marque + bande coach (prescriptif) UNIQUEMENT**                 |
+| green        | `#4ADE80`             | tendance positive, secteur le plus fort                           |
+| polices      | Geist / Geist Mono    | mono pour tous les chiffres et labels HUD                         |
 
 ### Composants de la grammaire
+
 - **Status bar HUD** : pastille pulsante + label mono `letter-spacing:.24em` UPPERCASE + méta à droite.
 - **Instrument central** (écrans data) : arc gradué (270°) en **or** + ticks (compteur) + **repère heritageGold** optionnel (record, étalon) + chiffre géant à halo. **Cockpit factuel : aucune zone vert/jaune/rouge de jugement, pas de redline rouge** — le rouge reste réservé marque + bande coach. Implémenté par le composant `GaugeInstrument` (`src/components/instruments/`). Arc = `stroke-dasharray` + `rotate(135°)`.
 - **Secteurs F1** : S1/S2/S3 colorés (vert = le plus fort, gold = correct, faint = plus lent) + barre de remplissage.
@@ -49,6 +52,7 @@ background:
 - **Bande coach** : panneau rouge bordé, marqué « De votre coach » / « Espace coach ». Seul lieu impératif.
 
 ### Mise sous tension (séquence d'animation)
+
 À l'ouverture, l'écran « démarre » par couches échelonnées :
 | effet | keyframe | cible |
 |---|---|---|
@@ -61,51 +65,53 @@ background:
 | halo qui pulse | `halo`, `blink` (boucle) | présence, indicateurs REC |
 
 ### Glow
+
 `filter:drop-shadow(0 0 Npx rgba(token,alpha))` sur les éléments SVG, `text-shadow` sur les chiffres. Réservé aux éléments porteurs (chiffre dominant, arc, trace, indicateurs). Jamais décoratif partout.
 
 ---
 
 ## 3. Les 14 maquettes
 
-| # | Fichier | Archétype | Spécificité gaming |
-|---|---|---|---|
-| 01 | `maquette_debrief_gaming.html` | **Analyse riche** (mètre-étalon) | Instrument central + redline + secteurs + trace + piliers, séquence complète |
-| 02 | `maquette_accueil_gaming.html` | **Hub / navigation** | Menu de cockpit : hero à mini-instrument + tuiles HUD |
-| 03 | `maquette_insight_gg_gaming.html` | **Insight approfondi** | Radar de traction (anneaux gradués, scatter qui s'allume, creux d'enveloppe) |
-| 04 | `maquette_live_gaming.html` | **Live en piste** | Doctrine du silence : cockpit éteint, onde d'enregistrement seule |
-| 05 | `maquette_comparaison_ab_gaming.html` | **Comparaison A/B** | Duel : trajectoires superposées qui se dessinent, barres divergentes |
-| 06 | `maquette_heatmap_gaming.html` | **Carte de chaleur** | Tracé coloré par la vitesse (froid→chaud), scan séquentiel |
-| 07 | `maquette_fiche_circuit_gaming.html` | **Fiche circuit** | Tracé hero qui se dessine, virage signature heritage, sessions |
-| 08 | `maquette_espace_coach_gaming.html` | **Espace coach** | Miroir factuel + **frontière constat/consigne visible** + bande prescriptive |
-| 09 | `maquette_mon_coach_gaming.html` | **Mon coach** | Réception lecture seule, rappel de doctrine (symétrie avec 08) |
-| 10 | `maquette_liste_roulages_gaming.html` | **Liste / historique** | Journal de bord, un chiffre + tendance par ligne |
-| 11 | `maquette_reglages_gaming.html` | **Formulaire / réglages** | Interrupteurs HUD, « Silence en piste » en premier rang |
-| 12 | `maquette_admin_gaming.html` | **Admin / régie** | Poste de commande : KPIs lumineux, file d'inscriptions, sessions |
-| 13 | `maquette_onboarding_gaming.html` | **Onboarding** | Étape doctrine, barre segmentée, titre dominant |
-| 14 | `maquette_partage_gaming.html` | **Carte de partage** | Carte trophée 4:5, or quotidien (jamais heritage) |
+| #   | Fichier                               | Archétype                        | Spécificité gaming                                                           |
+| --- | ------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------- |
+| 01  | `maquette_debrief_gaming.html`        | **Analyse riche** (mètre-étalon) | Instrument central + redline + secteurs + trace + piliers, séquence complète |
+| 02  | `maquette_accueil_gaming.html`        | **Hub / navigation**             | Menu de cockpit : hero à mini-instrument + tuiles HUD                        |
+| 03  | `maquette_insight_gg_gaming.html`     | **Insight approfondi**           | Radar de traction (anneaux gradués, scatter qui s'allume, creux d'enveloppe) |
+| 04  | `maquette_live_gaming.html`           | **Live en piste**                | Doctrine du silence : cockpit éteint, onde d'enregistrement seule            |
+| 05  | `maquette_comparaison_ab_gaming.html` | **Comparaison A/B**              | Duel : trajectoires superposées qui se dessinent, barres divergentes         |
+| 06  | `maquette_heatmap_gaming.html`        | **Carte de chaleur**             | Tracé coloré par la vitesse (froid→chaud), scan séquentiel                   |
+| 07  | `maquette_fiche_circuit_gaming.html`  | **Fiche circuit**                | Tracé hero qui se dessine, virage signature heritage, sessions               |
+| 08  | `maquette_espace_coach_gaming.html`   | **Espace coach**                 | Miroir factuel + **frontière constat/consigne visible** + bande prescriptive |
+| 09  | `maquette_mon_coach_gaming.html`      | **Mon coach**                    | Réception lecture seule, rappel de doctrine (symétrie avec 08)               |
+| 10  | `maquette_liste_roulages_gaming.html` | **Liste / historique**           | Journal de bord, un chiffre + tendance par ligne                             |
+| 11  | `maquette_reglages_gaming.html`       | **Formulaire / réglages**        | Interrupteurs HUD, « Silence en piste » en premier rang                      |
+| 12  | `maquette_admin_gaming.html`          | **Admin / régie**                | Poste de commande : KPIs lumineux, file d'inscriptions, sessions             |
+| 13  | `maquette_onboarding_gaming.html`     | **Onboarding**                   | Étape doctrine, barre segmentée, titre dominant                              |
+| 14  | `maquette_partage_gaming.html`        | **Carte de partage**             | Carte trophée 4:5, or quotidien (jamais heritage)                            |
 
 ---
 
 ## 4. Mapping des 80 écrans → archétypes
 
 **Pilote (44)**
-- *Analyse riche (01)* : debrief, signature, regularite, progression, virage, tours, stats, replay, telemetry, bilan, prochaine-fois
-- *Hub (02)* : index, paddock, lieux, carte, circuits
-- *Insight (03)* : insight G-G, enveloppe, galerie insights
-- *Live (04)* : roulage, entre-runs, pilotage-fini
-- *Comparaison (05)* : comparateur, cote-a-cote, virage-comparer
-- *Heatmap (06)* : heatmap, carte (pilier)
-- *Fiche circuit (07)* : circuit/[id]
-- *Mon coach (09)* : mon-coach
-- *Liste (10)* : roulages, amis, notifications, social, objectifs
-- *Réglages (11)* : settings, equipement, donnees-securite, creer-trace, placement
-- *Partage (14)* : partage, share/[token], social-carte
 
-**Coach (15)** → *Espace coach (08)* + *Comparaison (05)* (comparer-pilotes) : toutes les vues de suivi pilote, annotation, objectifs, comparaison.
+- _Analyse riche (01)_ : debrief, signature, regularite, progression, virage, tours, stats, replay, telemetry, bilan, prochaine-fois
+- _Hub (02)_ : index, paddock, lieux, carte, circuits
+- _Insight (03)_ : insight G-G, enveloppe, galerie insights
+- _Live (04)_ : roulage, entre-runs, pilotage-fini
+- _Comparaison (05)_ : comparateur, cote-a-cote, virage-comparer
+- _Heatmap (06)_ : heatmap, carte (pilier)
+- _Fiche circuit (07)_ : circuit/[id]
+- _Mon coach (09)_ : mon-coach
+- _Liste (10)_ : roulages, amis, notifications, social, objectifs
+- _Réglages (11)_ : settings, equipement, donnees-securite, creer-trace, placement
+- _Partage (14)_ : partage, share/[token], social-carte
 
-**Admin (8)** → *Admin / régie (12)* : dashboard, inscriptions, sessions, pilotes, circuits, articles, gestion.
+**Coach (15)** → _Espace coach (08)_ + _Comparaison (05)_ (comparer-pilotes) : toutes les vues de suivi pilote, annotation, objectifs, comparaison.
 
-**Onboarding (6 + coach 3)** → *Onboarding (13)* : index, doctrine, methode, niveau, pacte, cgu + coach-onboarding (index, mission, pacte).
+**Admin (8)** → _Admin / régie (12)_ : dashboard, inscriptions, sessions, pilotes, circuits, articles, gestion.
+
+**Onboarding (6 + coach 3)** → _Onboarding (13)_ : index, doctrine, methode, niveau, pacte, cgu + coach-onboarding (index, mission, pacte).
 
 ---
 

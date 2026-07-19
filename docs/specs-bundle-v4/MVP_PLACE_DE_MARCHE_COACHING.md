@@ -19,11 +19,13 @@
 ## 1. Vision et cadrage doctrine
 
 ### 1.1 — Le produit en une phrase
+
 Permettre à un pilote OXV de **trouver un coach, consulter sa fiche, demander un
 créneau, obtenir une confirmation**, puis vivre la séance et son débrief présentiel
 (déjà existant) — le tout dans un cadre sobre, premium et conforme à la doctrine.
 
 ### 1.2 — Pourquoi c'est compatible OXV
+
 La doctrine « l'app est un miroir, elle ne vous dirige pas » encadre **l'app côté
 restitution de pilotage** : aucune machine ne prescrit, aucun score, aucun verdict
 algorithmique. Elle **n'interdit pas un service de coaching HUMAIN.** Le coach est
@@ -40,6 +42,7 @@ relation** entre un pilote et un coach. La parole prescriptive reste celle d'un
 humain identifié et choisi ; l'app reste un miroir factuel côté données.
 
 ### 1.3 — Ce que ce MVP n'est PAS (garde-fous premium)
+
 - **Pas un bazar gig-economy.** Pas de surenchère de badges, pas de « 3 coachs
   regardent ce créneau », pas de compte à rebours anxiogène, pas de notation
   publique agressive façon plateforme de VTC.
@@ -50,6 +53,7 @@ humain identifié et choisi ; l'app reste un miroir factuel côté données.
 - **Avis sobres possibles, en Phase 2 seulement**, et encadrés (voir §6 et §7).
 
 ### 1.4 — Articulation avec l'espace coach existant (point important)
+
 Le bundle actuel (`specs/C0_coach.md`) décrit une relation **opt-in et révocable où
 le pilote invite SON coach** — « aucune découverte d'autres pilotes, aucun annuaire
 global ». La place de marché introduit, côté pilote, une **découverte de coachs**
@@ -68,9 +72,11 @@ Découpage volontaire : livrer vite une mise en relation **sans paiement** (zér
 complexité juridique/PSP), valider l'usage réel, puis ajouter le paiement.
 
 ### Phase 1 — Mise en relation, SANS paiement
+
 **Objectif : livrer vite, valider l'usage, zéro complexité paiement/juridique.**
 
 Périmètre :
+
 1. **Fiche coach publique** : bio, palmarès, circuits couverts, spécialités, tarif
    **indicatif** (affiché, non transactionnel), photo, liens (site, réseaux).
    → s'appuie sur `coach_profiles` (existant).
@@ -87,12 +93,14 @@ Périmètre :
 Hors périmètre Phase 1 : paiement, commission, facturation, avis.
 
 ### Phase 2 — Paiement + commission + avis
+
 Une fois l'usage validé :
+
 1. **Paiement intégré** via **Stripe Connect** (sous réserve §5) : le pilote paie la
    séance dans l'app, **OXV prélève une commission de X %**, le reste est **reversé au
    coach** (compte connecté Stripe).
 2. **Cycle de vie transactionnel** sur `coaching_bookings` : `confirmed → paid →
-   completed` (+ `refunded`/`cancelled`).
+completed` (+ `refunded`/`cancelled`).
 3. **Avis post-séance** : le pilote peut laisser un avis **sobre** (texte court +
    note basse résolution), visible sur la fiche coach selon une règle à définir (§6).
    → table **nouvelle** `coach_reviews`.
@@ -211,7 +219,7 @@ Rien n'avance côté implémentation tant que ces points ne sont pas tranchés :
   - (b) **Avis texte modérés, sans note chiffrée** (sobre, premium).
   - (c) **Avis + note basse résolution** (ex. 1–5), **sans tri par défaut sur la note**
     et sans « top coachs ». À ne faire qu'avec modération et droit de réponse.
-  Recommandation doctrine : (a) ou (b) au lancement.
+    Recommandation doctrine : (a) ou (b) au lancement.
 - **OXV intermédiaire de paiement (Phase 2)** : prélever une commission fait d'OXV un
   intermédiaire transactionnel → **CGV dédiées, mentions, fiscalité du reversement,
   gestion des litiges/remboursements**. Point juridique central, à cadrer avec le
@@ -234,11 +242,11 @@ Rien n'avance côté implémentation tant que ces points ne sont pas tranchés :
 
 ### 7.0 — Tables EXISTANTES réutilisées (NE PAS recréer)
 
-| Table existante | Rôle dans le MVP | Colonnes clés déjà présentes |
-|---|---|---|
-| `coach_profiles` | **Fiche coach** (parcours, fiche détail) | `coach_id` (PK, FK users, unique), `bio`, `headline`, `palmares`, `circuits text[]`, `specialties text[]`, `season_price_eur`, `photo_url`, `media jsonb`, `socials jsonb`, `website_url`, `instagram_url`, `youtube_url`, `is_published bool` |
-| `coach_pilots` | **Affiliation + consentement** (le lien durable pilote↔coach) | `coach_id`, `pilot_id`, `status` (`pending\|active\|declined\|ended`), `initiated_by` (`coach\|pilot`), `pilot_consent_at`, `coach_consent_at`, `affiliation_price_eur`, `active` |
-| `coach_roulages` | Événements/roulages d'un coach (déjà géré côté app) | `coach_id`, `title`, `circuit_name`, `starts_at`, `ends_at`, `max_pilots`, `price_per_pilot`, `status`, `location` |
+| Table existante  | Rôle dans le MVP                                              | Colonnes clés déjà présentes                                                                                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `coach_profiles` | **Fiche coach** (parcours, fiche détail)                      | `coach_id` (PK, FK users, unique), `bio`, `headline`, `palmares`, `circuits text[]`, `specialties text[]`, `season_price_eur`, `photo_url`, `media jsonb`, `socials jsonb`, `website_url`, `instagram_url`, `youtube_url`, `is_published bool` |
+| `coach_pilots`   | **Affiliation + consentement** (le lien durable pilote↔coach) | `coach_id`, `pilot_id`, `status` (`pending\|active\|declined\|ended`), `initiated_by` (`coach\|pilot`), `pilot_consent_at`, `coach_consent_at`, `affiliation_price_eur`, `active`                                                              |
+| `coach_roulages` | Événements/roulages d'un coach (déjà géré côté app)           | `coach_id`, `title`, `circuit_name`, `starts_at`, `ends_at`, `max_pilots`, `price_per_pilot`, `status`, `location`                                                                                                                             |
 
 Enums existants réutilisés : `affiliation_status`, `affiliation_initiator`.
 
@@ -263,7 +271,9 @@ CREATE TABLE public.coach_availability (
 );
 CREATE INDEX ON public.coach_availability (coach_id, starts_at);
 ```
+
 **Notes RLS** :
+
 - SELECT public **limité** : un créneau n'est visible que si la fiche du coach est
   publiée (`EXISTS (SELECT 1 FROM coach_profiles p WHERE p.coach_id = coach_availability.coach_id AND p.is_published)`)
   et `status IN ('open','full')`. Sinon, visible **au coach propriétaire** uniquement.
@@ -312,7 +322,9 @@ CREATE TABLE public.coaching_bookings (
 CREATE INDEX ON public.coaching_bookings (coach_id, status);
 CREATE INDEX ON public.coaching_bookings (pilot_id, status);
 ```
+
 **Notes RLS** :
+
 - SELECT : **le pilote concerné** (`pilot_id = auth.uid()`) **ou** **le coach concerné**
   (`coach_id = auth.uid()`) **ou** `is_admin()`.
 - INSERT : **le pilote** crée sa propre demande (`pilot_id = auth.uid()`, `status='pending'`).
@@ -338,7 +350,9 @@ CREATE TABLE public.coach_reviews (
   UNIQUE (booking_id)                                  -- un avis par séance
 );
 ```
+
 **Notes RLS** :
+
 - INSERT : **le pilote** d'une séance `completed` uniquement (`pilot_id = auth.uid()`
   ET la réservation liée est `completed`).
 - SELECT public : seulement `is_published = true` (modération préalable) ; sinon
@@ -348,6 +362,7 @@ CREATE TABLE public.coach_reviews (
 - **Cette table n'est créée que si l'option (b)/(c) du §6 est retenue.**
 
 ### 7.4 — Articulation avec les rôles existants
+
 - Le **rôle coach** est porté par `users` (le guard `app/(coach)/_layout.tsx` teste
   `profile.role === 'coach'`). Les FK `coach_id` pointent vers `users(id)`.
 - La **fiche** (`coach_profiles`) et l'**affiliation** (`coach_pilots`) existent déjà :
@@ -360,16 +375,16 @@ CREATE TABLE public.coach_reviews (
 
 ## 8. Récapitulatif de ce qui est nouveau vs existant
 
-| Élément | État | Action MVP |
-|---|---|---|
-| Fiche coach (`coach_profiles`) | **Existe** (vide) | Réutiliser, brancher l'écran « parcourir » + « fiche » |
-| Affiliation + consentement (`coach_pilots`) | **Existe** (vide) | Réutiliser pour le consentement RGPD à la confirmation |
-| Roulages (`coach_roulages`) | **Existe** | Inchangé (déjà géré) |
-| Enums `affiliation_status/initiator` | **Existe** | Réutiliser |
-| Disponibilités (`coach_availability`) | **N'existe pas** | **Proposer** (Phase 1) |
-| Réservations (`coaching_bookings`) | **N'existe pas** | **Proposer** (Phase 1, étendue Phase 2) |
-| Avis (`coach_reviews`) | **N'existe pas** | **Proposer** (Phase 2, sous arbitrage) |
-| Paiement (Stripe Connect) | Stripe déjà côté plateforme | **Phase 2**, après décisions §5 |
+| Élément                                     | État                        | Action MVP                                             |
+| ------------------------------------------- | --------------------------- | ------------------------------------------------------ |
+| Fiche coach (`coach_profiles`)              | **Existe** (vide)           | Réutiliser, brancher l'écran « parcourir » + « fiche » |
+| Affiliation + consentement (`coach_pilots`) | **Existe** (vide)           | Réutiliser pour le consentement RGPD à la confirmation |
+| Roulages (`coach_roulages`)                 | **Existe**                  | Inchangé (déjà géré)                                   |
+| Enums `affiliation_status/initiator`        | **Existe**                  | Réutiliser                                             |
+| Disponibilités (`coach_availability`)       | **N'existe pas**            | **Proposer** (Phase 1)                                 |
+| Réservations (`coaching_bookings`)          | **N'existe pas**            | **Proposer** (Phase 1, étendue Phase 2)                |
+| Avis (`coach_reviews`)                      | **N'existe pas**            | **Proposer** (Phase 2, sous arbitrage)                 |
+| Paiement (Stripe Connect)                   | Stripe déjà côté plateforme | **Phase 2**, après décisions §5                        |
 
 ---
 

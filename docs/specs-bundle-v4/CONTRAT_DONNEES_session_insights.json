@@ -113,31 +113,11 @@
     "real_best_s": 52.16,
     "gap_s": 0.24,
     "best_lap": 5,
-    "loss_by_sector_pct": [
-      0,
-      0,
-      0,
-      33,
-      0,
-      0,
-      0,
-      33,
-      33,
-      0,
-      0,
-      0
-    ],
+    "loss_by_sector_pct": [0, 0, 0, 33, 0, 0, 0, 33, 33, 0, 0, 0],
     "worst_sector": 3
   },
   "session_drift": {
-    "lap_times_s": [
-      52.76,
-      52.6,
-      52.44,
-      52.32,
-      52.16,
-      52.16
-    ],
+    "lap_times_s": [52.76, 52.6, 52.44, 52.32, 52.16, 52.16],
     "improving_until": 5
   },
   "flow_coherence": {

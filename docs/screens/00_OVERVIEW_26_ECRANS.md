@@ -8,6 +8,7 @@
 ## Principes visuels communs à tous les écrans
 
 ### Palette OXV stricte
+
 - **Noir profond** `#050505` — fond par défaut
 - **Blanc principal** `#FFFFFF` — texte principal
 - **Blanc atténué** `rgba(255,255,255,0.55)` — texte secondaire
@@ -18,11 +19,13 @@
 - **Bronze admin** `#B87333` — réservé aux 3 vues admin
 
 ### Typographie
+
 - **System UI** (SF Pro sur iOS, Roboto sur Android)
 - **Weights** : 200 (ultra-light) pour les chiffres centraux, 300-400 pour le texte, 500 pour les labels
 - **Letter-spacing** : 0.18em à 0.28em pour les eyebrows et labels en majuscules
 
 ### Hiérarchie type
+
 - **Eyebrow** : 10-11px en majuscules, monospace, opacité 0.4-0.5
 - **Chiffre central** : 80-120px, weight 200
 - **Titre** : 24-28px, weight 200
@@ -30,6 +33,7 @@
 - **Caption** : 11-12px, weight 300
 
 ### Esthétique
+
 - **Mode sombre exclusif** (pas de mode clair)
 - **Pas d'emojis** (sauf si explicitement demandé par utilisateur)
 - **Pas de gradients clinquants** (sobre type Ferrari/Apple)
@@ -45,12 +49,14 @@
 **Contexte** : tout premier écran à l'ouverture après installation.
 
 **Composition** :
+
 - Insigne OXV grand centré (faucon stylisé rouge sur noir)
 - Sous l'insigne, en majuscules letter-spaced : `OXV MIRROR`
-- Sous le titre, une phrase manifeste : *"Bienvenue dans le miroir."*
+- Sous le titre, une phrase manifeste : _"Bienvenue dans le miroir."_
 - En bas, bouton discret : `Commencer` (rouge OXV, plein, large)
 
 **Comportement** :
+
 - Tap "Commencer" → écran #02
 - Pas de bouton "passer" — l'onboarding est complet ou rien
 
@@ -61,12 +67,13 @@
 **Contexte** : pose la philosophie OXV avant tout le reste.
 
 **Composition** :
-- Titre en haut : *"Une app qui vous montre."*
+
+- Titre en haut : _"Une app qui vous montre."_
 - En dessous, trois phrases empilées :
-  - *"Pas un coach."*
-  - *"Pas un instructeur."*
-  - *"Un miroir."*
-- En bas, phrase explicative en italique : *"Les décisions de pilotage vous appartiennent. Toujours."*
+  - _"Pas un coach."_
+  - _"Pas un instructeur."_
+  - _"Un miroir."_
+- En bas, phrase explicative en italique : _"Les décisions de pilotage vous appartiennent. Toujours."_
 - Bouton `Compris` (rouge OXV)
 
 ---
@@ -76,12 +83,13 @@
 **Contexte** : explique la méthode pédagogique en 3 mots.
 
 **Composition** :
+
 - Eyebrow : `LA MÉTHODE OXV`
 - Trois colonnes empilées (mobile) ou en ligne (tablette) :
-  - **VOIR** — *"Ce qui s'est passé"*
-  - **COMPRENDRE** — *"Ce que vous avez senti"*
-  - **QUESTIONNER** — *"Ce que vous voulez explorer"*
-- Phrase en bas : *"Jamais d'instruction. Toujours une observation."*
+  - **VOIR** — _"Ce qui s'est passé"_
+  - **COMPRENDRE** — _"Ce que vous avez senti"_
+  - **QUESTIONNER** — _"Ce que vous voulez explorer"_
+- Phrase en bas : _"Jamais d'instruction. Toujours une observation."_
 - Bouton `Suivant`
 
 ---
@@ -91,12 +99,13 @@
 **Contexte** : permet à l'app de calibrer ses analyses.
 
 **Composition** :
-- Titre : *"Où vous situez-vous ?"*
+
+- Titre : _"Où vous situez-vous ?"_
 - 4 niveaux sélectionnables (cards verticales) :
-  - **Débutant** — *"Quelques journées circuit, je découvre"*
-  - **Apprivoisé** — *"Je connais Beltoise, je progresse session après session"*
-  - **Confirmé** — *"Je tourne régulièrement, je connais mes limites"*
-  - **Expert** — *"J'ai un fond compétition, je cherche la précision"*
+  - **Débutant** — _"Quelques journées circuit, je découvre"_
+  - **Apprivoisé** — _"Je connais Beltoise, je progresse session après session"_
+  - **Confirmé** — _"Je tourne régulièrement, je connais mes limites"_
+  - **Expert** — _"J'ai un fond compétition, je cherche la précision"_
 - Sélection unique
 - Bouton `Continuer` activé après sélection
 
@@ -109,11 +118,12 @@
 **Contexte** : acceptation légale obligatoire.
 
 **Composition** :
-- Titre : *"Avant de continuer"*
+
+- Titre : _"Avant de continuer"_
 - Trois cases à cocher (toutes obligatoires) :
-  - ☐ *"J'accepte les Conditions Générales d'Utilisation"* (lien vers texte intégral)
-  - ☐ *"J'ai lu la Politique de confidentialité"* (lien)
-  - ☐ *"Je confirme avoir 18 ans révolus et un permis B valide"*
+  - ☐ _"J'accepte les Conditions Générales d'Utilisation"_ (lien vers texte intégral)
+  - ☐ _"J'ai lu la Politique de confidentialité"_ (lien)
+  - ☐ _"Je confirme avoir 18 ans révolus et un permis B valide"_
 - Bouton `J'accepte` désactivé tant que les 3 cases ne sont pas cochées
 - Horodatage côté Supabase à l'activation
 
@@ -124,12 +134,13 @@
 **Contexte** : LA signature manifeste, le moment le plus important de l'onboarding.
 
 **Composition** :
+
 - Fond noir absolu (signature visuelle)
 - Eyebrow : `PACTE DE PILOTAGE`
 - Au centre, en grand, deux phrases :
-  - *"L'app est un miroir. Elle vous montre. Elle ne vous dirige pas."*
-  - *"La piste est à vous. Les décisions aussi."*
-- En bas, une seule case à cocher : *"Je m'engage."*
+  - _"L'app est un miroir. Elle vous montre. Elle ne vous dirige pas."_
+  - _"La piste est à vous. Les décisions aussi."_
+- En bas, une seule case à cocher : _"Je m'engage."_
 - Bouton `Activer OXV Mirror`
 
 **Important** : ce pacte est consultable à tout moment depuis Settings (#24), affiché en signature en haut.
@@ -143,8 +154,9 @@
 **Contexte** : déclenché par géolocalisation à l'arrivée au circuit (état S5 → S7).
 
 **Composition** :
+
 - Eyebrow : `BIENVENUE`
-- Titre principal : *"Vous y êtes."*
+- Titre principal : _"Vous y êtes."_
 - Sous-titre : nom du circuit ("Circuit de Haute Saintonge" ou "Bouteville" selon contexte)
 - Visualisation discrète : trace satellite du circuit en arrière-plan, désaturée
 - Bouton : `Jumeler mon équipement`
@@ -156,8 +168,9 @@
 **Contexte** : scan BLE en cours pour détecter le RaceBox.
 
 **Composition** :
+
 - Animation discrète (pulsation, pas d'animation criarde)
-- Texte : *"À la recherche de votre équipement OXV Mirror…"*
+- Texte : _"À la recherche de votre équipement OXV Mirror…"_
 - Liste des appareils détectés (généralement 1) :
   - Card "OXV-A47" avec icône discrete + bouton `Sélectionner`
 - En cas d'échec après 30 secondes : fallback vers écran #25 (BLE error)
@@ -171,9 +184,10 @@
 **Contexte** : instructions de placement physique du boîtier.
 
 **Composition** :
+
 - Illustration schématique d'un tableau de bord avec emplacement marqué
-- Texte explicatif : *"Posez le boîtier sur le support magnétique côté passager."*
-- Sous-texte : *"Vous le verrez peu. Il s'occupera du reste."*
+- Texte explicatif : _"Posez le boîtier sur le support magnétique côté passager."_
+- Sous-texte : _"Vous le verrez peu. Il s'occupera du reste."_
 - Bouton : `C'est fait`
 - Bouton secondaire : `Aide` (popup explicative)
 
@@ -192,9 +206,10 @@
 **Contexte** : détection de la fin de session (geo + vitesse 0 + timer).
 
 **Composition** :
+
 - Visualisation poétique : une horloge qui s'arrête en silence
 - Eyebrow : `SESSION TERMINÉE`
-- Titre : *"Vous avez piloté."*
+- Titre : _"Vous avez piloté."_
 - Sous-titre : durée totale, nombre de tours bouclés
 - Pas de bouton — transition automatique vers #11 après 4 secondes
 
@@ -205,9 +220,10 @@
 **Contexte** : sync en cours vers Supabase.
 
 **Composition** :
+
 - Indicateur de progression discret (pas de pourcentage criard)
-- Texte : *"Vos données sont en sécurité."*
-- Sous-texte : *"Préservation en cours… X / Y trames"*
+- Texte : _"Vos données sont en sécurité."_
+- Sous-texte : _"Préservation en cours… X / Y trames"_
 - **Mot-clé important** : utiliser "Préservation" et pas "Sauvegarde"
 
 ---
@@ -217,8 +233,9 @@
 **Contexte** : sync terminée, données prêtes à être analysées.
 
 **Composition** :
-- Titre : *"Votre bilan est prêt."*
-- Sous-titre : *"Quand vous le souhaitez."*
+
+- Titre : _"Votre bilan est prêt."_
+- Sous-titre : _"Quand vous le souhaitez."_
 - Deux boutons :
   - `Découvrir` (rouge OXV, principal)
   - `Plus tard` (texte simple, secondaire)
@@ -234,13 +251,14 @@
 **LE plus important.** Première chose qu'un pilote voit après une session.
 
 **Composition** :
+
 - Eyebrow : `BILAN DE SESSION`
 - **Au centre** : chiffre géant `24%` (la marge composite globale) en weight 200
 - **Sous le chiffre** : étiquette humaine selon zone :
-  - Vert (> 30%) : *"Confortable"*
-  - Orange (15-30%) : *"À explorer"*
-  - Rouge (< 15%) : *"Terrain serré"*
-- **Phrase manifeste** en dessous : *"Belle séance. Vous avez du terrain à explorer en sécurité."*
+  - Vert (> 30%) : _"Confortable"_
+  - Orange (15-30%) : _"À explorer"_
+  - Rouge (< 15%) : _"Terrain serré"_
+- **Phrase manifeste** en dessous : _"Belle séance. Vous avez du terrain à explorer en sécurité."_
 - **Navigation vers les autres écrans** en bas (4 cards) :
   - `Carte du circuit` → #14
   - `Détails par virage` → #15
@@ -254,6 +272,7 @@
 ### #14 — Carte du circuit
 
 **Composition** :
+
 - Tracé Beltoise en SVG, dessiné sobrement
 - **14 pastilles colorées** positionnées sur les 14 virages, leur couleur reflétant la marge par virage :
   - Vert : virage maîtrisé
@@ -261,9 +280,9 @@
   - Rouge : virage serré
 - Toggle en haut : `Plan` / `Satellite` (image aérienne désaturée)
 - Sélecteur de trajectoire (3 options) :
-  - *"Mon meilleur tour"*
-  - *"Tracé moyen"*
-  - *"Tour idéal"* (calculé)
+  - _"Mon meilleur tour"_
+  - _"Tracé moyen"_
+  - _"Tour idéal"_ (calculé)
 - Tap sur une pastille → écran #15 (zoom virage)
 
 ---
@@ -271,20 +290,24 @@
 ### #15 — Zoom virage
 
 **Composition** :
-- En haut : numéro et nom du virage (ex. *"Virage 7 — Le S des chênes"*)
+
+- En haut : numéro et nom du virage (ex. _"Virage 7 — Le S des chênes"_)
 - Indicateur de marge pour ce virage spécifique
 - **3 éclairages empilés** :
 
 **Éclairage 1 — Trajectoire**
+
 - Visualisation 2D du virage avec deux courbes : votre tracé (rouge OXV) + tracé idéal (gris)
-- Observation : *"Votre point de corde était 12 mètres après l'optimum."*
+- Observation : _"Votre point de corde était 12 mètres après l'optimum."_
 
 **Éclairage 2 — Physique**
+
 - Mini graphiques : vitesse à l'entrée, accélération latérale max, transfert de charge
-- Observation : *"Votre vitesse mini était stable. Votre voiture était sereine."*
+- Observation : _"Votre vitesse mini était stable. Votre voiture était sereine."_
 
 **Éclairage 3 — Question**
-- Une seule question ouverte : *"Était-ce volontaire ?"*
+
+- Une seule question ouverte : _"Était-ce volontaire ?"_
 - Pas de réponse attendue, juste pour faire réfléchir
 - Optionnel : champ libre pour noter une intention
 
@@ -293,25 +316,27 @@
 ### #16 — La prochaine fois
 
 **Composition** :
+
 - Eyebrow : `LA PROCHAINE FOIS`
-- **UNE SEULE phrase centrale** : *"Le virage 7 vous tend les bras."*
-- **Sous-titre** : *"Vous avez 18% de marge à explorer. La prochaine fois, peut-être un peu plus tôt sur les freins ?"*
+- **UNE SEULE phrase centrale** : _"Le virage 7 vous tend les bras."_
+- **Sous-titre** : _"Vous avez 18% de marge à explorer. La prochaine fois, peut-être un peu plus tôt sur les freins ?"_
 - **Important** : formulation interrogative, jamais directive
 - Boutons :
   - `Marqué` (confirme avoir lu)
   - `Plus tard` (reporter)
-- Phrase de signature : *"Une chose. Pas plus."*
+- Phrase de signature : _"Une chose. Pas plus."_
 
 ---
 
 ### #17 — Progression
 
 **Composition** :
+
 - Eyebrow : `PROGRESSION`
 - Graphique principal : courbe de marge globale sur les N dernières sessions
 - Granularité ajustable : `Semaine` / `Mois` / `Tout`
 - **Pas de comparaison avec d'autres pilotes** (doctrine)
-- Phrase manifeste : *"Vous avancez."*
+- Phrase manifeste : _"Vous avancez."_
 - Stats secondaires en bas (cards) :
   - Nombre de sessions
   - Marge moyenne
@@ -328,20 +353,23 @@
 **3 modes selon contexte** :
 
 **Mode A — Compte à rebours (état S4)**
+
 - Eyebrow : `PROCHAINE SESSION`
 - Au centre : nombre de jours avant la session (ex. `5 jours`)
 - Nom du circuit, heure
 - Bouton : `Voir les détails`
 
 **Mode B — En route (état S5)**
+
 - Eyebrow : `EN ROUTE`
-- Au centre : *"Bon trajet vers Beltoise."*
-- Sous-texte : *"Couper l'app. Je conduis."*
+- Au centre : _"Bon trajet vers Beltoise."_
+- Sous-texte : _"Couper l'app. Je conduis."_
 - L'app se met en sourdine automatiquement
 - Pas de bouton (interdit pendant la conduite)
 
 **Mode C — Accueil passif (états S3, S10)**
-- Salutation : *"Bonsoir, Gabin."*
+
+- Salutation : _"Bonsoir, Gabin."_
 - Si dernière session récente : raccourci vers #13 (bilan)
 - Si pas de session prévue : invitation discrète à explorer la progression (#17)
 - Pas de pression commerciale
@@ -359,9 +387,10 @@
 **Contexte** : pendant la session, entre deux runs (état S7 actif).
 
 **Composition** :
+
 - Vue compacte du dernier run effectué
 - Indicateur de marge du run terminé
-- *"À chaud, l'essentiel."*
+- _"À chaud, l'essentiel."_
 - Bouton : `Préparer le prochain run` (vide pour relancer le jumelage)
 
 ---
@@ -371,6 +400,7 @@
 ### #23 — Notifications
 
 **Composition** :
+
 - 3 tabs en haut : `À traiter` / `À découvrir` / `Archives`
 - Badges rouges uniquement sur "À traiter"
 - Liste de notifications avec timestamp
@@ -381,6 +411,7 @@
 ### #24 — Settings
 
 **Composition** :
+
 - **Pacte affiché en signature en haut** (les 2 phrases manifeste)
 - Sections :
   - Compte (email, mot de passe, déconnexion)
@@ -396,9 +427,10 @@
 **Contexte** : équipement perdu pendant une session.
 
 **Composition** :
+
 - Illustration orange (pas rouge — pas paniquer)
-- Texte : *"Connexion à l'équipement perdue."*
-- Sous-texte rassurant : *"Vos données déjà enregistrées sont sauvegardées."*
+- Texte : _"Connexion à l'équipement perdue."_
+- Sous-texte rassurant : _"Vos données déjà enregistrées sont sauvegardées."_
 - Boutons :
   - `Reconnecter`
   - `Continuer sans` (l'app passe en mode dégradé)
@@ -408,7 +440,8 @@
 ### #26 — Offline mode
 
 **Composition** :
-- Bandeau jaune discret en haut : *"Mode hors-ligne"*
+
+- Bandeau jaune discret en haut : _"Mode hors-ligne"_
 - Liste claire dans l'écran :
   - **Ce qui fonctionne** : visualisation des sessions déjà téléchargées
   - **Ce qui ne fonctionne pas** : nouvelles sessions, partage, MAJ
@@ -419,6 +452,7 @@
 ### #27 — App update V1.1
 
 **Composition** :
+
 - Eyebrow : `MISE À JOUR DISPONIBLE`
 - Titre : nouveau numéro de version
 - 3 nouveautés expliquées (3 cards) :
@@ -438,17 +472,21 @@
 **Composition en 3 actes** :
 
 **Acte 1 — Récit** (généré par OpenAI)
-- *"Hier, vous êtes parti prudent. Au bout du 3ème tour, vous avez commencé à chercher. Le virage 7 vous résistait, mais vous y êtes revenu, et vous avez fini par l'apprivoiser. La marge a grimpé de 18 à 27%. Vous avez ressenti ce changement."*
+
+- _"Hier, vous êtes parti prudent. Au bout du 3ème tour, vous avez commencé à chercher. Le virage 7 vous résistait, mais vous y êtes revenu, et vous avez fini par l'apprivoiser. La marge a grimpé de 18 à 27%. Vous avez ressenti ce changement."_
 
 **Acte 2 — Méta-analyse**
-- *"C'est votre 3ème session consécutive où votre régularité s'améliore. Vous construisez quelque chose."*
+
+- _"C'est votre 3ème session consécutive où votre régularité s'améliore. Vous construisez quelque chose."_
 
 **Acte 3 — Préparation**
-- *"La prochaine fois, vous pourrez peut-être explorer le freinage du virage 7 un peu plus tard. Une invitation, pas une consigne."*
+
+- _"La prochaine fois, vous pourrez peut-être explorer le freinage du virage 7 un peu plus tard. Une invitation, pas une consigne."_
 
 **Signature en bas** :
-- *"L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause."*
-- *"— OXV MIRROR"*
+
+- _"L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause."_
+- _"— OXV MIRROR"_
 
 **Important** : ce contenu est généré par OpenAI côté backend, pas dans l'app. L'app reçoit le texte final.
 
@@ -459,13 +497,14 @@
 ### #18 — Comparateur 3 modes
 
 **Composition** :
+
 - Sélecteur en haut : 3 modes
   - **Évolution immédiate** : comparer 2 sessions récentes (< 7j)
   - **Évolution récente** : comparer périodes (7j vs 3 mois)
   - **Progression** : vue long terme (> 3 mois)
 - Pour chaque mode, **même picker** : deux déroulants pour sélectionner les deux références à comparer
 - Visualisation : graphique de comparaison côte à côte
-- **Chrono subordonné en bas**, en italique : *"Vos chronos évoluent aussi, mais ce n'est pas l'essentiel."*
+- **Chrono subordonné en bas**, en italique : _"Vos chronos évoluent aussi, mais ce n'est pas l'essentiel."_
 
 ---
 
@@ -476,6 +515,7 @@
 **Contexte** : staff OXV avant une session.
 
 **Composition** :
+
 - Liste des pilotes inscrits
 - Affectation des équipements (RaceBox + Flic) par pilote
 - Vérification documents KYC
@@ -486,6 +526,7 @@
 **Contexte** : pendant une session.
 
 **Composition** :
+
 - État BLE de chaque équipement en temps réel
 - Pilotes en piste / au paddock
 - Alertes en cas de problème
@@ -495,6 +536,7 @@
 **Contexte** : post-session.
 
 **Composition** :
+
 - Métriques globales de la session
 - Comparaison entre pilotes (anonymisée)
 - Export rapport PDF
@@ -503,35 +545,35 @@
 
 ## Récapitulatif des 26 écrans pilote
 
-| # | Nom | Section | État machine |
-|---|-----|---------|--------------|
-| 01 | Accueil philosophique | Onboarding | S2 |
-| 02 | Doctrine | Onboarding | S2 |
-| 03 | Méthode | Onboarding | S2 |
-| 04 | Niveau pilote | Onboarding | S2 |
-| 05 | CGU/RGPD | Onboarding | S2 |
-| 06 | Pacte de pilotage | Onboarding | S2 |
-| 07 | Vous y êtes | Paddock | S7 |
-| 08 | Détection équipement | Paddock | S7 |
-| 09 | Placement | Paddock | S7 |
-| 10 | Vous avez piloté | Retour | S8 |
-| 11 | Données en sécurité | Retour | S8 |
-| 12 | Bilan prêt | Retour | S8 |
-| 13 | Bilan | Analyse | S8/S9/S10 |
-| 14 | Carte du circuit | Analyse | S8/S9/S10 |
-| 15 | Zoom virage | Analyse | S8/S9/S10 |
-| 16 | La prochaine fois | Analyse | S8/S9 |
-| 17 | Progression | Analyse | S10 |
-| 18 | Comparateur | Analyse | S10 |
-| 19 | Debrief J+1 | Décantation | S9 |
-| 20 | Accueil (hub) | Hub | S3/S4/S10 |
-| 21 | Accueil en route | Off-track | S5 |
-| 22 | Paddock entre runs | Off-track | S7 |
-| 23 | Notifications | Système | All |
-| 24 | Settings | Système | All |
-| 25 | BLE error | Edge case | S6/S7 |
-| 26 | Offline mode | Edge case | All |
-| 27 | App update V1.1 | Edge case | All |
+| #   | Nom                   | Section     | État machine |
+| --- | --------------------- | ----------- | ------------ |
+| 01  | Accueil philosophique | Onboarding  | S2           |
+| 02  | Doctrine              | Onboarding  | S2           |
+| 03  | Méthode               | Onboarding  | S2           |
+| 04  | Niveau pilote         | Onboarding  | S2           |
+| 05  | CGU/RGPD              | Onboarding  | S2           |
+| 06  | Pacte de pilotage     | Onboarding  | S2           |
+| 07  | Vous y êtes           | Paddock     | S7           |
+| 08  | Détection équipement  | Paddock     | S7           |
+| 09  | Placement             | Paddock     | S7           |
+| 10  | Vous avez piloté      | Retour      | S8           |
+| 11  | Données en sécurité   | Retour      | S8           |
+| 12  | Bilan prêt            | Retour      | S8           |
+| 13  | Bilan                 | Analyse     | S8/S9/S10    |
+| 14  | Carte du circuit      | Analyse     | S8/S9/S10    |
+| 15  | Zoom virage           | Analyse     | S8/S9/S10    |
+| 16  | La prochaine fois     | Analyse     | S8/S9        |
+| 17  | Progression           | Analyse     | S10          |
+| 18  | Comparateur           | Analyse     | S10          |
+| 19  | Debrief J+1           | Décantation | S9           |
+| 20  | Accueil (hub)         | Hub         | S3/S4/S10    |
+| 21  | Accueil en route      | Off-track   | S5           |
+| 22  | Paddock entre runs    | Off-track   | S7           |
+| 23  | Notifications         | Système     | All          |
+| 24  | Settings              | Système     | All          |
+| 25  | BLE error             | Edge case   | S6/S7        |
+| 26  | Offline mode          | Edge case   | All          |
+| 27  | App update V1.1       | Edge case   | All          |
 
 Plus 3 vues admin (couleur bronze).
 
@@ -542,6 +584,7 @@ Plus 3 vues admin (couleur bronze).
 ### Sur les illustrations
 
 Plusieurs écrans mentionnent des illustrations (insigne OXV, horloge arrêtée, tableau de bord schématique). Pour la V1 :
+
 - Utiliser des **SVG sobres et géométriques**
 - Pas de photos
 - Pas de pictogrammes commerciaux (lucide-react acceptable pour les icônes système)
@@ -549,6 +592,7 @@ Plusieurs écrans mentionnent des illustrations (insigne OXV, horloge arrêtée,
 ### Sur les transitions
 
 Privilégier des transitions **subtiles** :
+
 - Fade in/out 200-300ms
 - Slide vertical pour les pages (300ms)
 - Pas d'animations criardes
@@ -566,7 +610,7 @@ Pour chaque écran qui pourrait afficher des données vides (première session, 
 
 ---
 
-*Overview des 26 écrans OXV Mirror — Version 1.0 — Mai 2026*
+_Overview des 26 écrans OXV Mirror — Version 1.0 — Mai 2026_
 
-*Document à utiliser par Claude Code pour l'implémentation React Native.*
-*Les maquettes visuelles V3 d'origine ont été produites en HTML/SVG dans la conversation chat de référence.*
+_Document à utiliser par Claude Code pour l'implémentation React Native._
+_Les maquettes visuelles V3 d'origine ont été produites en HTML/SVG dans la conversation chat de référence._

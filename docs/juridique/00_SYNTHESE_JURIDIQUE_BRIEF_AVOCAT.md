@@ -15,11 +15,11 @@ OXV opère désormais sur deux dimensions complémentaires :
 
 Ces deux dimensions appellent **trois documents juridiques distincts**, qui se complètent sans se chevaucher :
 
-| Document | Nature | Quand le pilote l'accepte | Effet juridique |
-|---|---|---|---|
-| **CGV prestations OXV** | Contrat de prestation de services | À la réservation d'une session | Définit les conditions commerciales (prix, paiement, annulation, sécurité piste) |
-| **CGU app OXV Mirror** | Contrat de fourniture de service numérique | À la première activation de l'app | Définit l'usage de l'app, le traitement RGPD, la responsabilité éditeur |
-| **Pacte de pilotage** | Déclaration unilatérale d'engagement | À la première activation de l'app | Reconnaît expressément la nature et les limites de l'app |
+| Document                | Nature                                     | Quand le pilote l'accepte         | Effet juridique                                                                  |
+| ----------------------- | ------------------------------------------ | --------------------------------- | -------------------------------------------------------------------------------- |
+| **CGV prestations OXV** | Contrat de prestation de services          | À la réservation d'une session    | Définit les conditions commerciales (prix, paiement, annulation, sécurité piste) |
+| **CGU app OXV Mirror**  | Contrat de fourniture de service numérique | À la première activation de l'app | Définit l'usage de l'app, le traitement RGPD, la responsabilité éditeur          |
+| **Pacte de pilotage**   | Déclaration unilatérale d'engagement       | À la première activation de l'app | Reconnaît expressément la nature et les limites de l'app                         |
 
 ---
 
@@ -46,6 +46,7 @@ Lors de la rédaction, trois décisions de fond ont été prises avec l'éditeur
 OXV est constituée sous forme de **SASU (Société par Actions Simplifiée à associé unique)**.
 
 Cette forme a été préférée à l'EURL pour deux raisons :
+
 - Plus souple sur les statuts et la gouvernance, adaptée à un projet en évolution
 - Mieux perçue par les partenaires numériques (investisseurs, plateformes, banques en ligne)
 - Permet une cession ou un partage de capital ultérieur plus simple
@@ -208,6 +209,6 @@ Toute modification rédactionnelle des CGV ou CGU devra être validée à l'aune
 
 ---
 
-*Document à transmettre à l'avocat avec les trois documents juridiques (Pacte, CGU, CGV).*
+_Document à transmettre à l'avocat avec les trois documents juridiques (Pacte, CGU, CGV)._
 
-*OXV — Synthèse juridique V1 — Mai 2026*
+_OXV — Synthèse juridique V1 — Mai 2026_

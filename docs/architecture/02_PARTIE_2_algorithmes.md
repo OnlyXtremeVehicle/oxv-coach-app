@@ -37,15 +37,15 @@
 
 ### 1.1. Ce que RaceBox Mini mesure directement
 
-| Grandeur | Fréquence | Précision typique |
-|---|---|---|
-| Position GPS (lat, lon) | 25 Hz | ±2-3 m (10 Hz HPPOSLLH ±0.5 m) |
-| Altitude GPS | 25 Hz | ±5 m |
-| Vitesse GPS | 25 Hz | ±0.1 km/h |
-| Cap GPS | 25 Hz | ±2° à >5 km/h |
-| Accélération 3 axes (X/Y/Z) | 200 Hz | ±0.005 g |
-| Gyroscope 3 axes | 200 Hz | ±0.5°/s |
-| Température interne | 1 Hz | ±2°C |
+| Grandeur                    | Fréquence | Précision typique              |
+| --------------------------- | --------- | ------------------------------ |
+| Position GPS (lat, lon)     | 25 Hz     | ±2-3 m (10 Hz HPPOSLLH ±0.5 m) |
+| Altitude GPS                | 25 Hz     | ±5 m                           |
+| Vitesse GPS                 | 25 Hz     | ±0.1 km/h                      |
+| Cap GPS                     | 25 Hz     | ±2° à >5 km/h                  |
+| Accélération 3 axes (X/Y/Z) | 200 Hz    | ±0.005 g                       |
+| Gyroscope 3 axes            | 200 Hz    | ±0.5°/s                        |
+| Température interne         | 1 Hz      | ±2°C                           |
 
 ### 1.2. Ce que RaceBox Mini ne mesure PAS
 
@@ -62,13 +62,13 @@
 
 Pour chaque grandeur manquante, on **dérive** depuis ce qu'on a :
 
-| Grandeur manquante | Dérivation depuis RaceBox | Précision attendue |
-|---|---|---|
-| Pression frein | Décélération longitudinale + dérivée (jerk) | ⚠️ 70-80% |
-| Position gaz | Accélération longitudinale positive | ⚠️ 80-85% |
-| Régime moteur | Vitesse / rapport supposé selon le delta vitesse | ⚠️ 50-70% |
-| Angle braquage | Yaw rate / vitesse longitudinale | ⚠️ 75-85% |
-| Coefficient frottement instantané | G_total observé / G_max calibré | 🟡 85% après calibration |
+| Grandeur manquante                | Dérivation depuis RaceBox                        | Précision attendue       |
+| --------------------------------- | ------------------------------------------------ | ------------------------ |
+| Pression frein                    | Décélération longitudinale + dérivée (jerk)      | ⚠️ 70-80%                |
+| Position gaz                      | Accélération longitudinale positive              | ⚠️ 80-85%                |
+| Régime moteur                     | Vitesse / rapport supposé selon le delta vitesse | ⚠️ 50-70%                |
+| Angle braquage                    | Yaw rate / vitesse longitudinale                 | ⚠️ 75-85%                |
+| Coefficient frottement instantané | G_total observé / G_max calibré                  | 🟡 85% après calibration |
 
 Ces estimations sont suffisantes pour la **pédagogie OXV** (montrer des tendances, suggérer des observations), mais **inadaptées à la compétition stricte** (réglages châssis, optimisation millimètre).
 
@@ -130,8 +130,8 @@ function kalmanPredict(state: State, imu: ImuReading, dt: number): State {
     vy: state.vy + ay_world * dt,
     vz: state.vz + az_world * dt,
     yaw: state.yaw + yaw_rate * dt,
-    pitch: state.pitch,    // estimé séparément
-    roll: state.roll,      // estimé séparément
+    pitch: state.pitch, // estimé séparément
+    roll: state.roll, // estimé séparément
     bias_ax: state.bias_ax,
     bias_ay: state.bias_ay,
     bias_az: state.bias_az,
@@ -151,6 +151,7 @@ P(t) = (I - K(t) × H(t)) × P(t)                         // mise à jour de la 
 ```
 
 Où :
+
 - `z(t)` est la mesure GPS (position + vitesse)
 - `H` est la matrice d'observation (lien entre l'état et la mesure)
 - `R` est la matrice de covariance du bruit GPS (~9 m² en position, ~0.01 m²/s² en vitesse)
@@ -159,6 +160,7 @@ Où :
 ### 2.5. Résultat attendu
 
 Une trajectoire :
+
 - **Précise** à ±0.5 m en position (vs ±2-3 m sans fusion)
 - **Lisse** sans sauts liés au bruit GPS
 - **Fréquence effective 200 Hz** (vs 25 Hz du GPS seul)
@@ -189,6 +191,7 @@ F_y(α) = D × sin(C × atan(B × α - E × (B × α - atan(B × α))))
 ```
 
 Où les coefficients dépendent du pneu :
+
 - `B` = stiffness factor (8 à 15 pour pneus de course)
 - `C` = shape factor (1.3 à 1.6 pour latéral)
 - `D` = peak factor = μ × charge_verticale
@@ -216,8 +219,8 @@ Où `G_charge(t)` est l'accélération verticale, normalement ≈ 1 g + transfer
 
 ```typescript
 function estimateInstantFriction(accelData: ImuReading, weightTransfer: number): number {
-  const g_lat = Math.abs(accelData.accel_y);  // en g
-  const g_vertical = 1 + weightTransfer;       // en g, avec transfert
+  const g_lat = Math.abs(accelData.accel_y); // en g
+  const g_vertical = 1 + weightTransfer; // en g, avec transfert
   return g_lat / g_vertical;
 }
 ```
@@ -334,6 +337,7 @@ Sur-virage  = Yaw_rate_attendu < Yaw_rate_mesuré - seuil
 ```
 
 Où :
+
 - `V` est la vitesse longitudinale (m/s)
 - `κ` est la courbure locale de la trajectoire (1/rayon), calculée depuis la trajectoire GPS
 
@@ -355,7 +359,7 @@ function computeCurvature(p1: Point, p2: Point, p3: Point): number {
   // Rayon du cercle circonscrit
   const radius = (a * b * c) / (4 * area);
 
-  return 1 / radius;  // courbure en 1/m
+  return 1 / radius; // courbure en 1/m
 }
 ```
 
@@ -363,16 +367,21 @@ function computeCurvature(p1: Point, p2: Point, p3: Point): number {
 
 ```typescript
 interface BalanceState {
-  type: 'neutre' | 'sous_virage_leger' | 'sous_virage_marque' | 'sur_virage_leger' | 'sur_virage_marque';
-  intensity_deg_per_s: number;  // amplitude de l'écart
+  type:
+    | 'neutre'
+    | 'sous_virage_leger'
+    | 'sous_virage_marque'
+    | 'sur_virage_leger'
+    | 'sur_virage_marque';
+  intensity_deg_per_s: number; // amplitude de l'écart
 }
 
 function detectBalanceAnomaly(
-  speed: number,           // m/s
-  curvature: number,       // 1/m
-  measuredYawRate: number  // deg/s, depuis gyro
+  speed: number, // m/s
+  curvature: number, // 1/m
+  measuredYawRate: number // deg/s, depuis gyro
 ): BalanceState {
-  const expectedYawRate = (speed * curvature) * (180 / Math.PI);  // en deg/s
+  const expectedYawRate = speed * curvature * (180 / Math.PI); // en deg/s
   const delta = expectedYawRate - measuredYawRate;
 
   const ABS_DELTA = Math.abs(delta);
@@ -399,8 +408,8 @@ function detectBalanceAnomaly(
 
 Les phases de sous/sur-virage **marqué** alimentent les questions ouvertes de la méthode 3 :
 
-- *"Sur le virage X, une phase de sous-virage de Y°/s a été détectée. Y avait-il une cause identifiable (charge moteur, freinage trop tardif, trajectoire) ?"*
-- *"Une phase de sur-virage de Y°/s est apparue en sortie du virage Z. Cette glisse était-elle volontaire ?"*
+- _"Sur le virage X, une phase de sous-virage de Y°/s a été détectée. Y avait-il une cause identifiable (charge moteur, freinage trop tardif, trajectoire) ?"_
+- _"Une phase de sur-virage de Y°/s est apparue en sortie du virage Z. Cette glisse était-elle volontaire ?"_
 
 **Important** : on ne dit jamais "freinez moins fort" ou "ouvrez les gaz plus tôt". On constate, on questionne.
 
@@ -472,7 +481,7 @@ function computeOptimalLapTime(
   vehicle: VehicleParameters
 ): { optimalLapTime: number; speedProfile: number[]; segmentTimes: number[] } {
   const N = circuit.length;
-  const V_corner_max = circuit.map(s => Math.sqrt(vehicle.mu * 9.81 * s.radius));
+  const V_corner_max = circuit.map((s) => Math.sqrt(vehicle.mu * 9.81 * s.radius));
 
   // Forward pass — accélération
   const V_fwd = new Array(N);
@@ -487,7 +496,7 @@ function computeOptimalLapTime(
   const V_bwd = new Array(N);
   V_bwd[N - 1] = V_corner_max[N - 1];
   for (let i = N - 2; i >= 0; i--) {
-    const a_brake = vehicle.mu * 9.81;  // toujours positif (magnitude)
+    const a_brake = vehicle.mu * 9.81; // toujours positif (magnitude)
     const V_possible = Math.sqrt(V_bwd[i + 1] ** 2 + 2 * a_brake * circuit[i + 1].length);
     V_bwd[i] = Math.min(V_possible, V_corner_max[i]);
   }
@@ -512,6 +521,7 @@ function computeOptimalLapTime(
 ### 6.6. Calibration sur Beltoise
 
 Pour appliquer cet algo, il faut :
+
 - Les **rayons** des 14 virages de Beltoise (à mesurer)
 - Les **longueurs** des segments entre virages (à mesurer)
 - Le **μ** pour le véhicule du pilote (calibré par catégorie)
@@ -554,25 +564,23 @@ Marge effective = adhérence du pneu le moins chargé / utilisation totale
 Concrètement :
 
 ```typescript
-function vehicleMarginAugmented(
-  cornerData: TelemetrySegment,
-  vehicle: VehicleParameters
-): number {
+function vehicleMarginAugmented(cornerData: TelemetrySegment, vehicle: VehicleParameters): number {
   const samples = cornerData.points;
   const marges: number[] = [];
 
   for (const sample of samples) {
     // Transfert de charge instantané
-    const deltaFz_lat = (vehicle.mass * Math.abs(sample.g_lat) * vehicle.h_cg) / vehicle.track_width;
-    const Fz_inner = (vehicle.mass * 9.81 / 2) - deltaFz_lat;
+    const deltaFz_lat =
+      (vehicle.mass * Math.abs(sample.g_lat) * vehicle.h_cg) / vehicle.track_width;
+    const Fz_inner = (vehicle.mass * 9.81) / 2 - deltaFz_lat;
 
     // Si pneu intérieur quasi-déchargé, marge effective faible même si G_total modéré
-    const load_ratio_inner = Fz_inner / (vehicle.mass * 9.81 / 2);  // 1 = chargé normal, 0 = vide
+    const load_ratio_inner = Fz_inner / ((vehicle.mass * 9.81) / 2); // 1 = chargé normal, 0 = vide
 
     // Adhérence effective disponible côté intérieur
     const mu_eff_inner = vehicle.mu * load_ratio_inner;
     const G_inner_max = mu_eff_inner * 9.81;
-    const G_inner_used = sample.g_lat / 2;  // moitié de l'effort latéral
+    const G_inner_used = sample.g_lat / 2; // moitié de l'effort latéral
     const marge_inner = Math.max(0, 1 - G_inner_used / G_inner_max);
 
     // Marge limitante = pneu le plus sollicité (généralement intérieur)
@@ -581,7 +589,7 @@ function vehicleMarginAugmented(
 
   // 95e percentile
   marges.sort();
-  return marges[Math.floor(marges.length * 0.05)] * 100;  // on prend le 5e (la marge la plus faible)
+  return marges[Math.floor(marges.length * 0.05)] * 100; // on prend le 5e (la marge la plus faible)
 }
 ```
 
@@ -639,6 +647,7 @@ Les coefficients sont rééquilibrés par rapport à la version standard pour in
 ### 9.1. Pourquoi c'est nécessaire
 
 Les formules ci-dessus nécessitent les paramètres physiques du tracé Beltoise :
+
 - Rayons des 14 virages
 - Longueurs des segments
 - Profil altimétrique (dévers, montées/descentes)
@@ -677,7 +686,8 @@ const corners = cornerSegments.map((segment, idx) => ({
   exit_lat: segment.points[segment.points.length - 1].lat,
   exit_lon: segment.points[segment.points.length - 1].lon,
   radius_m: computeAverageRadius(segment.points),
-  theoretical_apex_speed_kmh: bestLap.telemetry.find(p => p.timestamp === segment.apex_time).speed,
+  theoretical_apex_speed_kmh: bestLap.telemetry.find((p) => p.timestamp === segment.apex_time)
+    .speed,
 }));
 
 // 4. Stocker dans app_circuit_reference
@@ -707,29 +717,29 @@ Cette procédure est **reproductible pour Bordeaux** (votre futur deuxième site
 
 ### 10.1. Priorisation par impact pédagogique
 
-| Modèle | Impact pédagogique | Complexité dev | Priorité |
-|---|---|---|---|
-| Filtre de Kalman GPS+IMU | 🔴 Critique | Élevée | **V1 obligatoire** |
-| Marge véhicule simple (μ_eff) | 🔴 Critique | Moyenne | **V1 obligatoire** |
-| Smoothness Index (jerk) | 🟠 Forte | Faible | **V1 obligatoire** |
-| Détection sous/sur-virage | 🟠 Forte | Moyenne | **V1 obligatoire** |
-| Marge véhicule augmentée (transfert) | 🟡 Modérée | Élevée | V2 |
-| Optimal lap time simulation | 🟡 Modérée | Très élevée | V2 |
-| Modèle Pacejka complet | 🟢 Faible (sans capteurs) | Très élevée | Hors scope |
+| Modèle                               | Impact pédagogique        | Complexité dev | Priorité           |
+| ------------------------------------ | ------------------------- | -------------- | ------------------ |
+| Filtre de Kalman GPS+IMU             | 🔴 Critique               | Élevée         | **V1 obligatoire** |
+| Marge véhicule simple (μ_eff)        | 🔴 Critique               | Moyenne        | **V1 obligatoire** |
+| Smoothness Index (jerk)              | 🟠 Forte                  | Faible         | **V1 obligatoire** |
+| Détection sous/sur-virage            | 🟠 Forte                  | Moyenne        | **V1 obligatoire** |
+| Marge véhicule augmentée (transfert) | 🟡 Modérée                | Élevée         | V2                 |
+| Optimal lap time simulation          | 🟡 Modérée                | Très élevée    | V2                 |
+| Modèle Pacejka complet               | 🟢 Faible (sans capteurs) | Très élevée    | Hors scope         |
 
 ### 10.2. Estimation d'effort de dev pour les algorithmes
 
-| Module | Effort en heures |
-|---|---|
-| Filtre de Kalman (lib + intégration) | 25-35 h |
-| Parser UBX (Rust → WASM) | 40-50 h |
-| Détection virages + secteurs | 15-20 h |
-| Marge véhicule + pilote (V1) | 20-30 h |
-| Smoothness Index + détection anomalies | 15-20 h |
-| Détection sous/sur-virage | 10-15 h |
-| Comparateur Ghost (alignement spatial) | 20-25 h |
-| Tests unitaires + datasets de validation | 30-40 h |
-| **Total algorithmes V1** | **175-235 h** |
+| Module                                   | Effort en heures |
+| ---------------------------------------- | ---------------- |
+| Filtre de Kalman (lib + intégration)     | 25-35 h          |
+| Parser UBX (Rust → WASM)                 | 40-50 h          |
+| Détection virages + secteurs             | 15-20 h          |
+| Marge véhicule + pilote (V1)             | 20-30 h          |
+| Smoothness Index + détection anomalies   | 15-20 h          |
+| Détection sous/sur-virage                | 10-15 h          |
+| Comparateur Ghost (alignement spatial)   | 20-25 h          |
+| Tests unitaires + datasets de validation | 30-40 h          |
+| **Total algorithmes V1**                 | **175-235 h**    |
 
 ### 10.3. Datasets nécessaires
 
@@ -783,5 +793,5 @@ Ce n'est **pas** un copie de logiciel pro (PI Toolbox, MoTeC, AiM), mais **une a
 
 ---
 
-*Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_2_AUGMENTEE.md`.*
-*Pour la mise en œuvre, voir Partie 3 (à venir) : connectivité, déploiement, coûts.*
+_Document à conserver dans votre repo sous `/docs/app/ARCHITECTURE_PARTIE_2_AUGMENTEE.md`._
+_Pour la mise en œuvre, voir Partie 3 (à venir) : connectivité, déploiement, coûts._

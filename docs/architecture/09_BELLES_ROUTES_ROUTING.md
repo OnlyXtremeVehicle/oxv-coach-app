@@ -8,10 +8,11 @@
 
 Cette fonction sort du périmètre historique « miroir de piste ». Elle se conçoit
 comme une extension **tourisme/découverte** de l'écosystème (à côté de
-*Lieux & partenaires* et de la carte sociale), **pas** comme un outil de
+_Lieux & partenaires_ et de la carte sociale), **pas** comme un outil de
 performance sur route ouverte.
 
 **Garde-fous intégrés dès la fondation :**
+
 - **Cadre = balade / tourisme.** Vocabulaire « belle route », « sinueuse »,
   « panoramique » — jamais « rapide », « chrono », « performance ». Respect
   du code de la route affiché.
@@ -28,6 +29,7 @@ performance sur route ouverte.
   respect du code de la route, pas d'incitation à la vitesse »).
 
 **Décisions attendues de Gabin :**
+
 1. On active cette extension « route ouverte » dans OXV ? (déviation doctrine assumée)
 2. OK pour le cadrage « tourisme/découverte » + reformulation du point « route
    technique » en **géométrie/paysage** (pas agressivité) ?
@@ -51,6 +53,7 @@ Affichage : react-native-maps (déjà présent) OU Mapbox (décision §4)
 ```
 
 ### 2.1 Algorithme de tracé (point 1)
+
 - **Kurviger** : le plus rapide à intégrer. REST : point de départ (+ destination
   ou distance cible) + niveau de sinuosité. Renvoie la polyligne GPS. Clé requise.
 - **GraphHopper (custom models)** : contrôle total des règles (pénaliser feux,
@@ -58,6 +61,7 @@ Affichage : react-native-maps (déjà présent) OU Mapbox (décision §4)
 - Le service est **provider-agnostique** : on bascule par `EXPO_PUBLIC_ROUTING_PROVIDER`.
 
 ### 2.2 Points de vue (point 2)
+
 - **Overpass API (OSM)** gratuit : requête dans un rayon des tags
   `tourism=viewpoint`, `natural=water`, `mountain_pass`, `natural=peak`…
   → injectés comme **waypoints** optionnels (étapes) pour forcer le tracé à
@@ -65,6 +69,7 @@ Affichage : react-native-maps (déjà présent) OU Mapbox (décision §4)
 - Google Places (optionnel, payant) : filtrer par note > 4.5 — phase 2.
 
 ### 2.3 Croisement télémétrie OXV (point 3 — REFORMULÉ doctrine-safe)
+
 - On NE remonte PAS « où les pilotes ont freiné fort » sur route ouverte.
 - À la place : une route peut être marquée **« sinueuse / panoramique »** via sa
   **géométrie** (indice de sinuosité = longueur/distance à vol d'oiseau, nb de
@@ -73,15 +78,18 @@ Affichage : react-native-maps (déjà présent) OU Mapbox (décision §4)
   performance est cadrée et sûre. Cohérent avec « la piste est à vous ».
 
 ## 3. Variables d'environnement (clés — JAMAIS commitées)
+
 ```
 EXPO_PUBLIC_ROUTING_PROVIDER=kurviger | graphhopper
 EXPO_PUBLIC_KURVIGER_KEY=…        (si kurviger)
 EXPO_PUBLIC_GRAPHHOPPER_KEY=…     (si graphhopper, ou URL self-host)
 # Overpass : pas de clé (endpoint public, à throttler ; self-host en phase 2)
 ```
+
 À poser via `eas secret:create` (toi), comme les autres clés.
 
 ## 4. Affichage & navigation (point 3 — front-end) — DÉCISION
+
 - **Option A — react-native-maps (déjà dans l'app).** Zéro nouvelle dépendance
   native. Affiche la polyligne + marqueurs points de vue. Pas de guidage
   turn-by-turn natif (ouvre Plans/Google pour la nav réelle). **Le plus rapide,
@@ -93,6 +101,7 @@ EXPO_PUBLIC_GRAPHHOPPER_KEY=…     (si graphhopper, ou URL self-host)
   vue sur notre carte), Mapbox en phase 2 si le besoin de guidage natif se confirme.
 
 ## 5. Plan de livraison
+
 - **Phase 0 (faite ici)** : fondation provider-agnostique — types + service de
   routing (adaptateurs Kurviger/GraphHopper) + service POI Overpass. Aucune clé
   en dur, garde-fous doctrine en commentaire.
@@ -102,6 +111,7 @@ EXPO_PUBLIC_GRAPHHOPPER_KEY=…     (si graphhopper, ou URL self-host)
   routes favorites côté Supabase.
 
 ## 6. Coûts (ordre de grandeur, à confirmer)
+
 - Kurviger / GraphHopper : freemium puis à l'usage. Overpass : gratuit (fair use).
 - Mapbox : gratuit jusqu'à un quota, puis à la carte chargée / requête nav.
 - Google Places : payant à la requête (réserver à la phase 2).

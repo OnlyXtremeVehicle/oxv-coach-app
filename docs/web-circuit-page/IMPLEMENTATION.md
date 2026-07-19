@@ -8,11 +8,11 @@ La page `/circuit` est la **vitrine publique** du Circuit Beltoise de Haute Sain
 
 **Une seule carte, trois surfaces** :
 
-| # | Surface | Repo | Composant |
-| - | --- | --- | --- |
-| 1 | Page web `/circuit` | site Next.js | **PR2** : `web-snippets/components/CircuitMap` (web SVG) |
-| 2 | Vue coach (compare A/B) | app mobile RN | **PR3** : `CoachPreset` (à venir) |
-| 3 | Bilan pilote post-session | app mobile RN | **PR1 livré** : `PilotPreset` |
+| #   | Surface                   | Repo          | Composant                                                |
+| --- | ------------------------- | ------------- | -------------------------------------------------------- |
+| 1   | Page web `/circuit`       | site Next.js  | **PR2** : `web-snippets/components/CircuitMap` (web SVG) |
+| 2   | Vue coach (compare A/B)   | app mobile RN | **PR3** : `CoachPreset` (à venir)                        |
+| 3   | Bilan pilote post-session | app mobile RN | **PR1 livré** : `PilotPreset`                            |
 
 ## Livrables
 
@@ -101,14 +101,14 @@ L'app mobile utilise `react-native-svg` qui rend en natif iOS/Android via les vu
 
 **Garanties de cohérence** :
 
-| Couche | App RN | Web | Cohérence |
-| --- | --- | --- | --- |
-| Données GPS (76 pts) | `src/trackviz/hauteSaintonge.ts` | `data/hauteSaintonge.ts` | **Copie exacte** |
-| Données virages (7) | `src/lib/circuitTopology.ts` | `data/circuitTopology.ts` | **Copie exacte** |
-| Projection lat/lon | `projection.ts` | `projection.ts` | **Copie exacte** |
-| ViewBox SVG | `getCircuitViewBox()` | `getCircuitViewBox()` | **Identique** |
-| Layers (rendu) | `react-native-svg` | `<svg>` natif | API symétrique |
-| Animations | `Animated` API | CSS `@keyframes` | Timing identique (1500ms) |
+| Couche               | App RN                           | Web                       | Cohérence                 |
+| -------------------- | -------------------------------- | ------------------------- | ------------------------- |
+| Données GPS (76 pts) | `src/trackviz/hauteSaintonge.ts` | `data/hauteSaintonge.ts`  | **Copie exacte**          |
+| Données virages (7)  | `src/lib/circuitTopology.ts`     | `data/circuitTopology.ts` | **Copie exacte**          |
+| Projection lat/lon   | `projection.ts`                  | `projection.ts`           | **Copie exacte**          |
+| ViewBox SVG          | `getCircuitViewBox()`            | `getCircuitViewBox()`     | **Identique**             |
+| Layers (rendu)       | `react-native-svg`               | `<svg>` natif             | API symétrique            |
+| Animations           | `Animated` API                   | CSS `@keyframes`          | Timing identique (1500ms) |
 
 Tant que les fichiers `data/*.ts` restent synchronisés, les trois surfaces affichent la **même carte au pixel près**.
 
@@ -144,14 +144,14 @@ Quand l'app RN évolue (par exemple, ajustement d'apex après mesure terrain) :
 
 ## Personnalisation rapide
 
-| Quoi changer | Où |
-| --- | --- |
-| Texte de la page | `app/circuit/page.tsx` (sections `<section>`) |
-| Mode de coloration des virages | `<CornersLayer colorMode="pace\|zone\|neutral" />` |
-| Hauteur de la carte | `<CircuitMap height={460} />` |
-| Animation on/off | `<TrackLayer animate={false} />` |
-| Couleur du tracé | `<TrackLayer color="#FFFFFF" />` |
-| Padding du viewBox | `web-snippets/components/CircuitMap/projection.ts` const `VIEWBOX_PADDING_PCT` |
+| Quoi changer                   | Où                                                                             |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| Texte de la page               | `app/circuit/page.tsx` (sections `<section>`)                                  |
+| Mode de coloration des virages | `<CornersLayer colorMode="pace\|zone\|neutral" />`                             |
+| Hauteur de la carte            | `<CircuitMap height={460} />`                                                  |
+| Animation on/off               | `<TrackLayer animate={false} />`                                               |
+| Couleur du tracé               | `<TrackLayer color="#FFFFFF" />`                                               |
+| Padding du viewBox             | `web-snippets/components/CircuitMap/projection.ts` const `VIEWBOX_PADDING_PCT` |
 
 ## Référence
 

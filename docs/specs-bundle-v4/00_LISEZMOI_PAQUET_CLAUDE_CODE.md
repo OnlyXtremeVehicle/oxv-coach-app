@@ -8,10 +8,12 @@
 ## ORDRE DE LECTURE (du contrat aux écrans)
 
 **1. Le contrat — non négociable**
+
 - `00_CLAUDE.md` — doctrine Mirror, charte, briques à garder/jeter, règles de code.
 - `01_doctrine_et_composants.md` — composants et idiome visuel.
 
 **2. Le moteur de données**
+
 - `02_moteur_insights.md` — les 5 niveaux d'insights.
 - `04_moteur_validation.md` — ce qui est validé / à valider à Valence.
 - `CONTRAT_DONNEES_session_insights.json` — forme exacte produite par le moteur.
@@ -19,10 +21,12 @@
   (ligne de démo en base, 7 virages). À lire avant de brancher un écran sur la donnée.
 
 **3. La capture (chantier amont, déjà cadré)**
+
 - `03_chantier_capture.md` — capteur RaceBox, BLE, mapping vers `telemetry_frames`.
 - `BRIEF_DEMARRAGE_CLAUDE_CODE.md` — brief du chantier capture (étape 1).
 
 **4. L'intégration du tracé 3D — la clé de voûte**
+
 - `05_integration_trace_3d.md` — composant `<CircuitTrace>`, couches pilote/coach,
   branchement template par template. À lire avant tout écran d'insight.
 - `circuit-tool/circuit-generator.mjs` — générateur (way OSM → tracé + virages + ruban 3D).
@@ -30,18 +34,22 @@
 - `circuit-tool/circuit-3d.html` — version servie (réseau).
 
 **5. Les espaces (conception, tables vérifiées en base)**
+
 - `06_espace_coach.md` — lire + annoter + gérer ; RGPD consentement pilote.
 - `07_social_rgpd.md` — amis + partage granulaire ; RGPD fondation.
 - `08_carte_lieux.md` — carte + lieux + création de tracé utilisateur.
 
 **6. Specs écran par écran (détail)**
+
 - `specs/` — onboarding, cœur restitution, détail data, historique, circuits, communauté,
   identité/avatar, garage, fonctionnalités neuves, compte, états limites, coach, map, AR.
 
 **7. Maquettes (rendu pixel à reproduire)**
+
 - `maquette_*.html` — 14 maquettes. Le style est FIGÉ : Claude Code reproduit, n'invente pas.
 
 **8. Moteur de référence (pour comprendre, pas à recopier tel quel)**
+
 - `moteur/insights.mjs`, `moteur/synth.mjs`.
 
 ---
@@ -62,17 +70,21 @@
   en officiel (faille corrigée).
 
 ## COMMENT OBTENIR LE TEMPLATE DE DONNÉES EN DIRECT
+
 Via Supabase MCP, exécuter :
+
 ```sql
 select * from session_insights
 where telemetry_session_id = 'b62ab3af-5d6a-4e88-b316-73a0729933ae';
 ```
+
 Détails et comportement (états vides, remplacement auto par la vraie donnée) :
 `09_template_donnees_live.md`.
 
 ---
 
 ## POINTS OUVERTS (à trancher au fil de l'eau, signalés honnêtement)
+
 1. Incohérence `users.role` vs `users.is_admin` — les fonctions `is_admin()` utilisent
    `role = 'admin'`. À clarifier (lequel fait foi).
 2. Politiques d'écriture coach & social — à définir au moment de coder ces espaces,
@@ -81,5 +93,6 @@ Détails et comportement (états vides, remplacement auto par la vraie donnée) 
    vs générateur (7, courbure). À caler sur vraies données Valence (cf. 05 §5.1).
 
 ## RÈGLES DE TRAVAIL
+
 Incréments validés un par un. Pas de refactor spéculatif. Architecture mono-repo Expo
 préservée. Toujours vérifier l'état réel en base avant d'agir.

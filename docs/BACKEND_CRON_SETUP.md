@@ -18,13 +18,13 @@ Dashboard Supabase → **Database** → **Extensions** :
 
 Dashboard Supabase → **Project Settings** → **Edge Functions** → **Secrets** :
 
-| Variable | Valeur | Utilisé par |
-|---|---|---|
-| `OPENAI_API_KEY` | `sk-proj-...` (votre clé OpenAI) | `generate-debrief-ai` |
-| `CRON_TOKEN` | Token aléatoire (ex: `openssl rand -hex 32`) | `cron-analyze-pending-sessions` |
-| `RESEND_API_KEY` | Déjà configuré (pour Resend OXV web) | `send-coach-invitation` |
-| `SUPABASE_URL` | Auto-set par Supabase | toutes |
-| `SUPABASE_SERVICE_ROLE_KEY` | Auto-set par Supabase | toutes |
+| Variable                    | Valeur                                       | Utilisé par                     |
+| --------------------------- | -------------------------------------------- | ------------------------------- |
+| `OPENAI_API_KEY`            | `sk-proj-...` (votre clé OpenAI)             | `generate-debrief-ai`           |
+| `CRON_TOKEN`                | Token aléatoire (ex: `openssl rand -hex 32`) | `cron-analyze-pending-sessions` |
+| `RESEND_API_KEY`            | Déjà configuré (pour Resend OXV web)         | `send-coach-invitation`         |
+| `SUPABASE_URL`              | Auto-set par Supabase                        | toutes                          |
+| `SUPABASE_SERVICE_ROLE_KEY` | Auto-set par Supabase                        | toutes                          |
 
 ---
 
@@ -74,6 +74,7 @@ LIMIT 10;
 ```
 
 Pour voir les logs Edge Function :
+
 - Dashboard → **Edge Functions** → `cron-analyze-pending-sessions` → onglet **Logs**
 
 ---
@@ -111,15 +112,15 @@ curl -X POST 'https://fouvuqkdxarjpjbqnsjq.supabase.co/functions/v1/generate-deb
 
 ## Edge Functions actives (récap)
 
-| Slug | verify_jwt | Déclencheur | Fonction |
-|---|---|---|---|
-| `notify-pilot-coach-assigned` | ✅ | App admin après assignPilotToCoach | Push notif pilote |
-| `notify-coach-consent-received` | ✅ | App pilote après giveConsent | Push notif coach |
-| `send-coach-invitation` | ✅ | App admin bouton "Envoyer invitation" | Email Resend coach |
-| `generate-debrief-ai` | ✅ | App après analyzeAndPersistSession | Debrief J+1 OpenAI |
-| **`cron-analyze-pending-sessions`** | ❌ + token | **Cron toutes les heures** | Rattrapage marge globale |
-| `ritual_dispatcher` | ❌ | Cron OXV web existant | Rituals (legacy OXV web) |
-| `resend_webhook` | ❌ | Resend webhook OXV web | Status emails (legacy OXV web) |
+| Slug                                | verify_jwt | Déclencheur                           | Fonction                       |
+| ----------------------------------- | ---------- | ------------------------------------- | ------------------------------ |
+| `notify-pilot-coach-assigned`       | ✅         | App admin après assignPilotToCoach    | Push notif pilote              |
+| `notify-coach-consent-received`     | ✅         | App pilote après giveConsent          | Push notif coach               |
+| `send-coach-invitation`             | ✅         | App admin bouton "Envoyer invitation" | Email Resend coach             |
+| `generate-debrief-ai`               | ✅         | App après analyzeAndPersistSession    | Debrief J+1 OpenAI             |
+| **`cron-analyze-pending-sessions`** | ❌ + token | **Cron toutes les heures**            | Rattrapage marge globale       |
+| `ritual_dispatcher`                 | ❌         | Cron OXV web existant                 | Rituals (legacy OXV web)       |
+| `resend_webhook`                    | ❌         | Resend webhook OXV web                | Status emails (legacy OXV web) |
 
 ---
 

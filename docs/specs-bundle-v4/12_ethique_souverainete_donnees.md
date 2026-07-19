@@ -19,27 +19,33 @@ les effacer, et elles ne servent à rien d'autre que ce qui est consenti.
 # PARTIE I — LA CHARTE (les engagements)
 
 ### S1. Vos données vous appartiennent.
+
 La télémétrie, les sessions, les insights sont à vous. OXV en est le gardien, pas le
 propriétaire, et ne les traite pas comme un actif à exploiter.
 
 ### S2. Export total, à tout moment, format ouvert.
+
 Vous pouvez récupérer l'intégralité de vos données quand vous voulez, dans un format
 lisible et réutilisable. La portabilité n'est pas une faveur, c'est un dû.
 
 ### S3. Suppression réelle, pas un masquage.
+
 « Supprimer » veut dire effacer pour de bon (cascade en base), pas cacher. Limite
 honnête : les pièces à valeur légale (paiements) sont conservées le temps imposé par
 la loi, et certaines traces de sécurité sont dé-identifiées plutôt que détruites.
 
 ### S4. Aucune revente, aucun usage secondaire non consenti.
+
 Vos données ne sont jamais vendues. Elles ne servent qu'à vous restituer votre
 pilotage. Aucun entraînement de modèle tiers sur vos données sans consentement explicite.
 
 ### S5. Hébergement et flux maîtrisés.
+
 Les données sont hébergées en UE (Supabase, Francfort). Tout flux vers un tiers — en
 particulier l'IA — est déclaré, consenti, et réduit au strict minimum.
 
 ### S6. Minimisation et durée.
+
 On ne collecte que le nécessaire. Les données brutes volumineuses (frames) ont une
 durée de conservation définie, distincte des insights dérivés.
 
@@ -48,6 +54,7 @@ durée de conservation définie, distincte des insights dérivés.
 # PARTIE II — LA DÉCLINAISON TECHNIQUE (vérifiable)
 
 ## A. Garanties déjà VÉRIFIÉES en base
+
 - **Chaîne d'effacement complète (cascade)** : supprimer un `users` →
   `telemetry_sessions` (CASCADE) → `telemetry_frames`, `session_insights`, `laps`,
   `app_session_analyses`, `app_segment_analyses`, `session_media`, `weather_snapshots`
@@ -59,16 +66,18 @@ durée de conservation définie, distincte des insights dérivés.
 - **Hébergement UE** : Supabase Francfort.
 
 ## B. Règles / à construire
-| Eng. | Règle / chantier |
-|---|---|
-| S1 | Les CGU énoncent OXV gardien, pas propriétaire des données de pilotage. |
-| S2 | **À construire** : fonction edge « exporter mes données » → rassemble toutes les lignes de l'utilisateur en un export téléchargeable (JSON/CSV ouvert). |
-| S3 | Parcours « supprimer mon compte » qui déclenche la cascade (effacer la ligne `users`). Copie honnête sur l'exception paiements (durée légale). |
-| S4 | Pas de revente. Le débrief IA n'utilise les données que pour restituer, pas pour entraîner un modèle externe sans consentement. |
-| S5 | **AUDIT CLÉ** : flux de `generate-debrief-ai`. Envoie-t-il de la télémétrie à un tiers (OpenAI, US) ? Si oui → divulgation + consentement + minimisation de ce qui est transmis + contrat de sous-traitance. |
-| S6 | Définir la rétention des `telemetry_frames` (brutes, volumineuses) vs insights dérivés. |
+
+| Eng. | Règle / chantier                                                                                                                                                                                             |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| S1   | Les CGU énoncent OXV gardien, pas propriétaire des données de pilotage.                                                                                                                                      |
+| S2   | **À construire** : fonction edge « exporter mes données » → rassemble toutes les lignes de l'utilisateur en un export téléchargeable (JSON/CSV ouvert).                                                      |
+| S3   | Parcours « supprimer mon compte » qui déclenche la cascade (effacer la ligne `users`). Copie honnête sur l'exception paiements (durée légale).                                                               |
+| S4   | Pas de revente. Le débrief IA n'utilise les données que pour restituer, pas pour entraîner un modèle externe sans consentement.                                                                              |
+| S5   | **AUDIT CLÉ** : flux de `generate-debrief-ai`. Envoie-t-il de la télémétrie à un tiers (OpenAI, US) ? Si oui → divulgation + consentement + minimisation de ce qui est transmis + contrat de sous-traitance. |
+| S6   | Définir la rétention des `telemetry_frames` (brutes, volumineuses) vs insights dérivés.                                                                                                                      |
 
 ## C. Requête de vérification — « l'éthique comme test qui peut échouer »
+
 ```sql
 -- La chaîne d'effacement doit rester en CASCADE depuis telemetry_sessions
 select tc.table_name, rc.delete_rule
@@ -84,6 +93,7 @@ where tc.constraint_type='FOREIGN KEY' and ccu.table_name='telemetry_sessions'
 ```
 
 ## D. Points d'AUDIT / chantiers (à faire)
+
 1. **Flux IA** (`generate-debrief-ai`) : tracer ce qui sort de l'UE. C'est LE point
    sensible de cet axe — il recoupe la transparence (fiche 11, T4) et le RGPD. Une
    donnée de performance envoyée à un LLM US est un transfert hors UE à encadrer.

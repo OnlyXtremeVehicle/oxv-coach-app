@@ -25,49 +25,64 @@ sécurité.
 # PARTIE I — LA CHARTE (les engagements)
 
 ### E1. La progression est référencée à soi, pas aux autres.
+
 La mesure première est l'évolution personnelle (soi vs soi), jamais un classement
 imposé. Toute comparaison à autrui est un choix actif et granulaire de l'utilisateur.
-> *Pourquoi : un classement de vitesse pousse à se mesurer aux autres, donc à forcer.*
+
+> _Pourquoi : un classement de vitesse pousse à se mesurer aux autres, donc à forcer._
 
 ### E2. La régularité et le contrôle priment sur le chrono brut.
+
 Un tour propre est présenté aussi positivement qu'un tour rapide. L'app ne célèbre
 jamais la vitesse pure comme « meilleure quoi qu'il arrive ». Régularité et fluidité
 sont mises en avant au moins à égalité avec le temps au tour.
-> *Pourquoi : valoriser le seul chrono, c'est récompenser le fait d'aller au-delà du contrôle.*
+
+> _Pourquoi : valoriser le seul chrono, c'est récompenser le fait d'aller au-delà du contrôle._
 
 ### E3. L'app reflète, elle ne pousse pas.
+
 Aucune mécanique qui pousse à rouler plus, plus souvent, ou plus fort : pas de série
 (streak), pas de notification « battez votre temps », pas d'urgence artificielle, pas
 de FOMO.
-> *Pourquoi : les boucles d'engagement transforment un loisir à risque en obligation.*
+
+> _Pourquoi : les boucles d'engagement transforment un loisir à risque en obligation._
 
 ### E4. Aucun feedback pendant la conduite.
+
 L'app est post-session par conception. Elle n'affiche jamais de télémétrie en direct
 destinée au pilote pendant qu'il roule. Capture pendant, analyse après.
-> *Pourquoi : tout affichage lu au volant est une distraction, donc un danger.*
+
+> _Pourquoi : tout affichage lu au volant est une distraction, donc un danger._
 
 ### E5. La performance est contextualisée par les conditions.
+
 Un tour sur le sec n'est pas comparé naïvement à un tour sous la pluie. Les conditions
 qualifient toute comparaison.
-> *Pourquoi : comparer hors contexte pousse à « rattraper » un chrono inatteignable en sécurité.*
+
+> _Pourquoi : comparer hors contexte pousse à « rattraper » un chrono inatteignable en sécurité._
 
 ### E6. Le langage est factuel, jamais un jugement.
+
 Pas de « vous avez échoué », pas de « vous étiez lent ». Le vocabulaire Mirror décrit,
 il ne note pas. La valeur de la personne n'est jamais liée à un chiffre.
-> *Pourquoi : un feedback culpabilisant pousse à se « racheter » par la prise de risque.*
+
+> _Pourquoi : un feedback culpabilisant pousse à se « racheter » par la prise de risque._
 
 ### E7. Honnêteté sur la limite (l'engagement le plus important).
+
 OXV **n'est pas un dispositif de sécurité**. Rouler vite sur circuit comporte un risque
 irréductible que l'app ne supprime pas. Son engagement n'est pas de rendre l'activité
 sûre — c'est de **ne pas amplifier ce risque par sa conception**. Et la responsabilité
 de tout conseil (prescription) incombe au **coach agréé**, pas à l'app.
-> *Pourquoi : prétendre « rendre sûr » serait un mensonge dangereux. L'honnêteté protège.*
+
+> _Pourquoi : prétendre « rendre sûr » serait un mensonge dangereux. L'honnêteté protège._
 
 ---
 
 # PARTIE II — LA DÉCLINAISON TECHNIQUE (vérifiable)
 
 ## A. Garanties déjà VÉRIFIÉES en base (état au jour de rédaction)
+
 - **Aucune** table `leaderboard / ranking / streak / badge / trophy / achievement`.
 - `session_insights` : **0** champ de comparaison inter-pilotes (`rank`, `percentile`,
   `vs_other`…). Le moteur est intrinsèquement « soi vs soi » : `session_drift`,
@@ -78,17 +93,19 @@ de tout conseil (prescription) incombe au **coach agréé**, pas à l'app.
   métrique par métrique) existent → comparaison uniquement choisie (E1).
 
 ## B. Règles que Claude Code DOIT appliquer
-| Engagement | Règle de code / présentation |
-|---|---|
-| E1 | Aucun écran ne rend un classement de vitesse inter-pilotes. Comparaison seulement via `app_progression_shares`. |
-| E2 | `flow_coherence.smoothest_lap` affiché à prominence ≥ `fastest_lap`. Couche par défaut du `<CircuitTrace>` = **Régularité**, pas vitesse. Le temps au tour n'est jamais le titre unique ou dominant. |
-| E3 | Aucune table ni logique de série/badge. Notifications (`ritual_dispatches`) : copie factuelle et de soutien uniquement. |
-| E4 | Architecture capture→analyse. Aucun écran de télémétrie live destiné au pilote au volant. |
-| E5 | Toute comparaison (PB, tour idéal, session vs session) affiche les conditions et signale si elles diffèrent. Ne jamais égaliser sec et pluie. |
-| E6 | Garde-langage (liste ci-dessous) appliqué à toute copie produite. |
-| E7 | Écran d'accueil/charte : l'app est un miroir, pas un dispositif de sécurité. Toute prescription est attribuée au coach (cf. fiche 06). |
+
+| Engagement | Règle de code / présentation                                                                                                                                                                         |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1         | Aucun écran ne rend un classement de vitesse inter-pilotes. Comparaison seulement via `app_progression_shares`.                                                                                      |
+| E2         | `flow_coherence.smoothest_lap` affiché à prominence ≥ `fastest_lap`. Couche par défaut du `<CircuitTrace>` = **Régularité**, pas vitesse. Le temps au tour n'est jamais le titre unique ou dominant. |
+| E3         | Aucune table ni logique de série/badge. Notifications (`ritual_dispatches`) : copie factuelle et de soutien uniquement.                                                                              |
+| E4         | Architecture capture→analyse. Aucun écran de télémétrie live destiné au pilote au volant.                                                                                                            |
+| E5         | Toute comparaison (PB, tour idéal, session vs session) affiche les conditions et signale si elles diffèrent. Ne jamais égaliser sec et pluie.                                                        |
+| E6         | Garde-langage (liste ci-dessous) appliqué à toute copie produite.                                                                                                                                    |
+| E7         | Écran d'accueil/charte : l'app est un miroir, pas un dispositif de sécurité. Toute prescription est attribuée au coach (cf. fiche 06).                                                               |
 
 ## C. Garde-langage — vocabulaire INTERDIT dans toute copie client
+
 Termes de jugement à bannir (liste lintable, à étendre) :
 `échec, raté, lent, mauvais, faute, erreur (comme reproche), médiocre, faible,
 décevant, vous auriez dû, il faut, vous devez (comme injonction de pilotage)`.
@@ -96,8 +113,10 @@ Remplacés par du factuel : « votre dispersion a augmenté au V4 », pas « vou
 le V4 ». Le verbe est au présent descriptif, jamais à l'impératif prescriptif.
 
 ## D. Requête de vérification — « l'éthique comme test qui peut échouer »
+
 À exécuter (CI ou revue périodique). Si elle renvoie autre chose que vide / 0, la
 charte est violée :
+
 ```sql
 -- 1. Aucune table de mécanique compétitive ne doit apparaître
 select table_name from information_schema.tables
@@ -113,6 +132,7 @@ where table_schema='public' and table_name='session_insights'
 ```
 
 ## E. Points d'AUDIT (à faire, pas encore faits)
+
 1. **Copie des notifications** : relire le contenu de `ritual_dispatches` et de la
    fonction `ritual_dispatcher` (edge) contre le garde-langage (C) et E3. C'est le seul
    endroit où une pression pourrait s'être glissée. → action concrète immédiate.

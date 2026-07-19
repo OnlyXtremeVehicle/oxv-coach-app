@@ -26,6 +26,7 @@ La V1 d'OXV App a été développée en mai 2026 avec Claude Code et **ne convie
 **Fichier** : `src/ubx/parser.ts` (150 lignes)
 
 Décode les trames UBX du RaceBox Mini S sur Bluetooth :
+
 - Vérification du checksum Fletcher-8
 - Détection des trames RACEBOX_DATA (88 octets)
 - Extraction des données : timestamp, GPS (lat, lon, altitude, accuracy, satellites), motion (speed, heading), IMU (g-force XYZ, rotation rate XYZ), batterie
@@ -39,6 +40,7 @@ Décode les trames UBX du RaceBox Mini S sur Bluetooth :
 **Fichier** : `src/ble/bluetoothService.ts` (274 lignes)
 
 Gère toute la connexion Bluetooth avec le RaceBox :
+
 - Scan des appareils (filtre par nom "RaceBox")
 - Connexion + découverte des services UART
 - Souscription aux notifications (caractéristique TX)
@@ -58,6 +60,7 @@ Gère toute la connexion Bluetooth avec le RaceBox :
 **Fichier** : `src/types/telemetry.ts` (190 lignes)
 
 Types TypeScript pour toute la chaîne télémétrie :
+
 - `RACEBOX_PROTOCOL` (constantes UUID Bluetooth)
 - `GpsFix` (enum)
 - `RaceBoxData` (trame parsée complète)
@@ -90,6 +93,7 @@ Calculs géographiques : distance Haversine, conversion degré/radian, bearing.
 **Fichier** : `src/utils/lapDetection.ts` (132 lignes)
 
 Algorithme de détection des tours :
+
 1. Calibration ligne d'arrivée (point GPS + rayon, typ. 30m)
 2. Détection entrée/sortie de zone
 3. Cooldown 10 secondes anti-faux-positifs
@@ -110,6 +114,7 @@ Validations basiques : email, téléphone français, handle utilisateur.
 **Fichier** : `src/services/sessionsService.ts` (453 lignes)
 
 CRUD complet pour les sessions de télémétrie :
+
 - `fetchPreviousSessions` (avec filtres)
 - `fetchAllSessions`
 - `calculateGlobalStats` (stats all-time)
@@ -121,6 +126,7 @@ CRUD complet pour les sessions de télémétrie :
 **Fichier** : `src/services/weatherService.ts` (356 lignes)
 
 Service météo Open-Meteo (API européenne RGPD-friendly, gratuite) :
+
 - Récupération des données actuelles
 - Capture before/during/after pour chaque session
 - Cache 10 minutes
@@ -147,6 +153,7 @@ Client Supabase configuré avec `expo-secure-store` pour stocker les tokens d'au
 ### app.json
 
 Configuration Expo avec :
+
 - Bundle ID `fr.oxvehicle.app`
 - Permissions iOS (Bluetooth, Location, Camera, Photo, Notifications)
 - Permissions Android (équivalent)
@@ -156,6 +163,7 @@ Configuration Expo avec :
 - Splash screen avec fond `#0B1220`
 
 **À garder, mais à mettre à jour** :
+
 - Vérifier que `version` est `1.0.0` pour la V2
 - `buildNumber` à incrémenter à chaque build
 - Le `projectId` EAS doit être ré-attribué si on repart d'un nouveau projet EAS
@@ -167,6 +175,7 @@ Liste de toutes les dépendances V1 (testées et fonctionnelles).
 **Sauvegardé sous `package.json.v1`** pour référence. Claude Code doit régénérer un `package.json` propre en démarrant un nouveau projet Expo SDK 51.
 
 **Dépendances à conserver** :
+
 - `expo` ~51.0.28
 - `expo-router` ~3.5.23
 - `react-native-ble-plx` ^3.2.0
@@ -181,6 +190,7 @@ Liste de toutes les dépendances V1 (testées et fonctionnelles).
 - `react-native-toast-message` ^2.2.0
 
 **Dépendances optionnelles à discuter** :
+
 - `@sentry/react-native` : monitoring crash en production (recommandé pour V1 commerciale)
 - `expo-apple-authentication` : Sign in with Apple (peut être V1.1)
 - `expo-local-authentication` : Face ID / Touch ID (peut être V1.1)
@@ -200,14 +210,14 @@ Liste de toutes les dépendances V1 (testées et fonctionnelles).
 
 Le dossier `supabase/migrations/` contient les 6 migrations SQL qui ont créé l'infrastructure télémétrie actuelle :
 
-| Fichier | Rôle |
-|---|---|
-| `0001_module_a_auth.sql` | Tables users, vehicles, documents (déjà partiellement présentes) |
-| `0002_remove_medical_data.sql` | Suppression des données médicales sensibles |
-| `0003_telemetry_sessions.sql` | Création table `telemetry_sessions` |
-| `0004_laps_and_circuits.sql` | Création tables `laps` et `circuits` |
-| `0005_haute_saintonge_weather_bilan.sql` | Création `weather_snapshots` + enrichissement circuits |
-| `0006_verify_and_fix.sql` | Corrections et vérifications |
+| Fichier                                  | Rôle                                                             |
+| ---------------------------------------- | ---------------------------------------------------------------- |
+| `0001_module_a_auth.sql`                 | Tables users, vehicles, documents (déjà partiellement présentes) |
+| `0002_remove_medical_data.sql`           | Suppression des données médicales sensibles                      |
+| `0003_telemetry_sessions.sql`            | Création table `telemetry_sessions`                              |
+| `0004_laps_and_circuits.sql`             | Création tables `laps` et `circuits`                             |
+| `0005_haute_saintonge_weather_bilan.sql` | Création `weather_snapshots` + enrichissement circuits           |
+| `0006_verify_and_fix.sql`                | Corrections et vérifications                                     |
 
 **Important pour Claude Code** : ces migrations ont **DÉJÀ été appliquées en production**. Ne PAS les ré-exécuter. Elles sont là à titre de **référence historique** pour comprendre l'évolution du schéma.
 
@@ -224,11 +234,13 @@ Fichier V1 : `src/utils/drivingQuality.ts` (300 lignes)
 **Pourquoi écarté** : ce système calcule un score "Quality Driving Index" sur 5 piliers (Trajectory, Smoothness, Braking, Acceleration, Chrono) avec des niveaux Elite/Solide/À travailler/Base.
 
 Cela **contredit fondamentalement** la doctrine OXV "miroir pas coach" :
+
 - Donne des notes au pilote (gamification)
 - Hiérarchise (Elite vs Base)
 - Suggère implicitement qu'il y a un "bon" pilotage objectif
 
 La V2 le remplace par :
+
 - **Marge composite** (le 24% central du bilan)
 - **Étiquettes humaines** ("Confortable", "À explorer", "Terrain serré")
 - **Observations qualitatives** sans note
@@ -244,6 +256,7 @@ Fichiers V1 : `src/theme/colors.ts`, `src/theme/typography.ts`
 **Pourquoi écartée** : la V1 utilise un mix de couleurs (`#E63946` rouge + `#FFB703` "performance/copper") qui ne sont **pas la vraie charte OXV**.
 
 La V2 utilise la charte officielle :
+
 - Rouge OXV strict : `#C8102E` (insigne, accents)
 - Or Heritage : `#C4A459` (réservé Heritage uniquement)
 - Bronze admin : `#B87333` (réservé admin uniquement)
@@ -259,6 +272,7 @@ Voir `docs/screens/01_DESIGN_TOKENS.md` pour la charte complète.
 ### Écrans V1
 
 Tout le dossier `app/` de la V1 (Expo Router) est **écarté** :
+
 - `(auth)/` : login, signup, forgot-password, welcome, doctrine, methode
 - `(onboarding)/` : step1-identity, step2-pilot, step3-emergency, step4-photo, step5-permissions, pacte
 - `(tabs)/` : index, sessions, live, profile
@@ -278,6 +292,7 @@ Fichiers V1 : `src/store/useAuthStore.ts`, `useCircuitsStore.ts`, `useOnboarding
 **Pourquoi écartés** : les stores V1 dépendent du modèle de données V1 (notamment QDI, états V1). La V2 a besoin de ses propres stores alignés sur la state machine S1-S10.
 
 **Cependant**, les **patterns d'usage** sont bons (zustand + supabase actions). Claude Code peut s'en inspirer pour la structure :
+
 - Un store par domaine fonctionnel
 - Actions async définies dans le store
 - Pattern `set((state) => ({ ... }))`
@@ -299,6 +314,7 @@ Fichiers V1 : `src/store/useAuthStore.ts`, `useCircuitsStore.ts`, `useOnboarding
 ### Semaine 2 — Nouveaux stores V2
 
 Réécrire les stores Zustand alignés sur la V2 :
+
 - `useAppStateStore` : la state machine S1-S10
 - `useAuthStore` : auth Supabase (V1 réutilisable)
 - `useSessionsStore` : sessions télémétrie (V1 réutilisable)
@@ -317,21 +333,21 @@ Démarrer le développement des 26 écrans V2 selon `docs/screens/00_OVERVIEW_26
 
 ## Récapitulatif
 
-| Élément | Status | Action Claude Code |
-|---|---|---|
-| Parser UBX | ✅ Fourni V1 | Garder tel quel |
-| Service BLE | ✅ Fourni V1 | Garder tel quel, brancher sur stores V2 |
-| Types télémétrie | ✅ Fourni V1 | Garder + enrichir |
-| Utils geo/lap/validation | ✅ Fourni V1 | Garder tel quel |
-| Service météo | ✅ Fourni V1 | Garder tel quel |
-| Service sessions | ✅ Fourni V1 | Garder tel quel |
-| Client Supabase | ✅ Fourni V1 | Garder tel quel |
-| Config Expo (app.json, etc.) | ✅ Fourni V1 | Adapter version + bundle ID |
-| Migrations Supabase | 📚 Référence | Ne PAS ré-exécuter |
-| QDI scoring | ❌ Écarté | Ne PAS utiliser |
-| Charte V1 colors.ts | ❌ Écarté | Utiliser `tokens.ts` V2 |
-| Écrans V1 (app/) | ❌ Écarté | Recréer selon V2 |
-| Stores V1 | ❌ Écarté | Réécrire alignés V2 |
+| Élément                      | Status       | Action Claude Code                      |
+| ---------------------------- | ------------ | --------------------------------------- |
+| Parser UBX                   | ✅ Fourni V1 | Garder tel quel                         |
+| Service BLE                  | ✅ Fourni V1 | Garder tel quel, brancher sur stores V2 |
+| Types télémétrie             | ✅ Fourni V1 | Garder + enrichir                       |
+| Utils geo/lap/validation     | ✅ Fourni V1 | Garder tel quel                         |
+| Service météo                | ✅ Fourni V1 | Garder tel quel                         |
+| Service sessions             | ✅ Fourni V1 | Garder tel quel                         |
+| Client Supabase              | ✅ Fourni V1 | Garder tel quel                         |
+| Config Expo (app.json, etc.) | ✅ Fourni V1 | Adapter version + bundle ID             |
+| Migrations Supabase          | 📚 Référence | Ne PAS ré-exécuter                      |
+| QDI scoring                  | ❌ Écarté    | Ne PAS utiliser                         |
+| Charte V1 colors.ts          | ❌ Écarté    | Utiliser `tokens.ts` V2                 |
+| Écrans V1 (app/)             | ❌ Écarté    | Recréer selon V2                        |
+| Stores V1                    | ❌ Écarté    | Réécrire alignés V2                     |
 
 ---
 
@@ -347,5 +363,5 @@ Soit un total de **3,5 semaines économisées** sur les 14 semaines prévues.
 
 ---
 
-*Document généré le 24 mai 2026.*
-*À lire par Claude Code en complément de CLAUDE.md.*
+_Document généré le 24 mai 2026._
+_À lire par Claude Code en complément de CLAUDE.md._

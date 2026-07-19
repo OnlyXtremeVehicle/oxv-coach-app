@@ -10,28 +10,28 @@
 
 **20 tables** dans le schéma `public`, toutes avec RLS activée.
 
-| Table | Lignes | Rôle |
-|---|---|---|
-| `users` | 13 | Profils pilotes et admins |
-| `vehicles` | 4 | Véhicules des pilotes |
-| `documents` | 5 | KYC (permis, identité, assurances) |
-| `sessions` | 44 | Sessions de roulage planifiées |
-| `heritage_packs` | 0 | Packs saison Heritage (3500€) |
-| `registrations` | 5 | Inscriptions pilotes aux sessions |
-| `payments` | 2 | Transactions Stripe |
-| `media` | 0 | Photos/vidéos post-session |
-| `email_log` | 0 | Historique emails Resend |
-| `pricing` | 5 | Tarification dynamique par offre/saison |
-| `telemetry_sessions` | 10 | **App OXV Mirror** — sessions enregistrées |
-| `telemetry_frames` | 0 | **App OXV Mirror** — trames GPS/inertielles |
-| `circuits` | 3 | Circuits configurés (Beltoise + autres) |
-| `laps` | 1 | Tours individuels d'une session |
-| `weather_snapshots` | 14 | Capture météo avant/pendant/après |
-| `qdi_scores` | 0 | Quality Driving Index calculé |
-| `admin_audit` | 15 | Audit des actions admin |
-| `contact_messages` | 1 | Formulaire de contact public |
-| `ritual_dispatches` | 0 | Rituels J-7, J-2, J-1 |
-| `resend_events` | 0 | Webhooks Resend (deliveries) |
+| Table                | Lignes | Rôle                                        |
+| -------------------- | ------ | ------------------------------------------- |
+| `users`              | 13     | Profils pilotes et admins                   |
+| `vehicles`           | 4      | Véhicules des pilotes                       |
+| `documents`          | 5      | KYC (permis, identité, assurances)          |
+| `sessions`           | 44     | Sessions de roulage planifiées              |
+| `heritage_packs`     | 0      | Packs saison Heritage (3500€)               |
+| `registrations`      | 5      | Inscriptions pilotes aux sessions           |
+| `payments`           | 2      | Transactions Stripe                         |
+| `media`              | 0      | Photos/vidéos post-session                  |
+| `email_log`          | 0      | Historique emails Resend                    |
+| `pricing`            | 5      | Tarification dynamique par offre/saison     |
+| `telemetry_sessions` | 10     | **App OXV Mirror** — sessions enregistrées  |
+| `telemetry_frames`   | 0      | **App OXV Mirror** — trames GPS/inertielles |
+| `circuits`           | 3      | Circuits configurés (Beltoise + autres)     |
+| `laps`               | 1      | Tours individuels d'une session             |
+| `weather_snapshots`  | 14     | Capture météo avant/pendant/après           |
+| `qdi_scores`         | 0      | Quality Driving Index calculé               |
+| `admin_audit`        | 15     | Audit des actions admin                     |
+| `contact_messages`   | 1      | Formulaire de contact public                |
+| `ritual_dispatches`  | 0      | Rituels J-7, J-2, J-1                       |
+| `resend_events`      | 0      | Webhooks Resend (deliveries)                |
 
 **Important** : les tables `telemetry_sessions`, `telemetry_frames`, `circuits`, `laps`, `weather_snapshots`, `qdi_scores`, `ritual_dispatches`, `resend_events` **existent déjà**. L'app OXV Mirror a déjà une infrastructure backend partielle.
 
@@ -112,6 +112,7 @@ updated_at                      timestamptz DEFAULT now()
 ```
 
 **Pour l'app OXV Mirror** :
+
 - L'app lit `pilot_level` au démarrage pour calibrer les analyses
 - L'app peut écrire `profile_completed_at` à la fin de l'onboarding
 - Les toggles `ritual_jminus7_enabled` etc. permettent au pilote de désactiver les rituels depuis l'app
@@ -313,6 +314,7 @@ computed_at                     timestamptz DEFAULT now()
 **Attention doctrine OXV** : ce système de scores avec niveaux (elite/or/argent/bronze/novice) entre potentiellement en **tension avec votre doctrine** "miroir pas coach". À discuter en début de semaine 1 avec Claude Code.
 
 Trois pistes :
+
 - A) Conserver le QDI mais ne pas l'afficher au pilote (usage interne admin)
 - B) L'afficher mais sans gamification (juste un chiffre comme la marge composite)
 - C) Le supprimer et le remplacer par la marge composite que vous avez définie
@@ -430,6 +432,7 @@ Pattern principal : **"propriétaire ou admin"** via `auth.uid() = user_id OR is
 Voir `06_RLS_POLICIES_ACTUELLES.sql` (généré automatiquement par Claude depuis l'export Supabase) pour la liste complète des 80+ policies.
 
 **Patterns observés** :
+
 - `users` : un utilisateur lit/édite uniquement son propre profil, l'admin lit/édite tout
 - `vehicles`, `documents` : propriétaire ou admin
 - `sessions` : lecture publique (calendrier), écriture admin only
@@ -481,26 +484,26 @@ CREATE TABLE app_circuit_zones (
 CREATE TABLE app_session_analyses (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   telemetry_session_id uuid REFERENCES telemetry_sessions(id),
-  
+
   -- Marge composite (le chiffre central du bilan)
   margin_global numeric CHECK (margin_global >= 0 AND margin_global <= 100),
   margin_zone text CHECK (margin_zone IN ('green', 'yellow', 'red')),
-  
+
   -- Marges par zone (JSON pour flexibilité)
   margins_by_zone jsonb,  -- { "1": 28, "2": 35, "3": 12, ... }
-  
+
   -- Suggestion "Une chose à creuser"
   next_focus_zone_id uuid REFERENCES app_circuit_zones(id),
   next_focus_phrase text,
-  
+
   -- Texte du debrief J+1 (généré par OpenAI)
   debrief_text text,
   debrief_generated_at timestamptz,
-  
+
   -- Acceptation Pacte
   pact_accepted_at timestamptz,
   pact_version text,
-  
+
   computed_at timestamptz DEFAULT now()
 );
 ```
@@ -530,5 +533,5 @@ npx supabase gen types typescript \
 
 ---
 
-*Schéma exporté le 24 mai 2026 directement depuis Supabase via MCP tools.*
-*Source : projet `fouvuqkdxarjpjbqnsjq` (région eu-central-1 / Frankfurt).*
+_Schéma exporté le 24 mai 2026 directement depuis Supabase via MCP tools._
+_Source : projet `fouvuqkdxarjpjbqnsjq` (région eu-central-1 / Frankfurt)._

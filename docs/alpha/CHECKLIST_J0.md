@@ -70,6 +70,7 @@
 - [ ] Écran « Votre bilan est prêt »
 
 À ce point :
+
 - Soit **Découvrir** maintenant (recommandé pour le 1er run)
 - Soit **Plus tard** (idéal entre 2 runs, vous gardez l'énergie pour le suivant)
 
@@ -80,6 +81,7 @@
 Chaque sortie en piste = une session distincte. À chaque retour, vous aurez un nouveau bilan.
 
 Entre 2 sessions :
+
 - [ ] Vérifier batterie RaceBox (~30 min de roulage par charge complète)
 - [ ] Vérifier batterie téléphone
 - [ ] Si vous avez le temps : ouvrir le hub → « Entre runs » pour voir la marge du dernier run en compact
@@ -96,14 +98,14 @@ Entre 2 sessions :
 
 ## Si pépin
 
-| Souci | Solution |
-|---|---|
-| RaceBox ne s'allume pas | Charger 30 min USB-C. Si toujours rien : staff OXV sur place |
-| App ne trouve pas le RaceBox | Vérifier qu'aucun autre téléphone n'est connecté dessus. Fermer/rouvrir l'app |
-| App crashe | Page « Une pause technique » → tap Réessayer. Si récurrent : tuer l'app, relancer. Vos données sont préservées |
-| App ne détecte pas le retour box | Hub → tap long → « Forcer la fin de session » |
-| Bilan affiche « — » partout | L'analyse n'a pas pu tourner (probable : session < 1 min, ou pas assez de GPS). Pas grave, ré-ouvrez plus tard depuis l'historique |
-| Tout va bien mais vous avez un doute | Mail `alpha@oxvehicle.fr`, photo de l'écran, on regarde |
+| Souci                                | Solution                                                                                                                           |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| RaceBox ne s'allume pas              | Charger 30 min USB-C. Si toujours rien : staff OXV sur place                                                                       |
+| App ne trouve pas le RaceBox         | Vérifier qu'aucun autre téléphone n'est connecté dessus. Fermer/rouvrir l'app                                                      |
+| App crashe                           | Page « Une pause technique » → tap Réessayer. Si récurrent : tuer l'app, relancer. Vos données sont préservées                     |
+| App ne détecte pas le retour box     | Hub → tap long → « Forcer la fin de session »                                                                                      |
+| Bilan affiche « — » partout          | L'analyse n'a pas pu tourner (probable : session < 1 min, ou pas assez de GPS). Pas grave, ré-ouvrez plus tard depuis l'historique |
+| Tout va bien mais vous avez un doute | Mail `alpha@oxvehicle.fr`, photo de l'écran, on regarde                                                                            |
 
 ---
 

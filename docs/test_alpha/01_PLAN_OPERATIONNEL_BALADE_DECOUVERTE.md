@@ -24,7 +24,7 @@ Son objectif est triple :
 
 ## 1. Vue d'ensemble — Le programme en une phrase
 
-> *Une demi-journée de balade automobile entre amis dans la campagne charentaise, en utilisant l'application OXV Mirror comme si c'était une vraie session, suivie d'un déjeuner-débrief pour partager les retours.*
+> _Une demi-journée de balade automobile entre amis dans la campagne charentaise, en utilisant l'application OXV Mirror comme si c'était une vraie session, suivie d'un déjeuner-débrief pour partager les retours._
 
 ---
 
@@ -69,6 +69,7 @@ Envoi d'une invitation par email ou message personnel à chaque ami. Texte type 
 ### J-14 (21 juin) — Création de l'événement dans l'admin
 
 Modifications de l'admin oxvehicle.fr (voir Livrable 2) pour créer :
+
 - Le circuit temporaire « Bouteville — Balade Découverte »
 - La session du 5 juillet
 - L'offre « Balade Découverte » à 0 €
@@ -88,6 +89,7 @@ L'audio personnalisé GPT-4o + ElevenLabs est généré pour chaque ami. C'est u
 ### J-1 (4 juillet) — Rappel et logistique
 
 Email automatique de rappel (rituel J-1). Vous envoyez en complément un message personnel avec :
+
 - Le point de RV exact (coordonnées GPS et adresse)
 - L'heure précise
 - La liste des participants confirmés
@@ -142,6 +144,7 @@ Bouteville → Saint-Preuil → Bonneuil → Bouteville (point bas)
 ```
 
 Choisir des routes avec :
+
 - Quelques virages plaisants (pour générer des données intéressantes)
 - Pas trop de circulation
 - Bon revêtement
@@ -154,6 +157,7 @@ Le convoi peut se séparer en deux pelotons de 5-6 voitures si vous êtes 12, po
 ### 11h30-12h00 — Pause à mi-parcours
 
 À mi-chemin, faites un arrêt dans un village ou point pittoresque (15-20 min). Cela permet :
+
 - Une pause photo souvenir
 - Un premier débrief informel
 - Une vérification du jumelage BLE qui doit tenir
@@ -169,6 +173,7 @@ C'est ici que les premières observations de l'app sur les écrans Bilan, Carte,
 Réservation préalable dans un restaurant de Bouteville ou des environs pouvant accueillir le groupe.
 
 Pendant le déjeuner :
+
 - Repas convivial classique
 - Mais avec un **temps structuré de retour** : faites un tour de table où chacun donne ses impressions sur l'app
 - Notez les retours (ou enregistrez avec accord oral)
@@ -263,6 +268,7 @@ Si la météo est mauvaise (orage, pluie continue), reportez la balade. La journ
 ### Risque 2 — Désistement de dernière minute
 
 Si moins de 8 amis confirment à J-3, vous avez deux options :
+
 - Maintenir avec moins de monde (6-7 personnes) : le test reste valide
 - Reporter d'une semaine ou deux
 
@@ -273,6 +279,7 @@ Vous emportez 2-3 boîtiers de secours. Si un boîtier lâche en route, vous le 
 ### Risque 4 — App qui plante en conditions réelles
 
 C'est paradoxalement **ce que vous voulez découvrir**. Notez précisément :
+
 - Quels écrans plantent et dans quelles conditions
 - Les messages d'erreur affichés
 - Les actions que vous avez dû faire pour récupérer
@@ -337,6 +344,7 @@ Possible. Acceptez-le. Notez précisément ce qu'ils n'ont pas aimé. C'est trè
 ### Communication post-événement
 
 Vous pouvez profiter de cet événement pour :
+
 - Prendre quelques photos professionnelles (avec accord des amis)
 - Faire un teaser vidéo court (sans nommer "test alpha")
 - Publier sur les réseaux d'OXV en présentant ça comme un "moment entre passionnés" — c'est plus chaleureux que "test alpha"
@@ -345,12 +353,12 @@ Vous pouvez profiter de cet événement pour :
 
 ## 10. En une phrase
 
-> *Une demi-journée d'amitié et de validation, où OXV passe pour la première fois entre les mains de gens qui ne sont pas vous, dans un contexte où vous pouvez tout observer et tout apprendre.*
+> _Une demi-journée d'amitié et de validation, où OXV passe pour la première fois entre les mains de gens qui ne sont pas vous, dans un contexte où vous pouvez tout observer et tout apprendre._
 
 C'est exactement ce qu'il faut faire avant le vrai lancement.
 
 ---
 
-*Document à imprimer et à conserver. Une checklist J-1 sera utile pour ne rien oublier.*
+_Document à imprimer et à conserver. Une checklist J-1 sera utile pour ne rien oublier._
 
-*Plan opérationnel — Balade Découverte OXV — Version 1.0 — Mai 2026*
+_Plan opérationnel — Balade Découverte OXV — Version 1.0 — Mai 2026_

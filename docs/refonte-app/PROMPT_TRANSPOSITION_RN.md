@@ -45,7 +45,7 @@ Trois composants maîtres portent déjà le langage gaming. **Compose-les**, ne 
   de l'instrument central** : si une maquette montre un redline rouge, c'est une scorie —
   le composant fait foi (pas de rouge).
 - **`CoachBand`** — `src/components/instruments/`. Bande coach rouge bordée, seul lieu
-  prescriptif. *(à poser — voir le suivi du build.)*
+  prescriptif. _(à poser — voir le suivi du build.)_
 
 ## Procédure, pour chaque écran
 

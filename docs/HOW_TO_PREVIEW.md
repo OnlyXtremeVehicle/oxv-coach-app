@@ -29,6 +29,7 @@ Au démarrage, un QR code s'affiche dans le terminal et une page web s'ouvre sur
 4. **Android** : ouvrir l'app Expo Go, onglet "Scan QR code".
 
 L'app se télécharge sur le téléphone (~30 s la première fois) puis se lance. Vous voyez :
+
 - Écran de login OXV
 - Possibilité de naviguer dans tous les écrans une fois loggué
 - Tous les écrans pilote et admin (avec `is_admin = true`)
@@ -43,6 +44,7 @@ L'app se télécharge sur le téléphone (~30 s la première fois) puis se lance
 - Sentry (déjà no-op en dev)
 
 Le reste de l'app fonctionne intégralement, **y compris** :
+
 - Auth Supabase
 - Lecture de toutes les tables DB (sessions, analyses, segments, etc.)
 - Géolocalisation foreground
@@ -111,6 +113,7 @@ L'app s'installe automatiquement sur l'émulateur et démarre avec **tous** les 
 ### Avec un téléphone Android physique
 
 Si vous avez un Android :
+
 1. Activer le mode développeur (Settings → About → tap 7× sur Build number)
 2. Activer USB debugging dans les options développeur
 3. Brancher en USB
@@ -156,6 +159,7 @@ C'est 5 minutes de setup. Vous voyez 90% de l'app (toutes les transitions, le de
 ### "Cannot connect to Metro"
 
 Si Expo Go n'arrive pas à se connecter au serveur Metro :
+
 - Vérifier que téléphone et Windows sont sur **le même WiFi**
 - Si WiFi entreprise/public : utiliser `npx expo start --tunnel` (plus lent mais traverse les NAT)
 

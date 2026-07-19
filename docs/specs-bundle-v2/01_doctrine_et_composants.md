@@ -10,22 +10,28 @@ regles et les memes composants partout.
 Trois patterns reviennent. Memorise-les : ils tranchent 90 % des decisions de design.
 
 ### Pattern 1 — Le fait, pas le verdict
+
 On affiche **ce qui s'est passe**, jamais **ce qu'il aurait fallu faire**.
+
 - OUI : « Votre vitesse mini en S2 : 84 km/h. »
 - NON : « Vous freinez trop tot en S2. »
 
 ### Pattern 2 — Soi contre soi par defaut
+
 La reference, c'est le pilote face a lui-meme (autre tour, autre session, autre version
 de l'app). La comparaison entre pilotes existe mais est **opt-in, sans rang** (bloc 6).
+
 - OUI : « Ce tour vs votre meilleur tour : +0,4 s. »
 - NON : « Vous etes 3e sur 12 pilotes. »
 
 ### Pattern 3 — La mise en forme remplace le conseil
+
 On differencie par la **clarte premium**, pas par la prescription. La ou RaceChrono donne un
 graphe brut a interpreter seul, Mirror **raconte le fait proprement** — sans le commenter.
 C'est le role de la chaine `generate-debrief-ai` : mettre en page, jamais conseiller.
 
 ### Pattern 4 — Le trace porte le fait ; la cause appartient au coach
+
 Deux regles jumelles, nees des maquettes validees :
 
 **(a) Le fait s'inscrit sur le trace.** La plupart des insights se posent dans un `TrackStage`,
@@ -36,6 +42,7 @@ propres trajectoires sur le trace, c'est la fonction miroir a son sommet : compr
 conduite, decider seul.
 
 **(b) La causalite orientee vit uniquement cote coach.** Frontiere fine mais determinante :
+
 - **Fait revele** (espace pilote, OK) : un constat descriptif, meme profond — « votre corde au
   V4 varie de 1,8 m », « vos tours les plus rapides ne sont pas vos plus agressifs ». L'app
   pose le lien observe ; le pilote en tire sa conclusion.
@@ -49,7 +56,6 @@ pilote — meme reformulee au present de l'indicatif. Reformuler un conseil en c
 pas conforme si le contenu reste actionnable. Dans le doute : le fait reste, la cause passe au
 coach ou disparait.
 
-
 Aucun ecran ne produit : score global, note de niveau, classement hierarchise, conseil
 d'action, trajectoire « ideale » imposee. Si une spec semble s'en approcher, la doctrine prime.
 
@@ -60,30 +66,36 @@ d'action, trajectoire « ideale » imposee. Si une spec semble s'en approcher, l
 Composants reutilisables, references par `[Composant: Nom]` dans les specs d'ecran.
 
 ### `AppBar`
+
 Barre haute sobre. Titre court a gauche, action contextuelle a droite (optionnelle).
 Fond `noir`. Pas de breadcrumb. Insigne OXV discret possible.
 
 ### `MetricHero`
+
 Le composant signature du produit. **Une seule donnee centrale**, enorme, lisible a bout de
 bras. Libelle humain au-dessus, valeur au centre, unite/contexte en dessous. Couleur de la
 valeur selon le sens (data = `bleu_data`, jamais de rouge « alerte » qui jugerait).
 
 ### `FactRow`
+
 Ligne « libelle → valeur ». Empilable. Pour les listes de faits secondaires sous un
 `MetricHero`. Jamais d'icone de jugement (pas de feu vert/rouge).
 
 ### `ComparisonPair`
+
 **Deux faits cote a cote, strictement symetriques.** Aucun des deux n'est marque « meilleur ».
 Pas de fleche de hierarchie, pas de surbrillance « gagnant ». Usage : tour vs tour, version vs
 version, vehicule vs vehicule, pilote vs pilote (opt-in).
 
-### `TrackStage` *(composant maitre — le langage commun de l'app)*
+### `TrackStage` _(composant maitre — le langage commun de l'app)_
+
 **Le trace schematique du circuit est le support central de la plupart des ecrans data.**
 Un pilote pense en virages, pas en ecarts-types : le fait s'inscrit **la ou il se produit**,
 sur le trace, et non a plat dans un tableau qu'il faut ensuite traduire mentalement.
 
 `TrackStage` est un conteneur (carte `--night-card`, eyebrow mono + tag de mode) qui enveloppe
 un `TrackCanvas` et impose une grammaire de modes. Modes attendus :
+
 - **`faisceau`** — superpose N trajectoires reelles du pilote en transparence. Le faisceau qui
   s'evase (dispersion haute) ou se confond (dispersion basse) **se voit**. Usage : regularite
   spatiale par virage.
@@ -96,6 +108,7 @@ un `TrackCanvas` et impose une grammaire de modes. Modes attendus :
 - **`heatmap`** — carte de chaleur d'agregation spatiale (ou se concentre la donnee / le temps).
 
 Regles fermes de `TrackStage` :
+
 - La geometrie du trace est **derivee des frames GNSS reelles**, jamais dessinee « a la main »
   comme un fait. Tant que `telemetry_frames` est vide, afficher un trace neutre + `EmptyState`.
 - On affiche **la trajectoire empruntee**, jamais une trajectoire « ideale » a suivre.
@@ -104,33 +117,40 @@ Regles fermes de `TrackStage` :
 - Couleurs le long du trait = couleurs QDI figees (voir `00_CLAUDE.md` §3), signifiantes.
 
 ### `TrackCanvas`
+
 Le rendu bas niveau du trace, utilise **par** `TrackStage`. Dessine la forme du circuit, une ou
 plusieurs polylignes (trajectoires empruntees), une heatmap, des marqueurs de secteur/virage.
 Interactif au tap. Ne porte pas de chrome (titre, tag) : c'est `TrackStage` qui l'habille.
 
 ### `TimelineEvolution`
+
 Frise temporelle « soi contre soi ». Points = sessions (ou versions d'app). Montre une
 tendance factuelle sans verdict (« en hausse » est factuel ; « bon progres » ne l'est pas).
 
 ### `DataChart`
+
 Courbe propre et epuree (vitesse, G, allure). Lisible, peu dense, une lecture a la fois.
 Pas le graphe-usine de la concurrence. Axes minimaux, contexte en clair.
 
 ### `SessionCard`
+
 Carte resumant une session pour les listes : date, circuit, meteo, 1 fait saillant. Tap →
 detail. Sobre.
 
 ### `ConsentGate`
+
 Encart de consentement explicite, reutilise partout ou de la donnee personnelle circule
 (partage, comparaison, feed). Etat clair, revocable, **opt-in par defaut sur OFF**.
 
-### `CoachBand` *(la parole du coach, separee et attribuee)*
+### `CoachBand` _(la parole du coach, separee et attribuee)_
+
 Bandeau de lecture du coach, **toujours separe sous le `TrackStage`** (jamais fondu dans le
 miroir du pilote). C'est le seul endroit du parcours pilote ou une lecture **causale orientee**
 (« la cause a corriger », « l'objectif est… ») peut apparaitre — parce qu'elle est emise par un
 **tiers agree que le pilote a invite**, sous sa responsabilite, pas celle d'OXV.
 
 Structure imposee :
+
 - Cadre distinct : fond `rgba(196,164,89,0.06)`, bordure `--oxv-gold`. Visuellement **autre**
   que les surfaces du pilote.
 - En-tete : avatar du coach, nom, role (« Coach · invite par vous »), badge mono **PAROLE COACH**.
@@ -139,14 +159,16 @@ Structure imposee :
   parole du coach a un **point precis** du trace au-dessus. Le coach pointe le lieu exact.
 
 Regles fermes :
+
 - N'apparait que si un coach est lie au pilote (opt-in via `ConsentGate`). Absent sinon.
 - Le contenu coach est **toujours attribue** (« Debrief de [nom] ») — jamais presente comme une
   sortie de l'app. C'est ce qui preserve le non-agrement d'OXV (voir `specs/C0_coach.md`).
 - Cote pilote sans coach, l'ecran s'arrete au fait : aucune causalite orientee, aucun substitut.
-Etat « pas de donnee ». Honnete, sans excuse dramatique. Explique factuellement pourquoi
-(« Aucune session enregistree pour l'instant. ») et l'action possible. Voir bloc 11.
+  Etat « pas de donnee ». Honnete, sans excuse dramatique. Explique factuellement pourquoi
+  (« Aucune session enregistree pour l'instant. ») et l'action possible. Voir bloc 11.
 
 ### `PactBanner`
+
 Rappel discret de la doctrine, present aux moments cles (onboarding, premier partage).
 Texte fige : « L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. »
 

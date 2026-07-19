@@ -9,14 +9,14 @@
 
 ## Bilan chiffré
 
-| | Nombre |
-|---|--------|
-| Constats confirmés (vérifiés au sens strict) | **68** |
-| Corrigés (2 commits) | **66** |
-| Confirmés mais **déférés au fondateur** (UX/produit) | **2** |
-| Réfutés à la vérification (faux positifs) | 41 |
-| `low` (tactile, eyebrow) — non traités, à trier | 47 |
-| Groupes non re-vérifiés (crédits épuisés) : admin-a/b, partner-pro-ui | — |
+|                                                                       | Nombre |
+| --------------------------------------------------------------------- | ------ |
+| Constats confirmés (vérifiés au sens strict)                          | **68** |
+| Corrigés (2 commits)                                                  | **66** |
+| Confirmés mais **déférés au fondateur** (UX/produit)                  | **2**  |
+| Réfutés à la vérification (faux positifs)                             | 41     |
+| `low` (tactile, eyebrow) — non traités, à trier                       | 47     |
+| Groupes non re-vérifiés (crédits épuisés) : admin-a/b, partner-pro-ui | —      |
 
 ## Règles auditées
 
@@ -80,5 +80,6 @@
   avant application (ne pas appliquer non vérifié).
 
 ## Vérification finale
+
 - Tout se valide **à l'œil au prochain build EAS**, en priorité l'onboarding
   (CTA crème) et les switches verts.

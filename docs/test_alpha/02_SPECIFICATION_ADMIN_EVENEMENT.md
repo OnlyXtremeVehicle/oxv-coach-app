@@ -18,12 +18,12 @@ Le cas d'usage prioritaire est la **Balade Découverte du 5 juillet 2026 à Bout
 
 Pour cette fonctionnalité, **quatre éléments** doivent être ajoutés ou modifiés :
 
-| Élément | Type | Effort estimé |
-|---|---|---|
-| Migration SQL — nouvelle table `events` | Backend | 1h |
-| Migration SQL — modification de `sessions` pour lier aux events | Backend | 30min |
-| Page admin "Créer un événement" | Frontend | 3-4h |
-| Adaptation du parcours réservation pour offres gratuites | Frontend | 2-3h |
+| Élément                                                         | Type     | Effort estimé |
+| --------------------------------------------------------------- | -------- | ------------- |
+| Migration SQL — nouvelle table `events`                         | Backend  | 1h            |
+| Migration SQL — modification de `sessions` pour lier aux events | Backend  | 30min         |
+| Page admin "Créer un événement"                                 | Frontend | 3-4h          |
+| Adaptation du parcours réservation pour offres gratuites        | Frontend | 2-3h          |
 
 **Effort total estimé : 6 à 8 heures** de développement.
 
@@ -237,15 +237,15 @@ Modifier la barre latérale admin pour ajouter l'entrée "Événements" :
 
 Vue tableau classique reprenant la grammaire visuelle de votre page Sessions. Colonnes recommandées :
 
-| Colonne | Source | Type d'affichage |
-|---|---|---|
-| Nom | `events.name` | Texte avec lien vers détail |
-| Type | `events.event_type` | Badge coloré (session = rouge, balade = orange, etc.) |
-| Date | `events.starts_at` | Date formatée FR |
-| Lieu | `events.location_name` | Texte court |
-| Statut | `events.status` | Badge coloré |
-| Pilotes | `current_pilots / max_pilots` | Compteur visuel |
-| Actions | — | Boutons "Voir", "Modifier", "Dupliquer" |
+| Colonne | Source                        | Type d'affichage                                      |
+| ------- | ----------------------------- | ----------------------------------------------------- |
+| Nom     | `events.name`                 | Texte avec lien vers détail                           |
+| Type    | `events.event_type`           | Badge coloré (session = rouge, balade = orange, etc.) |
+| Date    | `events.starts_at`            | Date formatée FR                                      |
+| Lieu    | `events.location_name`        | Texte court                                           |
+| Statut  | `events.status`               | Badge coloré                                          |
+| Pilotes | `current_pilots / max_pilots` | Compteur visuel                                       |
+| Actions | —                             | Boutons "Voir", "Modifier", "Dupliquer"               |
 
 Header de la page : bouton **"+ Créer un événement"** en rouge OXV en haut à droite.
 
@@ -353,16 +353,10 @@ Modifications dans le dispatcher de rituels (Edge Function `ritual_dispatcher`) 
 
 ```typescript
 // Avant : on récupérait uniquement les sessions
-const upcomingItems = await supabase
-  .from('sessions')
-  .select('*')
-  .gte('starts_at', threshold);
+const upcomingItems = await supabase.from('sessions').select('*').gte('starts_at', threshold);
 
 // Après : on récupère sessions + events
-const upcomingSessions = await supabase
-  .from('sessions')
-  .select('*')
-  .gte('starts_at', threshold);
+const upcomingSessions = await supabase.from('sessions').select('*').gte('starts_at', threshold);
 
 const upcomingEvents = await supabase
   .from('events')
@@ -408,14 +402,17 @@ Pour un événement de type 'balade_decouverte', générer un message qui :
 L'app doit récupérer le `event_type` lors du jumelage paddock et adapter quelques éléments :
 
 **Sur l'écran #07 "Vous y êtes"** :
+
 - Pour `session` : "Circuit de Haute Saintonge"
 - Pour `balade_decouverte` : "Bouteville, Charente"
 
 **Sur l'écran #09 "Placement"** :
+
 - Pour `session` : "Posez le boîtier sur le support magnétique côté passager"
 - Pour `balade_decouverte` : "Posez le boîtier sur le tableau de bord. Vous le verrez peu, mais il enregistrera tout votre parcours."
 
 **Sur l'écran #06 "Pacte de pilotage"** :
+
 - Pas de modification : le pacte est universel et s'applique aussi sur route normale
 
 ### 5.2 — Adaptation des algorithmes
@@ -433,6 +430,7 @@ classiques. Vos données sont préservées pour votre information.
 ```
 
 Cette mention :
+
 - Évite la confusion pour vos amis testeurs
 - Vous permet quand même de récolter les données techniques
 - Reste cohérente avec votre doctrine (l'app ne ment pas sur ce qu'elle est)
@@ -490,13 +488,13 @@ Cela vous permet, ultérieurement, de filtrer ces données dans vos analyses glo
 
 ## 7. Estimation finale
 
-| Phase | Effort | Jalons |
-|---|---|---|
-| Backend (migrations + RLS) | 2-3h | J-21 (vers le 14 juin) |
-| Admin "Créer événement" | 3-4h | J-14 (21 juin) |
-| Parcours réservation | 2-3h | J-10 (25 juin) |
-| App OXV Mirror (mineurs) | 1-2h | J-7 (28 juin) |
-| Tests bout en bout | 2-3h | J-3 (2 juillet) |
+| Phase                      | Effort | Jalons                 |
+| -------------------------- | ------ | ---------------------- |
+| Backend (migrations + RLS) | 2-3h   | J-21 (vers le 14 juin) |
+| Admin "Créer événement"    | 3-4h   | J-14 (21 juin)         |
+| Parcours réservation       | 2-3h   | J-10 (25 juin)         |
+| App OXV Mirror (mineurs)   | 1-2h   | J-7 (28 juin)          |
+| Tests bout en bout         | 2-3h   | J-3 (2 juillet)        |
 
 **Total : 10-15 heures de développement** réparties sur 3 semaines.
 
@@ -520,6 +518,6 @@ La table `events` et son `event_type` sont conçus pour absorber ces cas sans no
 
 ---
 
-*Spécification technique — Ajout admin Événement personnalisé — Version 1.0 — Mai 2026*
+_Spécification technique — Ajout admin Événement personnalisé — Version 1.0 — Mai 2026_
 
-*À transmettre au développeur en charge de l'implémentation, accompagnée du plan opérationnel (livrable 1) et de la grille d'observation (livrable 3).*
+_À transmettre au développeur en charge de l'implémentation, accompagnée du plan opérationnel (livrable 1) et de la grille d'observation (livrable 3)._

@@ -27,7 +27,7 @@ L'entree apres une session est **20.1 Synthese**. Les autres ecrans se deroulent
 
 ---
 
-## 20.2 — Signature de pilotage *(inedit marche)*
+## 20.2 — Signature de pilotage _(inedit marche)_
 
 - **But** : montrer l'**empreinte personnelle** du pilote — sa maniere, ses appuis, son
   style. Ce qu'aucun concurrent ne formalise.
@@ -73,7 +73,7 @@ L'entree apres une session est **20.1 Synthese**. Les autres ecrans se deroulent
 
 ---
 
-## 20.5 — Carte de chaleur du trace *(inedit marche)*
+## 20.5 — Carte de chaleur du trace _(inedit marche)_
 
 - **But** : montrer ou le pilote passe son temps / ou la donnee se concentre sur le circuit.
 - **Layout** :

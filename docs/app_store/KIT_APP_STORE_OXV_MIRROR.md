@@ -24,6 +24,7 @@ Ce kit contient l'intégralité des contenus à fournir à Apple App Store Conne
 **Nom de l'app** : `OXV Mirror`
 
 Choisi pour :
+
 - Préserver la marque OXV présente dans tous nos documents
 - Indiquer la fonction (coaching/lecture de pilotage)
 - Capter le SEO sur la catégorie sport/coaching
@@ -34,6 +35,7 @@ Choisi pour :
 `Track day premium`
 
 Ce sous-titre apparaît juste sous le nom dans l'App Store. Il :
+
 - Précise la catégorie sans utiliser le mot "track" deux fois
 - Évite "coach" qui apparaîtrait redondant
 - Contient des mots-clés à fort potentiel SEO
@@ -43,6 +45,7 @@ Ce sous-titre apparaît juste sous le nom dans l'App Store. Il :
 `Le miroir de votre pilotage. Pour les passionnés de track day premium.`
 
 Cette description courte apparaît dans les résultats de recherche Google Play. Elle :
+
 - Pose immédiatement la philosophie (le mot "miroir")
 - Identifie le public (passionnés de track day)
 - Tient en 71 caractères
@@ -169,6 +172,7 @@ track day,circuit,pilotage,GT3,Porsche,Beltoise,télémétrie,coaching,sport aut
 ```
 
 **Décompte** : 96 caractères. Optimisé pour :
+
 - Mots-clés généralistes (track day, circuit, pilotage)
 - Mots-clés véhicules premium (GT3, Porsche)
 - Mot-clé géographique unique (Beltoise)
@@ -182,6 +186,7 @@ track day,circuit,pilotage,GT3,Porsche,Beltoise,télémétrie,coaching,sport aut
 Google Play utilise les mots de la **description longue** comme mots-clés. Pas de champ dédié.
 
 Pour optimiser le SEO Google :
+
 - Mentionnez "track day" 2-3 fois dans la description
 - Mentionnez "circuit", "pilotage", "Beltoise" naturellement
 - Évitez le keyword stuffing (répétitions artificielles)
@@ -191,10 +196,12 @@ La description longue ci-dessus respecte déjà ces principes.
 ### 3.3 — Catégorie principale
 
 **Apple App Store** :
+
 - Catégorie principale : `Sports`
 - Catégorie secondaire : `Productivity` ou `Health & Fitness` (selon votre stratégie)
 
 **Google Play** :
+
 - Catégorie principale : `Sports`
 - Tags additionnels : `Auto Racing`, `Driving`
 
@@ -213,12 +220,14 @@ Justification : aucun contenu violent, sexuel, ou inapproprié. L'app est utilis
 ### 4.1 — Spécifications techniques
 
 **Apple App Store** :
+
 - Format : PNG sans transparence
 - Taille : 1024×1024 pixels exactement
 - Profil colorimétrique : sRGB
 - Aucune transparence, aucun cadre, aucun ombrage : Apple ajoute automatiquement le masque arrondi
 
 **Google Play** :
+
 - Format : PNG 32 bits sans transparence
 - Taille : 512×512 pixels exactement
 - Profil colorimétrique : sRGB
@@ -228,6 +237,7 @@ Justification : aucun contenu violent, sexuel, ou inapproprié. L'app est utilis
 Vous disposez déjà de l'**insigne OXV** (le bouclier-casque rouge/V central) qui sert sur oxvehicle.fr. Cet insigne fonctionne parfaitement comme icône d'app.
 
 **Composition recommandée** :
+
 - Fond noir profond `#050505` (cohérent avec le mode sombre OXV)
 - Insigne OXV centré, version rouge `#C8102E`
 - Taille relative de l'insigne : 60% du carré
@@ -235,6 +245,7 @@ Vous disposez déjà de l'**insigne OXV** (le bouclier-casque rouge/V central) q
 - Aucun élément superflu
 
 **À éviter absolument** :
+
 - Mettre "OXV Mirror" en texte (illisible à 60×60 pixels sur l'écran d'accueil)
 - Effet de profondeur 3D ou dégradés complexes (datent visuellement)
 - Marges blanches ou claires (cassent l'effet premium)
@@ -242,6 +253,7 @@ Vous disposez déjà de l'**insigne OXV** (le bouclier-casque rouge/V central) q
 ### 4.3 — Variantes à produire
 
 Le développeur devra produire :
+
 - **1024×1024** pour App Store Connect
 - **512×512** pour Google Play
 - **180×180** pour l'écran d'accueil iPhone (généré automatiquement par Apple à partir du 1024)
@@ -269,6 +281,7 @@ Capture 5 — **La progression**
 Capture 6 — **La doctrine**
 
 Chaque capture combine :
+
 - L'**écran réel de l'app** (livré par le dev en V1)
 - Un **texte d'accroche** incrusté en haut (typo manuelle ou Figma)
 - Un **fond cohérent** (noir OXV ou nuance sombre)
@@ -277,89 +290,94 @@ Chaque capture combine :
 
 **Capture 1 — Hook émotionnel**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | #20 Accueil par défaut (mode C hors-piste) |
-| Texte incrusté en haut | « Vos sessions valent mieux qu'un chrono. » |
+| Élément                | Contenu                                             |
+| ---------------------- | --------------------------------------------------- |
+| Écran montré           | #20 Accueil par défaut (mode C hors-piste)          |
+| Texte incrusté en haut | « Vos sessions valent mieux qu'un chrono. »         |
 | Sous-texte (optionnel) | « OXV Mirror prolonge votre pilotage sur 9 jours. » |
-| Fond | Noir OXV `#050505` |
-| Couleur accent | Rouge OXV `#C8102E` |
+| Fond                   | Noir OXV `#050505`                                  |
+| Couleur accent         | Rouge OXV `#C8102E`                                 |
 
 **Capture 2 — Le bilan**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | #13 Bilan (avec le 24% en gros, "Belle séance") |
-| Texte incrusté en haut | « Un seul indicateur. Une seule lecture. » |
-| Sous-texte | « Votre marge, votre repère, votre liberté. » |
-| Fond | Noir OXV |
-| Couleur accent | Vert OXV `#97C459` |
+| Élément                | Contenu                                         |
+| ---------------------- | ----------------------------------------------- |
+| Écran montré           | #13 Bilan (avec le 24% en gros, "Belle séance") |
+| Texte incrusté en haut | « Un seul indicateur. Une seule lecture. »      |
+| Sous-texte             | « Votre marge, votre repère, votre liberté. »   |
+| Fond                   | Noir OXV                                        |
+| Couleur accent         | Vert OXV `#97C459`                              |
 
 **Capture 3 — La carte**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | #14 Carte du circuit (avec les pastilles colorées) |
-| Texte incrusté en haut | « Chaque virage, une lecture. » |
-| Sous-texte | « Aucun classement, aucune compétition. Juste vous. » |
-| Fond | Noir OXV |
-| Couleur accent | Orange OXV `#EF9F27` |
+| Élément                | Contenu                                               |
+| ---------------------- | ----------------------------------------------------- |
+| Écran montré           | #14 Carte du circuit (avec les pastilles colorées)    |
+| Texte incrusté en haut | « Chaque virage, une lecture. »                       |
+| Sous-texte             | « Aucun classement, aucune compétition. Juste vous. » |
+| Fond                   | Noir OXV                                              |
+| Couleur accent         | Orange OXV `#EF9F27`                                  |
 
 **Capture 4 — Le zoom virage**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | #15 Zoom virage (3 éclairages, trajectoire + physique + question) |
-| Texte incrusté en haut | « Trois éclairages, jamais d'instruction. » |
-| Sous-texte | « L'application vous montre. Vous concluez. » |
-| Fond | Noir OXV |
-| Couleur accent | Rouge OXV |
+| Élément                | Contenu                                                           |
+| ---------------------- | ----------------------------------------------------------------- |
+| Écran montré           | #15 Zoom virage (3 éclairages, trajectoire + physique + question) |
+| Texte incrusté en haut | « Trois éclairages, jamais d'instruction. »                       |
+| Sous-texte             | « L'application vous montre. Vous concluez. »                     |
+| Fond                   | Noir OXV                                                          |
+| Couleur accent         | Rouge OXV                                                         |
 
 **Capture 5 — La progression**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | #17 Progression (courbe sur 8 mois) |
-| Texte incrusté en haut | « Vous avancez, session après session. » |
-| Sous-texte | « Plus de chrono. Plus de marge. Plus de sérénité. » |
-| Fond | Noir OXV |
-| Couleur accent | Vert OXV |
+| Élément                | Contenu                                              |
+| ---------------------- | ---------------------------------------------------- |
+| Écran montré           | #17 Progression (courbe sur 8 mois)                  |
+| Texte incrusté en haut | « Vous avancez, session après session. »             |
+| Sous-texte             | « Plus de chrono. Plus de marge. Plus de sérénité. » |
+| Fond                   | Noir OXV                                             |
+| Couleur accent         | Vert OXV                                             |
 
 **Capture 6 — La doctrine (finale)**
 
-| Élément | Contenu |
-|---|---|
-| Écran montré | Le pacte de pilotage (style écran #06 onboarding) |
-| Texte incrusté en haut | « L'app est un miroir. » |
-| Texte central (sur fond) | « Elle vous montre. Elle ne vous dirige pas. » |
-| Sous-texte bas | « La piste est à vous. Les décisions aussi. » |
-| Fond | Noir OXV pur (signature) |
-| Couleur accent | Rouge OXV |
+| Élément                  | Contenu                                           |
+| ------------------------ | ------------------------------------------------- |
+| Écran montré             | Le pacte de pilotage (style écran #06 onboarding) |
+| Texte incrusté en haut   | « L'app est un miroir. »                          |
+| Texte central (sur fond) | « Elle vous montre. Elle ne vous dirige pas. »    |
+| Sous-texte bas           | « La piste est à vous. Les décisions aussi. »     |
+| Fond                     | Noir OXV pur (signature)                          |
+| Couleur accent           | Rouge OXV                                         |
 
 ### 5.4 — Tailles techniques
 
 **Apple App Store — iPhone (obligatoire)** :
+
 - iPhone 6.7" (iPhone 14 Pro Max, 15 Pro Max, 16 Pro Max) : **1290×2796 pixels**
 - iPhone 6.5" (iPhone 11 Pro Max, XS Max) : **1242×2688 pixels** ou utiliser les 6.7"
 - iPhone 5.5" (iPhone 8 Plus) : **1242×2208 pixels** (optionnel, abandonné en 2024)
 
 **Apple App Store — iPad (si l'app supporte iPad)** :
+
 - iPad Pro 12.9" : **2048×2732 pixels**
 - iPad Pro 11" : **1668×2388 pixels**
 
 **Google Play — Téléphone** :
+
 - Ratio 16:9 ou 9:16, minimum 320 pixels, maximum 3840 pixels
 - Recommandation : **1080×1920 pixels** (couvre la majorité des appareils)
 
 ### 5.5 — Production technique
 
 Au moment du lancement, fournir au designer ou développeur :
+
 - Ce kit (vous y êtes)
 - Les écrans réels exportés depuis l'app en haute résolution
 - Les codes couleurs OXV (déjà spécifiés dans ce document)
 - Une typographie cohérente avec votre site (SF Pro ou équivalent)
 
 **Outils recommandés** :
+
 - Figma (gratuit) pour composer les captures
 - Cleanshot X ou équivalent pour capturer l'app
 - ImageOptim pour optimiser le poids des PNG
@@ -381,10 +399,12 @@ Une vidéo produite avec des maquettes en V1 paraîtra artificielle et contredir
 ### 6.2 — Si vous voulez quand même la produire dès la V1
 
 Spécifications techniques :
+
 - **Apple** : 15-30 secondes, format `.mp4` ou `.mov`, résolution 1080p ou 4K, audio en stéréo
 - **Google Play** : YouTube link, 30 secondes à 2 minutes
 
 Storyboard recommandé pour 30 secondes :
+
 1. **0-5 sec** : Bouclier OXV qui se forme, accompagné de "Only Xtreme Vehicle"
 2. **5-15 sec** : Plans rapides des écrans 1, 2, 3 de l'app (passage fluide entre eux)
 3. **15-22 sec** : Plan d'un pilote au paddock, casque sous le bras, regardant son téléphone
@@ -413,22 +433,24 @@ Hébergeant le document `02_CGU_APP_OXV_COACH.md`.
 
 ### 7.3 — Coordonnées du support
 
-| Plateforme | Champ | Valeur |
-|---|---|---|
-| Apple | Support URL | `https://oxvehicle.fr/contact` |
-| Apple | Support Email | `contact@oxvehicle.fr` |
-| Google | Email contact | `contact@oxvehicle.fr` |
-| Google | Site web | `https://oxvehicle.fr` |
-| Google | Adresse | [À compléter avec le siège social de la SASU] |
+| Plateforme | Champ         | Valeur                                        |
+| ---------- | ------------- | --------------------------------------------- |
+| Apple      | Support URL   | `https://oxvehicle.fr/contact`                |
+| Apple      | Support Email | `contact@oxvehicle.fr`                        |
+| Google     | Email contact | `contact@oxvehicle.fr`                        |
+| Google     | Site web      | `https://oxvehicle.fr`                        |
+| Google     | Adresse       | [À compléter avec le siège social de la SASU] |
 
 ### 7.4 — Compte développeur
 
 **Apple Developer Program** :
+
 - Identifiant : à créer au nom de **OXV (SASU)** une fois le SIRET obtenu
 - Coût annuel : 99 USD (environ 92 €)
 - Délai de validation après inscription : 24-48h
 
 **Google Play Console** :
+
 - Identifiant : à créer au nom de OXV (SASU)
 - Coût unique : 25 USD (environ 23 €)
 - Validation : immédiate
@@ -444,16 +466,19 @@ Hébergeant le document `02_CGU_APP_OXV_COACH.md`.
 Apple et Google reviewers ont besoin d'un compte fonctionnel pour tester l'app. Préparer :
 
 **Pour Apple** :
+
 - Email : `apple-review@oxvehicle.fr` (à créer comme alias)
 - Mot de passe : généré, fort, communiqué dans App Store Connect uniquement
 
 **Pour Google** :
+
 - Email : `google-review@oxvehicle.fr` (idem)
 - Mot de passe : même approche
 
 ### 8.2 — Données de test pré-chargées
 
 Sur ce compte de test, pré-charger :
+
 - 3 sessions fictives complètes (avec données télémétriques d'exemple)
 - Profil pilote rempli
 - Quelques tours de bouclage pour montrer le bilan, la carte, etc.
@@ -499,26 +524,28 @@ Si demandée, produire cette vidéo en interne, sans qualité broadcasting requi
 
 ### 9.1 — Étapes chronologiques
 
-| Phase | Action | Délai |
-|---|---|---|
-| 1 | Création du SIRET SASU OXV | À faire avant tout |
-| 2 | Achat compte Apple Developer ($99) + Google Play ($25) | T-2 mois |
-| 3 | Développement de l'app par le dev externe | T-8 à T-1 mois |
-| 4 | Bêta-test fermé (TestFlight) avec les 12 amis du test alpha | T-1 mois |
-| 5 | Génération des captures d'écran avec un designer | T-3 semaines |
-| 6 | Soumission Apple App Store | T-1 semaine |
-| 7 | Soumission Google Play | T-1 semaine (en parallèle) |
-| 8 | Review Apple (24-48h) | T-3 jours |
-| 9 | Review Google (1-7 jours) | T-7 à T-1 |
-| 10 | Publication officielle | T-0 |
+| Phase | Action                                                      | Délai                      |
+| ----- | ----------------------------------------------------------- | -------------------------- |
+| 1     | Création du SIRET SASU OXV                                  | À faire avant tout         |
+| 2     | Achat compte Apple Developer ($99) + Google Play ($25)      | T-2 mois                   |
+| 3     | Développement de l'app par le dev externe                   | T-8 à T-1 mois             |
+| 4     | Bêta-test fermé (TestFlight) avec les 12 amis du test alpha | T-1 mois                   |
+| 5     | Génération des captures d'écran avec un designer            | T-3 semaines               |
+| 6     | Soumission Apple App Store                                  | T-1 semaine                |
+| 7     | Soumission Google Play                                      | T-1 semaine (en parallèle) |
+| 8     | Review Apple (24-48h)                                       | T-3 jours                  |
+| 9     | Review Google (1-7 jours)                                   | T-7 à T-1                  |
+| 10    | Publication officielle                                      | T-0                        |
 
 ### 9.2 — Date cible recommandée
 
 Pour OXV Mirror :
+
 - **Septembre 2026** : si le développement démarre en juin 2026 (réaliste si vous démarrez le brief dev dès la mi-juillet après le test alpha)
 - **Novembre-décembre 2026** : si le développement démarre en septembre 2026 (plus prudent)
 
 Évitez :
+
 - **Décembre-janvier** : période de fêtes, faible engagement des reviewers Apple/Google
 - **Juillet-août** : période de vacances, mauvaise visibilité dans les stores
 - **Mars-mai** : période chargée chez Apple (préparation WWDC), reviews plus lentes
@@ -579,6 +606,7 @@ Le soft launch permet de **détecter les bugs de production** avant qu'une masse
 Ce kit est conçu pour vous **gagner du temps le jour de la publication**, pas pour publier l'app sans dev.
 
 Au moment de la publication réelle :
+
 - Vous reprendrez ce kit
 - Vous adapterez les contenus si l'app a évolué pendant le développement
 - Vous générerez les captures avec les vrais écrans React Native
@@ -590,8 +618,8 @@ Bon lancement à OXV Mirror quand le moment viendra.
 
 ---
 
-*Kit App Store OXV Mirror — Version 1.0 — Mai 2026*
+_Kit App Store OXV Mirror — Version 1.0 — Mai 2026_
 
-*À utiliser au moment de la publication officielle après livraison du build par le développeur.*
+_À utiliser au moment de la publication officielle après livraison du build par le développeur._
 
-*Document de référence à mettre à jour si les guidelines Apple/Google évoluent significativement.*
+_Document de référence à mettre à jour si les guidelines Apple/Google évoluent significativement._

@@ -7,6 +7,7 @@
 ## Contexte
 
 L'app OXV Mirror (mobile) génère des données télémétriques riches lors de chaque session de pilotage :
+
 - Sessions complètes dans `telemetry_sessions`
 - Détail tour par tour dans `laps`
 - Conditions météo dans `weather_snapshots`
@@ -61,12 +62,12 @@ Le site est en **HTML/JS vanilla** (single file `index.html` 568 Ko). Les modifi
 
 **Visuel** : 4 cards en grille horizontale (responsive 2x2 sur mobile)
 
-| Card | Données | Source |
-|---|---|---|
-| Sessions effectuées | Nombre total | `COUNT(*) FROM registrations WHERE user_id = ? AND status = 'attended'` |
-| Tours bouclés | Somme des tours valides | `SUM(lap_count) FROM telemetry_sessions WHERE user_id = ? AND status = 'completed'` |
-| Marge moyenne | % moyen sur les 5 dernières sessions | `AVG(margin_global) FROM app_session_analyses` (V2) |
-| Meilleur tour | Temps + circuit | `MIN(best_lap_seconds) FROM telemetry_sessions WHERE status = 'completed'` |
+| Card                | Données                              | Source                                                                              |
+| ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| Sessions effectuées | Nombre total                         | `COUNT(*) FROM registrations WHERE user_id = ? AND status = 'attended'`             |
+| Tours bouclés       | Somme des tours valides              | `SUM(lap_count) FROM telemetry_sessions WHERE user_id = ? AND status = 'completed'` |
+| Marge moyenne       | % moyen sur les 5 dernières sessions | `AVG(margin_global) FROM app_session_analyses` (V2)                                 |
+| Meilleur tour       | Temps + circuit                      | `MIN(best_lap_seconds) FROM telemetry_sessions WHERE status = 'completed'`          |
 
 **Style visuel** : grandes typos serif italique pour les chiffres, étiquette mono sous chaque chiffre.
 
@@ -82,6 +83,7 @@ Access ─────● Signature ─────○ Promotion ─────
 ```
 
 **Logique** :
+
 - Compter le nombre de sessions effectuées (`status = 'attended'`)
 - **Palier 1 (Access)** : déverrouillé dès l'inscription
 - **Palier 2 (Signature)** : après 1 session
@@ -91,6 +93,7 @@ Access ─────● Signature ─────○ Promotion ─────
 Si le pilote a un `heritage_pack` actif, afficher la progression du pack (X/4 sessions consommées).
 
 **Phrase contextuelle** sous la progression :
+
 - 0 session : "Votre première session vous ouvrira Signature."
 - 1 session : "Une session de plus vers Promotion."
 - 2 sessions : "Une session de plus vers Heritage."
@@ -103,6 +106,7 @@ Si le pilote a un `heritage_pack` actif, afficher la progression du pack (X/4 se
 **Visuel** : liste verticale des 5 dernières sessions, avec une card par session
 
 **Données par card** :
+
 ```
 ┌─────────────────────────────────────────────┐
 │ Mardi 15 mai 2026 — Beltoise                │
@@ -118,6 +122,7 @@ Si le pilote a un `heritage_pack` actif, afficher la progression du pack (X/4 se
 ```
 
 **Source des données** :
+
 - Date, circuit : `telemetry_sessions.started_at`, `circuit_name`
 - Marge globale : `app_session_analyses.margin_global` (V2)
 - Étiquette : "Confortable" / "À explorer" / "Terrain serré" selon zone
@@ -136,10 +141,12 @@ Si le pilote a un `heritage_pack` actif, afficher la progression du pack (X/4 se
 **Visuel** : graphique en ligne temporelle (SVG natif, pas de bibliothèque externe)
 
 **Axes** :
+
 - X : temps (sessions chronologiquement)
 - Y : marge globale (0-100%)
 
 **Bandes colorées en fond** :
+
 - 0-15% : rouge léger (terrain serré)
 - 15-30% : orange léger (à explorer)
 - 30%+ : vert léger (confortable)
@@ -156,14 +163,15 @@ Si le pilote a un `heritage_pack` actif, afficher la progression du pack (X/4 se
 
 **Visuel** : tableau ou liste
 
-| Type | Valeur | Date | Circuit |
-|---|---|---|---|
-| Meilleur tour | 1:42.318 | 15/05/2026 | Beltoise |
-| Meilleure marge | 38% | 22/04/2026 | Beltoise |
-| Plus de tours en session | 18 | 10/03/2026 | Beltoise |
-| Vitesse max atteinte | 187 km/h | 15/05/2026 | Beltoise |
+| Type                     | Valeur   | Date       | Circuit  |
+| ------------------------ | -------- | ---------- | -------- |
+| Meilleur tour            | 1:42.318 | 15/05/2026 | Beltoise |
+| Meilleure marge          | 38%      | 22/04/2026 | Beltoise |
+| Plus de tours en session | 18       | 10/03/2026 | Beltoise |
+| Vitesse max atteinte     | 187 km/h | 15/05/2026 | Beltoise |
 
 **Sources** :
+
 - Meilleur tour : `MIN(best_lap_seconds) FROM telemetry_sessions`
 - Meilleure marge : `MAX(margin_global) FROM app_session_analyses`
 - Tours max : `MAX(lap_count) FROM telemetry_sessions`
@@ -183,6 +191,7 @@ Explorer en détail dans l'app
 ```
 
 Si l'app détecte que l'utilisateur a déjà l'app installée (via un cookie ou un test de deep link), afficher plutôt :
+
 ```
 [Ouvrir OXV Mirror →]
 ```
@@ -204,27 +213,31 @@ async function loadProgressionData(userId) {
   try {
     // 1. KPIs vue d'ensemble
     const { data: kpis } = await Promise.all([
-      supabase.from('registrations')
+      supabase
+        .from('registrations')
         .select('id', { count: 'exact', head: true })
         .eq('user_id', userId)
         .eq('status', 'attended'),
-      
-      supabase.from('telemetry_sessions')
+
+      supabase
+        .from('telemetry_sessions')
         .select('lap_count, best_lap_seconds, max_speed_kmh')
         .eq('user_id', userId)
         .eq('status', 'completed'),
-      
+
       // V2 : marges depuis app_session_analyses
-      supabase.from('app_session_analyses')
+      supabase
+        .from('app_session_analyses')
         .select('margin_global, computed_at')
         .order('computed_at', { ascending: false })
-        .limit(5)
+        .limit(5),
     ]);
-    
+
     // 2. Sessions récentes
     const { data: recentSessions } = await supabase
       .from('telemetry_sessions')
-      .select(`
+      .select(
+        `
         id,
         circuit_name,
         started_at,
@@ -232,12 +245,13 @@ async function loadProgressionData(userId) {
         lap_count,
         best_lap_seconds,
         max_speed_kmh
-      `)
+      `
+      )
       .eq('user_id', userId)
       .eq('status', 'completed')
       .order('started_at', { ascending: false })
       .limit(5);
-    
+
     // 3. Pour chaque session, récupérer la marge si V2 prête
     const sessionsWithAnalyses = await Promise.all(
       recentSessions.map(async (session) => {
@@ -246,28 +260,30 @@ async function loadProgressionData(userId) {
           .select('margin_global, margin_zone')
           .eq('telemetry_session_id', session.id)
           .maybeSingle();
-        
+
         return { ...session, analysis };
       })
     );
-    
+
     // 4. Progression Heritage
     const sessionsAttended = kpis[0].count || 0;
     const heritageProgress = calculateHeritageProgress(sessionsAttended);
-    
+
     // 5. Données pour le graphique long terme
     const { data: progressionChart } = await supabase
       .from('app_session_analyses')
-      .select(`
+      .select(
+        `
         margin_global,
         computed_at,
         telemetry_session_id
-      `)
+      `
+      )
       .order('computed_at', { ascending: true });
-    
+
     // 6. Records personnels
     const records = calculateRecords(kpis[1]);
-    
+
     return {
       kpis: {
         sessionsAttended,
@@ -280,7 +296,6 @@ async function loadProgressionData(userId) {
       progressionChart,
       records,
     };
-    
   } catch (error) {
     console.error('Erreur chargement progression:', error);
     return null;
@@ -290,20 +305,20 @@ async function loadProgressionData(userId) {
 function calculateHeritageProgress(sessionsAttended) {
   return {
     access: { unlocked: true, label: 'Access', sessions: sessionsAttended },
-    signature: { 
-      unlocked: sessionsAttended >= 1, 
+    signature: {
+      unlocked: sessionsAttended >= 1,
       label: 'Signature',
-      remaining: Math.max(0, 1 - sessionsAttended)
+      remaining: Math.max(0, 1 - sessionsAttended),
     },
-    promotion: { 
-      unlocked: sessionsAttended >= 2, 
+    promotion: {
+      unlocked: sessionsAttended >= 2,
       label: 'Promotion',
-      remaining: Math.max(0, 2 - sessionsAttended)
+      remaining: Math.max(0, 2 - sessionsAttended),
     },
-    heritage: { 
-      unlocked: sessionsAttended >= 3, 
+    heritage: {
+      unlocked: sessionsAttended >= 3,
       label: 'Heritage',
-      remaining: Math.max(0, 3 - sessionsAttended)
+      remaining: Math.max(0, 3 - sessionsAttended),
     },
   };
 }
@@ -319,7 +334,7 @@ function renderProgressionPage(data) {
     document.getElementById('progression-content').innerHTML = renderEmptyState();
     return;
   }
-  
+
   document.getElementById('progression-content').innerHTML = `
     ${renderHeroKPIs(data.kpis)}
     ${renderHeritageProgress(data.heritageProgress)}
@@ -340,6 +355,7 @@ Chaque fonction `render*` retourne du HTML avec les classes CSS existantes du si
 ### Pilote nouveau (0 session)
 
 Afficher un état d'accueil personnalisé :
+
 - Section KPIs : tous à zéro avec phrase "Votre histoire commence à votre première session"
 - Section Heritage : montrer le chemin "Une session pour débloquer Signature"
 - Section Sessions récentes : message d'accueil + lien "Réserver ma première session"
@@ -349,10 +365,12 @@ Afficher un état d'accueil personnalisé :
 ### Pilote sans app installée
 
 Si le pilote a effectué une session sans l'app (équipement OXV temporaire ou sans connexion BLE), il peut quand même avoir :
+
 - Une `registration` avec `status = 'attended'`
 - Mais pas de `telemetry_session` correspondante
 
 Dans ce cas :
+
 - Compter la session dans la progression Heritage
 - Ne pas afficher de données télémétriques pour cette session
 - Inviter à installer l'app pour la prochaine fois
@@ -362,6 +380,7 @@ Dans ce cas :
 L'app peut être en mode offline pendant des heures. Les données arrivent sur Supabase à la prochaine connexion.
 
 **Côté site** :
+
 - Toujours requêter en temps réel (pas de cache long)
 - Afficher un timestamp "Dernière mise à jour : il y a 2 minutes"
 - Bouton "Rafraîchir" optionnel
@@ -371,11 +390,13 @@ L'app peut être en mode offline pendant des heures. Les données arrivent sur S
 ## Performance et coûts
 
 **Volume attendu** par utilisateur :
+
 - ~4 sessions/an (Heritage) = ~4 telemetry_sessions/an
 - Chaque session : ~20-40 laps + 1 analyse + 3 weather_snapshots
 - **Volume base raisonnable** : ~100 enregistrements/utilisateur/an
 
 **Requêtes côté site** :
+
 - 5 requêtes Supabase par chargement de la page
 - Cache 1 minute côté client si nécessaire
 - **Coût Supabase** : négligeable (plan Pro inclut 50 000 requêtes/jour)
@@ -387,6 +408,7 @@ L'app peut être en mode offline pendant des heures. Les données arrivent sur S
 ### Phase 1 — V1 avec données existantes (semaine 13 du plan app)
 
 Implémenter les sections 1, 3, 5, 6 avec les **données déjà disponibles** :
+
 - KPIs depuis `registrations` et `telemetry_sessions`
 - Sessions récentes (sans la marge composite si V2 pas prête)
 - Records personnels
@@ -397,6 +419,7 @@ Pas encore la marge composite (Section 2 partielle, Section 4 absente).
 ### Phase 2 — V2 avec analyses (semaine 14 du plan app, en parallèle de la soumission stores)
 
 Une fois `app_session_analyses` créée et alimentée par l'app V2 :
+
 - Compléter la section KPIs avec marge moyenne
 - Compléter les sessions récentes avec marge globale + étiquette
 - Activer le graphique de progression (section 4)
@@ -426,11 +449,13 @@ Même côté web, les principes restent les mêmes :
 ## Sécurité
 
 **RLS Supabase** déjà en place :
+
 - Un utilisateur ne peut lire que ses propres données (`auth.uid() = user_id`)
 - Aucun risque d'exposition des données d'un autre pilote
 - Les requêtes JavaScript dans `index.html` héritent automatiquement de la session utilisateur
 
 **Côté frontend** :
+
 - Vérifier que l'utilisateur est bien authentifié avant d'afficher la page
 - Rediriger vers `/login` si pas de session
 - Bouton "Déconnexion" toujours visible
@@ -479,11 +504,13 @@ Pour la Phase 2, dépend de la création de la table `app_session_analyses` par 
 ## Estimation effort
 
 **Phase 1** (données existantes) :
+
 - Dev : ~3-4 jours
 - Tests : ~1 jour
 - **Total : ~5 jours**
 
 **Phase 2** (avec marge composite) :
+
 - Dev : ~2 jours (dépend de la dispo de `app_session_analyses`)
 - Tests : ~1 jour
 - **Total : ~3 jours**
@@ -492,6 +519,6 @@ Pour la Phase 2, dépend de la création de la table `app_session_analyses` par 
 
 ---
 
-*Cahier des charges — Connexion Progression Site ↔ App OXV Mirror*
-*Version 1.0 — Mai 2026*
-*Pour Claude Code : à implémenter en parallèle du dev app (semaine 13-14) ou après publication app.*
+_Cahier des charges — Connexion Progression Site ↔ App OXV Mirror_
+_Version 1.0 — Mai 2026_
+_Pour Claude Code : à implémenter en parallèle du dev app (semaine 13-14) ou après publication app._

@@ -406,7 +406,7 @@ Conformément à l'article L612-1 du Code de la consommation, le Pilote consomma
 
 ---
 
-*Document à conserver. Une copie est disponible sur oxvehicle.fr et dans votre espace pilote.*
+_Document à conserver. Une copie est disponible sur oxvehicle.fr et dans votre espace pilote._
 
-*OXV — Only Xtreme Vehicle*
-*Ces CGV remplacent et annulent toute version antérieure.*
+_OXV — Only Xtreme Vehicle_
+_Ces CGV remplacent et annulent toute version antérieure._

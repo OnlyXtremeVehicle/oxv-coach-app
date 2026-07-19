@@ -88,6 +88,7 @@ Présente sur tous les écrans hors onboarding, paddock immersif, et roulage :
 ### Couche A — Notifications push
 
 Une notification reçue peut ouvrir n'importe quel écran selon son type :
+
 - Notification J-1 → ouvre #20 mode A
 - Notification debrief disponible → ouvre #19
 - Notification générique → ouvre #23 sur le tab pertinent
@@ -113,12 +114,14 @@ Apparaît à la première ouverture après une MAJ disponible. Peut être diffé
 Le bouton retour (←) doit toujours ramener à l'écran logique parent, pas forcément à l'écran précédent chronologiquement.
 
 Exemple :
+
 - Si on est sur #15 via la séquence `#20 → #13 → #14 → #15`, le retour ramène à #14
 - Si on est sur #15 via deep link, le retour ramène à #13 (parent logique)
 
 ### Règle 2 — Navigation tactile
 
 Pas de gestes complexes pour la V1 :
+
 - Tap sur card → navigation
 - Swipe horizontal sur #15 → virage suivant/précédent
 - Pas de pinch-to-zoom, pas de gestes multi-doigts
@@ -126,12 +129,14 @@ Pas de gestes complexes pour la V1 :
 ### Règle 3 — État conservé
 
 L'app conserve l'état de chaque écran en mémoire pendant la session d'usage :
+
 - Si on quitte #18 et qu'on y revient, les sélections sont conservées
 - Si on change de session récente, l'état est invalidé (nouveau bilan)
 
 ### Règle 4 — Deep links
 
 L'app supporte les deep links via le scheme `oxvcoach://` :
+
 - `oxvcoach://bilan/[session_id]` → ouvre #13 pour cette session
 - `oxvcoach://debrief/[session_id]` → ouvre #19
 - `oxvcoach://settings` → ouvre #24
@@ -222,4 +227,4 @@ RootStack
 
 ---
 
-*Carte 3/4 — Flux de navigation — Mai 2026*
+_Carte 3/4 — Flux de navigation — Mai 2026_

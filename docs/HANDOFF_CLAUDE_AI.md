@@ -12,6 +12,7 @@
 ## 0. Ce que claude.ai peut / ne peut pas faire ici
 
 claude.ai (chat) **n'a pas** accès au dépôt, à la base Supabase, ni à EAS.
+
 - ✅ Il peut : écrire/relire du code React Native, concevoir des écrans (artifacts),
   rédiger des contenus/textes (dans la doctrine), débugger un extrait collé, planifier.
 - ❌ Il ne peut pas : builder/déployer l'app, lire la vraie base, lancer les tests.
@@ -33,6 +34,7 @@ télémétrie d'un boîtier Bluetooth (RaceBox Mini).
 dirige pas. »
 
 ### 5 principes NON négociables
+
 1. **Sécurité avant performance** — le mot « limite » est remplacé par « marge » partout.
 2. **Miroir, pas coach** — aucune instruction de pilotage. On décrit, on questionne, on ne prescrit pas.
 3. **Silence en piste** — aucun écran/son/notif pendant que le véhicule roule.
@@ -40,13 +42,17 @@ dirige pas. »
 5. **Un seul chiffre par écran** — un indicateur central (la marge en %), le reste qualitatif.
 
 ### Verbes INTERDITS dans le contenu (scannés en CI)
+
 « Freinez plus tôt », « Accélérez », « Prenez une trajectoire… », « Vous devriez »,
 « Il faut », « Évitez de ». + anglicismes (« tap » → « appui », etc.).
+
 ### Verbes AUTORISÉS
+
 « Une zone à observer », « À creuser la prochaine fois », « Était-ce volontaire ? »,
 « Confortable », « Terrain serré », « Apprivoisé ».
 
 ### Interdits produit (cohérence doctrine)
+
 Pas de classement entre pilotes, pas de score sécurité public, pas de gamification
 (badges/succès), pas de notion de « record ».
 
@@ -57,6 +63,7 @@ Pas de classement entre pilotes, pas de score sécurité public, pas de gamifica
 **L'app est fonctionnellement quasi-complète.** ~95 % du périmètre cahier est codé.
 
 ### ✅ Fait et opérationnel
+
 - Doctrine + rebrand « OXV Coach » → « OXV Mirror » complets.
 - **4 piliers factuels** (remplacent l'ancien « QDI ») : Signature de pilotage,
   Régularité, Évolution, Carte de chaleur.
@@ -73,6 +80,7 @@ Pas de classement entre pilotes, pas de score sécurité public, pas de gamifica
 - **Build iOS ad-hoc opérationnel** (cf. §8).
 
 ### 🟠 Ce qui reste (chemin critique = juridique + finition, pas dev)
+
 1. **Bug login post-auth** (cf. §7) — bloquant pour tester.
 2. **Relecture juridique** des 5 docs (pacte, CGU, CGV, RGPD, pacte coaching) au prisme
    « restitution vs coaching » — **validation Gabin requise**, brief avocat à produire.
@@ -87,22 +95,22 @@ Pas de classement entre pilotes, pas de score sécurité public, pas de gamifica
 
 ## 3. Stack technique (versions EXACTES — contrainte forte)
 
-| Élément | Version | Note |
-|---|---|---|
-| Expo SDK | **51** | RN 0.74.5, **ancienne architecture** |
-| React Native | 0.74.5 | |
-| React | 18.2.0 | |
-| TypeScript | strict, pas de `any` | |
-| Navigation | **expo-router** (file-based, `typedRoutes`) | groupes `(app)`, `(auth)`, `(onboarding)`, `(coach)`, `(coach-onboarding)`, `(admin)` |
-| State | **Zustand** v5 | |
-| Storage local | **react-native-mmkv v2.12.2** | ⚠️ PAS v3/v4 (Nitro = RN≥0.75, incompatible SDK 51). API : `new MMKV({id})`, `.delete()` (pas `.remove()`) |
-| Backend | **Supabase** (`@supabase/supabase-js`) | projet Frankfurt, ref `fouvuqkdxarjpjbqnsjq` |
-| Auth tokens | **expo-secure-store** | jamais MMKV pour les tokens |
-| BLE | react-native-ble-plx v3 | |
-| Cartes | **react-native-maps 1.14.0** | `PROVIDER_DEFAULT` (iOS=Apple Maps, Android=Google → clé requise) |
-| Graphes | react-native-svg 15.2.0 | pas de lib de charting lourde |
-| Date picker | @react-native-community/datetimepicker 8.2.0 | |
-| Erreurs | @sentry/react-native ~5.24 | init conditionnelle |
+| Élément       | Version                                      | Note                                                                                                       |
+| ------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Expo SDK      | **51**                                       | RN 0.74.5, **ancienne architecture**                                                                       |
+| React Native  | 0.74.5                                       |                                                                                                            |
+| React         | 18.2.0                                       |                                                                                                            |
+| TypeScript    | strict, pas de `any`                         |                                                                                                            |
+| Navigation    | **expo-router** (file-based, `typedRoutes`)  | groupes `(app)`, `(auth)`, `(onboarding)`, `(coach)`, `(coach-onboarding)`, `(admin)`                      |
+| State         | **Zustand** v5                               |                                                                                                            |
+| Storage local | **react-native-mmkv v2.12.2**                | ⚠️ PAS v3/v4 (Nitro = RN≥0.75, incompatible SDK 51). API : `new MMKV({id})`, `.delete()` (pas `.remove()`) |
+| Backend       | **Supabase** (`@supabase/supabase-js`)       | projet Frankfurt, ref `fouvuqkdxarjpjbqnsjq`                                                               |
+| Auth tokens   | **expo-secure-store**                        | jamais MMKV pour les tokens                                                                                |
+| BLE           | react-native-ble-plx v3                      |                                                                                                            |
+| Cartes        | **react-native-maps 1.14.0**                 | `PROVIDER_DEFAULT` (iOS=Apple Maps, Android=Google → clé requise)                                          |
+| Graphes       | react-native-svg 15.2.0                      | pas de lib de charting lourde                                                                              |
+| Date picker   | @react-native-community/datetimepicker 8.2.0 |                                                                                                            |
+| Erreurs       | @sentry/react-native ~5.24                   | init conditionnelle                                                                                        |
 
 **Règle d'or compat** : toute lib native ajoutée doit supporter **RN 0.74 / SDK 51 /
 ancienne architecture**. Sinon le `pod install` iOS casse (c'est ce qui est arrivé
@@ -120,6 +128,7 @@ avec MMKV v4).
   Convention de nommage : `AAAAMMJJHHMMSS_00NN_nom.sql`.
 
 ### Tables principales
+
 `users` (profil + `role` ∈ {pilot, coach, admin}, exclusif), `telemetry_sessions`,
 `laps`, `circuits`, `app_session_analyses`, `app_segment_analyses`,
 `app_progression_shares`, `pilot_goals`, `pilot_friendships`, `social_pings`,
@@ -129,6 +138,7 @@ avec MMKV v4).
 `coach_reading_weights`, `notif_throttle_log`, `pricing`.
 
 ### Helpers RLS (SECURITY DEFINER — à connaître pour écrire des policies/requêtes)
+
 - `is_admin()` → `role='admin'`
 - `is_coach()` → `role='coach'`
 - `is_coach_of(pilot_uuid)` → **1 argument** ; vrai si `coach_pilots` lie `auth.uid()` au pilote, `active` + `pilot_consent_at` non nul
@@ -141,11 +151,13 @@ avec MMKV v4).
 dépend du rôle (cf. bug §7).
 
 ### Edge Functions (9, déployées, ACTIVE)
+
 `generate-debrief-ai` (verify_jwt=true), `send-coach-invitation` (true),
 6 × `notify-*` (false, appelées par triggers DB via pg_net + secret Vault),
 `cron-analyze-pending-sessions` (false, cron horaire actif).
 
 ### Garde-fou IA (juridique)
+
 `generate-debrief-ai` a un **garde-fou déterministe** : scan des verbes interdits sur
 la sortie GPT + retry + refus 422 → fallback local descriptif. Rien de prescriptif ne
 peut atteindre le pilote. **Ne pas affaiblir ce garde-fou.**
@@ -155,6 +167,7 @@ peut atteindre le pilote. **Ne pas affaiblir ce garde-fou.**
 ## 5. Architecture de l'app (expo-router)
 
 Groupes de routes dans `app/` :
+
 - `(auth)` : `login` (+ `_layout`).
 - `(onboarding)` : `index`, `pacte`, `doctrine`, `methode`, `niveau`, `cgu`.
 - `(app)` : espace pilote — `index` (accueil), `bilan`, `virage`, `signature`,
@@ -187,9 +200,9 @@ partout**, jamais de valeurs en dur. Fond très sombre (#050505), accent rouge O
 - **TypeScript strict**, pas de `any` (sauf justifié). Hooks fonctionnels, pas de classes.
 - **CI GitHub Actions** (`.github/workflows/check.yml`) sur chaque PR :
   `typecheck` + `eslint` + `prettier --check` (sur `src/**` et `app/**`) + `jest`
-  + **scan doctrine** (`scripts/check-doctrine.ts` : verbes interdits + anglicismes)
-  + **scan accessibilité** (`scripts/check-accessibility.ts` : tout `Pressable` doit
-  avoir un `accessibilityRole`).
+  - **scan doctrine** (`scripts/check-doctrine.ts` : verbes interdits + anglicismes)
+  - **scan accessibilité** (`scripts/check-accessibility.ts` : tout `Pressable` doit
+    avoir un `accessibilityRole`).
 - **Branche protégée `main`** : tout passe par PR + CI verte. Workflow : branche →
   commit → push → PR → CI → squash-merge.
 - Tables non encore typées dans `database.types.ts` : pattern
@@ -206,6 +219,7 @@ partout**, jamais de valeurs en dur. Fond très sombre (#050505), accent rouge O
 identifiants corrects mais « ça ne se connecte pas ».
 
 **Ce qui est ÉCARTÉ (vérifié côté serveur)** :
+
 - Clé anon valide (`/auth/v1/settings` → 200, clés legacy non désactivées).
 - Email confirmé (`email_confirmed_at` non nul).
 - **L'authentification RÉUSSIT** : `last_sign_in_at` se met à jour à chaque tentative.
@@ -213,6 +227,7 @@ identifiants corrects mais « ça ne se connecte pas ».
 
 **Conclusion** : le problème est **APRÈS l'auth**, dans l'app — la session est obtenue
 mais l'app ne quitte pas l'écran de login. Pistes, par ordre de probabilité :
+
 1. **Routage post-login par rôle** : le compte de test est passé en `role='coach'`
    (pour tester l'espace coach) avec `coach_pact_accepted_at` probablement nul →
    le routage vers `(coach)` / `(coach-onboarding)` peut boucler ou planter.
@@ -278,6 +293,7 @@ fonctionnait avant) pour isoler si le bug est spécifique au rôle coach.
 ## 11. Specs détaillées (à uploader à claude.ai selon le sujet)
 
 Le dépôt contient les specs complètes. À joindre au cas par cas :
+
 - **Doctrine & composants** : `docs/specs-bundle-v4/01_doctrine_et_composants.md`
 - **Moteur d'insights (restitution)** : `docs/specs-bundle-v4/02_moteur_insights.md`
 - **Schéma Supabase réel** : `docs/architecture/05_SCHEMA_SUPABASE_ACTUEL.md` ⭐ (pour toute requête/migration)
@@ -295,4 +311,4 @@ Le dépôt contient les specs complètes. À joindre au cas par cas :
 
 ---
 
-*Fin du brief. Pour exécuter (build, DB, tests), revenir vers Claude Code.*
+_Fin du brief. Pour exécuter (build, DB, tests), revenir vers Claude Code._

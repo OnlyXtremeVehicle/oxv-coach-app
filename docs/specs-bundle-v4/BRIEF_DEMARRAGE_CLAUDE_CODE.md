@@ -5,6 +5,7 @@ Copiez le bloc ci-dessous comme premier message à Claude Code (dans le repo Exp
 ---
 
 ## CONTEXTE
+
 Tu travailles sur OXV Mirror, l'app mobile de télémétrie post-session (Expo / React Native).
 Le dossier de specs complet est dans `oxv-mirror-specs/` (dézippe `oxv-mirror-specs.zip` à la
 racine si besoin). Lis ces fichiers DANS CET ORDRE avant d'écrire la moindre ligne :
@@ -18,6 +19,7 @@ racine si besoin). Lis ces fichiers DANS CET ORDRE avant d'écrire la moindre li
    tout ce qu'ils exigeront, gyroscope compris).
 
 ## ÉTAT FACTUEL (vérifié)
+
 - Supabase projet `fouvuqkdxarjpjbqnsjq` (Frankfurt). Table `telemetry_frames` VIDE, schéma déjà
   migré et prêt (gyroscope rotation_x/y/z, itow_ms, speed_ms/speed_accuracy, heading_accuracy,
   pdop, fix_valid ajoutés). NE PAS re-migrer le schéma : il est correct, vérifie-le et utilise-le.
@@ -27,13 +29,16 @@ racine si besoin). Lis ces fichiers DANS CET ORDRE avant d'écrire la moindre li
   d'abord, dis-moi ce que tu trouves, et propose ce que tu gardes / refactores / ajoutes.
 
 ## RÈGLE MATÉRIELLE CRITIQUE
+
 RaceBox **Mini** = PAS de standalone. La connexion BLE doit tenir toute la session. Le protocole
 fragmente les paquets sur plusieurs notifications : buffer FIFO d'octets OBLIGATOIRE, avec
 vérification entête (0xB5 0x62) + longueur + checksum avant parsing. Jeter tout paquet corrompu.
 Gérer reconnexion auto, perte de fix, batterie faible.
 
 ## PREMIÈRE TÂCHE (et SEULEMENT celle-ci pour l'instant)
+
 Ne code pas toute la chaîne d'un coup. Étape 1 = **audit + plan**, pas d'implémentation lourde :
+
 1. Lis les 3 fichiers de specs ci-dessus.
 2. Inspecte le repo : qu'est-ce qui existe déjà pour le BLE / parsing / écriture Supabase ?
 3. Vérifie le schéma réel de `telemetry_frames` via le MCP Supabase (ou demande-moi).
@@ -42,6 +47,7 @@ Ne code pas toute la chaîne d'un coup. Étape 1 = **audit + plan**, pas d'impl�
    coder l'étape suivante.
 
 ## RAPPELS
+
 - Calcul des insights = côté Supabase plus tard, PAS dans l'app. L'app capture et affiche.
 - Doctrine miroir : aucune sortie prescriptive. Ici on ne fait que capturer, donc surtout : ne
   perds pas de données, ne maquille pas l'incertitude (champs de fiabilité à remplir).

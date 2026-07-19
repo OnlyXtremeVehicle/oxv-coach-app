@@ -48,7 +48,7 @@ sécurité, et à souscrire l'assurance responsabilité civile de l'organisateur
 
 ---
 
-*Signature électronique : la présente décharge est acceptée par la saisie de votre
+_Signature électronique : la présente décharge est acceptée par la saisie de votre
 nom et la validation d'une case de consentement, horodatée et accompagnée d'une
 empreinte (SHA-256) du texte accepté, permettant de vérifier quelle version a été
-signée (version ci-dessus).*
+signée (version ci-dessus)._

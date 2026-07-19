@@ -22,21 +22,21 @@ Trois garde-fous qui priment sur toute considération business :
 
 Le schéma de production porte déjà une ossature de monétisation, héritée du site `oxvehicle.fr`. On la **constate** ici pour ne pas la réinventer ; on ne l'**active** pas sans accord.
 
-| Table (`src/types/database.types.ts`) | Colonnes économiques réelles | Sert quoi |
-|---|---|---|
-| `payments` | `amount`, `currency`, `status`, `payment_method`, `stripe_payment_intent_id`, `stripe_charge_id`, `stripe_invoice_id`, `invoice_pdf_url`, `registration_id`, `heritage_pack_id` | Paiements événement / pack — **déjà câblé côté site web**, pas côté app |
-| `subscriptions` | `scope`, `season`, `status`, `stripe_customer_id`, `stripe_subscription_id`, `current_period_end` | Abonnement saison (fonction RPC `is_subscription_current`) |
-| `pricing` | grille tarifaire | Référentiel de prix |
-| `heritage_packs` | `price_total`, `sessions_total`, `sessions_used`, `valid_from/until`, `status` | Pack de sessions prépayées (carnet) |
-| `registrations` | inscription événement (FK depuis `payments`) | Inscription au track day |
-| `coach_profiles` | `season_price_eur` | Tarif saison annoncé par le coach |
-| `coach_pilots` | `affiliation_price_eur` | Tarif d'affiliation coach↔pilote |
-| `coach_roulages` | `price_per_pilot` | Roulage tarifé organisé par un coach |
-| `coaching_bookings` | `status`, `requested_starts_at`, `availability_id` | Demande de séance coach (**sans montant** aujourd'hui) |
-| `partners` | `is_official_partner`, `is_premium`, `is_published`, `partner_type`, `circuit_id` | Annuaire partenaires (référencement) |
-| `circuit_services`, `restaurants`, `lodgings` | `is_premium`, `is_published` | Services autour du circuit |
-| `corporate_leads` | `company`, `contact_name`, `day_format`, `guests`, `status` | Demandes B2B / privatisation (formulaire web) |
-| `media`, `session_media` | médias de session | Photos / vidéos d'événement |
+| Table (`src/types/database.types.ts`)         | Colonnes économiques réelles                                                                                                                                                    | Sert quoi                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `payments`                                    | `amount`, `currency`, `status`, `payment_method`, `stripe_payment_intent_id`, `stripe_charge_id`, `stripe_invoice_id`, `invoice_pdf_url`, `registration_id`, `heritage_pack_id` | Paiements événement / pack — **déjà câblé côté site web**, pas côté app |
+| `subscriptions`                               | `scope`, `season`, `status`, `stripe_customer_id`, `stripe_subscription_id`, `current_period_end`                                                                               | Abonnement saison (fonction RPC `is_subscription_current`)              |
+| `pricing`                                     | grille tarifaire                                                                                                                                                                | Référentiel de prix                                                     |
+| `heritage_packs`                              | `price_total`, `sessions_total`, `sessions_used`, `valid_from/until`, `status`                                                                                                  | Pack de sessions prépayées (carnet)                                     |
+| `registrations`                               | inscription événement (FK depuis `payments`)                                                                                                                                    | Inscription au track day                                                |
+| `coach_profiles`                              | `season_price_eur`                                                                                                                                                              | Tarif saison annoncé par le coach                                       |
+| `coach_pilots`                                | `affiliation_price_eur`                                                                                                                                                         | Tarif d'affiliation coach↔pilote                                        |
+| `coach_roulages`                              | `price_per_pilot`                                                                                                                                                               | Roulage tarifé organisé par un coach                                    |
+| `coaching_bookings`                           | `status`, `requested_starts_at`, `availability_id`                                                                                                                              | Demande de séance coach (**sans montant** aujourd'hui)                  |
+| `partners`                                    | `is_official_partner`, `is_premium`, `is_published`, `partner_type`, `circuit_id`                                                                                               | Annuaire partenaires (référencement)                                    |
+| `circuit_services`, `restaurants`, `lodgings` | `is_premium`, `is_published`                                                                                                                                                    | Services autour du circuit                                              |
+| `corporate_leads`                             | `company`, `contact_name`, `day_format`, `guests`, `status`                                                                                                                     | Demandes B2B / privatisation (formulaire web)                           |
+| `media`, `session_media`                      | médias de session                                                                                                                                                               | Photos / vidéos d'événement                                             |
 
 **Lecture clé.** Les colonnes Stripe sont **présentes mais inertes dans l'app**. `payments`/`subscriptions` sont alimentées par le site, pas par le mobile. `coaching_bookings` ne porte **aucun montant** : la séance coach se négocie hors app aujourd'hui. Le `coachBusinessService.ts` calcule un revenu coach **purement descriptif** (prix/place × présences confirmées), **sans aucune commission ni encaissement** — décision Gabin du 2026-06-07, à conserver.
 
@@ -45,41 +45,47 @@ Le schéma de production porte déjà une ossature de monétisation, héritée d
 ## 2. Les six sources de revenu
 
 ### 2.1 Événements / track day — **socle**
+
 Le cœur économique. Inscription à une journée au Circuit de Haute Saintonge (multi-circuit Charente à terme). Tables : `registrations`, `payments`, `heritage_packs` (sessions prépayées), `subscriptions` (saison). L'app **prépare** (Paddock contextuel : prochaine sortie, compte à rebours, équipement) et **prolonge** (Bilan, Progression) l'événement, mais l'achat se fait aujourd'hui sur le **site web**.
 
 ### 2.2 Coaching affilié
+
 Coach rattaché à un pilote (`coach_pilots`, `affiliation_price_eur`), séances (`coaching_bookings`), roulages tarifés (`coach_roulages.price_per_pilot`), tarif saison (`coach_profiles.season_price_eur`). L'app **rend visible** le coach, **transporte** la lecture/annotation de session (espace `(coach)` : `lecture`, `annoter`, `reperes`, `comparer`), et **facilite la mise en relation** (`mon-coach`, `coachs`, `coach/[id]`, `mes-demandes`). La **transaction** reste hors app en V1.
 
 ### 2.3 Partenaires
+
 Annuaire de l'écosystème piste (`partners`, `circuit_services`, `restaurants`, `lodgings`), avec `is_premium` / `is_official_partner`. L'app **référence** (Club → La carte OXV : `carte-oxv`, `circuit/[id]`) en lecture seule côté pilote. Monétisation future : référencement premium, lead qualifié, commission de réservation. L'**espace Partenaire** (dashboard) n'existe pas encore (net-neuf, V1.5+).
 
 ### 2.4 Médias
+
 Photos et vidéos d'événement (`media`, `session_media`). L'app **distribue** (médias de session dans Bilan / Club) et **amplifie** (partage « OXV Moment » : `partage`, `carte-trophee`, `share/[token]`). Monétisation : **pack média** payant. Le partage public est aussi un **canal d'acquisition** (chaque carte partagée ramène un prospect).
 
 ### 2.5 Abonnements premium pilote
+
 `subscriptions` (scope/season) existe. Levier de valeur en app : **Data Lab avancé** (replay synchronisé avancé, couches techniques, comparateur étendu) réservé aux abonnés. La V1 garde la lecture **complète et gratuite** : on ne dégrade pas le Bilan pour créer un mur payant. Le premium se construit en **profondeur ajoutée**, pas en **fonction retirée**.
 
 ### 2.6 B2B garage / privatisation
+
 `corporate_leads` (privatisation, séminaires) déjà alimentée par le site. Piste annexe : **diagnostic piste** pour garages/préparateurs (lecture agrégée et anonyme de la donnée). Cette piste touche la donnée télémétrique : elle **nécessite accord Gabin ET cadrage RGPD** (`07_DATA_POLICY`, `17_JURIDIQUE_COACH_DATA`) avant toute exploration.
 
 ---
 
 ## 3. Source × Fonction app × Monétisation
 
-| Source | Fonction app (zone / route réelle) | Tables/services | Mécanique de revenu | Statut app |
-|---|---|---|---|---|
-| **Événement** | Paddock contextuel (`index`/`paddock`), prochaine sortie, Pass OXV (V1.5) | `registrations`, `payments`, `circuits` | Inscription track day | Préparation oui, **achat sur web** |
-| **Événement** | Carnet de sessions prépayées | `heritage_packs` | Pack prépayé (sessions_total/used) | Lecture V1.5, achat web |
-| **Événement** | Accès saison | `subscriptions`, RPC `is_subscription_current` | Abonnement saison | Gating possible, **accord requis** |
-| **Coaching** | Mon coach (`mon-coach`), découverte (`coachs`, `coach/[id]`) | `coach_profiles`, `coach_pilots`, `coachMarketplaceService.ts` | Affiliation / tarif saison | Visible V1, transaction hors app |
-| **Coaching** | Demande de séance (`mes-demandes`, `(coach)/demandes`) | `coaching_bookings`, `coach_availability` | Séance payante | Mise en relation V1, **paiement V2** |
-| **Coaching** | Roulage coach tarifé, dashboard business (`(coach)/business`) | `coach_roulages`, `coachBusinessService.ts` | Prix/place × présences (descriptif) | V1 **sans commission ni encaissement** |
-| **Partenaires** | La carte OXV (`carte-oxv`, `circuit/[id]`) | `partners`, `circuit_services`, `ecosystemService.ts` | Référencement premium / lead | Annuaire V1, offres/leads V1.5 |
-| **Partenaires** | Espace Partenaire (dashboard) | `partners` (net-neuf) | Abonnement / commission | **N'existe pas** (V1.5+) |
-| **Médias** | Médias de session (Bilan/Club), `sessionMediaService.ts` | `session_media`, `media` | Pack média | Partage V1, galerie V1.5 |
-| **Médias** | OXV Moment (`partage`, `carte-trophee`, `share/[token]`) | `sharesService.ts` | Acquisition (viral, indirect) | V1 |
-| **Premium pilote** | Data Lab avancé (replay/couches étendues) | `subscriptions` | Abonnement / pack | Base gratuite V1, avancé V1.5/V2 |
-| **B2B garage** | Privatisation / séminaire (formulaire) | `corporate_leads` | Lead B2B | Web aujourd'hui, app non prioritaire |
+| Source             | Fonction app (zone / route réelle)                                        | Tables/services                                                | Mécanique de revenu                 | Statut app                             |
+| ------------------ | ------------------------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------- | -------------------------------------- |
+| **Événement**      | Paddock contextuel (`index`/`paddock`), prochaine sortie, Pass OXV (V1.5) | `registrations`, `payments`, `circuits`                        | Inscription track day               | Préparation oui, **achat sur web**     |
+| **Événement**      | Carnet de sessions prépayées                                              | `heritage_packs`                                               | Pack prépayé (sessions_total/used)  | Lecture V1.5, achat web                |
+| **Événement**      | Accès saison                                                              | `subscriptions`, RPC `is_subscription_current`                 | Abonnement saison                   | Gating possible, **accord requis**     |
+| **Coaching**       | Mon coach (`mon-coach`), découverte (`coachs`, `coach/[id]`)              | `coach_profiles`, `coach_pilots`, `coachMarketplaceService.ts` | Affiliation / tarif saison          | Visible V1, transaction hors app       |
+| **Coaching**       | Demande de séance (`mes-demandes`, `(coach)/demandes`)                    | `coaching_bookings`, `coach_availability`                      | Séance payante                      | Mise en relation V1, **paiement V2**   |
+| **Coaching**       | Roulage coach tarifé, dashboard business (`(coach)/business`)             | `coach_roulages`, `coachBusinessService.ts`                    | Prix/place × présences (descriptif) | V1 **sans commission ni encaissement** |
+| **Partenaires**    | La carte OXV (`carte-oxv`, `circuit/[id]`)                                | `partners`, `circuit_services`, `ecosystemService.ts`          | Référencement premium / lead        | Annuaire V1, offres/leads V1.5         |
+| **Partenaires**    | Espace Partenaire (dashboard)                                             | `partners` (net-neuf)                                          | Abonnement / commission             | **N'existe pas** (V1.5+)               |
+| **Médias**         | Médias de session (Bilan/Club), `sessionMediaService.ts`                  | `session_media`, `media`                                       | Pack média                          | Partage V1, galerie V1.5               |
+| **Médias**         | OXV Moment (`partage`, `carte-trophee`, `share/[token]`)                  | `sharesService.ts`                                             | Acquisition (viral, indirect)       | V1                                     |
+| **Premium pilote** | Data Lab avancé (replay/couches étendues)                                 | `subscriptions`                                                | Abonnement / pack                   | Base gratuite V1, avancé V1.5/V2       |
+| **B2B garage**     | Privatisation / séminaire (formulaire)                                    | `corporate_leads`                                              | Lead B2B                            | Web aujourd'hui, app non prioritaire   |
 
 ---
 
@@ -87,12 +93,12 @@ Photos et vidéos d'événement (`media`, `session_media`). L'app **distribue** 
 
 > Une fonction n'a sa place que si elle sert **au moins une** des quatre raisons : **expérience pilote**, **qualité opérationnelle**, **monétisation**, **rétention**. Sinon, c'est du bruit — on la range, la fusionne ou la reporte (cf. `02_AUDIT_ROUTES`, `03_MVP_SCOPE`).
 
-| Raison | Test concret | Exemple dans l'app |
-|---|---|---|
-| Expérience pilote | Répond-elle à la question de sa zone (`01_ORGANISATION_PRODUIT`) ? | Bilan : « qu'est-ce que ma session m'apprend ? » |
-| Qualité opérationnelle | Aide-t-elle OXV à mieux opérer l'événement / la data ? | Admin `operations`, qualité data, `coachBusinessService` |
-| Monétisation | Pointe-t-elle vers une source du §2 ? | Mon coach → affiliation ; carte OXV → partenaires |
-| Rétention | Donne-t-elle envie de revenir après l'événement ? | Progression, OXV Moment, médias |
+| Raison                 | Test concret                                                       | Exemple dans l'app                                       |
+| ---------------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| Expérience pilote      | Répond-elle à la question de sa zone (`01_ORGANISATION_PRODUIT`) ? | Bilan : « qu'est-ce que ma session m'apprend ? »         |
+| Qualité opérationnelle | Aide-t-elle OXV à mieux opérer l'événement / la data ?             | Admin `operations`, qualité data, `coachBusinessService` |
+| Monétisation           | Pointe-t-elle vers une source du §2 ?                              | Mon coach → affiliation ; carte OXV → partenaires        |
+| Rétention              | Donne-t-elle envie de revenir après l'événement ?                  | Progression, OXV Moment, médias                          |
 
 **Précisions doctrinales sur cette règle :**
 
@@ -106,17 +112,17 @@ Photos et vidéos d'événement (`media`, `session_media`). L'app **distribue** 
 
 Aligné sur `03_MVP_SCOPE`. **Décision stratégique : pas d'intégration de paiement en V1. Stripe = V2.**
 
-| Brique | V1 (gratuit / sans paiement) | V1.5 | V2 (paiement) |
-|---|---|---|---|
-| Bilan + Data Lab simple | **Gratuit, complet** | Data Lab avancé | — |
-| Coach visible + consentement + notes | **Oui** | Programmes (cycles), réservation | **Paiement coach (Stripe)** |
-| `coaching_bookings` | Mise en relation, **sans montant** | Réservation structurée | Encaissement séance |
-| Partenaires | **Annuaire** (carte OXV) | Offres / leads | Commission partenaires |
-| Pass OXV (QR événement) | — | **Oui** | — |
-| Médias | Partage (OXV Moment) | Galerie / pack média | — |
-| Abonnement premium | — (lecture gratuite) | Data Lab avancé gated | Abonnement / marketplace coach |
-| Espace Partenaire (dashboard) | — | **Net-neuf** | Commission |
-| B2B garage | — (web) | À explorer | Offre B2B |
+| Brique                               | V1 (gratuit / sans paiement)       | V1.5                             | V2 (paiement)                  |
+| ------------------------------------ | ---------------------------------- | -------------------------------- | ------------------------------ |
+| Bilan + Data Lab simple              | **Gratuit, complet**               | Data Lab avancé                  | —                              |
+| Coach visible + consentement + notes | **Oui**                            | Programmes (cycles), réservation | **Paiement coach (Stripe)**    |
+| `coaching_bookings`                  | Mise en relation, **sans montant** | Réservation structurée           | Encaissement séance            |
+| Partenaires                          | **Annuaire** (carte OXV)           | Offres / leads                   | Commission partenaires         |
+| Pass OXV (QR événement)              | —                                  | **Oui**                          | —                              |
+| Médias                               | Partage (OXV Moment)               | Galerie / pack média             | —                              |
+| Abonnement premium                   | — (lecture gratuite)               | Data Lab avancé gated            | Abonnement / marketplace coach |
+| Espace Partenaire (dashboard)        | —                                  | **Net-neuf**                     | Commission                     |
+| B2B garage                           | — (web)                            | À explorer                       | Offre B2B                      |
 
 **Pourquoi pas de Stripe en V1 (rappel) :**
 

@@ -32,6 +32,7 @@ de priorité.
 **Fichier** : `03_CGV_PRESTATIONS_OXV.md`, ligne ~41.
 
 **Actuel :**
+
 > - **Signature** : journée complète avec coaching software et télémétrie avancée, 590 €
 
 **Problème** : « coaching software » contredit **frontalement** le positionnement
@@ -40,6 +41,7 @@ décrit le produit vendu comme du coaching, ce que toute la doctrine et la
 position juridique s'emploient à nier ailleurs.
 
 **Proposition :**
+
 > - **Signature** : journée complète avec restitution télémétrique avancée, 590 €
 
 (ou « analyse télémétrique avancée »)
@@ -50,16 +52,20 @@ position juridique s'emploient à nier ailleurs.
 
 Le cahier §2 est explicite : l'app « **ne recommande pas**, n'ordonne pas, ne
 corrige pas ». Or le mot « recommandations » désigne par endroits ce que l'app
-*produit* — à remplacer par « observations ».
+_produit_ — à remplacer par « observations ».
 
 ### 2a — Pacte de pilotage, art. 2 (ligne ~47)
+
 **Actuel :**
+
 > - Les **recommandations** qualitatives proposées par l'application après une session (telles que « zone à explorer », « zone à observer », « zone à maintenir ») sont des observations chiffrées, jamais des instructions.
 
 **Proposition :**
+
 > - Les **observations** qualitatives proposées par l'application après une session sont des constats chiffrés, jamais des instructions. Vous restez libre de les interpréter à votre manière.
 
 ### 2b — CGU, titre art. 4.3 (ligne ~92)
+
 **Actuel :** `### 4.3 — Nature des recommandations`
 **Incohérence** : le corps de l'article (ligne 94) parle déjà d'« observations
 qualitatives ». Le titre devrait suivre.
@@ -91,24 +97,24 @@ pour un futur lecteur.
 
 ## 🟢 Points vérifiés — RAS
 
-| Élément | État |
-|---|---|
-| Mention QDI / score dans les docs | ✅ Aucune (déjà purgé) |
-| « coach » = rôle humain partenaire (Pacte coaching) | ✅ Correct, à conserver |
-| « marges par virage » (Pacte coaching art. 2) | ✅ Descriptif factuel, valide |
-| Nature non-instructionnelle affirmée | ✅ Répétée 3× (CGU 4.2, Pacte art. 1, CGV 9.4) |
-| Doctrine de sécurité « la marge prime » (Pacte coaching art. 3.4) | ✅ Valeur de prudence légitime, conserver |
-| RGPD / partage social (Politique de confidentialité) | ✅ Déjà « OXV Mirror », cohérent |
+| Élément                                                           | État                                           |
+| ----------------------------------------------------------------- | ---------------------------------------------- |
+| Mention QDI / score dans les docs                                 | ✅ Aucune (déjà purgé)                         |
+| « coach » = rôle humain partenaire (Pacte coaching)               | ✅ Correct, à conserver                        |
+| « marges par virage » (Pacte coaching art. 2)                     | ✅ Descriptif factuel, valide                  |
+| Nature non-instructionnelle affirmée                              | ✅ Répétée 3× (CGU 4.2, Pacte art. 1, CGV 9.4) |
+| Doctrine de sécurité « la marge prime » (Pacte coaching art. 3.4) | ✅ Valeur de prudence légitime, conserver      |
+| RGPD / partage social (Politique de confidentialité)              | ✅ Déjà « OXV Mirror », cohérent               |
 
 ---
 
 ## Récapitulatif des actions proposées (pour validation Gabin)
 
-| # | Fichier | Changement | Priorité |
-|---|---|---|---|
-| 1 | CGV art. 1 | « coaching software » → « restitution télémétrique avancée » | 🔴 Haute |
-| 2a | Pacte pilotage art. 2 | « recommandations » → « observations » | 🟠 Moyenne |
-| 2b | CGU titre 4.3 | « Nature des recommandations » → « Nature des observations » | 🟠 Moyenne |
-| 3 | Pacte + CGU | Moderniser « zone à explorer… » vers les 4 piliers | 🟡 Basse |
+| #   | Fichier               | Changement                                                   | Priorité   |
+| --- | --------------------- | ------------------------------------------------------------ | ---------- |
+| 1   | CGV art. 1            | « coaching software » → « restitution télémétrique avancée » | 🔴 Haute   |
+| 2a  | Pacte pilotage art. 2 | « recommandations » → « observations »                       | 🟠 Moyenne |
+| 2b  | CGU titre 4.3         | « Nature des recommandations » → « Nature des observations » | 🟠 Moyenne |
+| 3   | Pacte + CGU           | Moderniser « zone à explorer… » vers les 4 piliers           | 🟡 Basse   |
 
 **STATUT (2026-06-22)** : corrections **1, 2a, 2b ET 3 APPLIQUÉES** sur go fondateur — dans les `.md` source ET dans `src/legal/legalDocuments.ts` (textes affichés au pilote). Le vocabulaire « zone à explorer / observer / maintenir » est remplacé par celui des 4 piliers (signature de pilotage, régularité mesurée, carte de chaleur des vitesses). Constat vérifié au passage : le libellé localisé réellement affiché par l'app est « à creuser » (module `focusCorner`), le vocabulaire « zone à… » n'étant plus présent que dans les commentaires de doctrine. Les 5 documents restent à soumettre à l'avocat au brief comme point de vigilance sur la frontière « restitution vs coaching ».

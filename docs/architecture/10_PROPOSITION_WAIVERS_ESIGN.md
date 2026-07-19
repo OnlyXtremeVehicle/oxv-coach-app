@@ -9,6 +9,7 @@
 > le flag `pilot_waivers` (OFF)**.
 >
 > **Conditions d'activation restantes (avant flag ON) :**
+>
 > 1. **Relecture du texte** de décharge (§5, version 0.1) par un avocat spécialisé
 >    droit du sport mécanique.
 > 2. **Rétention (D4)** : durée de conservation à décider (alignée sur la
@@ -69,17 +70,18 @@ graves ou mortelles, et je participe en connaissance de cause. »**
 
 **D1 — Quand signe-t-on ? (timing)** — 3 options, du plus simple au plus probant :
 
-| Option | Quand | Force probante | Coût UX |
-|---|---|---|---|
-| **A** one-time | une fois, à l'onboarding | faible (valable « en général ») | nul |
-| **B** par réservation | à chaque réservation de session | bonne (rattachée à une session) | faible |
-| **C** jour J | avant de rouler, sur le circuit | forte (consentement au plus près) | modéré |
+| Option                | Quand                           | Force probante                    | Coût UX |
+| --------------------- | ------------------------------- | --------------------------------- | ------- |
+| **A** one-time        | une fois, à l'onboarding        | faible (valable « en général »)   | nul     |
+| **B** par réservation | à chaque réservation de session | bonne (rattachée à une session)   | faible  |
+| **C** jour J          | avant de rouler, sur le circuit | forte (consentement au plus près) | modéré  |
 
 Recommandation : **B** (rattaché à la réservation) comme socle, éventuellement
 renforcé par un rappel **C** le jour J. **A** seul est trop faible pour un sport à
 risque.
 
 **D2 — Valeur probante visée ?**
+
 - **Signature simple** (case + nom + horodatage + hash du texte) : suffisante pour
   la plupart des litiges, gratuite, hébergée par nous. **Recommandé pour démarrer.**
 - **Signature qualifiée / horodatage tiers** (type Universign, eIDAS) : valeur
@@ -156,6 +158,7 @@ graves ou mortelles. Vous déclarez participer à la session en pleine connaissa
 de ces risques.
 
 **Votre engagement.** Vous déclarez sur l'honneur :
+
 1. être majeur et titulaire d'une assurance responsabilité civile couvrant la
    pratique sur circuit ;
 2. disposer d'une expérience adaptée à la session à laquelle vous participez ;
@@ -178,17 +181,17 @@ obligations d'organisateur (sécurité du circuit, encadrement, assurances).
 et des protocoles de sécurité, et à souscrire l'assurance responsabilité civile
 de l'organisateur.
 
-*Signature : case à cocher, nom saisi, horodatée et scellée par empreinte du texte.*
+_Signature : case à cocher, nom saisi, horodatée et scellée par empreinte du texte._
 
 ---
 
 ## 6 — Flux app esquissé (non construit)
 
 - **Service** `waiverService.ts` : `WAIVER_VERSION`, `acceptWaiver({ bookingId?,
-  sessionId? })` → hash du texte (`legalDocuments.waiver`) + insert (+ file
+sessionId? })` → hash du texte (`legalDocuments.waiver`) + insert (+ file
   offline, idempotent comme `acceptPact`) ; `listMyWaivers()`.
 - **Écran** de signature (onboarding et/ou pré-session selon D1) : texte scrollable
-  + case « J'ai lu et j'accepte » + champ nom + bouton « Je signe ».
+  - case « J'ai lu et j'accepte » + champ nom + bouton « Je signe ».
 - **Écran** historique (dans « Compte / consentements ») : liste chronologique,
   lecture seule.
 - **Garde** (si option C) : un roulage n'est « couvert » que si un waiver de la

@@ -36,6 +36,7 @@ supabase secrets list
 ```
 
 Doit contenir :
+
 - `SUPABASE_URL` (auto)
 - `SUPABASE_SERVICE_ROLE_KEY` (auto)
 
@@ -104,6 +105,7 @@ LIMIT 10;
 ```
 
 Chaque ligne contient :
+
 - `user_id` : le coach
 - `metadata.pilot_id` : le pilote notifié
 - `metadata.annotation_id` : la note source

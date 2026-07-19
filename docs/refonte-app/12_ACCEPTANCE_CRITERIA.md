@@ -81,7 +81,7 @@
 - Le parcours est **linéaire et prévisible** : Équipement → Placement → Capture → Retour stands → Bilan prêt, sans branche cachée.
 - L'état **en piste** (`roulage.tsx`) respecte le **silence total** : pas de tab bar, pas de données, pas de chrono, aucun son, aucune notification. Seul élément toléré : voyant REC rouge `#C8102E` qui pulse + « EN PISTE » Mono + « L'app s'efface. ». (Critère §6 du canon vérifié à l'écran.)
 - Aucune **notification push** n'est déclenchée tant que l'état est « en piste » (cf. `pushNotificationsService.ts` + `14_NOTIFICATIONS.md`).
-- Chaque **erreur BLE** répond aux trois questions : *que s'est-il passé ? qu'est-ce qui est préservé ? que puis-je faire maintenant ?* — jamais un code d'erreur brut.
+- Chaque **erreur BLE** répond aux trois questions : _que s'est-il passé ? qu'est-ce qui est préservé ? que puis-je faire maintenant ?_ — jamais un code d'erreur brut.
 - Une coupure BLE en cours de capture **ne perd pas** les frames déjà enregistrées (capture persistée localement via `captureSessionService.ts` / `telemetryStorage.ts`).
 - La transition `bilan-pret` ne s'affiche **qu'après** le retour aux stands, jamais pendant le roulage.
 - La reconnexion BLE est possible sans repartir de zéro.
@@ -216,20 +216,20 @@
 
 Reprend `03_MVP_SCOPE.md` §« parfait » en critères vérifiables. **La V1 est validée si toutes ces lignes sont vraies :**
 
-| # | Critère | Vérifiable par |
-|---|---|---|
-| 1 | 5 zones, aucun menu interminable | revue nav + Paddock ≤ 3 raccourcis |
-| 2 | Paddock contextuel (action juste selon le moment) | tests d'état Paddock |
-| 3 | Sobre, respirant, sans arcade | revue canon §1–§5 |
-| 4 | L'app montre, ne dirige pas (pilote) | grep verbes interdits + revue contenu généré |
-| 5 | Silence total en piste | revue `roulage.tsx` + no-notif test |
-| 6 | Bilan = moment central, un seul chiffre dominant | revue `bilan.tsx` |
-| 7 | Aucun classement / « mauvais » / consigne pilote | revue Progression + contenu |
-| 8 | BLE / offline / données incomplètes gérés | tests `captureSessionService`, `offlineQueue` |
-| 9 | Lisible soleil, cibles ≥ 44 px, VoiceOver/TalkBack | audit accessibilité par écran |
-| 10 | Or = donnée uniquement, rouge = coach/REC | grep usage couleurs |
-| 11 | Aucun emoji, vouvoiement systématique | grep emoji + revue ton |
-| 12 | Aucun nouveau schéma livré sans accord Gabin | revue migrations vs `02_AUDIT_ROUTES.md` |
+| #   | Critère                                            | Vérifiable par                                |
+| --- | -------------------------------------------------- | --------------------------------------------- |
+| 1   | 5 zones, aucun menu interminable                   | revue nav + Paddock ≤ 3 raccourcis            |
+| 2   | Paddock contextuel (action juste selon le moment)  | tests d'état Paddock                          |
+| 3   | Sobre, respirant, sans arcade                      | revue canon §1–§5                             |
+| 4   | L'app montre, ne dirige pas (pilote)               | grep verbes interdits + revue contenu généré  |
+| 5   | Silence total en piste                             | revue `roulage.tsx` + no-notif test           |
+| 6   | Bilan = moment central, un seul chiffre dominant   | revue `bilan.tsx`                             |
+| 7   | Aucun classement / « mauvais » / consigne pilote   | revue Progression + contenu                   |
+| 8   | BLE / offline / données incomplètes gérés          | tests `captureSessionService`, `offlineQueue` |
+| 9   | Lisible soleil, cibles ≥ 44 px, VoiceOver/TalkBack | audit accessibilité par écran                 |
+| 10  | Or = donnée uniquement, rouge = coach/REC          | grep usage couleurs                           |
+| 11  | Aucun emoji, vouvoiement systématique              | grep emoji + revue ton                        |
+| 12  | Aucun nouveau schéma livré sans accord Gabin       | revue migrations vs `02_AUDIT_ROUTES.md`      |
 
 ---
 

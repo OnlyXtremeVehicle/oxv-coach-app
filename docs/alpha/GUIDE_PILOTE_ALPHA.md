@@ -36,6 +36,7 @@ OXV Mirror est un **miroir**, pas un coach. Elle vous montre ce que la voiture a
 ### 1. Recevoir l'invitation TestFlight (iPhone) ou le `.apk` (Android)
 
 Vous recevez un mail :
+
 - **iPhone** : « OnlyXtremeVehicle vous a invité à tester OXV » avec un lien TestFlight
 - **Android** : un lien direct vers le `.apk` à télécharger
 
@@ -145,11 +146,11 @@ C'est volontaire. Personne ne vous force à consulter.
 
 Un seul chiffre central : votre **marge** en %.
 
-| Marge | Zone | Label humain |
-|---|---|---|
-| ≥ 30 % | Vert | Confortable |
-| 15 — 30 % | Jaune | À explorer |
-| < 15 % | Rouge | Terrain serré |
+| Marge     | Zone  | Label humain  |
+| --------- | ----- | ------------- |
+| ≥ 30 %    | Vert  | Confortable   |
+| 15 — 30 % | Jaune | À explorer    |
+| < 15 %    | Rouge | Terrain serré |
 
 **Aucune zone n'est meilleure qu'une autre.** Une marge confortable veut dire qu'il vous reste du potentiel à creuser, à votre rythme. Une marge serrée veut dire que vous avez été proche de vos limites — ni bien ni mal, juste un état.
 
@@ -160,6 +161,7 @@ Le tracé Beltoise avec les **14 virages coloriés** selon votre marge sur chacu
 ### Zoom virage
 
 Pour chaque virage :
+
 - **Trajectoire** : votre écart latéral moyen au tracé de référence
 - **Physique** : vitesse à l'entrée, G_lat max, vitesse à la sortie
 - **Question ouverte** : « Était-ce volontaire ? »
@@ -188,7 +190,7 @@ Tap → vous ouvrez un texte en 3 actes :
 
 C'est court. C'est lent. Lisez-le calmement, comme une lettre.
 
-À la fin : *« L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause. »*
+À la fin : _« L'app se taira jusqu'à la veille de votre prochaine session. Profitez de cette pause. »_
 
 ---
 

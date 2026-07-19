@@ -70,7 +70,7 @@ produit** (Pattern 4). Profondeur data sans densite illisible.
 
 ---
 
-## 30.5 — Insights spatiaux *(les faits que le pilote ne voyait pas seul — sur le trace)*
+## 30.5 — Insights spatiaux _(les faits que le pilote ne voyait pas seul — sur le trace)_
 
 - **But** : exposer les insights phares du moteur (`02_moteur_insights.md`, profondeurs 3-4),
   **inscrits sur le trace**. C'est l'ecran qui materialise « afficher du nouveau, sans coacher ».

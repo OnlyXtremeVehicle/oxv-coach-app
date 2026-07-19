@@ -48,7 +48,7 @@ uniquement aux comptes coach).
 
 ---
 
-## C0.2 — Espace coach : mes eleves *(comptes coach uniquement)*
+## C0.2 — Espace coach : mes eleves _(comptes coach uniquement)_
 
 - **But** : tableau de bord du coach — la liste des pilotes qui l'ont **autorise**.
 - **Layout** :
@@ -65,7 +65,7 @@ uniquement aux comptes coach).
 
 ---
 
-## C0.3 — Espace coach : fiche eleve & ses sessions *(coach)*
+## C0.3 — Espace coach : fiche eleve & ses sessions _(coach)_
 
 - **But** : donner au coach la donnee **factuelle** d'un eleve pour batir SON accompagnement.
 - **Layout** :
@@ -82,7 +82,7 @@ uniquement aux comptes coach).
 
 ---
 
-## C0.4 — Espace coach : enrichir la donnee technique *(coach)*
+## C0.4 — Espace coach : enrichir la donnee technique _(coach)_
 
 - **But** : permettre au coach d'**ajouter des donnees techniques** qui enrichiront le bilan
   de session de son pilote (le coach apporte son expertise et ses propres mesures/annotations).
@@ -103,7 +103,7 @@ uniquement aux comptes coach).
 
 ---
 
-## C0.5 — Debrief coach (redaction cote coach / lecture cote pilote) *(coach + pilote)*
+## C0.5 — Debrief coach (redaction cote coach / lecture cote pilote) _(coach + pilote)_
 
 - **But** : le canal de restitution coach→eleve. Le coach redige ; le pilote lit.
 - **Layout (cote coach, redaction)** :

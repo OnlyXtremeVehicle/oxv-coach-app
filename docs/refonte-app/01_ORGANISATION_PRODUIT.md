@@ -6,14 +6,14 @@
 
 Chaque écran répond à **une seule** question. Sinon il est rangé, fusionné ou reporté.
 
-| Zone | La question |
-|---|---|
-| Paddock | Qu'est-ce qui compte **maintenant** ? |
-| Session | Comment **rouler** sereinement ? |
-| Bilan | Qu'est-ce que ma **dernière** session m'apprend ? |
-| Progression | Comment **j'évolue** ? |
-| Club | Qui m'**entoure** (coach, partenaires, communauté) ? |
-| Compte (icône) | Comment je me **gère** ? |
+| Zone           | La question                                          |
+| -------------- | ---------------------------------------------------- |
+| Paddock        | Qu'est-ce qui compte **maintenant** ?                |
+| Session        | Comment **rouler** sereinement ?                     |
+| Bilan          | Qu'est-ce que ma **dernière** session m'apprend ?    |
+| Progression    | Comment **j'évolue** ?                               |
+| Club           | Qui m'**entoure** (coach, partenaires, communauté) ? |
+| Compte (icône) | Comment je me **gère** ?                             |
 
 ---
 
@@ -37,7 +37,7 @@ Flux linéaire, rassurant, prévisible : **Équipement → Placement → Capture
 
 **Doctrine du silence** : pendant le roulage, **aucun écran utile, aucune notification, aucun son**. Un état « en piste » éteint l'UI (voyant REC minimal) jusqu'au retour aux stands.
 
-**Erreurs BLE** : chaque message répond à *que s'est-il passé ? qu'est-ce qui est préservé ? que puis-je faire maintenant ?*
+**Erreurs BLE** : chaque message répond à _que s'est-il passé ? qu'est-ce qui est préservé ? que puis-je faire maintenant ?_
 
 Écrans existants réutilisés : `equipement`, `placement`, `roulage`, `entre-runs`, `pilotage-fini`, `bilan-pret`.
 

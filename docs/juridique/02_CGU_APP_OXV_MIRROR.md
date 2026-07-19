@@ -316,8 +316,8 @@ Pour toute question relative aux présentes CGU :
 
 ---
 
-*Document à conserver. Une copie est consultable à tout moment depuis vos paramètres dans l'Application.*
+_Document à conserver. Une copie est consultable à tout moment depuis vos paramètres dans l'Application._
 
-*OXV — Only Xtreme Vehicle*
-*SASU au capital de [à compléter] euros*
-*[SIRET à compléter] — [RCS à compléter]*
+_OXV — Only Xtreme Vehicle_
+_SASU au capital de [à compléter] euros_
+_[SIRET à compléter] — [RCS à compléter]_

@@ -42,11 +42,11 @@ En contexte de **balade touristique**, ces sémantiques ne sont pas pleinement t
 
 Je propose une **sémantique réduite et adaptée** pour le test du 5 juillet :
 
-| Action | Sémantique balade | Affichage dans le bilan |
-|---|---|---|
-| Clic simple | « Beau moment » | Marqueur étoile sur la trajectoire |
-| Double-clic | « À discuter » | Marqueur question pour le débrief |
-| Triple-clic | Réservé pour usage futur (V2) | — |
+| Action      | Sémantique balade             | Affichage dans le bilan            |
+| ----------- | ----------------------------- | ---------------------------------- |
+| Clic simple | « Beau moment »               | Marqueur étoile sur la trajectoire |
+| Double-clic | « À discuter »                | Marqueur question pour le débrief  |
+| Triple-clic | Réservé pour usage futur (V2) | —                                  |
 
 L'idée est de réduire à deux usages clairs, plus mémorisables qu'un système à trois niveaux dans un contexte décontracté.
 
@@ -157,13 +157,13 @@ Recommandation : **Option A** pour la robustesse juridique, **Option B en sauveg
 
 ### 2.4 — Plan de gestion des données après le test
 
-| Phase | Données concernées | Action |
-|---|---|---|
-| J+0 (5 juillet, soir) | Données télémétriques + questionnaires | Sauvegarde complète sur Supabase, copie locale |
-| J+7 (vers le 12 juillet) | Données télémétriques | Première analyse, identification des bugs |
-| J+30 (vers le 5 août) | Données complètes | Synthèse produit, décisions V1.1 |
-| J+90 (vers le 5 octobre) | Données utilisées | Anonymisation des questionnaires (suppression des noms) |
-| J+730 (5 juillet 2028) | Tout | Suppression complète sauf consentement explicite renouvelé |
+| Phase                    | Données concernées                     | Action                                                     |
+| ------------------------ | -------------------------------------- | ---------------------------------------------------------- |
+| J+0 (5 juillet, soir)    | Données télémétriques + questionnaires | Sauvegarde complète sur Supabase, copie locale             |
+| J+7 (vers le 12 juillet) | Données télémétriques                  | Première analyse, identification des bugs                  |
+| J+30 (vers le 5 août)    | Données complètes                      | Synthèse produit, décisions V1.1                           |
+| J+90 (vers le 5 octobre) | Données utilisées                      | Anonymisation des questionnaires (suppression des noms)    |
+| J+730 (5 juillet 2028)   | Tout                                   | Suppression complète sauf consentement explicite renouvelé |
 
 ### 2.5 — Cas particulier des données dérivées
 
@@ -211,6 +211,7 @@ Un bon plan de contingence couvre **trois types d'échec** :
 - **Échec catastrophique** (impossibilité de tenir l'événement)
 
 Et pour chacun, identifie :
+
 - Le **signal d'alerte** (comment savoir qu'on y est)
 - La **réponse immédiate** (que faire dans l'heure)
 - La **communication aux amis** (que leur dire)
@@ -220,75 +221,75 @@ Et pour chacun, identifie :
 
 **Scénario A — Météo défavorable la veille**
 
-| Détail | Action |
-|---|---|
-| Signal | Météo France annonce > 80% de pluie continue le 5 juillet, alerte orage |
-| Décision | À J-2 (3 juillet), reporter au dimanche 6 juillet en backup |
-| Communication | « La météo prévue n'est pas optimale. Nous reportons à demain dimanche, même heure, même lieu. Confirmez votre présence avant ce soir. » |
-| Si dimanche aussi mauvais | Reporter au samedi 12 juillet ou abandonner pour cette session |
-| Apprentissage | Tester le dispositif de notification de report (email + WhatsApp) |
+| Détail                    | Action                                                                                                                                   |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal                    | Météo France annonce > 80% de pluie continue le 5 juillet, alerte orage                                                                  |
+| Décision                  | À J-2 (3 juillet), reporter au dimanche 6 juillet en backup                                                                              |
+| Communication             | « La météo prévue n'est pas optimale. Nous reportons à demain dimanche, même heure, même lieu. Confirmez votre présence avant ce soir. » |
+| Si dimanche aussi mauvais | Reporter au samedi 12 juillet ou abandonner pour cette session                                                                           |
+| Apprentissage             | Tester le dispositif de notification de report (email + WhatsApp)                                                                        |
 
 **Scénario B — Désistement massif (8 amis sur 12 annulent à J-3)**
 
-| Détail | Action |
-|---|---|
-| Signal | Annulations en cascade vers le mardi 1er juillet |
-| Décision A | Maintenir avec les 4 confirmés (test moins exhaustif mais utile) |
-| Décision B | Reporter d'une semaine avec relance |
-| Décision C | Recruter en express 4 nouveaux amis (votre cercle proche peut-il fournir ?) |
+| Détail                      | Action                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal                      | Annulations en cascade vers le mardi 1er juillet                                                                                         |
+| Décision A                  | Maintenir avec les 4 confirmés (test moins exhaustif mais utile)                                                                         |
+| Décision B                  | Reporter d'une semaine avec relance                                                                                                      |
+| Décision C                  | Recruter en express 4 nouveaux amis (votre cercle proche peut-il fournir ?)                                                              |
 | Communication aux confirmés | Honnête : « Plusieurs personnes ont eu un imprévu. Nous maintenons à 4 ou 5, ce sera plus intime mais tout aussi utile. Tu confirmes ? » |
-| Apprentissage | Mesurer le taux de désistement pour calibrer les futures sessions |
+| Apprentissage               | Mesurer le taux de désistement pour calibrer les futures sessions                                                                        |
 
 **Scénario C — Equipement OXV Mirror indisponible (RaceBox non livrés)**
 
-| Détail | Action |
-|---|---|
-| Signal | À J-7, les boîtiers commandés ne sont pas arrivés |
-| Plan B | Faire la balade quand même, **sans** l'équipement, comme un focus group enrichi |
-| Plan C | Si vous avez 2-3 RaceBox seulement, équiper 2-3 amis seulement |
+| Détail        | Action                                                                                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signal        | À J-7, les boîtiers commandés ne sont pas arrivés                                                                                                    |
+| Plan B        | Faire la balade quand même, **sans** l'équipement, comme un focus group enrichi                                                                      |
+| Plan C        | Si vous avez 2-3 RaceBox seulement, équiper 2-3 amis seulement                                                                                       |
 | Communication | « L'équipement définitif n'arrive pas à temps. On maintient la balade pour le côté convivial et on testera l'app en mode démo sur l'app classique. » |
-| Apprentissage | Vous testez quand même les rituels J-7/J-2/J-1, l'inscription, le briefing, et le ressenti général |
+| Apprentissage | Vous testez quand même les rituels J-7/J-2/J-1, l'inscription, le briefing, et le ressenti général                                                   |
 
 **Scénario D — App OXV Mirror pas prête à temps**
 
-| Détail | Action |
-|---|---|
-| Signal | Le développement de l'app n'a pas avancé au point d'être testable |
-| Décision | Faire la balade en utilisant l'app web (oxvehicle.fr) comme proxy |
-| Adaptation | Au lieu de tester l'app, tester le **parcours complet de réservation et restitution** sur le web |
+| Détail                 | Action                                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Signal                 | Le développement de l'app n'a pas avancé au point d'être testable                                                                  |
+| Décision               | Faire la balade en utilisant l'app web (oxvehicle.fr) comme proxy                                                                  |
+| Adaptation             | Au lieu de tester l'app, tester le **parcours complet de réservation et restitution** sur le web                                   |
 | Communication aux amis | « L'app mobile arrive plus tard. Aujourd'hui on teste l'expérience web OXV, et on se reverra plus tard pour tester l'app dédiée. » |
-| Apprentissage | Validation du parcours web classique sans intervention de l'app |
+| Apprentissage          | Validation du parcours web classique sans intervention de l'app                                                                    |
 
 **Scénario E — Resend ou Supabase down le jour J**
 
-| Détail | Action |
-|---|---|
-| Signal | Le matin du 5 juillet, vous découvrez qu'une notification ne part pas |
-| Décision | Improvisation immédiate : communication WhatsApp/SMS à la place |
-| Plan B | Continuer la balade sans rituels in-app, observer manuellement |
-| Communication | Pas nécessaire d'alerter les amis si vous compensez en direct |
-| Apprentissage | Mesurer votre temps de réaction et de bascule en mode dégradé |
+| Détail        | Action                                                                |
+| ------------- | --------------------------------------------------------------------- |
+| Signal        | Le matin du 5 juillet, vous découvrez qu'une notification ne part pas |
+| Décision      | Improvisation immédiate : communication WhatsApp/SMS à la place       |
+| Plan B        | Continuer la balade sans rituels in-app, observer manuellement        |
+| Communication | Pas nécessaire d'alerter les amis si vous compensez en direct         |
+| Apprentissage | Mesurer votre temps de réaction et de bascule en mode dégradé         |
 
 **Scénario F — Accident pendant la balade**
 
-| Détail | Action |
-|---|---|
-| Signal | Sortie de route, collision, blessure d'un ami |
+| Détail            | Action                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| Signal            | Sortie de route, collision, blessure d'un ami                                            |
 | Réponse immédiate | Sécuriser la zone, appeler les secours (15 / 18), prévenir les autres voitures du convoi |
-| Documentation | Photos de la scène, témoignages écrits, déclarations d'assurance |
-| Communication | Aux autres amis présents : transparence totale et soutien immédiat |
-| Aux amis absents | Communication brève le soir même ou le lendemain |
-| Apprentissage | Réévaluer la pertinence du format « balade en convoi » et les distances de sécurité |
+| Documentation     | Photos de la scène, témoignages écrits, déclarations d'assurance                         |
+| Communication     | Aux autres amis présents : transparence totale et soutien immédiat                       |
+| Aux amis absents  | Communication brève le soir même ou le lendemain                                         |
+| Apprentissage     | Réévaluer la pertinence du format « balade en convoi » et les distances de sécurité      |
 
 **Scénario G — Désaffection émotionnelle (la journée se passe « bien » mais sans enthousiasme)**
 
-| Détail | Action |
-|---|---|
-| Signal | Les retours sont polis, neutres, sans grande passion |
-| Réflexion | Le concept OXV ne génère peut-être pas l'enthousiasme attendu sur ce format |
-| Décision | Approfondir avec 2-3 amis très honnêtes en discussion individuelle |
+| Détail        | Action                                                                       |
+| ------------- | ---------------------------------------------------------------------------- |
+| Signal        | Les retours sont polis, neutres, sans grande passion                         |
+| Réflexion     | Le concept OXV ne génère peut-être pas l'enthousiasme attendu sur ce format  |
+| Décision      | Approfondir avec 2-3 amis très honnêtes en discussion individuelle           |
 | Communication | Pas de drame, juste « j'aimerais te poser quelques questions plus précises » |
-| Apprentissage | Possible réorientation du positionnement ou du parcours client |
+| Apprentissage | Possible réorientation du positionnement ou du parcours client               |
 
 ### 3.3 — Outils de communication d'urgence
 
@@ -420,12 +421,12 @@ Ces gestes n'ont rien à voir avec du marketing classique. Ils créent **un sent
 
 Si vous mettez en place cette séquence rigoureusement, vous pouvez raisonnablement attendre :
 
-| Indicateur | Estimation conservatrice |
-|---|---|
-| Sur 12 amis testeurs, combien deviennent pilotes payants ? | 6-8 |
-| Combien recommandent OXV à au moins un ami ? | 8-10 |
-| Combien ramènent au moins un nouveau pilote payant ? | 4-6 |
-| Total pilotes acquis grâce au test alpha | 10-14 |
+| Indicateur                                                 | Estimation conservatrice |
+| ---------------------------------------------------------- | ------------------------ |
+| Sur 12 amis testeurs, combien deviennent pilotes payants ? | 6-8                      |
+| Combien recommandent OXV à au moins un ami ?               | 8-10                     |
+| Combien ramènent au moins un nouveau pilote payant ?       | 4-6                      |
+| Total pilotes acquis grâce au test alpha                   | 10-14                    |
 
 Soit l'équivalent économique de **2 à 4 sessions complètes** dès la première année d'exploitation. Pour un investissement de 600-1000 € en logistique le 5 juillet + 6h de votre temps en post-événement, c'est **un des meilleurs ROI** que vous puissiez espérer en marketing initial.
 
@@ -433,7 +434,7 @@ Soit l'équivalent économique de **2 à 4 sessions complètes** dès la premiè
 
 Au-delà du calcul économique, ces 12 personnes seront celles qui pourront **témoigner authentiquement** d'OXV quand vous parlerez à un investisseur, à un partenaire, à un journaliste. Ces témoignages valent infiniment plus que n'importe quel slogan marketing.
 
-> *« J'étais là le 5 juillet 2026. J'ai vu OXV avant tout le monde. C'était déjà différent de tout ce que j'avais essayé. »*
+> _« J'étais là le 5 juillet 2026. J'ai vu OXV avant tout le monde. C'était déjà différent de tout ce que j'avais essayé. »_
 
 C'est cette phrase, dans la bouche d'un de vos amis, qui transformera des prospects sceptiques en pilotes engagés.
 
@@ -441,10 +442,10 @@ C'est cette phrase, dans la bouche d'un de vos amis, qui transformera des prospe
 
 ## En une phrase
 
-> *Un test alpha n'est pas un événement, c'est le début d'une communauté. Ce document vous donne les outils pour ne pas laisser cette communauté s'éparpiller après la dernière voiture qui repart de Bouteville.*
+> _Un test alpha n'est pas un événement, c'est le début d'une communauté. Ce document vous donne les outils pour ne pas laisser cette communauté s'éparpiller après la dernière voiture qui repart de Bouteville._
 
 ---
 
-*Compléments au test alpha OXV — Version 1.0 — Mai 2026*
+_Compléments au test alpha OXV — Version 1.0 — Mai 2026_
 
-*À utiliser avec les trois livrables principaux (plan opérationnel, spécification admin, grille d'observation).*
+_À utiliser avec les trois livrables principaux (plan opérationnel, spécification admin, grille d'observation)._

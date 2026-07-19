@@ -6,61 +6,61 @@
 
 ## Pilote — `app/(app)`
 
-| Route | Zone cible | Décision | Note |
-|---|---|---|---|
-| `index` | Paddock | GARDER | Hub d'accueil, simplifié en PR 2 |
-| `paddock` | Paddock | FUSIONNER | Réconcilier avec `index` (un seul Paddock) |
-| `equipement` | Session | GARDER | Étape 1 du flux |
-| `placement` | Session | GARDER | Étape 2 |
-| `roulage` | Session | GARDER | État « en piste » (UI éteinte) |
-| `entre-runs` | Session | GARDER | Inter-runs |
-| `pilotage-fini` | Session | GARDER | Retour stands |
-| `bilan-pret` | Session→Bilan | GARDER | Transition vers Bilan |
-| `bilan` | Bilan | GARDER | **Cœur de l'app** |
-| `carte` | Bilan | RANGER | Sous Data Lab |
-| `virage` | Bilan | RANGER | Data Lab — Virage Explorer |
-| `virage-comparer` | Bilan | RANGER | Data Lab — comparaison virages |
-| `tours` | Bilan | RANGER | Data Lab — tour par tour |
-| `heatmap` | Bilan | RANGER | Data Lab — carte de chaleur |
-| `replay` | Bilan | RANGER | Data Lab — replay synchronisé |
-| `telemetry` | Bilan | RANGER | Data Lab — data brute lisible |
-| `insights` | Bilan | RANGER | Possible FUSION avec bilan (revue) |
-| `insight/[reading]` | Bilan | RANGER | Lecture d'insight unitaire |
-| `debrief` | Bilan | GARDER | Débrief J+1 |
-| `debrief-presentiel` | Bilan/Coach | GARDER | Débrief en présentiel coach |
-| `prochaine-fois` | Bilan | RANGER | « À creuser la prochaine fois » |
-| `progression` | Progression | GARDER | Vue globale |
-| `signature` | Progression | RANGER | → Développement |
-| `regularite` | Progression | RANGER | « Indice de constance » |
-| `comparateur` | Progression | GARDER | Comparateur **personnel** |
-| `stats` | Progression | FUSIONNER | Avec `progression` (revue) |
-| `objectifs` | Progression | RANGER | → Cycles (Développement) |
-| `roulages` | Progression | RANGER | Historique / carnet de sessions |
-| `cote-a-cote/[friendId]` | Club | RANGER | Comparaison **consentie** entre amis |
-| `mon-coach` | Club | GARDER | Coach affilié — **mis en avant** |
-| `coachs` | Club | GARDER | Découverte coachs (marketplace) |
-| `coach/[id]` | Club | GARDER | Fiche coach |
-| `mes-demandes` | Club | GARDER | Demandes de coaching |
-| `amis` | Club | GARDER | Communauté |
-| `social` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (devient sa vue Liste). PAS `amis`. |
-| `social-carte` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (vue Carte) |
-| `carte-oxv` | Club | GARDER | **La carte OXV** — écran UNIQUE du territoire (carte + liste) |
-| `lieux` | Club | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` ; modèle `places` déprécié |
-| `circuits` | Bilan/Club | GARDER | Liste circuits |
-| `circuit/[id]` | Bilan/Club | GARDER | Fiche circuit |
-| `belle-route` | Club | REPORTER | Belles routes (V1.5) |
-| `mes-routes` | Club | REPORTER | V1.5 |
-| `creer-trace` | Club/Admin | REPORTER | V1.5 |
-| `partage` | Bilan/Club | GARDER | Carte de partage → « OXV Moment » |
-| `carte-trophee` | Bilan | GARDER | Trophée partageable → « OXV Moment » |
-| `share/[token]` | (public) | GARDER | Page de partage publique |
-| `profil` | Compte | GARDER | Profil pilote (éditable) |
-| `settings` | Compte | GARDER | Réglages |
-| `notifications` | Compte | GARDER | Centre de notifications |
-| `donnees-securite` | Compte | GARDER | Confidentialité & données (RGPD) |
-| `legal/[doc]` | Compte | GARDER | Documents légaux |
-| `debug-capture` | Système | MASQUER | Hors prod |
-| `debug-circuit` | Système | MASQUER | Hors prod |
+| Route                    | Zone cible    | Décision             | Note                                                          |
+| ------------------------ | ------------- | -------------------- | ------------------------------------------------------------- |
+| `index`                  | Paddock       | GARDER               | Hub d'accueil, simplifié en PR 2                              |
+| `paddock`                | Paddock       | FUSIONNER            | Réconcilier avec `index` (un seul Paddock)                    |
+| `equipement`             | Session       | GARDER               | Étape 1 du flux                                               |
+| `placement`              | Session       | GARDER               | Étape 2                                                       |
+| `roulage`                | Session       | GARDER               | État « en piste » (UI éteinte)                                |
+| `entre-runs`             | Session       | GARDER               | Inter-runs                                                    |
+| `pilotage-fini`          | Session       | GARDER               | Retour stands                                                 |
+| `bilan-pret`             | Session→Bilan | GARDER               | Transition vers Bilan                                         |
+| `bilan`                  | Bilan         | GARDER               | **Cœur de l'app**                                             |
+| `carte`                  | Bilan         | RANGER               | Sous Data Lab                                                 |
+| `virage`                 | Bilan         | RANGER               | Data Lab — Virage Explorer                                    |
+| `virage-comparer`        | Bilan         | RANGER               | Data Lab — comparaison virages                                |
+| `tours`                  | Bilan         | RANGER               | Data Lab — tour par tour                                      |
+| `heatmap`                | Bilan         | RANGER               | Data Lab — carte de chaleur                                   |
+| `replay`                 | Bilan         | RANGER               | Data Lab — replay synchronisé                                 |
+| `telemetry`              | Bilan         | RANGER               | Data Lab — data brute lisible                                 |
+| `insights`               | Bilan         | RANGER               | Possible FUSION avec bilan (revue)                            |
+| `insight/[reading]`      | Bilan         | RANGER               | Lecture d'insight unitaire                                    |
+| `debrief`                | Bilan         | GARDER               | Débrief J+1                                                   |
+| `debrief-presentiel`     | Bilan/Coach   | GARDER               | Débrief en présentiel coach                                   |
+| `prochaine-fois`         | Bilan         | RANGER               | « À creuser la prochaine fois »                               |
+| `progression`            | Progression   | GARDER               | Vue globale                                                   |
+| `signature`              | Progression   | RANGER               | → Développement                                               |
+| `regularite`             | Progression   | RANGER               | « Indice de constance »                                       |
+| `comparateur`            | Progression   | GARDER               | Comparateur **personnel**                                     |
+| `stats`                  | Progression   | FUSIONNER            | Avec `progression` (revue)                                    |
+| `objectifs`              | Progression   | RANGER               | → Cycles (Développement)                                      |
+| `roulages`               | Progression   | RANGER               | Historique / carnet de sessions                               |
+| `cote-a-cote/[friendId]` | Club          | RANGER               | Comparaison **consentie** entre amis                          |
+| `mon-coach`              | Club          | GARDER               | Coach affilié — **mis en avant**                              |
+| `coachs`                 | Club          | GARDER               | Découverte coachs (marketplace)                               |
+| `coach/[id]`             | Club          | GARDER               | Fiche coach                                                   |
+| `mes-demandes`           | Club          | GARDER               | Demandes de coaching                                          |
+| `amis`                   | Club          | GARDER               | Communauté                                                    |
+| `social`                 | Club          | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (devient sa vue Liste). PAS `amis`.    |
+| `social-carte`           | Club          | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` (vue Carte)                            |
+| `carte-oxv`              | Club          | GARDER               | **La carte OXV** — écran UNIQUE du territoire (carte + liste) |
+| `lieux`                  | Club          | REDIRECT (FAIT PR 8) | Coquille → `carte-oxv` ; modèle `places` déprécié             |
+| `circuits`               | Bilan/Club    | GARDER               | Liste circuits                                                |
+| `circuit/[id]`           | Bilan/Club    | GARDER               | Fiche circuit                                                 |
+| `belle-route`            | Club          | REPORTER             | Belles routes (V1.5)                                          |
+| `mes-routes`             | Club          | REPORTER             | V1.5                                                          |
+| `creer-trace`            | Club/Admin    | REPORTER             | V1.5                                                          |
+| `partage`                | Bilan/Club    | GARDER               | Carte de partage → « OXV Moment »                             |
+| `carte-trophee`          | Bilan         | GARDER               | Trophée partageable → « OXV Moment »                          |
+| `share/[token]`          | (public)      | GARDER               | Page de partage publique                                      |
+| `profil`                 | Compte        | GARDER               | Profil pilote (éditable)                                      |
+| `settings`               | Compte        | GARDER               | Réglages                                                      |
+| `notifications`          | Compte        | GARDER               | Centre de notifications                                       |
+| `donnees-securite`       | Compte        | GARDER               | Confidentialité & données (RGPD)                              |
+| `legal/[doc]`            | Compte        | GARDER               | Documents légaux                                              |
+| `debug-capture`          | Système       | MASQUER              | Hors prod                                                     |
+| `debug-circuit`          | Système       | MASQUER              | Hors prod                                                     |
 
 ## Doublons à résoudre (cf. `10_PLAN_MIGRATION.md`)
 

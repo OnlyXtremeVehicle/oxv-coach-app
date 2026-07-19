@@ -16,6 +16,7 @@
 ## 1. PÉRIMÈTRE (décision fondateur)
 
 Social version 1 = **les trois, mais amis + partage de progression EN PRIORITÉ**.
+
 - PRIORITÉ 1 : amitiés entre pilotes (`pilot_friendships`) + partage de progression
   choisi métrique par métrique (`app_progression_shares`).
 - PRIORITÉ 2 : invitations à rouler ensemble (`roulage_invitations`).
@@ -30,14 +31,16 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
 ## 2. CADRAGE RGPD — LA FONDATION (à valider par l'avocat AVANT tout code)
 
 ### 2.1 — Données concernées et leur sensibilité
-| Donnée | Table | Sensibilité |
-|--------|-------|-------------|
+
+| Donnée                                                 | Table                                     | Sensibilité                            |
+| ------------------------------------------------------ | ----------------------------------------- | -------------------------------------- |
 | Métriques de pilotage (régularité, progression, temps) | `app_progression_shares.included_metrics` | Personnelle — performance individuelle |
-| Lien d'amitié (qui connaît qui) | `pilot_friendships` | Personnelle — graphe social |
-| Géolocalisation d'événement | `social_pings.lat/lon/address` | Sensible — localisation |
-| Email de contact | `social_pings.contact_email` | Personnelle — donnée de contact |
+| Lien d'amitié (qui connaît qui)                        | `pilot_friendships`                       | Personnelle — graphe social            |
+| Géolocalisation d'événement                            | `social_pings.lat/lon/address`            | Sensible — localisation                |
+| Email de contact                                       | `social_pings.contact_email`              | Personnelle — donnée de contact        |
 
 ### 2.2 — Les 6 principes appliqués à OXV (chacun = une règle de code)
+
 1. **Consentement explicite** : aucune donnée partagée sans action positive du
    pilote. Pas de partage par défaut, pas de case pré-cochée.
 2. **Minimisation** : on ne partage QUE les métriques explicitement cochées
@@ -52,13 +55,16 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
    consulté son partage. Transparence sur l'usage réel.
 
 ### 2.3 — Réciprocité de l'amitié
+
 `pilot_friendships` : `initiator_id`, `status`, `requested_at`, `responded_at`.
+
 - Une amitié n'existe (`status='accepted'`) que si l'AUTRE pilote a répondu oui.
 - Tant que `status='pending'`, AUCUNE donnée ne circule entre les deux.
 - Définir l'énumération `status` : pending / accepted / declined / blocked.
 - Le blocage (`blocked`) coupe tout : plus de partage, plus d'invitation possible.
 
 ### 2.4 — Droits des personnes (à prévoir dans l'app, pas seulement en base)
+
 - Droit d'accès : le pilote voit tout ce qu'il partage et avec qui (écran 5.4).
 - Droit de retrait : révocation en un geste.
 - Droit à l'effacement : suppression d'un partage = suppression réelle, pas masquage.
@@ -69,13 +75,13 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
 
 ## 3. STRUCTURE DES TABLES (vérifiée en base)
 
-| Table | Rôle | Colonnes clés (déjà pensées RGPD) |
-|-------|------|-----------------------------------|
-| `pilot_friendships` | lien d'amitié bilatéral | pilot_a, pilot_b, initiator_id, status, requested_at, responded_at |
+| Table                    | Rôle                              | Colonnes clés (déjà pensées RGPD)                                                                                  |
+| ------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `pilot_friendships`      | lien d'amitié bilatéral           | pilot_a, pilot_b, initiator_id, status, requested_at, responded_at                                                 |
 | `app_progression_shares` | partage granulaire de progression | share_token, share_scope, **included_metrics (jsonb)**, **expires_at**, **revoked_at**, view_count, last_viewed_at |
-| `pilot_goals` | objectifs personnels du pilote | body, status, evaluated_session_id (perso, pas social par défaut) |
-| `roulage_invitations` | inviter un pilote à un roulage | roulage_id, pilot_id, status, invited_at, responded_at |
-| `social_pings` | événements / lieux (proche Carte) | kind, lat, lon, address, contact_email, is_published, starts_at |
+| `pilot_goals`            | objectifs personnels du pilote    | body, status, evaluated_session_id (perso, pas social par défaut)                                                  |
+| `roulage_invitations`    | inviter un pilote à un roulage    | roulage_id, pilot_id, status, invited_at, responded_at                                                             |
+| `social_pings`           | événements / lieux (proche Carte) | kind, lat, lon, address, contact_email, is_published, starts_at                                                    |
 
 > Le schéma confirme une intention prudente : `app_progression_shares` a nativement
 > scope + métriques explicites + expiration + révocation + compteur de vues. C'est le
@@ -86,12 +92,14 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
 ## 4. ÉCRANS DU SOCIAL (sous-fiches)
 
 ### 4.1 — Mes amis (annuaire + demandes)
+
 - Rôle : voir ses amis (`accepted`), gérer les demandes (`pending`), bloquer.
 - Données : `pilot_friendships`.
 - Tracé : aucun.
 - Garde : une demande pending ne donne accès à RIEN.
 
 ### 4.2 — Partager ma progression (le cœur RGPD)
+
 - Rôle : créer un partage en cochant métrique par métrique ce qu'on expose, à qui,
   jusqu'à quand.
 - Données : écriture `app_progression_shares` (included_metrics = liste blanche cochée,
@@ -102,6 +110,7 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
 - Règle absolue : défaut = rien de coché. Le pilote construit son partage activement.
 
 ### 4.3 — Progression d'un ami (consultation)
+
 - Rôle : voir ce qu'un ami a CHOISI de partager — ni plus, ni moins.
 - Données : lecture `app_progression_shares` filtrée (non révoqué, non expiré, scope ok) ;
   incrémente view_count / last_viewed_at (traçabilité pour l'émetteur).
@@ -110,16 +119,19 @@ expose** (le plus respectueux). Pas de classement imposé, pas d'exposition par 
 - Garde : révocation ou expiration → écran « partage terminé », plus aucune donnée.
 
 ### 4.4 — Mes partages actifs (droit d'accès & retrait)
+
 - Rôle : transparence — le pilote voit tous ses partages, qui les a vus, et révoque.
 - Données : `app_progression_shares` de l'utilisateur (view_count, last_viewed_at).
 - C'est l'écran qui matérialise les droits RGPD (accès, retrait, effacement).
 
 ### 4.5 — Inviter à un roulage (priorité 2)
+
 - Rôle : convier un ami à un roulage existant.
 - Données : `roulage_invitations` (lié à `coach_roulages` de la fiche 06).
 - Garde : on n'invite qu'un ami (`accepted`), pas n'importe qui.
 
 ### 4.6 — Fil événements / lieux (priorité tardive, proche Carte)
+
 - Rôle : `social_pings` publiés. À traiter probablement DANS la future page Carte,
   pas dans le cœur social. Géolocalisation + email = cadrage spécifique (consentement
   de publication, modération de `is_published`).

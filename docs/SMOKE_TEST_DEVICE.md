@@ -65,8 +65,7 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 - [ ] **#03 Méthode** — explication
 - [ ] **#04 Niveau pilote** — 4 options, sélection persistée
 - [ ] **#05 CGU/RGPD** — case à cocher, refus impossible sans cocher
-- [ ] **#06 Pacte** — signature avec horodatage en DB
-      - Vérifier : `SELECT pact_accepted_at FROM users WHERE id = ...`
+- [ ] **#06 Pacte** — signature avec horodatage en DB - Vérifier : `SELECT pact_accepted_at FROM users WHERE id = ...`
 
 ---
 
@@ -83,9 +82,7 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 - [ ] Le RaceBox apparaît dans la liste sous 5 s (nom commence par "RaceBox")
 - [ ] Tap → état passe à `connecting` puis `connected` sous 3 s
 - [ ] Indicateur de fréquence BLE > 20 Hz (cible RaceBox = 25 Hz)
-- [ ] Permissions push : popup notif acceptée, token persisté en DB
-      - Vérifier : `SELECT expo_push_token FROM users WHERE id = ...`
-      - Le token doit ressembler à `ExponentPushToken[xxxxxxxxxxxxxxxx]`
+- [ ] Permissions push : popup notif acceptée, token persisté en DB - Vérifier : `SELECT expo_push_token FROM users WHERE id = ...` - Le token doit ressembler à `ExponentPushToken[xxxxxxxxxxxxxxxx]`
 
 ### Permission géolocalisation
 
@@ -125,10 +122,8 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 ### Préservation + analyse (le cœur sem 13 J1)
 
 - [ ] **Progress bar visible**, atteint 92% en ~3.5 s
-- [ ] L'analyse tourne en arrière-plan :
-      - `app_segment_analyses` reçoit 14 lignes (1 par segment)
-      - `app_session_analyses` reçoit 1 ligne avec `margin_global` et
-        `debrief_text` non-null
+- [ ] L'analyse tourne en arrière-plan : - `app_segment_analyses` reçoit 14 lignes (1 par segment) - `app_session_analyses` reçoit 1 ligne avec `margin_global` et
+      `debrief_text` non-null
 - [ ] Transition automatique vers `#12 Bilan prêt` quand l'analyse rend
       (ou timeout 30 s)
 - [ ] `console.log` du DevTools affiche un objet `{ source: 'telemetry_frames' | 'ubx_local', sampleCount, segmentsPersisted, marginGlobal, notes }`
@@ -179,9 +174,8 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 ### Programmation (sem 13 J3)
 
 - [ ] À la fin de l'analyse (#11) : une notif locale est planifiée
-      pour J+1
-      - Vérifier via `Notifications.getAllScheduledNotificationsAsync()`
-        dans la console debug
+      pour J+1 - Vérifier via `Notifications.getAllScheduledNotificationsAsync()`
+      dans la console debug
 - [ ] La notif arrive bien 24h après (test accéléré : modifier `delayMs`
       à 60 s en debug, vérifier qu'elle apparaît)
 
@@ -261,6 +255,7 @@ npm test
 ```
 
 Périmètre :
+
 - Parser UBX (Fletcher-8, reconstruction frames, payload decode) — 35 tests
 - State machine S1-S10 (déterminisme transitions) — 13 tests
 - Helpers projection lat/lon → SVG — 8 tests
@@ -286,14 +281,14 @@ npx tsx scripts/generate-fixture-ubx.ts test-fixtures/demo-session.ubx
 
 ## Bloquants connus côté Gabin (rappel)
 
-| Q | Sujet | Impact smoke test |
-|---|---|---|
-| Q9 | Compte EAS | Bloque tout build device |
-| Q11 | DSN Sentry | Pas de remontée crashs en prod |
-| Q12 | Flic 2 hardware | Bouton physique non testable |
-| Q19 | Vrais noms 14 virages | Placeholders affichés au pilote |
-| Q26 | Politique fin de session | V1 conservateur, à valider |
-| Q33 | Trace GPS référence Beltoise | Map-matching approximatif |
+| Q   | Sujet                        | Impact smoke test               |
+| --- | ---------------------------- | ------------------------------- |
+| Q9  | Compte EAS                   | Bloque tout build device        |
+| Q11 | DSN Sentry                   | Pas de remontée crashs en prod  |
+| Q12 | Flic 2 hardware              | Bouton physique non testable    |
+| Q19 | Vrais noms 14 virages        | Placeholders affichés au pilote |
+| Q26 | Politique fin de session     | V1 conservateur, à valider      |
+| Q33 | Trace GPS référence Beltoise | Map-matching approximatif       |
 
 — Claude Code, sem 13 J4
 

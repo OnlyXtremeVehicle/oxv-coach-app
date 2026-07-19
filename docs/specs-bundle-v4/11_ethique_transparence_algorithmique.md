@@ -3,7 +3,7 @@
 > Axe : **l'app montre comment elle calcule. Aucune boîte noire.**
 > Rejoint la couche doctrine (à côté de `00_CLAUDE.md`, `01`, `10`).
 > C'est le jumeau de la doctrine Mirror : si l'app montre la donnée, elle doit
-> montrer la *méthode*. Et c'est une protection de bien-être autant qu'un principe :
+> montrer la _méthode_. Et c'est une protection de bien-être autant qu'un principe :
 > un score opaque érode l'autonomie autant qu'une boucle de pression.
 
 ---
@@ -25,39 +25,52 @@ Cet axe formalise ce choix et le verrouille.
 # PARTIE I — LA CHARTE (les engagements)
 
 ### T1. Tout insight est explicable.
+
 Pour chaque chiffre affiché, l'utilisateur peut voir de quoi il est calculé et
 comment, en langage clair.
-> *Pourquoi : un chiffre dont on ignore la fabrication ne peut pas être jugé fiable.*
+
+> _Pourquoi : un chiffre dont on ignore la fabrication ne peut pas être jugé fiable._
 
 ### T2. La fiabilité est affichée, jamais cachée.
+
 Quand la donnée est mince ou bruitée, l'app le dit. Elle ne présente jamais une mesure
 fragile avec une fausse assurance.
-> *Pourquoi : une fausse confiance sur une mesure douteuse peut induire une décision dangereuse.*
+
+> _Pourquoi : une fausse confiance sur une mesure douteuse peut induire une décision dangereuse._
 
 ### T3. La provenance est traçable.
+
 Chaque insight porte sa version de méthode (`engine_version`) et sa date de calcul.
 Quand la méthode change, c'est versionné et visible — résultats reproductibles.
-> *Pourquoi : sans provenance, impossible de savoir si deux chiffres sont comparables.*
+
+> _Pourquoi : sans provenance, impossible de savoir si deux chiffres sont comparables._
 
 ### T4. L'IA est déclarée comme telle.
+
 Tout texte produit par l'IA (`generate-debrief-ai`) est explicitement signalé comme
 généré automatiquement. Jamais présenté comme humain, jamais comme un fait, jamais
 prescriptif (doctrine Mirror), ses limites énoncées.
-> *Pourquoi : prendre un texte machine pour une vérité ou un conseil humain est trompeur.*
+
+> _Pourquoi : prendre un texte machine pour une vérité ou un conseil humain est trompeur._
 
 ### T5. Les limites de la méthode sont dites.
+
 L'app énonce ce qu'elle NE peut PAS savoir ni mesurer (« Ce que l'app ne dira jamais »).
-> *Pourquoi : taire les angles morts, c'est laisser croire à une omniscience qui n'existe pas.*
+
+> _Pourquoi : taire les angles morts, c'est laisser croire à une omniscience qui n'existe pas._
 
 ### T6. Aucune métrique composite opaque.
+
 Pas de « note de pilote » agrégée en boîte noire. Des piliers factuels, pas un verdict.
-> *Pourquoi : un score unique cache ses arbitrages et invite à « jouer le score » plutôt qu'à piloter.*
+
+> _Pourquoi : un score unique cache ses arbitrages et invite à « jouer le score » plutôt qu'à piloter._
 
 ---
 
 # PARTIE II — LA DÉCLINAISON TECHNIQUE (vérifiable)
 
 ## A. Primitives déjà présentes en base (vérifiées)
+
 - `session_insights.engine_version` (text) + `computed_at` (timestamptz) → **provenance** (T3).
 - `session_insights.data_quality` (jsonb : `frames_used`, `frames_dropped`, `pct_valid`,
   `corners_detected`, `laps_detected`) → **fiabilité affichable** (T2).
@@ -66,16 +79,18 @@ Pas de « note de pilote » agrégée en boîte noire. Des piliers factuels, pas
 - Aucun champ de score agrégé dans `session_insights` (QDI abandonné) → à maintenir (T6).
 
 ## B. Règles que Claude Code DOIT appliquer
-| Eng. | Règle de code / présentation |
-|---|---|
-| T1 | Chaque écran d'insight porte un bloc **« source / méthode »** en langage clair (entrées + comment c'est calculé). Déjà présent dans les maquettes — **obligatoire**, pas optionnel. |
-| T2 | `data_quality` affiché. Si `pct_valid` < seuil (ex. 90 %) ou incohérence de virages, bandeau de fiabilité ou **état vide** — jamais une donnée fragile présentée comme sûre. |
-| T3 | `engine_version` + `computed_at` consultables (au moins en détail). Insight recalculé après changement de méthode = re-daté. |
-| T4 | Tout texte de `generate-debrief-ai` est étiqueté **« généré automatiquement »**, visuellement distinct, non prescriptif, soumis au vocabulaire Mirror et au garde-langage (fiche 10 §C). |
-| T5 | Bloc **« Ce que l'app ne dira jamais »** obligatoire sur les insights interprétatifs (ex. N4-4). Énonce les limites : la segmentation des virages est estimée ; l'app ne connaît pas la trajectoire que vous visiez. |
-| T6 | Aucun « score » agrégé exposé. Vocabulaire QDI gelé, jamais ressuscité en verdict chiffré. |
+
+| Eng. | Règle de code / présentation                                                                                                                                                                                         |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1   | Chaque écran d'insight porte un bloc **« source / méthode »** en langage clair (entrées + comment c'est calculé). Déjà présent dans les maquettes — **obligatoire**, pas optionnel.                                  |
+| T2   | `data_quality` affiché. Si `pct_valid` < seuil (ex. 90 %) ou incohérence de virages, bandeau de fiabilité ou **état vide** — jamais une donnée fragile présentée comme sûre.                                         |
+| T3   | `engine_version` + `computed_at` consultables (au moins en détail). Insight recalculé après changement de méthode = re-daté.                                                                                         |
+| T4   | Tout texte de `generate-debrief-ai` est étiqueté **« généré automatiquement »**, visuellement distinct, non prescriptif, soumis au vocabulaire Mirror et au garde-langage (fiche 10 §C).                             |
+| T5   | Bloc **« Ce que l'app ne dira jamais »** obligatoire sur les insights interprétatifs (ex. N4-4). Énonce les limites : la segmentation des virages est estimée ; l'app ne connaît pas la trajectoire que vous visiez. |
+| T6   | Aucun « score » agrégé exposé. Vocabulaire QDI gelé, jamais ressuscité en verdict chiffré.                                                                                                                           |
 
 ## C. Requête de vérification — « l'éthique comme test qui peut échouer »
+
 ```sql
 -- Aucun champ de verdict/score agrégé ne doit apparaître dans la table d'insights
 select column_name from information_schema.columns
@@ -85,6 +100,7 @@ where table_schema='public' and table_name='session_insights'
 ```
 
 ## D. Points d'AUDIT (à faire)
+
 1. **`generate-debrief-ai`** : lire le prompt et un échantillon de sortie. Vérifier
    (a) étiquetage IA, (b) absence de prescription (« vous devez… »), (c) respect du
    vocabulaire Mirror. **C'est l'audit central de cet axe** — et il recoupe l'audit

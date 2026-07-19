@@ -3,6 +3,7 @@
 > **Statut : validé par Gabin (2026-06-07) et implémenté.** Les **quatre** options
 > ci-dessous ont été retenues, l'option D dans sa **version sûre** (lecture
 > attribuée, séparée de la marge OXV). Réalisation :
+>
 > - **A — Repères de référence** : migration 0038, PR #65.
 > - **B — Priorisation / curation** + **C — Gabarits** : migration 0039, PR #66.
 > - **D — Lecture du coach (version sûre)** : migration 0040, PR finale.
@@ -48,31 +49,39 @@ est portée par un tiers identifié.
 ## 3. Quatre interprétations possibles (de la plus sûre à la plus risquée)
 
 ### Option A — Repères de référence du coach (overlay factuel)
+
 Le coach définit, par virage, **ses repères** : point de freinage de référence,
 trajectoire-type, vitesse de passage visée. L'app les **superpose** à la donnée
 du pilote, en les **étiquetant « Repère de votre coach »**, sous forme de simple
 comparaison factuelle (« votre freinage : 95 m — repère du coach : 110 m »).
+
 - ✅ Descriptif, attribué, le pilote tire ses propres conclusions.
 - ⚠️ Un « repère de vitesse visée » peut glisser vers de l'objectif de perf →
   cadrer le vocabulaire (repère, pas consigne).
 
 ### Option B — Priorisation / curation de la restitution (recommandée)
+
 Le coach choisit, pour **ce pilote**, **quels virages / quelles vues mettre en
 avant** et dans **quel ordre** sur le bilan. Il ne crée aucun contenu prescriptif :
 il **ordonne** la restitution existante (« commencez par le virage 4 »).
+
 - ✅ Le plus sûr : aucune donnée nouvelle, aucune injonction, juste un ordre de
   lecture proposé et attribué (« Mis en avant par votre coach »).
 - ✅ Faible coût technique, fort effet « personnalisé ».
 
 ### Option C — Gabarits de commentaire réutilisables
+
 Les observations récurrentes du coach deviennent des **modèles** qu'il applique
 vite à ses annotations (déjà existantes). Pur confort de saisie côté coach.
+
 - ✅ Zéro risque doctrinal (ce sont les annotations déjà cadrées).
 - ➖ N'« applique » rien automatiquement à la restitution — périmètre limité.
 
 ### Option D — Méthode interprétative automatique
+
 L'app applique seule la « méthode » du coach pour **réécrire / réinterpréter** la
 donnée du pilote (ex. recalculer une marge selon les pondérations du coach).
+
 - ❌ **À éviter** : l'app porterait l'interprétation → contradiction doctrinale
   directe et risque juridique (retour du coaching algorithmique).
 
@@ -83,6 +92,7 @@ donnée du pilote (ex. recalculer une marge selon les pondérations du coach).
 descriptives. On écarte D. C est déjà couvert par les annotations.
 
 Concrètement, côté pilote, le bilan afficherait :
+
 - un éventuel **ordre de lecture** « Mis en avant par votre coach » (B) ;
 - des **repères du coach** par virage, en comparaison factuelle, repliables (A).
 

@@ -13,7 +13,7 @@ Le plan empile des surfaces : bilan pilote, lecture coach, opérations admin, an
 - **Doctrine** : l'app pilote est un **miroir terrain** — calme, contextuelle, silencieuse en piste. Y greffer un tableur d'opérations ou un CRM partenaire la dénature.
 - **Architecture** : les opérations lourdes (saisie longue, multi-écrans, exports, validation, facturation) sont pénibles au pouce et inadaptées à un usage paddock.
 
-La règle directrice (`00 §1`) — *simple en surface, puissant en profondeur* — se traduit ici par : **chaque canal porte ce pour quoi il est bon, et rien d'autre.**
+La règle directrice (`00 §1`) — _simple en surface, puissant en profondeur_ — se traduit ici par : **chaque canal porte ce pour quoi il est bon, et rien d'autre.**
 
 ---
 
@@ -88,23 +88,24 @@ Six arbitrages bloquants. Chaque réponse cite la surface réelle (route existan
 
 ## 2. Recommandation — rôle de chaque canal
 
-| Canal | Vocation | Public | Ne porte PAS |
-|---|---|---|---|
-| **App mobile** (Expo/RN) | Expérience **pilote terrain** (préparer, rouler en silence, comprendre le bilan, évoluer, club) + **lecture/annotation coach rapide** + **opérations admin du jour J** | Pilote, Coach, Admin (terrain) | Checkout, CRM, reporting lourd, création d'événements, édition fiche partenaire |
-| **Portail web** (à construire) | **Opérations lourdes** (qualité data, incidents, validation inscriptions/partenaires, reporting, facturation/refunds) + **espace partenaire** (fiche, offres, leads) + **création d'événements** | Admin, Partenaire | Données télémétriques fines pilote (restent dans l'app), expérience de roulage |
-| **Site public** (oxvehicle.fr) | **Acquisition** + **réservation/paiement track day** + **vitrine** (offres, circuit, coachs, partenaires) + collecte leads | Prospects, pilotes (achat) | Bilan post-session, annotation coach, opérations internes |
+| Canal                          | Vocation                                                                                                                                                                                         | Public                         | Ne porte PAS                                                                    |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------- |
+| **App mobile** (Expo/RN)       | Expérience **pilote terrain** (préparer, rouler en silence, comprendre le bilan, évoluer, club) + **lecture/annotation coach rapide** + **opérations admin du jour J**                           | Pilote, Coach, Admin (terrain) | Checkout, CRM, reporting lourd, création d'événements, édition fiche partenaire |
+| **Portail web** (à construire) | **Opérations lourdes** (qualité data, incidents, validation inscriptions/partenaires, reporting, facturation/refunds) + **espace partenaire** (fiche, offres, leads) + **création d'événements** | Admin, Partenaire              | Données télémétriques fines pilote (restent dans l'app), expérience de roulage  |
+| **Site public** (oxvehicle.fr) | **Acquisition** + **réservation/paiement track day** + **vitrine** (offres, circuit, coachs, partenaires) + collecte leads                                                                       | Prospects, pilotes (achat)     | Bilan post-session, annotation coach, opérations internes                       |
 
 **Phrase de répartition** (à graver) :
+
 > Le **site** fait venir et fait payer. Le **mobile** fait vivre la journée et lire la session. Le **web** fait tourner les opérations et le business.
 
 Cohérence avec les **4 comptes** (`00 §2`) :
 
-| Compte | App mobile | Portail web | Site public |
-|---|---|---|---|
-| **Pilote** | **primaire** (tout le parcours terrain) | — | secondaire (réserver, payer, s'inscrire) |
-| **Coach** | **primaire** (lecture, annotation, dispos, profil) | secondaire (V2 : facturation, reporting business) | vitrine (fiche publique marketing) |
-| **Admin** | terrain le jour J | **primaire** (opérations lourdes, qualité data, validation) | — |
-| **Partenaire** | — (apparaît seulement en lecture côté pilote) | **primaire** (fiche, offres, leads, perf) | vitrine (apparaît dans l'annuaire) |
+| Compte         | App mobile                                         | Portail web                                                 | Site public                              |
+| -------------- | -------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------- |
+| **Pilote**     | **primaire** (tout le parcours terrain)            | —                                                           | secondaire (réserver, payer, s'inscrire) |
+| **Coach**      | **primaire** (lecture, annotation, dispos, profil) | secondaire (V2 : facturation, reporting business)           | vitrine (fiche publique marketing)       |
+| **Admin**      | terrain le jour J                                  | **primaire** (opérations lourdes, qualité data, validation) | —                                        |
+| **Partenaire** | — (apparaît seulement en lecture côté pilote)      | **primaire** (fiche, offres, leads, perf)                   | vitrine (apparaît dans l'annuaire)       |
 
 ---
 
@@ -112,33 +113,33 @@ Cohérence avec les **4 comptes** (`00 §2`) :
 
 Légende : **●** primaire · **○** secondaire (lecture/relais) · **—** absent. Surfaces réelles citées (route `(app)`/`(coach)`/`(admin)` ou table).
 
-| Fonction | Mobile | Web | Site | Surface réelle |
-|---|:--:|:--:|:--:|---|
-| Préparer une session (équipement) | ● | — | — | `(app)/equipement` |
-| Rouler en piste (silence total) | ● | — | — | `(app)/roulage` (UI éteinte, voyant REC) |
-| Bilan post-session (marge globale) | ● | — | — | `(app)/bilan`, `app_session_analyses` |
-| Data Lab (carte, virages, tours, heatmap, replay) | ● | — | — | `(app)/carte,virage,tours,heatmap,replay,telemetry` |
-| Progression / signature / régularité | ● | — | — | `(app)/progression`, `pilotSignatureService`, `regularityService` |
-| Comparateur personnel (soi vs soi) | ● | — | — | `(app)/comparateur` |
-| Club : mon coach / découverte coachs | ● | — | ○ (vitrine) | `(app)/mon-coach,coachs,coach/[id]` |
-| Annoter une session pilote (coach) | ● | — | — | `(coach)/annoter`, `coach_annotations` |
-| Lecture priorisée des sessions affiliées (coach) | ● | — | — | `(coach)/lecture,priorites`, `coachReadingService` |
-| Disponibilités coach | ● | — | — | `(coach)/disponibilites`, `coach_availability` |
-| Profil coach (édition pro) | ● | — | ○ (fiche publique) | `(coach)/profil`, `coach_profiles` |
-| Business coach (suivi activité) | ● | ○ (V2 reporting) | — | `(coach)/business`, `coachBusinessService` |
-| Opérations événement (jour J) | ● | ○ | — | `(admin)/preparation,en-cours` |
-| Qualité data (sessions/frames) | ○ | ● | — | `telemetry_sessions`, `telemetry_frames`, `sessions` |
-| Validation inscriptions | — | ● | ○ (formulaire) | `demandes_inscription`, `admin_validate_inscription` |
-| Validation / modération partenaires | ○ | ● | — | `partners.is_published`, `(admin)/coachs` (motif) |
-| Reporting / dashboard business | — | ● | — | `stats_dashboard`, `day_rollups`, `history_rollups` |
-| **Réservation track day** | ○ (lecture) | ○ (régul.) | ● | `registrations`, `pricing`, `sessions` |
-| **Paiement (Stripe)** | — | ○ (refunds) | ● | `payments` |
-| **Inscription partenaire (fiche)** | — | ● | — | `partners` (`owner_id`) — espace `(partner)` net-neuf |
-| Offres / leads partenaires | ○ (lecture V1.5) | ● | ○ (affichage) | `partners`, `corporate_leads`, `contact_messages` |
-| **Création d'événements** | ○ (lecture) | ● | — | `sessions`, `pricing` |
-| Pass OXV (QR événement) | ● (V1.5) | — | ○ (génération) | net-neuf — **nécessite accord Gabin** |
-| Vitrine / contenu éditorial | — | — | ● | `articles` |
-| Médias d'événement / OXV Moment | ● (partage) | ○ (admin upload) | ○ (galerie publique) | `(app)/partage,carte-trophee`, `session_media`, `media` |
+| Fonction                                          |      Mobile      |       Web        |         Site         | Surface réelle                                                    |
+| ------------------------------------------------- | :--------------: | :--------------: | :------------------: | ----------------------------------------------------------------- |
+| Préparer une session (équipement)                 |        ●         |        —         |          —           | `(app)/equipement`                                                |
+| Rouler en piste (silence total)                   |        ●         |        —         |          —           | `(app)/roulage` (UI éteinte, voyant REC)                          |
+| Bilan post-session (marge globale)                |        ●         |        —         |          —           | `(app)/bilan`, `app_session_analyses`                             |
+| Data Lab (carte, virages, tours, heatmap, replay) |        ●         |        —         |          —           | `(app)/carte,virage,tours,heatmap,replay,telemetry`               |
+| Progression / signature / régularité              |        ●         |        —         |          —           | `(app)/progression`, `pilotSignatureService`, `regularityService` |
+| Comparateur personnel (soi vs soi)                |        ●         |        —         |          —           | `(app)/comparateur`                                               |
+| Club : mon coach / découverte coachs              |        ●         |        —         |     ○ (vitrine)      | `(app)/mon-coach,coachs,coach/[id]`                               |
+| Annoter une session pilote (coach)                |        ●         |        —         |          —           | `(coach)/annoter`, `coach_annotations`                            |
+| Lecture priorisée des sessions affiliées (coach)  |        ●         |        —         |          —           | `(coach)/lecture,priorites`, `coachReadingService`                |
+| Disponibilités coach                              |        ●         |        —         |          —           | `(coach)/disponibilites`, `coach_availability`                    |
+| Profil coach (édition pro)                        |        ●         |        —         |  ○ (fiche publique)  | `(coach)/profil`, `coach_profiles`                                |
+| Business coach (suivi activité)                   |        ●         | ○ (V2 reporting) |          —           | `(coach)/business`, `coachBusinessService`                        |
+| Opérations événement (jour J)                     |        ●         |        ○         |          —           | `(admin)/preparation,en-cours`                                    |
+| Qualité data (sessions/frames)                    |        ○         |        ●         |          —           | `telemetry_sessions`, `telemetry_frames`, `sessions`              |
+| Validation inscriptions                           |        —         |        ●         |    ○ (formulaire)    | `demandes_inscription`, `admin_validate_inscription`              |
+| Validation / modération partenaires               |        ○         |        ●         |          —           | `partners.is_published`, `(admin)/coachs` (motif)                 |
+| Reporting / dashboard business                    |        —         |        ●         |          —           | `stats_dashboard`, `day_rollups`, `history_rollups`               |
+| **Réservation track day**                         |   ○ (lecture)    |    ○ (régul.)    |          ●           | `registrations`, `pricing`, `sessions`                            |
+| **Paiement (Stripe)**                             |        —         |   ○ (refunds)    |          ●           | `payments`                                                        |
+| **Inscription partenaire (fiche)**                |        —         |        ●         |          —           | `partners` (`owner_id`) — espace `(partner)` net-neuf             |
+| Offres / leads partenaires                        | ○ (lecture V1.5) |        ●         |    ○ (affichage)     | `partners`, `corporate_leads`, `contact_messages`                 |
+| **Création d'événements**                         |   ○ (lecture)    |        ●         |          —           | `sessions`, `pricing`                                             |
+| Pass OXV (QR événement)                           |     ● (V1.5)     |        —         |    ○ (génération)    | net-neuf — **nécessite accord Gabin**                             |
+| Vitrine / contenu éditorial                       |        —         |        —         |          ●           | `articles`                                                        |
+| Médias d'événement / OXV Moment                   |   ● (partage)    | ○ (admin upload) | ○ (galerie publique) | `(app)/partage,carte-trophee`, `session_media`, `media`           |
 
 > **Lecture du tableau** : tout ce qui est **●** en mobile sert le **terrain** ou le **post-session**. Tout ce qui est **●** en web est **lourd, administratif ou commercial**. Le site concentre **acquisition + transaction**. Aucune fonction n'est **●** sur deux canaux à la fois — un seul canal porte la responsabilité, les autres relaient en lecture.
 
@@ -171,11 +172,11 @@ Liste explicite, à opposer à toute demande de fonctionnalité future.
 
 ## 5. Dépendances net-neuves à soumettre
 
-| Élément | Canal | Statut schéma |
-|---|---|---|
-| Espace `(partner)` (dashboard, offres, leads) | Web (+ relais lecture mobile) | tables `partners`/`corporate_leads` **existent** ; objets « offres » dédiés = **nécessite accord Gabin** |
-| Portail web admin (qualité data, incidents, reporting) | Web | s'appuie sur tables/vues **existantes** ; éventuelle table `incidents` = **nécessite accord Gabin** |
-| Pass OXV (QR événement) | Mobile (V1.5) | table/colonne dédiée = **nécessite accord Gabin** |
-| Réservation coach (`coaching_bookings`) sans paiement | Mobile (V1.5) | table **existe** (`coaching_bookings`, `coach_availability`) — pas de schéma neuf |
+| Élément                                                | Canal                         | Statut schéma                                                                                            |
+| ------------------------------------------------------ | ----------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Espace `(partner)` (dashboard, offres, leads)          | Web (+ relais lecture mobile) | tables `partners`/`corporate_leads` **existent** ; objets « offres » dédiés = **nécessite accord Gabin** |
+| Portail web admin (qualité data, incidents, reporting) | Web                           | s'appuie sur tables/vues **existantes** ; éventuelle table `incidents` = **nécessite accord Gabin**      |
+| Pass OXV (QR événement)                                | Mobile (V1.5)                 | table/colonne dédiée = **nécessite accord Gabin**                                                        |
+| Réservation coach (`coaching_bookings`) sans paiement  | Mobile (V1.5)                 | table **existe** (`coaching_bookings`, `coach_availability`) — pas de schéma neuf                        |
 
 > Aucune ligne ci-dessus n'est acquise. Tout ajout de schéma Supabase passe par l'accord explicite de Gabin (`00 §6`).

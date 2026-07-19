@@ -30,14 +30,14 @@ Upload admin (app (admin)/sessions-media, expo-image-picker)
 
 ## Cas d'échec à couvrir (chacun doit dégrader PROPREMENT)
 
-| Cas | Attendu |
-|-----|---------|
-| Média orphelin (ligne session_media sans fichier bucket) | vignette d'erreur sobre, pas de crash, pas de spinner infini |
-| URL signée expirée (laisser l'écran ouvert > 60 min, revenir) | rechargement de l'URL au focus, ou état d'erreur re-tentable |
-| Mauvais dossier user_id (fichier déposé hors `{user_id}/…`) | invisible pilote (RLS folder-based) — vérifier qu'il n'apparaît PAS |
-| Vidéo lourde en 4G (> 50 Mo) | chargement progressif ou état d'attente honnête ; jamais d'app figée |
-| Suppression douce (admin retire un média) | disparaît côté pilote au rechargement ; l'indicateur admin décompte |
-| Session sans média | état vide digne (« Vos médias arriveront ici ») des deux côtés |
+| Cas                                                           | Attendu                                                              |
+| ------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Média orphelin (ligne session_media sans fichier bucket)      | vignette d'erreur sobre, pas de crash, pas de spinner infini         |
+| URL signée expirée (laisser l'écran ouvert > 60 min, revenir) | rechargement de l'URL au focus, ou état d'erreur re-tentable         |
+| Mauvais dossier user_id (fichier déposé hors `{user_id}/…`)   | invisible pilote (RLS folder-based) — vérifier qu'il n'apparaît PAS  |
+| Vidéo lourde en 4G (> 50 Mo)                                  | chargement progressif ou état d'attente honnête ; jamais d'app figée |
+| Suppression douce (admin retire un média)                     | disparaît côté pilote au rechargement ; l'indicateur admin décompte  |
+| Session sans média                                            | état vide digne (« Vos médias arriveront ici ») des deux côtés       |
 
 ## Indicateur admin
 
@@ -47,6 +47,6 @@ de la promesse de livraison, session par session, le soir d'une journée.
 
 ## Résultats
 
-| Date | Testeur | Device | Nominal | Échecs couverts | Notes |
-|------|---------|--------|---------|-----------------|-------|
+| Date | Testeur | Device | Nominal | Échecs couverts | Notes               |
+| ---- | ------- | ------ | ------- | --------------- | ------------------- |
 | —    | —       | —      | ☐       | ☐               | à remplir à Valence |

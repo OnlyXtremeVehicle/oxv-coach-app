@@ -14,7 +14,7 @@ Une app qui dit « freinez 10 m plus tard » suppose qu'elle a un modèle parfai
 
 ### Pourquoi un seul chiffre central ?
 
-Quand on multiplie les chiffres, on rajoute du bruit. Le pilote rentre en piste avec une question simple — *« étais-je à l'aise ou non ? »* — et on lui donne une réponse simple. Le reste (vitesses, G_lat, écarts) est là pour qui veut creuser, mais ne s'impose pas.
+Quand on multiplie les chiffres, on rajoute du bruit. Le pilote rentre en piste avec une question simple — _« étais-je à l'aise ou non ? »_ — et on lui donne une réponse simple. Le reste (vitesses, G_lat, écarts) est là pour qui veut creuser, mais ne s'impose pas.
 
 ### Pourquoi pas de classement entre pilotes ?
 
@@ -94,6 +94,7 @@ Quand vous êtes à moins de **200 m du centre du circuit Beltoise** (45.6012, -
 ### Quand l'app détecte-t-elle que j'ai fini ?
 
 Quand **toutes les conditions** sont réunies :
+
 - Vitesse < 10 km/h pendant > 90 secondes
 - Position revenue au paddock (zone connue de l'app)
 - Bluetooth déconnecté du RaceBox
@@ -119,6 +120,7 @@ Vos données sont sauvegardées localement toutes les 30 secondes. À la réouve
 ### Comment calcule-t-on la marge ?
 
 V1 (simplifié) : 50 % précision trajectoire + 50 % sécurité pneumatique.
+
 - **Précision trajectoire** : écart latéral moyen entre votre tracé et un tracé de référence (seuil 4 m)
 - **Sécurité pneumatique** : G_lat max observé (seuil 1.2 g, au-delà = sollicitation forte)
 
@@ -131,6 +133,7 @@ C'est le nombre de virages du tracé Beltoise. Chaque virage = un segment d'anal
 ### Pourquoi les seuils 30 % et 15 % ?
 
 Ce sont des seuils **calibrés sur l'expérience pilote OXV V1** :
+
 - ≥ 30 % = confortable, marge présente, sentiment d'aisance
 - 15-30 % = exploré, marge travaillée mais pas inconfortable
 - < 15 % = serré, limite ressentie
