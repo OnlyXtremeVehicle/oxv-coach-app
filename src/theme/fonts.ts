@@ -40,6 +40,8 @@ import {
   Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
 import { Syncopate_400Regular, Syncopate_700Bold } from '@expo-google-fonts/syncopate';
+// Programme V2 (DA Instrument, 18/07/2026) : Michroma = display des écrans (app2).
+import { Michroma_400Regular } from '@expo-google-fonts/michroma';
 
 /**
  * Charte NG (refonte 2026-07-06) : Geist (titres/corps) + Rajdhani (CHIFFRE ROI,
@@ -69,6 +71,8 @@ export function useAppFonts() {
     Inter_400Regular_Italic,
     Inter_500Medium,
     Inter_600SemiBold,
+    // Programme V2 (DA Instrument) : display Michroma des écrans (app2).
+    Michroma_400Regular,
     // Conservées en secours (anciens tokens éventuels non migrés).
     Geist_300Light,
     Geist_400Regular,
