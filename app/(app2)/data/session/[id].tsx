@@ -615,8 +615,12 @@ function ResumeSection({ session, laps }: { session: TelemetrySession; laps: Lap
     session.best_lap_seconds !== null ? Math.round(session.best_lap_seconds * 1000) : bestFromLaps;
 
   const tours = laps.length > 0 ? laps.length : session.lap_count;
+  // distance_km arrive en STRING depuis PostgREST (colonne numeric) : Number()
+  // avant toFixed, sinon .toFixed n'existe pas sur une string → crash au rendu.
   const distance =
-    session.distance_km !== null ? `${session.distance_km.toFixed(1).replace('.', ',')} km` : '—';
+    session.distance_km !== null
+      ? `${Number(session.distance_km).toFixed(1).replace('.', ',')} km`
+      : '—';
   const vmax = session.max_speed_kmh !== null ? `${Math.round(session.max_speed_kmh)} km/h` : '—';
 
   return (
@@ -1222,6 +1226,12 @@ function ChannelsChart({
   const curBrake = nearest(brake);
   const cursorX = cursor * width;
 
+  // polylinePath rend '' sous 2 points (ex. séance GPS-only sans g-force → brake
+  // vide). Un <Path path="" /> lève « Invalid path » côté Skia : on ne peint le
+  // tracé QUE si la chaîne est non vide (le curseur/axe restent, honnêtement).
+  const speedPath = polylinePath(speedPts);
+  const brakePath = polylinePath(brakePts);
+
   // TODO device-tune : curseur piloté par état React (runOnJS) — passer le
   // suivi sur le thread UI (Skia reactive value) pour un scrubbing 60fps.
   const pan = Gesture.Pan()
@@ -1248,14 +1258,16 @@ function ChannelsChart({
           <View style={{ height: CHAN_H }}>
             {width > 0 ? (
               <Canvas style={{ width, height: CHAN_H }}>
-                <Path
-                  path={polylinePath(speedPts)}
-                  style="stroke"
-                  strokeWidth={2}
-                  strokeCap="round"
-                  strokeJoin="round"
-                  color={colors.qdi.trajectoire}
-                />
+                {speedPath ? (
+                  <Path
+                    path={speedPath}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                    strokeJoin="round"
+                    color={colors.qdi.trajectoire}
+                  />
+                ) : null}
                 <Rect x={cursorX - 0.5} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
               </Canvas>
             ) : null}
@@ -1272,14 +1284,16 @@ function ChannelsChart({
                   height={1}
                   color={colors.border.card}
                 />
-                <Path
-                  path={polylinePath(brakePts)}
-                  style="stroke"
-                  strokeWidth={2}
-                  strokeCap="round"
-                  strokeJoin="round"
-                  color={colors.qdi.freinage}
-                />
+                {brakePath ? (
+                  <Path
+                    path={brakePath}
+                    style="stroke"
+                    strokeWidth={2}
+                    strokeCap="round"
+                    strokeJoin="round"
+                    color={colors.qdi.freinage}
+                  />
+                ) : null}
                 <Rect x={cursorX - 0.5} y={0} width={1} height={CHAN_H} color={colors.text.mid} />
               </Canvas>
             ) : null}

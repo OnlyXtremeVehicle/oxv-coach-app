@@ -15,15 +15,17 @@
  *  - DONNÉES RÉELLES : chaque valeur trace vers une source réelle. La prod n'a
  *    presque pas de trames (≈ 1 séance / 1 tour) : chaque bloc dégrade
  *    proprement en état vide honnête, jamais un chiffre fabriqué.
- *  - Couleurs d'IDENTITÉ (pas de hiérarchie) : A = accent, B = or. Deux
- *    étiquettes de « qui », posées à l'identique des deux côtés ; l'or ne dit
- *    pas « mieux », il dit « côté B ». En mode Ami : Vous = accent, l'ami = or.
+ *  - Couleurs d'IDENTITÉ (pas de hiérarchie) : A = accent, B = crème neutre.
+ *    Deux étiquettes de « qui », posées à l'identique des deux côtés. L'OR est
+ *    BANNI ici (réservé record/prestige app-wide) : il peindrait le côté B en
+ *    « étalon » et créerait une hiérarchie. En mode Ami : Vous = accent, l'ami
+ *    = crème — deux teintes neutres de même poids.
  *
  * Trois modes (Chip) : Séances · Tours · Ami.
  *  - Séances : deux têtes SessionCard (remplaçables via Sheet) + tableau
  *    compareFacts (meilleur tour, régularité, vitesse maxi, distance).
  *  - Tours : sélecteurs de tour (mini barres) + tracés superposés (Skia,
- *    A accent / B or) + canaux de vitesse superposés avec un curseur partagé
+ *    A accent / B crème) + canaux de vitesse superposés avec un curseur partagé
  *    qui lit LES DEUX côtés.
  *  - Ami (`?friend=`) : deux pastilles d'identité, sélecteurs de séance de
  *    chaque côté, tableau côte à côte. La régularité et la distance de l'ami
@@ -83,9 +85,13 @@ import type { Lap, TelemetrySession } from '@/types/telemetry';
 // Constantes d'identité et de mise en page
 // ---------------------------------------------------------------------------
 
-/** Couleurs d'IDENTITÉ (jamais un rang) : A = accent, B = or. */
+// Couleurs d'IDENTITÉ (jamais un rang) : A = accent, B = crème neutre.
+// L'OR est BANNI ici : `heritage.gold` = record/référence/prestige app-wide
+// (tokens.ts « jamais un chrome générique »). L'utiliser pour le côté B / l'ami
+// le peindrait en couleur « étalon » et introduirait une hiérarchie sur un écran
+// doctrinalement SANS gagnant. Deux teintes neutres de même poids, point.
 const A_COLOR = colors.accent;
-const B_COLOR = colors.heritage.gold;
+const B_COLOR = colors.text.hi;
 
 const TRACE_HEIGHT = 200;
 const SPEED_HEIGHT = 120;
@@ -141,7 +147,9 @@ function bestLapNumber(laps: Lap[] | undefined): number | null {
   const racing = racingLaps(laps);
   if (racing.length === 0) return null;
   let best = racing[0];
-  for (const l of racing) if (l.duration_seconds < best.duration_seconds) best = l;
+  // duration_seconds arrive en STRING depuis PostgREST (colonne numeric) : comparer
+  // via Number(), sinon « 9.5 » < « 10.2 » se lit lexicographiquement (faux tour).
+  for (const l of racing) if (Number(l.duration_seconds) < Number(best.duration_seconds)) best = l;
   return best.lap_number;
 }
 
