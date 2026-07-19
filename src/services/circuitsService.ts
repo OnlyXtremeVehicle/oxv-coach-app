@@ -151,3 +151,24 @@ export async function fetchSessionCircuitCenterline(sessionId: string): Promise<
   }
   return fetchDefaultCircuitCenterline();
 }
+
+/**
+ * Centerline STRICTE du circuit RÉEL d'une séance (extension V2-L1,
+ * ADDITIVE — les appelants de `fetchSessionCircuitCenterline` sont
+ * inchangés). Contrairement au repli historique ci-dessus, AUCUN fallback
+ * sur le circuit par défaut : séance sans `circuit_id`, circuit sans
+ * géométrie exploitable ou erreur de lecture → null. Les écrans « données
+ * réelles » (Bilan) masquent alors le tracé plutôt que d'afficher la
+ * silhouette d'un AUTRE circuit sous le chrono de la séance.
+ */
+export async function fetchSessionCircuitCenterlineExact(
+  sessionId: string
+): Promise<LatLon[] | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = supabase.from('telemetry_sessions') as any;
+  const { data, error } = await table.select('circuit_id').eq('id', sessionId).maybeSingle();
+
+  const circuitId = !error && data?.circuit_id ? (data.circuit_id as string) : null;
+  if (!circuitId) return null;
+  return fetchCircuitCenterline(circuitId);
+}

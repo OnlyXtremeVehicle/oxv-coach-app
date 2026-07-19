@@ -183,27 +183,52 @@ export interface MonthlyQdi {
   sessions: number;
 }
 
+/** Options de listMonthlyQdi (extension additive V2-L1 — défauts inchangés). */
+export interface ListMonthlyQdiOptions {
+  /**
+   * strict : REJETTE (throw) sur erreur DB au lieu d'avaler en [] — permet aux
+   * écrans de distinguer « aucun mois avec données » (constat honnête, état
+   * vide) d'un « échec de chargement » (état erreur + retry). Règle fondateur :
+   * ABSENT ≠ ERREUR, jamais un vide fabriqué sur panne. Défaut false : les
+   * appelants existants (signature v1, empreinte-saison) sont inchangés.
+   */
+  strict?: boolean;
+}
+
 /**
  * « Votre style au fil des séances » (maquette §7.3) : le style QDI des derniers
  * mois AVEC données, en constats juxtaposés — médiane par branche par mois,
  * JAMAIS une courbe d'évolution. Self-only strict.
+ *
+ * Filtre de version (correctif V2-L1) : seuls les QDI persistés à
+ * `QDI_ALGO_VERSION` nourrissent les médianes — les calculs 1.0.x sont
+ * documentés INVALIDES (axes G inversés, cf. qdiLogic) et un mois qui n'a que
+ * des QDI invalides disparaît de la liste plutôt que d'afficher de fausses
+ * mesures. Aligné sur la baseline 30 j de l'écran Signature (même filtre).
  */
-export async function listMonthlyQdi(userId: string, months = 3): Promise<MonthlyQdi[]> {
+export async function listMonthlyQdi(
+  userId: string,
+  months = 3,
+  opts: ListMonthlyQdiOptions = {}
+): Promise<MonthlyQdi[]> {
   // Fenêtre bornée par DATE (pas par nombre de lignes) : le mois le plus ancien
   // du triplet est complet, jamais une médiane sur une fraction de mois.
   const windowStart = new Date();
   windowStart.setMonth(windowStart.getMonth() - (months + 1));
-  const { data: sessions } = await supabase
+  const { data: sessions, error: sessionsError } = await supabase
     .from('telemetry_sessions')
     .select('id, started_at')
     .eq('user_id', userId)
     .gte('started_at', windowStart.toISOString())
     .order('started_at', { ascending: false })
     .limit(200);
+  if (opts.strict && sessionsError) {
+    throw new Error(`listMonthlyQdi(sessions): ${sessionsError.message}`);
+  }
   const rows = (sessions ?? []) as { id: string; started_at: string }[];
   if (rows.length === 0) return [];
 
-  const { data: analyses } = await supabase
+  const { data: analyses, error: analysesError } = await supabase
     .from('app_session_analyses')
     .select('qdi, telemetry_session_id')
     .in(
@@ -211,10 +236,20 @@ export async function listMonthlyQdi(userId: string, months = 3): Promise<Monthl
       rows.map((r) => r.id)
     )
     .not('qdi', 'is', null);
+  if (opts.strict && analysesError) {
+    throw new Error(`listMonthlyQdi(analyses): ${analysesError.message}`);
+  }
+  // Le jsonb persisté est un QdiRecord aplati (QdiResult extends QdiBranches) :
+  // il porte algoVersion. Sans estampille reconnue → écarté (fail-closed).
   const qdiBySession = new Map(
-    ((analyses ?? []) as unknown as { qdi: QdiBranches; telemetry_session_id: string }[]).map(
-      (a) => [a.telemetry_session_id, a.qdi]
+    (
+      (analyses ?? []) as unknown as {
+        qdi: QdiBranches & { algoVersion?: string };
+        telemetry_session_id: string;
+      }[]
     )
+      .filter((a) => a.qdi?.algoVersion === QDI_ALGO_VERSION)
+      .map((a) => [a.telemetry_session_id, a.qdi])
   );
 
   // Groupe par mois VÉCU (fuseau local de l'appareil — une séance du 1er à 0h30

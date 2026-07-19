@@ -1,0 +1,506 @@
+/**
+ * Tests bilanLogic (V2-L1, écran Bilan) — ts-jest node, zéro rendu.
+ *
+ * Couvre les exigences du lot :
+ *   - gating biométrie STRICTEMENT fail-closed (flag OFF, consentement
+ *     absent, données vides → false) ;
+ *   - mapPillars : branche absente → null EXPLICITE, jamais un zéro ;
+ *   - bande annotation coach : mapping présent/absent (nom réel du coach,
+ *     nom du virage, [] si aucune note), notes de SÉANCE avant les repères
+ *     GÉNÉRIQUES (flag `generic` verrouillé) ;
+ *   - debrief : provenance PURE (générés seuls ou fallback intégral),
+ *     marge non mesurée → récit neutre sans intensité, tournures épicènes ;
+ *   - record personnel, chrono en ms, positions curvilignes.
+ * (La garde de célébration une-seule-fois vit dans recordCelebration.ts —
+ *  I/O MMKV partagée accueil/bilan, hors périmètre ts-jest node.)
+ */
+
+import { colors } from '@/ui/v2/tokens';
+
+import {
+  BILAN_PILLAR_KEYS,
+  bestLapMsOf,
+  bilanHeroMorphId,
+  biometryQualityOf,
+  biometrySourceOf,
+  biometryVisible,
+  buildCoachNotes,
+  buildTraceMarkers,
+  centerlineRatioForLatLon,
+  debriefModel,
+  engagedSegmentRatio,
+  isPersonalRecord,
+  lastThreadMessages,
+  mapPillars,
+  momentColor,
+  sessionMetaLine,
+  toBiometrySamples,
+  validLapsOf,
+  viewerShouldDismiss,
+} from '../bilanLogic';
+
+// ---------------------------------------------------------------------------
+// Gating biométrie — fail-closed
+// ---------------------------------------------------------------------------
+
+describe('biometryVisible — fail-closed', () => {
+  it('flag OFF → false, même avec consentement et données', () => {
+    expect(biometryVisible({ flagEnabled: false, captureConsent: true, sampleCount: 40 })).toBe(
+      false
+    );
+  });
+
+  it('consentement absent → false, même flag ON et données présentes', () => {
+    expect(biometryVisible({ flagEnabled: true, captureConsent: false, sampleCount: 40 })).toBe(
+      false
+    );
+  });
+
+  it('données vides → false, même flag ON et consentement posé', () => {
+    expect(biometryVisible({ flagEnabled: true, captureConsent: true, sampleCount: 0 })).toBe(
+      false
+    );
+  });
+
+  it('tout réuni (flag ET consentement ET données) → true', () => {
+    expect(biometryVisible({ flagEnabled: true, captureConsent: true, sampleCount: 1 })).toBe(true);
+  });
+});
+
+describe('toBiometrySamples', () => {
+  it('convertit ts ISO → ms epoch et filtre les invalides', () => {
+    const rows = [
+      { ts: '2026-07-18T10:00:00.000Z', hr: 96, source: 'polar_h10', quality: 80 },
+      { ts: 'pas-une-date', hr: 100, source: 'polar_h10', quality: null },
+      { ts: '2026-07-18T10:00:01.000Z', hr: 0, source: 'polar_h10', quality: null },
+    ];
+    const samples = toBiometrySamples(rows);
+    expect(samples).toHaveLength(1);
+    expect(samples[0]).toEqual({ ts: Date.parse('2026-07-18T10:00:00.000Z'), hr: 96 });
+  });
+});
+
+describe('biometrySourceOf / biometryQualityOf', () => {
+  it('capteur dominant → badge ; aucune source reconnue → null', () => {
+    expect(
+      biometrySourceOf([
+        { source: 'apple_watch' },
+        { source: 'apple_watch' },
+        { source: 'polar_h10' },
+      ])
+    ).toBe('montre');
+    expect(biometrySourceOf([{ source: 'polar_h10' }])).toBe('ceinture');
+    expect(biometrySourceOf([{ source: 'inconnu' }])).toBe(null);
+    expect(biometrySourceOf([])).toBe(null);
+  });
+
+  it('qualité : moyenne des valeurs mesurées, undefined sans mesure', () => {
+    expect(biometryQualityOf([{ quality: 90 }, { quality: 70 }])).toBe('haute');
+    expect(biometryQualityOf([{ quality: 50 }])).toBe('moyenne');
+    expect(biometryQualityOf([{ quality: 10 }])).toBe('basse');
+    expect(biometryQualityOf([{ quality: null }])).toBeUndefined();
+    expect(biometryQualityOf([])).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Quatre piliers — null explicite
+// ---------------------------------------------------------------------------
+
+describe('mapPillars', () => {
+  it('branche absente ou nulle → value null EXPLICITE (jamais 0)', () => {
+    const pillars = mapPillars({ trajectoire: 72, freinage: null });
+    const byKey = new Map(pillars.map((p) => [p.key, p]));
+    expect(byKey.get('trajectoire')?.value).toBe(72);
+    expect(byKey.get('freinage')?.value).toBeNull();
+    expect(byKey.get('acceleration')?.value).toBeNull();
+    expect(byKey.get('fluidite')?.value).toBeNull();
+  });
+
+  it('analyse absente (null) → 4 piliers, tous null', () => {
+    const pillars = mapPillars(null);
+    expect(pillars).toHaveLength(4);
+    expect(pillars.every((p) => p.value === null)).toBe(true);
+    expect(pillars.map((p) => p.key)).toEqual([...BILAN_PILLAR_KEYS]);
+  });
+
+  it('la couleur de chaque pilier est SA couleur QDI (la couleur est une donnée)', () => {
+    const pillars = mapPillars({});
+    const byKey = new Map(pillars.map((p) => [p.key, p]));
+    expect(byKey.get('trajectoire')?.color).toBe(colors.qdi.trajectoire);
+    expect(byKey.get('freinage')?.color).toBe(colors.qdi.freinage);
+    expect(byKey.get('acceleration')?.color).toBe(colors.qdi.acceleration);
+    expect(byKey.get('fluidite')?.color).toBe(colors.qdi.fluidite);
+  });
+
+  it('valeur non finie (NaN) → null', () => {
+    const pillars = mapPillars({ trajectoire: Number.NaN });
+    expect(pillars.find((p) => p.key === 'trajectoire')?.value).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chrono — meilleur tour, record, célébration une-seule-fois
+// ---------------------------------------------------------------------------
+
+describe('bestLapMsOf / validLapsOf', () => {
+  const lap = (n: number, s: number, out = false, inl = false) => ({
+    lap_number: n,
+    duration_seconds: s,
+    is_outlap: out,
+    is_inlap: inl,
+  });
+
+  it('meilleur tour VALIDE en millisecondes (out/inlap exclus)', () => {
+    const laps = [lap(1, 95.2, true), lap(2, 91.724), lap(3, 92.1), lap(4, 89.9, false, true)];
+    expect(validLapsOf(laps)).toHaveLength(2);
+    expect(bestLapMsOf(laps, null)).toBe(91724);
+  });
+
+  it('sans tour valide → agrégat de session ; sans rien → null', () => {
+    expect(bestLapMsOf([], 91.724)).toBe(91724);
+    expect(bestLapMsOf([], null)).toBeNull();
+    expect(bestLapMsOf([lap(1, 0)], null)).toBeNull();
+  });
+});
+
+describe('isPersonalRecord', () => {
+  const sessions = [
+    { id: 'a', best_lap_seconds: 92.5 },
+    { id: 'b', best_lap_seconds: 91.0 },
+    { id: 'c', best_lap_seconds: null },
+  ];
+
+  it('bat strictement toutes les AUTRES séances → record', () => {
+    expect(isPersonalRecord(90900, 'a', sessions)).toBe(true);
+  });
+
+  it('égal ou plus lent que le meilleur des autres → pas record', () => {
+    expect(isPersonalRecord(91000, 'a', sessions)).toBe(false);
+    expect(isPersonalRecord(91500, 'a', sessions)).toBe(false);
+  });
+
+  it('sa propre séance ne se compare pas à elle-même', () => {
+    // 'b' détient 91.0 : comparé aux autres (92.5), 91.0 reste un record.
+    expect(isPersonalRecord(91000, 'b', sessions)).toBe(true);
+  });
+
+  it('première séance chiffrée → record (le meilleur jamais réalisé)', () => {
+    expect(isPersonalRecord(91724, 'a', [{ id: 'a', best_lap_seconds: 91.724 }])).toBe(true);
+  });
+
+  it('chrono absent → jamais record', () => {
+    expect(isPersonalRecord(null, 'a', sessions)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bande annotation coach — présente / absente, séance avant générique
+// ---------------------------------------------------------------------------
+
+describe('buildCoachNotes', () => {
+  const threads = [{ coachId: 'coach-1', otherName: 'Marc Delage' }];
+
+  it('aucune annotation → [] (la bande est ABSENTE)', () => {
+    expect(buildCoachNotes([], threads)).toEqual([]);
+  });
+
+  it('annotation présente → note mappée : virage réel + nom réel du coach', () => {
+    const notes = buildCoachNotes(
+      [
+        {
+          id: 'n1',
+          coachId: 'coach-1',
+          cornerIndex: 3,
+          body: 'Appui franc observé ici.',
+          telemetrySessionId: 's1',
+        },
+      ],
+      threads
+    );
+    expect(notes).toHaveLength(1);
+    expect(notes[0]).toEqual({
+      id: 'n1',
+      cornerIndex: 3,
+      cornerName: "L'épingle Est",
+      body: 'Appui franc observé ici.',
+      coachName: 'Marc Delage',
+      generic: false,
+    });
+  });
+
+  it('coach hors binôme résolu → coachName null (jamais un nom inventé)', () => {
+    const notes = buildCoachNotes(
+      [
+        {
+          id: 'n2',
+          coachId: 'coach-inconnu',
+          cornerIndex: 2,
+          body: 'Note.',
+          telemetrySessionId: 's1',
+        },
+      ],
+      threads
+    );
+    expect(notes[0].coachName).toBeNull();
+  });
+
+  it('notes triées par virage ; virage hors topologie → « Virage N »', () => {
+    const notes = buildCoachNotes(
+      [
+        { id: 'n3', coachId: 'coach-1', cornerIndex: 12, body: 'B', telemetrySessionId: 's1' },
+        { id: 'n4', coachId: 'coach-1', cornerIndex: 1, body: 'A', telemetrySessionId: 's1' },
+      ],
+      threads
+    );
+    expect(notes.map((n) => n.cornerIndex)).toEqual([1, 12]);
+    expect(notes[1].cornerName).toBe('Virage 12');
+  });
+
+  it('notes de SÉANCE d’abord, repères GÉNÉRIQUES ensuite (flag generic)', () => {
+    const notes = buildCoachNotes(
+      [
+        { id: 'g1', coachId: 'coach-1', cornerIndex: 1, body: 'Repère.', telemetrySessionId: null },
+        { id: 's5', coachId: 'coach-1', cornerIndex: 5, body: 'Séance.', telemetrySessionId: 's1' },
+        { id: 'g3', coachId: 'coach-1', cornerIndex: 3, body: 'Repère.', telemetrySessionId: null },
+      ],
+      threads
+    );
+    // La note rattachée à la séance passe AVANT les génériques, même si son
+    // virage est plus loin — la parole du coach n'est pas datée faussement.
+    expect(notes.map((n) => n.id)).toEqual(['s5', 'g1', 'g3']);
+    expect(notes.map((n) => n.generic)).toEqual([false, true, true]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tracé — positions curvilignes réelles
+// ---------------------------------------------------------------------------
+
+describe('engagedSegmentRatio', () => {
+  it('milieu du segment au G latéral max (progress réels)', () => {
+    const t = engagedSegmentRatio([
+      { segmentIndex: 1, maxGLateral: 0.8, startProgress: 0.1, endProgress: 0.2 },
+      { segmentIndex: 2, maxGLateral: 1.3, startProgress: 0.5, endProgress: 0.6 },
+    ]);
+    expect(t).toBeCloseTo(0.55, 5);
+  });
+
+  it('segment qui enjambe la ligne (end < start) → milieu modulaire', () => {
+    const t = engagedSegmentRatio([
+      { segmentIndex: 7, maxGLateral: 1.1, startProgress: 0.9, endProgress: 0.1 },
+    ]);
+    expect(t).toBeCloseTo(0, 5);
+  });
+
+  it('sans G mesuré ou sans position → null (aucune puce inventée)', () => {
+    expect(engagedSegmentRatio([])).toBeNull();
+    expect(
+      engagedSegmentRatio([
+        { segmentIndex: 1, maxGLateral: null, startProgress: 0.1, endProgress: 0.2 },
+      ])
+    ).toBeNull();
+    expect(
+      engagedSegmentRatio([
+        { segmentIndex: 1, maxGLateral: 1.0, startProgress: null, endProgress: 0.2 },
+      ])
+    ).toBeNull();
+  });
+});
+
+describe('centerlineRatioForLatLon', () => {
+  // Carré ~1 km de côté autour de lat 45 : 4 sommets, boucle fermée.
+  const square = [
+    { lat: 45.0, lon: 0.0 },
+    { lat: 45.009, lon: 0.0 },
+    { lat: 45.009, lon: 0.0127 },
+    { lat: 45.0, lon: 0.0127 },
+  ];
+
+  it('point proche du premier sommet → ratio 0', () => {
+    expect(centerlineRatioForLatLon(square, 45.0001, 0.0001)).toBeCloseTo(0, 2);
+  });
+
+  it('point proche du 3e sommet → ratio ~0.5 (mi-parcours du carré)', () => {
+    const t = centerlineRatioForLatLon(square, 45.009, 0.0127);
+    expect(t).toBeGreaterThan(0.4);
+    expect(t).toBeLessThan(0.6);
+  });
+
+  it('centerline inexploitable → null', () => {
+    expect(centerlineRatioForLatLon(null, 45, 0)).toBeNull();
+    expect(centerlineRatioForLatLon([{ lat: 45, lon: 0 }], 45, 0)).toBeNull();
+  });
+});
+
+describe('buildTraceMarkers', () => {
+  const beltoiseLoop = [
+    { lat: 45.2390749, lon: -0.0908906 },
+    { lat: 45.2424763, lon: -0.0967393 },
+    { lat: 45.2418313, lon: -0.0881423 },
+    { lat: 45.2390839, lon: -0.0889951 },
+  ];
+
+  it('puce engagée (donnée) + puce OR par virage annoté', () => {
+    const markers = buildTraceMarkers({
+      segments: [{ segmentIndex: 2, maxGLateral: 1.2, startProgress: 0.3, endProgress: 0.4 }],
+      annotatedCornerIndexes: [1],
+      centerline: beltoiseLoop,
+    });
+    expect(markers).toHaveLength(2);
+    expect(markers[0]).toMatchObject({ kind: 'engaged', color: colors.qdi.freinage });
+    expect(markers[1].kind).toBe('coach');
+    expect(markers[1].color).toBe(colors.heritage.gold);
+    expect(markers[1].t).toBeGreaterThanOrEqual(0);
+    expect(markers[1].t).toBeLessThanOrEqual(1);
+  });
+
+  it('sans centerline : les puces coach n’ont pas de position → absentes', () => {
+    const markers = buildTraceMarkers({
+      segments: [],
+      annotatedCornerIndexes: [1, 2],
+      centerline: null,
+    });
+    expect(markers).toEqual([]);
+  });
+
+  it('virage annoté en double → une seule puce', () => {
+    const markers = buildTraceMarkers({
+      segments: [],
+      annotatedCornerIndexes: [1, 1],
+      centerline: beltoiseLoop,
+    });
+    expect(markers).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Moments-clés — couleur par nature
+// ---------------------------------------------------------------------------
+
+describe('momentColor', () => {
+  it('référence → or (chrono), engagé → rouge de donnée, variation → violet', () => {
+    expect(momentColor('reference')).toBe(colors.heritage.gold);
+    expect(momentColor('engaged')).toBe(colors.qdi.freinage);
+    expect(momentColor('variation')).toBe(colors.qdi.regularite);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Debrief J+1 — 3 actes, garde doctrinale
+// ---------------------------------------------------------------------------
+
+describe('debriefModel', () => {
+  it('analyse absente → pending (rien de meublé)', () => {
+    expect(debriefModel(null, 'Gabin')).toEqual({ kind: 'pending' });
+  });
+
+  it('debrief_text présent et sûr → 3 actes générés', () => {
+    const model = debriefModel(
+      {
+        debriefText: 'Votre séance racontée.\n---\nLe temps long observé.\n---\nUne invitation.',
+        marginGlobal: 40,
+      },
+      'Gabin'
+    );
+    expect(model.kind).toBe('generated');
+    if (model.kind !== 'pending') {
+      expect(model.acts.map((a) => a.title)).toEqual(['Récit', 'Méta-analyse', 'Préparation']);
+      expect(model.acts[0].body).toBe('Votre séance racontée.');
+      expect(model.acts[2].body).toBe('Une invitation.');
+    }
+  });
+
+  it('texte prescriptif persisté → REFUSÉ, repli pédagogique (fail-closed)', () => {
+    const model = debriefModel(
+      { debriefText: 'Freinez plus tard au virage 3.\n---\nMéta.\n---\nPrépa.', marginGlobal: 40 },
+      null
+    );
+    expect(model.kind).toBe('fallback');
+    if (model.kind !== 'pending') {
+      expect(model.acts[0].body).not.toContain('Freinez');
+    }
+  });
+
+  it('debrief_text vide → repli pédagogique v1 (3 actes descriptifs)', () => {
+    const model = debriefModel({ debriefText: null, marginGlobal: 10 }, null);
+    expect(model.kind).toBe('fallback');
+    if (model.kind !== 'pending') {
+      expect(model.acts).toHaveLength(3);
+      expect(model.acts.every((a) => a.body.length > 0)).toBe(true);
+    }
+  });
+
+  it('generated INCOMPLET → actes générés SEULS, jamais comblés au gabarit (provenance pure)', () => {
+    const model = debriefModel(
+      { debriefText: 'Votre séance racontée, un seul acte.', marginGlobal: 40 },
+      null
+    );
+    expect(model.kind).toBe('generated');
+    if (model.kind !== 'pending') {
+      expect(model.acts).toHaveLength(1);
+      expect(model.acts[0].title).toBe('Récit');
+      // Aucun texte de gabarit maison sous la bannière « généré ».
+      expect(model.acts[0].body).toBe('Votre séance racontée, un seul acte.');
+    }
+  });
+
+  it('marge NON mesurée (null) → récit neutre, sans qualification d’intensité', () => {
+    const model = debriefModel({ debriefText: null, marginGlobal: null }, null);
+    expect(model.kind).toBe('fallback');
+    if (model.kind !== 'pending') {
+      expect(model.acts[0].body).toContain("n'a pas été mesurée");
+      // Aucune intensité fabriquée depuis une valeur inexistante.
+      expect(model.acts[0].body).not.toContain('dense');
+      expect(model.acts[0].body).not.toContain('rétractée');
+      expect(model.acts[0].body).not.toContain('aisance');
+    }
+  });
+
+  it('repli marge faible : tournure épicène (aucun accord masculin « allé »)', () => {
+    const model = debriefModel({ debriefText: null, marginGlobal: 5 }, null);
+    expect(model.kind).toBe('fallback');
+    if (model.kind !== 'pending') {
+      // « \b » regex ne gère pas les accents en JS — assertion par sous-chaîne.
+      expect(model.acts[0].body).not.toContain('allé');
+      expect(model.acts[0].body).toContain('vous avez cherché loin');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Divers — ligne méta, fil, viewer, morph id
+// ---------------------------------------------------------------------------
+
+describe('sessionMetaLine', () => {
+  it('« 22 tours · 87 km », singulier, absents retirés, rien → null', () => {
+    expect(sessionMetaLine(22, 87.2)).toBe('22 tours · 87 km');
+    expect(sessionMetaLine(1, null)).toBe('1 tour');
+    expect(sessionMetaLine(0, 12)).toBe('12 km');
+    expect(sessionMetaLine(0, null)).toBeNull();
+    expect(sessionMetaLine(0, 0)).toBeNull();
+  });
+});
+
+describe('lastThreadMessages', () => {
+  it('les 3 dernières bulles, ordre chronologique conservé', () => {
+    expect(lastThreadMessages([1, 2, 3, 4, 5])).toEqual([3, 4, 5]);
+    expect(lastThreadMessages([1, 2])).toEqual([1, 2]);
+    expect(lastThreadMessages([], 3)).toEqual([]);
+  });
+});
+
+describe('viewerShouldDismiss', () => {
+  it('tirage franc ou flick rapide → ferme ; sinon non', () => {
+    expect(viewerShouldDismiss(140, 0)).toBe(true);
+    expect(viewerShouldDismiss(30, 1200)).toBe(true);
+    expect(viewerShouldDismiss(30, 200)).toBe(false);
+    expect(viewerShouldDismiss(10, 2000)).toBe(false);
+  });
+});
+
+describe('bilanHeroMorphId', () => {
+  it('identifiant stable partagé accueil → bilan', () => {
+    expect(bilanHeroMorphId('s1')).toBe('bilan-hero:s1');
+  });
+});

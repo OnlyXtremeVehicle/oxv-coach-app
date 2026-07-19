@@ -26,6 +26,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { shouldShowTabBar } from '@/lib/appMap';
 import { useAppStateStore } from '@/store/useAppStateStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { HeroMorphProvider } from '@/ui/v2/motion';
 import { TabBar } from '@/ui/v2/TabBar';
 import { isV2CaptureFlowPath } from '@/ui/v2/centralButtonLogic';
 import { colors } from '@/ui/v2/tokens';
@@ -80,13 +81,18 @@ export default function App2Layout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg.base },
-          animation: 'none',
-        }}
-      />
+      {/* Registre HeroMorph inter-écrans (lot L1) : les sources (héros de
+          l'accueil, SessionCard) figent leur géométrie ici, l'écran Bilan la
+          consomme au take. Hors provider, tout retombe sur la porte. */}
+      <HeroMorphProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg.base },
+            animation: 'none',
+          }}
+        />
+      </HeroMorphProvider>
       {showTabBar ? (
         <TabBar
           current={currentTabOf(pathname)}

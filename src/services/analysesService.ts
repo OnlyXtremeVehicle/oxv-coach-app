@@ -18,6 +18,14 @@ export interface SessionAnalysis {
   telemetrySessionId: string;
   userId: string;
   marginGlobal: number;
+  /**
+   * Marge globale RÉELLEMENT mesurée : null si `margin_global` est NULL en
+   * base. Extension V2-L1 (ADDITIVE) — `marginGlobal` conserve son `?? 0`
+   * historique pour les appelants existants, mais tout écran « données
+   * réelles » doit lire CE champ pour ne pas transformer une absence en 0
+   * (un 0 fabriqué déclencherait un récit d'intensité sans mesure).
+   */
+  marginGlobalMeasured: number | null;
   marginZone: MarginZone | null;
   marginVehicle: number | null;
   marginPilot: number | null;
@@ -151,6 +159,7 @@ function mapRow(row: AnalysisRow): SessionAnalysis {
     telemetrySessionId: row.telemetry_session_id,
     userId: row.user_id,
     marginGlobal: Number(row.margin_global ?? 0),
+    marginGlobalMeasured: row.margin_global !== null ? Number(row.margin_global) : null,
     marginZone: (row.margin_zone as MarginZone) ?? null,
     marginVehicle: row.margin_vehicle !== null ? Number(row.margin_vehicle) : null,
     marginPilot: row.margin_pilot !== null ? Number(row.margin_pilot) : null,

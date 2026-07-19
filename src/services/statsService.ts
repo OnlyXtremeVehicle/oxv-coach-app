@@ -29,13 +29,28 @@ export interface CircuitAggregate {
   avgMarginPercent: number | null;
 }
 
+export interface LoadPilotStatsOptions {
+  /**
+   * true → une erreur DB REJETTE (throw) au lieu de rendre l'objet à zéros.
+   * Extension ADDITIVE (lot V2-L1, règle « données réelles câblées ») : le
+   * comportement historique (zéros silencieux) reste le défaut pour les
+   * appelants existants ; les écrans V2 passent strict pour distinguer
+   * « compte vide » (zéros réels) de « lecture en panne » (affiché « — »).
+   */
+  strict?: boolean;
+}
+
 /**
  * Charge les stats consolidées d'un pilote.
  *
  * @param userId — id du pilote. Côté pilote = son propre user. Côté coach,
  *                 = l'id du pilote suivi (RLS coach_select s'applique).
+ * @param options — { strict } : throw sur erreur DB (voir LoadPilotStatsOptions).
  */
-export async function loadPilotStats(userId: string): Promise<PilotStats> {
+export async function loadPilotStats(
+  userId: string,
+  options: LoadPilotStatsOptions = {}
+): Promise<PilotStats> {
   const { data: sessions, error } = await supabase
     .from('telemetry_sessions')
     .select(
@@ -46,6 +61,9 @@ export async function loadPilotStats(userId: string): Promise<PilotStats> {
 
   if (error || !sessions) {
     if (error) console.warn('[OXV][stats] loadPilotStats :', error.message);
+    if (options.strict) {
+      throw new Error(`loadPilotStats : ${error?.message ?? 'réponse vide'}`);
+    }
     return {
       totalSessions: 0,
       totalLaps: 0,
