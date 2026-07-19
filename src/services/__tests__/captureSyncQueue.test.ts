@@ -103,6 +103,12 @@ jest.mock('expo-file-system', () => {
   };
 });
 
+// Sentry (SEC-1) : helper mocké — le vrai module tire @sentry/react-native
+// (natif, hors périmètre ts-jest node) et suppose __DEV__ défini.
+jest.mock('@/lib/sentry', () => ({
+  captureException: jest.fn(),
+}));
+
 jest.mock('@/lib/supabase', () => {
   const g = globalThis as any;
   const ctrl = (): SbCtrl => g.__OXV_SB__;

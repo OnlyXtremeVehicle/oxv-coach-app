@@ -126,3 +126,20 @@ export function parseEurosToCents(input: string): number | null {
   if (cleaned === '' || !/^\d+(\.\d{0,2})?$/.test(cleaned)) return null;
   return Math.round(parseFloat(cleaned) * 100);
 }
+
+/** Forme générale d'un IBAN (2 lettres pays + 2 chiffres de clé + 10-30 alphanum). */
+const IBAN_LIKE = /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/;
+
+/**
+ * Garde SEC-1 : un lien de paiement acceptable est une URL http(s) — JAMAIS un
+ * IBAN. `coach_profiles.payment_link` est lisible par tous via la policy
+ * `coach_profiles_read_published` : des coordonnées bancaires n'y ont pas leur
+ * place (elles vivent dans `coach_payout_details`, RLS owner + admin). Une
+ * saisie vide reste acceptée (effacement du lien).
+ */
+export function isAcceptablePaymentLink(raw: string | null | undefined): boolean {
+  const v = (raw ?? '').trim();
+  if (v === '') return true;
+  if (IBAN_LIKE.test(v.replace(/\s+/g, '').toUpperCase())) return false;
+  return /^https?:\/\/\S+$/i.test(v);
+}

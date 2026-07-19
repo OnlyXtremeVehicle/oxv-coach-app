@@ -99,6 +99,7 @@
 import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system';
 
+import { captureException } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';
 import { uploadTelemetryFile } from '@/services/telemetryStorage';
 import { parseRaceBoxDataMessage, UbxFrameBuffer } from '@/ubx/parser';
@@ -321,6 +322,8 @@ async function quarantineOp(fileName: string): Promise<void> {
     });
   } catch (e) {
     console.warn(`[OXV][capture-queue] mise en quarantaine KO (${fileName}) : ${errorMessage(e)}`);
+    // SEC-1 : échec silencieux critique remonté à Sentry (aucun changement de flux).
+    captureException(e, { point: 'capture-queue.quarantaine_deplacement_ko', fichier: fileName });
   }
 }
 
@@ -759,6 +762,11 @@ async function drainOnce(): Promise<DrainPass> {
       // Fichier illisible/corrompu (écriture torpillée, JSON tronqué) : on le
       // sort de la file pour ne pas la bloquer, mais on le GARDE — ses octets
       // sont peut-être un lot de trames récupérable à la main.
+      // SEC-1 : remonté à Sentry (donnée pilote écartée = jamais silencieux).
+      captureException(new Error('capture-queue : fichier de file illisible mis en quarantaine'), {
+        point: 'capture-queue.quarantaine_fichier_illisible',
+        fichier: name,
+      });
       await quarantineOp(name);
       dropped += 1;
       continue;
@@ -773,6 +781,13 @@ async function drainOnce(): Promise<DrainPass> {
         console.warn(
           `[OXV][capture-queue] op ${op.type} abandonnée (erreur logique) : ${errorMessage(err)}`
         );
+        // SEC-1 : quarantaine logique remontée à Sentry (aucun changement de flux).
+        captureException(err, {
+          point: 'capture-queue.quarantaine_logique',
+          opType: op.type,
+          sessionId: op.sessionId,
+          fichier: name,
+        });
         await quarantineOp(name);
         dropped += 1;
         continue;
@@ -788,6 +803,12 @@ async function drainOnce(): Promise<DrainPass> {
           console.warn(
             `[OXV][capture-queue] ubx_upload en échec après ${attempts} tentatives — quarantaine : ${errorMessage(err)}`
           );
+          // SEC-1 : abandon d'upload .ubx remonté à Sentry (aucun changement de flux).
+          captureException(err, {
+            point: 'capture-queue.quarantaine_upload',
+            sessionId: op.sessionId,
+            attempts,
+          });
           await quarantineOp(name);
           dropped += 1;
           continue;
@@ -1023,6 +1044,8 @@ export async function resumeUnsyncedCaptures(): Promise<void> {
     await gcOldCaptures();
   } catch (e) {
     console.warn(`[OXV][capture-queue] reprise KO : ${errorMessage(e)}`);
+    // SEC-1 : reprise en échec remontée à Sentry (aucun changement de flux).
+    captureException(e, { point: 'capture-queue.reprise_ko' });
   }
 }
 
@@ -1202,6 +1225,8 @@ export async function reimportUbxToFrames(
       console.warn(
         `[OXV][capture-queue] réimport .ubx : lot KO (session ${sessionId}, user ${userId}) : ${errorMessage(err)}`
       );
+      // SEC-1 : lot de réimport perdu remonté à Sentry (aucun changement de flux).
+      captureException(err, { point: 'capture-queue.reimport_lot_ko', sessionId });
       continue;
     }
   }

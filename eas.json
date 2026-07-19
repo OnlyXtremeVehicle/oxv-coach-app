@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": ">= 5.9.0",
+    "version": ">= 12.0.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -8,6 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "autoIncrement": true,
+      "environment": "development",
       "android": {
         "buildType": "apk"
       },
@@ -19,6 +20,7 @@
     "preview": {
       "distribution": "internal",
       "autoIncrement": true,
+      "environment": "preview",
       "env": {
         "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
       },
@@ -32,6 +34,7 @@
     },
     "production": {
       "autoIncrement": true,
+      "environment": "production",
       "env": {
         "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
       },

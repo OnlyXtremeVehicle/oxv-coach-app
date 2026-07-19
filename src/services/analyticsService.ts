@@ -54,6 +54,30 @@ export function isAnalyticsEnabled(): boolean {
 }
 
 /**
+ * Garde PII (SEC-1) : clés de propriétés interdites dans un événement.
+ * La promesse « jamais de PII » devient vérifiée, pas seulement documentée.
+ */
+export const FORBIDDEN_ANALYTICS_PROP_KEYS = [
+  'email',
+  'name',
+  'first_name',
+  'last_name',
+  'handle',
+  'phone',
+  'iban',
+] as const;
+
+/**
+ * Retourne les clés interdites présentes dans les props (comparaison
+ * insensible à la casse). Pure — testée sans mock.
+ */
+export function findForbiddenAnalyticsKeys(props?: Record<string, unknown>): string[] {
+  if (!props) return [];
+  const forbidden = new Set<string>(FORBIDDEN_ANALYTICS_PROP_KEYS);
+  return Object.keys(props).filter((k) => forbidden.has(k.toLowerCase()));
+}
+
+/**
  * Envoie un événement anonyme à Plausible. No-op si désactivé.
  *
  * @param name  nom de l'événement (ex: 'session_analysee')
@@ -61,6 +85,16 @@ export function isAnalyticsEnabled(): boolean {
  *              Ne JAMAIS passer d'email, nom, id utilisateur, coordonnées.
  */
 export function trackEvent(name: string, props?: Record<string, string | number | boolean>): void {
+  // Garde DEV (SEC-1) : on casse fort en développement si une clé PII se
+  // glisse dans un événement — AVANT le court-circuit « domaine absent », pour
+  // que la garde joue aussi quand Plausible n'est pas configuré. En prod : no-op.
+  if (typeof __DEV__ !== 'undefined' && __DEV__) {
+    const bad = findForbiddenAnalyticsKeys(props);
+    if (bad.length > 0) {
+      throw new Error(`[OXV][analytics] clés PII interdites dans « ${name} » : ${bad.join(', ')}`);
+    }
+  }
+
   const domain = plausibleDomain();
   if (domain === '' || isAnalyticsOptedOut()) return;
 

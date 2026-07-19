@@ -13,6 +13,11 @@
  * plus câblé au build, c'est l'auto-instrumentation / l'upload de sourcemaps
  * via le plugin (à reconfigurer le jour où Sentry sera réellement activé en
  * prod). Cette fonction ne gère que le runtime JS.
+ *
+ * PROVENANCE DU DSN (SEC-1) : EXPO_PUBLIC_SENTRY_DSN est fourni au build par
+ * les variables d'environnement EAS (champ `environment` des 3 profils
+ * d'eas.json + `eas env:create`, jamais de DSN en clair dans le repo).
+ * Poser le DSN = action fondateur : cf. docs/architecture/16_SENTRY_SETUP.md.
  */
 
 import * as Sentry from '@sentry/react-native';

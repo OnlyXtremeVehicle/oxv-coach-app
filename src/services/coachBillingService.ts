@@ -16,6 +16,7 @@ import {
   canIssueInvoice,
   computeInvoiceTotals,
   formatInvoiceNumber,
+  isAcceptablePaymentLink,
   linesAmountHtCents,
   type VatRegime,
 } from '@/services/coachBillingLogic';
@@ -91,8 +92,16 @@ export async function updateMyBillingProfile(
 ): Promise<{ ok: boolean; error?: string }> {
   const coachId = await currentCoachId();
   if (!coachId) return { ok: false, error: 'not_authenticated' };
+  // Garde SEC-1 : payment_link est publié (policy read_published) — on refuse
+  // tout ce qui n'est pas une URL http(s), en particulier un IBAN.
+  if (fields.paymentLink !== undefined && !isAcceptablePaymentLink(fields.paymentLink)) {
+    return { ok: false, error: 'invalid_payment_link' };
+  }
   const patch: Record<string, unknown> = { coach_id: coachId };
-  if (fields.paymentLink !== undefined) patch.payment_link = fields.paymentLink;
+  if (fields.paymentLink !== undefined) {
+    const trimmed = (fields.paymentLink ?? '').trim();
+    patch.payment_link = trimmed === '' ? null : trimmed;
+  }
   if (fields.billingName !== undefined) patch.billing_name = fields.billingName;
   if (fields.billingAddress !== undefined) patch.billing_address = fields.billingAddress;
   if (fields.billingSiret !== undefined) patch.billing_siret = fields.billingSiret;

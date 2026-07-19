@@ -44,14 +44,10 @@ jobs:
         run: npm run format:check
 
       - name: Jest tests
+        # Les tests RLS ne tournent PAS ici (pas de secrets → describe.skip).
+        # Ils tournent dans le job dédié `rls`, sérialisés (--runInBand), qui
+        # ÉCHOUE si les secrets manquent. Voir docs/architecture/17_CI_RLS_SETUP.md.
         run: npm test -- --ci --reporters=default --coverage=false
-        env:
-          # Tests RLS — skippés silencieusement si secrets absents.
-          # Pour activer : définir ces 3 secrets dans Settings > Secrets.
-          # Voir docs/TESTS_RLS_SETUP.md
-          TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
-          TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
-          TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
 
       - name: Scan doctrinal (verbes interdits)
         run: npx tsx scripts/check-doctrine.ts
@@ -60,9 +56,9 @@ jobs:
         run: npx tsx scripts/check-accessibility.ts --strict
 
   rls:
-    name: tests RLS (Supabase branch de test)
+    name: tests RLS (projet Supabase de test)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,17 +75,25 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
           EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
 
-      # Job VISIBLE et dédié : on voit clairement si les tests RLS tournent.
-      # Sans les secrets (branche de test), le job reste vert et l'explique.
-      # Pour les activer : provisionner les 3 secrets (voir docs/TESTS_RLS_SETUP.md).
-      - name: Tests RLS (réels si secrets présents)
+      # SEC-1 ACTION 6 — fail-closed : sans les 3 secrets, le job ÉCHOUE
+      # (fini le skip silencieux). Seule exception : PRs de forks et
+      # dependabot, à qui GitHub n'injecte jamais les secrets → skip
+      # EXPLICITE et loggé. Provision : docs/architecture/17_CI_RLS_SETUP.md.
+      # ATTENTION : ces secrets pointent un projet Supabase de TEST, JAMAIS la prod.
+      - name: Tests RLS (obligatoires — échec si secrets absents)
         run: |
-          if [ -z "$TEST_SUPABASE_URL" ]; then
-            echo "::notice::TEST_SUPABASE_URL absent — tests RLS NON exécutés. Provisionner les 3 secrets (docs/TESTS_RLS_SETUP.md)."
-            exit 0
+          if [ -z "$TEST_SUPABASE_URL" ] || [ -z "$TEST_SUPABASE_ANON_KEY" ] || [ -z "$TEST_SUPABASE_SERVICE_KEY" ]; then
+            if [ "$IS_FORK" = "true" ] || [ "$IS_DEPENDABOT" = "true" ]; then
+              echo "::warning::Tests RLS SKIPPÉS explicitement : contexte fork/dependabot, GitHub n'injecte pas les secrets. Ils tourneront sur la branche interne."
+              exit 0
+            fi
+            echo "::error::Secrets CI RLS manquants — voir docs/architecture/17_CI_RLS_SETUP.md"
+            exit 1
           fi
           npm run test:rls -- --ci --reporters=default
         env:
           TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
           TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
           TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork == true }}
+          IS_DEPENDABOT: ${{ github.actor == 'dependabot[bot]' }}

@@ -6,12 +6,15 @@
 
 ## État actuel
 
-- **16 fichiers de tests RLS** dans `src/__tests__/rls/` (+ `setup.ts`).
-- **CI déjà câblée** : `.github/workflows/check.yml` a un job dédié **`tests RLS`**
-  qui exécute la suite si les secrets sont présents, et reste vert (avec un message)
-  sinon. Les tests tournent aussi, skippés en silence, dans le job principal.
-- **Par défaut : SKIP.** Sans `TEST_SUPABASE_URL` + `TEST_SUPABASE_SERVICE_KEY`, les
-  suites sont `describe.skip` — la CI standard tourne sans secret Supabase.
+- **16 fichiers de tests RLS** dans `src/__tests__/rls/` (+ `setup.ts`), 85 tests.
+- **CI fail-closed (SEC-1)** : `.github/workflows/check.yml` a un job dédié
+  **`tests RLS (projet Supabase de test)`** qui exécute la suite si les secrets
+  sont présents, et **ÉCHOUE** sinon (plus de skip silencieux — seule exception :
+  forks/dependabot, skip explicite loggé). Provision des secrets :
+  **`docs/architecture/17_CI_RLS_SETUP.md`**.
+- **En local sans env : SKIP.** Sans `TEST_SUPABASE_URL` +
+  `TEST_SUPABASE_SERVICE_KEY`, les suites sont `describe.skip` — le `npm test`
+  local tourne sans secret Supabase.
 - Script local dédié : **`npm run test:rls`** (= `jest src/__tests__/rls --runInBand`).
 
 > ⚠️ Ces tests ne peuvent PAS être exécutés par un assistant : ils ont besoin de la
@@ -20,18 +23,18 @@
 
 ## Fichiers (16)
 
-| Fichier | Périmètre |
-|---|---|
-| `setup.ts` | Helpers (createTestUser, assignCoachToPilot, userClient, adminClient…) |
-| `coachSessionsRLS` / `coachAnnotationsRLS` / `coachGradedAccessRLS` | Accès coach gradué (sessions, annotations, niveaux) |
-| `coachAiRLS` | Assistant IA coach (brouillons, anti-auto-validation, garde-fou) |
-| `developmentCyclesRLS` | Programmes adaptatifs (niveau `programme`, re-scan au partage) |
-| `pilotNotesRLS` | Carnet pilote (own-row, partage opt-in par note) |
-| `signatureSnapshotsRLS` | Empreinte consolidée (own-row, partage opt-in) |
-| `vehicleSetupsRLS` | Garage (réglages, own-row dérivé du véhicule) |
-| `supportRLS` | Support tickets (pilote/admin) |
-| `moderationRLS` | Modération (signaleur confidentiel, review admin-only, trigger intégrité) |
-| `eventsRLS` / `eventPartnersRLS` / `b2bReportRLS` | Événements, partenaires d'événement, rapports B2B |
+| Fichier                                                                   | Périmètre                                                                          |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `setup.ts`                                                                | Helpers (createTestUser, assignCoachToPilot, userClient, adminClient…)             |
+| `coachSessionsRLS` / `coachAnnotationsRLS` / `coachGradedAccessRLS`       | Accès coach gradué (sessions, annotations, niveaux)                                |
+| `coachAiRLS`                                                              | Assistant IA coach (brouillons, anti-auto-validation, garde-fou)                   |
+| `developmentCyclesRLS`                                                    | Programmes adaptatifs (niveau `programme`, re-scan au partage)                     |
+| `pilotNotesRLS`                                                           | Carnet pilote (own-row, partage opt-in par note)                                   |
+| `signatureSnapshotsRLS`                                                   | Empreinte consolidée (own-row, partage opt-in)                                     |
+| `vehicleSetupsRLS`                                                        | Garage (réglages, own-row dérivé du véhicule)                                      |
+| `supportRLS`                                                              | Support tickets (pilote/admin)                                                     |
+| `moderationRLS`                                                           | Modération (signaleur confidentiel, review admin-only, trigger intégrité)          |
+| `eventsRLS` / `eventPartnersRLS` / `b2bReportRLS`                         | Événements, partenaires d'événement, rapports B2B                                  |
 | `partnerRLS` / `pilotFriendshipsRLS` / `adminTablesRLS` / `roleMatrixRLS` | Partenaires, amitiés, tables admin, matrice rôle×télémétrie (règle cardinale §148) |
 
 ## Activer les tests (provision manuelle — Gabin)
@@ -39,6 +42,7 @@
 ### 1. Créer une Supabase Branch de test
 
 Dashboard Supabase du projet OXV (`fouvuqkdxarjpjbqnsjq`) :
+
 1. Onglet **Branches** → **Create branch** → nom `ci-rls-tests` (sans copie des données).
 2. La branche applique automatiquement **toutes les migrations** (jusqu'à `0029`).
 3. Récupérer, côté **Settings → API** de la branche :
@@ -63,11 +67,13 @@ npm run test:rls
 
 ### 3. Activer en CI
 
-Repo GitHub → **Settings → Secrets and variables → Actions** → ajouter :
-`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_KEY`.
+Procédure complète (projet de test gratuit, `gh secret set`, vérification du run,
+branch protection) : **`docs/architecture/17_CI_RLS_SETUP.md`**.
 
-Le job **`tests RLS`** de `check.yml` les lit automatiquement et exécute la suite à
-chaque push/PR. Sans les secrets, il reste vert avec une notice.
+Le job **`tests RLS (projet Supabase de test)`** de `check.yml` lit
+`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_KEY` et
+exécute la suite à chaque push/PR. Sans les secrets, il **échoue** (fail-closed,
+SEC-1) — sauf forks/dependabot (skip explicite loggé).
 
 ## Précautions
 
