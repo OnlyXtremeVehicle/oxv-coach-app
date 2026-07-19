@@ -181,10 +181,7 @@ export interface PassCandidate {
  * L'inscription à présenter : événement encore ouvert (fin >= maintenant),
  * statut inscrit/présent, la plus proche dans le temps. `now` en ms epoch.
  */
-export function pickActivePass<T extends PassCandidate>(
-  regs: readonly T[],
-  now: number
-): T | null {
+export function pickActivePass<T extends PassCandidate>(regs: readonly T[], now: number): T | null {
   const eligible = regs.filter(
     (r) =>
       r.event !== null &&

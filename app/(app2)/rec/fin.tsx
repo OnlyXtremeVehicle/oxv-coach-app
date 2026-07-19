@@ -20,7 +20,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  FadeIn,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { analyzeAndPersistSession } from '@/services/analyzeSessionService';
@@ -37,12 +45,9 @@ import { useSessionStore } from '@/store/useSessionStore';
 import {
   ChronoHero,
   colors,
-  Dial,
   haptic,
-  msToLapLabel,
   PressScale,
   radius,
-  RecordFlash,
   Sheet,
   space,
   StateView,
@@ -53,7 +58,6 @@ import {
 
 import { bilanHeroMorphId } from '@/features/miroir/bilanLogic';
 import { bio1GuardKey, runBio1, type Bio1Deps } from '@/features/rec/bio1Trigger';
-import { dayRecordCelebratedKey } from '@/features/rec/entreRunsLogic';
 import {
   buildFinSummary,
   finBilanRoute,
@@ -91,10 +95,12 @@ export default function FinScreen() {
       : null;
   const summary = buildFinSummary({ lapCount, durationMs, distanceKm: null });
 
-  // Record du jour déjà célébré à l'entre-runs ? → pas de re-flash ici.
-  const isDayRecord =
-    bestLapMs !== null && meta !== null && !storage.getString(dayRecordCelebratedKey(meta.id));
-  const [celebratePret, setCelebratePret] = useState(false);
+  // Célébration : AUCUN RecordFlash ici. La garde partagée recordCelebration.ts
+  // fait du Bilan la SOURCE UNIQUE de la célébration d'un record (all-time) —
+  // le célébrer aussi en fin le doublerait, et déduire « record » de l'absence
+  // d'une garde day-record fabriquerait une célébration sur un run ordinaire
+  // (vérif L2 [5]). La fin affiche donc le chrono nu ; le record du jour se
+  // célèbre à l'entre-runs (son vrai moment), l'all-time au bilan.
 
   // ── BIO-1 : déclenché une fois à l'entrée en « fini », non bloquant ────────
   const bio1Ran = useRef(false);
@@ -163,7 +169,6 @@ export default function FinScreen() {
       cancelled.current = true;
       clearTimeout(safety);
       const next = mapPreservationResult({ hasSessionId: sessionId.length > 0, threw: didThrow });
-      if (next === 'pret' && isDayRecord) setCelebratePret(true);
       setPhase(next);
     }
 
@@ -207,13 +212,7 @@ export default function FinScreen() {
 
         {phase === 'pret' ? (
           <Animated.View entering={FadeIn.duration(260)} style={styles.phaseBlock}>
-            <RecordFlash
-              trigger={celebratePret}
-              text={bestLapMs !== null ? msToLapLabel(bestLapMs) : '—'}
-            />
-            {bestLapMs !== null && !celebratePret ? (
-              <ChronoHero chronoMs={bestLapMs} size="l" />
-            ) : null}
+            {bestLapMs !== null ? <ChronoHero chronoMs={bestLapMs} size="l" /> : null}
             <Text style={styles.pretTitle} accessibilityRole="header">
               {finPhaseTitle('pret')}
             </Text>
@@ -307,22 +306,33 @@ function FiniPhase({
 // ---------------------------------------------------------------------------
 
 function PreservationPhase() {
-  const [progress, setProgress] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
+  const spin = useSharedValue(0);
 
   useEffect(() => {
+    // Indicateur INDÉTERMINÉ (arc rotatif) : le service d'analyse n'expose PAS
+    // de progression réelle — afficher un « 63 % » serait un chiffre fabriqué
+    // (vérif L2 [6], règle données réelles). On rassure par le mouvement et les
+    // micro-textes factuels, jamais par un pourcentage inventé.
+    spin.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.linear }), -1, false);
     const started = Date.now();
     const tick = setInterval(() => {
-      const elapsed = Date.now() - started;
-      setProgress(Math.min(95, (elapsed / PRESERVE_MIN_VISIBLE_MS) * 95));
-      setStepIdx(Math.min(PRESERVATION_STEPS.length - 1, Math.floor(elapsed / 1100)));
-    }, 150);
-    return () => clearInterval(tick);
-  }, []);
+      setStepIdx(
+        Math.min(PRESERVATION_STEPS.length - 1, Math.floor((Date.now() - started) / 1100))
+      );
+    }, 200);
+    return () => {
+      cancelAnimation(spin);
+      clearInterval(tick);
+    };
+  }, [spin]);
+
+  const arcStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }] }));
 
   return (
     <Animated.View entering={FadeIn.duration(260)} style={styles.phaseBlock}>
-      <Dial value={Math.round(progress)} max={100} label="PRÉSERVATION" unit="%" size="l" />
+      <Text style={styles.preserveEyebrow}>PRÉSERVATION</Text>
+      <Animated.View style={[styles.preserveArc, arcStyle]} accessibilityElementsHidden />
       <Text style={styles.preserveStep} accessibilityLiveRegion="polite">
         {PRESERVATION_STEPS[stepIdx]}
       </Text>
@@ -359,6 +369,9 @@ function IncidentSheet({
 
   async function pickPhoto() {
     const res = await ImagePicker.launchImageLibraryAsync({
+      // MediaTypeOptions est la forme acceptée par les typings d'expo-image-picker
+      // 15.1.0 installé (la forme tableau ['images'] arrive plus tard) — à migrer
+      // en même temps que l'upgrade du paquet (vérif L2 [11], non bloquant).
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
     });
@@ -522,6 +535,22 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 14,
     color: colors.text.mid,
+  },
+  preserveEyebrow: {
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: colors.text.low,
+  },
+  preserveArc: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 2,
+    borderColor: colors.border.strong,
+    borderTopColor: colors.text.hi,
+    marginTop: space.lg,
   },
   preserveStep: {
     fontFamily: typo.mono,

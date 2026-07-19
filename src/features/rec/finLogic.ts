@@ -70,7 +70,10 @@ export interface FinSummaryItem {
 }
 
 /** Durée en minutes entières entre deux epochs ms, ou null si indéterminée. */
-export function finDurationMin(startedAtMs: number | null, endedAtMs: number | null): number | null {
+export function finDurationMin(
+  startedAtMs: number | null,
+  endedAtMs: number | null
+): number | null {
   if (startedAtMs == null || endedAtMs == null) return null;
   if (!Number.isFinite(startedAtMs) || !Number.isFinite(endedAtMs)) return null;
   const d = endedAtMs - startedAtMs;
@@ -101,7 +104,11 @@ export function buildFinSummary(input: FinSummaryInput): FinSummaryItem[] {
     Number.isFinite(input.durationMs) &&
     input.durationMs > 0
   ) {
-    items.push({ key: 'minutes', label: 'Minutes', value: String(Math.round(input.durationMs / 60_000)) });
+    items.push({
+      key: 'minutes',
+      label: 'Minutes',
+      value: String(Math.round(input.durationMs / 60_000)),
+    });
   }
 
   if (

@@ -4,11 +4,7 @@
  * ici, uniquement la décision).
  */
 
-import {
-  INSIGNE_DRAWN_KEY,
-  shouldAnimateInsigne,
-  todayIsoLocal,
-} from '../arriveeInsigneLogic';
+import { INSIGNE_DRAWN_KEY, shouldAnimateInsigne, todayIsoLocal } from '../arriveeInsigneLogic';
 
 describe('todayIsoLocal — date locale AAAA-MM-JJ', () => {
   it('formate la date locale, mois/jour sur deux chiffres', () => {

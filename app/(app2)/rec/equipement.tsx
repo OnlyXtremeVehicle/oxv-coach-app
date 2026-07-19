@@ -316,18 +316,17 @@ function ConsentSheet({
         </View>
 
         <Text style={styles.sheetPara}>
-          Nous mesurons votre fréquence cardiaque pendant vos sessions, rien
-          d’autre. Selon votre équipement : votre Apple Watch (mesure au poignet,
-          indicative) ou une ceinture Polar appairée au paddock par le staff
-          (mesure de précision).
+          Nous mesurons votre fréquence cardiaque pendant vos sessions, rien d’autre. Selon votre
+          équipement : votre Apple Watch (mesure au poignet, indicative) ou une ceinture Polar
+          appairée au paddock par le staff (mesure de précision).
         </Text>
         <Text style={styles.sheetPara}>
-          Aucune donnée cardiaque ne s’affiche pendant que vous roulez. La
-          restitution se fait à l’arrêt, pour une lecture posée de votre séance.
+          Aucune donnée cardiaque ne s’affiche pendant que vous roulez. La restitution se fait à
+          l’arrêt, pour une lecture posée de votre séance.
         </Text>
         <Text style={styles.sheetPara}>
-          Vous seul y avez accès. Votre coach ne la voit que si vous l’y
-          autorisez. Vos données sont conservées 30 jours, puis supprimées.
+          Vous seul y avez accès. Votre coach ne la voit que si vous l’y autorisez. Vos données sont
+          conservées 30 jours, puis supprimées.
         </Text>
 
         <View style={styles.sheetChecks}>
@@ -356,7 +355,14 @@ function ConsentSheet({
         >
           <Text style={styles.primaryBtnLabel}>Accorder</Text>
         </PressScale>
-        <PressScale onPress={onClose} accessibilityLabel="Refuser" style={styles.ghostBtn}>
+        <PressScale
+          onPress={() => onSave(false, false)}
+          accessibilityLabel="Refuser"
+          style={styles.ghostBtn}
+        >
+          {/* « Refuser » = révocation EXPLICITE (vérif L2 [8]) : écrit
+              capture=false/share=false via onSave, jamais un simple close qui
+              laisserait un consentement pré-coché intact. */}
           <Text style={styles.ghostBtnLabel}>Refuser</Text>
         </PressScale>
       </ScrollView>
@@ -483,9 +489,10 @@ export default function EquipementScreen() {
       timer = setTimeout(() => {
         if (!cancelled && bluetoothService.getStatus() === 'scanning') {
           bluetoothService.stopScan();
-          setError((prev) =>
-            prev ??
-            "Aucun équipement détecté. Vérifiez qu'il est allumé et proche de votre téléphone."
+          setError(
+            (prev) =>
+              prev ??
+              "Aucun équipement détecté. Vérifiez qu'il est allumé et proche de votre téléphone."
           );
         }
       }, SCAN_TIMEOUT_MS);
@@ -523,9 +530,7 @@ export default function EquipementScreen() {
       ? myDevice.alias
       : displayDeviceName(pairedDevice.name)
     : (myDevice?.alias ?? 'Boîtier OXV Mirror');
-  const pairedSerial = pairedDevice
-    ? serialFromDeviceName(pairedDevice.name)
-    : mySerial;
+  const pairedSerial = pairedDevice ? serialFromDeviceName(pairedDevice.name) : mySerial;
 
   const showWatchReminder = shouldOfferWatchReminder({
     biometryFlagOn,
@@ -653,7 +658,9 @@ export default function EquipementScreen() {
                             <Text style={styles.deviceName} numberOfLines={1}>
                               {name}
                             </Text>
-                            {badge ? <Text style={styles.deviceBadge}>{badge.toUpperCase()}</Text> : null}
+                            {badge ? (
+                              <Text style={styles.deviceBadge}>{badge.toUpperCase()}</Text>
+                            ) : null}
                             <Text style={styles.deviceSignal}>{signal}</Text>
                           </View>
                         </View>
@@ -881,13 +888,13 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.qdi.acceleration,
+    backgroundColor: colors.text.hi, // vérif L2 [10] : pastille de statut = chrome neutre (QDI = données seules)
   },
   dotCore: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.qdi.acceleration,
+    backgroundColor: colors.text.hi, // vérif L2 [10] : pastille de statut = chrome neutre (QDI = données seules)
   },
   // Bloc biométrie
   bioBlock: {

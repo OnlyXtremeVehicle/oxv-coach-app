@@ -46,10 +46,7 @@ import {
 
 import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 import { useCaptureStep } from '@/features/rec/useCaptureStep';
-import {
-  decideReserve,
-  DIAL_COUNTDOWN_MAX_DAYS,
-} from '@/features/miroir/miroirHomeLogic';
+import { decideReserve, DIAL_COUNTDOWN_MAX_DAYS } from '@/features/miroir/miroirHomeLogic';
 import { useMiroirHome, type MiroirHome } from '@/features/miroir/useMiroirHome';
 
 /** « Sam. 19 juil. » — date courte de la prochaine journée (patron accueil). */
@@ -124,12 +121,7 @@ function HubContent({ home }: { home: MiroirHome }) {
         fallback={<CircuitTraceFallback />}
       >
         <View style={styles.heroRow}>
-          <Dial
-            value={home.daysToNextDay}
-            max={DIAL_COUNTDOWN_MAX_DAYS}
-            size="m"
-            label="jours"
-          />
+          <Dial value={home.daysToNextDay} max={DIAL_COUNTDOWN_MAX_DAYS} size="m" label="jours" />
           <View style={styles.heroInfo}>
             <Text style={styles.heroEyebrow}>PROCHAINE JOURNÉE</Text>
             {nextDay.circuitName !== null ? (

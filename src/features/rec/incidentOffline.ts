@@ -90,10 +90,7 @@ export function enqueue(
 }
 
 /** Retire l'entrée d'un `localId` (no-op si absente). */
-export function removeById(
-  queue: readonly PendingIncident[],
-  localId: string
-): PendingIncident[] {
+export function removeById(queue: readonly PendingIncident[], localId: string): PendingIncident[] {
   return queue.filter((q) => q.localId !== localId);
 }
 
@@ -132,19 +129,23 @@ export interface ReplayResult {
 
 /**
  * Rejoue la file : tente chaque entrée dans l'ordre, retire et PERSISTE après
- * chaque succès (une reprise interrompue ne renvoie pas ce qui est déjà parti),
- * garde les échecs pour la prochaine tentative. Ne rejette jamais : une erreur
- * du reporter est traitée comme un échec d'envoi (l'entrée reste en file).
+ * chaque succès, garde les échecs pour la prochaine tentative. Ne rejette
+ * jamais : une erreur du reporter est traitée comme un échec d'envoi.
+ *
+ * ANTI-RACE (vérif L2 [2]) : après CHAQUE succès on RELIT la file depuis le
+ * stockage avant de retirer et sauver — jamais un état dérivé d'un snapshot
+ * pris au début. Ainsi une déclaration ajoutée PENDANT le rejeu (l'attente
+ * réseau d'un envoi) n'est plus écrasée : on ne retire que le `localId`
+ * réellement envoyé, sur la file courante.
  */
 export async function replayQueue(
   storage: KVStorage,
   report: IncidentReporter
 ): Promise<ReplayResult> {
-  const queue = loadQueue(storage);
+  const snapshot = loadQueue(storage);
   const sent: string[] = [];
-  let remaining: PendingIncident[] = [...queue];
 
-  for (const item of queue) {
+  for (const item of snapshot) {
     let ok = false;
     try {
       const res = await report(item);
@@ -153,11 +154,11 @@ export async function replayQueue(
       ok = false;
     }
     if (ok) {
-      remaining = removeById(remaining, item.localId);
+      // Relecture atomique : la file a pu s'enrichir pendant l'envoi.
+      saveQueue(storage, removeById(loadQueue(storage), item.localId));
       sent.push(item.localId);
-      saveQueue(storage, remaining); // persistance incrémentale
     }
   }
 
-  return { sent, remaining };
+  return { sent, remaining: loadQueue(storage) };
 }

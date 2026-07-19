@@ -68,7 +68,10 @@ describe('enqueue / removeById — idempotence par uuid local', () => {
     expect(q).toHaveLength(1);
   });
   it('ne duplique jamais un même localId', () => {
-    const q1 = enqueue([incident('a')], incident('a', { description: 'variante ignorée mais longue' }));
+    const q1 = enqueue(
+      [incident('a')],
+      incident('a', { description: 'variante ignorée mais longue' })
+    );
     expect(q1).toHaveLength(1);
     expect(q1[0].description).toContain('Sortie de piste');
   });

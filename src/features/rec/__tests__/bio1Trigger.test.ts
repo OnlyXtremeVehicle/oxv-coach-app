@@ -1,9 +1,4 @@
-import {
-  bio1GuardKey,
-  BIO1_EXPECTED_HZ,
-  runBio1,
-  type Bio1Deps,
-} from '../bio1Trigger';
+import { bio1GuardKey, BIO1_EXPECTED_HZ, runBio1, type Bio1Deps } from '../bio1Trigger';
 
 /** Deps par défaut : tout permis, une lecture non vide, garde en mémoire. */
 function makeDeps(overrides: Partial<Bio1Deps> = {}): {

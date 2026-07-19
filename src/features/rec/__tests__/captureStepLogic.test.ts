@@ -15,6 +15,11 @@ describe('captureStep — hors jour J (le hub rend son propre contenu)', () => {
     'S2_initiation',
     'S3_attente',
     'S4_anticipation',
+    // S8/S9 : la séance vient de finir, mais `fin` est un TRANSIT atteint par
+    // `roulage` AVEC le sessionId réel — jamais une redirection du hub sans
+    // identifiant (vérif L2 [3]). En ouverture à froid, le hub rend son contenu.
+    'S8_atterrissage',
+    'S9_decantation',
     'S10_repos',
   ];
 
@@ -45,12 +50,12 @@ describe('captureStep — jour J (le hub redirige vers l’étape courante)', ()
     });
   });
 
-  it('S8 atterrissage → fin', () => {
-    expect(captureStep('S8_atterrissage')).toEqual({ step: 'fin', route: REC_ROUTES.fin });
+  it('S8 atterrissage → hors-jour (fin est un transit avec sessionId, pas une redirection)', () => {
+    expect(captureStep('S8_atterrissage')).toEqual({ step: 'hors-jour', route: null });
   });
 
-  it('S9 décantation → fin', () => {
-    expect(captureStep('S9_decantation')).toEqual({ step: 'fin', route: REC_ROUTES.fin });
+  it('S9 décantation → hors-jour', () => {
+    expect(captureStep('S9_decantation')).toEqual({ step: 'hors-jour', route: null });
   });
 });
 

@@ -19,8 +19,14 @@
  *     le hub REDIRIGE vers l'écran de l'étape courante :
  *       S5 approche   → arrivee    (« Vous y êtes »)
  *       S6 roulage    → roulage    (silence en piste)
- *       S7 paddock    → entre-runs (pause entre deux runs)
- *       S8 / S9       → fin        (fin de séance / décantation)
+ *       S7 paddock    → entre-runs (pause entre deux runs — cet écran porte le
+ *                       bouton « Préparer le prochain run » vers equipement, si
+ *                       bien que la PREMIÈRE capture reste toujours joignable)
+ *       S8 / S9       → hors-jour  (route null : la séance vient de finir mais
+ *                       l'écran `fin` est un TRANSIT atteint par `roulage` AVEC
+ *                       le sessionId réel — jamais par une redirection du hub
+ *                       sans identifiant (vérif L2 [3]). En ouverture à froid
+ *                       sur S8/S9, le hub rend son propre contenu.)
  */
 
 import type { PilotState } from '@/types/state';
@@ -77,14 +83,15 @@ export function captureStep(state: PilotState): CaptureStepResult {
       return { step: 'roulage', route: REC_ROUTES.roulage };
     case 'S7_paddock':
       return { step: 'entre-runs', route: REC_ROUTES.entreRuns };
-    case 'S8_atterrissage':
-    case 'S9_decantation':
-      return { step: 'fin', route: REC_ROUTES.fin };
     case 'S1_decouverte':
     case 'S2_initiation':
     case 'S3_attente':
     case 'S4_anticipation':
+    case 'S8_atterrissage':
+    case 'S9_decantation':
     case 'S10_repos':
+      // S8/S9 compris : `fin` est un transit atteint depuis `roulage` avec le
+      // sessionId réel — pas une redirection du hub sans identifiant.
       return { step: 'hors-jour', route: null };
   }
 }

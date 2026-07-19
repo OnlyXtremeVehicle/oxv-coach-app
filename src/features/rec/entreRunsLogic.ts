@@ -72,10 +72,7 @@ const HIDDEN_COUNTDOWN: BreakCountdown = {
  * connu, tombe sur le jour local courant, et est encore à venir. Sinon
  * `show=false` — le cadran est masqué (règle données réelles).
  */
-export function computeBreakCountdown(
-  nextStartMs: number | null,
-  nowMs: number
-): BreakCountdown {
+export function computeBreakCountdown(nextStartMs: number | null, nowMs: number): BreakCountdown {
   if (nextStartMs === null || !Number.isFinite(nextStartMs)) return HIDDEN_COUNTDOWN;
   if (!isSameLocalDay(new Date(nextStartMs), new Date(nowMs))) return HIDDEN_COUNTDOWN;
   const remaining = nextStartMs - nowMs;
@@ -139,8 +136,7 @@ export function evaluateDayBest(
 ): DayBestEval {
   const validCurrent =
     typeof currentBestMs === 'number' && Number.isFinite(currentBestMs) && currentBestMs > 0;
-  const validPrev =
-    typeof prevBestMs === 'number' && Number.isFinite(prevBestMs) && prevBestMs > 0;
+  const validPrev = typeof prevBestMs === 'number' && Number.isFinite(prevBestMs) && prevBestMs > 0;
 
   if (!validCurrent) {
     return { dayBestMs: validPrev ? (prevBestMs as number) : null, isNewDayRecord: false };

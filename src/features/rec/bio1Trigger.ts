@@ -54,7 +54,11 @@ export interface Bio1Deps {
   /** Consentement de CAPTURE cardio (loadBiometryConsents().capture). */
   loadCaptureConsent: () => Promise<boolean>;
   /** Lit le cardio sur [from, to] (HealthKit — gate consentement côté service). */
-  readHeartRate: (from: Date, to: Date, hasConsent: boolean) => Promise<{ ts: number; hr: number }[]>;
+  readHeartRate: (
+    from: Date,
+    to: Date,
+    hasConsent: boolean
+  ) => Promise<{ ts: number; hr: number }[]>;
   /** Persiste les échantillons (biometryService.saveSamples, source apple_watch). */
   saveSamples: (
     sessionId: string,

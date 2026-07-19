@@ -57,7 +57,9 @@ export async function getMyAttendanceOptIn(): Promise<boolean> {
 }
 
 /** Bascule mon opt-in (update own-row `users.show_attendance`). */
-export async function setMyAttendanceOptIn(next: boolean): Promise<{ ok: boolean; error?: string }> {
+export async function setMyAttendanceOptIn(
+  next: boolean
+): Promise<{ ok: boolean; error?: string }> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
   if (!uid) return { ok: false, error: 'Vous devez être connecté.' };
@@ -77,10 +79,7 @@ export async function setMyAttendanceOptIn(next: boolean): Promise<{ ok: boolean
  * `convoysService.getForSession`. RLS registrations own-row. Aucune journée
  * correspondante (ou annulée/archivée) → null.
  */
-export async function resolveDaySessionId(
-  userId: string,
-  dateIso: string
-): Promise<string | null> {
+export async function resolveDaySessionId(userId: string, dateIso: string): Promise<string | null> {
   const { data: regs } = await supabase
     .from('registrations')
     .select('session_id, status')
@@ -97,8 +96,6 @@ export async function resolveDaySessionId(
     .in('id', sessionIds)
     .eq('date', dateIso)
     .limit(5);
-  const day = (sessions ?? []).find(
-    (s) => s.status !== 'cancelled' && s.status !== 'archived'
-  );
+  const day = (sessions ?? []).find((s) => s.status !== 'cancelled' && s.status !== 'archived');
   return day?.id ?? null;
 }

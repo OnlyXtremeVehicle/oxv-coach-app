@@ -17,6 +17,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +42,7 @@ import {
   useDoorTransition,
 } from '@/ui/v2';
 
+import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 import {
   BREAK_DIAL_MAX_MS,
   computeBreakCountdown,
@@ -256,6 +258,18 @@ export default function EntreRunsScreen() {
           </Text>
         </PressScale>
       </View>
+
+      {/* Préparer le prochain run — l'accès à l'équipement DEPUIS le paddock
+          (parité v1, vérif L2 [1]) : sans lui, un pilote arrivé au circuit
+          (état S7) ne pourrait pas démarrer/relancer une capture. */}
+      <PressScale
+        onPress={() => router.replace(REC_ROUTES.equipement as never)}
+        accessibilityLabel="Préparer le prochain run"
+        containerStyle={styles.nextRunContainer}
+        style={styles.nextRun}
+      >
+        <Text style={styles.nextRunTxt}>Préparer le prochain run</Text>
+      </PressScale>
     </Animated.View>
   );
 }
@@ -362,5 +376,24 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textTransform: 'uppercase',
     color: colors.text.mid,
+  },
+  nextRunContainer: {
+    width: '100%',
+    marginTop: space.xl,
+  },
+  nextRun: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingVertical: space.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextRunTxt: {
+    fontFamily: typo.mono,
+    fontSize: 12,
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    color: colors.text.hi,
   },
 });

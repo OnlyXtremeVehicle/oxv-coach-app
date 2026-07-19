@@ -27,11 +27,7 @@ import { Canvas } from '@shopify/react-native-skia';
 import { FlashList } from '@shopify/flash-list';
 import QRCode from 'react-native-qrcode-svg';
 import Svg, { Path } from 'react-native-svg';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -599,11 +595,7 @@ function CheckRow({
   }));
 
   return (
-    <PressScale
-      onPress={onPress}
-      accessibilityLabel={label}
-      accessibilityState={{ checked }}
-    >
+    <PressScale onPress={onPress} accessibilityLabel={label} accessibilityState={{ checked }}>
       <View style={[styles.checkRow, divider && styles.checkDivider]}>
         <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
           <Svg width={14} height={14} viewBox="0 0 22 22">
