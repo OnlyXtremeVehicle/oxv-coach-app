@@ -51,27 +51,33 @@ const FULL = mk({
 // Mapping labels ↔ branches
 // ---------------------------------------------------------------------------
 
-describe('SIGNATURE_LABEL_BY_BRANCH — verrou SÉMANTIQUE (TODO_ARBITRAGE fondateur)', () => {
-  it('verrou du mapping intérimaire : chaque branche porte le libellé arbitré', () => {
-    // Décision d'orchestration V2-L1 (intérim, à faire trancher par Gabin) —
-    // remplace l'ancien zip positionnel qui mettait « Trajectoire » sur la
-    // branche fluidite, en collision avec l'accueil et le Bilan.
+describe('SIGNATURE_LABEL_BY_BRANCH — verrou de l’ARBITRAGE FONDATEUR (19/07/2026)', () => {
+  it('verrou du mapping arbitré : chaque branche porte le libellé tranché par le fondateur', () => {
+    // Arbitrage fondateur du 19/07/2026 (message, mot à mot) : Cap = la
+    // direction tenue (trajectoire) · Trajectoire = la constance du tracé
+    // (regularite) · Visée = le point de corde se joue au freinage · Plongée =
+    // l'engagement en sortie (acceleration) · Anticipation = enchaîner sans
+    // rupture (fluidite). Tout changement se re-négocie mot à mot avec lui.
     expect(SIGNATURE_LABEL_BY_BRANCH).toEqual({
-      trajectoire: 'Trajectoire',
+      trajectoire: 'Cap',
+      regularite: 'Trajectoire',
+      freinage: 'Visée',
+      acceleration: 'Plongée',
       fluidite: 'Anticipation',
-      freinage: 'Plongée',
-      acceleration: 'Visée',
-      regularite: 'Cap',
     });
   });
 
-  it('invariant cardinal : « Trajectoire » désigne la branche trajectoire, comme partout', () => {
-    // Un mot = une donnée : le même libellé que la légende de l'accueil
-    // (SignatureCard) et les Quatre piliers du Bilan (QDI_BRANCH_LABELS).
-    expect(SIGNATURE_LABEL_BY_BRANCH.trajectoire).toBe(QDI_BRANCH_LABELS.trajectoire);
-    expect(SIGNATURE_LABEL_BY_BRANCH.trajectoire).toBe('Trajectoire');
-    // Et aucun AUTRE sommet ne s'approprie le mot.
-    QDI_BRANCHES.filter((b) => b !== 'trajectoire').forEach((b) => {
+  it('registre Signature assumé : « Trajectoire » y désigne la régularité (choix fondateur)', () => {
+    // Choix CONSCIENT du fondateur : le vocabulaire Signature est un registre
+    // poétique à part — sur cet écran, « Trajectoire » = constance du tracé
+    // (branche regularite), distinct de la légende télémétrique de l'accueil
+    // et du Bilan (QDI_BRANCH_LABELS.trajectoire).
+    expect(SIGNATURE_LABEL_BY_BRANCH.regularite).toBe('Trajectoire');
+    expect(SIGNATURE_LABEL_BY_BRANCH.trajectoire).toBe('Cap');
+    // La légende technique, elle, ne bouge pas.
+    expect(QDI_BRANCH_LABELS.trajectoire).toBe('Trajectoire');
+    // Et un seul sommet Signature porte chaque mot.
+    QDI_BRANCHES.filter((b) => b !== 'regularite').forEach((b) => {
       expect(SIGNATURE_LABEL_BY_BRANCH[b]).not.toBe('Trajectoire');
     });
   });

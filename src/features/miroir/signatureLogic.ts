@@ -4,25 +4,27 @@
  * Module .ts sans React ni react-native : testé sous ts-jest/node
  * (src/features/miroir/__tests__/signatureLogic.test.ts).
  *
- * MAPPING LABELS ↔ BRANCHES — SÉMANTIQUE, intérimaire (V2-L1, correctif) :
- * // TODO_ARBITRAGE fondateur — le vocabulaire Cap/Trajectoire/Visée/Plongée/
- * // Anticipation vient du dossier maître, mais son affectation aux branches
- * // techniques n'a jamais été arbitrée. L'ancien zip POSITIONNEL mettait
- * // « Trajectoire » sur la branche fluidite alors que l'accueil (SignatureCard,
- * // QDI_BRANCH_LABELS) et les Quatre piliers du Bilan étiquettent
- * // « Trajectoire » = branche trajectoire : le même mot désignait deux données
- * // (et deux couleurs) à un tap d'écart. Mapping intérimaire retenu — un mot =
- * // une donnée, « Trajectoire » reste sur la branche trajectoire partout :
+ * MAPPING LABELS ↔ BRANCHES — ARBITRÉ PAR LE FONDATEUR (19/07/2026) :
+ * // TODO_ARBITRAGE — marqueur conservé à la demande du fondateur : le mapping
+ * // ci-dessous est SON arbitrage (message du 19/07), re-négociable mot à mot
+ * // seulement. Sens retenu, dans ses termes :
  * //
- * //   regularite   → « Cap »
- * //   trajectoire  → « Trajectoire »
- * //   acceleration → « Visée »
- * //   freinage     → « Plongée »
- * //   fluidite     → « Anticipation »
+ * //   trajectoire  → « Cap »          (la direction tenue, l'axe visé —
+ * //                                    le sens premier de « cap »)
+ * //   regularite   → « Trajectoire »  (ici le mot désigne la CONSTANCE du
+ * //                                    tracé tour après tour)
+ * //   freinage     → « Visée »        (la visée du point de corde se joue
+ * //                                    au freinage, à l'entrée)
+ * //   acceleration → « Plongée »      (l'engagement en sortie, la remise
+ * //                                    des gaz — le plongeon vers l'avant)
+ * //   fluidite     → « Anticipation » (anticiper = enchaîner sans rupture,
+ * //                                    lire le virage suivant dans le présent)
  * //
- * // À faire trancher par Gabin : garder ce mapping sémantique, ou renommer
- * // les libellés partout (accueil + bilan + signature) d'un seul geste.
- * // L'accueil et le bilan gardent les labels canoniques QDI_BRANCH_LABELS.
+ * // CONSÉQUENCE ASSUMÉE (choix conscient du fondateur) : sur CET écran,
+ * // « Trajectoire » désigne la branche regularite — un sens Signature
+ * // distinct de la légende technique de l'accueil/du Bilan
+ * // (QDI_BRANCH_LABELS, où Trajectoire = branche trajectoire). Le vocabulaire
+ * // Signature est un registre poétique à part, pas la légende télémétrique.
  *
  * Les couleurs QDI (colors.qdi) et les valeurs restent attachées aux branches
  * TECHNIQUES — seul le libellé de sommet change. Un test verrouille ce mapping
@@ -41,17 +43,16 @@ import { QDI_BRANCHES, type QdiBranch } from '@/ui/v2/vizMath';
 // ---------------------------------------------------------------------------
 
 /**
- * Mapping branche technique → libellé de sommet, SÉMANTIQUE (voir l'en-tête,
- * TODO_ARBITRAGE fondateur). Invariant cardinal, verrouillé par test :
- * « Trajectoire » désigne la branche `trajectoire` — le même mot que sur la
- * légende de l'accueil et les Quatre piliers du Bilan (QDI_BRANCH_LABELS).
+ * Mapping branche technique → libellé de sommet — ARBITRAGE FONDATEUR du
+ * 19/07/2026 (voir l'en-tête). Verrouillé par test : tout changement est un
+ * choix explicite, re-négociable mot à mot avec le fondateur uniquement.
  */
 export const SIGNATURE_LABEL_BY_BRANCH = {
-  trajectoire: 'Trajectoire',
+  trajectoire: 'Cap',
+  regularite: 'Trajectoire',
+  freinage: 'Visée',
+  acceleration: 'Plongée',
   fluidite: 'Anticipation',
-  freinage: 'Plongée',
-  acceleration: 'Visée',
-  regularite: 'Cap',
 } as const satisfies Record<QdiBranch, string>;
 
 export type SignatureLabel = (typeof SIGNATURE_LABEL_BY_BRANCH)[QdiBranch];
