@@ -8,17 +8,21 @@
  * Décompose un virage en trois temps : freinage (rouge donnée) / corde (crème,
  * minimum de vitesse au pic de G latéral) / réaccélération (vert). Cockpit :
  * barre de statut, nombre héros (vitesse à la corde, à lueur crème neutre),
- * profil de vitesse en CRÈME à halo sur fond de phases, puis cartouches et
- * lignes de phase.
+ * bandeau de phases (chrome ténu), puis cartouches de zone et lignes de phase.
+ *
+ * DONNÉES RÉELLES : la tranche `AnatomyCorner` ne porte que des SCALAIRES
+ * (apex_speed_kmh, brake_dist_m, accel_dist_m, g_lat_apex) — aucune série
+ * point-par-point. On NE trace donc AUCUNE courbe de vitesse : une courbe
+ * fabriquée en couleur de donnée se lirait comme une trace mesurée. Seuls le
+ * nombre héros, les cartouches et les lignes de phase portent la donnée réelle.
  *
  * Doctrine V3 : l'or est réservé au chrono/record — la vitesse (donnée de perf)
- * est neutre (crème). Pas de rouge de marque (réservé marque/coach). DÉMO virage
- * 3 (95 m / 78 km/h / 140 m), telemetry_frames vide.
+ * est neutre (crème). Pas de rouge de marque (réservé marque/coach).
  */
 
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Line, Rect } from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
@@ -27,7 +31,6 @@ import type { AnatomyCorner } from '@/circuit/sessionInsights';
 const C = theme.dataColors;
 // V3 : vitesse = donnée de perf → neutre crème (l'or reste au chrono/record).
 const CREAM = theme.palette.cream;
-const CREAM_MUTE = theme.palette.creamMute;
 
 interface Phase {
   color: string;
@@ -42,14 +45,22 @@ export interface AnatomieVizProps {
   anatomy: AnatomyCorner[] | null;
 }
 
-/** Entier en français (séparateur d'unités implicite, arrondi km/h & m). */
+/** Champ absent → tiret (jamais de valeur inventée, jamais de crash). */
+const DASH = '—';
+
+/**
+ * Entier en français (arrondi km/h & m). Champ null/manquant/NaN → tiret.
+ * Le type déclare `number`, mais la donnée peut être absente en prod (doc 09
+ * §5) : on garde le contrôle Number.isFinite pour ne jamais appeler Math.round
+ * sur un null.
+ */
 function frInt(n: number): string {
-  return String(Math.round(n));
+  return Number.isFinite(n) ? String(Math.round(n)) : DASH;
 }
 
-/** Décimal en français (virgule) — utilisé pour les g. */
+/** Décimal en français (virgule) — utilisé pour les g. Absent → tiret. */
 function frDec(n: number, decimals: number): string {
-  return n.toFixed(decimals).replace('.', ',');
+  return Number.isFinite(n) ? n.toFixed(decimals).replace('.', ',') : DASH;
 }
 
 export function AnatomieViz({ anatomy }: AnatomieVizProps) {
@@ -66,9 +77,16 @@ export function AnatomieViz({ anatomy }: AnatomieVizProps) {
     return () => loop.stop();
   }, [blink]);
 
-  // HONNÊTE-VIDE : sans virage exploitable, on ne fabrique aucun profil.
+  // HONNÊTE-VIDE : sans virage exploitable — ou avec un virage dont TOUS les
+  // scalaires sont absents — on ne fabrique rien, on affiche l'état sobre.
   const corner = anatomy && anatomy.length > 0 ? anatomy[0] : null;
-  if (!corner) {
+  const hasScalar =
+    corner != null &&
+    (Number.isFinite(corner.apex_speed_kmh) ||
+      Number.isFinite(corner.brake_dist_m) ||
+      Number.isFinite(corner.accel_dist_m) ||
+      Number.isFinite(corner.g_lat_apex));
+  if (!corner || !hasScalar) {
     return (
       <View style={styles.card}>
         <Text style={styles.emptyText}>Données insuffisantes sur cette séance</Text>
@@ -132,55 +150,29 @@ export function AnatomieViz({ anatomy }: AnatomieVizProps) {
           <Text style={styles.heroLabel}>VITESSE À LA CORDE · MINIMUM</Text>
         </View>
 
-        {/* Profil de vitesse : courbe CRÈME (donnée neutre) à halo sur fond de phases. */}
-        <Svg width="100%" height={132} viewBox="0 0 320 132">
+        {/* Bandeau de phases : chrome ténu (freinage / corde / réaccél.). La
+            tranche réelle ne porte que des scalaires — aucune série point-par-
+            point — donc AUCUNE courbe de vitesse n'est tracée. Les vraies
+            valeurs vivent dans le nombre héros, les cartouches de zone et les
+            lignes de phase ci-dessous. */}
+        <Svg width="100%" height={44} viewBox="0 0 320 44">
           {/* Zones de fond : freinage / corde / réaccél. (teintes d'identité, ténues). */}
-          <Rect x={0} y={0} width={110} height={120} fill="rgba(230,57,70,0.06)" />
-          <Rect x={110} y={0} width={60} height={120} fill="rgba(245,245,247,0.07)" />
-          <Rect x={170} y={0} width={150} height={120} fill="rgba(74,222,128,0.06)" />
+          <Rect x={0} y={0} width={110} height={44} fill="rgba(230,57,70,0.06)" />
+          <Rect x={110} y={0} width={60} height={44} fill="rgba(245,245,247,0.07)" />
+          <Rect x={170} y={0} width={150} height={44} fill="rgba(74,222,128,0.06)" />
 
-          {/* Grille horizontale : filets fins (le ton sombre porte la discrétion). */}
-          {[34, 70, 106].map((y) => (
+          {/* Séparateurs de phase : filets fins (chrome, jamais couleur de donnée). */}
+          {[110, 170].map((x) => (
             <Line
-              key={y}
-              x1={0}
-              y1={y}
-              x2={320}
-              y2={y}
+              key={x}
+              x1={x}
+              y1={0}
+              x2={x}
+              y2={44}
               stroke={theme.palette.line}
               strokeWidth={1}
             />
           ))}
-
-          {/* Courbe de vitesse — halo crème atténué puis trait net crème. */}
-          <Path
-            d="M6,24 C50,28 85,62 110,86 C130,102 145,102 170,90 C210,70 260,42 314,26"
-            fill="none"
-            stroke={CREAM_MUTE}
-            strokeWidth={6}
-            opacity={0.16}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M6,24 C50,28 85,62 110,86 C130,102 145,102 170,90 C210,70 260,42 314,26"
-            fill="none"
-            stroke={CREAM}
-            strokeWidth={2}
-            opacity={0.95}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Point de corde (minimum de vitesse) — halo crème + point net crème. */}
-          <Circle cx={140} cy={100} r={9} fill={CREAM} opacity={0.16} />
-          <Circle cx={140} cy={100} r={3.4} fill={CREAM} />
-
-          {/* Repère de vitesse à la corde (mono). La vitesse d'entrée n'est pas
-              dans la tranche → aucun repère fabriqué. */}
-          <SvgText x={118} y={124} fontSize={8} fill={CREAM} fontFamily={theme.fonts.mono}>
-            {apex} km/h
-          </SvgText>
         </Svg>
 
         {/* Trois mesures de zone. */}

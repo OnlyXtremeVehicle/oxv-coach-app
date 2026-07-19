@@ -6,23 +6,23 @@
  * Spec     : 02_moteur_insights.md §4.5.
  *
  * Pas combien de G, mais en combien de temps la masse se transfère. Cockpit :
- * barre de statut, durée de mise en appui en nombre héros (lueur dorée), montée
- * du G latéral (bleu) et vitesse de roulis (or à halo) avec la fenêtre de mise
- * en charge, puis barres de durée par virage.
+ * barre de statut, durée de mise en appui la plus progressive en nombre héros,
+ * puis barres de durée de prise de roulis par virage.
  *
  * DONNÉES : `transfer` (relevé par virage `load_transfer`, en secondes). Les
- * barres de durée et le virage héros en sont dérivés ; le tracé d'appui reste un
- * schéma (le détail image-par-image attend telemetry_frames / Valence). Prop
- * nulle ou `{}` → état vide honnête, jamais de valeur inventée.
+ * barres de durée et le virage héros en sont dérivés — chaque valeur affichée
+ * trace vers ce relevé. Aucun tracé capteur n'est dessiné : le relevé ne porte
+ * que des scalaires par virage, pas de série image-par-image (celle-ci attend
+ * telemetry_frames / Valence). Prop nulle, `{}` ou tous scalaires absents →
+ * état vide honnête, jamais de courbe ni de valeur inventée.
  *
  * Doctrine : mesure la durée de mise en charge (constat). Ne dit jamais comment
- * attaquer l'appui. L'or est la donnée (roulis, fenêtre) ; bleu freinage pour
- * l'appui, accel/vert pour les entrées progressives. Aucune couleur heritage.
+ * attaquer l'appui. Barres = donnée dérivée (crème/accel/flow selon le rang) ;
+ * l'or reste au chrono/record. Aucune couleur heritage.
  */
 
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Line, Path, Text as SvgText } from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
@@ -63,8 +63,9 @@ function cornerIndex(key: string): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
-/** 0.4 → « 0,4 » ; 0.42 → « 0,42 » (virgule décimale, sans zéros parasites). */
+/** 0.4 → « 0,4 » ; 0.42 → « 0,42 » (virgule décimale). Non fini → « — ». */
 function fmtSeconds(s: number): string {
+  if (!Number.isFinite(s)) return '—';
   return String(Math.round(s * 100) / 100).replace('.', ',');
 }
 
@@ -126,7 +127,7 @@ export function TransfertViz({ transfer }: TransfertVizProps) {
 
   return (
     <View>
-      {/* Instrument : statut + héros + tracé d'appui. */}
+      {/* Instrument : statut + héros (durée de mise en appui la plus progressive). */}
       <View style={styles.card}>
         <View style={styles.status}>
           <View style={styles.statusLeft}>
@@ -145,78 +146,7 @@ export function TransfertViz({ transfer }: TransfertVizProps) {
             {`MISE EN APPUI · VIRAGE ${data.heroIndex} · LA PLUS PROGRESSIVE`}
           </Text>
         </View>
-
-        <Text style={styles.capSolo}>{`Entrée virage ${data.heroIndex} · prise de roulis`}</Text>
-        <Svg width="100%" height={130} viewBox="0 0 320 130">
-          {/* Ligne de base : filet fin (même grammaire que les autres viz). */}
-          <Line x1={0} y1={100} x2={320} y2={100} stroke={theme.palette.line} strokeWidth={1} />
-          {/* G latéral qui monte puis plafonne (appui). */}
-          <Path
-            d="M20,100 C60,98 80,60 120,44 C160,32 240,30 300,30"
-            fill="none"
-            stroke={C.brake}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Vitesse de roulis (gyro X) — or, halo puis trait net. */}
-          <Path
-            d="M20,100 C50,98 70,42 95,40 C115,38 130,82 160,92 C200,99 240,99 300,99"
-            fill="none"
-            stroke={GOLD}
-            strokeWidth={5}
-            opacity={0.16}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          <Path
-            d="M20,100 C50,98 70,42 95,40 C115,38 130,82 160,92 C200,99 240,99 300,99"
-            fill="none"
-            stroke={GOLD}
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* Fenêtre de mise en charge : début d'appui → stabilisation du roulis. */}
-          <Line
-            x1={70}
-            y1={14}
-            x2={70}
-            y2={110}
-            stroke={theme.palette.edge}
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
-          <Line
-            x1={160}
-            y1={14}
-            x2={160}
-            y2={110}
-            stroke={theme.palette.edge}
-            strokeWidth={1}
-            strokeDasharray="3 3"
-          />
-          <Line
-            x1={70}
-            y1={18}
-            x2={160}
-            y2={18}
-            stroke={GOLD}
-            strokeWidth={1.4}
-            strokeLinecap="round"
-          />
-          <SvgText x={84} y={22} fill={GOLD} fontFamily={theme.fonts.mono} fontSize={8.5}>
-            {`${fmtSeconds(data.heroSeconds)} s`}
-          </SvgText>
-        </Svg>
-        <View style={styles.legend}>
-          <Legend color={C.brake} label="G latéral (appui)" />
-          <Legend color={GOLD} label="Vitesse de roulis · gyro X" />
-        </View>
       </View>
-      <Text style={styles.hint}>
-        ↑ la masse finit de se transférer quand le roulis se stabilise
-      </Text>
 
       {/* Temps de prise de roulis par virage — constat, pas consigne. */}
       <View style={styles.card}>
@@ -239,15 +169,6 @@ export function TransfertViz({ transfer }: TransfertVizProps) {
           </View>
         ))}
       </View>
-    </View>
-  );
-}
-
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legw}>
-      <View style={[styles.sw, { backgroundColor: color }]} />
-      <Text style={styles.legwText}>{label}</Text>
     </View>
   );
 }
@@ -333,32 +254,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
-  },
-  legend: {
-    flexDirection: 'row',
-    gap: theme.spacing.lg,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.palette.line,
-  },
-  legw: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  sw: { width: 14, height: 3, borderRadius: 2 },
-  legwText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-    color: theme.palette.creamMute,
-  },
-  hint: {
-    textAlign: 'center',
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.4,
-    color: theme.palette.creamMute,
-    opacity: 0.7,
-    marginBottom: theme.spacing.lg,
   },
   row: {
     flexDirection: 'row',
