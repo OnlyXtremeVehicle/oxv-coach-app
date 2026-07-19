@@ -225,3 +225,21 @@ USING (
 3. **Coordination site** : le dossier `supabase/_pending_site_coordination/`
    (migration SUPERSEDED de masquage colonne) peut être supprimé — la
    contrainte du lot B rend l'approche par REVOKE de colonnes inutile.
+
+---
+
+## APPLIQUÉ EN PROD — 2026-07-19
+
+Toutes les mutations ci-dessus ont été appliquées et vérifiées sur `fouvuqkdxarjpjbqnsjq` (approbation fondateur : AskUserQuestion « Oui — tout appliquer » + « Durcir ritual_dispatcher »).
+
+- **Étapes 1-2** : `notify-pilot-coach-assigned` v15 et `notify-coach-consent-received` v15 redéployées `verify_jwt=true`. Test : POST anonyme → **401** (les deux).
+- **Étape 3** : migration `sec1_a_views` appliquée (DROP+CREATE, `CREATE OR REPLACE` refusait le changement de type de `sessions.format`). Smoke : les 7 vues site lisibles en `anon` (sessions_public=1, session_availability=1, qdi_public=4, testimonials/crews/plateau/pavillon_meteo=0), `pavillon_pilotes_jour` lisible `authenticated` (0) et **refusée `anon`** (droits conservés).
+- **Étape 4** : `sec1_b_pii` appliquée (contrainte CHECK + RLS `_backup_sessions_20260719`). 0 ligne violante.
+- **Étape 5** : `sec1_c_payout` appliquée (`coach_payout_details`, RLS owner+admin).
+- **Étape 6** : `sec1_d_search_path` appliquée (search_path des 2 triggers + REVOKE anon sur 9 DEFINER).
+- **Étape 7** : `sec1_e_storage` appliquée (coach exclu de `pilot-media/{uid}/incidents/`).
+- **Chaîne de purge** : `purge_user_data(uuid)` appliquée (0 écart de colonne vérifié) ; edge `purge-deleted-accounts` **v5** déployée (test anonyme→401, secret Vault→200 count:0) ; **cron `purge-deleted-accounts-daily` (jobid 9, `30 2 * * *`) PLANIFIÉ** — la purge RGPD tourne désormais.
+- **Hors périmètre approuvé — `ritual_dispatcher`** : garde JWT-non-vérifié remplacée par le secret Vault (v23, `x-oxv-invoke-secret`) ; job cron réécrit **sans service_role en clair** (ancien jobid 3 → nouveau jobid 10). Tests : sans auth→401, **ancien JWT forgé→401 (faille fermée)**, secret valide→200.
+- **Advisors sécurité après application** : **0 ERROR** (les 8 `security_definer_view` ont disparu), `function_search_path_mutable` = 0. WARN restants assumés (voir §8).
+
+**Reste ouvert (non traité, documenté)** : DROP des `_backup_*` (décision fondateur — RLS déjà activée en défense) ; effacement Stripe (API séparée) ; `incident_reports` TODO_AVOCAT E5 ; DSN Sentry + secrets CI RLS (actions fondateur, docs 16/17).

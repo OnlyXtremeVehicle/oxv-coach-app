@@ -5,7 +5,7 @@
 // Appelé toutes les heures par pg_cron de 16h à 19h UTC (17h-21h Paris).
 //
 // Déploiement : supabase functions deploy ritual_dispatcher
-// Test manuel  : curl -X POST {URL} -H "Authorization: Bearer {SERVICE_ROLE}"
+// Test manuel  : curl -X POST {URL} -H "x-oxv-invoke-secret: {EDGE_FUNCTIONS_INVOKE_SECRET}"
 // =============================================================================
 
 import {
@@ -26,35 +26,13 @@ import { handleJMinus1 } from './handlers/jminus1.ts';
 // -----------------------------------------------------------------------------
 
 Deno.serve(async (req: Request) => {
-  // Sécurité : seul un appel porteur d'un JWT service_role pour CE projet
-  // peut déclencher la function. pg_cron envoie ce token, et l'admin peut
-  // déclencher manuellement avec la même clé.
-  //
-  // On décode le JWT plutôt que de comparer à Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  // parce que cette env var n'est pas toujours injectée correctement selon
-  // les versions de la plateforme Supabase (les noms réservés ont changé).
-  // Le décodage du JWT est robuste : si le payload contient role:service_role
-  // ET ref:<projet>, c'est qu'il a été signé par les clés de Supabase.
-  const authHeader = req.headers.get('Authorization') ?? '';
-  const bearer = authHeader.replace(/^Bearer\s+/i, '').trim();
-  const expectedRef = Deno.env.get('SUPABASE_URL')?.match(/https:\/\/([^.]+)\.supabase/)?.[1] ?? '';
-
-  let authorized = false;
-  try {
-    const parts = bearer.split('.');
-    if (parts.length === 3) {
-      let payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
-      payloadB64 += '='.repeat((4 - payloadB64.length % 4) % 4);
-      const payload = JSON.parse(atob(payloadB64));
-      const isServiceRole = payload.role === 'service_role';
-      const refMatch = !expectedRef || payload.ref === expectedRef;
-      const notExpired = !payload.exp || payload.exp * 1000 > Date.now();
-      authorized = isServiceRole && refMatch && notExpired;
-    }
-  } catch (_) { /* JWT malformé → not authorized */ }
-
-  if (!authorized) {
-    return new Response(JSON.stringify({ error: 'Unauthorized — service_role JWT required for this project' }), {
+  // SEC-1 (19/07/2026) : l'ancienne garde décodait le JWT sans vérifier la
+  // signature (token forgé accepté). Remplacée par le secret interne du Vault,
+  // patron des jobs 7/8.
+  const INVOKE_SECRET = Deno.env.get('EDGE_FUNCTIONS_INVOKE_SECRET') ?? '';
+  const provided = req.headers.get('x-oxv-invoke-secret') ?? '';
+  if (!INVOKE_SECRET || provided !== INVOKE_SECRET) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
     });
