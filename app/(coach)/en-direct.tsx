@@ -15,6 +15,22 @@
  * sur la fiche direct (en-direct/[sessionId], usePilotLive) — un toucher l'ouvre.
  * Aucun classement, aucune consigne. L'or (chrono) est donc absent de cet écran.
  *
+ * CARDIO (BIO) : la pastille colorée des pilotes qui partagent leur cardio vient
+ * de `useRosterBiometry`, pas de la présence — la FC n'emprunte QUE le canal privé
+ * par-session, jamais `live:roster` (RGPD art. 9). La protection est STRUCTURELLE
+ * (aucune FC n'est écrite dans RosterMeta), pas un filtre à l'exécution.
+ *
+ * Le roster n'affiche AUCUN bpm : une valeur chiffrée en liste inviterait à
+ * comparer les pilotes entre eux, ce que la doctrine interdit. La mesure se lit en
+ * ouvrant le direct du pilote. La pastille est inerte : pas de pulsation, pas de
+ * clignotement — ce serait une alerte, et l'app ne diagnostique pas.
+ *
+ * ÉCHELLE PROPRE À CHAQUE PILOTE : la couleur situe la FC dans la plage observée
+ * DE CE PILOTE pendant CETTE séance, jamais sur un barème commun. Deux pastilles
+ * de teintes différentes ne se comparent donc pas — d'où la mention explicite
+ * sous la liste : sans elle, une colonne de points ordonnés se lirait comme un
+ * classement, et un classement entre pilotes est exclu par la doctrine.
+ *
  * En dev, un déclencheur simule un pilote en piste (sans RaceBox ni réseau).
  */
 
@@ -24,7 +40,9 @@ import { router } from 'expo-router';
 
 import { EmptyState } from '@/components/instruments';
 import { useLiveRoster } from '@/hooks/useLiveRoster';
+import { type RosterBioState, useRosterBiometry } from '@/hooks/useRosterBiometry';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import { cardioZoneColor, cardioZoneLabel } from '@/services/cardioZoneLogic';
 import { type RosterEntry } from '@/services/liveSessionLogic';
 import { joinRoster, startSimulatedStream } from '@/services/liveSessionService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -56,6 +74,10 @@ export default function EnDirectScreen() {
 
   const coachId = useAuthStore((st) => st.profile?.id ?? null);
   const { roster, ready } = useLiveRoster(coachId);
+  // Le cardio est un flux SÉPARÉ de la présence : le hook n'ouvre un canal privé
+  // que pour les pilotes dont `bioShared` est explicitement vrai, et l'état qu'il
+  // rend ne sort jamais d'ici (aucune écriture, aucun journal).
+  const bioByPilot = useRosterBiometry(roster);
 
   const onTrack = roster.filter((p) => p.onTrack).length;
   const atStand = roster.length - onTrack;
@@ -107,7 +129,7 @@ export default function EnDirectScreen() {
                 label="VOS PILOTES · EN DIRECT"
                 right={`${roster.length} présent${plural(roster.length)}`}
               />
-              <RosterList roster={roster} />
+              <RosterList roster={roster} bioByPilot={bioByPilot} />
             </View>
             <View style={s.colSide}>
               <StatePanel
@@ -130,7 +152,7 @@ export default function EnDirectScreen() {
               label="VOS PILOTES"
               right={`${roster.length} présent${plural(roster.length)}`}
             />
-            <RosterList roster={roster} />
+            <RosterList roster={roster} bioByPilot={bioByPilot} />
           </View>
         )}
 
@@ -181,28 +203,56 @@ function PanelHeader({ label, right }: { label: string; right?: string }) {
   );
 }
 
-function RosterList({ roster }: { roster: RosterEntry[] }) {
+function RosterList({
+  roster,
+  bioByPilot,
+}: {
+  roster: RosterEntry[];
+  bioByPilot: Record<string, RosterBioState>;
+}) {
+  // Une pastille cardio n'apparaît que si un pilote partage. La mention n'est
+  // donc affichée que dans ce cas — et elle est INDISPENSABLE : chaque couleur
+  // situe la FC dans la plage de SON pilote, jamais sur un barème commun. Sans
+  // ce référent, une colonne de teintes ordonnées se lirait comme un classement.
+  const anyCardio = roster.some((p) => p.bioShared === true);
   return (
     <View style={{ gap: spacing.sm, marginTop: spacing.sm }}>
       {roster.map((p) => (
-        <PilotRow key={p.pilotId} pilot={p} />
+        <PilotRow key={p.pilotId} pilot={p} bio={bioByPilot[p.pilotId]} />
       ))}
+      {anyCardio ? (
+        <Text style={s.cardioScaleNote}>
+          Chaque couleur cardio se lit sur la plage du pilote concerné. Elles ne se comparent pas
+          entre elles.
+        </Text>
+      ) : null}
     </View>
   );
 }
 
-function PilotRow({ pilot }: { pilot: RosterEntry }) {
+function PilotRow({ pilot, bio }: { pilot: RosterEntry; bio?: RosterBioState }) {
   const live = pilot.onTrack;
   const statusLabel = live ? 'EN PISTE' : 'AU STAND';
   const statusColor = live ? dataColors.accel : palette.creamMute;
   const dotColor = live ? dataColors.accel : palette.faint;
+
+  // Trois absences se confondent volontairement en une seule : pas encore de
+  // trame, plage observée trop étroite, ou flux périmé (le hook retire l'entrée).
+  // Dans les trois cas la zone est null, donc la pastille est INERTE — on ne
+  // fabrique aucune couleur et on ne fige pas la dernière teinte reçue.
+  const cardioZoneOrNull = bio?.zone ?? null;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${pilot.firstName}, ${live ? 'en piste' : 'au stand'}${
         pilot.circuit ? `, ${pilot.circuit}` : ''
-      }${pilot.bioShared === true ? ', cardio partagé' : ''}. Ouvrir son direct.`}
+      }${
+        // Le libellé de zone REMPLACE « cardio partagé » dès qu'une zone existe :
+        // le lecteur d'écran reçoit exactement ce que la couleur montre, ni plus
+        // (aucun bpm) ni moins. Vocabulaire fermé et factuel de cardioZoneLogic.
+        pilot.bioShared === true ? `, ${cardioZoneLabel(cardioZoneOrNull)}` : ''
+      }. Ouvrir son direct.`}
       onPress={() =>
         router.push({
           pathname: '/(coach)/en-direct/[sessionId]',
@@ -227,11 +277,17 @@ function PilotRow({ pilot }: { pilot: RosterEntry }) {
       </View>
       <View style={s.statusCol}>
         <Text style={[s.status, { color: statusColor }]}>{statusLabel}</Text>
-        {/* BIO-2 — marque discrètement les pilotes dont le direct comporte une
-            bande cardio. Marqueur d'ÉTAT, sans valeur ni couleur de « zone » :
-            aucune donnée de santé ne transite par la présence, et l'app ne
-            résume jamais un état physiologique d'un coup d'œil. */}
-        {pilot.bioShared === true ? <Text style={s.bioMark}>Cardio</Text> : null}
+        {/* BIO — pastille des pilotes dont le direct comporte une bande cardio.
+            La couleur situe la FC dans la plage observée du pilote LUI-MÊME
+            (rampe froid → chaud, ni or ni rouge) : une magnitude, pas un verdict.
+            Elle ne dit rien de comparable d'un pilote à l'autre — chaque plage
+            est propre à son porteur. Sans partage, rien ne s'affiche. */}
+        {pilot.bioShared === true ? (
+          <View style={s.bioRow} accessibilityElementsHidden importantForAccessibility="no">
+            <View style={[s.bioDot, { backgroundColor: cardioZoneColor(cardioZoneOrNull) }]} />
+            <Text style={s.bioMark}>Cardio</Text>
+          </View>
+        ) : null}
       </View>
       <Text style={s.chevron} accessibilityElementsHidden importantForAccessibility="no">
         ›
@@ -487,13 +543,19 @@ const s = StyleSheet.create({
   },
   statusCol: { alignItems: 'flex-end' },
   status: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1 },
-  /** Marqueur cardio : discret, neutre — jamais une couleur d'état de santé. */
+  /** Marqueur cardio : pastille + libellé, sur la même ligne que le statut. */
+  bioRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  /**
+   * Disque de 7 px, aligné sur les autres pastilles de l'écran (nameDot,
+   * legendDot) : le cardio est un DÉTAIL de la ligne, pas un signal qui la
+   * domine. Aucune animation ni halo — une pastille qui bat serait une alerte.
+   */
+  bioDot: { width: 7, height: 7, borderRadius: 4 },
   bioMark: {
     fontFamily: fonts.mono,
     fontSize: 8,
     letterSpacing: 1,
     color: palette.creamMute,
-    marginTop: 2,
   },
   chevron: { fontFamily: fonts.mono, fontSize: 18, color: palette.faint, marginLeft: spacing.xs },
 
@@ -561,6 +623,14 @@ const s = StyleSheet.create({
 
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendDot: { width: 7, height: 7, borderRadius: 4 },
+  /** Référent de l'échelle cardio — discret, mais jamais optionnel (anti-classement). */
+  cardioScaleNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.4,
+    marginTop: spacing.xs,
+  },
   legendTxt: { fontFamily: fonts.mono, fontSize: fontSize.small, color: palette.creamSoft },
 
   devBtn: {

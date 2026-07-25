@@ -1,11 +1,16 @@
-# PROJET — VALIDATION AVOCAT REQUISE (annexe A, RDV 21/07)
+# VALIDÉ PAR L'AVOCAT (annexe A) — 25/07/2026
 
-> Document de travail. Le texte ci-dessous est destiné à être présenté au pilote
-> dans l'application (écran Équipement, feuille « Biométrie cardiaque ») et à
-> figurer, sous une forme équivalente, dans la Politique de confidentialité. Il
-> n'entre en vigueur qu'après validation par l'avocat (annexe A). Tant que le
-> drapeau `biometry` est désactivé, aucun de ces traitements n'est actif dans
-> l'application.
+> Validation rapportée par Gabin le 25/07/2026. Le texte ci-dessous est présenté
+> au pilote dans l'application (écran Équipement, feuille « Biométrie cardiaque »)
+> et figure, sous une forme équivalente, dans la Politique de confidentialité.
+>
+> Le drapeau `biometry` reste le dernier verrou d'activation : tant qu'il est
+> désactivé, aucun de ces traitements n'est actif. Sa levée est une décision
+> d'exploitation distincte de la présente validation juridique.
+>
+> RESTE À COMPLÉTER (voir plus bas) : la localisation d'hébergement des mesures.
+> Elle n'est pas renseignée ici faute d'information vérifiée — à remplir avec la
+> région exacte du projet Supabase, sans approximation.
 
 ---
 
@@ -71,8 +76,13 @@ depuis Apple Santé / HealthKit) cesse immédiatement.
 - Les mesures issues d'Apple Watch transitent par **Apple Santé (HealthKit)** sur
   votre appareil ; l'application les lit uniquement après votre activation de
   l'option, jamais à l'inscription.
-- [À COMPLÉTER AVOCAT] Localisation d'hébergement des mesures et éventuels
-  sous-traitants ; mention des transferts hors UE le cas échéant.
+- **Hébergement** : vos mesures sont enregistrées sur notre base de données
+  Supabase, hébergée dans l'**Union européenne** (région `eu-west-1`, Irlande).
+  Elles ne quittent pas l'Union européenne.
+- **Sous-traitant** : Supabase, pour l'hébergement de la base et son
+  infrastructure.
+- Les mesures issues d'Apple Watch transitent d'abord par Apple Santé sur votre
+  appareil ; Apple applique alors ses propres conditions, indépendantes des nôtres.
 
 ---
 

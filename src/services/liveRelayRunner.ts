@@ -16,7 +16,7 @@ import { bluetoothService } from '@/ble/bluetoothService';
 import { getRecordedLaps } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
 import { type RosterMeta, shouldEmitBiometry, shouldEmitFrame } from '@/services/liveSessionLogic';
-import { joinRoster, openPilotBroadcast } from '@/services/liveSessionService';
+import { joinRoster, openPilotBroadcast, retrackRoster } from '@/services/liveSessionService';
 import { buildBiometryEvent, raceBoxToLiveFrame } from '@/services/liveRelayLogic';
 import { canEmitBiometry } from '@/services/v2/liveHealthGate';
 import { type BioSample } from '@/services/v2/biometryBufferLogic';
@@ -145,6 +145,18 @@ export async function startPilotLiveRelay(input: {
           detailedBinome: rosterLeaves.size > 0,
           flagBiometry: flag === true,
         };
+
+        // Le marqueur de partage publié dans le roster SUIT le consentement, il
+        // n'est pas figé au démarrage : sans ce ré-envoi, le coach continuerait
+        // de voir « Cardio » après une révocation en séance (état périmé affiché
+        // comme actuel). On ne re-publie que sur CHANGEMENT, pour ne pas marteler
+        // la présence à chaque tick.
+        const shared = gate.consentCapture && gate.flagBiometry;
+        if (shared !== meta.bioShared) {
+          meta.bioShared = shared;
+          for (const cid of rosterLeaves.keys()) retrackRoster(cid, meta);
+        }
+
         if (!canEmitBiometry(gate)) return; // fail-closed : aucune biométrie ne part
         const event = buildBiometryEvent(bioBuffer, now);
         if (!event) return; // rien d'exploitable dans la fenêtre → honnête silence

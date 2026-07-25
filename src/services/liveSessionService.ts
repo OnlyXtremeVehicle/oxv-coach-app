@@ -104,6 +104,22 @@ export function subscribeRoster(
   };
 }
 
+/**
+ * PILOTE — met à jour la méta DÉJÀ publiée dans le roster d'un coach, sans
+ * quitter ni rejoindre (une sortie/entrée ferait clignoter la présence).
+ *
+ * Nécessaire parce qu'une méta n'est pas figée pour la séance : `bioShared`
+ * suit le consentement biométrie, qui peut être révoqué ou accordé EN SÉANCE.
+ * Sans ce ré-envoi, le coach continuerait de voir « Cardio » après une
+ * révocation — un état de partage périmé affiché comme actuel.
+ */
+export function retrackRoster(coachId: string, meta: RosterMeta): void {
+  const state = rosters.get(coachId);
+  if (!state) return;
+  state.track = meta;
+  if (state.channel.state === 'joined') state.channel.track(meta);
+}
+
 /** PILOTE — rejoint le roster d'UN coach consenti. Le runner en appelle un par coach. */
 export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
   const state = ensureRoster(coachId, meta.pilotId);
@@ -118,8 +134,75 @@ export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
 }
 
 // ---------------------------------------------------------------------------
-// Flux télémétrique (broadcast PRIVÉ)
+// Flux télémétrique (broadcast PRIVÉ) — topic REFCOMPTÉ.
+//
+// POURQUOI un refcount ici, comme pour les rosters ci-dessus : supabase-js
+// DÉDOUBLONNE les canaux PAR TOPIC (RealtimeClient.channel() renvoie l'instance
+// existante si le topic est déjà ouvert). Dès qu'un second consommateur ouvre
+// `live:session:<id>` — c'est le cas depuis BIO-2, où le roster coach lit le
+// cardio pendant que la fiche direct lit les trames — les deux partagent UNE
+// instance. Sans comptage, le premier `removeChannel` arrache le canal de
+// l'autre : le cardio du roster meurt en fermant la fiche direct, et le second
+// abonné, branché sur un canal DÉJÀ souscrit, ne reçoit jamais son SUBSCRIBED
+// (la fiche s'afficherait « hors ligne » sur un flux pourtant vivant).
+//
+// On mutualise donc l'instance, on diffuse les événements à tous les inscrits,
+// on REJOUE le statut courant à l'arrivée d'un retardataire, et on ne libère le
+// canal qu'au départ du dernier.
 // ---------------------------------------------------------------------------
+
+interface SessionTopicState {
+  channel: RealtimeChannel;
+  refs: number;
+  /** Statut courant, rejoué à tout abonné qui arrive après le SUBSCRIBED. */
+  subscribed: boolean;
+  frameCbs: Set<(frame: LiveFrame) => void>;
+  bioCbs: Set<(event: BiometryLiveEvent) => void>;
+  statusCbs: Set<(subscribed: boolean) => void>;
+}
+const sessions = new Map<string, SessionTopicState>();
+
+function ensureSession(sessionId: string): SessionTopicState {
+  const existing = sessions.get(sessionId);
+  if (existing) return existing;
+
+  const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId), {
+    config: { private: true },
+  });
+  const state: SessionTopicState = {
+    channel,
+    refs: 0,
+    subscribed: false,
+    frameCbs: new Set(),
+    bioCbs: new Set(),
+    statusCbs: new Set(),
+  };
+  channel
+    .on('broadcast', { event: 'frame' }, (msg) => {
+      const frame = msg.payload as LiveFrame;
+      state.frameCbs.forEach((cb) => cb(frame));
+    })
+    .on('broadcast', { event: 'biometry' }, (msg) => {
+      const event = msg.payload as BiometryLiveEvent;
+      state.bioCbs.forEach((cb) => cb(event));
+    })
+    .subscribe((status) => {
+      state.subscribed = status === 'SUBSCRIBED';
+      state.statusCbs.forEach((cb) => cb(state.subscribed));
+    });
+  sessions.set(sessionId, state);
+  return state;
+}
+
+function releaseSession(sessionId: string): void {
+  const state = sessions.get(sessionId);
+  if (!state) return;
+  state.refs -= 1;
+  if (state.refs <= 0) {
+    supabase.removeChannel(state.channel);
+    sessions.delete(sessionId);
+  }
+}
 
 /** COACH — s'abonne au flux live d'un pilote (canal privé, RLS binôme consenti). */
 export function subscribePilotStream(
@@ -135,52 +218,59 @@ export function subscribePilotStream(
     onBiometry?: (event: BiometryLiveEvent) => void;
   }
 ): Unsubscribe {
-  const channel = supabase.channel(sessionChannel(sessionId), { config: { private: true } });
-  channel
-    .on('broadcast', { event: 'frame' }, (msg) => {
-      handlers.onFrame(msg.payload as LiveFrame);
-    })
-    .on('broadcast', { event: 'biometry' }, (msg) => {
-      handlers.onBiometry?.(msg.payload as BiometryLiveEvent);
-    })
-    .subscribe((status) => {
-      handlers.onStatus?.(status === 'SUBSCRIBED');
-    });
+  const state = ensureSession(sessionId);
+  state.refs += 1;
+
+  const onFrame = handlers.onFrame;
+  const onBio = handlers.onBiometry;
+  const onStatus = handlers.onStatus;
+  state.frameCbs.add(onFrame);
+  if (onBio) state.bioCbs.add(onBio);
+  if (onStatus) {
+    state.statusCbs.add(onStatus);
+    // Retardataire : le canal a pu être souscrit AVANT cet abonnement (topic
+    // partagé). On rejoue l'état courant pour qu'il ne reste pas « hors ligne ».
+    if (state.subscribed) onStatus(true);
+  }
+
   return () => {
-    supabase.removeChannel(channel);
+    state.frameCbs.delete(onFrame);
+    if (onBio) state.bioCbs.delete(onBio);
+    if (onStatus) state.statusCbs.delete(onStatus);
+    releaseSession(sessionId);
   };
 }
 
 /**
  * PILOTE — ouvre un émetteur de flux (canal PRIVÉ). Renvoie `send(frame)` (le
  * throttle est géré en amont par le relais via shouldEmitFrame) + le retrait.
+ * Passe par le MÊME topic refcompté : émettre et lire peuvent coexister sur un
+ * seul client (cas du simulateur dev) sans que l'un ferme le canal de l'autre.
  */
 export function openPilotBroadcast(sessionId: string): {
   send: (frame: LiveFrame) => void;
   sendBiometry: (event: BiometryLiveEvent) => void;
   close: Unsubscribe;
 } {
-  const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId), {
-    config: { private: true },
-  });
-  let ready = false;
-  channel.subscribe((status) => {
-    ready = status === 'SUBSCRIBED';
-  });
+  const state = ensureSession(sessionId);
+  state.refs += 1;
+  let closed = false;
   return {
     send: (frame: LiveFrame) => {
-      if (!ready) return;
-      channel.send({ type: 'broadcast', event: 'frame', payload: frame });
+      if (closed || !state.subscribed) return;
+      state.channel.send({ type: 'broadcast', event: 'frame', payload: frame });
     },
     // BIO-2 — même canal PRIVÉ (audience = binôme consenti), event distinct
     // `biometry`. La décision d'émettre (triple verrou) est prise en amont par
     // le relais ; ici on ne fait que transporter vers le coach.
     sendBiometry: (event: BiometryLiveEvent) => {
-      if (!ready) return;
-      channel.send({ type: 'broadcast', event: 'biometry', payload: event });
+      if (closed || !state.subscribed) return;
+      state.channel.send({ type: 'broadcast', event: 'biometry', payload: event });
     },
     close: () => {
-      supabase.removeChannel(channel);
+      if (closed) return; // idempotent : ne libère jamais deux fois la même réf
+      closed = true;
+      releaseSession(sessionId);
     },
   };
 }
