@@ -198,6 +198,50 @@ les 5 autres lectures s'alimentent aussi en réel). Pas avant.
    RÉELS (Beltoise), jamais décrété ; d'ici là le service sort la mesure brute sans
    seuil (§3).
 
-**La définition est arrêtée. Le service N'EST PAS écrit** : il reste séquencé
-**après la gate piste** (§5) — on calibre sur le réel, on n'invente pas sur le
-synthétique. **FlowViz reste démo** (bandeau scoped) jusqu'à cette implémentation.
+**La définition est arrêtée.**
+
+---
+
+## 7. État d'implémentation (25/07/2026)
+
+`src/services/flowLogic.ts` (pur, 44 tests) et `src/services/flowService.ts`
+(loader SELECT-only) existent. Ce qui est écrit, c'est la **forme et les
+invariants** — pas le calage, qui reste séquencé après la gate piste (§5).
+
+**Ce qui tient.** Dérivation sur `dt` réel, lissage **causal** et **déterministe**
+(invariant testé : modifier une trame future ne déplace aucun point antérieur),
+`smoothingWindowMs` exposé comme exigé, sortie sans score ni seuil, vide honnête
+partout où la donnée manque, garde lexicale contre tout vocabulaire de notation.
+Le test central du verrou 2 compare deux séries au **jerk brut identique** : le
+jerk absolu est structurellement incapable de les distinguer, le résiduel le fait.
+
+**Ce que la vérification adversariale a corrigé.** Le budget de sévérité croissait
+linéairement avec la vitesse **sans plafond** : au-delà d'environ 80 km/h il
+dépassait tout jerk atteignable et le résiduel devenait **identiquement nul**.
+Ce zéro n'était pas un constat de fluidité mais une valeur fabriquée — et il
+**exonérait automatiquement les pilotes rapides**, soit le symétrique exact de
+l'injustice que le §2.1 corrige. Un plafond (`maxExplainedGPerS`) borne désormais
+le budget. Corrigés aussi : absence de borne INFÉRIEURE sur `dt` (la chaîne
+d'écriture du dépôt produit des trames à 1 ms, ce qui multipliait le jerk par
+vingt à quarante), lissage causal qui enjambait un trou de capture, garde-fou de
+la distribution qui était un no-op, bornes de segment recopiées même invalides.
+
+**LIMITE CONNUE, à trancher sur données réelles.** `gSustained` est lu sur le |g|
+**mesuré** — le signal dont on mesure précisément la discontinuité. La boucle est
+donc partiellement fermée : une brutalité fait monter le |g|, donc le budget censé
+l'expliquer, et comme on prend un **maximum** sur la fenêtre, cette indulgence est
+mémorisée pendant toute sa durée — soit exactement l'intervalle où un pilote
+brusque enchaîne ses corrections. Le maximum reste préféré à la moyenne (une
+moyenne gonflerait le résiduel du pilote rapide, ce que le verrou 2 interdit
+d'abord) : on a choisi le défaut le moins grave, pas un modèle satisfaisant.
+
+La sortie non circulaire est la **géométrie au sens propre** : la courbure déduite
+de `lat`/`lon` et de la vitesse (accélération latérale attendue = v²/R),
+indépendante de l'IMU. Elle n'est pas implémentée : la courbure est une dérivée
+seconde de la position GPS, très bruitée à 25 Hz, et son lissage ne se règle pas
+sur du synthétique — exactement ce que le §2.1 prévoit.
+
+**Conséquence pratique, inchangée : FlowViz reste démo.** Le résiduel décrit
+aujourd'hui une tendance ; il ne tranche pas un cas individuel. Le brancher sur un
+écran pilote avant le calage reviendrait à présenter comme une mesure ce qui est
+encore une hypothèse.
