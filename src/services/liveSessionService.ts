@@ -20,6 +20,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
 import {
+  type BiometryLiveEvent,
   type LiveFrame,
   type RosterEntry,
   type RosterMeta,
@@ -123,12 +124,24 @@ export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
 /** COACH — s'abonne au flux live d'un pilote (canal privé, RLS binôme consenti). */
 export function subscribePilotStream(
   sessionId: string,
-  handlers: { onFrame: (frame: LiveFrame) => void; onStatus?: (subscribed: boolean) => void }
+  handlers: {
+    onFrame: (frame: LiveFrame) => void;
+    onStatus?: (subscribed: boolean) => void;
+    /**
+     * BIO-2 — événement biométrique (FC + tendance R-R + contact), reçu sur le
+     * MÊME canal privé, event `biometry`. N'arrive QUE si le pilote émet sous
+     * triple verrou (cf. liveRelayRunner) ; côté coach on ne fait qu'afficher.
+     */
+    onBiometry?: (event: BiometryLiveEvent) => void;
+  }
 ): Unsubscribe {
   const channel = supabase.channel(sessionChannel(sessionId), { config: { private: true } });
   channel
     .on('broadcast', { event: 'frame' }, (msg) => {
       handlers.onFrame(msg.payload as LiveFrame);
+    })
+    .on('broadcast', { event: 'biometry' }, (msg) => {
+      handlers.onBiometry?.(msg.payload as BiometryLiveEvent);
     })
     .subscribe((status) => {
       handlers.onStatus?.(status === 'SUBSCRIBED');
@@ -144,6 +157,7 @@ export function subscribePilotStream(
  */
 export function openPilotBroadcast(sessionId: string): {
   send: (frame: LiveFrame) => void;
+  sendBiometry: (event: BiometryLiveEvent) => void;
   close: Unsubscribe;
 } {
   const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId), {
@@ -157,6 +171,13 @@ export function openPilotBroadcast(sessionId: string): {
     send: (frame: LiveFrame) => {
       if (!ready) return;
       channel.send({ type: 'broadcast', event: 'frame', payload: frame });
+    },
+    // BIO-2 — même canal PRIVÉ (audience = binôme consenti), event distinct
+    // `biometry`. La décision d'émettre (triple verrou) est prise en amont par
+    // le relais ; ici on ne fait que transporter vers le coach.
+    sendBiometry: (event: BiometryLiveEvent) => {
+      if (!ready) return;
+      channel.send({ type: 'broadcast', event: 'biometry', payload: event });
     },
     close: () => {
       supabase.removeChannel(channel);

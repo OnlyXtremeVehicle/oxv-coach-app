@@ -5,6 +5,7 @@ import {
   formatLiveChrono,
   liveAlert,
   reduceRoster,
+  shouldEmitBiometry,
   shouldEmitFrame,
 } from '@/services/liveSessionLogic';
 
@@ -46,6 +47,20 @@ describe('shouldEmitFrame (throttle ~3-4 Hz côté pilote)', () => {
   it('n’émet pas avant minIntervalMs (on ne relaie pas 25 Hz)', () => {
     expect(shouldEmitFrame(1000, 1100, 300)).toBe(false);
     expect(shouldEmitFrame(1000, 1299, 300)).toBe(false);
+  });
+});
+
+describe('shouldEmitBiometry (throttle 0,5 Hz — moyenne glissante coach)', () => {
+  it('émet toujours le premier événement', () => {
+    expect(shouldEmitBiometry(null, 5000)).toBe(true);
+  });
+  it('émet quand l’écart atteint 2 s (défaut)', () => {
+    expect(shouldEmitBiometry(1000, 3000)).toBe(true);
+    expect(shouldEmitBiometry(1000, 5000)).toBe(true);
+  });
+  it('n’émet pas avant 2 s (le coach lit une moyenne, pas le 1 Hz brut)', () => {
+    expect(shouldEmitBiometry(1000, 1500)).toBe(false);
+    expect(shouldEmitBiometry(1000, 2999)).toBe(false);
   });
 });
 

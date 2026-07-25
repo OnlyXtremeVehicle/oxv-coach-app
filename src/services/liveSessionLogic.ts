@@ -44,6 +44,24 @@ export interface RosterMeta {
 
 export type RosterEntry = RosterMeta;
 
+/**
+ * Événement biométrique live (BIO-2) — émis UNIQUEMENT vers le canal coach, à
+ * 0,5 Hz (moyenne glissante 2 s), et SEULEMENT sous triple verrou (cf.
+ * liveHealthGate). Vocabulaire FACTUEL et fermé : la tendance R-R est un constat
+ * ('stable' | 'en baisse' | 'en hausse'), le contact un état de capteur. Aucun
+ * diagnostic, aucune alerte automatique — le coach juge, l'app ne diagnostique pas.
+ */
+export interface BiometryLiveEvent {
+  /** Fréquence cardiaque moyenne sur la fenêtre récente (bpm entier). */
+  hrBpm: number;
+  /** Tendance FACTUELLE de la variabilité cardiaque (liste fermée à 3 constats). */
+  rrTrend: 'stable' | 'en baisse' | 'en hausse';
+  /** État du contact capteur (pastille factuelle, jamais une alerte). */
+  contact: 'ok' | 'poor' | 'unsupported';
+  /** Horodatage de l'événement (ms epoch). */
+  atMs: number;
+}
+
 /** État de connexion d'un flux live (vue coach d'un pilote). */
 export type LiveConn = 'connecting' | 'live' | 'stale' | 'offline';
 
@@ -59,6 +77,20 @@ export function shouldEmitFrame(
 ): boolean {
   if (lastEmitMs === null) return true;
   return frameAtMs - lastEmitMs >= minIntervalMs;
+}
+
+/**
+ * Faut-il émettre la biométrie ? Cadence 0,5 Hz : au plus un événement toutes
+ * les 2 s (le coach lit une moyenne glissante, pas le 1 Hz brut). Même contrat
+ * que shouldEmitFrame : premier tick toujours autorisé, puis espacement minimal.
+ */
+export function shouldEmitBiometry(
+  lastEmitMs: number | null,
+  atMs: number,
+  minIntervalMs = 2000
+): boolean {
+  if (lastEmitMs === null) return true;
+  return atMs - lastEmitMs >= minIntervalMs;
 }
 
 /**

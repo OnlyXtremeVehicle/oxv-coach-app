@@ -20,6 +20,20 @@ import {
   nextReconnectDelayMs,
   shouldGiveUpReconnect,
 } from './reconnectPolicy';
+import { parseHeartRateMeasurement, type HeartRateSample } from '@/services/v2/heartRateParser';
+
+/**
+ * BIO-2 — ceinture cardio (Polar H10). GATT standard Heart Rate : service
+ * 0x180D, mesure 0x2A37 (notify). Chemin BLE ENTIÈREMENT SÉPARÉ du RaceBox :
+ * device / abonnements / reconnexion propres, aucun couplage d'échec (la ceinture
+ * tombe → la capture télémétrique reste intacte, et réciproquement). Le parsing
+ * délègue au module pur testé `parseHeartRateMeasurement`.
+ */
+const POLAR_PROTOCOL = {
+  HR_SERVICE_UUID: '0000180d-0000-1000-8000-00805f9b34fb',
+  HR_MEASUREMENT_UUID: '00002a37-0000-1000-8000-00805f9b34fb',
+  DEVICE_NAME_PREFIX: 'Polar',
+} as const;
 
 /**
  * Charge `react-native-ble-plx` à la demande pour éviter le crash au
@@ -41,6 +55,15 @@ type DeviceListener = (device: RaceBoxDevice) => void;
 type DataListener = (data: RaceBoxData) => void;
 type ErrorListener = (error: string) => void;
 type RawDataListener = (bytes: Uint8Array) => void;
+/** Périphérique cardio détecté (BIO-2) — même forme minimale que RaceBoxDevice. */
+export interface PolarDevice {
+  id: string;
+  name: string;
+  rssi: number | null;
+}
+type PolarDeviceListener = (device: PolarDevice) => void;
+/** Échantillon cardio parsé (FC + R-R + contact), émis à chaque notification. */
+type BiometryListener = (sample: HeartRateSample) => void;
 
 /**
  * Phase de reconnexion automatique, distincte du `BleStatus` brut.
@@ -116,6 +139,17 @@ export class RaceBoxBluetoothService {
   private errorListeners: ErrorListener[] = [];
   private rawDataListeners: RawDataListener[] = [];
   private reconnectListeners: ReconnectListener[] = [];
+
+  // ── BIO-2 : ceinture Polar (état ENTIÈREMENT séparé du RaceBox) ──
+  private polarDevice: Device | null = null;
+  private polarNotificationSub: Subscription | null = null;
+  private polarDisconnectSub: Subscription | null = null;
+  private polarLastDeviceId: string | null = null;
+  private polarUserDisconnect = false;
+  private polarReconnectAttempt = 0;
+  private polarReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private polarDeviceListeners: PolarDeviceListener[] = [];
+  private biometryListeners: BiometryListener[] = [];
 
   /** Dernier message d'erreur émis, pour pouvoir le « nettoyer » à la reco. */
   private lastError: string | null = null;
@@ -582,11 +616,213 @@ export class RaceBoxBluetoothService {
   }
 
   // ============================================================
+  // BIO-2 : CEINTURE POLAR (chemin séparé, aucun couplage RaceBox)
+  // ============================================================
+
+  /** S'abonne aux échantillons cardio parsés (FC + R-R + contact). */
+  public onBiometry(listener: BiometryListener): () => void {
+    this.biometryListeners.push(listener);
+    return () => {
+      this.biometryListeners = this.biometryListeners.filter((l) => l !== listener);
+    };
+  }
+
+  /** Détection d'une ceinture Polar pendant un scan cardio. */
+  public onPolarDeviceFound(listener: PolarDeviceListener): () => void {
+    this.polarDeviceListeners.push(listener);
+    return () => {
+      this.polarDeviceListeners = this.polarDeviceListeners.filter((l) => l !== listener);
+    };
+  }
+
+  private emitBiometry(sample: HeartRateSample): void {
+    this.biometryListeners.forEach((l) => l(sample));
+  }
+
+  /** `true` si une ceinture cardio est connectée (indépendant du RaceBox). */
+  public isPolarConnected(): boolean {
+    return this.polarDevice !== null;
+  }
+
+  /**
+   * Scanne les ceintures cardio par le service standard Heart Rate (0x180D).
+   * N'INTERFÈRE PAS avec le scan RaceBox : c'est un scan distinct, filtré sur le
+   * service HR + le préfixe de nom « Polar ». L'appairage lui-même reste gaté
+   * côté écran (consentement `biometry`) — ce service ne présume rien.
+   */
+  public async startPolarScan(): Promise<void> {
+    if (!this.manager) {
+      this.emitError('Bluetooth indisponible dans ce runtime (Expo Go).');
+      return;
+    }
+    const state = await this.manager.state();
+    if (state !== 'PoweredOn') {
+      this.emitError(`Bluetooth non disponible (état : ${state})`);
+      return;
+    }
+
+    this.manager.startDeviceScan(
+      [POLAR_PROTOCOL.HR_SERVICE_UUID],
+      { allowDuplicates: false },
+      (error, device) => {
+        if (error) {
+          this.emitError(`Erreur scan cardio : ${error.message}`);
+          return;
+        }
+        if (!device) return;
+
+        const name = device.name || device.localName || '';
+        if (!name.startsWith(POLAR_PROTOCOL.DEVICE_NAME_PREFIX)) return;
+
+        this.polarDeviceListeners.forEach((l) => l({ id: device.id, name, rssi: device.rssi }));
+      }
+    );
+  }
+
+  /** Arrête le scan cardio (sans toucher au scan/à la connexion RaceBox). */
+  public stopPolarScan(): void {
+    if (!this.manager) return;
+    this.manager.stopDeviceScan();
+  }
+
+  /**
+   * Connecte une ceinture Polar et s'abonne aux notifications de FC (0x2A37).
+   * Double connexion assumée : le RaceBox reste connecté en parallèle, chaque
+   * lien a ses propres abonnements. Une erreur ici ne touche jamais le RaceBox.
+   */
+  public async connectPolar(deviceId: string): Promise<void> {
+    if (!this.manager) {
+      this.emitError('Bluetooth indisponible dans ce runtime (Expo Go).');
+      return;
+    }
+    try {
+      this.polarUserDisconnect = false;
+      this.stopPolarScan();
+
+      const device = await this.manager.connectToDevice(deviceId, { timeout: 10000 });
+      await device.discoverAllServicesAndCharacteristics();
+
+      this.attachPolarDevice(device);
+      this.subscribeToPolarData(device);
+
+      this.polarLastDeviceId = deviceId;
+      this.polarReconnectAttempt = 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.emitError(`Connexion ceinture échouée : ${message}`);
+    }
+  }
+
+  private attachPolarDevice(device: Device): void {
+    this.polarDevice = device;
+    this.polarDisconnectSub?.remove();
+    this.polarDisconnectSub = device.onDisconnected(() => {
+      this.handlePolarDisconnected();
+    });
+  }
+
+  /**
+   * (Ré)abonne le flux de notifications de FC. Chaque notification est décodée
+   * par le parseur PUR `parseHeartRateMeasurement` (vecteurs binaires testés) ;
+   * un décodage nul (trame tronquée) est silencieusement ignoré.
+   */
+  private subscribeToPolarData(device: Device): void {
+    this.polarNotificationSub?.remove();
+    this.polarNotificationSub = device.monitorCharacteristicForService(
+      POLAR_PROTOCOL.HR_SERVICE_UUID,
+      POLAR_PROTOCOL.HR_MEASUREMENT_UUID,
+      (error, characteristic) => {
+        if (error) {
+          this.emitError(`Erreur notification cardio : ${error.message}`);
+          return;
+        }
+        if (!characteristic?.value) return;
+
+        const bytes = new Uint8Array(Buffer.from(characteristic.value, 'base64'));
+        const sample = parseHeartRateMeasurement(bytes);
+        if (sample) this.emitBiometry(sample);
+      }
+    );
+  }
+
+  /**
+   * Coupure de la ceinture. VOLONTAIRE → on ne fait rien de plus. INATTENDUE →
+   * reconnexion BORNÉE indépendante (la ceinture est secondaire : si elle ne
+   * revient pas, la capture télémétrique continue sans elle, aucun couplage).
+   */
+  private handlePolarDisconnected(): void {
+    this.polarNotificationSub?.remove();
+    this.polarNotificationSub = null;
+    this.polarDevice = null;
+    if (this.polarUserDisconnect) return;
+
+    const targetId = this.polarLastDeviceId;
+    if (!this.manager || !targetId) return;
+    this.schedulePolarReconnect(targetId);
+  }
+
+  private schedulePolarReconnect(deviceId: string): void {
+    if (this.polarReconnectTimer) return;
+    // Reconnexion cardio BORNÉE (jamais illimitée) : la ceinture est secondaire.
+    if (shouldGiveUpReconnect(this.polarReconnectAttempt, false)) {
+      this.polarReconnectAttempt = 0;
+      return;
+    }
+    const delayMs = nextReconnectDelayMs(this.polarReconnectAttempt);
+    this.polarReconnectTimer = setTimeout(() => {
+      this.polarReconnectTimer = null;
+      void this.attemptPolarReconnect(deviceId);
+    }, delayMs);
+  }
+
+  private async attemptPolarReconnect(deviceId: string): Promise<void> {
+    if (!this.manager || this.polarUserDisconnect) return;
+    this.polarReconnectAttempt += 1;
+    try {
+      const device = await this.manager.connectToDevice(deviceId, { timeout: 10000 });
+      await device.discoverAllServicesAndCharacteristics();
+      this.attachPolarDevice(device);
+      this.subscribeToPolarData(device);
+      this.polarReconnectAttempt = 0;
+    } catch {
+      if (this.polarUserDisconnect) return;
+      this.schedulePolarReconnect(deviceId);
+    }
+  }
+
+  /** Déconnecte volontairement la ceinture (n'affecte pas le RaceBox). */
+  public async disconnectPolar(): Promise<void> {
+    this.polarUserDisconnect = true;
+    if (this.polarReconnectTimer) {
+      clearTimeout(this.polarReconnectTimer);
+      this.polarReconnectTimer = null;
+    }
+    try {
+      this.polarDisconnectSub?.remove();
+      this.polarDisconnectSub = null;
+      this.polarNotificationSub?.remove();
+      this.polarNotificationSub = null;
+      if (this.polarDevice) {
+        await this.polarDevice.cancelConnection();
+        this.polarDevice = null;
+      }
+      this.polarLastDeviceId = null;
+      this.polarReconnectAttempt = 0;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Erreur inconnue';
+      this.emitError(`Déconnexion ceinture échouée : ${message}`);
+    } finally {
+      this.polarUserDisconnect = false;
+    }
+  }
+
+  // ============================================================
   // CLEANUP
   // ============================================================
 
   public destroy(): void {
     this.disconnect();
+    void this.disconnectPolar();
     this.manager?.destroy();
   }
 }

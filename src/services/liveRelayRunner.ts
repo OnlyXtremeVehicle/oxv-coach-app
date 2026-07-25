@@ -15,9 +15,13 @@
 import { bluetoothService } from '@/ble/bluetoothService';
 import { getRecordedLaps } from '@/ble/lapDetectionRunner';
 import { supabase } from '@/lib/supabase';
-import { type RosterMeta, shouldEmitFrame } from '@/services/liveSessionLogic';
+import { type RosterMeta, shouldEmitBiometry, shouldEmitFrame } from '@/services/liveSessionLogic';
 import { joinRoster, openPilotBroadcast } from '@/services/liveSessionService';
-import { raceBoxToLiveFrame } from '@/services/liveRelayLogic';
+import { buildBiometryEvent, raceBoxToLiveFrame } from '@/services/liveRelayLogic';
+import { canEmitBiometry } from '@/services/v2/liveHealthGate';
+import { type BioSample } from '@/services/v2/biometryBufferLogic';
+import { loadBiometryConsents } from '@/services/consentService';
+import { isFlagEnabled } from '@/services/featureFlagsService';
 
 let stopFn: (() => void) | null = null;
 
@@ -94,6 +98,58 @@ export async function startPilotLiveRelay(input: {
     broadcast.send(raceBoxToLiveFrame(data, { lap: laps + 1, lapStartMs, nowMs: now }));
   });
 
+  // ── BIO-2 : relais biométrique (canal COACH uniquement, gaté OFF par flag) ──
+  // Le flux cardio (Polar, via bluetoothService.onBiometry) est relayé au coach à
+  // 0,5 Hz (moyenne glissante 2 s) SOUS TRIPLE VERROU re-vérifié À CHAQUE tick :
+  // consentement biométrie (capture ET partage coach) · binôme détaillé (roster
+  // consenti non vide) · flag serveur `biometry`. FAIL-CLOSED : au moindre doute —
+  // révocation en vol, réseau tombé, flag retiré — plus rien ne part. Tant que le
+  // flag est OFF, TOUT ce bloc reste DORMANT (aucun abonnement, aucune I/O) : la
+  // donnée de santé (RGPD art. 9) ne circule pas. La biométrie n'emprunte JAMAIS
+  // le canal roster/frame — uniquement `sendBiometry` (event dédié, même canal privé).
+  let stopBiometry: (() => void) | null = null;
+  const bioFlagOn = await isFlagEnabled('biometry').catch(() => false);
+  if (bioFlagOn) {
+    const BIO_BASELINE_MS = 60000;
+    const bioBuffer: BioSample[] = [];
+    const offBio = bluetoothService.onBiometry((s) => {
+      const ts = Date.now();
+      bioBuffer.push({ ts, hrBpm: s.hrBpm, rrMs: s.rrMs, contact: s.contact });
+      // Fenêtre glissante bornée à la référence : on ne garde pas d'historique long.
+      const cutoff = ts - BIO_BASELINE_MS;
+      while (bioBuffer.length > 0 && bioBuffer[0].ts < cutoff) bioBuffer.shift();
+    });
+
+    let lastBioEmit: number | null = null;
+    const bioTimer = setInterval(() => {
+      void (async () => {
+        const now = Date.now();
+        if (!shouldEmitBiometry(lastBioEmit, now)) return; // 0,5 Hz
+        // Triple verrou RE-VÉRIFIÉ ICI, à chaque tick — jamais une seule fois.
+        const consent = await loadBiometryConsents(input.pilotId).catch(() => ({
+          capture: false,
+          coachShare: false,
+        }));
+        const flag = await isFlagEnabled('biometry').catch(() => false);
+        const gate = {
+          consentCapture: consent.capture === true && consent.coachShare === true,
+          detailedBinome: rosterLeaves.size > 0,
+          flagBiometry: flag === true,
+        };
+        if (!canEmitBiometry(gate)) return; // fail-closed : aucune biométrie ne part
+        const event = buildBiometryEvent(bioBuffer, now);
+        if (!event) return; // rien d'exploitable dans la fenêtre → honnête silence
+        lastBioEmit = now;
+        broadcast.sendBiometry(event);
+      })();
+    }, 2000);
+
+    stopBiometry = () => {
+      offBio();
+      clearInterval(bioTimer);
+    };
+  }
+
   // Révocation EN SÉANCE : on écoute coach_pilots en temps réel et on réconcilie.
   // Révoquer UN coach le fait sortir de son roster ; révoquer le dernier coupe
   // tout — « Coupez quand vous voulez » est tenu en vol.
@@ -118,6 +174,7 @@ export async function startPilotLiveRelay(input: {
 
   stopFn = () => {
     off();
+    stopBiometry?.();
     broadcast.close();
     for (const leave of rosterLeaves.values()) leave();
     rosterLeaves.clear();

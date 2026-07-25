@@ -1,4 +1,5 @@
-import { raceBoxToLiveFrame } from '@/services/liveRelayLogic';
+import { buildBiometryEvent, raceBoxToLiveFrame } from '@/services/liveRelayLogic';
+import type { BioSample } from '@/services/v2/biometryBufferLogic';
 import type { RaceBoxData } from '@/types/telemetry';
 
 function raceBox(
@@ -75,5 +76,96 @@ describe('raceBoxToLiveFrame (map pure trame RaceBox → LiveFrame)', () => {
     expect(f.sector).toBe(2);
     expect(f.cornerIndex).toBe(3);
     expect(f.cornerWatch).toBe(true);
+  });
+});
+
+function bio(over: Partial<BioSample> & { ts: number }): BioSample {
+  return {
+    hrBpm: over.hrBpm ?? 150,
+    rrMs: over.rrMs ?? [],
+    contact: over.contact ?? 'ok',
+    ts: over.ts,
+  };
+}
+
+describe('buildBiometryEvent (événement biométrique live, pur)', () => {
+  it('tampon vide → null (jamais de valeur fabriquée)', () => {
+    expect(buildBiometryEvent([], 10000)).toBeNull();
+  });
+
+  it('aucun échantillon dans la fenêtre récente → null', () => {
+    // Seul échantillon à 5 s avant la fenêtre récente [8000, 10000].
+    const samples = [bio({ ts: 3000, hrBpm: 160 })];
+    expect(buildBiometryEvent(samples, 10000, { windowMs: 2000 })).toBeNull();
+  });
+
+  it('moyenne la FC sur la fenêtre récente (arrondi bpm)', () => {
+    const samples = [
+      bio({ ts: 9000, hrBpm: 150 }),
+      bio({ ts: 9500, hrBpm: 155 }),
+      bio({ ts: 9900, hrBpm: 160 }),
+    ];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000 });
+    expect(ev).not.toBeNull();
+    expect(ev!.hrBpm).toBe(155); // (150+155+160)/3
+    expect(ev!.atMs).toBe(10000);
+  });
+
+  it('ignore les échantillons hors fenêtre récente dans la moyenne', () => {
+    const samples = [
+      bio({ ts: 3000, hrBpm: 90 }), // hors fenêtre → ignoré
+      bio({ ts: 9000, hrBpm: 150 }),
+      bio({ ts: 9800, hrBpm: 150 }),
+    ];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000 });
+    expect(ev!.hrBpm).toBe(150);
+  });
+
+  it('écarte les FC non exploitables (0 / non finies) de la moyenne', () => {
+    const samples = [
+      bio({ ts: 9000, hrBpm: 0 }), // capteur qui décroche → ignoré
+      bio({ ts: 9500, hrBpm: 148 }),
+      bio({ ts: 9900, hrBpm: 152 }),
+    ];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000 });
+    expect(ev!.hrBpm).toBe(150);
+  });
+
+  it('fenêtre récente sans aucune FC exploitable → null', () => {
+    const samples = [bio({ ts: 9500, hrBpm: 0 }), bio({ ts: 9900, hrBpm: 0 })];
+    expect(buildBiometryEvent(samples, 10000, { windowMs: 2000 })).toBeNull();
+  });
+
+  it('contact = état du plus récent échantillon de la fenêtre', () => {
+    const samples = [
+      bio({ ts: 9000, contact: 'ok' }),
+      bio({ ts: 9900, contact: 'poor' }), // le plus récent
+    ];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000 });
+    expect(ev!.contact).toBe('poor');
+  });
+
+  it('R-R insuffisant (référence vide) → tendance stable, jamais inventée', () => {
+    const samples = [bio({ ts: 9500, rrMs: [800, 810] }), bio({ ts: 9900, rrMs: [805] })];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000, baselineMs: 60000 });
+    expect(ev!.rrTrend).toBe('stable');
+  });
+
+  it('tendance R-R en hausse quand la dispersion récente dépasse la référence', () => {
+    // Référence [antérieure] : R-R quasi constants → RMSSD faible.
+    // Récent : R-R très dispersés → RMSSD élevé → « en hausse ».
+    const samples: BioSample[] = [
+      bio({ ts: 2000, rrMs: [800, 801, 800, 801, 800] }), // baseline antérieure
+      bio({ ts: 3000, rrMs: [800, 801, 800, 801] }),
+      bio({ ts: 9200, rrMs: [700, 900, 700, 900] }), // récent, dispersé
+      bio({ ts: 9800, rrMs: [700, 900, 700, 900] }),
+    ];
+    const ev = buildBiometryEvent(samples, 10000, { windowMs: 2000, baselineMs: 60000 });
+    expect(ev!.rrTrend).toBe('en hausse');
+  });
+
+  it('sortie STRICTEMENT factuelle : hrBpm, rrTrend, contact, atMs — aucun autre champ', () => {
+    const ev = buildBiometryEvent([bio({ ts: 9900, hrBpm: 150 })], 10000);
+    expect(Object.keys(ev!).sort()).toEqual(['atMs', 'contact', 'hrBpm', 'rrTrend']);
   });
 });
