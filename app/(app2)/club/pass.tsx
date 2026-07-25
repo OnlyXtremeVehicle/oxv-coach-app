@@ -141,7 +141,9 @@ export default function PassScreen() {
         </PressScale>
         <View>
           <Text style={styles.eyebrow}>VOTRE JOURNÉE</Text>
-          <Text style={styles.title}>PASS OXV</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            PASS OXV
+          </Text>
         </View>
         <View style={styles.headerSpacer} />
       </View>

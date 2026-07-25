@@ -79,6 +79,7 @@ import {
   useDoorTransition,
   useFirstViewport,
   useHeroMorphSource,
+  useReduceMotion,
 } from '@/ui/v2';
 
 import {
@@ -181,6 +182,8 @@ export default function MiroirHomeScreen() {
             <PressScale
               onPress={() => router.navigate(action.href as never)}
               accessibilityLabel={action.label}
+              // Pastille ~41 pts de haut : hitSlop vertical 2 porte la cible à 45.
+              hitSlop={{ top: 2, bottom: 2 }}
               containerStyle={{ marginTop: space.xl }}
               style={styles.modePill}
             >
@@ -238,7 +241,10 @@ export default function MiroirHomeScreen() {
                   >
                     {home.heritage.isHeritage ? 'HERITAGE' : 'PADDOCK'}
                   </Text>
-                  <Animated.Text style={[styles.headerTitle, header.titleStyle]}>
+                  <Animated.Text
+                    style={[styles.headerTitle, header.titleStyle]}
+                    accessibilityRole="header"
+                  >
                     MIROIR
                   </Animated.Text>
                 </View>
@@ -286,7 +292,18 @@ export default function MiroirHomeScreen() {
         height={52 + insets.top}
         style={{ paddingTop: insets.top }}
       >
-        <Text style={styles.condensedTitle}>MIROIR</Text>
+        {/* Titre condensé : ANNONCÉ, jamais masqué.
+            Le réflexe « le grand titre le porte déjà, masquons la copie » est un
+            piège ici : sur iOS, VoiceOver IGNORE toute vue d'opacité nulle et son
+            sous-arbre. Or useCondensingHeader fait fondre le grand titre à 0 au
+            défilement pendant que celui-ci apparaît. Les deux ne sont donc jamais
+            audibles en même temps sur iOS — et masquer celui-ci laissait l'écran
+            SANS AUCUN titre une fois défilé. Le doublon n'existe que sur Android,
+            où l'opacité n'entre pas dans la visibilité : un titre dit deux fois y
+            est un moindre mal qu'un écran sans titre. */}
+        <Text style={styles.condensedTitle} accessibilityRole="header">
+          MIROIR
+        </Text>
       </CondensingHeaderBar>
 
       {/* Avatar — overlay FIXE au-dessus de la barre condensée (zIndex 11 >
@@ -295,6 +312,9 @@ export default function MiroirHomeScreen() {
       <PressScale
         onPress={() => router.navigate('/(app2)/vous' as never)}
         accessibilityLabel="Votre profil"
+        // 34 × 34 au visuel : hitSlop 5 porte la cible tactile à 44 × 44
+        // sans toucher au dessin.
+        hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
         containerStyle={[styles.avatarFixed, { top: insets.top + space.md }]}
         style={styles.avatar}
       >
@@ -356,6 +376,13 @@ function RitualBanner({ text, onDismiss }: { text: string; onDismiss: () => void
         <PressScale
           onPress={() => router.navigate('/(app)/preparation' as never)}
           accessibilityLabel={`${text} Ouvrir la préparation`}
+          // Écarter le bandeau n'existe qu'au swipe (Gesture.Pan) : un
+          // utilisateur de lecteur d'écran ne peut pas produire ce geste.
+          // L'action apparaît au rotor iOS / menu contextuel TalkBack.
+          accessibilityActions={[{ name: 'ecarter', label: 'Écarter ce rappel' }]}
+          onAccessibilityAction={(e) => {
+            if (e.nativeEvent.actionName === 'ecarter') onDismiss();
+          }}
           style={styles.ritualInner}
         >
           <Text style={styles.ritualText} numberOfLines={2}>
@@ -496,6 +523,8 @@ function HeroEntreJournees({
           <PressScale
             onPress={() => router.navigate('/(app)/preparation' as never)}
             accessibilityLabel="Préparer la journée"
+            // Pastille ~29 pts de haut : hitSlop 8 porte la cible à 45.
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             containerStyle={styles.preparePillContainer}
             style={styles.preparePill}
           >
@@ -519,6 +548,8 @@ function HeroSansJournee({ home }: { home: MiroirHome }) {
       <PressScale
         onPress={onReserve}
         accessibilityLabel="Réserver une journée"
+        // Pastille ~39 pts de haut : hitSlop vertical 3 porte la cible à 45.
+        hitSlop={{ top: 3, bottom: 3 }}
         containerStyle={styles.reserveContainer}
         style={styles.reservePill}
       >
@@ -534,11 +565,23 @@ function HeroSansJournee({ home }: { home: MiroirHome }) {
 
 function SignatureCard({ home }: { home: MiroirHome }) {
   const measured = Object.keys(home.qdiValues).length;
+  // La carte est un Pressable : il aplatit ses enfants, le libellé du RadarQdi
+  // n'est pas lu. On dit donc CE QUE LA CARTE MONTRE — un radar et le nom de ses
+  // branches — et rien de plus.
+  //
+  // On n'ÉNUMÈRE PAS les cinq notes chiffrées : elles ne sont écrites nulle part
+  // sur cette carte, et l'accueil est gouverné par le principe « un seul chiffre
+  // par écran ». Les annoncer ferait dire à voix haute cinq scores que l'écran a
+  // délibérément choisi de ne pas afficher. Les valeurs se lisent en ouvrant
+  // Signature, où elles ont leur place et leur contexte.
+  const mesurees = QDI_BRANCHES.filter((b) => home.qdiValues[b] !== undefined);
   if (measured === 0) return null; // pas de QDI → pas de radar inventé
   return (
     <PressScale
       onPress={() => router.navigate('/(app2)/signature' as never)}
-      accessibilityLabel="Signature, vous vs vous. Ouvrir"
+      accessibilityLabel={`Signature, vous contre vous. Radar de ${mesurees
+        .map((b) => QDI_BRANCH_LABELS[b])
+        .join(', ')}. Ouvrir`}
       containerStyle={styles.sectionGap}
       style={styles.signatureCard}
     >
@@ -562,7 +605,11 @@ function SignatureCard({ home }: { home: MiroirHome }) {
                 <Text
                   style={[
                     styles.legendLabel,
-                    { color: present ? colors.text.mid : colors.text.dim },
+                    // text.low (pas dim) : en 10 px sur bg.card, `dim` tombe à
+                    // 2,6:1 — illisible. Le retrait entre branche mesurée et
+                    // non mesurée reste marqué (mid vs low), même arbitrage
+                    // que PillarBar pour le « — ».
+                    { color: present ? colors.text.mid : colors.text.low },
                   ]}
                 >
                   {QDI_BRANCH_LABELS[branch]}
@@ -596,7 +643,11 @@ function Fact({ home }: { home: MiroirHome }) {
 // ---------------------------------------------------------------------------
 
 function StatsRow({ home }: { home: MiroirHome }) {
-  const fv = useFirstViewport(true);
+  // « Animations réduites » : on n'attend pas le viewport (patron du kit —
+  // RadarQdi, PillarBar, TraceCircuit). Sinon les cellules affichent ET
+  // annoncent le gabarit `zeroLike` — un « 0:00.000 » d'apparence mesurée.
+  const reduce = useReduceMotion();
+  const fv = useFirstViewport(!reduce);
   const stats = home.stats;
 
   const recordLabel =
@@ -615,6 +666,11 @@ function StatsRow({ home }: { home: MiroirHome }) {
       <StatCell
         label="Record"
         value={recordLabel === null ? '—' : undefined}
+        // La valeur passe par le slot : la cellule ne peut pas la nommer
+        // seule. On la lui donne, telle qu'affichée.
+        accessibilityLabel={
+          recordLabel === null ? 'Record : non mesuré' : `Record : ${recordLabel}`
+        }
         style={styles.statCell}
       >
         {recordLabel !== null ? (
@@ -622,7 +678,14 @@ function StatsRow({ home }: { home: MiroirHome }) {
         ) : undefined}
       </StatCell>
       <View style={styles.statDivider} />
-      <StatCell label="Saison" value={kmLabel === null ? '—' : undefined} style={styles.statCell}>
+      <StatCell
+        label="Saison"
+        value={kmLabel === null ? '—' : undefined}
+        accessibilityLabel={
+          kmLabel === null ? 'Saison : non mesuré' : `Saison : ${kmLabel} kilomètres`
+        }
+        style={styles.statCell}
+      >
         {kmLabel !== null ? (
           <View style={styles.statValueRow}>
             <RollingCounter value={rolling(kmLabel)} fontSize={16} />
@@ -632,7 +695,11 @@ function StatsRow({ home }: { home: MiroirHome }) {
       </StatCell>
       <View style={styles.statDivider} />
       {pack !== null ? (
-        <StatCell label="Heritage" style={styles.statCell}>
+        <StatCell
+          label="Heritage"
+          accessibilityLabel={`Heritage : ${pack.used} sur ${pack.total}`}
+          style={styles.statCell}
+        >
           <RollingCounter
             value={
               fv.visible
@@ -647,6 +714,9 @@ function StatsRow({ home }: { home: MiroirHome }) {
         <StatCell
           label="Séances"
           value={sessionsLabel === null ? '—' : undefined}
+          accessibilityLabel={
+            sessionsLabel === null ? 'Séances : non mesuré' : `Séances : ${sessionsLabel}`
+          }
           style={styles.statCell}
         >
           {sessionsLabel !== null ? (

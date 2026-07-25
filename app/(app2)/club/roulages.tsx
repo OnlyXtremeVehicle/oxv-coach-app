@@ -101,11 +101,14 @@ export default function ClubRoulagesScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>ROULAGES & AMIS</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          ROULAGES & AMIS
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -224,7 +227,8 @@ function RoulagesTab({ roulages, bottomInset }: { roulages: ClubRoulages; bottom
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metaRow}>
+    // Regroupé : l'étiquette et sa valeur sont UN fait, pas deux arrêts.
+    <View style={styles.metaRow} accessible accessibilityLabel={`${label} : ${value}`}>
       <Text style={styles.metaLabel}>{label}</Text>
       <Text style={styles.metaValue}>{value}</Text>
     </View>
@@ -304,7 +308,11 @@ function InvitationCard({
 
 function RolledRow({ row, divider }: { row: RolledTogether; divider: boolean }) {
   return (
-    <View style={[styles.rolledRow, divider && styles.rolledDivider]}>
+    <View
+      style={[styles.rolledRow, divider && styles.rolledDivider]}
+      accessible
+      accessibilityLabel={`${row.name}, roulé ensemble ${row.count} fois`}
+    >
       <View style={styles.avatarSm}>
         <Text style={styles.avatarSmTxt}>{row.initials}</Text>
       </View>
@@ -318,7 +326,13 @@ function RolledRow({ row, divider }: { row: RolledTogether; divider: boolean }) 
 
 function HistoryRow({ card }: { card: PilotRoulageCard }) {
   return (
-    <View style={styles.historyCard}>
+    <View
+      style={styles.historyCard}
+      accessible
+      accessibilityLabel={`${card.title}, ${formatDateTime(card.startsAt)}, ${card.circuitName}, ${
+        card.statusLabel
+      }`}
+    >
       <View style={styles.flex1}>
         <Text style={styles.historyTitle} numberOfLines={1}>
           {card.title}
@@ -573,7 +587,9 @@ function FriendRow({ friend, onRevoke }: { friend: FriendVM; onRevoke: () => voi
               {friend.name}
             </Text>
             {friend.inCrew ? (
-              <View style={styles.crewBadge} accessibilityLabel="Membre de votre écurie">
+              // Sans `accessible`, iOS n'expose jamais ce libellé : l'appartenance
+              // au groupe resterait une information purement visuelle.
+              <View style={styles.crewBadge} accessible accessibilityLabel="Membre de votre écurie">
                 <OxvIcon name="groupe" size={13} color={colors.text.mid} />
               </View>
             ) : null}

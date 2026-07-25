@@ -34,7 +34,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import Animated, {
@@ -203,6 +203,19 @@ export default function SignatureScreen() {
   const axes = measuredAxesCount(target);
   const hasContent = hasBaseline || monthly.length > 0;
 
+  // Toucher un mois morphe le grand radar et change sa légende, plus HAUT
+  // dans l'écran : le focus reste sur la cellule du mois et rien n'est perçu.
+  // On annonce la légende RÉELLE, celle qui s'affiche — aucun texte ajouté.
+  const legende = selectionCaption(effectiveSelection, monthly);
+  const premiereLegende = useRef(true);
+  useEffect(() => {
+    if (premiereLegende.current) {
+      premiereLegende.current = false;
+      return;
+    }
+    AccessibilityInfo.announceForAccessibility(legende);
+  }, [legende]);
+
   const onMonthPress = useCallback(
     (monthKey: string) => {
       setSelection((prev) =>
@@ -249,11 +262,20 @@ export default function SignatureScreen() {
       >
         {/* Header déployé — s'efface au défilement (patron Airbnb). */}
         <Animated.View style={[styles.header, headerStyle]}>
-          <Animated.Text style={[styles.title, titleStyle]}>SIGNATURE</Animated.Text>
+          <Animated.Text style={[styles.title, titleStyle]} accessibilityRole="header">
+            SIGNATURE
+          </Animated.Text>
         </Animated.View>
 
         {status === 'loading' ? (
-          <View style={styles.body}>
+          // Le squelette n'est que du Shimmer, masqué aux lecteurs d'écran :
+          // sans ce libellé, l'écran est annoncé vide, sans dire qu'il charge.
+          <View
+            style={styles.body}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Chargement de votre signature"
+          >
             <StateView state="loading" shape="radar" />
             <StateView state="loading" shape="card" style={styles.sectionGap} />
           </View>
@@ -277,7 +299,8 @@ export default function SignatureScreen() {
             {/* Le grand radar — plein largeur, entrée théâtrale, morph vivant. */}
             <View style={styles.radarZone}>
               <MorphingRadar target={target} />
-              <Text style={styles.caption}>{selectionCaption(effectiveSelection, monthly)}</Text>
+              {/* Même chaîne que l'annonce : ce qui est lu est ce qui est écrit. */}
+              <Text style={styles.caption}>{legende}</Text>
               {axes < 5 ? <Text style={styles.axesNote}>{formatMeasuredAxes(axes)}</Text> : null}
             </View>
 
@@ -327,7 +350,12 @@ export default function SignatureScreen() {
       {/* Barre condensée (blur) — prend le relais au défilement. */}
       <CondensingHeaderBar condensedStyle={condensedStyle} height={insets.top + 52}>
         <View style={{ paddingTop: insets.top }}>
-          <Text style={styles.condensedTitle}>SIGNATURE</Text>
+          {/* Titre condensé ANNONCÉ (cf. app/(app2)/index.tsx) : sur iOS,
+              VoiceOver ignore les vues d'opacité nulle, donc le grand titre fondu
+              n'est plus lu — masquer celui-ci laisserait l'écran sans titre. */}
+          <Text style={styles.condensedTitle} accessibilityRole="header">
+            SIGNATURE
+          </Text>
         </View>
       </CondensingHeaderBar>
 
@@ -336,7 +364,8 @@ export default function SignatureScreen() {
         onPress={() => router.back()}
         accessibilityLabel="Retour"
         containerStyle={[styles.back, { top: insets.top + space.md }]}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        // Chevron 22 × 22 : hitSlop 11 porte la cible à 44 × 44.
+        hitSlop={{ top: 11, bottom: 11, left: 11, right: 11 }}
       >
         <BackChevron />
       </PressScale>

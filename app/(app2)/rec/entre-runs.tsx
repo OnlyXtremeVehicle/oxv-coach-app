@@ -35,6 +35,7 @@ import {
   Dial,
   EMPTY_CIRCUIT_PATH,
   ListRow,
+  msToLapLabel,
   PressScale,
   radius,
   space,
@@ -175,11 +176,14 @@ export default function EntreRunsScreen() {
         viewBox="0 0 208 116"
         pointerEvents="none"
         accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
       >
         <Path d={EMPTY_CIRCUIT_PATH} stroke={colors.text.dim} strokeWidth={2} fill="none" />
       </Svg>
 
-      <Text style={styles.eyebrow}>ENTRE DEUX RUNS</Text>
+      <Text style={styles.eyebrow} accessibilityRole="header">
+        ENTRE DEUX RUNS
+      </Text>
 
       {/* Cadran du break — affiché SEULEMENT pour un vrai départ du jour. */}
       {countdownMin !== null ? (
@@ -201,7 +205,24 @@ export default function EntreRunsScreen() {
       )}
 
       {/* Meilleur tour du jour — le seul or de l'écran (chrono/record). */}
-      <View style={styles.bestBlock}>
+      {/* Groupé : l'étiquette et la valeur sont un seul fait. Sans tour bouclé,
+          la valeur affichée est le seul caractère « — », qu'un lecteur d'écran
+          annonce « tiret » ou saute selon sa verbosité — l'absence de mesure se
+          dit donc en toutes lettres. */}
+      <View
+        style={styles.bestBlock}
+        accessible
+        accessibilityLabel={
+          bestLapMs !== null
+            ? `Meilleur tour du jour : ${msToLapLabel(bestLapMs)}`
+            : // « non mesuré », pas « aucun tour bouclé » : bestLapMs reste nul
+              // aussi bien quand le pilote n'a bouclé aucun tour que quand rien
+              // n'a pu être mesuré (fix GNSS perdu, ligne d'arrivée absente,
+              // boîtier décroché). Dire le second cas comme le premier ferait
+              // affirmer à l'app un fait de pilotage qu'elle n'a pas constaté.
+              'Meilleur tour du jour : non mesuré'
+        }
+      >
         <Text style={styles.bestEyebrow}>MEILLEUR TOUR DU JOUR</Text>
         {bestLapMs !== null ? (
           <ChronoHero chronoMs={bestLapMs} size="s" celebrate={celebrateDayRecord} />
@@ -241,15 +262,25 @@ export default function EntreRunsScreen() {
           accessibilityLabel="Votre note rapide"
           style={styles.noteInput}
         />
+        {/* L'issue de l'enregistrement doit s'entendre : le champ se vide, ce
+            qui sans annonce peut se lire comme une perte. */}
         {saved ? (
-          <Text style={styles.noteFeedback}>Notée. À retrouver dans votre carnet.</Text>
+          <Text style={styles.noteFeedback} accessibilityLiveRegion="polite">
+            Notée. À retrouver dans votre carnet.
+          </Text>
         ) : null}
-        {noteError ? <Text style={styles.noteFeedback}>{noteError}</Text> : null}
+        {noteError ? (
+          <Text style={styles.noteFeedback} accessibilityLiveRegion="assertive">
+            {noteError}
+          </Text>
+        ) : null}
         <PressScale
           onPress={onSaveNote}
           disabled={saving || !draft.trim()}
           accessibilityLabel="Enregistrer la note dans le carnet"
-          accessibilityState={{ disabled: !draft.trim(), busy: saving }}
+          // L'état annoncé suit l'état RÉEL : pendant l'enregistrement d'une
+          // note non vide, le bouton est inerte et doit se dire tel quel.
+          accessibilityState={{ disabled: saving || !draft.trim(), busy: saving }}
           containerStyle={styles.noteActionContainer}
           style={[styles.noteAction, !draft.trim() && styles.noteActionDim]}
         >

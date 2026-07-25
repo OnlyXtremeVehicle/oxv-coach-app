@@ -189,7 +189,9 @@ function headSubtitle(circuit: string | 'multi' | null, total: number): string {
 /** Pastille d'identité live (rouge coach). Le point vit tant que le canal répond. */
 function LiveBadge({ ready }: { ready: boolean }) {
   return (
-    <View style={s.badge} accessibilityRole="text" accessibilityLabel="En direct">
+    // `accessible` est indispensable : sans lui, le libellé posé sur une View
+    // reste inerte sur iOS et seuls les enfants sont lus.
+    <View style={s.badge} accessible accessibilityRole="text" accessibilityLabel="En direct">
       <View
         style={[s.badgeDot, { backgroundColor: ready ? palette.coachAccent : palette.faint }]}
       />
@@ -345,11 +347,13 @@ function StatePanel({
 }) {
   return (
     <View style={s.panel}>
-      <Text style={s.panelLabel}>ÉTAT DU DIRECT</Text>
-      <View style={s.countBlock}>
-        <Text style={s.count} accessibilityLabel={`${onTrack} en piste`}>
-          {onTrack}
-        </Text>
+      <Text style={s.panelLabel} accessibilityRole="header">
+        ÉTAT DU DIRECT
+      </Text>
+      {/* Le chiffre et son unité sont groupés sur le conteneur : le libellé
+          n'est plus dit deux fois (une fois porté, une fois lu sur le Text). */}
+      <View style={s.countBlock} accessible accessibilityLabel={`${onTrack} en piste`}>
+        <Text style={s.count}>{onTrack}</Text>
         <Text style={s.countUnit}>en piste</Text>
       </View>
       <View style={s.breakdown}>
@@ -384,10 +388,8 @@ function SummaryCard({
 }) {
   return (
     <View style={s.summary}>
-      <View style={s.summaryLeft}>
-        <Text style={s.count} accessibilityLabel={`${onTrack} en piste`}>
-          {onTrack}
-        </Text>
+      <View style={s.summaryLeft} accessible accessibilityLabel={`${onTrack} en piste`}>
+        <Text style={s.count}>{onTrack}</Text>
         <Text style={s.countUnit}>en piste</Text>
       </View>
       <View style={s.summaryRight}>

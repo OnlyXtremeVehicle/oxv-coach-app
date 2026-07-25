@@ -233,11 +233,16 @@ function CheckRow({
   onToggle: () => void;
 }) {
   return (
+    // Le `hint` porte la PORTÉE RÉELLE du consentement (source :
+    // docs/juridique/consentement_biometrie.md). Le label seul écrasait ce
+    // texte : on cochait sans jamais l'entendre. Il est lu après le label et
+    // l'état, sans polluer la navigation par éléments.
     <PressScale
       onPress={onToggle}
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       accessibilityLabel={title}
+      accessibilityHint={hint}
     >
       <View style={styles.checkRow}>
         <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
@@ -350,9 +355,21 @@ function ConsentSheet({
           Désactivé par défaut. Vous pouvez le retirer à tout moment, en un geste.
         </Text>
 
+        {/* ~42 px de haut. On n'élargit QUE VERS L'EXTÉRIEUR — jamais vers le
+            bouton voisin.
+            POURQUOI : `PressScale` pose le `style` reçu sur sa vue INTERNE, pas
+            sur le Pressable externe qui porte le hitSlop. Le `marginTop` de
+            `ghostBtn` vit donc DANS « Refuser » : les deux zones tactiles
+            externes sont jointives, écart réel nul. Un hitSlop symétrique les
+            ferait se recouvrir à cheval sur la frontière, et « Refuser », frère
+            le plus tardif, gagnerait le hit-test : appuyer sur le bas
+            d'« Accorder » RÉVOQUERAIT le consentement. Sur un écran de
+            consentement, c'est le pire défaut possible. Deux bords opposés,
+            donc : aucun recouvrement possible. */}
         <PressScale
           onPress={() => onSave(capture, share)}
           accessibilityLabel="Accorder"
+          hitSlop={{ top: 6 }}
           style={styles.primaryBtn}
         >
           <Text style={styles.primaryBtnLabel}>Accorder</Text>
@@ -360,6 +377,7 @@ function ConsentSheet({
         <PressScale
           onPress={() => onSave(false, false)}
           accessibilityLabel="Refuser"
+          hitSlop={{ bottom: 6 }}
           style={styles.ghostBtn}
         >
           {/* « Refuser » = révocation EXPLICITE (vérif L2 [8]) : écrit
@@ -629,11 +647,16 @@ export default function EquipementScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Chevron de 22 px : 22 + 2 × 12 = 46 px de cible réelle (le minimum
+          // est 44). Le visuel ne bouge pas. C'est la seule sortie de l'écran,
+          // le segment masquant la TabBar.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackChevron />
         </PressScale>
-        <Text style={styles.title}>ÉQUIPEMENT</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          ÉQUIPEMENT
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -647,7 +670,16 @@ export default function EquipementScreen() {
         {isPairing ? (
           // -- Carte du boîtier appairé -------------------------------------
           <View style={styles.pairedCard}>
-            <View style={styles.pairedTop}>
+            {/* Chaque fait se lit d'un bloc : éclatés, « 87 » et « RB-1234 »
+                perdaient leur étiquette. formatBatteryValue rend « — » quand la
+                mesure est absente — le libellé reste factuel. */}
+            <View
+              style={styles.pairedTop}
+              accessible
+              accessibilityLabel={`${
+                phase === 'connected' ? 'Boîtier appairé' : 'Connexion en cours'
+              } : ${pairedName}`}
+            >
               <PairedDot />
               <View style={styles.pairedNames}>
                 <Text style={styles.pairedLabel}>
@@ -660,14 +692,29 @@ export default function EquipementScreen() {
             </View>
 
             <View style={styles.pairedMeta}>
-              <View style={styles.pairedMetaCell}>
+              <View
+                style={styles.pairedMetaCell}
+                accessible
+                // Le tiret d'absence est muet à l'oral : « Batterie — % » se dit
+                // « Batterie pour cent », une unité sans valeur. On dit l'absence
+                // avec des mots, comme la cellule voisine (« non communiqué »).
+                accessibilityLabel={
+                  battery != null
+                    ? `Batterie : ${formatBatteryValue(battery)} %`
+                    : 'Batterie : non mesurée'
+                }
+              >
                 <Text style={styles.metaEyebrow}>BATTERIE</Text>
                 <View style={styles.batteryRow}>
                   <RollingCounter value={formatBatteryValue(battery)} fontSize={30} />
                   <Text style={styles.batteryUnit}>%</Text>
                 </View>
               </View>
-              <View style={styles.pairedMetaCell}>
+              <View
+                style={styles.pairedMetaCell}
+                accessible
+                accessibilityLabel={`Numéro de série : ${pairedSerial ?? 'non communiqué'}`}
+              >
                 <Text style={styles.metaEyebrow}>N° DE SÉRIE</Text>
                 <Text style={styles.serial}>{pairedSerial ?? '—'}</Text>
               </View>

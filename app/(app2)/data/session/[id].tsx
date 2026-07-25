@@ -64,6 +64,7 @@ import {
   space,
   tabBarSpace,
   typo,
+  useReduceMotion,
 } from '@/ui/v2';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
 import { AnatomieViz } from '@/components/insights/AnatomieViz';
@@ -604,7 +605,8 @@ function HeaderFixed({
       <PressScale
         onPress={() => router.back()}
         accessibilityLabel="Retour"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        // Glyphe de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt.
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <Svg width={20} height={20} viewBox="0 0 24 24">
           <SvgPath
@@ -751,9 +753,27 @@ function ToursSection({
       </View>
 
       <GestureDetector gesture={tap}>
+        {/* Le Canvas Skia n'est atteignable qu'au doigt : sans alternative, un
+            lecteur d'écran ne peut JAMAIS isoler un tour — alors que ce choix
+            pilote le Tracé et la Télémétrie. `adjustable` + increment/decrement
+            passent par `onSelect`, la voie existante : aucun calcul changé. */}
         <View
           style={{ height: BARS_HEIGHT }}
           onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+          accessible
+          accessibilityRole="adjustable"
+          accessibilityLabel="Tours de la séance"
+          accessibilityValue={{
+            text: selected
+              ? `Tour ${selected.lapNumber}, ${formatChronoMs(selected.ms)}`
+              : 'Aucun tour isolé',
+          }}
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={(e) => {
+            const i = bars.findIndex((b) => b.lapNumber === selectedLap);
+            const next = e.nativeEvent.actionName === 'increment' ? i + 1 : i - 1;
+            if (next >= 0 && next < bars.length) onSelect(bars[next].lapNumber);
+          }}
         >
           {width > 0 ? (
             <Canvas style={{ width, height: BARS_HEIGHT }}>
@@ -892,7 +912,12 @@ function TraceSection({
                 haptic('tap');
                 setOpenCorner(c);
               }}
-              accessibilityLabel={`Virage ${c.segmentName ?? c.segmentIndex + 1}`}
+              // La pastille fait ~28 pt de haut : hitSlop pour atteindre 44.
+              // La zone de marge n'est sinon portée que par la couleur du point.
+              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              accessibilityLabel={`Virage ${c.segmentName ?? c.segmentIndex + 1}${
+                c.marginZone ? `, marge ${marginLabel(c.marginZone).toLowerCase()}` : ''
+              }`}
             >
               <View style={styles.cornerPill}>
                 <View
@@ -1044,7 +1069,11 @@ function CornerEvolutionCanvas({ evolution }: { evolution: CornerEvolution }) {
       </Text>
       <View style={{ height: H }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 ? (
-          <Canvas style={{ width, height: H }}>
+          <Canvas
+            style={{ width, height: H }}
+            accessible
+            accessibilityLabel={`Superposition des passages, ${evolution.passes.length} tracés`}
+          >
             {paths.map((p, i) =>
               p.d !== '' ? (
                 <Path
@@ -1174,7 +1203,11 @@ function GGScatter({
 
   return (
     <View style={styles.canvasCenter}>
-      <Canvas style={{ width: GG_SIZE, height: GG_SIZE }}>
+      <Canvas
+        style={{ width: GG_SIZE, height: GG_SIZE }}
+        accessible
+        accessibilityLabel={`Diagramme G-G, ${sampled.length} points`}
+      >
         {/* Croix centrale — repère neutre, jamais un verdict. */}
         <Rect x={R - 0.5} y={0} width={1} height={GG_SIZE} color={colors.border.card} />
         <Rect x={0} y={R - 0.5} width={GG_SIZE} height={1} color={colors.border.card} />
@@ -1292,18 +1325,52 @@ function ChannelsChart({
   // l'ancien curseur piloté par l'état React (fallback propre — cf. entête).
   const cursorXProp = UI_THREAD_SCRUB ? cursorXSV : cursor * width - 0.5;
 
+  // Mêmes chaînes à l'écran et à la voix — le libellé ne dit rien d'autre que
+  // ce qui est affiché. « non lu » remplace le tiret cadratin, muet à l'oral.
+  const speedRead = curSpeed ? `${Math.round(curSpeed.speedKmh)} km/h` : '—';
+  const brakeRead = curBrake
+    ? `${curBrake.gLong >= 0 ? '+' : ''}${curBrake.gLong.toFixed(2)} g`
+    : '—';
+  const speedSpoken = curSpeed ? speedRead : 'non lu';
+  const brakeSpoken = curBrake ? brakeRead : 'non lu';
+
   return (
     <View>
-      <View style={styles.chanHead}>
-        <Text style={styles.chanValue}>
-          {curSpeed ? `${Math.round(curSpeed.speedKmh)} km/h` : '—'}
-        </Text>
-        <Text style={styles.chanValueAlt}>
-          {curBrake ? `${curBrake.gLong >= 0 ? '+' : ''}${curBrake.gLong.toFixed(2)} g` : '—'}
-        </Text>
+      {/* Deux Text séparés, sans nom de canal : regroupés, ils redeviennent UNE
+          donnée (les libellés VITESSE / G LONGITUDINAL vivent loin en dessous). */}
+      <View
+        style={styles.chanHead}
+        accessible
+        accessibilityLabel={`Au curseur — vitesse ${speedSpoken}, G longitudinal ${brakeSpoken}`}
+      >
+        <Text style={styles.chanValue}>{speedRead}</Text>
+        <Text style={styles.chanValueAlt}>{brakeRead}</Text>
       </View>
       <GestureDetector gesture={pan}>
-        <View onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+        {/* Le curseur ne se déplace qu'au Gesture.Pan() : sans alternative, les
+            deux relevés restent figés pour un lecteur d'écran. Increment /
+            decrement empruntent le même chemin que le geste (cursorSV + setCursor). */}
+        <View
+          onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+          accessible
+          accessibilityRole="adjustable"
+          // Un conteneur `accessible` REMPLACE la lecture de ses descendants par
+          // son propre libellé : les deux légendes d'axes vivent à l'intérieur et
+          // deviendraient inaudibles. Or celle du canal G porte la clé de lecture
+          // du signe (bas = freinage, haut = accélération) — sans elle, la valeur
+          // annoncée n'a pas de sens. On la reprend donc ici.
+          accessibilityLabel="Canaux : vitesse, et G longitudinal (bas : freinage, haut : accélération)"
+          accessibilityValue={{ text: `${speedSpoken}, ${brakeSpoken}` }}
+          accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+          onAccessibilityAction={(e) => {
+            const next = Math.min(
+              1,
+              Math.max(0, cursor + (e.nativeEvent.actionName === 'increment' ? 0.05 : -0.05))
+            );
+            cursorSV.value = next;
+            setCursor(next);
+          }}
+        >
           {/* Canal vitesse */}
           <View style={{ height: CHAN_H }}>
             {width > 0 ? (
@@ -1390,7 +1457,11 @@ function HeatmapTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
     <View>
       <View style={{ height: HEAT_H }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 ? (
-          <Canvas style={{ width, height: HEAT_H }}>
+          <Canvas
+            style={{ width, height: HEAT_H }}
+            accessible
+            accessibilityLabel="Tracé coloré par la vitesse"
+          >
             {segments.map((s, i) =>
               s.d !== '' ? (
                 <Path
@@ -1427,6 +1498,10 @@ const REPLAY_STEP_MS = 60;
 function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
   const [width, setWidth] = useState(0);
   const [idx, setIdx] = useState(0);
+  // Seule animation perpétuelle de la zone : elle doit, comme tout le kit,
+  // respecter « animations réduites » — le point reste alors à l'index 0,
+  // tracé complet, sans boucle.
+  const reduce = useReduceMotion();
 
   const pts = useMemo(() => fitTrajectory(traj, width, REPLAY_H, 14), [traj, width]);
 
@@ -1434,12 +1509,12 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
   // sur le thread UI (shared value + Skia) pour un défilement 60fps sans
   // re-render de section.
   useEffect(() => {
-    if (pts.length < 2) return;
+    if (reduce || pts.length < 2) return;
     const t = setInterval(() => {
       setIdx((i) => (i + 1) % pts.length);
     }, REPLAY_STEP_MS);
     return () => clearInterval(t);
-  }, [pts.length]);
+  }, [pts.length, reduce]);
 
   if (traj.length < 2) {
     return <StateView state="empty" emptyMessage="Replay indisponible." />;
@@ -1452,7 +1527,11 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
     <View>
       <View style={{ height: REPLAY_H }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {width > 0 && tracePath !== '' ? (
-          <Canvas style={{ width, height: REPLAY_H }}>
+          <Canvas
+            style={{ width, height: REPLAY_H }}
+            accessible
+            accessibilityLabel="Tracé de la séance"
+          >
             <Path
               path={tracePath}
               style="stroke"

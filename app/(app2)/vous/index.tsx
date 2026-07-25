@@ -93,7 +93,9 @@ export default function VousHubScreen() {
         {/* Grand header — s'efface au scroll (barre condensée en relais). */}
         <Animated.View style={[styles.headerRow, header.headerStyle]}>
           <Text style={styles.headerEyebrow}>VOTRE ESPACE</Text>
-          <Animated.Text style={[styles.headerTitle, header.titleStyle]}>VOUS</Animated.Text>
+          <Animated.Text style={[styles.headerTitle, header.titleStyle]} accessibilityRole="header">
+            VOUS
+          </Animated.Text>
         </Animated.View>
 
         {hub.status === 'loading' ? (
@@ -140,7 +142,9 @@ export default function VousHubScreen() {
         height={52 + insets.top}
         style={{ paddingTop: insets.top }}
       >
-        <Text style={styles.condensedTitle}>VOUS</Text>
+        <Text style={styles.condensedTitle} accessibilityRole="header">
+          VOUS
+        </Text>
       </CondensingHeaderBar>
     </Animated.View>
   );

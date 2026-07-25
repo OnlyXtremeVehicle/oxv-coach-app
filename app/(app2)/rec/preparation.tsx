@@ -313,7 +313,10 @@ export default function PreparationScreen() {
         <Animated.View style={[styles.headerRow, header.headerStyle]}>
           <View>
             <Text style={styles.headerEyebrow}>PORTE REC</Text>
-            <Animated.Text style={[styles.headerTitle, header.titleStyle]}>
+            <Animated.Text
+              style={[styles.headerTitle, header.titleStyle]}
+              accessibilityRole="header"
+            >
               PRÉPARATION
             </Animated.Text>
           </View>
@@ -375,7 +378,14 @@ export default function PreparationScreen() {
         <View style={styles.section}>
           <SectionHeader eyebrow="CHECK-LIST" />
           <View style={styles.card}>
-            <View style={styles.progressHead}>
+            {/* La barre et le compteur disent LA MÊME chose : groupés, ils se
+                lisent en une annonce. Séparés, la barre était annoncée
+                « barre de progression » sans valeur. */}
+            <View
+              style={styles.progressHead}
+              accessible
+              accessibilityLabel={`Check-list : ${progress.done} sur ${progress.total}`}
+            >
               <ProgressBar ratio={progress.ratio} />
               <Text style={styles.progressLabel}>
                 {progress.done}/{progress.total}
@@ -503,7 +513,12 @@ export default function PreparationScreen() {
         height={52 + insets.top}
         style={{ paddingTop: insets.top }}
       >
-        <Text style={styles.condensedTitle}>PRÉPARATION</Text>
+        {/* Titre condensé ANNONCÉ (cf. app/(app2)/index.tsx) : sur iOS,
+            VoiceOver ignore les vues d'opacité nulle, donc le grand titre fondu
+            n'est plus lu — masquer celui-ci laisserait l'écran sans titre. */}
+        <Text style={styles.condensedTitle} accessibilityRole="header">
+          PRÉPARATION
+        </Text>
       </CondensingHeaderBar>
 
       {pass && pass.event ? (
@@ -554,7 +569,8 @@ function TodayBadge() {
   const dotStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
-    <View style={styles.todayBadge} accessibilityLabel="Aujourd’hui">
+    // `accessible` : sans lui le label posé sur ce View était purement ignoré.
+    <View style={styles.todayBadge} accessible accessibilityLabel="Aujourd’hui">
       <Animated.View style={[styles.todayDot, dotStyle]} />
       <Text style={styles.todayLabel}>AUJOURD’HUI</Text>
     </View>
@@ -568,7 +584,9 @@ function TodayBadge() {
 function ProgressBar({ ratio }: { ratio: number }) {
   const pct = `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%` as const;
   return (
-    <View style={styles.progressTrack} accessibilityRole="progressbar">
+    // Le rôle `progressbar` sans valeur n'annonçait rien : la valeur est
+    // désormais portée par le groupe parent (barre + compteur x/N).
+    <View style={styles.progressTrack}>
       <View style={[styles.progressFill, { width: pct }]} />
     </View>
   );
@@ -607,7 +625,14 @@ function CheckRow({
   }));
 
   return (
-    <PressScale onPress={onPress} accessibilityLabel={label} accessibilityState={{ checked }}>
+    // Le rôle `checkbox` est ce qui rend l'état `checked` audible : sur le rôle
+    // `button` (défaut de PressScale), ni iOS ni Android ne l'annoncent.
+    <PressScale
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityLabel={label}
+      accessibilityState={{ checked }}
+    >
       <View style={[styles.checkRow, divider && styles.checkDivider]}>
         <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
           <Svg width={14} height={14} viewBox="0 0 22 22">

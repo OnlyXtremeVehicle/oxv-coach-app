@@ -16,12 +16,28 @@ export interface StatCellProps {
   value?: string;
   /** Slot valeur (ex. RollingCounter) — prime sur `value`. */
   children?: ReactNode;
+  /**
+   * Libellé lu d'un seul tenant. À fournir quand la valeur passe par
+   * `children` : la cellule ne connaît alors pas la valeur rendue et ne
+   * regroupe pas (elle n'invente pas un libellé pour un chiffre qu'elle ne
+   * lit pas).
+   */
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }
 
-export function StatCell({ label, value, children, style }: StatCellProps) {
+export function StatCell({ label, value, children, style, accessibilityLabel }: StatCellProps) {
+  // Regroupement : l'étiquette et le chiffre sont UNE donnée, lue d'un seul
+  // tenant — sans quoi le lecteur d'écran énonce « Record » puis, au balayage
+  // suivant, « 1:41.203 », le lien perdu. Absence dite « non mesuré », comme
+  // PillarBar et Dial (le « — » de l'écran n'est pas un mot).
+  const absent = value === undefined || value === '—';
+  const groupedLabel =
+    accessibilityLabel ??
+    (children !== undefined ? undefined : `${label} : ${absent ? 'non mesuré' : value}`);
+
   return (
-    <View style={style}>
+    <View style={style} accessible={groupedLabel !== undefined} accessibilityLabel={groupedLabel}>
       <Text style={styles.label}>{label}</Text>
       {children !== undefined ? (
         children

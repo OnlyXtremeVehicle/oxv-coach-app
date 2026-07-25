@@ -102,7 +102,10 @@ export default function ClubHubScreen() {
               <Animated.View style={[styles.headerRow, header.headerStyle]}>
                 <View>
                   <Text style={styles.headerEyebrow}>LE PADDOCK</Text>
-                  <Animated.Text style={[styles.headerTitle, header.titleStyle]}>
+                  <Animated.Text
+                    style={[styles.headerTitle, header.titleStyle]}
+                    accessibilityRole="header"
+                  >
                     CLUB
                   </Animated.Text>
                 </View>
@@ -162,7 +165,15 @@ function CoachingBlock({ coaching }: { coaching: HubCoaching }) {
       {coaching.kind === 'binome' ? (
         <PressScale
           onPress={() => router.navigate(COACHING_HREF as never)}
-          accessibilityLabel={`${coaching.coachName}. Ouvrir le coaching`}
+          // Le label explicite EFFACE la lecture des enfants : on y remet ce
+          // que la carte montre (le rôle bouton porte déjà l'action).
+          accessibilityLabel={[
+            coaching.coachName,
+            coaching.nextBookingLabel ? `Prochaine séance ${coaching.nextBookingLabel}` : null,
+            coaching.lastMessagePreview,
+          ]
+            .filter(Boolean)
+            .join('. ')}
           style={styles.card}
         >
           <View style={styles.cardRow}>
@@ -332,7 +343,9 @@ function PassBlock({ pass }: { pass: HubPass }) {
       <SectionHeader eyebrow="PASS" title="Prochaine inscription" />
       <PressScale
         onPress={() => router.navigate('/(app2)/club/pass' as never)}
-        accessibilityLabel="Ouvrir votre pass"
+        accessibilityLabel={[pass.circuitName ?? 'Journée OXV', pass.dayLabel]
+          .filter(Boolean)
+          .join(', ')}
         style={styles.card}
       >
         <View style={styles.cardRow}>
@@ -366,7 +379,12 @@ function PartnersBlock({ partners }: { partners: HubPartner[] }) {
       <SectionHeader eyebrow="ÉCOSYSTÈME" title="Partenaires" />
       <PressScale
         onPress={() => router.navigate('/(app2)/club/partenaires' as never)}
-        accessibilityLabel="Ouvrir les partenaires"
+        // Les logos sont étiquetés un par un, mais le label du parent les
+        // efface : on énonce ici les noms effectivement affichés.
+        accessibilityLabel={`Partenaires : ${partners
+          .slice(0, 8)
+          .map((p) => p.name)
+          .join(', ')}`}
         style={styles.partnersRail}
       >
         {partners.slice(0, 8).map((p) => (

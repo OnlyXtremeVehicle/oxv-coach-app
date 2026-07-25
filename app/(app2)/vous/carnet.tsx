@@ -67,6 +67,7 @@ import {
   tabBarSpace,
   typo,
   useDoorTransition,
+  useReduceMotion,
 } from '@/ui/v2';
 
 import {
@@ -117,6 +118,9 @@ export default function CarnetScreen() {
   const carnet = useCarnet(profile?.id ?? null);
 
   const [tab, setTab] = useState(0);
+  // « Animations réduites » : le changement d'onglet déclenché par un appui se
+  // pose sans ressort (le pan, lui, est de la manipulation directe).
+  const reduce = useReduceMotion();
   const tx = useSharedValue(0);
   const startTx = useSharedValue(0);
   // Layouts mesurés des 4 chips (x, largeur) — pour l'indicateur glissant.
@@ -127,7 +131,7 @@ export default function CarnetScreen() {
 
   const goTo = (index: number) => {
     setTab(index);
-    tx.value = withSpring(-index * width, motionTokens.spring);
+    tx.value = reduce ? -index * width : withSpring(-index * width, motionTokens.spring);
     haptic('tap');
   };
 
@@ -140,10 +144,10 @@ export default function CarnetScreen() {
     (startValue: number, translationX: number, velocityX: number) => {
       const current = Math.round(-startValue / width);
       const target = nextTabIndex(current, translationX, velocityX, width);
-      tx.value = withSpring(-target * width, motionTokens.spring);
+      tx.value = reduce ? -target * width : withSpring(-target * width, motionTokens.spring);
       setTab(target);
     },
-    [tx, width]
+    [tx, width, reduce]
   );
 
   const pan = useMemo(
@@ -206,11 +210,14 @@ export default function CarnetScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe nu de 20 pt : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>CARNET</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          CARNET
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -227,8 +234,16 @@ export default function CarnetScreen() {
       {/* Pager gestuel : 4 panneaux côte à côte */}
       <GestureDetector gesture={pan}>
         <Animated.View style={[styles.pager, { width: width * CARNET_TABS.length }, pagerStyle]}>
-          {CARNET_TABS.map((t) => (
-            <View key={t} style={[styles.page, { width }]}>
+          {/* Les 4 panneaux vivent côte à côte, sans clipping : seuls ceux hors
+              écran sont retirés aux lecteurs d'écran, sinon VoiceOver traverse
+              les 4 onglets d'affilée, sans frontière. */}
+          {CARNET_TABS.map((t, i) => (
+            <View
+              key={t}
+              style={[styles.page, { width }]}
+              accessibilityElementsHidden={i !== tab}
+              importantForAccessibility={i !== tab ? 'no-hide-descendants' : 'auto'}
+            >
               <Panel tab={t} carnet={carnet} bottomInset={tabBarSpace(insets.bottom)} />
             </View>
           ))}
@@ -456,7 +471,8 @@ function IntentionCard({ item }: { item: CarnetIntentionItem }) {
         <PressScale
           onPress={() => router.push(`/(app2)/bilan/${item.intention.sessionId}` as never)}
           accessibilityLabel="Ouvrir la séance liée"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Chevron de 16 pt : hitSlop 14 porte la cible à 44 × 44.
+          hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
         >
           <Chevron />
         </PressScale>
@@ -591,7 +607,11 @@ function CycleCard({ cycle }: { cycle: SharedCycle }) {
 /** Mini-tracé décoratif (motif de circuit générique, jamais une donnée réelle). */
 function CircuitGlyph() {
   return (
-    <Canvas style={styles.circuitGlyphCanvas}>
+    <Canvas
+      style={styles.circuitGlyphCanvas}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <GlowStroke path={EMPTY_CIRCUIT_PATH} strokeWidth={2} />
     </Canvas>
   );

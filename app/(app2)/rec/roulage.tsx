@@ -132,10 +132,19 @@ export default function RoulageScreen() {
       <View style={styles.center}>
         <RecPulse active={recActive} />
         {linkMsg !== null ? (
-          <>
+          // Le décrochage du lien survient PENDANT que le pilote roule, écran
+          // détourné. Groupé et annoncé : sans région live, un utilisateur de
+          // lecteur d'écran revenant sur l'écran croirait que l'enregistrement
+          // tient encore.
+          <View
+            style={styles.linkBlock}
+            accessible
+            accessibilityLiveRegion="polite"
+            accessibilityLabel={`${linkMsg.title}. ${linkMsg.sub}`}
+          >
             <Text style={styles.linkTitle}>{linkMsg.title}</Text>
             <Text style={styles.linkSub}>{linkMsg.sub}</Text>
-          </>
+          </View>
         ) : (
           <Text style={styles.rec}>REC</Text>
         )}
@@ -198,6 +207,13 @@ const styles = StyleSheet.create({
     letterSpacing: 6,
     textTransform: 'uppercase',
     color: colors.accent,
+  },
+  // Le groupe d'accessibilité reprend À L'IDENTIQUE ce que le conteneur
+  // `center` appliquait aux deux textes (gap + centrage) : le rendu ne bouge
+  // pas d'un pixel, seule la lecture change.
+  linkBlock: {
+    alignItems: 'center',
+    gap: space.xl,
   },
   linkTitle: {
     fontFamily: typo.mono,

@@ -221,7 +221,9 @@ export default function ReglagesScreen() {
             <BackChevron />
           </View>
         </PressScale>
-        <Text style={styles.title}>RÉGLAGES</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          RÉGLAGES
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 

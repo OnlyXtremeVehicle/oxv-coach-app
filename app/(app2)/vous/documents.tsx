@@ -99,11 +99,14 @@ export default function DocumentsScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe nu de 20 pt : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>DOCUMENTS</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          DOCUMENTS
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -130,7 +133,13 @@ export default function DocumentsScreen() {
             {hasIdentity ? (
               <PressScale
                 onPress={() => setFullscreen(true)}
-                accessibilityLabel="Agrandir la licence"
+                // Pressable groupe ses enfants : sans ce libellé composé, le
+                // contenu de la carte (nom, n° FFSA, validité) n'est jamais dit.
+                // Mêmes chaînes que celles rendues par LicenceCard / IdRow.
+                // Le tiret d'absence ne se prononce pas : on dit l'absence.
+                accessibilityLabel={`Licence circuit. ${name}. N° FFSA ${spokenOrAbsent(
+                  licenceNumberDisplay(docs.identity.ffsaLicense)
+                )}. Validité ${validated ? (validatedOn ?? 'Validée') : 'non validée'}. Agrandir.`}
                 containerStyle={styles.licenceContainer}
               >
                 <LicenceCard
@@ -194,7 +203,8 @@ export default function DocumentsScreen() {
             <PressScale
               onPress={() => setFullscreen(false)}
               accessibilityLabel="Fermer"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              // Glyphe de 22 pt : hitSlop 11 porte la cible à 44 × 44.
+              hitSlop={{ top: 11, bottom: 11, left: 11, right: 11 }}
             >
               <CloseGlyph />
             </PressScale>
@@ -202,7 +212,8 @@ export default function DocumentsScreen() {
               onPress={onShare}
               disabled={sharing}
               accessibilityLabel="Partager ma licence"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              // Glyphe de 22 pt : hitSlop 11 porte la cible à 44 × 44.
+              hitSlop={{ top: 11, bottom: 11, left: 11, right: 11 }}
             >
               <ShareGlyph />
             </PressScale>
@@ -256,7 +267,7 @@ function LicenceCard({
           <Text style={[styles.brand, large && styles.brandLarge]}>OXV</Text>
         </View>
         {validated ? (
-          <View style={styles.badge} accessibilityLabel="Licence validée">
+          <View style={styles.badge} accessible accessibilityLabel="Licence validée">
             <View style={styles.badgeDot} />
             <Text style={styles.badgeText}>Validé</Text>
           </View>
@@ -280,9 +291,20 @@ function LicenceCard({
   );
 }
 
+/**
+ * Rend une valeur PRONONÇABLE : le tiret cadratin qui marque l'absence à l'écran
+ * est muet pour un lecteur d'écran (il se tait, ou dit « tiret »). Une absence
+ * doit s'entendre comme une absence, pas comme un silence après un intitulé.
+ */
+function spokenOrAbsent(value: string): string {
+  const v = value.trim();
+  return v === '' || v === '—' ? 'non communiqué' : v;
+}
+
 function IdRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.idRow}>
+    // Libellé et valeur sont deux Text frères : groupés, ils se lisent d'un bloc.
+    <View style={styles.idRow} accessible accessibilityLabel={`${label} ${spokenOrAbsent(value)}`}>
       <Text style={styles.idLabel}>{label}</Text>
       <Text style={styles.idValue} numberOfLines={1}>
         {value}

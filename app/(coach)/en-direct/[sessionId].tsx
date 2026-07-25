@@ -249,7 +249,10 @@ function LiveHeader({
 function LiveBadge({ conn }: { conn: LiveConn }) {
   const live = conn === 'live';
   return (
+    // `accessible` est indispensable : sans lui, le libellé posé sur une View
+    // reste inerte sur iOS et seul « RALENTI » sortirait, jamais la phrase.
     <View
+      accessible
       accessibilityRole="text"
       accessibilityLabel={live ? 'En direct' : CONN[conn].note || CONN[conn].badge}
       style={[s.badge, live ? s.badgeLive : s.badgeMuted]}
@@ -310,7 +313,15 @@ function SpeedPanel({
     <View style={[s.speedCard, dim]}>
       <View style={s.speedHead}>
         <Text style={s.eyebrow}>Vitesse · live</Text>
-        <View style={s.speedValueRow}>
+        {/* Valeur et unité groupées : le relevé se lit d'un bloc. */}
+        <View
+          style={s.speedValueRow}
+          accessible
+          // Le tiret cadratin est MUET à l'oral : « Vitesse — km/h » s'entend
+          // « Vitesse km/h », soit une unité sans valeur, qui laisse croire à un
+          // relevé qu'on aurait raté. L'absence se dit avec des mots.
+          accessibilityLabel={current != null ? `${Math.round(current)} km/h` : 'Vitesse non reçue'}
+        >
           <Text style={s.speedValue}>{current != null ? String(Math.round(current)) : '—'}</Text>
           <Text style={s.speedUnit}>km/h</Text>
         </View>
@@ -350,12 +361,17 @@ function CardioPanel({
     <View style={[s.speedCard, dim]}>
       <View style={s.speedHead}>
         <Text style={s.eyebrow}>Cardio · live</Text>
-        <View style={s.speedValueRow}>
+        {/* Valeur et unité groupées : le relevé se lit d'un bloc. */}
+        <View style={s.speedValueRow} accessible accessibilityLabel={`${bio.hrBpm} bpm`}>
           <Text style={s.speedValue}>{String(bio.hrBpm)}</Text>
           <Text style={s.speedUnit}>bpm</Text>
         </View>
       </View>
-      <SpeedTrace values={series.map((p) => p.hr)} />
+      {/* Le graphe montre un cardio : son libellé doit le dire, pas parler de vitesse. */}
+      <SpeedTrace
+        values={series.map((p) => p.hr)}
+        label="Trace de la fréquence cardiaque relevée en direct."
+      />
       <Text style={s.cardioNote}>{`Variabilité ${bio.rrTrend} · ${contactNote}`}</Text>
     </View>
   );
@@ -363,7 +379,13 @@ function CardioPanel({
 
 /** Sparkline des relevés de vitesse (données réelles accumulées). Neutre : la
  *  vitesse n'est ni un chrono/record (or) ni une alarme (rouge). */
-function SpeedTrace({ values }: { values: number[] }) {
+function SpeedTrace({
+  values,
+  label = 'Trace de la vitesse relevée en direct.',
+}: {
+  values: number[];
+  label?: string;
+}) {
   const [w, setW] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setW(e.nativeEvent.layout.width);
   const H = 64;
@@ -402,7 +424,7 @@ function SpeedTrace({ values }: { values: number[] }) {
       onLayout={onLayout}
       style={s.traceWrap}
       accessibilityRole="image"
-      accessibilityLabel="Trace de la vitesse relevée en direct."
+      accessibilityLabel={label}
     >
       {body}
     </View>
@@ -482,6 +504,9 @@ function ToursPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: numbe
             return (
               <View
                 key={l.id}
+                // Sans `accessible`, le libellé ci-dessous reste inerte sur iOS
+                // et la ligne se lit en trois morceaux.
+                accessible
                 accessibilityRole="text"
                 accessibilityLabel={`Tour ${l.lap_number}, ${formatChronoTenths(l.duration_seconds)}${
                   isBest ? ', son meilleur' : ''

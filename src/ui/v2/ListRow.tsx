@@ -61,6 +61,15 @@ export function ListRow({
 }: ListRowProps) {
   const showChevron = chevron ?? (onPress !== undefined && right === undefined);
 
+  // Libellé par défaut : CE QUE LA LIGNE MONTRE, dans l'ordre où l'œil le
+  // lit. Le PressScale aplatit ses enfants — avec le seul `label`, le
+  // sous-label et la valeur affichés restaient muets au lecteur d'écran.
+  // `value` est écartée quand `right` occupe la place : elle n'est pas
+  // affichée non plus.
+  const defaultA11y = [label, sublabel, right === undefined ? value : undefined]
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+    .join(', ');
+
   const content = (
     <View style={[styles.row, divider && styles.divider, disabled && styles.dimmed, style]}>
       {icon !== undefined ? <OxvIcon name={icon} size={20} color={colors.text.mid} /> : null}
@@ -87,13 +96,24 @@ export function ListRow({
     </View>
   );
 
-  if (onPress === undefined) return content;
+  if (onPress === undefined) {
+    // Ligne non pressable : sans regroupement, label et sous-label sont lus
+    // comme deux éléments séparés. On ne groupe PAS quand `right` est fourni :
+    // le slot peut porter un contrôle (interrupteur…) que le groupe rendrait
+    // inatteignable au lecteur d'écran.
+    if (right !== undefined) return content;
+    return (
+      <View accessible accessibilityLabel={accessibilityLabel ?? defaultA11y}>
+        {content}
+      </View>
+    );
+  }
 
   return (
     <PressScale
       onPress={onPress}
       disabled={disabled}
-      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityLabel={accessibilityLabel ?? defaultA11y}
     >
       {content}
     </PressScale>

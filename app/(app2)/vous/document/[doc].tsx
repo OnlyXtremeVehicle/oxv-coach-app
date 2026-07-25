@@ -30,11 +30,14 @@ export default function LegalDocScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe nu de 20 pt : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>DOCUMENT</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          DOCUMENT
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 

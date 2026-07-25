@@ -181,7 +181,12 @@ export default function GalerieScreen() {
             .join(' · ')
             .toUpperCase() || 'SÉANCE';
         return (
-          <View style={styles.gridHeader}>
+          <View
+            style={styles.gridHeader}
+            accessible
+            accessibilityRole="header"
+            accessibilityLabel={`${line}, ${item.count}`}
+          >
             <Text style={styles.gridHeaderText} numberOfLines={1}>
               {line}
             </Text>
@@ -281,7 +286,9 @@ export default function GalerieScreen() {
       <Animated.View style={[styles.fill, door]}>
         <View style={[styles.header, { paddingTop: insets.top + space.md }]}>
           <Text style={styles.eyebrow}>VOS SOUVENIRS</Text>
-          <Text style={styles.title}>GALERIE</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            GALERIE
+          </Text>
           <View style={styles.tabs}>
             <Chip
               label="Galerie"
@@ -470,7 +477,9 @@ function PartagesTab({
                   sublabel={shareSubLabel(sh)}
                   divider={i < shares.length - 1}
                   onPress={() => onOpenShareLink(sh)}
-                  accessibilityLabel={`Partager le lien ${scopeLabel(sh.scope)}`}
+                  // Le rôle bouton porte déjà l'action : le libellé dit ce que
+                  // la ligne MONTRE (portée + vues + expiration).
+                  accessibilityLabel={`${scopeLabel(sh.scope)}, ${shareSubLabel(sh)}`}
                   right={
                     <PressScale
                       onPress={() => onRevoke(sh.id)}
@@ -603,7 +612,14 @@ function GalleryViewer({
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
-      <GestureHandlerRootView style={styles.viewerRoot}>
+      {/* Vue modale : le contenu de l'écran dessous reste sinon atteignable, et
+          le dismiss gestuel (pan vers le bas) est hors de portée d'un lecteur
+          d'écran — même patron que Sheet et le QR du Pass. */}
+      <GestureHandlerRootView
+        style={styles.viewerRoot}
+        accessibilityViewIsModal
+        onAccessibilityEscape={onClose}
+      >
         <FlatList
           data={photos}
           keyExtractor={(p) => p.id}
@@ -639,7 +655,9 @@ function GalleryViewer({
           <PressScale
             onPress={onClose}
             accessibilityLabel="Fermer la photo"
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            // Seule sortie non gestuelle du viewer : texte mono de 11 px
+            // (~30 pt) — hitSlop 16 pour une cible confortable.
+            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
           >
             <Text style={styles.viewerCloseLabel}>FERMER</Text>
           </PressScale>

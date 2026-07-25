@@ -48,10 +48,22 @@ export interface PressScaleProps {
   containerStyle?: StyleProp<ViewStyle>;
   hitSlop?: PressableProps['hitSlop'];
   accessibilityLabel?: string;
+  /**
+   * Précision lue APRÈS le label et l'état — pour un texte affiché que le
+   * label ne peut pas porter sans s'alourdir (portée d'un consentement,
+   * geste attendu). Jamais un conseil : ce que l'écran montre, rien de plus.
+   */
+  accessibilityHint?: string;
   /** Par défaut 'button'. */
   accessibilityRole?: PressableProps['accessibilityRole'];
   /** Fusionné avec le disabled courant : { disabled, ...accessibilityState }. */
   accessibilityState?: AccessibilityState;
+  /**
+   * Actions exposées au rotor iOS / menu contextuel TalkBack — le chemin non
+   * gestuel d'une action qui n'existe qu'au geste (swipe, pan).
+   */
+  accessibilityActions?: PressableProps['accessibilityActions'];
+  onAccessibilityAction?: PressableProps['onAccessibilityAction'];
   /** haptic('tap') au press. Par défaut true. */
   hapticOnPress?: boolean;
 }
@@ -65,8 +77,11 @@ export function PressScale({
   containerStyle,
   hitSlop,
   accessibilityLabel,
+  accessibilityHint,
   accessibilityRole = 'button',
   accessibilityState,
+  accessibilityActions,
+  onAccessibilityAction,
   hapticOnPress = true,
 }: PressScaleProps) {
   const reduce = useReduceMotion();
@@ -107,7 +122,10 @@ export function PressScale({
       hitSlop={hitSlop}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled, ...accessibilityState }}
+      accessibilityActions={accessibilityActions}
+      onAccessibilityAction={onAccessibilityAction}
     >
       <Animated.View style={[style, scaleStyle]}>{children}</Animated.View>
     </Pressable>

@@ -117,11 +117,14 @@ export default function DechargeScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe nu de 20 pt : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>DÉCHARGE</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          DÉCHARGE
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -230,7 +233,14 @@ function WaiverHistory({ waivers }: { waivers: WaiverSignature[] }) {
     <View style={styles.history}>
       <Text style={styles.historyLabel}>SIGNATURES</Text>
       {waivers.map((w) => (
-        <View key={w.id} style={styles.historyRow}>
+        // Nom et mention de version sont deux Text frères : groupés, la
+        // signature se lit d'un bloc plutôt qu'en deux arrêts.
+        <View
+          key={w.id}
+          style={styles.historyRow}
+          accessible
+          accessibilityLabel={`${w.signedFullName}. Version ${w.waiverVersion}, ${longDate(w.signedAt)}`}
+        >
           <Text style={styles.historyName}>{w.signedFullName}</Text>
           <Text style={styles.historyMeta}>
             Version {w.waiverVersion} · {longDate(w.signedAt)}

@@ -97,11 +97,14 @@ export default function EquipementScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe nu de 20 pt : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>ÉQUIPEMENT</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          ÉQUIPEMENT
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -188,7 +191,8 @@ function DeviceCard({ equip }: { equip: ReturnType<typeof useEquipement> }) {
 
 function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metaRow}>
+    // Libellé et valeur sont deux Text frères : groupés, ils se lisent d'un bloc.
+    <View style={styles.metaRow} accessible accessibilityLabel={`${label} ${value}`}>
       <Text style={styles.metaLabel}>{label}</Text>
       <Text style={styles.metaValue} numberOfLines={1}>
         {value}

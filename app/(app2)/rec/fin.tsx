@@ -54,6 +54,7 @@ import {
   typo,
   useDoorTransition,
   useHeroMorphSource,
+  useReduceMotion,
 } from '@/ui/v2';
 
 import { bilanHeroMorphId } from '@/features/miroir/bilanLogic';
@@ -277,8 +278,15 @@ function FiniPhase({
       </Text>
       {summary.length > 0 ? (
         <View style={styles.summaryRow}>
+          {/* Groupé : séparés, « 12 » et « 34 » étaient des chiffres orphelins.
+              buildFinSummary rend déjà le singulier-pluriel correct. */}
           {summary.map((item) => (
-            <View key={item.key} style={styles.summaryItem}>
+            <View
+              key={item.key}
+              style={styles.summaryItem}
+              accessible
+              accessibilityLabel={`${item.value} ${item.label}`}
+            >
               <Text style={styles.summaryValue}>{item.value}</Text>
               <Text style={styles.summaryLabel}>{item.label}</Text>
             </View>
@@ -307,6 +315,7 @@ function FiniPhase({
 
 function PreservationPhase() {
   const [stepIdx, setStepIdx] = useState(0);
+  const reduce = useReduceMotion();
   const spin = useSharedValue(0);
 
   useEffect(() => {
@@ -314,7 +323,11 @@ function PreservationPhase() {
     // de progression réelle — afficher un « 63 % » serait un chiffre fabriqué
     // (vérif L2 [6], règle données réelles). On rassure par le mouvement et les
     // micro-textes factuels, jamais par un pourcentage inventé.
-    spin.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.linear }), -1, false);
+    // Sous « animations réduites », seul le mouvement s'arrête : les
+    // micro-textes continuent de défiler, l'information reste.
+    if (!reduce) {
+      spin.value = withRepeat(withTiming(1, { duration: 1400, easing: Easing.linear }), -1, false);
+    }
     const started = Date.now();
     const tick = setInterval(() => {
       setStepIdx(
@@ -325,14 +338,18 @@ function PreservationPhase() {
       cancelAnimation(spin);
       clearInterval(tick);
     };
-  }, [spin]);
+  }, [spin, reduce]);
 
   const arcStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${spin.value * 360}deg` }] }));
 
   return (
     <Animated.View entering={FadeIn.duration(260)} style={styles.phaseBlock}>
       <Text style={styles.preserveEyebrow}>PRÉSERVATION</Text>
-      <Animated.View style={[styles.preserveArc, arcStyle]} accessibilityElementsHidden />
+      <Animated.View
+        style={[styles.preserveArc, arcStyle]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      />
       <Text style={styles.preserveStep} accessibilityLiveRegion="polite">
         {PRESERVATION_STEPS[stepIdx]}
       </Text>
@@ -469,7 +486,9 @@ function IncidentSheet({
               onPress={submit}
               disabled={tooShort || sending}
               accessibilityLabel="Envoyer la déclaration"
-              accessibilityState={{ disabled: tooShort, busy: sending }}
+              // L'état annoncé suit l'état RÉEL : pendant l'envoi, le bouton
+              // est inerte et doit se dire tel quel.
+              accessibilityState={{ disabled: tooShort || sending, busy: sending }}
               containerStyle={styles.ctaContainer}
               style={[styles.cta, (tooShort || sending) && styles.ctaDim]}
             >

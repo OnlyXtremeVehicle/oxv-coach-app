@@ -246,7 +246,13 @@ export default function FondateurScreen() {
 function BackBar() {
   return (
     <View style={styles.backBar}>
-      <PressScale onPress={() => router.back()} accessibilityLabel="Retour" style={styles.backPill}>
+      <PressScale
+        onPress={() => router.back()}
+        accessibilityLabel="Retour"
+        // La pill fait ~42 pt de haut : hitSlop 8 la porte au-delà de 44 × 44.
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={styles.backPill}
+      >
         <Text style={styles.backChevron}>‹</Text>
         <Text style={styles.backLabel}>Retour</Text>
       </PressScale>
@@ -277,7 +283,11 @@ function Insigne({ draw }: { draw: boolean }) {
   const scale = INSIGNE_SIZE / 24;
 
   return (
-    <Canvas style={{ width: INSIGNE_SIZE, height: INSIGNE_SIZE }}>
+    <Canvas
+      style={{ width: INSIGNE_SIZE, height: INSIGNE_SIZE }}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <Group transform={[{ scale }]}>
         {OXV_ICONS.insigne.map((d, i) => (
           <GlowStroke

@@ -62,11 +62,14 @@ export default function ClubPartenairesScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
-        <Text style={styles.headerTitle}>PARTENAIRES</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          PARTENAIRES
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 

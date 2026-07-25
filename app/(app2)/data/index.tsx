@@ -41,6 +41,7 @@ import {
   Dial,
   haptic,
   motionTokens,
+  msToLapLabel,
   PressScale,
   PullToRefreshDial,
   radius,
@@ -52,6 +53,7 @@ import {
   typo,
   useCondensingHeader,
   useDoorTransition,
+  useReduceMotion,
 } from '@/ui/v2';
 import {
   canCompare,
@@ -212,11 +214,17 @@ export default function DataHubScreen() {
     router.push(href as never);
   }, [selected]);
 
-  // Barre flottante : ressort en spring quand le mode s'active.
+  // Barre flottante : ressort en spring quand le mode s'active. Réglage
+  // « animations réduites » honoré comme partout dans le kit : état final direct.
+  const reduce = useReduceMotion();
   const barProgress = useSharedValue(0);
   useEffect(() => {
-    barProgress.value = withSpring(selectionMode ? 1 : 0, motionTokens.spring);
-  }, [selectionMode, barProgress]);
+    barProgress.value = reduce
+      ? selectionMode
+        ? 1
+        : 0
+      : withSpring(selectionMode ? 1 : 0, motionTokens.spring);
+  }, [selectionMode, barProgress, reduce]);
   const barStyle = useAnimatedStyle(() => ({
     opacity: barProgress.value,
     transform: [{ translateY: (1 - barProgress.value) * 120 }],
@@ -261,6 +269,18 @@ export default function DataHubScreen() {
         item.circuit_name && item.circuit_name.trim().length > 0 ? item.circuit_name : 'Séance';
       const chronoMs = item.best_lap_seconds !== null ? item.best_lap_seconds * 1000 : undefined;
       const isSelected = selected.includes(item.id);
+      // Le label explicite du Pressable REMPLACE la lecture de ses enfants :
+      // on y remet ce que la carte MONTRE (circuit, date, chrono, honnêteté de
+      // la donnée). L'appui long est une instruction → il part en hint.
+      const dataLabel =
+        level === 'full'
+          ? 'Données complètes'
+          : level === 'partial'
+            ? 'Données partielles'
+            : 'Données absentes';
+      const cardFacts = `${circuit}, ${formatDay(item.started_at)}${
+        chronoMs !== undefined ? `, ${msToLapLabel(chronoMs)}` : ''
+      }. ${dataLabel}`;
 
       return (
         <Animated.View entering={staggerEntering(index)} style={styles.rowWrap}>
@@ -272,11 +292,10 @@ export default function DataHubScreen() {
             accessibilityState={{ selected: isSelected }}
             accessibilityLabel={
               selectionMode
-                ? `${circuit}. ${isSelected ? 'Sélectionnée' : 'Non sélectionnée'}. Toucher pour ${
-                    isSelected ? 'retirer de la comparaison' : 'ajouter à la comparaison'
-                  }`
-                : `${circuit}. Ouvrir la séance. Appui long pour comparer`
+                ? `${cardFacts}. ${isSelected ? 'Sélectionnée' : 'Non sélectionnée'}`
+                : cardFacts
             }
+            accessibilityHint={selectionMode ? undefined : 'Appui long pour comparer'}
           >
             <SessionCard
               circuit={circuit}
@@ -309,7 +328,9 @@ export default function DataHubScreen() {
     <View style={styles.headerBlock}>
       <Animated.View style={header.headerStyle}>
         <Text style={styles.eyebrow}>VOS SÉANCES</Text>
-        <Animated.Text style={[styles.title, header.titleStyle]}>DATA</Animated.Text>
+        <Animated.Text style={[styles.title, header.titleStyle]} accessibilityRole="header">
+          DATA
+        </Animated.Text>
       </Animated.View>
       <ScrollView
         horizontal
@@ -421,7 +442,7 @@ export default function DataHubScreen() {
           onPress={runExport}
           disabled={exporting}
           accessibilityLabel="Exporter mes données"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
         >
           <View style={styles.exportPill}>
             <Text style={styles.exportLabel}>EXPORTER</Text>
@@ -434,7 +455,13 @@ export default function DataHubScreen() {
         style={[styles.compareBar, { bottom: tabBarSpace(insets.bottom) }, barStyle]}
         pointerEvents={selectionMode ? 'auto' : 'none'}
       >
-        <PressScale onPress={onCancelSelection} accessibilityLabel="Annuler la sélection">
+        {/* hitSlop : « Annuler » est un texte nu de 13 px (~18 pt) — on porte la
+            cible tactile à 44 pt sans toucher au visuel. */}
+        <PressScale
+          onPress={onCancelSelection}
+          accessibilityLabel="Annuler la sélection"
+          hitSlop={{ top: 14, bottom: 14, left: 12, right: 12 }}
+        >
           <Text style={styles.compareCancel}>Annuler</Text>
         </PressScale>
         <Text style={styles.compareCount}>{selected.length}/2 sélectionnées</Text>
@@ -442,6 +469,7 @@ export default function DataHubScreen() {
           onPress={onCompare}
           disabled={!canCompare(selected)}
           accessibilityLabel="Comparer les deux séances"
+          hitSlop={{ top: 8, bottom: 8 }}
         >
           <View style={[styles.compareBtn, !canCompare(selected) && styles.compareBtnOff]}>
             <Text

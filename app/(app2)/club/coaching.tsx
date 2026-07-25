@@ -108,11 +108,15 @@ export default function CoachingScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour au club"
+          // backBtn fait 32 × 32 : hitSlop 6 pour atteindre la cible de 44 pt.
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           style={styles.backBtn}
         >
           <Text style={styles.backChevron}>‹</Text>
         </PressScale>
-        <Text style={styles.headerTitle}>COACHING</Text>
+        <Text style={styles.headerTitle} accessibilityRole="header">
+          COACHING
+        </Text>
         <View style={styles.backBtn} />
       </View>
 
@@ -255,7 +259,16 @@ function CoachCard({
   return (
     <PressScale
       onPress={onPress}
-      accessibilityLabel={`${card.name}. Voir la fiche`}
+      // Le label explicite EFFACE la lecture des enfants : on y remet ce que la
+      // carte affiche (le « Voir la fiche » est déjà porté par le rôle bouton).
+      accessibilityLabel={[
+        card.name,
+        card.specialties.slice(0, 3).join(', '),
+        card.circuitsLabel,
+        card.sessionPriceLabel,
+      ]
+        .filter(Boolean)
+        .join(', ')}
       containerStyle={index > 0 ? styles.cardGap : undefined}
       style={styles.coachCard}
     >
@@ -394,6 +407,10 @@ function AssignmentCard({
         </View>
         <Switch
           value={consented}
+          // Le texte visible est un élément séparé : sans libellé, les deux
+          // interrupteurs de consentement s'annoncent à l'identique.
+          accessibilityLabel="Accès à vos séances"
+          accessibilityHint={levelHint ?? undefined}
           onValueChange={(next) => {
             haptic('tap');
             void onConsent(assignment.id, next);
@@ -415,6 +432,8 @@ function AssignmentCard({
         <Switch
           value={live}
           disabled={!consented}
+          accessibilityLabel="Partage en direct"
+          accessibilityHint="Votre télémétrie et votre position en temps réel, pendant que vous roulez."
           onValueChange={(next) => {
             haptic('tap');
             void onLive(assignment.id, next);
@@ -552,6 +571,8 @@ function BookingRow({
               <PressScale
                 onPress={onCancel}
                 accessibilityLabel="Annuler la demande"
+                // smallBtn fait 38 pt de haut : hitSlop 4 pour atteindre 44.
+                hitSlop={{ top: 4, bottom: 4 }}
                 style={[styles.smallBtn, styles.smallBtnGhost]}
               >
                 <Text style={styles.smallBtnGhostLabel}>Annuler</Text>
@@ -561,6 +582,7 @@ function BookingRow({
               <PressScale
                 onPress={onReview}
                 accessibilityLabel="Laisser un avis"
+                hitSlop={{ top: 4, bottom: 4 }}
                 style={[styles.smallBtn, styles.smallBtnGhost]}
               >
                 <Text style={styles.smallBtnGhostLabel}>Laisser un avis</Text>
@@ -717,6 +739,9 @@ function FicheSheet({
 
       <PressScale
         onPress={submit}
+        // Le bouton PREND déjà le style éteint et `submit` sort en early-return :
+        // `disabled` ne change rien au comportement, il rend l'état AUDIBLE.
+        disabled={busy || sent}
         accessibilityLabel="Demander une session"
         style={[styles.primaryBtn, (busy || sent) && styles.primaryBtnDim]}
       >
@@ -741,7 +766,12 @@ function SlotRow({
   return (
     <PressScale
       onPress={onPress}
-      accessibilityLabel={`${slot.circuitName}, ${when}`}
+      // Vrai bouton radio à l'écran : l'état retenu n'existait que visuellement.
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      accessibilityLabel={`${slot.circuitName}, ${when}, ${availabilityStatusLabel(
+        slot.status as 'open' | 'full' | 'closed' | 'cancelled'
+      )}`}
       style={[styles.slotRow, selected && styles.slotRowActive]}
     >
       <View style={{ flex: 1 }}>
@@ -818,6 +848,7 @@ function EndBinomeSheet({
             onDone();
           }
         }}
+        disabled={busy}
         accessibilityLabel="Confirmer la fin du binôme"
         style={[styles.primaryBtn, busy && styles.primaryBtnDim]}
       >
@@ -892,6 +923,7 @@ function ReviewSheet({
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
       <PressScale
         onPress={submit}
+        disabled={busy || text.trim().length === 0}
         accessibilityLabel="Envoyer l'avis"
         style={[styles.primaryBtn, (busy || text.trim().length === 0) && styles.primaryBtnDim]}
       >

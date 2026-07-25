@@ -24,10 +24,14 @@ export function Chip({ label, active = false, onPress, icon, style }: ChipProps)
   return (
     // hitSlop : la pill fait ~32 px de haut — on regagne la cible tactile.
     // `selected` : l'état actif n'est sinon porté que par le style visuel.
+    // Sans `onPress`, la Chip n'est qu'une ÉTIQUETTE : rôle `text`, et pas
+    // d'état sélectionné — annoncer « bouton » sur un élément inerte (souvent
+    // imbriqué dans une carte pressable) est un mensonge d'interface.
     <PressScale
       onPress={onPress}
+      accessibilityRole={onPress ? 'button' : 'text'}
       accessibilityLabel={label}
-      accessibilityState={{ selected: active }}
+      accessibilityState={onPress ? { selected: active } : undefined}
       hitSlop={{ top: 6, bottom: 6 }}
     >
       <View style={[styles.pill, active && styles.pillActive, style]}>

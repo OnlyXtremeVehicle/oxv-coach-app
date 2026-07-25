@@ -64,6 +64,7 @@ import {
   StateView,
   centerlineToTrace,
   colors,
+  msToLapLabel,
   pointsToSvgPath,
   radius,
   space,
@@ -455,19 +456,22 @@ export default function ComparerScreen() {
         <Animated.View style={door}>
           {/* En-tête sobre : retour · titre · partage */}
           <View style={styles.header}>
+            {/* Glyphes de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt. */}
             <PressScale
               onPress={() => router.back()}
               accessibilityLabel="Retour"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <BackGlyph />
             </PressScale>
-            <Text style={styles.headerTitle}>COMPARER</Text>
+            <Text style={styles.headerTitle} accessibilityRole="header">
+              COMPARER
+            </Text>
             <PressScale
               onPress={onShare}
               disabled={sharing}
               accessibilityLabel="Partager la comparaison"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
             >
               <ShareGlyph />
             </PressScale>
@@ -752,7 +756,12 @@ function LapSelector({
               <PressScale
                 key={l.lap_number}
                 onPress={() => onSelect(l.lap_number)}
-                accessibilityLabel={`Tour ${l.lap_number}`}
+                // Colonne de 24 pt : hitSlop pour atteindre la cible de 44 pt.
+                // La durée n'est sinon encodée que par la HAUTEUR de la barre.
+                hitSlop={{ top: 8, bottom: 8, left: 10, right: 10 }}
+                accessibilityLabel={`Tour ${l.lap_number}, ${msToLapLabel(
+                  Number(l.duration_seconds) * 1000
+                )}`}
                 accessibilityState={{ selected: active }}
               >
                 <View style={styles.lapBarCol}>
@@ -834,7 +843,14 @@ function TraceOverlay({
             emptyMessage="La superposition des tracés apparaîtra dès que ces deux tours auront des trames réelles."
           />
         ) : width > 0 ? (
-          <Canvas style={{ width, height: TRACE_HEIGHT }}>
+          <Canvas
+            style={{ width, height: TRACE_HEIGHT }}
+            accessible
+            // « non choisi » remplace le tiret cadratin affiché, muet à l'oral.
+            accessibilityLabel={`Tracés superposés, A ${
+              lapA !== null ? `tour ${lapA}` : 'tour non choisi'
+            }, B ${lapB !== null ? `tour ${lapB}` : 'tour non choisi'}`}
+          >
             {traceB.path !== '' ? (
               <Path
                 path={traceB.path}
@@ -927,14 +943,31 @@ function SpeedChannels({
       <View style={styles.channelHead}>
         <Text style={styles.channelTitle}>PROFIL DE VITESSE</Text>
         <View style={styles.channelReadouts}>
-          <ChannelReadout color={A_COLOR} value={readA} />
-          <ChannelReadout color={B_COLOR} value={readB} />
+          <ChannelReadout side="A" color={A_COLOR} value={readA} />
+          <ChannelReadout side="B" color={B_COLOR} value={readB} />
         </View>
       </View>
+      {/* Le curseur ne se déplace qu'au PanResponder : sans alternative, les
+          deux relevés restent « non lu » pour un lecteur d'écran, et l'invite
+          affichée « Glissez pour lire… » devient inapplicable. */}
       <View
         style={[styles.channelBox, { height: SPEED_HEIGHT }]}
         onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
         {...responder.panHandlers}
+        accessible
+        accessibilityRole="adjustable"
+        accessibilityLabel="Profil de vitesse des deux tours"
+        accessibilityValue={{
+          text: `A ${readA !== null ? `${Math.round(readA)} km/h` : 'non lu'}, B ${
+            readB !== null ? `${Math.round(readB)} km/h` : 'non lu'
+          }`,
+        }}
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(e) =>
+          setCursorT((t) =>
+            clampT((t ?? 0.5) + (e.nativeEvent.actionName === 'increment' ? 0.05 : -0.05))
+          )
+        }
       >
         {width > 0 ? (
           <Canvas style={{ width, height: SPEED_HEIGHT }}>
@@ -986,9 +1019,26 @@ function seriesToPath(
   return pointsToSvgPath(points, false);
 }
 
-function ChannelReadout({ color, value }: { color: string; value: number | null }) {
+/**
+ * Un relevé au curseur. Le côté A ou B n'est porté à l'écran que par une
+ * pastille de COULEUR : le regroupement le nomme, sinon deux valeurs identiques
+ * se suivent sans qu'on sache laquelle est laquelle.
+ */
+function ChannelReadout({
+  side,
+  color,
+  value,
+}: {
+  side: 'A' | 'B';
+  color: string;
+  value: number | null;
+}) {
   return (
-    <View style={styles.readout}>
+    <View
+      style={styles.readout}
+      accessible
+      accessibilityLabel={`Côté ${side} : ${value !== null ? `${Math.round(value)} km/h` : 'non lu'}`}
+    >
       <View style={[styles.slotDot, { backgroundColor: color }]} />
       <Text style={styles.readoutValue}>{value !== null ? `${Math.round(value)} km/h` : '—'}</Text>
     </View>

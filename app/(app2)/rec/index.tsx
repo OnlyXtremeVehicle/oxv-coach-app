@@ -80,7 +80,9 @@ export default function RecHubScreen() {
         door,
       ]}
     >
-      <Text style={styles.title}>PISTE</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        PISTE
+      </Text>
 
       {home.status === 'loading' ? (
         <StateView state="loading" shape="card" style={styles.state} />
@@ -160,6 +162,9 @@ function ReserveState({ home }: { home: MiroirHome }) {
       <PressScale
         onPress={onReserve}
         accessibilityLabel="Réserver une journée"
+        // Pilule d'environ 39 px : 6 px de hitSlop de chaque côté portent la
+        // cible à 51. Visuel inchangé. C'est l'unique action de cet état.
+        hitSlop={{ top: 6, bottom: 6 }}
         containerStyle={styles.reserveContainer}
         style={styles.reservePill}
       >

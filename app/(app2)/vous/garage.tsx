@@ -186,7 +186,9 @@ export default function GarageScreen() {
             <BackChevron />
           </View>
         </PressScale>
-        <Text style={styles.title}>GARAGE</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          GARAGE
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 

@@ -557,11 +557,14 @@ function Header({ insetsTop }: { insetsTop: number }) {
       <PressScale
         onPress={() => router.back()}
         accessibilityLabel="Retour"
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        // Glyphe de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt.
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
       >
         <BackGlyph />
       </PressScale>
-      <Text style={styles.headerTitle}>SAISON</Text>
+      <Text style={styles.headerTitle} accessibilityRole="header">
+        SAISON
+      </Text>
       <View style={styles.headerSpacer} />
     </View>
   );
@@ -721,8 +724,15 @@ function RegularityHistogram({
         })}
       </Canvas>
       <View style={[styles.histLabels, { width }]}>
+        {/* Regroupé : sinon le compte et le seau sont lus en deux arrêts —
+            « 12 », puis « 0,5–1 s » — et le nombre reste orphelin. */}
         {buckets.map((b, i) => (
-          <View key={i} style={styles.histLabelCell}>
+          <View
+            key={i}
+            style={styles.histLabelCell}
+            accessible
+            accessibilityLabel={`${b.count} tours, écart ${BUCKET_LABELS[i] ?? ''}`}
+          >
             <Text style={styles.histCount}>{b.count}</Text>
             <Text style={styles.histBucket}>{BUCKET_LABELS[i] ?? ''}</Text>
           </View>
@@ -757,7 +767,15 @@ function StatItem({
 }) {
   const isNum = datum.value !== '—';
   return (
-    <StatCell style={styles.statCell} label={datum.label} value={isNum ? undefined : '—'}>
+    // La valeur passe par `children` (RollingCounter) : StatCell ne la connaît
+    // pas et ne regroupe donc pas d'office — on lui donne le libellé complet,
+    // sinon « SÉANCES » puis « 12 » sont deux arrêts sans lien.
+    <StatCell
+      style={styles.statCell}
+      label={datum.label}
+      value={isNum ? undefined : '—'}
+      accessibilityLabel={`${datum.label} : ${isNum ? datum.value : 'non mesuré'}`}
+    >
       {isNum ? (
         <RollingCounter
           value={visible ? datum.value : zeroed(datum.value)}

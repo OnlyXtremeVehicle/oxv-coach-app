@@ -185,7 +185,9 @@ export default function TerritoireScreen() {
         </PressScale>
         <View>
           <Text style={styles.eyebrow}>LE PADDOCK</Text>
-          <Text style={styles.title}>TERRITOIRE</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            TERRITOIRE
+          </Text>
         </View>
         <View style={styles.headerSpacer} />
       </View>
@@ -338,6 +340,7 @@ function CarteTab({
           <SettledMarker
             key={item.id}
             coordinate={{ latitude: item.lat, longitude: item.lon }}
+            label={`${item.name || itemKindLabel(item)}, ${itemSubLabel(item)}`}
             onPress={() => onSelect(item)}
           >
             <MarkerGlyph kind={item.kind} />
@@ -546,7 +549,17 @@ function RouteCard({ route, onPress }: { route: SavedScenicRoute; onPress: () =>
   return (
     <PressScale
       onPress={onPress}
-      accessibilityLabel={`${route.name}. ${distanceKmLabel(route.distanceKm)}.`}
+      // Le label explicite EFFACE la lecture des enfants : le badge « CERTIFIÉE
+      // OXV », la sinuosité et la ligne de courbe étaient muets.
+      accessibilityLabel={[
+        certified ? 'Route certifiée OXV' : 'Belle route',
+        route.name,
+        distanceKmLabel(route.distanceKm),
+        sinuo,
+        curve,
+      ]
+        .filter(Boolean)
+        .join(', ')}
     >
       <View style={styles.routeCard}>
         <View style={styles.routeTraceFrame}>
@@ -897,7 +910,8 @@ function ConvoyCard({
 
 function MetaCell({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metaCell}>
+    // Regroupé : l'étiquette et sa valeur sont UN fait, pas deux arrêts.
+    <View style={styles.metaCell} accessible accessibilityLabel={`${label} : ${value}`}>
       <Text style={styles.metaLabel}>{label}</Text>
       <Text style={styles.metaValue}>{value}</Text>
     </View>
@@ -922,10 +936,13 @@ function LinkButton({ label, url, primary }: { label: string; url: string; prima
  */
 function SettledMarker({
   coordinate,
+  label,
   onPress,
   children,
 }: {
   coordinate: { latitude: number; longitude: number };
+  /** Nom du repère : le marqueur est tappable et resterait sinon sans nom. */
+  label: string;
   onPress: () => void;
   children: ReactNode;
 }) {
@@ -940,6 +957,7 @@ function SettledMarker({
       anchor={{ x: 0.5, y: 0.5 }}
       tracksViewChanges={!settled}
       onPress={onPress}
+      accessibilityLabel={label}
     >
       {children}
     </Marker>

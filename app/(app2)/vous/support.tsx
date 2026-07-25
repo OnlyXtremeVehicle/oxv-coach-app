@@ -175,7 +175,9 @@ export default function SupportScreen() {
             <BackChevron />
           </View>
         </PressScale>
-        <Text style={styles.title}>SUPPORT</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          SUPPORT
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -282,9 +284,15 @@ export default function SupportScreen() {
                 <Text style={styles.muted}>Aucun message pour l'instant.</Text>
               ) : (
                 sup.thread.messages.map((m) => (
+                  // Auteur, corps et horodatage sont trois Text frères :
+                  // groupés, le message se lit d'un bloc.
                   <View
                     key={m.id}
                     style={[styles.bubble, m.isAdmin ? styles.bubbleAdmin : styles.bubbleMine]}
+                    accessible
+                    accessibilityLabel={`${m.isAdmin ? 'Équipe OXV' : 'Vous'}. ${m.body}. ${formatDate(
+                      m.createdAt
+                    )}`}
                   >
                     <Text style={styles.bubbleAuthor}>{m.isAdmin ? 'Équipe OXV' : 'Vous'}</Text>
                     <Text style={styles.bubbleBody}>{m.body}</Text>

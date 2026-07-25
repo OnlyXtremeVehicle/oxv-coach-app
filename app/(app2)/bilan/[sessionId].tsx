@@ -59,6 +59,7 @@ import {
   clamp,
   colors,
   motionTokens,
+  msToLapLabel,
   radius,
   space,
   staggerEntering,
@@ -201,7 +202,15 @@ export default function BilanScreen() {
                 )}
               </View>
             </Animated.View>
-            <View style={styles.stateWrap}>
+            {/* Le squelette n'est que du Shimmer, masqué aux lecteurs
+                d'écran : sans ce libellé, l'écran est annoncé vide, sans dire
+                qu'il charge. */}
+            <View
+              style={styles.stateWrap}
+              accessible
+              accessibilityRole="progressbar"
+              accessibilityLabel="Chargement du bilan"
+            >
               <StateView state="loading" shape="list" style={{ marginTop: space.xl }} />
             </View>
           </View>
@@ -249,7 +258,18 @@ export default function BilanScreen() {
               key={n.id}
               onPress={() => setNotePage(i)}
               accessibilityLabel={`Note ${i + 1} sur ${noteCount}`}
-              hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+              // La puce affichée est signalée par la seule couleur : l'état doit
+              // être dit.
+              //
+              // La cible est agrandie par du PADDING, jamais par hitSlop. Un
+              // hitSlop déborde du cadre sans réserver d'espace : sur des puces
+              // de 6 px espacées de 4, des zones élargies se RECOUVRENT, et
+              // React Native teste les frères du dernier au premier — la
+              // dernière puce raflait le toucher des précédentes, rendant la
+              // première injoignable. Le padding, lui, est de la mise en page :
+              // les cadres s'écartent réellement, aucun recouvrement possible.
+              accessibilityState={{ selected: i === notePage }}
+              style={styles.noteDotHit}
             >
               <View style={[styles.noteDot, i === notePage && styles.noteDotActive]} />
             </PressScale>
@@ -428,7 +448,10 @@ export default function BilanScreen() {
                   value={draft}
                   onChangeText={setDraft}
                   placeholder="Votre réponse"
-                  placeholderTextColor={colors.text.dim}
+                  // text.low (pas dim) : sur bg.base, `dim` tombe à 2,8:1 —
+                  // sous le seuil AA, pour le seul indice de ce que le champ
+                  // attend. Même arbitrage que le « — » de PillarBar.
+                  placeholderTextColor={colors.text.low}
                   style={styles.replyInput}
                   multiline
                   accessibilityLabel="Votre réponse au fil"
@@ -518,7 +541,8 @@ export default function BilanScreen() {
         <PressScale
           onPress={() => router.back()}
           accessibilityLabel="Retour"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe 20 × 20 : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <BackGlyph />
         </PressScale>
@@ -528,7 +552,8 @@ export default function BilanScreen() {
         <PressScale
           onPress={() => setSheetVisible(true)}
           accessibilityLabel="Partager ce bilan"
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          // Glyphe 20 × 20 : hitSlop 12 porte la cible à 44 × 44.
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <ShareGlyph />
         </PressScale>
@@ -590,7 +615,16 @@ function HeroOverlay({
   };
 }) {
   return (
-    <View>
+    // Le chiffre roi de l'écran, lu d'un seul tenant : sans regroupement,
+    // « BILAN », le chrono nu (sans dire de quelle donnée il s'agit) et la
+    // ligne méta arrivent en trois fragments sans lien. Le « — » de l'absence
+    // se dit « non mesuré » — un tiret n'est pas un mot.
+    <View
+      accessible
+      accessibilityLabel={`Bilan, meilleur tour ${
+        data.bestLapMs !== null ? msToLapLabel(data.bestLapMs) : 'non mesuré'
+      }${data.metaLine ? `. ${data.metaLine}` : ''}`}
+    >
       <Text style={styles.heroEyebrow}>BILAN</Text>
       {data.bestLapMs !== null ? (
         <ChronoHero chronoMs={data.bestLapMs} size="l" celebrate={data.celebrate} />
@@ -762,7 +796,9 @@ function PhotoViewer({ uri, onClose }: { uri: string; onClose: () => void }) {
               <PressScale
                 onPress={onClose}
                 accessibilityLabel="Fermer la photo"
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                // Libellé mono 11 px (~13 pts de haut) : hitSlop 16 porte la
+                // cible à 45 dans la hauteur.
+                hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
               >
                 <Text style={styles.viewerCloseLabel}>FERMER</Text>
               </PressScale>
@@ -924,8 +960,21 @@ const styles = StyleSheet.create({
   },
   noteDots: {
     flexDirection: 'row',
-    gap: space.xs,
+    // L'écart visuel entre puces vient désormais du padding de leur cible
+    // tactile (noteDotHit), pas d'un gap : sans cela les deux s'additionneraient.
+    gap: 0,
     marginTop: space.sm,
+  },
+  /**
+   * Cible tactile de la puce : 44 px de haut (aucun voisin vertical), et
+   * 6 + 2 × 8 = 22 px de large. La largeur reste sous 44 parce que des puces
+   * plus écartées cesseraient de se lire comme un indicateur de pagination —
+   * la contrainte est celle du motif, pas un oubli. L'essentiel est tenu :
+   * chaque puce est atteignable, aucune ne vole le toucher d'une autre.
+   */
+  noteDotHit: {
+    paddingVertical: 19,
+    paddingHorizontal: space.sm,
   },
   noteDot: {
     width: 6,

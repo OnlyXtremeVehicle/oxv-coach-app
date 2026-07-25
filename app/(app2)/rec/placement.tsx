@@ -143,11 +143,23 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
 
   return (
     <GestureDetector gesture={gesture}>
+      {/* `accessible` : sans lui, un View nu n'est pas un élément
+          d'accessibilité et rôle/label/état sont ignorés. L'action `activate`
+          ouvre le SEUL chemin non gestuel vers l'armement : le double-tap d'un
+          lecteur d'écran ne déclenche jamais un LongPress gesture-handler.
+          Elle appelle la MÊME fonction `fire()` — verrou anti-double-départ et
+          garde `disabledRef` compris. */}
       <View
         style={[styles.armBtn, disabled && styles.armBtnDisabled]}
+        accessible
         accessibilityRole="button"
-        accessibilityLabel="Armer la capture. Maintenez appuyé pour démarrer."
+        accessibilityLabel="Armer la capture"
+        accessibilityHint="Maintenez appuyé pour démarrer l’enregistrement"
         accessibilityState={{ disabled }}
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={({ nativeEvent }) => {
+          if (nativeEvent.actionName === 'activate') fire();
+        }}
       >
         <Canvas
           style={styles.gauge}
@@ -262,7 +274,9 @@ export default function PlacementScreen() {
 
   return (
     <Animated.View style={[styles.root, door, { paddingTop: insets.top + space.xl }]}>
-      <Text style={styles.title}>PLACEMENT</Text>
+      <Text style={styles.title} accessibilityRole="header">
+        PLACEMENT
+      </Text>
 
       <View style={styles.body}>
         {circuits.length > 1 ? (
