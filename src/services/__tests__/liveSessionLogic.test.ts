@@ -7,6 +7,7 @@ import {
   reduceRoster,
   shouldEmitBiometry,
   shouldEmitFrame,
+  sortRosterByCarNo,
 } from '@/services/liveSessionLogic';
 
 function frame(over: Partial<LiveFrame> = {}): LiveFrame {
@@ -88,6 +89,50 @@ describe('reduceRoster (présence → qui est en piste, pas un classement)', () 
 
   it('roster vide si personne en piste', () => {
     expect(reduceRoster({})).toEqual([]);
+  });
+});
+
+describe('sortRosterByCarNo (multi-live coach — invariant ANTI-CLASSEMENT)', () => {
+  it('ordonne par numéro de voiture croissant', () => {
+    const roster = sortRosterByCarNo([
+      meta({ pilotId: 'p1', firstName: 'Adrien', carNo: 12 }),
+      meta({ pilotId: 'p2', firstName: 'Bruno', carNo: 3 }),
+      meta({ pilotId: 'p3', firstName: 'Chloé', carNo: 7 }),
+    ]);
+    expect(roster.map((r) => r.carNo)).toEqual([3, 7, 12]);
+  });
+
+  it("l'ancienneté en piste ne remonte personne (l'ordre ne dit rien du roulage)", () => {
+    // Le pilote arrivé le premier porte le plus grand numéro : s'il remonte en
+    // tête, c'est que l'ordre s'est mis à raconter la séance.
+    const roster = sortRosterByCarNo([
+      meta({ pilotId: 'p1', firstName: 'Adrien', carNo: 88, sinceMs: 1000 }),
+      meta({ pilotId: 'p2', firstName: 'Bruno', carNo: 4, sinceMs: 9000 }),
+    ]);
+    expect(roster.map((r) => r.pilotId)).toEqual(['p2', 'p1']);
+  });
+
+  it('les pilotes sans numéro passent en fin, départagés par prénom', () => {
+    const roster = sortRosterByCarNo([
+      meta({ pilotId: 'p1', firstName: 'Zoé' }),
+      meta({ pilotId: 'p2', firstName: 'Marc', carNo: null }),
+      meta({ pilotId: 'p3', firstName: 'Ana', carNo: 21 }),
+    ]);
+    expect(roster.map((r) => r.firstName)).toEqual(['Ana', 'Marc', 'Zoé']);
+  });
+
+  it('ne mute pas le roster d’entrée', () => {
+    const entree = [
+      meta({ pilotId: 'p1', firstName: 'Adrien', carNo: 9 }),
+      meta({ pilotId: 'p2', firstName: 'Bruno', carNo: 1 }),
+    ];
+    const copie = [...entree];
+    sortRosterByCarNo(entree);
+    expect(entree).toEqual(copie);
+  });
+
+  it('roster vide → liste vide', () => {
+    expect(sortRosterByCarNo([])).toEqual([]);
   });
 });
 

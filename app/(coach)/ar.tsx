@@ -21,6 +21,17 @@
  *     connexion lunettes : état neutre « non appairées — aperçu ». On NE fabrique
  *     JAMAIS de fausse valeur (les chronos vus dans la maquette in-lens sont
  *     rendus par la route web, jamais codés en dur ici).
+ *   - DIRECT (LIVE-B, livrable 3). Dès qu'une session est choisie, l'écran
+ *     s'abonne au canal COACH DÉJÀ EN PLACE (`live:session:<id>`, via
+ *     usePilotLive) — aucun canal neuf, et surtout pas le canal board. Le cadre
+ *     d'aperçu devient alors le MIROIR de ce que lit le porteur : trois lignes,
+ *     contraste maximal, faits seuls. La FC a le droit d'y être — c'est le canal
+ *     privé du binôme consenti, pas le board (écran de paddock, public). Elle est
+ *     rendue EN NATIF et n'est JAMAIS passée à la WebView ni ajoutée à l'URL de
+ *     la route web : aucune donnée de santé ne quitte cet écran coach. Elle
+ *     n'apparaît que si le flux en porte réellement ; sinon la ligne n'existe
+ *     pas — on n'écrit pas « — » pour de la santé, ce serait faire exister une
+ *     mesure qu'on n'a pas.
  *
  * Deux formats (décision fondateur 2026-07-13, seuil COACH_CONSOLE_MIN_WIDTH) :
  *   - CONSOLE (largeur ≥ seuil, maquette `coach/25-vue-ar`) : header (eyebrow +
@@ -59,6 +70,8 @@ import type {
 } from 'react-native-webview/lib/WebViewTypes';
 
 import { EmptyState } from '@/components/instruments/EmptyState';
+import { useLiveRoster } from '@/hooks/useLiveRoster';
+import { usePilotLive } from '@/hooks/usePilotLive';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import * as haptics from '@/lib/haptics';
 import {
@@ -67,13 +80,15 @@ import {
   listMyPilots,
   listPilotSessions,
 } from '@/services/coachService';
+import type { BiometryLiveEvent, LiveConn, LiveFrame } from '@/services/liveSessionLogic';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { CockpitPanel } from '@/ui/CockpitPanel';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
-import { formatDateLong } from '@/utils/format';
+import { formatChronoTenths, formatDateLong } from '@/utils/format';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
 
@@ -86,9 +101,22 @@ const AR_VIEW_URL = 'https://app.oxvehicle.fr/ar-view';
 /** Statut de chargement de l'aperçu in-lens (WebView). */
 type PreviewState = 'loading' | 'ready' | 'error';
 
+/**
+ * État du flux dit honnêtement, avec les mots de l'écran En direct. Le hors-ligne
+ * est un état, pas un vide à combler : on ne fige jamais une donnée périmée en la
+ * faisant passer pour du temps réel.
+ */
+const CONN_LABEL: Record<LiveConn, string> = {
+  connecting: 'Connexion',
+  live: 'En direct',
+  stale: 'Ralenti',
+  offline: 'Hors ligne',
+};
+
 export default function CoachArScreen() {
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
+  const coachId = useAuthStore((st) => st.profile?.id ?? null);
 
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
   const [loadingPilots, setLoadingPilots] = useState(true);
@@ -99,6 +127,29 @@ export default function CoachArScreen() {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
 
   const [previewState, setPreviewState] = useState<PreviewState>('loading');
+
+  // LIVE-B — le miroir suit la séance EN COURS, pas celle qu'on a choisie plus
+  // haut. Le sélecteur de séances ne propose que des séances TERMINÉES
+  // (listPilotSessions filtre status='completed') : s'y abonner ne pourrait
+  // jamais produire de direct — un miroir qui ne reflète rien. La seule source
+  // d'une séance vivante est le roster de présence, alimenté par les pilotes
+  // réellement en piste. Hors piste, il n'y a pas de direct, et on le dit.
+  const { roster } = useLiveRoster(coachId);
+  const liveSessionId =
+    selectedPilotId !== null
+      ? (roster.find((p) => p.pilotId === selectedPilotId)?.sessionId ?? null)
+      : null;
+  const { frame, conn, bio } = usePilotLive(liveSessionId);
+
+  // Chrono du TOUR EN COURS — la seule mesure de tour réellement disponible en
+  // direct, portée par la trame elle-même.
+  //
+  // On n'affiche PAS un « dernier tour » ici : la table `laps` n'est écrite qu'à
+  // la CLÔTURE de la capture (captureSessionService enfile les tours au stop).
+  // Pendant la séance elle est donc vide, ou pire, remplie par une séance
+  // ANTÉRIEURE — un chrono d'hier présenté au coach comme le tour qui vient de
+  // passer. Un miroir montre ce qui est, ou il se tait.
+  const currentChronoMs = frame?.chronoMs ?? null;
 
   // Pilotes consentis (même source que tout l'espace coach).
   useEffect(() => {
@@ -203,9 +254,28 @@ export default function CoachArScreen() {
 
   // ── Pièces réutilisées entre les deux formats ──────────────────────────────
 
-  const preview = (
+  // Le MÊME cadre sert les deux situations — un seul système d'affichage, jamais
+  // deux : sans session choisie, l'aperçu générique servi par le web ; session
+  // choisie, le miroir du direct (ce que le porteur lit, à l'identique, sur le
+  // téléphone quand les lunettes ne sont pas appairées).
+  const previewHeight = isConsole ? 380 : 200;
+  // Le miroir n'a de sens que sur une séance VIVANTE : il ne s'ouvre donc que
+  // lorsque le pilote choisi est réellement en piste (présent au roster).
+  const isMirroring = liveSessionId !== null;
+
+  const preview = isMirroring ? (
+    <MetaMirror
+      height={previewHeight}
+      compact={!isConsole}
+      pilotName={selectedPilot ? pilotFullName(selectedPilot) : 'Pilote'}
+      conn={conn}
+      frame={frame}
+      currentChronoMs={currentChronoMs}
+      bio={bio}
+    />
+  ) : (
     <InLensPreview
-      height={isConsole ? 380 : 200}
+      height={previewHeight}
       state={previewState}
       onLoadStart={onPreviewLoadStart}
       onLoad={onPreviewLoad}
@@ -216,7 +286,9 @@ export default function CoachArScreen() {
 
   const previewCaption = (
     <Text style={s.previewCaption}>
-      Ce que vous lirez dans vos lunettes. Servie côté web ({AR_VIEW_URL}).
+      {isMirroring
+        ? 'Miroir de ce que lit le porteur. Trois lignes, rien de plus.'
+        : `Ce que vous lirez dans vos lunettes. Servie côté web (${AR_VIEW_URL}).`}
     </Text>
   );
 
@@ -342,11 +414,12 @@ export default function CoachArScreen() {
         {/* Appairage lunettes : NON simulé. État neutre honnête. */}
         <StatusRow label="Lunettes Ray-Ban Display" value="Non appairées — aperçu" tone="neutral" />
         <View style={s.statusDivider} />
-        {/* Flux capteur : dépend de la session sélectionnée (honnête, pas de fausse valeur). */}
+        {/* Flux capteur : l'état RÉEL de l'abonnement au canal coach, pas une
+            supposition. Sans session choisie, on ne prétend rien. */}
         <StatusRow
           label="Flux capteur"
-          value={selectedSessionId ? 'Session sélectionnée' : 'En attente de sélection'}
-          tone={selectedSessionId ? 'ok' : 'neutral'}
+          value={isMirroring ? CONN_LABEL[conn] : 'En attente de sélection'}
+          tone={isMirroring && conn === 'live' ? 'ok' : 'neutral'}
         />
       </Card>
     </View>
@@ -487,6 +560,101 @@ function InLensPreview({
           <Text style={s.previewErrorText}>La vue web arrive bientôt.</Text>
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * Miroir Meta Display — ce que le coach lit DANS SES LUNETTES, rendu à
+ * l'identique sur le téléphone tant qu'elles ne sont pas appairées. Repli assumé
+ * dans le cadre d'aperçu déjà en place : un seul système d'affichage, pas deux.
+ *
+ * TROIS LIGNES, pas une de plus, contraste maximal (noir plein, blanc) : un verre
+ * se lit d'un coup d'œil, au bord de la piste, en plein soleil.
+ *   1. Le pilote en focus · son tour en cours · l'état du flux (honnête).
+ *   2. Le dernier tour bouclé — un chrono, donc l'or (seule couleur qui lui revient).
+ *   3. La FC — SEULEMENT si le flux en porte. Canal coach du binôme consenti :
+ *      elle a sa place ici, jamais sur le canal board. Absente, la ligne n'existe
+ *      pas : on n'écrit pas « — » pour de la santé.
+ *
+ * FAITS seuls. Aucune consigne de pilotage, aucun jugement, aucun seuil, aucune
+ * couleur d'alarme : le coach lit, il décide de sa pédagogie.
+ */
+function MetaMirror({
+  height,
+  compact,
+  pilotName,
+  conn,
+  frame,
+  currentChronoMs,
+  bio,
+}: {
+  height: number;
+  compact: boolean;
+  pilotName: string;
+  conn: LiveConn;
+  frame: LiveFrame | null;
+  currentChronoMs: number | null;
+  bio: BiometryLiveEvent | null;
+}) {
+  // Chrono du tour EN COURS (la trame le porte, en ms). « — » tant qu'aucune
+  // trame n'est arrivée : on n'affiche pas un zéro qui passerait pour une mesure.
+  const chrono = currentChronoMs !== null ? formatChronoTenths(currentChronoMs / 1000) : '—';
+  const metaSize = compact ? 13 : 18;
+  const labelSize = compact ? 10 : 13;
+
+  // Lecture vocale : la même chose que les yeux, sans rien ajouter.
+  const spoken = [
+    pilotName,
+    frame ? `tour ${frame.lap}` : null,
+    CONN_LABEL[conn],
+    `tour en cours ${chrono}`,
+    bio ? `${bio.hrBpm} battements par minute` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <View
+      style={[s.previewFrame, s.mirrorFrame, { height }]}
+      accessible
+      accessibilityLabel={spoken}
+    >
+      <View style={s.mirror}>
+        {/* 1 · Pilote en focus, tour en cours, état du flux. */}
+        <View style={s.mirrorRow}>
+          <Text numberOfLines={1} style={[s.mirrorPilot, { fontSize: metaSize }]}>
+            {pilotName}
+          </Text>
+          <View style={s.mirrorRight}>
+            {frame ? (
+              <Text style={[s.mirrorMeta, { fontSize: metaSize }]}>T{frame.lap}</Text>
+            ) : null}
+            <Text style={[s.mirrorMeta, { fontSize: labelSize }]}>
+              {CONN_LABEL[conn].toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        {/* 2 · Dernier tour bouclé — le chiffre roi. */}
+        <View style={s.mirrorRow}>
+          <Text style={[s.mirrorLabel, { fontSize: labelSize }]}>TOUR EN COURS</Text>
+          <Text style={[s.mirrorChrono, { fontSize: compact ? 52 : 78 }]}>{chrono}</Text>
+        </View>
+
+        {/* 3 · FC — n'existe que si le pilote en émet vers son coach. */}
+        {bio ? (
+          <View style={s.mirrorRow}>
+            <Text style={[s.mirrorLabel, { fontSize: labelSize }]}>FC</Text>
+            <View style={s.mirrorRight}>
+              <Text style={[s.mirrorBio, { fontSize: compact ? 24 : 34 }]}>
+                {String(bio.hrBpm)}
+              </Text>
+              <Text style={[s.mirrorUnit, { fontSize: labelSize }]}>bpm</Text>
+            </View>
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
@@ -731,6 +899,63 @@ const s = StyleSheet.create({
     color: palette.faint,
     marginTop: spacing.sm,
     lineHeight: 15,
+  },
+
+  // — Miroir Meta Display (direct) : trois lignes, contraste maximal —
+  // Noir plein et blanc pur, pas les gris de l'app : sur un verre, le noir est
+  // transparent et le moindre gris devient illisible en plein soleil.
+  mirrorFrame: { backgroundColor: '#000000' },
+  mirror: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  mirrorRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  mirrorRight: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  mirrorPilot: {
+    flex: 1,
+    fontFamily: fonts.monoSemi,
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+  },
+  mirrorMeta: {
+    fontFamily: fonts.mono,
+    letterSpacing: 1.2,
+    color: '#FFFFFF',
+  },
+  mirrorLabel: {
+    fontFamily: fonts.mono,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    color: '#FFFFFF',
+  },
+  // L'or est au chrono, et au chrono seulement (règle fondateur).
+  mirrorChrono: {
+    fontFamily: fonts.king,
+    letterSpacing: -1.5,
+    color: palette.gold,
+    fontVariant: ['tabular-nums'],
+  },
+  // La FC reste NEUTRE : ni or (ce n'est pas un record) ni rouge (ce n'est pas
+  // une alarme). L'app ne diagnostique pas.
+  mirrorBio: {
+    fontFamily: fonts.king,
+    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    fontVariant: ['tabular-nums'],
+  },
+  mirrorUnit: {
+    fontFamily: fonts.mono,
+    letterSpacing: 1,
+    color: '#FFFFFF',
   },
 
   // — États matériels —

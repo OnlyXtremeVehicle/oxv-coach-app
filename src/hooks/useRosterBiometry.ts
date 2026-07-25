@@ -11,10 +11,10 @@
  *
  * PRÉCISION D'HONNÊTETÉ : la protection décrite ci-dessus est STRUCTURELLE (la FC
  * n'est jamais écrite dans RosterMeta), elle n'est PAS le fait d'un filtre à
- * l'exécution. `stripHealth` (liveHealthGate) existe et est testé, mais n'a
- * aujourd'hui aucun appelant en production : sa liste blanche {position, lapMs,
- * sector, ts} vise le futur tableau public LIVE-B, pas ce canal-ci. Ne pas laisser
- * croire qu'un filtre tourne ici — il n'y en a pas, et il n'y en a pas besoin.
+ * l'exécution. `stripHealth` (liveHealthGate) filtre bien, lui, les payloads du
+ * TABLEAU DE MARCHE (canal `live:board:`, lot LIVE-B) — mais il ne tourne pas sur
+ * le chemin décrit ici. Ne pas laisser croire qu'un filtre s'exécute sur la
+ * présence : il n'y en a pas, et il n'y en a pas besoin.
  *
  * Le hook n'écrit rien, ne persiste rien, ne journalise rien : la FC ne fait que
  * transiter en mémoire le temps d'être affichée (minimisation). Il ne juge pas

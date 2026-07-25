@@ -6,6 +6,9 @@
  *       ne s'y track que s'il a consenti le live à CE coach → un coach ne voit
  *       que SES pilotes consentis (plus de roster global).
  *   - broadcast `live:session:<id>`     → flux télémétrique throttlé, PRIVÉ.
+ *   - broadcast `live:board:<id>`       → tableau de marche (LIVE-B), audience
+ *       ÉLARGIE (écran TV du paddock) : donc contenu plus pauvre, filtré par
+ *       stripHealth, et jamais la moindre donnée de santé.
  * `{ config: { private: true } }` partout : l'autorisation serveur est portée par
  * la RLS `realtime.messages` (migration realtime — cf. docs/architecture/09 §3).
  * Le consentement gate donc l'ÉMISSION (liveRelayRunner) ET l'AUDIENCE (RLS +
@@ -19,6 +22,7 @@
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { supabase } from '@/lib/supabase';
+import { type BoardEvent, parseBoardEvent } from './boardLogic';
 import {
   type BiometryLiveEvent,
   type LiveFrame,
@@ -26,9 +30,11 @@ import {
   type RosterMeta,
   reduceRoster,
 } from './liveSessionLogic';
+import { type SafeLivePayload, stripHealth } from './v2/liveHealthGate';
 
 const rosterTopic = (coachId: string) => `live:roster:${coachId}`;
 const sessionChannel = (sessionId: string) => `live:session:${sessionId}`;
+const boardTopic = (sessionId: string) => `live:board:${sessionId}`;
 
 /** Nettoyage d'un abonnement. */
 export type Unsubscribe = () => void;
@@ -284,6 +290,141 @@ export function openPilotBroadcast(sessionId: string): {
       closed = true;
       releaseSession(sessionId);
     },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tableau de marche (LIVE-B) — topic `live:board:<sessionId>`, REFCOMPTÉ.
+//
+// AUDIENCE DIFFÉRENTE des canaux coach : le board alimente l'écran TV du
+// paddock, que tout le monde regarde, là où `live:session:` ne parle qu'au coach
+// du binôme consenti. D'où un topic distinct, ses propres policies
+// (`board_recv` / `board_send`, migration 20260725190000) — et surtout une règle
+// de contenu plus stricte : AUCUNE donnée de santé, jamais, même consentie.
+// Cette règle-là ne peut pas s'écrire en SQL (le serveur ne lit pas le corps du
+// message) : elle est APPLICATIVE, et tenue par stripHealth aux deux bouts.
+//
+// Le refcount suit le patron de `ensureSession` — supabase-js dédoublonne les
+// canaux par topic, donc sans comptage le premier `removeChannel` arracherait le
+// canal aux autres consommateurs (émission pilote et lecture coach peuvent
+// coexister sur un même client, cas du simulateur dev).
+// ---------------------------------------------------------------------------
+
+interface BoardTopicState {
+  channel: RealtimeChannel;
+  refs: number;
+  /** Statut courant, rejoué à tout abonné qui arrive après le SUBSCRIBED. */
+  subscribed: boolean;
+  boardCbs: Set<(event: BoardEvent) => void>;
+  statusCbs: Set<(subscribed: boolean) => void>;
+}
+const boards = new Map<string, BoardTopicState>();
+
+function ensureBoard(sessionId: string): BoardTopicState {
+  const existing = boards.get(sessionId);
+  if (existing) return existing;
+
+  const channel: RealtimeChannel = supabase.channel(boardTopic(sessionId), {
+    config: { private: true },
+  });
+  const state: BoardTopicState = {
+    channel,
+    refs: 0,
+    subscribed: false,
+    boardCbs: new Set(),
+    statusCbs: new Set(),
+  };
+  channel
+    .on('broadcast', { event: 'board' }, (msg) => {
+      // Ce qui arrive vient d'un AUTRE appareil : on le relit champ par champ
+      // plutôt que de le caster. Une ligne illisible est écartée en silence — un
+      // écran vide est honnête, une ligne inventée ne le serait pas.
+      const event = parseBoardEvent(msg.payload);
+      if (!event) return;
+      state.boardCbs.forEach((cb) => cb(event));
+    })
+    .subscribe((status) => {
+      state.subscribed = status === 'SUBSCRIBED';
+      state.statusCbs.forEach((cb) => cb(state.subscribed));
+    });
+  boards.set(sessionId, state);
+  return state;
+}
+
+function releaseBoard(sessionId: string): void {
+  const state = boards.get(sessionId);
+  if (!state) return;
+  state.refs -= 1;
+  if (state.refs <= 0) {
+    supabase.removeChannel(state.channel);
+    boards.delete(sessionId);
+  }
+}
+
+/**
+ * PILOTE — ouvre l'émetteur du tableau de marche d'une séance.
+ *
+ * `send` attend la SORTIE de `stripHealth()`, pas un objet quelconque : c'est le
+ * contrat du lot, et l'appelant (liveRelayRunner) l'applique de façon visible au
+ * point d'émission. Le service la RÉAPPLIQUE ici — l'opération est idempotente,
+ * donc gratuite sur une charge déjà filtrée, et elle garantit que la barrière
+ * tient même si un futur appelant oublie de la traverser. Sur un canal public,
+ * une barrière qui dépend de la discipline de l'appelant n'en est pas une.
+ */
+export function openBoardBroadcast(sessionId: string): {
+  send: (payload: SafeLivePayload) => void;
+  close: Unsubscribe;
+} {
+  const state = ensureBoard(sessionId);
+  state.refs += 1;
+  let closed = false;
+  return {
+    send: (payload: SafeLivePayload) => {
+      if (closed || !state.subscribed) return;
+      state.channel.send({ type: 'broadcast', event: 'board', payload: stripHealth(payload) });
+    },
+    close: () => {
+      if (closed) return; // idempotent : ne libère jamais deux fois la même réf
+      closed = true;
+      releaseBoard(sessionId);
+    },
+  };
+}
+
+/**
+ * LECTEUR — s'abonne au tableau de marche d'une séance (écran TV du paddock,
+ * multi-live coach). Aucune notion d'ordre ici : le canal transporte des lignes,
+ * l'ordre d'affichage est décidé au rendu par `sortBoard` (numéro de voiture).
+ */
+export function subscribeBoard(
+  sessionId: string,
+  handlers: {
+    onBoard: (event: BoardEvent) => void;
+    onStatus?: (subscribed: boolean) => void;
+  }
+): Unsubscribe {
+  const state = ensureBoard(sessionId);
+  state.refs += 1;
+
+  const onBoard = handlers.onBoard;
+  const onStatus = handlers.onStatus;
+  state.boardCbs.add(onBoard);
+  if (onStatus) {
+    state.statusCbs.add(onStatus);
+    // Retardataire : le canal a pu être souscrit AVANT cet abonnement (topic
+    // partagé). On rejoue l'état courant pour ne pas le laisser « hors ligne ».
+    if (state.subscribed) onStatus(true);
+  }
+
+  // Idempotent : cf. subscribePilotStream — sur un topic REFCOMPTÉ, un second
+  // appel décrémenterait une seconde fois et arracherait le canal aux autres.
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    state.boardCbs.delete(onBoard);
+    if (onStatus) state.statusCbs.delete(onStatus);
+    releaseBoard(sessionId);
   };
 }
 

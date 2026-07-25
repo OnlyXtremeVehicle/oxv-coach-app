@@ -17,32 +17,59 @@
 
 /**
  * Charge utile réduite, sûre pour un canal NON-coach : uniquement les champs
- * factuels de position/chrono, jamais de santé. Toutes les clés sont optionnelles
- * car seules celles réellement présentes dans l'entrée sont recopiées.
+ * factuels d'identité publique, de position et de chrono, jamais de santé.
+ * Toutes les clés sont optionnelles car seules celles réellement présentes dans
+ * l'entrée sont recopiées.
  */
 export type SafeLivePayload = {
   position?: unknown;
   lapMs?: unknown;
   sector?: unknown;
   ts?: unknown;
+  pilotHandle?: unknown;
+  carNo?: unknown;
+  lastLapMs?: unknown;
+  bestLapMs?: unknown;
 };
 
 /**
  * Liste BLANCHE des seules clés autorisées à quitter l'app vers un canal
- * non-coach. Tout ce qui n'y figure pas est écarté par construction — c'est une
- * liste blanche, jamais une liste noire : ajouter un capteur santé demain ne crée
- * aucune fuite tant que sa clé n'est pas explicitement inscrite ici.
+ * non-coach. Elle énumère le PUBLIABLE, jamais l'interdit : c'est une liste
+ * blanche, pas une liste noire. Conséquence directe — brancher demain un capteur
+ * santé quelconque (hr, rr, contact, spo2, température, n'importe quoi) ne crée
+ * AUCUNE fuite tant que sa clé n'est pas explicitement inscrite ici. L'oubli joue
+ * en faveur du pilote, jamais contre lui.
+ *
+ * Lot LIVE-B : les quatre clés du tableau de marche (pilotHandle, carNo,
+ * lastLapMs, bestLapMs) rejoignent la liste. Ce sont des faits publics de
+ * roulage — un numéro de voiture et des durées de tour — au même titre qu'un
+ * panneau au bord de la piste ; aucune n'est un signe vital.
+ *
+ * ATTENTION à qui modifie ce tableau : depuis LIVE-B, cette barrière a un
+ * appelant RÉEL en production (l'émission `board`, canal `live:board:<sessionId>`
+ * lisible sur l'écran TV du paddock), ce qui n'était pas le cas quand elle a été
+ * écrite au lot BIO-2. Toute clé ajoutée ici devient donc immédiatement visible
+ * d'un public, pas seulement du coach du binôme consenti.
  */
-const LIVE_WHITELIST = ['position', 'lapMs', 'sector', 'ts'] as const;
+const LIVE_WHITELIST = [
+  'position',
+  'lapMs',
+  'sector',
+  'ts',
+  'pilotHandle',
+  'carNo',
+  'lastLapMs',
+  'bestLapMs',
+] as const;
 
 /**
  * Retire toute donnée de santé d'une charge utile destinée à un canal NON-coach.
  *
  * Renvoie un NOUVEL objet ne contenant QUE les clés de la liste blanche
- * ({position, lapMs, sector, ts}) réellement présentes dans l'entrée. Toute autre
- * clé (hr, rr, rrMs, contact, heartRate, bpm, ou n'importe quoi d'autre) est
- * écartée. On applique cette fonction à chaque payload partant vers roster/board/
- * LIVE-B, afin qu'aucune biométrie ne puisse fuiter hors du canal coach.
+ * réellement présentes dans l'entrée. Toute autre clé (hr, rr, rrMs, contact,
+ * heartRate, bpm, ou n'importe quoi d'autre) est écartée. On applique cette
+ * fonction à chaque payload partant vers roster/board/LIVE-B, afin qu'aucune
+ * biométrie ne puisse fuiter hors du canal coach.
  *
  * Entrée non-objet (null, undefined, primitive) → objet vide : fail-closed.
  */

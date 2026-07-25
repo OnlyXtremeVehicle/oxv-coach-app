@@ -11,6 +11,8 @@
  * jamais une consigne. Aucun classement entre pilotes.
  */
 
+import { compareCarNo } from './boardLogic';
+
 /** Une trame live throttlée (relayée par l'app pilote depuis le flux BLE). */
 export interface LiveFrame {
   /** Numéro du tour en cours. */
@@ -40,6 +42,18 @@ export interface RosterMeta {
   onTrack: boolean;
   /** Depuis quand (ms epoch). */
   sinceMs: number;
+  /**
+   * LIVE-B — numéro de voiture, ou null/absent si aucun n'est attribué.
+   *
+   * C'est une donnée d'IDENTITÉ PUBLIQUE, au même titre que le numéro peint sur
+   * la portière : elle se lit du bord de piste, et rien ne s'y devine du pilote.
+   * Rien à voir avec `bioShared`, qui n'est qu'un booléen d'état — et surtout
+   * rien à voir avec une mesure de santé, qui n'a toujours aucune place ici.
+   *
+   * Sert à ordonner le multi-live coach par numéro de voiture, comme le tableau
+   * de marche du paddock. Absent → la colonne affiche « — », jamais un 0.
+   */
+  carNo?: number | null;
   /**
    * BIO-2 — le pilote partage-t-il son cardio avec CE coach ? Booléen d'ÉTAT,
    * JAMAIS une mesure : aucune FC, aucune variabilité, aucune « zone » ne
@@ -120,6 +134,27 @@ export function reduceRoster(presence: Record<string, RosterMeta[]>): RosterEntr
     if (a.sinceMs !== b.sinceMs) return a.sinceMs - b.sinceMs;
     return a.firstName.localeCompare(b.firstName);
   });
+}
+
+/**
+ * Ordonne un roster par NUMÉRO DE VOITURE (LIVE-B, livrable 4 — multi-live).
+ *
+ * Même règle EXACTE que le tableau de marche du paddock : `compareCarNo` n'est
+ * écrit qu'une fois, dans boardLogic, et les deux vues s'y branchent. Le coach
+ * qui lève les yeux de sa tablette vers l'écran TV retrouve donc le même ordre —
+ * et cet ordre ne raconte rien du roulage, ce qui est précisément le but : un
+ * ordre par performance affiché peut requalifier un track day en compétition.
+ *
+ * Ne mute pas l'entrée. Distinct de `reduceRoster`, qui groupe par état de
+ * présence (en piste / au stand) : ici c'est l'ordre d'AFFICHAGE de la liste.
+ */
+export function sortRosterByCarNo(roster: readonly RosterEntry[]): RosterEntry[] {
+  return [...roster].sort((a, b) =>
+    compareCarNo(
+      { carNo: a.carNo ?? null, tieBreak: a.firstName },
+      { carNo: b.carNo ?? null, tieBreak: b.firstName }
+    )
+  );
 }
 
 /**

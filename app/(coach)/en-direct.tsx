@@ -15,6 +15,19 @@
  * sur la fiche direct (en-direct/[sessionId], usePilotLive) — un toucher l'ouvre.
  * Aucun classement, aucune consigne. L'or (chrono) est donc absent de cet écran.
  *
+ * ORDRE (LIVE-B) : la liste suit le NUMÉRO DE VOITURE, comme le tableau de marche
+ * du paddock — même règle, même fonction (`compareCarNo`, boardLogic). Jamais un
+ * ordre de performance : affiché publiquement, il peut requalifier juridiquement
+ * un track day en compétition. Le numéro est donc AFFICHÉ : un ordre dont on ne
+ * voit pas la clé passerait pour un classement.
+ *
+ * Le numéro vient de la PRÉSENCE (RosterMeta.carNo), pas du canal board : la
+ * présence porte déjà l'identité du pilote (prénom, circuit), un numéro de
+ * voiture en est une au même titre — celle qu'on lit du bord de piste. Le lire
+ * ainsi évite d'ouvrir un canal board par pilote pour un champ constant, qui
+ * n'arriverait qu'à la première trame. Rien à voir avec la FC, mesure de santé
+ * qui, elle, reste hors de la présence.
+ *
  * CARDIO (BIO) : la pastille colorée des pilotes qui partagent leur cardio vient
  * de `useRosterBiometry`, pas de la présence — la FC n'emprunte QUE le canal privé
  * par-session, jamais `live:roster` (RGPD art. 9). La protection est STRUCTURELLE
@@ -43,7 +56,7 @@ import { useLiveRoster } from '@/hooks/useLiveRoster';
 import { type RosterBioState, useRosterBiometry } from '@/hooks/useRosterBiometry';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { cardioZoneColor, cardioZoneLabel } from '@/services/cardioZoneLogic';
-import { type RosterEntry } from '@/services/liveSessionLogic';
+import { type RosterEntry, sortRosterByCarNo } from '@/services/liveSessionLogic';
 import { joinRoster, startSimulatedStream } from '@/services/liveSessionService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
@@ -78,6 +91,9 @@ export default function EnDirectScreen() {
   // que pour les pilotes dont `bioShared` est explicitement vrai, et l'état qu'il
   // rend ne sort jamais d'ici (aucune écriture, aucun journal).
   const bioByPilot = useRosterBiometry(roster);
+  // Ordre d'affichage = numéro de voiture (LIVE-B). Le décompte, lui, ne dépend
+  // pas de l'ordre : on trie pour la liste, pas pour les chiffres.
+  const ordered = sortRosterByCarNo(roster);
 
   const onTrack = roster.filter((p) => p.onTrack).length;
   const atStand = roster.length - onTrack;
@@ -129,7 +145,7 @@ export default function EnDirectScreen() {
                 label="VOS PILOTES · EN DIRECT"
                 right={`${roster.length} présent${plural(roster.length)}`}
               />
-              <RosterList roster={roster} bioByPilot={bioByPilot} />
+              <RosterList roster={ordered} bioByPilot={bioByPilot} />
             </View>
             <View style={s.colSide}>
               <StatePanel
@@ -152,7 +168,7 @@ export default function EnDirectScreen() {
               label="VOS PILOTES"
               right={`${roster.length} présent${plural(roster.length)}`}
             />
-            <RosterList roster={roster} bioByPilot={bioByPilot} />
+            <RosterList roster={ordered} bioByPilot={bioByPilot} />
           </View>
         )}
 
@@ -220,6 +236,11 @@ function RosterList({
       {roster.map((p) => (
         <PilotRow key={p.pilotId} pilot={p} bio={bioByPilot[p.pilotId]} />
       ))}
+      {/* La clé de l'ordre est dite explicitement : une liste ordonnée sans clé
+          visible se lit comme un classement, et il n'y en a pas ici. */}
+      <Text style={s.orderNote}>
+        Liste ordonnée par numéro de voiture. Ce n'est pas un classement.
+      </Text>
       {anyCardio ? (
         <Text style={s.cardioScaleNote}>
           Chaque couleur cardio se lit sur la plage du pilote concerné. Elles ne se comparent pas
@@ -242,12 +263,16 @@ function PilotRow({ pilot, bio }: { pilot: RosterEntry; bio?: RosterBioState }) 
   // fabrique aucune couleur et on ne fige pas la dernière teinte reçue.
   const cardioZoneOrNull = bio?.zone ?? null;
 
+  // Numéro de voiture : « — » quand il n'y en a pas. Aucun repli, aucun numéro
+  // d'ordre de substitution — un numéro affiché est un numéro attribué.
+  const carNo = typeof pilot.carNo === 'number' ? pilot.carNo : null;
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${pilot.firstName}, ${live ? 'en piste' : 'au stand'}${
-        pilot.circuit ? `, ${pilot.circuit}` : ''
-      }${
+      accessibilityLabel={`${carNo !== null ? `Voiture ${carNo}, ` : 'Sans numéro, '}${
+        pilot.firstName
+      }, ${live ? 'en piste' : 'au stand'}${pilot.circuit ? `, ${pilot.circuit}` : ''}${
         // Le libellé de zone REMPLACE « cardio partagé » dès qu'une zone existe :
         // le lecteur d'écran reçoit exactement ce que la couleur montre, ni plus
         // (aucun bpm) ni moins. Vocabulaire fermé et factuel de cardioZoneLogic.
@@ -261,6 +286,15 @@ function PilotRow({ pilot, bio }: { pilot: RosterEntry; bio?: RosterBioState }) 
       }
       style={({ pressed }) => [s.row, pressed && { opacity: 0.85, borderColor: palette.edge }]}
     >
+      {/* Colonne du numéro — en tête de ligne, en mono, parce que c'est elle qui
+          porte l'ordre de la liste. Discrète : ce n'est pas un chiffre roi. */}
+      <Text
+        style={[s.carNo, carNo === null && { color: palette.faint }]}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      >
+        {carNo !== null ? String(carNo) : '—'}
+      </Text>
       <View style={s.avatar}>
         <Text style={s.avatarTxt}>{(pilot.firstName[0] ?? '?').toUpperCase()}</Text>
       </View>
@@ -396,6 +430,7 @@ function DevSimulateButton({ coachId }: { coachId: string }) {
       circuit: 'Haute Saintonge',
       onTrack: true,
       sinceMs: Date.now(),
+      carNo: 42,
     });
     const stop = startSimulatedStream(sessionId);
     return () => {
@@ -516,6 +551,15 @@ const s = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
+  /** Numéro de voiture — mono, largeur fixe pour que la colonne s'aligne. */
+  carNo: {
+    fontFamily: fonts.mono,
+    fontSize: fontSize.body,
+    letterSpacing: 0.5,
+    color: palette.creamSoft,
+    minWidth: 30,
+    textAlign: 'right',
+  },
   avatar: {
     width: 38,
     height: 38,
@@ -623,6 +667,14 @@ const s = StyleSheet.create({
 
   legend: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   legendDot: { width: 7, height: 7, borderRadius: 4 },
+  /** Clé de l'ordre — discrète, mais jamais optionnelle (anti-classement). */
+  orderNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    lineHeight: fontSize.small * 1.4,
+    marginTop: spacing.xs,
+  },
   /** Référent de l'échelle cardio — discret, mais jamais optionnel (anti-classement). */
   cardioScaleNote: {
     fontFamily: fonts.body,

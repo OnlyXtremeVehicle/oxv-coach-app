@@ -55,6 +55,57 @@ describe('stripHealth', () => {
     expect(Object.prototype.hasOwnProperty.call(out, 'position')).toBe(false);
   });
 
+  it('LIVE-B — un payload board complet passe INTACT', () => {
+    // Les six champs du tableau de marche sont des faits publics de roulage :
+    // ils traversent la barrière sans perte, sinon l'écran TV serait vide.
+    const board = {
+      pilotHandle: 'ana',
+      carNo: 21,
+      lastLapMs: 93000,
+      bestLapMs: 91000,
+      sector: 2,
+      ts: 1_700_000_000_000,
+    };
+    expect(stripHealth(board)).toEqual(board);
+  });
+
+  it('LIVE-B — un payload board pollué de biométrie perd la biométrie', () => {
+    const out = stripHealth({
+      pilotHandle: 'ana',
+      carNo: 21,
+      lastLapMs: 93000,
+      bestLapMs: 91000,
+      sector: 2,
+      ts: 1_700_000_000_000,
+      // Injection : ce que le canal board ne doit JAMAIS porter.
+      hr: 172,
+      hrBpm: 172,
+      rrTrend: 'en hausse',
+      contact: 'ok',
+      spo2: 98,
+    });
+
+    expect(out).toEqual({
+      pilotHandle: 'ana',
+      carNo: 21,
+      lastLapMs: 93000,
+      bestLapMs: 91000,
+      sector: 2,
+      ts: 1_700_000_000_000,
+    });
+    const serialized = JSON.stringify(out);
+    expect(serialized).not.toContain('hr');
+    expect(serialized).not.toContain('rr');
+    expect(serialized).not.toContain('contact');
+    expect(serialized).not.toContain('spo2');
+  });
+
+  it('LIVE-B — une clé santé NON prévue reste écartée (liste blanche, pas noire)', () => {
+    // La liste énumère le publiable : un capteur inventé demain ne fuite pas.
+    const out = stripHealth({ carNo: 21, ts: 1, glycemie: 0.9, tempCorpsC: 37.4, vo2: 52 });
+    expect(out).toEqual({ carNo: 21, ts: 1 });
+  });
+
   it('entrée non-objet → objet vide (fail-closed)', () => {
     // Cast contrôlés : on éprouve la robustesse face à une entrée hors contrat.
     expect(stripHealth(null as unknown as Record<string, unknown>)).toEqual({});
