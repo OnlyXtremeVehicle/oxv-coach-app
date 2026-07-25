@@ -98,7 +98,10 @@ export function subscribeRoster(
   };
   state.syncCbs.add(cb);
   cb(); // état courant immédiat (peut être déjà synchronisé)
+  let released = false;
   return () => {
+    if (released) return; // idempotent : cf. subscribePilotStream (topic refcompté)
+    released = true;
     state.syncCbs.delete(cb);
     releaseRoster(coachId);
   };
@@ -126,7 +129,10 @@ export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
   state.refs += 1;
   state.track = meta;
   if (state.channel.state === 'joined') state.channel.track(meta);
+  let released = false;
   return () => {
+    if (released) return; // idempotent : cf. subscribePilotStream (topic refcompté)
+    released = true;
     state.track = null;
     state.channel.untrack();
     releaseRoster(coachId);
@@ -233,7 +239,13 @@ export function subscribePilotStream(
     if (state.subscribed) onStatus(true);
   }
 
+  // Idempotent : sur un topic REFCOMPTÉ, un second appel décrémenterait une
+  // seconde fois et arracherait le canal aux autres consommateurs. Le contrat
+  // « appeler deux fois ne fait rien de plus » est ici une garde, pas un confort.
+  let released = false;
   return () => {
+    if (released) return;
+    released = true;
     state.frameCbs.delete(onFrame);
     if (onBio) state.bioCbs.delete(onBio);
     if (onStatus) state.statusCbs.delete(onStatus);
