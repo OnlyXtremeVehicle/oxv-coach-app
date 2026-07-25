@@ -94,6 +94,14 @@
         }
       ],
       [
+        "react-native-health",
+        {
+          "healthSharePermission": "OXV lit votre fréquence cardiaque enregistrée pendant vos roulages, pour vous la restituer après la séance. Rien n'est lu sans votre consentement, et vous pouvez le retirer à tout moment.",
+          "healthUpdatePermission": "OXV n'écrit rien dans votre dossier de santé.",
+          "isClinicalDataEnabled": false
+        }
+      ],
+      [
         "expo-secure-store",
         {
           "faceIDPermission": "OXV utilise Face ID pour sécuriser votre compte."

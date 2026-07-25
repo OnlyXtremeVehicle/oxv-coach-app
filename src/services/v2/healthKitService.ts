@@ -1,11 +1,15 @@
 /**
  * Wrapper HealthKit (BE-1, MISSION A) — iOS uniquement, no-op Android.
  *
- * ÉTAT : « prêt pour BIO-1, no-op aujourd'hui ». AUCUN module natif santé n'est
- * installé dans le projet à ce jour (vérifié). Ce fichier pose la surface stable
- * (signatures, gate de consentement, détection de plateforme) que BIO-1 n'aura
- * qu'à câbler : installer le module santé et remplir les deux TODO ci-dessous.
- * Tant que le module est absent, tout retourne 'unavailable' / [].
+ * ÉTAT (25/07/2026) : CÂBLÉ. `react-native-health` est installé et les deux
+ * appels réels sont branchés — autorisation en lecture seule, et lecture bornée
+ * des échantillons de fréquence cardiaque.
+ *
+ * MAIS IL NE FONCTIONNERA QU'APRÈS UN BUILD NATIF. HealthKit est un module natif :
+ * tant que l'app tourne sur un binaire compilé AVANT cette installation, le
+ * `require` échoue et tout retombe proprement sur 'unavailable' / []. Ce n'est
+ * pas une panne, c'est le comportement attendu — et c'est pour cela que rien
+ * n'appelle ces fonctions sans vérifier leur retour.
  *
  * GATE DE CONSENTEMENT — fail-closed : `readHeartRate` n'accède JAMAIS aux
  * données de santé sans consentement de CAPTURE. L'appelant passe le flag
@@ -27,16 +31,44 @@ export interface HeartRateSample {
 }
 
 /**
- * Nom du futur module natif, en VARIABLE (pas en littéral) : le bundler ne tente
- * pas de résoudre statiquement un paquet encore absent, ce qui éviterait un
- * échec de build. BIO-1 installera le module et `loadHealthModule` le trouvera
- * sans autre changement ici.
+ * Nom du module natif, gardé en VARIABLE et non en littéral.
+ *
+ * Le paquet est désormais installé, mais la résolution reste volontairement
+ * dynamique : sur un binaire compilé avant l'installation — ou sous Jest, qui
+ * tourne en environnement Node sans natif — un import statique ferait échouer le
+ * chargement du module entier. Ici, l'échec est capturé et se traduit par un
+ * simple « indisponible ».
  */
 const HEALTH_MODULE_NAME = 'react-native-health';
 
-/** Forme minimale attendue du futur module natif (affinée par BIO-1). */
+/**
+ * Forme du module natif RÉELLEMENT utilisée ici — volontairement minimale.
+ *
+ * On ne type que les deux appels dont on se sert, plutôt que d'importer les
+ * types du paquet : `require` est paresseux (le module peut être absent au
+ * bundling), et une surface étroite documente exactement ce à quoi l'app touche
+ * dans HealthKit. Tout le reste de l'API santé reste hors de portée.
+ *
+ * L'API du paquet est à CALLBACKS (err en premier) : on la promisifie plus bas.
+ */
+interface HealthSampleLike {
+  /** Valeur de la mesure — ici, la fréquence cardiaque en bpm. */
+  value: number;
+  /** Début de l'échantillon (ISO 8601). */
+  startDate: string;
+  endDate: string;
+}
+
 interface HealthModuleLike {
-  [key: string]: unknown;
+  initHealthKit(
+    permissions: { permissions: { read: string[]; write: string[] } },
+    callback: (error: string | null, result?: unknown) => void
+  ): void;
+  getHeartRateSamples(
+    options: { startDate: string; endDate: string; ascending?: boolean },
+    callback: (error: string | null, results?: HealthSampleLike[]) => void
+  ): void;
+  Constants?: { Permissions?: Record<string, string> };
 }
 
 function loadHealthModule(): HealthModuleLike | null {
@@ -66,9 +98,29 @@ export async function requestAuthorization(): Promise<HealthAuthStatus> {
   if (Platform.OS !== 'ios') return 'unavailable';
   const mod = loadHealthModule();
   if (!mod) return 'unavailable';
-  // TODO BIO-1 : brancher l'autorisation native via `mod` et renvoyer
-  // 'granted' | 'denied'. Fail-safe tant que non branché.
-  return 'unavailable';
+
+  // On ne demande QUE la lecture de la fréquence cardiaque, et AUCUNE écriture :
+  // l'app lit une mesure que la montre a prise, elle n'écrit jamais dans le
+  // dossier de santé du pilote. Demander plus large serait réclamer un accès
+  // dont on n'a pas l'usage — sur une donnée de l'article 9, c'est non.
+  const heartRate = mod.Constants?.Permissions?.HeartRate ?? 'HeartRate';
+  const permissions = { permissions: { read: [heartRate], write: [] as string[] } };
+
+  return new Promise<HealthAuthStatus>((resolve) => {
+    try {
+      mod.initHealthKit(permissions, (error) => {
+        // iOS ne dit JAMAIS si l'utilisateur a refusé une autorisation de
+        // LECTURE (c'est délibéré chez Apple : le refus doit être
+        // indiscernable de l'absence de données, pour ne pas le trahir). Une
+        // erreur ici signifie donc « pas d'accès », sans qu'on puisse en
+        // conclure le motif. On répond 'denied' : c'est le sens utile pour
+        // l'appelant, et c'est fail-closed.
+        resolve(error ? 'denied' : 'granted');
+      });
+    } catch {
+      resolve('unavailable');
+    }
+  });
 }
 
 /**
@@ -89,9 +141,46 @@ export async function readHeartRate(
   if (Platform.OS !== 'ios') return [];
   const mod = loadHealthModule();
   if (!mod) return [];
-  // TODO BIO-1 : lire l'HealthKit via `mod`, borné [from, to], projeter vers
-  // { ts, hr }. No-op aujourd'hui (module absent).
-  void from;
-  void to;
-  return [];
+
+  // Bornes invalides : on ne lit rien plutôt que d'ouvrir une fenêtre imprévue
+  // sur le dossier de santé. Une plage inversée ou non datée n'est pas une
+  // requête, c'est un bug — et on ne l'exécute pas « au cas où ».
+  const fromMs = from instanceof Date ? from.getTime() : NaN;
+  const toMs = to instanceof Date ? to.getTime() : NaN;
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || toMs <= fromMs) return [];
+
+  return new Promise<HeartRateSample[]>((resolve) => {
+    try {
+      mod.getHeartRateSamples(
+        {
+          startDate: new Date(fromMs).toISOString(),
+          endDate: new Date(toMs).toISOString(),
+          ascending: true,
+        },
+        (error, results) => {
+          // Vide honnête sur erreur : l'absence de mesure se dit par une liste
+          // vide, jamais par une valeur inventée.
+          if (error || !Array.isArray(results)) {
+            resolve([]);
+            return;
+          }
+          const samples: HeartRateSample[] = [];
+          for (const r of results) {
+            if (r === null || typeof r !== 'object') continue;
+            const hr = r.value;
+            const ts = Date.parse(r.startDate);
+            // Une FC nulle ou non finie n'est pas une mesure basse : c'est une
+            // absence de mesure. On l'écarte au lieu de la faire entrer dans
+            // une moyenne qu'elle fausserait.
+            if (!Number.isFinite(hr) || hr <= 0) continue;
+            if (!Number.isFinite(ts)) continue;
+            samples.push({ ts, hr });
+          }
+          resolve(samples);
+        }
+      );
+    } catch {
+      resolve([]);
+    }
+  });
 }

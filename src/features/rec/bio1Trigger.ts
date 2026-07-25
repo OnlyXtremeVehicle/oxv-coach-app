@@ -19,8 +19,12 @@
  *      un échec, un flag OFF, ou zéro échantillon) — sinon la vraie lecture
  *      deviendrait définitivement injouable pour cette séance.
  *
- * ÉTAT phase A : healthKitService est un no-op ('unavailable') → readHeartRate
- * renvoie [] → reason 'no-samples', aucune garde posée, prêt pour BIO-1.
+ * ÉTAT (25/07/2026) : healthKitService est CÂBLÉ sur `react-native-health`. Le
+ * déclencheur lit donc de vraies mesures — mais SEULEMENT sur un binaire compilé
+ * après cette installation. Sur un build antérieur, le module natif est absent,
+ * `readHeartRate` renvoie [] et l'on retombe sur reason 'no-samples' : aucune
+ * garde n'est posée, la lecture reste jouable une fois le binaire à jour. C'est
+ * précisément pourquoi la garde n'est posée qu'après une lecture RÉELLE.
  */
 
 /** Fréquence d'échantillonnage attendue de l'Apple Watch (~1 Hz) pour la qualité. */
