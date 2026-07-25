@@ -112,24 +112,68 @@ un état honnête.
 
 ---
 
-## Question pour Gabin
+## La pastille colorée — arbitrée, puis livrée
 
-**Le marqueur cardio du roster.** Le prompt BIO-2 demandait « une pastille cœur,
-couleur = zone factuelle ». Je ne l'ai pas fait, et je préfère vous le dire
-franchement plutôt que de le livrer en silence.
+J'avais d'abord livré un marqueur **sans couleur**, en signalant l'écart plutôt que
+de trancher seul un point de doctrine. Gabin a tranché le 25/07 : pastille colorée.
+Elle est en place, construite pour ne casser aucun invariant.
 
-Deux raisons :
+**La zone est relative au pilote lui-même.** Elle situe sa fréquence cardiaque dans
+la plage réellement observée pendant *sa* séance — « vous contre vous ». Des zones
+absolues (pourcentage de FC max, « zone 4 = seuil ») auraient exigé son âge et posé
+un jugement médical : l'app ne diagnostique pas.
 
-1. Une pastille **colorée par zone** demande de faire transiter la FC par le canal
-   de présence. Or le garde-fou `stripHealth` que ce lot met en place existe
-   précisément pour que la santé n'emprunte jamais ce canal — je me serais
-   contredit dans le même lot.
-2. Une couleur de zone sur une liste, c'est un état physiologique résumé d'un coup
-   d'œil. C'est très près de l'alerte automatique, que la doctrine exclut : le coach
-   juge, l'app ne diagnostique pas.
+**La rampe est une magnitude, pas un verdict.** Bleu, vert, jaune — reprise de
+`speedHeat`, sans or (réservé au chrono) ni rouge. Une échelle vert→rouge se lit
+« bon → mauvais » ; froid→chaud se lit « bas → haut ». Un test verrouille
+l'invariant : aucune sortie de couleur n'est de l'or ni du rouge.
 
-J'ai donc livré un marqueur **sans valeur ni couleur** : « Cardio », qui dit
-seulement que ce pilote partage son cardio — la mesure se lit en ouvrant son direct.
+**Sous les 10 bpm d'amplitude, pas de couleur.** La plage est trop étroite pour
+situer quoi que ce soit honnêtement : la pastille reste neutre, sans repli fabriqué.
 
-Si vous voulez la pastille colorée, dites-le : c'est faisable, mais c'est un
-arbitrage de doctrine qui vous appartient, pas une décision d'implémentation.
+**Et une mention explicite sous la liste** : « Chaque couleur cardio se lit sur la
+plage du pilote concerné. Elles ne se comparent pas entre elles. » Sans ce référent,
+une colonne de points colorés se lirait comme un classement — exclu par la doctrine.
+
+## Ce que la vérification adversariale a trouvé
+
+22 agents, quatre lentilles, chaque constat soumis à réfutation. Quatre défauts
+confirmés, tous corrigés.
+
+**Le plus grave, et il était invisible à la lecture.** `supabase-js` déduplique les
+canaux **par topic** : `channel()` renvoie l'instance existante. Le roster cardio et
+la fiche direct ouvraient tous deux `live:session:<id>` — ils partageaient donc une
+seule instance. Fermer la fiche d'un pilote **tuait le cardio de tout le roster**, et
+le second abonné ne recevait jamais son `SUBSCRIBED`, si bien que la fiche affichait
+« hors ligne » sur un flux pourtant vivant. Quatre réfuteurs indépendants ont tenté
+de démonter ce constat ; aucun n'y est parvenu, et je l'ai vérifié moi-même dans le
+code de la librairie installée. Le topic est désormais **refcompté**, sur le patron
+déjà utilisé pour les rosters.
+
+*Leçon générale à retenir* : tout nouvel abonné à un topic Realtime déjà consommé
+doit passer par un refcount, sinon le premier `removeChannel` arrache le canal des
+autres.
+
+Trois autres corrigés : `bioShared` restait figé au démarrage (après révocation en
+séance, le coach voyait « Cardio » indéfiniment) ; les pastilles ordonnées créaient
+un classement implicite ; et un commentaire attribuait au canal de présence un
+filtrage qui n'existe pas.
+
+**Ce dernier point mérite d'être dit clairement** : `stripHealth` est écrit et testé,
+mais il n'a **aucun appelant en production**. Sa liste blanche vise le futur tableau
+public LIVE-B, pas les canaux d'aujourd'hui. La protection réelle de BIO-2 est
+*structurelle* — la fréquence cardiaque n'est jamais écrite dans `RosterMeta` — et
+non le fait d'un filtre qui tournerait à l'exécution. Les commentaires qui laissaient
+croire le contraire ont été corrigés.
+
+## Gates : où on en est
+
+- **Validation avocat — faite** (25/07). Le document est passé de « VALIDATION AVOCAT
+  REQUISE » à validé, et la localisation d'hébergement y est renseignée d'après une
+  vérification réelle : Supabase **eu-west-1, Irlande** — donc dans l'Union
+  européenne. Mes notes disaient « Frankfurt », c'était faux ; corrigé.
+- **Le drapeau `biometry` reste baissé.** C'est le dernier verrou, et le lever est une
+  décision d'exploitation distincte de la validation juridique — elle appartient à
+  Gabin, pas à moi.
+- Restent : le document protocole ceinture (toujours absent), le smoke test à deux
+  appareils, et la mesure du scrubbing sur device.
