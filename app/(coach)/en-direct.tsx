@@ -202,7 +202,7 @@ function PilotRow({ pilot }: { pilot: RosterEntry }) {
       accessibilityRole="button"
       accessibilityLabel={`${pilot.firstName}, ${live ? 'en piste' : 'au stand'}${
         pilot.circuit ? `, ${pilot.circuit}` : ''
-      }. Ouvrir son direct.`}
+      }${pilot.bioShared === true ? ', cardio partagé' : ''}. Ouvrir son direct.`}
       onPress={() =>
         router.push({
           pathname: '/(coach)/en-direct/[sessionId]',
@@ -227,6 +227,11 @@ function PilotRow({ pilot }: { pilot: RosterEntry }) {
       </View>
       <View style={s.statusCol}>
         <Text style={[s.status, { color: statusColor }]}>{statusLabel}</Text>
+        {/* BIO-2 — marque discrètement les pilotes dont le direct comporte une
+            bande cardio. Marqueur d'ÉTAT, sans valeur ni couleur de « zone » :
+            aucune donnée de santé ne transite par la présence, et l'app ne
+            résume jamais un état physiologique d'un coup d'œil. */}
+        {pilot.bioShared === true ? <Text style={s.bioMark}>Cardio</Text> : null}
       </View>
       <Text style={s.chevron} accessibilityElementsHidden importantForAccessibility="no">
         ›
@@ -482,6 +487,14 @@ const s = StyleSheet.create({
   },
   statusCol: { alignItems: 'flex-end' },
   status: { fontFamily: fonts.mono, fontSize: 9, letterSpacing: 1 },
+  /** Marqueur cardio : discret, neutre — jamais une couleur d'état de santé. */
+  bioMark: {
+    fontFamily: fonts.mono,
+    fontSize: 8,
+    letterSpacing: 1,
+    color: palette.creamMute,
+    marginTop: 2,
+  },
   chevron: { fontFamily: fonts.mono, fontSize: 18, color: palette.faint, marginLeft: spacing.xs },
 
   // Panneau d'état (console).

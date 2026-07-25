@@ -30,8 +30,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 
 import { CoachPreset, type TrajectoryPoint } from '@/components/CircuitMap';
 import { EmptyState } from '@/components/instruments';
+import {
+  biometryQualityOf,
+  biometrySourceOf,
+  biometryVisible,
+  toBiometrySamples,
+} from '@/features/miroir/bilanLogic';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
+import { isFlagEnabled } from '@/services/featureFlagsService';
+import { getSessionBiometry } from '@/services/v2/biometryService';
+import { BiometryStrip, type BiometrySource, type BiometryQuality } from '@/ui/v2';
 import { marginZoneExportColor, type ZoneLike } from '@/services/marginZoneColorLogic';
 import { loadSessionTrajectory } from '@/services/sessionTelemetryService';
 import { theme } from '@/theme/v2';
@@ -56,6 +65,14 @@ export default function CoachDebriefScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  // Cardio de la séance (BIO-2) — donnée de SANTÉ : la LECTURE est gatée par le
+  // drapeau, et la RLS BE-1 arbitre l'accès coach (binôme détaillé + partage
+  // consenti). Échec, flag OFF ou absence → section absente, jamais un teasing.
+  const [bio, setBio] = useState<{
+    samples: { ts: number; hr: number }[];
+    source: BiometrySource;
+    quality: BiometryQuality | undefined;
+  } | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -83,6 +100,24 @@ export default function CoachDebriefScreen() {
     loadSessionTrajectory(sessionId)
       .then((pts) => {
         if (!cancelled && pts.length > 1) setTrajectory(pts);
+      })
+      .catch(() => undefined);
+    // Cardio : best-effort et FAIL-CLOSED. Drapeau OFF → on ne lit rien. La RLS
+    // refuse si le pilote n'a pas consenti le partage coach → section absente.
+    setBio(null);
+    isFlagEnabled('biometry')
+      .then(async (flag) => {
+        if (cancelled || !flag) return;
+        const rows = await getSessionBiometry(sessionId);
+        if (cancelled) return;
+        const samples = toBiometrySamples(rows);
+        const source = biometrySourceOf(rows);
+        if (
+          source !== null &&
+          biometryVisible({ flagEnabled: flag, captureConsent: true, sampleCount: samples.length })
+        ) {
+          setBio({ samples, source, quality: biometryQualityOf(rows) });
+        }
       })
       .catch(() => undefined);
     return () => {
@@ -115,6 +150,17 @@ export default function CoachDebriefScreen() {
           onRetry={() => setReloadKey((k) => k + 1)}
         >
           {data ? <DebriefBody data={data} trajectory={trajectory} isConsole={isConsole} /> : null}
+          {/* Cardio de la séance — présent SEULEMENT si le pilote l'a partagé
+              (drapeau + RLS binôme). Factuel : valeur, source, confiance. Aucune
+              zone cible, aucun seuil : le coach juge, l'app ne diagnostique pas. */}
+          {data && bio ? (
+            <BiometryStrip
+              samples={bio.samples}
+              source={bio.source}
+              quality={bio.quality}
+              style={{ marginTop: spacing.xl }}
+            />
+          ) : null}
         </StateWrapper>
       </View>
     </Screen>

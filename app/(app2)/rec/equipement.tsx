@@ -41,7 +41,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { bluetoothService } from '@/ble/bluetoothService';
+import { bluetoothService, type PolarDevice } from '@/ble/bluetoothService';
 import { requestBlePermissions } from '@/ble/permissions';
 import {
   clampBatteryLevel,
@@ -86,6 +86,8 @@ import {
 const SCAN_TIMEOUT_MS = 30_000;
 /** Mémoire du dernier boîtier appairé — partagée avec la v1 (même clé). */
 const LAST_DEVICE_KEY = 'oxv.lastPairedDeviceId';
+/** Dernière ceinture cardio appairée (mémoire par pilote, patron RaceBox). */
+const LAST_BELT_KEY = 'oxv.lastPairedBeltId';
 /** Temps d'affichage de la carte « appairé » avant d'ouvrir Placement. */
 const PAIRED_REVEAL_MS = 1400;
 const RADAR_SIZE = 208;
@@ -395,6 +397,15 @@ export default function EquipementScreen() {
   const [coachShareConsent, setCoachShareConsent] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
 
+  // Ceinture cardio (BIO-2, L2) — état SÉPARÉ du RaceBox : le scan cardio ne
+  // s'ouvre QUE sous drapeau + consentement de capture (gate absolue), et son
+  // échec n'affecte jamais l'appairage du boîtier.
+  const [belts, setBelts] = useState<PolarDevice[]>([]);
+  const [beltScanning, setBeltScanning] = useState(false);
+  const [beltConnectedId, setBeltConnectedId] = useState<string | null>(null);
+  const [lastBeltId, setLastBeltId] = useState<string | null>(null);
+  const [beltContact, setBeltContact] = useState<'ok' | 'poor' | 'unsupported' | null>(null);
+
   // Boîtier affecté (alias flotte) + dernier appairé — best-effort (v1).
   useEffect(() => {
     let cancelled = false;
@@ -408,9 +419,61 @@ export default function EquipementScreen() {
         if (!cancelled) setLastPairedId(v);
       })
       .catch(() => undefined);
+    SecureStore.getItemAsync(LAST_BELT_KEY)
+      .then((v) => {
+        if (!cancelled) setLastBeltId(v);
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // Ceinture — abonnements cardio, montés SEULEMENT sous drapeau + consentement
+  // de capture. Sans consentement, RIEN n'écoute la santé (fail-closed).
+  const beltAllowed = biometryFlagOn && captureConsent;
+  useEffect(() => {
+    if (!beltAllowed) return;
+    const offFound = bluetoothService.onPolarDeviceFound((d) => {
+      setBelts((prev) => (prev.some((p) => p.id === d.id) ? prev : [...prev, d]));
+    });
+    // Le contact peau est un FAIT de capteur (pastille), jamais une alerte.
+    const offBio = bluetoothService.onBiometry((s) => setBeltContact(s.contact));
+    return () => {
+      offFound();
+      offBio();
+      bluetoothService.stopPolarScan();
+    };
+  }, [beltAllowed]);
+
+  const onScanBelt = useCallback(async () => {
+    if (!beltAllowed) {
+      setConsentOpen(true); // pas de consentement → on renvoie vers la feuille
+      return;
+    }
+    setBelts([]);
+    setBeltScanning(true);
+    const perm = await requestBlePermissions();
+    if (!perm.granted) {
+      setBeltScanning(false);
+      setError(`Permissions Bluetooth refusées : ${perm.missing.join(', ')}`);
+      return;
+    }
+    await bluetoothService.startPolarScan().catch(() => undefined);
+    setTimeout(() => {
+      bluetoothService.stopPolarScan();
+      setBeltScanning(false);
+    }, SCAN_TIMEOUT_MS);
+  }, [beltAllowed]);
+
+  const onSelectBelt = useCallback(async (deviceId: string) => {
+    bluetoothService.stopPolarScan();
+    setBeltScanning(false);
+    await bluetoothService.connectPolar(deviceId).catch(() => undefined);
+    if (bluetoothService.isPolarConnected()) {
+      setBeltConnectedId(deviceId);
+      SecureStore.setItemAsync(LAST_BELT_KEY, deviceId).catch(() => undefined);
+    }
   }, []);
 
   // Abonnements BLE (services v1 intacts).
@@ -680,15 +743,54 @@ export default function EquipementScreen() {
           <View style={styles.bioBlock}>
             <SectionHeader eyebrow="BIOMÉTRIE" />
 
+            {/* Ceinture cardio — appairage RÉEL (BIO-2, L2). GATE ABSOLUE : sans
+                consentement de capture, la ligne renvoie vers la feuille de
+                consentement et aucun scan cardio n'est ouvert. Le contact peau
+                est un FAIT de capteur affiché tel quel, jamais une alerte. */}
             {isCoached ? (
-              <ListRow
-                icon="ceinture"
-                label="Ceinture Polar"
-                sublabel="À appairer au paddock par le staff"
-                value="Consentement"
-                onPress={() => setConsentOpen(true)}
-                chevron
-              />
+              <>
+                <ListRow
+                  icon="ceinture"
+                  label="Ceinture Polar"
+                  sublabel={
+                    !captureConsent
+                      ? 'Consentement requis pour appairer'
+                      : beltConnectedId !== null
+                        ? beltContact === 'ok'
+                          ? 'Appairée · contact établi'
+                          : beltContact === 'poor'
+                            ? 'Appairée · contact faible'
+                            : 'Appairée'
+                        : beltScanning
+                          ? 'Recherche en cours…'
+                          : lastBeltId !== null
+                            ? 'Déjà appairée · à reconnecter'
+                            : 'À appairer'
+                  }
+                  value={
+                    !captureConsent
+                      ? 'Consentement'
+                      : beltConnectedId !== null
+                        ? undefined
+                        : 'Chercher'
+                  }
+                  onPress={beltConnectedId !== null ? undefined : onScanBelt}
+                  chevron={beltConnectedId === null}
+                />
+
+                {beltAllowed && beltConnectedId === null
+                  ? belts.map((b) => (
+                      <ListRow
+                        key={b.id}
+                        icon="ceinture"
+                        label={b.name}
+                        sublabel={b.id === lastBeltId ? 'Déjà appairée' : 'Détectée'}
+                        onPress={() => onSelectBelt(b.id)}
+                        chevron
+                      />
+                    ))
+                  : null}
+              </>
             ) : null}
 
             <ListRow

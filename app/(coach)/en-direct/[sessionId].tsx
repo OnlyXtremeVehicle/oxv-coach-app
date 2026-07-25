@@ -44,10 +44,11 @@ import Svg, { Polyline } from 'react-native-svg';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import { Fact, EmptyState } from '@/components/instruments';
-import { usePilotLive } from '@/hooks/usePilotLive';
+import { usePilotLive, type LiveBioPoint } from '@/hooks/usePilotLive';
 import { getCorner } from '@/lib/circuitTopology';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
+  type BiometryLiveEvent,
   type LiveConn,
   type LiveFrame,
   formatLiveChrono,
@@ -83,7 +84,7 @@ export default function CockpitFocusScreen() {
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
-  const { frame, conn } = usePilotLive(sessionId);
+  const { frame, conn, bio, bioSeries } = usePilotLive(sessionId);
 
   // Tours terminés (table `laps`, best-effort) — la liste TOURS de la maquette,
   // le meilleur en or. Vide tant que le boîtier n'a rien déposé : EmptyState.
@@ -155,6 +156,10 @@ export default function CockpitFocusScreen() {
   // Live : dernier tour en tête (maquette 27-en-direct-focus, ordre décroissant).
   const tours = <ToursPanel laps={[...timedLaps].reverse()} bestLapNumber={bestLapNumber} />;
   const actions = <ActionsPanel sessionId={sessionId} cornerIndex={frame?.cornerIndex ?? null} />;
+  // BIO-2 — bande FC : n'existe QUE si le pilote émet (triple verrou côté pilote).
+  // Absente sinon : jamais de bloc « pas de données santé » qui ferait exister
+  // l'idée d'une mesure qu'on n'a pas.
+  const cardio = bio !== null ? <CardioPanel bio={bio} series={bioSeries} dim={dim} /> : null;
 
   return (
     <Screen>
@@ -173,6 +178,7 @@ export default function CockpitFocusScreen() {
             <View style={[s.col, { flex: 1.4 }]}>
               <SpeedPanel current={frame?.speedKmh ?? null} trace={speedTrace} dim={dim} />
               <GRow frame={frame} dim={dim} />
+              {cardio}
               {alertCard}
               {actions}
               <DoctrineCaption />
@@ -182,6 +188,7 @@ export default function CockpitFocusScreen() {
           <View style={{ gap: spacing.xl, marginTop: spacing.lg }}>
             {chrono}
             <LiveRow frame={frame} dim={dim} />
+            {cardio}
             {alertCard}
             {tours}
             {actions}
@@ -309,6 +316,47 @@ function SpeedPanel({
         </View>
       </View>
       <SpeedTrace values={trace} />
+    </View>
+  );
+}
+
+/**
+ * Bande cardio live (BIO-2) — donnée de SANTÉ, affichée sous le régime le plus
+ * strict de l'app.
+ *
+ * N'apparaît que si le pilote émet (triple verrou côté pilote : consentement,
+ * binôme, drapeau). Strictement FACTUELLE : la valeur, la tendance de
+ * variabilité (liste fermée de 3 constats), le contact capteur. AUCUNE zone
+ * cible, AUCUN seuil, AUCUNE alerte automatique, AUCUNE couleur d'alarme —
+ * le coach juge, l'app ne diagnostique pas. Neutre en crème comme la vitesse :
+ * ni or (record) ni rouge (alarme).
+ */
+function CardioPanel({
+  bio,
+  series,
+  dim,
+}: {
+  bio: BiometryLiveEvent;
+  series: LiveBioPoint[];
+  dim: StyleProp<ViewStyle>;
+}) {
+  const contactNote =
+    bio.contact === 'ok'
+      ? 'contact établi'
+      : bio.contact === 'poor'
+        ? 'contact faible'
+        : 'contact non rapporté';
+  return (
+    <View style={[s.speedCard, dim]}>
+      <View style={s.speedHead}>
+        <Text style={s.eyebrow}>Cardio · live</Text>
+        <View style={s.speedValueRow}>
+          <Text style={s.speedValue}>{String(bio.hrBpm)}</Text>
+          <Text style={s.speedUnit}>bpm</Text>
+        </View>
+      </View>
+      <SpeedTrace values={series.map((p) => p.hr)} />
+      <Text style={s.cardioNote}>{`Variabilité ${bio.rrTrend} · ${contactNote}`}</Text>
     </View>
   );
 }
@@ -694,6 +742,13 @@ const s = StyleSheet.create({
     fontSize: fontSize.small,
     color: palette.creamMute,
     lineHeight: fontSize.small * 1.4,
+  },
+  /** Mention cardio factuelle (variabilité + contact) — jamais une alerte. */
+  cardioNote: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
   },
 
   // Relevés

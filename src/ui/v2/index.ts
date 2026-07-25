@@ -28,7 +28,12 @@ export { ChronoHero } from './ChronoHero';
 export { RadarQdi } from './RadarQdi';
 export { PillarBar } from './PillarBar';
 export { TraceCircuit } from './TraceCircuit';
-export { BiometryStrip } from './BiometryStrip';
+export {
+  BiometryStrip,
+  type BiometrySource,
+  type BiometryQuality,
+  type BiometryStripProps,
+} from './BiometryStrip';
 export { HeritageBand } from './HeritageBand';
 export { SpringDot } from './SpringDot';
 export { Dial } from './Dial';

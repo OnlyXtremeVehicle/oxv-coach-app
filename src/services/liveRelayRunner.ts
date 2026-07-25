@@ -57,6 +57,15 @@ export async function startPilotLiveRelay(input: {
     .eq('id', input.pilotId)
     .maybeSingle();
   const firstName = (me as { first_name?: string | null } | null)?.first_name ?? 'Pilote';
+
+  // BIO-2 — le drapeau conditionne TOUT le cardio (relais + marqueur roster).
+  const bioFlagOn = await isFlagEnabled('biometry').catch(() => false);
+  // Marqueur de présence : « ce pilote partage son cardio ». État booléen, pas
+  // une mesure — aucune FC ne transite jamais par la présence.
+  const bioConsent = bioFlagOn
+    ? await loadBiometryConsents(input.pilotId).catch(() => ({ capture: false, coachShare: false }))
+    : { capture: false, coachShare: false };
+
   const meta: RosterMeta = {
     pilotId: input.pilotId,
     firstName,
@@ -64,6 +73,7 @@ export async function startPilotLiveRelay(input: {
     circuit: input.circuit,
     onTrack: true,
     sinceMs: Date.now(),
+    bioShared: bioFlagOn && bioConsent.capture === true && bioConsent.coachShare === true,
   };
 
   // Une présence par coach consenti ; réconciliée si le consentement change.
@@ -108,7 +118,6 @@ export async function startPilotLiveRelay(input: {
   // donnée de santé (RGPD art. 9) ne circule pas. La biométrie n'emprunte JAMAIS
   // le canal roster/frame — uniquement `sendBiometry` (event dédié, même canal privé).
   let stopBiometry: (() => void) | null = null;
-  const bioFlagOn = await isFlagEnabled('biometry').catch(() => false);
   if (bioFlagOn) {
     const BIO_BASELINE_MS = 60000;
     const bioBuffer: BioSample[] = [];

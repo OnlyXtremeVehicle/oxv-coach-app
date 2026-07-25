@@ -40,6 +40,14 @@ export interface RosterMeta {
   onTrack: boolean;
   /** Depuis quand (ms epoch). */
   sinceMs: number;
+  /**
+   * BIO-2 — le pilote partage-t-il son cardio avec CE coach ? Booléen d'ÉTAT,
+   * JAMAIS une mesure : aucune FC, aucune variabilité, aucune « zone » ne
+   * transite par la présence (la biométrie n'emprunte que l'événement dédié du
+   * canal privé, cf. liveRelayRunner). Sert uniquement à marquer discrètement
+   * les pilotes dont le direct comporte une bande cardio — pas à la résumer.
+   */
+  bioShared?: boolean;
 }
 
 export type RosterEntry = RosterMeta;
