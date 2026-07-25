@@ -172,8 +172,26 @@ croire le contraire ont été corrigés.
   REQUISE » à validé, et la localisation d'hébergement y est renseignée d'après une
   vérification réelle : Supabase **eu-west-1, Irlande** — donc dans l'Union
   européenne. Mes notes disaient « Frankfurt », c'était faux ; corrigé.
-- **Le drapeau `biometry` reste baissé.** C'est le dernier verrou, et le lever est une
-  décision d'exploitation distincte de la validation juridique — elle appartient à
-  Gabin, pas à moi.
+- **Drapeau `biometry` LEVÉ en production le 25/07**, sur décision explicite de Gabin,
+  informé que le smoke test à deux appareils n'avait pas eu lieu.
+
+### État vérifié au moment de la levée
+
+| Contrôle | Résultat |
+|---|---|
+| Consentements de capture posés | 0 |
+| Consentements de partage coach posés | 0 |
+| Lignes dans `biometry_raw` | 0 |
+| Cron de rétention 30 j (jobid 11, 03h15) | actif, purge exécutée sans erreur |
+| Purge RGPD art. 17 (`purge_user_data`) | couvre bien `biometry_raw` |
+
+Le drapeau ouvre la **capacité**, il ne déclenche aucune collecte : chaque pilote
+doit toujours consentir individuellement (capture, puis partage coach), et le
+partage exige en plus un binôme détaillé actif. Le fail-closed reste entier — au
+moment de la levée, rien ne circulait et rien n'était stocké.
+
+La raison et la date de la levée sont inscrites dans la description du drapeau en
+base, pour que la trace survive à cette conversation.
+
 - Restent : le document protocole ceinture (toujours absent), le smoke test à deux
   appareils, et la mesure du scrubbing sur device.
