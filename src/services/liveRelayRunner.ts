@@ -52,15 +52,45 @@ let stopFn: (() => void) | null = null;
  */
 let relayGeneration = 0;
 
-/** Coachs à qui le pilote a consenti le partage LIVE (actif + live_sharing_at). */
-async function consentedCoachIds(pilotId: string): Promise<string[]> {
+/** Un binôme consenti au direct, avec le niveau d'accès accordé au coach. */
+interface LiveCoach {
+  coachId: string;
+  /** true si le pilote a accordé la lecture DÉTAILLÉE (ou le programme). */
+  detailed: boolean;
+}
+
+/**
+ * Coachs à qui le pilote a consenti le partage LIVE.
+ *
+ * QUATRE conditions, et pas seulement deux (correctif du 26/07) :
+ *   - `active` : le binôme n'est pas éteint ;
+ *   - `status = 'active'` : la demande a été acceptée, pas laissée en attente ;
+ *   - `pilot_consent_at` : le PILOTE a consenti au coaching. Sans cette condition,
+ *     retirer son consentement ne coupait PAS le direct — le coach continuait de
+ *     recevoir le flux d'un pilote qui venait de le lui refuser ;
+ *   - `live_sharing_at` : le partage en direct est activé.
+ *
+ * On remonte aussi `level` : la biométrie n'est pas due au même titre que les
+ * trames. Un coach en `lecture_simple` a droit au direct de pilotage, pas à une
+ * donnée de santé.
+ */
+async function consentedCoaches(pilotId: string): Promise<LiveCoach[]> {
   const { data } = await supabase
     .from('coach_pilots')
-    .select('coach_id')
+    .select('coach_id, level')
     .eq('pilot_id', pilotId)
     .eq('active', true)
+    .eq('status', 'active')
+    .not('pilot_consent_at', 'is', null)
     .not('live_sharing_at', 'is', null);
-  return (data ?? []).map((r) => (r as { coach_id: string }).coach_id);
+  return (data ?? []).map((r) => {
+    const row = r as { coach_id: string; level?: string | null };
+    return {
+      coachId: row.coach_id,
+      // Fail-closed : un niveau inconnu ou absent n'ouvre RIEN.
+      detailed: row.level === 'lecture_detaillee' || row.level === 'programme',
+    };
+  });
 }
 
 /** Identité du pilote telle qu'elle peut être publiée pendant la séance. */
@@ -142,8 +172,8 @@ export async function startPilotLiveRelay(input: {
   const myGeneration = relayGeneration;
   const perime = () => relayGeneration !== myGeneration;
 
-  const coachIds = await consentedCoachIds(input.pilotId);
-  if (perime() || coachIds.length === 0) return; // arrêt en vol, ou aucun consentement
+  let coaches = await consentedCoaches(input.pilotId);
+  if (perime() || coaches.length === 0) return; // arrêt en vol, ou aucun consentement
 
   // Identité chargée UNE fois : prénom (roster coach), pseudo public et numéro
   // de voiture (tableau de marche). Cf. loadPilotIdentity.
@@ -178,7 +208,9 @@ export async function startPilotLiveRelay(input: {
 
   // Une présence par coach consenti ; réconciliée si le consentement change.
   const rosterLeaves = new Map<string, () => void>();
-  const syncRosters = (ids: string[]) => {
+  const syncRosters = (liste: LiveCoach[]) => {
+    coaches = liste; // sert au verrou biométrie ci-dessous : les niveaux évoluent
+    const ids = liste.map((c) => c.coachId);
     for (const [cid, leave] of rosterLeaves) {
       if (!ids.includes(cid)) {
         leave(); // ce coach a révoqué → le pilote sort de SON roster
@@ -189,7 +221,7 @@ export async function startPilotLiveRelay(input: {
       if (!rosterLeaves.has(cid)) rosterLeaves.set(cid, joinRoster(cid, meta));
     }
   };
-  syncRosters(coachIds);
+  syncRosters(coaches);
 
   const broadcast = openPilotBroadcast(input.sessionId);
 
@@ -272,9 +304,29 @@ export async function startPilotLiveRelay(input: {
           coachShare: false,
         }));
         const flag = await isFlagEnabled('biometry').catch(() => false);
+        // VERROU « binôme détaillé » — corrigé le 26/07 après audit.
+        //
+        // Il valait auparavant « au moins un coach écoute », ce qui n'était PAS
+        // le binôme détaillé : un coach en `lecture_simple` ayant activé le
+        // partage en direct recevait la fréquence cardiaque, alors que le pilote
+        // ne lui a accordé que la lecture simple. Une donnée de l'article 9
+        // partait à quelqu'un qui n'y avait pas droit.
+        //
+        // La biométrie voyage sur le canal de séance, PARTAGÉ par tous les coachs
+        // consentis : on ne peut donc pas la réserver à certains d'entre eux au
+        // moment de l'émission. Tant que ce canal est commun, la seule position
+        // tenable est TOUT OU RIEN — on n'émet que si CHAQUE coach à l'écoute est
+        // au niveau détaillé. Dès qu'un seul ne l'est pas, personne ne reçoit.
+        //
+        // C'est volontairement plus restrictif que nécessaire : un coach détaillé
+        // perd le cardio parce qu'un confrère en lecture simple est connecté. On
+        // préfère cette privation à une divulgation. La réponse propre est un
+        // canal par coach (patron du roster, `live:bio:<coachId>:<sessionId>`,
+        // avec une RLS exigeant le niveau détaillé) — à faire avant d'élargir.
+        const tousDetailles = coaches.length > 0 && coaches.every((c) => c.detailed);
         const gate = {
           consentCapture: consent.capture === true && consent.coachShare === true,
-          detailedBinome: rosterLeaves.size > 0,
+          detailedBinome: tousDetailles,
           flagBiometry: flag === true,
         };
 
@@ -317,9 +369,13 @@ export async function startPilotLiveRelay(input: {
         filter: `pilot_id=eq.${input.pilotId}`,
       },
       () => {
-        consentedCoachIds(input.pilotId).then((ids) => {
-          if (ids.length === 0) stopPilotLiveRelay();
-          else syncRosters(ids);
+        // La relecture reprend les QUATRE conditions : un retrait de
+        // consentement, un passage en `lecture_simple` ou une fin de binôme
+        // sont donc pris en compte EN VOL — le premier coupe le flux, le second
+        // ferme la biométrie au tick suivant.
+        consentedCoaches(input.pilotId).then((liste) => {
+          if (liste.length === 0) stopPilotLiveRelay();
+          else syncRosters(liste);
         });
       }
     )
