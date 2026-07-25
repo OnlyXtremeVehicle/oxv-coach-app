@@ -41,6 +41,11 @@ import { bluetoothService, type ReconnectState } from '@/ble/bluetoothService';
 import { startCapture, stopCapture } from '@/ble/captureMode';
 import { startPilotLiveRelay, stopPilotLiveRelay } from '@/services/liveRelayRunner';
 import {
+  startBiometryCapture,
+  stopBiometryCapture,
+  discardBiometryCapture,
+} from '@/services/biometryCaptureRunner';
+import {
   type RecordedLap,
   getCurrentLapNumber,
   getRecordedLaps,
@@ -422,6 +427,11 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     circuit: input.circuitName ?? null,
   }).catch(() => undefined);
 
+  // Capture cardio LOCALE (BIO-2, dégel cardinal ciblé) — dormante tant que le
+  // flag `biometry` ou le consentement de capture manque. Best-effort, non
+  // bloquant, offline-first, n'affecte jamais la capture télémétrique.
+  void startBiometryCapture({ sessionId, pilotId: input.userId }).catch(() => undefined);
+
   return { ok: true, sessionId };
 }
 
@@ -729,6 +739,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   releaseKeepAwake();
   clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
+  void stopBiometryCapture().catch(() => undefined); // préserve le cardio (offline-first)
   if (state.timer) clearInterval(state.timer);
   await drain(state);
 
@@ -823,6 +834,7 @@ export async function abortCaptureSession(): Promise<void> {
   releaseKeepAwake();
   clearInterruptTimeout(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
+  discardBiometryCapture(); // séance abandonnée → purge le cardio local, rien préservé
   if (state.timer) clearInterval(state.timer);
   // Attend un flush éventuellement en vol pour ne pas écrire après l'abandon.
   if (state.flushPromise) {
