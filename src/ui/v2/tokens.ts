@@ -22,7 +22,26 @@ export const colors = {
   border: { card: '#2A2D38', strong: '#3A3E4C', hairline: '#22242C' },
   accent: '#C8102E',
   accentGlow: 'rgba(200,16,46,0.35)',
-  text: { hi: '#E8E9ED', mid: '#A9ADBB', low: '#7A7E8C', dim: '#5A5E6C' },
+  /**
+   * Gris de texte — RELEVÉS le 25/07/2026 (décision fondateur « on assouplit »)
+   * pour que la hiérarchie reste lisible sans cesser d'être une hiérarchie.
+   *
+   * Contraste WCAG mesuré sur le PIRE des trois fonds (bg.base, bg.card, bg.card2) :
+   *   hi  #E8E9ED — 12.44  (inchangé)
+   *   mid #A9ADBB —  6.74  (inchangé)
+   *   low #9195A3 —  5.05  (était #7A7E8C à 3.73 : échouait sur les cartes)
+   *   dim #787C8A —  3.63  (était #5A5E6C à 2.34 : échouait partout, y compris
+   *                         le seuil bas de 3.0 — or `dim` porte de vrais textes
+   *                         et les placeholders de saisie, qu'il faut pouvoir lire)
+   *
+   * `dim` reste sous 4.5 : le porter plus haut le collerait à `low` et effacerait
+   * le palier. C'est un arbitrage assumé — il est réservé au texte secondaire et
+   * aux états inactifs, jamais à une information essentielle isolée.
+   *
+   * La teinte froide d'origine est conservée (R = G−4, B = G+14) : on a relevé la
+   * luminance, pas changé la couleur. Verrouillé par contrastTokens.test.ts.
+   */
+  text: { hi: '#E8E9ED', mid: '#A9ADBB', low: '#9195A3', dim: '#787C8A' },
   heritage: { gold: '#C4A459', text: '#E8DCB8', glow: 'rgba(196,164,89,0.30)' },
   qdi: {
     trajectoire: '#60A5FA',

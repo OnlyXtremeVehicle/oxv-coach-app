@@ -14,8 +14,17 @@ export const palette = {
   creamSoft: '#E5E5E8', // --text-2 secondaire fort
   secondary: '#C9C9CE', // --text-3 secondaire
   creamMute: '#9A9AA3', // --text-muted labels
-  eyebrow: '#6E6E76', // --text-faint captions/axes/eyebrows
-  faint: '#55555C', // --text-faint-2 inactif
+  // Gris faibles RELEVÉS le 25/07/2026 (décision fondateur « on assouplit »).
+  // Contraste WCAG sur le pire fond de cette palette (card / card2 / surface3 /
+  // cardBorderProminent) :
+  //   eyebrow  #898991 — 4.52  (était #6E6E76 à 3.10 : sous le seuil texte, or il
+  //                             porte les captions, les axes et les eyebrows)
+  //   faint    #797981 — 3.63  (était #55555C à 2.12 : échouait même le seuil bas)
+  // creamMute (5.62) et legend (4.58) passaient déjà : NON touchés.
+  // Teinte neutre d'origine conservée (R = G, B = G+8) — luminance relevée, pas
+  // la couleur. Verrouillé par src/theme/__tests__/contrastTokens.test.ts.
+  eyebrow: '#898991', // --text-faint captions/axes/eyebrows
+  faint: '#797981', // --text-faint-2 inactif
   legend: '#8A8A92', // --text-muted-2 sous-labels
   line: '#1E1E22', // --border bordure carte
   cardBorderProminent: '#232326', // --border-2 bordure bouton/tuile

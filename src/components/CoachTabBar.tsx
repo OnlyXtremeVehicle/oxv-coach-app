@@ -22,7 +22,10 @@ import { theme } from '@/theme/v2';
 
 // Identité coach : rouge doux actif (pas le blanc pilote). Nav sans or.
 const ACTIVE = '#E2685A';
-const INACTIVE = '#55555C';
+// Onglet inactif : on suit le JETON `faint`, pas une copie figée de sa valeur.
+// Une copie en dur avait survécu au relèvement de contraste du 25/07 et serait
+// restée illisible pendant que le reste de l'app remontait.
+const INACTIVE = theme.palette.faint;
 const BG = 'rgba(5,5,5,0.9)';
 const BORDER = '#1C1C20';
 

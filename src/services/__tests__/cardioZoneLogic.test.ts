@@ -140,8 +140,11 @@ describe('INVARIANT COULEUR — ni or (chrono/record) ni rouge (verdict)', () =>
   });
 
   it('null donne une couleur neutre inerte, pas une quatrième zone', () => {
+    // On assert le JETON, pas sa valeur littérale : le gris `faint` a été relevé
+    // le 25/07 pour le contraste, et figer l'hexadécimal ici ferait échouer ce
+    // test à chaque ajustement de palette sans qu'aucune règle ne soit violée.
+    // Ce qui compte est l'invariant : la zone absente emprunte le neutre inerte.
     expect(cardioZoneColor(null)).toBe(palette.faint);
-    expect(cardioZoneColor(null)).toBe('#55555C');
     expect(cardioZoneColor(null)).not.toBe(cardioZoneColor('bas'));
     expect(cardioZoneColor(null)).not.toBe(cardioZoneColor('median'));
     expect(cardioZoneColor(null)).not.toBe(cardioZoneColor('haut'));
