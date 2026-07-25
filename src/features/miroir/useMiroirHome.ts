@@ -239,7 +239,10 @@ async function fetchNextDayWeather(nextDay: NextTrackDay): Promise<MiroirWeather
     return null;
   }
   const w = await fetchCurrentWeather(circuit.finishLineLat, circuit.finishLineLon);
-  if (!w) return null;
+  // A-WEATHER-1 (doctrine Miroir) : la température est l'unique chiffre du chip
+  // météo. Mesure ABSENTE (null) → on OMET le chip entièrement plutôt que de
+  // fabriquer un « 0° » (Math.round(null) === 0). Jamais un degré inventé.
+  if (!w || w.temperatureC === null) return null;
   return { temperatureC: w.temperatureC, label: w.weatherLabel };
 }
 

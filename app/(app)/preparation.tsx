@@ -240,10 +240,14 @@ export default function PreparationScreen() {
             <View
               style={s.weatherChip}
               accessible
-              accessibilityLabel={`Météo du circuit : ${Math.round(weather.temperatureC)} degrés, ${conditions.label.toLowerCase()}`}
+              accessibilityLabel={
+                weather.temperatureC != null
+                  ? `Météo du circuit : ${Math.round(weather.temperatureC)} degrés, ${conditions.label.toLowerCase()}`
+                  : `Météo du circuit : ${conditions.label.toLowerCase()}`
+              }
             >
               <Text style={s.weatherChipText}>
-                {Math.round(weather.temperatureC)} °C ·{' '}
+                {weather.temperatureC != null ? `${Math.round(weather.temperatureC)} °C · ` : ''}
                 {CHIP_CONDITION[conditions.label] ?? conditions.label.toLowerCase()}
               </Text>
             </View>
@@ -375,17 +379,38 @@ export default function PreparationScreen() {
               <>
                 <View style={s.rowBetween}>
                   <Text style={s.condLabel}>{conditions.label}</Text>
-                  <Text style={s.temp}>{Math.round(weather.temperatureC)}°</Text>
+                  <Text style={s.temp}>
+                    {weather.temperatureC != null ? `${Math.round(weather.temperatureC)}°` : '—'}
+                  </Text>
                 </View>
                 <Text style={s.circuitName}>
-                  {circuit?.name ?? 'Circuit'} · ressenti {Math.round(weather.feelsLikeC)}°
+                  {circuit?.name ?? 'Circuit'} · ressenti{' '}
+                  {weather.feelsLikeC != null ? `${Math.round(weather.feelsLikeC)}°` : '—'}
                 </Text>
                 <View style={s.factsRow}>
-                  <Fact label="Vent" value={`${Math.round(weather.windSpeedKmh)} km/h`} />
-                  <Fact label="Direction" value={windDirectionCardinal(weather.windDirectionDeg)} />
+                  <Fact
+                    label="Vent"
+                    value={
+                      weather.windSpeedKmh != null
+                        ? `${Math.round(weather.windSpeedKmh)} km/h`
+                        : '—'
+                    }
+                  />
+                  <Fact
+                    label="Direction"
+                    value={
+                      weather.windDirectionDeg != null
+                        ? windDirectionCardinal(weather.windDirectionDeg)
+                        : '—'
+                    }
+                  />
                   <Fact
                     label="Pluie"
-                    value={`${Math.round(weather.precipitationProbabilityPct)} %`}
+                    value={
+                      weather.precipitationProbabilityPct != null
+                        ? `${Math.round(weather.precipitationProbabilityPct)} %`
+                        : '—'
+                    }
                   />
                 </View>
               </>

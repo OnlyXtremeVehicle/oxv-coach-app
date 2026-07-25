@@ -59,6 +59,25 @@ export default function ConditionsScreen() {
 
   const conditions = weather ? trackConditions(weather) : null;
 
+  // A-WEATHER-1 (doctrine Miroir) : une mesure absente (null) n'est jamais
+  // rendue comme un 0 fabriqué. On ne compose que les faits réellement captés ;
+  // les segments dont la mesure manque sont simplement omis.
+  const metaSegments = weather
+    ? [
+        weather.feelsLikeC != null ? `Ressenti ${Math.round(weather.feelsLikeC)}°` : null,
+        weather.windSpeedKmh != null
+          ? `vent ${Math.round(weather.windSpeedKmh)} km/h${
+              weather.windDirectionDeg != null
+                ? ` ${windDirectionCardinal(weather.windDirectionDeg)}`
+                : ''
+            }`
+          : null,
+        weather.precipitationProbabilityPct != null
+          ? `pluie ${Math.round(weather.precipitationProbabilityPct)} %`
+          : null,
+      ].filter((seg): seg is string => seg !== null)
+    : [];
+
   return (
     <Screen>
       <AppBar title="CONDITIONS & RESSENTI" onBack={() => router.back()} />
@@ -82,14 +101,15 @@ export default function ConditionsScreen() {
                   <>
                     <View style={s.rowBetween}>
                       <Text style={s.condLabel}>{conditions.label}</Text>
-                      <Text style={s.temp}>{Math.round(weather.temperatureC)}°</Text>
+                      <Text style={s.temp}>
+                        {weather.temperatureC != null
+                          ? `${Math.round(weather.temperatureC)}°`
+                          : '—'}
+                      </Text>
                     </View>
-                    <Text style={s.condMeta}>
-                      Ressenti {Math.round(weather.feelsLikeC)}° · vent{' '}
-                      {Math.round(weather.windSpeedKmh)} km/h{' '}
-                      {windDirectionCardinal(weather.windDirectionDeg)} · pluie{' '}
-                      {Math.round(weather.precipitationProbabilityPct)} %
-                    </Text>
+                    {metaSegments.length > 0 ? (
+                      <Text style={s.condMeta}>{metaSegments.join(' · ')}</Text>
+                    ) : null}
                   </>
                 ) : (
                   <Text style={s.muted}>Aucune météo n’a été captée pour cette séance.</Text>

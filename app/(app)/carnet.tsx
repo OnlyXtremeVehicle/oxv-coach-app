@@ -404,32 +404,36 @@ export default function CarnetScreen() {
   }
 
   // Chips météo iconées : uniquement des valeurs captées (weather_snapshots)
-  // + la lecture piste dérivée par le service partagé trackConditions. Une
-  // valeur absente (0 par défaut de colonne nullable) n'invente pas de chip.
+  // + la lecture piste dérivée par le service partagé trackConditions. A-WEATHER-1 :
+  // une mesure ABSENTE (null) n'invente PAS de chip — pas de « 0 °C » fabriqué.
   const conditionChips: ConditionChip[] = [];
   if (todayWeather) {
     const sky = todayWeather.weatherLabel.trim();
     if (sky) conditionChips.push({ key: 'ciel', label: sky, icon: <CloudIcon /> });
-    conditionChips.push({
-      key: 'temp',
-      label: `${Math.round(todayWeather.temperatureC)} °C`,
-      icon: <ThermoIcon />,
-    });
+    if (todayWeather.temperatureC != null) {
+      conditionChips.push({
+        key: 'temp',
+        label: `${Math.round(todayWeather.temperatureC)} °C`,
+        icon: <ThermoIcon />,
+      });
+    }
     conditionChips.push({
       key: 'piste',
       label: trackConditions(todayWeather).label,
       icon: <TrackIcon />,
     });
-    const cardinal =
-      todayWeather.windSpeedKmh > 0
-        ? ` ${windDirectionCardinal(todayWeather.windDirectionDeg)}`
-        : '';
-    conditionChips.push({
-      key: 'vent',
-      label: `Vent ${Math.round(todayWeather.windSpeedKmh)} km/h${cardinal}`,
-      icon: <WindIcon />,
-    });
-    if (todayWeather.humidityPct > 0) {
+    if (todayWeather.windSpeedKmh != null) {
+      const cardinal =
+        todayWeather.windSpeedKmh > 0 && todayWeather.windDirectionDeg != null
+          ? ` ${windDirectionCardinal(todayWeather.windDirectionDeg)}`
+          : '';
+      conditionChips.push({
+        key: 'vent',
+        label: `Vent ${Math.round(todayWeather.windSpeedKmh)} km/h${cardinal}`,
+        icon: <WindIcon />,
+      });
+    }
+    if (todayWeather.humidityPct != null) {
       conditionChips.push({
         key: 'humidite',
         label: `Humidité ${Math.round(todayWeather.humidityPct)} %`,

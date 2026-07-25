@@ -27,21 +27,22 @@ export interface WeatherData {
   latitude: number;
   longitude: number;
 
-  // Current weather
-  temperatureC: number;
-  feelsLikeC: number;
-  humidityPct: number;
-  pressureHpa: number;
-  visibilityKm: number;
+  // Current weather — A-WEATHER-1 (doctrine Miroir) : une mesure ABSENTE est
+  // `null`, JAMAIS un 0 fabriqué. Les écrans rendent « — ». Ne coercez jamais.
+  temperatureC: number | null;
+  feelsLikeC: number | null;
+  humidityPct: number | null;
+  pressureHpa: number | null;
+  visibilityKm: number | null;
 
   // Wind
-  windSpeedKmh: number;
-  windDirectionDeg: number;
-  windGustKmh: number;
+  windSpeedKmh: number | null;
+  windDirectionDeg: number | null;
+  windGustKmh: number | null;
 
   // Precipitation
-  precipitationMm: number;
-  precipitationProbabilityPct: number;
+  precipitationMm: number | null;
+  precipitationProbabilityPct: number | null;
 
   // Conditions
   weatherCode: number;
@@ -163,18 +164,20 @@ export async function fetchCurrentWeather(
       latitude: lat,
       longitude: lon,
 
-      temperatureC: current.temperature_2m ?? 0,
-      feelsLikeC: current.apparent_temperature ?? 0,
-      humidityPct: Math.round(current.relative_humidity_2m ?? 0),
-      pressureHpa: Math.round(current.pressure_msl ?? 1013),
-      visibilityKm: 10, // Open-Meteo ne donne pas visibilité en current
+      // A-WEATHER-1 : absence → `null`, jamais un 0 (ni un 1013, ni un 10) fabriqué.
+      temperatureC: current.temperature_2m ?? null,
+      feelsLikeC: current.apparent_temperature ?? null,
+      humidityPct:
+        current.relative_humidity_2m != null ? Math.round(current.relative_humidity_2m) : null,
+      pressureHpa: current.pressure_msl != null ? Math.round(current.pressure_msl) : null,
+      visibilityKm: null, // Open-Meteo ne donne pas la visibilité en current → absence honnête
 
-      windSpeedKmh: current.wind_speed_10m ?? 0,
-      windDirectionDeg: current.wind_direction_10m ?? 0,
-      windGustKmh: current.wind_gusts_10m ?? 0,
+      windSpeedKmh: current.wind_speed_10m ?? null,
+      windDirectionDeg: current.wind_direction_10m ?? null,
+      windGustKmh: current.wind_gusts_10m ?? null,
 
-      precipitationMm: current.precipitation ?? 0,
-      precipitationProbabilityPct: daily.precipitation_probability_max?.[0] ?? 0,
+      precipitationMm: current.precipitation ?? null,
+      precipitationProbabilityPct: daily.precipitation_probability_max?.[0] ?? null,
 
       weatherCode: code,
       weatherLabel: info.label,
@@ -253,23 +256,31 @@ export async function fetchSessionWeather(sessionId: string): Promise<WeatherDat
 
     if (error || !data) return [];
 
-    // Helpers : weather_snapshots a beaucoup de colonnes nullable ; on retourne
-    // 0 / '' pour les manquantes, c'est l'équivalent typé du comportement V1
-    // où parseFloat(null) produisait NaN puis se propageait.
-    const n = (v: number | string | null | undefined): number => {
+    // `nReq` : colonnes NON affichées comme faits (lat/lon, code catégoriel) —
+    // un défaut neutre reste toléré. `n` : A-WEATHER-1 — une mesure affichée
+    // comme fait est `null` si absente, JAMAIS 0 (le 0° fabriqué est proscrit).
+    const nReq = (v: number | string | null | undefined): number => {
       if (v === null || v === undefined) return 0;
       if (typeof v === 'string') {
         const parsed = parseFloat(v);
         return Number.isFinite(parsed) ? parsed : 0;
       }
-      return v;
+      return Number.isFinite(v) ? v : 0;
+    };
+    const n = (v: number | string | null | undefined): number | null => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'string') {
+        const parsed = parseFloat(v);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return Number.isFinite(v) ? v : null;
     };
     const s = (v: string | null | undefined): string => v ?? '';
 
     return data.map(
       (row): WeatherData => ({
-        latitude: n(row.latitude),
-        longitude: n(row.longitude),
+        latitude: nReq(row.latitude),
+        longitude: nReq(row.longitude),
         temperatureC: n(row.temperature_c),
         feelsLikeC: n(row.feels_like_c),
         humidityPct: n(row.humidity_pct),
@@ -280,9 +291,9 @@ export async function fetchSessionWeather(sessionId: string): Promise<WeatherDat
         windGustKmh: n(row.wind_gust_kmh),
         precipitationMm: n(row.precipitation_mm),
         precipitationProbabilityPct: n(row.precipitation_probability_pct),
-        weatherCode: n(row.weather_code),
+        weatherCode: nReq(row.weather_code),
         weatherLabel: s(row.weather_label),
-        weatherIcon: getWeatherInfo(n(row.weather_code)).icon,
+        weatherIcon: getWeatherInfo(nReq(row.weather_code)).icon,
         isDay: true,
         sunriseAt: null,
         sunsetAt: null,
@@ -325,7 +336,10 @@ export function trackConditions(weather: WeatherData): {
   isWet: boolean;
   warning: string | null;
 } {
-  if (weather.precipitationMm > 1) {
+  // A-WEATHER-1 : une mesure ABSENTE (null) ne déclenche AUCUN verdict — on ne
+  // fabrique pas une « piste mouillée » à partir d'une donnée inconnue ; on
+  // retombe sur l'état neutre par défaut.
+  if (weather.precipitationMm != null && weather.precipitationMm > 1) {
     return {
       label: 'Piste mouillée',
       isDry: false,
@@ -333,7 +347,7 @@ export function trackConditions(weather: WeatherData): {
       warning: 'Conditions humides — adhérence réduite',
     };
   }
-  if (weather.precipitationProbabilityPct > 60) {
+  if (weather.precipitationProbabilityPct != null && weather.precipitationProbabilityPct > 60) {
     return {
       label: 'Pluie probable',
       isDry: true,
@@ -341,7 +355,7 @@ export function trackConditions(weather: WeatherData): {
       warning: 'Pluie probable dans les prochaines heures',
     };
   }
-  if (weather.humidityPct > 90) {
+  if (weather.humidityPct != null && weather.humidityPct > 90) {
     return {
       label: 'Piste humide',
       isDry: false,
@@ -349,7 +363,7 @@ export function trackConditions(weather: WeatherData): {
       warning: 'Forte humidité',
     };
   }
-  if (weather.windSpeedKmh > 30) {
+  if (weather.windSpeedKmh != null && weather.windSpeedKmh > 30) {
     return {
       label: 'Conditions ventées',
       isDry: true,

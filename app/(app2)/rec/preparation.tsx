@@ -278,6 +278,20 @@ export default function PreparationScreen() {
   // --- Dérivés d'affichage --------------------------------------------------
 
   const conditions = weather ? trackConditions(weather) : null;
+  // Météo réelle (doctrine Miroir A-WEATHER-1) : une mesure absente = null,
+  // jamais 0. On omet le segment concerné et on affiche « — » pour la valeur.
+  const weatherSublabel = weather
+    ? [
+        weather.windSpeedKmh != null ? `Vent ${Math.round(weather.windSpeedKmh)} km/h` : null,
+        weather.windDirectionDeg != null ? windDirectionCardinal(weather.windDirectionDeg) : null,
+        weather.precipitationProbabilityPct != null
+          ? `Pluie ${Math.round(weather.precipitationProbabilityPct)} %`
+          : null,
+      ]
+        .filter((segment): segment is string => segment != null)
+        .join(' · ')
+    : '';
+  const weatherValue = weather?.temperatureC != null ? `${Math.round(weather.temperatureC)}°` : '—';
   const progress = checklistProgress(checked);
   const days = nextDay ? daysUntilTrackDay(nextDay.date, new Date()) : null;
   const countdown = heroCountdownKind(days);
@@ -349,10 +363,8 @@ export default function PreparationScreen() {
               <ListRow
                 icon="meteo-piste"
                 label={conditions.label}
-                sublabel={`Vent ${Math.round(weather.windSpeedKmh)} km/h · ${windDirectionCardinal(
-                  weather.windDirectionDeg
-                )} · Pluie ${Math.round(weather.precipitationProbabilityPct)} %`}
-                value={`${Math.round(weather.temperatureC)}°`}
+                sublabel={weatherSublabel}
+                value={weatherValue}
                 divider={false}
               />
             </View>
