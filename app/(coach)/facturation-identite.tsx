@@ -70,6 +70,10 @@ export default function FacturationIdentiteScreen() {
   const [state, setState] = useState<ScreenState>('loading');
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
+  // `if (res.ok) router.back()` sans branche d'échec : sur un lien de
+  // règlement refusé (SEC-1 n'accepte qu'une URL http(s), jamais un IBAN),
+  // l'écran ne bougeait pas et rien n'expliquait pourquoi.
+  const [erreurSauvegarde, setErreurSauvegarde] = useState<string | null>(null);
 
   const [name, setName] = useState('');
   const [siret, setSiret] = useState('');
@@ -121,7 +125,15 @@ export default function FacturationIdentiteScreen() {
       paymentLink: paymentLink.trim() || null,
     });
     setSaving(false);
-    if (res.ok) router.back();
+    if (res.ok) {
+      router.back();
+      return;
+    }
+    setErreurSauvegarde(
+      res.error === 'invalid_payment_link'
+        ? "Les coordonnées de règlement doivent être un lien http(s) — une page de paiement, par exemple. Un IBAN n'est pas accepté ici : ce champ est publié sur votre fiche."
+        : "Votre identité de facturation n'a pas été enregistrée. Votre saisie est conservée : vous pouvez réessayer."
+    );
   }
 
   // — Fragments partagés par les deux formats (une seule source de vérité) —
@@ -234,7 +246,14 @@ export default function FacturationIdentiteScreen() {
   );
 
   const saveBlock = (
-    <Button label="Enregistrer" onPress={onSave} disabled={!canSave} loading={saving} />
+    <View>
+      {erreurSauvegarde ? (
+        <Text style={s.erreurTxt} accessibilityLiveRegion="assertive">
+          {erreurSauvegarde}
+        </Text>
+      ) : null}
+      <Button label="Enregistrer" onPress={onSave} disabled={!canSave} loading={saving} />
+    </View>
   );
 
   return (
@@ -294,6 +313,13 @@ export default function FacturationIdentiteScreen() {
 }
 
 const s = StyleSheet.create({
+  erreurTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
+    marginBottom: spacing.md,
+  },
   // — En-tête (eyebrow rouge coach, cf. écrans frères §12) —
   eyebrow: {
     fontFamily: fonts.mono,

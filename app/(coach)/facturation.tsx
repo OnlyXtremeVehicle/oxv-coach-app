@@ -93,6 +93,10 @@ export default function FacturationScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [sharingId, setSharingId] = useState<string | null>(null);
+  // `if (detail)` sans branche d'échec : quand la facture ne se relisait pas,
+  // le coach touchait la ligne et rien ne se passait — indiscernable d'un
+  // geste mal enregistré.
+  const [erreurPdf, setErreurPdf] = useState(false);
 
   // Rechargé à chaque focus (une facture émise ailleurs réapparaît ici) et sur
   // retry (reloadKey change → nouvelle identité du callback).
@@ -141,8 +145,13 @@ export default function FacturationScreen() {
 
   async function sharePdf(id: string) {
     setSharingId(id);
+    setErreurPdf(false);
     const detail = await getInvoiceDetail(id);
-    if (detail) await exportAndShareCoachInvoice(detail, profile?.paymentLink ?? null);
+    if (detail) {
+      await exportAndShareCoachInvoice(detail, profile?.paymentLink ?? null);
+    } else {
+      setErreurPdf(true);
+    }
     setSharingId(null);
   }
 
@@ -220,6 +229,12 @@ export default function FacturationScreen() {
         </View>
       )}
 
+      {erreurPdf ? (
+        <Text style={s.erreurPdfTxt} accessibilityLiveRegion="assertive">
+          Cette facture n&apos;a pas pu être relue : son PDF n&apos;a pas été produit. Réessayez
+          dans un instant.
+        </Text>
+      ) : null}
       <Text style={s.footnote}>
         Touchez une facture pour en générer le PDF. Le gabarit et le régime de TVA restent à faire
         valider par votre comptable ; vous demeurez l’émetteur.
@@ -478,6 +493,13 @@ function CoachCTA({
 }
 
 const s = StyleSheet.create({
+  erreurPdfTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
+    marginBottom: spacing.sm,
+  },
   // — Gouttières —
   consolePad: {
     paddingHorizontal: spacing.xxl,
