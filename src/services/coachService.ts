@@ -16,6 +16,21 @@ import { type MarginZone } from '@/types/domain';
 import { getCornerMarginsZones } from '@/services/segmentAnalysesService';
 import { type PilotMediaItem, parsePilotMedia } from '@/services/pilotMediaService';
 
+/**
+ * Une colonne `numeric` lue par PostgREST arrive en CHAÎNE au runtime, quoi
+ * qu'en dise le type TypeScript. On coerce à la frontière : sans cela, une
+ * comparaison `<` s'exécute sur du texte et désigne le mauvais tour, et un
+ * formateur numérique rend « — » sur une valeur pourtant présente.
+ *
+ * Renvoie null sur absence ou valeur illisible — jamais 0, qui serait une
+ * mesure inventée.
+ */
+function nombreOuNull(brut: unknown): number | null {
+  if (brut === null || brut === undefined || brut === '') return null;
+  const n = typeof brut === 'number' ? brut : Number(brut);
+  return Number.isFinite(n) ? n : null;
+}
+
 export interface SessionSnapshot {
   sessionId: string;
   startedAt: string;
@@ -311,9 +326,12 @@ export async function listPilotSessions(pilotId: string): Promise<PilotSessionSu
       id: row.id as string,
       startedAt: row.started_at as string,
       circuitName: (row.circuit_name as string | null) ?? null,
-      lapCount: (row.lap_count as number | null) ?? null,
-      bestLapSeconds: (row.best_lap_seconds as number | null) ?? null,
-      durationSeconds: (row.duration_seconds as number | null) ?? null,
+      // Colonnes `numeric` : PostgREST les rend en CHAÎNE au runtime. Sans
+      // coercition, l'affichage tombait sur « — » et surtout le « record » se
+      // décidait par comparaison lexicographique — « 102.7 » < « 95.2 ».
+      lapCount: nombreOuNull(row.lap_count),
+      bestLapSeconds: nombreOuNull(row.best_lap_seconds),
+      durationSeconds: nombreOuNull(row.duration_seconds),
       marginGlobal:
         firstAnalysis?.margin_global !== null && firstAnalysis?.margin_global !== undefined
           ? Number(firstAnalysis.margin_global)

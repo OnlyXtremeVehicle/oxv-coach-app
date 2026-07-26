@@ -22,6 +22,27 @@ import { fetchSessionLaps } from '@/services/sessionsService';
 import { supabase } from '@/lib/supabase';
 import type { MarginZone } from '@/types/domain';
 
+/** Colonne `numeric` de PostgREST : chaîne au runtime. Null sur illisible. */
+function nombreOuNull(brut: unknown): number | null {
+  if (brut === null || brut === undefined || brut === '') return null;
+  const n = typeof brut === 'number' ? brut : Number(brut);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Le nombre de tours à afficher.
+ *
+ * La colonne `lap_count` n'est pas toujours renseignée, et vaut alors 0 — un
+ * zéro que `??` laisse passer. Quand elle ne dit rien d'utilisable mais que des
+ * tours ont réellement été comptés, on montre le compte réel : afficher « 0 tour »
+ * au-dessus d'une liste de tours est un mensonge que le pilote voit.
+ */
+function lapCountFiable(colonne: unknown, comptesReels: number): number {
+  const n = nombreOuNull(colonne);
+  if (n !== null && n > 0) return n;
+  return comptesReels;
+}
+
 export interface StudioMarginSummary {
   global: number | null;
   zone: MarginZone | null;
@@ -95,8 +116,16 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
     circuitName: session.circuit_name ?? null,
     pilotName,
     startedAt: (session as { started_at?: string | null }).started_at ?? null,
-    bestLapSeconds: session.best_lap_seconds ?? null,
-    lapCount: session.lap_count ?? laps.filter((l) => !l.is_outlap && !l.is_inlap).length,
+    // Colonnes `numeric` rendues en CHAÎNE par PostgREST : on coerce, sinon le
+    // formateur affiche « — » sur un chrono pourtant présent.
+    bestLapSeconds: nombreOuNull(session.best_lap_seconds),
+    // `??` ne se déclenche PAS sur 0 : l'en-tête annonçait « 0 tour » pendant
+    // que le panneau Tours en listait plusieurs. On retient donc le compte réel
+    // dès que la colonne ne dit rien d'utilisable.
+    lapCount: lapCountFiable(
+      session.lap_count,
+      laps.filter((l) => !l.is_outlap && !l.is_inlap).length
+    ),
     triage,
     qdi,
     margins: {

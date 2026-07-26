@@ -8,6 +8,7 @@ import {
   formatDelta,
   formatDuration,
   formatLapTime,
+  formatLapTimeMs,
 } from '@/utils/format';
 
 describe('formatLapTime', () => {
@@ -107,5 +108,28 @@ describe('formatDateLong', () => {
   it('formate une ISO valide', () => {
     const result = formatDateLong('2026-05-25T10:30:00Z');
     expect(result).not.toBe('—');
+  });
+});
+
+describe('formatLapTimeMs — le piège PostgREST', () => {
+  it('formate un chrono venu de la base en CHAÎNE', () => {
+    // `laps.duration_seconds` et `sessions.best_lap_seconds` sont des colonnes
+    // `numeric` : PostgREST les rend en chaîne. Le formateur rendait « — » sur
+    // des chronos parfaitement présents — débrief, studio, fiche pilote.
+    expect(formatLapTimeMs('95.200' as unknown as number)).toBe('1:35.200');
+    expect(formatLapTimeMs('45.123' as unknown as number)).toBe('45.123 s');
+  });
+
+  it('formate identiquement le nombre et sa chaîne', () => {
+    expect(formatLapTimeMs('102.7' as unknown as number)).toBe(formatLapTimeMs(102.7));
+  });
+
+  it('garde le tiret pour ce qui est vraiment absent ou illisible', () => {
+    expect(formatLapTimeMs(null)).toBe('—');
+    expect(formatLapTimeMs(undefined)).toBe('—');
+    expect(formatLapTimeMs('' as unknown as number)).toBe('—');
+    expect(formatLapTimeMs('abc' as unknown as number)).toBe('—');
+    expect(formatLapTimeMs(-1)).toBe('—');
+    expect(formatLapTimeMs(Number.NaN)).toBe('—');
   });
 });

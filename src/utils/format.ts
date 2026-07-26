@@ -35,8 +35,20 @@ export function formatLapTime(seconds: number): string {
  *   formatLapTimeMs(84.318)  → "1:24.318"
  *   formatLapTimeMs(45.123)  → "45.123 s"
  */
-export function formatLapTimeMs(seconds: number): string {
-  if (!Number.isFinite(seconds) || seconds < 0) return '—';
+export function formatLapTimeMs(seconds: number | string | null | undefined): string {
+  // PostgREST rend les colonnes `numeric` en CHAÎNE au runtime, alors que le
+  // type TypeScript annonce `number`. `Number.isFinite('95.2')` valant false, ce
+  // formateur rendait « — » sur des chronos parfaitement présents en base —
+  // constaté sur le débrief, le studio et la fiche pilote. On coerce donc ici :
+  // le tiret reste réservé à ce qui est vraiment absent ou illisible.
+  const n = typeof seconds === 'number' ? seconds : Number(seconds);
+  if (seconds === null || seconds === undefined || seconds === '') return '—';
+  if (!Number.isFinite(n) || n < 0) return '—';
+  return formatLapTimeSecondes(n);
+}
+
+/** Découpage minutes/secondes, une fois la valeur établie comme un nombre. */
+function formatLapTimeSecondes(seconds: number): string {
   // Arrondi au millième AVANT découpage des minutes (bord de retenue).
   const total = Math.round(seconds * 1000) / 1000;
   const mins = Math.floor(total / 60);
