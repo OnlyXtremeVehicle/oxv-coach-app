@@ -127,6 +127,9 @@ export default function CoachPlanScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  // `res.error` était disponible et jeté : l'écran ne bougeait pas, et le
+  // coach ne savait pas si son objectif avait été assigné.
+  const [erreurObjectif, setErreurObjectif] = useState<string | null>(null);
 
   // Nom du pilote (affichage seul — jamais ses coordonnées, garde-fou §12).
   const [pilot, setPilot] = useState<{ full: string | null; first: string | null }>({
@@ -207,10 +210,15 @@ export default function CoachPlanScreen() {
     });
     setSaving(false);
     if (res.ok) {
+      setErreurObjectif(null);
       setTitle('');
       setTargetText('');
       reload();
+      return;
     }
+    setErreurObjectif(
+      "L'objectif n'a pas été assigné. Votre saisie est conservée : vous pouvez réessayer."
+    );
   }
 
   async function onStatus(o: CoachObjective, status: CoachObjective['status']) {
@@ -341,6 +349,11 @@ export default function CoachPlanScreen() {
           />
         </View>
 
+        {erreurObjectif ? (
+          <Text style={s.erreurTxt} accessibilityLiveRegion="assertive">
+            {erreurObjectif}
+          </Text>
+        ) : null}
         <CoachCta
           label={
             saving
@@ -487,6 +500,13 @@ const STATUS_STYLE: Record<
 };
 
 const s = StyleSheet.create({
+  erreurTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
+    marginBottom: spacing.sm,
+  },
   consoleRow: {
     flexDirection: 'row',
     gap: spacing.xl,

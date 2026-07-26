@@ -145,6 +145,9 @@ export default function ThreadScreen() {
   const { messages } = useCoachThread(coachPilotId);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  // Un envoi qui échoue laissait le brouillon en place SANS rien dire : le
+  // coach pouvait croire son message parti.
+  const [erreurEnvoi, setErreurEnvoi] = useState(false);
   const [threads, setThreads] = useState<MessageThread[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -192,7 +195,12 @@ export default function ThreadScreen() {
       body,
     });
     setSending(false);
-    if (res.ok) setDraft('');
+    if (res.ok) {
+      setErreurEnvoi(false);
+      setDraft('');
+      return;
+    }
+    setErreurEnvoi(true);
   }
 
   function openThread(t: MessageThread) {
@@ -258,25 +266,32 @@ export default function ThreadScreen() {
   );
 
   const inputBar = (
-    <View style={s.inputBar}>
-      <TextInput
-        value={draft}
-        onChangeText={setDraft}
-        placeholder={`Écrire à ${otherFirst}…`}
-        placeholderTextColor={palette.faint}
-        style={s.input}
-        multiline
-        accessibilityLabel="Votre message"
-      />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Envoyer"
-        disabled={!canSend}
-        onPress={onSend}
-        style={({ pressed }) => [s.send, { opacity: !canSend ? 0.4 : pressed ? 0.85 : 1 }]}
-      >
-        <SendIcon color={palette.cream} />
-      </Pressable>
+    <View>
+      {erreurEnvoi ? (
+        <Text style={s.erreurEnvoiTxt} accessibilityLiveRegion="assertive">
+          Le message n&apos;est pas parti. Votre texte est conservé : réessayez.
+        </Text>
+      ) : null}
+      <View style={s.inputBar}>
+        <TextInput
+          value={draft}
+          onChangeText={setDraft}
+          placeholder={`Écrire à ${otherFirst}…`}
+          placeholderTextColor={palette.faint}
+          style={s.input}
+          multiline
+          accessibilityLabel="Votre message"
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Envoyer"
+          disabled={!canSend}
+          onPress={onSend}
+          style={({ pressed }) => [s.send, { opacity: !canSend ? 0.4 : pressed ? 0.85 : 1 }]}
+        >
+          <SendIcon color={palette.cream} />
+        </Pressable>
+      </View>
     </View>
   );
 
@@ -398,6 +413,14 @@ export default function ThreadScreen() {
 }
 
 const s = StyleSheet.create({
+  erreurEnvoiTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
   // Console : deux colonnes.
   consoleRow: { flex: 1, flexDirection: 'row' },
   listCol: {

@@ -150,8 +150,19 @@ export default function CoachCycleDetailScreen() {
   async function onToggleStatus() {
     if (!cycle) return;
     const next = cycle.status === 'active' ? 'closed' : 'active';
+    setStepError(null);
     const res = await updateCycle(cycle.id, { status: next });
-    if (res.ok) setCycle({ ...cycle, status: next });
+    if (res.ok) {
+      setCycle({ ...cycle, status: next });
+      return;
+    }
+    // Le retour était jeté : le bouton semblait avoir agi, le cycle restait
+    // dans son état d'avant. On le dit, sur la même surface que les étapes.
+    setStepError(
+      next === 'closed'
+        ? "Le cycle n'a pas pu être clôturé. Réessayez."
+        : "Le cycle n'a pas pu être rouvert. Réessayez."
+    );
   }
 
   async function onAddStep() {
