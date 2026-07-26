@@ -225,3 +225,5 @@
 20260719163710|coach_testimonials_repair_dangling_refs
 20260721060455|founding_members
 20260725185806|live_board_realtime_authorization
+20260726152049|sec2_guard_is_admin
+20260726152108|sec3_coach_pilots_colonnes

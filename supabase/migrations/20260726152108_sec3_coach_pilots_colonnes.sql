@@ -1,10 +1,11 @@
 -- ============================================================================
 -- SEC-3 — Un coach ne peut plus s'accorder lui-même le consentement du pilote
 --
--- PRÉPARÉE LE 26/07/2026. **NON APPLIQUÉE.** Elle attend l'accord du fondateur
--- (CLAUDE.md : toute modification du schéma de production doit être validée).
--- Ce fichier vit HORS de supabase/migrations/ pour qu'aucun `db push` ne
--- l'applique par inadvertance.
+-- APPLIQUÉE EN PRODUCTION le 26/07/2026 à 15:21:08 UTC, sur accord explicite du fondateur.
+-- Les instructions exécutées sont celles de ce fichier ; seuls l'en-tête
+-- explicatif et le protocole de vérification en fin de fichier n'en font pas
+-- partie. Le texte exact exécuté est conservé dans
+-- supabase_migrations.schema_migrations.
 --
 -- LE DÉFAUT, vérifié en production le 26/07/2026
 -- ---------------------------------------------------------------------------
