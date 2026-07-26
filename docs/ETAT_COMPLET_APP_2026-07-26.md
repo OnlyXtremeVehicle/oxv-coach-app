@@ -1,9 +1,9 @@
 # État complet de l'application OXV Mirror
 
-**26 juillet 2026** · branche `feat/site-document-emails`
+**26 juillet 2026** · branche `feat/site-document-emails` · dernier commit `f8ed177`
 
 Ce document a été écrit en lisant le dépôt fichier par fichier et en interrogeant
-la base de production en lecture seule. Huit enquêtes parallèles, chacune sur une
+la base de production en lecture seule. Huit enquêtes parallèles, une par
 dimension, puis assemblage. Chaque affirmation renvoie à un chemin précis. Ce qui
 n'a pas pu être vérifié est dit comme tel — la dernière section liste
 honnêtement tous les angles morts.
@@ -13,2113 +13,7888 @@ vous ne lisez qu'une page.
 
 ---
 
-## Les cinq faits à retenir avant tout le reste
+## À traiter en priorité
 
-**1. L'espace coach n'est atteignable par personne.** Il n'existe aucun compte
-`role = 'coach'` en base. Les 37 écrans coach — plus de 26 000 lignes de code —
-ne s'ouvrent pour aucun utilisateur aujourd'hui. Même situation pour les 8 écrans
-`pro_pilot`. Et les deux comptes `role = 'admin'` ont `is_admin = false`, alors
-que l'espace admin est gardé par ce drapeau et non par le rôle : ces deux comptes
-atterrissent dans l'arbre pilote V1, sans accès admin. Le double système
-`users.role` / `users.is_admin` produit là une incohérence de fait.
+**Une élévation de privilège est ouverte en production.** N'importe quel compte
+authentifié peut exécuter `update public.users set is_admin = true where id =
+auth.uid()` et devenir administrateur au sens de la base — ce qui ouvre toutes
+les policies gardées par `is_admin()`. Trois faits se combinent : le privilège
+UPDATE sur la colonne est accordé à `authenticated`, la policy
+`users_update_own_or_admin` autorise l'écriture de sa propre ligne, et le
+déclencheur `guard_users_privileged_columns` ne protège que `role` et
+`kyc_status` — `is_admin` n'y figure pas. Aucun audit ne le tracerait : le
+déclencheur d'audit n'observe que `role`.
 
-**2. Le neuf n'est pas ce qui tourne.** Les deux arbres pilote coexistent : 83
-écrans V1 et 38 écrans V2. C'est le V1 qui reçoit l'utilisateur aujourd'hui. La
-bascule est le lot L6, et elle attend le terrain. Tant qu'elle n'a pas eu lieu,
-l'application embarque les deux et le travail de refonte reste invisible pour le
-pilote.
+Vérifié le 26 juillet 2026 par lecture directe du corps du déclencheur et des
+privilèges de colonne. Un seul compte porte aujourd'hui le drapeau :
+`administration@oxvehicle.fr`, le vôtre.
 
-**3. Le dépôt ne raconte pas toute l'histoire de la base.** 125 migrations ici,
-215 appliquées en production. L'écart vient du site, qui applique les siennes sur
-le même projet Supabase. Conséquence pratique : un `supabase db push` depuis ce
-dépôt ne serait pas idempotent, et le fichier de types généré connaît des colonnes
-qu'aucune migration locale ne crée.
+Le correctif est écrit — `supabase/migrations_a_valider/20260726_sec2_guard_is_admin.sql` —
+mais **il n'a pas été appliqué** : modifier le schéma de production demande votre
+accord. Il étend la garde existante à `is_admin` et ajoute la trace d'audit
+manquante. Purement restrictif, réversible.
 
-**4. Rien n'a été observé en fonctionnement.** Aucun simulateur, aucun téléphone.
-Tout ce qui est dit du rendu, des gestes, des transitions, de VoiceOver ou de la
-reconnexion Bluetooth en piste est une lecture de code, pas une observation. C'est
+---
+
+## Les huit faits à retenir avant tout le reste
+
+**1. Aucune séance de piste réelle n'a jamais été enregistrée.** La production
+compte 18 séances de télémétrie : des essais à pied de mai — vitesse maximale
+entre 0,30 et 8,49 km/h, zéro tour — et huit séances abandonnées à zéro trame.
+Au total 53 trames, toutes issues d'une seule séance abandonnée du 28 juin à
+0,83 km/h. Un seul tour existe en base, de 0,022 seconde. Zéro boîtier en flotte,
+zéro donnée cardiaque. Tout ce que l'application sait faire de la donnée réelle
+attend donc encore sa première séance.
+
+**2. Le calcul des lectures échoue en silence depuis le 13 juin.** La tâche
+planifiée `compute-insights-hourly` envoie un en-tête `X-Cron-Token` sans
+`Authorization` vers une fonction edge déployée en `verify_jwt: true` : elle
+reçoit un 401 toutes les demi-heures. Le tableau de bord affiche pourtant plus de
+mille exécutions « réussies », parce qu'il ne rapporte que la mise en file, jamais
+la réponse. C'est la raison pour laquelle aucune ligne d'insights réelle n'existe.
+
+**3. Le pilote arrive désormais dans l'application neuve.** La bascule L6 est
+faite : `app/index.tsx` envoie vers `(app2)`. L'ancien arbre reste embarqué et
+atteignable — douze points d'entrée y mènent encore, et ouvrir n'importe lequel
+remonte toute l'ancienne barre d'onglets. Il n'est pas supprimé parce que le neuf
+y renvoie pour trois écrans non portés et que l'espace professionnel le consomme
+comme bibliothèque.
+
+**4. Environ 5 600 lignes d'écrans V2 ne sont atteignables par aucun lien.**
+`data/saison`, `club/territoire` et `club/galerie` n'ont aucun lien entrant ;
+`club/roulages` n'est atteignable que par notification. Toute la zone de
+réservation reste fermée derrière un drapeau. Ces écrans existent, ils sont
+soignés, personne ne peut les ouvrir.
+
+**5. L'espace coach n'est atteignable par personne, et son direct ne peut pas
+s'amorcer.** Aucun compte n'a le rôle coach en base. Par ailleurs le relais live
+exige `coach_pilots.status = 'active'`, valeur qu'aucune ligne de code n'écrit
+jamais : l'unique binôme de production est resté à `pending`. Les douze tables du
+travail coach sont vides.
+
+**6. Le dépôt raconte enfin toute l'histoire de la base.** 215 migrations
+appliquées, 215 fichiers, zéro écart. Les 94 qui manquaient ont été reconstituées
+depuis le SQL conservé en base, fidélité vérifiée par empreinte. Onze fichiers
+dangereux ou en doublon ont été sortis du chemin d'application — dont un qui
+aurait cassé le droit à l'effacement au premier exercice réel.
+
+**7. Trois défauts d'écriture viennent d'être corrigés côté coach, et un de
+doctrine côté pilote.** Une note écrite depuis la fiche pilote était classée sur
+le virage 1 sans que le coach l'ait choisi ; depuis l'écran direct
+l'enregistrement ne faisait rien du tout, en silence ; un échec effaçait le texte
+du coach en passant pour un succès. Côté pilote, quatre des six lectures
+approfondies affichaient des chiffres de démonstration sans le dire.
+
+**8. Rien n'a été observé en fonctionnement.** Aucun simulateur, aucun téléphone.
+Tout ce qui est dit du rendu, des gestes, des transitions, de VoiceOver, du
+Bluetooth ou de la fluidité est une lecture de code, pas une observation. C'est
 la limite majeure de ce document, et elle recoupe la vôtre : les builds attendent
 toujours un verdict sur appareil.
 
-**5. Trois fuites de consentement ont été trouvées et corrigées ce matin.** Un
-audit adversarial de l'espace coach (35 agents, 29 constats confirmés) a montré
-que retirer son consentement de coaching ne coupait pas le direct, et que la
-fréquence cardiaque partait à des coachs en « lecture simple » qui n'y avaient pas
-droit. Corrigé et commité (`29d5cfd`). Il reste 26 constats confirmés non traités,
-dont un critique.
+---
+
+## Ce qui protège la chaîne de capture
+
+Quatre fichiers — la machine à états, le service de capture, la file de
+synchronisation, le Bluetooth — sont sous gel explicite : ils ne peuvent être
+modifiés qu'avec votre accord. Deux dérogations ont été accordées cette année,
+toutes deux purement additives et vérifiées par diff.
+
+Une nuance à connaître : `setActiveRecording` n'est appelée nulle part dans
+l'application. L'état `S6_roulage` n'est donc jamais atteint et le garde-fou
+runtime du silence en piste ne se déclenche jamais. Le silence est tenu par
+l'écran de roulage lui-même, pas par la machine à états — ce qui marche, mais
+repose sur un seul point au lieu de deux.
 
 ---
 
 ## Ce que l'application est aujourd'hui
 
-824 fichiers TypeScript, 158 fichiers de tests pour 1 846 tests verts, 125
-migrations dans le dépôt, 146 documents. Une base Supabase PostgreSQL 17 en
-`eu-west-1` (Irlande), partagée avec le site : l'application n'a pas de base à
-elle.
+824 fichiers TypeScript, 159 fichiers de tests pour 1 853 tests verts, 215
+migrations, 149 documents. Une base Supabase PostgreSQL 17 en `eu-west-1`
+(Irlande), partagée avec le site : l'application n'a pas de base à elle.
 
-Sept espaces de routes coexistent — pilote V2, pilote V1, coach, admin, partner,
-pro, auth — dont trois sont destinés à migrer vers le web. Deux design systems
-cohabitent sans se mélanger : le kit « DA Instrument » pour le pilote V2, l'ancien
-pour tout le reste. Un seul drapeau fonctionnel est actif en base : `biometry`.
-Les six autres sont fermés.
+Neuf espaces de routes coexistent — pilote V2, pilote V1, coach, admin,
+partenaire, professionnel, authentification, onboarding pilote, onboarding
+coach — dont trois sont destinés à migrer vers le web. Deux systèmes de design
+cohabitent sans se mélanger : le kit « DA Instrument » pour le pilote V2,
+l'ancien pour tout le reste.
 
-La chaîne de capture — du boîtier RaceBox jusqu'à la base — est le cœur technique
-et le seul endroit du dépôt protégé par un gel explicite de quatre fichiers.
+La cible de build est **iOS**.
 
 ---
 
-## Chronologie, ordre et décisions
+## Comment lire la suite
 
-### 1. Sur quoi cette reconstitution s'appuie
+Huit sections, dans cet ordre :
 
-Trois sources ont été ouvertes et croisées : l'historique Git complet (623 commits, du 24 mai au 26 juillet 2026, extrait avec `git log --date=short`), les 81 rapports de `roadmap/rapports/` (16 rapports « semaine », 51 rapports « PR », 7 rapports « v2-* », plus `bio-2.md`, `live-b.md`, `m1-closeout.md` et `verification-tail-pr44-49-54-55-65b.md`), et les 12 documents de programme de `design-retours/programme-v2/`. Les documents de cadrage antérieurs (`roadmap/AUDIT_CABLAGE_2026-07.md`, `roadmap/V9_NG_ROADMAP.md`, `roadmap/DECISIONS_GABIN_2026-06-13.md`, `docs/refonte-app/`) complètent la partie juin.
+1. **La connexion et les données** — Supabase, rôles, tables, policies, fonctions
+   edge, tâches planifiées, purge RGPD, et ce que le site partage.
+2. **La chaîne de capture** — du boîtier à la base, et ce qui se passe quand ça
+   casse.
+3. **L'application du pilote (arbre V2)** — les 38 écrans, ce que chacun montre
+   et d'où vient chaque valeur.
+4. **L'ancien arbre pilote** — ce qu'il en reste, pourquoi, et ce qu'il faudrait
+   pour le supprimer.
+5. **L'espace coach** — 37 écrans, à lire en sachant que personne ne peut y
+   entrer aujourd'hui.
+6. **Les autres espaces** — admin, partenaire, professionnel, authentification,
+   onboarding.
+7. **Le langage visuel et l'accessibilité** — les deux kits, la loi couleur, les
+   contrastes.
+8. **Où en est le programme** — lots livrés, verrous non techniques, décisions
+   qui vous attendent.
 
-Le contrat qui fait aujourd'hui autorité sur l'ordre des choses est `design-retours/programme-v2/OXV_APP_V2_DOSSIER_MAITRE.md`, daté du 18/07/2026. C'est lui qui définit les 13 lots, les 4 gates externes et l'ordre d'exécution. Tout ce qui a été livré depuis le 19 juillet suit ce document.
+---
 
-### 2. Vue d'ensemble : neuf phases, pas une roadmap continue
+## La connexion et les données
 
-L'application n'a pas suivi un plan unique. Elle a traversé neuf programmes successifs, chacun ouvert par un document de cadrage et refermé par des rapports. Le plan d'origine (`roadmap/SEMAINES.md`, 14 semaines vers l'App Store) a été entièrement consommé dès la fin mai, puis remplacé quatre fois.
+### Avertissement de méthode
 
-| Phase | Dates (Git) | Programme | Commits |
+Rien n'a été exécuté. Aucune application n'a été lancée, aucun appareil n'a été
+branché, aucun écran n'a été affiché. Ce qui suit vient de deux sources
+seulement : la lecture du code du dépôt, et des requêtes en **lecture seule**
+sur la base de production. Quand j'écris « l'application fait X », il faut
+comprendre « le code de l'application dit qu'elle fait X ». Quand j'écris « la
+base contient Y », c'est une mesure, et je donne la requête ou le chemin.
+
+Ce qui n'a pas pu être vérifié est signalé comme tel, à la fin de chaque
+partie et dans une section dédiée en clôture.
+
+---
+
+### Le projet Supabase
+
+| | |
+|---|---|
+| Identifiant | `fouvuqkdxarjpjbqnsjq` |
+| Nom | `oxv-platform` |
+| Région | `eu-west-1` — Irlande, Union européenne |
+| Moteur | PostgreSQL 17.6 |
+| Statut | `ACTIVE_HEALTHY` |
+| Créé le | 8 mai 2026 |
+
+Mesuré via l'outil d'administration Supabase, pas d'après un document.
+
+**Un écart de documentation à corriger.** Le commentaire en tête du client
+Supabase de l'application annonce Francfort :
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/lib/supabase.ts:5`
+> « Typé contre le schéma Supabase de production (fouvuqkdxarjpjbqnsjq, Frankfurt). »
+
+C'est faux. La région réelle est `eu-west-1`, l'Irlande. Le fond n'en est pas
+affecté — les deux sont dans l'Union, et la politique de confidentialité qui
+promet un hébergement européen reste exacte. Mais c'est un commentaire qui ment
+au prochain lecteur, et il traîne aussi dans d'autres documents. Le document de
+raccordement avec le site le signale déjà :
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/docs/architecture/09_HANDOFF_SITE_BASE_PARTAGEE.md:34`
+
+---
+
+### Le client Supabase et le stockage du jeton
+
+#### Un client unique
+
+Toute l'application passe par un seul client, construit une fois dans
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/lib/supabase.ts`.
+
+Il n'y a pas de second client caché. Le fichier `src/supabase/client.ts` que
+mentionne encore `CLAUDE.md` (section « Code V1 récupéré ») **n'existe plus** :
+le dossier `src/supabase/` est absent du dépôt. C'est une entrée de
+documentation périmée, sans conséquence technique.
+
+#### Les identifiants de connexion
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/lib/supabase.ts:15-22`
+
+L'URL et la clé publique sont lues dans l'environnement, sous les noms
+`EXPO_PUBLIC_SUPABASE_URL` et `EXPO_PUBLIC_SUPABASE_ANON_KEY`. Si l'une des
+deux manque, le module **lève une exception au chargement** — l'application ne
+démarre pas, avec un message explicite. C'est un choix sain : pas de démarrage
+silencieux sur une base absente.
+
+Le fichier `.env` local existe et porte bien ces deux noms (valeurs non
+reproduites ici), plus le DSN Sentry et deux clés de calcul d'itinéraire.
+`.env` est ignoré par Git : `C:/Users/Julie/OneDrive/Desktop/oxv-app/.gitignore:11`
+
+**Un piège dans le fichier d'exemple.**
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/.env.example` propose les noms
+`SUPABASE_URL` et `SUPABASE_ANON_KEY`, **sans le préfixe `EXPO_PUBLIC_`**.
+Quelqu'un qui suivrait l'exemple à la lettre obtiendrait une application qui
+refuse de démarrer. Le même fichier propose aussi une ligne
+`SUPABASE_SERVICE_ROLE_KEY` : elle est commentée comme « ne jamais exposer côté
+client », et de fait le code de l'application ne la lit nulle part — mais sa
+seule présence dans le modèle est une invitation à l'erreur.
+
+#### Les identifiants au moment du build
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/eas.json` ne contient **pas** l'URL ni
+la clé Supabase. Les trois profils (`development`, `preview`, `production`)
+déclarent seulement un champ `environment` et, pour deux d'entre eux, le
+domaine Plausible. Les variables Supabase viennent donc des jeux
+d'environnement stockés côté EAS.
+
+**Je n'ai pas pu vérifier leur contenu** : ils vivent sur les serveurs Expo, pas
+dans le dépôt. Un build qui partirait avec un jeu d'environnement vide donnerait
+une application qui plante au démarrage — bruyamment, ce qui est préférable à
+silencieusement, mais c'est un point à vérifier avant toute soumission.
+
+#### Le stockage du jeton de session
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/lib/supabase.ts:24-40`
+
+Le jeton de session est confié à `expo-secure-store` par un adaptateur de trois
+méthodes (`getItem` / `setItem` / `removeItem`). Sur iOS — la cible de build —
+cela signifie le trousseau (Keychain) du système, chiffré par l'appareil. Il
+n'y a **ni `localStorage` ni `AsyncStorage`** pour le jeton, ce qui est conforme
+à la consigne du projet.
+
+Trois options complètent le client :
+
+- `autoRefreshToken: true` — le jeton se renouvelle seul ;
+- `persistSession: true` — la session survit à la fermeture de l'application ;
+- `detectSessionInUrl: false` — correct en mobile, où il n'y a pas d'URL de
+  retour à analyser.
+
+Un en-tête `X-Client-Info: oxv-coach-mobile` est joint à chaque requête. Il
+permet, côté serveur, de distinguer le trafic de l'application de celui du
+site. Je n'ai pas vérifié qu'il soit effectivement exploité quelque part.
+
+Le client est typé : `createClient<Database>` s'appuie sur
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/types/database.types.ts`, un
+fichier généré de 9 275 lignes, daté du 19 juillet 2026, qui décrit
+**113 tables**. La base en compte 130 (hors sauvegardes : 125). L'écart
+mesurable est d'une seule table réellement manquante — `founding_members`,
+créée le 21 juillet (migration `20260721060455_founding_members`), donc après
+la génération des types. Toute écriture applicative sur cette table serait non
+typée. En pratique l'application ne la lit pas.
+
+---
+
+### L'authentification
+
+#### Le chemin normal : identifiant et mot de passe
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/store/useAuthStore.ts:114-129`
+
+L'écran de connexion appelle `signInWithPassword`. En cas d'échec, le message
+d'erreur est traduit en français par `translateAuthError`
+(`src/store/useAuthStore.ts:149-161`), qui couvre trois cas : identifiants
+incorrects, adresse non confirmée, réseau indisponible. Les autres erreurs
+remontent en anglais, telles que Supabase les renvoie.
+
+#### Le chargement du profil
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/store/useAuthStore.ts:55-70`
+
+Après connexion, l'application lit une ligne de `public.users` restreinte à
+quatorze colonnes : identité, `pilot_level`, `is_admin`, `role`, et les six
+horodatages d'acceptation (profil complété, pacte pilote, pacte coach, CGU,
+confidentialité). Si la lecture échoue, le profil vaut `null` et l'erreur part
+en `console.warn` — l'application ne bloque pas.
+
+Une garde de repli existe ligne 69 : si `role` est absent, le profil est traité
+comme `pilot`. C'est prudent, mais cela masquerait une régression de schéma
+plutôt que de la signaler.
+
+#### La persistance et le réveil
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/store/useAuthStore.ts:75-112`
+
+Au démarrage, `initialize()` interroge `getSession()`, puis pose un écouteur
+`onAuthStateChange` qui recharge le profil à chaque changement. L'appel est
+déclenché une fois depuis la racine :
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/app/_layout.tsx:43`
+
+**Une remarque de code.** L'écouteur `onAuthStateChange` est posé *à l'intérieur*
+de `initialize()`. Le garde-fou d'entrée (`if (get().status === 'loading') return`,
+ligne 76) empêche deux appels concurrents, mais pas deux appels successifs :
+un second `initialize()` après stabilisation poserait un second écouteur. En
+l'état, la racine n'appelle qu'une fois, sauf si le pilote presse « Réessayer »
+sur l'écran d'erreur (`app/index.tsx:52`). Effet pratique attendu : des
+rechargements de profil en double. Je ne l'ai pas observé.
+
+#### Le second chemin : l'appairage depuis le site
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/services/pairingService.ts`
+
+Un pilote peut entrer un code obtenu sur `oxvehicle.fr` et se retrouver
+connecté sans mot de passe. Le mécanisme :
+
+1. l'application poste `{ action: 'redeem', code }` à la fonction edge
+   `pair-app`, **sans jeton** (l'utilisateur n'est pas encore authentifié) ;
+2. la fonction vérifie et consomme le code, puis renvoie un `token_hash` ;
+3. l'application appelle `verifyOtp({ type: 'magiclink', token_hash })` et
+   obtient sa session.
+
+`pair-app` est déployée et active en production, `verify_jwt: false` — ce qui
+est nécessaire, puisque l'appel est pré-authentification. Le commentaire du
+service annonce un anti-force-brute côté serveur (10 tentatives par minute et
+par adresse IP) et la table `app_pairing_redeem_attempts` existe bien en base
+pour le porter.
+
+**Ce que je n'ai pas vérifié** : la source de `pair-app` telle qu'elle tourne,
+et donc l'effectivité réelle de la limitation. La table
+`app_pairing_codes` porte **0 ligne** et `app_pairing_redeem_attempts` **1**.
+Aucun appairage n'a donc abouti récemment, et le chemin n'a jamais été
+exercé en volume.
+
+#### Ce qui suit la connexion : le routage
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/app/index.tsx:71-107`
+
+L'ordre est le suivant :
+
+- non authentifié → `/(auth)/login` ;
+- profil absent ou onboarding incomplet → `/(coach-onboarding)` si `role = coach`,
+  `/(partner)` si `role = partner`, sinon `/(onboarding)` ;
+- puis, par rôle : `coach` → `/(coach)`, `partner` → `/(partner)`,
+  `pro_pilot` → `/(pro)`, **tout le reste** → `/(app2)`.
+
+« Tout le reste » inclut `admin`. Un compte `role = 'admin'` atterrit donc dans
+l'espace pilote. C'est délibéré et commenté ligne 92 : « admin a accès en plus
+à `/(admin)` ». Mais l'accès en question n'est pas gardé par `role`.
+
+---
+
+### Les rôles : `users.role` et `users.is_admin`
+
+C'est le point le plus important de cette section, et il n'est pas tranché.
+
+#### Deux champs, deux systèmes
+
+La table `public.users` porte **72 colonnes**. Deux d'entre elles décident de
+qui voit quoi :
+
+| Champ | Type | Ce qu'il commande |
+|---|---|---|
+| `role` | texte | Le **routage de l'application** : quel espace s'ouvre à la connexion |
+| `is_admin` | booléen | L'**espace administrateur de l'application** |
+
+Et une troisième autorité, invisible dans l'application : la fonction SQL
+`public.is_admin()`, qui garde les policies RLS.
+
+#### Ce que garde `role`
+
+Le routage, lu ci-dessus (`app/index.tsx:80-101`). Et, en base, trois fonctions
+d'aide :
+
+- `public.is_coach()` → `role = 'coach'` ;
+- `public.is_partner()` → `role = 'partner'` ;
+- `public.is_admin()` → **`role = 'admin'` OU `is_admin = true`**.
+
+Cette dernière définition est le nœud. Texte exact, relevé en production :
+
+```sql
+CREATE OR REPLACE FUNCTION public.is_admin()
+ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+AS $function$
+  SELECT COALESCE(
+    (SELECT role = 'admin' OR is_admin = true FROM public.users WHERE id = auth.uid()),
+    false
+  );
+$function$
+```
+
+#### Ce que garde `is_admin`
+
+L'espace administrateur de l'application, et lui seul :
+
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/app/(admin)/_layout.tsx`
+```tsx
+if (!profile?.is_admin) {
+  return <Redirect href={'/(app2)' as never} />;
+}
+```
+
+Le champ `role` n'est pas consulté ici. Un `role = 'admin'` avec
+`is_admin = false` est **redirigé vers l'espace pilote**.
+
+#### Le décompte réel en production
+
+Requête sur `public.users`, 26 juillet 2026 :
+
+| `role` | `is_admin` | Comptes |
+|---|---|---|
+| `pilot` | `false` | 10 |
+| `pilot` | `true` | 1 |
+| `admin` | `false` | 2 |
+| `partner` | `false` | 1 |
+| **Total** | | **14** |
+
+Aucun compte n'a `role = 'coach'`. Aucun n'a `role = 'pro_pilot'`.
+
+`auth.users` compte **12 lignes**, contre 14 dans `public.users`. Deux profils
+n'ont **aucun compte d'authentification** en face : `louis.arnd05@icloud.com`
+et `shadowsresidents@gmail.com`. Ce sont des lignes orphelines : elles ne
+peuvent pas se connecter, et aucune policy RLS ne les fera jamais correspondre
+à un `auth.uid()`.
+
+#### Les quatre incohérences, nommées
+
+**1. Le compte du fondateur est un pilote qui est admin.**
+`administration@oxvehicle.fr` porte `role = 'pilot'` et `is_admin = true`.
+Conséquence : il est routé vers l'espace pilote (`/(app2)`), il **peut** ouvrir
+`/(admin)`, et en base `is_admin()` lui renvoie `true` — il voit toutes les
+sessions, toutes les trames, toutes les analyses.
+
+**2. Les deux comptes `role = 'admin'` n'atteignent pas l'espace admin.**
+`julie.huet.perso@gmail.com` et `bitaube.p@gmail.com` ont `role = 'admin'` et
+`is_admin = false`. Dans l'application : espace pilote, et le layout `(admin)`
+les renvoie dehors. **En base, en revanche, `is_admin()` leur renvoie `true`** :
+ils lisent toutes les sessions de télémétrie, toutes les trames, tous les
+profils, et peuvent supprimer des lignes. C'est le pire des deux mondes — sans
+interface pour l'assumer, avec le pouvoir quand même.
+
+**3. Le compte principal du fondateur est en rôle partenaire.**
+`gabinfillat@gmail.com` porte `role = 'partner'`, `is_admin = false`. Il est
+donc routé vers `/(partner)` et n'a aucun droit administrateur en base. C'est
+cohérent avec un test volontaire de l'espace partenaire, et réversible.
+
+**4. Le seul coach du système n'a pas le rôle coach.**
+`public.coach_profiles` porte **1 ligne**, `is_published = true`, rattachée à
+`administration@oxvehicle.fr`. `public.coach_pilots` porte **1 ligne** :
+`administration@oxvehicle.fr → fillatgabin@gmail.com`, niveau `programme`,
+consentement du pilote horodaté au 28 juin 2026, `active = true`.
+
+Or le compte coach a `role = 'pilot'`. Deux conséquences distinctes :
+
+- **Le routage** : à la connexion, il part vers `/(app2)`, pas vers `/(coach)`.
+  L'espace coach n'est atteignable par personne aujourd'hui.
+- **Les policies** : `is_coach_of()` et `is_detailed_coach_of()` ne regardent
+  **pas** le rôle — seulement la ligne `coach_pilots` (active, avec
+  consentement, et le niveau pour la seconde). Ces deux-là fonctionnent donc.
+  En revanche `coach_profiles_owner_all` exige `is_coach()`, qui teste
+  `role = 'coach'` : **le coach ne peut pas modifier sa propre fiche**. Il la
+  lit seulement par `coach_profiles_read_published`, comme n'importe qui.
+
+#### Un point de sécurité à traiter : `is_admin` n'est pas verrouillé
+
+Ceci est une lecture de code et de schéma. **Je ne l'ai pas exécuté** — le
+faire aurait été une écriture en production.
+
+Trois faits, chacun vérifié séparément :
+
+**a) La policy de mise à jour de `users` n'a aucune restriction de colonne.**
+
+| Policy | Commande | Rôle | Condition |
 |---|---|---|---|
-| 1 | 24 → 26 mai | Semaines 1-15 du plan initial + feature coach + amis/duel + médias | 149 |
-| 2 | 7 → 8 juin | Rebrand OXV Coach → OXV Mirror, cahier « OXV Mirror » §3-§10 | 31 |
-| 3 | 13 → 20 juin | Réconciliation bundle v2/v4, chartes éthiques, RGPD, RLS PII, write-path Valence | 50 |
-| 4 | 21 → 27 juin | Reskin V2 (63 écrans), bascule typo Geist, belles routes, marketplace coach, carte OXV | 60 |
-| 5 | 27 → 30 juin | **OXV Platform** : nav 5 zones + backlog PR-01…PR-86 + roadmap V9 NG | 148 |
-| 6 | 4 → 7 juillet | **Lots M** (M0 audit, M-IA, M1 QDI, M3 appairage, M6, M7, M8) + passation Claude Design | 52 |
-| 7 | 11 → 18 juillet | **Refonte V3 / refonte-v2** : thème, 5 zones, console coach §12, durcissement Valencia, calibration circuits | 87 |
-| 8 | 18 → 19 juillet | **Programme V2 « DA Instrument »** : SEC-1, BE-1, L0, L1, L2, L4, L5, L5-B, L3 | 28 |
-| 9 | 25 → 26 juillet | BIO-2, LIVE-B, accessibilité, A-FLOW-1, BIO-1, correctifs du direct | 16 |
-
-Entre le 20 et le 24 juillet, aucun commit : cinq jours de silence entre la fin du programme V2 écrans et sa reprise.
-
-### 3. Chronologie détaillée
-
-#### Phase 1 — Les fondations (24-26 mai 2026)
-
-Le dépôt s'ouvre le 24 mai avec `f7fe331` (« initialisation projet OXV Coach »). Les quinze semaines du plan `roadmap/SEMAINES.md` sont exécutées en trois jours calendaires, chaque semaine close par son rapport (`roadmap/rapports/semaine-1.md` à `semaine-15.md`). L'ordre suivi est celui du plan : state machine S1-S10 et stores Zustand (`54dfa6f`), offline MMKV (`73f9339`), BLE RaceBox complet (`92245db`), détection de tours (`1b76218`), écrans bilan et algorithme de marge V1 (`0adcc8e`), carte et zoom virage (`427c62d`), onboarding (`81c2f41`), paddock (`68b960b`), module trackviz (`7092175`), orchestration post-session (`7b195f0`).
-
-Le 25 mai, la feature coach entre en scène en cinq phases (`a899de8` schéma et RLS, `c23100e` app coach, `c4fa629` backoffice admin, `233b7a2` opt-in pilote RGPD, `43e361b` journal d'audit). Le 25-26 mai s'ajoutent le scanner doctrinal anti-verbes-interdits (`bf7f932`), les amis et le duel (`a020d66` à `dbd117c`), et les médias de session (`9b26f0d` à `b0d515f`).
-
-#### Phase 2 — Le rebrand et le cahier « OXV Mirror » (7-8 juin)
-
-Le 7 juin, `f74e2a8` renomme le produit : OXV Coach devient OXV Mirror. La logique du renommage se lit dans le commit suivant, `aecde58`, qui « dé-coachifie » le duel pilote en « Côte à côte entre copains ». Suit l'exécution d'un cahier des charges numéroté : les quatre piliers (`def973e` signature, `39be193` régularité, `ec2a2bd` heatmap, `e0d30ef` évolution), le volet social (`c932116`, `2bab5c2`), le tableau de bord business coach (`5d787ef`), l'écosystème national (`c5712cd`), l'analytics RGPD type Plausible (`01ac625`).
-
-#### Phase 3 — Réconciliation et durcissement légal (13-20 juin)
-
-Le 13 juin, `e31f9cd` ingère le `specs-bundle-v4` et `0892e3b` porte la « réconciliation specs v2 ». C'est là que se placent les huit arbitrages de `roadmap/DECISIONS_GABIN_2026-06-13.md` (détaillés en §6). Le 14 juin est la journée la plus dense de la période : quatre chartes éthiques ingérées (`c470ce6`), le garde-langage étendu (`b86756a`), l'anonymisation du flux OpenAI et l'opt-out IA (`7e796cc`), l'export et la suppression de compte (`632bb9e`), et surtout le **write-path de capture de bout en bout** (`0ebe59b`, « P0 Valence »). Le 15-16 juin traite les fuites RLS (`f598687` vue `sessions_public`, `197eb5c` search_path sur 15 fonctions) et rédige la purge RGPD art. 17 (`88ba669`).
-
-#### Phase 4 — La première refonte visuelle (21-27 juin)
-
-Le 21 juin, `8d25f32` pose la « fondation du design V2 » et trois commits reskinnent 63 écrans (`24ac301`, `7b2a94f`, `4b1ab80`, `946b562`). Le 22 juin, `47652ac` bascule la charte sur Geist. Le 23-24 juin, la branche `gaming` explore une direction cockpit, fusionnée le 27 juin par `b7dfde3`. En parallèle : les belles routes avec GraphHopper (`73dc8b9` à `9039cca`), la marketplace coaching (`6edd534`, `9a76acc`, `e24f2dc`, `b498c2d`), le multi-circuit avec l'ajout de la Charente (`f895b30`).
-
-#### Phase 5 — OXV Platform : le pivot (27-30 juin)
-
-Le 27 juin, deux commits déposent 19 documents de cadrage (`e631fba` et `5bc19de`, → `docs/refonte-app/05_*` à `18_*`). L'application cesse d'être une app compagnon pour devenir une plateforme à quatre rôles. `a4b2464` livre la barre d'onglets 5 zones et `src/lib/appMap.ts`. Suivent les PR 1 à 8 (Paddock, Bilan/Data Lab, Session, Progression, Compte, fusions, carte OXV).
-
-Le 28 juin, `39a5a33` produit `AUDIT_CDC_V2` (écart entre le dépôt réel et le cahier exécutable), puis `07970ff` dépose le backlog ordonné `docs/refonte-app/V6_BACKLOG_PR.md`. S'ensuit l'exécution la plus intense du projet : 122 commits en 48 heures, du filtre doctrinal IA (PR-01 à PR-05) au support (PR-09/10/11), à l'admin utilisateurs (PR-12), aux événements et au Pass OXV (PR-20 à PR-40), à l'espace partenaire (PR-31 à PR-36), à l'espace pro (PR-70 à PR-78), à la modération (PR-49). Chaque PR a son rapport dans `roadmap/rapports/pr-NN-*.md`. Le jalon M1 est clos le 28 juin par `roadmap/rapports/m1-closeout.md` et le commit `87c5e67`.
-
-Le 29 juin, la roadmap V9 (`roadmap/V9_NG_ROADMAP.md`) ajoute une couche interface au-dessus : les cinq axes sont déclarés complets dans la nuit (Axe 1 OXV Trace, Axe 2 Data Lab NG, Axe 3 OXV Moment, Axe 5 Paddock NG ; Axe 4 entamé). Le 30 juin ajoute Skia (`a060224`) et deux tables validées par STOP-schéma (`45e25e8`).
-
-#### Phase 6 — Les lots M (4-7 juillet)
-
-Le 4 juillet, `041c7d6` produit `roadmap/AUDIT_CABLAGE_2026-07.md` : l'audit de câblage écran par écran qui devient « base de vérité des lots M ». Sont ensuite livrés M-IA (verrouillage « débriefe, ne coache jamais », `2d50c38`), M1 (QDI 5 branches, `e05ebd4`), M3 (appairage site↔app par code `pair-app`, `2b515ad`), M7 (flotte RaceBox et hub Paddock, `062eb81`, `cb215dc`), M8 (identité et passe canon visuelle, `4ab0920`, `73f2c19`), M6 (`sessions.circuit_id`, `6e5b91`). Le 5 juillet, `801c23c` rédige le dossier de passation vers Claude Design pour la refonte des 150 écrans.
-
-**M2, M4 et M5 n'apparaissent nulle part comme livrés.** M4 (migration `events` → `sessions`) est identifié dans l'audit (`AUDIT_CABLAGE_2026-07.md:40-41`) comme impactant 7 écrans et 4 services ; M5 concernait le passage en privé des buckets `coach-media` et `partner-media` (`AUDIT_CABLAGE_2026-07.md:150-155`). J'ai vérifié : `src/services/eventsService.ts` interroge toujours la table `events` (15 appels `.from('events')`/`.from('event_registrations')`), et deux écrans **V2** la consomment encore — `app/(app2)/club/pass.tsx:33` et `app/(app2)/rec/preparation.tsx:46` importent `listMyRegistrations`, qui fait une jointure sur `events`. C'est en contradiction directe avec la règle n°6 du dossier maître (« la table `events` est DEPRECATED, aucun nouveau code ne s'y branche »).
-
-Le 6-7 juillet, `d8ce871` réceptionne « refonte Claude Design v1 » (46 écrans + docs), suivi du kit NG (`5245129` typo Rajdhani + JetBrains Mono, `2a91468` kit cockpit, `db0341a` StateWrapper) et de la propagation aux espaces coach, admin et partenaire. Sept écrans coach neufs sont créés dans la foulée (Facturation, Studio, Calendrier, Plan, Rapport, Triage, Débrief).
-
-#### Phase 7 — Refonte V3, console coach, terrain (11-18 juillet)
-
-Le 11 juillet est le point de bascule visuel : `fac0f0f` pose la « fondation thème refonte design complète » (palette QDI par branche, Hanken Grotesk), suivie de `cf0d200` (KingNumber mono, radar QDI coloré) et d'une longue « passe audit-or » qui confine l'or au chronomètre (`a30fb4b`, `033edb8`, `3b93e26`, `94ada16`). Le même jour, la chaîne du direct coach est construite de bout en bout (`8224792` fondation, `b8d575a` service Realtime, `227b6b4` roster, `653eef3` cockpit focus, `eb90f58` relais monté sur la capture, `0b72092` durcissement du transport), ainsi que l'aide à la facture coach P2 (`ab4e81e`, `3a0c655`) et la décharge e-sign P3 gatée OFF (`b9c9f66`).
-
-Du 12 au 14 juillet, les maquettes « refonte-v2 » sont réintégrées écran par écran (Paddock, Bilan, Signature, Progression, Data Lab), puis la console coach §12 en quatre vagues A/B/C/D (`a8a2350`, `a490d77`, `d4e1701`, `ff3922f`, 36 écrans au total). Le 12 juillet, `4ce429a` corrige un défaut qualifié de critique : les axes G étaient mal alignés et le QDI n'était pas calculé sur la séance entière.
-
-Du 15 au 16 juillet, le chantier terrain : le catalogue partenaires (`cb9bb03`), le paiement coach par lien (`426abb1`), puis le durcissement Valencia en six chantiers (`dabfbe8`, `3e91df8`, `0a201d7`, `f3699b1`) suivi de trois vagues de correctifs adversariaux (17 findings, 3 critiques — `RAPPORT_DURCISSEMENT_VALENCIA.md`). Le 16 juillet, la calibration des deux circuits est appliquée en production (`d579e95` Haute Saintonge, `e64c37e` détection de tour par franchissement de porte, `5a0e2f0` base de prod calibrée).
-
-Les 16-17 juillet traitent les « retours build 23 » du fondateur (`601f86e`, `506e3f0`, `3aa29cd`, `0e701b1`), le 18 juillet livre le lot PROFIL_CARTES (`f2fcfe2`) et produit `BILAN_COMPLET_OXV.md` (`96d4c84`), l'état des lieux de 89 Ko qui sert d'entrée au programme suivant.
-
-#### Phase 8 — Le programme V2 « DA Instrument » (18-19 juillet)
-
-Le 19 juillet à 02h31, `69a0bd0` dépose les 11 prompts du programme et l'audit de sécurité. Le reste tient en une seule journée de travail. Voici l'ordre horodaté réel :
-
-| Heure | Commit | Lot |
-|---|---|---|
-| 02h31 | `52bb7bd` | **L0** — tokens DA Instrument, 20 icônes, 11 primitives de motion, 18 composants |
-| 02h57 | `b4748a2` | **SEC-1** préparé (migrations non appliquées) |
-| 03h31 | `b9896ff` | **SEC-1** appliqué en prod + durcissement `ritual_dispatcher` |
-| 04h35 | `d920d2f` | **BE-1** — flags, `biometry_raw`, `founder_applications`, incidents, vidéo, convois |
-| 05h47 | `87ab0e6` | **L1 MIROIR** — accueil, bilan, signature |
-| 07h34 | `6d2b453` | Migration C1 (présence jour J) appliquée en prod |
-| 08h24 | `f151fab` | **L2 REC** — les 8 écrans du jour J |
-| 14h53 | `650b029` | **L4 VOUS** — 8 écrans + fondateurs + parrainage + réservation gatée |
-| 17h39 | `79aabbb` | **L5 CLUB** — 7 écrans |
-| 18h43 | `eb46c00` | **L5-B** — `coach_testimonials` remplace `coach_reviews` |
-| 19h18-20h56 | `c07d0b7` → `6bea17d` | **L3 DATA** — 4 écrans + de-mock des 5 lectures Insight |
-| 21h04-21h20 | `c07b3bc`, `4caa1b6` | **A-FLOW-1** — définition du `flowService`, validée le soir même |
-
-Chaque lot est suivi d'un commit de correctifs issus d'une vérification adversariale, et documenté dans `roadmap/rapports/v2-lN.md`. Le volume de findings corrigés est consigné : 28 pour L0, 34 pour L1, 10 pour L2, 14 pour L4, 6 pour L5, 5 pour L5-B, 4 pour L3.
-
-**Un écart d'ordre est visible ici.** L'audit `OXV_V2_AUDIT_EXHAUSTIVITE_SECURITE.md:45` prescrivait « SEC-1 → BE-1 → L0 ». L'exécution réelle a été **L0 → SEC-1 → BE-1**. Le rapport L0 le reconnaît explicitement (`roadmap/rapports/v2-l0.md:64` : « Prochain lot selon l'ordre révisé : SEC-1, puis BE-1 — prompt BE-1 toujours manquant »). Deuxième écart : L3 était prévu **après** la gate terrain ; il a été exécuté quand même, sur décision du fondateur (`roadmap/rapports/v2-l3.md:4-7` : « Le fondateur a demandé d'enchaîner sur L3 malgré le gate terrain ouvert »).
-
-#### Phase 9 — La reprise (25-26 juillet)
-
-Après cinq jours sans commit, le travail reprend le 25 juillet à 15h18 par `e05796b`, qui solde la dette A-WEATHER-1 consignée le 19 (le service météo fabriquait un 0 °C). Puis, en neuf heures :
-
-| Heure | Commit | Objet |
-|---|---|---|
-| 16h37 → 18h13 | `f9b7767`, `8ba669d`, `a2560da`, `ba00004` | **BIO-2** en quatre incréments (parser Polar H10, greffe live coach, capture locale offline-first, appairage paddock + vue coach) |
-| 19h49-20h06 | `a1da3f8`, `1f49a62` | Pastille cardio colorée (arbitrage) + refcount du canal de séance |
-| 20h00 | `b8ffc93` | **Drapeau `biometry` levé en production** |
-| 20h58 | `dccbe25` | **LIVE-B variante A** — tableau de marche par numéro, Meta Display, multi-live |
-| 21h53-22h06 | `5685704`, `0222d94` | Passe d'accessibilité (~40 écrans, 81 constats) + relèvement des gris |
-| 23h04 | `5a7bed7` | **A-FLOW-1** — `flowLogic` + `flowService` écrits (44 tests) |
-| 23h26 | `8d5bc2a` | **BIO-1** — HealthKit câblé (dépendance `react-native-health` ^1.19.0 validée) |
-| 23h37 | `93dad66` | 9 tests verrouillant le refcomptage des topics live |
-| 26/07 00h35 | `29d5cfd` | **3 constats critiques du direct** corrigés + `docs/ETAT_APP_2026-07-26.md` |
-
-Le dernier commit est le plus lourd de conséquences : un audit adversarial de l'espace coach (35 agents, 29 constats) a révélé que le retrait du consentement pilote ne coupait pas le direct, et que la fréquence cardiaque partait à des coachs en simple lecture — une donnée de l'article 9 RGPD chez quelqu'un sans droit dessus, armée depuis la levée du drapeau cinq heures plus tôt.
-
-### 4. L'état de la ligne Git — un point qui n'est pas anodin
-
-| Référence | Commit de tête | Date |
-|---|---|---|
-| `origin/main` | `1a803f3` | 29 juin 2026 |
-| `main` (local) | `2740868` | 30 juin 2026 |
-| `origin/feat/site-document-emails` | `21f7dab` | 7 juillet 2026 |
-| `feat/site-document-emails` (local, HEAD) | `29d5cfd` | 26 juillet 2026 |
-
-**126 commits n'ont jamais été poussés**, et 179 commits n'ont jamais été fusionnés dans `main`. Concrètement : toute la refonte V3, la console coach §12, le durcissement Valencia, la calibration des deux circuits, l'intégralité du programme V2 DA Instrument, BIO-1, BIO-2 et LIVE-B n'existent que dans ce clone local. L'arbre de travail est propre (`git status` vide), donc rien n'est perdu au niveau du fichier, mais rien n'est sauvegardé ailleurs non plus.
-
-### 5. L'ordre restant, et le verrou de chacun
-
-L'ordre canonique est celui de `PROMPT_CLAUDE_CODE_LOTS_CLOTURE.md:49` : `BE-1 → L0 → L1 → L2 (+L2-B) → L4 → L5 → [SMOKE TEST TERRAIN] → L3 → BIO-2 → [DÉCISION CLASSEMENT] → LIVE-B → BIO-3 → B1 → [SIRET] → A1-ON → L6 → App Store`. Voici où l'on en est.
-
-| Lot | État | Ce qui le bloque |
-|---|---|---|
-| SEC-1, BE-1, L0, L1, L2, L4, L5, L5-B, L3 | **Livrés** (19/07) | — |
-| BIO-2 | **Livré** (25/07) | — |
-| LIVE-B | **Livré, variante A** (25/07) | — |
-| BIO-1 | **Livré** (25/07) | — |
-| **L2-B — Live Activity iOS** | **Non commencé** | Sous-lot natif Swift (ActivityKit + WidgetKit). Reporté explicitement au rapport L2 (`v2-l2.md:79-82`) : « > 1 j de travail natif ». Vérifié : **zéro occurrence** de `ActivityKit`/`LiveActivity` dans `app/`, `src/` ou la config. |
-| **Smoke test terrain** | **Gate toujours ouverte** | Une journée de piste avec une séance dense. Au 19/07, le rapport L3 constate « 10 séances closes, **1 seule avec 1 tour** ». C'est la gate la plus structurante : elle conditionne le calage de `flowService`, l'alimentation des 5 lectures Insight, la mesure du scrubbing 60 fps, B1 et L6. |
-| **BIO-3 — mini-app watchOS** | **Non commencé** | Gate : « BIO-1 en production et validé une journée réelle ». BIO-1 est câblé mais **pas compilé** (dépendance native ajoutée sans build). Vérifié : zéro occurrence de `WCSession`/`HKWorkoutSession`/`watchOS`. |
-| **B1 — vidéo synchronisée** | **Non commencé** | Trois gates : frames réelles, flag `video_overlay` (OFF), coût de stockage validé. La table `video_overlays` existe (BE-1) et attend son usage. |
-| **A1-ON — activation paiements** | **Non commencé** | Gates : SIRET (attendu **août 2026** selon le dossier maître §Gates), Stripe live, CGV validées avocat, et flux L4 en production drapeau OFF depuis ≥ 2 semaines. Vérifié : ni `@stripe/stripe-react-native` ni `react-native-iap` dans `package.json`. |
-| **V2-L6 — bascule finale** | **Non commencé** | Gates : L0-L5 validés par le fondateur **sur device**, smoke test v2 complet en conditions réelles, crash-free ≥ 99,5 % sur deux semaines de build interne. Or le crash-free est immesurable : Sentry est câblé (`src/lib/sentry.ts`, dépendance `@sentry/react-native` présente) mais **inactif faute de DSN** (`docs/architecture/16_SENTRY_SETUP.md`, marqué « ACTION FONDATEUR »). |
-| Coach / Admin v2 | Reporté | « Après pilote » (dossier maître §10). L'espace coach n'a jamais été refondu et n'a aucune maquette de référence. |
-
-Deux dettes hors lots sont consignées et non traitées : les **26 constats restants** de l'audit coach du 26/07 (mentionnés dans le message de `29d5cfd` : « 1 critique sur l'annotation, des majeurs sur la fabrication de valeurs et des boutons sans effet ») — ils ne font l'objet **d'aucun fichier de rapport dans le dépôt**, seul le message de commit les mentionne ; et le **canal biométrie par coach** (`live:bio:<coachId>:<sessionId>`), désigné dans ce même commit comme « la réponse propre, à faire avant d'élargir l'usage ».
-
-### 6. Décisions déjà tranchées par le fondateur
-
-Ces décisions se retrouvent soit dans les rapports, soit inscrites en commentaire dans le code — ce qui les rend durables au-delà des conversations.
-
-| Date | Décision | Où c'est écrit |
-|---|---|---|
-| 2026-06-07 | Tableau de bord business **côté coach**, sans remise dégressive | `src/services/coachBusinessService.ts:4` |
-| 2026-06-13 | Périmètre alpha **maximal** (tout inclure, rien de différé par défaut) | `roadmap/DECISIONS_GABIN_2026-06-13.md` décision 1 |
-| 2026-06-13 | **Supprimer** la suggestion de geste pour tous les pilotes (cadre légal) | idem, décision 2 — appliqué dans `focusCorner.ts` |
-| 2026-06-13 | Suppression RGPD **self-service** ; charte alignée sur le `:root` du site ; relation coach **pilote-invite** ; coach gratuit à l'alpha ; AR en WebView pour E0 seulement ; Haute Saintonge = premier circuit | idem, décisions 3 à 8 |
-| 2026-06-29 | Les RPC de classement sont **supprimées en base** | `src/__tests__/doctrineGuard.test.ts:19` |
-| 2026-07-04 | IA : « on garde l'IA si elle ne coache pas mais débriefe » — amende le retrait total prévu | `roadmap/AUDIT_CABLAGE_2026-07.md`, section « Inventaire IA — AMENDÉ » |
-| 2026-07-04 | QDI 5 branches, radar **self-only**, exposition aux amis assumée | `src/services/qdiLogic.ts:4`, `src/services/qdiService.ts:9` |
-| 2026-07-04 | Freinage = rouge de donnée `#E63946` | commit `a6d2a2b` |
-| 2026-07-06 | Couleurs d'identité de rôle = celles des maquettes | `src/ui/RoleBadge.tsx:6`, `src/theme/v2.ts:86` |
-| 2026-07-11 | Accent coach = crème neutre, **pas de sweep** | commit `e740204` |
-| 2026-07-12 | Nav = les 5 zones des maquettes Claude Design | `src/lib/appMap.ts:7`, `src/components/AppTabBar.tsx:5` |
-| 2026-07-13 | Coach : **les DEUX formats** (console tablette + compagnon téléphone) | `src/lib/coachNav.ts:82` |
-| 2026-07-16 | Prix coach affiché = **la session** ; validation admin des points de la carte ; visibilité privée par défaut des tracés créés | `src/services/coachProfileService.ts:10`, `src/services/socialPingsService.ts:7`, `src/services/userCircuitsService.ts:9` |
-| 2026-07-16 | « On corrige » : la fluidité devient réelle (maxima par tour écrits à la capture) | commit `c409dcc` |
-| 2026-07-18 | **Direction visuelle « Instrument »** retenue parmi trois (Monolithe / Instrument / Lumière) | dossier maître §1 |
-| 2026-07-18 | Bouton central à **3 états** (RÉSERVER / PRÉPARER / REC) | dossier maître §2 |
-| 2026-07-18 | Miroir à **deux visages** (après-séance < 7 j / entre-journées) | dossier maître §3.1, `src/features/miroir/miroirHomeLogic.ts:13` |
-| 2026-07-18 | Plafond Membres Fondateurs = **30**, « jamais plus » | `src/features/vous/vousHubLogic.ts:174` |
-| 2026-07-18 | Badge Fondateur affiché **après validation admin** (clôt le TODO_ARBITRAGE v1) | dossier maître §7 |
-| 2026-07-19 | **Libellés Signature** : Cap→trajectoire, Trajectoire→régularité, Visée→freinage, Plongée→accélération, Anticipation→fluidité. Conséquence assumée : sur cet écran, « Trajectoire » ≠ la branche technique du même nom | `src/features/miroir/signatureLogic.ts:46`, verrou de test `signatureLogic.test.ts:54` |
-| 2026-07-19 | **A-WEATHER-1** : le service doit exposer `null`, jamais un nombre placebo. Consigne de doctrine, pas un bug | `roadmap/rapports/v2-l1.md:92-98` — appliqué le 25/07 (`e05796b`) |
-| 2026-07-19 | **`flowService`** : jerk IMU normalisé par la sévérité, anti-bruit causal et déterministe, fenêtre en paramètre exposé, sortie sans score, **seuil reporté au post-piste** | `docs/architecture/A-FLOW-1_flowService_definition.md` §6 |
-| 2026-07-19 | Avis coach notés → **témoignages sans note** (`coach_reviews` droppée, `coach_testimonials` créée) | `roadmap/rapports/v2-l5b.md`, garde-fou `coachDomainNoScore.test.ts:2` |
-| 2026-07-19 | Enchaîner sur L3 **malgré** la gate terrain ouverte | `roadmap/rapports/v2-l3.md:4-7` |
-| 2026-07-19 | « Oui — tout appliquer » + « Durcir `ritual_dispatcher` » (mutations SEC-1 en prod) | `docs/architecture/SEC1_PROD_APPLY.md`, section « APPLIQUÉ EN PROD » |
-| 2026-07-25 | **Pastille cardio colorée** au roster (rampe froid→chaud, jamais or ni rouge, zone relative au pilote) | `roadmap/rapports/bio-2.md:115-136` |
-| 2026-07-25 | **Levée du drapeau `biometry` en production**, en connaissance de l'absence de smoke test à deux appareils | `roadmap/rapports/bio-2.md:175-176`, commit `b8ffc93` |
-| 2026-07-25 | **LIVE-B variante A** : tableau de marche trié par numéro de voiture, jamais par chrono. Motif : un classement peut requalifier juridiquement un track day en compétition | `roadmap/rapports/live-b.md:7-21`, verrou `src/services/boardLogic.ts:47` |
-| 2026-07-25 | « On assouplit » : relèvement des gris faibles pour l'accessibilité | `src/theme/v2.ts:17`, `src/ui/v2/tokens.ts:26` |
-| 2026-07-25 | Validation de la dépendance native `react-native-health` | message de commit `8d5bc2a` |
-| 2026-07-25 | **Validation avocat de l'annexe A** (consentement biométrie) | `docs/juridique/consentement_biometrie.md:1` — le document est passé de « VALIDATION AVOCAT REQUISE » à validé |
-
-### 7. Décisions encore en attente
-
-Elles se répartissent en quatre familles.
-
-**Arbitrages produit ouverts dans le code (marqueurs `TODO_ARBITRAGE`)**
-
-| Marqueur | Emplacement | Sujet |
-|---|---|---|
-| `TODO_ARBITRAGE` | `app/(app)/profil.tsx:385` | Statut Fondateur en V1 — tranché au niveau produit (dossier maître §7), mais le marqueur subsiste dans l'écran V1 |
-| `TODO_ARBITRAGE` | `src/features/miroir/signatureLogic.ts:8` | Marqueur conservé **à la demande du fondateur** : le mapping Signature reste renégociable mot à mot |
-| `TODO_ARBITRAGE D2` | `src/features/miroir/signatureLogic.ts:278` | Nom du pilier physiologique BIO-4 — « Aplomb » est provisoire |
-
-**Questions juridiques en attente (marqueurs `TODO_AVOCAT`)**
-
-| Marqueur | Emplacement | Sujet |
-|---|---|---|
-| `TODO_AVOCAT E5` | `supabase/migrations/20260719_sec1_purge_sante.sql:119`, `20260719147000_be1_purge_extend.sql:93`, `20260719143000_be1_incident_reports.sql:10`, `supabase/functions/purge-deleted-accounts/index.ts:23` | `incident_reports` : durée de rétention et périmètre exact du gel. L'immuabilité probatoire assurantielle s'oppose au droit à l'effacement RGPD art. 17. Position provisoire : anonymiser (`user_id` → NULL) au lieu de supprimer |
-| `TODO_AVOCAT CGV` | `app/(app2)/reserver/paiement.tsx:152` | Texte des conditions générales de vente + distinction Stripe (journées, service physique) / achat in-app (abonnement 99 €/an, règle Apple) |
-| — | `BILAN_COMPLET_OXV.md:748` | Rétention des décharges D4 + relecture avocat (le flag `pilot_waivers` est OFF) |
-
-**Décisions de schéma (identifiées, chiffrées, non tranchées)**
-
-1. **Rang fondateur** — `founder_applications` n'a pas de colonne de rang, donc « FONDATEUR N° 07 » est impossible sans fabriquer. Affiché « MEMBRE FONDATEUR » sans ordinal (`roadmap/rapports/v2-l4.md:52-56`).
-2. **Véhicule principal** — `garageService` n'a ni `is_primary` ni `setPrimary` ; « EN TÊTE » = le premier créé, non modifiable (`v2-l4.md:57-59`).
-3. **Chaînon séance → journée** — une colonne `telemetry_sessions.day_session_id` vers `public.sessions`. Sans elle, le tableau de marche reste lisible du seul binôme coach, alors qu'il devrait l'être par tout inscrit de la journée. La migration LIVE-B a **refusé de deviner** ce lien (`roadmap/rapports/live-b.md:136-144`).
-4. **Compte de service du téléviseur de paddock** — un écran TV n'est pas un utilisateur authentifié ; il lui faut son propre chemin d'autorisation (`live-b.md:145-146`).
-5. **RIB / QR SEPA coach** — schéma IBAN à trancher (`BILAN_COMPLET_OXV.md:749`).
-6. **DROP des tables `_backup_*`** — 44 lignes avec colonnes PII ; la RLS a été activée en défense, la suppression attend l'accord (`SEC1_PROD_APPLY.md`, « Reste ouvert »).
-
-**Décisions de calage et actions matérielles**
-
-1. **Seuil de fluidité** — reporté au post-piste par décision explicite : il doit émerger des percentiles réels, pas être décrété (`A-FLOW-1_flowService_definition.md` §3). Le document signale aussi une **limite connue non résolue** : `gSustained` est lu sur le |g| mesuré, donc la boucle est partiellement fermée et un pilote brusque bénéficie d'une indulgence mémorisée (§7).
-2. **DSN Sentry** — action fondateur de quelques minutes, sans laquelle le crash-free de L6 est immesurable (`docs/architecture/16_SENTRY_SETUP.md`).
-3. **Secrets CI RLS** — les 85 tests RLS ne s'exécutent pas ; depuis SEC-1 le job échoue franchement au lieu de sauter en silence (`docs/architecture/17_CI_RLS_SETUP.md`).
-4. **Document protocole ceinture Polar** — `OXV_Ceinture_Protocole_Connexion_Biometrie.md` n'a jamais été livré ; le parser dérive de la spec publique Bluetooth SIG et reste à confronter au document (`bio-2.md:105-109`).
-5. **Attribution des premiers numéros de voiture** — geste admin nécessaire avant la prochaine journée circuit (`BILAN_COMPLET_OXV.md`).
-
-### 8. Trois écarts entre l'ordre écrit et l'ordre exécuté
-
-Ils méritent d'être nommés parce qu'ils expliquent la forme actuelle du produit.
-
-Le premier est l'inversion **L0 avant SEC-1 et BE-1**. Elle n'a rien cassé (les trois lots sont livrés le même jour, dans la même fenêtre de quelques heures), mais elle signifie que le kit visuel a été bâti avant que le socle de sécurité et de données ne soit posé.
-
-Le second est **L3 exécuté avant la gate terrain**, sur demande explicite. Conséquence directe et assumée : les six lectures Insight ont été construites puis « de-mockées » à moitié dans la même nuit, et FlowViz reste une démonstration. Le rapport L3 est franc là-dessus : « prod sans ligne d'insight calculée → “données insuffisantes” jusqu'à une séance dense ».
-
-Le troisième est la **levée du drapeau `biometry` avant le smoke test à deux appareils**. Le rapport BIO-2 note que Gabin en a été informé. Le coût s'est matérialisé cinq heures plus tard : les deux fuites de fréquence cardiaque corrigées par `29d5cfd` étaient armées en production pendant cet intervalle, sur une donnée relevant de l'article 9 du RGPD. La note d'atténuation existe et elle est vérifiée : au moment de la levée, zéro consentement de capture, zéro consentement de partage, zéro ligne dans `biometry_raw`.
-
-### 9. Ce que je n'ai pas pu vérifier
-
-**Je n'ai pas exécuté la suite de tests.** Le chiffre de 1 846 tests verts provient du message de commit `29d5cfd` et du document `docs/ETAT_APP_2026-07-26.md` ; je l'ai lu, pas mesuré. J'ai en revanche vérifié par comptage direct les 824 fichiers TypeScript de `app/` + `src/`, les 158 fichiers de tests et les 125 migrations. Je note au passage une **incohérence entre deux rapports** : `v2-l3.md` annonce 1 741 tests le 19/07, tandis que `bio-2.md` en annonce 1 721 le 25/07 — un chiffre en baisse que ni l'un ni l'autre n'explique.
-
-**Je n'ai pas interrogé la base de production.** L'état des drapeaux (`biometry` ON, six autres OFF), la localisation `eu-west-1`, l'existence des crons (jobid 9 purge RGPD, jobid 11 rétention biométrie) et l'application effective des migrations SEC-1, C1, BE-1, L5-B et LIVE-B sont tous rapportés par les documents du dépôt (`13_BE1_ETAT.md`, `SEC1_PROD_APPLY.md`, les rapports de lot). Je ne les ai pas recontrôlés auprès de Supabase.
-
-**Je n'ai pas vérifié l'état des builds EAS.** L'affirmation « six builds attendent un verdict sur device » vient de `docs/ETAT_APP_2026-07-26.md` §7 ; je n'ai aucun moyen de la confirmer depuis le dépôt. De même, la numérotation « build 23 » utilisée dans les commits du 16-17 juillet n'est reliée à aucun artefact vérifiable ici.
-
-**Je n'ai pas ouvert les 51 rapports PR individuellement.** J'ai lu leur liste complète, `m1-closeout.md`, `verification-tail-pr44-49-54-55-65b.md` et les messages de commit correspondants ; le détail écran par écran de la phase 5 repose donc sur les titres de commits et non sur la lecture intégrale de chaque rapport.
-
-**Je n'ai pas ouvert les 16 rapports « semaine ».** La chronologie de la phase 1 est reconstituée depuis les seuls messages de commits, qui portent les numéros de semaine.
-
-**Je n'ai pas retrouvé de trace des lots M2, M4 et M5.** Ni rapport, ni commit portant leur nom. J'ai vérifié leur non-réalisation par un signe indirect et solide pour M4 (la table `events` est toujours interrogée par `src/services/eventsService.ts`, y compris depuis deux écrans V2), mais je n'ai pas vérifié l'état des buckets `coach-media` et `partner-media` en production pour M5.
-
-**Les 26 constats restants de l'audit coach du 26/07 ne sont documentés nulle part** dans le dépôt en dehors du message de commit de `29d5cfd`. Je ne peux ni les lister, ni les qualifier, ni dire lesquels touchent quels écrans.
+| `users_update_own_or_admin` | UPDATE | `authenticated` | `(id = auth.uid()) OR is_admin()` |
+
+**b) Le rôle `authenticated` détient le droit `UPDATE` sur la colonne
+`is_admin`.** Relevé dans `information_schema.column_privileges` : `is_admin`,
+`role` et `kyc_status` sont toutes trois en `INSERT, UPDATE, SELECT` pour
+`authenticated`.
+
+**c) Le déclencheur de garde ne couvre pas `is_admin`.**
+
+```sql
+CREATE TRIGGER trg_guard_users_privileged_columns
+  BEFORE UPDATE OF role, kyc_status ON public.users
+  FOR EACH ROW EXECUTE FUNCTION guard_users_privileged_columns()
+```
+
+Et le corps de la fonction ne teste que `new.role is distinct from old.role or
+new.kyc_status is distinct from old.kyc_status`.
+
+Mis bout à bout : un `UPDATE public.users SET is_admin = true WHERE id =
+auth.uid()` passerait la policy (c'est bien sa propre ligne), passerait le
+droit de colonne, et ne réveillerait pas le déclencheur — qui ne se déclenche
+que sur `role` ou `kyc_status`. Le compte deviendrait ensuite administrateur au
+sens de `is_admin()`, donc de toutes les policies qui s'y appuient, et l'espace
+`(admin)` de l'application s'ouvrirait à lui.
+
+Il existe par ailleurs un déclencheur d'audit — `trg_audit_user_role_change` —
+mais il ne journalise que les changements de `role`. Un passage en `is_admin`
+ne laisserait **aucune trace** dans `admin_audit`.
+
+Le déclencheur protège donc `role` correctement, et laisse `is_admin` ouvert
+alors que les deux ouvrent exactement la même porte. Correctif de forme :
+ajouter `is_admin` à la liste `BEFORE UPDATE OF …` **et** à la condition
+interne, ou retirer le droit `UPDATE` sur cette colonne à `authenticated`.
+
+#### La question qui reste à trancher
+
+Lequel de `role` et de `is_admin` fait autorité, et pour qui ? Le site partage
+la même table. La question est déjà posée au site, sans réponse à ce jour :
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/docs/architecture/09_HANDOFF_SITE_BASE_PARTAGEE.md:148-152`
+et `:203`.
 
 ---
 
-## Connexion, réseau et transport
+### Les tables réellement présentes
 
-Cette section décrit tout ce qui relie l'application au monde extérieur : le compte du pilote, la base de données, le direct, le boîtier Bluetooth, la survie hors-ligne et les fournisseurs tiers. Chaque affirmation a été vérifiée en ouvrant le fichier cité ; les chemins sont donnés pour que vous puissiez retourner à la source.
+#### Le décompte
 
-### Vue d'ensemble : sept canaux, et rien d'autre
+`public` contient **130 tables de base** et **14 vues**. Sur les 130, cinq sont
+des sauvegardes datées (`_backup_*_20260719`) : il reste **125 tables de
+travail**.
 
-L'application ne parle qu'à sept interlocuteurs. Il n'existe aucun autre point de sortie réseau dans le code (recherche exhaustive des appels `fetch(` et des URL littérales dans `src/` et `app/`).
+`auth` en compte 23 (gérées par Supabase), `storage` 8.
 
-| Canal | Interlocuteur | Rôle | Fichier d'entrée |
+#### Ce que portent réellement les tables principales
+
+Comptages exacts (`select count(*)`), 26 juillet 2026. C'est ce qui décide de ce
+que le fondateur peut essayer aujourd'hui, et de ce qu'il ne peut pas.
+
+| Table | Lignes | Ce que cela veut dire |
+|---|---|---|
+| `users` | 14 | 12 connectables, 2 orphelines |
+| `telemetry_sessions` | 18 | voir ci-dessous |
+| `telemetry_frames` | 53 | pour **une seule** session |
+| `laps` | 1 | aucun tour réellement détecté |
+| `app_session_analyses` | 13 | la lecture après séance |
+| `app_segment_analyses` | **0** | aucune analyse virage par virage |
+| `session_insights` | 1 | |
+| `session_intentions` | **0** | l'intention avant séance n'a jamais servi |
+| `biometry_raw` | **0** | aucune fréquence cardiaque enregistrée |
+| `circuits` | 4 | |
+| `vehicles` | 6 | |
+| `devices` | **0** | aucun boîtier déclaré |
+| `device_assignments` | **0** | |
+| `weather_snapshots` | **0** | aucune météo archivée |
+| `coach_profiles` | 1 | |
+| `coach_pilots` | 1 | |
+| `coach_annotations` | **0** | aucune note de coach |
+| `sessions` (calendrier du site) | 1 | |
+| `registrations` | 1 | |
+| `events` | 1 | |
+| `documents` | 9 | |
+| `eligibility_items` | 9 | |
+| `pricing` | 9 | |
+| `payments` | 1 | |
+| `app_pairing_codes` | **0** | |
+| `app_progression_shares` | 1 | |
+| `admin_audit` | 59 | |
+| `email_log` | 16 | |
+| `resend_events` | 49 | |
+
+**Plus de 80 tables sur 125 sont vides.** Le schéma décrit un produit bien plus
+large que ce qui a jamais tourné.
+
+#### Le point qui compte le plus : aucune vraie séance en piste
+
+Les 18 lignes de `telemetry_sessions` se répartissent ainsi :
+
+- **10 sessions « completed »**, toutes du 16 et 17 mai 2026, avec des vitesses
+  maximales de **0,30 à 8,49 km/h**, des distances de 0,01 à 0,05 km, et
+  `lap_count = 0` (sauf une à 1). Ce sont des essais à pied ou à l'arrêt.
+  Elles portent un `total_frames` non nul (93 à 1 206) mais **aucune ligne
+  correspondante dans `telemetry_frames`** : les trames ont été supprimées ou
+  n'ont jamais été écrites.
+- **8 sessions « aborted »**, de juin et juillet 2026, avec
+  `total_frames = 0`, aucune vitesse, aucun tour. Trois d'entre elles portent
+  un `raw_data_url` (fichier brut déposé), les autres non.
+- Une seule session porte réellement des trames : `7f40d5ad-…` du 28 juin,
+  **53 trames**, pour 5 secondes — et elle est marquée `aborted`.
+
+Aucune session ne dépasse la marche. Aucun tour complet n'a jamais été bouclé
+et enregistré. `laps` porte une ligne unique. La chaîne capture → analyse →
+bilan n'a jamais été exercée sur des données de piste.
+
+Les 13 analyses de `app_session_analyses` confirment : `margin_global` vaut 60,
+62, 99,6 ou 100 selon les lignes, `margin_zone` vaut `green` partout, `qdi` est
+`null` partout. Douze ont été produites en lot le 25 mai à 21h55 par le cron
+(`algo_version = 'cron-v1.0'`), la dernière le **2 juillet**. Il ne s'est rien
+produit depuis — voir la section sur les tâches planifiées, qui explique
+pourquoi.
+
+#### Les circuits
+
+| Circuit | Officiel | Ligne d'arrivée | Tracé SVG | Ligne centrale | Virages détectés | Statut |
+|---|---|---|---|---|---|---|
+| Haute Saintonge | oui | oui | **oui** | oui | **oui** (`corners-v1`) | approuvé |
+| Charente | oui | oui | non | oui | non | approuvé |
+| Circuit Ricardo Tormo | oui | oui | non | oui | **non** | privé |
+| La charade | non (perso) | oui | non | non | non | privé |
+
+Seul **Haute Saintonge** est complet. Le circuit de Valence (Ricardo Tormo)
+a sa ligne d'arrivée et sa ligne centrale, mais **aucun virage détecté** et un
+statut `private` : tout écran qui suppose des virages y sera vide.
+`total_sessions` vaut 0 sur les quatre.
+
+#### Les tables de sauvegarde
+
+Cinq tables `_backup_*_20260719`, créées lors des travaux de sécurité du
+19 juillet, portant sur des données du site : `payments` (2 lignes),
+`registrations` (5), `sessions` (44), `session_feedback` (0), `weather` (14).
+
+Quatre des cinq ont **RLS désactivé**. C'est moins grave qu'il n'y paraît :
+j'ai vérifié qu'**aucune de ces tables n'accorde de droit à `anon` ou à
+`authenticated`** (`information_schema.role_table_grants` renvoie zéro ligne
+pour ce filtre). Elles ne sont donc pas exposées par l'API. Seul le
+`service_role` les atteint.
+
+Cela reste de la donnée personnelle recopiée **hors du dispositif de purge** :
+la fonction `purge_user_data` ne les connaît pas. Un pilote qui exercerait son
+droit à l'effacement resterait présent dans `_backup_registrations_20260719`.
+Le dépôt de l'application refuse de les supprimer parce qu'elles paraissent
+relever du site (`09_HANDOFF_SITE_BASE_PARTAGEE.md:192-198`). La décision est
+en attente, et elle est datée du 19 juillet.
+
+---
+
+### Les policies RLS qui comptent
+
+#### Le principe, et sa fragilité
+
+**Toutes les tables de travail ont RLS activé** (vérifié sur `pg_class`, 125
+sur 125). Aucune n'a `FORCE ROW LEVEL SECURITY`, ce qui est normal.
+
+Mais il faut comprendre sur quoi cela repose. Le rôle `anon` — celui que porte
+la clé publique de l'application avant connexion — détient des droits
+`SELECT, INSERT, UPDATE, DELETE` sur **presque toutes les tables de `public`**.
+Sur `users`, `payments` et `registrations`, il n'a que `SELECT`. Sur les autres,
+il a tout.
+
+**RLS est donc la seule et unique barrière.** Une table à laquelle on
+ajouterait une policy trop large, ou dont on désactiverait RLS par mégarde,
+deviendrait immédiatement lisible — voire modifiable — par n'importe qui
+possédant la clé publique de l'application, qui est par nature distribuée avec
+le binaire.
+
+Ce n'est pas une faille en soi : c'est le modèle Supabase par défaut. Mais cela
+veut dire que la revue des policies n'est pas un détail d'hygiène — c'est la
+sécurité du produit.
+
+#### `users`
+
+Quatre policies, toutes sur `authenticated` :
+
+| Policy | Commande | Condition |
+|---|---|---|
+| `users_select_own_or_admin` | SELECT | `(id = auth.uid()) OR is_admin()` |
+| `users_insert_own_or_admin` | INSERT | `(id = auth.uid()) OR is_admin()` |
+| `users_update_own_or_admin` | UPDATE | `(id = auth.uid()) OR is_admin()` |
+| `users_delete_admin_only` | DELETE | `is_admin()` |
+
+Aucune n'est ouverte à `anon` : le droit `SELECT` que `anon` détient sur la
+table ne donne rien, faute de policy qui le vise. C'est correct.
+
+Le défaut est ailleurs, et il est décrit plus haut : **aucune restriction de
+colonne** en écriture.
+
+#### `telemetry_sessions` — sept policies
+
+| Policy | Commande | Condition |
+|---|---|---|
+| `Users can view own sessions` | SELECT | `auth.uid() = user_id` |
+| `Users can insert own sessions` | INSERT | `auth.uid() = user_id` |
+| `Users can update own sessions` | UPDATE | `auth.uid() = user_id` |
+| `Users can delete own sessions` | DELETE | `auth.uid() = user_id` |
+| `telemetry_sessions_coach_select` | SELECT | `is_coach_of(user_id)` |
+| `telemetry_sessions_select_friend` | SELECT | `are_friends(auth.uid(), user_id)` |
+| `telemetry_sessions_admin_all` | ALL | `is_admin()` |
+
+Le pilote est propriétaire de sa donnée. Le coach lit s'il est lié **et
+consenti**. Un ami lit si l'amitié est acceptée des deux côtés. L'administrateur
+lit tout.
+
+#### `telemetry_frames` — six policies
+
+Même architecture, en passant par la session : chaque condition est de la forme
+`session_id IN (SELECT id FROM telemetry_sessions WHERE …)`. Une différence
+notable :
+
+| Policy | Condition |
+|---|---|
+| `telemetry_frames_coach_select` | `is_detailed_coach_of(…)` |
+
+C'est `is_detailed_coach_of`, pas `is_coach_of`. La donnée brute exige un
+consentement de niveau `lecture_detaillee` ou `programme`. Le niveau
+`lecture_simple` ne donne accès qu'aux sessions et aux bilans. C'est la
+traduction en SQL des trois niveaux décrits dans
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/services/pilotConsentService.ts:24-40`.
+Le découpage est propre.
+
+#### `app_session_analyses` et `app_segment_analyses` — six policies chacune
+
+Même schéma : propriétaire, coach, ami, admin. Avec la même distinction de
+finesse : `app_session_analyses` accepte `is_coach_of` (le bilan),
+`app_segment_analyses` exige `is_detailed_coach_of` (le virage par virage).
+
+À noter : la suppression est **réservée à l'administrateur**
+(`app_session_analyses_delete_admin_only`). Un pilote peut effacer sa session
+brute mais pas son analyse. C'est un point à vérifier au regard du droit à
+l'effacement — en pratique la purge RGPD passe par `service_role` et ne s'y
+heurte pas.
+
+#### `biometry_raw` — la table la plus sensible
+
+Deux policies seulement :
+
+| Policy | Commande | Condition |
+|---|---|---|
+| `biometry_own_all` | ALL | `auth.uid() = user_id` |
+| `biometry_coach_read` | SELECT | `is_detailed_coach_of(user_id)` **ET** `users.biometry_coach_share_consent_at IS NOT NULL` |
+
+La lecture par le coach exige **deux** conditions cumulées : un lien de coaching
+détaillé, et un consentement explicite au partage biométrique. C'est le
+verrouillage le plus strict de la base, et il est justifié : la fréquence
+cardiaque est une donnée de santé au sens du RGPD.
+
+La table porte **0 ligne**, et les deux colonnes de consentement
+(`biometry_capture_consent_at`, `biometry_coach_share_consent_at`) sont
+**nulles pour les 14 comptes**. Personne n'a jamais consenti, rien n'a jamais
+été capturé.
+
+#### Les fonctions d'aide
+
+Cinq fonctions, toutes `SECURITY DEFINER` avec `search_path` fixé — la bonne
+pratique est respectée :
+
+| Fonction | Ce qu'elle vérifie |
+|---|---|
+| `is_admin()` | `role = 'admin'` **ou** `is_admin = true` |
+| `is_coach()` | `role = 'coach'` |
+| `is_partner()` | `role = 'partner'` |
+| `is_coach_of(pilot)` | `coach_pilots` : lien actif **et** `pilot_consent_at` non nul |
+| `is_detailed_coach_of(pilot)` | idem **et** `level IN ('lecture_detaillee','programme')` |
+| `is_my_coach(coach)` | la réciproque, vue du pilote |
+| `are_friends(a,b)` | `pilot_friendships` en ordre canonique, `status = 'accepted'` |
+
+`are_friends` normalise la paire par `LEAST`/`GREATEST` avant de chercher, ce
+qui évite le classique doublon symétrique. `pilot_friendships` porte **0 ligne**
+— la comparaison entre amis n'a jamais servi.
+
+#### Ce qui est réellement ouvert au public
+
+Trois policies portent `USING (true)` ou équivalent, sur le rôle `public`
+(qui inclut `anon`) :
+
+| Table | Policy | Portée |
+|---|---|---|
+| `app_config` | `app_config_read_all` | `true` — tout le monde |
+| `app_feature_flags` | `app_feature_flags_read` | `true` — tout le monde |
+| `app_settings` | `app_settings_read_authenticated` | `auth.uid() IS NOT NULL` |
+
+Les deux premières sont lisibles **sans être connecté**. Le contenu n'est pas
+sensible (un booléen de maintenance, sept drapeaux). Mais cela expose la
+feuille de route : n'importe qui peut lire que `app_payments` existe et est
+éteint, ou lire la description du drapeau `biometry`, qui mentionne en clair
+une décision du fondateur et un test non tenu.
+
+**Une policy mérite un examen.** Sur `events` :
+
+```
+events_select_private   SELECT   {public}   USING (status = 'private')
+```
+
+Une policy nommée « private » qui rend lisibles à **tout le monde, y compris
+non connecté**, exactement les événements marqués privés. La table `events`
+porte les colonnes `location_address` et `internal_notes`. Il y a une ligne en
+base, `status = 'private'`, nommée « Balade Découverte OXV — 5 juillet 2026 ».
+Je n'ai pas exécuté de requête anonyme pour le confirmer de bout en bout —
+c'est une lecture du texte de la policy. Si l'intention était « visible par les
+membres », la condition devrait au minimum porter `auth.uid() IS NOT NULL`.
+
+Dans le même registre, `partner_accounts_select` autorise
+`status = 'validated'` sans condition d'authentification, et
+`coach_profiles_read_published` ouvre les fiches publiées. Les deux sont
+probablement voulus (vitrine), mais méritent d'être confirmés comme tels.
+
+#### Les tables sans aucune policy
+
+Trois tables ont RLS activé et **zéro policy** : `founding_members`,
+`invoice_counters`, `app_pairing_redeem_attempts`, plus la sauvegarde
+`_backup_sessions_20260719`. En PostgreSQL, RLS activé sans policy = refus
+total pour tout le monde sauf `service_role`. C'est un verrouillage complet,
+volontaire ou non, mais sûr.
+
+---
+
+### Les fonctions edge déployées
+
+**34 fonctions sont actives en production.** Le dépôt en contient 32 sous
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/functions/`.
+
+#### Les 34, par famille
+
+**Analyse et calcul** — `compute-session-insights` (`verify_jwt: true`),
+`compute-session-insights-v3` (`true`), `detect-circuit-corners` (`true`),
+`cron-analyze-pending-sessions` (`false`), `generate-debrief-ai` (`true`),
+`coach-ai-draft` (`true`), `coach-ai-validate` (`true`).
+
+**Notifications pilote et coach** — `notify-pilot-coach-assigned` (`true`),
+`notify-coach-consent-received` (`true`), `notify-pilot-coach-annotated`
+(`false`), `notify-coach-session-analyzed` (`false`),
+`notify-pilot-friend-request` (`false`), `notify-pilot-friend-accepted`
+(`false`), `notify-admin-lead` (`false`).
+
+**Cycle commercial et administratif (côté site)** — `validate-inscription`
+(`true`), `admin-review-inscription` (`true`), `send-booking-confirmation`
+(`false`), `send-payment-confirmed` (`false`), `send-document-status` (`false`),
+`send-contact-ack` (`false`), `send-application-ack` (`false`),
+`send-coach-invitation` (`true`), `generate-invoice` (`false`),
+`newsletter-push` (`false`), `resend_webhook` (`false`).
+
+**Rituels et rappels** — `ritual_dispatcher` (`false`), `ritual_dryrun`
+(`true`), `eligibility-reminders` (`false`), `feedback-request` (`false`).
+
+**Divers** — `geocode` (`true`), `pair-app` (`false`),
+`purge-deleted-accounts` (`false`).
+
+**Sans propriétaire identifié** — `capture-membre-fondateur` (`false`),
+`yousign-webhook` (`false`).
+
+#### Deux fonctions non authentifiées et sans source connue
+
+`capture-membre-fondateur` (version 7) et `yousign-webhook` (version 6) ont été
+déployées le **24 juillet 2026**. Elles n'existent dans aucun fichier du dépôt
+de l'application. Toutes deux acceptent les requêtes **sans vérification de
+jeton**.
+
+Pour un webhook, `verify_jwt: false` est normal — à condition que la fonction
+vérifie elle-même une signature. **Je ne peux pas le vérifier** : leur source
+n'est pas dans ce dépôt, et je n'ai pas lu leur code déployé.
+
+`yousign-webhook` touche la signature électronique, donc les décharges de
+responsabilité des pilotes (`pilot_waiver_signatures`, 0 ligne, drapeau
+`pilot_waivers` éteint). C'est un sujet juridique. La demande est déjà formulée
+au site : `09_HANDOFF_SITE_BASE_PARTAGEE.md:170-184`. Elle est sans réponse.
+
+Deux points d'entrée non authentifiés sans propriétaire identifié, c'est une
+question ouverte en production.
+
+#### Un écart entre le dépôt et la production
+
+Le fichier
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/functions/purge-deleted-accounts/index.ts`
+porte en tête, lignes 4-7 :
+
+> « /!\ VERSION 5 (SEC-1) — PRÉPARÉE, NON DÉPLOYÉE — approbation fondateur
+> requise. […] AUCUN cron ne l'invoque (constat du 19/07/2026 […]) »
+
+J'ai lu le code **réellement déployé**. Il porte en tête :
+
+> « VERSION 5 (SEC-1) — déployée le 19/07/2026 après approbation fondateur. »
+
+Le corps des deux versions est identique. Le fichier du dépôt est donc à jour
+sur le fond et **périmé sur son propre en-tête** : la v5 est bien en
+production (version 10 de la fonction, `verify_jwt: false`), la fonction SQL
+`public.purge_user_data(p_user uuid)` **existe** en base, et la tâche planifiée
+`purge-deleted-accounts-daily` **existe et tourne**.
+
+Ce n'est pas un défaut technique, c'est un défaut de vérité : le dépôt affirme
+qu'une chose n'est pas déployée alors qu'elle l'est depuis une semaine. Deux
+lignes de commentaire à corriger.
+
+---
+
+### Les tâches planifiées
+
+`pg_cron` 1.6.4 et `pg_net` 0.20.0 sont installés. **Huit tâches, toutes
+actives.**
+
+| # | Nom | Cadence | Cible |
 |---|---|---|---|
-| Base de données, authentification, fichiers, direct | Supabase | Cœur du produit | `src/lib/supabase.ts` |
-| Radio courte portée | RaceBox Mini S, ceinture Polar | Télémétrie et cardio | `src/ble/bluetoothService.ts` |
-| Météo | Open-Meteo | Conditions du roulage | `src/services/weatherService.ts` |
-| Itinéraires sinueux | GraphHopper (ou Kurviger) | Écran « Belle route » | `src/services/routing/scenicRouteService.ts` |
-| Points de vue | Overpass / OpenStreetMap | Waypoints remarquables et tracés de circuit | `src/services/routing/scenicPoiService.ts`, `src/circuit/circuitGenerator.ts` |
-| Mesure d'audience | Plausible | Comptage anonyme | `src/services/analyticsService.ts` |
-| Remontée d'erreurs et notifications | Sentry, Expo Push | Diagnostic et rappels | `src/lib/sentry.ts`, `src/services/pushNotificationsService.ts` |
+| 4 | `analyze-pending-sessions` | toutes les heures, à `:00` | edge `cron-analyze-pending-sessions` |
+| 5 | `compute-insights-hourly` | toutes les heures, à `:30` | edge `compute-session-insights` |
+| 6 | `cleanup-telemetry-frames` | 03h30 chaque jour | SQL `cleanup_old_telemetry_frames()` |
+| 7 | `oxv-eligibility-reminders` | 06h00 chaque jour | edge `eligibility-reminders` |
+| 8 | `oxv-feedback-requests` | 07h00 chaque jour | edge `feedback-request` |
+| 9 | `purge-deleted-accounts-daily` | 02h30 chaque jour | edge `purge-deleted-accounts` |
+| 10 | `ritual_dispatcher_hourly` | 16h à 19h, chaque heure | edge `ritual_dispatcher` |
+| 11 | `biometry-retention-daily` | 03h15 chaque jour | SQL `purge_old_biometry()` |
+
+Les secrets d'invocation sont lus dans Vault, soit directement
+(`vault.decrypted_secrets`), soit par la fonction `public.oxv_get_secret()`.
+Cette dernière avale toutes les exceptions et renvoie `NULL` en cas d'échec :
+si Vault devenait indisponible, les tâches partiraient **sans en-tête
+d'authentification** au lieu d'échouer bruyamment. C'est un choix documenté
+dans le corps de la fonction, mais qui transforme une panne en silence.
+
+#### Historique d'exécution
+
+| Tâche | Exécutions | « succeeded » | Première | Dernière |
+|---|---|---|---|---|
+| `analyze-pending-sessions` | 1 467 | 1 467 | 25/05 | 26/07 00:00 |
+| `compute-insights-hourly` | 1 013 | 1 013 | 13/06 | 26/07 00:30 |
+| `cleanup-telemetry-frames` | 27 | 27 | 29/06 | 25/07 |
+| `oxv-eligibility-reminders` | 22 | 22 | 04/07 | 25/07 |
+| `oxv-feedback-requests` | 22 | 22 | 04/07 | 25/07 |
+| `purge-deleted-accounts-daily` | 7 | 7 | 19/07 | 25/07 |
+| `ritual_dispatcher_hourly` | 28 | 28 | 19/07 | 25/07 |
+| `biometry-retention-daily` | 7 | 7 | 19/07 | 25/07 |
+
+**Attention à ce que « succeeded » signifie.** `cron.job_run_details` rapporte
+le succès de l'**instruction SQL**, c'est-à-dire de la mise en file de la
+requête HTTP par `pg_net`. Il ne dit **rien** de ce que la fonction edge a
+répondu. Une tâche peut afficher 1 013 succès d'affilée en n'ayant jamais rien
+accompli.
+
+#### Une tâche est en échec silencieux
+
+C'est le cas ici, et c'est mesurable. La table `net._http_response` conserve les
+réponses HTTP réelles sur une fenêtre courte. Sur les treize dernières
+enregistrées :
+
+- les sept appels de **`:00`** (`cron-analyze-pending-sessions`) répondent
+  **200**, avec le corps `{"ok":true,"processed":0,"successful":0,"failed":0,"results":[]}` ;
+- les six appels de **`:30`** (`compute-session-insights`) répondent **401**,
+  avec le corps `{"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}`.
+
+La cause est identifiable dans les deux artefacts :
+
+1. `compute-session-insights` est déployée avec **`verify_jwt: true`**. C'est
+   assumé par son propre code :
+   `C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/functions/compute-session-insights/index.ts:20`
+   > « Sécurité : verify_jwt = true (déclenché par l'app authentifiée, après l'analyse). »
+2. La tâche planifiée n° 5 envoie un en-tête `X-Cron-Token` et **aucun
+   `Authorization`**. La passerelle Supabase rejette donc l'appel **avant** que
+   le code de la fonction ne s'exécute.
+
+Il y a un second désaccord, indépendant du premier : la tâche envoie
+`{"all_pending": true}`, alors que la fonction attend `{ sessionId }` et
+répond 400 si celui-ci manque (`index.ts:42-45`). Même authentifiée, elle
+n'aurait rien fait.
+
+**Conséquence concrète** : `compute-session-insights` n'a **jamais rien
+calculé par ce chemin**, à chaque demi-heure, depuis le 13 juin — soit environ
+1 000 appels. `session_insights` porte **1 ligne**.
+
+C'est une panne qui ne se voit nulle part : la tâche est verte, le tableau de
+bord ne dit rien, et personne n'a d'alerte.
+
+Quant à la tâche de `:00`, elle répond bien 200 mais traite `processed: 0` —
+il n'y a plus de session en attente d'analyse. La dernière analyse produite
+date du **2 juillet**.
+
+#### Ce que je n'ai pas pu vérifier sur les autres tâches
+
+`net._http_response` ne conserve que quelques heures. Je n'ai **pas** de trace
+HTTP pour les cinq tâches quotidiennes (`purge-deleted-accounts`,
+`eligibility-reminders`, `feedback-request`, `ritual_dispatcher`) qui tournent
+la nuit ou en fin d'après-midi. Elles visent des fonctions en
+`verify_jwt: false`, donc l'obstacle qui bloque `compute-session-insights` ne
+les concerne pas ; mais leur réponse effective n'est pas vérifiée. Les deux
+tâches purement SQL (`cleanup-telemetry-frames`, `biometry-retention-daily`)
+n'ont pas ce problème : elles s'exécutent dans la base.
 
 ---
 
-### 1. L'authentification
+### Les drapeaux fonctionnels
 
 #### Le mécanisme
 
-Il n'y a qu'un seul mécanisme de connexion réellement fonctionnel : **email et mot de passe**, contre Supabase Auth. L'écran est `app/(auth)/login.tsx` ; il appelle `signIn` du magasin `src/store/useAuthStore.ts`, qui appelle `supabase.auth.signInWithPassword`. Il n'y a ni écran d'inscription, ni mot de passe oublié dans `app/(auth)/` : le dossier ne contient que trois fichiers, `_layout.tsx`, `login.tsx` et `lier.tsx`. Un compte se crée donc ailleurs — sur le site — et l'application se contente de s'y connecter.
+Table `public.app_feature_flags`, quatre colonnes utiles : `key`, `enabled`,
+`value` (jsonb, pour des versions d'algorithme), `description`.
 
-Le second chemin est l'**appairage par code du site** (`app/(auth)/lier.tsx`, service `src/services/pairingService.ts`). Le pilote génère un code court de huit caractères sur oxvehicle.fr, le saisit dans l'application ; celle-ci le poste à la fonction serveur `pair-app`, qui le consomme et renvoie un `token_hash` ; l'application échange ce jeton contre une session via `supabase.auth.verifyOtp({ type: 'magiclink' })`. Le code est valable dix minutes et le serveur limite à dix tentatives par minute et par adresse IP (indiqué dans l'en-tête du service ; je n'ai pas ouvert le code de la fonction serveur pour le confirmer). Un lien profond `oxv://lier?code=XXXXXXXX` pré-remplit le champ, ce qui permet au site de proposer un bouton « Ouvrir dans l'app ». Le schéma `oxv` est bien déclaré dans `app.json` ligne 8.
+Lecture par `C:/Users/Julie/OneDrive/Desktop/oxv-app/src/services/featureFlagsService.ts:42-50` :
 
-#### Sign in with Apple : déclaré, jamais écrit
+```ts
+export async function isFlagEnabled(key: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('app_feature_flags').select('enabled').eq('key', key).maybeSingle();
+  if (error || !data) return false;
+  return Boolean((data as Record<string, unknown>).enabled);
+}
+```
 
-C'est un point important et net. Le paquet `expo-apple-authentication` est installé (`package.json` ligne 48), le module est déclaré comme plugin Expo (`app.json` ligne 74) et l'option `usesAppleSignIn: true` est posée pour iOS (`app.json` ligne 19). **Mais aucune ligne de code de l'application ne l'utilise.** Une recherche sur tout le dépôt de `AppleAuthentication`, `signInWithIdToken` et `signInWithOAuth` ne remonte que : des copies dans `.claude/worktrees/`, la ligne de `package.json`, et une note de `docs/architecture/07_CODE_V1_RECUPERE.md` qui dit « peut être V1.1 ». Autrement dit, la plomberie native est prête, le bouton n'existe pas. C'est un sujet à connaître : Apple exige Sign in with Apple dès qu'une application propose une connexion par un tiers ; ici il n'y en a pas, donc l'exigence ne s'applique probablement pas, mais la déclaration `usesAppleSignIn` sans implémentation peut interroger un examinateur.
+**La fonction est verrouillée par défaut** : une erreur réseau, une clé absente,
+une RLS qui refuse — tout renvoie `false`. Une fonctionnalité ne peut jamais
+s'ouvrir par accident. C'est le bon sens du paramètre.
 
-#### Où vivent les jetons
+L'écriture est réservée par RLS à `is_admin()`.
 
-Les jetons de session sont stockés dans **`expo-secure-store`**, c'est-à-dire le trousseau chiffré de l'appareil (Keychain sur iOS, Keystore sur Android). L'adaptateur est écrit à la main dans `src/lib/supabase.ts` lignes 24-28 et branché sur l'option `storage` du client. Le commentaire d'en-tête de `src/lib/mmkv.ts` explicite la règle : **les jetons ne passent jamais par MMKV**, qui ne contient que du cache de lecture et une file d'écritures non sensibles. Sur iOS, la permission Face ID nécessaire au trousseau est déclarée (`app.json` lignes 104-109).
+#### L'état réel, mesuré en production
 
-#### Ce qui se passe à l'expiration
-
-Le client est configuré avec `autoRefreshToken: true` et `persistSession: true` (`src/lib/supabase.ts` lignes 33-34) : la bibliothèque rafraîchit donc le jeton d'accès en tâche de fond tant qu'elle tourne. Le magasin d'authentification installe un écouteur `supabase.auth.onAuthStateChange` (`src/store/useAuthStore.ts` lignes 94-107) : dès qu'une session nulle arrive — déconnexion, ou rafraîchissement définitivement échoué — l'état bascule sur `unauthenticated`. Les gardes de navigation renvoient alors au login : `app/index.tsx` (ligne « `if (status !== 'authenticated') return <Redirect href="/(auth)/login" />` ») et `app/(app2)/_layout.tsx` lignes 73-75, qui commente explicitement ce cas.
-
-Un détail technique mérite d'être noté, car il est factuel et vérifiable : **il n'y a nulle part d'écouteur `AppState` appelant `supabase.auth.startAutoRefresh()` / `stopAutoRefresh()`**. La recherche de `startAutoRefresh` dans `src/` et `app/` ne renvoie rien ; les seules occurrences d'`AppState` sont le nom du magasin `useAppStateStore`, sans rapport. C'est le motif que Supabase recommande en React Native pour que le rafraîchissement suive les passages en arrière-plan. Je décris, je ne juge pas : le rafraîchissement repose ici uniquement sur la minuterie interne de la bibliothèque.
-
-Le cas « échec de l'initialisation » est traité à part et proprement : `app/index.tsx` affiche un écran « Connexion impossible / Vérifiez votre réseau, puis réessayez » avec un bouton qui relance `initialize()`, au lieu de rejeter silencieusement au login.
-
-#### Le profil et les rôles
-
-À chaque authentification, `fetchProfile` (`src/store/useAuthStore.ts` lignes 55-70) lit quatorze colonnes de la table `users` : identité, `role`, `is_admin`, `pilot_level`, et les six horodatages d'acceptation (pacte pilote, pacte coach, CGU, confidentialité) avec leurs versions. Un rôle absent retombe sur `pilot`. Cinq rôles existent : `pilot`, `admin`, `coach`, `partner`, `pro_pilot`. `app/index.tsx` aiguille ensuite vers l'espace correspondant, en passant d'abord par l'onboarding si `isOnboardingComplete` est faux.
-
----
-
-### 2. Le client Supabase
-
-#### Configuration
-
-Un client unique pour toute l'application, créé dans `src/lib/supabase.ts` (42 lignes). Il est **typé** contre `@/types/database.types`, ce qui signifie que les erreurs de nom de colonne sont attrapées à la compilation. Il porte un en-tête d'identification `X-Client-Info: oxv-coach-mobile`, ce qui permet de distinguer le trafic de l'application de celui du site dans les journaux Supabase. `detectSessionInUrl` est désactivé, ce qui est correct pour du mobile.
-
-Le fichier **lève une exception au chargement** si `EXPO_PUBLIC_SUPABASE_URL` ou `EXPO_PUBLIC_SUPABASE_ANON_KEY` manquent, avec un message en français expliquant quoi faire. C'est un choix assumé : l'application ne démarre pas plutôt que de démarrer à moitié. Un fichier `.env` existe bien à la racine (540 octets, daté du 25 juin) ; je ne l'ai pas ouvert, son contenu étant du secret. `.env.example` (7 365 octets) documente vingt-cinq variables, dont beaucoup ne concernent que le serveur.
-
-#### La région d'hébergement : une contradiction dans le dépôt
-
-Le dépôt se contredit sur ce point, et il faut le dire plutôt que trancher à sa place.
-
-| Source | Région annoncée |
-|---|---|
-| `src/lib/supabase.ts` ligne 5 (commentaire) | Frankfurt |
-| `docs/architecture/05_SCHEMA_SUPABASE_ACTUEL.md` ligne 534 | eu-central-1 / Frankfurt |
-| `docs/architecture/03_PARTIE_3_deploiement.md` ligne 678 | Frankfurt |
-| `docs/alpha/GUIDE_PILOTE_ALPHA.md`, `docs/app_store/KIT_APP_STORE_OXV_MIRROR.md` | Frankfurt (texte destiné aux pilotes) |
-| `docs/architecture/14_PURGE_MATRIX.md` ligne 3 (audit du 19/07/2026) | **eu-west-1** |
-| `docs/architecture/15_EDGES_REGISTRY.md` ligne 4 | **eu-west-1** |
-
-Les documents les plus récents (juillet 2026, audits menés en lecture directe sur la production) disent eu-west-1, c'est-à-dire l'Irlande. Les documents anciens et surtout **les textes lus par vos pilotes et par Apple** disent Frankfurt. Les deux régions sont dans l'Union européenne, donc l'engagement RGPD tient dans les deux cas, mais deux documents publics annoncent une ville qui n'est peut-être plus la bonne. Je n'ai pas interrogé la production pour trancher.
-
-#### Les surfaces Supabase utilisées
-
-L'application se sert de cinq surfaces distinctes du même produit.
-
-| Surface | Usage | Ampleur constatée |
-|---|---|---|
-| Base (PostgREST, `from()`) | Toutes les lectures et écritures métier | Omniprésent, dans presque tous les services |
-| Fonctions serveur (`functions.invoke`) | 5 fonctions appelées | `pair-app`, `compute-session-insights`, `generate-debrief-ai`, `cron-analyze-pending-sessions`, `send-coach-invitation`, `coach-ai-draft`, `coach-ai-validate` |
-| Procédures (`rpc`) | 7 points d'appel | `get_shared_progression`, `founders_count`, `oxv_get_my_referral_code`, `oxv_redeem_referral`, `oxv_name_my_crew`, `oxv_my_crew_id`, `coach_ai_consent`, plus une séquence de facturation |
-| Fichiers (Storage) | 5 seaux | `telemetry_raw`, `session-media`, `pilot-media`, `coach-media`, `coach-audio` |
-| Temps réel | Voir section 3 | 3 familles de sujets, plus 2 abonnements aux changements de table |
-
-Le dossier `supabase/functions/` contient **32 fonctions**, dont sept seulement sont appelées depuis l'application. Les vingt-cinq autres sont déclenchées par le site, par des tâches planifiées ou par des webhooks (emails Resend, confirmations de réservation, rappels d'éligibilité, purge des comptes supprimés). Elles font partie du système mais ne passent pas par l'application mobile.
-
-Le dossier `supabase/migrations/` contient **125 fichiers**, ce qui confirme le chiffre du repère.
-
----
-
-### 3. Le temps réel
-
-C'est la partie la plus soignée, et la plus subtile, de la couche réseau. Elle sert le direct coach et le tableau de marche du paddock.
-
-#### Les sujets
-
-Il existe **trois sujets** de temps réel « métier », tous définis en haut de `src/services/liveSessionService.ts` (475 lignes), plus deux abonnements classiques aux changements de table.
-
-| Sujet | Type | Qui émet | Qui écoute | Contenu |
-|---|---|---|---|---|
-| `live:roster:<coachId>` | Présence | Le pilote, une fois par coach consenti | Le coach, uniquement le sien | Prénom, circuit, indicateur « cardio partagé » |
-| `live:session:<sessionId>` | Diffusion | Le pilote propriétaire de la séance | Le ou les coachs du binôme consenti | Trames de pilotage (événement `frame`) et cardio (événement `biometry`) |
-| `live:board:<sessionId>` | Diffusion | Le pilote propriétaire | Audience élargie (écran du paddock) | Pseudo public, numéro de voiture, durées de tour — jamais de santé |
-| `thread:<coachPilotId>` | Changements de table | Postgres | Les deux membres du binôme | Nouveaux messages du fil coach↔pilote (`src/hooks/useCoachThread.ts`) |
-| `relay-consent:<pilotId>` | Changements de table | Postgres | Le pilote en séance | Révocation de consentement en vol (`src/services/liveRelayRunner.ts` lignes 361-382) |
-
-Le choix d'un roster **par coach** plutôt que d'un roster global est explicitement un durcissement de confidentialité daté du 11 juillet 2026 : un coach ne voit que les pilotes qui lui ont consenti le direct, à lui personnellement.
-
-#### L'autorisation, côté serveur
-
-Les trois sujets métier sont ouverts en mode **privé** (`{ config: { private: true } }`), ce qui veut dire que Supabase applique une politique de sécurité au niveau de la ligne sur la table système `realtime.messages`. Deux migrations écrivent ces politiques :
-
-`supabase/migrations/20260711181903_live_realtime_authorization.sql` pose quatre règles. Recevoir le flux d'une séance exige d'être un coach du binôme actif **et** consenti au direct (jointure `telemetry_sessions` × `coach_pilots`, conditions `active` et `live_sharing_at IS NOT NULL`). Émettre exige d'être le pilote propriétaire de la séance. Lire un roster exige que l'identifiant dans le nom du sujet soit le sien. Se déclarer dans un roster exige le consentement au direct chez ce coach précis.
-
-`supabase/migrations/20260725190000_live_board_realtime_authorization.sql` pose deux règles pour le tableau de marche, et son en-tête de 50 lignes est un document en soi. Il énonce que **la règle de contenu — aucune donnée de santé sur ce canal — ne peut pas s'écrire en SQL**, parce que le serveur ne lit pas le corps des messages ; elle est donc applicative et tenue par `stripHealth()` dans `src/services/v2/liveHealthGate.ts`, appliquée deux fois (à l'émission par le relais, et à nouveau par le service lui-même, l'opération étant idempotente). Il énonce aussi une **limite assumée** : le cahier voulait que tout inscrit de la journée puisse lire le tableau, mais aucune colonne ne relie une séance de télémétrie à une journée de roulage. Plutôt que de rapprocher par circuit et date — « une devinette », dit le commentaire — l'audience a été refermée sur le pilote et ses coachs consentis, en attendant une décision de schéma. **Le tableau de marche du paddock n'est donc, aujourd'hui, pas lisible par le paddock.**
-
-#### Pourquoi les canaux sont comptés
-
-Le comptage de références n'est pas une élégance, c'est une correction de bogue documentée. La bibliothèque `supabase-js` **dédoublonne les canaux par sujet** : deux appels à `supabase.channel('live:session:42')` renvoient la même instance. Depuis que le roster du coach lit le cardio pendant que la fiche direct lit les trames, deux consommateurs partagent la même instance. Sans comptage, le premier `removeChannel` arrache le canal à l'autre : fermer la fiche direct tuait le cardio du roster. Pire, le second abonné, branché sur un canal déjà souscrit, ne recevait jamais son événement `SUBSCRIBED` et affichait « hors ligne » sur un flux pourtant vivant.
-
-La solution, appliquée à l'identique aux trois sujets (`ensureRoster`, `ensureSession`, `ensureBoard`) : une carte par identifiant, un compteur `refs`, la diffusion des événements à tous les inscrits, le **rejeu du statut courant** à l'arrivée d'un retardataire, et la libération du canal seulement au départ du dernier. Chaque fonction de désabonnement est en outre **idempotente** (drapeau `released`), parce que sur un sujet compté un double appel décrémenterait deux fois et arracherait le canal aux autres.
-
-Un mécanisme voisin protège le relais côté pilote : `relayGeneration` dans `src/services/liveRelayRunner.ts` (lignes 37-53). Le démarrage du relais est asynchrone et enchaîne plusieurs requêtes avant d'ouvrir le moindre canal ; si la capture s'arrête pendant ces attentes, l'arrêt ne trouve rien à couper et le démarrage en vol ouvrirait ensuite des canaux que personne ne fermerait jamais — y compris le canal du tableau de marche, qui continuerait de diffuser après la séance. Chaque démarrage prend donc un numéro, et tout arrêt l'invalide.
-
-#### Le triple verrou de la biométrie
-
-Le cardio ne part vers un coach que si trois conditions sont vraies **à chaque émission**, revérifiées toutes les deux secondes et non une seule fois au démarrage (`src/services/liveRelayRunner.ts` lignes 296-350) : le drapeau `biometry` est actif en base, le pilote a consenti la capture *et* le partage au coach, et **tous** les coachs à l'écoute sont au niveau « lecture détaillée ». Ce dernier point a été corrigé le 26 juillet après audit : la règle valait auparavant « au moins un coach écoute », ce qui laissait passer la fréquence cardiaque vers un coach en lecture simple. Le commentaire explique que la biométrie voyageant sur le canal de séance partagé, la seule position tenable est le tout ou rien, et que la réponse propre serait un canal par coach — à faire avant d'élargir.
-
-Côté réception, `src/hooks/usePilotLive.ts` **périme** le cardio au bout de dix secondes sans événement : révocation en vol, ceinture décrochée ou réseau tombé effacent l'affichage au lieu de figer la dernière valeur. Même logique dans `src/hooks/useRosterBiometry.ts`, qui réconcilie ses abonnements en delta pour ne pas réinitialiser la plage observée d'un pilote quand un autre arrive.
-
-#### Un point non vérifié
-
-Les deux abonnements aux changements de table (`coach_messages`, `coach_pilots`) exigent que ces tables soient inscrites dans la publication `supabase_realtime`. **Aucune migration du dépôt ne fait cette inscription** (recherche de `ALTER PUBLICATION` dans `supabase/migrations/` : aucun résultat). Soit elle a été faite à la main dans la console Supabase, soit ces deux abonnements ne reçoivent rien. Je n'ai pas pu le déterminer depuis le dépôt.
-
-#### Le simulateur
-
-`startSimulatedStream` (`src/services/liveSessionService.ts` lignes 440-475) émet un flux plausible à environ 3 Hz — chrono qui monte, secteurs, vitesse et forces G crédibles, un virage « à surveiller » de temps en temps — pour développer l'interface coach sans RaceBox ni réseau de circuit.
-
----
-
-### 4. Le Bluetooth
-
-#### Deux chemins strictement séparés
-
-`src/ble/bluetoothService.ts` (833 lignes) porte les deux liaisons radio, mais avec **deux états entièrement disjoints** : device, abonnements, minuterie de reconnexion et drapeau de coupure volontaire sont dupliqués côté RaceBox et côté Polar. L'intention est écrite noir sur blanc lignes 25-31 : « aucun couplage d'échec — la ceinture tombe, la capture télémétrique reste intacte, et réciproquement ». Une double connexion simultanée est assumée.
-
-| | RaceBox Mini S | Ceinture Polar |
-|---|---|---|
-| Service BLE | `6E400001-…` (UART Nordic) | `0000180d-…` (Heart Rate standard) |
-| Caractéristique écoutée | TX `6E400003-…` | Mesure `00002a37-…` |
-| Filtre de scan | Service + préfixe de nom RaceBox | Service + préfixe de nom « Polar » |
-| Décodage | `src/ubx/parser.ts` (trames UBX, resynchronisation) | `src/services/v2/heartRateParser.ts` (fonction pure testée) |
-| Reconnexion | Bornée hors capture, **illimitée** en capture | Toujours bornée |
-
-Une trame cardio tronquée est silencieusement ignorée ; une trame UBX invalide est écartée par le tampon de resynchronisation.
-
-#### La politique de reconnexion
-
-`src/ble/reconnectPolicy.ts` (55 lignes) est du code pur, sans dépendance native, donc testable sans radio. Il expose deux décisions.
-
-Le **délai** suit un retrait géométrique plafonné : 2 s, 4 s, 8 s, 16 s, puis 30 s au maximum, quel que soit le mode. Le plafond existe pour ne pas marteler la radio sur une coupure longue.
-
-L'**abandon** dépend du mode. En mode borné (hors capture), on renonce après cinq tentatives et l'état passe à `lost`. En **mode illimité**, on ne renonce jamais.
-
-#### Le mode illimité pendant la capture
-
-C'est le durcissement « Valence ». `bluetoothService.setUnlimitedReconnect(true)` est appelé à l'armement de la capture (`src/services/captureSessionService.ts` ligne 410) et désarmé aux trois sorties possibles : arrêt normal (ligne 738), abandon (ligne 833), et clôture après interruption prolongée. Pendant la capture, une coupure ne devient donc **jamais** terminale.
-
-Ce que fait l'application pendant le trou, décrit dans `handleReconnect` (lignes 437-470) : la séance passe en statut `interrupted`, les compteurs affichés sont mis en pause — pour ne pas laisser croire qu'on enregistre alors que le boîtier a décroché —, le début du trou est horodaté, et un **timeout long de quinze minutes** est armé. Si le lien revient, on reprend, on annule le timeout, et on trace la durée du trou dans la console. Si quinze minutes passent sans reprise, la séance est clôturée proprement, exactement comme si le pilote l'avait arrêtée. `src/services/captureLinkStatusLogic.ts` traduit ces états en deux messages sobres à l'écran : « LIEN INTERROMPU — Reconnexion au boîtier en cours » et « LIEN PERDU — Votre session a été enregistrée jusqu'ici ».
-
-L'écran est maintenu allumé pendant toute la capture (`expo-keep-awake`, tag `oxv-capture`), parce que la capture tourne au premier plan : `app.json` déclare explicitement `isBackgroundEnabled: false` pour le module BLE (ligne 78). Le commentaire de `captureSessionService.ts` lignes 101-108 assume ce choix et renvoie l'arrière-plan BLE à des droits Apple à demander plus tard.
-
-#### La deuxième couche : le chien de garde
-
-`src/ble/initBle.ts` (198 lignes) branche le service sur les magasins et pose une **seconde** logique de reconnexion, plus ancienne, avec son propre retrait (2, 5, 10, 20 s) et son propre seuil de 30 secondes. Les deux couches sont coordonnées explicitement : quand le service est déjà en train de reconnecter (`isReconnecting()`), le chien de garde se contente de refléter l'état et **ne programme pas un second appel concurrent** (lignes 122-126). Sa vraie valeur ajoutée aujourd'hui est la **modal #25** (`src/components/BleErrorModal.tsx`), qui propose au pilote de réessayer manuellement (`manualReconnect`) ou de continuer sans équipement (`abandonReconnect`, qui oublie le boîtier pour couper toute reconnexion future).
-
-#### Permissions et disponibilité
-
-`src/ble/permissions.ts` demande `BLUETOOTH_SCAN` et `BLUETOOTH_CONNECT` sur Android 12 et plus, `ACCESS_FINE_LOCATION` en dessous, et la permission Bluetooth sur iOS. Les neuf permissions Android et les descriptions iOS sont déclarées dans `app.json` lignes 20-31 et 60-70.
-
-Le module natif est chargé **paresseusement** (`loadBleManagerCtor`, lignes 43-51) : si `react-native-ble-plx` est absent — cas d'Expo Go — le service ne plante pas, il devient inerte et répond « Bluetooth indisponible dans ce runtime ». `app/_layout.tsx` ne l'initialise d'ailleurs pas du tout sous Expo Go (`if (!isExpoGo())`, ligne 51).
-
-#### Le bouton Flic 2 : un mannequin
-
-`src/ble/flic2Service.ts` (88 lignes) est un **stub assumé**. Le commentaire d'en-tête l'explique : la vraie intégration passe par le SDK natif de Flic, pas par du BLE nu, leurs caractéristiques n'étant pas documentées publiquement. Le service expose la bonne API (`scan`, `connect`, `onClick`), mais `scan()` ne trouve jamais rien et seul `simulateClick()` déclenche un événement. Le marquage manuel par bouton physique n'existe donc pas aujourd'hui.
-
----
-
-### 5. Le hors-ligne
-
-Le hors-ligne n'est pas un mode dégradé ici, c'est le mode de référence : le circuit est un endroit sans réseau.
-
-#### La détection
-
-`src/lib/netinfo.ts` (63 lignes) branche un écouteur unique au démarrage — pas un hook React, pour éviter les contextes multiples. Il considère qu'on est en ligne si `isConnected` est vrai **et** que `isInternetReachable` n'est pas explicitement faux. Il alimente la condition `network` du magasin d'état et la bannière hors-ligne. Surtout, **au retour du réseau après une coupure**, il déclenche les deux files : `flushQueue()` pour les petites actions et `processQueue()` pour la capture. Une lecture initiale est faite au démarrage, au cas où l'application se lance déjà hors ligne.
-
-#### La file de capture : des fichiers, pas de la mémoire
-
-`src/services/captureSyncQueue.ts` (1 234 lignes) est la pièce centrale. Contrairement à la file MMKV, elle persiste **une opération par fichier JSON** dans `capture-queue/` sous le répertoire documents — parce qu'une séance produit des dizaines de milliers de trames, plusieurs mégaoctets.
-
-L'ordre est un FIFO strict garanti par le nom de fichier : `horodatage(15)-séquence(6)-type.json`. L'horodatage est rendu monotone dans un même lancement, la séquence casse les ex æquo, et le tri lexicographique des noms reproduit exactement l'ordre d'insertion. Au relancement de l'application, les opérations d'un lancement précédent portent un horodatage antérieur et sont donc drainées en premier. L'écriture est **atomique** : fichier `.tmp` puis déplacement (`writeEnvelopeAtomic`, lignes 338-344), et les `.tmp` orphelins laissés par un crash sont balayés au démarrage.
-
-Six types d'opérations circulent : `create_session`, `attach_intention`, `frames`, `laps`, `complete`, `ubx_upload`.
-
-Le drain (`drainOnce`, lignes 752-834) traite les fichiers dans l'ordre, supprime chaque succès, et applique trois comportements distincts en cas d'échec.
-
-**Il s'arrête** au premier échec réseau ou transitoire, en gardant tout le reste — « on ne martèle pas un réseau tombé ».
-
-**Il met en quarantaine** — déplacement sous `capture-queue/quarantine/`, jamais suppression — les échecs réellement logiques, et remonte l'incident à Sentry.
-
-**Il saute** un `ubx_upload` en échec sans bloquer la file, parce que c'est une opération feuille dont rien ne dépend, jusqu'à dix tentatives.
-
-La classification des erreurs (lignes 399-494) est une **liste blanche d'abandon**, et c'est une inversion volontaire par rapport à une version antérieure où « tout code d'erreur valait abandon », règle qui faisait détruire une séance entière sur un simple 503. Aujourd'hui : tout code inconnu est traité comme transitoire, donc conservé. Les codes 23503 (clé étrangère) et 23505 (unicité) sont explicitement exclus de l'abandon, le premier étant un signal d'ordonnancement et non une erreur de donnée. Les erreurs Storage sont traitées à part, car la bibliothèque de fichiers n'expose pas de `.code` : seuls 400, 413 et 415 sont abandonnés, jamais 401 ni 403, qui sont réparables. Et une **garde dure** interdit d'abandonner un `create_session` en toutes circonstances, puisque cette ligne porte la clé étrangère de toutes les trames en cascade : mieux vaut une file bloquée, visible et réparable, que des heures de piste effacées en silence.
-
-L'idempotence au rejeu est assurée type par type : `create_session` par upsert sur l'identifiant, `frames` et `laps` par upsert « ne rien faire en cas de conflit » sur les clés naturelles, `complete` par une mise à jour qui **recompte** les trames réellement en base, `ubx_upload` par un envoi en écrasement. Un repli automatique est prévu si la contrainte d'unicité n'est pas encore appliquée en production (erreur 42P10), avec réarmement dès qu'un 23505 prouve que la migration est passée.
-
-Le choix de la clé d'idempotence des trames fait l'objet de trente lignes de justification (lignes 58-90) : `(session_id, elapsed_ms)` a été retenu contre `(session_id, itow_ms)`, parce que l'iTOW est un temps GPS produit par le boîtier, qui peut se répéter avant fix et se réenroule chaque dimanche — fonder l'identité d'une donnée de pilote sur une valeur qu'on ne contrôle pas et dont on ne peut pas prouver l'unicité aurait détruit des trames réelles en silence.
-
-#### La file des petites actions
-
-`src/services/offlineQueue.ts` (207 lignes) est l'autre file, beaucoup plus légère, stockée dans MMKV sous la clé `queue:offline`. Elle porte six types d'actions : acceptation du pacte pilote, du pacte coach, des CGU et de la confidentialité, marquage d'une notification lue, enregistrement d'un marqueur de tour, mise à jour du niveau pilote. Cinq tentatives maximum, puis abandon avec un simple avertissement en console — **il n'y a pas de lettre morte ici**, et l'en-tête l'assume : « si une action échoue 5 fois, on la perd ». Deux des six actions (`mark_notification_read`, `register_lap_marker`) sont des emplacements réservés qui ne font rien côté serveur.
-
-#### MMKV
-
-`src/lib/mmkv.ts` (90 lignes) définit un magasin unique `oxv-coach-cache`, synchrone et persistant. Il porte du cache de lecture avec expiration (dernières séances, profil, circuits), la file ci-dessus, l'intention de séance en attente, et une préférence d'affichage. La clé `pending:intention` mérite mention : elle gèle localement l'identifiant et la date de l'intention posée en préparation, précisément pour que le rattachement à la séance puisse se faire **sans aucun appel réseau** au démarrage de la capture — donc en mode avion, où la lecture équivalente échouerait.
-
-#### Les deux registres séparés
-
-Deux mécanismes locaux supplémentaires existent, et tous deux portent en tête la même **règle cardinale** : ils ne touchent jamais `captureSyncQueue`.
-
-`src/features/rec/incidentOffline.ts` (165 lignes) tient les signalements d'incident en attente, sous la clé MMKV `rec:incident-offline-queue`. Il déduplique par identifiant local, persiste après **chaque** succès, et relit la file depuis le stockage avant chaque retrait — de sorte qu'une déclaration ajoutée pendant le rejeu n'est jamais écrasée.
-
-`src/features/rec/biometryCaptureBuffer.ts` (159 lignes) tient les échantillons cardio d'une séance sous le préfixe `rec:biometry:samples:`, plus un registre des séances en attente. Il écarte les lectures hors de la plage physiologique 25-250 bpm, qui sont des décrochages de capteur et non des mesures. Le runtime associé (`src/services/biometryCaptureRunner.ts`) persiste toutes les quelques secondes et ne tente l'envoi qu'à la clôture ; un abandon de séance **purge** le local sans rien préserver, au titre de la minimisation.
-
-#### Le filet de dernier recours
-
-En parallèle de tout ce qui précède, `src/ble/captureMode.ts` écrit **tous les octets bruts** reçus du RaceBox dans un fichier `.ubx` local sous `fixtures/`. Ce fichier n'est pas supprimé après l'envoi : il reste le filet de reprise, et n'est effacé que **par âge** (sept jours) par `gcOldCaptures`, sous trois verrous — la file doit être vide, le fichier ne doit pas être référencé par une opération en attente, et son nom doit être lisible. `reimportUbxToFrames` permet de rejouer un `.ubx` vers la base a posteriori, en réconciliant cette fois sur `itow_ms`, l'identité physique de la trame.
-
-#### Bilan : ce qui survit et ce qui ne survit pas
-
-| Élément | Survit à une coupure réseau | Survit à un crash / redémarrage | Perte possible |
+| Clé | `enabled` | Dernière modification | Ce qu'elle commande |
 |---|---|---|---|
-| Trames de télémétrie | Oui (fichiers) | Oui (fichiers sur disque, ordre préservé) | Non, sauf quarantaine |
-| Création de séance | Oui | Oui | Jamais abandonnée (garde dure) |
-| Tours détectés | Oui | Oui | Non |
-| Fichier `.ubx` brut | Oui (purement local) | Oui | Après 7 jours, sous 3 verrous |
-| Cardio | Oui (MMKV par séance) | Oui | Purgé si la séance est abandonnée |
-| Signalements d'incident | Oui (MMKV) | Oui | Non |
-| Acceptation du pacte, CGU, niveau pilote | Oui (MMKV) | Oui | **Oui, après 5 échecs** |
-| Trames pendant une coupure BLE | Sans objet | Sans objet | **Oui — rien n'est enregistré pendant le trou**, seule sa durée est tracée en console |
-| Envoi du `.ubx` | Oui | Oui | Quarantaine après 10 tentatives |
+| `biometry` | **`true`** | 25/07/2026 17:58 | capture et affichage de la fréquence cardiaque |
+| `app_payments` | `false` | 19/07/2026 | réservation et paiement dans l'application |
+| `coach_billing` | `false` | 06/07/2026 | suivi et aide à la facture, côté coach |
+| `convoys` | `false` | 19/07/2026 | convois vers une journée |
+| `founders` | `false` | 19/07/2026 | candidatures Membre Fondateur |
+| `pilot_waivers` | `false` | 12/07/2026 | décharge de responsabilité signée |
+| `video_overlay` | `false` | 19/07/2026 | vidéo du tour synchronisée à la télémétrie |
+
+**Un seul drapeau sur sept est allumé.** Six fonctionnalités sont présentes dans
+le code et inaccessibles.
+
+#### Le cas `biometry`
+
+Sa description en base, mot pour mot :
+
+> « BE-1 : capture et affichage FC (Polar/Watch). Gate consentement biometry par
+> pilote (capture + partage coach) TOUJOURS requis. Levé le 2026-07-25 sur
+> décision fondateur, après validation avocat du consentement
+> (docs/juridique/consentement_biometrie.md). **Reste non tenu à la levée :
+> smoke test 2 appareils reels.** »
+
+C'est le seul drapeau allumé, il l'a été **hier** (25 juillet), et la base
+elle-même consigne que le test à deux appareils réels n'a pas eu lieu.
+
+En face : `biometry_raw` porte **0 ligne**, et **aucun des 14 comptes** n'a
+rempli `biometry_capture_consent_at` ni `biometry_coach_share_consent_at`. La
+fonctionnalité est ouverte, et elle n'a encore jamais servi.
+
+#### Où les drapeaux sont réellement consommés
+
+Chaque appel a été relevé dans le dépôt (recherche sur `isFlagEnabled`) :
+
+| Drapeau | Écran ou service |
+|---|---|
+| `biometry` | `app/(app2)/rec/equipement.tsx:519`, `app/(app2)/rec/entre-runs.tsx:123`, `app/(app2)/rec/fin.tsx:114`, `app/(coach)/debrief.tsx:108` |
+| `app_payments` | `app/(app2)/club/pass.tsx:107`, `src/features/vous/useReserverDay.ts:52`, `src/features/vous/useReserverPayment.ts:52` |
+| `founders` | `app/(app2)/vous/fondateur.tsx:77`, `src/features/vous/useReserverPayment.ts:59` |
+| `pilot_waivers` | `app/(app2)/vous/decharge.tsx:68`, `app/(app)/decharge.tsx:58` |
+| `convoys` | `app/(app2)/club/territoire.tsx:159`, `app/(app2)/rec/preparation.tsx:186` |
+| `coach_billing` | `app/(coach)/index.tsx:178`, `app/(coach)/facturation.tsx:104` |
+| `video_overlay` | aucun appel trouvé dans le code de l'application |
+
+`video_overlay` est déclaré en base et **n'est lu nulle part**. La table
+`video_overlays` existe (8 colonnes, 0 ligne) avec une policy. C'est une
+réservation de place, pas une fonctionnalité.
+
+Deux drapeaux (`coach_billing`) ne gardent que des écrans de l'espace coach,
+qui n'est aujourd'hui atteignable par aucun compte — voir la section sur les
+rôles.
+
+#### La configuration d'application
+
+Table `public.app_config`, **une seule ligne**, contrainte à une seule par
+construction (`id` booléen) :
+
+```
+id = true, maintenance_mode = false, maintenance_message = null,
+min_supported_version = null, updated_at = 2026-06-29
+```
+
+Le mode maintenance est éteint et aucune version minimale n'est imposée.
+`MaintenanceGate` est monté à la racine
+(`C:/Users/Julie/OneDrive/Desktop/oxv-app/app/_layout.tsx:169`) : le levier
+existe et n'a jamais été tiré. `min_supported_version` à `null` signifie
+qu'aucune version installée ne sera jamais refusée — utile à savoir avant de
+publier une version qui casserait un contrat de données.
 
 ---
 
-### 6. Les services externes
+### La rétention et la purge RGPD
 
-#### Météo — Open-Meteo
+#### Ce que le pilote peut demander depuis l'application
 
-`src/services/weatherService.ts` (380 lignes) interroge `https://api.open-meteo.com/v1/forecast`, **sans clé**, service européen dont les sources sont Météo-France, DWD et ECMWF. Cache mémoire de dix minutes par coordonnées arrondies à trois décimales. La règle doctrinale « A-WEATHER-1 » y est appliquée strictement : **une mesure absente vaut `null`, jamais un zéro fabriqué**, et les écrans affichent alors un tiret. La visibilité est explicitement `null` parce qu'Open-Meteo ne la fournit pas en mesure courante. Les vingt-huit codes météo WMO sont traduits en français.
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/src/services/accountService.ts:29-50`
 
-#### Itinéraires — GraphHopper, ou Kurviger
+`requestAccountDeletion(userId)` horodate `deletion_requested_at` et pose
+`deletion_scheduled_at` à **J+30**. Rien d'autre : aucun effacement immédiat.
+Le délai de grâce de 30 jours correspond à la politique de confidentialité
+(§7.3), citée dans le commentaire du fichier.
 
-`src/services/routing/scenicRouteService.ts` accepte deux fournisseurs, pilotés par `EXPO_PUBLIC_ROUTING_PROVIDER` (défaut : `graphhopper`). GraphHopper est appelé en POST sur `https://graphhopper.com/api/1/route` avec un modèle de coût personnalisé qui privilégie les routes sinueuses ; Kurviger en GET sur `https://api.kurviger.de/v1/route`. **Sans clé configurée, la fonction renvoie `null` et l'écran tombe sur un état vide** — elle ne plante pas. La clé n'est pas dans `.env.example` (champ laissé vide), donc l'écran « Belle route » est vraisemblablement inerte aujourd'hui, mais je ne peux pas le confirmer sans lire le `.env`.
+Un détail de qualité qui mérite d'être signalé, parce qu'il est rare : l'appel
+ajoute `.select('id')` et **vérifie qu'une ligne a bien été écrite** (lignes
+46-48). Sans cela, un `UPDATE` que RLS aurait silencieusement filtré aurait
+renvoyé un succès, et le pilote aurait cru sa suppression enregistrée alors que
+rien ne l'était. Le commentaire l'explique. C'est du soin.
 
-#### Points remarquables et tracés — OpenStreetMap
+En production : `deletion_requested_at` est renseigné pour **0 compte sur 14**.
+Personne n'a jamais demandé la suppression de son compte. Le chemin n'a donc
+jamais été exercé en conditions réelles.
 
-`src/services/routing/scenicPoiService.ts` interroge `https://overpass-api.de/api/interpreter` en POST, sans clé, pour lister les points de vue, plans d'eau, cols et sommets dans un rayon. `src/circuit/circuitGenerator.ts` interroge `https://api.openstreetmap.org/api/0.6/way/<id>/full.json` pour importer le tracé d'un circuit ; il est utilisé par l'écran `app/(app)/creer-trace.tsx`. Les deux renvoient une liste vide ou lèvent proprement en cas d'erreur.
+#### Ce que fait la purge, une fois le délai écoulé
 
-#### Cartes
+La fonction edge `purge-deleted-accounts` (version 5, déployée le 19 juillet,
+`verify_jwt: false`) est appelée chaque nuit à 02h30 avec un `Bearer` égal au
+secret interne. Elle refuse tout appel qui n'a pas ce jeton exact.
 
-Deux fournisseurs selon la plateforme. **iOS utilise Apple Maps** via `PROVIDER_DEFAULT`, sans aucune clé. **Android exige une clé Google Maps**, injectée au build par `app.config.js` depuis la variable `GOOGLE_MAPS_ANDROID_KEY` — un secret EAS en CI, le `.env` en local. Si la variable est absente, aucune clé n'est injectée et les cartes Android restent grises ; le reste de l'application fonctionne. Trois écrans utilisent `react-native-maps` : `app/(app)/carte-oxv.tsx`, `app/(app)/creer-route.tsx`, `app/(app2)/club/territoire.tsx`. Ce dernier ouvre par ailleurs un lien externe `https://www.google.com/maps/dir/?api=1&destination=…` pour l'itinéraire vers un point.
+Sa stratégie est **anonymiser puis purger**, pas supprimer. La raison est
+explicitée dans son en-tête : `payments.user_id` est en `NO ACTION`, la
+facturation étant légalement conservée dix ans — un `DELETE` sur `users`
+échouerait sur cette contrainte.
 
-#### Mesure d'audience — Plausible
+Pour chaque compte dont la grâce est écoulée, dans cet ordre :
 
-`src/services/analyticsService.ts` (118 lignes) poste des événements anonymes à `https://plausible.io/api/event`, en « tire et oublie » : la réponse n'est pas attendue et un échec est avalé. Trois garde-fous sont en place. Le service est **totalement inactif** tant que `EXPO_PUBLIC_PLAUSIBLE_DOMAIN` est vide. Un opt-out local est respecté (clé MMKV `analytics.optOut`). Et une **garde anti-données personnelles** lève une exception en développement si une propriété d'événement porte une clé interdite (`email`, `name`, `first_name`, `last_name`, `handle`, `phone`, `iban`) — la garde s'exécute avant même le court-circuit « domaine absent », pour jouer aussi quand Plausible n'est pas configuré. L'URL envoyée est un pseudo-URL `app://oxv-mirror/<événement>`.
+1. collecte des références de stockage portées par des lignes de base (audios
+   d'annotations coach, `media.file_url`) **avant** de les supprimer ;
+2. suppression **récursive** des objets de stockage, sur **huit** compartiments
+   préfixés par l'identifiant du pilote : `vehicles`, `documents`, `avatars`,
+   `audio_briefings`, `pilot-media`, `session-media`, `telemetry_raw`,
+   `coach-media`, plus `coach-audio` par identifiants collectés. Le
+   compartiment `invoices` est **volontairement conservé** ;
+3. appel de `public.purge_user_data(p_user)` — purge et anonymisation
+   transactionnelles, tout ou rien, avec nettoyage des colonnes personnelles de
+   `users` ;
+4. anonymisation et bannissement du compte d'authentification
+   (`email → deleted-{id}@oxv.invalid`, bannissement de 876 000 heures),
+   sans suppression matérielle.
 
-Le domaine `oxvehicle.fr` est renseigné dans `eas.json` pour les profils **preview et production** : la mesure est donc active dans les builds distribués, pas en développement.
+L'étape 2 est **fail-closed** : si un retrait de stockage échoue, le compte
+entier échoue et les lignes de base restent — la nuit suivante retentera. C'est
+le bon sens : on préfère réessayer que d'effacer à moitié.
 
-#### Remontée d'erreurs — Sentry
+`public.purge_user_data(p_user uuid)` **existe bien** en production (vérifié
+sur `pg_proc`), posée par la migration `20260719011309_sec1_purge_user_data`.
 
-`src/lib/sentry.ts` (58 lignes). L'initialisation est **triplement conditionnelle** : rien en développement, rien sans `EXPO_PUBLIC_SENTRY_DSN`, sinon initialisation avec traces à 100 %. L'en-tête précise un point d'état important : **le plugin Expo de Sentry a été retiré d'`app.json` en semaine 14** à cause d'un conflit Gradle. Le module natif reste fourni par l'autolinking, donc la capture fonctionne au runtime dès qu'un DSN est présent ; ce qui n'est plus câblé, c'est l'auto-instrumentation et l'envoi des sources maps — à reconfigurer le jour où Sentry sera réellement activé. Le DSN n'est nulle part dans le dépôt : il doit venir des variables d'environnement EAS, et le poser est décrit comme une action fondateur (`docs/architecture/16_SENTRY_SETUP.md`, que je n'ai pas ouvert). `captureException` est appelé aux points sensibles de la file de capture (quarantaine, abandon d'envoi, échec de reprise).
+**Ce que je n'ai pas vérifié** : le corps de `purge_user_data`, table par table.
+La liste des ~20 tables couvertes vient de l'en-tête de la fonction edge, pas
+d'une lecture du SQL. Et la purge n'a **jamais tourné sur un compte réel** :
+aucune demande de suppression n'existe. Sept exécutions du cron depuis le
+19 juillet, toutes avec zéro cible.
 
-#### Notifications — Expo Push
+#### Les purges automatiques réellement en place
 
-`src/services/pushNotificationsService.ts`. La stratégie V1 est celle des **notifications locales** : le debrief du lendemain et le rappel de veille sont programmés sur l'appareil, sans dépendance serveur ni coût. Le jeton Expo Push est néanmoins enregistré dans `users.expo_push_token` — et seulement s'il a changé — pour préparer un envoi distant ultérieur. Le doctrinal est tenu au niveau du gestionnaire : en état `S6_roulage`, toute notification arrivant au premier plan est supprimée, bannière, son et pastille compris. L'enregistrement est ignoré sous Expo Go et sur émulateur. `app/_layout.tsx` lignes 86-144 route ensuite le tap sur notification vers neuf destinations différentes selon le champ `type` de la charge utile.
+Deux, et elles sont dans la base — donc pas exposées au problème
+d'authentification décrit plus haut.
 
-#### Aperçu web dans l'application
+**`cleanup_old_telemetry_frames()`**, chaque nuit à 03h30 :
+```sql
+DELETE FROM public.telemetry_frames WHERE created_at < now() - INTERVAL '12 months';
+```
+Conforme à la politique de confidentialité, qui annonce 12 mois pour les trames
+brutes (`docs/juridique/04_POLITIQUE_CONFIDENTIALITE.md:180`).
 
-`app/(coach)/ar.tsx` charge `https://app.oxvehicle.fr/ar-view` dans une WebView. Le commentaire d'en-tête précise que la donnée sensible est rendue en natif et **n'est jamais passée à la WebView ni ajoutée à l'URL**, et que la route web peut ne pas être en ligne, auquel cas un repli sobre s'affiche. Je n'ai pas vérifié si cette route existe réellement.
+**Limite à connaître** : la fonction ne touche **que** `telemetry_frames`. Elle
+ne purge ni `telemetry_sessions` (les métadonnées de séance restent
+indéfiniment), ni le compartiment de stockage `telemetry_raw`, qui porte
+aujourd'hui **3 objets**. Un fichier brut déposé il y a treize mois est
+toujours là. La promesse de 12 mois porte sur la donnée en base, pas sur le
+fichier.
 
-#### Partage public
+**`purge_old_biometry()`**, chaque nuit à 03h15 :
+```sql
+DELETE FROM public.biometry_raw WHERE ts < now() - interval '30 days';
+```
+Trente jours pour une donnée de santé. C'est strict, et cohérent avec la
+sensibilité de la donnée. Sept exécutions depuis le 19 juillet, sur une table
+vide.
 
-`src/services/sharesService.ts` génère des liens `https://oxvehicle.fr/share/<token>`, avec un jeton de 192 bits tiré de `crypto.getRandomValues`. La lecture côté site passe par la procédure `get_shared_progression`.
+#### Ce que la politique promet et qui n'est pas outillé
 
-#### Apple Health
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/docs/juridique/04_POLITIQUE_CONFIDENTIALITE.md:175-184`
+annonce six durées de conservation. Voici ce qui les porte réellement :
 
-Ce n'est pas du réseau, mais c'est une entrée de données extérieure. `src/services/v2/healthKitService.ts` enveloppe `react-native-health`, iOS seulement, résolution **dynamique** du module pour qu'un binaire compilé avant l'installation retombe proprement sur « indisponible » plutôt que d'échouer au chargement. La lecture est barrée par le consentement de capture, en mode fermé par défaut. L'en-tête est explicite : « il ne fonctionnera qu'après un build natif ».
+| Promesse | Durée annoncée | Mécanisme en place |
+|---|---|---|
+| Trames télémétriques brutes | 12 mois | **oui** — `cleanup_old_telemetry_frames()` |
+| Compte pilote inactif | 3 ans après dernière connexion | **aucun** |
+| Documents KYC | 5 ans après dernière session | **aucun** |
+| Factures et comptabilité | 10 ans | conservation, pas de purge — cohérent |
+| Logs techniques | 12 mois | **aucun** identifié |
+| Délai de grâce suppression | 30 jours | **oui** — `purge-deleted-accounts` |
+
+Deux engagements sur six n'ont **aucun mécanisme**. La colonne
+`users.last_login_at` existe, ce qui rendrait la purge des comptes inactifs
+mécanisable. La table `documents` porte 9 lignes. Rien ne les expire
+aujourd'hui.
+
+Ce n'est pas urgent — l'application a deux mois et demi, aucun compte n'atteint
+trois ans d'inactivité. Mais c'est un écart entre ce que le document juridique
+affirme au pilote et ce que la machine fait. Il vaut mieux le savoir avant
+qu'un pilote ne le demande.
+
+#### Les données de santé résiduelles
+
+Les colonnes `blood_type` et `medical_notes` **existent toujours** sur
+`public.users`, malgré une migration historique nommée
+`0002_remove_medical_data.sql`
+(`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/_archive_pre_timestamp/`).
+
+Elles sont **vides** : 0 ligne renseignée sur 14 pour chacune. Le risque est
+donc nul aujourd'hui. Mais des colonnes de santé ouvertes en écriture à
+`authenticated` sont une invitation : la prochaine personne qui construit un
+écran de profil pourrait les remplir sans savoir ce qu'elle déclenche
+juridiquement. À supprimer, ou à documenter explicitement comme interdites.
+
+De même, `ffsa_license`, `phone`, `stripe_customer_id`, `expo_push_token` sont
+**vides pour les 14 comptes**. Deux comptes seulement portent une date de
+naissance et un contact d'urgence.
+
+#### Les compartiments de stockage
+
+Treize compartiments, dont trois publics :
+
+| Compartiment | Public | Limite de taille | Objets |
+|---|---|---|---|
+| `avatars` | **oui** | 5 Mo | 0 |
+| `coach-media` | **oui** | — | 1 |
+| `partner-media` | **oui** | — | 2 |
+| `documents` | non | 10 Mo | 9 |
+| `vehicles` | non | 50 Mo | 8 |
+| `telemetry_raw` | non | 50 Mo | 3 |
+| `audio_briefings` | non | 10 Mo | 1 |
+| `founding-members` | non | 10 Mo | 1 |
+| `pilot-media` | non | 50 Mo | 0 |
+| `session-media` | non | 50 Mo | 0 |
+| `coach-audio` | non | — | 0 |
+| `invoices` | non | — | 0 |
+| `pavillon-photos` | non | — | 0 |
+
+Trois compartiments sont **publics** : tout objet qui s'y trouve est accessible
+par son URL, sans authentification. Aujourd'hui ils portent 3 objets au total.
+`pavillon-photos` et `partner-media` sont explicitement **hors du périmètre de
+purge automatique** (commentaire de `purge-deleted-accounts/index.ts:62-63`).
+
+`coach-media` et `partner-media` sont publics **et** contiennent des objets. Je
+n'ai pas regardé ce que sont ces objets.
 
 ---
 
-### 7. Ce que le transport n'a pas
+### Ce que le site partage avec l'application
 
-Pour être complet, voici ce que j'ai cherché et **pas** trouvé, ce qui est aussi une information sur l'état réel.
+#### Le fait de base
 
-Il n'y a **aucun serveur intermédiaire propre à OXV** : l'application parle directement à Supabase et aux quatre API publiques. Il n'y a **aucun WebSocket hors Supabase Realtime**. Il n'y a **aucune synchronisation par WatermelonDB**, pourtant annoncée dans la pile imposée du `CLAUDE.md` : le paquet n'est pas dans `package.json`, la persistance locale est MMKV plus des fichiers. Il n'y a **aucune mise à jour à distance du code** (`expo-updates` absent des dépendances) ; le kill-switch de maintenance et la version minimale sont lus en base via `src/services/appConfigService.ts` et affichés par `MaintenanceGate` et `UpdateModal`. Il n'y a **aucun paiement in-app** côté transport. Et il n'y a **pas de BLE en arrière-plan** : `isBackgroundEnabled: false`, compensé par le maintien de l'écran allumé.
+Il n'y a **pas deux bases**. Le site `oxvehicle.fr` et l'application écrivent
+dans le même projet Supabase, avec les mêmes tables, les mêmes policies et le
+même historique de migrations. C'est ce qui permet qu'un pilote inscrit sur le
+site retrouve sa place dans l'application. C'est aussi la principale source de
+risque de ce document.
 
-Enfin, l'ensemble du groupe `app/(app2)` — l'espace pilote V2 — est **redirigé vers la racine hors développement** (`app/(app2)/_layout.tsx` lignes 66-68), y compris pour les liens profonds. Les 38 écrans V2 ne sont donc pas atteignables dans un build distribué tant que cette garde n'est pas retirée au lot L6.
+Le raccordement est décrit en détail dans
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/docs/architecture/09_HANDOFF_SITE_BASE_PARTAGEE.md`
+et les règles du dossier de migrations dans
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/migrations/README.md`.
+
+#### Ce que l'application lit du côté site
+
+Relevé par recherche sur `.from('…')` dans `src/` :
+
+| Table ou vue du site | Lue par |
+|---|---|
+| `sessions_public` (vue) | `src/services/bookingCatalogService.ts:160,194` |
+| `sessions` (table) | `src/services/attendanceService.ts:50`, `src/services/nextTrackDayService.ts:51`, `src/features/club/useClubHub.ts:151`, `src/features/rec/attendancePublicService.ts:94` |
+| `registrations` | `src/services/attendanceService.ts:69,117`, `src/services/nextTrackDayService.ts:35`, `src/services/qdiService.ts:302`, `src/features/vous/useVousHub.ts:157`, `src/features/miroir/useMiroirHome.ts:195`, `src/features/club/useClubHub.ts:140`, `src/features/club/useGalerie.ts:114`, `src/features/rec/attendancePublicService.ts:84`, `src/services/heritageBookExportService.ts:134` |
+| `pricing` | `src/services/bookingCatalogService.ts:143` |
+| `events` | `src/services/eventsService.ts` (six appels), `src/services/adminAnalyticsService.ts:65-66` |
+
+L'application dépend donc du site pour : le calendrier des journées, les
+inscriptions du pilote, les tarifs, les événements. Ce ne sont pas des lectures
+décoratives — `useMiroirHome`, `useVousHub` et `useClubHub` sont des écrans
+d'accueil.
+
+Note de sécurité côté site, déjà résolue : `public.sessions` porte
+`private_client_name` et `private_client_contact`. Une vue
+`public.sessions_public` a été créée pour exposer le calendrier **sans ces deux
+colonnes** (définition vérifiée en base : elle passe par une fonction
+`sessions_public_rows()` et n'expose ni l'un ni l'autre). Le brouillon de
+correctif alternatif a été explicitement abandonné parce qu'il aurait cassé
+l'écran admin Médias du site :
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/_pending_site_coordination/README.md:8-24`
+
+#### Ce que l'application partage vers le web
+
+`public.app_progression_shares` (**1 ligne**) porte un `share_token`, un
+`share_scope`, une liste de métriques incluses, une date d'expiration, une date
+de révocation et un compteur de vues. C'est le mécanisme par lequel un pilote
+publie une page de progression consultable sur le web. Cinq policies le
+gardent : lecture et écriture réservées au propriétaire, lecture
+supplémentaire pour le coach lié.
+
+Une seule ligne existe. Le mécanisme n'a pas été exercé.
+
+#### L'historique des migrations
+
+**215 migrations sont appliquées** en production (`supabase_migrations.schema_migrations`),
+de `20260524000001` à `20260725185806`. Le dépôt de l'application en contient
+désormais **215 fichiers**, après un travail de reconstitution : 94 d'entre
+elles n'existaient dans **aucun** dépôt consultable et ont été réécrites depuis
+la colonne `statements` de la table de registre.
+
+Le registre de référence :
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/migrations/APPLIQUEES_EN_PRODUCTION.txt`
+
+Onze fichiers supplémentaires sont rangés dans
+`C:/Users/Julie/OneDrive/Desktop/oxv-app/supabase/migrations_hors_historique/`.
+Ils sont **hors du chemin de `db push`**, volontairement, parce qu'ils sont
+préparés mais non appliqués — ou appliqués sous un autre numéro. C'est le cas
+de `20260719_sec1_purge_sante.sql` : la fonction qu'il définit existe en
+production, posée par `20260719011309_sec1_purge_user_data`. Le fichier hors
+historique en est un doublon désynchronisé.
+
+#### Les risques que le partage crée, nommés
+
+**1. La question du rôle n'est pas tranchée.** `users.role` et `users.is_admin`
+sont écrits des deux côtés, avec deux significations. L'application garde son
+espace admin derrière `is_admin`, la base garde ses policies derrière un `OU`
+des deux. Si le site attribue des rôles sans le savoir, il donne ou retire des
+droits en base sans le vouloir. **Question ouverte, sans réponse.**
+
+**2. `circuits` est écrit des deux côtés.** L'application y pose les tracés,
+les lignes d'arrivée et les virages détectés. Une modification côté site sur
+`finish_line_lat` / `finish_line_lon` / `corners` **casserait la détection de
+tours**. Il n'y a aucune barrière technique : les policies de `circuits` (huit
+au total) ne distinguent pas l'origine de l'écriture.
+
+**3. `sessions` et `telemetry_sessions` ne se rejoignent pas.** La première est
+la journée au calendrier, la seconde une capture. Aucune règle de
+correspondance n'existe, et une migration récente a **refusé de la deviner**
+plutôt que de poser un lien faux. C'est le bon choix, mais cela veut dire que
+l'application ne sait pas rattacher une capture à la journée qui l'a produite.
+
+**4. Deux points d'entrée non authentifiés sans propriétaire.**
+`capture-membre-fondateur` et `yousign-webhook`, déployés le 24 juillet, sans
+source connue de ce côté-ci, `verify_jwt: false` tous les deux, dont un qui
+touche la signature électronique des décharges.
+
+**5. Cinq tables de sauvegarde hors du dispositif de purge.** Elles copient de
+la donnée personnelle du site et `purge_user_data` ne les connaît pas. Aucun
+des deux côtés ne se déclare propriétaire.
+
+**6. Aucun des deux dépôts ne peut reconstruire la base seul.** Un
+`supabase db reset` ou un `db push --force` détruirait la moitié du travail de
+l'autre. C'est écrit noir sur blanc dans le README des migrations, règle n° 3.
+
+**7. Le rôle `anon` a des droits d'écriture sur presque toutes les tables.**
+Seules les policies RLS l'en empêchent. Une policy trop large posée d'un côté
+ouvre la donnée de l'autre.
 
 ---
 
 ### Ce que je n'ai pas pu vérifier
 
-Je n'ai pas ouvert le fichier `.env` : son contenu est un secret, et je ne peux donc pas dire quelles clés sont réellement renseignées (GraphHopper, Google Maps Android, Sentry). Je n'ai pas interrogé la base de production, donc je ne peux ni trancher la contradiction Frankfurt / eu-west-1, ni confirmer que les tables `coach_messages` et `coach_pilots` sont bien inscrites dans la publication `supabase_realtime` — aucune migration du dépôt ne le fait. Je n'ai pas ouvert le code des fonctions serveur (`supabase/functions/`), y compris `pair-app` : ce que j'affirme sur l'anti-force-brute et la consommation du code vient des commentaires de `src/services/pairingService.ts`, pas de la fonction elle-même. Je n'ai pas vérifié que `https://app.oxvehicle.fr/ar-view` existe. Je n'ai pas exécuté la suite de tests, donc je ne confirme ni n'infirme le chiffre de 1 846 tests verts ; j'ai en revanche compté 824 fichiers TypeScript, 159 fichiers de tests et 125 migrations. Enfin, je n'ai lu qu'une partie de `src/services/captureSessionService.ts` (869 lignes) et de `src/services/captureSyncQueue.ts` (1 234 lignes) : les sections de flush final, d'agrégats de fin de séance et de réimport `.ubx` ne sont décrites qu'à partir de leurs en-têtes et de leurs signatures.
+Par honnêteté, la liste complète des angles morts de cette section.
+
+**Rien n'a été exécuté.** Aucun écran affiché, aucun appareil connecté, aucun
+boîtier RaceBox branché, aucun capteur cardiaque appairé. Tout ce qui touche au
+rendu, au geste ou au matériel est une lecture de code.
+
+**Les variables d'environnement des builds EAS.** Elles vivent sur les serveurs
+Expo. Je ne sais pas ce que contiennent les jeux `development`, `preview` et
+`production`, ni si les trois pointent vers la même base.
+
+**La source réelle de la plupart des fonctions edge.** J'ai lu le code déployé
+d'une seule (`purge-deleted-accounts`) et le code du dépôt de deux autres. Pour
+les 31 restantes, je n'ai que le fichier du dépôt — qui peut différer du
+déployé, comme l'en-tête périmé de `purge-deleted-accounts` vient de le
+démontrer.
+
+**La source de `capture-membre-fondateur` et `yousign-webhook`.** Introuvable
+de ce côté.
+
+**Le corps de `purge_user_data`.** La liste des tables qu'elle couvre vient
+d'un commentaire, pas d'une lecture du SQL.
+
+**L'efficacité réelle de l'anti-force-brute de `pair-app`.** Annoncée dans un
+commentaire, non vérifiée dans le code déployé.
+
+**L'exploitabilité de l'escalade `is_admin`.** Trois faits vérifiés
+séparément (policy, droit de colonne, portée du déclencheur) construisent le
+chemin. **Je ne l'ai pas exécuté** : cela aurait été une écriture en production.
+
+**Le comportement anonyme sur `events_select_private`.** Le texte de la policy
+dit ce qu'il dit ; je n'ai pas émis de requête sans jeton pour le confirmer.
+
+**Les cinq tâches nocturnes.** `net._http_response` ne conserve que quelques
+heures ; je n'ai de preuve HTTP que pour les deux tâches horaires.
+
+**Le contenu des trois compartiments de stockage publics.** Je sais qu'ils
+portent trois objets. Je ne sais pas lesquels.
+
+**Le sens métier des tables du site.** Je décris ce que le schéma montre, pas
+ce que le produit veut dire.
 
 ---
 
-## La chaîne de capture télémétrique
+## La chaîne de capture, du boîtier à la base
 
-Cette section décrit le trajet réel d'une mesure, du capteur jusqu'à la base, dans l'ordre où il se produit. Tout ce qui suit a été lu dans le dépôt à la date du 26/07/2026, branche `feat/site-document-emails`. Les chiffres de production ont été relevés directement sur le projet Supabase `oxv-platform` (`fouvuqkdxarjpjbqnsjq`, région `eu-west-1`).
+### Avertissement de méthode
 
-### Vue d'ensemble : sept maillons
+Tout ce qui suit est une **lecture du code source** du dépôt
+`C:/Users/Julie/OneDrive/Desktop/oxv-app`, branche `feat/site-document-emails`,
+et une **interrogation en lecture seule** de la base de production
+`fouvuqkdxarjpjbqnsjq`.
 
-| Étape | Fichier | Rôle |
-|---|---|---|
-| 1. Radio BLE | `src/ble/bluetoothService.ts` | connexion au boîtier, réception des notifications |
-| 2. Reconstruction de trames | `src/ubx/parser.ts` (`UbxFrameBuffer`) | recolle les octets en trames complètes |
-| 3. Décodage | `src/ubx/parser.ts` (`parseRaceBoxDataMessage`) | transforme 88 octets en mesures physiques |
-| 4. Orchestration | `src/services/captureSessionService.ts` | ouvre la séance, bufferise, écrit, clôture |
-| 5. Détection de tours | `src/ble/lapDetectionRunner.ts` + `src/utils/lapDetection.ts` | compte les passages sur la ligne |
-| 6. File de synchro | `src/services/captureSyncQueue.ts` | survivance hors-ligne, idempotence, rejeu |
-| 7. Base et stockage | Supabase : `telemetry_sessions`, `telemetry_frames`, `laps`, bucket `telemetry_raw` | la destination |
+Aucune application n'a été lancée. Aucun boîtier RaceBox, aucune ceinture Polar,
+aucun téléphone n'a été mis en service. Quand j'écris « l'écran affiche » ou
+« le boîtier envoie », je décris ce que le code prévoit de faire, pas ce que
+j'ai vu se produire.
+
+Une seule chose a été **exécutée** : la suite de tests unitaires de la chaîne de
+capture (voir la fin de section). Les tests s'exécutent sur des simulacres de
+Bluetooth, de disque et de réseau — ils prouvent la logique, pas le matériel.
 
 ---
 
-### 1. Du capteur à l'octet
+## Le résumé en une page
 
-Le boîtier est un RaceBox Mini S. Il expose un service BLE de type UART Nordic dont les identifiants sont figés dans `src/types/telemetry.ts` (`RACEBOX_PROTOCOL`) : service `6E400001-…`, caractéristique de sortie `6E400003-…`. Le scan (`startScan`, `bluetoothService.ts` ligne 276) filtre sur cet identifiant de service **et** sur le préfixe de nom « RaceBox » : un appareil qui ne porte pas les deux n'apparaît jamais dans la liste.
+La chaîne existe, elle est complète de bout en bout, elle est fortement testée,
+et elle n'a **jamais tourné pour de vrai**.
 
-La connexion (`connect`, ligne 324) impose un délai maximal de 10 secondes, découvre tous les services, puis s'abonne aux notifications de la caractéristique de sortie. Chaque notification arrive encodée en base64 ; elle est décodée en octets bruts avant tout traitement (`subscribeToData`, ligne 378).
+| Fait | Source |
+|---|---|
+| La chaîne compte 9 maillons, du Bluetooth à l'écriture Supabase | `src/ble/bluetoothService.ts`, `src/ubx/parser.ts`, `src/services/captureSessionService.ts`, `src/services/captureSyncQueue.ts` |
+| 127 tests unitaires couvrent la chaîne, tous au vert | exécution du 26/07/2026, 7 suites |
+| La base de production contient **53 trames** de télémétrie, au total, depuis toujours | `select count(*) from telemetry_frames` |
+| Ces 53 trames viennent d'une seule séance, du 28/06/2026, vitesse maximale **0,83 km/h** | `telemetry_frames`, session `7f40d5ad-4697-44ac-861c-13b7d0cc9878` |
+| La table `laps` contient **1 ligne**, datée du 16/05/2026, d'une durée de **0,022 seconde** | `select * from laps` |
+| 18 séances existent : 10 « completed », 8 « aborted », 0 en cours | `telemetry_sessions` |
+| Aucun boîtier n'est déclaré dans la flotte | `select count(*) from devices` → 0 |
+| Aucune donnée cardiaque n'existe en base | `select count(*) from biometry_raw` → 0 |
 
-Le module natif `react-native-ble-plx` est chargé **paresseusement** (`loadBleManagerCtor`, ligne 43). S'il est absent — cas d'Expo Go — le service se met en mode inerte : `isAvailable()` renvoie faux, chaque appel émet un message d'erreur explicite et rien ne plante. C'est pourquoi la capture exige un build de développement, jamais Expo Go.
+Autrement dit : **le code de capture est mûr, la preuve terrain est absente.**
+La séance de piste réelle qui validerait la chaîne n'a pas encore eu lieu.
 
-### 2. La reconstruction des trames
+---
 
-Une notification BLE ne correspond pas à une trame. Elle peut en contenir plusieurs, ou une moitié. `UbxFrameBuffer` (`src/ubx/parser.ts`, ligne 106) accumule les octets et applique une resynchronisation stricte : tant que les deux premiers octets du tampon ne sont pas `0xB5 0x62`, il en jette un et recommence. Quand l'en-tête est trouvé, il lit la longueur de charge utile annoncée, calcule la taille totale (`6 + longueur + 2`), refuse toute trame prétendant dépasser 512 octets, et attend d'avoir assez d'octets avant d'extraire la trame.
+## La chaîne, maillon par maillon
 
-Ce point a une conséquence importante et documentée dans le code : **plusieurs trames peuvent sortir du tampon dans le même tick JavaScript**, donc porter la même milliseconde d'horloge. C'est l'une des trois raisons qui ont imposé la règle d'horodatage décrite plus bas.
+Le trajet complet d'une mesure, du capteur à la ligne SQL :
 
-### 3. Le décodage d'une trame
+```
+RaceBox Mini S (25 Hz, Bluetooth LE)
+  │
+  ├─1─ bluetoothService.subscribeToData()      src/ble/bluetoothService.ts:372
+  │      notification BLE → base64 → octets
+  │
+  ├─2─ UbxFrameBuffer.push()                   src/ubx/parser.ts:106
+  │      resynchronisation, découpe des trames
+  │
+  ├─3─ parseRaceBoxDataMessage()               src/ubx/parser.ts:55
+  │      88 octets → objet RaceBoxData
+  │
+  ├─4─ emitData() → tous les abonnés           src/ble/bluetoothService.ts:241
+  │      ├── lapDetectionRunner (abonné EN PREMIER)
+  │      ├── captureSessionService.onData
+  │      ├── captureMode (flux brut, fichier .ubx)
+  │      ├── liveRelayRunner (relais coach, si consenti)
+  │      └── initBle → useTelemetryStore
+  │
+  ├─5─ raceBoxToFrameInsert()                  src/services/captureFrameMapping.ts:75
+  │      RaceBoxData → ligne telemetry_frames
+  │
+  ├─6─ flush() par lots de 50 ou toutes les 4 s  src/services/captureSessionService.ts:584
+  │      insert direct Supabase
+  │      └── en cas d'échec → enqueue('frames')
+  │
+  ├─7─ captureSyncQueue : fichiers JSON sur disque  src/services/captureSyncQueue.ts
+  │      FIFO strict, rejeu, quarantaine
+  │
+  ├─8─ processQueue() → Supabase                src/services/captureSyncQueue.ts:861
+  │
+  └─9─ telemetry_sessions / telemetry_frames / laps / bucket telemetry_raw
+```
 
-`parseRaceBoxDataMessage` (ligne 55) ne traite qu'un seul type de message : le « RaceBox Data Message », reconnu à trois conditions cumulatives — taille exactement 88 octets, classe `0xFF` / identifiant `0x01`, et checksum Fletcher-8 valide (`computeChecksum`, ligne 15). Toute autre trame sortie du tampon est silencieusement ignorée par `subscribeToData`. Une trame au checksum faux ne produit rien : elle n'est ni corrigée ni comptée.
+---
 
-Les conversions appliquées, lisibles lignes 61-100 :
+## Maillon 1 — Le boîtier et le lien Bluetooth
+
+### Ce que l'app cherche
+
+Le service BLE est un singleton, instancié au chargement du module :
+`src/ble/bluetoothService.ts:833`.
+
+Le scan RaceBox filtre sur **deux critères cumulés**
+(`src/ble/bluetoothService.ts:289-309`) :
+
+- le service BLE annoncé `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` (UART Nordic),
+  déclaré dans `src/types/telemetry.ts:14` ;
+- le nom du périphérique commençant par `RaceBox` (`src/types/telemetry.ts:23`).
+
+Les trames arrivent en notification sur la caractéristique
+`6E400003-...` (TX), abonnée dans `subscribeToData`
+(`src/ble/bluetoothService.ts:378`).
+
+### Les permissions
+
+`src/ble/permissions.ts` distingue trois cas :
+
+- iOS : `PERMISSIONS.IOS.BLUETOOTH`, une seule demande ;
+- Android 12 et plus : `BLUETOOTH_SCAN` + `BLUETOOTH_CONNECT` ;
+- Android antérieur : `ACCESS_FINE_LOCATION` (le scan BLE y est traité comme
+  une géolocalisation).
+
+Les libellés de permission iOS sont dans `app.json:20-31`. La cible de build
+étant iOS, c'est le premier chemin qui compte.
+
+### Le point dur : pas de Bluetooth en arrière-plan
+
+`app.json:75-82` déclare le module BLE avec **`"isBackgroundEnabled": false`**.
+Aucun `UIBackgroundModes` n'est déclaré dans `infoPlist`.
+
+Conséquence, telle qu'assumée dans le code
+(`src/services/captureSessionService.ts:101-109`) : la capture ne tourne que
+**premier plan, écran allumé**. Pour tenir un relais de vingt minutes sans que
+l'auto-verrouillage coupe la radio, le service pose un verrou d'écran
+`expo-keep-awake` avec le tag `oxv-capture`
+(`src/services/captureSessionService.ts:112-125`), armé au démarrage
+(ligne 411) et relâché à l'arrêt (lignes 739, 834, 495, 554).
+
+Si le pilote quitte l'application ou verrouille manuellement son téléphone
+pendant un run, **le système peut couper la radio**. Le code le dit lui-même
+en commentaire ; je n'ai pas pu l'observer.
+
+### La reconnexion : deux étages, et ils se coordonnent
+
+**Étage 1 — dans le service BLE.** Déclenché par `device.onDisconnected`
+(`src/ble/bluetoothService.ts:362`), aiguillé par `handleDeviceDisconnected`
+(ligne 422). Une coupure volontaire (drapeau `userInitiatedDisconnect`) ne
+déclenche rien ; une coupure inattendue lance `handleUnexpectedDisconnection`
+(ligne 480).
+
+Le délai suit un palier géométrique plafonné, isolé dans un module pur
+`src/ble/reconnectPolicy.ts:39` : 2 s, 4 s, 8 s, 16 s, puis **30 s au maximum**.
+
+Deux modes de renoncement (`src/ble/reconnectPolicy.ts:52`) :
+
+- **borné** (défaut, hors capture) : abandon après 5 tentatives
+  (`RECONNECT_MAX_ATTEMPTS`, ligne 17), phase terminale `lost` ;
+- **illimité** : armé pendant une capture par
+  `bluetoothService.setUnlimitedReconnect(true)`
+  (`src/services/captureSessionService.ts:410`), désarmé à la clôture
+  (lignes 494, 553, 738, 833). En illimité, on retente **sans fin**, au même
+  palier plafonné.
+
+**Étage 2 — le chien de garde applicatif.** `src/ble/initBle.ts:134` garde un
+second cycle de reconnexion (2 s, 5 s, 10 s, 20 s, seuil d'erreur 30 s) et la
+modale paddock. La coordination est explicite : sur `disconnected`, si
+`bluetoothService.isReconnecting()` est vrai, le chien de garde **ne programme
+pas** un second appel concurrent (`src/ble/initBle.ts:122-126`).
+
+### En Expo Go, le BLE n'existe pas
+
+`loadBleManagerCtor` (`src/ble/bluetoothService.ts:43`) charge
+`react-native-ble-plx` par `require` protégé. Si le module natif est absent, le
+service passe en mode inerte : `isAvailable()` renvoie `false` et chaque appel
+émet une erreur « Bluetooth indisponible dans ce runtime (Expo Go) ».
+`app/_layout.tsx:51-56` n'appelle `initBle()` que hors Expo Go.
+
+---
+
+## Maillon 2 — Le parser UBX
+
+`src/ubx/parser.ts`, 153 lignes. C'est le **seul fichier de la chaîne qui n'a
+jamais été modifié depuis l'initialisation du dépôt** (dernier commit
+`f7fe331`, « chore: initialisation projet »).
+
+### La reconstruction du flux
+
+Le Bluetooth ne livre pas des trames, il livre des paquets d'octets.
+`UbxFrameBuffer` (`src/ubx/parser.ts:106`) accumule et découpe :
+
+- il cherche l'en-tête `0xB5 0x62` et **jette octet par octet** tant qu'il ne
+  le trouve pas (ligne 123) — c'est la resynchronisation ;
+- il lit la longueur de charge utile aux octets 4-5, calcule la taille totale
+  `6 + longueur + 2` (ligne 128) ;
+- il refuse toute trame annoncée à plus de 512 octets (ligne 130), garde
+  contre un octet de longueur corrompu ;
+- il attend d'avoir la trame entière avant de la livrer (ligne 135).
+
+### La validation
+
+`isRaceBoxDataMessage` (ligne 35) exige **quatre conditions** : taille exacte
+de 88 octets, en-tête correct, classe `0xFF` / identifiant `0x01`, et checksum
+Fletcher-8 valide (`computeChecksum`, ligne 15). Une trame qui échoue est
+silencieusement ignorée.
+
+### Ce qui est extrait, et à quelle unité
+
+`parseRaceBoxDataMessage` (ligne 55) lit en little-endian :
 
 | Champ | Décalage | Conversion |
 |---|---|---|
-| Temps GPS (iTOW) | 6 | entier 32 bits, en millisecondes |
-| Latitude | 34 | entier signé ÷ 10 000 000 |
-| Longitude | 30 | entier signé ÷ 10 000 000 |
-| Altitude | 42 | millimètres ÷ 1000 → mètres |
-| Précision GPS | 46 | millimètres ÷ 1000 → mètres |
-| Vitesse | 54 | mm/s × 3,6 ÷ 1000 → km/h |
-| Cap | 58 | ÷ 100 000, valide seulement si le bit `0x20` des drapeaux de fix est posé |
-| G longitudinal / latéral / vertical | 74 / 76 / 78 | milli-g ÷ 1000 → g |
-| Vitesses de rotation | 80 / 82 / 84 | ÷ 100 |
-| Batterie | 73 | bit 7 = en charge, 7 bits bas = niveau |
+| iTOW (temps GPS) | 6 | uint32, millisecondes |
+| date/heure | 10-16, 22 | champs séparés |
+| fix GPS | 26 | `0` aucun, `2` 2D, `3` 3D (`src/types/telemetry.ts:26`) |
+| satellites | 29 | uint8 |
+| longitude | 30 | int32 ÷ 1e7 |
+| latitude | 34 | int32 ÷ 1e7 |
+| altitude | 42 | int32 ÷ 1000 → mètres |
+| précision GPS | 46 | uint32 ÷ 1000 → mètres |
+| vitesse | 54 | uint32 × 3,6 ÷ 1000 → km/h |
+| cap | 58 | uint32 ÷ 1e5 → degrés |
+| g X / Y / Z | 74, 76, 78 | int16 ÷ 1000 → g |
+| rotation X / Y / Z | 80, 82, 84 | int16 ÷ 100 → °/s |
+| batterie | 73 | bit 7 = en charge, bits 0-6 = niveau |
 
-La cadence nominale du boîtier est de 25 Hz. Elle est traitée partout comme **nominale et non garantie** : `src/services/flowLogic.ts` (ligne 14) le dit explicitement, et le service BLE mesure la cadence réelle sur une fenêtre glissante d'une seconde (`updateRate`, ligne 600), exposée par `getCurrentRate()`. Cette mesure ne sert qu'au débogage : `initBle.ts` (ligne 77) la pousse dans `useTelemetryStore.rateHz` une fois par seconde, et le seul écran qui l'affiche est `app/(app)/debug-capture.tsx`.
+Le cap n'est retenu que si le bit 5 des drapeaux de fix est posé
+(`headingValid`, ligne 86).
 
-### 4. Quatre consommateurs du même flux
+### Ce que le parser ne lit pas
 
-`bluetoothService.onData` est un simple registre de fonctions rappelées. Quatre abonnés existent en production, et **l'ordre d'abonnement est porteur de sens** :
+Les colonnes `pdop`, `speed_accuracy` et `heading_accuracy` **existent en base**
+(vérifié sur `information_schema.columns`) mais ne sont ni extraites par le
+parser ni écrites par le mapper `src/services/captureFrameMapping.ts:75`.
+Elles resteront `null` sur toute trame produite par cette chaîne.
 
-1. `src/ble/initBle.ts` (ligne 49) — pousse la dernière trame dans `useTelemetryStore` (débogage uniquement, la doctrine du silence interdit l'affichage live) ;
-2. `src/ble/lapDetectionRunner.ts` (ligne 90) — la détection de tours, abonnée **avant** la capture ;
-3. `src/services/captureSessionService.ts` (ligne 391) — la capture proprement dite ;
-4. `src/services/liveRelayRunner.ts` (ligne 239) — le relais coach, avec son propre étranglement (environ 3-4 Hz vers le binôme, 1 Hz vers le tableau de marche).
+---
 
-Un cinquième abonnement, temporaire, existe sur l'écran d'équipement (`app/(app2)/rec/equipement.tsx`, ligne 504) pour afficher l'état du boîtier pendant l'appairage.
+## Maillon 3 — La ceinture cardio Polar
 
-L'ordre 2 avant 3 est explicitement commenté (`captureSessionService.ts` lignes 364-372) : pour une trame donnée, le détecteur a déjà arbitré un éventuel franchissement de ligne quand la capture lit `getCurrentLapNumber()`. C'est ce qui permet de rattacher chaque trame à son tour sans dupliquer la détection.
+### Un chemin entièrement séparé
 
-### 5. L'armement de la capture
+Ajouté le 25/07/2026 (commit `8ba669d`). Le code est explicite
+(`src/ble/bluetoothService.ts:26-31`) : périphérique, abonnements et
+reconnexion **propres**, aucun couplage d'échec avec le RaceBox.
 
-L'armement est déclenché depuis `app/(app2)/rec/placement.tsx` par un **appui long de 600 ms** avec jauge circulaire (constante `ARM_HOLD_MS`, `src/features/rec/armementLogic.ts`) — un relâchement précoce n'ouvre aucune séance. L'écran V1 équivalent, `app/(app)/placement.tsx`, appelle exactement les mêmes arguments.
+- Service GATT standard `0000180d-...` (Heart Rate), caractéristique
+  `00002a37-...` en notification (`src/ble/bluetoothService.ts:32-36`).
+- Filtre de nom sur le préfixe `Polar` (ligne 675).
+- Scan dédié `startPolarScan` (ligne 653), connexion `connectPolar` (ligne 693).
+- Reconnexion **bornée**, jamais illimitée : `shouldGiveUpReconnect(attempt,
+  false)` en dur ligne 767 — « la ceinture est secondaire ».
 
-`startCaptureSession` (`captureSessionService.ts`, ligne 260) exécute, dans cet ordre :
+### Le décodage
 
-1. **Génération locale de l'identifiant de séance** (`newUuid`, UUID v4 client). L'application n'attend jamais le serveur pour obtenir un identifiant.
-2. **Mise en file de la création de séance** — pas un appel réseau direct. Une opération `create_session` est écrite sur disque avec `status: 'recording'`, l'horodatage de départ, le circuit et le véhicule.
-3. **Mise en file du rattachement d'intention**, si le pilote en a posé une en préparation (`peekPendingIntentionId`, `src/services/intentionsService.ts`). L'identifiant est lu localement, jamais par une requête — précisément pour fonctionner en mode avion. L'ordre d'enfilement (après `create_session`) est verrouillé par un test.
-4. **Drain en arrière-plan** (`processQueue`), sans attendre.
-5. **Démarrage du filet .ubx local** (`startCapture`, `src/ble/captureMode.ts`).
-6. **Démarrage de la détection de tours** avec la ligne d'arrivée du circuit choisi.
-7. **Abonnement au flux BLE** et armement du minuteur de vidage.
-8. **Reconnexion BLE illimitée** (`setUnlimitedReconnect(true)`) et **verrou d'écran** (`expo-keep-awake`, étiquette `oxv-capture`).
-9. **Démarrage du relais live** et de la **capture cardio**, tous deux en « au mieux » et non bloquants.
+`src/services/v2/heartRateParser.ts:68`, fonction pure, sans entrée-sortie.
+Elle lit l'octet de drapeaux, gère la fréquence sur 8 ou 16 bits, l'état de
+contact des électrodes (`ok` / `poor` / `unsupported`, lignes 113-114), saute
+le champ « énergie dépensée » si présent, et décode les intervalles R-R en
+unités de 1/1024 s converties en millisecondes **sans arrondi** (ligne 109) —
+l'arrondi fausserait la variabilité cardiaque.
 
-La fonction ne renvoie jamais un échec pour cause d'absence de réseau. C'est le principe du *local-first* : le pilote n'est jamais bloqué avant la piste.
+Toute trame tronquée renvoie `null` (lignes 70, 85, 89, 97, 106). Rien n'est
+inventé.
 
-### 6. Le tampon, la cadence d'écriture, l'horodatage
+### Les verrous de consentement
 
-À chaque trame reçue, la capture fait quatre choses (lignes 391-404) : calculer un `elapsed_ms`, empiler une ligne prête à insérer, mettre à jour les maxima de séance, mettre à jour les maxima du tour en cours.
+`src/services/biometryCaptureRunner.ts:174` arme la capture cardio locale
+**seulement si** :
 
-**Deux déclencheurs de vidage**, définis lignes 98-99 :
-- `FLUSH_EVERY_FRAMES = 50` — dès que le tampon atteint 50 trames ;
-- `FLUSH_INTERVAL_MS = 4000` — un minuteur toutes les 4 secondes, qui garantit qu'un tampon partiel finit par partir.
+1. le drapeau serveur `biometry` est actif (ligne 187) ;
+2. le pilote a donné son consentement de **capture** (ligne 189).
 
-À 25 Hz, cela donne environ un lot de 50 lignes toutes les deux secondes. Le vidage courant (`flush`, ligne 584) ne traite que **le retard présent à son entrée** : les trames qui arrivent pendant l'écriture attendent le déclencheur suivant. Le commentaire du code explique pourquoi (lignes 559-583) : drainer aussi les nouvelles arrivées faisait courir la boucle après un producteur à 25 Hz, et la taille de lot s'effondrait vers 1 à 4 lignes par requête. Seul le vidage **final** vide tout, et il n'est appelé qu'après le désabonnement du flux.
+Sans l'un des deux, le module est dormant : aucun abonnement, aucune
+entrée-sortie. Le troisième verrou (partage coach) ne concerne que le relais
+live, pas la conservation de ses propres données.
 
-L'écriture elle-même est un `insert` **direct** sur `telemetry_frames` (ligne 594). Ce n'est qu'en cas d'échec que le lot bascule dans la file sur disque, sous l'opération `frames`, et alimente le compteur `requeued`.
+Les échantillons vont dans un registre MMKV **séparé** de la file de capture
+(`src/features/rec/biometryCaptureBuffer.ts`), persistés toutes les 10 secondes
+(`PERSIST_INTERVAL_MS`, ligne 36). Une séance **abandonnée** purge le local sans
+jamais rien conserver (`discardBiometryCapture`, ligne 222), appelée depuis
+`src/services/captureSessionService.ts:837`.
 
-`elapsed_ms` mérite un paragraphe à lui seul, parce que c'est la pièce la plus fragile de la chaîne. Il est produit par `nextElapsedMs` (`src/services/captureFrameMapping.ts`, ligne 43) :
+### L'état réel en production
+
+- Le drapeau `biometry` est **actif** depuis le 25/07/2026 17:58 UTC
+  (table `app_feature_flags`). Son propre commentaire en base indique :
+  « Reste non tenu à la levée : smoke test 2 appareils reels ».
+- La table `biometry_raw` contient **0 ligne**.
+
+Le chemin cardio n'a donc jamais produit de donnée.
+
+---
+
+## Maillon 4 — La machine à états du pilote
+
+`src/store/useAppStateStore.ts`, 122 lignes. C'est la source de vérité de
+l'état `S1..S10` du pilote, recalculé par `determineState`
+(`src/types/state.ts:267`) à chaque changement de contexte.
+
+### Le lien avec le silence en piste
+
+`recompute()` (`src/store/useAppStateStore.ts:96`) pose un drapeau global de
+silence : `setSilenceMode(isSilentState(next))` (ligne 112).
+`isSilentState` ne renvoie vrai que pour `S6_roulage`
+(`src/types/state.ts:230`). Le drapeau est lu par les primitives basses
+(haptique) via `src/lib/silence.ts`.
+
+### Un constat qu'il faut connaître
+
+`determineState` bascule en `S6_roulage` uniquement si `ctx.activeRecording`
+est renseigné **et** que la vitesse moyenne récente dépasse 60 km/h
+(`src/types/state.ts:271-274`).
+
+Or **`setActiveRecording` n'est appelé nulle part dans l'application.** Une
+recherche sur tout le dépôt ne renvoie que sa déclaration et son implémentation
+dans le store (`src/store/useAppStateStore.ts:46` et `:80`), plus une mention
+dans un document de tickets (`docs/refonte-app/11_DEV_TICKETS.md:190`). Ni
+`captureSessionService`, ni les écrans de capture ne le posent.
+
+Conséquences, lues dans le code :
+
+- l'état `S6_roulage` n'est jamais atteint ;
+- `setSilenceMode(true)` n'est donc jamais déclenché par la machine à états ;
+- le silence en piste est en pratique tenu par **l'écran** — `rec/roulage.tsx`
+  n'affiche qu'un point et le mot « REC » — et non par le garde-fou runtime
+  prévu au commit `9f1f3f0`.
+
+Je n'ai pas pu vérifier si un autre mécanisme compense. Le point mérite une
+décision de votre part.
+
+### Le store de session, lui, est bien piloté
+
+`src/store/useSessionStore.ts` est un store distinct, qui porte les compteurs
+vivants (`lapCount`, `bestLapMs`, `status`). Celui-là est bien appelé par la
+capture : `startSession` (`captureSessionService.ts:381`), `pauseSession`
+(ligne 455), `resumeSession` (ligne 464), `endSession` (ligne 760),
+`abortSession` (ligne 853), `registerLap` (`lapDetectionRunner.ts:116`).
+
+---
+
+## Maillon 5 — Le service de capture
+
+`src/services/captureSessionService.ts`, 869 lignes. C'est le chef d'orchestre.
+
+### Le démarrage : rien n'attend le réseau
+
+`startCaptureSession` (ligne 260) suit un ordre précis :
+
+1. **Identifiant généré côté client** : `newUuid()` (ligne 263), un UUID v4
+   fabriqué localement (`captureSyncQueue.ts:158`). L'app ne demande pas au
+   serveur la permission d'enregistrer.
+2. **Création de séance mise en file**, pas envoyée :
+   `enqueue({ type: 'create_session', ... })` (ligne 282). Si le disque est
+   indisponible, on avertit en console et **on démarre quand même** (ligne 284).
+3. **Rattachement d'intention**, si le pilote en a posé une en préparation
+   (lignes 301-317). L'identifiant est lu **localement**
+   (`peekPendingIntentionId`) — une requête réseau échouerait précisément en
+   mode avion. L'ordre d'enfilement (après `create_session`) est verrouillé par
+   un test (`captureSessionService.test.ts:520`).
+4. **Drain en arrière-plan** : `void processQueue()` (ligne 321). Si le réseau
+   est là, l'insert part tout de suite ; sinon il attend.
+5. **Ligne d'arrivée** : `input.finishLine`, ou le repli `BELTOISE_FINISH`
+   (ligne 96) avec un avertissement console explicite (ligne 325).
+6. **Capture .ubx locale** démarrée (ligne 359), jamais bloquante.
+7. **Détection de tours** démarrée (ligne 373) — et l'ordre est porteur, voir
+   maillon 6.
+8. **Abonnement au flux BLE** (ligne 391).
+9. **Reconnexion illimitée armée** + verrou d'écran (lignes 410-411).
+10. **Suivi de reconnexion** abonné (ligne 416).
+11. **Relais live coach** lancé si consenti (ligne 424), muet côté pilote.
+12. **Capture cardio** lancée si les verrous passent (ligne 433).
+
+`startCaptureSession` **ne renvoie jamais d'échec pour cause de réseau absent**.
+Le seul refus possible est « Une capture est déjà active » (ligne 261).
+
+### Le cœur : `elapsed_ms` strictement croissant
+
+C'est l'invariant le plus important de toute la chaîne.
+
+`nextElapsedMs` (`src/services/captureFrameMapping.ts:43`) :
 
 ```ts
 return Math.max(nowMs - startMs, lastElapsed + 1);
 ```
 
-Le `+ 1` n'est pas un détail d'ordonnancement : `elapsed_ms` est la **clé d'idempotence** des trames, et la contrainte `UNIQUE (session_id, elapsed_ms)` existe réellement en production (vérifié : contrainte `telemetry_frames_session_elapsed_unique`, migration `20260716165100` appliquée). Sous un `ON CONFLICT DO NOTHING`, deux trames réelles partageant un `elapsed_ms` verraient l'une des deux détruite en silence. Trois causes rendaient les ex æquo possibles : plusieurs trames par notification, blocage du fil JavaScript, recul d'horloge après resynchronisation réseau. L'arbitrage assumé, écrit dans le code : pendant un recul d'horloge, le temps avance de 1 ms par trame — le chronométrage est momentanément comprimé, mais aucune donnée n'est perdue.
+Le `+ 1` n'est pas une coquetterie. `elapsed_ms` est la **clé d'idempotence**
+des trames : `UNIQUE (session_id, elapsed_ms)` en base, `ON CONFLICT DO NOTHING`
+côté file. Une suite seulement non-décroissante produirait des ex æquo, et
+deux trames **réelles et distinctes** partageraient une clé — l'une serait
+détruite en silence.
 
-Chaque ligne porte aussi `itow_ms`, le temps GPS du boîtier. Il n'est **pas** la clé d'unicité (l'argumentaire complet est en tête de `captureSyncQueue.ts`, lignes 58-90 : l'iTOW se répète avant fix, se réenroule chaque dimanche, et la colonne est nullable). Il sert d'identité physique pour réconcilier un réimport .ubx avec les trames déjà captées.
+Trois causes réelles d'ex æquo sont documentées lignes 21-28 : plusieurs trames
+livrées dans la même notification BLE, un blocage du fil JavaScript qui délivre
+les notifications dos à dos, et un **recul d'horloge** (resynchronisation NTP au
+retour du réseau).
 
-### 7. La détection de tours
+L'arbitrage est assumé : pendant un recul d'horloge, l'horodatage avance de 1 ms
+par trame, le minutage est temporairement comprimé, mais **aucune trame n'est
+détruite**. `itow_ms` reste stocké sur chaque ligne pour le temps GPS exact.
 
-`startLapDetection` (`lapDetectionRunner.ts`, ligne 74) instancie un détecteur et s'abonne au flux. Les trames dont le fix GPS est inférieur à 3D sont écartées immédiatement.
+### Le vidage du tampon : deux régimes
 
-Deux modes, arbitrés par la présence d'un **cap** de franchissement (`src/utils/lapDetection.ts`, lignes 1-31) :
+`flush` (ligne 584) est non réentrant : un appel concurrent renvoie la promesse
+en cours (ligne 585).
 
-- **Mode porte** (cap fourni) : la ligne est un segment perpendiculaire à la piste, de demi-largeur configurable. Un tour est compté quand le segment [point précédent → point courant] coupe la porte **dans le sens du cap**. Ce mode existe pour une raison mesurée sur le terrain et documentée : à Haute Saintonge la voie des stands est à 22,9 m de la ligne avec 2,3° d'écart de cap ; à Ricardo Tormo, 16,2 m et 0,4°. En mode rayon, la fenêtre admissible à Valence est de 20 centimètres — donc vide dès que la voie des stands fait sa largeur normale. Aucun rayon ne peut couvrir la piste et exclure les stands.
-- **Mode rayon** (pas de cap) : entrée dans un disque autour de la ligne. C'est le repli historique, utilisé quand `finish_line_heading` est nul en base (le circuit « La charade » est cité).
+- **Régime courant** (`final = false`) : on ne traite que le **retard présent à
+  l'entrée** (`remaining = state.buffer.length`, ligne 589), par lots de 50.
+  Les trames arrivées pendant l'écriture attendent le déclencheur suivant.
+  La raison est écrite lignes 566-574 : drainer aussi celles-là faisait courir
+  la boucle derrière un producteur à 25 Hz, la taille de lot s'effondrait vers
+  4 lignes en 4G, et une séance de vingt minutes tirait des dizaines de milliers
+  de requêtes d'une poignée de lignes.
+- **Régime final** (`final = true`, ligne 635) : on vide tout. Sûr parce que
+  `drain()` n'est appelé qu'**après** `state.unsubData()` — plus aucune trame
+  n'arrive.
 
-Deux garde-fous communs : un **délai de garde de 10 secondes** entre deux tours (`COOLDOWN_MS`), et en mode porte un **pas maximal de 50 mètres** (`MAX_STEP_M`) au-delà duquel le franchissement n'est pas évalué — après un trou de liaison, le segment reliant deux points éloignés n'est pas une trajectoire et pourrait couper la porte sans que la voiture y soit passée.
+Déclencheurs : 50 trames accumulées (`FLUSH_EVERY_FRAMES`, ligne 98) ou
+4 secondes (`FLUSH_INTERVAL_MS`, ligne 99, minuterie ligne 405).
 
-La durée d'un tour est mesurée sur une **base monotone** (`src/utils/monotonicClock.ts`), jamais sur l'horloge murale ; les dates affichables (`startedAtMs`, `endedAtMs`), elles, restent murales. Le premier passage de ligne n'est pas compté : c'est la fin de l'outlap, et il ne fait que mémoriser le point de départ du premier tour chronométré.
+### Quand l'insert direct échoue
 
-La ligne d'arrivée transmise vient de `captureFinishLineFor` (`src/services/captureFinishLineLogic.ts`), qui renvoie `undefined` plutôt qu'une fausse ligne si les coordonnées valent 0/0 ou ne sont pas finies. Si l'appelant ne fournit rien, `captureSessionService` retombe sur `BELTOISE_FINISH` (lat 45,6004 / lon −0,141, rayon 40 m) en écrivant un avertissement en console — et le commentaire est explicite : ces coordonnées ne correspondent à aucun circuit réel, les tours ne seront pas comptés.
+Ligne 597-611 : le lot n'est **pas perdu**. Il est remis en file sur fichier
+(`enqueue({ type: 'frames' })`) et compté dans `state.requeued`. Si même le
+disque est indisponible, on avertit et le fichier `.ubx` local reste le filet
+ultime.
 
-### 8. Ce qui est écrit, et QUAND
+### Les maxima, accumulés à la source
 
-C'est le point le plus important de cette section.
+Deux jeux d'accumulateurs :
 
-| Destination | Moment d'écriture | Chemin |
+- **par séance** : `updateMaxima` (`captureFrameMapping.ts:122`) — vitesse max,
+  |g latéral| max, |g longitudinal| max ;
+- **par tour** : `updateLapMaxima` (ligne 187) — vitesse max, latéral max,
+  freinage max (part positive de `gForceX`), accélération max (part positive de
+  `−gForceX`), somme et compte des vitesses pour la moyenne.
+
+La convention d'axes est verrouillée : **`gForceY` = latéral, `gForceX` =
+longitudinal avec x positif = freinage** (ligne 181-185).
+
+Le point de doctrine est explicite lignes 130-141 : ces colonnes existaient en
+base depuis la migration `0004` mais n'étaient **jamais écrites**, et aucun
+déclencheur ne les calculait. `computeSmoothness` lisait `max_g_lateral ?? 0`
+sur tous les tours, l'écart-type tombait à zéro, et la fluidité valait 100 sur
+100 % des séances réelles. Un quart de la marge globale ne venait d'aucune
+mesure.
+
+Depuis la correction, un tour sans trame rattachée reste `null` de bout en bout
+(`lapMaximaToColumns`, ligne 216). On écrit du réel, ou rien.
+
+### L'arrêt : l'ordre compte
+
+`stopCaptureSession` (ligne 723) :
+
+1. `current = null` **synchrone**, avant tout `await` (ligne 726) — un second
+   appel concurrent court-circuite.
+2. Statut de lien remis à `idle` (ligne 730).
+3. Désabonnements flux + reconnexion (lignes 734-735).
+4. Reconnexion illimitée désarmée, verrou d'écran relâché, minuterie
+   d'interruption annulée (lignes 738-740).
+5. Relais live coupé (741), cardio préservé (742), minuterie de vidage arrêtée
+   (743).
+6. **Vidage final** attendu (`await drain`, ligne 744).
+7. Gel du dernier tour (`freezeCurrentLap`, ligne 754) — sans lui, le tour en
+   cours partirait avec des colonnes vides alors qu'il a bien été mesuré.
+8. Arrêt de la détection, relevé des tours et des compteurs (755-760).
+9. Fermeture du `.ubx` local (765).
+10. Mise en file, **dans l'ordre FIFO** : `laps` (779), puis `complete` (785),
+    puis `ubx_upload` (806).
+11. Drain en arrière-plan (819).
+
+### L'abandon
+
+`abortCaptureSession` (ligne 825) suit le même démontage, mais :
+`discardBiometryCapture()` purge le cardio local (837), aucun tour n'est
+persisté, et une op `complete` avec `status: 'aborted'` est mise en file
+(ligne 860). Le commentaire lignes 855-859 explique pourquoi c'est
+indispensable : hors ligne, le `create_session` dort peut-être encore dans la
+file ; sans cette clôture rejouée, il ressusciterait une séance en `recording`
+fantôme.
+
+---
+
+## Maillon 6 — La détection des tours et la ligne d'arrivée
+
+### L'ordre d'abonnement est une garantie
+
+`lapDetectionRunner` s'abonne au flux BLE **avant** le service de capture
+(`captureSessionService.ts:373` précède `:391`). Pour une trame donnée, le
+runner a donc déjà arbitré le franchissement quand la capture lit
+`getCurrentLapNumber()` (`lapDetectionRunner.ts:168`). C'est ce qui permet de
+rattacher chaque trame au bon tour **sans redétecter**.
+
+Le commentaire `captureSessionService.ts:366-369` désigne cet ordre comme
+porteur. Il n'est protégé par rien d'autre que ce commentaire et l'ordre
+d'écriture des lignes.
+
+### Deux horloges, deux usages
+
+`lapDetectionRunner.ts:94-105` :
+
+- `wallNow` = `Date.now()`, horloge **murale**, sert à horodater les dates de
+  début et de fin de tour (`startedAtMs` / `endedAtMs` → ISO) ;
+- `monoNow` = base **monotone** (`nextMonotonic`, `src/utils/monotonicClock.ts:25`),
+  sert à **mesurer** la durée et à appliquer le délai de garde.
+
+Une durée est toujours la différence de deux instants monotones (ligne 114),
+donc toujours positive, jamais faussée par un recul d'horloge.
+
+### Deux modes de détection
+
+`src/utils/lapDetection.ts` implémente deux algorithmes, choisis par la présence
+ou l'absence d'un **cap** de franchissement.
+
+**Mode PORTE** (dès qu'un cap est fourni, ligne 289) : la porte est un segment
+perpendiculaire à la piste, centré sur la ligne, de demi-longueur
+`finishLineRadius`. Un tour est compté quand le segment
+[point précédent → point courant] coupe ce segment, **dans le sens du cap**
+(`processGateCrossing`, ligne 195).
+
+Trois garde-fous dans ce mode :
+
+- `MAX_STEP_M = 50` (ligne 93) : après un trou de données (reconnexion BLE,
+  perte de fix), les deux points encadrent plusieurs centaines de mètres et le
+  segment qui les relie n'est pas une trajectoire. Au-delà de 50 m, on
+  **n'évalue pas** le franchissement. « Un tour manqué se voit ; un faux tour
+  corrompt le bilan en silence. »
+- sens obligatoire (ligne 222) : un retour aux stands à contresens ne boucle pas
+  un tour ;
+- délai de garde de 10 s (`COOLDOWN_MS`, ligne 81).
+
+La justification du mode porte est chiffrée sur des relevés réels
+(lignes 17-20) : à Haute Saintonge, la voie des stands est à 22,9 m de la ligne
+avec 2,3° d'écart de cap ; à Ricardo Tormo, 16,2 m et 0,4° d'écart. En mode
+rayon, la fenêtre admissible à Valence est de 20 centimètres — et vide dès que
+la voie des stands fait sa largeur normale. **Aucun rayon ne peut à la fois
+couvrir la piste et exclure les stands.**
+
+**Mode RAYON** (repli, ligne 292) : entrée dans un disque autour de la ligne.
+Comportement historique, sans aucune vérification de direction.
+
+### Le premier passage ne compte pas
+
+`lapDetectionRunner.ts:130-135` : le premier franchissement clôt l'outlap. Il
+mémorise le point de départ du premier tour chronométré **sans le compter**.
+`getCurrentLapNumber()` renvoie `0` tant que ce premier passage n'a pas eu lieu
+(ligne 169), et `freezeCurrentLap` n'archive que les numéros ≥ 1
+(`captureSessionService.ts:668`). Les trames d'approche ne sont donc jamais
+attribuées au tour 1.
+
+### La résolution de la ligne d'arrivée
+
+`src/services/captureFinishLineLogic.ts:35`, fonction pure :
+
+- coordonnées non finies → `undefined` (ligne 40) ;
+- **0/0 → `undefined`** (ligne 43), parce que le mapping circuit met 0 par
+  défaut : « on ne détecte pas de tours sur une fausse ligne plutôt que d'en
+  inventer » ;
+- rayon non renseigné ou négatif → 40 m par défaut (ligne 33) ;
+- cap non relevé → la clé est simplement **absente**, jamais inventée
+  (ligne 51) : la détection reste en mode rayon.
+
+### Ce qui manque pour un circuit non renseigné
+
+C'est la question directe posée. La réponse est nette.
+
+Si `captureFinishLineFor` renvoie `undefined`, `startCaptureSession` retombe sur
+`BELTOISE_FINISH` (`captureSessionService.ts:96`) :
+`{ lat: 45.6004, lon: -0.141, radiusM: 40 }`. Le commentaire ligne 91-95 est
+sans ambiguïté : **« Ces coordonnées ne correspondent à aucun circuit réel :
+si on retombe dessus, les tours ne seront PAS comptés. »** Un avertissement
+console est émis (ligne 325).
+
+Il manque donc, pour un circuit non renseigné :
+
+1. **Les coordonnées de la ligne d'arrivée** (`finish_line_lat`,
+   `finish_line_lon`). Sans elles : zéro tour détecté, `lap_count = 0`,
+   `best_lap_seconds = null`, table `laps` vide, et tout ce qui en dérive
+   (régularité, fluidité par tour, records) est absent.
+2. **Le cap de franchissement** (`finish_line_heading`). Sans lui, mode rayon :
+   la voie des stands compte comme un passage sur tout circuit où elle est
+   parallèle à la ligne — c'est-à-dire à peu près tous.
+3. **Le rayon / la demi-largeur** (`finish_line_radius_m`). À défaut, 40 m est
+   appliqué, ce qui est large en mode porte.
+
+### L'état réel des circuits en production
+
+Quatre circuits en base, tous interrogés le 26/07/2026 :
+
+| Circuit | Officiel | Ligne | Rayon | Cap | Mode de détection |
+|---|---|---|---|---|---|
+| Charente | oui | 45,627473 / −0,2767456 | 35 m | 53,40° | porte |
+| Circuit Ricardo Tormo | oui | 39,483568 / −0,631076 | 10 m | 55,20° | porte |
+| Haute Saintonge | oui | 45,240578 / −0,094391 | 15 m | 298,50° | porte |
+| La charade | non | 45,5988038 / −0,1338882 | 30 m | **null** | **rayon** |
+
+Les trois circuits officiels sont renseignés cap compris. « La charade » n'a pas
+de cap : elle tombe en mode rayon, sans exclusion de voie des stands.
+
+Il existe deux fichiers SQL de calibration prêts à l'emploi dans le dépôt :
+`docs/SQL_CALIBRATION_HAUTE_SAINTONGE.sql` et
+`docs/SQL_CALIBRATION_RICARDO_TORMO.sql`.
+
+---
+
+## Maillon 7 — La file de synchronisation hors ligne
+
+`src/services/captureSyncQueue.ts`, 1 234 lignes. C'est la pièce la plus dense
+du dépôt et la plus défensive.
+
+### Pourquoi un fichier et pas MMKV
+
+Écrit ligne 4-8 : la file MMKV d'`offlineQueue` porte de petites actions
+unitaires. La capture produit des dizaines de milliers de trames par séance,
+plusieurs mégaoctets. Chaque **opération** est donc un fichier JSON sous
+`${documentDirectory}capture-queue/`.
+
+### L'ordre FIFO est dans le nom du fichier
+
+`nextFileName` (ligne 228) :
+`${horodatage sur 15}-${séquence sur 6}-${type}.json`.
+
+L'horodatage est rendu non décroissant dans un run (`Math.max` avec le dernier,
+ligne 229), la séquence casse les ex æquo. **Le tri lexicographique des noms
+équivaut à l'ordre d'insertion.** Au redémarrage (séquence remise à zéro), les
+opérations d'un run précédent portent un horodatage antérieur et passent donc
+en premier.
+
+### L'écriture est atomique
+
+`writeEnvelopeAtomic` (ligne 338) écrit un `.tmp` puis le renomme. Le `.tmp` ne
+finit pas par `.json`, le drain ne le voit donc jamais ; le renommage rend le
+fichier visible d'un coup, complet ou pas du tout.
+
+La raison est nommée ligne 334-336 : sur Android, `writeAsStringAsync` écrit en
+flux hors du fil JavaScript — un fichier à demi écrit y était listable, donc
+lisible tronqué. iOS écrit déjà atomiquement ; on unifie pour ne pas dépendre du
+système.
+
+Un `.tmp` orphelin (crash pendant une écriture) est balayé au démarrage par
+`sweepOrphanTmp` (ligne 362) et mis en quarantaine, jamais supprimé.
+
+### Les six opérations
+
+| Type | Effet | Idempotence |
 |---|---|---|
-| `telemetry_sessions` (ligne, statut `recording`) | **à l'armement** | file de synchro, opération `create_session` |
-| `session_intentions.session_id` | **à l'armement**, juste après | file, opération `attach_intention` |
-| `telemetry_frames` | **en continu**, tous les 50 trames ou 4 s | insertion directe ; file seulement en cas d'échec |
-| Fichier `.ubx` local | **en continu** en mémoire, écrit sur disque **à la clôture** | `src/ble/captureMode.ts` |
-| `laps` | **à la clôture uniquement** | file, opération `laps` |
-| Agrégats de séance (`duration_seconds`, `lap_count`, `best_lap_seconds`, `max_speed_kmh`, `max_g_lateral`, `max_g_longitudinal`, `total_frames`, `status: completed`) | **à la clôture uniquement** | file, opération `complete` |
-| Bucket `telemetry_raw` (upload du `.ubx`) | **à la clôture uniquement** | file, opération `ubx_upload` |
-| `biometry_raw` | **à la clôture** (ou au rejeu) | registre MMKV séparé, `biometryCaptureRunner` |
-| `app_session_analyses`, `app_segment_analyses`, `session_insights`, débrief | **après la clôture**, sur l'écran de fin | `analyzeAndPersistSession`, hors file |
+| `create_session` | upsert `telemetry_sessions` | `onConflict: 'id'` (ligne 636) |
+| `attach_intention` | update `session_intentions.session_id` | idempotent par nature (ligne 651) |
+| `frames` | upsert lot `telemetry_frames` | `(session_id, elapsed_ms)`, ignore doublons (ligne 601) |
+| `laps` | upsert lot `laps` | `(session_id, lap_number)`, ignore doublons (ligne 624) |
+| `complete` | update `telemetry_sessions` | idempotent, **recompte** `total_frames` (ligne 679) |
+| `ubx_upload` | upload Storage | `upsert: true` (`telemetryStorage.ts:58`) |
 
-Autrement dit : **les tours n'existent nulle part tant que le pilote n'a pas terminé son run.** Pendant toute la séance, seuls les compteurs vivent en mémoire (`useSessionStore.lapCount`, `bestLapMs`) ; la table `laps` reste vide. Si l'application est tuée en piste, les trames déjà envoyées sont en base mais les tours sont perdus — le `.ubx` local reste alors le seul témoin.
+### La classification des erreurs : liste blanche d'abandon
 
-Les maxima **par tour** (`laps.max_g_lateral`, `max_g_braking`, `max_g_accel`, `max_speed_kmh`, `avg_speed_kmh`) sont accumulés pendant la capture (`accumulateLapMaxima`, ligne 653) puis figés au changement de tour. Le commentaire de `captureFrameMapping.ts` (lignes 130-142) explique la raison d'être : ces colonnes existaient en base depuis la migration `0004` mais n'étaient **jamais écrites**, de sorte que le calcul de fluidité lisait `0` partout et rendait une fluidité de 100 sur 100 % des séances réelles. La règle appliquée depuis : un tour sans trame rattachée garde ses colonnes à `null`, jamais `0`. Le dernier tour est figé explicitement à l'arrêt (`freezeCurrentLap` appelé avant `stopLapDetection`, ligne 754), sans quoi il partirait avec des colonnes vides alors qu'il a bien été mesuré.
+C'est le point le plus important du module, et il a une histoire. Le commentaire
+ligne 440 le dit : « l'ancienne règle *tout code ⇒ abandon* faisait détruire une
+séance entière par un 503 ».
 
-**Colonnes jamais écrites par la chaîne de capture**, vérifiées par recherche sur tout le dépôt : `telemetry_sessions.distance_km`, `avg_lap_seconds`, `best_lap_number`, `weather`, `notes` ; `laps.distance_meters`. Elles sont lues à plusieurs endroits (`statsService.ts`, `bilanPdfExportService.ts`, `useBilan.ts`) mais restent nulles. De même, la fonction `saveWeatherSnapshot` (`src/services/weatherService.ts`, ligne 208) **n'a aucun appelant** : aucun instantané météo n'est associé à une séance, et la table `weather_snapshots` compte 0 ligne en production.
+La règle actuelle (`isDroppableCode`, ligne 442) :
 
-### 9. La clôture
+- **Transitoire explicite** : PostgREST `PGRST000/001/002` (ligne 414 —
+  `PGRST002` survient dans les secondes qui suivent une migration, soit
+  exactement la manœuvre prévue en production le jour J) ; SQLSTATE classes
+  `08` connexion, `40` sérialisation, `53` ressources épuisées (dont le
+  « too many clients » de fin de roulage), `57` intervention opérateur
+  (ligne 422).
+- **Abandon** : SQLSTATE classes `22` donnée invalide, `23` intégrité, `42`
+  syntaxe/privilège ; PostgREST `PGRST202/205` ; fichier source absent
+  (ligne 490).
+- **Deux exceptions dans la classe 23** :
+  - `23503` (violation de clé étrangère) n'est **pas** une erreur de donnée,
+    c'est un signal d'**ordonnancement** — le `create_session` n'est pas encore
+    passé. On conserve et on laisse le FIFO rejouer (ligne 448).
+  - `23505` (violation d'unicité) : les lignes sont déjà en base ou le lot doit
+    être absorbé en upsert. « Jeter 50 trames pour une collision sur une seule
+    serait absurde » (ligne 452).
+- **Défaut pour tout code inconnu : TRANSITOIRE** (ligne 456). C'est
+  l'inversion de charge de la preuve : « un code qu'on ne sait pas lire
+  n'autorise pas à détruire la donnée d'un pilote ».
 
-`stopCaptureSession` (ligne 723) suit une séquence stricte :
+**Garde dure** (ligne 488) : une opération `create_session` n'est **jamais**
+abandonnée, même sur une erreur parfaitement logique. La ligne de séance porte
+la clé étrangère de toutes les trames et de tous les tours en `ON DELETE
+CASCADE` : l'abandonner ferait tomber la séance entière, en silence. « Mieux
+vaut une file bloquée — visible, réparable — que des heures de piste effacées. »
 
-1. **Capture-and-null synchrone** : `current` est remis à null dès la première ligne, avant tout `await`, pour qu'un second appel concurrent court-circuite.
-2. Désabonnement du flux, du suivi de reconnexion, arrêt du minuteur.
-3. Désarmement de la reconnexion illimitée, libération du verrou d'écran, coupure du relais live, clôture de la capture cardio.
-4. `drain()` : on attend un vidage éventuellement en vol, puis on vide **intégralement** le tampon.
-5. Gel du tour en cours, arrêt de la détection, relevé des compteurs.
-6. Fermeture du fichier `.ubx`.
-7. Mise en file, **dans l'ordre**, de `laps`, puis `complete`, puis `ubx_upload`.
-8. Drain en arrière-plan.
+**Cas Storage** (ligne 471) : `storage-js` n'expose que `status`, jamais `.code`.
+On n'abandonne que 400, 413 et 415. Surtout pas 401/403 (jeton expiré, mauvais
+pilote connecté) ni 404 (bucket absent) — ce sont des erreurs réparables.
 
-Le total de trames renvoyé est « émis » (insérées en direct + requeuées). Il n'est pas définitif : au moment d'exécuter `complete`, la file **recompte les trames réellement présentes en base** pour cette séance (`execComplete`, `captureSyncQueue.ts` ligne 679) et écrase `total_frames` avec ce nombre. C'est possible grâce au FIFO : toutes les opérations `frames` précèdent le `complete`.
+### La quarantaine, jamais la suppression
 
-L'abandon (`abortCaptureSession`, ligne 825) suit le même démontage mais met en file un `complete` avec `status: 'aborted'`, ne persiste **aucun tour**, ne fait **aucun upload**, et purge le cardio local. Le fichier `.ubx` est bien écrit sur disque mais son URI n'est stocké nulle part hors de `captureMode.getLastSavedUri()` — il n'est plus référencé par aucune opération, donc éligible au ménage par âge au bout de 7 jours.
+Une opération abandonnée est **déplacée** sous `capture-queue/quarantine/`
+(`quarantineOp`, ligne 316), jamais détruite. « La file repart, mais la donnée du
+pilote reste inspectable et rejouable à la main. » Chaque mise en quarantaine
+est remontée à Sentry (lignes 326, 766, 786, 807).
 
-### 10. La file de synchronisation
+### La bascule 42P10 et son ré-armement
 
-`captureSyncQueue.ts` est le fichier le plus long de la chaîne (1235 lignes). Sa raison d'être : une séance produit des dizaines de milliers de trames, plusieurs mégaoctets, ce qui exclut la file MMKV utilisée pour les petites actions.
+`writeIdempotent` (ligne 541) gère le cas où la contrainte UNIQUE n'existe pas
+encore en production :
 
-**Disposition sur disque.** Un dossier `capture-queue/` dans le répertoire documents, **une opération par fichier JSON**. Le nom est `${horodatage sur 15 chiffres}-${séquence sur 6}-${type}.json` : le tri lexicographique des noms est exactement l'ordre d'insertion. L'écriture est **atomique** (fichier `.tmp` puis renommage, ligne 338) parce que sur Android un fichier à demi écrit était listable et donc lisible tronqué.
+1. upsert nominal ;
+2. sur `42P10` (« no unique or exclusion constraint matching the ON CONFLICT
+   specification »), bascule sur un `insert` simple, avec un avertissement émis
+   **une seule fois** ;
+3. si un `23505` survient **en mode repli**, c'est la preuve que la contrainte
+   est apparue entre-temps : on ré-arme la bascule et on rejoue en upsert.
 
-**Six types d'opérations** : `create_session`, `attach_intention`, `frames`, `laps`, `complete`, `ubx_upload`.
+**État réel en production** : les deux contraintes existent.
+`telemetry_frames_session_elapsed_unique` sur `(session_id, elapsed_ms)` et
+`laps_session_lap_number_unique` sur `(session_id, lap_number)`, appliquées par
+les migrations `20260716165100_valencia_telemetry_frames_unique.sql` et
+`20260716165129_valencia_laps_unique.sql`. Le chemin de repli est donc dormant.
 
-**Idempotence.** Chaque opération est rejouable :
-- `create_session` : `upsert` sur `id` ;
-- `frames` : `upsert onConflict (session_id, elapsed_ms)` avec `ignoreDuplicates` ;
-- `laps` : `upsert onConflict (session_id, lap_number)` avec `ignoreDuplicates` ;
-- `complete` : `update` filtré sur l'identifiant **et** l'utilisateur ;
-- `ubx_upload` : `upsert: true` côté Storage.
+### Le drain, et son rejeu coalescé
 
-Les deux `upsert` multi-lignes passent par un mécanisme commun (`writeIdempotent`, ligne 541) qui gère le cas où la contrainte n'existe pas encore en production : erreur `42P10` → repli sur un `insert` simple avec un avertissement unique ; puis un `23505` en mode repli prouve que la migration est passée entre-temps et **ré-arme** l'upsert. Le client est donc correct avant comme après l'application de la migration. Les deux contraintes sont aujourd'hui **bien présentes en production** (vérifié sur `pg_constraint`).
+`processQueue` (ligne 861) n'est pas réentrant, mais un appel concurrent n'est
+pas **avalé** : il est mémorisé (`rerunRequested`, ligne 736) et la passe est
+rejouée avant de rendre la main.
 
-**Classification des erreurs.** C'est le cœur de la robustesse, et le raisonnement est inversé par rapport à l'intuition (lignes 26-37 et 442-457) : seule une **liste blanche** d'erreurs autorise l'abandon (SQLSTATE 22, 23 sauf 23503 et 23505, 42 ; PostgREST 202 et 205 ; fichier source absent ; statuts Storage 400/413/415). Tout code **inconnu est traité comme transitoire** et conservé. `23503` (violation de clé étrangère) est explicitement classé transitoire : c'est un signal d'ordonnancement, la séance n'est pas encore créée côté serveur. `401` et `403` sur Storage ne sont **pas** abandonnés — un jeton expiré est réparable.
+Deux cas réels justifient ce mécanisme (lignes 846-850) : le retour de réseau
+pendant l'upload `.ubx` de fin de séance (le déclencheur était perdu, plus rien
+ne partait), et le `create_session` de la séance **suivante** enfilé pendant ce
+même upload (toute la séance 2 partait alors en `23503`, lot par lot, sur
+disque).
 
-**Garde dure** : une opération `create_session` n'est **jamais** abandonnée, quelle que soit l'erreur. La ligne de séance porte la clé étrangère de toutes les trames et de tous les tours avec `ON DELETE CASCADE` : l'abandonner ferait tomber la séance entière en silence.
+Le rejeu ne couvre **que** la fin de liste normale, **jamais** un arrêt réseau
+(ligne 875) : rejouer après un échec réseau ferait boucler en marteau sur un
+réseau absent.
 
-**Quarantaine plutôt que suppression.** Une opération réellement condamnée est **déplacée** dans `capture-queue/quarantine/`, jamais effacée, et remontée à Sentry (`captureException`). Un fichier illisible subit le même sort.
+`drainOnce` (ligne 752) s'arrête au premier échec transitoire et **garde ce
+fichier et tous les suivants** (ligne 825), FIFO préservé.
 
-**Comportement du drain** (`drainOnce`, ligne 752) : traitement dans l'ordre, suppression de chaque opération réussie ; **arrêt au premier échec réseau** en conservant le reste (on ne martèle pas un réseau tombé) ; exception pour `ubx_upload`, qui est une opération feuille dont aucune autre ne dépend — on la **saute** en incrémentant un compteur, et on la met en quarantaine après 10 tentatives (`MAX_UPLOAD_ATTEMPTS`).
+### L'upload `.ubx` est une opération feuille
 
-**Coalescence.** `processQueue` n'est pas réentrant, mais un déclencheur concurrent n'est pas avalé : il arme `rerunRequested` et la passe en cours est rejouée avant de rendre la main (ligne 861). Le commentaire cite deux cas réels que cela corrige : le retour de réseau pendant l'upload de fin de séance, et la création de la séance suivante enfilée pendant ce même upload.
+Ligne 795-823 : contrairement à `create_session`, aucune autre opération ne
+dépend d'un upload. Arrêter le drain entier ferait bloquer à vie toutes les
+séances suivantes derrière un upload durablement en échec. On le **saute**, on le
+garde sur disque, on compte la tentative, et au bout de
+`MAX_UPLOAD_ATTEMPTS = 10` (ligne 222) on le met en quarantaine.
 
-**Déclencheurs du drain**, au nombre de trois seulement :
-- au lancement de l'application — `app/_layout.tsx` ligne 48, `void resumeUnsyncedCaptures()` ;
-- au retour du réseau — `src/lib/netinfo.ts` ligne 40, sur transition hors-ligne → en ligne ;
-- au démarrage et à la clôture d'une capture — `void processQueue()` dans `captureSessionService`.
+### Le ménage des `.ubx` : trois verrous
 
-### 11. Le filet .ubx local
+`gcOldCaptures` (ligne 1002), rétention 7 jours (`UBX_MAX_AGE_MS`, ligne 935) :
 
-`src/ble/captureMode.ts` s'abonne à `onRawData`, c'est-à-dire aux octets **avant** resynchronisation et décodage. Les morceaux sont accumulés en mémoire pendant toute la séance, puis concaténés et écrits en un seul fichier `${documentDirectory}fixtures/racebox-capture-<horodatage>.ubx` à l'arrêt (ligne 65). Le fichier est la concaténation stricte des trames brutes ; il est rejouable par `UbxFrameBuffer` et partageable via la feuille de partage système.
+1. **File non vide ⇒ aucun ménage** (ligne 1004). Une opération en attente peut
+   être le `create_session` d'une séance non confirmée ; son `.ubx` est alors le
+   seul exemplaire du brut.
+2. **Référencé ⇒ conservé** (ligne 1015). Un `ubx_upload` en file **ou en
+   quarantaine** protège son fichier par URI.
+3. **Âge illisible ⇒ conservé** (ligne 1012). « Un nom qu'on ne sait pas dater
+   n'autorise pas à détruire la donnée d'un pilote. »
 
-Ce fichier n'est **pas** supprimé après l'upload : il reste le filet de reprise. Il est effacé par âge (`gcOldCaptures`, 7 jours) avec trois verrous, dans l'ordre de la règle « en cas de doute, conserver » : file non vide → aucun ménage ; fichier encore référencé par une opération `ubx_upload` (y compris en quarantaine) → conservé ; nom dont on ne sait pas lire la date → conservé.
+Le fichier n'est **pas** supprimé à l'upload : il reste le filet de reprise.
 
-Deux consommateurs du `.ubx` existent :
-- `analyzeAndPersistSession` (`src/services/analyzeSessionService.ts`, ligne 104) le parse **en priorité** sur les trames en base pour produire l'analyse par segment ;
-- `reimportUbxToFrames` (`captureSyncQueue.ts`, ligne 1139), filet de dernier recours qui réinjecte les trames manquantes. Sa logique est soignée — appariement multi-ensemble sur `itow_ms`, recalage de la base de temps sur une ancre live, allocation d'`elapsed_ms` garantie sans collision, refus explicite si la séance porte des trames sans `itow_ms`. **Mais cette fonction n'a aucun appelant dans l'application** : elle n'est référencée que dans un commentaire et dans ses tests. Il n'existe donc aujourd'hui aucun bouton, aucun écran, aucune commande pour la déclencher.
+### La reprise au lancement
 
-### 12. La reprise après coupure
+`resumeUnsyncedCaptures` (ligne 1034) est appelée dans `app/_layout.tsx:48`, en
+« fire-and-forget », au tout premier effet du montage. Elle balaie les `.tmp`
+orphelins, draine si la file n'est pas vide, puis fait le ménage des `.ubx`.
 
-Trois natures de coupure, trois traitements distincts.
+**Point que je n'ai pas pu trancher** : cet appel n'attend pas
+`useAuthStore.initialize()`, lancé à la ligne précédente. Le client Supabase est
+configuré avec `persistSession: true` et un adaptateur SecureStore
+(`src/lib/supabase.ts:30-36`), et `supabase-js` (^2.45.4) résout sa session avant
+chaque requête PostgREST — le jeton devrait donc être présent. Je n'ai pas
+observé l'ordonnancement réel au démarrage. Si un drain partait sans jeton, RLS
+répondrait `42501` (classe 42, abandonnable) et les opérations `frames`, `laps`
+et `complete` partiraient en quarantaine ; seul `create_session` est protégé par
+la garde dure. Cela mérite une vérification sur appareil.
 
-**Coupure BLE pendant la capture.** Le service détecte la déconnexion via `device.onDisconnected` et distingue le volontaire de l'inattendu grâce au drapeau `userInitiatedDisconnect`. En capture, le mode **illimité** est armé : `shouldGiveUpReconnect` (`src/ble/reconnectPolicy.ts`) renvoie toujours faux, on retente indéfiniment avec un délai croissant plafonné — 2 s, 4, 8, 16, puis 30 s au maximum. Côté capture, la phase `reconnecting` fait passer le statut de lien à `interrupted`, met les compteurs en pause, horodate le début du trou et arme un minuteur. Au retour du lien, on reprend et la durée du trou est écrite en console (`logLinkGap`, ligne 513) — console seulement, car le silence en piste interdit tout écran. Si le lien ne revient pas au bout de **15 minutes** (`LONG_INTERRUPT_TIMEOUT_MS`), la séance est clôturée proprement, par le même chemin qu'un arrêt pilote.
+---
 
-Hors capture, le mode est **borné** : 5 tentatives (`RECONNECT_MAX_ATTEMPTS`) puis phase terminale `lost`. Un second filet applicatif vit dans `src/ble/initBle.ts` avec son propre backoff (2, 5, 10, 20 s) et un seuil de 30 secondes au-delà duquel la modale paddock #25 s'affiche. Ce watchdog vérifie `isReconnecting()` avant de programmer quoi que ce soit, pour ne pas composer deux fois en parallèle.
+## Maillon 8 — Le filet `.ubx` et le réimport
 
-Une garde de génération protège le chemin terminal (`finalizeOnLostLink`, lignes 526-557) : comme `stopCaptureSession` remet `current` à null dès son entrée, une capture suivante peut démarrer pendant le drain. Les trois effets globaux — reconnexion illimitée, verrou d'écran, statut de lien — ne sont appliqués que si aucune autre capture n'a pris la main. Ce comportement est verrouillé par un test (`captureSessionService.test.ts`, ligne 273).
+### La capture brute locale
 
-**Coupure réseau.** Traitée par la file : le lot en échec est requeué sur disque, le drain s'arrête, et tout repart au retour du réseau ou au prochain lancement. Le mode avion complet est un cas nominal assumé.
+`src/ble/captureMode.ts` s'abonne au flux **brut** (`onRawData`,
+`bluetoothService.ts:221`), avant toute resynchronisation et tout parsing. Les
+chunks sont accumulés en mémoire (ligne 59-62) puis concaténés et écrits en
+base64 à l'arrêt (`stopCapture`, ligne 65).
 
-**Application tuée en piste.** C'est le cas le moins bien couvert. Au redémarrage, `resumeUnsyncedCaptures` rejoue ce qui restait sur disque : la séance est créée, les lots de trames partent. Mais aucune opération `complete` n'a jamais été enfilée — **la séance reste indéfiniment au statut `recording`**, sans tours, sans agrégats. Aucun mécanisme de récupération automatique n'existe dans l'application. Le seul filet est humain et côté admin : `src/services/adminQualityService.ts` (ligne 69) lève un drapeau `recording_stuck`, et `app/(admin)/en-cours.tsx` liste les séances restées dans cet état.
+Nom de fichier : `racebox-capture-<ISO tronqué à 19 caractères>.ubx` sous
+`${documentDirectory}fixtures/` (ligne 87-94).
 
-Il faut aussi noter que **l'état de la file n'est visible nulle part côté pilote** : `hasPending()` et `pendingSessionIds()` sont exportés mais n'ont aucun appelant en dehors du module lui-même et des tests. Rien ne dit au pilote que des données attendent encore d'être envoyées.
+Deux remarques factuelles :
 
-### 13. La capture cardio (BIO-2)
+- l'accumulation est **entièrement en mémoire** jusqu'à l'arrêt. Une séance de
+  vingt minutes à 25 Hz représente environ 2,6 Mo selon le commentaire
+  `captureSyncQueue.ts:933`. Je n'ai pas mesuré l'empreinte réelle.
+- `stopCapture` **lève** si aucune donnée n'a été capturée (ligne 74). L'appelant
+  attrape et met `ubxUri` à `null` (`captureSessionService.ts:765-768`).
 
-Elle se greffe sur le cycle de vie de la capture par **trois lignes seulement** dans `captureSessionService` : `startBiometryCapture` à l'armement (ligne 433), `stopBiometryCapture` à la clôture (ligne 742), `discardBiometryCapture` à l'abandon (ligne 837). Les trois sont en « au mieux », jamais bloquantes.
+Le chemin `fixtures/` est dupliqué dans `captureSyncQueue.ts:915` avec un
+commentaire d'avertissement : les deux doivent rester synchrones. C'est une
+dépendance implicite, non protégée par un test.
 
-Le chemin BLE est **entièrement séparé** du RaceBox (`bluetoothService.ts`, lignes 619-817) : service standard Heart Rate `0x180D`, mesure `0x2A37` en notification, appareil distinct, abonnements distincts, reconnexion cardio **bornée** et indépendante. La ceinture tombe → la capture télémétrique continue intacte, et réciproquement. Le décodage est délégué à un module pur et testé, `src/services/v2/heartRateParser.ts`, écrit d'après la spécification publique Bluetooth SIG — le document protocole OXV promis n'a jamais été livré (`roadmap/rapports/bio-2.md`, point 2 des suspens).
+### L'upload
 
-`src/services/biometryCaptureRunner.ts` applique un **double verrou local fail-closed** : drapeau serveur `biometry` **et** consentement de capture du pilote. Sans les deux, le module est dormant — aucun abonnement, aucune entrée-sortie. Les échantillons sont persistés en MMKV toutes les **10 secondes** dans un registre `rec:biometry:` **strictement séparé de `captureSyncQueue`** (règle cardinale, `src/features/rec/biometryCaptureBuffer.ts` ligne 5). À la clôture, ils sont envoyés en `upsert` idempotent vers `biometry_raw` (clé naturelle `session_id, ts, source`) **puis purgés du local**. Les lectures hors de l'intervalle [25, 250] bpm sont écartées avant envoi, en miroir du `CHECK` en base. Une séance abandonnée ne préserve rien du tout.
+`src/services/telemetryStorage.ts:37`. Chemin Storage :
+`{user_id}/{telemetry_session_id}.ubx` dans le bucket `telemetry_raw`, en
+`upsert: true`. Puis mise à jour de `telemetry_sessions.raw_data_url`
+(ligne 62), dont l'échec est seulement journalisé.
 
-Le drapeau `biometry` est **actif en production** (vérifié : `app_feature_flags.biometry = true`, levé le 25/07/2026, description en base mentionnant que le test à deux appareils n'a pas eu lieu). C'est le seul des sept drapeaux qui soit à `true`. La table `biometry_raw` compte **0 ligne**.
+**État réel du bucket** : `telemetry_raw` existe, privé, limite 50 Mo, type MIME
+`application/octet-stream`. Il contient **3 objets**, de 5,6 Ko, 13,0 Ko et
+31,1 Ko, déposés les 14/06, 22/06 et 02/07/2026.
 
-### 14. Pourquoi quatre fichiers sont gelés
+### Le réimport, et pourquoi il a failli détruire des séances
 
-Le gel est une **règle cardinale du programme V2**, écrite noir sur blanc dans deux documents de cadrage :
+`reimportUbxToFrames` (`captureSyncQueue.ts:1139`) rejoue un `.ubx` local dans
+`telemetry_frames`. Le défaut historique est décrit lignes 1096-1105 : le
+réimport dérivait son `elapsed_ms` de l'iTOW du premier échantillon du fichier,
+quand le chemin live le dérive de l'horloge murale depuis l'armement. Deux bases
+de temps sans rapport : la clé d'idempotence ne faisait coïncider **aucune**
+trame. Réimporter une séance à moitié synchronisée **ajoutait** les 10 000 trames
+du fichier aux 8 000 déjà en base. Le filet de secours détruisait la séance qu'il
+devait sauver.
 
-> `design-retours/programme-v2/PROMPT_CLAUDE_CODE_V2_L2_REC.md`, ligne 7 : « RÈGLE CARDINALE inchangée : `useAppStateStore`, `captureSessionService`, `captureSyncQueue`, `bluetoothService` = zéro diff. »
+La version actuelle réconcilie sur `itow_ms` — l'identité physique de la trame —
+avec trois garanties (lignes 1112-1128) : anti-jointure multi-ensemble sur
+l'iTOW, recalage de la base de temps sur une ancre déjà en base, et allocation
+d'`elapsed_ms` strictement croissante **et garantie libre**.
 
-> `design-retours/programme-v2/OXV_APP_V2_DOSSIER_MAITRE.md`, ligne 147 : « La machine S5/S6 de `useAppStateStore` et `captureSessionService`/`captureSyncQueue` ne bougent pas d'une ligne. Seule la coque change. »
+Refus explicite (ligne 1169) : si la séance porte des trames sans `itow_ms`,
+l'appariement est impossible et le réimport dupliquerait. La fonction **lève**
+plutôt que de corrompre en silence.
 
-Ce que le gel protège se lit dans l'historique de ces fichiers. Les commits qui les ont amenés à leur état actuel portent des titres qui disent exactement ce qui a failli être perdu :
+Limite assumée (ligne 1135) : lecture puis insertion ne sont pas atomiques.
+C'est un outil de secours **manuel**, à lancer sur une séance close.
 
-- `5cb86ba` — « critique 2 : la contrainte d'unicité aurait détruit des trames réelles » ;
-- `b6c1ee2` — « séance détruite par erreur passagère, marge 100 % fabriquée » ;
-- `c409dcc` — « la fluidité devient réelle : maxima par tour écrits à la capture » ;
-- `3c89996` — « concurrence & cycle de vie, 6 derniers findings de la vérif adversariale » ;
-- `3e91df8` — « coupure BLE sans clôture forcée : reconnexion illimitée armée ».
+### Pourquoi `itow_ms` n'est pas la clé d'unicité
 
-Chacune de ces corrections répare un défaut qui **détruisait silencieusement de la donnée pilote** ou en **fabriquait**. Le gel protège donc quatre invariants qu'aucun travail d'habillage n'a le droit de rouvrir : la stricte croissance d'`elapsed_ms`, la classification conservatrice des erreurs de la file, la garde de génération sur le cycle de vie de la capture, et la séparation des horloges murale et monotone.
+L'argumentaire est en tête de module, lignes 58-83, et il vaut d'être connu :
 
-Le gel n'a pas été absolu. **Deux dérogations** ont été accordées, toutes deux revendiquées comme purement additives et vérifiées par `git diff` (`roadmap/rapports/bio-2.md`, lignes 74-76) :
+1. L'iTOW est un temps GPS produit par le RaceBox. Avant fix il peut se répéter
+   ou rester à 0, et il se réenroule chaque dimanche à 00:00 UTC. Sous
+   `ON CONFLICT DO NOTHING`, toute répétition détruirait une trame réelle en
+   silence. « On ne fonde pas l'identité d'une donnée de pilote sur une valeur
+   qu'on ne contrôle pas. »
+2. `itow_ms` est **nullable** (vérifié en base : `is_nullable = YES`). En
+   PostgreSQL, les NULL sont distincts : un index total ne dédoublonnerait pas
+   les lignes à iTOW nul.
 
-| Fichier | Statut réel |
+---
+
+## Maillon 9 — L'écriture en base
+
+### Les colonnes réellement écrites
+
+`telemetry_frames` — écrites par `raceBoxToFrameInsert`
+(`captureFrameMapping.ts:80-102`) : `session_id`, `elapsed_ms`, `latitude`,
+`longitude`, `altitude_m`, `speed_kmh`, `speed_ms` (dérivée : km/h ÷ 3,6),
+`heading` (null si le cap n'est pas valide), `gps_fix`, `fix_valid`
+(vrai si fix ≥ 3D), `gps_accuracy_m`, `satellites`, `g_force_x/y/z`,
+`rotation_x/y/z`, `battery_level`, `itow_ms`.
+
+**Jamais écrites** : `pdop`, `speed_accuracy`, `heading_accuracy`. Elles
+existent en base et resteront nulles.
+
+`laps` — écrites par `buildLapRows` (`captureSessionService.ts:690-704`) :
+`session_id`, `lap_number`, `duration_seconds`, `started_at`, `ended_at`,
+`start_lat/lon`, `end_lat/lon`, `is_best_lap` (le minimum du lot),
+`is_outlap: false`, `is_inlap: false`, plus les cinq colonnes statistiques.
+
+**Jamais écrite** : `distance_meters`.
+
+`telemetry_sessions` — à la création (`captureSessionService.ts:272-280`) :
+`id`, `user_id`, `status: 'recording'`, `started_at`, `circuit_id`,
+`circuit_name`, `vehicle_id`. À la clôture (lignes 789-799) : `status`,
+`ended_at`, `duration_seconds`, `lap_count`, `best_lap_seconds`,
+`max_speed_kmh`, `max_g_lateral`, `max_g_longitudinal`, `total_frames`.
+
+**Jamais écrites par la capture** : `distance_km`, `weather`, `notes`,
+`best_lap_number`, `avg_lap_seconds`, `source_device_id`, `event_id`,
+`vehicle_label`.
+
+### La réconciliation de `total_frames`
+
+`execComplete` (`captureSyncQueue.ts:668`) ne se contente pas de recopier le
+total émis. Pour un statut `completed` seulement (ligne 679), il **recompte les
+trames réelles en base** (`count: 'exact', head: true`) et écrit ce compte.
+Grâce au FIFO, toutes les opérations `frames` de la séance ont déjà été
+insérées. Si un lot a été définitivement abandonné, `total_frames` reflète ce
+qui existe vraiment. Un abandon ne recompte pas.
+
+### Les politiques de sécurité
+
+Vérifiées sur `pg_policies` le 26/07/2026.
+
+`telemetry_frames` : insertion et lecture limitées aux séances dont
+`user_id = auth.uid()` ; lecture supplémentaire pour un coach détaillé
+(`is_detailed_coach_of`) et pour un ami (`are_friends`) ; accès complet admin ;
+suppression réservée au propriétaire.
+
+`laps` : insertion et lecture propriétaire, lecture coach.
+
+`telemetry_sessions` : insertion, lecture, mise à jour et suppression
+propriétaire ; lecture coach et ami ; accès complet admin.
+
+La mise à jour de clôture est doublement filtrée `.eq('id').eq('user_id')`
+(`captureSyncQueue.ts:692-693`).
+
+### La rétention
+
+`cleanup_old_telemetry_frames()` supprime les trames de plus de **12 mois**
+(migration `20260614124638_app_telemetry_frames_retention.sql`), planifiée par
+`pg_cron` à 03h30 UTC (job `cleanup-telemetry-frames`, actif, vérifié dans
+`cron.job`). Les dérivés — analyses, segments, insights, `laps` — sont
+conservés.
+
+Un second job `biometry-retention-daily` purge le cardio à 03h15 UTC.
+
+---
+
+## Ce qui se passe quand ça tourne mal
+
+### Le réseau tombe
+
+Rien ne s'arrête. L'insert direct échoue, le lot part sur disque
+(`captureSessionService.ts:603`), le drain s'interrompt au premier échec réseau
+et **garde tout** (`captureSyncQueue.ts:825`). La capture continue, le `.ubx`
+local continue de s'écrire.
+
+Au retour du réseau, la file repart dans l'ordre : `create_session`, puis
+`attach_intention`, puis les lots `frames`, puis `laps`, puis `complete`, puis
+`ubx_upload`. Le test `captureSyncQueue.test.ts:364` verrouille ce cycle.
+
+Le mode avion complet est un cas nominal, pas une exception : c'est écrit
+lignes 291-295 de `captureSessionService.ts` à propos de l'intention.
+
+### L'application est tuée
+
+Les opérations déjà enfilées sont sur disque, dans `documentDirectory`, qui
+survit à la fermeture. Au relancement, `resumeUnsyncedCaptures`
+(`app/_layout.tsx:48`) balaie les `.tmp` orphelins puis draine. Un test couvre
+explicitement le redémarrage (`captureSyncQueue.test.ts:1143`).
+
+Ce qui est **perdu** : le tampon en mémoire non encore vidé (au pire 50 trames
+ou 4 secondes), les maxima par tour accumulés depuis le dernier gel, et — c'est
+le plus lourd — **tout le fichier `.ubx` de la séance en cours**, puisque
+`captureMode` accumule en mémoire et n'écrit qu'à `stopCapture()`
+(`src/ble/captureMode.ts:65-104`).
+
+Ce qui **reste ouvert** : la séance garde le statut `recording` en base tant
+qu'aucun `complete` n'a été enfilé. Aucune reprise automatique de capture n'est
+prévue : le code ne rouvre pas une séance interrompue par un crash. Je n'ai
+trouvé aucun chemin de réconciliation pour ce cas.
+
+### Le boîtier se déconnecte
+
+Trois régimes successifs, décrits par `CaptureLinkStatus`
+(`captureSessionService.ts:151`) :
+
+- `recording` : lien stable ;
+- `interrupted` : lien tombé, reconnexion **illimitée** en cours, capture en
+  pause, **session toujours ouverte**, trou horodaté (`handleReconnect`,
+  ligne 452 ; `gapStartMs` posé ligne 458) ;
+- `lost` : abandon prolongé ou repli défensif, capture finalisée proprement.
+
+Le seuil d'abandon est de **15 minutes** (`LONG_INTERRUPT_TIMEOUT_MS`,
+ligne 137). En deçà, une coupure de piste — stands, tunnel radio, boîtier qui
+redémarre — ne tue plus la capture. Au-delà, la séance est clôturée par le même
+chemin qu'un arrêt pilote (`finalizeOnLostLink`, ligne 526).
+
+Pendant le trou, **aucune trame n'est insérée** : il y a un vrai vide dans la
+donnée. La durée du trou est tracée en console à la reprise (`logLinkGap`,
+ligne 513) — console uniquement, pas d'écran, pas de son.
+
+Côté pilote, `rec/roulage.tsx` affiche alors un message sobre, sans rouge :
+« LIEN INTERROMPU · Reconnexion au boîtier en cours » ou « LIEN PERDU · Le
+boîtier ne répond plus. Votre session a été enregistrée jusqu'ici »
+(`src/services/captureLinkStatusLogic.ts:29-46`). Le point REC ne pulse en rouge
+que si l'enregistrement tient réellement (`rec/roulage.tsx:96`).
+
+Effet secondaire à connaître sur la détection de tours : après un trou, les deux
+points GPS encadrant le vide sont trop éloignés, et `MAX_STEP_M` fait qu'aucun
+franchissement n'est évalué sur ce pas (`src/utils/lapDetection.ts:217`). Un
+tour peut donc manquer à l'appel après une reconnexion. C'est un choix assumé.
+
+### Deux séances se chevauchent
+
+Trois protections indépendantes.
+
+**Premièrement**, `startCaptureSession` refuse net : `if (current) return
+{ ok: false, error: 'Une capture est déjà active.' }` (ligne 261).
+
+**Deuxièmement**, `stopCaptureSession` fait un « capture-and-null » synchrone
+(lignes 725-726) : `current` est mis à `null` avant le premier `await`. Un
+second appel concurrent tombe sur « Aucune capture active » et ne fait rien.
+
+**Troisièmement**, et c'est le cas subtil : puisque `current` est libéré dès
+l'entrée de l'arrêt, une **capture suivante peut démarrer pendant le vidage de
+la précédente**. Le chemin terminal `finalizeOnLostLink` porte donc une **garde
+de génération** (lignes 537-550) : les trois effets globaux — reconnexion
+illimitée, verrou d'écran, statut de lien — ne sont appliqués que si
+`current === null`, c'est-à-dire si aucune autre capture n'a pris la main.
+
+Sans cette garde, finir la séance A désarmerait la reconnexion de la séance B,
+relâcherait son verrou d'écran, et afficherait « liaison perdue » sur une séance
+qui enregistre. Ce comportement est verrouillé par un test
+(`captureSessionService.test.ts:274`).
+
+Le même idiome `if (current !== state) return` protège `onData` (ligne 392),
+`onReconnectChange` (ligne 417) et la minuterie d'interruption (ligne 486).
+
+### L'horloge recule
+
+Traité à trois endroits, avec la même convention.
+
+- Les trames : `nextElapsedMs` impose la stricte croissance
+  (`captureFrameMapping.ts:43`). Le minutage est comprimé, aucune trame n'est
+  perdue.
+- Les tours : `nextMonotonic` (`src/utils/monotonicClock.ts:25`) sépare la mesure
+  (monotone) de l'affichage (mural). Une durée de tour ne peut pas devenir
+  négative.
+- La file : `nextFileName` (`captureSyncQueue.ts:229`) rend l'horodatage non
+  décroissant pour préserver le FIFO.
+
+### La ceinture cardio tombe
+
+Aucun effet sur la capture télémétrique. Chemins BLE séparés, reconnexion cardio
+bornée et indépendante (`bluetoothService.ts:753-791`). Le commentaire ligne 750
+est explicite : « la ceinture est secondaire : si elle ne revient pas, la capture
+télémétrique continue sans elle, aucun couplage ».
+
+---
+
+## La règle cardinale : quatre fichiers gelés
+
+### Où c'est écrit
+
+Deux documents de cadrage du programme V2 la posent noir sur blanc :
+
+- `design-retours/programme-v2/PROMPT_CLAUDE_CODE_V2_L2_REC.md:7` —
+  « **RÈGLE CARDINALE inchangée : `useAppStateStore`, `captureSessionService`,
+  `captureSyncQueue`, `bluetoothService` = zéro diff.** »
+- `design-retours/programme-v2/OXV_APP_V2_DOSSIER_MAITRE.md:147` — « La machine
+  S5/S6 de `useAppStateStore` et `captureSessionService`/`captureSyncQueue` ne
+  bougent pas d'une ligne. Seule la coque change. »
+
+Les quatre fichiers sont :
+
+| Fichier | Lignes |
 |---|---|
-| `src/store/useAppStateStore.ts` | gel tenu — dernier commit `9f1f3f0`, antérieur au programme V2 |
-| `src/services/captureSyncQueue.ts` | gel tenu — dernier commit `b4748a2` (SEC-1, remontée Sentry) |
-| `src/ble/bluetoothService.ts` | **dérogé** (`8ba669d`) — extension Polar, « exception cardinale sanctionnée », 0 ligne retirée sur le chemin RaceBox |
-| `src/services/captureSessionService.ts` | **dérogé** (`a2560da`) — « dégel cardinal ciblé approuvé », 3 lignes d'appel cardio ajoutées |
+| `src/store/useAppStateStore.ts` | 122 |
+| `src/services/captureSessionService.ts` | 869 |
+| `src/services/captureSyncQueue.ts` | 1 234 |
+| `src/ble/bluetoothService.ts` | 833 |
 
-### 15. Ce que la base contient réellement
+### Pourquoi ces quatre-là
 
-Relevé en production le 26/07/2026 :
+Parce que la refonte visuelle V2 réécrivait 38 écrans, et que ces quatre
+fichiers sont les seuls dont une régression **détruit de la donnée de pilote au
+lieu d'abîmer un pixel**. L'historique de chacun le montre — les titres de
+commit disent exactement ce qui a failli être perdu :
+
+- `b6c1ee2` — « 2 critiques de la vérif adversariale — séance détruite par
+  erreur passagère, marge 100 % fabriquée » ;
+- `5cb86ba` — « critique 2 : la contrainte d'unicité aurait détruit des trames
+  réelles » ;
+- `3c89996` — « concurrence & cycle de vie — 6 derniers findings de la vérif
+  adversariale » ;
+- `c409dcc` — « la fluidité devient réelle — maxima par tour écrits à la
+  capture » ;
+- `0a201d7` — « idempotence des trames + chronos de tours monotones ».
+
+Le gel protège quatre invariants qu'aucun travail d'habillage n'a le droit de
+rouvrir :
+
+1. la **stricte croissance** d'`elapsed_ms` (sans elle, des trames réelles
+   disparaissent en silence) ;
+2. la **classification conservatrice** des erreurs de la file (sans elle, un 503
+   détruit une séance) ;
+3. la **garde de génération** sur le cycle de vie de la capture (sans elle, une
+   séance en désarme une autre) ;
+4. la **séparation des horloges** murale et monotone (sans elle, un chrono peut
+   devenir négatif).
+
+### Le gel a-t-il tenu ?
+
+Réponse par l'historique Git, vérifiée le 26/07/2026 :
+
+| Fichier | Dernier commit | Date | Verdict |
+|---|---|---|---|
+| `useAppStateStore.ts` | `9f1f3f0` | 29/06/2026 | **tenu** — antérieur au programme V2 |
+| `captureSyncQueue.ts` | `b4748a2` | 19/07/2026 | **tenu** — SEC-1, remontée Sentry |
+| `captureSessionService.ts` | `a2560da` | 25/07/2026 | **dérogé** — « dégel cardinal ciblé », 3 lignes d'appel cardio |
+| `bluetoothService.ts` | `8ba669d` | 25/07/2026 | **dérogé** — extension Polar, revendiquée additive |
+
+Les deux dérogations datent du même jour et du même lot (BIO-2, ceinture
+cardio). Elles sont revendiquées comme purement additives.
+
+Ce que j'ai pu vérifier dans le code : les trois lignes ajoutées à
+`captureSessionService` sont bien des appels en `void ... .catch()`
+non bloquants (lignes 433, 742, 837), et l'extension Polar de
+`bluetoothService` vit dans un bloc séparé (lignes 618-817) sans toucher au
+chemin RaceBox. Le scan RaceBox (ligne 289) et l'abonnement aux données
+(ligne 372) sont inchangés.
+
+Ce que je n'ai **pas** pu vérifier : que l'ajout d'un second périphérique BLE
+simultané ne dégrade pas le débit du RaceBox sur le matériel réel. C'est
+précisément le « smoke test 2 appareils reels » que le commentaire du drapeau
+`biometry` en base déclare non tenu.
+
+---
+
+## Ce qui n'a jamais été observé en fonctionnement
+
+C'est la partie la plus importante de cette section.
+
+### Les chiffres de la production
+
+Interrogée en lecture seule le 26/07/2026 :
 
 | Table | Lignes |
 |---|---|
-| `telemetry_sessions` | 18 (10 `completed`, 8 `aborted`) |
+| `telemetry_sessions` | 18 |
 | `telemetry_frames` | **53** |
 | `laps` | **1** |
 | `biometry_raw` | 0 |
-| `weather_snapshots` | 0 |
+| `devices` | 0 |
+| `device_assignments` | 0 |
+| `incident_reports` | 0 |
+| `session_intentions` | 0 |
 | `app_session_analyses` | 13 |
 | `app_segment_analyses` | 0 |
-| `session_insights` | 1 |
-| Objets dans le bucket `telemetry_raw` | 3 fichiers (30 ko, 13 ko, 5,6 ko) |
+| objets dans `telemetry_raw` | 3 |
 
-Le détail est parlant. Les 10 séances `completed` datent des 16 et 17 mai 2026 — l'époque du proof of concept V1. Elles portent des `total_frames` de 93 à 1206 (5574 au total) mais **zéro ligne réelle dans `telemetry_frames`** : à cette époque, seules les lignes de séance étaient écrites. La rétention par âge n'y est pour rien (elle purge à 12 mois, `cleanup_old_telemetry_frames`, tâche cron `cleanup-telemetry-frames` active à 3 h 30). Les 8 séances `aborted` s'étalent de juin au 15 juillet 2026 : ce sont les essais de développement de la chaîne actuelle. Une seule a écrit des trames — 53 lignes, le 28 juin. Trois ont uploadé leur `.ubx`. L'unique ligne de `laps` appartient à une séance de mai, avec une durée de 0,022 seconde et un G latéral à 0.
+### Ce que ces chiffres veulent dire
 
-Conclusion factuelle : **la chaîne V2 n'a jamais produit une seule séance `completed` en production.** Tout ce qui est décrit ci-dessus est vérifié par 3 161 lignes de tests (`captureSyncQueue.test.ts` 1348, `lapDetectionGate.test.ts` 577, `captureSessionService.test.ts` 546, `captureFrameMapping.test.ts` 278, `parser.test.ts` 225, `biometryCaptureRunner.test.ts` 187) mais n'a pas encore été validé par une journée de piste réelle.
+**Les 53 trames.** Elles viennent toutes de la séance
+`7f40d5ad-4697-44ac-861c-13b7d0cc9878`, du 28/06/2026, circuit « Charente »,
+statut `aborted`, durée déclarée 5 secondes. Leur `elapsed_ms` va de 36 à
+2 093 ms — deux secondes de données. La vitesse maximale enregistrée est de
+**0,83 km/h**. Fix 3D, 8 satellites. Toutes portent un `itow_ms`, une latitude,
+une vitesse, les trois accélérations et les trois rotations : le mapping écrit
+bien tout ce qu'il annonce. C'est un essai d'établi, boîtier posé, pas un tour
+de piste.
 
-### 16. Ce qui manque ou ne fonctionne pas
+**Le tour unique.** Session `f13545a1`, 16/05/2026, circuit « La charade »,
+durée **0,022 seconde**, `start_lat` et `start_lon` à 0, `is_outlap: true`.
+La chaîne actuelle écrit toujours `is_outlap: false`
+(`captureSessionService.ts:702`) : cette ligne ne vient donc **pas** du code
+d'aujourd'hui, c'est un vestige du proof of concept de mai.
 
-- **Aucun test automatisé de `bluetoothService.ts` ni de `lapDetectionRunner.ts`.** Ces deux fichiers n'ont pas de fichier de test propre ; seul `captureSessionService.test.ts` les touche par ses simulacres. La politique de reconnexion, elle, est extraite et testée (`reconnectPolicy.test.ts`).
-- **`reimportUbxToFrames` n'a aucun appelant.** Le filet de dernier recours est écrit, testé, et injoignable depuis l'application.
-- **Pas de récupération d'une séance restée en `recording`** après un arrêt brutal de l'application. Le repérage est manuel, côté admin.
-- **La file de synchro est invisible pour le pilote.** `hasPending` et `pendingSessionIds` ne sont câblés sur aucun écran.
-- **Aucun instantané météo** n'est rattaché à une séance : `saveWeatherSnapshot` est du code mort.
-- **Plusieurs colonnes restent nulles par construction** : `distance_km`, `avg_lap_seconds`, `best_lap_number`, `laps.distance_meters`.
-- **Pas de BLE en arrière-plan.** `app.json` ne déclare **aucun** `UIBackgroundModes` (vérifié). La stratégie assumée est le premier plan avec verrou d'écran (`expo-keep-awake`). Si le pilote quitte l'application ou verrouille manuellement, la radio peut être coupée par le système.
-- **Le document protocole de la ceinture** (`OXV_Ceinture_Protocole_Connexion_Biometrie.md`) n'existe toujours pas ; le parser cardio dérive de la norme publique.
-- **Le smoke test à deux appareils réels** (pilote + coach) n'a pas eu lieu, alors que le drapeau `biometry` est levé.
-- **Le seul écran de diagnostic de capture** (`app/(app)/debug-capture.tsx`) vit dans l'espace V1, celui qui doit disparaître au lot L6. Aucun équivalent n'existe dans `app/(app2)`.
+**Les séances de mai.** Les dix séances `completed` déclarent toutes un
+`total_frames` non nul (93, 168, 223, 258, 276, 489, 750, 966, 1 145, 1 206)
+mais comptent **zéro trame réelle** en base. Ce n'est pas la purge de rétention : elle ne s'applique
+qu'au-delà de 12 mois. C'est que le chemin d'écriture des trames n'existait pas
+encore — il a été livré le 14/06/2026 (commit `0ebe59b`, « write path de bout en
+bout (P0 Valence) »). Ces séances viennent d'un chemin antérieur qui écrivait
+l'agrégat sans les mesures.
 
-### Ce que je n'ai pas pu vérifier
+**Aucun boîtier en flotte.** `devices` est vide. `getMyAssignedDevice`
+(`src/services/deviceHealthService.ts:31`) ne peut donc rien renvoyer, et
+l'écran d'équipement n'a aucun boîtier affecté à présenter.
 
-Je n'ai pas exécuté la suite de tests : le chiffre de 1 846 tests verts vient des rapports de lot du dépôt, pas d'une exécution de ma part. Je n'ai pas ouvert `app/(app2)/rec/entre-runs.tsx`, `arrivee.tsx`, `preparation.tsx` ni `index.tsx` — je ne décris donc pas ce que la pause entre deux runs affiche exactement, seulement sa place dans l'enchaînement, lue dans `src/features/rec/captureStepLogic.ts`. Je n'ai lu que les 80 premières lignes de `src/services/liveRelayRunner.ts` et n'ai pas ouvert `liveSessionService.ts` : ce que je dis des cadences du relais (3-4 Hz vers le coach, 1 Hz vers le tableau de marche) vient de commentaires dans le code, pas de la lecture des fonctions d'émission elles-mêmes. Je n'ai pas ouvert `src/store/useAppStateStore.ts` et ne peux donc rien affirmer de première main sur la machine à états S1-S10 ni sur le garde-fou runtime du silence en piste. Je n'ai vérifié aucun comportement sur appareil réel : tout ce qui touche au comportement effectif de la radio, du verrou d'écran ou de la reconnexion en conditions de piste reste, à ce jour, non observé.
+**Aucune intention rattachée.** `session_intentions` est vide : le chemin
+`attach_intention`, pourtant testé et verrouillé dans son ordre d'enfilement,
+n'a jamais été emprunté en production.
+
+### La liste de ce qui n'a jamais tourné en conditions réelles
+
+- Une séance complète, du démarrage à la clôture, avec un vrai RaceBox en
+  mouvement.
+- La détection de tours en mode porte, sur un circuit réel, avec une voie des
+  stands parallèle.
+- La reconnexion illimitée après une vraie coupure BLE en piste.
+- Le seuil d'abandon de 15 minutes.
+- Le fonctionnement hors ligne complet suivi d'un retour de réseau, en piste.
+- L'upload d'un `.ubx` produit par une séance de roulage réelle (les 3 objets du
+  bucket font 5 à 31 Ko, soit quelques secondes de flux).
+- Le réimport `.ubx` de secours.
+- La capture cardio Polar, de bout en bout.
+- La double connexion RaceBox + Polar simultanée.
+- Le relais live vers un coach pendant un run.
+- Le verrou d'écran sur la durée d'un relais de vingt minutes.
+
+Il existe deux documents de procédure prêts dans le dépôt :
+`docs/SMOKE_TEST_DEVICE.md` et `docs/SMOKE_TEST_MEDIA.md`. Je n'ai aucun élément
+indiquant qu'ils aient été exécutés.
 
 ---
 
-## Les fonctionnalités pilote
+## Ce qui est prouvé par les tests
 
-Cette section décrit le contenu du groupe de routes `app/(app2)/`, c'est-à-dire l'espace pilote de deuxième génération. Elle a été écrite en ouvrant les fichiers un par un ; chaque affirmation renvoie à un chemin précis. Tout ce qui n'a pas pu être vérifié est signalé en fin de section.
+Les tests, eux, ont été exécutés. Le 26/07/2026, sept suites couvrant la chaîne
+de capture :
 
-### Le périmètre exact : ce que contient `app/(app2)/`
+| Suite | Objet |
+|---|---|
+| `src/ubx/__tests__/parser.test.ts` | checksum, resynchronisation, décodage |
+| `src/ble/__tests__/reconnectPolicy.test.ts` | palier de reconnexion, décision d'abandon |
+| `src/services/__tests__/captureFrameMapping.test.ts` | mapping, `elapsed_ms`, maxima |
+| `src/services/__tests__/captureFinishLineLogic.test.ts` | résolution de ligne d'arrivée |
+| `src/services/__tests__/captureSessionService.test.ts` | garde de génération, régimes de vidage, maxima par tour, intention |
+| `src/services/__tests__/captureSyncQueue.test.ts` | FIFO, classification, idempotence, quarantaine, ménage, réimport |
+| `src/services/__tests__/biometryCaptureRunner.test.ts` | verrous de consentement, préservation, purge |
 
-Le dossier contient très exactement 38 fichiers `.tsx`, dont 36 écrans, un fichier de layout et un écran de développement. La répartition réelle constatée est la suivante.
+**Résultat : 7 suites, 127 tests, tous au vert, en 39,7 secondes.**
 
-| Zone | Fichiers | Détail |
+Ce que ces tests prouvent : la logique tient. Ce qu'ils ne prouvent pas : que la
+radio Bluetooth d'un iPhone tienne 25 Hz pendant vingt minutes avec deux
+périphériques connectés, que la 4G d'un paddock absorbe les lots, que le
+`documentDirectory` d'iOS accepte les fichiers de file au rythme prévu, ou que
+le GPS du RaceBox produise le cap valide dont dépend la détection par porte.
+
+---
+
+## Ce que je n'ai pas pu vérifier
+
+Par honnêteté, la liste des points laissés ouverts :
+
+1. **La cadence réelle du RaceBox.** Le code et les commentaires supposent
+   25 Hz. Je n'ai aucune mesure directe. La seule donnée réelle en base couvre
+   2,06 secondes avec 53 trames, soit environ 25 Hz — cohérent, mais sur un
+   échantillon dérisoire et véhicule à l'arrêt.
+2. **L'ordonnancement au démarrage** entre `resumeUnsyncedCaptures` et la
+   restauration de session Supabase (voir maillon 7).
+3. **L'empreinte mémoire** de `captureMode`, qui accumule tout le flux brut en
+   mémoire jusqu'à l'arrêt.
+4. **Le comportement iOS réel** quand l'écran est verrouillé manuellement
+   pendant une capture, malgré le verrou `expo-keep-awake`.
+5. **L'effet de la double connexion BLE** sur le débit du RaceBox.
+6. **L'absence d'appel à `setActiveRecording`** : je constate que la fonction
+   n'est appelée nulle part, mais je n'ai pas pu déterminer si c'est un oubli ou
+   une décision assumée depuis que la coque V2 pilote le silence par l'écran.
+7. **La reprise après un crash en pleine séance** : aucun chemin de
+   réconciliation trouvé pour une séance restée en `recording`, ni pour le
+   `.ubx` perdu avec le processus.
+8. **La synchronisation du chemin `fixtures/`** entre `captureMode.ts:87` et
+   `captureSyncQueue.ts:917`, dépendance implicite non couverte par un test.
+
+---
+
+## L'application du pilote (arbre V2)
+
+### Avertissement de méthode
+
+Rien n'a été exécuté pour écrire cette section. Aucun simulateur, aucun appareil,
+aucun build. Tout ce qui suit est une **lecture du code source** du dépôt
+`C:/Users/Julie/OneDrive/Desktop/oxv-app`, croisée avec des **requêtes en lecture
+seule** sur la base de production `fouvuqkdxarjpjbqnsjq`.
+
+Conséquence : quand j'écris « l'écran affiche », il faut lire « le code écrit pour
+afficher ». Le rendu réel, les gestes, la fluidité des animations, le
+comportement du Bluetooth et le résultat des redirections n'ont **jamais été
+observés**. Là où le doute existe, il est nommé.
+
+---
+
+### Le périmètre exact
+
+Le dossier `app/(app2)/` contient **38 fichiers `.tsx`**. L'un d'eux,
+`app/(app2)/_layout.tsx`, n'est pas un écran mais la coquille qui les porte. Il
+reste donc **37 routes** destinées au pilote.
+
+Répartition par zone :
+
+| Zone | Dossier | Routes |
+|---|---|---|
+| Paddock (accueil) | `app/(app2)/index.tsx` | 1 |
+| Signature | `app/(app2)/signature.tsx` | 1 |
+| Bilan | `app/(app2)/bilan/[sessionId].tsx` | 1 |
+| Session | `app/(app2)/rec/` | 8 |
+| Progression | `app/(app2)/data/` | 4 |
+| Club | `app/(app2)/club/` | 7 |
+| Compte | `app/(app2)/vous/` | 12 |
+| Réservation | `app/(app2)/reserver/` | 3 |
+| Validation du kit (dev) | `app/(app2)/dev-galerie.tsx` | 1 |
+
+Volume : 27 666 lignes dans `app/(app2)/`, plus 15 969 lignes de logique et de
+chargement dans `src/features/` (club, data, miroir, rec, vous).
+
+Les noms de zone employés par le code ne sont pas ceux du cahier des charges. La
+barre de navigation nomme les quatre portes `miroir`, `data`, `club`, `vous`
+(`src/ui/v2/shellLogic.ts:208-213`). « Paddock » n'est qu'un sur-titre de
+l'accueil ; « Progression » s'appelle « Data » ; « Compte » s'appelle « Vous ».
+
+---
+
+### Comment le pilote y entre
+
+`app/index.tsx:107` redirige tout pilote authentifié et onboardé vers `/(app2)`.
+C'est la bascule dite L6, faite le 26 juillet 2026 (commit `29e34f9`).
+
+Le routage par rôle vit juste au-dessus, `app/index.tsx:93-101` : un coach part
+vers `/(coach)`, un partenaire vers `/(partner)`, un pilote professionnel vers
+`/(pro)`. Seuls les rôles `pilot` et `admin` atteignent l'arbre V2.
+
+`app/(app2)/_layout.tsx:63-66` porte une note importante : le garde
+`if (!__DEV__) return <Redirect href="/" />` qui rendait le groupe orphelin a été
+**retiré** au moment de la bascule. Le laisser aurait produit une boucle de
+redirection visible en production seulement. Ce point n'a pas été vérifié sur
+appareil.
+
+La seule autre porte d'entrée depuis l'extérieur est la **notification push**,
+routée dans `app/_layout.tsx:103-147`. Huit destinations pilote y visent
+désormais l'arbre V2 : débrief et médias prêts ouvrent `/(app2)/bilan/[sessionId]`,
+le rappel de séance ouvre `/(app2)`, une note de coach ouvre
+`/(app2)/data/session/[id]`, l'affectation d'un coach ouvre `/(app2)/club/coaching`,
+une demande d'ami ouvre `/(app2)/club/roulages?tab=amis`, une amitié acceptée
+ouvre `/(app2)/data/comparer?friend=…`.
+
+---
+
+## Paddock — l'accueil Miroir
+
+Fichier : `app/(app2)/index.tsx` (1 067 lignes).
+Chargement : `src/features/miroir/useMiroirHome.ts` (475 lignes).
+Décisions pures : `src/features/miroir/miroirHomeLogic.ts` (369 lignes, testé).
+
+### Trois visages selon l'état du pilote
+
+L'écran commence par regarder l'état de la machine v1 (`useAppStateStore`), qui
+n'est **pas** modifiée par l'arbre V2.
+
+**S5 approche et S6 roulage** (`app/(app2)/index.tsx:154-165`) : l'écran de données
+disparaît entièrement. Il ne reste qu'un sur-titre (« EN PISTE » ou « EN ROUTE »),
+un titre (« L'app s'efface. » / « Bon trajet. ») et une ligne (« Aucun écran.
+Aucun son. Conduisez. »). Aucun chrono, aucun radar, aucune statistique. C'est
+l'application du Principe 3.
+
+**S4 anticipation** (`app/(app2)/index.tsx:167-196`) : un écran de compte à rebours
+sobre, avec le prénom du pilote s'il est connu, et une seule pastille d'action
+décidée par `src/services/paddockHeroLogic.ts:49-104`.
+
+**Tous les autres états** : le Miroir complet, décrit ci-dessous.
+
+### Le héros, trois variantes
+
+`decideHomeMode` tranche entre « après-séance » (dernière séance de moins de sept
+jours) et « entre-journées ».
+
+1. **Après séance** (`app/(app2)/index.tsx:429-485`) — photo de la séance en fond,
+   sur-titre « DERNIÈRE SÉANCE · {circuit} », le chrono du meilleur tour en
+   chiffre roi, la date pleine. Un appui ouvre le Bilan avec une transition de
+   morphing du chrono. Sans photo, un tracé de circuit dessiné en Skia sert de
+   fond. Sans chrono mesuré, un tiret : jamais un zéro.
+   - photo : `listSessionMedia` → table `session_media` ;
+   - chrono : le meilleur tour lu dans `laps`, à défaut
+     `telemetry_sessions.best_lap_seconds` ;
+   - circuit et date : `telemetry_sessions.circuit_name` / `started_at`.
+
+2. **Entre journées** (`app/(app2)/index.tsx:487-537`) — photo de **sa** voiture en
+   fond (première photo du premier véhicule du garage), cadran des jours restants,
+   nom du circuit, date courte, météo, pastille « PRÉPARER ».
+   - véhicule : `garageService.listMyVehicles` (table `vehicles`) + couverture via
+     `pilotMediaService.getMyVehicleCovers`, qui lit la colonne JSONB `users.media` ;
+   - journée : `nextTrackDayService.getMyNextTrackDay`, qui croise `registrations`
+     et `sessions` ;
+   - météo : `useMiroirHome.ts:229-247`. Elle n'est demandée que si la journée est
+     à sept jours ou moins, et **uniquement** si le nom du circuit correspond
+     exactement à une ligne `circuits` porteuse de coordonnées valides. Le libellé
+     affiché dit « Météo actuelle », pas une prévision du jour J — c'est
+     `weatherService.fetchCurrentWeather` (Open-Meteo, `current`). Si la
+     température revient nulle, le bloc météo entier disparaît plutôt que
+     d'afficher un « 0° » fabriqué (`app/(app2)/index.tsx:515-522`).
+
+3. **Aucune journée au calendrier** (`app/(app2)/index.tsx:539-560`) — une carte
+   vide et une pastille « RÉSERVER ».
+   **Point à connaître** : `decideReserve` (`src/features/miroir/miroirHomeLogic.ts:236-241`)
+   renvoie `/(app2)/club` **dans les deux branches**, drapeau de paiement activé ou
+   non. Le commentaire l'assume et un test verrouille ce comportement. Autrement
+   dit, depuis l'accueil, « RÉSERVER » ouvre le Club, jamais le tunnel de
+   réservation.
+
+### Le bandeau rituel J-3
+
+`app/(app2)/index.tsx:200-207` et `341-396`. Il n'apparaît que pour une journée
+réelle à trois jours ou moins, non encore écartée. Il s'écarte au glissement
+horizontal, et l'oubli est persisté par journée dans le stockage local MMKV. Une
+action d'accessibilité « Écarter ce rappel » double le geste. Il mène vers
+`/(app2)/rec/preparation`.
+
+### La signature compacte
+
+`app/(app2)/index.tsx:566-624`. Un radar QDI en petit format, avec la légende des
+cinq branches. **La carte entière disparaît si aucune branche n'est mesurée**
+(`measured === 0`) : pas de radar inventé. Les cinq notes chiffrées ne sont
+délibérément **pas** affichées ni annoncées — un seul chiffre par écran.
+
+Source : `qdiService.getQdiForSession`, filtré sur la version d'algorithme
+courante `qdi-1.1.0` (`src/services/qdiLogic.ts:25`). Un QDI persisté sous une
+version antérieure (1.0.x, axes G inversés, documenté invalide) n'est jamais
+affiché (`useMiroirHome.ts:270-277`).
+
+### Le fait
+
+`app/(app2)/index.tsx:630-639`. Une seule phrase, nue. Après séance, c'est le récit
+narratif de `traceNarrativeService.loadTraceOfDay` ; sinon un fait de saison
+calculé par `seasonFact` à partir des statistiques cumulées. Absent, le bloc
+disparaît.
+
+### La rangée de statistiques
+
+`app/(app2)/index.tsx:645-729`. Trois cellules séparées par des filets :
+
+| Cellule | Source | Absence |
+|---|---|---|
+| Record | `statsService.loadPilotStats().bestLapSeconds` | « — » |
+| Saison | `loadPilotStats().totalDistanceKm`, en km entiers | « — » |
+| Heritage **ou** Séances | `heritage_packs.sessions_used / sessions_total` du pack actif, sinon `totalSessions` | « — » |
+
+Le compteur Heritage lit les vraies colonnes du pack actif
+(`useMiroirHome.ts:213-226`) — il n'y a plus de « /4 » codé en dur. Les chiffres
+défilent en compteur au premier passage à l'écran, sauf si le réglage système
+« animations réduites » est actif.
+
+### Le canal d'erreur
+
+`useMiroirHome.ts:297-321`. Trois sources sont dites *primaires* : dernière
+séance, statistiques, prochaine journée. Elles sont lues en mode strict — une
+erreur de base **rejette** au lieu de se déguiser en vide. Si les trois échouent
+ensemble, l'écran bascule sur un état d'erreur avec bouton Réessayer, jamais sur
+un écran calme qui affirmerait « Aucune journée » sans avoir lu.
+
+### Ce que cet écran affiche aujourd'hui en production
+
+Vérifié en base :
+
+- `telemetry_sessions` : 18 lignes, dont 10 en statut `completed`. **Aucune** ne
+  porte de `best_lap_seconds`. Les distances vont de 0,01 à 0,05 km.
+- `laps` : **1 seule ligne**, d'une durée de 0,022 s.
+- `app_session_analyses` : 13 lignes, colonne `qdi` **nulle partout**, versions
+  `v1.0` et `cron-v1.0` — donc aucune à la version courante `qdi-1.1.0`.
+- `session_media` : 0 ligne. `users.media` : 0 utilisateur renseigné.
+  `users.avatar_url` : 0 sur 14 comptes.
+- `heritage_packs` : 0 ligne.
+- `registrations` : 1 ligne (offre `access`, statut `pending`, journée du
+  24 décembre 2026 à Haute Saintonge).
+
+Conséquence, pour le seul compte concerné : héros « entre journées » avec le
+cadran vers le 24 décembre, sans photo de véhicule (repli sur le tracé dessiné),
+carte Signature **absente**, cellule Record à « — », cellule Séances chiffrée. Pour
+les treize autres comptes, l'écran affiche la carte « Aucune journée au
+calendrier ».
+
+---
+
+## Signature
+
+Fichier : `app/(app2)/signature.tsx` (464 lignes).
+Chargement : `src/features/miroir/useSignature.ts`.
+Décisions : `src/features/miroir/signatureLogic.ts` (testé).
+
+Le grand radar QDI en plein écran, avec cinq sommets nommés selon un arbitrage
+explicite du fondateur du 19 juillet 2026, verrouillé par test
+(`src/features/miroir/signatureLogic.ts:50-56`) :
+
+| Branche technique | Libellé Signature |
+|---|---|
+| trajectoire | Cap |
+| regularite | Trajectoire |
+| freinage | Visée |
+| acceleration | Plongée |
+| fluidite | Anticipation |
+
+Le fichier documente lui-même la conséquence assumée : sur cet écran,
+« Trajectoire » ne désigne pas la même branche que sur l'accueil et le Bilan.
+
+Sous le radar, l'**Empreinte** : une bande horizontale de mini-radars mensuels
+(`qdiService.listMonthlyQdi`, six mois). Toucher un mois fait morpher le grand
+radar vers les valeurs de ce mois ; un second toucher revient à la fenêtre de
+trente jours.
+
+La ligne de base est la **médiane par branche** des QDI valides des trente
+derniers jours, plafonnée à douze séances lues. Si aucune n'est valide, un seul
+recalcul paresseux est tenté sur la plus récente — jamais toute la fenêtre.
+
+Section **pilier physiologique** : rendue seulement si le drapeau `biometry` est
+actif **et** le consentement de capture posé **et** au moins trois séances portent
+des données. Même visible, la valeur du pilier est affichée à « — » : elle n'est
+pas encore calculée (`app/(app2)/signature.tsx:327-334`).
+
+Erreur et vide sont distingués (`signatureStatusFromSources`) : un écran vide
+n'est jamais affiché sur une panne réseau.
+
+**État en production** : aucun QDI à la version courante n'existe. L'écran affiche
+donc pour tous : « Votre signature se dessine à partir de vos tours. Elle
+apparaîtra après votre premier roulage analysé. »
+
+**Point de navigation** : le lien de bas d'écran « Voir la saison complète » pointe
+vers `/(app2)/data` et non vers `/(app2)/data/saison`
+(`app/(app2)/signature.tsx:342`). Le commentaire juste au-dessus le signale comme
+une cible provisoire du lot L1 que le lot L3 devait remplacer ; ce n'a pas été
+fait.
+
+---
+
+## Bilan de séance
+
+Fichier : `app/(app2)/bilan/[sessionId].tsx` (1 180 lignes).
+Chargement : `src/features/miroir/useBilan.ts` (382 lignes).
+Décisions : `src/features/miroir/bilanLogic.ts` (545 lignes, testé).
+
+C'est l'écran le plus dense de l'arbre. Il réunit trois écrans v1 distincts (trace
+du jour, débrief, bilan).
+
+### Les sections, dans l'ordre
+
+1. **Héros** — photo de la séance ou tracé du circuit en filigrane à 8 %, avec le
+   chrono du meilleur tour en chiffre roi et la ligne « X tours · Y km ». C'est la
+   cible du morphing venu de l'accueil. Le bloc est monté **dès le chargement**,
+   pour que la transition parte au bon endroit.
+2. **Le tracé** — `TraceCircuit` alimenté par la centerline **stricte** du circuit
+   réel de la séance (`fetchSessionCircuitCenterlineExact`). Si la séance n'a pas
+   de circuit rattaché, l'écran écrit « Tracé indisponible pour cette séance. » et
+   ne dessine **jamais** la silhouette d'un autre circuit.
+3. **Quatre piliers** — barres des branches QDI. Un QDI d'une version antérieure
+   affiche « — » plutôt que la fausse mesure.
+4. **Moments-clés** — calculés par `keyMomentsLogic` à partir des tours et des
+   analyses de segment. Un appui ouvre `/(app2)/data/session/[id]`. Limite écrite
+   dans le code (`app/(app2)/bilan/[sessionId].tsx:355-360`) : l'ancre sur le moment
+   précis est impossible, l'écran de séance ne lit que l'identifiant. Le pilote
+   arrive en haut de sa séance.
+5. **Fréquence cardiaque** — section entièrement absente sans drapeau `biometry`,
+   sans consentement de capture, ou sans échantillon. La lecture elle-même est
+   gatée : sans consentement, aucune requête de santé n'est émise.
+6. **Debrief J+1** — trois actes, ou l'attente dite en une phrase unique. Quand le
+   texte est généré, la provenance est écrite en toutes lettres : « RÉCIT GÉNÉRÉ
+   AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE ».
+7. **Fil avec le coach** — bulles des trois derniers messages, plus un champ de
+   réponse. N'apparaît que si un binôme existe **où l'utilisateur courant est le
+   pilote**. Le titre dit « VOTRE FIL AVEC X » et non « fil de la séance », parce
+   que le fil couvre tous les échanges.
+8. **Souvenirs** — photos réelles de la séance en liste horizontale ; une cellule
+   « ◉ VIDÉO DU TOUR » n'apparaît que sous le drapeau `video_overlay`.
+9. **Pied** — « Ouvrir dans Data ».
+
+### La bande d'annotation du coach
+
+Elle est attribuée : « NOTE DU COACH · {nom} », ou « REPÈRE GÉNÉRAL » quand la note
+n'est pas rattachée à cette séance. Jamais la voix de l'application.
+
+### Le partage
+
+Une feuille propose « Partager en PDF » (service v1) et « Carte trophée », qui
+**sort de l'arbre V2** vers `/(app)/carte-trophee?sessionId=…`
+(`app/(app2)/bilan/[sessionId].tsx:577`).
+
+### Le record
+
+`useBilan.ts` lit la liste complète des séances en mode strict. Si la liste rejette,
+ou si elle est vide alors que la séance existe, le record est déclaré
+**indéterminé** — jamais fabriqué, et la garde de célébration n'est pas posée. La
+célébration d'un record se joue **une seule fois par séance, tous écrans
+confondus** (module partagé `recordCelebration`).
+
+**État en production** : aucune séance complétée ne porte de chrono, aucune n'a de
+QDI courant, aucune n'a de média. Un bilan ouvert aujourd'hui affiche donc : un
+héros sans chrono, un tracé (Haute Saintonge a bien sa centerline en base), quatre
+piliers à « — », zéro moment-clé, pas de cardio, un débrief seulement pour les
+trois séances qui en ont un (`app_session_analyses.debrief_text` non nul sur 3
+lignes), aucun souvenir.
+
+---
+
+## Session — le flux de capture (`rec/*`)
+
+Huit écrans. La règle cardinale écrite partout : **la machine à états et les
+fichiers de capture ne sont pas modifiés**. Les écrans V2 sont une peau sur les
+mêmes services que la v1.
+
+La table de correspondance état → écran vit dans
+`src/features/rec/captureStepLogic.ts:78-99` :
+
+| État pilote | Écran |
+|---|---|
+| S1, S2, S3, S4, S8, S9, S10 | le hub reste sur lui-même |
+| S5 approche | `rec/arrivee` |
+| S6 roulage | `rec/roulage` |
+| S7 paddock | `rec/entre-runs` |
+
+### 1. Hub — `app/(app2)/rec/index.tsx` (260 lignes)
+
+Cible du bouton central de la barre. Deux visages : le jour J, il **redirige** vers
+l'écran de l'étape ; hors jour J, il rend son propre contenu (photo de la voiture,
+cadran de compte à rebours, entrée « Préparation »), ou un état « RÉSERVER » si le
+calendrier est vide. Il réutilise `useMiroirHome` — pas de second chargement écrit.
+
+### 2. Préparation — `app/(app2)/rec/preparation.tsx` (1 080 lignes)
+
+Sept blocs, tous branchés sur des sources réelles :
+
+- en-tête condensable ;
+- héros de la journée : photo du circuit, cadran de compte à rebours ou badge
+  « AUJOURD'HUI » pulsé, nom du circuit et créneau (`nextTrackDayService`) ;
+- météo réelle (`weatherService`) — **absente, la ligne disparaît** ;
+- check-list cochable de **quatre** items, persistée en MMKV par pilote. Le fichier
+  `src/features/rec/preparationLogic.ts:15-31` note honnêtement que le cahier des
+  charges parlait de six items, que la v1 en a quatre, et que la barre affiche donc
+  « x/4 » — jamais un dénominateur inventé. Les items : « Boîtier OXV chargé »,
+  « Casque et gants », « Licence et papiers du véhicule », « Niveaux et pression
+  des pneus » ;
+- QR du Pass, plein écran clair, geste de fermeture ;
+- « Qui roule » : opt-in du pilote et liste des inscrits opt-in, via une fonction
+  serveur gatée, avec filtre « Mon groupe » si une écurie existe ;
+- Convoi, gaté par le drapeau `convoys` (fermé par défaut).
+
+### 3. Arrivée — `app/(app2)/rec/arrivee.tsx` (229 lignes)
+
+Écran cérémoniel : l'insigne OXV se dessine au trait pendant 2 s, une seule fois
+par jour (garde MMKV). Le nom réel du circuit, « Vous y êtes », un seul bouton
+« JE SUIS AU PADDOCK ». **Aucune écriture dans la machine à états** — l'appui
+navigue vers l'équipement, la bascule S5→S7 reste portée par la géolocalisation.
+
+### 4. Équipement — `app/(app2)/rec/equipement.tsx` (1 145 lignes)
+
+L'appairage Bluetooth, sur les services v1 intacts.
+
+- Scan théâtralisé : anneau radar Skia, boîtiers trouvés en cascade, délai
+  d'expiration du scan. Carte du boîtier appairé avec batterie en compteur et
+  numéro de série.
+- Ceinture cardio (BIO-2) : l'état est **séparé** de celui du boîtier. Le scan
+  Polar ne s'ouvre que si le drapeau `biometry` est actif **et** le consentement de
+  capture est posé (`app/(app2)/rec/equipement.tsx:452-484`). Sans consentement,
+  rien n'écoute la santé.
+- Feuille de consentement biométrie : deux cases distinctes (capter / partager au
+  coach), avec l'invariant « partager suppose capter » côté interface et côté
+  service. Le texte est repris de `docs/juridique/consentement_biometrie.md`.
+  « Refuser » écrit explicitement les deux consentements à faux — ce n'est pas une
+  simple fermeture.
+- Rappel Apple Watch : gaté par quatre conditions simultanées.
+
+Le fichier porte un commentaire long sur un piège de cible tactile : les zones
+d'« Accorder » et « Refuser » ne sont élargies que vers l'extérieur, parce qu'un
+recouvrement aurait fait révoquer le consentement en appuyant sur le bas
+d'« Accorder ».
+
+**Non vérifié** : rien de ce chemin Bluetooth n'a été exécuté. Le drapeau
+`biometry` est passé à `true` en production le 25 juillet 2026 ; la description du
+drapeau en base indique elle-même : « Reste non tenu à la levée : smoke test
+2 appareils reels ».
+
+### 5. Placement — `app/(app2)/rec/placement.tsx` (423 lignes)
+
+Sélection du circuit (`fetchCircuits` / `getDefaultCircuit`), carte du circuit en
+tracé Skia avec le marqueur de ligne d'arrivée posé aux **coordonnées réelles**
+(repli au départ du tracé si elles manquent).
+
+L'armement est un geste : appui long de 600 ms avec jauge circulaire qui se
+remplit, puis vibration et départ. Un relâchement précoce annule — aucune session
+n'est créée. `startCaptureSession` est appelé avec exactement les mêmes arguments
+que la v1.
+
+### 6. Roulage — `app/(app2)/rec/roulage.tsx` (274 lignes)
+
+Le plus sobre de l'application, et c'est délibéré : fond uni, un point REC qui
+pulse, le mot « REC » en monospace. **Aucun chrono, aucun chiffre, aucune
+biométrie.** Seule exception d'honnêteté, reprise de la v1 : si le lien Bluetooth
+décroche, l'écran le dit sobrement, sans rouge — jamais laisser croire qu'on
+enregistre quand le boîtier a lâché.
+
+« Terminer le run » appelle exactement `stopCaptureSession` ; l'annulation discrète
+appelle `abortCaptureSession`.
+
+### 7. Entre-runs — `app/(app2)/rec/entre-runs.tsx` (430 lignes)
+
+La pause au stand. Le cadran du break au centre — affiché **uniquement** pour un
+vrai départ du jour à venir, sinon masqué (aucun compte fabriqué). Le meilleur tour
+du jour, célébré une fois s'il bat le précédent. Une note rapide écrite dans le
+carnet réel (`pilotNotesService.addNote`). La biométrie y est fermée par défaut.
+
+Le commentaire d'en-tête explicite la nuance doctrinale : ici on est au stand, pas
+en piste, donc les chiffres sont autorisés.
+
+### 8. Fin — `app/(app2)/rec/fin.tsx` (677 lignes)
+
+Fusionne trois écrans v1 (pilotage fini, préservation, bilan prêt) plus un état
+d'erreur, en quatre phases fondues.
+
+- La préservation rebranche **exactement** `analyzeAndPersistSession` de la v1, avec
+  un délai minimal d'affichage de 3,5 s et un filet de sécurité à 30 s.
+- Déclencheur BIO-1 à l'entrée en phase « fini » : lecture Apple Watch, idempotent,
+  fermé par défaut et **jamais bloquant**. Le code note qu'il est aujourd'hui sans
+  effet, HealthKit étant absent du binaire.
+- Rejeu des incidents hors-ligne, dans un registre **séparé** de la file de capture
+  durcie.
+- Lien « Déclarer un incident » toujours accessible.
+- Aucune célébration de record ici : le commentaire explique que la doubler
+  fabriquerait une célébration sur un run ordinaire.
+
+Le résumé de fin ne montre que ce que le store a mesuré (tours, minutes). La
+distance absente reste absente.
+
+---
+
+## Progression — `data/*`
+
+Quatre écrans. Doctrine écrite en tête de chacun : **self-only**, aucune donnée
+d'un autre pilote côté brut.
+
+### Hub — `app/(app2)/data/index.tsx` (744 lignes)
+
+La liste des séances du pilote.
+
+- En-tête condensable « DATA », sur-titre « VOS SÉANCES ».
+- Filtres en puces : « Tous », une puce par circuit réellement présent
+  (`circuitFilters`), « Cette saison ».
+- Cartes de séance avec le chrono au millième et un **badge d'honnêteté de la
+  donnée** (`confidenceBadge` : complète / partielle / absente, calculé sur le
+  nombre de tours, la présence de trames et la distance). Le code précise que le
+  badge qualifie **la donnée**, jamais le pilote.
+- Mode comparaison : appui long, sélection bornée à **deux**, barre flottante qui
+  ressort en ressort, puis `compareHref`
+  (`src/features/data/dataHubLogic.ts:183-187`).
+- Export de ses données via `dataExportService`, avec un cadran de progression.
+  Le code dit franchement que le service est atomique et que la progression est
+  **indéterminée** — un minuteur monte jusqu'à 90 % puis attend.
+
+Lecture stricte : une erreur de base donne un état d'erreur avec Réessayer, jamais
+une liste vide muette.
+
+### Séance — `app/(app2)/data/session/[id].tsx` (2 044 lignes)
+
+L'écran pivot. Un seul défilement, sept ancres dans un rail horizontal collant
+(`app/(app2)/data/session/[id].tsx:109-117`) : Résumé · Tours · Tracé · Télémétrie ·
+Constats · Cœur · Conditions.
+
+| Section | Source réelle | Comportement si vide |
+|---|---|---|
+| Résumé | `telemetry_sessions` + `laps` | chrono « — » |
+| Tours | `fetchSessionLaps` (strict) | « Aucun tour complet capté pour cette séance. » |
+| Tracé & virages | `app_segment_analyses` + trames GPS | « Tracé indisponible — aucune trame GPS pour cette lecture. » |
+| Télémétrie | `telemetry_frames` | « Aucune trame du boîtier pour cette séance — la télémétrie s'affichera dès la première vraie capture. » |
+| Constats | `session_insights` + nuage g-g réel | voir ci-dessous |
+| Cœur | **aucune** | vide assumé, texte explicite |
+| Conditions | `weather_snapshots` (température et humidité, nullables) | « Aucune météo capturée pour cette séance. » |
+
+**La section Cœur est un vide écrit dans le code**
+(`app/(app2)/data/session/[id].tsx:1636-1648`) : la table `telemetry_frames` ne porte
+pas de fréquence cardiaque. L'écran le dit au pilote : « La fréquence cardiaque
+n'est pas mesurée pour cette séance. Elle apparaîtra avec un capteur compatible et
+votre accord. » Aucune valeur n'est inventée.
+
+**La section Constats mérite une attention particulière.** Six lectures sont
+proposées en liste ; chacune ouvre une feuille avec sa visualisation. Le
+sous-libellé affiché est le **niveau** de la lecture, pas les anciens constats de
+maquette qui portaient des chiffres fabriqués — le commentaire
+(`app/(app2)/data/session/[id].tsx:1597-1599`) le dit explicitement. Une seule
+lecture, « Cohérence du flow », porte un bandeau « Démonstration — données réelles
+dès Valence » (`src/components/insights/catalogue.ts:54`), parce qu'aucune source
+de fluidité n'existe encore.
+
+**Mais** : les cinq autres lectures consomment `fetchSessionInsights`, qui lit la
+table `session_insights` **sans filtrer la version du moteur**
+(`src/services/sessionInsightsService.ts:19-49`). Le commentaire du service le dit :
+« La ligne de démo `mirror-insights-demo` (7 virages) est renvoyée telle quelle
+pour la session Haute Saintonge de démonstration. »
+
+La production contient **exactement une** ligne dans `session_insights`, et son
+`engine_version` vaut `mirror-insights-demo`. Elle porte sept virages, 11 800
+trames et huit tours — alors que la séance en question (`b62ab3af`, « Haute
+Saintonge BACKUP ») n'a **aucune** trame réelle en base. Sur cette séance-là,
+quatre lectures sur six (Anatomie de virage, Dispersion, Tour idéal, Transfert de
+charge) afficheront donc des chiffres de démonstration **sans bandeau qui le
+signale**. C'est le seul endroit de l'arbre V2 où j'ai trouvé de la donnée
+fabriquée présentée comme réelle.
+
+### Saison — `app/(app2)/data/saison.tsx` (1 307 lignes)
+
+Quatre lectures :
+
+1. **Tour de référence** — courbe dorée de la progression du meilleur tour par
+   circuit, points tappables qui ouvrent le bilan, ligne pointillée du record.
+   Source : `fetchAllSessions` → `bestLapCurve`.
+2. **Régularité** — histogramme de la distribution des écarts au tour de référence,
+   plus le fait « X % de vos tours à moins d'une seconde ». Ce pourcentage vaut
+   `null` — donc rien d'affiché — plutôt que 0 en l'absence de tour.
+3. **Vos faits** — grille de statistiques consolidées, chiffres en compteur.
+4. **Circuits** — cartes des circuits roulés (record personnel, nombre de séances)
+   et silhouettes pointillées des circuits OXV à découvrir.
+
+Les services sont appelés en mode strict pour distinguer « panne de lecture » de
+« compte vide ».
+
+**Point de navigation, à connaître** : `/(app2)/data/saison` **n'a aucun lien
+entrant** dans tout l'arbre V2. Une recherche sur `data/saison` et `/saison` dans
+`app/` et `src/` ne remonte que la définition de la route elle-même et le
+commentaire de `signature.tsx`. L'écran existe, il est complet, il est
+inatteignable par la navigation. Seul un lien profond ou une URL directe y mène.
+
+### Comparer — `app/(app2)/data/comparer.tsx` (1 626 lignes)
+
+La mise en regard de deux lectures, sans gagnant. Le fichier consacre 40 lignes
+d'en-tête à la doctrine : deux colonnes strictement symétriques, l'écart est un
+signe orienté neutre (« + », « - », « ± »), les deux valeurs sont dans la même
+couleur de texte, l'or est **banni** de cet écran parce qu'il peindrait un côté en
+étalon.
+
+Trois modes : Séances · Tours · Ami.
+
+- **Séances** : deux cartes de séance remplaçables, plus un tableau de quatre
+  lignes (meilleur tour, régularité, vitesse maxi, distance).
+- **Tours** : sélecteurs de tour, tracés superposés (A en accent, B en crème),
+  canaux de vitesse superposés avec un curseur partagé lisant les deux côtés.
+- **Ami** (`?friend=`) : s'appuie sur les règles de sécurité d'amitié qui n'ouvrent
+  que les **faits** de séance de l'ami (meilleur tour, vitesse max) — jamais ses
+  tours ni ses trames. Ce qui n'est pas lisible reste « — ».
+
+Un test lexical relit la source du module de logique pour verrouiller le
+vocabulaire neutre (`src/features/data/comparerLogic.ts:9-15`).
+
+Accès : par sélection de deux séances au hub, et par la notification
+« ami accepté » (`app/_layout.tsx:146`). Le bouton « Comparer côte à côte » de
+l'écran Amis, lui, renvoie vers le hub Data et non vers le comparateur en mode ami
+(`app/(app2)/club/roulages.tsx:576`).
+
+---
+
+## Club
+
+Sept écrans. Le hub est un fil vertical de blocs ; **un bloc sans contenu réel
+n'est pas rendu**.
+
+### Hub — `app/(app2)/club/index.tsx` (645 lignes)
+
+Cinq blocs, dans l'ordre :
+
+1. **Mon coaching** — binôme (avatar, nom, prochaine séance, aperçu du dernier
+   message) ou découverte (rail de visages des coachs publiés). Mène à
+   `club/coaching`.
+2. **Mon groupe** — nom de l'écurie, nombre de pilotes, avatars, et un fil de
+   **faits** : « X a roulé le … ». Le seul canal autorisé est
+   `session_attendance_public`, opt-in, réservé aux inscrits d'une même journée.
+   La fonction serveur ne renvoie **aucun chrono**, et `crewFactFeed` l'exclut
+   structurellement.
+3. **Roulages à venir** — invitations avec Accepter / Décliner.
+4. **Pass** — prochaine inscription. Mène à `club/pass`.
+5. **Partenaires** — rail de logos. Mène à `club/partenaires`.
+
+**Incohérence de source, vérifiée** : le bloc Pass du hub lit
+`getMyNextTrackDay` (`src/features/club/useClubHub.ts:324-329`), qui interroge
+`registrations` + `sessions`. L'écran Pass qu'il ouvre lit
+`listMyRegistrations` (`src/services/eventsService.ts:336-354`), qui interroge
+`event_registrations` + `events`. Ce sont **deux tables différentes**. En
+production, `registrations` a 1 ligne et `event_registrations` en a 0. Le hub peut
+donc annoncer « Prochaine inscription — Haute Saintonge », et l'écran ouvert
+répondre « Aucune inscription pour l'instant ».
+
+### Coaching — `app/(app2)/club/coaching.tsx` (1 266 lignes)
+
+Trois onglets, parcourus en puces et au glissement.
+
+- **Trouver** : cartes de coach, fiche en feuille avec bio, avis **en citations**
+  — zéro étoile, zéro score, c'est la doctrine —, créneaux, demande de séance.
+- **Mon coach** : le binôme et ses consentements granulaires (interrupteurs
+  neutres, révocation immédiate), les factures gatées par le drapeau
+  `coach_billing` (fermé), la fin de binôme derrière une confirmation sobre.
+- **Demandes** : chronologie des états et avis post-séance en **texte libre**.
+
+État en production : `coach_profiles` 1 ligne, `coach_pilots` 1 ligne,
+`coach_availability` 4 lignes, `coaching_bookings` 2 lignes,
+`coach_testimonials` 0 ligne.
+
+### Roulages & amis — `app/(app2)/club/roulages.tsx` (1 032 lignes)
+
+Deux onglets.
+
+- **Roulages** : invitations à venir avec réponse, « roulé ensemble ×{n} » par
+  coach, historique factuel.
+- **Amis** : recherche par pseudonyme public en direct, liste des amis avec leur
+  **dernier circuit** — jamais un chrono d'autrui, verrouillé dans `amisLogic` qui
+  dépouille les séances de tout chrono avant qu'elles ne touchent l'interface —,
+  badge « groupe » pour les membres de l'écurie.
+
+**Aucun lien entrant depuis l'arbre V2.** Le seul accès est la notification
+« demande d'ami » (`app/_layout.tsx:142`). Le hub Club ne l'ouvre pas.
+
+État en production : `roulage_invitations` 0, `pilot_friendships` 0, `crews` 0.
+
+### Territoire — `app/(app2)/club/territoire.tsx` (1 427 lignes)
+
+Trois onglets : Carte · Routes · Créer.
+
+- **Carte** plein écran (module cartographique v1), avec un garde : sans build
+  natif, la carte est remplacée par une liste honnête. Repères : circuits OXV,
+  pings sociaux publiés, départs des belles routes certifiées (anneau or).
+  Panneau bas synchronisé au déplacement de la carte.
+- **Routes** : cartes de route avec badge « CERTIFIÉE OXV », détail en feuille,
+  bloc Convoi si la route est liée à une journée à venir (drapeau `convoys`,
+  fermé).
+- **Créer** : deux entrées vers les planificateurs **v1**, `/(app)/creer-route` et
+  `/(app)/creer-trace` (`app/(app2)/club/territoire.tsx:622` et `629`).
+
+Divergence assumée et écrite en tête du fichier : `scenicRoutesService` n'expose
+pas la géométrie du tracé. Aucune polyligne n'est donc dessinée. Sur la carte, une
+route certifiée n'apparaît que par son **point de départ réel** ; dans les cartes
+et le détail, le motif de tracé est le circuit-repère générique, pas la géométrie
+de cette route. La durée n'est pas affichée.
+
+**Aucun lien entrant depuis l'arbre V2.** L'écran est inatteignable par la
+navigation.
+
+État en production : `social_pings` 0, `scenic_routes` 1, `convoys` 0.
+
+### Partenaires — `app/(app2)/club/partenaires.tsx` (459 lignes)
+
+Liste de cartes partenaire, puis fiche en feuille : visuel, description, offres,
+et « ÊTRE MIS EN RELATION » qui exige un **consentement explicite en une phrase**
+avant l'appel. Le garde-fou v1 est conservé mot pour mot : la mise en relation
+transmet **uniquement** les coordonnées du pilote, jamais de donnée de pilotage
+(`PARTNER_CONSENT_SENTENCE`).
+
+État en production : `partner_accounts` a 2 lignes validées, toutes deux OXV
+elle-même (« OXV » et « OXV · Administration »). `partner_offers` a 1 ligne en
+statut `draft`, donc non publiée. Le rail du hub affichera deux tuiles OXV ; la
+fiche n'aura aucune offre.
+
+### Pass — `app/(app2)/club/pass.tsx` (495 lignes)
+
+Inscriptions à venir en cartes (date, circuit, offre en puce), avec QR de présence
+plein écran au toucher. Historique en lignes dessous. Aucune inscription →
+illustration et bouton d'appel : `/(app2)/reserver` si le drapeau `app_payments`
+est actif, sinon `/(app2)/club` (`app/(app2)/club/pass.tsx:127`,
+`src/features/club/passLogic.ts:136-138`).
+
+Le drapeau étant fermé, ce bouton renvoie aujourd'hui vers le Club.
+
+État en production : `event_registrations` 0 ligne. L'écran est vide pour tous.
+
+### Galerie — `app/(app2)/club/galerie.tsx` (1 002 lignes)
+
+Deux onglets.
+
+- **Galerie** : mosaïque à deux colonnes de tous les médias, groupés par séance
+  avec en-têtes collants, visionneuse plein écran (pincement, glissement
+  horizontal, fermeture vers le bas). Cellule vidéo seulement sous le drapeau
+  `video_overlay`.
+- **Partages** : la carte-souvenir (chrono et tracé or sur titane, capturée en
+  image puis partagée par la feuille du système), le Carnet Heritage **réservé au
+  palier Heritage** — sinon la section est absente, pas teasée —, et les liens de
+  partage révocables (table `app_progression_shares`).
+
+**Aucun lien entrant depuis l'arbre V2.**
+
+État en production : `session_media` 0 ligne, `app_progression_shares` 1 ligne.
+La galerie afficherait « Vos photos et vidéos de roulage apparaîtront ici. Elles
+sont déposées par OXV après chaque journée sur circuit. »
+
+---
+
+## Compte — `vous/*`
+
+Douze écrans. Le hub en liste sept, plus trois blocs propres.
+
+### Hub — `app/(app2)/vous/index.tsx` (642 lignes)
+
+- **Héros passeport** : photo du véhicule principal (repli sur l'insigne), avatar
+  bordé d'or si le palier est Heritage, nom, pseudonyme public, et une ligne
+  d'identité en monospace qui défile au premier passage : « {palier} · {n} records
+  · {km} km ». Chaque segment n'apparaît que s'il trace vers une source réelle
+  (`src/features/vous/vousHubLogic.ts:44-56` et `70-80`).
+- **Carte Membre Fondateur** : gatée par le drapeau `founders` (fermé) — la carte
+  est **absente** si le drapeau est fermé. Jauge x/30 réelle, jamais un « 12/30 »
+  codé en dur.
+- **Code de parrainage** et ligne « écurie ».
+- **Sept sections d'accès** (`app/(app2)/vous/index.tsx:63-70`) : Profil public,
+  Garage, Carnet, Équipement, Licence & documents, Réglages, Support.
+
+Déviation doctrinale consignée dans l'en-tête : la jauge fondateur, décrite
+« remplie or » dans le cahier des charges, est rendue en gris neutre — l'or reste
+réservé au palier Heritage.
+
+Canal d'erreur : l'**identité** est la source primaire. Son échec bascule l'écran
+en erreur. Tout le reste est best-effort.
+
+### Profil public — `app/(app2)/vous/profil.tsx` (829 lignes)
+
+Deux visages sur un écran : consultation (ce que voient les autres) et édition en
+ligne. Couverture, avatar chevauchant, nom, pseudonyme, bio, puces véhicules,
+réseaux, opt-in Pavillon.
+
+Honnêtetés de schéma écrites en tête :
+
+- il n'existe pas de colonne de couverture dédiée : la couverture est la photo de
+  profil la plus récente, avec repli sur la couverture du véhicule principal, puis
+  sur un dessin — jamais une image de banque ;
+- l'avatar n'a **aucun chemin d'écriture** dans l'application, il est géré hors
+  application, donc non éditable ;
+- bio, numéro de course et opt-in Pavillon sont masqués tant que la migration
+  correspondante n'est pas appliquée.
+
+**Vérifié en base** : les colonnes `bio`, `car_number` et `pavilion_name_optin`
+**existent** dans `public.users`. La migration est donc appliquée en production et
+ces trois champs seront visibles. Sur 14 comptes, 2 ont un pseudonyme public, 0 ont
+un avatar.
+
+### Garage — `app/(app2)/vous/garage.tsx` (978 lignes)
+
+Liste verticale de cartes véhicule plein cadre. Un toucher ouvre la fiche :
+carrousel de photos, spécifications, journal de réglages daté avec composeur.
+Ajout de véhicule par carte pointillée.
+
+Honnêtetés de schéma écrites en tête :
+
+- il n'y a **pas** de colonne « véhicule principal » : le véhicule qui illustre
+  l'accueil est le premier enregistré, non modifiable. Aucun bouton « Définir
+  principal » n'a été inventé, seulement une mention factuelle ;
+- le sélecteur n'ajoute **qu'une photo à la fois**, limite du service.
+
+Sources : `vehicles` (6 lignes en production), photos dans `users.media` (0 compte
+renseigné), `vehicle_setups` (0 ligne).
+
+### Carnet — `app/(app2)/vous/carnet.tsx` (914 lignes)
+
+Quatre onglets parcourus au glissement, avec un indicateur qui suit le doigt.
+
+- **Notes** : `pilot_notes` datées, avec la météo **réelle du jour de la note**
+  quand elle existe. Le hook lit `weather_snapshots` en direct pour garder la
+  température nullable — le service partagé la ramènerait à 0, ce qui fabriquerait
+  un « 0° du jour » (`src/features/vous/useCarnet.ts:13-18`). Composeur en bas,
+  partage au coach en opt-in par note.
+- **Intentions** : une carte par intention liée à sa séance, état honorée / en
+  attente factuel (`session_intentions`).
+- **Objectifs** : personnels, **invisibles du coach**, mention explicite en tête.
+  Barre de progression seulement si l'objectif porte une mesure.
+- **Programme** : cycles partagés par le coach, lus tels quels — c'est le seul
+  espace prescriptif autorisé.
+
+État en production : `pilot_notes` 0, `session_intentions` 0, `pilot_goals` 0,
+`pilot_development_cycles` 0. Les quatre onglets sont vides.
+
+### Équipement — `app/(app2)/vous/equipement.tsx` (422 lignes)
+
+À ne pas confondre avec `rec/equipement`. Ici, aucun scan : c'est l'écran d'**état**.
+
+- Carte boîtier : visuel au trait, pastille d'état, batterie en **cadran** (le seul
+  de l'écran), numéro de série, dernier contact (`deviceHealthService`).
+- Carte ceinture pour les coachés : « gérée au paddock ».
+- Carte Apple Watch, **iOS uniquement** : statut HealthKit et bouton « Autoriser »
+  gaté par consentement + drapeau + plateforme. Sur Android, la carte est absente.
+
+État en production : `devices` 0, `device_assignments` 0, `device_health_logs` 0.
+L'écran affichera « Aucun boîtier affecté. Il vous est remis au paddock. »
+
+### Licence & documents — `app/(app2)/vous/documents.tsx` (504 lignes)
+
+Trois blocs.
+
+1. **Carte licence FFSA** au ratio d'une carte bancaire, alimentée par les vraies
+   colonnes de `users` (`ffsa_license`, `kyc_status`, `kyc_validated_at`) — zéro
+   champ inventé. Toucher l'ouvre en grand et permet le partage par capture. Note
+   honnête dans l'en-tête : `expo-brightness` est absent du projet, il n'y a donc
+   pas de montée de luminosité, la carte est simplement présentée en grand.
+2. **Décharge**, gatée par le drapeau `pilot_waivers` (fermé) : la ligne dit
+   « disponible prochainement » et n'est pas tappable.
+3. **Documents légaux** bundlés : Pacte de pilotage, CGU, Politique de
+   confidentialité.
+
+État en production : 0 compte sur 14 porte un `ffsa_license`. L'écran affichera
+« Votre licence apparaîtra dès que votre profil sera renseigné. »
+
+### Décharge — `app/(app2)/vous/decharge.tsx` (502 lignes)
+
+Flux de signature électronique v1 rhabillé. Le drapeau `pilot_waivers` est
+**revérifié sur l'écran lui-même**. Tant qu'il est fermé — parce que le texte n'a
+pas été relu par un avocat —, l'écran affiche « Bientôt » : rien de légalement
+effectif n'est présenté. Ouvert, le pilote lit, saisit son nom, coche et signe ;
+l'application horodate et scelle l'empreinte du texte.
+
+État en production : drapeau fermé, `pilot_waiver_signatures` 0 ligne.
+
+### Lecteur légal — `app/(app2)/vous/document/[doc].tsx` (198 lignes)
+
+Rendu markdown minimal des textes bundlés dans `src/legal/legalDocuments.ts`.
+Corps en 15 points, interligne 1,65. Accès permanent, exigence RGPD.
+
+### Réglages — `app/(app2)/vous/reglages.tsx` (674 lignes)
+
+Quatre groupes.
+
+1. **Notifications** : interrupteur maître, rituels (bilan, J-3, records), rappel
+   de la veille, offres partenaires. Colonnes réelles de `users`, JSONB préservé.
+2. **Consentements** : débrief assisté par IA, assistant IA du coach, statistiques
+   d'usage, partage en direct avec le coach, rythme cardiaque (capture puis
+   partage). Chaque bascule porte un sous-texte factuel d'une ligne.
+3. **Données & sécurité** : export avec cadran d'état, suppression à J+30 en double
+   confirmation.
+4. **Session** : déconnexion.
+
+Point d'honnêteté important (`src/features/vous/useReglages.ts:15-25`) : les
+écritures sont optimistes, **mais** chaque bascule inspecte le retour et **annule**
+l'état si l'écriture a échoué, puis affiche un bandeau. Aucune bascule n'affiche
+« activé » sur une écriture ratée. Une exception pessimiste : la **révocation de la
+capture cardio** ne passe à l'arrêt qu'**après** confirmation du serveur — on ne
+prétend pas avoir coupé une collecte de santé qui resterait horodatée.
+
+### Support — `app/(app2)/vous/support.tsx` (505 lignes)
+
+Liste des demandes avec pastille de statut ; un toucher ouvre le fil dans une
+feuille. Composeur pour une nouvelle demande (catégorie en puce, objet, message).
+Services v1 inchangés.
+
+État en production : `support_tickets` 0, `support_messages` 0.
+
+### Membre fondateur — `app/(app2)/vous/fondateur.tsx` (472 lignes)
+
+Insigne qui se dessine, manifeste « 30 membres. Jamais plus. », jauge x/30 réelle,
+champ de motivation (20 à 2 000 caractères, compteur), code de parrain optionnel.
+
+Le drapeau `founders` est **revérifié sur l'écran** : fermé, l'écran affiche « Les
+candidatures Membre Fondateur ouvriront prochainement » et aucune écriture n'est
+possible.
+
+Déviation doctrinale assumée et écrite : l'insigne et la jauge sont en tons titane
+neutres, **pas en or** — l'or reste exclusif au palier Heritage.
+
+État en production : drapeau fermé, `founder_applications` 0 ligne.
+
+---
+
+## Réservation — `reserver/*`
+
+Trois écrans, tous gatés par le drapeau `app_payments`, **fermé par défaut et
+fermé en production**.
+
+### Catalogue — `app/(app2)/reserver/index.tsx` (205 lignes)
+
+Liste de cartes journée : photo du circuit, date pleine, offres en puces, jauge de
+places en 20 segments (« la rareté se voit »), et « LISTE D'ATTENTE » si complet.
+Données du site via `bookingCatalogService`, en lecture seule sur les vues
+`sessions_public`, `session_availability` et la table `pricing`.
+
+### Détail & offre — `app/(app2)/reserver/[sessionId].tsx` (369 lignes)
+
+Héros circuit plein, programme de la journée en chronologie, sélection d'offre en
+cartes radio avec prix TTC en monospace, récapitulatif. Prix absent → « — ».
+
+### Paiement — `app/(app2)/reserver/paiement.tsx` (292 lignes)
+
+Récapitulatif (circuit, date, offre, total TTC) puis méthodes de paiement.
+
+**Les boutons sont inertes.** `MethodRow` est une simple vue non tappable annoncée
+« bientôt disponible », et le bouton de bas d'écran est une vue marquée désactivée
+portant « Paiement à l'ouverture » (`app/(app2)/reserver/paiement.tsx:160-172`).
+Stripe et l'achat intégré sont prévus pour un lot ultérieur.
+
+Une mention légale porte un marqueur explicite dans le code : le texte des
+Conditions générales de vente reste à rédiger.
+
+### Accessibilité de la zone
+
+Le tunnel émet des événements de mesure (`reserve_funnel_1/2/3`) **que l'accès soit
+ouvert ou fermé** — c'est délibéré, pour mesurer l'intention avant l'ouverture.
+
+Mais la zone est aujourd'hui **inatteignable** :
+
+- depuis l'accueil et le hub Session, `decideReserve` renvoie vers le Club dans les
+  deux branches ;
+- depuis le Pass, le bouton ne mène à `/(app2)/reserver` que si `app_payments` est
+  actif — il est fermé.
+
+Aucun autre lien ne pointe vers `reserver/`.
+
+---
+
+## L'écran de validation du kit
+
+`app/(app2)/dev-galerie.tsx` (763 lignes). Il redirige vers la racine et ne rend
+**rien** hors développement (`app/(app2)/dev-galerie.tsx:579`). Toutes ses valeurs
+sont des constantes de démonstration locales au fichier, jamais exportées. Il
+présente les composants du kit, les vingt icônes, les primitives d'animation
+rejouables et le vocabulaire tactile.
+
+---
+
+## La navigation
+
+### La barre à cinq zones
+
+`src/ui/v2/TabBar.tsx`, table dans `src/ui/v2/shellLogic.ts:208-213`.
+
+Quatre portes latérales, iconographiques, et un bouton central inséré au milieu :
+
+| Position | Clé | Icône | Route |
+|---|---|---|---|
+| 1 | miroir | `miroir` | `/(app2)` |
+| 2 | data | `data` | `/(app2)/data` |
+| 3 | — | bouton central | selon l'état |
+| 4 | club | `club` | `/(app2)/club` |
+| 5 | vous | `casque` | `/(app2)/vous` |
+
+Hauteur du contenu : 56 points, plus la zone sûre du bas, avec un plancher de 8.
+La formule unique `tabBarSpace()` est celle que chaque écran utilise pour son
+espacement bas — le commentaire précise que toute formule ad hoc finirait par
+diverger.
+
+Fond flou sur iOS ; sur Android, un aplat opaque délibéré, parce que le flou
+Android se recalcule à chaque image sous un contenu qui défile.
+
+Le bouton central déborde de 12 points au-dessus de la barre, et ce débord est
+**inclus dans les limites de la barre** : sans cela, le haut du cercle serait une
+zone morte tactile sur Android.
+
+La porte active est en texte clair et grossie de 6 % par ressort ; les inactives
+sont en gris. Un retour tactile accompagne chaque appui.
+
+### Le bouton central, trois états
+
+`src/ui/v2/centralButtonLogic.ts:78-87` :
+
+| Condition | Mode | Rendu |
+|---|---|---|
+| une capture est en cours | `rec` | cercle plein accent, point pulsant, tactile « armer » |
+| une journée circuit à venir | `countdown` | cercle bordé, libellé « J-3 », « J-0 » le jour J |
+| sinon | `reserve` | cercle bordé, icône drapeau à damier |
+
+Le compte de jours va de minuit local à minuit local ; l'arrondi absorbe les
+bascules d'heure d'été. La journée est relue à la connexion, à la fin d'une
+capture, et au retour de l'application au premier plan — un « J-x » calculé la
+veille ne reste pas figé (`src/ui/v2/useCentralButtonState.ts:40-69`).
+
+**Câblage à connaître** : `app/(app2)/_layout.tsx:105-108` route l'appui du bouton
+central vers `/(app2)/club` en mode `reserve` et vers `/(app2)/rec` dans les deux
+autres modes. Le commentaire le qualifie de « câblage provisoire (lot L0) » en
+attendant le vrai flux de réservation. Il n'a pas été mis à jour.
+
+### Le silence en piste
+
+Deux mécanismes se cumulent dans `app/(app2)/_layout.tsx:78` :
+
+```
+const showTabBar = shouldShowTabBar(pathname, pilotState) && !isV2CaptureFlowPath(pathname);
+```
+
+1. `shouldShowTabBar` (`src/lib/appMap.ts:175-179`) masque la barre dès que l'état
+   pilote vaut `S6_roulage`, **quel que soit l'écran**, et sur les segments v1 du
+   flux de capture (`src/lib/appMap.ts:161-169`).
+2. `isV2CaptureFlowPath` (`src/ui/v2/centralButtonLogic.ts:106-111`) masque la barre
+   sous `/rec/<segment>` pour cinq segments seulement
+   (`src/ui/v2/centralButtonLogic.ts:98`) : `arrivee`, `equipement`, `placement`,
+   `roulage`, `fin`.
+
+`rec/preparation` et `rec/entre-runs` **gardent la barre** — c'est un choix
+documenté du lot L0 : on est au paddock, pas en piste.
+
+Le silence ne se limite pas à la barre. L'accueil lui-même se vide en S5 et S6
+(`app/(app2)/index.tsx:154-165`), et l'écran de roulage n'affiche aucun chiffre. Un
+retour par geste depuis le flux de capture pendant le roulage ne montre donc
+jamais un chrono, un radar ou une statistique.
+
+### Le garde d'authentification
+
+`app/(app2)/_layout.tsx:71-73` : si la session expire en cours d'usage, le magasin
+passe en « non authentifié » et tout le groupe redirige vers `/(auth)/login`.
+Même garde que l'arbre v1.
+
+---
+
+## Les trois écrans v1 vers lesquels (app2) renvoie encore
+
+C'est écrit noir sur blanc dans `app/index.tsx:103-106` : l'arbre v1 n'est pas
+supprimé, et l'arbre V2 y renvoie **volontairement** pour trois écrans non portés.
+
+| Écran v1 | Appelé depuis | Ligne |
+|---|---|---|
+| `/(app)/carte-trophee` | feuille de partage du Bilan | `app/(app2)/bilan/[sessionId].tsx:577` |
+| `/(app)/creer-route` | onglet Créer de Territoire | `app/(app2)/club/territoire.tsx:622` |
+| `/(app)/creer-trace` | onglet Créer de Territoire | `app/(app2)/club/territoire.tsx:629` |
+
+Ce sont les trois seules sorties vers l'arbre v1 dans tout `app/(app2)/` — une
+recherche de `(app)/` dans le dossier ne remonte rien d'autre que des commentaires.
+
+Le premier est la carte trophée à partager ; les deux autres sont le planificateur
+de route (moteur GraphHopper) et l'import de tracé OSM. Le commentaire de commit
+est explicite : le moteur v1 est réutilisé tel quel, jamais réécrit. La suppression
+de l'arbre v1 est prévue **après validation terrain, pas avant**.
+
+Le même commit consigne quatre écrans v1 supplémentaires sans équivalent V2
+(`mes-routes`, `regularite`, `data-lab-canvas`, `share/[token]`) et quatre
+capacités perdues à l'intérieur d'écrans par ailleurs couverts : l'inscription à un
+événement ouvert, la certification et la suppression d'une belle route, le
+catalogue d'offres par catégorie, l'écart-type de séance. Ce sont des arbitrages
+produit en attente de décision, pas des oublis techniques.
+
+---
+
+## Ce qui n'a jamais été observé, et ce qui reste ouvert
+
+### Jamais exécuté
+
+- **Aucune exécution sur appareil ni en simulateur** dans le cadre de ce document.
+  Le rendu, les gestes, la fluidité et le comportement Bluetooth sont des lectures
+  de code.
+- Le commit de bascule L6 signale lui-même que **trois chemins sont produits par les
+  deux arbres** — `/`, `/club`, `/signature` — et que « lequel gagne n'a pas été
+  observé, faute d'exécution ». C'est le premier point à tester sur appareil.
+- Le drapeau `biometry` a été ouvert en production le 25 juillet 2026. Sa propre
+  description en base indique : « Reste non tenu à la levée : smoke test 2
+  appareils reels ». L'appairage de la ceinture Polar n'a donc jamais été observé.
+- Le déclencheur BIO-1 (Apple Watch) est décrit dans le code comme sans effet
+  aujourd'hui, HealthKit étant absent du binaire.
+
+### Écrans complets mais sans porte d'entrée
+
+Quatre écrans, entièrement écrits, n'ont **aucun lien entrant** dans l'arbre V2 :
+
+| Écran | Lignes | Seul accès existant |
+|---|---|---|
+| `app/(app2)/data/saison.tsx` | 1 307 | aucun |
+| `app/(app2)/club/territoire.tsx` | 1 427 | aucun |
+| `app/(app2)/club/galerie.tsx` | 1 002 | aucun |
+| `app/(app2)/club/roulages.tsx` | 1 032 | notification « demande d'ami » uniquement |
+
+À quoi s'ajoute la zone `reserver/*` (3 écrans, 866 lignes), atteignable seulement
+si le drapeau `app_payments` est ouvert, depuis l'écran Pass.
+
+Cela représente **environ 5 600 lignes d'écran** qu'un pilote ne peut pas atteindre
+aujourd'hui par la navigation.
+
+### Points de donnée à trancher
+
+1. **La ligne de démonstration `session_insights`.** Une ligne unique, marquée
+   `engine_version = 'mirror-insights-demo'`, est lue et affichée sans filtre par
+   `src/services/sessionInsightsService.ts`. Quatre des six « lectures approfondies »
+   afficheront ses chiffres **sans bandeau de démonstration**, sur la séance
+   `b62ab3af` (« Haute Saintonge BACKUP »). Seule la lecture « Cohérence du flow »
+   porte le bandeau.
+2. **Les deux tables d'inscription.** Le bloc Pass du hub Club et l'écran Pass
+   lisent deux tables différentes (`registrations` contre `event_registrations`).
+   L'un peut annoncer une inscription que l'autre ne connaît pas.
+3. **« RÉSERVER » ne réserve pas.** Depuis l'accueil et le hub Session, le bouton
+   ouvre le Club, drapeau ouvert ou fermé, par décision explicite verrouillée par
+   test.
+4. **Le bouton central en mode `reserve`** ouvre également le Club, sur un câblage
+   qualifié de provisoire depuis le lot L0.
+
+### Ce qui est réellement alimenté par de vraies données aujourd'hui
+
+Alimenté et vérifiable en base :
+
+- l'accueil : prochaine journée (1 inscription réelle au 24/12/2026), météo réelle
+  du circuit, nombre de séances, nom du circuit, dates ;
+- le hub Data et l'écran de séance : les 10 séances complétées et leurs métadonnées
+  (statut, circuit, date, distance) ;
+- le Bilan : les 3 débriefs et les 13 marges globales de `app_session_analyses` ;
+- les Réglages : toutes les préférences, sur les vraies colonnes de `users` ;
+- le Coaching : 1 profil coach, 1 binôme, 4 créneaux, 2 demandes ;
+- les Partenaires : 2 comptes validés (tous deux OXV), 0 offre publiée ;
+- le Garage : 6 véhicules ;
+- les documents légaux : bundlés, donc toujours lisibles.
+
+Vide par absence de donnée, avec état vide honnête :
+
+- chronos, tours, trames, QDI, radar Signature, Empreinte, courbe de saison,
+  régularité, comparateur, biométrie ;
+- photos, galerie, souvenirs, carte-souvenir, avatars ;
+- notes, intentions, objectifs, programme ;
+- pass événementiel, amis, écurie, roulages, pings, convois, support ;
+- boîtier affecté, licence FFSA, décharge, candidature fondateur, pack Heritage.
+
+Fermé par drapeau, donc volontairement absent :
+
+- réservation et paiement (`app_payments`) ;
+- convois (`convoys`) ;
+- vidéo du tour (`video_overlay`) ;
+- décharge e-sign (`pilot_waivers`) ;
+- candidatures fondateur (`founders`) ;
+- facturation coach (`coach_billing`).
+
+Un seul drapeau est ouvert : `biometry`, depuis le 25 juillet 2026.
+
+---
+
+## L ancien arbre pilote, ce qui en reste
+
+Avertissement de méthode, valable pour toute la section. Rien n a été exécuté :
+ni l application, ni le compilateur, ni la suite de tests. Tout ce qui suit est
+une lecture du code du dépôt et des données de production en lecture seule.
+Quand je décris un rendu, un geste ou un enchaînement d écrans, je décris ce que
+le code prescrit, pas ce que j ai vu. Les endroits où seule une exécution
+trancherait sont signalés comme tels.
+
+### Ce que contient exactement le dossier
+
+Le dossier `app/(app)/` contient 83 fichiers `.tsx`. Trois d entre eux ne sont
+pas des écrans mais des enveloppes de navigation :
+
+- `app/(app)/_layout.tsx` (41 lignes)
+- `app/(app)/cote-a-cote/_layout.tsx` (15 lignes)
+- `app/(app)/session-media/_layout.tsx` (15 lignes)
+
+Il reste donc **80 écrans**, pour 38 274 lignes de code au total.
+
+À titre de comparaison, l arbre V2 `app/(app2)/` compte 38 fichiers, dont
+1 layout (`app/(app2)/_layout.tsx`), soit 37 routes — et l une d elles,
+`app/(app2)/dev-galerie.tsx`, se coupe hors développement
+(`app/(app2)/dev-galerie.tsx:579`). Cela fait **36 écrans de production**, pour
+27 666 lignes.
+
+L ancien arbre est donc plus de deux fois plus fourni en écrans que le nouveau,
+et pèse 1,4 fois plus de code.
+
+### Ce qui a changé le 26 juillet, et ce qui n a pas changé
+
+La bascule s appelle L6. Elle tient dans une ligne de `app/index.tsx` :
+
+- `app/index.tsx:107` — `return <Redirect href={'/(app2)' as never} />;`
+
+Avant ce commit (`29e34f9`, 26/07/2026), cette ligne renvoyait vers `/(app)`.
+Le commentaire posé juste au-dessus dit lui-même ce qui n a pas été fait :
+
+- `app/index.tsx:103-106` — « L arbre v1 reste en place et atteignable :
+  (app2) y renvoie encore volontairement pour trois écrans non portés. »
+
+Le même lot a retiré une garde de `app/(app2)/_layout.tsx` qui, hors mode
+développeur, renvoyait tout le groupe V2 vers la racine. La raison du retrait
+est écrite sur place :
+
+- `app/(app2)/_layout.tsx:63-66` — la conserver aurait produit une boucle de
+  redirection en production, et seulement en production.
+
+Ce qui n a pas changé : **aucun fichier de `app/(app)/` n a été supprimé**. Le
+dernier commit qui a touché ce dossier est `e05796b` du 25/07/2026 (correctif
+météo sur `app/(app)/carnet.tsx`, `app/(app)/conditions.tsx` et
+`app/(app)/preparation.tsx`). L arbre v1 est donc gelé depuis la veille de la
+bascule, pas depuis des mois.
+
+### Il est toujours embarqué dans l application
+
+Le point d entrée du projet est `expo-router/entry` (`package.json:4`), et
+`metro.config.js` n applique aucun filtrage de routes. Expo Router construit sa
+table de navigation en parcourant l intégralité du dossier `app/`. Les
+80 écrans v1 sont donc **compilés et embarqués dans le binaire iOS**, qu on les
+ouvre ou non. Je n ai pas mesuré le poids exact que cela représente dans le
+bundle — cela demanderait un build.
+
+Ils sont aussi tenus par l outillage : `package.json:15` fait tourner ESLint sur
+`app/**/*.{ts,tsx}`, `package.json:10` fait tourner `tsc --noEmit` sur tout le
+projet, et les deux scripts de garde doctrinale
+(`scripts/check-doctrine.ts:176`, `scripts/check-accessibility.ts:91`) scannent
+le dossier `app/` entier. Chaque passe de qualité paie donc encore le prix des
+80 écrans.
+
+Détail de dette, mentionné pour être complet : `app/(app)/profil.tsx` est le
+**seul** fichier des deux arbres pilote à porter des fins de ligne Windows
+(CRLF). C est la source des erreurs Prettier signalées dans le message du
+commit L6. Aucun fichier de `app/(app2)/` n est dans ce cas.
+
+## Pourquoi il n a pas été supprimé
+
+Cinq raisons distinctes, toutes vérifiables dans le code. Les deux premières
+sont celles que le lot L6 a consignées ; les trois suivantes s y ajoutent et
+n avaient pas été énoncées.
+
+### Raison 1 — l arbre V2 y renvoie pour trois écrans qu il ne sait pas faire
+
+Ce sont les seuls liens de `(app2)` vers `(app)`, et ils sont volontaires.
+
+| Depuis | Ligne | Vers |
 | --- | --- | --- |
-| Coquille | 1 | `_layout.tsx` |
-| Miroir | 3 | `index.tsx`, `bilan/[sessionId].tsx`, `signature.tsx` |
-| REC (jour J) | 8 | `rec/index`, `preparation`, `arrivee`, `equipement`, `placement`, `roulage`, `entre-runs`, `fin` |
-| DATA | 4 | `data/index`, `data/session/[id]`, `data/comparer`, `data/saison` |
-| CLUB | 7 | `club/index`, `coaching`, `roulages`, `territoire`, `partenaires`, `galerie`, `pass` |
-| VOUS | 11 | `vous/index`, `profil`, `garage`, `carnet`, `equipement`, `documents`, `document/[doc]`, `decharge`, `reglages`, `support`, `fondateur` |
-| Réservation | 3 | `reserver/index`, `reserver/[sessionId]`, `reserver/paiement` |
-| Développement | 1 | `dev-galerie.tsx` |
+| `app/(app2)/bilan/[sessionId].tsx` | 577 | `/(app)/carte-trophee?sessionId=…` |
+| `app/(app2)/club/territoire.tsx` | 622 | `/(app)/creer-route` |
+| `app/(app2)/club/territoire.tsx` | 629 | `/(app)/creer-trace` |
 
-Le repère de départ annonçait « VOUS (12) ». Le compte réel est de onze écrans sous `vous/`. L'écart s'explique probablement par le fait que les trois écrans de réservation ont été développés dans le même lot que VOUS — leurs hooks vivent d'ailleurs dans `src/features/vous/` (`useReserverCatalog.ts`, `useReserverDay.ts`, `useReserverPayment.ts`) — ou par le comptage de `dev-galerie.tsx`. Je le signale sans trancher.
+Dans le bilan V2, l entrée s appelle « Carte trophée · La carte à partager de la
+séance » et vit dans la feuille « PARTAGER », à côté de l export PDF
+(`app/(app2)/bilan/[sessionId].tsx:562-580`).
 
-Le volume de code est de 25 424 lignes pour l'ensemble du groupe. Les écrans les plus lourds sont `data/comparer.tsx` (1 626 lignes), `club/territoire.tsx` (1 427), `data/saison.tsx` (1 307), `club/coaching.tsx` (1 266) et `bilan/[sessionId].tsx` (1 182).
+Dans l écran Territoire, les deux entrées vivent dans un onglet « Créer », et le
+commentaire dit pourquoi elles n ont pas été réécrites :
 
-### Ce que fait `app/(app2)/_layout.tsx` : la coquille et les onglets
+- `app/(app2)/club/territoire.tsx:614-616` — « La logique v1 (GraphHopper /
+  Overpass, import OSM) reste intacte : ces entrées ouvrent les planificateurs
+  existants plutôt que de dupliquer leur moteur. »
 
-Ce fichier de 123 lignes est la porte d'entrée de tout l'espace V2, et il porte cinq responsabilités.
+Conséquence de navigation, et c est le point important. Quand le pilote suit
+l un de ces trois liens, il quitte le groupe `(app2)` et entre dans le groupe
+`(app)`. Le layout de l ancien arbre se monte alors
+(`app/(app)/_layout.tsx:32-39`) et pose **sa** barre d onglets à cinq zones
+(`src/components/AppTabBar.tsx:45-80`) — Miroir, Data Lab, Carnet, Découverte,
+Compte. Cette barre navigue vers `TAB_MAIN_ROUTE` (`src/lib/appMap.ts:27-33`),
+c est-à-dire vers `/(app)`, `/(app)/data-lab`, `/(app)/carnet`,
+`/(app)/coachs`, `/(app)/compte`. Autrement dit : d un seul écran emprunté à
+l ancien arbre, **la totalité de l ancienne application redevient accessible en
+un tap**, dans son ancien langage graphique. Je n ai pas pu l observer : c est
+la lecture du code de layout et de barre d onglets.
 
-**Première responsabilité, et la plus importante à connaître : une garde de build.** Les lignes 66 à 68 contiennent `if (!__DEV__) { return <Redirect href="/" />; }`. En clair : dans un build de production, l'intégralité de l'espace pilote V2 — les 36 écrans — n'est pas atteignable, y compris par lien profond. Le commentaire du fichier précise que cette garde est à retirer au lot L6, celui de la bascule. J'ai vérifié en cherchant toute référence à `app2` depuis `app/(app)` : il n'en existe aucune, sauf un commentaire dans `app/(app)/insight/[reading].tsx` ligne 136. Le groupe est donc réellement orphelin : rien dans l'application V1 n'y mène, et le routeur racine `app/index.tsx` renvoie les pilotes vers `/(app)`, jamais vers `/(app2)`.
+### Raison 2 — l espace pilote professionnel s en sert comme bibliothèque
 
-**Deuxième responsabilité, une garde d'authentification.** Si le store d'auth passe en `unauthenticated`, l'utilisateur est renvoyé vers `/(auth)/login`, exactement comme dans le layout V1.
+`app/(pro)/` (8 fichiers, 1 870 lignes) n a jamais eu ses propres écrans de
+données. Il pointe directement dans l arbre v1 :
 
-**Troisième responsabilité, le contexte d'animation.** Le layout monte un `GestureHandlerRootView` racine (dont dépendent le `Sheet` et le `PullToRefreshDial`) et un `HeroMorphProvider`, registre inter-écrans qui permet à une photo « héros » de voyager d'un écran à l'autre pendant la navigation. Le `Stack` est configuré sans en-tête natif et avec `animation: 'none'` : l'entrée d'un écran n'est pas une transition de navigateur, c'est l'effet « porte » du kit (`useDoorTransition`).
-
-**Quatrième responsabilité, la barre d'onglets.** Elle n'est pas la barre d'expo-router mais un composant maison, `src/ui/v2/TabBar.tsx`, posé en position absolue au-dessus du contenu. La table des portes vit dans `src/ui/v2/shellLogic.ts` (`TAB_ITEMS`) et compte quatre portes latérales : Miroir, Data, Club, Vous (icône casque). La porte active est rendue en `text.hi` avec une mise à l'échelle de 1,06 en ressort ; les inactives en `text.low`. Le fond est un flou `expo-blur` d'intensité 30 sur iOS ; sur Android, le composant retombe volontairement sur un aplat opaque, le commentaire expliquant que le re-flou par image sous un contenu qui défile est coûteux et produit des artefacts. La hauteur de contenu est de 56 points, avec un débord de 12 points pour que le bouton central reste tappable sur Android.
-
-Au centre, le `CentralButton` a trois états, tranchés par une logique pure testée (`src/ui/v2/centralButtonLogic.ts`) et alimentée par `useCentralButtonState.ts` : `rec` quand une capture est en cours (cercle plein accent, point pulsant, retour haptique « armement »), `countdown` quand une journée circuit est à venir (libellé « J-3 », « J-0 » le jour J), et `reserve` sinon. La prochaine journée est relue à la connexion, à la fin d'une capture et à chaque retour de l'application au premier plan, pour qu'un « J-x » calculé la veille ne reste pas figé.
-
-**Un point important sur ce bouton central : sa destination est encore provisoire.** Les lignes 107 à 110 du layout envoient vers `/(app2)/club` en mode `reserve` et vers `/(app2)/rec` dans les deux autres cas. Le commentaire l'assume comme un « câblage provisoire (lot L0) ». Le bouton central n'ouvre donc jamais le tunnel de réservation.
-
-**Cinquième responsabilité, le silence en piste.** La barre disparaît quand `shouldShowTabBar(pathname, pilotState)` — la logique V1 importée sans modification depuis `src/lib/appMap.ts` — le demande, et aussi quand le chemin courant est un segment immersif V2. Ces segments sont listés dans `V2_HIDDEN_SEGMENTS` : `arrivee`, `equipement`, `placement`, `roulage`, `fin`. À l'inverse, `preparation` et `entre-runs` gardent la barre visible.
-
-Enfin, la fonction `currentTabOf` fait retomber sur « miroir » tout écran hors des quatre portes — c'est-à-dire tout le flux REC et `dev-galerie` : la barre n'est jamais dans un état indéterminé.
-
----
-
-### Zone Miroir : le présent du pilote
-
-#### L'accueil — `app/(app2)/index.tsx` (1 067 lignes)
-
-C'est la porte d'entrée. L'écran a deux visages, tranchés par `decideHomeMode` selon l'ancienneté de la dernière séance (seuil de sept jours).
-
-En mode **après-séance**, le héros est la photo de la séance avec le chrono du meilleur tour en surimpression (`ChronoHero`). Un appui déclenche la capture de géométrie `HeroMorph` puis pousse vers `/(app2)/bilan/{sessionId}` : la photo « voyage » visuellement vers l'écran de bilan. En mode **entre-journées**, le héros devient la voiture du membre — la photo de couverture de son garage — surmontée d'un cadran de compte à rebours, du nom du circuit, de la date courte et d'une pastille « PRÉPARER ». Si aucune journée n'est au calendrier, le héros est remplacé par une carte vide portant « Aucune journée au calendrier. » et un bouton « RÉSERVER ».
-
-Trois modes de capture priment sur tout le reste. Aux états `S5_approche` et `S6_roulage`, l'écran ne rend qu'un texte plein cadre : « L'app s'efface. / Aucun écran. Aucun son. Conduisez. » en piste, « Bon trajet. / Coupez l'app. Je conduis. » en approche. Aucun chrono, aucun radar, aucune statistique — c'est l'application littérale du principe 3. À l'état `S4_anticipation`, l'écran devient un compte à rebours sobre avec une pastille d'action calculée par `decidePaddockAction` (logique V1 importée, non dupliquée).
-
-Sous le héros viennent, dans l'ordre : un bandeau rituel J-3 (affiché uniquement pour une journée réelle à trois jours ou moins, écartable par un glissement horizontal dont l'oubli est persisté par journée en MMKV, avec une action d'accessibilité dédiée puisqu'un lecteur d'écran ne peut pas produire ce geste) ; une carte Signature compacte portant le radar QDI en petit format et la légende des cinq branches (masquée entièrement si aucune branche n'est mesurée — pas de radar inventé) ; « le fait », un texte nu qui est soit le récit narratif de la dernière séance, soit un fait de saison ; et une rangée de trois statistiques en filets fins : Record, Saison (kilomètres), puis Heritage ou Séances.
-
-**D'où viennent les données.** Tout passe par `src/features/miroir/useMiroirHome.ts`, qui n'utilise que des services existants. Le hook procède en deux vagues de `Promise.allSettled` : d'abord la dernière séance (lecture directe de `telemetry_sessions`), les statistiques (`loadPilotStats`), la prochaine journée (`getMyNextTrackDay`), le drapeau `app_payments`, le garage et ses couvertures, les inscriptions (pour le palier Heritage), le pack Heritage et l'avatar ; puis les données dépendantes de la séance : tours, QDI, récit, médias. La météo du circuit de la prochaine journée est lue en dernier, et uniquement si la journée est à sept jours ou moins.
-
-Trois garde-fous méritent d'être connus. Premièrement, les trois sources primaires sont lues en mode strict : une erreur de base de données rejette au lieu de se déguiser en vide, et si les trois échouent ensemble, l'écran bascule en état d'erreur avec un bouton « Réessayer » — jamais un écran calme qui affirmerait « aucune journée » ou « 0 km ». Deuxièmement, la météo affichée est explicitement étiquetée « Météo actuelle » et non une prévision du jour J, et si la température est absente, le bloc entier est omis plutôt que d'afficher un « 0° » fabriqué. Troisièmement, le compteur Heritage lit les vraies colonnes `sessions_used` / `sessions_total` de la table `heritage_packs` ; sans pack actif, la cellule devient « Séances ».
-
-Sur le QDI, une règle importante : seul un QDI persisté à la version courante de l'algorithme est affiché. Les QDI enregistrés sous 1.0.x sont documentés comme invalides (axes G inversés) et ne sont jamais montrés. Un recalcul paresseux n'est tenté qu'une fois par lancement et seulement pour une séance récente.
-
-**Deux liens de cet écran sortent vers la V1** : le bandeau rituel et la pastille « PRÉPARER » naviguent tous deux vers `/(app)/preparation` (lignes 377 et 524), pas vers l'écran de préparation V2 qui existe pourtant à `/(app2)/rec/preparation`.
-
-#### Le bilan de séance — `app/(app2)/bilan/[sessionId].tsx` (1 182 lignes)
-
-C'est le rendez-vous d'après-piste. L'écran s'ouvre par un bloc héros qui est la cible du `HeroMorph` venu de l'accueil ; ce bloc est monté dès le premier rendu, même pendant le chargement, pour que le mouvement parte au moment du geste. Le reste de l'écran entre par la « porte » seulement au passage à l'état prêt.
-
-Les sections, dans l'ordre : le chrono en grand avec célébration de record éventuelle (une seule fois par séance, tous écrans confondus, grâce à une garde MMKV partagée dans `src/features/miroir/recordCelebration.ts`) ; **LE TRACÉ**, qui n'affiche la carte que si la géométrie exacte du circuit réel de la séance est disponible — sinon la carte est masquée, jamais remplacée par une silhouette générique ; **QUATRE PILIERS** ; **MOMENTS-CLÉS**, calculés par `computeKeyMoments` ; **FRÉQUENCE CARDIAQUE** ; **DEBRIEF J+1** ; le fil de messages avec le coach ; **SOUVENIRS** ; et un pied de page.
-
-Le débrief a trois formes possibles : en attente (un texte unique, constante testée `DEBRIEF_PENDING_TEXT`), généré, ou rédigé. Quand il est généré automatiquement, l'écran l'annonce en toutes lettres : « RÉCIT GÉNÉRÉ AUTOMATIQUEMENT À PARTIR DE VOTRE SÉANCE ». Le fil de messages est intitulé « VOTRE FIL AVEC {NOM} » et l'auteur de chaque bulle est déterminé par l'identité d'authentification courante, pas par le rôle — un coach qui roule verrait sinon ses propres bulles attribuées au pilote.
-
-La bande de fréquence cardiaque est triplement gatée : drapeau `biometry`, consentement, et présence réelle de données. Absent l'un des trois, la section n'existe pas — pas de teasing. La cellule « ◉ VIDÉO DU TOUR » en fin de rail Souvenirs n'apparaît que si le drapeau `video_overlay` est actif.
-
-**Deux dettes explicitement consignées dans le code.** Les lignes 358 et 523 portent le marqueur `TODO_L3_TARGET` : les moments-clés et le lien « Ouvrir dans Data » devraient mener à `/data/session/[id]` avec une ancre, mais naviguent aujourd'hui vers le hub `/(app2)/data`. L'écran cible existe pourtant désormais — le rebranchement n'a pas été fait.
-
-La feuille de partage propose un export PDF et une « Carte trophée », cette dernière renvoyant vers la route V1 `/(app)/carte-trophee`.
-
-**Sources** : `src/features/miroir/useBilan.ts`, qui orchestre en `Promise.allSettled` les services sessions, analyses, QDI, segments, annotations coach, fil de messages, médias, centerline, biométrie et drapeaux. Seul l'échec de la séance elle-même met l'écran en erreur ; chaque autre section se dégrade seule. Le record est déterminé en mode strict : si la liste des séances n'a pas pu être établie, le record est déclaré indéterminé plutôt que fabriqué.
-
-#### La signature — `app/(app2)/signature.tsx` (464 lignes)
-
-L'écran porte le grand radar QDI avec ses cinq branches (Cap, Trajectoire, Visée, Plongée, Anticipation) et la mention « x/5 axes mesurés ». En dessous, « l'Empreinte » : une bande horizontale de mini-radars mensuels. Toucher un mois fait se déformer le grand radar vers les valeurs de ce mois par interpolation ; un second toucher ramène à la fenêtre de trente jours.
-
-L'animation de déformation est décrite en détail dans le fichier : une progression 0→1 animée sur le fil UI, échantillonnée à environ 30 Hz vers le fil JavaScript pour limiter le nombre de rendus. Le commentaire précise honnêtement que la preuve par profileur sur appareil réel reste due.
-
-Le pilier physiologique est gaté par la même chaîne fail-closed que le bilan, avec en plus un seuil de trois séances portant des données (`PHYSIO_MIN_SESSIONS = 3`). Et même quand il est visible, sa valeur est rendue à `null`, donc « — » : la valeur n'est pas encore calculée, elle n'est pas inventée.
-
-**Sources** : `src/features/miroir/useSignature.ts`. La ligne de base est la médiane par branche des QDI valides des trente derniers jours (`SIGNATURE_WINDOW_DAYS = 30`), bornée à douze séances lues. L'Empreinte demande six mois à `listMonthlyQdi`. Les deux sources sont lues en mode strict et le statut de l'écran est arbitré par une fonction pure testée, pour qu'une panne réseau ne se déguise jamais en état vide « après votre premier roulage analysé ».
-
-Le lien de bas d'écran « Voir la saison complète » navigue vers `/(app2)/data` et non vers `/(app2)/data/saison` — le commentaire ligne 337 dit attendre le lot L3, qui a pourtant livré l'écran saison.
-
----
-
-### Zone REC : les huit écrans du jour J
-
-Le flux repose sur une projection de la machine à états V1 (S1 à S10) vers huit étapes. Cette table est la seule chose qui relie les deux, elle vit dans `src/features/rec/captureStepLogic.ts` et elle est purement lectrice : le module ne modifie jamais la machine à états.
-
-| État pilote | Étape | Le hub redirige vers |
+| Fichier | Ligne | Route v1 appelée |
 | --- | --- | --- |
-| S1 découverte, S2 initiation, S3 attente, S4 anticipation | hors-jour | rien, le hub s'affiche |
-| S5 approche | arrivée | `/(app2)/rec/arrivee` |
-| S6 roulage | roulage | `/(app2)/rec/roulage` |
-| S7 paddock | entre-runs | `/(app2)/rec/entre-runs` |
-| S8 atterrissage, S9 décantation, S10 repos | hors-jour | rien, le hub s'affiche |
+| `app/(pro)/index.tsx` | 30 | `/(app)/bilan` |
+| `app/(pro)/index.tsx` | 31 | `/(app)/data-lab` |
+| `app/(pro)/index.tsx` | 32 | `/(app)/passeport` |
+| `app/(pro)/index.tsx` | 33 | `/(app)/signature` |
+| `app/(pro)/index.tsx` | 34 | `/(app)/garage` |
+| `app/(pro)/index.tsx` | 122 | `/(app)/bilan` (dernière séance) |
+| `app/(pro)/performance.tsx` | 34 | `/(app)/comparateur` |
+| `app/(pro)/performance.tsx` | 39 | `/(app)/progression` |
+| `app/(pro)/bibliotheque.tsx` | 177 | `/(app)/bilan` |
 
-Le choix pour S8/S9 est documenté : l'écran `fin` est un transit atteint depuis `roulage` avec l'identifiant réel de séance, jamais par une redirection du hub qui n'aurait pas cet identifiant.
+À quoi s ajoute l icône de compte. `src/ui/AccountButton.tsx:17` pointe en dur
+vers `/(app)/compte`, et ce composant est monté par cinq écrans de l espace pro
+(`app/(pro)/index.tsx`, `app/(pro)/equipe.tsx`, `app/(pro)/media.tsx`,
+`app/(pro)/partage.tsx`, `app/(pro)/performance.tsx`).
 
-**1. Le hub — `rec/index.tsx` (260 lignes).** Cible du bouton central. Le jour J, il redirige immédiatement. Hors jour J, il rend la photo de la voiture du membre, un cadran de compte à rebours et une entrée « Préparation » vers `REC_ROUTES.preparation`. Sans journée au calendrier, il bascule en état « RÉSERVER » avec la même décision que l'accueil. Il réutilise `useMiroirHome` et, quand il redirige, passe `null` comme identifiant utilisateur pour ne payer aucune requête.
+Supprimer `app/(app)/` casserait donc **dix points d entrée** de l espace pro.
 
-**2. La préparation — `rec/preparation.tsx` (1 080 lignes).** C'est une peau V2 sur les mêmes données que `app/(app)/preparation.tsx`. Sept blocs : en-tête condensable, héros de la journée avec cadran ou badge « AUJOURD'HUI », météo réelle (ligne absente si la mesure est absente), check-list cochable dont l'état est persisté en MMKV, QR Pass en compact puis en plein écran clair, le bloc C1 « Qui roule », et le bloc C2 Convoi. Le bloc « Qui roule » s'appuie sur `src/features/rec/attendancePublicService.ts`, qui appelle la fonction serveur `session_attendance_public` : seuls les inscrits de la journée lisent la liste, seuls les pilotes ayant activé `users.show_attendance` y figurent, et la fonction ne renvoie que le pseudo, l'avatar et l'écurie — jamais le nom complet. Le bloc Convoi est gaté par le drapeau `convoys`, vérifié en fail-closed.
+Nuance de production, importante pour hiérarchiser : la table `users` ne
+contient aujourd hui **aucun compte de rôle `pro_pilot`** (répartition réelle
+mesurée en base : 11 `pilot`, 2 `admin`, 1 `partner`). L espace pro est un
+espace vide de titulaires. La dépendance est réelle dans le code, pas dans
+l usage.
 
-**3. L'arrivée — `rec/arrivee.tsx` (229 lignes).** Écran cérémoniel plein cadre : l'insigne OXV se dessine au trait en deux secondes, une seule fois par jour (garde MMKV), puis le nom réel du circuit et « Vous y êtes ». Un seul bouton, « JE SUIS AU PADDOCK », qui fait un retour haptique d'armement et remplace la route par l'écran équipement. **Aucune écriture dans la machine à états** : le commentaire précise que la bascule S5→S7 reste portée par la géolocalisation dans `src/lib/geolocation.ts`.
+### Raison 3 — l espace coach y renvoie aussi
 
-**4. L'équipement — `rec/equipement.tsx` (1 145 lignes).** Peau sensorielle sur les services BLE V1 intacts : mêmes appels que la V1 vers `bluetoothService` (l'un des quatre fichiers gelés), mémoire du dernier boîtier via SecureStore, boîtier affecté via `getMyAssignedDevice`. La mise en scène ajoute un anneau radar Skia pendant le scan, une pastille de connexion pulsée, la batterie en compteur roulant et le numéro de série en police à chasse fixe. Trois blocs supplémentaires sont gatés par le drapeau `biometry` : la carte ceinture Polar (« à appairer au paddock par le staff » — le scan Polar réel est renvoyé au lot BIO-2), la feuille de consentement biométrie à deux cases distinctes (capture et partage coach), et le rappel Apple Watch soumis à quatre conditions.
+Ce point ne figurait pas dans le bilan du lot L6. Deux liens :
 
-**5. Le placement — `rec/placement.tsx` (423 lignes).** Dernière étape avant le silence. La carte du circuit est un tracé Skia avec un marqueur blanc de ligne d'arrivée placé depuis les coordonnées réelles ; si la ligne n'est pas renseignée, le marqueur retombe au départ du tracé plutôt que d'inventer une fausse ligne. L'armement est un geste : un appui long de 600 millisecondes avec jauge circulaire qui se remplit, et un relâchement précoce annule sans créer de session. Le démarrage appelle `startCaptureSession` avec exactement les mêmes arguments que la V1.
+- `app/(coach)/pilote/[id].tsx:759` — la carte d une séance de son pilote ouvre
+  `/(app)/bilan`.
+- `app/(coach)/pilote/[id].tsx:797` — le bouton « Annoter » ouvre
+  `/(app)/virage`, précisément pour que le coach choisisse le virage avant
+  d écrire. Le commentaire au-dessus explique que passer directement à
+  l éditeur envoyait la note sur le virage 1
+  (`app/(coach)/pilote/[id].tsx:790-796`).
 
-**6. Le roulage — `rec/roulage.tsx` (274 lignes).** Le plus sobre, et c'est délibéré : fond noir, un point REC qui pulse, le mot « REC ». Aucun chrono, aucun chiffre, aucune biométrie. Une seule exception d'honnêteté, reprise de la V1 : si le lien Bluetooth décroche, l'écran le dit sobrement, sans rouge — pour ne pas laisser croire qu'on enregistre quand le boîtier a lâché. « Terminer le run » appelle `stopCaptureSession` puis part vers `rec/fin` avec l'identifiant de séance ; une annulation discrète appelle `abortCaptureSession`.
+Autrement dit, **la boucle de travail du coach passe encore par l ancien
+arbre**. Là aussi, aucun compte de rôle `coach` n existe en base aujourd hui,
+mais une affiliation existe (`coach_pilots` : 1 ligne).
 
-**7. L'entre-runs — `rec/entre-runs.tsx` (430 lignes).** La pause au stand. Un cadran de compte à rebours du break (échelle de 45 minutes), qui ne s'affiche que pour un vrai départ à venir ; le meilleur tour du jour, célébré une fois s'il bat le précédent (garde MMKV par jour) ; une note rapide écrite dans le carnet réel via `addNote` ; et un bloc biométrie fail-closed. Le commentaire assume que les chiffres sont autorisés ici : on est au stand, pas en piste. Le bouton « Préparer le prochain run » remplace la route par l'écran équipement, ce qui garantit que la capture reste toujours joignable.
+### Raison 4 — la table de navigation v1 est encore lue par la V2
 
-**8. La fin — `rec/fin.tsx` (677 lignes).** Fusionne trois écrans V1 (pilotage-fini, préservation, bilan-prêt) plus un état d'erreur, en quatre phases fondues entre elles : `fini`, `preservation`, `pret`, `erreur`. La préservation rebranche exactement `analyzeAndPersistSession` de la V1. Sur la phase « fini » se déclenche le mécanisme BIO-1 de lecture Apple Watch : idempotent, fail-closed, jamais bloquant, et aujourd'hui sans effet puisque HealthKit est absent. L'écran rejoue aussi les incidents déclarés hors ligne, depuis un registre séparé de la file de capture durcie, et propose de déclarer un incident dans une feuille. Le résumé n'affiche que ce que le store a mesuré : le message d'erreur est la constante « Vos données sont en sécurité sur l'appareil. » L'écran mène ensuite au bilan V2 via `finBilanRoute(sessionId)`.
+`src/lib/appMap.ts` est présentée dans son propre en-tête comme la « source
+unique de vérité de la navigation pilote » et mappe « chaque route réelle de
+`app/(app)/*` » (`src/lib/appMap.ts:1-18`).
 
----
+Or le layout V2 l importe :
 
-### Zone DATA : quatre écrans, dont un inatteignable
+- `app/(app2)/_layout.tsx:26` — `import { shouldShowTabBar } from '@/lib/appMap';`
+- `app/(app2)/_layout.tsx:78` — `shouldShowTabBar(pathname, pilotState) && !isV2CaptureFlowPath(pathname)`
 
-**Le hub — `data/index.tsx` (744 lignes).** La liste de vos séances, exclusivement les vôtres. Des filtres en pastilles (Tous, un par circuit rencontré, Cette saison), une liste de `SessionCard` portant le chrono au millième et un « badge d'honnêteté de la donnée » calculé par `confidenceBadge`. Un appui long ouvre le mode comparaison : la sélection est bornée à deux par `toggleSelect`, une barre flottante sort en ressort et mène au comparateur. Le chargement est strict — une panne de base de données devient un état d'erreur avec « Réessayer », jamais une liste vide muette. L'export de vos données passe par `dataExportService` ; le cadran de progression est **indéterminé** et le code le dit : le service est atomique et ne publie aucune progression réelle (`TODO device-tune`).
+C est cette fonction v1 (`src/lib/appMap.ts:175-179`) qui décide du **silence en
+piste** dans l arbre V2 : elle masque la barre d onglets quand l état pilote est
+`S6_roulage`. Le complément V2 (`src/ui/v2/centralButtonLogic.ts`) ne couvre que
+les segments `/rec/*`. Supprimer l ancien arbre sans traiter `appMap` reviendrait
+donc à toucher au principe 3.
 
-**La séance — `data/session/[id].tsx` (1 782 lignes environ, sept sections).** L'écran pivot, avec un rail horizontal collant d'ancres sous l'en-tête condensé.
+### Raison 5 — un test lit physiquement le dossier v1
 
-| Section | Contenu | Source |
+`src/lib/__tests__/appMap.test.ts:14-26` ouvre le dossier `app/(app)` avec
+`fs.readdirSync` et vérifie deux invariants : qu aucun écran v1 n est sans zone,
+et qu aucune entrée de la table ne pointe vers un fichier inexistant
+(lignes 96-107). Le test tomberait dès la suppression du dossier.
+
+Une liste d exemptions y est maintenue à la main
+(`src/lib/__tests__/appMap.test.ts:32-38`) : `debug-capture`, `debug-circuit`,
+`session-media`, `share`, `decharge`.
+
+## Les sept écrans orphelins
+
+« Orphelin » signifie ici : aucun écran de l arbre V2 ne rend cette fonction. Ce
+n est pas la même chose qu inatteignable — trois des sept sont au contraire
+appelés depuis la V2.
+
+### 1. `app/(app)/carte-trophee.tsx` — la carte-souvenir (342 lignes)
+
+Ce que fait l écran : il lit `?sessionId=`, charge la séance et ses tours, en
+tire le meilleur tour réel via `computeRegularity` (repli `best_lap_seconds`) et
+la géométrie du tracé, puis rend le composant `<TrophyCard>` en 4:5, capturable
+(`app/(app)/carte-trophee.tsx:2-14`, `:120`, `:221`). Deux actions ancrées en
+bas : capture de l image via `react-native-view-shot` puis feuille de partage
+système.
+
+Il est **appelé depuis la V2** (`app/(app2)/bilan/[sessionId].tsx:577`).
+
+Nuance : le composant `src/components/TrophyCard.tsx` est, lui, réutilisé dans
+la V2 — `app/(app2)/club/galerie.tsx:74` et `:408` le montent dans l onglet
+« Partages ». C est donc **l écran** qui manque, pas la carte. La V2 sait
+afficher une carte-souvenir de galerie ; elle ne sait pas ouvrir celle d une
+séance précise depuis son bilan.
+
+Dépendance propre à cet écran : `@/services/mediaExportsService`, importé
+uniquement ici dans tout le dépôt.
+
+### 2. `app/(app)/creer-route.tsx` — le planificateur de balade (818 lignes)
+
+Le plus gros des sept. Il pilote trois services de routage :
+`scenicRouteService` (appel GraphHopper avec un modèle de sinuosité
+personnalisé), `scenicPoiService` (Overpass / OpenStreetMap) et
+`scenicRoutesService.saveRoute` (`app/(app)/creer-route.tsx:1-14`, `:57`).
+
+Les deux premiers ne sont importés **que** par cet écran :
+`@/services/routing/scenicRouteService`, `@/services/routing/scenicPoiService`,
+et le module de types `@/services/routing/types`.
+
+Il est **appelé depuis la V2** (`app/(app2)/club/territoire.tsx:622`).
+
+### 3. `app/(app)/creer-trace.tsx` — l import OpenStreetMap (213 lignes)
+
+Saisie d un identifiant de « way » OSM, récupération des points, génération de
+géométrie, prévisualisation, puis écriture dans la table `circuits` avec un
+statut de visibilité (privé, ou proposé à OXV via `review_status='submitted'`)
+et l attribution obligatoire aux contributeurs OpenStreetMap
+(`app/(app)/creer-trace.tsx:1-14`).
+
+Il est **appelé depuis la V2** (`app/(app2)/club/territoire.tsx:629`).
+
+### 4. `app/(app)/mes-routes.tsx` — mes belles routes (220 lignes)
+
+Liste les routes de balade enregistrées par le pilote, avec leur statut de
+certification, et porte deux actions d écriture :
+
+- `requestCertification(id)` — demander la certification OXV
+  (`app/(app)/mes-routes.tsx:57`)
+- `deleteRoute(id)` — supprimer la route (`app/(app)/mes-routes.tsx:71`)
+
+Il affiche aussi les quatre statuts réels (`Brouillon`, `En revue OXV`,
+`Certifiée OXV`, `Non retenue`) et, en cas de refus, la note de l administrateur
+(`app/(app)/mes-routes.tsx:30-35`, `:131-133`).
+
+Aucun écran ne l ouvre plus, sauf `app/(app)/coachs.tsx:830` — c est-à-dire un
+autre écran v1.
+
+### 5. `app/(app)/regularite.tsx` — l écart-type de séance (296 lignes)
+
+L écran mesure la dispersion des tours autour de la médiane : un chiffre central
+(l écart-type), une bande descriptive, une barre par tour. Il s appuie sur
+`computeRegularity` (`src/services/regularityService.ts`), qui expose
+`medianSeconds`, `bestSeconds`, `stdDevSeconds`, `spreadSeconds` et une bande
+neutre `resserré / régulier / dispersé`
+(`src/services/regularityService.ts:24-40`).
+
+Son seul point d entrée était `app/(app)/progression.tsx:67`.
+
+Aucun fichier de `app/(app2)/` n importe `computeRegularity` ni
+`regularityService` — je l ai vérifié par recherche sur tout le sous-arbre V2 et
+sur `src/features/`. La V2 mesure la régularité autrement (voir plus bas).
+
+### 6. `app/(app)/data-lab-canvas.tsx` — la vue unifiée Skia (230 lignes)
+
+Aperçu technique qui monte `DataLabCanvas` (rendu natif Skia) derrière une garde
+Expo Go, via un `require()` synchrone
+(`app/(app)/data-lab-canvas.tsx:2-15`, `:42-46`). Son en-tête le qualifie
+lui-même d « APERÇU TECHNIQUE, à valider au build ».
+
+Il était référencé depuis l index du Data Lab v1
+(`app/(app)/data-lab.tsx:305`, `:702`, `:764`). Plus rien ne l ouvre depuis la
+bascule.
+
+### 7. `app/(app)/share/[token].tsx` — la progression partagée (194 lignes)
+
+Écran de consultation d un lien de partage. Il appelle la RPC sécurisée
+`get_shared_progression` (`app/(app)/share/[token].tsx:53`) et n affiche que les
+métriques présentes dans la liste blanche du lien. Token inconnu, révoqué ou
+expiré : « Partage terminé. »
+
+Trois faits à connaître sur cet écran.
+
+D abord, il ne montre **que les libellés** des métriques partagées, jamais leurs
+valeurs (`app/(app)/share/[token].tsx:117-124`). La base porte pourtant une
+seconde fonction, `get_shared_progression_values`, qui renverrait un champ
+`metric_values` — je l ai vue en production, et aucune ligne de code ne
+l appelle (migration `supabase/migrations/20260622235835_shared_progression_values_rpc.sql`).
+
+Ensuite, le lien distribué n est pas cette route. `src/services/sharesService.ts`
+construit `https://oxvehicle.fr/share/{token}` (`SHARE_BASE_URL` ligne 58,
+`shareUrlFor` lignes 60-61). Or `app.json` ne déclare **ni**
+`associatedDomains` iOS **ni** `intentFilters` Android : un lien
+`oxvehicle.fr/share/...` ouvre le navigateur, pas l application. Seul le schéma
+personnalisé `oxv://` (`app.json` : `"scheme": "oxv"`) atteindrait cet écran, et
+rien dans le dépôt ne génère une telle adresse.
+
+Enfin, l usage réel : la table `app_progression_shares` contient **une seule
+ligne** en production, créée le 07/07/2026, expirée le 14/07/2026, avec une
+seule métrique (`regularity`) et `view_count = 0`. Cet écran n a, à ma
+connaissance de la base, jamais servi.
+
+### Deux écrans de plus, sans équivalent, mais gardés par `__DEV__`
+
+Ils ne comptent pas dans les sept parce qu ils ne s affichent pas en
+production, mais ils n ont pas non plus de pendant V2 :
+
+- `app/(app)/debug-capture.tsx` (656 lignes) — capture d octets UBX bruts depuis
+  un RaceBox, détection de tours en direct, simulation d un bouton Flic 2.
+  Garde : `app/(app)/debug-capture.tsx:54`.
+- `app/(app)/debug-circuit.tsx` (81 lignes) — prévisualisation du tracé 3D.
+  Garde : `app/(app)/debug-circuit.tsx:24`.
+
+Deux remarques. Leur repli hors développement renvoie vers `'/(app)'`, donc vers
+l **ancien** arbre — ces deux lignes n ont pas été mises à jour au lot L6. Et
+leur seul point d entrée était `app/(app)/index.tsx:196`, l accueil v1 : depuis
+la bascule, un développeur qui veut capturer une fixture UBX n a plus de chemin
+depuis l accueil réel. `app/(app2)/dev-galerie.tsx` est une galerie de
+composants, pas un outil de capture.
+
+## Les capacités perdues à l intérieur d écrans par ailleurs couverts
+
+Ce sont des fonctions qui existaient dans un écran v1, dont l écran V2
+équivalent existe bien, mais qui n ont pas été portées. Le message du lot L6 en
+signale quatre. J en ai trouvé cinq autres. Je sépare clairement les deux
+listes.
+
+### Les quatre consignées au lot L6
+
+**a. S inscrire à un événement ouvert.** `app/(app)/pass-oxv.tsx` importe
+`listOpenEvents` et `registerForEvent` (`app/(app)/pass-oxv.tsx:26-28`), filtre
+les événements auxquels le pilote n est pas déjà inscrit (`:75-76`) et affiche
+un bouton « S inscrire » (`:147`). L écran V2 `app/(app2)/club/pass.tsx:33`
+n importe que `listMyRegistrations` : il montre les passes, il ne permet plus
+d en prendre un.
+
+Nuance de production : la table `events` contient **un seul événement**, de
+statut `private`. Or `listOpenEvents` filtre sur `status = 'public'`
+(`src/services/eventsService.ts:361`). La section « événements ouverts » de
+l écran v1 est donc **vide aujourd hui**, y compris avant la bascule. La
+capacité est perdue dans le code ; elle ne l est pas encore dans les faits.
+
+**b. Certifier et supprimer une belle route.** L écran V2
+`app/(app2)/club/territoire.tsx` appelle bien `listMyRoutes` et
+`listCertifiedRoutes` (`:145-146`) — il liste donc vos routes. Mais il n appelle
+ni `requestCertification` ni `deleteRoute`, et n affiche que le binaire
+« certifiée / pas certifiée » (`:545`, `:566-570`). Sont donc perdus, en plus
+des deux actions : la lecture des statuts intermédiaires (`Brouillon`,
+`En revue OXV`, `Non retenue`) et la note de refus de l administrateur.
+
+Nuance : `scenic_routes` contient **une ligne** en production, nommée
+« Belle route · 50 km », de statut `draft`, sans distance renseignée. Elle
+n apparaîtrait donc pas dans la carte V2, qui ne place que les routes certifiées.
+
+**c. Le catalogue d offres par catégorie.** `app/(app)/catalogue.tsx`
+(867 lignes) aplatit toutes les offres publiées de tous les partenaires validés
+et les **regroupe par catégorie d offre** (`offer.category`), avec un filtre de
+catégorie (`app/(app)/catalogue.tsx:172-202`). L écran V2
+`app/(app2)/club/partenaires.tsx` liste des **partenaires**, et la puce de
+catégorie qu il affiche est le `type` du partenaire, pas la catégorie de
+l offre (`src/features/club/partenairesLogic.ts:30-32`, `:81`).
+
+**d. L écart-type de séance.** La V2 mesure la régularité comme la part des
+tours à moins d une seconde du tour de référence, plus un histogramme à cinq
+seaux (`src/features/data/seasonLogic.ts:47-92`, notamment `withinOneSecPct`).
+C est un fait honnête, mais ce n est pas la même mesure : l écart-type de
+population calculé par `src/services/regularityService.ts:51-60` a disparu de
+l arbre pilote V2, ainsi que la médiane, l amplitude et la bande descriptive.
+
+### Les cinq que j ai trouvées en plus
+
+**e. Écrire une intention.** Le service `intentionsService` expose
+`savePendingIntention` (`src/services/intentionsService.ts:160`) et
+`setIntentionShared` (`:211`). Ces deux écritures ne sont appelées que depuis
+`app/(app)/prochaine-fois.tsx:142` et depuis
+`src/components/IntentionCard.tsx:53` — un composant importé uniquement par
+`app/(app)/preparation.tsx` et `app/(app)/prochaine-fois.tsx`.
+
+Le carnet V2 lit les intentions et ne fait que cela : `src/features/vous/useCarnet.ts`
+n importe que `getPendingIntention` et `getIntentionForSession` (`:31-34`), et
+n expose que `addNote` et `toggleNoteShared` (`:245`). Le composant
+`IntentionCard` de `app/(app2)/vous/carnet.tsx:447` est un composant **local**
+de rendu, homonyme, sans écriture.
+
+Conséquence : dans l arbre V2, le pilote peut lire ses intentions passées mais
+**ne peut plus en écrire une nouvelle**. C est la fonctionnalité décidée en V9
+(« Intention → table `session_intentions` »). La table contient 0 ligne en
+production.
+
+**f. Créer un objectif et l auto-évaluer.** Même schéma.
+`src/services/pilotGoalsService.ts` expose `createGoal` (`:84`),
+`updateGoalStatus` (`:112`) et `deleteGoal` (`:138`). Aucune de ces trois
+fonctions n est appelée hors de `app/(app)/objectifs.tsx:61` et `:68`. Le carnet
+V2 n importe que `listMyGoals` (`src/features/vous/useCarnet.ts:35`) et son
+panneau Objectifs est une simple `FlashList` sans composeur
+(`app/(app2)/vous/carnet.tsx:488-512`).
+
+L auto-évaluation « atteint / à continuer / lâcher » (les statuts
+`achieved / continued / abandoned` de `src/services/pilotGoalsService.ts:11`)
+n existe donc plus nulle part dans l arbre pilote V2. La table `pilot_goals`
+contient 0 ligne en production.
+
+**g. Le virage désigné « à surveiller ».** C est le mécanisme du principe 1 —
+une seule zone à explorer par séance. Il est porté par
+`src/services/focusCorner.ts:41` (`selectFocusCorner` : le virage à plus faible
+marge, rouge d abord, sinon jaune, sinon rien). Cette fonction n est appelée que
+depuis `app/(app)/carte.tsx:113`, qui en tire la carte « Le virage à
+surveiller ».
+
+La V2 affiche bien la marge **par virage** dans sa section VIRAGE, avec les
+étiquettes doctrinales « Confortable / À explorer / Terrain serré »
+(`app/(app2)/data/session/[id].tsx:1036-1046`). Ce qu elle ne fait plus, c est
+**désigner un virage** parmi les autres.
+
+De la même famille : la colonne `app_session_analyses.next_focus_phrase` n est
+rendue que par `src/components/DebriefMirror.tsx:518` — composant qui n est
+importé par aucun écran (`app/(app)/debrief-presentiel.tsx:19` ne fait que le
+citer en commentaire). Ce code est donc déjà mort avant la bascule.
+
+Nuance de production, décisive ici : `app_segment_analyses` contient **0 ligne**,
+et aucune des 13 lignes de `app_session_analyses` ne porte de
+`next_focus_corner_index`. Ni l écran v1 ni l écran V2 n auraient quoi que ce
+soit à montrer aujourd hui.
+
+**h. La vitrine du partenaire et le contact par offre.**
+`app/(app)/partenaire/[id].tsx` (971 lignes) rend le logo en grand, la
+description, puis les **images réelles des offres publiées** (`image_url`) en
+grille, et enfin les offres avec leur description. `app/(app)/catalogue.tsx`
+attache le contact à l offre précise touchée (`offerId: item.offer.id`,
+`app/(app)/catalogue.tsx:281-283`).
+
+La fiche V2 (`app/(app2)/club/partenaires.tsx:195-280`) montre le logo, la
+description du partenaire, et les offres en lignes de texte « titre · prix ».
+Pas d image d offre, pas de description d offre. Et la mise en relation est
+toujours rattachée à la **première** offre du partenaire :
+`src/features/club/useClubPartenaires.ts:80` passe
+`offerId: primaryOfferId(partner)`, défini comme `partner.offers[0]?.id ?? null`
+(`src/features/club/partenairesLogic.ts:102-104`).
+
+Nuance de production : `partner_offers` contient **une offre**, de statut
+`draft`, donc non publiée. `partner_leads` contient 0 ligne. Ni le catalogue v1
+ni l écran V2 n affichent quoi que ce soit aujourd hui.
+
+**i. Le paramétrage du lien de partage.** C est le point le plus sensible des
+cinq, parce qu il touche au RGPD.
+
+L écran v1 `app/(app)/partage.tsx:89-92` crée un lien avec trois arguments : le
+périmètre, une **durée** (`expiresInDays`) et une **liste blanche de métriques**
+(`includedMetrics`, cochées par le pilote).
+
+L écran V2 `app/(app2)/club/galerie.tsx:148` appelle `createShare({ scope })` —
+et rien d autre. Or le service applique deux valeurs par défaut :
+
+- `src/services/sharesService.ts:110` — `included_metrics: sanitizeIncludedMetrics(opts.includedMetrics ?? [])`,
+  soit **une liste vide**.
+- `src/services/sharesService.ts:99-101` — `expiresAt` vaut `null` sans
+  `expiresInDays`, soit **aucune expiration**.
+
+Un lien créé depuis la V2 est donc, si je lis correctement : vide de contenu
+(l écran de consultation afficherait « Aucune métrique n a été incluse dans ce
+partage », `app/(app)/share/[token].tsx:112-115`) et **perpétuel**. Je n ai pas
+pu l exécuter ; c est une lecture des deux appels et des valeurs par défaut du
+service. La seule ligne existante en base porte bien une métrique et une
+expiration, mais elle date du 07/07, donc d avant l écran V2.
+
+**Un mot sur `conditions`, pour ne pas surcompter.**
+`app/(app)/conditions.tsx` juxtaposait les faits météo d une séance et le
+ressenti écrit du pilote, côte à côte, sans tracer le lien. La V2 fait les deux
+choses, mais séparément : la météo de la séance vit dans
+`app/(app2)/data/session/[id].tsx:1676-1695` (avec, en plus, une corrélation
+tour de référence / conditions), et les notes datées avec leur météo du jour
+vivent dans `app/(app2)/vous/carnet.tsx`. C est la mise en regard elle-même qui
+n existe plus. Je le signale comme une perte de mise en scène, pas de donnée.
+
+## La carte de correspondance, écran par écran
+
+Lecture de la table : « couvert » signifie qu un écran V2 rend la même fonction
+sur les mêmes services. Les réserves sont dans la colonne de droite.
+
+### Miroir et lecture de soi
+
+| Écran v1 | Équivalent V2 | Réserve |
 | --- | --- | --- |
-| 1 · RÉSUMÉ | Chrono en grand, statistiques en filets | `fetchAllSessions` |
-| 2 · TOURS | Histogramme Skia, une barre par tour | `fetchSessionLaps` (strict) |
-| 3 · TRACÉ & VIRAGES | Tracé du tour, pastilles de marge, zoom | `listSegmentAnalysesForSession` |
-| 4 · TÉLÉMÉTRIE | Onglets internes G-G, Canaux, Heatmap, Replay | trames, chargées paresseusement |
-| 5 · CONSTATS | Six lectures dans une feuille | `fetchSessionInsights` + `loadGGPoints` |
-| 6 · CŒUR | Vide honnête | aucune — voir ci-dessous |
-| 7 · CONDITIONS | Température et humidité, corrélation | `weather_snapshots` |
+| `index.tsx` (Paddock) | `app/(app2)/index.tsx` | couvert |
+| `bilan.tsx` | `app/(app2)/bilan/[sessionId].tsx` | couvert |
+| `signature.tsx` | `app/(app2)/signature.tsx` | couvert |
+| `trace.tsx` | `app/(app2)/index.tsx` (le fait narratif) | la phrase est sur l accueil (`src/features/miroir/useMiroirHome.ts:45`, `:376-380`), pas dans le bilan — or c est le bilan qu ouvre le bouton « Découvrir ma trace du jour » (`src/services/paddockHeroLogic.ts:75-77`) |
+| `debrief.tsx` | section DEBRIEF J+1 du bilan V2 (`app/(app2)/bilan/[sessionId].tsx:389`) | couvert |
+| `debrief-presentiel.tsx` | section fil coach du bilan V2 (`:418-441`) | couvert |
+| `bilan-pret.tsx` | `app/(app2)/rec/fin.tsx` | fusion des 3 écrans, dite en tête du fichier (`:4-6`) |
+| `pilotage-fini.tsx` | `app/(app2)/rec/fin.tsx` | idem |
+| `preservation.tsx` | `app/(app2)/rec/fin.tsx` | idem |
+| `progression.tsx` | `app/(app2)/data/saison.tsx` | l écart-type devient un pourcentage |
+| `regularite.tsx` | **aucun** | orphelin |
+| `stats.tsx` | section « VOS FAITS » de `data/saison.tsx` | couvert |
+| `comparateur.tsx` | `app/(app2)/data/comparer.tsx` | couvert |
+| `empreinte-saison.tsx` | bloc Empreinte de `app/(app2)/signature.tsx` | couvert |
+| `passeport.tsx` | héros de `app/(app2)/vous/index.tsx` + section Circuits de `data/saison.tsx` | couvert |
+| `carte-licence.tsx` | `app/(app2)/vous/documents.tsx` | couvert, la source est citée dans l en-tête V2 |
+| `cartes.tsx` | `app/(app2)/data/index.tsx` | couvert, avec le mode comparaison |
+| `pass-oxv.tsx` | `app/(app2)/club/pass.tsx` | inscription perdue (voir a.) |
+| `paddock.tsx` | `app/(app2)/rec/arrivee.tsx` | couvert |
+| `session/index.tsx` | `app/(app2)/rec/index.tsx` | couvert |
+| `preparation.tsx` | `app/(app2)/rec/preparation.tsx` | couvert ; le composeur d intention n est pas porté (voir e.) |
+| `equipement.tsx` | `app/(app2)/rec/equipement.tsx` | couvert |
+| `placement.tsx` | `app/(app2)/rec/placement.tsx` | couvert |
+| `roulage.tsx` | `app/(app2)/rec/roulage.tsx` | couvert |
+| `entre-runs.tsx` | `app/(app2)/rec/entre-runs.tsx` | couvert |
 
-Sur la section 5, il faut être précis, car c'est le seul endroit du groupe où subsiste de la démonstration. Cinq des six lectures sont branchées sur des données réelles : `anatomie`, `dispersion`, `tour-ideal` et `transfert` consomment des tranches de `session_insights`, `gg` consomme le nuage g-g réel — et chacune rend un état vide honnête si la donnée manque. **La sixième, `flow`, reste une démonstration** : le commentaire ligne 1 559 explique qu'aucune source d'insight « fluidité » n'existe et qu'il faudrait un calcul dédié dérivé des trames. Elle est donc la seule à porter un bandeau `DemoBanner`. Par ailleurs, une panne de lecture des insights produit une erreur honnête distincte du vide, et le sous-libellé des lignes est désormais le niveau de la lecture, plus l'ancien « fait » de démonstration aux chiffres fabriqués.
+### Data Lab
 
-La section 6, « Cœur », est un vide assumé : `telemetry_frames` ne porte pas de fréquence cardiaque, donc aucune valeur n'est inventée. La section 7 préserve les `null` de la base — température et humidité s'affichent « — » plutôt qu'un zéro.
-
-**Le comparateur — `data/comparer.tsx` (1 626 lignes).** Trois modes en pastilles : Séances, Tours, Ami. Aucun gagnant, aucun classement : deux colonnes strictement symétriques, l'écart présenté comme un signe orienté neutre, les deux valeurs dans la même couleur de texte. Le code explique pourquoi l'or est banni de cet écran : réservé au record et au prestige ailleurs dans l'application, il peindrait le côté B en étalon et créerait une hiérarchie. A est en accent, B en crème neutre. Le mode Ami s'appuie sur les politiques d'amitié en base, qui n'ouvrent que les faits de séance de l'ami — meilleur tour et vitesse maximale — jamais ses tours ni ses trames ; sa régularité et sa distance restent donc « — ». Deux dettes de performance sont consignées : l'ajustement indépendant de chaque tracé à sa boîte, et un balayage en version de base (`PanResponder` + état React) plutôt qu'un worklet. Le partage passe par une capture d'écran de la carte de comparaison puis la feuille de partage du système.
-
-**La saison — `data/saison.tsx` (1 307 lignes).** Quatre lectures : la courbe de progression du meilleur tour par circuit (courbe dorée Skia, points tappables, ligne pointillée pour le record), l'histogramme de régularité avec le fait « X % de vos tours à moins d'une seconde », une grille de faits consolidés en compteurs roulants, et les circuits roulés avec les silhouettes pointillées des circuits OXV à découvrir. Tous les services sont appelés en mode strict pour distinguer panne et compte vide.
-
-**Point de navigation à connaître : `data/saison.tsx` n'a aucun point d'entrée dans le groupe.** J'ai cherché toute référence à `data/saison` dans `app/(app2)` : le seul résultat est son propre en-tête de fichier. Ni le hub Data ni l'écran Signature n'y mènent (Signature envoie vers `/(app2)/data`). L'écran existe, il est complet, il est inatteignable par navigation.
-
----
-
-### Zone CLUB : sept écrans, trois inatteignables
-
-**Le hub — `club/index.tsx` (645 lignes).** Un fil vertical de blocs qui n'apparaissent que s'ils ont du contenu réel. Dans l'ordre : Mon coaching (binôme ou découverte), Mon groupe (le fil de faits d'écurie), Roulages à venir (invitations avec Accepter / Décliner en place), Pass (prochaine inscription), Partenaires (rail de logos). Si aucun bloc n'a de contenu, l'écran affiche un état vide unique ; si toutes les sources tombent, un état d'erreur avec « Réessayer ».
-
-Le fil d'écurie mérite une note doctrinale, car le hook l'explique : le seul canal autorisé pour connaître la présence d'un autre pilote est `session_attendance_public`, interrogé sur mes journées passées. Les membres de mon écurie qui y étaient produisent un fait « a roulé » — **jamais un chrono**, la fonction serveur n'en renvoie pas et `crewFactFeed` l'exclut structurellement.
-
-**Depuis ce hub, seuls trois sous-écrans sont atteignables** : `club/coaching` (bloc coaching), `club/pass` (bloc pass) et `club/partenaires` (bloc partenaires). Les blocs Écurie et Roulages agissent sur place et ne naviguent nulle part.
-
-**Le coaching — `club/coaching.tsx` (1 266 lignes).** Trois onglets en pastilles, également parcourables au glissement : Trouver, Mon coach, Demandes. L'onglet Trouver présente des cartes coach puis une fiche en feuille avec biographie, avis **en citations, sans aucune note étoilée ni score** — le fichier le pose comme doctrine —, créneaux et demande de séance. L'onglet Mon coach porte les consentements granulaires en interrupteurs neutres avec révocation immédiate, les factures gatées par le drapeau `coach_billing` en fail-closed avec ouverture d'un lien externe, et la fin de binôme derrière une confirmation. L'onglet Demandes est une chronologie d'états plus les avis post-séance en texte libre.
-
-**Roulages et amis — `club/roulages.tsx` (1 028 lignes).** Deux onglets. Roulages : invitations à venir avec réponse, compteur « roulé ensemble ×n » par coach, historique factuel. Amis : recherche de pseudo en direct, liste des amis avec **leur dernier circuit, jamais leur chrono** — la règle est verrouillée dans `amisLogic`, badge « groupe » pour l'écurie, et « Comparer côte à côte ». Une dette est consignée ligne 570 : le comparateur ami vers `/(app2)/data/comparer?friend=` n'est pas rebranché.
-
-**Le territoire — `club/territoire.tsx` (1 427 lignes).** Trois onglets. Carte : plein écran avec une garde `isExpoGo` (sans carte en Expo Go, une liste honnête prend le relais), style sombre, repères pour les circuits OXV, les pings sociaux publiés et les départs de routes certifiées, plus un panneau bas listant les repères visibles et synchronisé au déplacement. Routes : cartes de route avec badge « CERTIFIÉE OXV », détail en feuille, ouverture dans l'application Plans, et bloc Convoi gaté par le drapeau `convoys`. Créer : deux entrées vers les planificateurs V1, `/(app)/creer-route` et `/(app)/creer-trace`.
-
-Ce fichier porte la divergence de données la plus explicitement documentée du groupe : `scenicRoutesService` n'expose ni polyligne ni durée, donc **aucune géométrie réelle de route n'est dessinée**. Sur la carte, une route certifiée n'apparaît que par son point de départ réel ; dans les cartes et le détail, le motif affiché est le circuit-repère générique, pas la route. La durée n'est pas affichée du tout.
-
-**La galerie — `club/galerie.tsx` (1 002 lignes).** Deux onglets. Galerie : mosaïque à deux colonnes de tous vos médias, groupés par séance avec des en-têtes collants, visionneuse plein écran avec zoom, glissement horizontal entre photos et fermeture vers le bas. Partages : la carte-souvenir capturée en image (chrono et tracé or sur fond titane, composant V1 réutilisé), le Carnet Heritage réservé au palier Heritage — **absent, pas teasé, si le palier n'est pas atteint** —, et les liens de partage révocables. La cellule vidéo n'apparaît que si le drapeau `video_overlay` est actif.
-
-**Les partenaires — `club/partenaires.tsx` (459 lignes).** Une liste de cartes puis une fiche en feuille, avec un bouton « ÊTRE MIS EN RELATION » qui exige un consentement explicite en une phrase avant l'appel à `requestPartnerContact`. Le garde-fou V1 est conservé mot pour mot dans `PARTNER_CONSENT_SENTENCE` : la mise en relation transmet uniquement les coordonnées du pilote, jamais de donnée de pilotage. Catalogue vide en production, l'écran affiche « Les offres arrivent ».
-
-**Le pass — `club/pass.tsx` (495 lignes).** Les inscriptions à venir en cartes, avec un QR de présence qui s'ouvre en plein écran sur fond clair (même source que la V1) ; l'historique en lignes fines dessous. **C'est le seul écran du groupe qui mène au tunnel de réservation** : ligne 127, si `passEmptyCta` décide `reserve` — ce qui dépend du drapeau `app_payments` en fail-closed — l'écran pousse vers `/(app2)/reserver`, sinon vers `/(app2)/club`.
-
-**Trois écrans du Club sont donc orphelins dans le groupe** : `roulages`, `territoire` et `galerie` n'ont aucun lien entrant depuis un autre écran de `(app2)`.
-
----
-
-### Zone VOUS : onze écrans, tous atteignables
-
-**Le hub — `vous/index.tsx` (642 lignes).** Le passeport du pilote : un héros avec la photo du véhicule principal, l'avatar bordé d'or si le palier Heritage est atteint, le nom, le pseudo, et une ligne d'identité en chasse fixe qui roule au premier affichage (« palier · n records · km »). Puis la carte Membre Fondateur, gatée par le drapeau `founders` en fail-closed — carte absente si le drapeau est éteint. Puis le code de parrainage avec partage natif et la ligne d'écurie. Puis les sept sections d'accès, dont la table est en dur lignes 345 et suivantes : Profil public, Garage, Carnet, Équipement, Licence & documents, Réglages, Support.
-
-Le fichier consigne une déviation doctrinale assumée : la jauge fondateur, décrite « remplie or » dans la spécification, est rendue en gris neutre parce que l'or reste exclusif au palier Heritage.
-
-**Sources** : `src/features/vous/useVousHub.ts`. L'identité est la source primaire — son échec bascule l'écran en erreur, parce que le héros ne peut pas mentir un nom ou un pseudo. Tout le reste est au mieux : une source en panne masque sa section ou affiche « — ».
-
-**Le profil public — `vous/profil.tsx` (829 lignes).** Deux visages sur un seul écran : consultation, c'est-à-dire ce que voient les autres, et édition en place derrière un bouton « MODIFIER ». L'écran documente trois replis honnêtes imposés par le schéma actuel : il n'existe pas de colonne de couverture dédiée, donc la couverture est la photo de profil la plus récente ; l'avatar n'a aucun chemin d'écriture dans l'application et n'est donc pas éditable ; et la biographie, le numéro de course et l'option pavillon sont masqués tant que la migration correspondante n'est pas appliquée.
-
-**Le garage — `vous/garage.tsx` (978 lignes).** Liste verticale de cartes véhicule plein cadre, avec ouverture en feuille : carrousel de photos, spécifications, journal de réglages daté avec composeur. Deux limites documentées : il n'existe pas de colonne « véhicule principal », donc le véhicule qui illustre l'accueil est simplement le premier enregistré et **aucun bouton « Définir principal » n'est inventé** ; et le sélecteur de photos n'en ajoute qu'une à la fois.
-
-**Le carnet — `vous/carnet.tsx` (914 lignes).** Quatre onglets parcourus au glissement, avec un indicateur qui suit le doigt : Notes (avec la météo réelle du jour de la note quand elle existe, lue directement en base pour préserver les valeurs nulles — passer par `weatherService` fabriquerait un « 0° du jour »), Intentions (une carte par intention liée à sa séance, état honorée ou en attente, tappable vers le bilan de la séance), Objectifs (personnels, invisibles du coach, barre de progression seulement si l'objectif porte une mesure), et Programme (cycles partagés par le coach, lus tels quels — le fichier note que c'est le seul espace prescriptif autorisé).
-
-**L'équipement — `vous/equipement.tsx` (422 lignes).** À ne pas confondre avec l'écran équipement du flux REC : ici, aucun scan, seulement l'état. Carte boîtier avec pastille d'état, batterie en cadran, numéro de série et dernier contact. Carte ceinture pour les coachés. Carte Apple Watch sur iOS uniquement, avec statut HealthKit et bouton d'autorisation gaté ; sur Android la carte n'existe pas.
-
-**Licence et documents — `vous/documents.tsx` (504 lignes).** Trois blocs : la carte licence FFSA au format carte bancaire avec les données réelles de `users` et zéro champ inventé, ouvrable en plein écran et partageable par capture ; la décharge gatée par le drapeau `pilot_waivers` (éteint, la ligne affiche « disponible prochainement » et n'est pas tappable) ; et les documents légaux embarqués. Le fichier note honnêtement que `expo-brightness` est absent du projet, donc la carte ne monte pas la luminosité de l'écran.
-
-**Le lecteur légal — `vous/document/[doc].tsx` (encart court).** Affiche le Pacte de pilotage, les CGU ou la Politique de confidentialité depuis `src/legal/legalDocuments.ts`, en rendu markdown minimal, corps 15 et interligne 1,65. Le fichier justifie cet écran par l'exigence RGPD d'accès permanent.
-
-**La décharge — `vous/decharge.tsx` (502 lignes).** Flux de signature électronique V1 rhabillé, services inchangés. Le drapeau est **revérifié sur l'écran lui-même**, en fail-closed : tant qu'il est éteint — parce que le texte n'a pas été relu par un avocat — l'écran affiche « Bientôt » et rien de légalement effectif n'est présenté.
-
-**Les réglages — `vous/reglages.tsx` (674 lignes).** Quatre groupes : Notifications (interrupteur maître, rituels, rappel J-1, offres partenaires), Consentements (IA débrief, IA coach, audience, partage live coach, biométrie capture et partage), Données et sécurité (export, suppression à J+30 sous double confirmation) et Session (déconnexion). Le mécanisme d'écriture est décrit précisément dans `useReglages.ts` : les bascules sont optimistes mais chaque retour est inspecté, et sur échec l'état optimiste est annulé et une erreur est posée, rendue en bandeau sobre. **Une exception pessimiste** : la révocation de la capture cardiaque ne passe visuellement à « éteint » qu'après confirmation du serveur, parce qu'on ne prétend pas avoir coupé une collecte de santé qui resterait horodatée en base.
-
-**Le support — `vous/support.tsx` (505 lignes).** Liste des demandes avec pastille de statut, fil du ticket en feuille avec réponse, et composeur avec catégorie, objet et message. Services V1 inchangés.
-
-**Membre fondateur — `vous/fondateur.tsx` (472 lignes).** Écran de candidature : insigne qui se dessine, manifeste « 30 membres. Jamais plus. », jauge x/30 alimentée par le compteur réel `founders_count` — le fichier précise « jamais un 12/30 codé en dur » —, champ de motivation borné à 2 000 caractères, code parrain optionnel. Le drapeau `founders` est vérifié sur l'écran : éteint, aucune écriture n'est possible. Même déviation doctrinale assumée que le hub : insigne et jauge en tons titane, pas en or.
-
----
-
-### Zone Réservation : trois écrans, entièrement gatés
-
-Les trois écrans vérifient chacun le drapeau `app_payments` — dont la clé est `BOOKING_FLAG_KEY` dans `src/services/bookingCatalogLogic.ts` — via leur hook respectif, en fail-closed. Quand l'accès est fermé, ils affichent tous le même écran « Réservations à l'ouverture » (`ReserverClosedView`), sur lequel une jauge et un appel à l'action fondateur n'apparaissent que si le drapeau `founders` est lui aussi actif. Trois événements d'entonnoir sont émis, `reserve_funnel_1`, `2` et `3`, **que l'accès soit ouvert ou fermé** — la mesure d'intention fonctionne donc même tunnel fermé.
-
-**Le catalogue — `reserver/index.tsx` (205 lignes).** Liste de cartes journée avec héros du circuit, date pleine, offres en pastilles et une jauge de places à vingt segments pour que la rareté se voie ; complet, la carte propose « LISTE D'ATTENTE ». Les données viennent du site via `bookingCatalogService`, en lecture seule.
-
-**Le détail — `reserver/[sessionId].tsx` (369 lignes).** Héros du circuit, programme de la journée en chronologie, sélection d'offre en cartes radio avec prix TTC, récapitulatif. Un prix absent s'affiche « — ».
-
-**Le paiement — `reserver/paiement.tsx` (292 lignes).** Récapitulatif puis méthodes de paiement. **La structure est prête mais les boutons sont inertes** : le fichier le dit deux fois, Stripe PaymentSheet et l'achat intégré d'abonnement sont renvoyés au lot A1-ON. Une mention `TODO_AVOCAT CGV` ligne 152 signale que le texte des conditions générales de vente reste à rédiger.
-
-**Comment on entre dans ce tunnel.** Un seul chemin existe : l'état vide de `club/pass.tsx`. J'ai vérifié la fonction `decideReserve` dans `src/features/miroir/miroirHomeLogic.ts` lignes 236 à 241 : elle retourne `/(app2)/club` dans **les deux branches**, drapeau actif ou non. Le commentaire l'assume et précise que c'est verrouillé par un test « pour que le futur branchement soit un choix, pas un accident ». Conséquence concrète : le bouton « RÉSERVER » de l'accueil Miroir, celui du hub REC et le bouton central de la barre d'onglets mènent tous les trois à la porte Club, jamais au tunnel.
-
----
-
-### L'écran de développement — `dev-galerie.tsx`
-
-Il n'est pas une fonctionnalité pilote mais il figure dans le dossier. Strictement `__DEV__` : en production il redirige et ne rend rien. Il présente les composants du kit, les vingt icônes, les primitives de mouvement rejouables et les retours haptiques. **Toutes ses valeurs sont des constantes de démonstration locales au fichier**, jamais exportées. C'est aussi, d'après l'en-tête du layout, le seul point d'accès historique au groupe `(app2)`.
-
----
-
-### Vue d'ensemble : ce qui est alimenté par du réel, ce qui ne l'est pas
-
-L'immense majorité du groupe est branchée sur des données réelles. Le seul reste de démonstration explicitement identifié dans le code de production est **la lecture « flow » de la section Constats de `data/session/[id].tsx`**, et elle porte son bandeau. Ce qui est absent ailleurs est absent honnêtement : la fréquence cardiaque de la section Cœur, la géométrie des belles routes du Territoire, la progression réelle de l'export de données, la valeur du pilier physiologique de Signature.
-
-Les gates par drapeau se répartissent ainsi :
-
-| Drapeau | Ce qu'il gate côté pilote | Écrans concernés |
+| Écran v1 | Équivalent V2 | Réserve |
 | --- | --- | --- |
-| `biometry` | Fréquence cardiaque, consentements biométrie, ceinture Polar, rappel Watch, pilier physiologique | bilan, signature, rec/equipement, rec/entre-runs, rec/fin, vous/equipement |
-| `app_payments` | Tout le tunnel de réservation, l'appel à l'action du Pass | reserver ×3, club/pass, accueil, rec/index |
-| `founders` | Carte Membre Fondateur, écran de candidature, jauge sur l'écran fermé | vous/index, vous/fondateur, reserver ×3 |
-| `video_overlay` | Cellule « vidéo du tour » | bilan, club/galerie |
-| `convoys` | Bloc convoi | rec/preparation, club/territoire |
-| `coach_billing` | Factures du coach | club/coaching |
-| `pilot_waivers` | Décharge e-sign | vous/documents, vous/decharge |
+| `data-lab.tsx` | `app/(app2)/data/index.tsx` + `data/session/[id].tsx` | l index de navigation devient un scroll unique |
+| `data-lab-canvas.tsx` | **aucun** | orphelin |
+| `carte.tsx` | section TRACÉ & VIRAGES (`app/(app2)/data/session/[id].tsx:501`) | le virage désigné et le sélecteur de couches ne sont pas portés |
+| `virage.tsx` | section VIRAGE (`:1005`) | pas d ancre : l écran V2 n accepte que l identifiant de séance |
+| `virage-comparer.tsx` | mode « Tours » de `data/comparer.tsx` | couvert |
+| `tours.tsx` | section TOURS (`:489`) | couvert |
+| `heatmap.tsx` | onglet Heatmap de la section TÉLÉMÉTRIE (`:1149`, `:1430`) | couvert |
+| `replay.tsx` | onglet Replay (`:1150`, `:1498`) | couvert |
+| `telemetry.tsx` | onglets G-G et Canaux (`:1101`) | couvert |
+| `insights.tsx` | section CONSTATS (`:519`) | montée sous bandeau DÉMO, l en-tête V2 le dit (`:401-403`) |
+| `insight/[reading].tsx` | idem | idem |
+| `conditions.tsx` | section CONDITIONS (`:535`) | la juxtaposition faits / ressenti n est pas reprise |
 
-La migration `supabase/migrations/20260719140000_be1_feature_flags.sql` insère cinq de ces drapeaux à `false`, avec `on conflict do nothing` pour ne jamais réactiver un drapeau qu'un administrateur aurait basculé. `coach_billing` et `pilot_waivers` sont insérés par leurs migrations respectives (`20260704150000` et `20260712091000`).
+### Carnet
 
-Enfin, sur la navigabilité : quatre écrans complets et terminés sont aujourd'hui sans lien entrant dans le groupe — `data/saison`, `club/roulages`, `club/territoire` et `club/galerie` — et deux liens du Bilan (`TODO_L3_TARGET`) pointent encore vers le hub Data plutôt que vers l'écran de séance qui existe désormais.
+| Écran v1 | Équivalent V2 | Réserve |
+| --- | --- | --- |
+| `carnet.tsx` | `app/(app2)/vous/carnet.tsx` onglet Notes | couvert, écriture comprise |
+| `prochaine-fois.tsx` | onglet Intentions | lecture seule (voir e.) |
+| `objectifs.tsx` | onglet Objectifs | lecture seule (voir f.) |
+| `programme.tsx` | onglet Programme | couvert, lecture seule des deux côtés |
 
----
+### Découverte et Club
 
-### Ce que je n'ai pas pu vérifier
+| Écran v1 | Équivalent V2 | Réserve |
+| --- | --- | --- |
+| `club/index.tsx` | `app/(app2)/club/index.tsx` | couvert |
+| `coachs.tsx` | onglet Trouver de `club/coaching.tsx` | couvert |
+| `coach/[id].tsx` | feuille fiche de `club/coaching.tsx` | couvert |
+| `mon-coach.tsx` | onglet Mon coach | couvert |
+| `mes-demandes.tsx` | onglet Demandes | couvert |
+| `amis.tsx` | onglet Amis de `club/roulages.tsx` | couvert |
+| `cote-a-cote/[friendId].tsx` | mode Ami de `data/comparer.tsx` | couvert |
+| `roulages.tsx` | onglet Roulages | couvert |
+| `partenaires.tsx` | `club/partenaires.tsx` | couvert |
+| `partenaire/[id].tsx` | feuille fiche | vitrine photo perdue (voir h.) |
+| `catalogue.tsx` | `club/partenaires.tsx` | groupement par catégorie perdu (voir c.) |
+| `carte-oxv.tsx` | onglet Carte de `club/territoire.tsx` | couvert |
+| `belle-route.tsx` | onglet Routes | couvert |
+| `creer-route.tsx` | **aucun** | orphelin, appelé depuis la V2 |
+| `creer-trace.tsx` | **aucun** | orphelin, appelé depuis la V2 |
+| `mes-routes.tsx` | partiel dans l onglet Routes | actions d écriture perdues (voir b.) |
+| `galerie.tsx` | `club/galerie.tsx` | couvert |
+| `session-media/[sessionId].tsx` | section SOUVENIRS du bilan V2 (`:481`) | couvert |
+| `partage.tsx` | onglet Partages de `club/galerie.tsx` | paramétrage perdu (voir i.) |
+| `carte-trophee.tsx` | **aucun** | orphelin, appelé depuis la V2 |
+| `circuits.tsx` | section CIRCUITS de `data/saison.tsx` | couvert |
+| `circuit/[id].tsx` | feuille écosystème de `data/saison.tsx` | couvert |
 
-Je n'ai **pas interrogé la base de production** : je ne peux donc pas confirmer l'état actuel des sept drapeaux. Ce que j'ai vérifié, c'est que les migrations les créent tous à `false` et que `isFlagEnabled` est fail-closed. L'affirmation « seul `biometry` est actif » vient du brief, pas de ma vérification.
+### Compte
 
-Je n'ai **pas exécuté l'application ni la suite de tests**. Je n'ai donc pas observé un seul écran fonctionner ; tout ce qui précède est lu dans le code. Les 33 fichiers de tests de `src/features/*/__tests__/` ont été listés, pas ouverts ni lancés. Je note au passage que `supportLogic.ts` et `reserverUi.tsx` n'ont pas de fichier de test dans `src/features/vous/__tests__/`.
+| Écran v1 | Équivalent V2 | Réserve |
+| --- | --- | --- |
+| `compte/index.tsx` | `app/(app2)/vous/index.tsx` | couvert |
+| `profil.tsx` | `app/(app2)/vous/profil.tsx` (consultation) | couvert |
+| `profil-edition.tsx` | même écran, mode édition | couvert |
+| `settings.tsx` | `app/(app2)/vous/reglages.tsx` | couvert |
+| `notifications.tsx` | groupe 1 de `reglages.tsx` | couvert |
+| `consentements.tsx` | groupe 2 de `reglages.tsx` | couvert |
+| `donnees-securite.tsx` | groupe 3 de `reglages.tsx` | couvert |
+| `garage.tsx` | `app/(app2)/vous/garage.tsx` | couvert |
+| `garage/[vehicleId].tsx` | feuille véhicule | couvert |
+| `mon-equipement.tsx` | `app/(app2)/vous/equipement.tsx` | couvert |
+| `support/index.tsx` | `app/(app2)/vous/support.tsx` | couvert |
+| `support/[id].tsx` | feuille fil du ticket | couvert |
+| `legal/[doc].tsx` | `app/(app2)/vous/document/[doc].tsx` | couvert |
+| `decharge.tsx` | `app/(app2)/vous/decharge.tsx` | couvert, même drapeau `pilot_waivers` |
+| `share/[token].tsx` | **aucun** | orphelin |
+| `debug-capture.tsx` | **aucun** | garde `__DEV__` |
+| `debug-circuit.tsx` | **aucun** | garde `__DEV__` |
 
-Je n'ai **pas ouvert intégralement** les fichiers les plus longs. Pour `data/comparer.tsx`, `club/territoire.tsx`, `club/coaching.tsx`, `club/galerie.tsx`, `data/saison.tsx`, `vous/garage.tsx`, `vous/carnet.tsx`, `vous/profil.tsx` et `rec/preparation.tsx`, je me suis appuyé sur leur en-tête de documentation, leurs imports et des recherches ciblées. Ces en-têtes se sont révélés fiables partout où j'ai pu recouper — mais je ne peux pas garantir qu'aucun détail de rendu ne leur échappe.
+## Les chemins produits par les deux arbres
 
-Je n'ai **pas ouvert les composants du kit** `src/ui/v2/*` autres que `TabBar.tsx`, `shellLogic.ts`, `centralButtonLogic.ts` et `useCentralButtonState.ts`. Le comportement précis de `RadarQdi`, `ChronoHero`, `PillarBar`, `TraceCircuit`, `StateView`, `Sheet` ou `PullToRefreshDial` est décrit tel que les écrans l'utilisent, pas tel que ces composants l'implémentent.
+### Trois collisions dans le périmètre pilote
 
-Je n'ai **pas vérifié les services** cités (`qdiService`, `sessionsService`, `analysesService`, `bookingCatalogService`, `scenicRoutesService`, etc.) au-delà de `featureFlagsService.ts` et `attendancePublicService.ts`. Quand j'écris « la source est X », je rapporte ce que l'écran ou son hook appelle, pas ce que ce service fait en interne.
+Expo Router ne fait pas apparaître le nom d un groupe dans l adresse. Les
+dossiers `(app)` et `(app2)` produisent donc trois adresses identiques :
 
-Enfin, je n'ai **pas mesuré la performance** d'aucun écran. Plusieurs fichiers portent des marqueurs `TODO device-tune` par lesquels leurs auteurs reconnaissent eux-mêmes qu'une mesure sur appareil réel reste due — je les ai signalés sans pouvoir en juger.
+| Adresse | Fichier v1 | Fichier V2 |
+| --- | --- | --- |
+| `/` | `app/(app)/index.tsx` | `app/(app2)/index.tsx` |
+| `/club` | `app/(app)/club/index.tsx` | `app/(app2)/club/index.tsx` |
+| `/signature` | `app/(app)/signature.tsx` | `app/(app2)/signature.tsx` |
+
+L adresse `/` est en réalité produite par **neuf** sources : les huit groupes
+qui ont un `index.tsx` — `(admin)`, `(app)`, `(app2)`, `(coach)`,
+`(coach-onboarding)`, `(onboarding)`, `(partner)`, `(pro)` — plus le fichier
+racine `app/index.tsx`. Dans les faits ce dernier est le routeur de rôle, et les
+gardes de chaque groupe redirigent les rôles qui ne leur appartiennent pas. Mais
+la table de routage, elle, porte bien neuf entrées pour la même adresse.
+
+Hors périmètre pilote, douze autres adresses sont produites par deux ou trois
+groupes : `/coachs`, `/debrief`, `/facturation`, `/pacte`, `/partage`,
+`/partenaires`, `/performance`, `/preparation`, `/profil`, `/roulages`,
+`/support`, `/support/[id]`. Elles n opposent jamais `(app)` à `(app2)`.
+
+**Lequel gagne, je ne le sais pas.** Cela dépend de l ordre de construction de
+la table de routage par `expo-router` 3.5.23, et il faudrait lancer
+l application pour l observer. C est le premier point à tester sur appareil.
+
+### Une seule navigation sans groupe dans tout le dépôt
+
+J ai passé en revue tous les appels `router.push`, `router.navigate`,
+`router.replace`, tous les `pathname:` et tous les `href` du dépôt. Un seul
+navigue vers une adresse en collision **sans préciser le groupe** :
+
+- `app/(app2)/data/saison.tsx:522` — `router.push('/signature' as never)`
+
+C est le lien de pied de page « Votre signature · La forme de votre saison, d un
+seul tenant » (`app/(app2)/data/saison.tsx:519-533`). Toutes les autres
+navigations vers la Signature sont qualifiées : `app/(app2)/index.tsx:581`
+utilise `'/(app2)/signature'`, `app/(pro)/index.tsx:33` utilise
+`'/(app)/signature'`.
+
+Si la résolution favorise le groupe v1, ce lien fait sortir le pilote de l arbre
+V2, en plein cœur de son écran de saison, sans le lui dire. Il faut le
+qualifier, quelle que soit la résolution observée — c est une correction d une
+ligne.
+
+Les trois autres navigations sans groupe visent `/` et sont légitimes :
+`app/(onboarding)/pacte.tsx:45`, `app/(coach-onboarding)/pacte.tsx:57` et
+`app/+not-found.tsx:27` retournent au routeur de rôle.
+
+### Le typage des routes ne protège de rien
+
+`app.json` active `experiments.typedRoutes: true`. Mais le fichier généré
+`.expo/types/router.d.ts` de cette copie de travail date du 22 juin 2026 : il
+liste encore `/(app)/lieux`, `/(app)/social` et `/(app)/social-carte`, routes
+supprimées depuis, et **ne connaît ni `(app2)`, ni `(pro)`, ni `(partner)`**. Ce
+fichier est ignoré par Git (`.gitignore:38`), donc régénéré localement — mais il
+ne l a pas été depuis un mois ici.
+
+C est la raison pour laquelle le dépôt compte **207 casts `as never`** sur des
+routes dans `app/`. Le compilateur ne voit donc pas les adresses de navigation.
+Il ne peut pas signaler un lien qui atterrirait dans le mauvais arbre.
+
+### Un effet de bord de la bascule : l accueil v1 renvoie vers la V2
+
+`src/services/paddockHeroLogic.ts` est partagé par les deux accueils
+(`app/(app)/index.tsx:32` et `app/(app2)/index.tsx:48`). Ses six destinations
+ont été réécrites au lot L6 pour viser `/(app2)/...`
+(`src/services/paddockHeroLogic.ts:42-103`).
+
+Conséquence : si le pilote se retrouve dans l accueil v1 — par la barre
+d onglets v1, par une collision, ou par l espace pro — son bouton principal le
+ramène dans l arbre V2. Les deux arbres se renvoient donc mutuellement des
+pilotes, dans les deux sens. Je n ai pas pu observer l enchaînement.
+
+## Ce que l ancien arbre coûte aujourd hui
+
+Un chiffrage sec, sans interprétation.
+
+- **38 274 lignes** de code d écran embarquées dans le binaire, jamais ouvertes
+  par le parcours nominal.
+- **41 modules** de `src/` ne sont importés que par `app/(app)/` et par personne
+  d autre. Parmi eux, quatre services entiers de fonctionnalité :
+  `@/services/routing/scenicRouteService`, `@/services/routing/scenicPoiService`,
+  `@/services/dataLabService`, `@/services/mediaExportsService` ; deux services
+  d analyse : `@/services/cornerDeepDiveService`, `@/services/focusCorner` ; le
+  module de circuit `@/circuit/CircuitTrace`, `@/circuit/CircuitTraceHero`,
+  `@/circuit/hauteSaintonge` ; l ancien kit `@/ui/Chip`, `@/ui/Cockpit`,
+  `@/ui/QdiBars` ; et le service Flic 2 `@/ble/flic2Service`.
+- **Du code déjà mort avant la bascule** : `src/components/DebriefMirror.tsx`
+  n est importé par aucun écran.
+- **Deux langages graphiques** maintenus en parallèle : `src/ui/` (20 fichiers,
+  ancien kit) et `src/ui/v2/` (26 fichiers plus quatre sous-dossiers `icons`,
+  `media`, `motion`, `__tests__` — kit Instrument). Les deux sont compilés,
+  lintés et typés à chaque passe.
+- **Un fichier en CRLF** qui pollue la sortie Prettier : `app/(app)/profil.tsx`.
+
+## Ce qu il faudrait pour pouvoir le supprimer
+
+Six chantiers, dans cet ordre. Aucun n est purement technique : les deux
+premiers demandent un arbitrage de votre part.
+
+### 1. Trancher le sort des sept orphelins
+
+Pour chacun : porter, ou abandonner. Ce sont des décisions produit.
+
+- `carte-trophee` — la carte-souvenir d une séance. Le composant existe déjà
+  côté V2 ; il ne manque qu un écran ou une feuille dans le bilan.
+- `creer-route` — le planificateur GraphHopper. C est le plus gros morceau
+  (818 lignes plus trois services). Vous l aviez explicitement demandé au
+  retour du build 23.
+- `creer-trace` — l import OpenStreetMap.
+- `mes-routes` — la gestion de vos routes, y compris demander la certification
+  et supprimer.
+- `regularite` — l écart-type. À arbitrer contre la mesure V2 (« part des tours
+  à moins d une seconde »). Les deux sont honnêtes ; ce n est pas la même
+  question posée au pilote.
+- `data-lab-canvas` — aperçu technique jamais validé au build. Candidat évident
+  à l abandon.
+- `share/[token]` — la progression partagée. À trancher en même temps que le
+  point i. ci-dessus : aujourd hui la V2 crée des liens vides et perpétuels que
+  seul cet écran orphelin saurait lire.
+
+### 2. Trancher le sort des neuf capacités perdues
+
+Quatre consignées au lot L6, cinq trouvées ici. Deux d entre elles me semblent
+devoir passer avant la suppression, parce qu elles portent une écriture du
+pilote : **écrire une intention** (point e.) et **créer un objectif** (point f.).
+Ce sont deux fonctions de l espace intime, et elles sont aujourd hui muettes
+dans l arbre où atterrit le pilote.
+
+Une troisième relève du juridique plus que du produit : le **paramétrage du lien
+de partage** (point i.), qui produit aujourd hui des liens sans expiration.
+
+### 3. Recâbler les liens entrants
+
+Douze au total, tous identifiés plus haut :
+
+- 3 depuis l arbre V2 : `app/(app2)/bilan/[sessionId].tsx:577`,
+  `app/(app2)/club/territoire.tsx:622` et `:629`.
+- 2 depuis l espace coach : `app/(coach)/pilote/[id].tsx:759` et `:797` — à
+  faire pointer vers `/(app2)/bilan/[sessionId]` et `/(app2)/data/session/[id]`.
+- 6 depuis l espace pro : `app/(pro)/index.tsx:30-34` et `:122`,
+  `app/(pro)/performance.tsx:34` et `:39`, `app/(pro)/bibliotheque.tsx:177`.
+- 1 partagé : `src/ui/AccountButton.tsx:17`, qui alimente cinq écrans pro.
+
+Plus deux replis de développement à corriger :
+`app/(app)/debug-capture.tsx:54` et `app/(app)/debug-circuit.tsx:24`, qui
+renvoient encore vers `'/(app)'`.
+
+### 4. Remplacer `appMap`
+
+`src/lib/appMap.ts` est la carte des routes v1, et la V2 en dépend pour le
+silence en piste (`app/(app2)/_layout.tsx:26`, `:78`). Il faut donc, avant toute
+suppression, déplacer la logique `shouldShowTabBar` vers un module V2 — la place
+naturelle est `src/ui/v2/centralButtonLogic.ts`, qui porte déjà
+`isV2CaptureFlowPath`.
+
+Le test `src/lib/__tests__/appMap.test.ts` lit physiquement le dossier `app/(app)`
+(lignes 14-26) : il devra être réécrit sur `app/(app2)` ou supprimé avec le
+module.
+
+À vérifier au passage : `src/components/AppTabBar.tsx` n est plus utilisé que par
+`app/(app)/_layout.tsx` et `app/(app)/data-lab.tsx`, et disparaîtrait avec eux.
+
+### 5. Nettoyer les 41 modules devenus orphelins
+
+Ils ne cassent rien s ils restent, mais ils continueront d être compilés, lintés
+et typés. Attention à trois faux amis dans la liste, qui ne sont pas réellement
+morts parce qu ils sont importés en chemin relatif à l intérieur de `src/` :
+`marginCalculator` est appelé par `src/services/analyzeSessionService.ts:40`
+(le calcul de marge du pipeline de capture, que `app/(app2)/rec/fin.tsx`
+rebranche tel quel), et `intentionsService` est appelé par
+`src/services/captureSessionService.ts:56` et
+`src/services/traceNarrativeService.ts:17`.
+
+### 6. Vérifier sur appareil avant de toucher à quoi que ce soit
+
+Deux observations à faire, dans cet ordre, sur un build de prévisualisation iOS.
+
+**a.** Quelle route gagne pour `/`, `/club` et `/signature`. C est la seule façon
+de savoir si un pilote peut aujourd hui basculer sans le vouloir dans l ancienne
+application. Le test le plus direct : depuis l écran Saison, toucher « Votre
+signature » (`app/(app2)/data/saison.tsx:522`) et regarder quel écran s ouvre —
+le radar V2 grand format, ou l ancien écran Signature.
+
+**b.** Si le lien vers la carte trophée (`app/(app2)/bilan/[sessionId].tsx:577`)
+fait bien apparaître la barre d onglets de l ancienne application. Si oui, tout
+l ancien arbre est à un tap de votre bilan, et cela devient le premier problème
+à traiter — avant même les orphelins.
+
+Tant que ces deux points ne sont pas observés, la suppression est prématurée : on
+ne sait pas encore ce que l ancien arbre fait réellement sous le doigt d un
+pilote.
 
 ---
 
 ## L'espace coach
 
-> Tous les chemins de fichiers cités ci-dessous sont relatifs à la racine du dépôt `C:\Users\Julie\OneDrive\Desktop\oxv-app`.
-
-### Ce que contient l'espace, et sous quelle forme
-
-Le dossier `app/(coach)/` contient **37 fichiers `.tsx`**, dont un `_layout.tsx` : cela fait **36 écrans réellement routés** (vérifié par énumération du dossier). Ils vont de 332 lignes (`contexte.tsx`) à 1301 lignes (`assistant.tsx`) ; le hub `index.tsx` en fait 1238 et la fiche pilote `pilote/[id].tsx` 1084. Ce sont donc des écrans denses, pas des maquettes creuses.
-
-L'ensemble de l'espace parle **un seul langage visuel** : les 37 fichiers importent `@/theme/v2`. Un seul écran emprunte un composant au kit V2 « DA Instrument » de l'espace pilote : `debrief.tsx` importe `BiometryStrip` depuis `@/ui/v2` (ligne 43). Autrement dit, l'espace coach n'a pas été repris par la refonte V2 du pilote — il est resté sur le langage précédent, et cette frontière est nette.
-
-L'onboarding du coach vit **hors** de cet espace, dans `app/(coach-onboarding)/` (4 fichiers : `_layout`, `index`, `mission`, `pacte`). Un coach signe un **Pacte de coaching** distinct du pacte pilote : les colonnes `users.coach_pact_accepted_at` et `users.coach_pact_version` ont été ajoutées pour cela (`supabase/migrations/20260525130959_coach_pact_columns.sql`), et le commentaire SQL explique la raison : le pilote s'engage sur sa responsabilité en piste, le coach s'engage sur la confidentialité du pilote.
-
-### Comment on entre dans l'espace, et comment on en sort
-
-Le routage par rôle est fait à la racine, dans `app/index.tsx` (lignes 78-100) : si le profil n'est pas complet et que `role === 'coach'`, l'utilisateur part vers `/(coach-onboarding)` ; une fois l'onboarding terminé, `role === 'coach'` redirige vers `/(coach)`. Le garde de l'espace lui-même est dans `app/(coach)/_layout.tsx` (lignes 32-35) : si le profil n'est pas chargé, l'écran ne rend rien ; si `profile.role !== 'coach'`, redirection vers `/(app)`. L'espace coach est donc **strictement mono-rôle**.
-
-Deux notifications poussées ouvrent directement l'espace coach depuis `app/_layout.tsx` : `session_analyzed` ouvre `/(coach)/pilote/[id]` sur le pilote concerné (lignes 121-128) et `pilot_consented` ouvre le hub `/(coach)` (ligne 134).
-
-Un point de navigation à connaître : depuis la fiche pilote, taper une séance ouvre `/(app)/bilan` (ligne 759 de `app/(coach)/pilote/[id].tsx`), c'est-à-dire un écran de **l'espace pilote**. Or `app/(app)/_layout.tsx` ne garde que l'authentification, pas le rôle (vérifié : le seul `Redirect` du fichier concerne `status === 'unauthenticated'`). Le coach entre donc réellement dans l'écran de bilan pilote, et c'est la RLS Supabase qui décide de ce qu'il y voit.
-
-### Les deux formats : console tablette et compagnon téléphone
-
-La décision fondatrice du 2026-07-13 est écrite dans le code : les deux formats **coexistent**, et c'est la largeur d'écran qui tranche. Le seuil est `COACH_CONSOLE_MIN_WIDTH = 900` (`src/lib/coachNav.ts`, ligne 163).
-
-Au-dessus de 900 points de large, `_layout.tsx` pose un **rail vertical** à gauche (`src/components/CoachRail.tsx`, largeur fixée à 198 px, ligne 83) et le contenu à droite. En dessous, il pose une **barre d'onglets basse** en superposition du Stack (`src/components/CoachTabBar.tsx`), avec l'actif en rouge doux `#E2685A` et — règle explicite du fichier — **aucun or sur la navigation**. Le Stack de routes est rigoureusement le même dans les deux cas : aucun fichier n'est déplacé, la navigation ne diverge pas, seuls les chrome changent.
-
-| Format | Éléments de navigation | Entrées |
-|---|---|---|
-| Console tablette (≥ 900) | Rail 198 px | Poste → `/(coach)` · File de lecture → `/(coach)/file-lecture` · Studio → `/(coach)/studio` · Pilotes → `/(coach)` · Agenda → `/(coach)/calendrier` · Business → `/(coach)/facturation` · avatar en bas → profil |
-| Compagnon téléphone (< 900) | Barre d'onglets 5 zones | EN DIRECT → `/(coach)/en-direct` · PILOTES → `/(coach)` · MESSAGES → `/(coach)/messages` · AGENDA → `/(coach)/calendrier` · MOI → `/(coach)/profil` |
-
-Les deux tables de correspondance (`COACH_ROUTE_TO_ZONE` et `COACH_ROUTE_TO_RAIL`) rangent **chacun des 36 écrans** sous une zone et sous un item de rail. Ce n'est pas une promesse de commentaire : `src/lib/__tests__/coachNav.test.ts` lit réellement le contenu du dossier `app/(coach)` avec `fs.readdirSync` et vérifie qu'aucun écran n'est orphelin et qu'aucune entrée de navigation ne pointe vers une route inexistante, dans les deux formats.
-
-Deux asymétries factuelles entre les formats méritent d'être signalées, parce qu'elles se voient à l'usage :
-
-Sur le rail tablette, « Pilotes » et « Poste » pointent vers **la même route** `/(coach)` — le commentaire du fichier l'assume : « le Poste EST la liste des pilotes », donc pas d'écran liste séparé et pas de contrôle mort.
-
-Sur le rail tablette, il **n'y a pas d'entrée Messages**. La messagerie est mappée sur l'item de rail `pilotes` (ligne 143 de `coachNav.ts`), mais aucun lien vers `/(coach)/messages` n'existe ni dans le rail, ni dans le hub `index.tsx` (vérifié par recherche : le mot « messages » n'apparaît pas dans `app/(coach)/index.tsx`), ni sur la fiche pilote. Le seul lien interne vers la messagerie part de l'écran de direct focus (`app/(coach)/en-direct/[sessionId].tsx`, ligne 564, action rapide « Message »). Sur téléphone, à l'inverse, MESSAGES est un onglet de premier niveau. La messagerie est donc pleinement atteignable en compagnon, et quasiment inatteignable en console.
-
-### Le modèle d'accès : comment un coach obtient les données d'un pilote
-
-C'est la partie la plus verrouillée de l'application, et elle repose sur une seule table pivot : `coach_pilots`.
-
-**L'affiliation est créée par l'admin, pas par le coach ni par le pilote.** La table est définie dans `supabase/migrations/20260525114148_coach_pilots_table_and_rls.sql` : couple `(coach_id, pilot_id)` unique, `active` par défaut vrai, `pilot_consent_at` nul, et une contrainte `coach_id <> pilot_id`. Côté application, l'insertion se fait dans `src/services/coachAdminService.ts` (`assignPilotToCoach`, ligne 167), qui laisse délibérément `pilot_consent_at` à null et déclenche une notification `notify-pilot-coach-assigned` vers le pilote. Les policies RLS de la table le confirment : le coach ne peut que **lire** ses affiliations, le pilote ne peut que lire les siennes et mettre à jour la ligne qui le concerne, seul l'admin a le CRUD complet.
-
-**Rien n'est visible tant que le pilote n'a pas consenti.** Le consentement est posé côté pilote dans `src/services/pilotConsentService.ts` : `giveConsent()` horodate `pilot_consent_at` et enregistre le niveau choisi ; `revokeConsent()` remet la colonne à null, ce qui coupe l'accès immédiatement puisque toutes les policies passent par le helper `is_coach_of()`. Le commentaire d'en-tête du service est explicite : « le consentement est libre, retiré à tout moment, et sans justification. L'app n'insiste jamais ni ne moralise. »
-
-**Le consentement est gradué en trois niveaux**, introduits par `supabase/migrations/0014_coach_access_level_graduated.sql` (appliquée en production le 2026-06-28 d'après son en-tête) :
-
-| Niveau (`coach_pilots.level`) | Libellé montré au pilote | Ce que le coach obtient |
-|---|---|---|
-| `lecture_simple` (défaut) | « Sessions seulement » | Sessions, tours, bilans — via `is_coach_of()` |
-| `lecture_detaillee` | « Analyse détaillée » | En plus : `telemetry_frames` et `app_segment_analyses` — via `is_detailed_coach_of()` |
-| `programme` | « Programme » | En plus : l'autorisation d'écrire des programmes — via `is_program_coach_of()` |
-
-Les libellés cités sont ceux de `COACH_ACCESS_LEVELS` dans `pilotConsentService.ts` (lignes 23-39).
-
-**Ce que « binôme détaillé » veut dire concrètement.** La fonction `public.is_detailed_coach_of(pilot_uuid)` (migration 0014, lignes 19-35) est une fonction SQL `stable security definer` qui renvoie vrai si, et seulement si, **quatre** conditions sont réunies simultanément : `coach_id = auth.uid()`, `pilot_id = pilot_uuid`, `active = true`, `pilot_consent_at IS NOT NULL`, et `level IN ('lecture_detaillee', 'programme')`. Concrètement, ce booléen commande aujourd'hui quatre portes :
-
-Les **trames brutes** : la policy `telemetry_frames_coach_select` est repointée sur lui (migration 0014, lignes 39-46). Les **métriques de virage** : `app_segment_analyses_coach_select` également (lignes 48-51). La **biométrie** : `biometry_coach_read` sur `biometry_raw` exige `is_detailed_coach_of()` **et** un second consentement dédié, `users.biometry_coach_share_consent_at` non nul (`supabase/migrations/20260719141000_be1_biometry.sql`, lignes 55-65) ; aucune policy partenaire, staff ou anonyme n'existe sur cette table, le commentaire le dit en toutes lettres. Enfin l'**assistant IA** : `coach_ai_consent()` est défini comme `is_detailed_coach_of(pilot) AND users.coach_ai_enabled` avec `coalesce(..., false)` — fail-closed explicite (`supabase/migrations/0026_coach_ai_drafts.sql`, lignes 32-44).
-
-La migration 0014 précise aussi ce qui **ne** bascule **pas** : « sessions / laps / app_session_analyses restent sur `is_coach_of` (lecture_simple suffit) ». Et lorsqu'un pilote redescend son niveau via `setConsentLevel()`, le commentaire du service annonce l'effet réel : l'accès aux frames et aux métriques de virage est coupé sans rompre l'affiliation.
-
-Le niveau `programme` va un cran plus loin : `is_program_coach_of()` exige `level = 'programme'` **strictement** (migration `0027_coach_development_cycles.sql`, lignes 64-79), avec un commentaire qui interdit explicitement de réutiliser `is_detailed_coach_of` pour l'authoring, « ce qui contournerait le consentement gradué ».
-
-**Le direct est un consentement séparé.** La colonne `coach_pilots.live_sharing_at` (migration `20260711172949_coach_pilots_live_sharing_consent.sql`) est décrite comme « distincte de `pilot_consent_at` (après-séance). Révocable. » Le relais côté pilote (`src/services/liveRelayRunner.ts`, fonction `consentedCoaches`, lignes 77-93) exige **quatre** conditions pour émettre vers un coach : `active`, `status = 'active'`, `pilot_consent_at` non nul et `live_sharing_at` non nul. Le commentaire au-dessus documente un correctif du 26/07 : sans la condition `pilot_consent_at`, retirer son consentement ne coupait pas le direct. Le même fichier écoute `coach_pilots` en temps réel pour réconcilier une révocation **en séance** (ligne 358 et suivantes). Enfin, la biométrie n'est pas due au même titre que les trames : le relais remonte `level` et ne marque `detailed` que pour `lecture_detaillee` ou `programme`, avec un commentaire clair — « un coach en `lecture_simple` a droit au direct de pilotage, pas à une donnée de santé ».
-
-**Ce que le coach ne voit jamais.** Les coordonnées passent par une vue dédiée, `coach_pilots_view`, créée en `security_invoker = on` et filtrée sur coach courant + `active` + `pilot_consent_at IS NOT NULL`. Elle expose prénom, nom, niveau, avatar, et — après les migrations `0010_coach_pilots_view_profile.sql` et `0012_coach_pilots_view_media.sql` — l'expérience, la licence FFSA, le véhicule, les réseaux et les chemins média. Jamais l'email ni le téléphone. Le commentaire d'origine le formule ainsi : « pas d'email/tel/docs ».
-
-**Chaque consultation est journalisée.** La fonction `public.log_coach_view()` (`supabase/migrations/20260525122829_coach_audit_log_function.sql`) écrit dans `admin_audit` après avoir re-vérifié que l'appelant est bien coach actif et consenti ; si ce n'est pas le cas, elle ne lève pas d'erreur, elle **ne fait rien silencieusement** — le commentaire explique que c'est pour ne pas révéler à un attaquant l'existence d'un pilote. L'appel est visible dans `src/services/coachService.ts` (`logCoachView`, ligne 266) et consommé par les écrans de comparaison.
-
-**Une seconde grille, indépendante : les permissions modulaires.** La table `coach_permissions` (`supabase/migrations/20260526170000_0032_coach_permissions.sql`) porte trois booléens par coach : `can_view_pilots` (défaut vrai), `can_manage_own_sessions` (défaut faux) et `can_view_business_dashboard` (défaut faux). Un trigger `users_ensure_coach_permissions` crée la ligne à la promotion d'un utilisateur en coach. Le helper `coach_has_permission()` est fail-safe : pas de ligne, pas de permission. La distinction est importante et elle est écrite dans le commentaire de la table : la RLS **des données** reste gérée par `is_coach_of` ; ces drapeaux gatent des **fonctionnalités** (tableau de bord, roulages). Côté application, ils sont lus par `src/hooks/useCoachPermissions.ts`, lui aussi fail-safe (il conserve les permissions de base en cas d'erreur).
-
-### Famille 1 — Le suivi des pilotes (5 écrans)
-
-| Écran | Route | Rôle | Source des données |
-|---|---|---|---|
-| Poste de pilotage | `app/(coach)/index.tsx` | Hub, liste des binômes, activité, outils | `listMyPilots()`, `loadCoachQueue()`, `loadCoachDashboardSummary()` |
-| Fiche pilote | `app/(coach)/pilote/[id].tsx` | CRM lecture seule d'un pilote | `listMyPilots()`, `listPilotSessions()`, `listSharedNotesForPilot()` |
-| Comparer deux pilotes | `app/(coach)/comparer-pilotes.tsx` | Deux pilotes côte à côte | `loadSessionSnapshot()` ×2, `logCoachView()` |
-| Messages (liste) | `app/(coach)/messages.tsx` | Fils coach↔pilote | `listMyThreads()`, `useCoachThread` (Realtime) |
-| Fil de discussion | `app/(coach)/messages/[coachPilotId].tsx` | Une conversation plein écran | `coach_messages` via `useCoachThread`, `sendMessage()` |
-
-Le **Poste** est le cœur de l'espace. Il est à la fois la liste des pilotes suivis (cartes issues de `coach_pilots_view`, donc uniquement les actifs et consentis), l'état de lecture (« à lire », dérivé de `coach_queue`), et la grille d'outils. Le fichier documente deux graphiques réels : une sparkline en barres « séances reçues par jour » sur sept jours, dérivée des `startedAt` déjà chargés (zéro requête supplémentaire), et un anneau « lues / à lire » calculé sur les compteurs réels de `groupQueue`. La règle est écrite : « valeur absente → graphique masqué, jamais de courbe plate inventée ».
-
-La grille d'outils du Poste est **conditionnelle** (lignes 297-346 de `index.tsx`). « Comparer deux pilotes » n'apparaît que si `canViewPilots` et qu'il y a au moins deux pilotes. « Mes roulages » n'apparaît que si `canManageOwnSessions`. « Tableau de bord » n'apparaît que si `canViewBusinessDashboard`. « Facturation » n'apparaît que si le drapeau `coach_billing` est actif. Les outils toujours présents sont : Demandes, Programmes, Mes repères de virage, Mes gabarits, Assistant IA, Ma lecture, Vue AR (aperçu).
-
-La **fiche pilote** est le point de départ de la guidance : elle mène à Priorités du bilan, Plan d'objectifs, Contexte et Annoter (paramétrés avec `pilotId` et, pour les deux derniers, `sessionId`), et elle porte une sélection FIFO de deux séances qui ouvre l'écran `comparer` (lignes 95-113).
-
-La **messagerie** repose sur la table `coach_messages` (`supabase/migrations/20260711173005_coach_messages_table.sql`) : `body` de 1 à 2000 caractères, `session_id` optionnel, `read_at`. Sa policy d'insertion exige que le binôme soit `active` **et** consenti. Le service note un point de doctrine : la table ne porte que du texte, donc les cartes « note vocale » et pièce jointe des maquettes ne sont pas rendues — pas de contrôle mort.
-
-### Famille 2 — La lecture d'une séance (14 écrans)
-
-C'est la famille la plus fournie, et elle décrit une chaîne de travail cohérente : la file amène une séance, le studio la lit, le triage désigne où regarder, la note est écrite, le rapport et le débrief la restituent.
-
-| Écran | Route | Rôle | Source des données |
-|---|---|---|---|
-| File de lecture | `file-lecture.tsx` | Séances à lire / lues / archivées | `loadCoachQueue()` + `setQueueStatus()` sur `coach_queue` |
-| Studio | `studio.tsx` | Atelier de lecture d'UNE séance | `getStudioSession()`, `fetchSessionLaps()`, `loadSessionTrajectory()` |
-| Triage | `triage.tsx` | Virages où la marge est la plus fine | `getSessionTriage()`, `loadSessionTrajectory()` |
-| Débrief | `debrief.tsx` | Mode présentation, à montrer au pilote | `getStudioSession()`, `getSessionBiometry()` (si drapeau) |
-| Rapport | `rapport.tsx` | Bilan écrit + PDF partagé | `getStudioSession()` + `coachReportPdfService` |
-| Annoter | `annoter.tsx` | Note sur un virage, texte + mémo vocal | `coach_annotations`, `coachAudioService` |
-| Contexte | `contexte.tsx` | Cadrage sportif de la séance | `coach_session_context` |
-| Priorités | `priorites.tsx` | Virages mis en avant sur le bilan pilote | `coach_pilot_highlight` |
-| Ma lecture | `lecture.tsx` | Pondérations personnelles du coach | `coach_reading_weights` |
-| Comparer deux séances | `comparer.tsx` | Deux séances d'un même pilote | `loadSessionSnapshot()`, `computeRegularity()` |
-| Gabarits | `gabarits.tsx` | Modèles de commentaire réutilisables | `coach_annotation_template` |
-| Assistant IA | `assistant.tsx` | Brouillons IA à valider | `coach_ai_drafts` + edges `coach-ai-draft` / `coach-ai-validate` |
-| Repères (liste) | `reperes.tsx` | Repères de virage par circuit | `coach_corner_reference`, `cornersForCircuit()` |
-| Repère (éditeur) | `repere/[index].tsx` | Un repère : freinage + vitesse d'apex | `coach_corner_reference` |
-
-La **file de lecture** s'appuie sur une table dédiée, `coach_queue` (`supabase/migrations/20260629140000_coach_ai_assistant_foundation.sql`, ligne 73). La logique de statut est pure et testée (`src/services/coachQueueLogic.ts`) : le statut explicite posé par le coach fait foi ; à défaut, une séance annotée est considérée comme lue. Le commentaire pose la doctrine : « la file aide le coach à s'organiser ; elle ne le presse pas ».
-
-Le **Studio** est l'écran le plus structurant. Il agrège en un seul appel (`src/services/coachStudioService.ts`) le triage factuel, le radar QDI, le résumé des marges, les moments-clés et la méta de la séance. En console, il s'organise en trois colonnes : signature QDI et lecture rapide à gauche, trajectoire et marge par virage avec le chiffre roi au centre, « où regarder » et liste des tours à droite. Le garde-fou est écrit : « QDI en 5 branches, JAMAIS un score composite ». Depuis le Studio partent trois routes réelles : `rapport`, `debrief` et `triage`, toutes avec le `sessionId` en paramètre.
-
-L'**annotation** est la seule sortie du coach vers le pilote, et elle est doublement gardée. Côté application, `createAnnotation()` refuse une note partagée qui ne passe pas `isDoctrineSafe()` (`src/services/coachAnnotationsService.ts`, ligne 155). Côté base, un trigger `coach_annotation_doctrine_guard` lève une exception `doctrine_violation` si une note partagée contient un verbe prescriptif ; depuis la migration 0027, ce trigger et celui des programmes partagent **un seul lexique SQL**, la fonction `public.is_prescriptive()`, qui liste 18 termes (« freinez », « accélérez », « il faut », « vous devriez », « je vous recommande »…) et se déclare miroir de `src/services/aiSafetyFilter.ts`. La note vocale passe par le bucket privé `coach-audio`, avec une contrainte de nommage stricte : l'objet doit s'appeler exactement l'UUID de l'annotation, sans extension ni dossier, parce que la policy storage lit l'objet par son nom (`src/services/coachAudioService.ts`, lignes 4-8). L'en-tête prévient : l'enregistrement requiert `expo-av`, donc un build natif.
-
-L'**assistant IA** applique un protocole en trois temps que le code rend impossible à contourner. `requestDraft()` appelle l'edge `coach-ai-draft`, qui vérifie le consentement côté serveur. Le brouillon reste en `status='draft'` : le pilote ne le voit jamais. La validation passe par l'edge `coach-ai-validate` qui **re-filtre le texte édité** avant de créer l'annotation. La migration 0026 explique pourquoi : « la RLS coach interdit de poser `status='validated'` soi-même ». La provenance est conservée et affichée au pilote via `coach_annotations.ai_assisted`.
-
-Les **repères de virage** sont multi-circuit depuis la demande fondateur du build 23 : le coach choisit d'abord le circuit, et la page s'adapte — 7 virages nommés sur Haute Saintonge (topologie Beltoise), des virages dérivés du tracé réel ailleurs (Valence en donne 14), et un état vide honnête si le circuit n'a pas de centerline. La clé est `coach_id + circuit_id + corner_index` (migration `20260716180000_corner_references_multicircuit.sql`).
-
-### Famille 3 — Le direct (3 écrans)
-
-| Écran | Route | Rôle | Source des données |
-|---|---|---|---|
-| En direct (roster) | `en-direct.tsx` | Qui est en piste, maintenant | `useLiveRoster` (presence Realtime), `useRosterBiometry` |
-| En direct (focus) | `en-direct/[sessionId].tsx` | Un pilote suivi en détail | `usePilotLive` (broadcast Realtime), `fetchSessionLaps()` |
-| Vue AR | `ar.tsx` | Aperçu des lunettes Ray-Ban Display | `usePilotLive` + WebView sur `https://app.oxvehicle.fr/ar-view` |
-
-Le **roster** affiche qui est présent, depuis quand, en piste ou au stand, et sur quel circuit. Trois décisions y sont documentées et vérifiables dans le code. L'ordre suit le **numéro de voiture** (`sortRosterByCarNo`), jamais la performance — la justification écrite est juridique : « affiché publiquement, un ordre de performance peut requalifier un track day en compétition ». La biométrie ne transite **jamais** par le canal de présence : elle vient d'un hook distinct (`useRosterBiometry`), et la protection est décrite comme structurelle, aucune FC n'étant écrite dans `RosterMeta`. Enfin, le roster n'affiche **aucun bpm** : seulement une pastille de couleur, sur une échelle propre à chaque pilote, avec une mention explicite sous la liste — parce qu'une colonne de valeurs chiffrées se lirait comme un classement. La pastille est volontairement inerte : « pas de pulsation, pas de clignotement — ce serait une alerte, et l'app ne diagnostique pas ». En développement, un déclencheur `startSimulatedStream` permet de simuler un pilote en piste sans RaceBox ni réseau (ligne 175 et 437).
-
-Le **focus pilote** montre le chrono du tour en cours comme chiffre roi (en or, seule couleur réservée au chrono), la vitesse et les G en relevés neutres, les forces G, les tours terminés lus dans la table `laps`. L'état de connexion est explicitement honnête (`live` / connexion / ralenti / coupé) : `usePilotLive` fait périmer le cardio au bout de 10 secondes sans événement et **efface** la valeur au lieu de la figer, avec ce commentaire : « l'absence est un état honnête ». Trois actions rapides existent et pointent toutes vers des écrans réels : Note vocale → `annoter`, Poser un repère → `reperes`, Message → `messages`.
-
-La **vue AR** est marquée EXPÉRIMENTAL dans l'interface. Sa doctrine, écrite en tête de fichier, est catégorique : l'AR est l'outil **du coach au bord de piste**, jamais du pilote, et elle ne montre que des faits, jamais une consigne. L'aperçu in-lens est une WebView sur une route web externe qui peut ne pas être en ligne — les états de chargement et d'erreur sont gérés. Point notable : la fréquence cardiaque est rendue **en natif** et n'est jamais passée à la WebView ni ajoutée à l'URL, « aucune donnée de santé ne quitte cet écran coach ».
-
-### Famille 4 — Le programme d'entraînement (3 écrans)
-
-| Écran | Route | Rôle | Table |
-|---|---|---|---|
-| Programmes (liste) | `cycles.tsx` | Cycles d'un pilote, progression par étapes | `pilot_development_cycles` |
-| Programme (détail) | `cycles/[id].tsx` | Étapes, statut, partage | `pilot_development_cycles` + `cycle_steps` |
-| Plan d'objectifs | `plan.tsx` | Objectifs mesurables par pilote | `coach_objectives` |
-
-Le modèle des programmes est posé par `supabase/migrations/0027_coach_development_cycles.sql`, dont la première ligne fixe le principe : « L'APP NE GÉNÈRE NI N'ADAPTE JAMAIS : elle stocke et affiche. L'"adaptatif" est l'ajustement humain. » Un cycle porte un titre, une intention formulée en observation, un statut `active`/`closed`, et un drapeau `is_shared` faux par défaut — le pilote ne voit rien tant que le coach n'a pas partagé. Les étapes (`cycle_steps`) portent un focus qualitatif, des virages associés bornés à 1..30, et **deux statuts seulement** : `en_cours` ou `atteint`. Il n'y a aucun score chiffré, par construction.
-
-Trois durcissements de cette migration méritent d'être connus. Le partage **rescanne les enfants** : basculer `is_shared` à vrai revalide tous les `cycle_steps` du cycle, ce qui ferme le trou « axe prescriptif écrit en privé puis partagé ». L'authoring exige le niveau `programme` strict via `is_program_coach_of()`. Et le partenaire n'a **aucune** policy sur ces tables — le commentaire cite la « règle cardinale §148 ».
-
-Le **plan d'objectifs** écrit dans `coach_objectives` (métrique, direction, cible, baseline). L'écran assume explicitement l'absence de barre de progression : la table ne stocke pas de valeur mesurée courante, donc il affiche « baseline → cible », jamais un pourcentage inventé. Il n'y a pas non plus d'échéance, absente du schéma.
-
-### Famille 5 — L'activité commerciale et l'agenda (8 écrans)
-
-| Écran | Route | Rôle | Source |
-|---|---|---|---|
-| Ma fiche publique | `profil.tsx` | Édition de la fiche vue par les pilotes | `coach_profiles` |
-| Demandes reçues | `demandes.tsx` | Accepter / décliner une demande de séance | `coaching_bookings` |
-| Disponibilités | `disponibilites.tsx` | Ouvrir, fermer, annuler des créneaux | `coach_availability` |
-| Calendrier | `calendrier.tsx` | Semaine (console) ou liste (téléphone) | `listCoachBookings()` + `listMyAvailability()` |
-| Tableau de bord | `business.tsx` | Suivi factuel de l'activité | `listMyPilots()`, `listMyRoulages()`, `roulagesLogic` |
-| Facturation | `facturation.tsx` | Registre des factures émises | `coach_invoices`, `coach_profiles` |
-| Identité de facturation | `facturation-identite.tsx` | Émetteur, régime TVA, SIRET | `coach_profiles` |
-| Nouvelle facture | `facture-nouvelle.tsx` | Saisie de lignes, calcul HT/TVA/TTC | `coachBillingLogic` + `coach_invoices` |
-
-La mise en relation vient de la place de marché (`supabase/migrations/0007_coaching_marketplace.sql`, tables `coach_availability` et `coaching_bookings`). Le point de sécurité important est écrit dans `src/services/coachMarketplaceService.ts` : « une demande `pending` n'ouvre aucun accès : l'affiliation `coach_pilots` reste le seul vecteur de consentement, et n'est PAS touchée ici ». Le coach voit un **prénom dénormalisé** porté par la demande (`coaching_bookings.pilot_first_name`), jamais la ligne `users` du pilote ; l'avatar de l'écran Demandes n'affiche donc qu'une initiale, faute de nom de famille. « Proposer un créneau » n'a pas d'action serveur propre et ouvre l'écran Disponibilités — le commentaire dit pourquoi : plutôt que d'exposer un contrôle mort.
-
-Le **tableau de bord business** est gaté par `can_view_business_dashboard`. Il expose des faits : pilotes suivis, roulages organisés, présences confirmées, revenu cumulé des roulages tarifés, et un histogramme sur six mois glissants. La décision Gabin du 2026-06-07 est reprise en commentaire : aucune commission, aucune remise, aucun classement. Et « sans revenu tarifé, l'histogramme cède la place à une note ».
-
-La **facturation** est entièrement conditionnée au drapeau `coach_billing`, **semé à `false`** par `supabase/migrations/20260704150000_p2_coach_billing_and_invoicing.sql` (ligne 90) avec la mention « INACTIF jusqu'au SIRET d'OXV ». Deux conséquences visibles : la tuile Facturation n'apparaît pas dans le Poste tant que le drapeau est éteint (`index.tsx`, lignes 337-345, avec le commentaire « le lien reste caché plutôt qu'un "bientôt" visible »), et l'écran lui-même se met en état neutre si `flagOn === false` (ligne 258 de `facturation.tsx`). Il faut noter que le rail de la console tablette, lui, route « Business » vers `/(coach)/facturation` sans condition : sur tablette, l'item existe donc, mais mène à un écran désactivé tant que le drapeau est off.
-
-Le modèle économique est explicite dans le code : « le paiement de la prestation va DIRECTEMENT au coach, hors OXV : pas de suivi d'encaissement ». Il n'y a donc **aucun statut de règlement** — l'écran refuse de montrer des badges PAYÉE / ENVOYÉE présents sur les maquettes, parce que la donnée n'existe pas. Le numéro de facture est alloué atomiquement côté serveur (`coach_invoice_counters` + une fonction d'allocation durcie par `20260712090000_harden_next_coach_invoice_number_authz.sql`).
-
-Le **profil public** édite `coach_profiles` (présentation, circuits, spécialités, liens, médias, publication via `is_published`). Depuis la migration `20260716200000_coach_session_price_and_partner_pings.sql`, la base porte deux tarifs : `session_price_eur`, le prix affiché aux pilotes, et `season_price_eur` en secondaire discret.
-
-### Famille 6 — Les roulages (3 écrans)
-
-| Écran | Route | Rôle | Table |
-|---|---|---|---|
-| Mes roulages | `roulages/index.tsx` | À venir / passés | `coach_roulages` |
-| Nouveau roulage | `roulages/nouveau.tsx` | Création : titre, date, lieu, places, prix | `coach_roulages` |
-| Détail roulage | `roulages/[id].tsx` | Roster, invitations, briefing, statut | `coach_roulages` + `roulage_invitations` |
-
-Les roulages sont la seule fonctionnalité coach dont le gating est **doublement** appliqué : côté interface par `useCoachPermissions` (l'écran l'indique sobrement sans rien exposer si la permission est absente), et côté base par la policy `coach_roulages_manage_own`, qui exige `coach_id = auth.uid() AND coach_has_permission(auth.uid(), 'manage_own_sessions')` en `USING` **et** en `WITH CHECK` (`supabase/migrations/20260526190000_0034_coach_roulages.sql`, lignes 124-127). Les invitations sont limitées aux pilotes déjà assignés au coach (`coach_pilots` actif), d'après l'en-tête de `src/services/roulagesService.ts`.
-
-### Ce qui est branché, et ce qui ne l'est pas
-
-L'espace coach s'appuie sur 33 services `src/services/coach*.ts` plus `roulagesService`, `pilotConsentService` et `liveRelayRunner`. La quasi-totalité est consommée par un écran. Deux exceptions vérifiées par recherche sur tout `src/` et `app/`, hors tests :
-
-`src/services/coachConsoleService.ts` et sa logique pure `coachConsoleLogic.ts` — la « console de direction » P4, qui calcule pour chaque pilote sa dernière séance et sa tendance de marge par rapport à **sa propre** séance précédente — ne sont importés par **aucun écran**. `src/services/coachBusinessService.ts` non plus : l'écran `business.tsx` passe par `roulagesLogic` et `computeCoachBusinessSummary`, pas par ce service.
-
-Côté couverture de test, l'espace coach dispose de tests de logique pure (`coachQueueLogic`, `coachTriageLogic`, `coachReadingLogic`, `coachCurationLogic`, `coachReferenceLogic`, `coachContextLogic`, `coachBillingLogic`, `coachConsoleLogic`, `coachObjectivesService`, `coachDomainNoScore`, `coachPaymentLinkGuard`) et de quatre suites RLS (`src/__tests__/rls/coachSessionsRLS.test.ts`, `coachAnnotationsRLS`, `coachGradedAccessRLS`, `coachAiRLS`), plus le test de cohérence de navigation déjà cité. Je n'ai pas exécuté la suite ; je constate l'existence des fichiers.
-
-### Deux tensions relevées dans le dépôt
-
-Ce ne sont pas des jugements, ce sont deux écarts que j'ai constatés entre des fichiers du dépôt et que je ne peux pas trancher sans interroger la base de production.
-
-**Premièrement, la colonne `status` de `coach_pilots`.** Le type de production (`src/types/database.types.ts`, lignes 2176-2221) montre que la table porte en réalité `status` (énum `affiliation_status` : `pending` / `active` / `declined` / `ended`), `initiated_by` (énum `affiliation_initiator` : `coach` / `pilot`), `coach_consent_at` et `affiliation_price_eur`. **Aucune migration du dépôt ne crée ces colonnes ni ces énums** (recherche sur `supabase/` : zéro résultat). Conséquence observable : `liveRelayRunner.ts` filtre bien sur `status = 'active'` (ligne 83), mais les helpers SQL du dépôt — `is_coach_of`, `is_detailed_coach_of`, `is_program_coach_of`, `log_coach_view` — ne testent que `active` et `pilot_consent_at`. Les deux chemins n'appliquent donc pas la même définition d'une affiliation vivante, du moins d'après le code présent ici.
-
-**Deuxièmement, la lecture des noms de pilotes.** La vue `coach_pilots_view` est en `security_invoker = on` et joint `public.users`, or la seule policy SELECT sur `users` que je trouve dans le dépôt est `users_select_own_or_admin` (`id = auth.uid() OR is_admin()`), reprise à l'identique dans `docs/architecture/06_RLS_POLICIES_ACTUELLES.sql`. Avec ces deux éléments seuls, un coach ne lirait aucune ligne par la vue. Comme l'espace coach fonctionne, il existe très probablement en production une policy supplémentaire sur `users` (par exemple fondée sur `is_coach_of`) qui n'est pas dans le dépôt — le document RLS lui-même est daté du 24 mai 2026, soit avant les fonctionnalités coach. Le même raisonnement vaut pour `coachMessagesService.listMyThreads`, qui embarque `users(first_name, last_name)` et retombe sur le libellé « Pilote » en cas d'échec.
-
-### Ce que je n'ai pas pu vérifier
-
-Je n'ai **pas interrogé la base Supabase de production** : tout ce qui précède est lu dans le dépôt. Je ne peux donc pas confirmer l'état réel des drapeaux (`coach_billing` est semé à `false` par sa migration, `biometry` est semé à `false` par `20260719140000_be1_feature_flags.sql` — le repère qui m'a été donné dit que `biometry` est aujourd'hui le seul actif, ce qui suppose une bascule admin que je n'ai pas vue), ni la liste réelle des policies sur `public.users`, ni l'existence en base des colonnes `status` / `initiated_by` / `coach_consent_at` au-delà de ce qu'en dit le fichier de types généré.
-
-Je n'ai **pas exécuté les tests** ni lancé l'application : je n'ai donc constaté aucun comportement à l'exécution, seulement du code et des migrations.
-
-Je n'ai **pas lu intégralement** les 36 écrans. J'ai lu en entier `_layout.tsx` et `coachNav.ts`, et j'ai lu l'en-tête documentaire complet (30 à 55 lignes) de chacun des 36 écrans, en descendant dans le corps de `index.tsx`, `pilote/[id].tsx`, `file-lecture.tsx`, `facturation.tsx`, `debrief.tsx`, `en-direct.tsx` et `en-direct/[sessionId].tsx`. Pour les autres écrans, la description de la mise en page console/compagnon repose sur leur en-tête, pas sur une lecture ligne à ligne du rendu ; il est possible qu'un détail d'affichage diffère de ce que l'en-tête annonce.
-
-Je n'ai **pas ouvert** les edge functions `coach-ai-draft` et `coach-ai-validate` (je décris leur contrat tel que le service app et la migration 0026 l'énoncent), ni les maquettes PNG référencées (`coach/01-poste.png`, `coach-mobile/…`), ni les documents de cadrage cités par les en-têtes (`VISION_COACH_STUDIO.md`, `docs/specs-bundle-v4/specs/E0_ar_coach.md`, le handoff §12). Enfin, je n'ai pas vérifié où et comment les productions du coach (priorités, repères, « ma lecture », programmes partagés) apparaissent effectivement **côté pilote** : je décris ce que le coach écrit, pas ce que le pilote voit.
+### Avertissement de méthode
+
+Rien n'a été exécuté sur un appareil. Aucun écran coach n'a été ouvert, aucune
+manipulation n'a été faite. Tout ce qui suit est une lecture du code source du
+dépôt et une interrogation en lecture seule de la base de production
+`fouvuqkdxarjpjbqnsjq`. Quand j'écris qu'un écran « affiche » quelque chose, je
+décris ce que le code demande d'afficher, pas ce que j'ai vu.
+
+Une exception : la suite de tests unitaires a été lancée. Résultat plus bas.
 
 ---
 
-## Données, permissions et conformité
+### Le fait qui commande tout le reste : il n'existe aucun compte coach
 
-### Où vivent les données, et sous quel nom
+Requête sur la table `users` de production, ce jour :
 
-Toute la donnée de l'application vit dans un seul projet Supabase (PostgreSQL 17.6), référence `fouvuqkdxarjpjbqnsjq`, nommé **`oxv-platform`**, créé le 8 mai 2026, statut `ACTIVE_HEALTHY`. Ce projet est partagé avec le site oxvehicle.fr : l'application n'a pas de base à elle.
+| rôle | nombre de comptes |
+| --- | --- |
+| `pilot` | 11 |
+| `admin` | 2 |
+| `partner` | 1 |
+| **`coach`** | **0** |
 
-**Sa région est `eu-west-1`, c'est-à-dire l'Irlande.** Ce point mérite votre attention, car trois documents du dépôt se contredisent sur ce sujet :
+Le rôle `coach` existe bien dans le type énuméré `user_role` de la base
+(`pilot, admin, coach, partner, pro_pilot`). Aucun compte ne le porte.
 
-| Source | Ce qu'elle affirme | Vérifié |
-|---|---|---|
-| `docs/architecture/05_SCHEMA_SUPABASE_ACTUEL.md` (l. 3 et 534) | « Frankfurt », « région eu-central-1 » | **faux aujourd'hui** |
-| `docs/architecture/14_PURGE_MATRIX.md` (l. 3) | « eu-west-1 » | exact |
-| `docs/juridique/04_POLITIQUE_CONFIDENTIALITE.md` (l. 149 et 316) | « Frankfurt, Allemagne (UE) », « principalement en Allemagne (Frankfurt) chez notre hébergeur Supabase » | **faux** |
+Or l'espace coach est verrouillé sur ce rôle, à deux endroits :
 
-L'API Supabase, interrogée en lecture seule pendant cet état des lieux, renvoie `"region":"eu-west-1"`. Le fait que la donnée reste dans l'Union européenne n'est pas remis en cause ; c'est le pays annoncé au pilote dans un document juridique opposable qui est inexact. Le document `docs/juridique/consentement_biometrie.md` (l. 11-13) le pressent d'ailleurs : il laisse explicitement en blanc « la localisation d'hébergement des mesures », « faute d'information vérifiée ».
+- `C:\Users\Julie\OneDrive\Desktop\oxv-app\app\index.tsx` ligne 93 : après
+  connexion, seul un profil `role === 'coach'` est redirigé vers `/(coach)`.
+- `C:\Users\Julie\OneDrive\Desktop\oxv-app\app\(coach)\_layout.tsx` lignes 33-35 :
+  `if (profile.role !== 'coach') return <Redirect href="/(app2)" />`. Toute
+  personne qui atteindrait une route `(coach)` par un autre chemin en est
+  éjectée immédiatement.
 
-Le schéma `public` contient **114 tables et 14 vues**. Le fichier de types généré `src/types/database.types.ts` (9 275 lignes) en connaît 113 : la table `founding_members`, présente en base, n'y figure pas — les types sont en léger retard sur la production. Le dépôt contient **125 fichiers de migration** dans `supabase/migrations/`, alors que la base en a **215 d'appliquées** (dernière version enregistrée : `20260725185806`). L'écart s'explique par le fait que le site web applique ses propres migrations sur le même projet : le dépôt de l'application ne raconte pas toute l'histoire du schéma.
+**Conséquence : aujourd'hui, en production, aucun être humain ne peut ouvrir un
+seul des 37 écrans coach.** Ce n'est pas une opinion, c'est une conséquence
+mécanique de la table `users` et du garde de `_layout.tsx`.
 
-### Les tables principales, par famille
+Tout le reste de cette section doit se lire ainsi : je décris un espace complet,
+volumineux, souvent bien construit — et actuellement injoignable.
 
-Je décris ici ce que j'ai réellement lu, en indiquant le volume constaté en production au moment de l'audit.
+#### Ce n'a pas toujours été le cas
 
-**Les personnes.** `users` est la table maîtresse : **72 colonnes**, 14 lignes. Elle porte l'identité (nom, date de naissance, adresse, contact d'urgence), le KYC (`kyc_status`, `kyc_validated_at/by`), le rôle (`user_role` : `pilot`, `admin`, `coach`, `partner`, `pro_pilot`), le profil pilote, la visibilité communautaire (`community_visibility` : `private` / `anonymous_only` / `nominative`, défaut `anonymous_only`), les préférences de notification, et — c'est important pour la suite — **l'intégralité des consentements et des acceptations juridiques**. Elle porte aussi deux colonnes de santé héritées du site, `blood_type` et `medical_notes`.
+La table `admin_audit` conserve la trace des changements de rôle (déclencheur
+`trg_audit_user_role_change` sur `users`). Trois lignes existent :
 
-**Les séances télémétriques.** `telemetry_sessions` (18 lignes) est la séance de roulage enregistrée par le boîtier : circuit, véhicule, horodatage, statistiques agrégées (vitesse max, G latéral/longitudinal, nombre de tours, meilleur tour), statut, et `raw_data_url` pointant vers le fichier `.ubx` brut. `telemetry_frames` (53 lignes) porte les trames à 25 Hz : GPS, vitesse, cap, trois axes de G, niveau de batterie. Depuis la migration `20260715120000_valencia_telemetry_frames_unique.sql`, cette table a une contrainte **`UNIQUE (session_id, elapsed_ms)`** vérifiée présente en base — c'est elle qui rend le rejeu de la file de synchronisation idempotent. La migration porte un avertissement long et explicite : elle n'est sûre qu'à partir de la version d'application qui génère un `elapsed_ms` strictement croissant, sans quoi elle aurait détruit en silence des trames réelles. Symétriquement, `laps` (1 ligne) porte `UNIQUE (session_id, lap_number)` (migration `20260716120000_valencia_laps_unique.sql`).
+| date | changement |
+| --- | --- |
+| 2026-07-07 | `admin` → `partner` |
+| 2026-07-18 | **`coach` → `admin`** |
+| 2026-07-20 | `admin` → `pilot` |
 
-**Les analyses.** `app_session_analyses` (13 lignes) porte la lecture de séance : marge globale, zone de marge, marges par zone en JSON, texte de débrief, et depuis `20260704120000_qdi_jsonb_on_app_session_analyses.sql` un bloc QDI en JSONB. `app_segment_analyses` (0 ligne) porte le détail par segment, plafonné à 7 segments (`20260525141634_cap_segment_index_to_7.sql`). `session_insights` (1 ligne) est alimentée par les fonctions edge `compute-session-insights`. La table `qdi_scores` décrite dans `05_SCHEMA_SUPABASE_ACTUEL.md` **n'existe plus** : `to_regclass('public.qdi_scores')` renvoie NULL, elle a été supprimée par `20260524144630_0007_drop_qdi_scores_doctrine_alignment.sql`. De même, `app_circuit_zones`, annoncée comme « à créer » dans ce même document, **n'a jamais été créée**. Le document 05 décrit donc, sur ces deux points, un état qui n'est plus le vôtre.
+Un compte a donc bien porté le rôle `coach` jusqu'au 18 juillet 2026. Il s'agit
+du compte de pseudo public `gabin` (`6edd7f5c-…`), aujourd'hui `role = 'pilot'`
+et `is_admin = true`. C'est ce compte qui a produit toutes les données coach
+présentes en base (fiche publique, créneaux, message, demandes).
 
-**La biométrie.** `biometry_raw` (0 ligne) a été créée par `20260719141000_be1_biometry.sql`. Une ligne = un échantillon : `session_id`, `user_id`, horodatage, `hr` (contraint entre 25 et 250), `rr_ms` (tableau d'intervalles R-R, ceinture Polar seulement), `source` contraint à `polar_h10` ou `apple_watch`, et `quality`. La clé `UNIQUE (session_id, ts, source)` assure l'idempotence au rejeu. C'est la seule table du schéma explicitement traitée comme donnée de santé au sens de l'article 9.
+#### Volumétrie du code concerné
 
-**Le coaching.** Le socle est `coach_pilots` (1 ligne) : un lien nominatif coach↔pilote, avec `active`, `pilot_consent_at` (consentement RGPD du pilote), `level` (énumération `coach_access_level` : `lecture_simple`, `lecture_detaillee`, `programme`) et `live_sharing_at` (consentement distinct au partage temps réel, ajouté par `20260711172949`). Autour gravitent une trentaine de tables : `coach_profiles` (dont la facturation : `billing_siret`, `billing_address`, `payment_link`), `coach_annotations`, `coach_messages`, `coach_objectives`, `coach_availability`, `coach_roulages`, `coach_session_context`, `coach_corner_reference`, `coach_reading_weights`, `coach_ai_drafts`, `coach_queue`, `coach_testimonials`, `pilot_sheets`, `coaching_bookings`, `pilot_development_cycles`, `cycle_steps`.
-
-**Les événements et l'exploitation.** `sessions` (1 ligne) est la journée de roulage vendue par le site, `registrations` (1 ligne) l'inscription, `events` (1 ligne) + `event_registrations` la brique événementielle propre à l'application (migration `0021_events.sql`), `circuits` (4 lignes), `weather_snapshots`, `devices` / `device_assignments` / `device_health_logs` pour le parc de boîtiers.
-
-**La facturation.** Deux chaînes distinctes coexistent, et elles ne se mélangent pas. Côté OXV : `payments` (1 ligne), `invoices`, `invoice_counters`, `subscriptions`, `pricing`. Côté coach, posée par `20260704150000_p2_coach_billing_and_invoicing.sql` : `coach_invoices` (0 ligne), `coach_invoice_counters`, et `coach_payout_details`. L'en-tête de cette migration est net : « OXV n'encaisse ni ne facture la prestation ; l'app = suivi + outil de facture pour le coach qui l'active », avec un avertissement en toutes lettres — « Gabarit de facture + régime TVA à faire VALIDER par un comptable avant service ».
-
-### Le contrôle d'accès : les patrons RLS
-
-**110 tables sur 114 ont RLS activée**, pour **322 politiques** dans le schéma `public`, plus 39 sur `storage.objects`. Les quatre tables sans RLS sont des copies de sauvegarde (`_backup_payments_20260719`, `_backup_registrations_20260719`, `_backup_session_feedback_20260719`, `_backup_weather_20260719`) ; j'ai vérifié leurs droits : **seul `service_role` a le moindre privilège dessus**, `anon` et `authenticated` n'en ont aucun, elles ne sont donc pas exposées par l'API. La cinquième, `_backup_sessions_20260719`, a bien RLS activée et zéro politique — c'est un refus total.
-
-Cinq patrons se répètent dans tout le schéma.
-
-**Le patron « ma ligne ou admin »**, le plus fréquent. Sur `users` : `((id = auth.uid()) OR is_admin())` en lecture, en écriture, en insertion ; la suppression est réservée à `is_admin()`. Sur `documents` (le KYC), même chose en lecture, mais **la validation d'un document est admin-only** (`documents_update_admin_only`) : un pilote ne peut pas valider son propre permis.
-
-**Le patron « propriétaire strict »**, sans admin. Sur `telemetry_sessions` : les quatre politiques historiques sont `auth.uid() = user_id`, et une politique `telemetry_sessions_admin_all` a été ajoutée ensuite. Sur `telemetry_frames`, la propriété est indirecte : `session_id IN (SELECT id FROM telemetry_sessions WHERE user_id = auth.uid())`.
-
-**Le patron « coach binôme », gradué.** Il repose sur deux fonctions `SECURITY DEFINER` à `search_path` épinglé :
-- `is_coach_of(pilot_uuid)` — vrai si l'appelant est coach de ce pilote, avec `active = true` **et** `pilot_consent_at IS NOT NULL`. Tant que le pilote n'a pas consenti, le coach ne voit rien.
-- `is_detailed_coach_of(pilot_uuid)` — les mêmes conditions **plus** `level IN ('lecture_detaillee','programme')`.
-
-La graduation, posée par `0014_coach_access_level_graduated.sql`, est appliquée avec précision : `telemetry_sessions`, `laps` et `app_session_analyses` sont ouvertes au coach par `is_coach_of` (lecture simple suffit) ; `telemetry_frames` et `app_segment_analyses` exigent `is_detailed_coach_of`. Une vue dédiée, `coach_pilots_view`, en `security_invoker`, expose au coach le prénom, le nom, le niveau et l'avatar de ses pilotes — **jamais l'e-mail ni le téléphone**, PostgreSQL ne sachant pas faire de RLS colonne par colonne.
-
-**Le patron « admin ».** `is_admin()` est `SECURITY DEFINER`, ce qui évite la récursion sur `users`. Depuis `20260617000000_0041_is_admin_honor_flag.sql`, elle honore aussi le drapeau `is_admin` de la ligne. Elle gouverne l'écriture des drapeaux, des tarifs, la validation KYC, et la lecture de `admin_audit`.
-
-**Le patron « ami ».** `are_friends(a, b)` ouvre une lecture croisée sur `telemetry_sessions`, `telemetry_frames` et `app_session_analyses`. C'est le seul chemin par lequel un pilote lambda peut voir la donnée d'un autre pilote, et il exige une amitié établie des deux côtés (`pilot_friendships`).
-
-À côté de cela, quelques politiques méritent d'être connues telles quelles : `coach_profiles_read_published` ouvre le profil coach à **tout le monde** dès `is_published = true` — c'est la raison pour laquelle SEC-1 a sorti l'IBAN de cette table ; `coach_annotations_pilot_select` ne laisse le pilote lire une annotation de son coach que si `visibility = 'shared'` et qu'elle n'est pas supprimée ; `session_intentions_coach_select` exige `shared_with_coach = true` ; `incident_reports` n'a que deux politiques, insertion et lecture — **aucun UPDATE, aucun DELETE**, la table est immuable par construction, pour sa valeur probatoire.
-
-Le temps réel a ses propres politiques, dans le schéma `realtime`, que j'ai vérifiées en base. Trois canaux : `live:session:<id>` (coach du binôme, exige `cp.active` et `cp.live_sharing_at IS NOT NULL`), `live:roster:<uid>`, et `live:board:<sessionId>` — le tableau de marche du paddock, ajouté le 25 juillet par `20260725190000_live_board_realtime_authorization.sql`. L'en-tête de cette migration pose une interdiction définitive : aucune donnée de santé ne transite sur le canal board. Et elle reconnaît honnêtement sa limite : l'ouverture « tout inscrit de la journée » n'a **pas** été écrite, parce qu'une séance télémétrique ne porte aucune référence vers la journée de roulage — « on n'écrit pas une règle d'accès sur une devinette ».
-
-Ce garde-fou n'est pas seulement déclaratif. `src/services/v2/liveHealthGate.ts` porte deux fonctions pures : `stripHealth()`, une **liste blanche** de huit clés (`position`, `lapMs`, `sector`, `ts`, `pilotHandle`, `carNo`, `lastLapMs`, `bestLapMs`) — tout le reste est écarté, y compris un capteur qu'on brancherait demain ; et `canEmitBiometry()`, qui n'autorise l'émission vers le coach que si **trois verrous** sont strictement vrais : consentement de capture actif, binôme détaillé, drapeau `biometry` serveur.
-
-Enfin, la RLS est testée : **18 fichiers de tests** dans `src/__tests__/rls/` (le document `17_CI_RLS_SETUP.md` en annonce 85 tests répartis en 17 suites). Le workflow `.github/workflows/check.yml` porte un job dédié `rls` qui est **fail-closed** depuis SEC-1 : sans les secrets `TEST_SUPABASE_*`, il échoue avec « Secrets CI RLS manquants », au lieu de sauter silencieusement. La seule exception loggée concerne les forks et dependabot. Le document précise que ces tests **n'avaient jamais tourné en CI** avant ce durcissement ; je n'ai pas pu vérifier si les secrets ont été posés depuis.
-
-### Les consentements
-
-Tous les consentements sont stockés **en colonnes sur `users`**, pas dans une table dédiée. Le service unique qui les lit et les écrit est `src/services/consentService.ts`.
-
-| Consentement | Colonne(s) | Modèle | Défaut | Ce qu'il gouverne |
-|---|---|---|---|---|
-| Débrief J+1 rédigé par IA | `ai_debrief_enabled` (bool) | opt-out | **activé** | Transfert vers OpenAI (hors UE) pour le récit de séance |
-| Assistant IA du coach | `coach_ai_enabled` (bool) | opt-in | désactivé | Traitement IA des données du pilote pour le coach |
-| Capture cardiaque | `biometry_capture_consent_at` (timestamptz) | opt-in | NULL = OFF | Autorise la capture FC en séance |
-| Partage cardiaque au coach | `biometry_coach_share_consent_at` (timestamptz) | opt-in | NULL = OFF | Autorise le coach détaillé à lire la FC |
-| Coaching (par binôme) | `coach_pilots.pilot_consent_at` | opt-in | NULL | Ouvre la lecture après-séance au coach |
-| Partage live (par binôme) | `coach_pilots.live_sharing_at` | opt-in | NULL | Ouvre le canal temps réel au coach |
-| Nom affiché au Pavillon | `pavilion_name_optin` + `_at` | opt-in | false | Affichage du nom sur l'écran TV |
-| Marketing | `accepts_marketing`, `notif_newsletter`, `notif_offers` | opt-in | false | Sollicitations commerciales |
-| Mesure d'audience | drapeau local MMKV `analytics.optOut` | opt-out | activé | Plausible ; **pas en base**, propre à l'appareil |
-
-Le choix du **timestamptz plutôt que du booléen** pour la biométrie est délibéré et documenté dans la migration : une date fournit la piste d'audit exigée par l'article 9, la révocation étant un retour à NULL.
-
-Un invariant est maintenu dans les deux sens, à la fois dans le service (`consentService.ts`, l. 141-192) et dans sa copie pure côté interface (`src/features/vous/reglagesConsentLogic.ts`) : **partager implique capter**. Révoquer la capture révoque le partage en cascade ; activer le partage active la capture si elle ne l'était pas, sans écraser une date antérieure. Révoquer la capture demande une confirmation à l'écran ; l'activer, non.
-
-Les acceptations juridiques sont horodatées et versionnées sur `users` : `pact_accepted_at`/`pact_version`, `cgu_accepted_at`/`cgu_version`, `privacy_accepted_at`/`privacy_version`, `coach_pact_accepted_at`/`coach_pact_version`. Elles sont **conservées après effacement du compte**, comme preuve de consentement.
-
-Deux écarts de couverture sont à connaître, et le premier est écrit noir sur blanc en tête de `consentService.ts` (l. 14-26) par son propre auteur :
-
-> Le Centre de consentement unifié (`app/(app)/consentements.tsx`) « se présente pourtant comme exhaustif (“chacun de ses consentements”) » mais **ne référence pas la biométrie**, qui n'existe que dans les Réglages de l'espace app2. Sa revendication d'exhaustivité est donc inexacte pour le consentement le plus sensible. La décision produit est ouverte.
-
-J'ai vérifié en ouvrant l'écran : il expose l'IA débrief, l'IA coach, la mesure d'audience, l'export et la suppression — pas la biométrie.
-
-Le second écart est plus lourd. `docs/juridique/04_POLITIQUE_CONFIDENTIALITE.md` **ne contient aucune occurrence** des mots « cardiaque », « biométrie », « santé » ou « article 9 » (recherche insensible à la casse, zéro résultat). Le texte de consentement biométrique existe bien et est marqué « VALIDÉ PAR L'AVOCAT (annexe A) — 25/07/2026 » dans `docs/juridique/consentement_biometrie.md`, mais il annonce lui-même figurer « sous une forme équivalente, dans la Politique de confidentialité » — ce qui n'est pas le cas dans le fichier du dépôt.
-
-### Les drapeaux de fonctionnalité
-
-La table `app_feature_flags` (créée par `20260629003722_app_feature_flags.sql`) est en lecture ouverte à tous (`USING (true)`) et en écriture `is_admin()`. Le service `src/services/featureFlagsService.ts` la lit via `isFlagEnabled(key)`, **fail-closed** : une erreur ou une clé absente renvoie `false`.
-
-Interrogée en production, elle contient **sept drapeaux**, dont **un seul actif** :
-
-| Clé | État | Ce qu'elle commande | Dernière modification |
-|---|---|---|---|
-| **`biometry`** | **activé** | Capture et affichage de la fréquence cardiaque | 2026-07-25 |
-| `app_payments` | désactivé | Réservations et paiements dans l'application | 2026-07-19 |
-| `coach_billing` | désactivé | Suivi et aide à la facture du coach | 2026-07-06 |
-| `convoys` | désactivé | Convois vers une journée | 2026-07-19 |
-| `founders` | désactivé | Candidatures Membre Fondateur (30 places) | 2026-07-19 |
-| `pilot_waivers` | désactivé | Décharge de responsabilité e-signée | 2026-07-12 |
-| `video_overlay` | désactivé | Vidéo du tour synchronisée à la télémétrie | 2026-07-19 |
-
-La description en base du drapeau `biometry` est elle-même un document : « Gate consentement biometry par pilote (capture + partage coach) TOUJOURS requis. Levé le 2026-07-25 sur décision fondateur, après validation avocat du consentement. **Reste non tenu à la levée : smoke test 2 appareils reels.** » Le drapeau est donc actif alors que le test terrain sur deux appareils réels n'a pas été fait.
-
-Ces drapeaux sont réellement consommés : j'ai relevé une vingtaine d'appels à `isFlagEnabled` dans `src/features/` et `src/services/`, notamment `useBilan.ts`, `useEquipement.ts`, `useSignature.ts`, `bio1Trigger.ts`, `biometryCaptureRunner.ts` pour la biométrie, `useReserverDay/Catalog/Payment.ts` pour les paiements, `useDocuments.ts` pour les décharges.
-
-### Rétention, purges et automatismes
-
-Trois durées de conservation sont **codées** en base, et une quatrième est seulement écrite dans la politique.
-
-| Objet | Durée | Fonction | Cron |
-|---|---|---|---|
-| Trames télémétriques brutes | 12 mois | `cleanup_old_telemetry_frames()` | **jobid 6**, `30 3 * * *` |
-| Échantillons cardiaques | 30 jours | `purge_old_biometry()` | **jobid 11**, `15 3 * * *` |
-| Comptes en attente d'effacement | 30 jours de grâce | edge `purge-deleted-accounts` → `purge_user_data()` | **jobid 9**, `30 2 * * *` |
-| Journaux de throttle notification | non planifié | `cleanup_old_notif_logs()` existe | **aucun cron trouvé** |
-
-Les trois fonctions de purge sont `SECURITY DEFINER` avec `search_path` figé et `EXECUTE` réservé à `service_role` : aucun client ne peut les déclencher. La purge des trames conserve délibérément les dérivés (analyses, segments, insights, tours) : « la lecture de session reste intacte après la purge ».
-
-`cleanup_old_notif_logs()` existe en base mais **aucun des huit jobs cron ne l'appelle** — le nettoyage des journaux de notification n'est donc pas automatisé.
-
-La chaîne d'effacement mérite d'être détaillée, parce qu'elle a beaucoup bougé en une semaine. L'audit du 19 juillet (`14_PURGE_MATRIX.md`) constatait sept problèmes, dont trois majeurs : aucun cron ne déclenchait la purge (« infraction art. 17 en pratique »), une vingtaine de tables porteuses de données personnelles étaient hors périmètre, et le Storage n'était couvert qu'à 4 buckets sur 12, sans récursivité. `SEC1_PROD_APPLY.md` (§ « APPLIQUÉ EN PROD — 2026-07-19 ») documente la correction, et **je l'ai vérifiée en base** : la fonction `purge_user_data(uuid)` existe, le cron jobid 9 existe et tourne.
-
-Sa stratégie est **anonymiser-et-purger**, et la raison est mécanique : `payments.user_id` est en `NO ACTION`, donc un `DELETE` de la ligne `users` échouerait. La ligne reste, vidée. J'ai lu la définition déployée : elle supprime une cinquantaine de tables, anonymise `coaching_bookings.pilot_first_name`, `email_log` (user_id, subject, metadata), `admin_audit.user_id`, `device_assignments.pilot_id`, `duels.opponent_id`, `crew_members.referred_by`, anonymise `incident_reports.user_id` sans jamais le supprimer, purge `biometry_raw` et remet à NULL les deux colonnes de consentement biométrique. Le scrub de `users` couvre 33 colonnes, dont **`blood_type` et `medical_notes`** — les données de santé héritées.
-
-Deux conservations sont volontaires et assumées : `stripe_customer_id` (réconciliation de facturation ; l'effacement côté Stripe reste « à trancher »), et les acceptations pacte/CGU/confidentialité (preuve de consentement). Le bucket `invoices` est explicitement conservé pour l'obligation légale de facturation.
-
-Une remarque de vigilance sur le Storage : la base compte aujourd'hui **13 buckets** (`audio_briefings`, `avatars`, `coach-audio`, `coach-media`, `documents`, `founding-members`, `invoices`, `partner-media`, `pavillon-photos`, `pilot-media`, `session-media`, `telemetry_raw`, `vehicles`). La fonction edge `purge-deleted-accounts/index.ts` en liste huit dans `PREFIX_BUCKETS`, plus `coach-audio` traité à part. Le bucket **`founding-members`, créé le 21 juillet — soit deux jours après l'audit de purge — n'est dans aucune de ces listes**. Trois buckets sont publics : `avatars`, `coach-media`, `partner-media`.
-
-Enfin, l'en-tête du fichier `purge-deleted-accounts/index.ts` dans le dépôt dit encore « VERSION 5 (SEC-1) — PRÉPARÉE, NON DÉPLOYÉE » et « AUCUN cron ne l'invoque » ; c'est **périmé** — `SEC1_PROD_APPLY.md` et la base montrent que la v5 est déployée et le cron planifié. Idem pour `20260719_sec1_purge_sante.sql`, qui porte toujours « PRÉPARÉE, NON APPLIQUÉE » alors que la fonction est en production.
-
-### Droit à l'effacement et portabilité
-
-**Effacement (art. 17).** `src/services/accountService.ts` pose la demande côté application : il horodate `deletion_requested_at` et calcule `deletion_scheduled_at` à J+30 (`DELETION_GRACE_DAYS = 30`, aligné sur le §7.3 de la politique). Le service prend soin de faire `.select('id')` pour **vérifier qu'une ligne a bien été écrite**, plutôt que de laisser croire au pilote que sa suppression est planifiée alors que la RLS aurait bloqué. Passé le délai, le cron quotidien réveille l'edge, qui collecte les références Storage, supprime les objets de façon récursive et fail-closed, puis appelle `purge_user_data()` en une seule transaction, et enfin anonymise et bannit le compte Auth. L'idempotence repose sur le courriel placeholder `deleted-<id>@oxv.invalid`.
-
-**Portabilité (art. 20).** `src/services/dataExportService.ts` fait un export **100 % côté application** : il relit les lignes du pilote (la RLS l'y autorise déjà), assemble un JSON versionné et le passe à la feuille de partage native. Le périmètre est le profil, les séances, véhicules, objectifs, amitiés, analyses de séance et de segment, insights, tours, médias et partages. Deux exclusions sont documentées : les trames brutes (volume), disponibles sur demande à contact@oxvehicle.fr, et — ceci n'est **pas** documenté dans le fichier — **`biometry_raw` ne figure pas dans l'export**. L'export est honnête sur ses échecs : il porte un drapeau `partial` et une liste `failed_sections` plutôt que de masquer une lecture ratée.
-
-**Rétention annoncée au pilote** (`04_POLITIQUE_CONFIDENTIALITE.md`, §6) : compte inactif 3 ans, documents KYC 5 ans, trames 12 mois, analyses dérivées pendant la vie du compte, factures 10 ans, journaux techniques 12 mois. Je n'ai trouvé **aucune automatisation** pour la purge du compte inactif à 3 ans ni pour les documents KYC à 5 ans : ces deux durées sont annoncées mais non implémentées, et aucun cron ne les porte. La durée de 30 jours de la biométrie, elle, est implémentée mais **absente du tableau de la politique**.
-
-### Journal d'accès et audit
-
-Il existe un journal, `admin_audit`, en accès strictement admin (trois politiques, toutes `is_admin()`). Il contient **59 lignes** au moment de l'audit. Il est alimenté par trois chemins que j'ai vérifiés :
-
-- **Le changement de rôle**, par trigger. `0015_audit_user_role_change.sql` pose `trg_audit_user_role_change` sur `users`, qui écrit une entrée `role_changed` avec l'ancien rôle, le nouveau et `auth.uid()`. L'en-tête est explicite : avant, les promotions de rôle mutaient `users.role` « sans trace ». Trois entrées `role_changed` en production, du 7 au 20 juillet.
-- **L'accès du coach aux données du pilote**, à la demande de l'application. `log_coach_view(pilot, subtype, session)` est `SECURITY DEFINER`, vérifie d'abord que l'appelant est bien coach actif et consenti, et **ne lève pas d'erreur** s'il ne l'est pas — un no-op silencieux, pour ne pas révéler à un attaquant si un pilote existe. Deux entrées `coach_view_sessions` en production.
-- **Les fonctions edge**, qui y relaient leurs envois (`session_analysis_notified` 13 fois, `contact_ack_relayed` 7, `application_ack_relayed` 3, `inscription_accept_relayed` 3, `coach_annotation_notified` 3), plus 23 entrées `login`.
-
-Ce journal est un **journal d'actions sensibles, pas un journal d'accès exhaustif** : une lecture de données par un coach n'y apparaît que si l'application appelle explicitement `log_coach_view`. Rien au niveau de la base ne garantit qu'elle le fasse à chaque consultation. Par ailleurs, `admin_audit.user_id` est anonymisé (mis à NULL) par la purge de compte, et la matrice note que « la rétention globale du log est à borner (hors SEC-1) » — je n'ai trouvé aucune purge par âge sur cette table.
-
-### État de sécurité constaté
-
-Les advisors de sécurité Supabase, que j'ai relancés pendant cet état des lieux, renvoient **83 avertissements, dont zéro ERROR** — conforme à ce qu'annonce `SEC1_PROD_APPLY.md` §8. La répartition : 57 `authenticated_security_definer_function_executable`, 19 `anon_security_definer_function_executable`, 2 `public_bucket_allows_listing` (`coach-media` et `partner-media`, vitrines publiques du site, assumées), 1 `rls_policy_always_true` (`corporate_leads`, politique d'insertion sans condition — signalée comme « à traiter dans un lot dédié »), et 4 INFO `rls_enabled_no_policy` (les refus volontaires : `app_pairing_redeem_attempts`, `invoice_counters`, `founding_members`, `_backup_sessions_20260719`).
-
-Le registre des fonctions edge (`15_EDGES_REGISTRY.md`) inventorie 32 fonctions et cinq découvertes. Une seule a été corrigée depuis : `ritual_dispatcher`, dont la garde « décodait le payload du JWT sans vérifier la signature » — un jeton forgé passait — a été remplacée par un secret Vault (v23), et son job cron réécrit sans la clé `service_role` en clair (l'ancien jobid 3 a disparu, le nouveau est jobid 10 : je l'ai vérifié en base). Les autres restent ouvertes, notamment le fait que `compute-session-insights`, `compute-session-insights-v3` et `generate-debrief-ai` ne contrôlent pas la propriété du `sessionId` — tout utilisateur authentifié peut déclencher un calcul sur la séance d'autrui.
+- 37 fichiers d'écrans sous `app/(coach)/`, **26 528 lignes**.
+- 33 services `src/services/coach*.ts` + `pilotCoachBillingService.ts`,
+  **4 951 lignes**.
+- Soit environ 31 500 lignes de code pour un espace que personne n'atteint.
 
 ---
 
-### Ce que je n'ai pas pu vérifier
+### Comment on devient coach
 
-Je n'ai pas ouvert les 125 fichiers de migration : j'en ai lu une vingtaine intégralement ou en tête, et j'ai systématiquement recoupé leurs effets contre l'état réel de la base plutôt que contre leur texte. Les 90 migrations appliquées en production qui ne sont pas dans ce dépôt (215 appliquées contre 125 fichiers) proviennent du site oxvehicle.fr et me sont donc invisibles ; le schéma que je décris est celui que la base rapporte, pas celui que le dépôt raconte.
+#### Le chemin prévu
 
-Je n'ai pas lu les 322 politiques RLS une par une : j'en ai extrait et lu le texte exact pour dix tables représentatives (`users`, `telemetry_sessions`, `telemetry_frames`, `app_session_analyses`, `biometry_raw`, `admin_audit`, `documents`, `coach_profiles`, `coach_annotations`, `coach_messages`, `session_intentions`, `pilot_waiver_signatures`, `incident_reports`, `app_config`) et je n'ai compté que le nombre de politiques pour les autres. Je n'ai lu aucune des 39 politiques de `storage.objects` dans leur texte en base — ce que j'en dis vient de la migration `20260719124000_sec1_e_storage.sql` et de son annexe de rollback.
+1. Une candidature arrive par la table `demandes_inscription`, dont le type
+   énuméré `oxv_demande_type` accepte la valeur `coach`
+   (`pilote, pilote_pro, coach, partenaire`). **En production, cette table ne
+   contient que des demandes de type `pilote` : 3 acceptées, 1 en attente.
+   Zéro demande de type `coach`.**
+2. Un administrateur promeut le compte :
+   `C:\Users\Julie\OneDrive\Desktop\oxv-app\src\services\coachAdminService.ts`
+   ligne 249, `promoteToCoach()` — un simple `update users set role = 'coach'`.
+   Appelé depuis `app/(admin)/preparation.tsx` ligne 18.
+3. La base autorise cette écriture par le déclencheur
+   `guard_users_privileged_columns` : toute modification de `role` est refusée
+   sauf pour `service_role`/`postgres` ou pour un `is_admin()`.
+4. Un second déclencheur, `ensure_coach_permissions` (sur `INSERT` et `UPDATE`
+   de `users`), crée automatiquement la ligne `coach_permissions` avec
+   `can_view_pilots = true` dès que le rôle passe à `coach`.
+5. Un courriel d'invitation peut être envoyé via la fonction Edge
+   `send-coach-invitation` (statut `ACTIVE` en production), appelée par
+   `coachAdminService.sendCoachInvitation()` ligne 220.
+6. À la première connexion, un coach dont l'onboarding n'est pas complet est
+   envoyé vers `/(coach-onboarding)` (`app/index.tsx` lignes 80-82). Ce groupe
+   existe : `app/(coach-onboarding)/` contient `_layout.tsx`, `index.tsx`,
+   `mission.tsx`, `pacte.tsx` — un pacte de coaching distinct du pacte pilote.
 
-Je n'ai pas vérifié si les secrets `TEST_SUPABASE_*` de la CI RLS ont été posés dans GitHub : je n'ai pas d'accès aux secrets du dépôt, et le document `17_CI_RLS_SETUP.md` les présentait comme une action fondateur restant à faire au 19 juillet. Je ne sais donc pas si les 85 tests RLS tournent aujourd'hui.
+#### Le chemin inverse
 
-Je n'ai pas exécuté la suite de tests. Le chiffre de 1 846 tests verts m'a été donné dans le cadrage ; je ne l'ai pas reproduit.
-
-Je n'ai pas vérifié la présence effective des secrets côté fonctions edge (`EDGE_FUNCTIONS_INVOKE_SECRET`, `CRON_TOKEN`, etc.) — ce n'est pas lisible en lecture seule, comme le note déjà le registre des edges. Les gardes « fail-open » qu'il signale restent donc de gravité indéterminée. Je n'ai pas non plus appelé `list_edge_functions` : ce que je dis des versions déployées vient de `SEC1_PROD_APPLY.md`, pas d'une interrogation directe.
-
-Je n'ai pas lu les fichiers `05_DECHARGE_RESPONSABILITE.md`, `06_PACTE_DE_COACHING.md`, `03_CGV_PRESTATIONS_OXV.md` ni `02_CGU_APP_OXV_MIRROR.md`. Mes constats juridiques ne portent que sur la politique de confidentialité et le document de consentement biométrique.
-
-Enfin, je n'ai fait **aucune écriture** en base : toutes mes requêtes sont des lectures (`select`, `pg_get_functiondef`, catalogues système). Les volumes que je cite sont ceux du 26 juillet 2026.
-
----
-
-## Affichage, design system et accessibilité
-
-### Deux systèmes visuels coexistent, avec une frontière nette
-
-L'application ne possède pas un design system mais deux, et ils ne se mélangent pas. La séparation est vérifiable ligne à ligne : sur les 38 fichiers de l'espace pilote V2 (`app/(app2)/`), **38 importent `@/ui/v2` et zéro importe `@/theme/v2`**. Inversement, les six autres espaces — `app/(app)` (80 écrans), `app/(coach)` (36), `app/(admin)` (29), `app/(partner)` (8), `app/(pro)` (7), `app/(auth)` (2), auxquels s'ajoutent `app/(onboarding)` (6) et `app/(coach-onboarding)` (3), que le repérage initial ne mentionnait pas — importent **tous** `@/theme/v2` et **aucun** n'importe `@/ui/v2`. La seule exception dans tout le dépôt est `app/(coach)/debrief.tsx`, qui emprunte un composant unique au kit V2 (`BiometryStrip`, la bande cardio) parce qu'il n'en existe pas d'équivalent dans l'ancien langage.
-
-Deux points de contexte importants pour lire ce qui suit. D'abord, l'espace V2 n'est pas visible en production : `app/(app2)/_layout.tsx` commence par `if (!__DEV__) { return <Redirect href="/" />; }`, avec le commentaire « garde de build à retirer au lot L6 ». Le nouveau langage visuel est donc entièrement construit mais entièrement invisible aux pilotes tant que le lot L6 n'a pas basculé. Ensuite, le layout racine `app/_layout.tsx` peint le fond de toute l'application avec `theme.palette.night` (`#0B0B0D`, la couleur de l'ancien système), alors que les écrans V2 posent le leur en `#14151A` : les deux fonds diffèrent, mais chaque écran V2 pose le sien par-dessus, donc l'écart ne se voit pas — il n'apparaîtrait que sur un écran V2 qui oublierait son fond.
-
-L'application est en thème **sombre unique**. `app.json` déclare `userInterfaceStyle: "dark"`, `orientation: "portrait"`, splash et icône adaptative sur `#050505`, `supportsTablet: false` côté iOS. Le layout racine force `<StatusBar style="light" />`. Il n'existe aucun mode clair, aucun basculement, nulle part.
-
----
-
-### Le système pilote V2 — « DA Instrument » (`src/ui/v2/tokens.ts`)
-
-Le fichier fait 78 lignes et s'ouvre sur six règles d'usage présentées comme non négociables : un seul accent rouge par zone d'écran, l'or Heritage réservé au tier Heritage, les couleurs QDI réservées aux données (jamais un fond, jamais du chrome), un seul cadran par écran et jamais décoratif, les « glow » réservés aux ombres portées de traits Skia, et le `scrim` réservé aux photos comme seule exception autorisée à la règle anti-dégradé.
-
-#### Palette
-
-| Rôle | Jeton | Valeur | Emploi constaté dans le code |
-|---|---|---|---|
-| Fond d'écran | `bg.base` | `#14151A` | fond de tous les écrans (app2) |
-| Carte | `bg.card` | `#1B1D24` | cartes, bandeaux, feuille du `Sheet` |
-| Carte imbriquée | `bg.card2` | `#232630` | pastilles actives, pistes de barres, vignettes de repli |
-| Voile photo | `bg.scrim` | `rgba(10,11,14,0.72)` | dégradé de lisibilité sous texte sur photo (`HeroPhoto`) |
-| Filet de carte | `border.card` | `#2A2D38` | bordures de cartes, piste du cadran, grille du radar |
-| Filet appuyé | `border.strong` | `#3A3E4C` | graduations du cadran, poignée du sheet, pills |
-| Filet cheveu | `border.hairline` | `#22242C` | séparateurs de liste, haut de la barre d'onglets |
-| Accent | `accent` | `#C8102E` | rouge de marque : arc du cadran, cercle REC, millièmes du chrono |
-| Lumière d'accent | `accentGlow` | `rgba(200,16,46,0.35)` | flou sous un trait Skia uniquement |
-| Texte 1 | `text.hi` | `#E8E9ED` | titres, valeurs, chrono |
-| Texte 2 | `text.mid` | `#A9ADBB` | corps secondaire, icônes de ligne |
-| Texte 3 | `text.low` | `#9195A3` | sur-titres, sous-labels, unités, « — » d'absence |
-| Texte 4 | `text.dim` | `#787C8A` | inactifs, placeholders de saisie, illustration d'état vide |
-| Or Heritage | `heritage.gold` | `#C4A459` | trait de la bande Heritage, annotation coach, record |
-| Texte Heritage | `heritage.text` | `#E8DCB8` | libellé de la bande Heritage |
-| Lumière Heritage | `heritage.glow` | `rgba(196,164,89,0.30)` | ombre du trait doré, halo du chrono record |
-
-Les cinq couleurs QDI sont dans un bloc à part, `colors.qdi` : trajectoire `#60A5FA` (bleu), fluidité `#FFB703` (ambre), freinage `#E63946` (rouge de donnée), accélération `#4ADE80` (vert), régularité `#C084FC` (violet). L'ordre canonique des branches est verrouillé dans `src/ui/v2/vizMath.ts` par un `satisfies readonly (keyof typeof colors.qdi)[]` — le type ne peut pas dériver des jetons sans casser la compilation — et un test le vérifie.
-
-#### Typographie
-
-Le jeton `type` (exporté sous l'alias `typo` par le barrel `src/ui/v2/index.ts`) déclare six familles : `display: 'Michroma_400Regular'`, `body: 'Inter_400Regular'`, `bodyMedium: 'Inter_500Medium'`, `bodySemi: 'Inter_600SemiBold'`, `mono: 'JetBrainsMono_500Medium'`, `monoSemi: 'JetBrainsMono_600SemiBold'`.
-
-La répartition est nette dans le code : Michroma ne sert que de display, avec 60 occurrences de `typo.display` dans les écrans (app2) et le kit — titres de section, nom du pilote, libellé de la bande Heritage à 10 px avec 3 px d'interlettrage. Inter porte tout le texte courant. JetBrains Mono porte tout ce qui est chiffre ou étiquette d'instrument, systématiquement avec `fontVariant: ['tabular-nums']` pour que les colonnes ne dansent pas (`StatCell`, `ListRow`, `SessionCard`, `ChronoHero`, `RollingCounter`, `RecordFlash`).
-
-Il n'y a pas d'échelle de tailles centralisée dans les jetons V2 : chaque composant fixe sa taille en dur (11 px pour les eyebrows, 13 pour les labels de barre, 15 pour les libellés de ligne, 17 pour les titres de section, 22 pour les valeurs de `StatCell`, et 22/34/56 pour les trois tailles du `ChronoHero` via `CHRONO_HERO_FONT_SIZES` dans `uiLogic.ts`). C'est un écart assumé avec l'ancien système, qui, lui, possède un objet `fontSize`.
-
-#### Espacements, rayons, mouvement
-
-L'échelle d'espacement est `space = { xs: 4, sm: 8, md: 12, lg: 18, xl: 24, xxl: 36 }`. Les rayons sont `radius = { card: 18, cell: 12, hero: 24, pill: 999 }` — la carte à 18, la cellule à 12, le grand cadre (photo héros, haut du bottom-sheet) à 24, et la pilule circulaire. Les durées et ressorts sont `motion = { door: 260, stagger: 45, radar: 600, pulse: 1200, needle: 800, spring: { damping: 18, stiffness: 180 }, springSoft: { damping: 22, stiffness: 120 } }`.
+`demoteToPilot()` (`coachAdminService.ts` ligne 269) repasse le compte en
+`pilot`. Le commentaire du fichier affirme que « les assignations coach_pilots
+existantes deviennent dormantes ». **C'est inexact, et c'est important** — voir
+plus bas la section sur `is_coach_of`.
 
 ---
 
-### Le système précédent — coach, admin, partenaire, pro, pilote V1 (`src/theme/v2.ts`)
-
-Ce fichier de 166 lignes s'annonce en tête comme la « charte OXV — REFONTE V3 (2026-07-10) ». Il est structuré différemment : une `palette` de 25 entrées, un bloc `dataColors` séparé pour les cinq piliers, une rampe `speedHeat`, un bloc `roleColors`, un objet `fonts` de 13 entrées, une échelle `fontSize` de 10 paliers, `spacing`, `radius`, `motion`, `easing`, `hitSlop`, puis un bloc additif `lotProfilTokens` réservé aux écrans Profil et Panel de cartes.
-
-| Rôle | Jeton | Valeur |
-|---|---|---|
-| Fond | `night` | `#0B0B0D` |
-| Surfaces | `card` / `card2` / `surface3` | `#111113` / `#141416` / `#16161A` |
-| Textes (fort → faible) | `cream` / `creamSoft` / `secondary` / `creamMute` / `legend` / `eyebrow` / `faint` | `#F5F5F7` / `#E5E5E8` / `#C9C9CE` / `#9A9AA3` / `#8A8A92` / `#898991` / `#797981` |
-| Filets | `line` / `cardBorderProminent` / `separator` / `borderHair` | `#1E1E22` / `#232326` / `#17171A` / `#1A1A1D` |
-| Or chrono | `gold` | `#FFB703` |
-| Or Heritage | `heritageGold` | `#C4A459` |
-| Rouge de marque | `red` | `#C8102E` |
-| Accents coach | `coachAccent` / `coachAlert` | `#E23A4E` / `#E2685A` |
-| Vert | `green` | `#4FC98A` |
-
-Les couleurs de donnée y sont différentes de celles du kit V2 : trajectoire `#4F9DF7`, freinage `#F65B5B`, accélération `#4FC98A`, fluidité `#F2CE3B`, régularité `#A783F2`. Il existe en plus une rampe de chaleur vitesse `speedHeat = ['#4F9DF7', '#3FD0D8', '#4FC98A', '#F2CE3B']`, présentée en commentaire comme la source unique partagée par la carte, la heatmap et leurs légendes « pour qu'elles ne divergent jamais », et volontairement sans or ni rouge. Enfin, `roleColors` attribue une couleur d'identité par rôle : pilote blanc `#F5F5F7`, coach rouge de marque `#C8102E`, partenaire bleu `#5B8DEF`, admin cyan `#22D3EE`.
-
-Les échelles diffèrent aussi : `spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 22, xxl: 28 }`, `radius = { hud: 6, sm: 10, md: 12, lg: 14, xl: 18, pill: 999 }` — le rayon `hud: 6` est décrit comme « l'angle d'instrument des panneaux cockpit », plus sec que la carte web arrondie — et `motion = { fast: 160, base: 240, slow: 420, reveal: 640 }` avec une courbe `easing = [0.22, 1, 0.36, 1]`.
-
-Les composants de ce système vivent dans `src/ui/` (18 fichiers : `Screen`, `AppBar`, `Button`, `Card`, `Chip`, `Field`, `Fact`, `KpiCard`, `Segmented`, `SectionLabel`, `StatusPill`, `RoleBadge`, `AccountButton`, `DoctrineFooter`, `Cockpit`, `CockpitPanel`, `KingNumber`, `QdiBars`, `StateWrapper`) et dans `src/components/` (une trentaine, dont les barres de navigation `AppTabBar`, `CoachTabBar`, `ProTabBar`, `CoachRail`, les instruments `GaugeInstrument`, `MeterBar`, `ABTrace`, `EmptyState`, `CoachBand`, et les visualisations `QdiRadar`, `MiniQdiRadar`, `GForceBars`, `LapTimeline`, `LapScrubber`, `CircuitMap`).
-
-Deux pièces méritent d'être signalées parce qu'elles se comportent à part. `KingNumber` porte la règle « un seul chiffre par écran » : grand chiffre JetBrains Mono, tabular-nums, interlettrage serré, couleur héritée de la donnée qu'il représente, sans halo. Et `src/components/DebriefMirror.tsx` est un composant « vendored » qui déclare sa propre table de couleurs et ses propres polices en dur — c'est le **seul endroit du dépôt qui utilise encore Geist** (`Geist_600SemiBold` / `Geist_400Regular`).
-
-Enfin, la console coach est **adaptative en deux formats** (`app/(coach)/_layout.tsx`) : au-delà de `COACH_CONSOLE_MIN_WIDTH` la navigation passe par un rail vertical gauche de 198 px (`CoachRail`, item actif en `#E23A4E`), en dessous elle reste une barre d'onglets bas (`CoachTabBar`, actif `#E2685A`). Dans les deux cas la pile de navigation est identique.
-
----
-
-### La loi couleur du dépôt
-
-La loi est écrite à trois endroits : en tête de `src/ui/v2/tokens.ts`, dans les commentaires de `src/theme/v2.ts`, et dans un document normatif `docs/refonte-app/REGLES_COULEUR.md`. Elle se résume à quatre interdits.
-
-**L'or ne colore que de la donnée.** Dans l'ancien système, deux ors coexistent et ne se confondent pas : `gold #FFB703` est réservé au chrono, au record et au rythme (« jamais une donnée QDI »), et `heritageGold #C4A459` à l'offre Heritage. Dans le kit V2, il n'existe **qu'un seul or**, `heritage.gold #C4A459`. Son emploi réel, vérifié par recherche exhaustive, dépasse légèrement l'énoncé « tier Heritage exclusivement » du commentaire d'en-tête : on le trouve sur la bande Heritage (`HeritageBand`), sur la bande et les puces d'annotation coach (`TraceCircuit`, `bilanLogic.ts` ligne 277), sur le moment-clé « référence » (`bilanLogic.ts` ligne 164, dont le commentaire dit « l'or ne marque QUE le chrono/record »), sur la célébration de record (`RecordFlash`), et sur les circuits certifiés de l'écran Territoire. C'est cohérent avec l'esprit de la règle (chrono, record, Heritage, main du coach) mais plus large que sa lettre.
-
-**Le rouge de marque `#C8102E` ne colore que la marque et l'enregistrement.** Dans le kit V2 il s'appelle `accent` et sert à l'arc du cadran, au cercle plein du bouton REC, au bord du bouton central, et aux millièmes du chrono. La règle « un seul accent rouge par zone d'écran » est posée en tête des jetons mais n'est vérifiée par aucun test automatique — c'est une discipline de relecture.
-
-**Le freinage a son propre rouge**, `#E63946` dans le kit V2 et `#F65B5B` dans l'ancien, distinct du rouge de marque. La note de `REGLES_COULEUR.md` explicite pourquoi : convention télémétrique (freinage rouge, accélération verte), et surtout « la marge serrée reste en ambre, jamais en rouge » — l'app ne peint jamais un verdict de performance en rouge.
-
-**Une couleur QDI = une donnée, partout.** Le commentaire de `dataColors` le dit ainsi : « chaque branche a une couleur FIXE, utilisée PARTOUT où sa donnée apparaît (radar, barres, points sur la piste, chips, annotations) ». Dans `RadarQdi`, cette règle est appliquée avec une rigueur visible : la grille, les axes et le polygone sont en jetons neutres (`border.card`, `border.hairline`, `text.hi`), et la couleur QDI ne vit que sur les cinq sommets — les points de mesure.
-
-Trois observations factuelles sur l'état de cette loi.
-
-D'abord, **le document normatif a divergé du code**. `docs/refonte-app/REGLES_COULEUR.md` s'ouvre sur « Référence normative. Valeurs = `src/theme/v2.ts` », mais son dernier commit date du 05/07/2026 alors que `src/theme/v2.ts` a été modifié le 25/07/2026. Les valeurs ne correspondent plus : le document annonce `night #050505` (le code dit `#0B0B0D`), `cream #F8F9FA` (le code dit `#F5F5F7`), `faint #54545C` (le code dit `#797981`), et surtout il donne la trajectoire en ambre `#F2792B` alors que le code la donne en bleu `#4F9DF7`, en précisant que « le bleu n'est plus un pilier » — ce qui est l'inverse de ce que fait le code aujourd'hui. Quiconque lit ce document comme une référence prendra de mauvaises valeurs.
-
-Ensuite, **le même hexadécimal ne veut pas dire la même chose des deux côtés de la frontière**. `#FFB703` est le chrono/record dans l'espace coach et la **fluidité** dans l'espace pilote V2. Tant que les deux espaces ne se croisent pas à l'écran, l'ambiguïté est théorique ; elle deviendra réelle au moment de la bascule L6 si les deux palettes doivent cohabiter.
-
-Enfin, **les barres de navigation codent leurs couleurs en dur, hors des jetons, volontairement**. `src/components/AppTabBar.tsx` (pilote V1) l'assume en commentaire : « couleurs nav codées en dur ici pour rester indépendantes du thème — la nav ne porte jamais d'or ». Il en va de même pour `CoachTabBar` et `ProTabBar`. Conséquence mesurable : lors du relèvement de contraste du 25/07, `CoachTabBar` a été rattrapée (son onglet inactif suit désormais le jeton `faint`) mais `AppTabBar` **ne l'a pas été** — son onglet inactif reste sur la valeur figée `#54545C`.
-
-Côté rigueur d'application, le kit V2 est propre : **zéro couleur hexadécimale en dur dans `src/ui/v2/`** en dehors de `tokens.ts`. Dans les 38 fichiers de `app/(app2)`, on ne compte que **9 hexadécimaux en dur**, tous documentés et justifiés : sept fonds blancs `#FFFFFF` sous des QR codes (le commentaire dit « fond clair NÉCESSAIRE à la lecture optique du QR — pas un décor, un code ») et un noir pur `#000000` pour le fond de la visionneuse photo plein écran.
-
----
-
-### Les composants du kit V2 (`src/ui/v2/`)
-
-Le barrel `src/ui/v2/index.ts` expose dix-huit composants, cinq modules de logique pure et deux hooks. Voici ce que chacun fait, tel que vérifié dans son fichier.
-
-| Composant | Fichier | Rôle |
-|---|---|---|
-| `StateView` | `StateView.tsx` | les quatre états non nominaux de toute section : chargement (squelettes `Shimmer` aux formes réelles, jamais un spinner), vide (illustration SVG d'un tracé de circuit qui se dessine en boucle de 8 s), erreur (icône + message + bouton Réessayer), hors ligne (bandeau sobre, le dernier contenu connu reste affiché dessous) |
-| `SectionHeader` | `SectionHeader.tsx` | tête de section : sur-titre mono capitales, titre optionnel, compteur en pilule. Porte `accessibilityRole="header"` |
-| `Chip` | `Chip.tsx` | filtre ou catégorie en pilule ; actif = fond `bg.card2` + bord appuyé |
-| `ListRow` | `ListRow.tsx` | la ligne de liste universelle : icône, libellé, sous-libellé, valeur ou slot libre à droite, chevron si navigable, séparateur cheveu |
-| `StatCell` | `StatCell.tsx` | cellule de statistique : eyebrow mono capitales + valeur mono tabulaire |
-| `SessionCard` | `SessionCard.tsx` | carte de séance : vignette 56 px (blurhash, repli sur une tuile icône — jamais d'image stock), circuit, date, chrono au millième |
-| `ChronoHero` | `ChronoHero.tsx` | le chiffre roi chrono, trois tailles (22/34/56 px), permutation vers `RecordFlash` en cas de record sans saut de mise en page |
-| `RadarQdi` | `RadarQdi.tsx` | le radar 5 axes, rendu Skia, tracé progressif puis sommets qui claquent en cascade. Une branche absente est **masquée** (ni axe, ni point, ni label) |
-| `PillarBar` | `PillarBar.tsx` | barre de pilier, remplissage animé au premier viewport, valeur mono à droite ; absence → « — » et barre vide |
-| `TraceCircuit` | `TraceCircuit.tsx` | le tracé du circuit en Skia, trait de fond + trait lumineux qui se dessine, puces d'événements, bande d'annotation coach au bord or |
-| `BiometryStrip` | `BiometryStrip.tsx` | sparkline cardio dont le dernier point pulse au rythme réel de la série (période = 60/bpm), badge source et confiance |
-| `HeritageBand` | `HeritageBand.tsx` | la bande du tier Heritage : libellé capitales + un trait or dont la lumière est l'ombre du trait |
-| `SpringDot` | `SpringDot.tsx` | fragment Skia : la puce qui claque (rayon 0 → r en ressort), utilisée par le radar et le tracé |
-| `Dial` | `Dial.tsx` | le cadran instrument : course de 270°, aiguille en ressort pour l'instantané, arc Skia pour le cumul, valeur centrale en compteur roulant |
-| `CentralButton` | `CentralButton.tsx` | le bouton central de la barre, trois états (réserve, compte à rebours, REC), flottant de −8 px |
-| `Sheet` | `Sheet.tsx` | le bottom-sheet, écrit en Reanimated pur (le commentaire précise que `@gorhom/bottom-sheet` est absent du dépôt) |
-| `TabBar` | `TabBar.tsx` | la barre des quatre portes (miroir, data, club, vous) plus le bouton central |
-| `Photo` / `HeroPhoto` | `media/` | wrappers `expo-image` avec blurhash titane maison et parallaxe optionnelle |
-
-Cinq modules `.ts` purs portent toute la logique testable sans rendu : `uiLogic.ts` (conversion millisecondes → « 1:41.203 », formes de squelettes, géométrie de l'illustration d'état vide dont la longueur du tracé est **calculée et non estimée**), `vizMath.ts` (géométrie du radar, échantillonnage des sparklines, projection des centerlines), `shellLogic.ts` (géométrie du cadran, décisions de fermeture du sheet, table des portes), `centralButtonLogic.ts`, `motionMath.ts`. Ce découpage est ce qui permet de tester le design system sans simulateur.
-
-L'iconographie est intégralement maison : `icons/registry.ts` contient **20 icônes** dessinées à la main sur une grille 24×24, sous forme de listes d'attributs `d` uniquement — aucune couleur, aucun style dans le registre. Le composant `OxvIcon` applique le trait (1,5 px, terminaisons rondes) et la couleur. Une seule icône est pleine, `rec`. Un test (`iconRegistry.test.ts`) vérifie les 20 noms, la non-vacuité des chemins, l'absence de couleur dans le registre, la validité géométrique sur la grille 0–24 et le fait que `rec` soit la seule pleine.
-
-Un motif se répète dans tout le kit et mérite d'être nommé, parce qu'il est visible à l'écran : **l'absence ne devient jamais un zéro**. `Dial` accepte `value: number | null` et affiche « — » avec l'aiguille au repos ; `PillarBar` affiche « — » et une barre vide ; `RadarQdi` masque la branche non mesurée ; `StatCell` annonce « non mesuré » aux lecteurs d'écran. Le commentaire de `Dial` le formule : « une valeur absente ne devient JAMAIS un zéro d'apparence mesurée ».
-
----
-
-### Le mouvement
-
-Onze primitives vivent dans `src/ui/v2/motion/`, plus la logique pure `motionMath.ts`.
-
-| Primitive | Ce qu'elle fait |
-|---|---|
-| `useDoorTransition` | l'entrée d'écran, dite « la porte » : fondu + translation de 12 px sur 260 ms. Utilisée dans **37 des 38 fichiers** de `app/(app2)` |
-| `Stagger` / `staggerEntering(i)` | entrée en cascade des enfants (45 ms de pas), avec un délai plafonné pour les longues listes |
-| `useCondensingHeader` | le grand titre s'efface au-delà de 64 px de défilement et une barre condensée prend le relais |
-| `HeroMorph` | la carte tapée « voyage » vers l'écran de détail : la géométrie est capturée avant navigation, périmée au bout de 2 s, et tout chemin dégradé retombe sur la porte |
-| `PullToRefreshDial` | tirer la liste fait tourner une aiguille de cadran ; geste `Pan` à activation manuelle, avec la justification écrite du choix (RefreshControl n'est pas stylisable, l'overscroll n'existe pas sur Android) |
-| `RollingCounter` | chiffres d'odomètre qui roulent, séparateurs statiques, millièmes en couleur accent |
-| `Shimmer` | squelette de chargement balayé par une lumière froide ; remplace tout spinner |
-| `RecordFlash` | célébration de record : 900 ms, deux pulses blanc → or, halo bref, un haptic. « Pas de confetti, jamais » |
-| `NeedleSweep` | l'aiguille rejoint son angle en ressort, avec l'overshoot mécanique |
-| `PressScale` | le wrapper Pressable universel : contraction à 0,97 à l'appui, retour en ressort |
-| `GlowStroke` | fragment Skia à deux passes : le trait flouté dessous, le trait net dessus |
-
-Trois technologies de rendu se partagent le travail, et la ligne de partage est claire. **Reanimated 3.10.1** porte toutes les animations, toujours sur le thread UI. **Skia 1.2.3** ne sert qu'aux surfaces où le trait doit être lumineux ou trimé : dans le kit V2 il n'est employé que par `Dial`, `RadarQdi`, `TraceCircuit`, `BiometryStrip`, `SpringDot`, `HeritageBand` et `GlowStroke` ; côté ancien système il n'y a que `DataLabCanvas` et `PerfChart`, tous deux marqués « BUILD-PENDING » et chargés derrière un `require()` gardé dans `app/(app)/data-lab-canvas.tsx` parce que Skia est un module natif qui ne tourne pas sous Expo Go. **react-native-svg** fait tout le reste et reste de loin le plus répandu : 79 fichiers l'importent, dont toute l'iconographie, les radars de l'ancien système et les cartes de circuit.
-
-Le vocabulaire tactile est fermé : `src/ui/v2/haptics.ts` expose un seul point d'entrée `haptic(kind)` avec cinq gestes (`tap` = sélection, `arm` = impact lourd pour armer la capture, `record` = notification de succès, `doorSnap` = impact léger, `warn` = notification d'avertissement). Deux coupe-circuits sont câblés : `isSilenced()` (silence en piste, Principe 3 — aucune vibration pendant que le véhicule roule) et `isExpoGo()`.
-
-Le réglage « animations réduites » est **entièrement piloté par le système d'exploitation ; il n'existe aucun réglage interne à l'application** — j'ai lu `app/(app2)/vous/reglages.tsx`, qui compte quatre groupes de réglages (notifications, IA, partage coach, cardio, données) et aucune entrée relative aux animations. Deux implémentations coexistent : `src/components/motion/useReduceMotion.ts` (ancien, asynchrone, via `AccessibilityInfo.isReduceMotionEnabled()`, avec écoute des changements) et `src/ui/v2/motion/useReduceMotion.ts` (kit V2, **synchrone**, via `useReducedMotion()` de Reanimated). Le commentaire du second explique le remplacement : l'ancien répond `false` pendant les premières frames, donc toute l'entrée d'un écran jouait avant de claquer à l'état final, ce qui ne tient pas WCAG 2.3.3 au premier rendu. Le prix est documenté : la version Reanimated ne réagit pas à un changement de réglage en cours de session.
-
-Le respect du réglage est réel et systématique dans le kit V2 : `Dial` place l'arc directement, `RadarQdi` rend l'état final sans claquement ni haptic, `CentralButton` fige son point, `StateView` rend l'illustration complète sans boucle, `Sheet` apparaît et disparaît sans animation mais **conserve le geste** (manipulation directe, pas décoration), `PressScale` supprime l'échelle mais **garde l'haptic** (retour utile). 24 fichiers de `app/(app2)` consomment `useReduceMotion` directement, en plus de ce que le kit gère seul.
-
----
-
-### L'accessibilité : l'état après la passe du 25/07
-
-Deux commits du 25/07/2026 constituent la passe.
-
-**`5685704` — passe accessibilité des écrans pilote (app2) + direct coach.** 37 fichiers modifiés, +918 / −161 lignes. Le message de commit indique un audit neuf d'environ 40 écrans, 81 constats relevés, « l'essentiel appliqué » — la formulation implique donc explicitement qu'une partie ne l'a pas été, et je n'ai trouvé **aucun rapport détaillant les constats restants** sur disque (le commit note lui-même que le rapport précédent des 47 constats « n'existait plus sur disque »). Le périmètre est strictement `app/(app2)/*`, plus `app/(coach)/en-direct.tsx` et `app/(coach)/en-direct/[sessionId].tsx`, plus quatre fichiers du kit corrigés à la source : `ListRow`, `StatCell`, `Chip`, `PressScale`. Les espaces `(app)`, `(admin)`, `(partner)`, `(pro)`, `(auth)` et les deux onboarding **n'ont pas été touchés par cette passe**.
-
-Le travail effectué, tel que lisible dans le code : regroupement des données lues en miettes (`ListRow` compose désormais son libellé par défaut à partir de ce que la ligne montre réellement — label, sous-label, valeur — parce que `PressScale` aplatit ses enfants et que le sous-label restait muet) ; états annoncés (`Chip` expose `selected`, et devient un simple `text` sans rôle bouton quand elle n'a pas d'`onPress`, parce qu'« annoncer bouton sur un élément inerte est un mensonge d'interface ») ; décor Skia masqué (`Shimmer` et l'illustration d'état vide portent `accessibilityElementsHidden` et `importantForAccessibility="no-hide-descendants"`) ; titres de section ; cibles tactiles élargies.
-
-Le message de commit consigne aussi que **la vérification a attrapé deux régressions tactiles introduites par la passe elle-même**, toutes deux dues au même piège d'API (`PressScale` pose le `style` reçu sur sa vue interne, pas sur le `Pressable` externe qui porte le `hitSlop`, donc les marges vivent à l'intérieur de la cible et un hitSlop symétrique fait se recouvrir des zones voisines). La plus grave : sur l'écran de consentement biométrique, « Refuser » mordait sur les derniers pixels d'« Accorder », de sorte qu'appuyer sur le bas d'« Accorder » révoquait le consentement. C'est corrigé, et la répartition des styles est désormais documentée dans le contrat d'API de `PressScale` (`containerStyle` = layout sur le Pressable externe, `style` = visuel sur la vue animée interne).
-
-**`0222d94` — relèvement des gris faibles.** Quatre valeurs de jeton ont bougé, mesurées avant modification sur le pire fond de chaque palette :
-
-| Palette | Jeton | Avant | Après | Contraste avant → après |
-|---|---|---|---|---|
-| Pilote (app2) | `text.low` | `#7A7E8C` | `#9195A3` | 3,73 → 5,05 |
-| Pilote (app2) | `text.dim` | `#5A5E6C` | `#787C8A` | 2,34 → 3,63 |
-| Coach | `eyebrow` | `#6E6E76` | `#898991` | 3,10 → 4,52 |
-| Coach | `faint` | `#55555C` | `#797981` | 2,12 → 3,63 |
-
-La teinte a été conservée, seule la luminance a été relevée (le commentaire précise les relations maintenues : `R = G−4, B = G+14` côté pilote, `R = G, B = G+8` côté coach). `dim` reste assumé sous 4,5 avec une justification explicite : le porter plus haut le collerait à `low` et effacerait le palier — « quatre gris lisibles mais indistinguables ne hiérarchisent plus rien ». Ce jeton porte 61 usages dans (app2) et sert notamment de `placeholderTextColor` sur quatre écrans de saisie.
-
-#### Ce qui est verrouillé par un test
-
-Le verrou est `src/theme/__tests__/contrastTokens.test.ts` (119 lignes, **8 tests**, tous verts). Il recalcule la luminance relative WCAG 2.1 et le rapport de contraste, puis vérifie, pour chaque palette, le pire contraste de chaque gris sur **l'ensemble des fonds où il peut se poser** : `bg.base`, `bg.card` et `bg.card2` côté pilote ; `night`, `card`, `card2`, `surface3` et `cardBorderProminent` côté coach.
-
-Il impose quatre choses par palette : que les gris forts tiennent le seuil texte AA de 4,5 ; que `low` (pilote) et `eyebrow` (coach) tiennent aussi 4,5 parce qu'ils portent du texte réel ; que `dim` et `faint` tiennent au moins le seuil 3,0 des grands textes et éléments d'interface ; et — c'est l'idée la moins évidente et la plus utile — que **la hiérarchie reste strictement décroissante**. Sans cet invariant, relever un gris pour l'accessibilité pourrait aplatir les paliers et faire perdre à l'écran sa lecture.
-
-Ce que le test **ne fait pas** est écrit noir sur blanc dans son en-tête : il ne juge pas les couleurs sémantiques (or du chrono, rouge de marque, teintes QDI, Heritage), parce que « leur contraste se traite au cas par cas, à la taille et au poids réels du texte concerné » et que « les toucher ici serait déplacer un arbitrage de doctrine dans un test d'accessibilité ».
-
-J'ai recalculé indépendamment, avec la même formule, le contraste des couleurs sémantiques sur les fonds réels. Toutes les couleurs QDI passent confortablement (de 3,62 pour le freinage `#E63946` sur `bg.card2` — le plus bas — à 8,66 pour l'accélération), l'or Heritage est à 6,33–7,64, le texte Heritage à 11–13. **Une seule couleur sémantique est basse : le rouge de marque `#C8102E`, à 3,10 sur `bg.base` et 2,57 sur `bg.card2`.** Ce n'est pas gênant là où il sert de bordure ou de fond (le bouton REC est un cercle plein, l'arc du cadran est un trait épais), mais il sert aussi de **couleur de texte** : `RollingCounter` peint les millièmes du chrono avec `colors.accent` quand `accentMillis` est actif, ce que fait `ChronoHero` par défaut. Les trois derniers chiffres du chrono héros sont donc à environ 3,1:1. C'est un fait, pas un verdict : la taille (34 à 56 px) place ce texte dans la catégorie « grand texte », dont le seuil AA est 3,0.
-
-Deux copies figées de l'ancien gris ont été rattrapées lors de ce commit (`CoachTabBar`, et une assertion de test qui pointait un hexadécimal au lieu d'un jeton). **`AppTabBar` n'a pas été rattrapée** : son onglet inactif reste sur `#54545C` codé en dur, que je mesure à **2,43–2,72 selon le fond** — donc sous le seuil 3,0, et hors de portée du test puisque ce n'est pas un jeton.
-
-#### Les autres garde-fous en place
-
-Un scanner statique, `scripts/check-accessibility.ts`, signale tout `<Pressable>` ayant un `onPress` mais pas d'`accessibilityRole`, avec une échappatoire annotée `// accessibility: not-applicable`. Je l'ai exécuté : **222 fichiers `.tsx` scannés dans `app/`, zéro manquement**. Il tourne en CI en mode `--strict` (`.github/workflows/check.yml`), c'est-à-dire bloquant, aux côtés du typecheck, d'ESLint, de Prettier, de la suite Jest complète et du scanner doctrinal des verbes interdits. Il faut connaître ses limites : il ne regarde que la balise `<Pressable>` littérale, donc il ne voit pas les composants dérivés — mais dans ce dépôt cela suffit, puisque `PressScale` pose lui-même `accessibilityRole="button"` par défaut, et qu'il y a **zéro `TouchableOpacity` dans tout `app/`** contre 298 `<Pressable>`.
-
-Le dénombrement des attributs d'accessibilité par espace donne l'image suivante (à lire avec précaution : le kit V2 porte les rôles à la source, donc les écrans (app2) en déclarent moins sans être moins couverts) :
-
-| Espace | Fichiers | `accessibilityLabel` | `accessibilityRole` | `accessibilityState` | `role="header"` |
-|---|---|---|---|---|---|
-| `(app2)` | 38 | 233 | 65 | 18 | 45 |
-| `(app)` | 83 | 238 | 242 | 44 | 58 |
-| `(coach)` | 37 | 131 | 161 | 33 | 60 |
-| `(admin)` | 30 | 49 | 68 | 18 | 25 |
-| `(partner)` | 9 | 17 | 19 | 4 | 12 |
-| `(pro)` | 8 | 23 | 16 | 5 | 7 |
-| `(auth)` | 3 | 2 | 2 | 0 | 0 |
-
-Le masquage du décor est en place partout : 10 `accessibilityElementsHidden` dans (app2), 55 dans (app), 36 dans (coach). Les APIs plus fines sont employées là où il faut : `accessibilityViewIsModal` et `onAccessibilityEscape` sur le `Sheet` (avec une poignée fermante pressable, parce que le backdrop est inatteignable derrière une vue modale et que VoiceOver doit trouver une sortie **dans** la feuille), `accessibilityActions` sur `PullToRefreshDial` (le chemin non gestuel d'une action qui n'existe qu'au geste) et sur le scrubber de `replay.tsx`, `accessibilityLiveRegion` sur une dizaine de messages d'erreur.
-
-Le redimensionnement du texte système est respecté par défaut : **`allowFontScaling={false}` n'apparaît que 7 fois dans tout le dépôt**, exclusivement là où la géométrie casserait — la valeur centrale et le libellé du `Dial`, les cellules du `RollingCounter`, le `RecordFlash`, le libellé du bouton central, et le `KingNumber` de l'ancien système. Tout le reste du texte grossit avec le réglage système.
-
-#### Ce qui reste ouvert, factuellement
-
-Les cinq espaces non pilotes (`(app)`, `(admin)`, `(partner)`, `(pro)`, `(auth)`) et les deux onboarding n'ont pas reçu de passe d'accessibilité depuis les commits « polish » de juin 2026 ; la passe du 25/07 ne les a pas couverts. L'onglet inactif de `AppTabBar` est sous le seuil de contraste et hors du verrou de test. Les couleurs sémantiques sont, par décision explicite, hors du test — l'arbitrage de leur contraste vous revient. Enfin, la part des 81 constats du 25/07 qui n'a pas été appliquée n'est documentée nulle part que j'aie trouvé.
-
----
-
-### Les polices et leur chargement
-
-Tout passe par un point unique, `src/theme/fonts.ts`, qui expose `useAppFonts()` — un simple `useFonts()` d'`expo-font` chargeant **29 graisses issues de 9 familles** :
-
-| Famille | Graisses chargées | Statut réel |
-|---|---|---|
-| Hanken Grotesk | 7 (300, 400, 400 italique, 500, 600, 700, 800) | active — texte et titres de l'ancien système |
-| JetBrains Mono | 4 (400, 500, 600, 700) | active — données, chiffres, eyebrows, dans **les deux** systèmes |
-| Inter | 4 (400, 400 italique, 500, 600) | active — corps du kit V2 et lot Profil |
-| Syncopate | 2 (400, 700) | active — display des écrans Profil et Panel de cartes |
-| Michroma | 1 (400) | active — display de tous les écrans (app2) |
-| Geist | 5 (300 à 700) | **une seule utilisation vivante** : `src/components/DebriefMirror.tsx` |
-| Geist Mono | 2 (400, 500) | **aucune utilisation vivante trouvée** |
-| Rajdhani | 2 (500, 600) | **aucune utilisation vivante** — seule mention restante : un commentaire disant « plus de Rajdhani » |
-| Instrument Serif | 2 (400, 400 italique) | **aucune utilisation vivante** |
-
-Les cinq dernières lignes du fichier les gardent explicitement « en secours (anciens tokens éventuels non migrés) ». En pratique, **six graisses sur 29 (Geist Mono, Rajdhani, Instrument Serif) ne sont référencées nulle part** dans le code applicatif, et cinq autres (Geist) ne servent qu'à un seul composant.
-
-Le chargement est bloquant et lié au splash : `app/_layout.tsx` appelle `SplashScreen.preventAutoHideAsync()` au module, puis `if (!fontsLoaded && !fontError) return null;` — l'application ne rend rien tant que les polices ne sont pas prêtes. Le splash n'est masqué que lorsque les polices sont chargées **et** que l'état d'authentification est résolu. Le commentaire explique l'intention : éviter un flash en police système. Notez que ce commentaire mentionne encore « avant bascule sur Geist / Geist Mono », vestige de deux refontes en arrière.
-
----
-
-### Ce que je n'ai pas pu vérifier
-
-Je n'ai **rien vu s'afficher**. Aucun simulateur, aucun appareil, aucune capture n'a été produit dans cette session : tout ce qui précède est lu dans les fichiers, calculé, ou mesuré par exécution de tests et de scanners en ligne de commande. Concrètement, je ne peux affirmer ni que le flou iOS de la barre d'onglets et du `Sheet` rend correctement, ni que le repli opaque Android est visuellement équivalent, ni que les gestes (tirer pour rafraîchir, fermeture du sheet au doigt, morphing carte → écran) se comportent comme leur code le décrit, ni que VoiceOver et TalkBack énoncent réellement les libellés que le code leur passe. Le rapport `roadmap/rapports/v2-l0.md` signale d'ailleurs le même angle mort et désigne l'écran `app/(app2)/dev-galerie.tsx` (accessible en `__DEV__` uniquement) comme la porte de validation visuelle prévue sur build de développement.
-
-Je n'ai pas lu les 222 écrans un par un. J'ai lu intégralement les deux fichiers de jetons, les 18 composants du kit V2, ses 11 primitives de mouvement, ses modules de logique pure, le test de contraste, les deux scanners, le workflow de CI, les layouts racine, (app2) et (coach), et j'ai échantillonné l'ancien kit (`src/ui/`, en-têtes des 14 composants principaux) ainsi que quelques écrans. Les affirmations sur les espaces `(app)`, `(admin)`, `(partner)` et `(pro)` reposent donc sur des comptages automatisés et sur la lecture de leurs barres de navigation et de leurs en-têtes de composants, pas sur une revue écran par écran.
-
-Je n'ai pas exécuté la suite Jest complète : j'ai exécuté les 8 suites couvrant `src/theme` et `src/ui/v2`, soit **153 tests, tous verts**. Le total de 1846 tests évoqué en repère n'a pas été revérifié par moi. Enfin, je n'ai pas ouvert `docs/refonte-app/DESIGN_SYSTEM.md`, `docs/refonte-app/04_DESIGN_CANON.md`, `docs/refonte-app/HANDOFF_CLAUDE_DESIGN.md` ni `docs/screens/01_DESIGN_TOKENS.md` : je les ai seulement datés par leur dernier commit (respectivement 25/06/2026 et 07/06/2026 pour les deux que j'ai datés), ce qui suffit à établir qu'ils sont antérieurs au programme V2 du 18/07 et au relèvement de contraste du 25/07, mais pas à décrire ce qu'ils contiennent.
-
----
-
-## Dette, angles morts et ce qui ne marche pas
-
-Cette section ne juge pas le code : elle constate. Chaque affirmation a été vérifiée en ouvrant le fichier cité, en exécutant la commande citée, ou en interrogeant la base de production. Ce que je n'ai pas pu vérifier est listé à la fin.
-
----
-
-### 1. Les deux arbres pilote — et le fait que le neuf n'est pas celui qui tourne
-
-C'est le point le plus lourd de l'état des lieux, et il est plus sévère qu'une simple coexistence.
-
-**L'arbre V2 est inaccessible en production.** Le fichier `app/(app2)/_layout.tsx`, lignes 66 à 68, contient une garde de build explicite :
-
-```tsx
-if (!__DEV__) {
-  return <Redirect href="/" />;
-}
+### Le binôme coach-pilote
+
+#### La table
+
+`coach_pilots` porte la relation. Colonnes réelles en production :
+
+| colonne | type | défaut |
+| --- | --- | --- |
+| `id` | uuid | `gen_random_uuid()` |
+| `coach_id` | uuid | — |
+| `pilot_id` | uuid | — |
+| `active` | boolean | `true` |
+| `notes` | text | null |
+| `pilot_consent_at` | timestamptz | null |
+| `coach_consent_at` | timestamptz | null |
+| `initiated_by` | `affiliation_initiator` (`coach`/`pilot`) | `'coach'` |
+| `status` | `affiliation_status` (`pending`/`active`/`declined`/`ended`) | `'pending'` |
+| `level` | `coach_access_level` | `'lecture_simple'` |
+| `live_sharing_at` | timestamptz | null |
+| `affiliation_price_eur` | integer | null |
+| `created_at`, `created_by` | — | — |
+
+Une contrainte `coach_pilots_check` interdit `coach_id = pilot_id`.
+
+#### Le contenu réel en production
+
+Une seule ligne :
+
+| champ | valeur |
+| --- | --- |
+| `coach_id` | `6edd7f5c-…` — compte dont le rôle est **`pilot`** aujourd'hui |
+| `pilot_id` | `aad205ed-…` — rôle `pilot` |
+| `status` | **`pending`** |
+| `level` | **`programme`** |
+| `initiated_by` | `coach` |
+| `active` | `true` |
+| `pilot_consent_at` | 2026-06-28 |
+| `coach_consent_at` | **null** |
+| `live_sharing_at` | **null** |
+| `created_at` | 2026-06-22 |
+
+Autrement dit : un seul binôme, dont le « coach » n'est plus coach, resté au
+statut `pending`, sans partage live.
+
+#### Qui peut créer un binôme
+
+La base prévoit deux portes (policies `pg_policies` sur `coach_pilots`) :
+
+- `coach_pilots_insert_by_coach` : `coach_id = auth.uid() AND is_coach() AND
+  initiated_by = 'coach'`.
+- `coach_pilots_insert_by_pilot` : `pilot_id = auth.uid() AND initiated_by = 'pilot'`.
+- `coach_pilots_admin_all` : tout pour `is_admin()`.
+
+**Dans le code de l'application, il n'existe qu'un seul `insert` sur
+`coach_pilots`** : `coachAdminService.ts` ligne 167, `assignPilotToCoach()`,
+réservé à l'administrateur. Recherche exhaustive sur `src/` et `app/` : aucun
+autre écrivain. Les deux policies « par le coach » et « par le pilote » ne sont
+donc empruntées par aucun écran. Un coach ne peut pas ajouter un pilote depuis
+son espace ; un pilote ne peut pas s'affilier à un coach depuis le sien.
+
+`assignPilotToCoach()` n'écrit ni `status` ni `initiated_by` ni
+`affiliation_price_eur` : les valeurs par défaut s'appliquent (`pending`,
+`coach`). Le commentaire du code (lignes 171-173) est explicite : le
+consentement pilote reste à null volontairement.
+
+#### Le consentement du pilote
+
+Côté pilote, tout passe par
+`C:\Users\Julie\OneDrive\Desktop\oxv-app\src\services\pilotConsentService.ts` :
+
+- `listMyCoaches()` ligne 75 — lit `coach_pilots` filtré par RLS
+  (`coach_pilots_select_own_pilot`).
+- `giveConsent(assignmentId, level)` ligne 117 — écrit `pilot_consent_at = now()`
+  **et** le niveau choisi, puis appelle la fonction Edge
+  `notify-coach-consent-received` (statut `ACTIVE` en production).
+- `setConsentLevel()` ligne 164 — change le niveau sans rompre le binôme.
+- `setLiveSharing()` ligne 182 — horodate ou efface `live_sharing_at`.
+- `revokeConsent()` ligne 202 — remet `pilot_consent_at` à null. Le coach cesse
+  immédiatement de voir quoi que ce soit, puisque `is_coach_of` exige cette
+  colonne non nulle.
+
+Deux écrans pilote consomment ce service :
+`app/(app)/mon-coach.tsx` (arbre v1) et `app/(app2)/club/coaching.tsx` via
+`src/features/club/useCoaching.ts` (arbre v2, celui où arrive le pilote
+aujourd'hui — `app/index.tsx` ligne 107 redirige vers `/(app2)`).
+
+Il existe aussi un chemin administrateur de secours,
+`forcePilotConsent()` (`coachAdminService.ts` ligne 287), documenté comme
+réservé au consentement recueilli hors application (papier signé).
+
+#### Deux colonnes que personne n'écrit
+
+Recherche exhaustive dans `src/` et `app/` : **aucune ligne de code n'écrit
+jamais `coach_pilots.status = 'active'`, ni `coach_pilots.coach_consent_at`.**
+Ces deux champs restent donc à leur valeur initiale (`pending`, `null`) pour
+toujours, quel que soit le parcours.
+
+Cela n'a aucune conséquence sur la lecture après séance, parce que la fonction
+de sécurité `is_coach_of(pilot_uuid)` ne regarde pas `status` :
+
+```
+coach_id = auth.uid() AND pilot_id = … AND active = true
+  AND pilot_consent_at IS NOT NULL
 ```
 
-Tout le groupe `(app2)` — les 38 fichiers, soit 36 écrans de production plus le layout et la galerie de développement — redirige vers la racine dès que l'application n'est pas en mode développeur. Deep links compris. Le commentaire au-dessus le dit sans détour : « le groupe est réellement orphelin en production ». Le retrait de cette garde est le lot L6.
+Cela a en revanche une conséquence **totale sur le direct** — détaillée plus bas.
 
-**Le routeur racine envoie le pilote sur la V1.** Dans `app/index.tsx`, ligne 103, la dernière instruction du routage par rôle est `return <Redirect href="/(app)" />`. Un pilote authentifié et onboardé arrive donc sur l'arbre V1, jamais sur `(app2)`.
+#### Une faille d'autorisation à connaître
 
-**Aucun chemin de navigation ne relie les deux arbres.** Une recherche de la chaîne `app2` dans tout `app/(app)/` ne rend qu'une seule occurrence, et c'est un commentaire (`app/(app)/insight/[reading].tsx`, ligne 136). Le seul lien `__DEV__` posé sur l'accueil V1 (`app/(app)/index.tsx`, ligne 196) mène à `/(app)/debug-capture`, pas à la V2. Aucun fichier du dépôt ne pointe vers `/(app2)/dev-galerie` — l'écran de validation fondateur n'a pas de porte d'entrée écrite ; on n'y accède qu'en tapant l'URL à la main en développement.
+`is_coach_of()` ne vérifie pas non plus que l'appelant a le rôle `coach`. Elle
+ne regarde que la table `coach_pilots`. Le garde de rôle vit uniquement dans
+l'interface (`app/(coach)/_layout.tsx` ligne 33).
 
-**Ce que ça coûte aujourd'hui.**
+Conséquence factuelle : le compte `6edd7f5c-…`, rétrogradé en `pilot` le
+20 juillet, **satisfait toujours `is_coach_of('aad205ed-…')`** et conserve donc,
+au niveau de la base, l'accès en lecture aux séances, tours, bilans, notes
+partagées et vues associées de ce pilote. Il ne peut plus ouvrir les écrans
+coach, mais l'API le laisserait lire. Le commentaire de `demoteToPilot()` qui
+annonce des assignations « dormantes » ne décrit pas le comportement réel — il
+faudrait `active = false` pour cela, et la fonction ne le fait pas.
 
-| Arbre | Fichiers `.tsx` | Écrans réels | Lignes |
-|---|---:|---:|---:|
-| `app/(app)` — V1, celui qui tourne | 83 | 80 (+ 3 layouts) | 38 274 |
-| `app/(app2)` — V2, gelée hors `__DEV__` | 38 | 36 (+ layout + galerie) | 27 666 |
-
-Soit près de 66 000 lignes d'écrans pilote maintenues en parallèle. Le coût ne s'arrête pas au volume :
-
-- **Les deep links de notification sont câblés sur la V1 uniquement.** Dans `app/_layout.tsx`, lignes 99 à 143, les huit branches de routage (`debrief`, `session_reminder`, `media_ready`, `coach_annotation`, `session_analyzed`, `coach_assigned`, `friend_request`, `friend_accepted`) pointent toutes vers `/(app)/…`. Une bascule L6 casserait tous les taps de notification tant que cette table n'est pas réécrite — le prompt L6 le prévoit, mais le travail n'est pas fait.
-- **Deux systèmes de tokens visuels cohabitent.** `app/(app)`, `app/(coach)`, `app/(admin)`, `app/(partner)`, `app/(pro)` importent `@/theme/v2` ; `app/(app2)` importe `@/ui/v2/tokens`. Le layout racine lui-même (`app/_layout.tsx`, ligne 25) charge `@/theme/v2` — l'ancien langage est donc le langage du châssis.
-- **Le kit V1 (`src/ui`, 68 fichiers) et le kit V2 (`src/ui/v2`, 48 fichiers) sont maintenus tous les deux.**
-
-**La liste de suppression n'existe pas.** Le prompt de clôture (`design-retours/programme-v2/PROMPT_CLAUDE_CODE_LOTS_CLOTURE.md`, point 3 du lot L6) renvoie à « la liste §9 du dossier maître ». Or le §9 de `design-retours/programme-v2/OXV_APP_V2_DOSSIER_MAITRE.md` (ligne 234) s'intitule « BACKEND — RÉCAPITULATIF DES NOUVEAUTÉS » : c'est un tableau de tables et de RLS, pas une liste d'écrans à supprimer. Le §11 affirme bien qu'un mapping v1→v2 a été « contrôlé ligne à ligne » (14/14 Miroir, 12/12 Data Lab, etc.), mais ce mapping n'est pas écrit dans le dépôt sous forme de table exploitable. Le jour du L6, la liste sera à reconstituer.
-
-**Les gates du L6 ne sont pas franchies.** Le même document les énonce : validation fondateur sur device des lots L0 à L5, smoke test terrain complet en V2, et taux de sessions sans crash ≥ 99,5 % sur deux semaines de build interne. Aucun rapport `roadmap/rapports/v2-l6.md` n'existe (`roadmap/rapports/` contient `v2-l0` à `v2-l5b`, puis `bio-2.md` et `live-b.md`).
+Je le signale comme un fait vérifié en base ; je n'ai rien modifié.
 
 ---
 
-### 2. Ce qui affiche encore de la matière non réelle
+### Les trois niveaux de consentement
 
-J'ai cherché `DemoBanner`, `DEMO_`, `isDemo`, `demoMode`. Voici ce qui reste, écran par écran.
+Le type énuméré `coach_access_level` vaut
+`lecture_simple`, `lecture_detaillee`, `programme`. Les libellés affichés au
+pilote sont dans `src/services/pilotConsentService.ts` lignes 23-39 :
 
-**Dans l'arbre V1 — donc visible aujourd'hui.**
+| valeur | libellé pilote | promesse affichée |
+| --- | --- | --- |
+| `lecture_simple` | « Sessions seulement » | « Votre coach voit vos sessions, vos tours et vos bilans. Pas la donnée brute. » |
+| `lecture_detaillee` | « Analyse détaillée » | « En plus : votre donnée brute et l'analyse virage par virage (Data Lab). » |
+| `programme` | « Programme » | « En plus : un accompagnement suivi dans la durée. » |
 
-`app/(app)/insights.tsx` et `app/(app)/insight/[reading].tsx` sont les deux écrans qui portent encore de la donnée fabriquée. Le second importe `DEMO_SESSION_INSIGHTS` depuis `src/circuit/sessionInsights.ts` (ligne 33) et alimente les six visualisations avec ce jeu figé : sept virages de Haute Saintonge, `apex_speed_kmh` 95/72/130/88/65/110/78, `engine_version: 'mirror-insights-demo'`. Un bandeau `DemoBanner` est affiché en tête (ligne 66), portant le texte défini dans `src/components/insights/catalogue.ts` ligne 54 : « Démonstration — données réelles dès Valence ».
+Ces trois promesses sont tenues **par la base**, pas seulement par l'interface.
+Trois fonctions `SECURITY DEFINER` en production :
 
-Ces écrans sont **atteignables** : `src/lib/appMap.ts` range `insights` parmi les `DATA_LAB_SCREENS` (ligne 150) et `app/(app)/data-lab.tsx` ligne 356 en fait une carte de la famille « constats », avec la promesse « Ce que la donnée raconte de votre séance ». Un pilote qui ouvre le Data Lab tombe donc dessus.
+- `is_coach_of(pilot)` — binôme actif + consentement, quel que soit le niveau.
+- `is_detailed_coach_of(pilot)` — idem **et** `level IN ('lecture_detaillee','programme')`.
+- `is_program_coach_of(pilot)` — idem **et** `level = 'programme'`.
 
-`app/(app)/debug-circuit.tsx` consomme aussi `DEMO_SESSION_INSIGHTS`, mais il est gardé par `if (!__DEV__) return <Redirect href={'/(app)'} />` (ligne 24).
+#### Ce que chaque niveau ouvre exactement
 
-**Dans l'arbre V2.**
+Relevé des policies de production qui mentionnent le coach :
 
-Le travail de câblage a été fait : `app/(app2)/data/session/[id].tsx` alimente cinq des six lectures avec la vraie tranche `SessionInsights` et le vrai nuage g-g (lignes 1562 à 1578). **Une seule reste en démonstration** : `flow`. Le commentaire ligne 1556-1560 est explicite — « aucune source d'insight "fluidité" n'existe » — et le `DemoBanner` n'est monté que pour cette lecture (ligne 1623). Le composant `src/components/insights/FlowViz.tsx` contient deux polylignes en dur (lignes 33 à 37) et un nuage de 18 points figés (lignes 40 à 59), avec les chronos inventés « 1:42.8 / 1:45.1 ».
+**Dès `lecture_simple` (`is_coach_of`)**
 
-`app/(app2)/dev-galerie.tsx` porte huit constantes `DEMO_*` (photo, chrono 91 724 ms, QDI, biométrie, tracé, marqueurs) mais redirige hors `__DEV__` (ligne 579).
+| table | policy |
+| --- | --- |
+| `telemetry_sessions` | `telemetry_sessions_coach_select` |
+| `laps` | `laps_coach_select` |
+| `app_session_analyses` | `app_session_analyses_coach_select` |
+| `session_insights` | `session_insights_coach_select` |
+| `app_progression_shares` | `app_progression_shares_coach_select` |
+| `vehicles` | `vehicles_coach_select` |
+| `session_media` | `session_media_select_coach` |
+| `pilot_notes` | `pilot_notes_coach_select` — **et** `shared_with_coach = true` |
+| `session_intentions` | `session_intentions_coach_select` — **et** `shared_with_coach = true` |
+| `pilot_signature_snapshots` | `pilot_sig_snap_coach_select` — **et** `shared_with_coach = true` |
+| `coach_annotations`, `coach_queue`, `coach_session_context`, `coach_pilot_highlight` | écriture par le coach sur ses propres lignes |
 
-Hors ces cas, une recherche de `maquette`, `exemple`, `fictif`, `simulé`, `en dur` dans `app/(app2)/` ne rend que trois commentaires, tous affirmant l'inverse (« jamais un /4 codé en dur », « jamais un "12/30" codé en dur »).
+**À partir de `lecture_detaillee` (`is_detailed_coach_of`)**
 
-**À ne pas confondre.** `src/services/eventContextLogic.ts` définit aussi un type `DemoBanner`, mais ce n'est pas de la donnée fausse : c'est un bandeau d'honnêteté affiché sur `app/(app)/bilan.tsx` quand l'`event_type` vaut `balade_decouverte`, `test_alpha`, `partenaire` ou `corporate` — pour dire que les analyses ne se comparent pas à une séance de circuit calibrée.
+| table | policy | ce que cela ouvre |
+| --- | --- | --- |
+| `telemetry_frames` | `telemetry_frames_coach_select` | la donnée brute, trame par trame |
+| `app_segment_analyses` | `app_segment_analyses_coach_select` | l'analyse virage par virage |
+| `coach_ai_drafts` | 4 policies (`select`/`insert`/`update`/`delete`) | l'assistant IA |
+| `biometry_raw` | `biometry_coach_read` | la fréquence cardiaque, **et seulement si** `users.biometry_coach_share_consent_at` est renseigné — un second verrou, distinct |
 
-**Ce que dit la base de production.** J'ai interrogé le projet Supabase `fouvuqkdxarjpjbqnsjq` :
+**Uniquement en `programme` (`is_program_coach_of`)**
 
-| Table | Lignes |
-|---|---:|
-| `telemetry_frames` | **53** |
-| `telemetry_sessions` | 18 |
-| `session_insights` | **1** |
-| `app_session_analyses` | 13 |
-| `users` | 14 |
-| `events` | 1 |
+| table | policy |
+| --- | --- |
+| `pilot_development_cycles` | `dev_cycles_coach_all` |
+| `cycle_steps` | `cycle_steps_coach_all` |
 
-Les 53 trames appartiennent toutes à **une seule** séance (`7f40d5ad-4697-44ac-861c-13b7d0cc9878`). L'unique ligne de `session_insights` porte `engine_version = 'mirror-insights-demo'`, annonce `n_frames = 11800`, et pointe vers une **autre** séance (`b62ab3af-5d6a-4e88-b316-73a0729933ae`) — celle-là même que le fixture `DEMO_SESSION_INSIGHTS` référence dans le code. Autrement dit : la seule lecture d'insights présente en production est une donnée de démonstration semée à la main, qui ne correspond à aucune trame réelle. Les commentaires du code qui disent « `telemetry_frames` est vide » sont donc justes en substance : il n'y a pas de matière télémétrique exploitable.
+C'est net : les programmes de développement sont réellement réservés au niveau
+le plus ouvert, et un retour en arrière du pilote (`setConsentLevel` vers
+`lecture_simple`) coupe la donnée brute à la requête suivante, sans casser le
+binôme.
 
-L'unique événement en base est la « Balade Découverte OXV — 5 juillet 2026 ».
+#### Le consentement au direct, à part
+
+`live_sharing_at` est une quatrième décision, indépendante du niveau. Le
+commentaire de `pilotConsentService.ts` lignes 52-58 est explicite : plus
+sensible, désactivé par défaut, révocable, et le relais se coupe immédiatement.
+
+#### Le consentement à l'IA, à part lui aussi
+
+La fonction `coach_ai_consent(pilot)` en base exige **deux** choses :
+`is_detailed_coach_of(pilot)` **et** `users.coach_ai_enabled = true`.
+
+En production : **0 compte sur 14 a `coach_ai_enabled = true`.** L'assistant IA
+est donc fermé pour tout le monde, indépendamment du problème de rôle.
+
+De même, **0 compte sur 14 a `biometry_coach_share_consent_at` renseigné** : la
+lecture cardio côté coach n'a aucune source, alors même que le drapeau
+fonctionnel `biometry` a été activé le 2026-07-25.
+
+#### Tests de sécurité : écrits, mais non exécutés ici
+
+Quatre suites couvrent précisément ces règles :
+`src/__tests__/rls/coachGradedAccessRLS.test.ts` (lecture_simple voit les
+séances mais pas les trames ni les virages ; lecture_detaillee voit en plus),
+`coachAiRLS.test.ts`, `coachAnnotationsRLS.test.ts`, `coachSessionsRLS.test.ts`,
+plus `developmentCyclesRLS.test.ts` pour le niveau `programme`.
+
+Elles s'auto-désactivent : `src/__tests__/rls/setup.ts` ligne 23 exige
+`TEST_SUPABASE_URL` et `TEST_SUPABASE_SERVICE_KEY`. Ces variables ne sont pas
+dans le `.env` du dépôt. **Ces règles de consentement ne sont donc jamais
+vérifiées en local ;** elles ne le sont que dans le job `rls` de
+`.github/workflows/check.yml` (ligne 85), qui ne se déclenche que sur `main`.
 
 ---
 
-### 3. Les no-op, les orphelins et les coquilles vides
+### La navigation de l'espace
 
-**Services qui ne font rien, volontairement.**
+`C:\Users\Julie\OneDrive\Desktop\oxv-app\src\lib\coachNav.ts` définit deux
+présentations d'un même arbre, choisies à la largeur d'écran
+(`COACH_CONSOLE_MIN_WIDTH`), décision datée du 2026-07-13 dans le fichier :
 
-`src/ble/flic2Service.ts` (89 lignes) porte en tête « V1 STUB intentionnel ». La méthode `scan()` (ligne 50) n'ouvre aucun scan BLE : elle logue un avertissement et pose un `setTimeout` de 1,5 s qui repasse le statut à `idle` — « simule un scan court qui ne trouve rien ». `connect()` se contente d'enregistrer l'identifiant et de passer en `connected`. Seul `simulateClick()` produit un événement. L'intégration réelle exigerait le SDK natif Flic.
+- **Console tablette** : rail vertical de 198 px à gauche — Poste, File de
+  lecture, Studio, Pilotes, Agenda, Business, plus l'avatar
+  (`COACH_RAIL_ORDER`, `COACH_RAIL_MAIN_ROUTE`).
+- **Compagnon téléphone** : cinq onglets bas — EN DIRECT, PILOTES, MESSAGES,
+  AGENDA, MOI (`COACH_TAB_ORDER`, `COACH_TAB_LABEL`).
 
-`src/services/offlineQueue.ts` contient deux branches vides dans le `switch` de rejeu : `mark_notification_read` (ligne 177, « le wiring effectif viendra avec l'écran #23, sem. 10 ») et `register_lap_marker` (ligne 184, « viendra avec le bouton Flic en sem. 4 »). Une action mise en file sur ces deux types est consommée sans effet serveur.
+Le `Stack` est identique dans les deux cas ; la barre ou le rail est un simple
+recouvrement (`app/(coach)/_layout.tsx` lignes 48-63). Aucun fichier n'a été
+déplacé pour cette refonte : `COACH_ROUTE_TO_ZONE` range les 30 routes
+existantes sous les cinq zones.
 
-`src/services/v2/healthKitService.ts` est câblé sur `react-native-health` mais ne fonctionnera qu'après recompilation native : `loadHealthModule()` (ligne 74) fait un `require` dynamique dans un `try/catch` et retombe sur `null`. Conséquence en cascade dans `src/features/rec/bio1Trigger.ts` ligne 123 : `readHeartRate` rend `[]`, on sort avec `reason: 'no-samples'` et on ne pose pas la garde d'idempotence. Le drapeau `biometry` est pourtant le seul actif en base ; sa description en production dit elle-même « Reste non tenu à la levée : smoke test 2 appareils réels ».
+Un test vérifie la cohérence entre les onglets et les routes réelles :
+`src/lib/__tests__/coachNav.test.ts`. Il passe.
 
-**Services sans aucun consommateur.** J'ai vérifié chacun individuellement par recherche de son nom dans `src/` et `app/`, hors tests et hors le fichier lui-même :
-
-| Fichier | Lignes | Constat |
-|---|---:|---|
-| `src/services/flowService.ts` | 93 | Livré le 25/07 (lot A-FLOW-1). **Aucun écran ne l'importe.** `flowLogic.ts` ne le cite que dans un commentaire. Le calcul de jerk existe, testé, mais n'atteint aucune surface. `FlowViz` continue d'afficher ses polylignes en dur. |
-| `src/services/coachConsoleService.ts` | 99 | Aucun consommateur. Il est le **seul** importateur de `src/services/coachConsoleLogic.ts` — la branche entière est morte. |
-| `src/services/coachBusinessService.ts` | 44 | Aucun consommateur. `app/(coach)/business.tsx` appelle directement `listMyPilots`, `listMyRoulages`, `listMyRoulageInvitationStatuses` et `computeCoachBusinessSummary` — le service intermédiaire a été contourné. |
-| `src/services/brakingPointsService.ts` | 115 | Aucun consommateur. |
-| `src/services/placesService.ts` | 115 | Marqué `@deprecated` en tête (décision Gabin 2026-06) ; « suppression définitive planifiée », jamais faite. |
-| `src/services/v2/videoOverlayService.ts` | 84 | Aucun consommateur. Il est le seul importateur de `videoOverlayLogic.ts`. Le drapeau `video_overlay` est OFF. |
-
-**Composants morts.** Une passe sur les 118 fichiers `.tsx` de `src/components` et `src/ui` a isolé ceux dont le nom n'apparaît nulle part ailleurs :
-
-| Fichier | Lignes |
-|---|---:|
-| `src/components/LapScrubber.tsx` | 313 |
-| `src/components/signature/RadarEmpreinte.tsx` | 226 |
-| `src/components/DataConfidenceBanner.tsx` | 78 |
-| `src/components/OXVPromiseBlock.tsx` | 57 |
-| `src/ui/KpiCard.tsx` | 46 |
-| `src/ui/DoctrineFooter.tsx` | 31 |
-
-À quoi il faut ajouter **`src/components/DebriefMirror.tsx`, 1 212 lignes** : le nom n'apparaît que dans un commentaire de `app/(app)/debrief-presentiel.tsx` (ligne 19), aucun `import` réel dans tout le dépôt. C'est le plus gros mort du dossier. Il entraîne avec lui `src/services/debriefRenderGuard.ts`, dont il est le seul importateur en dehors de son propre test.
-
-Cela fait environ **1 960 lignes d'interface** qui ne s'affichent jamais.
-
-**Neuf familles de polices chargées au démarrage, dont quatre inutilisées.** `src/theme/fonts.ts` charge 29 graisses via `useFonts` : Hanken Grotesk (7), JetBrains Mono (4), Syncopate (2), Inter (4), Michroma (1), puis — commentées « conservées en secours (anciens tokens éventuels non migrés) » — Geist (5), Geist Mono (2), Rajdhani (2), Instrument Serif (2). J'ai vérifié : `GeistMono_`, `Rajdhani_` et `InstrumentSerif_` n'apparaissent **nulle part** ailleurs dans `src/` ou `app/` ; `Geist_` n'apparaît que dans `src/components/DebriefMirror.tsx` lignes 54-55 — le composant mort. Ce sont donc **11 graisses chargées pour rien**, et `app/_layout.tsx` ligne 148 garde le splash affiché tant que le lot entier n'est pas résolu (`if (!fontsLoaded && !fontError) return null;`).
-
-**Placeholders assumés.** `app/(partner)/facturation.tsx` (104 lignes) est un « placeholder honnête » déclaré en tête : il affiche « Rien à régler ici » et explique que Stripe viendra plus tard. `app/(coach)/ar.tsx` monte une `WebView` sur `https://app.oxvehicle.fr/ar-view` (ligne 99) avec un commentaire disant « route pas encore servie » — l'écran a des états de chargement et d'erreur honnêtes, mais la page qu'il affiche n'existe pas dans ce dépôt.
+Chaque route est atteignable depuis au moins un point de l'interface (relevé
+des `router.push` : 30 routes distinctes référencées). Deux entrées viennent
+d'ailleurs que du hub : `annoter` est aussi ouvert depuis l'écran pilote
+`app/(app)/virage.tsx` ligne 718 et depuis `en-direct/[sessionId].tsx`
+ligne 590.
 
 ---
 
-### 4. Les tests : la moitié du sujet n'est pas couverte
+### Écran par écran
 
-**Ce qui tourne.** J'ai exécuté la suite : **1 846 tests verts, 140 suites passées**. Mais la ligne suivante du rapport dit aussi : **18 suites ignorées, 98 tests non exécutés**.
+Pour chaque écran : à quoi il sert, sur quoi il s'appuie, et son état réel. La
+mention « injoignable » est sous-entendue partout (aucun compte coach) ; je ne
+la répète que quand un second obstacle s'ajoute.
 
-Ces 18 suites sont exactement les 18 fichiers de `src/__tests__/rls/`. Elles couvrent les policies de sécurité : accès coach gradué, télémétrie, amitiés, notes pilote, partenaire, modération, support, matrice de rôles, biométrie (BE-1), rapports B2B, cycles de développement… Toutes s'auto-désactivent via `const describeIf = RLS_TEST_ENABLED ? describe : describe.skip`, et `RLS_TEST_ENABLED` (dans `src/__tests__/rls/setup.ts` ligne 23) exige `TEST_SUPABASE_URL` et `TEST_SUPABASE_SERVICE_KEY`. Sans ces variables — c'est le cas ici — **toute la surface de sécurité de la base n'est jamais vérifiée localement**. Le workflow `.github/workflows/check.yml` a bien un job `rls` dédié qui échoue explicitement si les secrets manquent, mais ce workflow ne se déclenche que sur `push` vers `main` ou `pull_request` vers `main` (voir point 7).
+#### Zone Pilotes — le poste et la lecture
 
-**Ce qui n'est pas couvert du tout.** La configuration `jest.config.js` est décisive :
+**`app/(coach)/index.tsx` — Poste de pilotage (1 238 lignes)**
+Le hub. C'est aussi la liste des binômes : cartes pilote issues de
+`coach_pilots_view`, état de lecture issu de `coach_queue`, activité récente,
+« à faire », et la grille d'outils. Charge en parallèle `listMyPilots()`,
+`loadCoachQueue()`, `loadCoachDashboardSummary()` (lignes 190-192).
+La grille d'outils est conditionnée (lignes 300-345) : « Comparer deux pilotes »
+n'apparaît qu'à partir de 2 pilotes ; « Mes roulages » exige
+`can_manage_own_sessions` ; « Tableau de bord » exige
+`can_view_business_dashboard` ; « Facturation » exige le drapeau `coach_billing`.
+**Données réelles.** Avec un seul binôme en base et 1 séance pour ce pilote, le
+poste serait quasi vide.
 
-- `testMatch: ['**/__tests__/**/*.test.ts']` — **seulement `.ts`, jamais `.tsx`**. J'ai vérifié : `git ls-files "*.test.tsx"` ne rend **aucun fichier**.
-- `testEnvironment: 'node'`, `preset: 'ts-jest'` — pas de rendu React Native, aucun DOM.
+**`app/(coach)/file-lecture.tsx` — File de lecture (590 lignes)**
+Les séances des pilotes consentis avec un statut de lecture explicite et
+persistant : à lire / lues / archivées. S'appuie sur `coach_queue` via
+`coachQueueService.ts`, qui superpose le statut explicite au statut dérivé
+(« annotée ou non ») calculé par `loadReadingQueue()`
+(`src/services/coachService.ts` ligne 176).
+**Table `coach_queue` : 0 ligne en production.**
 
-Conséquences vérifiées par recherche dans les 158 fichiers de test :
+**`app/(coach)/studio.tsx` — Studio télémétrique (870 lignes)**
+L'atelier de lecture d'une séance, en trois colonnes sur tablette : signature
+QDI, trajectoire et marge par virage, triage et liste des tours. Alimenté par
+`getStudioSession()` (`src/services/coachStudioService.ts` ligne 53), qui
+agrège six sources : triage, QDI, analyse de séance, tours, analyses de segment,
+liste des pilotes.
+**Point critique : `app_segment_analyses` contient 0 ligne en production.** Le
+triage, les marges par virage et les moments-clés dérivés des segments n'ont
+donc aucune matière. `telemetry_frames` ne contient que 53 lignes au total, et
+`laps` une seule.
+
+**`app/(coach)/triage.tsx` — Triage (376 lignes)**
+Les virages où le pilote a le moins de marge sur une séance, classés. Logique
+pure `rankTriageCorners` dans `coachTriageLogic.ts`, testée
+(`src/services/__tests__/coachTriageLogic.test.ts`, passe). Le service
+`coachTriageService.ts` lit `app_segment_analyses`.
+**Logique correcte, source vide en production.**
+
+**`app/(coach)/annoter.tsx` — Annoter un virage (1 112 lignes)**
+Le cœur du travail écrit du coach : note texte, mémo vocal, brouillon
+(`visibility = 'private'`) ou partage au pilote (`visibility = 'shared'`).
+Table `coach_annotations`, service `coachAnnotationsService.ts`.
+
+Trois garde-fous réels :
+- Côté application, `isDoctrineSafe()` refuse une note partagée prescriptive
+  (`coachAnnotationsService.ts` ligne 155).
+- Côté base, le déclencheur `coach_annotations_doctrine_guard` (INSERT et
+  UPDATE) lève une exception si `is_prescriptive(body)` est vrai. La fonction
+  `is_prescriptive` est une expression régulière sur 18 termes : `freinez`,
+  `accélérez`, `ouvrez les gaz`, `tracez`, `évitez`, `poussez`, `corrigez`,
+  `améliorez`, `optimisez`, `gagnez`, `il faut`, `vous devez`, `vous devriez`,
+  `vous pouvez`, `tu dois`, `tu peux`, `je vous conseille`, `je vous recommande`.
+- Un troisième déclencheur, `coach_annotations_notify_trigger`, appelle la
+  fonction Edge `notify-pilot-coach-annotated` dès qu'une note partagée est
+  insérée, et journalise l'envoi dans `admin_audit`.
+
+Cet écran a été corrigé le jour même (commit `93f0638`, 2026-07-26 02:53). Trois
+défauts d'écriture y ont été réparés, dont deux faisaient perdre le travail du
+coach en silence : la note partait sur le virage 1 quand le paramètre manquait ;
+l'enregistrement depuis le direct ne faisait rien sans le dire ; un échec
+effaçait le texte en passant pour un succès. Le message de commit consigne aussi
+deux défauts non corrigés, que je confirme en base :
+
+- `coach_annotations_corner_index_check` impose `corner_index BETWEEN 1 AND 7`.
+  Or `circuits` contient « Circuit Ricardo Tormo » avec `turns_count = 14`.
+  **Annoter un virage au-delà du septième à Valence serait refusé par la base.**
+  L'écran, lui, accepte tout indice ≥ 1 (`annoter.tsx` lignes 104-108) : l'échec
+  arriverait à l'insertion.
+- `src/lib/circuitTopology.ts` est une topologie statique du seul circuit de
+  Haute Saintonge. Le nom de virage affiché est donc un nom Beltoise quel que
+  soit le circuit réel de la séance.
+
+**`app/(coach)/priorites.tsx` — Priorités du bilan (551 lignes)**
+Le coach désigne, pour un pilote, les virages à regarder en premier et une note
+d'introduction. Table `coach_pilot_highlight`, service `coachCurationService.ts`
+(`upsertHighlight`). Le pilote les voit sur son bilan, attribués.
+**Table : 0 ligne en production.**
+
+**`app/(coach)/rapport.tsx` — Rapport de séance PDF (666 lignes)**
+Le coach rédige son bilan d'une séance et génère un PDF (QDI 5 branches, faits
+clés, bilan attribué), partagé par la feuille de partage native.
+`coachReportPdfService.ts` s'appuie sur `expo-print` et `expo-sharing`, tous deux
+présents dans `package.json` (lignes 70 et 73).
+**Le bilan écrit n'est pas stocké** — il ne vit que dans le document produit
+(commentaire du fichier, ligne 6). Il n'y a donc aucune trace en base d'un
+rapport émis.
+
+**`app/(coach)/reperes.tsx` (899 lignes) et `app/(coach)/repere/[index].tsx` (641 lignes)**
+Le coach choisit d'abord un circuit, puis pose par virage un point de freinage
+repère et une vitesse d'apex repère. Table `coach_corner_reference`, clé
+`(coach_id, circuit_id, corner_index)`. Les repères se superposent chez ses
+pilotes consentis, attribués à lui (policy `coach_corner_reference_pilot_select`
+= `is_my_coach(coach_id)`).
+La liste des virages est réelle et dépend du circuit
+(`src/circuit/circuitCorners.ts`) : 7 virages nommés à Haute Saintonge,
+14 virages dérivés du tracé à Ricardo Tormo. **Contrairement aux annotations, la
+table `coach_corner_reference` ne porte aucune contrainte 1..7** — les repères
+supportent bien les 14 virages.
+**Table : 0 ligne en production.** L'écriture exige `is_coach()` (policy
+`coach_corner_reference_coach_manage`), donc impossible aujourd'hui.
+
+**`app/(coach)/lecture.tsx` — « Ma lecture » (529 lignes)**
+Le coach pondère quatre sous-composantes déjà calculées par OXV : véhicule,
+pilote, régularité, fluidité. Une ligne par coach dans `coach_reading_weights`.
+L'app en dérive « la lecture de votre coach », présentée séparément chez le
+pilote, jamais à la place de la marge OXV.
+**Table : 0 ligne. Écriture gatée `is_coach()`.**
+
+**`app/(coach)/gabarits.tsx` — Gabarits de commentaire (898 lignes)**
+CRUD de modèles de texte réutilisables, table `coach_annotation_template`.
+Refonte « plus intuitive » demandée au build 23 : composer en expansion douce,
+amorces de structure éditables.
+**Table : 0 ligne. Écriture gatée `is_coach()`.**
+
+**`app/(coach)/assistant.tsx` — Assistant IA (1 301 lignes, le plus gros écran)**
+L'IA pré-rédige une observation descriptive sur un virage ; le coach relit,
+édite, puis valide vers le pilote ou écarte. Table `coach_ai_drafts`, service
+`coachAiService.ts`, fonctions Edge `coach-ai-draft` et `coach-ai-validate`
+(toutes deux `ACTIVE` en production).
+
+J'ai lu le code de `coach-ai-draft`. Il est sérieux :
+- il exige `coach_ai_consent(pilotId)` — donc niveau détaillé **et**
+  `users.coach_ai_enabled` ;
+- il lit les faits mesurés dans `app_segment_analyses` et refuse en 404
+  `segment_not_found` si le virage n'est pas analysé ;
+- il impose une consigne système doctrinale (vouvoiement, descriptif, liste des
+  verbes interdits) ;
+- il **relit sa propre sortie** avec les 18 motifs interdits, relance une fois
+  le modèle en cas de faute, et si la seconde tentative échoue encore, refuse en
+  422 `doctrine_violation` en journalisant dans `admin_audit`.
+
+Trois obstacles cumulés le rendent inopérant aujourd'hui : 0 compte avec
+`coach_ai_enabled`, 0 ligne dans `app_segment_analyses`, et un `cornerIndex`
+borné à 1..7 dans la fonction Edge elle-même. Un quatrième point n'a pas pu être
+vérifié : la fonction exige la variable d'environnement `OPENAI_API_KEY`
+(sinon 500) ; **je n'ai pas accès aux secrets du projet et ne peux pas dire si
+elle est renseignée.** Le modèle appelé est `gpt-4o-mini`.
+
+**`app/(coach)/contexte.tsx` — Contexte de séance (332 lignes)**
+Le coach renseigne ce que le capteur ne capte pas : niveau du pilote ce jour,
+objectif travaillé, matériel, météo vécue. Table `coach_session_context`, une
+ligne par coach et par séance. Le pilote le lit sur son bilan
+(`coach_session_context_pilot_select`).
+La consigne doctrinale est portée par l'écran : cadrage sportif uniquement,
+jamais de donnée personnelle, avec un encart « Vie privée » à l'écran.
+**Table : 0 ligne.**
+
+**`app/(coach)/plan.tsx` — Plan d'objectifs (673 lignes)**
+Le coach pose des objectifs mesurables pour son pilote : métrique + direction +
+cible. Table `coach_objectives`, dont les types énumérés sont réels :
+`objective_metric` (`regularity, personal_best, corner_braking, corner_speed,
+top_speed, qualitative, avg_lap, lap_count, sessions`),
+`objective_direction` (`below, above, reach`),
+`objective_status` (`active, achieved, archived`).
+Deux déclencheurs en base rendent l'objet vivant : `trg_capture_baseline`
+capture automatiquement la valeur de départ via `measure_metric_now()`, et
+`trg_obj_log_insert`/`trg_obj_log_update` journalisent chaque changement d'état
+dans `coach_objective_events`.
+Le commentaire du service note honnêtement qu'il n'y a **pas d'échéance**, parce
+que le schéma n'en porte pas — rien n'est inventé.
+**Tables : 0 ligne (`coach_objectives`, `coach_objective_events`). Écriture
+gatée `is_coach()`.**
+
+**`app/(coach)/cycles.tsx` (868 lignes) et `app/(coach)/cycles/[id].tsx` (859 lignes) — Programmes**
+Un programme = un cycle qualitatif que le coach écrit pour un pilote. Tables
+`pilot_development_cycles` et `cycle_steps`, service
+`src/services/developmentCycleService.ts`. Partage au pilote opt-in
+(`is_shared`), avec garde-fou doctrinal côté application
+(`isDoctrineSafe`) **et** côté base (déclencheurs `dev_cycles_doctrine_guard` et
+`cycle_steps_doctrine_guard`).
+Réservé au niveau `programme` (`is_program_coach_of`). L'unique binôme en base
+est bien au niveau `programme`.
+**Tables : 0 ligne chacune.**
+
+**`app/(coach)/comparer.tsx` — Comparer deux séances d'un pilote (550 lignes)**
+Deux lectures côte à côte, jamais un gagnant. `loadSessionSnapshot()`
+(`coachService.ts` ligne 40) charge trajectoire GPS (jusqu'à 1 000 trames) et
+zones de marge par virage.
+**Dépend de `telemetry_frames` (53 lignes en tout) et
+`app_segment_analyses` (0 ligne) — donc du niveau `lecture_detaillee`.**
+
+**`app/(coach)/comparer-pilotes.tsx` — Comparer deux pilotes (801 lignes)**
+Même principe entre deux pilotes distincts. N'apparaît dans les outils du hub
+qu'à partir de deux binômes (`index.tsx` ligne 301).
+**En production il n'existe qu'un binôme : cet écran ne serait même pas proposé.**
+
+**`app/(coach)/debrief.tsx` — Débrief, mode présentation (518 lignes)**
+Une vue calme, en lecture seule, à montrer au pilote au stand : un fait
+dominant, le chiffre roi, la trajectoire avec le virage mis en évidence. Aucune
+action d'édition. Charge `getStudioSession()`, la trajectoire, et — si le
+drapeau `biometry` est actif (ligne 108) — la biométrie de séance.
+**Le drapeau `biometry` est actif en production depuis le 2026-07-25**, mais
+`biometry_raw` n'est lisible par le coach que si le pilote a coché le partage,
+ce que personne n'a fait.
+
+**`app/(coach)/pilote/[id].tsx` — Fiche pilote (1 089 lignes)**
+Le CRM en lecture seule : identité, véhicule, empreinte partagée, historique de
+séances, et les points d'entrée vers les outils de guidance (comparaison,
+bilan, contexte, annoter, priorités, plan). Le périmètre est celui du
+consentement : la vue `coach_pilots_view` n'expose ni courriel, ni téléphone, ni
+adresse — seulement `first_name, last_name, pilot_level, avatar_url,
+experience_years, ffsa_license, vehicle, socials, media`.
+Chaque consultation est journalisée : `logCoachView()` (`coachService.ts`
+ligne 266) appelle la fonction `log_coach_view`, qui **revérifie elle-même** que
+l'appelant est bien coach consenti avant d'écrire dans `admin_audit`, et
+n'écrit rien silencieusement sinon (pour ne pas renseigner un attaquant).
+C'est un bon dispositif, réellement en place en base.
+
+#### Zone En direct
+
+**`app/(coach)/en-direct.tsx` — Roster (706 lignes)**
+Qui est en piste, depuis quand, en piste ou au stand, sur quel circuit. Source :
+présence Supabase Realtime via `useLiveRoster` → `subscribeRoster`
+(`src/services/liveSessionService.ts` ligne 68), canal par coach.
+Le drapeau `ready` distingue « connexion en cours » de « personne en piste » —
+l'écran ne ment pas sur l'attente.
+Une pastille cardio par pilote vient de `useRosterBiometry`, jamais de la
+présence : la FC n'emprunte que le canal privé du binôme.
+Un déclencheur de simulation existe, strictement `__DEV__`
+(`en-direct.tsx` lignes 175 et 421-451) : il permet de développer sans RaceBox.
+Il ne peut pas s'afficher dans un build de production.
+
+**`app/(coach)/en-direct/[sessionId].tsx` — Focus pilote (942 lignes)**
+Le coach suit un pilote : chrono du tour en cours (le chiffre roi, en or),
+secteur, liste des tours, vitesse et forces G en relevés neutres, état de
+connexion honnête (`live` → `stale` → `offline`, dérivé chaque seconde par
+`usePilotLive`, `src/hooks/usePilotLive.ts` lignes 102-119).
+La biométrie s'efface au bout de 10 secondes sans événement plutôt que de figer
+une valeur périmée (lignes 36 et 112-118). C'est une décision de conception
+rigoureuse, lisible dans le code.
+
+**Le direct ne peut pas fonctionner aujourd'hui, pour une raison précise.**
+L'émission côté pilote est décidée par `consentedCoaches()`
+(`src/services/liveRelayRunner.ts` ligne 77), qui exige **quatre** conditions :
+`active = true`, **`status = 'active'`**, `pilot_consent_at` non nul,
+`live_sharing_at` non nul.
+Or, comme établi plus haut, aucun code n'écrit jamais `status = 'active'` : la
+valeur par défaut `pending` reste. **Le relais live ne trouvera donc jamais un
+seul coach à qui émettre, même avec un compte coach et un pilote consentant.**
+C'est un blocage de bout en bout, pas une question de matériel.
+
+À noter que ce même fichier documente le durcissement du 26/07 : sans la
+condition `pilot_consent_at`, retirer son consentement ne coupait pas le direct.
+Le correctif est en place.
+
+**`app/(coach)/ar.tsx` — Vue AR au bord de piste (1 009 lignes)**
+Configuration d'une vue destinée à des lunettes Ray-Ban Display, portée **par le
+coach**, jamais par le pilote. La doctrine est écrite en tête de fichier et
+paraît respectée dans le code : faits seuls, jamais de consigne ; aucune
+connexion lunettes simulée ; état neutre « non appairées — aperçu » (ligne 414).
+Les pilotes proposés viennent de `listMyPilots()`, donc du consentement.
+L'aperçu in-lens est une `WebView` pointant sur `https://app.oxvehicle.fr/ar-view`
+(ligne 99). **Cette page web ne vit pas dans ce dépôt : je ne peux pas dire si
+elle existe ni ce qu'elle affiche.** L'écran gère explicitement le chargement et
+l'erreur/404, donc l'absence de la route ne provoquerait pas de plantage.
+La dépendance `react-native-webview` est bien dans `package.json` (ligne 93).
+L'écran est marqué EXPÉRIMENTAL dans l'interface, les lunettes étant en
+developer preview.
+
+#### Zone Messages
+
+**`app/(coach)/messages.tsx` (657 lignes) et `app/(coach)/messages/[coachPilotId].tsx` (617 lignes)**
+Fil de discussion coach↔pilote, table `coach_messages`, temps réel par
+`postgres_changes` (`src/hooks/useCoachThread.ts`).
+La table ne porte que `coach_pilot_id, sender_id, body, session_id, created_at,
+read_at` : **aucune coordonnée**, ce qui est cohérent avec la promesse
+« in-app, sans coordonnées » affichée dans l'interface.
+La policy d'insertion est stricte : l'expéditeur doit être `auth.uid()`, être
+l'un des deux membres, et le binôme doit être `active` **et** consenti.
+**Production : 1 message, « Salut », envoyé le 2026-07-16 par le compte
+fondateur sur son propre binôme.**
+
+#### Zone Agenda
+
+**`app/(coach)/calendrier.tsx` — Agenda (831 lignes)**
+Vue semaine sur tablette, liste sur téléphone. Deux sources réelles, aucune
+inventée : les demandes `accepted` datées (`listCoachBookings`) et les créneaux
+`open` (`listMyAvailability`). Le fichier précise qu'une demande n'a pas de fin
+en base : son bloc est ancré à l'heure de début avec une hauteur minimale,
+jamais une durée fabriquée.
+
+**`app/(coach)/disponibilites.tsx` — Disponibilités (901 lignes)**
+Le coach ouvre des créneaux (circuit, début, capacité, notes) qui deviennent
+réservables sur sa fiche publique. `createAvailability()`
+(`src/services/coachMarketplaceService.ts` ligne 545) insère avec
+`status: 'open'`.
+
+**Un point que l'écran ne dit pas au coach.** Le déclencheur
+`trg_coach_availability_open_gate` (INSERT et UPDATE sur `coach_availability`)
+exécute `oxv_coach_availability_open_gate()`, qui **force silencieusement
+`status` à `closed`** pour tout appelant non administrateur, et interdit de
+rouvrir un créneau. L'ouverture est réservée à OXV. Un vrai coach créerait donc
+un créneau qui n'apparaîtrait pas sur sa fiche, sans explication à l'écran.
+Les 4 lignes présentes en base appartiennent au compte fondateur, qui est
+`is_admin` — d'où l'unique créneau réellement `open` (24 décembre 2026, Haute
+Saintonge, capacité 3) ; les 3 autres sont `cancelled`.
+
+**`app/(coach)/demandes.tsx` — Demandes reçues (556 lignes)**
+Table `coaching_bookings`, RLS `coaching_bookings_coach_select` /
+`_coach_respond`. Les demandes `pending` passent en tête. L'identité du pilote
+n'est **jamais** lue dans la table `users` : le prénom est dénormalisé sur la
+demande (`pilot_first_name`), avec repli « Pilote ». C'est une décision RGPD
+explicite, documentée en tête de `coachMarketplaceService.ts` lignes 24-29.
+Les états possibles sont contraints en base : `pending, accepted, declined,
+cancelled, paid, completed, refunded`.
+**Production : 2 lignes, toutes deux avec `coach_id = pilot_id` (le fondateur
+se réservant lui-même), `pilot_first_name` null, aucun montant.** Ce sont des
+essais, pas de la matière.
+
+**`app/(coach)/roulages/index.tsx` (437), `nouveau.tsx` (537), `[id].tsx` (671)**
+Les roulages organisés par le coach : liste à venir/passés, création (titre,
+date, lieu, places, prix, notes), détail avec roster d'invitations.
+Tables `coach_roulages` et `roulage_invitations`, service `roulagesService.ts`.
+L'accès entier est gaté par la permission `can_manage_own_sessions`
+(`roulages/index.tsx` ligne 125) **et** par la policy
+`coach_roulages_manage_own`, qui appelle `coach_has_permission(auth.uid(),
+'manage_own_sessions')` — le verrou est donc doublé côté base, pas seulement
+côté interface. Bon point.
+**Tables : 0 ligne chacune.**
+
+#### Zone Moi — compte professionnel
+
+**`app/(coach)/profil.tsx` — Fiche publique (828 lignes)**
+Le coach édite sa fiche `coach_profiles` : présentation, biographie, palmarès,
+spécialités, circuits, prix de session (le prix affiché, décision fondateur du
+2026-07-16) et prix de saison, liens, médias, publication. Un aperçu réel de ce
+que voient les pilotes est présenté en regard.
+Les médias passent par `coachMediaService.ts` : bucket public `coach-media`
+(existant en production, créé le 2026-06-18), convention `{coachId}/{uuid}.{ext}`,
+métadonnées dans le jsonb `coach_profiles.media`.
+
+**La fiche existante n'est plus éditable par son propriétaire.** La policy
+`coach_profiles_owner_all` exige `coach_id = auth.uid() AND is_coach()`. Le
+compte fondateur étant repassé `pilot`, il ne peut plus écrire sa propre fiche —
+sauf par la policy `coach_profiles_admin_all`, dont il bénéficie par ailleurs.
+Contenu réel de la fiche : `headline = "Coach"`, `is_published = true`,
+`season_price_eur = 300`, `session_price_eur` null, `specialties` et `circuits`
+vides, aucun lien de paiement, aucun SIRET. C'est la seule fiche coach publiée
+de la plateforme.
+
+**`app/(coach)/business.tsx` — Tableau de bord (641 lignes)**
+Suivi factuel de l'activité : nombre de pilotes suivis, roulages organisés,
+présences confirmées, revenu cumulé des roulages tarifés. Le service
+`coachBusinessService.ts` documente les arbitrages : aucune commission, aucun
+chiffre d'affaires OXV global, aucune remise dégressive — tous écartés par
+décision du 2026-06-07. Le revenu n'existe que si le coach a renseigné un prix.
+Gaté par `can_view_business_dashboard` (ligne 166).
+**Sans roulage en base, cet écran afficherait des zéros.**
+
+**`app/(coach)/facturation.tsx` — Facturation (678 lignes)**
+Le principe est posé sans ambiguïté dans le code : **l'émetteur est le coach,
+le paiement va directement au coach, hors OXV** ; l'application n'est qu'un
+outil d'aide. Le modèle de « déverrouillage payant » est explicitement abandonné
+(commentaire lignes 5-9).
+L'écran est gaté par le drapeau `coach_billing` (ligne 104).
+**Ce drapeau est `enabled = false` en production**, avec la description
+« Prestation coach : suivi + aide à la facture (par coach) », inchangé depuis le
+2026-07-06. Le commentaire du fichier précise « INACTIF jusqu'au SIRET » — la
+facturation attend le SIRET d'OXV.
+Quand le drapeau est faux, le lien n'apparaît même pas dans le hub
+(`index.tsx` lignes 172-174) : pas de « bientôt disponible » affiché, ce qui est
+un choix cohérent.
+
+**`app/(coach)/facture-nouvelle.tsx` — Émettre une facture (696 lignes)**
+Saisie des lignes, choix d'un destinataire parmi les binômes, date. Le calcul
+HT/TVA/TTC est une logique pure testée (`coachBillingLogic.ts`, régimes
+`franchise` avec mention « TVA non applicable, art. 293 B du CGI » ou
+`assujetti`). Le numéro est alloué par la fonction serveur atomique
+`next_coach_invoice_number`, qui **ignore volontairement le paramètre
+`p_coach` au profit de l'appelant authentifié** — garde-fou d'autorisation
+correct.
+Le PDF est rendu en blanc professionnel, choix délibéré et documenté
+(`coachInvoicePdfService.ts` lignes 5-9) : une facture est un document externe,
+pas un écran de l'application.
+**Tables `coach_invoices` et `coach_invoice_counters` : 0 ligne.**
+
+**`app/(coach)/facturation-identite.tsx` — Identité de facturation (395 lignes)**
+Nom, forme juridique, adresse, SIRET, régime de TVA. Ces valeurs sont copiées en
+instantané sur chaque facture émise. Le SIRET est validé en douceur (Luhn) :
+indice, jamais bloquant.
+Les colonnes existent bien sur `coach_profiles` (`billing_name`,
+`billing_address`, `billing_siret`, `billing_legal_form`, `vat_regime`
+défaut `franchise`, `vat_rate`).
+**Aucune n'est renseignée en production.**
+
+Le pendant pilote existe : `pilotCoachBillingService.ts` lit les factures qui
+concernent le pilote et résout le lien de paiement du coach depuis
+`coach_profiles.payment_link` pour l'ouvrir. Le fichier rappelle en tête :
+« OXV n'encaisse jamais ». Aucune coordonnée bancaire n'est saisie dans
+l'application. Un test dédié verrouille l'acceptabilité du lien
+(`src/services/__tests__/coachPaymentLinkGuard.test.ts`, passe).
+
+---
+
+### Les services : ce qui est réellement câblé
+
+33 fichiers `src/services/coach*.ts`. Voici, pour chacun, la source de données
+constatée par lecture du code :
+
+| service | tables / appels | lignes en production |
+| --- | --- | --- |
+| `coachService.ts` | `coach_pilots_view`, `telemetry_sessions`, `telemetry_frames`, `coach_annotations`, rpc `log_coach_view` | vue : 1 binôme visible |
+| `coachAdminService.ts` | `coach_pilots`, `users`, fn `send-coach-invitation` | — |
+| `coachAnnotationsService.ts` | `coach_annotations` | **0** |
+| `coachAudioService.ts` | `coach_annotations` + bucket `coach-audio` | bucket existe, privé |
+| `coachQueueService.ts` | `coach_queue` | **0** |
+| `coachTriageService.ts` | `app_segment_analyses` (via `segmentAnalysesService`) | **0** |
+| `coachStudioService.ts` | `telemetry_sessions` + 6 services agrégés | 18 séances, dont 10 complétées |
+| `coachConsoleService.ts` | `telemetry_sessions`, `app_session_analyses` | 13 analyses de séance |
+| `coachSessionContextService.ts` | `coach_session_context` | **0** |
+| `coachCurationService.ts` | `coach_pilot_highlight`, `coach_annotation_template` | **0** et **0** |
+| `coachReadingService.ts` | `coach_reading_weights` | **0** |
+| `coachReferenceService.ts` | `coach_corner_reference` | **0** |
+| `coachObjectivesService.ts` | `coach_objectives` | **0** |
+| `developmentCycleService.ts` | `pilot_development_cycles`, `cycle_steps` | **0** et **0** |
+| `coachAiService.ts` | `coach_ai_drafts`, fn `coach-ai-draft` / `coach-ai-validate` | **0** |
+| `coachMessagesService.ts` | `coach_messages`, `coach_pilots` | **1** |
+| `coachMarketplaceService.ts` | `coach_profiles`, `coach_availability`, `coaching_bookings`, `coach_testimonials` | 1 / 4 / 2 / **0** |
+| `coachProfileService.ts` | `coach_profiles` | 1 |
+| `coachMediaService.ts` | `coach_profiles.media` + bucket `coach-media` | vide |
+| `coachBillingService.ts` | `coach_invoices`, `coach_profiles` | **0** |
+| `coachInvoicePdfService.ts` | rendu local (expo-print) | — |
+| `coachReportPdfService.ts` | rendu local (expo-print) | — |
+| `pilotCoachBillingService.ts` | `coach_invoices`, `coach_profiles`, `coaching_bookings` | **0** |
+| `coachBusinessService.ts` | `coach_roulages`, `roulage_invitations` | **0** et **0** |
+| `coachPermissionsService.ts` | `coach_permissions` | 1 |
+| `coachAdminService`, `coachTriageLogic`, `coachQueueLogic`, `coachConsoleLogic`, `coachContextLogic`, `coachCurationLogic`, `coachReadingLogic`, `coachReferenceLogic`, `coachObjectivesLogic`, `coachBillingLogic` | logique pure, sans base | — |
+
+La séparation « logique pure » / « accès base » est systématique et propre : dix
+fichiers `*Logic.ts` sans aucun appel Supabase, tous testés.
+
+#### Les permissions modulaires
+
+Trois indicateurs dans `coach_permissions` : `can_view_pilots` (défaut vrai),
+`can_manage_own_sessions` (défaut faux), `can_view_business_dashboard` (défaut
+faux). Le repli du service est explicitement « fail-safe » : en cas d'erreur ou
+d'absence de ligne, on retourne les permissions minimales
+(`coachPermissionsService.ts` lignes 21-25 et 48-51).
+**Une seule ligne existe en production, celle du compte fondateur, avec les
+trois indicateurs à `true`.**
+
+---
+
+### Ce qui est branché sur du réel, et ce qui ne l'est pas
+
+#### Branché sur des données réelles
+
+- La liste des binômes, filtrée par consentement (`coach_pilots_view`).
+- Les séances, tours et bilans des pilotes consentis (`telemetry_sessions`,
+  `laps`, `app_session_analyses`).
+- La messagerie (`coach_messages`, temps réel).
+- L'agenda : demandes acceptées et créneaux ouverts.
+- Les demandes reçues (`coaching_bookings`).
+- La fiche publique du coach (`coach_profiles`).
+- Le calcul de facture (logique pure testée) et la numérotation atomique.
+- Le roster du direct (présence Supabase Realtime).
+- Le journal d'accès coach (`log_coach_view` → `admin_audit`).
+
+#### Structurellement branché, mais sans matière en base
+
+Tout ce qui produit le travail du coach : annotations, file de lecture,
+priorités, gabarits, repères, pondérations de lecture, contexte de séance,
+objectifs, programmes, brouillons IA, roulages, factures. **Ces douze tables
+contiennent zéro ligne en production.** Le code est écrit, la base est prête,
+rien n'a jamais été saisi.
+
+#### Non branché, ou bloqué
+
+- **Le direct** : bloqué par la condition `status = 'active'` que rien n'écrit
+  (`liveRelayRunner.ts` ligne 82).
+- **L'assistant IA** : bloqué par `coach_ai_enabled` (0 compte), par
+  `app_segment_analyses` (0 ligne), et éventuellement par `OPENAI_API_KEY`
+  (non vérifiable).
+- **La facturation** : drapeau `coach_billing` à `false`.
+- **Le studio virage par virage et le triage** : `app_segment_analyses` vide.
+- **La biométrie côté coach** : 0 pilote a donné le consentement de partage.
+- **L'ouverture de créneaux** : ramenée à `closed` par un déclencheur, sans
+  message à l'écran.
+- **La vue AR** : dépend d'une page web hors dépôt, non vérifiable ici, et de
+  lunettes en developer preview.
+- **L'enregistrement vocal des annotations** : le code est complet
+  (`coachAudioService.ts`) et `expo-av` est bien dans `package.json` ligne 50,
+  mais le fichier avertit qu'il exige un module natif fonctionnel à partir du
+  prochain build natif. **Aucun enregistrement n'a été observé.**
+
+#### Aucune donnée fabriquée
+
+C'est un point à porter au crédit de l'espace. Recherche systématique de valeurs
+de démonstration dans les 37 écrans : **aucun jeu de données factice, aucune
+valeur codée en dur présentée comme mesurée.** Le seul simulateur trouvé est
+strictement `__DEV__` (`en-direct.tsx` ligne 175). Plusieurs fichiers
+documentent explicitement le refus de simuler (`ar.tsx` lignes 20 et 414,
+`gabarits.tsx` ligne 37 : « L'écran le dit en clair au lieu de le simuler »).
+
+---
+
+### Les tests
+
+Suite lancée sur le motif `coach` :
+
+```
+Test Suites: 4 skipped, 13 passed, 13 of 17 total
+Tests:       22 skipped, 106 passed, 128 total
+```
+
+Les 13 suites qui passent couvrent la logique pure : facturation, console,
+contexte, curation, navigation, objectifs, file, lecture, repères, triage,
+absence de score (`coachDomainNoScore.test.ts`), garde du lien de paiement,
+logique de coaching côté pilote.
+
+Les 4 suites ignorées sont les tests de sécurité RLS
+(`coachAiRLS`, `coachAnnotationsRLS`, `coachGradedAccessRLS`,
+`coachSessionsRLS`). Elles exigent un projet Supabase de test dont les variables
+d'environnement ne sont pas présentes. **Toute la surface de consentement gradué
+est donc écrite, mais non vérifiée hors CI.**
+
+À noter aussi : `jest.config.js` ligne 21 n'accepte que `*.test.ts`. Aucun
+fichier `.tsx` n'est testé — donc **aucun écran coach n'est couvert par un
+test**, seulement les services et la logique.
+
+---
+
+### Les défauts que cette section établit
+
+Par ordre de gravité, tous vérifiés.
+
+1. **Zéro compte coach en production.** L'espace entier est injoignable.
+   Source : table `users`, `app/(coach)/_layout.tsx:33`.
+2. **Le direct ne peut pas s'amorcer.** `liveRelayRunner.ts:82` exige
+   `status = 'active'` sur `coach_pilots` ; aucun code n'écrit jamais cette
+   valeur. Deux écrans (706 et 942 lignes) et un canal Realtime en dépendent.
+3. **Un coach rétrogradé conserve l'accès aux données au niveau de la base.**
+   `is_coach_of()` ne regarde pas `users.role`, et `demoteToPilot()`
+   (`coachAdminService.ts:269`) ne désactive pas les affiliations. Le compte
+   `6edd7f5c-…` est aujourd'hui dans ce cas.
+4. **Les annotations sont bornées à 7 virages** par
+   `coach_annotations_corner_index_check`, alors que la base contient un circuit
+   à 14 virages (Ricardo Tormo). L'écran accepte l'indice, l'insertion
+   échouerait. Signalé par le commit `93f0638` et non corrigé — c'est une
+   modification de schéma en production, qui demande votre accord.
+5. **Le nom de virage affiché est toujours celui de Haute Saintonge**
+   (`src/lib/circuitTopology.ts`), quel que soit le circuit de la séance.
+6. **Un créneau créé par un vrai coach serait fermé sans le lui dire** :
+   `createAvailability` insère `open`, le déclencheur
+   `oxv_coach_availability_open_gate` le ramène à `closed`, l'écran ne
+   l'explique pas.
+7. **`app_segment_analyses` est vide.** Le studio virage par virage, le triage,
+   l'assistant IA et les comparaisons de marges n'ont aucune source. C'est le
+   goulot d'étranglement le plus large de l'espace.
+8. **Les policies d'affiliation par le coach et par le pilote ne sont empruntées
+   par aucun écran.** Seul l'administrateur peut créer un binôme.
+9. **Aucun test ne couvre les 26 528 lignes d'écrans coach**, et les 4 suites de
+   sécurité RLS ne s'exécutent pas hors CI.
+
+---
+
+### Ce que je n'ai pas pu vérifier
+
+Je les liste plutôt que de combler.
+
+- **Le rendu.** Aucun écran n'a été affiché. Je ne peux rien dire de la mise en
+  page réelle, de la lisibilité, des animations, de la bascule console/téléphone
+  au seuil `COACH_CONSOLE_MIN_WIDTH`.
+- **Les gestes.** Aucun appui, aucun défilement, aucun formulaire soumis.
+- **Le matériel.** Aucun RaceBox, aucune ceinture cardio, aucunes lunettes
+  Ray-Ban Display. Tout ce qui touche au direct, à la biométrie et à l'AR est
+  une lecture de code.
+- **Les secrets du projet Supabase.** Je ne peux pas dire si `OPENAI_API_KEY`
+  est renseignée pour les fonctions `coach-ai-draft` et `coach-ai-validate`, ni
+  si `edge_functions_base_url` (nécessaire au déclencheur de notification
+  d'annotation) est bien dans le vault.
+- **La page web `https://app.oxvehicle.fr/ar-view`.** Elle n'est pas dans ce
+  dépôt et je n'y ai pas accédé.
+- **L'enregistrement vocal.** `expo-av` est déclaré, le code est écrit, aucun
+  enregistrement n'a été produit ni relu.
+- **Les policies Storage** des buckets `coach-audio` et `coach-media` : les
+  buckets existent bien en production (respectivement privé et public), je n'ai
+  pas déroulé leurs règles d'accès objet par objet.
+- **Le comportement effectif des RLS.** Je les ai lues, pas éprouvées : les
+  seuls tests qui le feraient sont ignorés faute de projet de test configuré.
+
+---
+
+## Les autres espaces : admin, partenaire, pro, authentification, onboarding
+
+### Préambule de méthode
+
+Tout ce qui suit est une **lecture de code** et une **lecture de la base de production**. Rien n'a été exécuté : ni l'application, ni un build, ni un test. Aucun rendu, aucun geste, aucun matériel n'a été observé. Quand j'écris « l'écran affiche », il faut lire « le code de l'écran produit ».
+
+La base interrogée est le projet Supabase `fouvuqkdxarjpjbqnsjq` (eu-west-1), en **lecture seule**, le 26 juillet 2026. Les comptages de lignes sont ceux de ce jour-là.
+
+Les chemins de fichiers sont donnés depuis la racine du dépôt `C:/Users/Julie/OneDrive/Desktop/oxv-app`.
+
+---
+
+### 1. Vue d'ensemble : six espaces, un seul aiguillage
+
+| Groupe de routes | Fichiers | Écrans (hors `_layout`) | Rôle requis | Atteignable aujourd'hui |
+|---|---:|---:|---|---|
+| `app/(admin)/` | 30 | 29 | `users.is_admin = true` | Oui, par un détour (§5.2) |
+| `app/(partner)/` | 9 | 8 | `users.role = 'partner'` | Oui, 1 compte en base |
+| `app/(pro)/` | 8 | 7 | `users.role = 'pro_pilot'` | **Non**, 0 compte en base |
+| `app/(auth)/` | 3 | 2 | aucun (pré-session) | Oui |
+| `app/(onboarding)/` | 7 | 6 | session valide, profil incomplet | Oui |
+| `app/(coach-onboarding)/` | 4 | 3 | `users.role = 'coach'` | **Non**, 0 compte en base |
+
+Le comptage de fichiers est celui du dépôt (`find app/(admin) -type f` → 30 fichiers, dont `_layout.tsx`).
+
+L'aiguillage unique est `app/index.tsx`. C'est le seul endroit du dépôt qui décide où va un utilisateur après connexion. Sa logique, lignes 71 à 107 :
+
+1. `status !== 'authenticated'` → `/(auth)/login` (ligne 72).
+2. Profil absent **ou** onboarding incomplet (ligne 79) :
+   - `role === 'coach'` → `/(coach-onboarding)` (ligne 81) ;
+   - `role === 'partner'` → `/(partner)` (ligne 85) — **le partenaire saute l'onboarding** ;
+   - sinon → `/(onboarding)` (ligne 87).
+3. Onboarding complet :
+   - `coach` → `/(coach)` (ligne 94) ;
+   - `partner` → `/(partner)` (ligne 97) ;
+   - `pro_pilot` → `/(pro)` (ligne 100) ;
+   - tout le reste, y compris `admin` → `/(app2)` (ligne 107).
+
+Conséquence directe, lisible dans le code : **l'espace admin n'est la destination d'aucune redirection**. Un compte administrateur arrive dans l'arbre pilote V2 comme tout le monde.
+
+L'écran gère aussi un état `error` explicite (lignes 32 à 69) : « Connexion impossible. » avec un bouton « Réessayer » qui relance `initialize()`. Il n'envoie pas vers le login en silence. C'est un choix visible dans le commentaire ligne 30.
+
+---
+
+### 2. Les rôles tels qu'ils existent en base
+
+#### 2.1 L'énumération
+
+Le type `public.user_role` compte cinq valeurs, dans cet ordre : `pilot`, `admin`, `coach`, `partner`, `pro_pilot`. La colonne `users.role` a pour défaut `'pilot'::user_role`. Il n'existe **aucune contrainte CHECK** sur `role` (les seules contraintes CHECK de `users` portent sur `bio`, `blood_type`, `car_number`, `emergency_contact_relation`, `experience_years`, `pilot_level`).
+
+Le type TypeScript correspondant est déclaré à `src/store/useAuthStore.ts:13` et couvre les mêmes cinq valeurs.
+
+#### 2.2 Les 14 comptes de production
+
+| `role` | `is_admin` | Nombre | Onboarding complet | Pacte pilote | Pacte coach | CGU |
+|---|---|---:|---:|---:|---:|---:|
+| `pilot` | `false` | 10 | 2 | 1 | 0 | 1 |
+| `pilot` | `true` | 1 | 1 | 1 | 1 | 1 |
+| `admin` | `false` | 2 | 0 | 0 | 0 | 0 |
+| `partner` | `false` | 1 | 1 | 0 | 1 | 1 |
+
+Faits qui en découlent, tous vérifiés en base :
+
+- **Aucun compte `role = 'coach'`.** L'espace `app/(coach-onboarding)/` et l'espace coach ne sont donc atteignables par personne aujourd'hui. La seule relation coach existante (`coach_pilots`, 1 ligne) a pour `coach_id` le compte du fondateur (`6edd7f5c…`), qui est aujourd'hui `role = 'pilot'`. Idem pour `coach_profiles` (1 ligne) et `coach_permissions` (1 ligne).
+- **Aucun compte `role = 'pro_pilot'`.** L'espace `app/(pro)/` (7 écrans, environ 1 800 lignes) n'a jamais pu être ouvert par un utilisateur en production.
+- **Les deux comptes `role = 'admin'` ont `is_admin = false`.** Voir §4.1 : ils passent les gardes serveur mais échouent la garde client. Ils ne peuvent pas ouvrir `app/(admin)/`.
+- **Le seul compte qui peut ouvrir l'admin est `6edd7f5c…`** (`public_handle = 'gabin'`), qui porte `role = 'pilot'` et `is_admin = true`.
+
+#### 2.3 Comment le fondateur a perdu `role = 'admin'`
+
+La table `admin_audit` (59 lignes) trace trois `role_changed` :
+
+- 2026-07-07 : `88203298…` passe de `admin` à `partner`.
+- 2026-07-18 : `6edd7f5c…` passe de `coach` à `admin`.
+- 2026-07-20 15:09:01 : `6edd7f5c…` passe de `admin` à **`pilot`**.
+
+Cette dernière ligne suit d'une seconde un `inscription_accept_relayed` sur la demande `8ecad273…` (email `administration@oxvehicle.fr`, `type_demande = 'pilote'`). La fonction `public.admin_review_demande` fait, à l'acceptation, `update public.users set role = v_role where lower(email) = lower(d.email)` avec `v_role = 'pilot'` pour une demande de type `pilote`. **Valider une demande d'inscription pilote sur un email déjà administrateur rétrograde cet administrateur.** Le compte a conservé `is_admin = true`, ce qui l'a sauvé.
+
+C'est un effet de bord de la base, pas de l'application. Il n'est pas signalé dans le code de l'app.
+
+---
+
+### 3. Ce qui garde l'accès, côté application
+
+Chaque groupe porte sa propre garde dans son `_layout.tsx`. Elles sont toutes du même type : lire le profil dans le store Zustand, comparer, rediriger.
+
+| Fichier | Condition testée | Redirection |
+|---|---|---|
+| `app/(admin)/_layout.tsx:17` | `!profile?.is_admin` | `/(app2)` |
+| `app/(partner)/_layout.tsx:18` | `profile.role !== 'partner'` | `/(app2)` |
+| `app/(pro)/_layout.tsx:26` | `profile.role !== 'pro_pilot'` | `/(app2)` |
+| `app/(coach-onboarding)/_layout.tsx:19` | `profile.role !== 'coach'` | `/(app2)` |
+| `app/(coach)/_layout.tsx:33` | `profile.role !== 'coach'` | `/(app2)` |
+| `app/(auth)/_layout.tsx:13` | `status === 'authenticated'` | `/` |
+| `app/(app)/_layout.tsx:17` | `status === 'unauthenticated'` | `/(auth)/login` |
+| `app/(app2)/_layout.tsx:71` | `status === 'unauthenticated'` | `/(auth)/login` |
+
+Trois remarques factuelles :
+
+1. **`app/(onboarding)/_layout.tsx` n'a aucune garde de rôle ni de session.** Il ne fait que poser un `Stack` avec `gestureEnabled: false` (ligne 17). L'écran est protégé uniquement en amont, par `app/index.tsx`. Le commentaire du fichier assume ce choix : le flux est « strictement linéaire », le retour par geste est coupé pour ne pas laisser un profil « partiellement signé ».
+2. **`app/(app)/_layout.tsx` (l'arbre pilote v1, 80 entrées) ne vérifie que la session.** Aucune vérification de rôle, aucune vérification d'onboarding. Un partenaire, un pro ou un administrateur qui atteint une route `/(app)/…` voit l'arbre pilote complet.
+3. **La garde admin est la seule qui ne teste pas `role`.** Elle teste `is_admin`. Les deux comptes `role = 'admin'` de production sont donc bloqués, alors que la base les considère administrateurs (§4.1).
+
+Le profil qui alimente ces gardes est chargé par `fetchProfile()` dans `src/store/useAuthStore.ts:55-70`. En cas d'échec de lecture, la fonction retourne `null` et le store passe `profile: null` — les layouts `(partner)`, `(pro)`, `(coach)`, `(coach-onboarding)` retournent alors `null` (écran vide) plutôt qu'une redirection. Le layout `(admin)`, lui, redirige. Comportements divergents, non harmonisés.
+
+Ligne 69 du même fichier : si la colonne `role` est absente de la réponse, le code retombe sur `'pilot'`. Filet de sécurité côté client, jamais côté serveur.
+
+---
+
+### 4. Ce qui garde l'accès, côté base
+
+#### 4.1 Deux définitions de « administrateur »
+
+Deux fonctions coexistent en production :
+
+- `public.is_admin()` : `role = 'admin' OR is_admin = true`.
+- `public.oxv_is_admin()` : `role = 'admin'` seulement.
+
+Presque toutes les policies RLS utilisent `is_admin()`. `admin_validate_inscription` utilise `oxv_is_admin()`.
+
+Conséquence vérifiée : le compte du fondateur (`role='pilot'`, `is_admin=true`) satisfait `is_admin()` mais **pas** `oxv_is_admin()`. Il ne peut donc plus appeler `admin_validate_inscription` depuis le 20 juillet 2026, alors qu'il conserve tous les autres droits admin. Aucune surface de l'app n'expose cette fonction — c'est un outil du site — mais la divergence est réelle et non documentée.
+
+Inversement, les deux comptes `role='admin'` / `is_admin=false` satisfont les deux fonctions serveur mais échouent la garde client `app/(admin)/_layout.tsx:17`.
+
+#### 4.2 Les policies des tables d'espace
+
+Relevé depuis `pg_policies` :
+
+- `users` : `users_select_own_or_admin` = `(id = auth.uid()) OR is_admin()` ; `users_update_own_or_admin` = idem ; `users_delete_admin_only` = `is_admin()`.
+- `admin_audit`, `devices`, `social_pings`, `ambassador_profiles`, `app_config`, `app_feature_flags` : écriture `is_admin()`.
+- `app_config` et `app_feature_flags` sont en **lecture publique** (`qual = true`) — nécessaire, le `MaintenanceGate` les lit avant authentification.
+- `partner_accounts` : lecture `profile_id = auth.uid() OR is_admin() OR status = 'validated'` ; écriture limitée au propriétaire ou à l'admin.
+- `partner_offers` : lecture `status = 'published' OR owns_partner_account(partner_id) OR is_admin()`.
+- `partner_leads` : lecture `owns_partner_account(partner_id) OR is_admin() OR pilot_id = auth.uid()` ; **aucune policy coach**.
+- `pro_team_members` : `pro_user_id = auth.uid()` pour tout, plus lecture par le membre et par l'admin.
+
+Trois déclencheurs verrouillent les statuts sensibles, indépendamment de l'app :
+
+- `oxv_partner_accounts_validation_gate` : un non-admin ne peut pas poser `status = 'validated'` (retombe en `pending`).
+- `oxv_partner_offers_publish_gate` : un non-admin ne peut pas publier une offre (retombe en `draft`) ; toute modification d'une offre publiée la repasse en `draft`.
+- `oxv_coach_availability_open_gate` : un non-admin ne peut pas ouvrir un créneau.
+
+Ces garde-fous sont serveur. Ils tiennent même si l'écran se trompe.
+
+#### 4.3 Ce qui n'est pas verrouillé
+
+- **`users.is_admin` n'est protégé par rien.** Le déclencheur `trg_guard_users_privileged_columns` (fonction `guard_users_privileged_columns`) ne surveille que `role` et `kyc_status`. Le rôle `authenticated` détient le privilège `UPDATE` sur la colonne `is_admin` (`information_schema.column_privileges`), et la policy `users_update_own_or_admin` autorise un utilisateur à modifier sa propre ligne. Lu de bout en bout, cela signifie qu'un compte authentifié peut se poser `is_admin = true` sur lui-même, ce qui rend `is_admin()` vrai et ouvre l'ensemble des policies admin. Je n'ai **pas** exécuté cette écriture — c'est une lecture des policies, des privilèges de colonne et des déclencheurs, pas un test.
+- **`users.suspended_at` n'est jamais lu.** L'écran `app/(admin)/utilisateurs/[id].tsx` écrit la suspension via `setSuspended` (`src/services/adminUsersService.ts:125-146`). Aucune policy RLS ne référence `suspended` (requête sur `pg_policies` : 0 résultat), et aucun fichier de `src/` ou `app/` ne lit `suspended_at` en dehors du service admin et des types générés. **Suspendre un compte ne l'empêche donc de rien.**
+- **Les tests RLS ne tournent pas par défaut.** `src/__tests__/rls/setup.ts:22` désactive toute la suite si `TEST_SUPABASE_URL` / `TEST_SUPABASE_SERVICE_KEY` sont absents ; `.github/workflows/check.yml:85` teste explicitement ces variables et saute l'étape sinon. Ces tests couvrent la règle cardinale « le partenaire ne voit jamais la télémétrie » (`src/__tests__/rls/roleMatrixRLS.test.ts:30-44`). S'ils ne s'exécutent pas dans la CI, cette garantie n'est pas vérifiée automatiquement. Je n'ai pas pu contrôler si les secrets GitHub sont renseignés.
+
+---
+
+### 5. L'espace d'authentification — `app/(auth)/`, 2 écrans
+
+#### 5.1 `login.tsx` (116 lignes)
+
+Un formulaire, deux champs, un bouton.
+
+- « Adresse email » (`Field`, clavier email, autocapitalisation coupée) — lignes 43-54.
+- « Mot de passe » (saisie masquée) — lignes 56-67. L'erreur d'authentification s'affiche sous ce champ.
+- Bouton « Entrer » / « Connexion… », actif seulement si les deux champs sont remplis (ligne 22).
+- Un lien secondaire « Lier mon compte avec un code du site » vers `/(auth)/lier` (lignes 80-88).
+
+L'appel est `supabase.auth.signInWithPassword` (`src/store/useAuthStore.ts:116`). Les erreurs sont traduites en français par `translateAuthError` (lignes 149-161) : « Identifiants incorrects. », « Adresse non confirmée… », « Connexion impossible. Vérifiez votre réseau. »
+
+Ce que l'écran **ne fait pas**, vérifié par recherche sur tout le dépôt : aucun `supabase.auth.signUp(`, aucun `resetPasswordForEmail`, aucun libellé « mot de passe oublié ». **Il n'existe ni création de compte ni réinitialisation de mot de passe dans l'application.** Les comptes se créent ailleurs (site, back-office), et un mot de passe perdu ne se récupère pas depuis le mobile.
+
+#### 5.2 `lier.tsx` (143 lignes)
+
+Appairage site → app par code court, livré au lot M3.
+
+- Le pilote génère un code sur oxvehicle.fr, le saisit ici : 8 caractères, alphabet sans `0/O/1/I/L`, validité annoncée « dix minutes » (texte ligne 72-75).
+- La normalisation est pure et testée : `normalizePairingCode` et `isPairingCodeComplete` (`src/services/pairingLogic.ts:21-27`), couvertes par `src/services/__tests__/pairingLogic.test.ts`.
+- L'échange passe par la fonction edge `pair-app` (`src/services/pairingService.ts:33-35`), puis `supabase.auth.verifyOtp({ type: 'magiclink', token_hash })` (ligne 60). Aucun mot de passe n'est retapé.
+- Un lien profond `oxv://lier?code=XXXXXXXX` préremplit le champ (lignes 38-40). Le schéma `oxv` est déclaré dans `app.json:8`.
+- Les erreurs sont typées et traduites : code invalide/expiré, `rate_limited` (« Trop de tentatives. Patientez une minute »), échec de liaison, réseau (`src/services/pairingLogic.ts:37-51`).
+
+État en production : la fonction edge `pair-app` est **déployée et active** (version 6, `verify_jwt = false`). La table `app_pairing_codes` contient **0 ligne**. La table `app_pairing_redeem_attempts` contient **1 ligne**, datée du 3 juillet 2026. Autrement dit : le mécanisme a été touché une fois, il y a trois semaines, et aucun code n'est en circulation. Je ne peux pas dire si cette tentative a abouti.
+
+---
+
+### 6. L'onboarding pilote — `app/(onboarding)/`, 6 écrans
+
+C'est le seul passage obligé entre la connexion et l'application. Six écrans, numérotés 1/6 à 6/6 par une barre de progression en or (`palette.gold`), sans bouton « passer ». Le commentaire de `app/(onboarding)/index.tsx:5-6` l'énonce : « Pas de bouton "passer" : l'onboarding est complet ou rien. »
+
+Le `Stack` coupe le retour par geste (`app/(onboarding)/_layout.tsx:17`).
+
+#### Étape 1/6 — Accueil (`index.tsx`, 121 lignes)
+
+Icône de l'application (160 × 160, `assets/icon.png`), sur-titre « OXV MIRROR », une phrase : « Bienvenue dans le miroir. » Bouton « Commencer » → `/(onboarding)/doctrine`.
+
+#### Étape 2/6 — Doctrine (`doctrine.tsx`, 127 lignes)
+
+Titre « Une app qui vous montre. » puis trois lignes empilées : « Pas un coach. » / « Pas un instructeur. » / « Un miroir. » Manifeste de bas d'écran : « Les décisions de pilotage vous appartiennent. Toujours. » Bouton « Compris » → `/(onboarding)/methode`.
+
+Aucune écriture en base à cette étape.
+
+#### Étape 3/6 — Méthode (`methode.tsx`, 140 lignes)
+
+Trois mots en monospace, chacun avec une phrase (constante `STEPS`, lignes 19-23) :
+
+- VOIR — « Ce qui s'est passé. »
+- COMPRENDRE — « Ce que vous avez senti. »
+- QUESTIONNER — « Ce que vous voulez explorer. »
+
+Manifeste : « Jamais d'instruction. Toujours une observation. » Bouton « Suivant » → `/(onboarding)/niveau`.
+
+#### Étape 4/6 — Niveau pilote (`niveau.tsx`, 183 lignes)
+
+Quatre cartes, une seule sélectionnable (constante `LEVELS`, lignes 28-45) :
+
+| Valeur écrite | Libellé affiché | Description |
+|---|---|---|
+| `debutant` | Débutant | « Quelques journées circuit, je découvre. » |
+| `intermediaire` | **Apprivoisé** | « Je connais mon circuit, je progresse session après session. » |
+| `confirme` | Confirmé | « Je tourne régulièrement, je connais mes limites. » |
+| `expert` | Expert | « J'ai un fond compétition, je cherche la précision. » |
+
+Le libellé « Apprivoisé » pour la valeur `intermediaire` est un choix de vocabulaire doctrinal assumé. La colonne `users.pilot_level` porte une contrainte CHECK en base limitée à ces quatre valeurs exactement (`users_pilot_level_check`) : l'écran et la base sont alignés.
+
+Texte sous le titre : « Cette information reste privée. Elle calibre vos analyses. » Écriture via `setPilotLevel` (`src/services/onboardingService.ts:25-41`) : un `update` sur `users.pilot_level`. En cas d'échec réseau, l'action part dans la file hors-ligne (`enqueueAction`, kind `update_pilot_level`) et l'écran continue quand même vers l'étape suivante.
+
+Répartition en production : 3 comptes sur 14 ont un `pilot_level` (`debutant` ×2, `intermediaire` ×2 — soit 4 valeurs pour 4 comptes, un compte partenaire inclus).
+
+#### Étape 5/6 — CGU et confidentialité (`cgu.tsx`, 233 lignes)
+
+Quatre cases. Trois obligatoires (ligne 37 : `allChecked = cgu && privacy && age`) :
+
+1. « J'accepte les Conditions Générales d'Utilisation. »
+2. « J'ai lu la Politique de confidentialité. »
+3. « Je confirme avoir 18 ans révolus et un permis B valide. »
+
+Une case **optionnelle**, sous un sur-titre « OPTIONNEL » : « J'autorise le débrief enrichi par une IA (transfert de données non nominatives hors UE). Sans cela, votre débrief reste rédigé localement. Modifiable à tout moment. »
+
+Puis : « Les documents complets sont consultables à tout moment depuis vos paramètres. »
+
+L'écriture est `acceptCguAndPrivacy(aiDebriefConsent)` (`src/services/onboardingService.ts:49-75`), qui pose en une fois `cgu_accepted_at`, `cgu_version`, `privacy_accepted_at`, `privacy_version` et `ai_debrief_enabled`. Les versions sont des constantes du code : `CGU_VERSION = '1.0'`, `PRIVACY_VERSION = '1.0'` (lignes 20-21). En cas d'échec, une alerte « Acceptation non enregistrée » bloque la progression — l'écran ne laisse pas passer un consentement non écrit.
+
+Trois observations factuelles sur cet écran :
+
+- **Les documents ne sont pas consultables depuis l'écran de consentement.** Les trois libellés sont du texte simple, sans lien. Le lecteur juridique existe (`app/(app2)/vous/document/[doc].tsx`, alimenté par `src/legal/legalDocuments.ts` qui embarque `pacte`, `cgu`, `confidentialite`, `decharge`) mais il n'est atteignable qu'**après** l'onboarding, depuis `app/(app2)/vous/documents.tsx:184`. Le pilote accepte donc des documents qu'il ne peut pas lire à ce moment-là dans l'application.
+- **La déclaration d'âge et de permis n'est pas vérifiée.** C'est une case à cocher, rien d'autre. Aucune colonne dédiée n'est écrite : les trois cases obligatoires alimentent deux horodatages (`cgu_accepted_at`, `privacy_accepted_at`), la troisième ne laisse aucune trace propre.
+- **Le défaut de la colonne `ai_debrief_enabled` est `true` en base**, alors que le code de l'application passe `false` par défaut (`acceptCguAndPrivacy(aiDebriefConsent = false)`, ligne 49). En production, 13 comptes sur 14 ont `ai_debrief_enabled = true` — c'est-à-dire la valeur par défaut, jamais un consentement recueilli par cet écran. Un seul compte est à `false`. Le commentaire du service (lignes 43-48) affirme « aucun transfert vers OpenAI (US) tant que le pilote ne l'a pas autorisé ici » ; cette affirmation est vraie du chemin applicatif, pas de l'état de la table.
+
+#### Étape 6/6 — Pacte de pilotage (`pacte.tsx`, 183 lignes)
+
+L'écran de signature. Barre de progression pleine, deux phrases en grand :
+
+> « L'app est un miroir. Elle vous montre. Elle ne vous dirige pas. »
+> « La piste est à vous. Les décisions aussi. »
+
+Une case « Je m'engage. », un bouton « Activer OXV Mirror ».
+
+Au tap (lignes 26-46), dans cet ordre :
+
+1. `acceptPact()` → `pact_accepted_at` + `pact_version = '1.0'`. Échec : alerte « Pacte non enregistré », rejeu par la file hors-ligne, on n'avance pas.
+2. `completeOnboarding()` → `profile_completed_at`. Échec : alerte « Finalisation impossible », on n'avance pas.
+3. `router.replace('/')` — retour à l'aiguillage, qui route enfin par rôle.
+
+`completeOnboarding` émet aussi l'événement analytique `onboardingTermine()` (`src/services/onboardingService.ts:150`), présenté en commentaire comme le KPI d'activation pilote.
+
+Le document source est `docs/juridique/01_PACTE_DE_PILOTAGE.md`, version 1.0. Il porte encore trois marqueurs à compléter en en-tête : « [date de mise en service] », « [SIRET à compléter] », « [Adresse à compléter] ». Le texte embarqué dans l'application (`src/legal/legalDocuments.ts`) est généré depuis ce fichier ; les marqueurs y sont donc aussi.
+
+#### La porte de sortie de l'onboarding
+
+`isOnboardingComplete` (`src/services/onboardingService.ts:159-175`) est la seule condition d'entrée dans l'application :
+
+```
+base = profile_completed_at ET cgu_accepted_at
+coach  → base ET coach_pact_accepted_at
+autres → base ET pact_accepted_at
+```
+
+Trois conséquences lisibles :
+
+- `privacy_accepted_at` n'entre pas dans le calcul, alors qu'il est écrit par la même fonction.
+- `pilot_level` n'entre pas dans le calcul : l'étape 4 est franchissable sans écriture réussie.
+- Le rôle `partner` retombe dans la branche « autres » et exigerait `pact_accepted_at`, mais `app/index.tsx:84` l'intercepte avant. **Un partenaire n'a donc jamais à signer quoi que ce soit dans l'application.**
+
+État en production : 3 comptes sur 14 ont `profile_completed_at`, 2 ont `pact_accepted_at`, 2 ont `cgu_accepted_at`. Autrement dit, **onze comptes sur quatorze n'ont jamais terminé l'onboarding**. Ils seraient renvoyés sur `/(onboarding)` à leur prochaine connexion.
+
+Aucun test unitaire ne couvre `onboardingService` : la recherche `isOnboardingComplete` ne renvoie que `app/index.tsx`, `src/services/offlineQueue.ts` et le service lui-même. Rien dans `src/services/__tests__/`.
+
+---
+
+### 7. L'onboarding coach — `app/(coach-onboarding)/`, 3 écrans
+
+Garde de rôle stricte (`_layout.tsx:19`), retour par geste coupé, barre de progression sur trois pas.
+
+#### 1/3 — Accueil (`index.tsx`, 127 lignes)
+
+« Vous êtes coach OXV. » puis : « Votre rôle est d'accompagner les pilotes qui vous sont assignés et qui ont consenti au partage de leurs données. » et « Avant de commencer, deux pages à lire calmement. »
+
+#### 2/3 — Mission (`mission.tsx`, 175 lignes)
+
+Quatre principes, en dur dans la constante `POINTS` (lignes 19-40). Résumé de chacun :
+
+- **POSTURE** — « Vous observez, vous n'instruisez pas. » L'application ne génère pas d'instructions à transmettre.
+- **CONSENTEMENT** — « Le pilote contrôle ce que vous voyez. » Sans consentement explicite du pilote, ses données restent invisibles ; le retrait est immédiat et sans justification.
+- **CONFIDENTIALITÉ** — « Vous voyez les données. Jamais l'identité. » Pas d'email, pas de téléphone, pas de documents administratifs.
+- **TRACE** — « Vos accès sont journalisés. » Date, heure, pilote consulté ; conservé par OXV ; consultable par le pilote sur demande.
+
+Ces quatre promesses ont un pendant serveur réel : `is_coach_of()` exige `active = true AND pilot_consent_at IS NOT NULL` ; `log_coach_view()` écrit dans `admin_audit` et ne fait rien si l'appelant n'est pas coach du pilote ; `coach_annotation_doctrine_guard()` lève une exception `doctrine_violation` si une note partagée contient un terme prescriptif. La table `admin_audit` contient 2 lignes `coach_view_sessions` (28 juin et 7 juillet 2026) et 3 lignes `coach_annotation_notified` (18 juin 2026) : la journalisation a bien fonctionné, au moins ces jours-là.
+
+Pas de case à cocher sur cet écran. Bouton « Continuer vers le pacte ».
+
+#### 3/3 — Pacte de coaching (`pacte.tsx`, 195 lignes)
+
+Deux phrases :
+
+> « Je respecte la confidentialité du pilote, sans condition. »
+> « Je n'instruis pas. Je propose un regard. »
+
+Case « Je m'engage. », bouton « Activer mon compte coach ». Au tap (lignes 30-58) : `acceptCoachPact()` (→ `coach_pact_accepted_at`, `coach_pact_version = '1.0'`), puis `acceptCguAndPrivacy()` **sans argument** — donc `ai_debrief_enabled = false` pour un coach — puis `completeOnboarding()`, puis `router.replace('/')`.
+
+Le commentaire lignes 32-35 justifie le regroupement : « Pour V1 : on accepte le pacte coach + les CGU/RGPD en un seul flow. Le pacte coach contient déjà les engagements RGPD spécifiques au coach ». Le document de référence est `docs/juridique/06_PACTE_DE_COACHING.md`.
+
+**Ce flux n'est atteignable par personne aujourd'hui** : aucun compte `role = 'coach'` en base. Deux comptes portent pourtant `coach_pact_accepted_at` : `6edd7f5c…` (l'ancien coach devenu `pilot`) et `88203298…` (l'actuel partenaire, ancien `admin`). Ce sont des résidus de rôles antérieurs — la colonne n'est jamais effacée à un changement de rôle.
+
+---
+
+### 8. L'espace admin — `app/(admin)/`, 29 écrans
+
+#### 8.1 Ce que c'est
+
+Le plus gros espace du dépôt après l'arbre pilote : 29 écrans, environ 8 300 lignes. Accent de rôle cyan (`#22D3EE`, déclaré `app/(admin)/index.tsx:20` avec un commentaire qui garde encore le mot « bronze » de la version précédente).
+
+#### 8.2 Comment on y entre — et pourquoi c'est un problème
+
+Recherche exhaustive sur `app/` et `src/` : **une seule référence de navigation** vers `/(admin)` existe, dans `src/components/SpaceSwitcher.tsx:27`. Ce composant ne s'affiche que si `profile.is_admin === true` (ligne 31-32) et n'est monté qu'à deux endroits :
+
+- `app/(app)/index.tsx:193` — le hub pilote **v1** ;
+- `app/(coach)/index.tsx:523` — le hub coach.
+
+Or `app/index.tsx:107` envoie désormais le pilote sur `/(app2)`, l'arbre V2. Et `app/(app2)/` ne contient **aucun lien vers `/(app)/index`** : la seule ouverture vers l'arbre v1 est `app/(app2)/club/territoire.tsx:622` et `:629`, vers `creer-route` et `creer-trace`.
+
+Le chemin d'accès réel, tel qu'il se lit dans le code, est donc :
+
+`/(app2)` → onglet Club → Territoire → « créer une route » → `/(app)/creer-route` → la barre d'onglets v1 réapparaît (`app/(app)/_layout.tsx:38`, `shouldShowTabBar` ne la masque que pendant le roulage et le flux de capture) → onglet « Miroir » → `/(app)` → `SpaceSwitcher` → `/(admin)`.
+
+Six gestes, en passant par un écran de création de route. **Il n'existe aucune entrée directe vers l'espace admin depuis l'application que le fondateur ouvre aujourd'hui.** Un lien profond `oxv:///(admin)` fonctionnerait vraisemblablement, la garde étant sur `is_admin`, mais je ne l'ai pas exécuté.
+
+Le hub admin propose une sortie explicite : « Sortir de l'admin » → `router.replace('/(app2)')` (`app/(admin)/index.tsx:166`). **Il n'y a pas de bouton de déconnexion dans l'espace admin**, contrairement aux espaces partenaire et pro.
+
+#### 8.3 Le hub
+
+`app/(admin)/index.tsx` liste **21 entrées** (constante `VIEWS`, lignes 22-128), chacune avec un libellé et une description d'une ligne. Les 8 écrans restants ne sont pas listés : `index` lui-même, les cinq détails paramétrés (`coachs/[id]`, `evenements/[id]`, `evenements/nouveau`, `support/[id]`, `utilisateurs/[id]`), `analyse-session/[id]` (atteint depuis `qualite-data.tsx:143`) et `b2b-rapport` (atteint depuis `evenements/[id].tsx:257`).
+
+#### 8.4 Inventaire écran par écran
+
+Toutes les données sont réelles : chaque écran passe par un service qui interroge Supabase. Aucun jeu de données factice n'a été trouvé dans `app/(admin)/`.
+
+| Écran | Lignes | Source de données | Lignes en prod | Écrit ? |
+|---|---:|---|---:|---|
+| `tour-controle.tsx` | 330 | `adminControlTowerService` → `events`, `event_registrations`, `telemetry_sessions` | 1 / 0 / 18 | non |
+| `preparation.tsx` | 251 | `supabase.from('users').eq('role','pilot')` (ligne 51) | 11 | oui (promotion coach) |
+| `en-cours.tsx` | 185 | `telemetry_sessions` où `status='recording'` (ligne 49) | 0 en cours | non |
+| `devices.tsx` | 334 | `adminDevicesService` → `devices`, `device_assignments` | **0 / 0** | oui |
+| `evenements.tsx` | 168 | `eventsService` → `events` | 1 | non |
+| `evenements/[id].tsx` | 455 | `eventsService` + `adminDevicesService` | 1 | oui (statut, check-in) |
+| `evenements/nouveau.tsx` | 276 | `eventsService.createEvent` | — | oui |
+| `scan-checkin.tsx` | 161 | `expo-camera` + `setRegistrationStatus` → `event_registrations` | **0** | oui |
+| `presences.tsx` | 264 | `attendanceService` → `sessions`, `registrations` (tables **site**) | 1 / 1 | oui (`attended_at`) |
+| `qualite-data.tsx` | 298 | `adminQualityService` → `telemetry_sessions`, `app_session_analyses`, `data_quality_reports` | 18 / 13 / **0** | oui |
+| `analyse-session/[id].tsx` | 366 | `adminSessionDiagnosticService` | — | relances serveur |
+| `support.tsx` | 234 | `supportAdminService` → `support_tickets` | **0** | non |
+| `support/[id].tsx` | 307 | `supportAdminService` → `support_messages` | **0** | oui |
+| `moderation.tsx` | 243 | `moderationService` → `moderation_reports` | **0** | oui |
+| `analytique.tsx` | 198 | `adminAnalyticsService` → 6 tables agrégées | — | non |
+| `maintenance.tsx` | 200 | `appConfigService` → `app_config` | 1 | oui |
+| `feature-flags.tsx` | 241 | `featureFlagsService` → `app_feature_flags` | 7 | oui |
+| `circuit.tsx` | 618 | `HAUTE_SAINTONGE_TRACK` + `BELTOISE_CORNERS` + `app_segment_analyses` | **0** | non |
+| `utilisateurs.tsx` | 224 | `adminUsersService.listUsers` → `users` | 14 | non |
+| `utilisateurs/[id].tsx` | 326 | `adminUsersService` | 14 | oui (rôle, suspension, notes) |
+| `coachs.tsx` | 243 | `coachAdminService.listCoaches` → `users` où `role='coach'` | **0** | oui (rétrogradation) |
+| `coachs/[id].tsx` | 439 | `coach_pilots` | 1 | oui |
+| `partenaires.tsx` | 222 | `partnerService` → `partner_accounts`, `partner_leads` | 2 / **0** | oui (validation) |
+| `ambassadeurs.tsx` | 224 | `ambassadorService` → `ambassador_profiles` | **0** | oui |
+| `sessions-media.tsx` | 523 | `sessionMediaService` + `expo-image-picker` → `session_media` | **0** | oui (upload) |
+| `routes-certification.tsx` | 202 | `scenicRoutesService` → `scenic_routes` | 1 | oui |
+| `points-carte.tsx` | 732 | `socialPingsService` → `social_pings` | **0** | oui |
+| `b2b-rapport.tsx` | 255 | `b2bReportService` → `b2b_event_reports` | **0** | oui |
+
+**Douze de ces écrans lisent une table vide en production.** Ils ne sont pas cassés — leur état « vide » est géré par `StateWrapper` — mais ils n'ont jamais eu de matière à afficher.
+
+#### 8.5 Détails qui méritent d'être connus
+
+**Préparation.** Le docblock annonce « données réelles à wirer avec une vraie session OXV (table `registrations`) ». Dans les faits (ligne 51-56), l'écran liste **tous** les comptes `role='pilot'`, triés par nom, plafonnés à 50, avec leur email et leur `kyc_status`. Ce n'est pas la liste des inscrits d'une session : c'est l'annuaire pilote. Le bouton de promotion « ↦ coach » ouvre une `Alert` de confirmation qui explique les conséquences avant d'agir (lignes 78-99).
+
+**En cours.** Le docblock annonce « le live state vient des subscriptions Supabase Realtime […] à câbler ». C'est exact : l'écran fait une requête ponctuelle sur `telemetry_sessions.status = 'recording'`, avec un bouton de rechargement. **Il n'y a aucun abonnement temps réel.** Le titre affiche « N session(s) active(s) ».
+
+**Inspecteur circuit.** L'écran est **codé en dur sur un seul circuit**, Haute Saintonge (`HAUTE_SAINTONGE_TRACK` de `src/trackviz/hauteSaintonge`, virages `BELTOISE_CORNERS` de `src/lib/circuitTopology`). La base contient pourtant quatre circuits : Haute Saintonge, Charente, La charade, Circuit Ricardo Tormo. Les trois autres n'ont pas d'inspecteur. La colorisation « par marge moyenne historique » repose sur `app_segment_analyses`, qui contient **0 ligne** : cette bascule n'a rien à colorer.
+
+**Deux systèmes de présence en parallèle.** `scan-checkin.tsx` pointe `event_registrations.status = 'checked_in'` (via `setRegistrationStatus`), tandis que `presences.tsx` pointe `registrations.attended_at` — la table du **site**. Le docblock de `presences.tsx` l'assume : « Complémentaire du scan QR […] convergence au lot M4 ». Les deux tables ne se parlent pas. `event_registrations` est vide, `registrations` a une ligne.
+
+**Maintenance.** L'écran écrit `app_config.maintenance_mode` et `min_supported_version`, lus par `src/components/MaintenanceGate.tsx` monté dans le layout racine (`app/_layout.tsx`). En production : `maintenance_mode = false`, `min_supported_version = null`, dernière modification le 29 juin 2026. Le coupe-circuit existe donc et n'a jamais été armé.
+
+**Feature flags.** Sept drapeaux en base. Six sont éteints : `app_payments`, `coach_billing`, `convoys`, `founders`, `pilot_waivers`, `video_overlay`. Un seul est allumé : `biometry`, levé le 25 juillet 2026, avec une description qui note en clair ce qui reste dû : « Reste non tenu à la levée : smoke test 2 appareils reels. »
+
+**Utilisateurs.** `setUserRole` (`src/services/adminUsersService.ts:117-123`) synchronise `is_admin` avec `role === 'admin'`. Les deux comptes `role='admin'` / `is_admin=false` de la base n'ont donc **pas** été créés par cet écran — ils viennent du site ou d'une écriture SQL directe. C'est la source de la divergence du §4.1.
+
+**Scan de présence.** Le docblock note que « la caméra ne se teste que sur device → validation au build ». Aucune trace d'un tel test dans le dépôt. Le check-in manuel reste possible depuis `evenements/[id].tsx`.
+
+---
+
+### 9. L'espace partenaire — `app/(partner)/`, 8 écrans
+
+#### 9.1 Qui y accède
+
+Un seul compte en production : `88203298…`, `role = 'partner'`, créé le 9 mai 2026, passé de `admin` à `partner` le 7 juillet 2026. Il possède un `partner_accounts` nommé « OXV », type `autre`, statut `validated`.
+
+Un second `partner_accounts` existe, « OXV · Administration », rattaché au compte du fondateur — qui est `role = 'pilot'`. Ce compte-là **ne peut pas ouvrir l'espace partenaire** (garde `role !== 'partner'`), alors qu'il détient une fiche partenaire validée. La fiche est visible ailleurs (lecture publique des comptes `validated`), pas son tableau de bord.
+
+Le partenaire est redirigé vers `/(partner)` **avant** toute vérification d'onboarding (`app/index.tsx:84-86`). Il n'a signé ni CGU ni pacte via l'application.
+
+#### 9.2 Les écrans
+
+**`index.tsx` (267 lignes) — tableau de bord.** Charge en parallèle le compte, les offres, les leads et les partenariats d'événement. Affiche le statut du compte avec trois libellés explicites (lignes 36-40) : « En attente de validation OXV », « Compte validé », « Compte désactivé ». Puis les compteurs : offres publiées, nouveaux leads. Sept cartes de navigation (lignes 134-181) et un lien « Se déconnecter » (lignes 211-219).
+
+**`profil.tsx` (284 lignes) — ma fiche.** Le partenaire édite sa zone géographique et sa description. Le nom, le type et le statut restent gérés par OXV : le docblock le dit, et la RLS le confirme (`oxv_partner_accounts_validation_gate` empêche l'auto-validation).
+
+**`offres.tsx` (462 lignes) — mes offres.** Création, édition, publication, archivage. Champs : titre, description, prix en euros, quota, catégorie, date de validité, conditions, image. **Le prix est affiché, jamais encaissé** — le docblock l'énonce, et le drapeau `app_payments` est éteint. En production : 1 offre, « PASS », 390 €, statut `draft`. Le déclencheur `oxv_partner_offers_publish_gate` fait retomber toute tentative de publication par un non-admin en `draft`, et repasse en `draft` toute offre publiée qui serait modifiée. L'offre existante est donc en attente d'une validation admin, conformément au dispositif.
+
+**`leads.tsx` (432 lignes) — mes leads.** Suivi d'un statut commercial sur cinq valeurs : `new`, `contacted`, `booked`, `lost`, `archived`. Le docblock est catégorique : « ne voit JAMAIS la télémétrie ni l'identité du pilote […] Le contact réel passe par OXV ». La RLS `partner_leads_select` autorise le propriétaire du compte, l'admin, et le pilote concerné — jamais un coach. **0 lead en production.**
+
+**`performance.tsx` (230 lignes) — agrégats.** Dérivés des leads et des offres, sans nouvelle table et sans donnée pilote. Le docblock exclut explicitement tout classement entre partenaires. Sans lead ni offre publiée, l'écran n'a rien à agréger aujourd'hui.
+
+**`point.tsx` (530 lignes) — mon point sur la carte.** Le plus riche des écrans partenaire. Le partenaire validé crée son point sur La carte OXV : titre, catégorie, adresse, position par géolocalisation de l'appareil ou saisie manuelle, description. L'insertion porte `partner_id` et la RLS force `is_published = false` : le point part « En attente de validation OXV », l'admin le publie depuis `app/(admin)/points-carte.tsx`. Toute modification repasse par la validation. Un partenaire non validé voit un état explicatif. **`social_pings` contient 0 ligne : ce cycle complet n'a jamais été parcouru.**
+
+**`rapports.tsx` (132 lignes) — mes rapports B2B.** Lecture seule des rapports d'événement partagés par OXV : participation agrégée, temps forts média, conclusion. Aucune donnée pilote individuelle. **`b2b_event_reports` contient 0 ligne.**
+
+**`facturation.tsx` (104 lignes) — un espace réservé honnête.** Ce n'est pas une fausse facture : le docblock (lignes 3-8) dit franchement qu'« OXV n'encaisse rien dans l'app pour l'instant », que le paiement Stripe viendra dans une phase dédiée, et l'écran explique comment résilier. C'est le bon comportement quand la fonction n'existe pas.
+
+#### 9.3 La règle cardinale
+
+« Le partenaire ne voit jamais la télémétrie » n'est pas seulement une phrase de docblock. Elle est codifiée dans `src/__tests__/rls/roleMatrixRLS.test.ts:30-44`, qui vérifie qu'un client authentifié comme partenaire lit zéro ligne dans `telemetry_sessions` et `telemetry_frames`. Ce test ne s'exécute que si les secrets Supabase de test sont fournis (§4.3). Côté base, aucune policy de `telemetry_sessions` ou `telemetry_frames` ne mentionne `is_partner()` : la garantie tient structurellement.
+
+---
+
+### 10. L'espace pilote professionnel — `app/(pro)/`, 7 écrans
+
+#### 10.1 Personne n'y accède
+
+**Zéro compte `role = 'pro_pilot'` en production.** L'espace est complet, testé unitairement pour sa navigation (`src/lib/__tests__/proNav.test.ts` vérifie que chaque fichier de `app/(pro)` a bien une zone d'onglet), et n'a jamais été ouvert.
+
+Le rôle est pourtant prévu partout : dans l'énumération Postgres (`user_role`), dans `USER_ROLES` (`src/services/adminUsersService.ts:19`, libellé « Pilote pro »), dans le type `UserRole` du store, et dans le type `oxv_demande_type` de la base (`pilote_pro`). Un admin peut l'attribuer depuis `app/(admin)/utilisateurs/[id].tsx`.
+
+#### 10.2 La navigation
+
+`app/(pro)/_layout.tsx` pose une barre d'onglets **distincte** de celle du pilote, définie dans `src/lib/proNav.ts` : PADDOCK, PERFORMANCE, MÉDIA, ÉQUIPE, PARTAGE. Le fichier rappelle deux invariants (lignes 6-8) : « Compte = icône haut-droite, JAMAIS un onglet », et « L'or est interdit sur la nav ».
+
+Point notable : **les outils de données du pro pointent vers l'arbre pilote v1**, pas vers V2. `app/(pro)/index.tsx:30-34` renvoie vers `/(app)/bilan`, `/(app)/data-lab`, `/(app)/passeport`, `/(app)/signature`, `/(app)/garage` ; `app/(pro)/performance.tsx:34,39` vers `/(app)/comparateur` et `/(app)/progression`. Ces sept routes existent bien dans `app/(app)/`. Mais quitter `(pro)` pour `(app)` fait disparaître la barre pro et apparaître la barre pilote v1 : la navigation change de langage en cours de route.
+
+#### 10.3 Les écrans
+
+**`index.tsx` (309 lignes) — Paddock Pro.** Hub contextuel : dernière séance avec sa régularité au tour, circuits fréquentés, accès aux six outils ci-dessus, lien vers la candidature ambassadeur, bouton « Se déconnecter » (lignes 197-205).
+
+**`performance.tsx` (223 lignes).** Agrégats de séances, circuits, tours, distance, régularité par circuit, puis trois outils de comparaison. Le docblock exclut explicitement « aucune tendance prédictive, aucun classement, aucun conseil de pilotage ».
+
+**`bibliotheque.tsx` (315 lignes).** Recherche multi-critères dans les séances passées, par circuit et par période, paginée par 20. Tri chronologique par défaut, « jamais un classement "meilleure séance" ».
+
+**`media.tsx` (115 lignes).** Regroupe les médias OXV du pilote. Rien n'y est exposé publiquement ; la mise en vitrine se décide dans Partage.
+
+**`partage.tsx` (406 lignes).** Vitrine publique **opt-in**. Le pilote crée un lien à jeton et choisit métrique par métrique ce qu'il expose, via une liste blanche `SHAREABLE_METRICS` (`src/services/sharesService.ts:21`). Jamais de télémétrie brute, jamais de classement, jamais les données d'un autre pilote. Lien révocable. Table `app_progression_shares` : **1 ligne** en production — c'est la seule surface « pro » qui a une trace, et elle est partagée avec l'espace pilote.
+
+**`equipe.tsx` (237 lignes).** Le pro déclare coach, préparateur, assistant. Le docblock est explicite : « déclarer un membre ne lui donne AUCUN accès à vos données — c'est une liste, pas un partage ». Table `pro_team_members` : **0 ligne**.
+
+**`ambassadeur.tsx` (219 lignes).** Candidature + bio ; OXV valide le statut. « Un rôle factuel, jamais un rang ni un classement. » Table `ambassador_profiles` : **0 ligne**. L'écran admin correspondant (`app/(admin)/ambassadeurs.tsx`) n'a donc rien à traiter.
+
+---
+
+### 11. Le langage visuel : deux applications dans une
+
+C'est une différence structurelle, pas cosmétique. Le dépôt contient **deux systèmes de composants** :
+
+| | Kit historique | Kit NG / refonte |
+|---|---|---|
+| Thème | `src/theme/v2.ts` | `src/ui/v2/tokens.ts` |
+| Composants | `src/ui/AppBar.tsx`, `Card.tsx`, `Screen.tsx`, `Field.tsx`, `StateWrapper.tsx`… | `src/ui/v2/` (`PressScale`, `ListRow`, `Sheet`, `Dial`, `StateView`, `TabBar`…) |
+| Police de titre | `HankenGrotesk_600SemiBold` (`src/theme/v2.ts:68`) | `Michroma_400Regular` (`src/ui/v2/tokens.ts:56`) |
+| Police monospace | `JetBrainsMono_400Regular` | `JetBrainsMono_500Medium` |
+
+Recherche des fichiers important `@/ui/v2` sous `app/` : uniquement `app/(app2)/…` et `app/(coach)/…`.
+
+**Les six espaces de cette section — admin, partenaire, pro, authentification, onboarding pilote, onboarding coach — sont tous sur le kit historique.** Ils n'ont pas été repris par la refonte. Concrètement, un administrateur ou un partenaire ouvre une application dont la typographie et les composants diffèrent de ceux que voit le pilote.
+
+Dernier commit substantiel par espace (le commit `29e34f9` du 26 juillet ne fait que changer une cible de redirection d'une ligne dans quatre layouts) :
+
+- `app/(pro)/` : `328b568`, 29 juin 2026.
+- `app/(auth)/` : `2b515ad`, 4 juillet 2026.
+- `app/(onboarding)/` : `73f2c19`, 5 juillet 2026.
+- `app/(coach-onboarding)/` : `7cf3f34`, 5 juillet 2026.
+- `app/(admin)/` et `app/(partner)/` : `0e701b1`, 17 juillet 2026.
+
+---
+
+### 12. Ce qui est destiné au web plutôt qu'à l'application
+
+Le dépôt contient une décision écrite sur ce sujet : `docs/refonte-app/18_APP_VS_WEB.md` (181 lignes, commit `5bc19de`), statut « cadrage, avant code ». Sa phrase de répartition :
+
+> Le site fait venir et fait payer. Le mobile fait vivre la journée et lire la session. Le web fait tourner les opérations et le business.
+
+Ce que ce document tranche, appliqué aux écrans qui existent réellement aujourd'hui :
+
+**À migrer vers le portail web (§1.2 et §1.4 du document) — tout l'espace partenaire.**
+Les huit écrans de `app/(partner)/` sont, selon ce cadrage, du ressort du portail web : « L'app mobile ne crée ni n'édite aucune fiche partenaire. Elle consomme l'annuaire. » Le §4 est plus net encore : « Aucune création/édition de fiche partenaire », « Aucun CRM / gestion de leads partenaires ». Le tableau §2 place le compte Partenaire à « — » sur la colonne App mobile.
+
+Il y a ici un **écart entre le cadrage et le code** : le document parle d'un espace `(partner)` « net-neuf » à construire côté web, adossé à une table `partners` (0 ligne en base). L'application, elle, a déjà construit `app/(partner)/` en mobile, sur `partner_accounts` (2 lignes), `partner_offers` (1 ligne) et `partner_leads` (0 ligne). Le document décrit un futur qui existe déjà ailleurs qu'où il l'attendait.
+
+**À migrer vers le web — l'admin lourd.**
+Le document distingue l'« admin terrain le jour J » (à garder en mobile) de l'« admin lourd » (à construire en web). Rapporté aux 29 écrans :
+
+- *Restent mobiles, terrain* : `tour-controle`, `preparation`, `en-cours`, `scan-checkin`, `presences`, `devices`, `sessions-media`, `circuit`.
+- *Vont au web* : `qualite-data` et `analyse-session/[id]` (le §3 les note « ○ mobile / ● web »), `analytique` et `b2b-rapport` (« Aucun reporting / dashboard business lourd »), `partenaires` et `ambassadeurs` (validation administrative longue), `evenements/nouveau` et `evenements/[id]` (« Aucune création d'événement track day » — §4.3), `utilisateurs` et `utilisateurs/[id]`, `support` et `support/[id]`, `moderation`, `routes-certification`, `feature-flags`, `maintenance`.
+
+**Restent au mobile, sans ambiguïté** : l'authentification, l'onboarding pilote, l'onboarding coach, et l'espace coach. Le §1.3 est explicite : « le profil coach reste éditable en mobile (usage terrain). Aucun "espace pro coach" web n'est requis en V1. »
+
+**L'espace pilote pro n'est pas traité par ce document.** Il n'apparaît ni dans le tableau des quatre comptes (§2 : Pilote, Coach, Admin, Partenaire), ni dans le tableau Fonction × Canal. Sept écrans construits, zéro compte, zéro cadrage. C'est le point le plus flou de cette section.
+
+**Ce qui n'entrera jamais dans le mobile**, selon le §4 du même document : aucun formulaire de carte bancaire (motif explicite : commissions de store d'environ 30 % et conformité PCI), aucune création d'événement, aucun reporting comptable, aucune validation administrative longue. Le drapeau `app_payments = false` en base est cohérent avec cette ligne.
+
+---
+
+### 13. Ce qui n'a jamais été observé en fonctionnement
+
+Liste des affirmations que je **ne peux pas** faire, faute d'exécution ou faute de données :
+
+- Aucun écran de ces six espaces n'a été rendu. Tout ce qui précède décrit le code, pas l'écran.
+- L'espace `app/(pro)/` n'a jamais été ouvert : aucun compte n'a le rôle qui y donne accès.
+- L'espace `app/(coach-onboarding)/` n'a jamais été ouvert : aucun compte `coach` n'existe.
+- Les deux comptes `role='admin'` n'ont jamais pu ouvrir `app/(admin)/` : ils échouent la garde `is_admin`.
+- Douze écrans admin lisent une table vide : `devices`, `scan-checkin` (`event_registrations`), `qualite-data` (`data_quality_reports`), `support`, `support/[id]`, `moderation`, `coachs`, `ambassadeurs`, `sessions-media`, `points-carte`, `b2b-rapport`, et la heatmap de `circuit` (`app_segment_analyses`).
+- La caméra de `scan-checkin.tsx` ne peut pas être testée hors appareil ; aucune trace de validation sur device dans le dépôt.
+- L'appairage par code (`lier.tsx`) a une seule tentative enregistrée, le 3 juillet 2026 ; je ne sais pas si elle a abouti. Aucun code n'est actif.
+- Le coupe-circuit de maintenance n'a jamais été armé (`maintenance_mode = false` depuis le 29 juin 2026).
+- Le cycle complet « partenaire crée un point → admin le valide → il apparaît sur La carte » n'a jamais été parcouru (`social_pings` vide).
+- Les tests RLS qui codifient la séparation partenaire / télémétrie sont sautés si les secrets de test manquent ; je n'ai pas pu vérifier l'état des secrets GitHub.
+
+---
+
+### 14. Points à trancher
+
+Neuf constats, classés par ce qu'ils coûtent s'ils restent en l'état.
+
+1. **`users.is_admin` est modifiable par son propriétaire.** Privilège `UPDATE` accordé à `authenticated` sur la colonne, policy `users_update_own_or_admin` permissive, aucun déclencheur de garde. `guard_users_privileged_columns` couvre `role` et `kyc_status`, pas `is_admin`. Lecture seule, non testé.
+2. **Deux comptes `role='admin'` sont administrateurs en base mais pas dans l'application.** La garde client teste `is_admin`, la base teste `role='admin' OR is_admin`. À aligner dans un sens ou dans l'autre.
+3. **Valider une demande d'inscription pilote peut rétrograder un administrateur.** `admin_review_demande` écrit `role` par correspondance d'email. C'est arrivé le 20 juillet 2026 sur le compte du fondateur.
+4. **La suspension d'un compte n'a aucun effet.** `suspended_at` est écrit, jamais lu, jamais dans une policy.
+5. **L'espace admin n'a plus d'entrée directe.** Six gestes en passant par l'arbre v1 et un écran de création de route. Le `SpaceSwitcher` vit encore dans `app/(app)/index.tsx`, que le pilote n'atteint plus.
+6. **Le partenaire n'accepte aucun document.** `app/index.tsx:84` court-circuite l'onboarding pour ce rôle. Aucune CGU, aucune politique de confidentialité, aucun pacte.
+7. **Les CGU sont acceptées sans être lisibles.** L'écran de consentement ne propose aucun lien vers les documents embarqués, qui n'existent qu'après l'onboarding.
+8. **`ai_debrief_enabled` vaut `true` par défaut en base** alors que l'application le pose à `false`. Treize comptes sur quatorze sont à `true` sans avoir jamais coché la case.
+9. **Sept écrans pro construits pour un rôle sans titulaire ni cadrage.** À arbitrer : les activer, ou les retirer.
+
+---
+
+## Le langage visuel et l'accessibilité
+
+### Avertissement de méthode
+
+Tout ce qui suit est une **lecture du code source**, pas une observation de
+l'application en fonctionnement. Aucun écran n'a été affiché, aucun appareil
+n'a été branché, aucun geste n'a été effectué. Quand j'écris « le point
+pulse » ou « la barre s'efface », je décris ce que le code demande à
+React Native de faire, pas ce que j'ai vu.
+
+Trois choses seulement ont été **exécutées**, toutes en lecture :
+
+- la suite de tests du kit et du contraste
+  (`npx jest src/theme/__tests__/contrastTokens.test.ts src/ui/v2/__tests__`) —
+  **153 tests, 8 suites, tous au vert** ;
+- le scanner d'accessibilité (`scripts/check-accessibility.ts`) — **0 défaut
+  sur 222 fichiers** ;
+- le scanner doctrinal (`scripts/check-doctrine.ts`) — **75 signalements,
+  sortie en échec** (détail plus bas).
+
+J'ai également recalculé moi-même, hors du dépôt, les rapports de contraste
+WCAG 2.1 de chaque couleur de texte sur chaque fond où elle peut se poser.
+Les chiffres cités dans ce chapitre sont ces mesures, pas des estimations.
+
+Ce que je **n'ai pas pu** établir : le rendu réel des polices sur écran
+Retina, la fluidité effective des animations, la perception du blur iOS
+face au repli opaque Android, ce que VoiceOver **prononce** réellement
+(j'ai lu les libellés fournis, pas écouté la synthèse), et la lisibilité en
+plein soleil sur circuit.
+
+---
+
+## Deux systèmes visuels cohabitent — et un troisième, plus discret
+
+### Le décompte
+
+L'arbre `app/` contient **222 fichiers d'écran**. Ils se répartissent ainsi :
+
+| Espace | Fichiers | Système visuel |
+|---|---|---|
+| `app/(app2)` — pilote V2 | 38 | kit DA Instrument |
+| `app/(app)` — pilote historique | 83 | ancien système |
+| `app/(coach)` | 37 | ancien système |
+| `app/(admin)` | 30 | ancien système |
+| `app/(partner)` | 9 | ancien système |
+| `app/(pro)` | 8 | ancien système |
+| `app/(onboarding)` | 7 | ancien système |
+| `app/(coach-onboarding)` | 4 | ancien système |
+| `app/(auth)` | 3 | ancien système |
+
+Vu du côté des imports : **50 fichiers** importent `@/ui/v2` (le nouveau
+kit), **274 fichiers** importent `@/theme/v2` (l'ancien).
+
+### La séparation est propre
+
+C'est le fait le plus rassurant de ce chapitre. Les **38 fichiers** de
+`app/(app2)` importent tous `@/ui/v2`, et **aucun** n'importe `@/theme/v2`.
+Le kit lui-même (`src/ui/v2/`) n'importe rien de `src/theme/` ni de
+`src/components/`. L'isolation est explicite et documentée :
+
+> `src/ui/v2/tokens.ts:4-6` — « Périmètre : arbre `app/(app2)` et kit
+> `src/ui/v2/` UNIQUEMENT. Les espaces v1 (pilote actuel, coach, admin,
+> partner, pro) restent sur `src/theme/v2.ts` jusqu'à la bascule V2-L6. »
+
+Il n'y a donc **pas de mélange à l'intérieur d'un écran**. Un écran est
+entièrement dans un système ou entièrement dans l'autre.
+
+### Le pilote est déjà passé au nouveau système
+
+`app/index.tsx:103-107` route désormais le pilote vers l'arbre V2 :
+
+```
+// Lot L6 — le pilote arrive désormais dans l'arbre V2. L'arbre v1 reste en
+// place et atteignable : (app2) y renvoie encore volontairement pour trois
+// écrans non portés (planificateur de route, import de tracé, carte trophée).
+return <Redirect href={'/(app2)' as never} />;
+```
+
+Le garde de build qui rendait `(app2)` inaccessible en production a été
+retiré (`app/(app2)/_layout.tsx:63-67`). Concrètement : **un pilote qui
+ouvre l'application aujourd'hui voit le kit DA Instrument**. Le coach,
+l'administrateur, le partenaire et le pilote professionnel voient l'ancien.
+
+### Le troisième système
+
+Il existe un troisième jeu de jetons, plus discret, déclaré dans
+`src/theme/v2.ts:143-165` sous le nom `lotProfilTokens`. Il porte sa
+propre palette (`noir #0A0A0A`, `surface #141414`, `ligne #262626`) et ses
+propres polices (**Syncopate** en display, **Inter** en corps). Il est
+utilisé par **10 fichiers** : trois écrans de l'ancien arbre pilote
+(`app/(app)/profil.tsx`, `app/(app)/profil-edition.tsx`,
+`app/(app)/cartes.tsx`) et sept composants
+(`src/components/profil/*`, `src/components/cartes/*`).
+
+Ce lot a ses propres règles, contradictoires avec celles des deux autres :
+l'or Heritage y est **interdit**, et les écarts de temps y sont en gris
+neutre (`deltaNeutre #D6D6D6`) « jamais un jugement »
+(`src/theme/v2.ts:139-141`).
+
+Si l'on compte les familles typographiques de titre, il n'y a donc pas deux
+langages mais **trois** : Michroma (V2), Hanken Grotesk (v1), Syncopate
+(lot profil).
+
+---
+
+## Ce qui distingue les deux systèmes principaux
+
+| | Kit DA Instrument (`src/ui/v2/`) | Ancien système (`src/ui/`, `src/theme/v2.ts`) |
+|---|---|---|
+| Fond de base | `#14151A` (titane froid) | `#0B0B0D` (noir quasi pur) |
+| Fond de carte | `#1B1D24` / `#232630` | `#111113` / `#141416` / `#16161A` |
+| Accent | rouge de marque `#C8102E` | crème `#F5F5F7` (boutons), or `#FFB703` (donnée) |
+| Titre | Michroma | Hanken Grotesk |
+| Corps | Inter | Hanken Grotesk |
+| Données | JetBrains Mono | JetBrains Mono |
+| Rendu graphique | Skia (`@shopify/react-native-skia`) | SVG (`react-native-svg`) |
+| Animation | Reanimated, worklets UI thread | mélange Reanimated / `Animated` RN |
+| Rayons | 12 / 18 / 24 px | 6 / 10 / 12 / 14 / 18 px |
+| Chargement | Shimmer aux formes du contenu | barres grises statiques |
+| État vide | tracé de circuit qui se dessine | encadré texte |
+| Cadran | oui (`Dial`, un par écran) | non |
+| Haptique | vocabulaire fermé de 5 mots | 4 fonctions libres |
+
+La différence de **matière** est la plus visible : le nouveau système est
+titane et froid (bleuté : sur ses gris, R = G−4 et B = G+14), l'ancien est
+noir et neutre (R = G, B = G+8). Les deux fonds ne sont pas le même noir.
+
+Une troisième valeur existe encore : `app.json:13` et `app.json:58` fixent
+le fond du splash natif et de l'icône adaptative Android à **`#050505`**,
+qui n'est le fond ni de l'un ni de l'autre système. Il y a donc, en théorie,
+une marche de couleur au démarrage entre l'écran de lancement natif et le
+premier écran React Native. Je ne l'ai pas observée.
+
+---
+
+## La palette : ce que chaque couleur a le droit de signifier
+
+### Les fonds et les surfaces
+
+**Kit V2** (`src/ui/v2/tokens.ts:21-22`) :
+
+| Jeton | Valeur | Emploi déclaré |
+|---|---|---|
+| `bg.base` | `#14151A` | fond d'écran |
+| `bg.card` | `#1B1D24` | carte |
+| `bg.card2` | `#232630` | tuile interne, chip active |
+| `bg.scrim` | `rgba(10,11,14,0.72)` | **uniquement** sur photo |
+| `border.card` | `#2A2D38` | bordure de carte |
+| `border.strong` | `#3A3E4C` | bordure appuyée, graduations |
+| `border.hairline` | `#22242C` | filet, grille de radar |
+
+Le commentaire d'en-tête pose une règle anti-dégradé : `bg.scrim` est la
+**seule exception autorisée**, réservée à la lisibilité d'un texte posé sur
+une photo (`src/ui/v2/tokens.ts:16-17`).
+
+**Ancien système** (`src/theme/v2.ts:8-12`) : `night #0B0B0D`,
+`card #111113`, `card2 #141416`, `surface3 #16161A`. Les filets sont
+`line #1E1E22`, `cardBorderProminent #232326`, `separator #17171A`,
+`borderHair #1A1A1D`, plus un `edge rgba(255,255,255,0.20)` réservé à
+l'état sélectionné.
+
+Mesures de contraste des bordures V2 sur `bg.card` : `border.card` **1,23**,
+`border.strong` **1,58**. Ce sont des filets, pas des porteurs
+d'information ; WCAG demande 3,0 pour un élément d'interface qui porte du
+sens à lui seul. Une bordure qui distingue une chip active d'une chip
+inactive tombe dans ce cas. Le point n'est pas couvert par un test.
+
+### Les gris de texte
+
+Le 25 juillet 2026, les gris les plus faibles ont été relevés sur décision
+du fondateur (« on assouplit »). C'est le seul geste d'accessibilité du
+dépôt qui soit chiffré, documenté et verrouillé par un test.
+
+**Kit V2** — mesures sur le pire des trois fonds (`src/ui/v2/tokens.ts:44`) :
+
+| Jeton | Valeur | Contraste | Avant le 25/07 |
+|---|---|---|---|
+| `text.hi` | `#E8E9ED` | **12,44** | inchangé |
+| `text.mid` | `#A9ADBB` | **6,74** | inchangé |
+| `text.low` | `#9195A3` | **5,05** | `#7A7E8C` → 3,73 |
+| `text.dim` | `#787C8A` | **3,63** | `#5A5E6C` → 2,34 |
+
+**Ancien système** — mesures sur le pire des cinq fonds
+(`src/theme/v2.ts:13-28`) :
+
+| Jeton | Valeur | Contraste |
+|---|---|---|
+| `cream` | `#F5F5F7` | **14,39** |
+| `creamSoft` | `#E5E5E8` | **12,47** |
+| `secondary` | `#C9C9CE` | **9,50** |
+| `creamMute` | `#9A9AA3` | **5,62** |
+| `legend` | `#8A8A92` | **4,58** |
+| `eyebrow` | `#898991` | **4,52** (était `#6E6E76` → 3,10) |
+| `faint` | `#797981` | **3,63** (était `#55555C` → 2,12) |
+
+Le commentaire du code assume l'arbitrage : `dim` et `faint` restent sous
+4,5 parce que les porter plus haut les collerait au palier supérieur et
+effacerait la hiérarchie (`src/ui/v2/tokens.ts:37-39`). Ils sont
+« réservés au texte secondaire et aux états inactifs, jamais à une
+information essentielle isolée ». Cette réserve est une **convention
+d'écriture**, pas une contrainte technique : rien n'empêche un futur écran
+de poser une information capitale en `dim`.
+
+**Le lot Profil n'a pas eu ce relèvement.** `lotProfilTokens.grisSombre`
+(`#555555`, `src/theme/v2.ts:151`) mesure **2,47** sur `surface #141414` et
+**2,29** sur `surface2 #1C1C1C`. Il est utilisé 15 fois, dont **trois fois
+comme couleur de placeholder de saisie** (`app/(app)/profil.tsx:361`,
+`app/(app)/profil-edition.tsx:189` et `:217`). Un texte de placeholder à
+2,3:1 sur fond sombre est illisible pour une part importante des
+utilisateurs. Le test de contraste ne couvre pas ces jetons.
+
+### Le rouge
+
+Il y a **deux rouges**, et la distinction est doctrinale.
+
+- **Rouge de marque `#C8102E`** — `palette.red` (`src/theme/v2.ts:36`) et
+  `colors.accent` (`src/ui/v2/tokens.ts:23`). Même valeur des deux côtés.
+  La règle écrite : insigne, bande coach, point d'enregistrement. Jamais
+  un statut, jamais une marge (`docs/refonte-app/REGLES_COULEUR.md:8`).
+- **Rouge de donnée `#E63946`** (V2) / `#F65B5B` (v1) — le freinage, par
+  convention télémétrique.
+
+Deux dérivés côté coach : `coachAccent #E23A4E` (boutons, liserés) et
+`coachAlert #E2685A` (lien « retirer l'accès »).
+
+**Le rouge de marque contraste mal.** Mesures : **2,86** sur `bg.card`,
+**3,10** sur `bg.base`, **3,21** sur `card` de l'ancien système. C'est en
+dessous du seuil texte (4,5) et, sur carte, en dessous du seuil élément
+d'interface (3,0).
+
+Or, dans le kit V2, ce rouge n'est pas qu'un liseré :
+
+- il **remplit** l'arc de progression du cadran (`src/ui/v2/Dial.tsx:148`) ;
+- il colore les **millièmes du chrono** dans `RollingCounter`
+  (`src/ui/v2/motion/RollingCounter.tsx:101`, `accentColor = colors.accent`),
+  utilisé par `ChronoHero` avec `accentMillis`
+  (`src/ui/v2/ChronoHero.tsx:70`) ;
+- il forme le cercle du bouton central en mode enregistrement
+  (`src/ui/v2/CentralButton.tsx:130`).
+
+Le chiffre le plus fin du chrono — les millièmes — est donc posé en rouge à
+**2,86:1** quand le chrono est sur une carte. Aux grandes tailles (le
+`ChronoHero` monte à 56 px, `src/ui/v2/uiLogic.ts:38-42`) le seuil
+applicable est 3,0, et il n'est pas tenu sur fond de carte. À la petite
+taille (22 px) le seuil est 4,5, et il ne l'est pas non plus.
+
+Point positif : le texte blanc posé **sur** le rouge (le libellé du bouton
+central) mesure **4,85** — celui-là passe.
+
+### L'or : trois ors, et trois lois qui ne disent pas la même chose
+
+C'est le point le plus embrouillé de la palette. Il y a trois valeurs d'or
+dans le dépôt et **trois règles distinctes** selon le fichier consulté.
+
+| Valeur | Jeton | Règle écrite | Où |
+|---|---|---|---|
+| `#FFB703` | `palette.gold` | « CHRONO / RECORD / RYTHME UNIQUEMENT (jamais une donnée QDI) » | `src/theme/v2.ts:34` |
+| `#FFB703` | `colors.qdi.fluidite` | teinte de la branche Fluidité — donc **une donnée QDI** | `src/ui/v2/tokens.ts:48` |
+| `#C4A459` | `palette.heritageGold` / `colors.heritage.gold` | « tier Heritage EXCLUSIVEMENT » | `src/theme/v2.ts:39`, `src/ui/v2/tokens.ts:11` |
+| `#D9AE00` | `palette.goldText` | or lisible sur fond clair | `src/theme/v2.ts:35` |
+
+Les deux premières lignes sont la **même valeur hexadécimale** avec deux
+lois opposées. L'ancien système réserve `#FFB703` au chrono et l'interdit
+formellement aux données QDI ; le kit V2 en fait précisément la couleur
+d'une donnée QDI. Un pilote qui passerait d'un écran à l'autre verrait la
+même teinte signifier deux choses différentes.
+
+**Dans le kit V2, le chrono n'est plus doré du tout.** La célébration de
+record (`src/ui/v2/motion/RecordFlash.tsx:60`) pulse vers
+`colors.heritage.gold` `#C4A459` — l'or Heritage — alors que le
+commentaire du même fichier des jetons dit que cet or est réservé au tier
+Heritage et « jamais un chrome générique »
+(`src/ui/v2/tokens.ts:11`). Un record personnel n'est pas une offre
+commerciale. La contradiction est interne au kit.
+
+**Dans l'ancien système, la règle « l'or ne colore que de la donnée » n'est
+pas tenue.** `palette.gold` compte **142 références** dans le dépôt. Parmi
+elles, des emplois qui ne sont pas de la donnée :
+
+- barre de progression d'onboarding : `app/(onboarding)/index.tsx:45`,
+  `app/(onboarding)/cgu.tsx:75`, `app/(onboarding)/doctrine.tsx:39`,
+  `app/(onboarding)/methode.tsx:46`, `app/(onboarding)/niveau.tsx:79`,
+  `app/(onboarding)/pacte.tsx:63` ;
+- fond de bouton de modale d'erreur : `src/components/BleErrorModal.tsx:77`,
+  `src/components/ErrorBoundary.tsx:72`, `src/components/UpdateModal.tsx:97` ;
+- bandeau hors ligne : `src/components/OfflineBanner.tsx:33` ;
+- bordure de champ au focus, côté coach : `app/(coach)/lecture.tsx:295` ;
+- bordure de sélection de date : `app/(coach)/roulages/nouveau.tsx:456` ;
+- filet décoratif à gauche du pied doctrinal : `src/ui/DoctrineFooter.tsx:20` ;
+- couleur de statut administratif « en cours » :
+  `app/(admin)/moderation.tsx:45`.
+
+Aucun de ces sept cas n'est un chiffre, une jauge, une courbe ou un point
+de mesure. La règle existe, elle est écrite noir sur blanc dans
+`docs/refonte-app/REGLES_COULEUR.md:7`, et le code s'en écarte
+régulièrement. Aucun test ni scanner ne la vérifie.
+
+Contraste de l'or : `#FFB703` mesure **10,80** sur carte, `#C4A459`
+**7,91**, `#D9AE00` **8,99**. La lisibilité n'est pas le problème ; la
+sémantique l'est.
+
+### Les teintes QDI
+
+Cinq branches, une couleur fixe par branche, « une couleur = une donnée ».
+Mais les deux systèmes ne s'accordent sur **aucune** des cinq valeurs.
+
+| Branche | Kit V2 (`src/ui/v2/tokens.ts:46-52`) | contraste | Ancien (`src/theme/v2.ts:49-55`) | contraste |
+|---|---|---|---|---|
+| Trajectoire | `#60A5FA` | 6,62 | `#4F9DF7` | 6,73 |
+| Fluidité | `#FFB703` | 9,64 | `#F2CE3B` | 12,27 |
+| Freinage | `#E63946` | **4,04** | `#F65B5B` | 5,90 |
+| Accélération | `#4ADE80` | 9,66 | `#4FC98A` | 9,03 |
+| Régularité | `#C084FC` | 6,37 | `#A783F2` | 6,44 |
+
+Le freinage V2 à **4,04** est sous le seuil texte. Dans le radar, cette
+couleur ne porte qu'un point de 5 px de rayon
+(`src/ui/v2/RadarQdi.tsx:50`), donc pas du texte — mais dans `PillarBar`
+elle remplit la barre, et dans les écrans elle peut colorer un libellé.
+
+Le kit V2 impose une discipline que l'ancien n'a pas : dans `RadarQdi`, les
+couleurs QDI vivent **uniquement sur les sommets** ; la grille, les axes et
+le polygone sont en jetons neutres (`src/ui/v2/RadarQdi.tsx:11-13` et
+`:128`, `:139`, `:151`). Dans l'ancien `QdiBars`
+(`src/ui/QdiBars.tsx:81-84`), les libellés eux-mêmes sont colorés, en
+**8,5 px**.
+
+Un détail doctrinal bien tenu des deux côtés : une branche **non mesurée**
+est masquée, pas tirée à zéro. `radarLayout`
+(`src/ui/v2/vizMath.ts:134-140`) ignore la branche : ni axe, ni point, ni
+sommet de polygone. `QdiBars` la rend en gris à 3 % de hauteur, « la
+COULEUR distingue mesuré/absent, pas la hauteur »
+(`src/ui/QdiBars.tsx:57-60`).
+
+### La rampe de vitesse
+
+`speedHeat` (`src/theme/v2.ts:61`) : bleu `#4F9DF7` → cyan `#3FD0D8` →
+vert `#4FC98A` → jaune `#F2CE3B`. **Sans or ni rouge**, par construction :
+« la vitesse n'est ni un chrono/record (or) ni une alarme (rouge) ». C'est
+une source unique partagée par la carte, la carte de chaleur et leurs
+légendes, pour qu'elles ne divergent pas. Contrastes sur fond `night` :
+7,02 / 10,51 / 9,41 / 12,80. Aucun équivalent dans le kit V2.
+
+### Les couleurs de rôle
+
+`roleColors` (`src/theme/v2.ts:90-95`) : pilote `#F5F5F7` (crème neutre),
+coach `#C8102E` (rouge de marque), partenaire `#5B8DEF` (6,09),
+administrateur `#22D3EE` (10,88). Règle : ce sont des couleurs de
+**navigation et de badge**, jamais de la donnée. Le pilote reste
+volontairement neutre. Le kit V2 n'a pas de couleurs de rôle — l'arbre
+`(app2)` est mono-rôle.
+
+### La documentation normative a divergé du code
+
+`docs/refonte-app/REGLES_COULEUR.md` se présente comme « référence
+normative » et affirme en tête : « Valeurs = `src/theme/v2.ts` ». Ce n'est
+plus vrai. Comparaison ligne à ligne :
+
+| Jeton | Doc `REGLES_COULEUR.md` | Code `src/theme/v2.ts` |
+|---|---|---|
+| `night` | `#050505` (ligne 15) | `#0B0B0D` (ligne 8) |
+| `card` | `#0B0B0D` (ligne 16) | `#111113` (ligne 10) |
+| `card2` | `#121214` (ligne 17) | `#141416` (ligne 11) |
+| `cream` | `#F8F9FA` (ligne 23) | `#F5F5F7` (ligne 13) |
+| `eyebrow` | `#6E6E76` (ligne 27) | `#898991` (ligne 26) |
+| `faint` | `#54545C` (ligne 28) | `#797981` (ligne 27) |
+| `green` | `#97C459` (ligne 45) | `#4FC98A` (ligne 40) |
+| Trajectoire | `#F2792B` (ligne 53) | `#4F9DF7` (ligne 50) |
+| Fluidité | `#FFB703` (ligne 54) | `#F2CE3B` (ligne 53) |
+
+La doc dit aussi que « le bleu `#60A5FA` n'est plus un pilier »
+(`REGLES_COULEUR.md:59`) alors que c'est exactement la trajectoire du kit
+V2. Elle laisse enfin deux décisions ouvertes qui n'ont pas été tranchées
+depuis : un jeton d'erreur dédié (« rouge d'alerte assumé, ou rester au
+neutre »), et lequel du duo régularité / meilleur tour est le chiffre
+dominant du Bilan (`REGLES_COULEUR.md:88-91`).
+
+Aujourd'hui, l'état d'erreur reste neutre : `StateWrapper`
+(`src/ui/StateWrapper.tsx:14-15`) le pose explicitement — « l'erreur
+n'emprunte PAS le rouge de marque ; une erreur technique n'est pas la
+marque ».
+
+---
+
+## Les polices
+
+### Ce qui est chargé
+
+`src/theme/fonts.ts:53-89` charge **29 graisses** au démarrage, réparties
+en neuf familles :
+
+| Famille | Graisses | Statut |
+|---|---|---|
+| Hanken Grotesk | 7 | actif — ancien système, texte et titres |
+| JetBrains Mono | 4 | actif — données, chiffres, chronos, dans les deux systèmes |
+| Inter | 4 | actif — corps du kit V2 et du lot Profil |
+| Syncopate | 2 | actif — display du lot Profil |
+| Michroma | 1 | actif — display du kit V2 |
+| Geist | 5 | reliquat |
+| Geist Mono | 2 | reliquat |
+| Rajdhani | 2 | reliquat |
+| Instrument Serif | 2 | reliquat |
+
+Les quatre dernières familles (**11 graisses**) sont explicitement
+« conservées en secours (anciens tokens éventuels non migrés) »
+(`src/theme/fonts.ts:76`). Recherche dans le code : Geist Mono, Rajdhani et
+Instrument Serif ne sont référencés nulle part hors du fichier de
+chargement. Geist l'est **deux fois**, en dur, dans
+`src/components/DebriefMirror.tsx:54-55`.
+
+Onze graisses sont donc téléchargées et gardées en mémoire pour deux lignes
+de code. L'application retient le splash tant que les polices ne sont pas
+chargées (`app/_layout.tsx:71-75`) : ce poids se paie au démarrage. Je n'ai
+pas mesuré le délai.
+
+### La répartition des rôles
+
+**Kit V2** (`src/ui/v2/tokens.ts:55-62`) — cinq rôles seulement :
+`display` Michroma, `body` / `bodyMedium` / `bodySemi` Inter,
+`mono` / `monoSemi` JetBrains Mono.
+
+**Ancien système** (`src/theme/v2.ts:67-83`) — seize rôles, dont deux
+alias qui trahissent l'histoire : `serif` et `serifItalic` pointent
+maintenant vers Hanken Grotesk (« plus de serif : Hanken »). Le code qui
+appelle `fonts.serif` obtient donc une grotesque.
+
+### Le chiffre roi
+
+C'est le principe le plus visible de la doctrine : un seul indicateur
+dominant par écran, en mono, chiffres à chasse fixe.
+
+- **Ancien système** : `src/ui/KingNumber.tsx`. JetBrains Mono Bold,
+  taille 48 par défaut, `letterSpacing: -1.5`,
+  `fontVariant: ['tabular-nums']` — « les chiffres ne dansent pas quand la
+  valeur change » (`:85`). Sa couleur est celle de sa **donnée**, passée en
+  prop ; défaut : or.
+- **Kit V2** : `src/ui/v2/ChronoHero.tsx`. JetBrains Mono SemiBold, trois
+  tailles 22 / 34 / 56 px (`src/ui/v2/uiLogic.ts:38-42`), millièmes en
+  accent, hauteur réservée par `minHeight` pour que la permutation vers la
+  célébration de record ne fasse pas sauter la mise en page (`:60`).
+
+Les échelles de corps de l'ancien système sont figées dans
+`src/theme/v2.ts:98-110` : `eyebrow`/`micro` 11, `small` 12, `body` 14,
+`bodyLg` 15, `h3` 17, `h2` 21, `value` 25, `display` 28, `serifTitle` 44,
+`hud` 62. Le kit V2 n'a **pas d'échelle typographique déclarée** : chaque
+composant pose son `fontSize` en dur (11, 13, 14, 15…). C'est une
+différence structurelle : l'ancien système a une échelle, le nouveau a des
+habitudes.
+
+### Les très petits corps
+
+Plusieurs composants de l'ancien système descendent sous 10 px :
+
+- `src/ui/Chip.tsx:29` — libellé de chip à **8 px**, majuscules,
+  `letterSpacing: 1.3`, en `creamMute` ;
+- `src/ui/Segmented.tsx:56` — onglet segmenté à **8 px** ;
+- `src/ui/QdiBars.tsx:97` et `:105` — « point fort » à **8 px**, libellés
+  de branche à **8,5 px** ;
+- `src/ui/Fact.tsx:44` et `src/ui/KpiCard.tsx:47` — notes à **9 px** et
+  **8 px** ;
+- `src/components/instruments/EmptyState.tsx` — mention de champ à
+  **9,5 px** ;
+- `src/ui/DoctrineFooter.tsx:26` — mention de fiabilité à **8 px**.
+
+À 8 px en majuscules espacées, la lisibilité dépend entièrement de l'écran
+et de la vue de l'utilisateur. Le kit V2 ne descend pas sous 9 px (le plus
+petit est le libellé du cadran en taille `s`,
+`src/ui/v2/shellLogic.ts:46`).
+
+---
+
+## Espacements, rayons, géométrie
+
+**Kit V2** (`src/ui/v2/tokens.ts:64-66`) :
+`space` = 4 / 8 / 12 / 18 / 24 / 36 ;
+`radius` = `card` 18, `cell` 12, `hero` 24, `pill` 999.
+
+**Ancien système** (`src/theme/v2.ts:112-115`) :
+`spacing` = 4 / 8 / 12 / 16 / 22 / 28 ;
+`radius` = `hud` 6, `sm` 10, `md` 12, `lg` 14, `xl` 18, `pill` 999.
+
+Le rayon `hud` de 6 px est justifié comme « angle d'instrument des panneaux
+cockpit — plus sec que les cartes web arrondies »
+(`src/theme/v2.ts:113-114`). Le kit V2 fait le choix inverse : ses cartes
+sont **nettement plus arrondies** (18 à 24 px). Deux écrans côte à côte
+n'auront pas la même dureté d'angle.
+
+Le composant qui incarne le plus l'ancien langage est `CockpitPanel`
+(`src/ui/CockpitPanel.tsx`) : une carte à rayon 6 px avec quatre équerres
+d'angle de 14 px, dorées par défaut. Les équerres sont correctement
+retirées de l'arbre d'accessibilité (`:44-45`) — décoratif, donc muet. Il
+n'a pas d'équivalent dans le kit V2.
+
+---
+
+## Le mouvement
+
+### Le vocabulaire du kit V2
+
+Onze primitives, toutes dans `src/ui/v2/motion/`, plus la logique de calcul
+isolée dans `motionMath.ts` (234 lignes, testée sous Node).
+
+| Primitive | Fichier | Rôle |
+|---|---|---|
+| `useDoorTransition` | `useDoorTransition.ts` | l'entrée d'écran : fondu + 12 px de translation, 260 ms |
+| `Stagger` / `staggerEntering` | `Stagger.tsx` | cascade des enfants, 45 ms de pas, plafonnée à 450 ms |
+| `useCondensingHeader` | `useCondensingHeader.tsx` | le grand titre se condense au-delà de 64 px de défilement |
+| `HeroMorph` | `HeroMorph.tsx` | la carte tapée « voyage » vers l'écran de détail |
+| `PullToRefreshDial` | `PullToRefreshDial.tsx` | tirer la liste fait tourner une aiguille de cadran |
+| `RollingCounter` | `RollingCounter.tsx` | chiffres d'odomètre, chaque digit roule |
+| `Shimmer` | `Shimmer.tsx` | squelette balayé par une lumière froide |
+| `RecordFlash` | `RecordFlash.tsx` | célébration de record, 900 ms, double pulse |
+| `NeedleSweep` | `NeedleSweep.tsx` | l'aiguille rejoint son angle en ressort |
+| `PressScale` | `PressScale.tsx` | contraction à 0,97 au toucher |
+| `GlowStroke` | `GlowStroke.tsx` | trait lumineux Skia, deux passes |
+
+Les durées sont centralisées (`src/ui/v2/tokens.ts:68-77`) : `door` 260 ms,
+`stagger` 45 ms, `radar` 600 ms, `pulse` 1200 ms, `needle` 800 ms, plus deux
+ressorts (`spring` amortissement 18 / raideur 180 ; `springSoft` 22 / 120).
+
+L'ancien système a ses propres durées (`src/theme/v2.ts:116-117`) :
+`fast` 160, `base` 240, `slow` 420, `reveal` 640, avec une courbe
+`[0.22, 1, 0.36, 1]`. Aucune valeur n'est commune aux deux tables.
+
+### Deux règles de motion tenues avec soin
+
+**Le mouvement ne ment pas sur la donnée.** `RecordFlash` ne joue qu'une
+fois, sur front montant, et ne peut pas boucler
+(`src/ui/v2/motion/RecordFlash.tsx:12-14`). `NeedleSweep` ne déclenche son
+retour haptique que sur un **vrai** mouvement : au montage, ou si la cible
+ne change pas, ni animation ni vibration (`:7-11`).
+
+**Le mouvement reste sur le fil graphique.** Presque toute l'interpolation
+tourne en worklet Reanimated. `useFirstViewport`
+(`src/ui/v2/useFirstViewport.ts`) échantillonne la visibilité toutes les
+120 ms sur le fil UI plutôt que de dépendre du défilement de l'écran hôte.
+
+**Un cas documenté de repli.** Sur Android, le flou d'`expo-blur` est
+remplacé par un aplat opaque à 92 % d'opacité, aussi bien dans la barre
+d'onglets (`src/ui/v2/TabBar.tsx:116-125`) que dans l'en-tête condensé
+(`src/ui/v2/motion/useCondensingHeader.tsx:22-27`). La raison est écrite :
+`dimezisBlurView` re-floute à chaque image sous un contenu qui défile en
+permanence — coûteux, artefacts connus. **L'aspect de la barre d'onglets
+n'est donc pas le même sur iOS et sur Android.** La cible de build étant
+iOS, c'est le vrai flou qui s'appliquera ; je ne l'ai pas vu.
+
+### Le mouvement réduit : couverture
+
+Le réglage système « Réduire les animations » est respecté par deux hooks
+distincts.
+
+Le kit V2 utilise `useReducedMotion()` de Reanimated, **lu de façon
+synchrone** dès la première image (`src/ui/v2/motion/useReduceMotion.ts`).
+Le commentaire explique pourquoi c'est un correctif : l'ancien hook
+(`src/components/motion/useReduceMotion.ts`) résout
+`AccessibilityInfo.isReduceMotionEnabled()` de façon **asynchrone**, donc
+au premier montage il répond `false` pendant quelques images — « toute
+l'entrée d'un écran JOUE avant de claquer à l'état final : WCAG 2.3.3 non
+tenu au premier rendu ». **L'ancien système garde ce défaut** ; il est
+toujours utilisé par les huit primitives de `src/components/motion/`.
+
+Limite connue et écrite : la valeur est lue au montage du hook, sans
+re-rendu si l'utilisateur change le réglage en cours de session
+(`src/ui/v2/motion/useReduceMotion.ts:15-18`).
+
+Composants qui animent **sans** consulter ce réglage (recherche sur
+`withRepeat`, `Animated.loop`, `withTiming`, `withSpring`) :
+
+- `src/ui/StatusPill.tsx` — le point « live » respire en boucle infinie via
+  l'`Animated` de React Native, sans garde ;
+- `src/components/CircuitMap/TrackStage.tsx` ;
+- `src/components/DebriefMirror.tsx` ;
+- les six visualisations d'insight : `AnatomieViz`, `DispersionViz`,
+  `FlowViz`, `GGViz`, `TourIdealViz`, `TransfertViz`
+  (`src/components/insights/`) ;
+- `app/(app)/roulage.tsx` — l'écran de roulage de l'ancien arbre.
+
+`src/ui/v2/SpringDot.tsx` apparaît dans la même recherche mais reçoit un
+drapeau `still` de ses appelants, qui eux consultent le réglage
+(`src/ui/v2/RadarQdi.tsx:167`). Il n'est pas en défaut.
+
+Le kit V2 est donc **couvert**, l'ancien système ne l'est que
+partiellement.
+
+---
+
+## Les états vides, de chargement, d'erreur et hors ligne
+
+Les deux systèmes traitent la question, différemment.
+
+### Kit V2 — `StateView`
+
+`src/ui/v2/StateView.tsx` (221 lignes) couvre quatre états.
+
+**Chargement.** Aucun indicateur circulaire, jamais. Le squelette prend la
+**forme réelle** de la section attendue, décidée par
+`skeletonBlocksFor(shape)` (`src/ui/v2/uiLogic.ts:71-97`) :
+
+| Forme | Blocs |
+|---|---|
+| `hero` | photo 220 px + titre 58 % + sous-titre 36 % |
+| `list` | 5 rangées de 56 px |
+| `radar` | disque de 240 px + légende 52 % |
+| `card` | carte 120 px + légende 64 % |
+
+Chaque bloc est un `Shimmer`, masqué des lecteurs d'écran — « un squelette
+n'est pas un contenu » (`src/ui/v2/motion/Shimmer.tsx:9-10`, `:90-91`).
+
+**Vide.** Une illustration SVG maison : un tracé de circuit stylisé, 18
+points posés à la main, qui se dessine en boucle de 8 secondes
+(`src/ui/v2/uiLogic.ts:130-162`). La longueur du tracé est **calculée**,
+pas estimée à la main (`polylineLength`), et sert au `strokeDasharray`.
+L'illustration est retirée de l'arbre d'accessibilité
+(`src/ui/v2/StateView.tsx:95-96`). En mouvement réduit, elle est rendue
+complète, sans boucle.
+
+**Erreur.** Icône `incident` + message + pastille « Réessayer ». Le message
+par défaut est factuel : « Le chargement a échoué. »
+
+**Hors ligne.** Un bandeau `accessibilityRole="alert"` — « Hors ligne —
+dernier contenu affiché » — et **le dernier contenu connu reste affiché en
+dessous** (`:162-170`). C'est un choix local-first assumé, pas un écran
+vide.
+
+### Ancien système — `StateWrapper` + `EmptyState`
+
+`src/ui/StateWrapper.tsx` couvre **cinq** états : nominal, chargement,
+vide, hors ligne, erreur. Le squelette est un jeu de barres grises
+statiques de largeurs dégressives (72 %, 60 %, 48 %…), sans animation —
+« squelette calme, pas d'animation nerveuse » (`:115`).
+
+L'état hors ligne y est plus riche : il affiche « Voici votre dernière
+lecture. » suivi d'un horodatage passé par l'écran (`lastReadLabel`), avec
+un bouton « Reconnecter ». L'état d'erreur affiche la cause et « Réessayer ».
+
+`src/components/instruments/EmptyState.tsx` ajoute une honnêteté que le kit
+V2 n'a pas : il affiche **le nom du champ de données attendu**
+(`champ · gg_envelope`), « pour que l'attente soit traçable plutôt que
+vague ». Message par défaut : « Cette lecture apparaîtra après votre
+première séance. »
+
+### La règle qui vaut des deux côtés : l'absence n'est pas un zéro
+
+C'est appliqué avec constance, et c'est vérifiable :
+
+- `dialDisplayValue(null)` renvoie `'—'` — « une valeur absente ne devient
+  JAMAIS un zéro d'apparence mesurée » (`src/ui/v2/shellLogic.ts:88-94`) ;
+- le cadran n'affiche **pas** l'unité à côté d'un tiret, « elle donnerait au
+  tiret l'air mesuré » (`src/ui/v2/Dial.tsx:157`) ;
+- `formatPillarValue` renvoie `'—'` (`src/ui/v2/vizMath.ts:362-366`) ;
+- `radarLayout` masque la branche non mesurée
+  (`src/ui/v2/vizMath.ts:136`) ;
+- `centerlineToTrace` renvoie un chemin vide plutôt qu'une silhouette
+  inventée (`src/ui/v2/vizMath.ts:298`) ;
+- `msToLapLabel` renvoie `'—'` pour une valeur non finie
+  (`src/ui/v2/uiLogic.ts:26`).
+
+Côté médias, même logique : sans photo, `HeroPhoto` rend un tracé Skia ou
+un monogramme, « JAMAIS d'image stock générique »
+(`src/ui/v2/media/HeroPhoto.tsx:19-20`).
+
+**Une réserve sur les photos.** `Photo` prévoit un blurhash stocké en base,
+avec repli sur `TITANE_BLURHASH`, un aplat titane réellement encodé
+(`src/ui/v2/media/blurhash.ts:11`). J'ai interrogé la base de production :
+**aucune table ne porte de colonne blurhash**. Les tables `media` et
+`session_media` n'en ont pas. Et aucun écran ne passe la prop : la seule
+occurrence de `photoBlurhash=` hors du kit est
+`app/(app2)/dev-galerie.tsx:358`, la galerie de développement. En pratique,
+**toutes les photos de l'application affichent le même placeholder
+titane**. Le chemin « vrai blurhash » est écrit mais n'est branché sur
+rien.
+
+---
+
+## Le retour haptique et son coupe-circuit
+
+### Un vocabulaire fermé (kit V2)
+
+`src/ui/v2/haptics.ts` expose **un seul point d'entrée**, `haptic(kind)`,
+et cinq mots seulement :
+
+| Mot | Effet iOS | Quand |
+|---|---|---|
+| `tap` | sélection | tout élément pressable, via `PressScale` |
+| `arm` | impact lourd | armer la capture (bouton central en mode enregistrement) |
+| `record` | notification succès | record personnel (`RecordFlash`) |
+| `doorSnap` | impact léger | fin de balayage d'aiguille, section franchie |
+| `warn` | notification avertissement | erreurs |
+
+La règle est explicite : « Jamais d'appel expo-haptics dispersé dans les
+écrans (app2) » (`src/ui/v2/haptics.ts:11-12`).
+
+L'ancien système garde quatre fonctions libres — `tap`, `confirm`,
+`success`, `warning` (`src/lib/haptics.ts`) — sans point d'entrée unique.
+
+### Le coupe-circuit en piste
+
+C'est le Principe 3 de la doctrine, et il est **câblé à trois niveaux**.
+
+1. Un drapeau runtime central, `src/lib/silence.ts`, volontairement sans
+   aucune dépendance pour éviter tout cycle d'import.
+2. La machine à états le pose : `useAppStateStore` appelle
+   `setSilenceMode(isSilentState(next))` à chaque recalcul
+   (`src/store/useAppStateStore.ts:112`), et le remet à faux au démontage
+   (`:117`). `isSilentState` est vrai pour un seul état :
+   `S6_roulage` (`src/types/state.ts:230-232`).
+3. Les deux modules haptiques le lisent avant toute vibration :
+   `src/ui/v2/haptics.ts:27-33` et `src/lib/haptics.ts:26-28`. Même
+   fonction `muted()` des deux côtés, qui coupe aussi sous Expo Go.
+
+En complément, l'interface elle-même s'efface : la barre d'onglets
+disparaît si l'état pilote est `S6_roulage` ou si le chemin appartient au
+flux de capture (`src/lib/appMap.ts:175-179`, appelé par
+`app/(app2)/_layout.tsx:78`).
+
+L'écran de roulage V2 pousse le principe jusqu'au bout
+(`app/(app2)/rec/roulage.tsx:5-10`) : fond nu, un point qui pulse, le mot
+« REC » en mono. **Aucun chrono, aucun chiffre, aucune biométrie.** Une
+seule exception d'honnêteté est admise : si le lien Bluetooth décroche, on
+le dit — et sans rouge, « le rouge reste au REC actif ».
+
+Un test unitaire couvre le drapeau (`src/lib/__tests__/silence.test.ts`).
+Je n'ai pas vérifié sur appareil qu'aucune vibration ne franchit ce filtre.
+
+### Le mot « tap » fait échouer la porte doctrinale
+
+Le dépôt possède un scanner qui interdit certains mots dans les fichiers
+d'écran : verbes de pilotage directifs, impératifs paternalistes, jugements
+gratuits, **et anglicismes** (`scripts/check-doctrine.ts:63-66` interdit
+`tap`, `swipe`, `click`).
+
+Ce scanner est branché en intégration continue, sans tolérance
+(`.github/workflows/check.yml:53`). Je l'ai exécuté :
+
+```
+Scan doctrinal : 222 fichiers .tsx dans app/
+KO — 75 violation(s) doctrinale(s)
+```
+
+Décompte par mot : **70 fois « tap »**, **5 fois « swipe »**. J'ai vérifié
+la nature de chacun : ce ne sont **pas** des textes affichés au pilote, ce
+sont des identifiants de code — `haptic('tap')`, `haptic="tap"`, le nom
+d'une variable de geste, un commentaire. Le vocabulaire haptique du kit V2
+emploie littéralement le mot que le scanner interdit.
+
+La liste d'exemptions du scanner contient bien `/haptics\.tap/`
+(`scripts/check-doctrine.ts:113`) — écrite pour l'ancienne API
+`haptics.tap()`. Elle ne couvre pas la nouvelle forme `haptic('tap')`.
+
+**Conséquence factuelle : l'étape doctrinale de la CI échoue aujourd'hui**,
+non pas sur un vrai écart de ton, mais sur un motif de nommage. Le scanner
+ne dit donc plus rien d'utile tant qu'il n'est pas ajusté : soit on renomme
+le vocabulaire haptique en français, soit on élargit l'exemption.
+
+---
+
+## L'accessibilité
+
+### Le contraste : le test qui verrouille
+
+`src/theme/__tests__/contrastTokens.test.ts` (119 lignes) est le seul
+verrou chiffré du dépôt en matière d'accessibilité. Il :
+
+1. réimplémente la luminance relative WCAG 2.1 et le rapport de contraste
+   (`:24-38`) ;
+2. calcule le **pire** contraste de chaque gris sur l'ensemble des fonds où
+   il peut se poser (`worstOn`, `:41-43`) ;
+3. exige ≥ 4,5 pour `hi`, `mid`, `low` du kit V2, et pour `cream`,
+   `creamSoft`, `secondary`, `creamMute`, `legend`, `eyebrow` de l'ancien ;
+4. exige ≥ 3,0 pour `dim` et `faint` ;
+5. **exige que la hiérarchie reste strictement décroissante** — sans quoi
+   « quatre gris lisibles mais indistinguables ne hiérarchisent plus rien,
+   et l'écran perd sa lecture » (`:65-67`).
+
+Ce cinquième point est le plus intelligent du fichier : il empêche de
+« résoudre » un problème de contraste en aplatissant la hiérarchie
+visuelle. Le test passe.
+
+Sa raison d'être est écrite en tête : « Un thème s'ajuste souvent à l'œil,
+sur un écran neuf, en pleine lumière : c'est exactement là qu'on assombrit
+un gris sans s'en apercevoir. Ici, la règle est chiffrée. »
+
+### Ce que ce test ne couvre pas
+
+Le fichier le déclare lui-même (`:13-17`) : il ne juge **pas** les couleurs
+sémantiques — or, rouge de marque, teintes QDI, Heritage. L'argument est
+défendable : leur contraste dépend de la taille et du poids réels du texte
+concerné. Mais cela laisse quatre zones sans filet :
+
+1. **Le rouge de marque**, à 2,86 sur carte, alors qu'il porte les
+   millièmes du chrono et remplit l'arc du cadran (voir plus haut).
+2. **Le freinage QDI V2** (`#E63946`) à 4,04.
+3. **Les jetons du lot Profil** : `grisSombre #555555` à 2,47 / 2,29, dont
+   trois emplois comme placeholder de saisie. Ce jeu de jetons n'est même
+   pas importé par le test — `lotProfilTokens` n'est pas dans l'objet
+   `theme` exporté.
+4. **Les bordures**, à 1,23 et 1,58, quand elles sont le seul signal d'un
+   état sélectionné.
+
+### Les cibles tactiles
+
+Le seuil usuel est 44 × 44 points sur iOS. Ce qui est vérifiable dans le
+code :
+
+**Respecté par construction :**
+
+- `src/ui/Button.tsx:67` — `minHeight: 48`, avec le commentaire
+  « cible tactile ≥ 44 px » ;
+- `src/ui/Card.tsx:52` — `minHeight: 44` dès que la carte porte une action ;
+- `src/ui/v2/ListRow.tsx:128` — `minHeight: 52` ;
+- `src/ui/v2/shellLogic.ts:216` — barre d'onglets de 56 px de haut, chaque
+  porte en `flex: 1` sur toute la largeur disponible ;
+- `src/ui/v2/shellLogic.ts:147` — bouton central de 60 px ;
+- `src/ui/AccountButton.tsx` — pastille de 34 px **plus** le `hitSlop`
+  global de 8 px sur chaque bord, soit 50 px.
+
+**Rattrapé par `hitSlop` :**
+
+- `src/ui/v2/Chip.tsx:33` — la pastille fait ~32 px, complétée de 6 px en
+  haut et en bas, soit 44 ;
+- `src/ui/v2/StateView.tsx:147-151` — la pastille « Réessayer » fait ~36 px,
+  complétée de 4 px de chaque côté, soit 44 ;
+- `src/ui/Segmented.tsx:29` et `:49-51` — pastille « volontairement
+  compacte », étendue d'environ 16 px par le `hitSlop` du thème.
+
+Le dépôt compte **329 usages de `hitSlop`** et **181 déclarations** de
+hauteur ou hauteur minimale à 44 ou 48 px.
+
+**Le piège documenté.** Un point de vigilance est inscrit dans la mémoire
+projet et se lit dans le code de `PressScale`
+(`src/ui/v2/motion/PressScale.tsx:5-12`) : le style **visuel** va sur la
+vue animée interne, le style de **mise en page** sur le `Pressable`
+externe. Si l'on inverse, des cibles jointives voient leurs `hitSlop` se
+recouvrir et le dernier frère rafle le toucher. La règle est écrite dans le
+contrat d'API du composant ; elle n'est vérifiée par aucun test.
+
+**Un cas résolu explicitement** : sur Android, le test de contact est
+découpé aux limites de chaque ancêtre. Le bouton central débordant de la
+barre, le haut du cercle était une zone morte. Un débord de 12 px
+(`TAB_BAR_OVERHANG`, `src/ui/v2/shellLogic.ts:218-224`) a été ajouté aux
+limites de la barre, le fond flouté restant décalé d'autant pour que la
+hauteur visuelle ne change pas. Correction non observée sur appareil.
+
+### Ce que VoiceOver entend
+
+Volumétrie sur `app/` et `src/` : **806** `accessibilityLabel`, **680**
+`accessibilityRole`, **158** `accessibilityState`, **143**
+`accessibilityElementsHidden`, **26** `accessibilityHint`, **25**
+`accessibilityLiveRegion`, **12** `accessibilityActions`.
+
+Le scanner `scripts/check-accessibility.ts` vérifie qu'aucun `<Pressable>`
+avec `onPress` n'est dépourvu de `accessibilityRole`. Exécuté sur les 222
+fichiers : **aucun défaut**. Il est branché en CI en mode strict
+(`.github/workflows/check.yml:56`). C'est un filet réel, mais étroit : il
+ne vérifie ni la présence ni la **qualité** des libellés.
+
+Les soins concrets que j'ai relevés dans le kit V2 :
+
+- **Le contexte prime sur le raccourci.** Le bouton central ne dit jamais
+  « J-3 » tout seul ; `centralButtonAccessibilityLabel`
+  (`src/ui/v2/shellLogic.ts:126-144`) compose « Prochain track day · J-3 »,
+  parce qu'« un “J-3” nu est cryptique au lecteur d'écran ». Fonction pure,
+  testée.
+- **Le regroupement étiquette + chiffre.** `StatCell`
+  (`src/ui/v2/StatCell.tsx:31-38`) lit « Record : 1:41.203 » d'un seul
+  tenant — « sans quoi le lecteur d'écran énonce “Record” puis, au balayage
+  suivant, “1:41.203”, le lien perdu ».
+- **L'absence est dite, pas montrée.** Le tiret « — » n'est pas un mot :
+  `StatCell` annonce « non mesuré », et `Dial` construit
+  « Marge : non mesuré » (`src/ui/v2/Dial.tsx:116-118`).
+- **Le radar est résumé, pas décrit.** `RadarQdi`
+  (`src/ui/v2/RadarQdi.tsx:104-111`) compose « Radar QDI — Trajectoire 72,
+  Freinage 64… », et ajoute « — 3 axes mesurés sur 5 » quand la mesure est
+  partielle.
+- **Un élément inerte n'est pas annoncé comme un bouton.** Sans `onPress`,
+  `Chip` prend le rôle `text` et perd son état sélectionné — « annoncer
+  “bouton” sur un élément inerte est un mensonge d'interface »
+  (`src/ui/v2/Chip.tsx:27-30`).
+- **Le décoratif est muet.** L'illustration d'état vide, le squelette
+  `Shimmer`, les équerres du `CockpitPanel` et le `Canvas` du cadran sont
+  tous retirés de l'arbre d'accessibilité.
+- **Les gestes ont un chemin non gestuel.** `PressScale` expose
+  `accessibilityActions` / `onAccessibilityAction`
+  (`src/ui/v2/motion/PressScale.tsx:61-66`) pour « le chemin non gestuel
+  d'une action qui n'existe qu'au geste ». Utilisé douze fois, notamment
+  pour incrémenter/décrémenter un curseur de tour
+  (`app/(app2)/data/session/[id].tsx:771`,
+  `app/(app2)/data/comparer.tsx:965`), écarter un rappel
+  (`app/(app2)/index.tsx:382`) et armer la capture
+  (`app/(app2)/rec/placement.tsx:159`, où le commentaire précise que
+  c'est « le SEUL chemin non gestuel vers l'armement »).
+- **Les messages qui apparaissent sont annoncés.** 25 usages de
+  `accessibilityLiveRegion`, en `polite` pour les erreurs de formulaire, en
+  `assertive` pour quelques retours immédiats
+  (`app/(app2)/rec/entre-runs.tsx:273`, `app/(app)/equipement.tsx:159`).
+
+**Ce que je n'ai pas vérifié** : l'ordre de lecture réel des éléments, la
+présence d'un libellé sur *chaque* image ou icône porteuse de sens, et le
+comportement du rotor iOS. Ces points demandent un appareil.
+
+### La taille de texte système
+
+C'est la lacune la plus nette. React Native applique par défaut la
+taille de texte système ; sept endroits la **désactivent** explicitement
+avec `allowFontScaling={false}` :
+
+- `src/ui/KingNumber.tsx:60` — le chiffre roi de l'ancien système ;
+- `src/ui/v2/motion/RollingCounter.tsx:86` et `:147` — l'odomètre, donc
+  tout chrono du kit V2 ;
+- `src/ui/v2/motion/RecordFlash.tsx:139` — le chrono en célébration ;
+- `src/ui/v2/Dial.tsx:161` et `:171` — la valeur et le libellé du cadran ;
+- `src/ui/v2/CentralButton.tsx:101` — le libellé du bouton central.
+
+Le motif technique est compréhensible : ce sont des chiffres calés au pixel
+dans des géométries fixes (bande d'odomètre, centre de cadran, cercle de
+60 px), qu'un agrandissement casserait. La conséquence est réelle : un
+utilisateur qui a grossi le texte de son iPhone **ne verra pas grossir les
+chiffres les plus importants de l'application**. Aucun palier
+intermédiaire, aucun `maxFontSizeMultiplier`, aucune mise en page
+alternative n'est prévue.
+
+Partout ailleurs, l'agrandissement s'applique. Comme le kit V2 pose ses
+`fontSize` en dur, sans échelle centrale, l'effet d'un agrandissement fort
+sur des cartes de 120 px de haut ou des rangées de 52 px n'est pas
+prévisible depuis le code seul. Je ne l'ai pas testé.
+
+### Le thème et l'orientation
+
+L'application est **verrouillée en sombre** : `userInterfaceStyle: "dark"`
+et `orientation: "portrait"` (`app.json:6-9`), barre d'état claire
+(`app/_layout.tsx:158`). Il n'existe aucun thème clair, aucun jeu de
+jetons alternatif, et la base de production ne stocke **aucune préférence
+d'affichage** (vérifié : aucune colonne `theme`, `locale` ou
+d'accessibilité dans le schéma public ; seule `vehicles.color` porte le mot
+« color », et c'est la couleur d'une voiture).
+
+Cela simplifie beaucoup, mais implique qu'un utilisateur en mode « contraste
+élevé » ou en inversion de couleurs système n'a **aucun chemin d'adaptation
+dans l'application**.
+
+---
+
+## Récapitulatif : ce qui est solide, ce qui est fragile
+
+### Solide
+
+- La séparation des deux systèmes est étanche : 38 écrans sur le nouveau
+  kit, zéro import croisé.
+- Le contraste des gris de texte est mesuré, corrigé et **verrouillé par un
+  test qui passe**, hiérarchie comprise.
+- Le coupe-circuit haptique en piste est câblé à trois niveaux, avec un
+  drapeau sans dépendance et un test unitaire.
+- La règle « une absence n'est pas un zéro » est appliquée avec constance,
+  dans six fonctions différentes au moins.
+- Les libellés de lecteur d'écran du kit V2 sont composés avec soin :
+  contexte ajouté, valeurs regroupées, décoratif muet, gestes doublés d'un
+  chemin non gestuel.
+- Le scanner d'accessibilité passe sur 222 fichiers, en CI stricte.
+- 153 tests couvrent la géométrie, les conversions et le contraste — dont
+  la conversion millisecondes → chrono, verrouillée.
+
+### Fragile
+
+- **Le rouge de marque à 2,86:1** porte les millièmes du chrono et l'arc du
+  cadran. Sous tous les seuils, sur carte.
+- **Trois lois de l'or se contredisent** : `#FFB703` est à la fois « chrono
+  uniquement, jamais une donnée QDI » et la couleur de la branche Fluidité ;
+  l'or Heritage, déclaré exclusif au tier commercial, sert la célébration de
+  record.
+- **142 emplois de l'or dans l'ancien arbre**, dont au moins sept
+  clairement décoratifs (onboarding, modales, bandeau hors ligne) —
+  contraires à la règle écrite, non vérifiés par aucun outil.
+- **Le lot Profil échappe au verrou de contraste** : `#555555` à 2,3:1, en
+  placeholder de saisie sur trois écrans.
+- **La CI doctrinale échoue** sur 75 occurrences du mot « tap » qui sont du
+  code, pas du texte affiché.
+- **Les chiffres majeurs ne grossissent pas** avec la taille de texte
+  système : sept désactivations explicites, sans repli.
+- **Le mouvement réduit n'est pas couvert dans l'ancien système** : le hook
+  y est asynchrone (l'animation joue avant de s'effacer), et dix composants
+  animent sans le consulter du tout.
+- **La documentation normative de la couleur a divergé du code** sur au
+  moins neuf jetons ; deux décisions couleur y sont ouvertes depuis
+  plusieurs semaines (jeton d'erreur, chiffre dominant du Bilan).
+- **Le placeholder de photo « intelligent » n'est branché sur rien** :
+  aucune colonne blurhash en base, donc toutes les photos partagent le même
+  aplat titane.
+- **Trois familles typographiques de titre** et **onze graisses inutilisées
+  mais chargées** au démarrage.
+
+### Jamais observé
+
+Rien de ce chapitre n'a été vu sur un appareil. La procédure de recette sur
+matériel existe (`docs/SMOKE_TEST_DEVICE.md`) : elle compte **105 points de
+contrôle, dont zéro coché**. Le fond du splash natif diffère du fond des
+deux systèmes ; le flou de la barre d'onglets diffère entre iOS et Android ;
+les corps de 8 px, les cibles complétées par `hitSlop` et l'ordre de lecture
+VoiceOver ne peuvent se juger qu'en main. Tant qu'une session sur appareil
+n'a pas eu lieu, tout le contenu de ce chapitre reste une lecture de
+l'intention du code.
+
+---
+
+## Où en est le programme, et ce qui bloque
+
+Cette section répond à trois questions : ce qui a été livré, ce qui reste, et ce
+qui empêche d'avancer. Elle distingue systématiquement deux choses : ce que j'ai
+**mesuré** en lançant une commande ou en interrogeant la base de production, et
+ce que j'ai seulement **lu** dans le code ou dans un rapport.
+
+Rien n'a été exécuté sur un téléphone. Aucun simulateur, aucun appareil, aucun
+boîtier RaceBox, aucune ceinture Polar, aucun écran de paddock. Tout ce qui
+concerne le rendu, les gestes, les animations, VoiceOver, le Bluetooth ou le
+direct est une lecture de code. La dernière partie de cette section liste
+franchement tout ce qui est dans ce cas.
+
+### Ce que j'ai réellement exécuté pour écrire cette section
+
+| Commande | Résultat |
+|---|---|
+| `npx tsc --noEmit` | code de sortie **0**, aucune sortie |
+| `npx jest --ci --coverage=false` | **1 847 tests verts**, 98 ignorés, 1 945 au total · 140 suites passées, 18 ignorées, 158 au total · 57,6 s |
+| `npx eslint "src/**" "app/**"` | code de sortie **1**, **756 remarques** |
+| `npx prettier --check` | code de sortie **1**, **un seul fichier** signalé |
+| `npx tsx scripts/check-doctrine.ts` | code de sortie **1**, **75 violations** |
+| `npx tsx scripts/check-accessibility.ts --strict` | code de sortie **0**, 222 fichiers scannés |
+| Requêtes SQL en lecture seule sur `fouvuqkdxarjpjbqnsjq` | voir §« Le verrou terrain, chiffré » |
+
+Le détail de chacun est en §7.
+
+---
+
+## 1. Le document qui fait foi
+
+L'ordre des travaux est fixé par
+`design-retours/programme-v2/OXV_APP_V2_DOSSIER_MAITRE.md`, daté du 18/07/2026.
+Il définit treize lots (§10, lignes 254-273) et quatre verrous externes (§0,
+lignes 19-25). Tout ce qui a été livré depuis le 19 juillet suit ce document.
+
+L'ordre canonique, tel qu'écrit dans
+`design-retours/programme-v2/PROMPT_CLAUDE_CODE_LOTS_CLOTURE.md:49`, est :
+
+```
+BE-1 → L0 → L1 → L2 (+L2-B) → L4 → L5 → [SMOKE TEST TERRAIN] → L3
+→ BIO-2 → [DÉCISION CLASSEMENT] → LIVE-B → BIO-3 → B1 → [SIRET]
+→ A1-ON → L6 → App Store
+```
+
+Les quatre verrous externes déclarés dès le départ, avec ce qu'ils bloquent
+(dossier maître, §0) :
+
+| Verrou | Bloque | Levée prévue |
+|---|---|---|
+| SIRET → Stripe | A1 paiement, facturation coach | août 2026 |
+| Validation avocat | décharge, consentement biométrie, CGV | RDV semaine du 21/07 |
+| Décision classement | écran paddock TV | fondateur |
+| Smoke test terrain | tous les lots dépendants des trames | 1 journée piste |
+
+Deux de ces quatre verrous ont été levés (avocat sur l'annexe A, décision
+classement). Deux restent fermés (SIRET, terrain). Le terrain est le plus
+structurant : il conditionne à lui seul quatre lots.
+
+---
+
+## 2. Les lots livrés, et ce que chacun a apporté
+
+Quatorze livraisons sont identifiables par un commit et, pour la plupart, par un
+rapport. Voici ce que chacune a réellement apporté.
+
+### SEC-1 — sécurité et supervision (19/07, `b4748a2` puis `b9896ff`)
+
+Préparé puis appliqué en production dans la même nuit. Documenté dans
+`docs/architecture/SEC1_PROD_APPLY.md`. Le lot a durci `ritual_dispatcher`,
+figé les `search_path` de fonctions, et rendu le job CI des tests RLS
+**fail-closed** — il échoue désormais franchement au lieu de sauter en silence
+(`.github/workflows/check.yml`, job `rls`).
+
+Reste ouvert et écrit noir sur blanc à `SEC1_PROD_APPLY.md:245` : la suppression
+des tables `_backup_*` (décision fondateur, la RLS a été activée en défense),
+l'effacement côté Stripe, le point avocat sur `incident_reports`, le DSN Sentry
+et les secrets CI.
+
+### BE-1 — socle backend (19/07, `d920d2f`)
+
+État détaillé dans `docs/architecture/13_BE1_ETAT.md`. Ce lot a créé, en
+production :
+
+- les cinq drapeaux `app_payments`, `biometry`, `founders`, `video_overlay`,
+  `convoys`, tous fermés à la création ;
+- la table `biometry_raw` (donnée de santé, article 9 du RGPD), avec RLS
+  own-row plus lecture coach conditionnée au binôme détaillé et au consentement ;
+- deux colonnes de consentement horodatées sur `users`
+  (`biometry_capture_consent_at`, `biometry_coach_share_consent_at`) — `NULL`
+  vaut refus, une date vaut consentement, ce qui donne la piste d'audit ;
+- la table `founder_applications` avec un déclencheur anti-auto-validation ;
+- la table `incident_reports`, **immuable** (aucun update, aucun delete) ;
+- la table `video_overlays`, qui attend toujours son usage (lot B1) ;
+- la rétention 30 jours de la biométrie, planifiée en cron.
+
+**Vérifié en base ce jour** : le cron `biometry-retention-daily` existe bien
+(jobid 11, `15 3 * * *`), il est actif, comme les sept autres.
+
+### V2-L0 — fondations visuelles (19/07, `52bb7bd`)
+
+Rapport : `roadmap/rapports/v2-l0.md`. C'est le kit « DA Instrument » :
+`src/ui/v2/tokens.ts` (palette, typographies Michroma / Inter / JetBrains Mono),
+20 icônes dessinées à la main, 11 primitives de mouvement, 18 composants dont le
+`Dial` signature, la `TabBar`, le `Sheet`, le `StateView`.
+
+Deux points méritent d'être retenus. D'abord, une règle a été posée à ce
+moment-là et n'a plus bougé : `Dial` accepte `value: number | null` et affiche
+« — » plutôt qu'un zéro fabriqué. Ensuite, la vérification adversariale a rendu
+**28 constats, tous corrigés**, dont sept majeurs.
+
+L'écran `app/(app2)/dev-galerie.tsx` a été créé comme **écran de validation
+fondateur** : les 18 composants, les 20 icônes et les primitives rejouables y
+sont réunis. Il n'a jamais été ouvert sur un appareil.
+
+### V2-L1 — porte Miroir (19/07, `87ab0e6`)
+
+Rapport : `roadmap/rapports/v2-l1.md`. Trois écrans :
+`app/(app2)/index.tsx` (1 067 lignes), `app/(app2)/bilan/[sessionId].tsx`
+(1 182 lignes), `app/(app2)/signature.tsx` (464 lignes).
+
+34 constats traités, dont 17 majeurs. Ceux qui comptent sont tous de la même
+famille : des valeurs fabriquées. « 0 km / 0 séances » affichés sur une panne
+réseau, une célébration de record posée sur des données partielles, un pack
+Heritage reconstruit au lieu d'être lu, des QDI d'une version d'algorithme
+périmée affichés comme courants, et surtout **le tracé d'un autre circuit
+présenté comme celui de la séance** — corrigé par une lecture stricte
+(`fetchSessionCircuitCenterlineExact`, sans repli).
+
+C'est aussi ce lot qui a produit deux décisions durables du fondateur : le
+mapping des libellés Signature (Cap, Trajectoire, Visée, Plongée, Anticipation),
+verrouillé par test dans `src/features/miroir/signatureLogic.ts:46` ; et la
+consigne A-WEATHER-1, qui n'est pas un correctif de bug mais une règle de
+doctrine — un service expose `null`, jamais un nombre placebo.
+
+### V2-L2 — porte REC, le jour J (19/07, `f151fab`)
+
+Rapport : `roadmap/rapports/v2-l2.md`. Huit écrans sous `app/(app2)/rec/`.
+
+La règle cardinale du lot était le gel de la chaîne de capture. Elle est tenue
+et prouvée : `git diff` vide sur `src/store/useAppStateStore.ts`,
+`src/services/captureSessionService.ts`, `src/services/captureSyncQueue.ts` et
+`src/ble/bluetoothService.ts`. Les huit écrans sont une peau posée sur des
+services inchangés.
+
+Apports concrets : l'armement de la capture par appui long de 600 ms,
+l'écran de roulage réduit à un point pulsant et rien d'autre (principe 3), la
+feuille de consentement biométrie, le registre hors-ligne des incidents,
+séparé de la file de capture.
+
+Une migration a été appliquée en production dans la foulée (`6d2b453`) :
+`users.show_attendance` et la RPC `session_attendance_public`, pour la présence
+du jour J.
+
+**Reporté à ce lot et jamais repris** : L2-B, la Live Activity iOS. Le rapport
+le dit explicitement (`v2-l2.md:79-82`) : plus d'une journée de travail natif.
+
+### V2-L4 — porte VOUS (19/07, `650b029`)
+
+Rapport : `roadmap/rapports/v2-l4.md`. Onze écrans plus le flux de réservation
+gaté. Le lot a introduit `bookingCatalogService`, **en lecture seule
+uniquement** (aucune écriture, vérifié par recherche), et le catalogue des
+journées lu depuis les tables du site.
+
+Trois divergences ont été remontées comme des manques de schéma, pas des bugs :
+pas de colonne de rang pour les fondateurs, donc pas de « FONDATEUR N° 07 » ;
+pas de véhicule principal choisi dans `garageService` ; `expo-clipboard` absent,
+donc partage natif au lieu d'un bouton « copier ».
+
+### V2-L5 — porte CLUB (19/07, `79aabbb`)
+
+Rapport : `roadmap/rapports/v2-l5.md`. Sept écrans plus un service d'export.
+Le cœur du lot est doctrinal : le fil d'amis restitue **le fait de rouler**,
+jamais un chrono ni un rang, garanti par liste blanche et par tests.
+
+La vérification a attrapé le défaut le plus visible du lot : la carte-souvenir
+partageable peignait la silhouette de Haute Saintonge sous le nom d'un autre
+circuit. Corrigé par la même lecture stricte que le Bilan.
+
+### V2-L5-B — suppression des notes coach (19/07, `eb46c00`)
+
+Rapport : `roadmap/rapports/v2-l5b.md`. Sur décision du fondateur, la table
+`coach_reviews` (note 1-5, NOT NULL) a été supprimée et remplacée par
+`coach_testimonials` : des citations, aucun agrégat.
+
+Ce lot mérite d'être signalé parce qu'il a **causé puis corrigé une régression
+en production**. Postgres ne suit pas les références depuis un corps PL/pgSQL :
+le `DROP` a réussi en silence, laissant deux fonctions orphelines. L'une était
+`purge_user_data()`, la fonction du droit à l'effacement — la purge RGPD
+avortait entièrement. Corrigée par un correctif appliqué le même jour.
+
+Un garde-fou automatisé a été posé dans la foulée :
+`src/services/__tests__/coachDomainNoScore.test.ts` échoue si une colonne
+`rating` / `score` / `stars` réapparaît quelque part dans le domaine coach.
+
+### V2-L3 — porte DATA (19/07, `c07d0b7` → `6bea17d`)
+
+Rapport : `roadmap/rapports/v2-l3.md`. Quatre écrans, dont l'écran pivot
+`app/(app2)/data/session/[id].tsx`.
+
+**Ce lot a été exécuté malgré son verrou ouvert.** Le rapport l'écrit dès la
+quatrième ligne : le gate « trames réelles » n'était pas rempli, et le fondateur
+a demandé d'enchaîner. Conséquence assumée : la structure existe, les données
+non.
+
+Cinq des six lectures Insight ont été « dé-mockées » dans la même nuit. Un
+second passage a dû retirer les courbes de démonstration restées codées en dur —
+elles se lisaient comme la mesure réelle. La sixième, FlowViz, reste une
+démonstration : aucune source de fluidité n'existe dans `session_insights`.
+
+Trois bugs de fond ont été trouvés parce que PostgREST rend les colonnes
+`numeric` en **chaînes** au moment de l'exécution, alors que le type TypeScript
+annonce `number` : un plantage au rendu du pivot, un tri de tours faux, et un
+plantage Skia sur une séance sans force G.
+
+### BIO-2 — ceinture Polar et cardio coach (25/07, quatre commits)
+
+Rapport : `roadmap/rapports/bio-2.md`, le plus détaillé du dépôt.
+
+Quatre incréments : le parser de la mesure Bluetooth 0x2A37, l'extension BLE
+Polar (chemin **entièrement séparé** du RaceBox, purement additive, zéro ligne
+retirée), la capture cardio locale hors-ligne, et le relais vers le coach à
+0,5 Hz sous triple verrou.
+
+La vérification adversariale a trouvé un défaut invisible à la lecture :
+`supabase-js` déduplique ses canaux par sujet, donc deux écrans abonnés au même
+sujet partageaient une seule instance, et fermer l'un tuait l'autre. Le
+comptage de références est désormais obligatoire, verrouillé par neuf tests.
+
+Le rapport dit aussi une chose qu'il faut retenir : `stripHealth` était écrit et
+testé mais **n'avait aucun appelant** ; la protection réelle était structurelle,
+pas active.
+
+**Décision du 25/07** : le drapeau `biometry` a été levé en production, le
+fondateur étant informé que le smoke test à deux appareils n'avait pas eu lieu.
+
+### LIVE-B — tableau de marche (25/07, `dccbe25`)
+
+Rapport : `roadmap/rapports/live-b.md`. Débloqué par l'arbitrage du fondateur :
+**variante A**, liste ordonnée par numéro de voiture, jamais par chrono. Le
+motif est juridique et il est écrit : un classement compétitif peut requalifier
+un track day en compétition.
+
+`stripHealth` a gagné ici son premier appelant réel, et la barrière est rendue
+infranchissable par le typage : `openBoardBroadcast.send` n'accepte que la
+sortie de `stripHealth`.
+
+La vérification a trouvé quatre défauts, dont un canal public qui survivait à la
+fin de séance, et un miroir Meta qui ne pouvait structurellement jamais être en
+direct (il ne listait que des séances terminées).
+
+Les policies `board_recv` / `board_send` sont appliquées en production. Le
+rapport précise ce qu'elles refusent de faire : ouvrir la lecture « à tout
+inscrit de la journée », **parce que le lien n'existe pas au schéma**. Écrire
+une règle d'accès sur une devinette a été refusé.
+
+### BIO-1 — HealthKit (25/07, `8d5bc2a`)
+
+Câblé en lecture seule, consentement en tête. La dépendance
+`react-native-health` `^1.19.0` est bien dans `package.json:80` et installée
+dans `node_modules`. **Aucun rapport de lot n'existe pour BIO-1.**
+
+### A-FLOW-1 — service de fluidité (19/07 puis 25/07, `5a7bed7`)
+
+Défini dans `docs/architecture/A-FLOW-1_flowService_definition.md`, validé par
+quatre décisions du fondateur. `src/services/flowLogic.ts` (44 tests) et
+`src/services/flowService.ts` existent.
+
+Ce qui est écrit, c'est **la forme et les invariants, pas le calage** : le seuil
+de fluidité doit émerger des percentiles réels, il n'est pas décrété (§3 du
+document). Le document signale par ailleurs une **limite connue non résolue**
+(§7) : `gSustained` est lu sur le |g| mesuré, la boucle est donc partiellement
+fermée et un pilote brusque bénéficie d'une indulgence mémorisée. La sortie non
+circulaire — la courbure géométrique déduite du GPS — n'est pas implémentée.
+
+### Passe d'accessibilité et contraste (25/07, `5685704`, `0222d94`)
+
+Environ 40 écrans pilote audités, 81 constats. Puis relèvement des gris faibles
+sur décision du fondateur (« on assouplit »), verrouillé par huit tests dans
+`src/theme/__tests__/contrastTokens.test.ts`. **Aucun rapport de lot.**
+
+### Réconciliation des migrations (26/07, `202018c`)
+
+Le dépôt ne contenait que 121 des 215 migrations réellement appliquées : le site
+oxvehicle.fr écrit dans le même projet Supabase. Les 94 manquantes ont été
+extraites de la base et réécrites, fidélité vérifiée par empreinte md5 sur les
+94.
+
+**Vérifié ce jour** : `supabase/migrations/` contient bien 215 fichiers, et
+`supabase_migrations.schema_migrations` compte 215 lignes en production. L'écart
+est refermé.
+
+Onze fichiers ont été sortis du chemin d'application vers
+`supabase/migrations_hors_historique/`. Trois d'entre eux **dégraderaient la
+production** s'ils étaient rejoués, dont un qui réinstallerait une version
+périmée de `purge_user_data`, contenant un `delete from coach_reviews` sur une
+table supprimée. La panne n'aurait été découverte qu'au premier effacement
+réellement demandé par un pilote.
+
+### V2-L6 — la bascule (26/07, `29e34f9`)
+
+**Ce lot est postérieur aux deux documents d'état du 26/07**, qui le décrivent
+encore comme non commencé. Il a bien eu lieu, et je l'ai vérifié dans le code :
+
+- `app/index.tsx:107` renvoie désormais `<Redirect href="/(app2)" />` ;
+- la garde de build qui rendait `(app2)` orphelin hors développement a été
+  retirée de `app/(app2)/_layout.tsx` — le commentaire de remplacement, à partir
+  de la ligne 63, explique qu'elle aurait produit une boucle de redirection
+  **visible en production seulement** ;
+- les huit destinations pilote du routage des notifications, les gardes de rôle
+  des cinq espaces, `SpaceSwitcher` et `paddockHeroLogic` pointent vers V2.
+
+Trois réserves, écrites dans le message du commit :
+
+1. **L'arbre V1 n'est pas supprimé.** `(app2)` y renvoie volontairement pour
+   trois écrans non portés, et l'espace `(pro)` le consomme comme bibliothèque.
+2. **Sept écrans V1 restent sans équivalent V2** : `carte-trophee`,
+   `creer-route`, `creer-trace`, `mes-routes`, `regularite`, `data-lab-canvas`,
+   `share/[token]`. Vérifié : les six premiers sont bien présents dans
+   `app/(app)/`, et `app/(app)/share/[token].tsx` aussi.
+3. **Trois chemins sont produits par les deux arbres** : `/`, `/club`,
+   `/signature`. Lequel gagne n'a pas été observé, faute d'exécution.
+
+Quatre capacités disparaissent au passage à l'intérieur d'écrans par ailleurs
+couverts : l'inscription à un événement ouvert, la certification et la
+suppression d'une belle route, le catalogue d'offres par catégorie, et
+l'écart-type de séance. Ce sont des arbitrages produit en attente.
+
+**Aucun rapport de lot n'existe pour L6.**
+
+Un détail à corriger un jour : l'en-tête de `app/(app2)/_layout.tsx`, lignes 3
+à 9, décrit toujours le groupe comme « ORPHELIN » et documente la garde de
+build retirée. La documentation du fichier contredit maintenant son code.
+
+### Correctif d'annotation coach (26/07, `93f0638`)
+
+Le dernier commit du dépôt. Trois défauts d'écriture sur le même chemin, dont
+deux faisaient **perdre le travail du coach en silence** : une note classée sur
+le virage 1 par défaut, un enregistrement sans effet depuis l'écran direct, et
+un échec d'enregistrement qui effaçait le texte en passant pour un succès.
+
+Deux problèmes ont été signalés sans être corrigés, faute d'autorisation :
+la contrainte `corner_index BETWEEN 1 AND 7` en base (modification de schéma en
+production), et `src/lib/circuitTopology.ts`, topologie statique du seul circuit
+de Haute Saintonge, dont l'en-tête admet lui-même que les noms de virages sont
+« à confirmer ».
+
+**Vérifié en base ce jour** : la contrainte existe bien
+(`coach_annotations_corner_index_check`, `CHECK corner_index >= 1 AND <= 7`), et
+le circuit Ricardo Tormo est enregistré avec `turns_count = 14`. Un coach ne
+peut donc pas annoter les virages 8 à 14 de Valence : l'insertion serait
+refusée par la base.
+
+---
+
+## 3. Les lots restants
+
+| Lot | État vérifié | Ce qui le bloque |
+|---|---|---|
+| **L2-B** — Live Activity iOS | non commencé | travail natif Swift. Vérifié : **zéro occurrence** de `ActivityKit` ou `LiveActivity` dans `app/`, `src/` et `app.json` |
+| **BIO-3** — mini-app watchOS | non commencé | dépend de BIO-1 « en production et validé une journée réelle ». Vérifié : zéro occurrence de `WCSession`, `HKWorkoutSession` ou `watchOS` |
+| **B1** — vidéo synchronisée | non commencé | trames réelles, drapeau `video_overlay` fermé, coût de stockage à valider |
+| **A1-ON** — activation des paiements | non commencé | SIRET. Vérifié : ni `@stripe/stripe-react-native` ni `react-native-iap` dans `package.json` |
+| **Purge de l'arbre V1** | non commencé | validation terrain, plus sept arbitrages produit |
+| **Coach / Admin en V2** | reporté | « après pilote ». L'espace coach n'a jamais été refondu et n'a **aucune maquette** de référence |
+| **Canal biométrie par coach** | non commencé | désigné dans `29d5cfd` comme « la réponse propre, à faire avant d'élargir l'usage » |
+| **M4** — migration `events` → `sessions` | non fait | vérifié : **29 appels** à `.from('events')` / `.from('event_registrations')` dans `src/`, et deux écrans **V2** les consomment (`app/(app2)/club/pass.tsx:33`, `app/(app2)/rec/preparation.tsx:46`) — en contradiction avec la règle 6 du dossier maître |
+| **26 constats** de l'audit coach du 26/07 | non traités | dont un critique. Ils ne sont documentés **nulle part** dans le dépôt en dehors du message de `29d5cfd` |
+
+Sur ce dernier point, il faut être précis : le message de `29d5cfd` indique
+« 1 critique sur l'annotation, des majeurs sur la fabrication de valeurs et des
+boutons sans effet ». Le critique sur l'annotation a été traité le lendemain par
+`93f0638`. Les 25 autres ne sont ni listés, ni qualifiés, ni datés dans le
+dépôt. Je ne peux pas dire ce qu'ils contiennent.
+
+---
+
+## 4. Les verrous qui ne sont pas techniques
+
+C'est le cœur de la question. Rien de ce qui suit ne se résout en écrivant du
+code.
+
+### 4.1 Le verrou terrain, chiffré
+
+Le smoke test terrain est le verrou le plus structurant : il conditionne le
+calage de `flowService`, l'alimentation des lectures Insight, la mesure du
+défilement à 60 images/seconde, le lot B1 et la validation de L6.
+
+J'ai interrogé la base de production en lecture seule. Voici l'état réel :
+
+| Mesure | Valeur en production |
+|---|---|
+| Séances de télémétrie, toutes statuts | **18** |
+| dont `completed` | **10** |
+| dont `aborted` | **8** |
+| Tours enregistrés, toutes séances confondues | **1** |
+| Trames de télémétrie, toutes séances confondues | **53** |
+| Relevés météo | **0** |
+| Lignes d'insight calculées | **1** |
+| Analyses de séance | **13** |
+
+Trois faits en découlent, et ils sont plus durs que ce que disent les rapports.
+
+**Premièrement, aucune séance ne possède à la fois des trames et un tour.** La
+seule séance porteuse de 53 trames (`7f40d5ad…`, 28/06) compte **zéro tour**.
+La seule séance porteuse d'un tour (`f13545a1…`, 16/05) compte **zéro trame**.
+Il n'existe donc, à ce jour, aucun jeu de données complet sur lequel une lecture
+Insight puisse s'appuyer.
+
+**Deuxièmement, la dernière séance close remonte au 17 mai 2026.** Toutes les
+séances postérieures — 14 juin, 22 juin, quatre le 28 juin, 2 juillet, 15
+juillet — sont en statut `aborted`. Je ne peux pas dire pourquoi depuis le code :
+`aborted` est le statut posé par `abortCaptureSession`, mais la cause réelle
+(annulation volontaire, perte du boîtier, sortie de l'application) n'est pas
+enregistrée.
+
+**Troisièmement, zéro relevé météo en base.** Toutes les sections « conditions »
+des écrans, qui lisent `weather_snapshots`, sont donc vides en production.
+
+Le rapport L3 parlait de « 10 séances closes, 1 seule avec 1 tour ». Le chiffre
+est exact, et il n'a pas bougé depuis le 19 juillet.
+
+### 4.2 Le verrou matériel
+
+Quatre choses demandent du matériel que je n'ai pas :
+
+1. **Un roulage réel avec un RaceBox Mini.** C'est la seule validation que le
+   code ne peut pas couvrir, et `roadmap/RUNBOOK_VALENCE.md` le dit en
+   conclusion.
+2. **Un smoke test à deux appareils** (un pilote, un coach) pour BIO-2. Le
+   drapeau `biometry` a été levé sans lui.
+3. **Un écran de paddock et deux téléphones** pour LIVE-B. Le rapport le classe
+   franchement en « non tenu ».
+4. **Un appareil iOS pour mesurer le défilement à 60 images/seconde.** Le
+   marqueur `// TODO device-tune` est posé dans le code depuis L3.
+
+Il faut y ajouter une contrainte de compilation. Le dépôt n'a **ni dossier
+`ios/` ni dossier `android/`** : la compilation passe par EAS et une génération
+native à la volée. Toute dépendance native ajoutée exige donc une nouvelle
+compilation, pas une mise à jour à distance. C'est le cas de
+`react-native-health` (BIO-1) : le code est écrit, il ne peut pas fonctionner
+avant recompilation.
+
+Le dernier état de compilation que je trouve écrit dans le dépôt est
+`roadmap/BUILD_DEVICE_CHECKLIST_2026-07-01.md`, qui mentionne un « build #18 »
+installé et déjà antérieur aux livraisons de l'époque. L'affirmation « six
+builds attendent un verdict », dans `docs/ETAT_APP_2026-07-26.md:154`, n'est
+vérifiable depuis aucun fichier du dépôt : je la rapporte, je ne la confirme
+pas.
+
+### 4.3 Le verrou des comptes et des rôles
+
+Un point que la lecture du code seule ne révèle pas. J'ai compté les comptes en
+production :
+
+| Rôle | `is_admin` | Nombre |
+|---|---|---|
+| `pilot` | faux | 10 |
+| `pilot` | **vrai** | 1 |
+| `admin` | **faux** | 2 |
+| `partner` | faux | 1 |
+
+Soit **14 comptes**, et **aucun compte `coach`**. Les 37 écrans de l'espace
+coach ne s'ouvrent aujourd'hui pour personne. La table `coach_pilots` contient
+une ligne, mais aucun utilisateur ne porte le rôle qui donne accès à l'espace.
+
+Les deux comptes `role = 'admin'` ont `is_admin = false`, alors que l'espace
+admin est gardé par ce drapeau : ces deux comptes atterrissent dans l'arbre
+pilote.
+
+Conséquence directe sur le programme : la procédure de
+`roadmap/RUNBOOK_VALENCE.md` (§A, étapes 1 à 4) — créer les comptes, promouvoir
+un coach, lier le binôme — **n'a pas été exécutée**. Sans elle, la moitié coach
+d'un essai terrain est impossible.
+
+### 4.4 Le verrou SIRET
+
+Le SIRET conditionne A1-ON, donc l'activation des paiements et la facturation
+coach. Le dossier maître l'annonce pour août 2026. Il entraîne, en cascade :
+l'ouverture d'un compte Stripe en production, la distinction juridique entre
+Stripe (journées de piste, service physique) et achat in-app (abonnement
+annuel, règle Apple), et la rédaction des CGV.
+
+Le flux de réservation existe déjà, entièrement écrit et entièrement fermé :
+`app/(app2)/reserver/index.tsx`, `[sessionId].tsx`, `paiement.tsx`. Le drapeau
+`app_payments` est vérifié **sur chaque écran**, pas seulement à l'entrée de
+navigation. Vérifié en base : `app_payments` est bien `enabled = false`, avec la
+description « Activé au lot A1-ON ».
+
+### 4.5 Le verrou avocat
+
+Trois dossiers, à des stades différents.
+
+**Fait.** L'annexe A, le consentement biométrie, a été validée le 25/07.
+`docs/juridique/consentement_biometrie.md` est passé de « VALIDATION AVOCAT
+REQUISE » à validé, et la localisation d'hébergement y a été corrigée : Supabase
+`eu-west-1`, Irlande, donc dans l'Union européenne. Les notes antérieures
+disaient « Frankfurt », c'était faux.
+
+**Ouvert — les CGV.** Marqueur `TODO_AVOCAT CGV` dans
+`app/(app2)/reserver/paiement.tsx:152`. Bloque A1-ON avec le SIRET.
+
+**Ouvert — la rétention des incidents.** Marqueur `TODO_AVOCAT E5`, présent à
+quatre endroits dont `supabase/functions/purge-deleted-accounts/index.ts:23`.
+Le sujet est une contradiction réelle : l'immuabilité probatoire demandée par
+l'assurance s'oppose au droit à l'effacement de l'article 17. La position
+provisoire retenue est d'anonymiser (`user_id` → `NULL`) plutôt que de
+supprimer. Elle n'est pas validée.
+
+**Ouvert — la décharge e-sign.** Le drapeau `pilot_waivers` est fermé en
+production, avec la description « activation après relecture avocat ».
+
+À cela s'ajoute un point soulevé par la réconciliation des migrations : deux
+fonctions edge sont **déployées et actives en production sans exister dans
+aucun code connu ici** — `capture-membre-fondateur` et `yousign-webhook`, toutes
+deux avec `verify_jwt: false`. La seconde touche la signature électronique,
+donc les décharges. Vérifié : le dépôt contient 32 fonctions locales.
+
+### 4.6 Les actions administratives en attente
+
+Cinq gestes, courts, qui bloquent chacun quelque chose.
+
+1. **Le DSN Sentry.** `docs/architecture/16_SENTRY_SETUP.md` est explicitement
+   marqué « ACTION FONDATEUR ». Le code est câblé (`src/lib/sentry.ts`) mais
+   inactif. Conséquence : le critère de sortie de L6 — « taux sans plantage
+   ≥ 99,5 % sur deux semaines » — est **immesurable**.
+2. **Les secrets CI des tests RLS.** `docs/architecture/17_CI_RLS_SETUP.md`,
+   environ dix minutes, coût nul (un projet Supabase gratuit suffit). Sans eux,
+   85 tests de sécurité ne tournent jamais. Voir §7.
+3. **Le document protocole de la ceinture Polar.**
+   `OXV_Ceinture_Protocole_Connexion_Biometrie.md` n'a jamais été livré. Le
+   parser dérive donc de la spécification publique Bluetooth SIG, chaque vecteur
+   de test dérivé à la main. À confronter au document quand il existera.
+4. **L'attribution des premiers numéros de voiture.** Geste administrateur
+   nécessaire avant la prochaine journée : LIVE-B ordonne le tableau de marche
+   par ce numéro, et le rapport précise qu'aucune émission n'a lieu sans pseudo
+   publiable.
+5. **La suppression des tables `_backup_*`.** 44 lignes portant des données
+   personnelles ; la RLS a été activée en défense, la suppression attend un
+   accord.
+
+---
+
+## 5. Les décisions en attente, par famille
+
+### 5.1 Arbitrages produit ouverts dans le code
+
+| Marqueur | Emplacement | Sujet |
+|---|---|---|
+| `TODO_ARBITRAGE` | `src/features/miroir/signatureLogic.ts:8` | conservé **à votre demande** : le mapping Signature reste renégociable mot à mot |
+| `TODO_ARBITRAGE D2` | `src/features/miroir/signatureLogic.ts:278` | nom du pilier physiologique BIO-4 — « Aplomb » est provisoire |
+| `TODO_ARBITRAGE` | `app/(app)/profil.tsx:385` | statut Fondateur en V1 ; tranché au niveau produit, le marqueur subsiste dans l'écran V1 |
+
+### 5.2 Décisions de schéma, identifiées et chiffrées
+
+1. **Rang fondateur** — `founder_applications` n'a pas de colonne de rang. Un
+   « FONDATEUR N° 07 » est donc impossible sans fabriquer une valeur. Affiché
+   aujourd'hui « MEMBRE FONDATEUR », sans ordinal.
+2. **Véhicule principal** — `garageService` n'a ni `is_primary` ni
+   `setPrimary`. « EN TÊTE » désigne le premier véhicule créé, non modifiable.
+3. **Chaînon séance → journée** — une colonne
+   `telemetry_sessions.day_session_id` vers `public.sessions`. Sans elle, le
+   tableau de marche reste lisible du seul binôme coach, alors qu'il devrait
+   l'être par tout inscrit de la journée. La migration LIVE-B a **refusé de
+   deviner** ce lien.
+4. **Compte de service du téléviseur de paddock** — un écran TV n'est pas un
+   utilisateur authentifié ; il lui faut son propre chemin d'autorisation.
+5. **Bornes des virages annotables** — la contrainte `corner_index BETWEEN 1 AND
+   7` empêche d'annoter les virages 8 à 14 de Valence. Signalé, non modifié :
+   c'est un changement de schéma en production.
+6. **RIB / QR SEPA coach** — schéma IBAN à trancher.
+7. **`coach_annotations` et les circuits** — `src/lib/circuitTopology.ts` est
+   une topologie **statique de Haute Saintonge** ; `getCorner` renvoie donc un
+   nom Beltoise quel que soit le circuit. Annoter une séance à Valence affiche
+   « L'épingle Sud ». Consigné, non bricolé.
+
+### 5.3 Calages en attente de données réelles
+
+1. **Le seuil de fluidité.** Reporté au post-piste par décision explicite : il
+   doit émerger des percentiles réels. Le service existe, il n'est pas calé.
+2. **La circularité de `gSustained`.** Limite connue, écrite, non résolue.
+3. **Le défilement à 60 images/seconde.** Marqueur `// TODO device-tune`.
+4. **FlowViz.** Reste une démonstration tant que le calage n'a pas eu lieu.
+
+### 5.4 Sept arbitrages produit ouverts par L6
+
+Les sept écrans V1 sans équivalent V2, et les quatre capacités qui disparaîtraient
+à la suppression de l'arbre V1. Le commit `29e34f9` les qualifie explicitement
+d'« arbitrages produit, pas des oublis techniques — ils attendent Gabin ».
+
+---
+
+## 6. Trois écarts entre l'ordre écrit et l'ordre exécuté
+
+Ils expliquent la forme actuelle du produit.
+
+**L0 avant SEC-1 et BE-1.** L'audit prescrivait l'inverse
+(`OXV_V2_AUDIT_EXHAUSTIVITE_SECURITE.md:45`). Le rapport L0 le reconnaît
+(`v2-l0.md:64`). Sans conséquence visible : les trois lots sont tombés dans la
+même fenêtre de quelques heures.
+
+**L3 avant le verrou terrain.** Sur demande explicite. Conséquence assumée : six
+lectures Insight construites puis à moitié dé-mockées dans la même nuit, et
+FlowViz qui reste une démonstration.
+
+**Le drapeau `biometry` levé avant le smoke test à deux appareils.** Le coût
+s'est matérialisé cinq heures plus tard : les deux fuites de fréquence cardiaque
+corrigées par `29d5cfd` étaient armées en production pendant cet intervalle, sur
+une donnée relevant de l'article 9.
+
+L'atténuation est réelle et je l'ai **vérifiée en base ce jour**, un jour après
+les faits :
+
+| Contrôle | Valeur en production |
+|---|---|
+| Consentements de capture biométrie posés | **0** |
+| Consentements de partage coach posés | **0** |
+| Lignes dans `biometry_raw` | **0** |
+| Candidatures fondateur | **0** |
+| Témoignages coach | **0** |
+| Signalements d'incident | **0** |
+
+Rien n'a circulé, rien n'a été stocké. Le drapeau ouvre une capacité, il ne
+déclenche aucune collecte.
+
+---
+
+## 7. Tests, typage, lint : les chiffres mesurés
+
+### 7.1 Le typage — vert
+
+`npx tsc --noEmit` sort avec le code **0** et n'imprime rien. Le mode strict est
+actif. C'est le contrôle le plus sain du dépôt.
+
+### 7.2 Les tests — 1 847 verts, 98 jamais exécutés
+
+Sortie réelle de `npx jest --ci --coverage=false` :
+
+```
+Test Suites: 18 skipped, 140 passed, 140 of 158 total
+Tests:       98 skipped, 1847 passed, 1945 total
+Snapshots:   1 passed, 1 total
+Time:        57.605 s
+```
+
+Les 18 suites ignorées sont **exactement** les 18 fichiers de
+`src/__tests__/rls/`. Elles couvrent l'accès coach gradué, la télémétrie, les
+amitiés, les notes pilote, l'espace partenaire, la modération, le support, la
+matrice des rôles, la biométrie, les rapports B2B, les cycles de développement.
+Elles s'auto-désactivent : `src/__tests__/rls/setup.ts:22` définit
+`RLS_TEST_ENABLED` à partir de `TEST_SUPABASE_URL` et `TEST_SUPABASE_SERVICE_KEY`.
+Sans ces variables, `describe` devient `describe.skip`.
+
+**Conséquence : toute la surface de sécurité de la base n'est jamais vérifiée.**
+Ce sont 85 tests, et ce sont ceux qui protègent le plus.
+
+### 7.3 Ce que les tests couvrent réellement
+
+La configuration `jest.config.js` est décisive, et elle est explicite dans son
+propre en-tête sur ce qu'elle exclut :
+
+- `testMatch: ['**/__tests__/**/*.test.ts']` — **seulement `.ts`, jamais
+  `.tsx`** ;
+- `testEnvironment: 'node'`, `preset: 'ts-jest'` — aucun rendu React Native,
+  aucun DOM.
+
+Ce qui est bien couvert, et solidement : les fonctions pures et les logiques
+métier. `src/services` (69 fichiers de test), `src/features/rec`,
+`src/features/club`, `src/features/vous`, `src/circuit`, `src/utils`, `src/ubx`,
+`src/lib`, `src/ui/v2` pour ses seules logiques calculatoires.
+
+Ce qui est bien couvert, dans le détail, ce sont surtout des **invariants
+doctrinaux verrouillés** : l'absence de note dans tout le domaine coach
+(`coachDomainNoScore.test.ts`), l'impossibilité de basculer le tableau de marche
+en classement (`src/services/boardLogic.ts:57`, constante `BOARD_MODE` figée sur
+`'A'`), le dépouillement de tout chrono dans le fil
+d'amis, le mapping Signature, les contrastes de couleurs, le comptage de
+références des canaux temps réel, la convention des axes G. Ce sont des tests
+qui empêchent une régression de doctrine, pas des tests qui prouvent que l'écran
+s'affiche.
+
+### 7.4 Ce que les tests ne couvrent pas, et pourquoi
 
 | Domaine | Fichiers | Tests qui l'exercent |
 |---|---:|---|
-| `src/ui` (kit V1 / coach) | 68 | **0** — aucun test n'importe `@/ui/…` |
-| `src/components` (transverses) | 84 | **0** — aucun test n'importe `@/components/…` |
-| `src/store` (Zustand, 5 stores) | 5 | **1 seul** — `src/services/__tests__/captureSessionService.test.ts` |
-| `src/hooks` | 7 | **1** — `useDetailLevel.test.ts`, sur la logique pure `detailLevelLogic` |
-| Écrans (`app/`, 222 fichiers `.tsx`) | 222 | **0** |
+| Écrans (`app/`) | 222 `.tsx` | **0** |
+| `src/components` | ~87 | **0** |
+| `src/ui` (kit coach/admin) | ~19 | **0** |
+| `src/store` (Zustand) | 5 | 1, indirectement |
+| `src/hooks` | 8 | 1, sur une logique pure extraite |
 
-Autrement dit : **aucun écran, aucun composant, aucune barre d'onglets, aucun formulaire, aucun store n'est jamais monté par un test.** Les 1 846 tests portent tous sur des fonctions pures et sur des services dont les entrées/sorties Supabase sont simulées (10 fichiers seulement font un `jest.mock` de Supabase). Ce qui est bien couvert : `src/services` (69 fichiers de tests pour 167 sources), `src/features/rec` (10/12), `src/features/club` (9/16), `src/features/vous` (8/19), `src/circuit`, `src/utils`, `src/ubx`, `src/lib`.
+**Aucun écran, aucun composant, aucune barre d'onglets, aucun formulaire, aucun
+magasin d'état n'est jamais monté par un test.** La raison est structurelle et
+assumée : l'environnement Jest est `node`, il n'y a pas de moteur de rendu.
+Monter un écran demanderait `jest-expo`, un environnement de rendu, et des
+simulacres pour toute la chaîne native.
 
-Le seuil de couverture de 70 % déclaré dans `jest.config.js` ne s'applique qu'à quatre chemins (`collectCoverageFrom`) : `src/ubx/**`, `src/utils/**`, `src/types/state.ts`, `src/types/domain.ts`. Il ne dit rien du reste.
+Cinq familles de code sont, elles, **intestables en l'état** :
 
-**Les autres garde-fous.** Trois barrières complètent les tests, et l'une est rouge :
+1. **Le Bluetooth.** `src/ble/bluetoothService.ts` parle à un boîtier physique.
+   Seul le parser binaire (`src/ubx/parser.ts`) et le parser cardio sont
+   testables, sur des vecteurs d'octets écrits à la main.
+2. **Le temps réel.** Les canaux Supabase Realtime demandent un serveur et deux
+   clients. Ce qui est testé, ce sont les logiques pures autour
+   (`liveSessionLogic`, `boardLogic`, `stripHealth`, le comptage de références),
+   pas le transport.
+3. **Le rendu et le mouvement.** Reanimated et Skia s'exécutent sur un fil
+   d'exécution natif. Les mathématiques du mouvement sont testées
+   (`motionMath`, `vizMath`), pas leur effet visuel.
+4. **Les RLS.** Elles vivent dans PostgreSQL, pas dans le code. D'où les 18
+   suites qui exigent une vraie base — et qui ne tournent pas.
+5. **HealthKit et les Live Activities.** Modules natifs iOS, sans équivalent en
+   environnement `node`.
 
-| Contrôle | Commande | Résultat vérifié |
+Le seuil de couverture de 70 % déclaré dans `jest.config.js` ne s'applique qu'à
+quatre chemins : `src/ubx/**`, `src/utils/**`, `src/types/state.ts`,
+`src/types/domain.ts`. Il ne dit rien du reste du dépôt.
+
+### 7.5 Le lint — rouge localement, propre en réalité
+
+`npx eslint` sort en **1** avec **756 remarques**. Le détail compte :
+
+- **751 sont `Delete ␍`**, toutes dans **un seul fichier**,
+  `app/(app)/profil.tsx`. J'ai vérifié l'objet Git lui-même :
+  `git cat-file blob HEAD:app/(app)/profil.tsx` ne contient **aucun** caractère
+  retour chariot. La configuration locale porte `core.autocrlf = true`. C'est
+  donc un artefact du poste de travail, pas une dette du dépôt : sur une machine
+  Linux d'intégration continue, ces 751 remarques n'existeraient pas.
+- **5 sont des avertissements réels** : quatre `react-hooks/exhaustive-deps` sur
+  `app/(app)/cartes.tsx:98`, et un `import/first` sur
+  `src/services/sessionTelemetryService.ts:27`. Des avertissements ne font pas
+  échouer ESLint.
+
+`npx prettier --check` sort également en **1**, et ne signale que ce même
+fichier `app/(app)/profil.tsx`, pour la même raison.
+
+### 7.6 Le scan doctrinal — rouge, et il ferait échouer l'intégration continue
+
+`npx tsx scripts/check-doctrine.ts` sort en **1** avec **75 violations**. J'ai
+compté leur nature : **70 fois le mot « tap », 5 fois le mot « swipe »**. Aucun
+verbe prescriptif interdit — pas un seul « freinez », « accélérez », « vous
+devriez ». **La doctrine de fond tient.**
+
+Ce sont des faux positifs structurels, et la cause est identifiable à la ligne
+près : la liste d'exceptions du script (`scripts/check-doctrine.ts:112`) ne
+blanchit que `haptics.tap`, alors que le code écrit `haptic('tap')` et
+`haptic="tap"`. Les violations sont réparties sur les deux arbres pilote et
+l'espace partenaire.
+
+**Le fait reste que l'étape « Scan doctrinal » de `.github/workflows/check.yml`
+échouerait aujourd'hui sur cette branche.**
+
+### 7.7 Le scan d'accessibilité — vert
+
+`npx tsx scripts/check-accessibility.ts --strict` sort en **0** :
+« 222 fichiers scannés — toutes les Pressables avec onPress ont
+accessibilityRole ». C'est un contrôle statique : il vérifie la présence d'un
+attribut, pas la qualité de l'expérience au lecteur d'écran.
+
+---
+
+## 8. Le travail n'est ni poussé, ni passé par l'intégration continue
+
+Point vérifié par commandes Git, et il n'est pas anodin.
+
+| Référence | Tête | Date |
 |---|---|---|
-| Types | `npx tsc --noEmit` | **vert** (aucune sortie) |
-| Accessibilité | `npx tsx scripts/check-accessibility.ts --strict` | **vert** — 222 fichiers scannés, toutes les `Pressable` ont un `accessibilityRole` |
-| Doctrine | `npx tsx scripts/check-doctrine.ts` | **rouge — code de sortie 1, 75 violations** |
-| Lint / format | `npm run lint`, `npm run format:check` | rouge **localement seulement** (voir ci-dessous) |
+| `origin/main` | `1a803f3` | 29 juin 2026 |
+| `origin/feat/site-document-emails` | `21f7dab` | 7 juillet 2026 |
+| `feat/site-document-emails` (local, HEAD) | `93f0638` | 26 juillet 2026 |
 
-Sur les 75 violations doctrinales : **70 sont le mot « tap » et 5 le mot « swipe »**, détectés comme anglicismes par les règles des lignes 64-65 du script. Aucun verbe prescriptif interdit (« freinez », « accélérez », « vous devriez ») n'est trouvé — la doctrine de fond tient. Ce sont des faux positifs structurels : la liste d'exceptions (ligne 112) ne blanchit que `haptics.tap`, alors que le code écrit `haptic="tap"` et `haptic('tap')`. Mais le script exit 1, donc **l'étape « Scan doctrinal » de la CI échouerait aujourd'hui** sur cette branche.
+**130 commits n'ont jamais été poussés.** **251 commits séparent la tête locale
+d'`origin/main`.** Concrètement : toute la refonte, la console coach, le
+durcissement Valencia, la calibration des circuits, l'intégralité du programme
+V2, BIO-1, BIO-2, LIVE-B et L6 n'existent que dans ce clone.
 
-Sur le lint : les 751 erreurs sont toutes des `Delete ␍` (fins de ligne Windows) et proviennent d'**un seul fichier**, `app/(app)/profil.tsx`. J'ai vérifié l'objet Git lui-même : `git cat-file blob HEAD:app/(app)/profil.tsx` ne contient **aucun** caractère `\r`. C'est donc un artefact du poste de travail (`core.autocrlf=true`), pas une dette du dépôt : sur la CI Linux, le lint serait propre. Restent deux avertissements réels : quatre `react-hooks/exhaustive-deps` sur `app/(app)/cartes.tsx` ligne 98, et un `import/first` sur `src/services/sessionTelemetryService.ts` ligne 27.
+L'arbre de travail est propre — `git status` ne rend rien — donc rien n'est
+perdu au niveau du fichier. Mais rien n'est sauvegardé ailleurs.
 
----
-
-### 5. Les espaces hors périmètre app — et le fait qu'ils n'ont personne dedans
-
-Trois espaces sont, par décision écrite, destinés à basculer sur le web.
-
-`docs/refonte-app/18_APP_VS_WEB.md` pose la ligne. Sur le partenaire (§1) : « l'inscription/édition d'une fiche partenaire est une opération longue → portail web partenaire ». Sur l'admin (§1.4) : « garder l'admin terrain en mobile, construire l'admin lourd en web (saisie longue, tableaux, exports, multi-fenêtres) », avec la conséquence « on ne gonfle pas l'admin mobile avec du reporting/facturation ». Le §148 du même dossier ajoute qu'aucun CRM ni gestion de leads partenaires ne doit vivre dans l'app.
-
-| Espace | Écrans | Lignes | Garde du layout |
-|---|---:|---:|---|
-| `app/(admin)` | 30 | 8 776 | `profile.is_admin` — sinon `Redirect /(app)` |
-| `app/(partner)` | 9 | 2 472 | `profile.role === 'partner'` |
-| `app/(pro)` | 8 | 1 870 | `profile.role === 'pro_pilot'` |
-
-**Ce qui ne marche pas, mesuré en base.** La répartition réelle des 14 comptes de production :
-
-| `role` | `is_admin` | Comptes |
-|---|---|---:|
-| `pilot` | false | 10 |
-| `admin` | **false** | 2 |
-| `pilot` | true | 1 |
-| `partner` | false | 1 |
-
-Trois constats en découlent, tous vérifiables :
-
-1. **Il n'existe aucun compte `role='coach'` en production.** Les 37 écrans de `app/(coach)` — 26 371 lignes, le deuxième plus gros espace du dépôt — ne sont atteignables par personne aujourd'hui, puisque `app/(coach)/_layout.tsx` ligne 33 renvoie tout ce qui n'est pas `role === 'coach'` vers `/(app)`.
-2. **Il n'existe aucun compte `role='pro_pilot'`.** Les 8 écrans de `app/(pro)` sont dans le même cas.
-3. **Les deux comptes `role='admin'` ont `is_admin = false`.** Or l'espace admin est gardé par `is_admin`, pas par `role`. Ces deux comptes atterrissent donc dans l'arbre pilote V1 (la branche finale de `app/index.tsx`) sans accès admin. Le double système `users.role` / `users.is_admin` produit ici une incohérence de fait.
-
-**Un lien qui ne mène nulle part.** `src/components/SpaceSwitcher.tsx` n'apparaît que si `profile.is_admin === true` (ligne 32) et propose alors « Espace coach » vers `/(coach)`. Mais le layout coach exige `role === 'coach'`. Le seul compte `is_admin=true` en base est un `pilot` : le bouton « Espace coach » le renverrait immédiatement sur `/(app)`. Le lien existe, la destination le rejette.
-
-**L'espace coach n'a jamais été refondu.** Il utilise `@/theme/v2` (le langage précédent), là où l'arbre pilote V2 utilise `@/ui/v2/tokens`. Le plan de lots du dossier maître (`OXV_APP_V2_DOSSIER_MAITRE.md`, dernière ligne du §10) inscrit « Coach/Admin v2 — propagation design system » comme lot sans numéro, « après pilote ». Aucun rapport de lot correspondant n'existe.
+Second effet : `.github/workflows/check.yml` ne se déclenche que sur un `push`
+vers `main` ou une demande de fusion vers `main`. **Ce travail n'est donc jamais
+passé par l'intégration continue.** Les contrôles que je viens de lancer à la
+main sont les seuls qui aient jamais tourné dessus.
 
 ---
 
-### 6. Ce qui vit hors de ce dépôt
+## 9. Ce qui n'a jamais été vérifié autrement que par lecture de code
 
-**L'écran TV du paddock n'existe pas ici.** Le rapport `roadmap/rapports/live-b.md` ligne 133 le dit franchement : « **L'écran TV n'existe pas.** Le Livrable 2 (`/board/<sessionId>`) vit dans le repo `oxv-site`, pas ici. Sans lui, aucun écran de paddock n'est servi. » J'ai vérifié : `app/board` n'existe pas dans l'arborescence. Côté app, tout le transport est là — `openBoardBroadcast` dans `src/services/liveSessionService.ts` ligne 374, `BOARD_MODE = 'A'` verrouillé dans `src/services/boardLogic.ts` ligne 57, le filtre `stripHealth` dans `src/services/v2/liveHealthGate.ts` — mais rien ne consomme le canal.
+Liste franche, sans atténuation.
 
-**La vue AR non plus.** `app/(coach)/ar.tsx` charge `https://app.oxvehicle.fr/ar-view` dans une WebView. La route est web.
+**Le produit, tel qu'un pilote le verrait.**
 
-**Deux fonctions Edge tournent en production sans source ici.** Le dépôt contient 32 dossiers sous `supabase/functions/`. La production en déclare 34 actives. Les deux qui manquent sont **`capture-membre-fondateur`** et **`yousign-webhook`** — elles n'existent nulle part dans ce dépôt. Le fichier `roadmap/AUDIT_CABLAGE_2026-07.md` §5 documente la répartition historique (14 fonctions du repo app, 18 du repo site) ; le dépôt a depuis rapatrié la plupart des sources, mais pas ces deux-là.
+1. Aucun des 38 écrans de l'arbre V2 n'a été affiché. Ni sur appareil, ni sur
+   simulateur.
+2. La bascule L6 elle-même : `app/index.tsx` renvoie vers `(app2)`, je l'ai lu.
+   Que l'application s'ouvre effectivement sur le nouvel arbre n'a pas été
+   observé.
+3. Les trois chemins produits par les deux arbres — `/`, `/club`, `/signature` —
+   n'ont pas été départagés. Lequel gagne est inconnu. Le commit L6 le dit :
+   « à tester en premier sur appareil ».
+4. `app/(app2)/dev-galerie.tsx`, l'écran de validation prévu pour vous, n'a
+   jamais été ouvert.
+5. Aucune animation, aucune transition, aucun retour haptique n'a été perçu. Le
+   `Dial`, le morphing du héros vers le bilan, le compteur roulant des millièmes,
+   les squelettes de chargement : tous écrits, aucun vu.
+6. Aucun geste n'a été fait : appui long d'armement, glissement des onglets du
+   carnet, pincement du visionneur d'images, tiré-pour-rafraîchir.
+7. Le flou iOS et son repli opaque Android n'ont jamais été comparés.
+8. VoiceOver n'a jamais été lancé. Le scan d'accessibilité vérifie la présence
+   d'attributs, pas ce que le lecteur d'écran annonce.
 
-**Le schéma de la base n'est pas non plus dans ce dépôt.** `supabase/migrations/` contient **125 fichiers**. La table `supabase_migrations.schema_migrations` en production compte **215 migrations appliquées**. Le décalage est double : il manque environ 90 migrations, et les horodatages ne correspondent pas — par exemple le fichier `20260719140000_be1_feature_flags.sql` du dépôt face à la version `20260719020940 be1_feature_flags` appliquée. Le dépôt n'est donc pas la source de vérité du schéma, et un `supabase db push` depuis ici ne serait pas idempotent. Les 24 fichiers nommés `00NN_*.sql` (sans horodatage) ne correspondent à aucune convention de version Supabase.
+**Le matériel.**
 
-**Les documents légaux publics.** `docs/app_store/KIT_APP_STORE_OXV_MIRROR.md` (lignes 402 et 410) exige `https://oxvehicle.fr/confidentialite` et `https://oxvehicle.fr/cgu` publiées, ce qui relève du site.
+9. Aucune connexion à un RaceBox Mini réel depuis l'écriture des écrans V2.
+10. Aucune connexion à une ceinture Polar H10. Le parser cardio est dérivé de la
+    spécification publique Bluetooth SIG, jamais confronté à un appareil ni au
+    document protocole, qui n'existe pas.
+11. La double connexion Bluetooth simultanée — RaceBox et Polar — n'a jamais été
+    éprouvée. La séparation des deux chemins est structurelle dans le code.
+12. La reconnexion en piste après une perte de lien n'a jamais été observée.
+13. La lecture HealthKit n'a jamais tourné : la dépendance native est présente,
+    l'application n'a pas été recompilée depuis.
 
----
+**Le direct.**
 
-### 7. Le travail n'est pas poussé, et la CI ne l'a jamais vu
+14. Aucun direct à deux appareils. Ni le roster, ni la fiche de focus, ni la
+    bande cardio.
+15. L'écran de paddock n'existe pas : il vit dans le dépôt du site. Le tableau
+    de marche n'a donc jamais été affiché nulle part.
+16. La vue Meta Display n'a jamais été portée.
+17. Le comptage de références des canaux est verrouillé par neuf tests et
+    validé par mutation, mais jamais observé sur deux appareils réels.
 
-C'est un angle mort qui recouvre tous les autres.
+**Les données.**
 
-| Comparaison | Écart |
-|---|---|
-| `HEAD` vs `origin/main` | **247 commits d'avance**, 0 de retard |
-| `HEAD` vs `origin/feat/site-document-emails` | **126 commits d'avance** |
-| Dernier commit sur `origin/main` | `1a803f3`, **29 juin 2026** |
-| Dernier commit sur `HEAD` | `29d5cfd`, 26 juillet 2026 |
+18. Aucune séance dense n'existe en production. Les six lectures Insight n'ont
+    jamais eu de matière : je l'ai vérifié en base, aucune séance ne porte à la
+    fois des trames et un tour.
+19. `flowService` n'a jamais tourné sur des trames réelles. Son seuil n'est pas
+    calé, et sa limite de circularité n'est pas résolue.
+20. Le défilement à 60 images/seconde n'a jamais été mesuré.
+21. La détection de tours par franchissement de porte n'a jamais été validée à
+    Valence. La calibration **est** en base — j'ai vérifié : cap 55,20°,
+    demi-largeur 10 m, 14 virages — mais la validation prévue le jour J
+    (remonter la voie des stands sans déclencher de tour) n'a pas eu lieu.
 
-`origin/main` est figé depuis le 29 juin. Les 247 commits qui suivent — tout le programme V2 (L0 à L5b), BE-1, SEC-1, BIO-1, BIO-2, LIVE-B, A-FLOW-1 — ne sont pas sur la branche principale. **126 d'entre eux ne sont sur aucun serveur** : ils n'existent que dans ce clone local.
+**L'organisation.**
 
-Le workflow `.github/workflows/check.yml` se déclenche uniquement `on: push: branches: [main]` et `on: pull_request: branches: [main]`. Aucun de ces 247 commits n'a donc été passé par le typecheck, le lint, les tests, le scan doctrinal ni surtout le job `rls` obligatoire. Les tests RLS de la biométrie (`be1RLS.test.ts`) et du board n'ont jamais tourné contre un vrai projet Supabase.
+22. Aucun compte coach n'existe. L'espace coach n'a jamais été ouvert par
+    personne.
+23. La procédure du runbook Valence — créer les comptes, promouvoir un coach,
+    lier le binôme — n'a jamais été exécutée.
+24. Les 85 tests RLS n'ont jamais tourné, ni localement ni en intégration
+    continue.
+25. L'intégration continue n'a jamais vu ce travail : 130 commits non poussés.
+26. Sentry n'a jamais reçu un seul événement, faute de DSN.
+27. Aucune soumission App Store, aucun TestFlight vérifié dans cette session.
 
-Par ailleurs, six worktrees Git obsolètes traînent sur le disque (`.claude/worktrees/crazy-heyrovsky-f302c7`, `fervent-black-ee881d`, `frosty-sutherland-a88223`, `infallible-hofstadter-9810df`, `musing-swirles-ea04b5`, `trusting-albattani-d94548`). Ils sont exclus de Git via `.git/info/exclude`, mais leur existence a déjà causé un problème : `jest.config.js` ligne 24 porte un `testPathIgnorePatterns` explicite sur `/\\.claude/worktrees/` avec le commentaire « sinon jest exécute les mêmes suites en double ».
+**Ce que je n'ai pas pu établir depuis le dépôt.**
 
----
-
-### 8. Les autres inachèvements, avec leurs preuves
-
-**Six drapeaux sur sept sont éteints en base.** Vérifié sur `app_feature_flags` :
-
-| Drapeau | État | Ce qu'il ferme |
-|---|---|---|
-| `biometry` | **ON** | levé le 25/07 après validation avocat |
-| `app_payments` | OFF | les 3 écrans `app/(app2)/reserver/*` — `resolveBookingAccess` (`src/services/bookingCatalogLogic.ts` ligne 71) rend `'closed'`, aucun jour n'est chargé |
-| `pilot_waivers` | OFF | `app/(app2)/vous/decharge.tsx` et `app/(app)/decharge.tsx` ; `waiverService.ts` ligne 68 refuse toute signature |
-| `founders` | OFF | `app/(app2)/vous/fondateur.tsx` (fail-closed ligne 83), la jauge fondateurs du catalogue |
-| `convoys` | OFF | la section convoi de `app/(app2)/club/territoire.tsx` et de `rec/preparation.tsx` |
-| `video_overlay` | OFF | la vidéo synchronisée dans `useGalerie` et `useBilan` (lot B1) |
-| `coach_billing` | OFF | `app/(coach)/facturation.tsx` et le bloc facturation du hub coach |
-
-Sur les 36 écrans de production de l'arbre V2, **cinq sont intégralement fermés** par un drapeau éteint (les 3 `reserver`, `vous/decharge`, `vous/fondateur`) — en plus des 36 déjà inatteignables hors `__DEV__`.
-
-**Les marqueurs laissés dans le code.** 20 au total (16 `TODO`, 4 `TODO_L3`), aucun `FIXME` ni `HACK` :
-
-- `app/(app2)/reserver/paiement.tsx` ligne 152 — `TODO_AVOCAT CGV` : « texte des Conditions générales de vente à rédiger ». L'écran de paiement n'a pas de mention légale.
-- `app/(app2)/bilan/[sessionId].tsx` lignes 358 et 523 — `TODO_L3_TARGET`, « DETTE CONSIGNÉE » : deux cibles de navigation renvoient provisoirement vers `/(app2)/data` au lieu de leur destination réelle.
-- `app/(app2)/club/roulages.tsx` ligne 570 — `TODO_L3` : le comparateur entre amis retombe sur `/(app2)/data` (`openCompare`), la route dédiée `?friend=<id>` n'existe pas.
-- Cinq `TODO device-tune` (`data/comparer.tsx` lignes 792 et 885, `data/index.tsx` ligne 120, `data/saison.tsx` ligne 117, `data/session/[id].tsx` lignes 1187 et 1508) : scrubbing « version DE BASE » en `PanResponder`, animation en boucle JS, cadran de progression indéterminé, et un fan-out de N requêtes `fetchSessionLaps` faute de service dédié. Tous attendent une mesure sur appareil réel.
-- Trois `TODO_ARBITRAGE` (`src/features/miroir/signatureLogic.ts` lignes 8 et 278, `app/(app)/profil.tsx` ligne 385) : libellé provisoire du pilier physiologique BIO-4, et statut Fondateur dont l'emplacement en base reste à trancher.
-
-**Le point de blocage structurel du direct.** `roadmap/rapports/live-b.md` lignes 138 à 145 énonce deux décisions qui appartiennent au fondateur et qui bloquent le tableau de marche : le chaînon séance → journée (une colonne `telemetry_sessions.day_session_id` vers `public.sessions`), sans laquelle « le tableau de marche restera lisible par le seul binôme » ; et le compte de service du téléviseur de paddock, qui « n'est pas un utilisateur authentifié » et n'a donc aucun chemin d'autorisation.
-
-**Les notifications distantes.** `src/services/pushNotificationsService.ts` annonce en tête une « Stratégie V1 » de notifications **locales** pour le débrief J+1 et la veille de séance. `app/(app)/notifications.tsx` (lignes 17-20) le confirme et en tire la conséquence : la ligne « Message de ton coach » de la maquette est **masquée** parce qu'« aucun canal push coach n'est câblé » côté app. Les fonctions Edge `notify-*` sont bien déployées côté serveur, mais l'app ne programme elle-même que deux canaux.
-
-**Les avis de sécurité Supabase.** J'ai récupéré le rapport `security` complet : **83 avis, aucun de niveau ERROR**. Répartition : 57 `authenticated_security_definer_function_executable`, 19 `anon_security_definer_function_executable`, 4 `rls_enabled_no_policy` (sur `_backup_sessions_20260719`, `app_pairing_redeem_attempts`, `founding_members`, `invoice_counters`), 2 `public_bucket_allows_listing` (buckets `coach-media` et `partner-media`, qui permettent de lister tous les fichiers), 1 `rls_policy_always_true` (`corporate_leads`, policy `corp_insert_public` en INSERT sans restriction). À noter la table `_backup_sessions_20260719` : un vestige de sauvegarde laissé en base.
-
-**Un audit de câblage périmé.** `roadmap/AUDIT_CABLAGE_2026-07.md` est daté du 4 juillet 2026 et sert de « base de vérité des lots M ». Il décrit un espace coach de 23 écrans (il en a 37 aujourd'hui), un espace pilote d'environ 74 écrans, et 32 fonctions Edge déployées (il y en a 34). Son verdict « l'app est massivement câblée sur données réelles » reste globalement juste, mais ses chiffres ne le sont plus.
-
----
-
-### Ce que je n'ai pas pu vérifier
-
-Je n'ai **rien exécuté sur un appareil** : aucune de mes affirmations sur le comportement à l'écran n'est une observation, ce sont des lectures de code. En particulier, je n'ai pas pu confirmer que la garde `!__DEV__` de `app/(app2)/_layout.tsx` se comporte comme annoncé dans un binaire de production, ni que HealthKit reste indisponible sur les builds en circulation — je n'ai pas ouvert les six builds EAS évoqués dans `docs/ETAT_APP_2026-07-26.md` et je n'ai aucun moyen de savoir lequel est installé sur quel téléphone.
-
-Je **n'ai pas ouvert le dépôt du site** (`oxv-site`). Tout ce que je dis de la route `/board/<sessionId>`, de `app.oxvehicle.fr/ar-view`, des fonctions `capture-membre-fondateur` et `yousign-webhook`, et des ~90 migrations manquantes, repose soit sur des affirmations écrites dans ce dépôt, soit sur ce que la production déclare — jamais sur le code source correspondant.
-
-Je **n'ai pas relu les 83 écrans V1 un par un**. Mon inventaire des écrans en démonstration s'appuie sur une recherche exhaustive des marqueurs `DemoBanner`, `DEMO_`, `isDemo`, `demoMode` et des mots « maquette / exemple / fictif / simulé / en dur ». Un écran qui afficherait de la donnée fabriquée **sans** aucun de ces marqueurs m'aurait échappé.
-
-Je **n'ai pas croisé le mapping v1 → v2 fonctionnalité par fonctionnalité**. Le §11 du dossier maître affirme que les 83 fonctionnalités pilote ont une destination V2 ; je constate seulement que la table de correspondance n'est pas écrite dans le dépôt, je n'ai pas refait le contrôle.
-
-Ma détection de code mort est **conservatrice** : elle cherche le nom du module dans le reste du dépôt, donc une simple mention en commentaire suffit à sortir un fichier de la liste (c'est exactement ce qui s'est passé pour `DebriefMirror.tsx`, que j'ai dû vérifier à la main). Il y a donc probablement **plus** de code mort que les sept fichiers et six services que je liste, pas moins. Je n'ai pas passé d'outil dédié (`knip`, `ts-prune`) sur l'ensemble.
-
-Enfin, je **n'ai pas pu exécuter les 98 tests RLS ignorés** : cela demanderait les secrets d'un projet Supabase de test que je n'ai pas. Je ne peux donc pas dire si les policies de sécurité passeraient ou échoueraient — seulement qu'elles ne sont pas vérifiées.
+28. L'état réel des compilations EAS. L'affirmation « six builds attendent un
+    verdict » vient d'un document du dépôt, pas d'un artefact vérifiable.
+29. Le contenu des 25 constats restants de l'audit coach du 26/07. Ils ne sont
+    écrits nulle part.
+30. La cause des huit séances en statut `aborted` depuis le 14 juin. Le statut
+    est enregistré, le motif ne l'est pas.
+31. L'origine et le contenu des deux fonctions edge déployées en production sans
+    code connu ici — dont `yousign-webhook`, qui touche la signature électronique
+    des décharges.
+32. L'état des buckets `coach-media` et `partner-media` (lot M5), que je n'ai pas
+    interrogé.
