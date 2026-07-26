@@ -59,6 +59,26 @@ export interface SessionInsights {
  * b62ab3af-5d6a-4e88-b316-73a0729933ae). Sert au développement avant Valence ;
  * sera écrasée par le vrai calcul `mirror-insights-v1` (doc 09 §3).
  */
+/**
+ * Moteurs d'insights qui ne produisent PAS de mesure : leurs chiffres sont
+ * fabriqués pour le développement. Toute lecture alimentée par une ligne de ce
+ * moteur doit le dire à l'écran — sinon l'application présente une invention
+ * comme un fait, ce que la doctrine interdit.
+ */
+const MOTEURS_DE_DEMONSTRATION = ['mirror-insights-demo'];
+
+/** Vrai si cette ligne d'insights vient d'un moteur de démonstration. */
+export function insightsSontDeDemonstration(
+  insights: Pick<SessionInsights, 'engine_version'> | null
+): boolean {
+  if (!insights) return false;
+  const v = insights.engine_version;
+  // Fail-safe : une version absente, vide ou inconnue est traitée comme
+  // suspecte. Mieux vaut un bandeau de trop qu'un chiffre inventé sans mention.
+  if (!v) return true;
+  return MOTEURS_DE_DEMONSTRATION.includes(v) || v.includes('demo');
+}
+
 export const DEMO_SESSION_INSIGHTS: SessionInsights = {
   telemetry_session_id: 'b62ab3af-5d6a-4e88-b316-73a0729933ae',
   user_id: 'demo',

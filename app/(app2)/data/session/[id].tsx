@@ -76,7 +76,7 @@ import { TransfertViz } from '@/components/insights/TransfertViz';
 import { DemoBanner } from '@/components/insights/InsightCard';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
-import type { SessionInsights } from '@/circuit/sessionInsights';
+import { insightsSontDeDemonstration, type SessionInsights } from '@/circuit/sessionInsights';
 import { supabase } from '@/lib/supabase';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { loadCornerEvolution } from '@/services/cornerEvolutionService';
@@ -1553,11 +1553,29 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
 // 5 · CONSTATS — les six lectures (DÉMO) montées dans un Sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 
+/** Les lectures dont les chiffres viennent de la ligne `session_insights`. */
+const LECTURES_SUR_INSIGHTS: ReadingKey[] = ['anatomie', 'dispersion', 'tour-ideal', 'transfert'];
+
+/**
+ * Faut-il annoncer que cette lecture montre une démonstration ?
+ *
+ * `flow` en est toujours une : aucune source de « fluidité » n'existe en base.
+ * Les quatre lectures alimentées par `session_insights` en sont une DÈS QUE la
+ * ligne lue provient d'un moteur de démonstration — ce qui est le cas de
+ * l'unique ligne de production (`mirror-insights-demo`). Sans cette condition,
+ * l'écran présentait des chiffres fabriqués comme des mesures.
+ *
+ * `gg` est exclue : son nuage vient des trames réelles, pas des insights.
+ */
+function montrerBandeauDemo(key: ReadingKey, insights: SessionInsights | null): boolean {
+  if (key === 'flow') return true;
+  if (!LECTURES_SUR_INSIGHTS.includes(key)) return false;
+  return insightsSontDeDemonstration(insights);
+}
+
 /**
  * Monte la visualisation d'une lecture avec sa tranche RÉELLE d'insights (ou son
- * nuage g-g réel), en état vide honnête si la donnée manque. `flow` reste une
- * DÉMONSTRATION : aucune source d'insight « fluidité » n'existe (il faudrait un
- * calcul dédié dérivé des trames) → bandeau DemoBanner limité à cette lecture.
+ * nuage g-g réel), en état vide honnête si la donnée manque.
  */
 function renderReadingViz(key: ReadingKey, insights: SessionInsights | null, ggPoints: GGPoint[]) {
   switch (key) {
@@ -1618,7 +1636,7 @@ function ConstatsSection({
         {reading ? (
           <ScrollView showsVerticalScrollIndicator={false}>
             <SectionHeader eyebrow={reading.eyebrow} title={reading.name} />
-            {open === 'flow' ? (
+            {montrerBandeauDemo(reading.key, insights) ? (
               <View style={styles.constatDemo}>
                 <DemoBanner />
               </View>
