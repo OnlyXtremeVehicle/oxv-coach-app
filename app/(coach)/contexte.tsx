@@ -69,6 +69,9 @@ export default function CoachContexteScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  // Un échec d'enregistrement était indiscernable d'un succès : ni message, ni
+  // changement d'état. Le coach repartait en croyant son contexte enregistré.
+  const [echec, setEchec] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,11 +119,14 @@ export default function CoachContexteScreen() {
     if (!pilotId || !sessionId || saving) return;
     setSaving(true);
     setSaved(false);
+    setEchec(false);
     const result = await upsertSessionContext(pilotId, sessionId, input);
     setSaving(false);
     if (result) {
       setSaved(true);
+      return;
     }
+    setEchec(true);
   }
 
   // — Fragments partagés par les deux formats (une seule source de vérité) —
@@ -180,6 +186,15 @@ export default function CoachContexteScreen() {
       {saved ? (
         <Text style={[s.savedTxt, { marginBottom: spacing.md }]} accessibilityLiveRegion="polite">
           Contexte enregistré.
+        </Text>
+      ) : null}
+      {echec ? (
+        <Text
+          style={[s.echecTxt, { marginBottom: spacing.md }]}
+          accessibilityLiveRegion="assertive"
+        >
+          Le contexte n&apos;a pas été enregistré. Votre saisie est conservée : vous pouvez
+          réessayer.
         </Text>
       ) : null}
       <Button
@@ -312,6 +327,14 @@ const s = StyleSheet.create({
   privacyStrong: {
     fontFamily: fonts.bodySemi,
     color: palette.creamSoft,
+  },
+
+  // — Échec d'enregistrement : dit, et la saisie reste à l'écran —
+  echecTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
   },
 
   // — Confirmation d'enregistrement (état, vert « validé ») —

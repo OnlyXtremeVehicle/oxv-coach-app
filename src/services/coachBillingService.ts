@@ -243,7 +243,14 @@ export async function issueInvoice(input: {
     } as never)
     .select('id')
     .single();
-  if (error) return { ok: false, error: error.message };
+  if (error) {
+    // Le numéro a DÉJÀ été consommé par `next_coach_invoice_number` : la
+    // séquence a avancé, et rien ne permet de la faire reculer. Se taire
+    // laisserait un trou inexpliqué dans une numérotation légale. On rend donc
+    // le numéro réservé avec l'échec, pour que l'écran puisse le dire et que le
+    // coach sache quoi expliquer à son comptable.
+    return { ok: false, error: error.message, number };
+  }
   return { ok: true, number, id: (inserted as { id?: string } | null)?.id };
 }
 

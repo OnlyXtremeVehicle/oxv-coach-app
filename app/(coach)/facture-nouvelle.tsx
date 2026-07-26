@@ -85,6 +85,27 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Le motif d'échec, dit au coach dans ses mots.
+ *
+ * Les codes viennent de `issueInvoice`. Un code inconnu ne doit jamais produire
+ * une phrase vide : on retombe sur une formulation honnête plutôt que muette.
+ */
+function messageEchecEmission(code: string | undefined): string {
+  switch (code) {
+    case 'vat_rate_missing':
+      return "Votre régime indique que vous facturez la TVA, mais aucun taux exploitable n'est enregistré. Complétez votre identité de facturation avant d'émettre.";
+    case 'billing_profile_incomplete':
+      return "Votre identité de facturation est incomplète : il faut au minimum l'aide à la facture activée, un nom d'émetteur et un SIRET.";
+    case 'not_authenticated':
+      return 'Votre session a expiré. Reconnectez-vous, puis réessayez.';
+    case 'numbering_failed':
+      return "Le numéro de facture n'a pas pu être attribué. Aucune facture n'a été émise.";
+    default:
+      return "La facture n'a pas été émise. Votre saisie est conservée : vous pouvez réessayer.";
+  }
+}
+
 export default function FactureNouvelleScreen() {
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
@@ -99,6 +120,10 @@ export default function FactureNouvelleScreen() {
 
   const [issuing, setIssuing] = useState(false);
   const [issued, setIssued] = useState<{ number: string; id?: string } | null>(null);
+  // L'échec d'émission était TOTALEMENT muet : l'écran ne bougeait pas, et le
+  // coach ne pouvait pas savoir si sa facture existait. Pire, le numéro peut
+  // avoir été consommé — la séquence légale a avancé sans facture derrière.
+  const [echec, setEchec] = useState<{ motif: string; numeroReserve?: string } | null>(null);
   const [sharing, setSharing] = useState(false);
 
   useEffect(() => {
@@ -167,6 +192,7 @@ export default function FactureNouvelleScreen() {
   async function onIssue() {
     if (validLines.length === 0) return;
     setIssuing(true);
+    setEchec(null);
     // La séquence légale suit l'année d'ÉMISSION (aujourd'hui), jamais la date de
     // prestation — sinon une prestation de décembre facturée en janvier casse la
     // continuité de numérotation.
@@ -182,7 +208,11 @@ export default function FactureNouvelleScreen() {
       year,
     });
     setIssuing(false);
-    if (res.ok && res.number) setIssued({ number: res.number, id: res.id });
+    if (res.ok && res.number) {
+      setIssued({ number: res.number, id: res.id });
+      return;
+    }
+    setEchec({ motif: messageEchecEmission(res.error), numeroReserve: res.number });
   }
 
   async function onSharePdf() {
@@ -391,6 +421,16 @@ export default function FactureNouvelleScreen() {
         disabled={validLines.length === 0}
         block
       />
+      {echec ? (
+        <View style={s.echecBloc} accessibilityLiveRegion="assertive">
+          <Text style={s.echecTxt}>{echec.motif}</Text>
+          {echec.numeroReserve ? (
+            <Text style={s.echecTxt}>
+              {`Le numéro ${echec.numeroReserve} a été réservé mais aucune facture ne le porte : la séquence comporte donc un trou. Signalez-le à votre comptable.`}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
       <Text style={s.footnote}>
         Vous restez l’émetteur et le responsable de cette facture. OXV n’émet pas et n’encaisse pas
         à votre place.
@@ -516,6 +556,20 @@ function CoachCTA({
 }
 
 const s = StyleSheet.create({
+  echecBloc: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.edge,
+    gap: spacing.sm,
+  },
+  echecTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.cream,
+  },
   // — Gouttières —
   consolePad: {
     paddingHorizontal: spacing.xxl,
