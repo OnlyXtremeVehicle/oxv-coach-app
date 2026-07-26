@@ -96,9 +96,19 @@ export default function CoachAnnoterScreen() {
     cornerIndex?: string;
     sessionId?: string;
   }>();
-  const cornerIndex = Number(params.cornerIndex ?? '1');
-  const corner = getCorner(cornerIndex);
-  const cornerName = corner?.name ?? `Virage ${cornerIndex}`;
+  // Le virage et le pilote viennent des paramètres de navigation, sans aucun
+  // repli. Écrire sur un virage que le coach n'a pas désigné classerait sa note
+  // sous une observation qu'il n'a jamais faite, et lui montrerait l'historique
+  // d'un autre virage en croyant que c'est le sien. Paramètre absent ou
+  // illisible : on refuse d'écrire, et on dit pourquoi.
+  const parsedCorner = Number(params.cornerIndex);
+  const cornerIndex =
+    params.cornerIndex != null && Number.isInteger(parsedCorner) && parsedCorner >= 1
+      ? parsedCorner
+      : null;
+  const corner = cornerIndex != null ? getCorner(cornerIndex) : null;
+  const cornerName = cornerIndex != null ? (corner?.name ?? `Virage ${cornerIndex}`) : '';
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
@@ -150,7 +160,7 @@ export default function CoachAnnoterScreen() {
   };
 
   const reload = async () => {
-    if (!params.pilotId) {
+    if (!params.pilotId || cornerIndex == null) {
       setLoading(false);
       return;
     }
@@ -195,15 +205,23 @@ export default function CoachAnnoterScreen() {
     setEditingId(null);
     setRecordedUri(null);
     setRecElapsedMs(0);
+    setSaveError(null);
     recStartRef.current = null;
   }
 
   const onSave = async () => {
-    if (!params.pilotId || !body.trim()) return;
+    if (!params.pilotId || cornerIndex == null || !body.trim()) return;
     setSaving(true);
+    setSaveError(null);
+
+    // L'enregistrement peut échouer sans exception : garde-fou doctrinal sur une
+    // note partagée, contrainte en base, réseau. On lit le RÉSULTAT. Tant qu'il
+    // n'est pas positif, le texte du coach reste à l'écran : l'effacer en
+    // laissant croire que c'est enregistré perdrait son travail deux fois.
+    let ok = false;
     if (editingId) {
-      await updateAnnotation(editingId, { body, visibility });
-      if (recordedUri) await attachAudioToAnnotation(editingId, recordedUri);
+      ok = await updateAnnotation(editingId, { body, visibility });
+      if (ok && recordedUri) await attachAudioToAnnotation(editingId, recordedUri);
     } else {
       const created = await createAnnotation({
         pilotId: params.pilotId,
@@ -212,8 +230,20 @@ export default function CoachAnnoterScreen() {
         body,
         visibility,
       });
+      ok = created != null;
       if (created && recordedUri) await attachAudioToAnnotation(created.id, recordedUri);
     }
+
+    if (!ok) {
+      setSaveError(
+        visibility === 'shared'
+          ? "La note n'a pas été enregistrée. Une note partagée ne peut pas être une consigne de pilotage : reformulez en décrivant ce que vous avez observé, ou passez-la en note privée."
+          : "La note n'a pas été enregistrée. Votre texte est conservé, vous pouvez réessayer."
+      );
+      setSaving(false);
+      return;
+    }
+
     resetForm();
     await reload();
     setSaving(false);
@@ -236,6 +266,34 @@ export default function CoachAnnoterScreen() {
 
   const dirty = editingId != null || body.trim().length > 0 || recordedUri != null;
   const sessionScoped = !!params.sessionId;
+
+  // Sans pilote ou sans virage désigné, l'écran ne peut rien enregistrer. On
+  // l'annonce au lieu d'offrir un éditeur dont le bouton ne ferait rien : un
+  // formulaire qui accepte le texte puis le perd en silence est pire que pas
+  // de formulaire du tout.
+  if (!params.pilotId || cornerIndex == null) {
+    const raison = !params.pilotId
+      ? "Le pilote n'est pas identifié par l'écran qui vous a amené ici."
+      : "Aucun virage n'est indiqué par l'écran qui vous a amené ici.";
+    return (
+      <Screen scroll={false}>
+        <AppBar title="ANNOTER" onBack={() => router.back()} />
+        <View style={s.blocked}>
+          <Text style={s.screenHeading} accessibilityRole="header">
+            Note impossible ici
+          </Text>
+          <Text style={s.blockedBody}>{raison}</Text>
+          <Text style={s.blockedBody}>
+            Ouvrez le virage concerné depuis la séance, puis annotez-le : la note sera classée là où
+            vous l&apos;avez observée.
+          </Text>
+          <View style={s.blockedAction}>
+            <Button label="Retour" variant="ghost" onPress={() => router.back()} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
 
   // — Blocs partagés entre les deux formats —
   const cornerBlock = (
@@ -276,6 +334,11 @@ export default function CoachAnnoterScreen() {
         onToggle={() => setVisibility(visibility === 'shared' ? 'private' : 'shared')}
       />
       <AttributionNote />
+      {saveError ? (
+        <View style={s.saveError} accessibilityRole="alert">
+          <Text style={s.saveErrorTxt}>{saveError}</Text>
+        </View>
+      ) : null}
     </>
   );
   const footer = (
@@ -677,6 +740,36 @@ const s = StyleSheet.create({
     fontFamily: fonts.display,
     fontSize: fontSize.h2,
     letterSpacing: 0.3,
+    color: palette.cream,
+  },
+
+  // — Écran refusé (pilote ou virage non désigné) —
+  blocked: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    gap: spacing.md,
+  },
+  blockedBody: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.body,
+    lineHeight: fontSize.body * 1.5,
+    color: palette.creamMute,
+  },
+  blockedAction: { marginTop: spacing.lg, alignSelf: 'flex-start' },
+
+  // — Échec d'enregistrement (le texte du coach reste à l'écran) —
+  saveError: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: palette.edge,
+  },
+  saveErrorTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
     color: palette.cream,
   },
 

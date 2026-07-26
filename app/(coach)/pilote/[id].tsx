@@ -786,11 +786,16 @@ function SessionRow({
         </PressableScale>
         <PressableScale
           accessibilityRole="button"
-          accessibilityLabel="Annoter cette séance"
+          accessibilityLabel="Choisir un virage de cette séance pour l'annoter"
+          // Une note est classée PAR VIRAGE en base. Ouvrir directement
+          // l'éditeur depuis la liste des séances n'indiquait aucun virage :
+          // la note partait alors sur le premier, sans que le coach l'ait
+          // désigné. On passe donc par la vue virage de la séance, où il
+          // choisit — et d'où le bouton « Annoter » transmet le bon numéro.
           onPress={() =>
             router.push({
-              pathname: '/(coach)/annoter',
-              params: { pilotId: pilotId ?? '', sessionId: session.id },
+              pathname: '/(app)/virage',
+              params: { sessionId: session.id },
             } as never)
           }
           style={[s.sessionAction, s.sessionActionDivider]}

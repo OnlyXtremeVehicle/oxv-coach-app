@@ -55,6 +55,7 @@ import {
   liveAlert,
 } from '@/services/liveSessionLogic';
 import { fetchSessionLaps } from '@/services/sessionsService';
+import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import type { Lap } from '@/types/telemetry';
 import { KingNumber } from '@/ui/KingNumber';
@@ -100,6 +101,30 @@ export default function CockpitFocusScreen() {
         if (!cancelled) setLaps(rows);
       })
       .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
+  // Le pilote propriétaire de la séance. L'écran ne reçoit que l'identifiant de
+  // séance ; sans cette résolution, l'action « Note vocale » ouvrait l'éditeur
+  // sans destinataire et l'enregistrement échouait en silence. Même motif que
+  // app/(app)/virage.tsx ; RLS arbitre la lecture.
+  const [pilotId, setPilotId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!sessionId) {
+      setPilotId(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('telemetry_sessions')
+        .select('user_id')
+        .eq('id', sessionId)
+        .maybeSingle();
+      if (!cancelled) setPilotId((data?.user_id as string | undefined) ?? null);
+    })();
     return () => {
       cancelled = true;
     };
@@ -155,7 +180,13 @@ export default function CockpitFocusScreen() {
   ) : null;
   // Live : dernier tour en tête (maquette 27-en-direct-focus, ordre décroissant).
   const tours = <ToursPanel laps={[...timedLaps].reverse()} bestLapNumber={bestLapNumber} />;
-  const actions = <ActionsPanel sessionId={sessionId} cornerIndex={frame?.cornerIndex ?? null} />;
+  const actions = (
+    <ActionsPanel
+      sessionId={sessionId}
+      pilotId={pilotId}
+      cornerIndex={frame?.cornerIndex ?? null}
+    />
+  );
   // BIO-2 — bande FC : n'existe QUE si le pilote émet (triple verrou côté pilote).
   // Absente sinon : jamais de bloc « pas de données santé » qui ferait exister
   // l'idée d'une mesure qu'on n'a pas.
@@ -533,11 +564,18 @@ function ToursPanel({ laps, bestLapNumber }: { laps: Lap[]; bestLapNumber: numbe
 
 function ActionsPanel({
   sessionId,
+  pilotId,
   cornerIndex,
 }: {
   sessionId: string | null;
+  pilotId: string | null;
   cornerIndex: number | null;
 }) {
+  // Une note est classée par pilote ET par virage en base. Tant que le pilote
+  // n'est pas résolu ou que la trame n'indique aucun virage, la note n'aurait
+  // nulle part où aller : on désactive et on dit pourquoi, plutôt qu'ouvrir un
+  // éditeur qui accepterait le texte puis le perdrait.
+  const peutNoter = !!sessionId && !!pilotId && cornerIndex != null;
   return (
     <View>
       <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Actions rapides</Text>
@@ -545,16 +583,26 @@ function ActionsPanel({
         <ActionButton
           label="Note vocale"
           primary
-          onPress={() =>
+          disabled={!peutNoter}
+          onPress={() => {
+            if (!peutNoter) return;
             router.push({
               pathname: '/(coach)/annoter',
               params: {
-                ...(sessionId ? { sessionId } : {}),
-                ...(cornerIndex != null ? { cornerIndex: String(cornerIndex) } : {}),
+                sessionId: sessionId as string,
+                pilotId: pilotId as string,
+                cornerIndex: String(cornerIndex),
               },
-            } as never)
-          }
+            } as never);
+          }}
         />
+        {!peutNoter ? (
+          <Text style={s.actionHint}>
+            {pilotId == null
+              ? 'La note s’ouvrira dès que la séance sera identifiée.'
+              : 'La note s’ouvrira dès qu’un virage sera franchi : elle est classée par virage.'}
+          </Text>
+        ) : null}
         <ActionButton
           label="Poser un repère"
           onPress={() => router.push({ pathname: '/(coach)/reperes' } as never)}
@@ -571,21 +619,26 @@ function ActionsPanel({
 function ActionButton({
   label,
   primary,
+  disabled,
   onPress,
 }: {
   label: string;
   primary?: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         s.actionBtn,
         primary ? s.actionBtnPrimary : s.actionBtnGhost,
-        pressed && { opacity: 0.9 },
+        disabled && { opacity: 0.4 },
+        pressed && !disabled && { opacity: 0.9 },
       ]}
     >
       <Text style={[s.actionTxt, primary ? s.actionTxtPrimary : s.actionTxtGhost]}>{label}</Text>
@@ -869,6 +922,12 @@ const s = StyleSheet.create({
   actionTxt: { fontFamily: fonts.bodySemi, fontSize: fontSize.body, letterSpacing: 0.2 },
   actionTxtPrimary: { color: palette.cream },
   actionTxtGhost: { color: palette.creamSoft },
+  actionHint: {
+    fontFamily: fonts.bodyLight,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.4,
+    color: palette.creamMute,
+  },
 
   doctrine: {
     fontFamily: fonts.bodyLight,
