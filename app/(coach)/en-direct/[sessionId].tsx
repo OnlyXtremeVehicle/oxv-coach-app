@@ -162,7 +162,12 @@ export default function CockpitFocusScreen() {
     if (timedLaps.length === 0) return null;
     const flagged = timedLaps.find((l) => l.is_best_lap);
     if (flagged) return flagged.lap_number;
-    return timedLaps.reduce((m, l) => (l.duration_seconds < m.duration_seconds ? l : m)).lap_number;
+    // `duration_seconds` est `numeric` : PostgREST le rend en CHAÎNE, et
+    // « 102.7 » < « 95.2 » est VRAI en comparaison lexicographique — le
+    // tour le plus LENT devenait le meilleur. On coerce avant de comparer.
+    return timedLaps.reduce((m, l) =>
+      Number(l.duration_seconds) < Number(m.duration_seconds) ? l : m
+    ).lap_number;
   }, [timedLaps]);
 
   const header = (

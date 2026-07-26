@@ -98,8 +98,64 @@ export const BELTOISE_CORNERS: readonly CornerTopology[] = [
   },
 ] as const;
 
+/**
+ * @deprecated Suppose la Haute Saintonge SANS le vérifier.
+ *
+ * Cette topologie ne décrit qu'un seul circuit. Appelée sur une séance courue
+ * ailleurs, elle renvoie un nom de virage de Beltoise — « L'épingle Sud » sur un
+ * tour de Valence. Préférez `getCornerDuCircuit`, qui refuse quand le circuit
+ * n'est pas celui-ci.
+ */
 export function getCorner(index: number): CornerTopology | null {
   return BELTOISE_CORNERS.find((c) => c.index === index) ?? null;
+}
+
+/**
+ * Les façons dont le circuit de Haute Saintonge est nommé en base.
+ *
+ * `telemetry_sessions.circuit_name` est du texte libre, saisi au placement : on
+ * compare sur une forme normalisée plutôt que sur une égalité stricte.
+ */
+const NOMS_HAUTE_SAINTONGE = ['hautesaintonge', 'beltoise', 'circuitdehautesaintonge'];
+
+function normaliser(nom: string): string {
+  return nom
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+/**
+ * Cette séance a-t-elle été courue sur le circuit dont nous avons la géométrie ?
+ *
+ * Fail-closed : un nom absent, vide ou inconnu vaut NON. Sans certitude, on
+ * n'affiche ni tracé ni nom de virage — mieux vaut ne rien montrer que montrer
+ * la forme d'un autre circuit sous le nom de celui-ci.
+ */
+export function estHauteSaintonge(circuitName: string | null | undefined): boolean {
+  if (!circuitName) return false;
+  return NOMS_HAUTE_SAINTONGE.includes(normaliser(circuitName));
+}
+
+/**
+ * Les virages du circuit demandé, ou une liste VIDE si sa géométrie nous est
+ * inconnue. Une liste vide se rend en état vide honnête ; les sept virages de
+ * Beltoise plaqués sur un autre circuit se rendent en mensonge.
+ */
+export function cornersDuCircuit(
+  circuitName: string | null | undefined
+): readonly CornerTopology[] {
+  return estHauteSaintonge(circuitName) ? BELTOISE_CORNERS : [];
+}
+
+/** Un virage nommé, uniquement si la séance est bien sur ce circuit. */
+export function getCornerDuCircuit(
+  index: number,
+  circuitName: string | null | undefined
+): CornerTopology | null {
+  if (!estHauteSaintonge(circuitName)) return null;
+  return getCorner(index);
 }
 
 export function nextCornerIndex(currentIndex: number): number {

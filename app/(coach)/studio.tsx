@@ -43,6 +43,7 @@ import {
   getScenePoints,
   type TrajectoryPoint,
 } from '@/components/CircuitMap';
+import { estHauteSaintonge } from '@/lib/circuitTopology';
 import {
   BreathingGlow,
   CountUpNumber,
@@ -71,7 +72,7 @@ import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatLapTimeMs } from '@/utils/format';
 
-const { palette, dataColors, spacing } = theme;
+const { palette, dataColors, spacing, fonts, fontSize } = theme;
 
 export default function CoachStudioScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
@@ -188,7 +189,12 @@ function StudioBody({
     if (timedLaps.length === 0) return null;
     const flagged = timedLaps.find((l) => l.is_best_lap);
     if (flagged) return flagged.lap_number;
-    return timedLaps.reduce((m, l) => (l.duration_seconds < m.duration_seconds ? l : m)).lap_number;
+    // `duration_seconds` est `numeric` : PostgREST le rend en CHAÎNE, et
+    // « 102.7 » < « 95.2 » est VRAI en comparaison lexicographique — le
+    // tour le plus LENT devenait le meilleur. On coerce avant de comparer.
+    return timedLaps.reduce((m, l) =>
+      Number(l.duration_seconds) < Number(m.duration_seconds) ? l : m
+    ).lap_number;
   }, [timedLaps]);
 
   const header = <StudioHeader data={data} isConsole={isConsole} />;
@@ -201,6 +207,7 @@ function StudioBody({
       zoneByIndex={zoneByIndex}
       hasZones={hasZones}
       bestLapSeconds={data.bestLapSeconds}
+      circuitName={data.circuitName}
       height={isConsole ? 320 : 240}
     />
   );
@@ -387,12 +394,14 @@ function TrajectoryPanel({
   zoneByIndex,
   hasZones,
   bestLapSeconds,
+  circuitName,
   height,
 }: {
   trajectory: TrajectoryPoint[] | null;
   zoneByIndex: Record<number, MarginZone>;
   hasZones: boolean;
   bestLapSeconds: number | null;
+  circuitName: string | null;
   height: number;
 }) {
   // Tracé du circuit préparé pour <DrawInPath> (helpers purs du kit motion) —
@@ -410,31 +419,48 @@ function TrajectoryPanel({
           <Text style={s.panelNote}>meilleur {formatLapTimeMs(bestLapSeconds)}</Text>
         ) : null}
       </View>
-      {/* Même composition de couches que CoachPreset, mais le tracé du circuit
+      {/* GARDE MULTI-CIRCUIT. Cette carte n'a qu'UNE géométrie : Haute
+          Saintonge. Sur une séance courue ailleurs, elle dessinait la forme de
+          Beltoise sous le nom de l'autre circuit, posait ses sept pastilles aux
+          coordonnées de Beltoise, et y peignait les marges d'un tout autre
+          tracé. On préfère ne rien montrer et le dire. */}
+      {!estHauteSaintonge(circuitName) ? (
+        <View style={[s.traceIndispo, { height }]}>
+          <Text style={s.traceIndispoTxt}>
+            {circuitName
+              ? `Le tracé de ${circuitName} n'est pas encore disponible. Les marges par virage restent lisibles ci-dessous.`
+              : "Le circuit de cette séance n'est pas identifié : aucun tracé n'est affiché."}
+          </Text>
+        </View>
+      ) : (
+        <>
+          {/* Même composition de couches que CoachPreset, mais le tracé du circuit
           se DESSINE à l'entrée (DrawInPath du kit — reduce-motion : rendu
           complet immédiat). Trajectoire, virages et couleurs : inchangés. */}
-      <CircuitMap height={height}>
-        <DrawInPath
-          d={track.d}
-          length={track.length}
-          stroke={palette.creamSoft}
-          strokeWidth={4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          opacity={0.4}
-        />
-        <StartArrowLayer />
-        {trajectory && trajectory.length > 1 ? (
-          <TrajectoryLayer points={trajectory} colorMode="speed-heatmap" />
-        ) : null}
-        <CornersLayer
-          colorMode="zone"
-          zoneByIndex={zoneByIndex}
-          selectedIndex={null}
-          showLabels={true}
-        />
-      </CircuitMap>
+          <CircuitMap height={height}>
+            <DrawInPath
+              d={track.d}
+              length={track.length}
+              stroke={palette.creamSoft}
+              strokeWidth={4}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+              opacity={0.4}
+            />
+            <StartArrowLayer />
+            {trajectory && trajectory.length > 1 ? (
+              <TrajectoryLayer points={trajectory} colorMode="speed-heatmap" />
+            ) : null}
+            <CornersLayer
+              colorMode="zone"
+              zoneByIndex={zoneByIndex}
+              selectedIndex={null}
+              showLabels={true}
+            />
+          </CircuitMap>
+        </>
+      )}
       {hasZones ? (
         <MarginLegendBar />
       ) : (
@@ -600,6 +626,18 @@ function DoctrineLine() {
 }
 
 const s = StyleSheet.create({
+  traceIndispo: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  traceIndispoTxt: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    color: palette.creamMute,
+    textAlign: 'center',
+  },
   // Layout
   consoleRow: {
     flexDirection: 'row',
