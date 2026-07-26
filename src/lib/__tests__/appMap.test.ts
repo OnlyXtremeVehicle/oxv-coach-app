@@ -53,7 +53,6 @@ describe('appMap', () => {
     expect(zoneOfRoute('/signature')).toBe('miroir');
     expect(zoneOfRoute('/progression')).toBe('miroir');
     expect(zoneOfRoute('/virage')).toBe('datalab');
-    expect(zoneOfRoute('/insight/abc')).toBe('datalab');
     expect(zoneOfRoute('/carnet')).toBe('carnet');
     expect(zoneOfRoute('/mon-coach')).toBe('decouverte');
     expect(zoneOfRoute('/settings')).toBe('compte');
@@ -73,7 +72,10 @@ describe('appMap', () => {
       'heatmap',
       'replay',
       'telemetry',
-      'insights',
+      // `insights` et `insight/[reading]` ont été supprimés : c'étaient les deux
+      // écrans de DÉMONSTRATION v1, alimentés par des constantes fabriquées et
+      // sans aucun lien entrant. Les lectures approfondies vivent désormais dans
+      // /(app2)/data/session/[id], sur données mesurées.
     ]) {
       expect(dl).toContain(r);
       // cohérence : chaque écran Data Lab est bien rangé sous la zone Data Lab

@@ -73,10 +73,11 @@ import { FlowViz } from '@/components/insights/FlowViz';
 import { GGViz, type GGPoint } from '@/components/insights/GGViz';
 import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
-import { DemoBanner } from '@/components/insights/InsightCard';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
-import { insightsSontDeDemonstration, type SessionInsights } from '@/circuit/sessionInsights';
+import type { SessionInsights } from '@/circuit/sessionInsights';
+import { loadSessionFlow } from '@/services/flowService';
+import type { FlowPoint } from '@/services/flowLogic';
 import { supabase } from '@/lib/supabase';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { loadCornerEvolution } from '@/services/cornerEvolutionService';
@@ -145,6 +146,8 @@ interface SeanceData {
   insights: SessionInsights | null;
   /** Nuage g-g RÉEL (loadGGPoints) — vide si trames insuffisantes. */
   ggPoints: GGPoint[];
+  /** Jerk résiduel RÉEL (loadSessionFlow) — vide si trames insuffisantes. */
+  flowPoints: FlowPoint[];
   /** Sections dont le chargement a ÉCHOUÉ (erreur DB) — distinct de « vide ». */
   failed: Record<string, boolean>;
 }
@@ -223,14 +226,16 @@ function useSeance(id: string | undefined) {
       }
 
       // Sections indépendantes — l'échec de l'une n'entache pas les autres.
-      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR] = await Promise.allSettled([
-        fetchSessionLaps(id, { strict: true }),
-        listSegmentAnalysesForSession(id),
-        loadSeanceWeather(id),
-        loadWeatherCorrelation(userId, session.circuit_id ?? undefined),
-        fetchSessionInsights(id),
-        loadGGPoints(id),
-      ]);
+      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR, flowR] =
+        await Promise.allSettled([
+          fetchSessionLaps(id, { strict: true }),
+          listSegmentAnalysesForSession(id),
+          loadSeanceWeather(id),
+          loadWeatherCorrelation(userId, session.circuit_id ?? undefined),
+          fetchSessionInsights(id),
+          loadGGPoints(id),
+          loadSessionFlow(id),
+        ]);
       if (cancelled) return;
 
       const failed: Record<string, boolean> = {};
@@ -260,6 +265,11 @@ function useSeance(id: string | undefined) {
       let ggPoints: GGPoint[] = [];
       if (ggR.status === 'fulfilled') ggPoints = ggR.value;
 
+      // Flux RÉEL (jerk résiduel, A-FLOW-1). Liste vide = pas de trames assez
+      // denses : la lecture le dira elle-même, elle n'inventera rien.
+      let flowPoints: FlowPoint[] = [];
+      if (flowR.status === 'fulfilled') flowPoints = flowR.value;
+
       setData({
         session,
         laps,
@@ -270,6 +280,7 @@ function useSeance(id: string | undefined) {
         lapNumberBySession,
         insights,
         ggPoints,
+        flowPoints,
         failed,
       });
       setStatus('ready');
@@ -520,6 +531,7 @@ export default function SeanceScreen() {
           <ConstatsSection
             insights={data.insights}
             ggPoints={data.ggPoints}
+            flowPoints={data.flowPoints}
             insightsFailed={data.failed.constats === true}
           />
         </View>
@@ -1553,31 +1565,21 @@ function ReplayTrace({ traj }: { traj: TrajectoryFramePoint[] }) {
 // 5 · CONSTATS — les six lectures (DÉMO) montées dans un Sheet.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Les lectures dont les chiffres viennent de la ligne `session_insights`. */
-const LECTURES_SUR_INSIGHTS: ReadingKey[] = ['anatomie', 'dispersion', 'tour-ideal', 'transfert'];
-
 /**
- * Faut-il annoncer que cette lecture montre une démonstration ?
+ * Monte la visualisation d'une lecture sur sa source RÉELLE, en état vide
+ * honnête si la donnée manque.
  *
- * `flow` en est toujours une : aucune source de « fluidité » n'existe en base.
- * Les quatre lectures alimentées par `session_insights` en sont une DÈS QUE la
- * ligne lue provient d'un moteur de démonstration — ce qui est le cas de
- * l'unique ligne de production (`mirror-insights-demo`). Sans cette condition,
- * l'écran présentait des chiffres fabriqués comme des mesures.
- *
- * `gg` est exclue : son nuage vient des trames réelles, pas des insights.
+ * Plus aucune démonstration ici. Les quatre lectures d'insights ne reçoivent
+ * plus que des lignes MESURÉES — `fetchSessionInsights` écarte désormais les
+ * moteurs de démonstration — et `flow` est branchée sur le jerk résiduel réel
+ * (A-FLOW-1). Quand rien n'a été mesuré, chaque vue le dit.
  */
-function montrerBandeauDemo(key: ReadingKey, insights: SessionInsights | null): boolean {
-  if (key === 'flow') return true;
-  if (!LECTURES_SUR_INSIGHTS.includes(key)) return false;
-  return insightsSontDeDemonstration(insights);
-}
-
-/**
- * Monte la visualisation d'une lecture avec sa tranche RÉELLE d'insights (ou son
- * nuage g-g réel), en état vide honnête si la donnée manque.
- */
-function renderReadingViz(key: ReadingKey, insights: SessionInsights | null, ggPoints: GGPoint[]) {
+function renderReadingViz(
+  key: ReadingKey,
+  insights: SessionInsights | null,
+  ggPoints: GGPoint[],
+  flowPoints: FlowPoint[]
+) {
   switch (key) {
     case 'anatomie':
       return <AnatomieViz anatomy={insights?.anatomy ?? null} />;
@@ -1588,7 +1590,7 @@ function renderReadingViz(key: ReadingKey, insights: SessionInsights | null, ggP
     case 'tour-ideal':
       return <TourIdealViz ideal={insights?.ideal_lap ?? null} />;
     case 'flow':
-      return <FlowViz />;
+      return <FlowViz points={flowPoints} />;
     case 'transfert':
       return <TransfertViz transfer={insights?.load_transfer ?? null} />;
     default:
@@ -1599,10 +1601,12 @@ function renderReadingViz(key: ReadingKey, insights: SessionInsights | null, ggP
 function ConstatsSection({
   insights,
   ggPoints,
+  flowPoints,
   insightsFailed,
 }: {
   insights: SessionInsights | null;
   ggPoints: GGPoint[];
+  flowPoints: FlowPoint[];
   insightsFailed: boolean;
 }) {
   const [open, setOpen] = useState<ReadingKey | null>(null);
@@ -1636,12 +1640,7 @@ function ConstatsSection({
         {reading ? (
           <ScrollView showsVerticalScrollIndicator={false}>
             <SectionHeader eyebrow={reading.eyebrow} title={reading.name} />
-            {montrerBandeauDemo(reading.key, insights) ? (
-              <View style={styles.constatDemo}>
-                <DemoBanner />
-              </View>
-            ) : null}
-            {open ? renderReadingViz(open, insights, ggPoints) : null}
+            {open ? renderReadingViz(open, insights, ggPoints, flowPoints) : null}
           </ScrollView>
         ) : null}
       </Sheet>
@@ -1986,10 +1985,6 @@ const styles = StyleSheet.create({
   // ── Constats ──
   constatsList: {
     marginTop: space.md,
-  },
-  constatDemo: {
-    marginTop: space.md,
-    marginBottom: space.md,
   },
   // ── Conditions ──
   condCard: {

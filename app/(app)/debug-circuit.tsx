@@ -14,7 +14,7 @@ import { Redirect } from 'expo-router';
 import { CircuitTrace } from '@/circuit/CircuitTrace';
 import { generateCircuit } from '@/circuit/circuitGenerator';
 import { HAUTE_SAINTONGE_POINTS } from '@/circuit/hauteSaintonge';
-import { DEMO_SESSION_INSIGHTS } from '@/circuit/sessionInsights';
+import { INSIGHTS_JEU_ESSAI } from '@/circuit/sessionInsights';
 import { theme } from '@/theme/v2';
 
 const { palette, fonts, fontSize, spacing } = theme;
@@ -30,7 +30,7 @@ function DebugCircuitScreenInner() {
 
   return (
     <View style={styles.root}>
-      <CircuitTrace circuit={circuit} session={DEMO_SESSION_INSIGHTS} role="pilot" />
+      <CircuitTrace circuit={circuit} session={INSIGHTS_JEU_ESSAI} role="pilot" />
 
       <SafeAreaView style={styles.hud} pointerEvents="none">
         <Text style={styles.eyebrow}>CIRCUIT</Text>

@@ -78,8 +78,6 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   heatmap: 'datalab',
   replay: 'datalab',
   telemetry: 'datalab',
-  insights: 'datalab',
-  insight: 'datalab',
 
   // ── CARNET — espace perso (sans donnée ni couleur QDI)
   carnet: 'carnet',
@@ -147,7 +145,6 @@ const DATA_LAB_SCREENS = [
   'heatmap',
   'replay',
   'telemetry',
-  'insights',
 ] as const;
 
 export function dataLabScreens(): readonly string[] {

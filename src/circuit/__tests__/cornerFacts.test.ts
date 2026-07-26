@@ -1,9 +1,9 @@
 import { cornerFacts } from '../cornerFacts';
-import { DEMO_SESSION_INSIGHTS } from '../sessionInsights';
+import { INSIGHTS_JEU_ESSAI } from '../sessionInsights';
 
 describe('cornerFacts', () => {
   it('assemble les faits du virage 5 (épingle) depuis la démo', () => {
-    const facts = cornerFacts(DEMO_SESSION_INSIGHTS, 5);
+    const facts = cornerFacts(INSIGHTS_JEU_ESSAI, 5);
     const byLabel = Object.fromEntries(facts.map((f) => [f.label, f.value]));
     expect(byLabel["Vitesse d'apex"]).toBe('65 km/h');
     expect(byLabel['Freinage']).toBe('150 m');
@@ -15,7 +15,7 @@ describe('cornerFacts', () => {
   });
 
   it('note le signe du sous-virage (châssis négatif)', () => {
-    const facts = cornerFacts(DEMO_SESSION_INSIGHTS, 4);
+    const facts = cornerFacts(INSIGHTS_JEU_ESSAI, 4);
     expect(facts.find((f) => f.label === 'Équilibre châssis')?.value).toBe('-12 %');
   });
 
@@ -24,6 +24,6 @@ describe('cornerFacts', () => {
   });
 
   it('rien pour un virage hors plage', () => {
-    expect(cornerFacts(DEMO_SESSION_INSIGHTS, 99)).toEqual([]);
+    expect(cornerFacts(INSIGHTS_JEU_ESSAI, 99)).toEqual([]);
   });
 });

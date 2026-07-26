@@ -54,32 +54,35 @@ export interface SessionInsights {
 }
 
 /**
- * Démo alignée 7 virages (Haute Saintonge), telle qu'en base
- * (`engine_version = 'mirror-insights-demo'`, session
- * b62ab3af-5d6a-4e88-b316-73a0729933ae). Sert au développement avant Valence ;
- * sera écrasée par le vrai calcul `mirror-insights-v1` (doc 09 §3).
+ * Les moteurs qui produisent une MESURE. Toute autre valeur — moteur de
+ * démonstration, version inconnue, champ vide — n'a rien mesuré et n'a donc rien
+ * à faire à l'écran.
+ *
+ * Même idiome que `QDI_ALGO_VERSION` (src/services/qdiLogic.ts) : une liste
+ * nommée, une égalité stricte, et le refus par défaut. Ajouter un moteur ici est
+ * une décision consciente, pas un effet de bord.
  */
-/**
- * Moteurs d'insights qui ne produisent PAS de mesure : leurs chiffres sont
- * fabriqués pour le développement. Toute lecture alimentée par une ligne de ce
- * moteur doit le dire à l'écran — sinon l'application présente une invention
- * comme un fait, ce que la doctrine interdit.
- */
-const MOTEURS_DE_DEMONSTRATION = ['mirror-insights-demo'];
+export const MOTEURS_INSIGHTS_REELS = ['mirror-insights-v1', 'mirror-insights-v3'] as const;
 
-/** Vrai si cette ligne d'insights vient d'un moteur de démonstration. */
-export function insightsSontDeDemonstration(
-  insights: Pick<SessionInsights, 'engine_version'> | null
-): boolean {
-  if (!insights) return false;
-  const v = insights.engine_version;
-  // Fail-safe : une version absente, vide ou inconnue est traitée comme
-  // suspecte. Mieux vaut un bandeau de trop qu'un chiffre inventé sans mention.
-  if (!v) return true;
-  return MOTEURS_DE_DEMONSTRATION.includes(v) || v.includes('demo');
+/**
+ * Cette ligne d'insights vient-elle d'un moteur de mesure ?
+ *
+ * Fail-closed : dans le doute, non. Une lecture sans source vaut mieux qu'une
+ * lecture inventée — le pilote voit un état vide honnête plutôt qu'un chiffre.
+ */
+export function insightsMesures(insights: Pick<SessionInsights, 'engine_version'> | null): boolean {
+  if (!insights || !insights.engine_version) return false;
+  return (MOTEURS_INSIGHTS_REELS as readonly string[]).includes(insights.engine_version);
 }
 
-export const DEMO_SESSION_INSIGHTS: SessionInsights = {
+/**
+ * @deprecated Jeu d'essai, JAMAIS de la donnée de production.
+ *
+ * Conservé uniquement pour les tests et l'écran de mise au point `__DEV__`. Il
+ * ne doit être importé par aucun écran livré : le service filtre désormais les
+ * moteurs de démonstration, et l'application n'affiche plus que des mesures.
+ */
+export const INSIGHTS_JEU_ESSAI: SessionInsights = {
   telemetry_session_id: 'b62ab3af-5d6a-4e88-b316-73a0729933ae',
   user_id: 'demo',
   engine_version: 'mirror-insights-demo',

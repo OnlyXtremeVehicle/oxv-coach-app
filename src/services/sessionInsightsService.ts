@@ -1,19 +1,24 @@
 /**
  * Lecture des insights d'une session (table `session_insights`).
  *
- * Renvoie la dernière ligne d'insights pour une session de télémétrie, ou null
- * si aucune n'existe encore (cas courant tant que `telemetry_frames` est vide,
- * avant Valence). La ligne de démo `mirror-insights-demo` (7 virages) est
- * renvoyée telle quelle pour la session Haute Saintonge de démonstration.
+ * Renvoie la dernière ligne MESURÉE pour une séance, ou null.
+ *
+ * Le filtre sur `engine_version` est le cœur de ce service. La production porte
+ * encore une ligne `mirror-insights-demo` dont les chiffres sont fabriqués :
+ * sans ce filtre, quatre lectures approfondies affichaient une invention comme
+ * une mesure. Une ligne d'un moteur non reconnu est donc traitée comme absente,
+ * et l'écran tombe sur son état vide — qui est vrai.
  */
 
 import { supabase } from '@/lib/supabase';
-import type {
-  AnatomyCorner,
-  CornerRecord,
-  DataQuality,
-  IdealLap,
-  SessionInsights,
+import {
+  insightsMesures,
+  MOTEURS_INSIGHTS_REELS,
+  type AnatomyCorner,
+  type CornerRecord,
+  type DataQuality,
+  type IdealLap,
+  type SessionInsights,
 } from '@/circuit/sessionInsights';
 
 export async function fetchSessionInsights(
@@ -25,11 +30,20 @@ export async function fetchSessionInsights(
       'telemetry_session_id, user_id, engine_version, computed_at, n_laps, n_frames, anatomy, dispersion, chassis_balance, load_transfer, ideal_lap, data_quality'
     )
     .eq('telemetry_session_id', telemetrySessionId)
+    // Le filtre est posé côté serveur pour que « la plus récente » désigne la
+    // plus récente MESURE, et non la plus récente ligne — une démo postérieure
+    // masquerait sinon un vrai calcul.
+    .in('engine_version', MOTEURS_INSIGHTS_REELS as unknown as string[])
     .order('computed_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error || !data) return null;
+
+  // Second verrou, côté client : si le filtre serveur venait à sauter — requête
+  // modifiée, vue interposée — on refuse quand même. Le fail-closed vit ici,
+  // pas seulement dans la requête.
+  if (!insightsMesures({ engine_version: data.engine_version ?? '' })) return null;
 
   // Les colonnes JSONB arrivent en `Json` ; on les rattache aux formes du contrat.
   return {

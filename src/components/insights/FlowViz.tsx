@@ -1,198 +1,179 @@
 /**
- * FlowViz — Cohérence du flow (lecture N4.3).
+ * FlowViz — Cohérence du flow (lecture N4.3), sur données RÉELLES.
  *
- * Maquette : docs/specs-bundle-v4/maquette_insight_N4-3_flow.html
- * Patron cockpit : maquette_insight_gg_gaming.html (porté au niveau riche).
- * Spec     : 02_moteur_insights.md §4.3.
+ * Spec : docs/architecture/A-FLOW-1_flowService_definition.md, validée le 19/07.
  *
- * La fluidité = régularité des transitions, lue dans le jerk (dérivée de
- * l'accélération). Cockpit : barre de statut, tour le plus fluide en nombre
- * héros, trace de jerk lisse en CRÈME à halo (série principale) contre la trace
- * hachée en crème atténué (série de référence), puis nuage fluidité × temps
- * montrant que plus c'est fluide, plus c'est rapide.
+ * Ce que la vue montre, et rien d'autre :
+ *   1. la MESURE : jerk résiduel moyen, en g/s, nommée comme telle ;
+ *   2. sa trace dans le temps ;
+ *   3. sa distribution — où la variation d'accélération se concentre.
  *
- * DÉMO : tracés et points figés (rapide 1:42.8 / haché 1:45.1, 18 tours),
- * telemetry_frames vide jusqu'à Valence. Composant déterministe.
+ * Le résiduel est la part du jerk que la sévérité de trajectoire n'explique pas
+ * (VERROU 2) : on décrit le geste INATTENDU, jamais le jerk absolu — sinon on
+ * pénaliserait mécaniquement les pilotes rapides, ce qui serait un jugement
+ * déguisé.
  *
- * Doctrine : révèle le lien entre douceur et vitesse. Ne dit jamais « soyez
- * plus fluide ». La série de flow principale est neutre (crème) et la référence
- * en crème atténué ; l'or reste réservé au chrono/record. Aucune couleur heritage.
+ * Ce que la vue ne fait PAS, volontairement :
+ *   - aucun score, aucune note, aucune échelle 0-100 : « 1,8 g/s » est un
+ *     constat, « 78 » serait un verdict ;
+ *   - aucun seuil, aucune case colorée : le seuil « fluide » n'a pas été décrété,
+ *     il émergera des percentiles réels après la première séance dense ;
+ *   - aucune corrélation douceur / vitesse. La version précédente affichait un
+ *     nuage affirmant que le tour le plus fluide était le plus rapide, et un
+ *     chrono héros de 1:42.8 : c'étaient des affirmations sur le pilotage que
+ *     rien ne mesurait.
+ *
+ * Doctrine : crème neutre, l'or reste réservé au chrono et au record. Absence de
+ * mesure = état vide dit, jamais un 0.
  */
 
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
+import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Line, Polyline, Rect } from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
+import { jerkDistribution, meanResidualGPerS, type FlowPoint } from '@/services/flowLogic';
 
-// Trace de flow principale : NEUTRE (crème). L'or reste réservé au chrono/record.
 const CREAM = theme.palette.cream;
+const TRACE_W = 320;
+const TRACE_H = 120;
+const HIST_W = 320;
+const HIST_H = 90;
 
-// Tour haché : dents de scie marquées (maquette N4-3).
-const JAGGED =
-  '4,65 18,40 28,88 40,38 54,92 64,50 78,30 90,95 104,45 118,85 130,42 144,90 158,48 172,30 186,92 200,52 214,86 228,40 242,88 256,46 270,82 284,44 298,72 312,60';
-// Tour rapide : ondulation douce.
-const SMOOTH =
-  '4,65 24,58 44,68 64,56 84,70 104,60 124,64 144,57 164,67 184,59 204,66 224,58 244,67 264,60 284,64 312,62';
+/** « 1,8 » — une mesure en g/s, à une décimale. */
+function fmtGPerS(v: number): string {
+  return v.toFixed(1).replace('.', ',');
+}
 
-// Nuage fluidité × temps : fluide (gauche) = rapide (bas). Corrélation nette.
-const SCATTER: { x: number; y: number }[] = [
-  { x: 58, y: 52 },
-  { x: 70, y: 48 },
-  { x: 86, y: 60 },
-  { x: 98, y: 56 },
-  { x: 112, y: 66 },
-  { x: 126, y: 62 },
-  { x: 140, y: 72 },
-  { x: 152, y: 68 },
-  { x: 166, y: 78 },
-  { x: 180, y: 74 },
-  { x: 194, y: 84 },
-  { x: 208, y: 80 },
-  { x: 222, y: 92 },
-  { x: 236, y: 88 },
-  { x: 250, y: 98 },
-  { x: 264, y: 104 },
-  { x: 276, y: 100 },
-  { x: 288, y: 112 },
-];
+/**
+ * Trace du résiduel dans le temps, mise à l'échelle sur ce qui a été MESURÉ.
+ * L'échelle est donc propre à la séance : deux séances ne se superposent pas, et
+ * c'est voulu — une échelle commune inventerait une comparaison.
+ */
+function tracePoints(points: readonly FlowPoint[], maxResidual: number): string {
+  if (points.length === 0 || maxResidual <= 0) return '';
+  const first = points[0].elapsedMs;
+  const span = points[points.length - 1].elapsedMs - first;
+  if (span <= 0) return '';
+  return points
+    .map((p) => {
+      const x = ((p.elapsedMs - first) / span) * TRACE_W;
+      const y = TRACE_H - (p.jerkResidual / maxResidual) * TRACE_H;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+}
 
-export function FlowViz() {
-  const blink = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
-        Animated.timing(blink, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ])
+export function FlowViz({ points }: { points: readonly FlowPoint[] }) {
+  const moyenne = meanResidualGPerS(points);
+
+  // Aucune mesure : on le dit. Un 0 se lirait comme une conduite parfaitement
+  // continue, soit l'exact contraire de la vérité.
+  if (points.length === 0 || moyenne === null) {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.statusLabel}>Cohérence du flow</Text>
+        <Text style={styles.vide}>
+          Pas encore de mesure pour cette séance. Le jerk se calcule sur les trames de télémétrie :
+          il apparaîtra dès qu&apos;une séance en aura déposé.
+        </Text>
+      </View>
     );
-    loop.start();
-    return () => loop.stop();
-  }, [blink]);
+  }
+
+  const bins = jerkDistribution(points);
+  const maxResidual = points.reduce((m, p) => (p.jerkResidual > m ? p.jerkResidual : m), 0);
+  const maxCount = bins.reduce((m, b) => (b.count > m ? b.count : m), 0);
+  const trace = tracePoints(points, maxResidual);
+  const binW = bins.length > 0 ? HIST_W / bins.length : 0;
 
   return (
     <View>
-      {/* Instrument : statut + héros + traces de jerk. */}
       <View style={styles.card}>
         <View style={styles.status}>
-          <View style={styles.statusLeft}>
-            <Animated.View style={[styles.dotLive, { opacity: blink }]} />
-            <Text style={styles.statusLabel}>Cohérence du flow</Text>
-          </View>
-          <Text style={styles.statusRight}>JERK · 18 TOURS</Text>
+          <Text style={styles.statusLabel}>Cohérence du flow</Text>
+          <Text style={styles.statusRight}>{`JERK RÉSIDUEL · ${points.length} POINTS`}</Text>
         </View>
 
+        {/* La mesure, nommée. Pas un score : une grandeur avec son unité. */}
         <View style={styles.hero}>
-          <Text style={styles.heroNum}>1:42.8</Text>
-          <Text style={styles.heroLabel}>TOUR LE PLUS FLUIDE = LE PLUS RAPIDE</Text>
+          <Text style={styles.heroNum}>{fmtGPerS(moyenne)}</Text>
+          <Text style={styles.heroUnit}>g/s</Text>
         </View>
+        <Text style={styles.heroLabel}>JERK MOYEN NON EXPLIQUÉ PAR LA TRAJECTOIRE</Text>
 
-        <Text style={styles.cap}>Tour le plus rapide vs tour le plus haché · un tour complet</Text>
-        <Svg width="100%" height={130} viewBox="0 0 320 130">
-          {/* Ligne médiane de référence : filet fin. */}
-          <Line x1={0} y1={65} x2={320} y2={65} stroke={theme.palette.line} strokeWidth={1} />
-          {/* Tour haché — série de référence en crème atténué (jonctions arrondies, pas du bruit). */}
-          <Polyline
-            points={JAGGED}
-            fill="none"
-            stroke="rgba(245,245,247,0.55)"
-            strokeWidth={1.5}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          {/* Tour rapide — série de flow principale (crème), halo puis trait net. */}
-          <Polyline
-            points={SMOOTH}
-            fill="none"
-            stroke={CREAM}
-            strokeWidth={5}
-            opacity={0.16}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-          <Polyline
-            points={SMOOTH}
-            fill="none"
-            stroke={CREAM}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-          />
-        </Svg>
-        <View style={styles.legend}>
-          <Legend color={CREAM} label="Tour le + rapide (1:42.8)" />
-          <Legend color="rgba(154,154,163,0.6)" label="Tour le + haché (1:45.1)" />
-        </View>
-      </View>
-      <Text style={styles.hint}>↑ moins de pics = transitions plus douces</Text>
-
-      {/* Nuage fluidité × temps : la corrélation douceur → vitesse. */}
-      <View style={styles.card}>
-        <Text style={styles.cap}>Fluidité × temps au tour · vos 18 tours</Text>
-        <Svg width="100%" height={150} viewBox="0 0 300 150">
-          {/* Axes : filets fins (même grammaire que les autres viz). */}
-          <Line x1={34} y1={12} x2={34} y2={124} stroke={theme.palette.line} strokeWidth={1} />
-          <Line x1={34} y1={124} x2={288} y2={124} stroke={theme.palette.line} strokeWidth={1} />
-          <SvgText
-            x={10}
-            y={70}
-            fill={theme.palette.creamMute}
-            fontFamily={theme.fonts.mono}
-            fontSize={8}
-            transform="rotate(-90 10 70)"
-          >
-            temps tour
-          </SvgText>
-          <SvgText
-            x={120}
-            y={138}
-            fill={theme.palette.creamMute}
-            fontFamily={theme.fonts.mono}
-            fontSize={8}
-          >
-            ← plus fluide
-          </SvgText>
-          {/* Tendance : fluide (gauche) = rapide (bas) — ligne de référence en crème atténué. */}
+        <Text style={styles.cap}>Sa trace au fil de la séance</Text>
+        <Svg width="100%" height={TRACE_H + 10} viewBox={`0 0 ${TRACE_W} ${TRACE_H + 10}`}>
           <Line
-            x1={46}
-            y1={44}
-            x2={278}
-            y2={110}
-            stroke="rgba(154,154,163,0.40)"
-            strokeWidth={2}
-            strokeDasharray="4 4"
-            strokeLinecap="round"
+            x1={0}
+            y1={TRACE_H}
+            x2={TRACE_W}
+            y2={TRACE_H}
+            stroke={theme.palette.line}
+            strokeWidth={1}
           />
-          {/* Les 18 tours — nuage de données principal (crème). */}
-          {SCATTER.map((p, i) => (
-            <Circle key={i} cx={p.x} cy={p.y} r={3.5} fill={CREAM} opacity={0.85} />
-          ))}
-          {/* Meilleur tour, le plus fluide — halo crème (emphase de la donnée). */}
-          <Circle cx={70} cy={48} r={10} fill={CREAM} opacity={0.16} />
-          <Circle
-            cx={70}
-            cy={48}
-            r={5}
-            fill="none"
-            stroke={CREAM}
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-          <SvgText x={78} y={46} fill={CREAM} fontFamily={theme.fonts.mono} fontSize={8}>
-            1:42.8
-          </SvgText>
+          {trace ? (
+            <>
+              <Polyline
+                points={trace}
+                fill="none"
+                stroke={CREAM}
+                strokeWidth={5}
+                opacity={0.16}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+              <Polyline
+                points={trace}
+                fill="none"
+                stroke={CREAM}
+                strokeWidth={1.6}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            </>
+          ) : null}
         </Svg>
+        <Text style={styles.echelle}>{`sommet de l'échelle : ${fmtGPerS(maxResidual)} g/s`}</Text>
       </View>
-    </View>
-  );
-}
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <View style={styles.legw}>
-      <View style={[styles.sw, { backgroundColor: color }]} />
-      <Text style={styles.legwText}>{label}</Text>
+      {bins.length > 0 && maxCount > 0 ? (
+        <View style={styles.card}>
+          <Text style={styles.cap}>Où la variation se concentre</Text>
+          <Svg width="100%" height={HIST_H + 10} viewBox={`0 0 ${HIST_W} ${HIST_H + 10}`}>
+            {bins.map((b, i) => {
+              const h = (b.count / maxCount) * HIST_H;
+              return (
+                <Rect
+                  key={b.binStart}
+                  x={i * binW + 1}
+                  y={HIST_H - h}
+                  width={Math.max(1, binW - 2)}
+                  height={h}
+                  fill={CREAM}
+                  opacity={0.55}
+                />
+              );
+            })}
+            <Line
+              x1={0}
+              y1={HIST_H}
+              x2={HIST_W}
+              y2={HIST_H}
+              stroke={theme.palette.line}
+              strokeWidth={1}
+            />
+          </Svg>
+          <Text style={styles.echelle}>
+            {`de 0 à ${fmtGPerS(bins[bins.length - 1].binStart)} g/s · effectifs bruts`}
+          </Text>
+        </View>
+      ) : null}
+
+      <Text style={styles.hint}>
+        Une mesure, pas une note. Aucun seuil ne dit ce qui serait « fluide » : il émergera des
+        séances réelles.
+      </Text>
     </View>
   );
 }
@@ -212,80 +193,59 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
     paddingHorizontal: theme.spacing.xs,
   },
-  statusLeft: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-  dotLive: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    // Pastille décorative : neutre, sans lueur or (R1 — or réservé à la donnée).
-    backgroundColor: theme.palette.creamMute,
-  },
   statusLabel: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 10,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase',
-    color: theme.palette.creamMute,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    color: theme.palette.cream,
   },
   statusRight: {
     fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
-    color: theme.palette.faint,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
+    color: theme.palette.creamMute,
   },
-  hero: { alignItems: 'center', marginBottom: theme.spacing.lg },
+  hero: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   heroNum: {
-    fontFamily: theme.fonts.monoMedium,
+    fontFamily: theme.fonts.mono,
     fontSize: 40,
-    lineHeight: 42,
-    letterSpacing: -0.4,
     color: theme.palette.cream,
-    // Lueur crème tempérée (« Ferrari minimaliste » : ≤ 0.36). Or réservé au chrono.
-    textShadowColor: 'rgba(245,245,247,0.34)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 16,
+  },
+  heroUnit: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.body,
+    color: theme.palette.creamMute,
   },
   heroLabel: {
     fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 1.6,
-    color: theme.palette.creamMute,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  cap: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1.5,
     color: theme.palette.creamMute,
     marginBottom: theme.spacing.md,
   },
-  legend: {
-    flexDirection: 'row',
-    gap: theme.spacing.lg,
-    marginTop: theme.spacing.sm,
-    paddingTop: theme.spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: theme.palette.line,
-  },
-  legw: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  sw: { width: 14, height: 3, borderRadius: 2 },
-  legwText: {
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  cap: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
     color: theme.palette.creamMute,
+    marginBottom: theme.spacing.xs,
+  },
+  echelle: {
+    fontFamily: theme.fonts.mono,
+    fontSize: theme.fontSize.eyebrow,
+    letterSpacing: 1,
+    color: theme.palette.creamMute,
+  },
+  vide: {
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.sm,
   },
   hint: {
-    textAlign: 'center',
-    fontFamily: theme.fonts.mono,
-    fontSize: 8.5,
-    letterSpacing: 0.4,
+    fontFamily: theme.fonts.body,
+    fontSize: theme.fontSize.small,
+    lineHeight: theme.fontSize.small * 1.5,
     color: theme.palette.creamMute,
-    opacity: 0.7,
-    marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.sm,
   },
 });
