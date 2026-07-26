@@ -11,12 +11,13 @@
  */
 
 import { type ReactNode, memo } from 'react';
-import { View } from 'react-native';
+import { Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 
 import { theme } from '@/theme/v2';
 
 import { getCircuitViewBox } from './projection';
+import { estHauteSaintonge } from '@/lib/circuitTopology';
 
 export interface CircuitMapProps {
   /** Layers SVG composés (TrackLayer, CornersLayer, etc.). */
@@ -33,6 +34,19 @@ export interface CircuitMapProps {
    * passant getCornerViewBox(cornerIndex).
    */
   viewBox?: string;
+  /**
+   * Le circuit de la séance affichée.
+   *
+   * Cette carte n'a QU'UNE géométrie : Haute Saintonge (tracé Beltoise). Quand
+   * ce nom est fourni et désigne un autre circuit, la carte refuse de dessiner
+   * et le dit — sinon elle peindrait la forme de Beltoise, ses sept pastilles à
+   * leurs coordonnées, et une trajectoire projetée depuis une origine située à
+   * des centaines de kilomètres, le tout sous le nom d'un autre circuit.
+   *
+   * Laisser ce champ absent conserve l'ancien comportement : c'est une DETTE,
+   * pas un choix. Les appelants qui connaissent leur circuit doivent le passer.
+   */
+  circuitName?: string | null;
 }
 
 export const CircuitMap = memo(function CircuitMap({
@@ -41,8 +55,43 @@ export const CircuitMap = memo(function CircuitMap({
   background = theme.palette.card2,
   borderRadius = 12,
   viewBox: viewBoxOverride,
+  circuitName,
 }: CircuitMapProps) {
   const viewBox = viewBoxOverride ?? getCircuitViewBox();
+
+  // Circuit déclaré et différent de celui dont nous avons la géométrie : on ne
+  // dessine rien, et on explique. Un tracé faux se lit comme un tracé vrai.
+  if (circuitName !== undefined && !estHauteSaintonge(circuitName)) {
+    return (
+      <View
+        style={{
+          width: '100%',
+          height,
+          backgroundColor: background,
+          borderRadius,
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 24,
+        }}
+      >
+        <Text
+          style={{
+            fontFamily: theme.fonts.body,
+            fontSize: theme.fontSize.small,
+            lineHeight: theme.fontSize.small * 1.5,
+            color: theme.palette.creamMute,
+            textAlign: 'center',
+          }}
+        >
+          {circuitName
+            ? `Le tracé de ${circuitName} n'est pas encore disponible.`
+            : "Le circuit de cette séance n'est pas identifié : aucun tracé n'est affiché."}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View
       style={{

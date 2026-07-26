@@ -295,6 +295,7 @@ function DebriefBody({
               selectedIndex={dominant.segmentIndex}
               headline={dominant.headline}
               height={320}
+              circuitName={data.circuitName ?? null}
             />
           </View>
         </View>
@@ -343,16 +344,20 @@ function TrackPanel({
   selectedIndex,
   headline,
   height,
+  circuitName,
 }: {
   trajectory: TrajectoryPoint[] | null;
   zoneByIndex: Record<number, MarginZone>;
   selectedIndex: number | null;
   headline: string;
   height: number;
+  /** Le circuit de la séance : la carte refuse de dessiner un autre tracé. */
+  circuitName: string | null;
 }) {
   return (
     <View>
       <CoachPreset
+        circuitName={circuitName}
         trajectory={trajectory ?? undefined}
         zoneByIndex={zoneByIndex}
         selectedIndex={selectedIndex}
