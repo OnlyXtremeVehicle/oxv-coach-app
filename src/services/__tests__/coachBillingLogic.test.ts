@@ -29,10 +29,31 @@ describe('computeInvoiceTotals', () => {
     expect(t.vatNote).toBeNull();
   });
 
-  it('assujetti sans taux valide → 0 % (pas de TVA fantôme)', () => {
+  it('assujetti sans taux exploitable → taux INCONNU, jamais un 0 % affiché', () => {
     const t = computeInvoiceTotals(10000, 'assujetti', null);
+    // `null` signifie « inconnu », pas « zéro ». C'est ce qui permet à
+    // issueInvoice de REFUSER l'émission au lieu d'imprimer « TVA (0 %) » sur un
+    // document légal.
+    expect(t.vatRate).toBeNull();
     expect(t.vatAmount).toBe(0);
     expect(t.amountTotal).toBe(10000);
+  });
+
+  it('le taux venu de la base en CHAÎNE est bien pris en compte (piège PostgREST)', () => {
+    // `coach_profiles.vat_rate` est une colonne `numeric` : PostgREST la rend en
+    // chaîne au runtime. L'ancien test `typeof vatRate === 'number'` échouait
+    // donc, et une facture de 1 000 € sortait à 0 € de TVA.
+    const t = computeInvoiceTotals(100000, 'assujetti', '20.00' as unknown as number);
+    expect(t.vatRate).toBe(20);
+    expect(t.vatAmount).toBe(20000);
+    expect(t.amountTotal).toBe(120000);
+  });
+
+  it('un taux aberrant est refusé plutôt qu’appliqué', () => {
+    expect(computeInvoiceTotals(10000, 'assujetti', 0).vatRate).toBeNull();
+    expect(computeInvoiceTotals(10000, 'assujetti', -5).vatRate).toBeNull();
+    expect(computeInvoiceTotals(10000, 'assujetti', 250).vatRate).toBeNull();
+    expect(computeInvoiceTotals(10000, 'assujetti', 'abc' as unknown as number).vatRate).toBeNull();
   });
 
   it('montant négatif ramené à 0 (honnêteté)', () => {

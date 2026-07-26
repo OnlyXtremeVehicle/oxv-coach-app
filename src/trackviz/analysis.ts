@@ -157,10 +157,42 @@ function analyzeSegment(
   };
 }
 
+/**
+ * Au-delà de cette distance au tracé, un point n'est pas sur ce circuit.
+ *
+ * Une sortie de piste à Haute Saintonge se compte en dizaines de mètres ; 200 m
+ * est donc large pour du roulage réel, et sans ambiguïté pour un autre circuit
+ * (Valence est à plus de 600 km).
+ */
+const DISTANCE_MAX_SUR_TRACE_M = 200;
+
+/** Médiane, robuste aux quelques points aberrants d'un début d'enregistrement. */
+function mediane(valeurs: number[]): number {
+  if (valeurs.length === 0) return 0;
+  const t = [...valeurs].sort((a, b) => a - b);
+  const i = Math.floor(t.length / 2);
+  return t.length % 2 === 0 ? (t[i - 1] + t[i]) / 2 : t[i];
+}
+
 export function analyzeTrackVizSession(
   recordingSamples: TrackVizRecordingSample[]
 ): TrackVizAnalysisResult {
   const samples = normalizeTrackVizSamples(recordingSamples);
+
+  // GARDE-FOU MULTI-CIRCUIT. Toute cette analyse projette les points GPS sur le
+  // tracé de Haute Saintonge, seul circuit dont la géométrie est connue ici. Pour
+  // une séance courue ailleurs, le map-matching renvoie une erreur latérale
+  // énorme, `trajectoryUsage` sature à 1, et la marge tombe mécaniquement — on
+  // publiait alors des marges de SÉCURITÉ fabriquées, présentées au pilote comme
+  // des mesures. On refuse plutôt que de produire un chiffre faux : l'appelant
+  // n'enregistre rien et la séance reste « non analysée », ce qui est vrai.
+  const erreurMediane = mediane(withNumbers(samples.map((s) => s.lateral_error_m)));
+  if (samples.length > 0 && erreurMediane > DISTANCE_MAX_SUR_TRACE_M) {
+    throw new Error(
+      `Séance hors du tracé connu (écart médian ${Math.round(erreurMediane)} m). ` +
+        "Seule la géométrie de Haute Saintonge est disponible : aucune marge n'est calculable ici."
+    );
+  }
 
   const segments = HAUTE_SAINTONGE_SEGMENTS.map((segment) =>
     analyzeSegment(segment, samples)

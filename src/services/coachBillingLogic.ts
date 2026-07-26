@@ -40,9 +40,37 @@ export function computeInvoiceTotals(
       vatNote: VAT_FRANCHISE_NOTE,
     };
   }
-  const rate = typeof vatRate === 'number' && Number.isFinite(vatRate) && vatRate > 0 ? vatRate : 0;
+  const rate = tauxTvaUtilisable(vatRate);
+  if (rate === null) {
+    // Coach assujetti sans taux exploitable. Imprimer « TVA (0 %) 0,00 € » sur un
+    // document légal serait une valeur FABRIQUÉE, et le coach remettrait à son
+    // client une facture amputée sans le savoir. On renvoie donc un taux NUL au
+    // sens de « inconnu » — l'émission doit refuser (voir issueInvoice).
+    return {
+      amountHt: ht,
+      vatAmount: 0,
+      amountTotal: ht,
+      vatRate: null,
+      vatNote: null,
+    };
+  }
   const vat = Math.round((ht * rate) / 100);
   return { amountHt: ht, vatAmount: vat, amountTotal: ht + vat, vatRate: rate, vatNote: null };
+}
+
+/**
+ * Le taux de TVA exploitable, ou null.
+ *
+ * PostgREST rend les colonnes `numeric` en CHAÎNE au runtime, alors que le type
+ * TypeScript annonce `number` : `typeof vatRate === 'number'` était donc faux
+ * pour un coach ayant renseigné 20 %, et le taux retombait silencieusement à 0.
+ * On coerce ici plutôt que de faire confiance au type.
+ */
+export function tauxTvaUtilisable(brut: unknown): number | null {
+  if (brut === null || brut === undefined || brut === '') return null;
+  const n = typeof brut === 'number' ? brut : Number(brut);
+  if (!Number.isFinite(n) || n <= 0 || n > 100) return null;
+  return n;
 }
 
 /** Numéro de facture affiché : « 2027-0001 » (séquence par coach, allouée serveur). */

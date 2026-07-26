@@ -75,7 +75,11 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
   const keyMoments = computeKeyMoments({
     laps: laps.map((l) => ({
       lapNumber: l.lap_number,
-      durationSeconds: l.duration_seconds,
+      // `duration_seconds` est une colonne `numeric` : PostgREST la rend en
+      // CHAÎNE au runtime. Sans coercition, « 102.700 » < « 95.200 » est VRAI
+      // (comparaison lexicographique) et le tour le plus LENT devenait la
+      // référence. Même piège que dans le comparateur du pilote.
+      durationSeconds: Number(l.duration_seconds),
       isOutlap: l.is_outlap,
       isInlap: l.is_inlap,
     })),

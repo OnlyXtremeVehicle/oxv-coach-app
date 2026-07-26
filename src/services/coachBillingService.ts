@@ -18,6 +18,7 @@ import {
   formatInvoiceNumber,
   isAcceptablePaymentLink,
   linesAmountHtCents,
+  tauxTvaUtilisable,
   type VatRegime,
 } from '@/services/coachBillingLogic';
 import { listMyPilots } from '@/services/coachService';
@@ -68,7 +69,10 @@ export async function getMyBillingProfile(): Promise<CoachBillingProfile | null>
     billingSiret: r.billing_siret ?? null,
     billingLegalForm: r.billing_legal_form ?? null,
     vatRegime: (r.vat_regime as VatRegime) ?? 'franchise',
-    vatRate: r.vat_rate ?? null,
+    // `vat_rate` est une colonne `numeric` : PostgREST la rend en CHAÎNE au
+    // runtime malgré le type TypeScript. On coerce ici, à la frontière, une
+    // seule fois — sans quoi tout calcul en aval traite « 20.00 » comme absent.
+    vatRate: tauxTvaUtilisable(r.vat_rate),
   };
 }
 
@@ -191,6 +195,14 @@ export async function issueInvoice(input: {
   // Source unique du HT (même calcul que l'aperçu écran, cf. coachBillingLogic).
   const amountHtCents = linesAmountHtCents(input.lines);
   const totals = computeInvoiceTotals(amountHtCents, profile.vatRegime, profile.vatRate);
+
+  // Une facture est un document légal : on refuse de l'émettre plutôt que d'y
+  // imprimer une TVA à zéro pour un coach assujetti. Le régime dit qu'il y a de
+  // la TVA, le taux est inexploitable : c'est un profil à compléter, pas une
+  // facture à sortir.
+  if (profile.vatRegime !== 'franchise' && totals.vatRate === null) {
+    return { ok: false, error: 'vat_rate_missing' };
+  }
 
   const { data: seq, error: rpcError } = await supabase.rpc(
     'next_coach_invoice_number' as never,
