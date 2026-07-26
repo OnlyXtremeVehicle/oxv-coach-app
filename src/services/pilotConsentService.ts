@@ -183,28 +183,54 @@ export async function setLiveSharing(
   assignmentId: string,
   on: boolean
 ): Promise<{ ok: boolean; error?: string }> {
-  const { error } = await supabase
+  let requete = supabase
     .from('coach_pilots')
     .update({ live_sharing_at: on ? new Date().toISOString() : null })
     .eq('id', assignmentId);
+
+  // ALLUMER exige que le consentement de coaching soit posé : le partage en
+  // direct est le consentement le plus étroit, il ne peut pas exister sans son
+  // parent. La condition est portée par la REQUÊTE, pas par une lecture
+  // préalable — deux appels laisseraient une fenêtre entre la vérification et
+  // l'écriture. ÉTEINDRE, lui, n'est jamais conditionné : on ne refuse pas un
+  // retrait.
+  if (on) requete = requete.not('pilot_consent_at', 'is', null);
+
+  const { data, error } = await requete.select('id');
   if (error) {
     console.warn('[OXV][pilot] setLiveSharing :', error.message);
     return { ok: false, error: error.message };
+  }
+  if (on && (data ?? []).length === 0) {
+    // Aucune ligne touchée alors qu'on allumait : le consentement de coaching
+    // n'est pas posé. On le dit plutôt que de renvoyer un succès qui laisserait
+    // l'interface afficher un partage inexistant.
+    return { ok: false, error: 'consentement_coaching_absent' };
   }
   return { ok: true };
 }
 
 /**
- * Retire le consentement (revient à null). Le coach cesse immédiatement
- * de voir les données du pilote (RLS is_coach_of vérifie consent NOT NULL).
- * L'assignation reste en base — admin peut désactiver pour nettoyer.
+ * Retire le consentement de coaching. Le coach cesse immédiatement de voir les
+ * données du pilote (la RLS `is_coach_of` exige `pilot_consent_at` non nul).
+ * L'assignation reste en base — l'administration peut la désactiver pour nettoyer.
+ *
+ * LE PARTAGE EN DIRECT TOMBE AVEC LUI, et c'est le cœur de cette fonction.
+ * `live_sharing_at` est un consentement PLUS ÉTROIT, imbriqué dans celui-ci : on
+ * ne partage pas sa télémétrie en temps réel avec un coach à qui l'on vient de
+ * retirer le droit de lire quoi que ce soit.
+ *
+ * Sans cette remise à null, la colonne survivait au retrait. Le pilote qui
+ * redonnait plus tard son consentement de coaching voyait le direct SE RALLUMER
+ * SEUL — un consentement distinct, réactivé sans qu'il l'ait jamais redemandé.
+ * Il doit être accordé à nouveau, explicitement.
  */
 export async function revokeConsent(
   assignmentId: string
 ): Promise<{ ok: boolean; error?: string }> {
   const { error } = await supabase
     .from('coach_pilots')
-    .update({ pilot_consent_at: null })
+    .update({ pilot_consent_at: null, live_sharing_at: null })
     .eq('id', assignmentId);
 
   if (error) {

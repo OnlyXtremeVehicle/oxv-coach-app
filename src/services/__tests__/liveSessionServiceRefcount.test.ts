@@ -107,10 +107,24 @@ function emit(topic: string, event: string, payload: unknown): void {
 
 const vivant = (topic: string) => ctrl().channels.has(topic);
 
+/**
+ * La fermeture d'un topic est DIFFÉRÉE de 2 s (cf. liveSessionService) : sans ce
+ * délai, un abonné qui revient pendant la fermeture récupérait l'instance
+ * mourante — `channel()` dédoublonne par topic — et restait « hors ligne ». Les
+ * tests avancent donc l'horloge quand ils veulent constater la fermeture réelle.
+ */
+const laisserFermer = () => jest.advanceTimersByTime(2500);
+
 beforeEach(() => {
+  jest.useFakeTimers();
   const c = ctrl();
   c.channels.clear();
   c.removed.length = 0;
+});
+
+afterEach(() => {
+  jest.clearAllTimers();
+  jest.useRealTimers();
 });
 
 describe('topic live:session — refcompté', () => {
@@ -136,6 +150,7 @@ describe('topic live:session — refcompté', () => {
     expect(biosB).toHaveLength(1);
 
     unsubB();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
     expect(ctrl().removed).toContain(topic);
   });
@@ -164,6 +179,7 @@ describe('topic live:session — refcompté', () => {
     expect(vivant(topic)).toBe(true);
 
     unsubB();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
   });
 
@@ -196,6 +212,7 @@ describe('topic live:session — refcompté', () => {
     expect(recu).toHaveLength(1);
 
     unsub();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
   });
 
@@ -207,8 +224,46 @@ describe('topic live:session — refcompté', () => {
     emetteur.close(); // ne doit pas libérer une seconde référence
     expect(vivant(topic)).toBe(true);
     unsub();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
   });
+});
+
+it('rouvrir PENDANT la fermeture reprend le canal chaud, et ne fige pas sur « hors ligne »', () => {
+  const topic = 'live:session:S9';
+  let statutA: boolean | null = null;
+  let statutB: boolean | null = null;
+
+  // Le coach ouvre la fiche direct, puis la ferme.
+  const unsubA = subscribePilotStream('S9', {
+    onFrame: () => {},
+    onStatus: (v) => (statutA = v),
+  });
+  expect(statutA).toBe(true);
+  unsubA();
+
+  // Le canal n'est PAS encore fermé : le délai n'est pas écoulé.
+  expect(vivant(topic)).toBe(true);
+
+  // Il rouvre aussitôt — le geste le plus banal qui soit.
+  const unsubB = subscribePilotStream('S9', {
+    onFrame: () => {},
+    onStatus: (v) => (statutB = v),
+  });
+
+  // Avant correction : `channel()` dédoublonnant par topic, B recevait
+  // l'instance mourante, son SUBSCRIBED n'arrivait jamais, et l'écran restait
+  // « Hors ligne » sur un flux pourtant vivant.
+  expect(statutB).toBe(true);
+  expect(ctrl().channels.size).toBe(1);
+
+  // Et la fermeture programmée a bien été annulée : le canal survit au délai.
+  laisserFermer();
+  expect(vivant(topic)).toBe(true);
+
+  unsubB();
+  laisserFermer();
+  expect(vivant(topic)).toBe(false);
 });
 
 describe('topic live:board — refcompté aussi', () => {
@@ -221,6 +276,7 @@ describe('topic live:board — refcompté aussi', () => {
     unsubA();
     expect(vivant(topic)).toBe(true);
     unsubB();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
   });
 
@@ -232,10 +288,12 @@ describe('topic live:board — refcompté aussi', () => {
     expect(ctrl().channels.size).toBe(2);
 
     unsubBoard();
+    laisserFermer();
     expect(vivant('live:session:S8')).toBe(true);
     expect(vivant('live:board:S8')).toBe(false);
 
     unsubCoach();
+    laisserFermer();
     expect(vivant('live:session:S8')).toBe(false);
   });
 
@@ -250,6 +308,7 @@ describe('topic live:board — refcompté aussi', () => {
     // n'accepte que la sortie de stripHealth.
     expect(Object.keys(ch?.sent[0].payload as object)).not.toContain('hrBpm');
     emetteur.close();
+    laisserFermer();
     expect(vivant(topic)).toBe(false);
   });
 });

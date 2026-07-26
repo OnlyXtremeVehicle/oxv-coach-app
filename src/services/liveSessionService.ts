@@ -54,9 +54,59 @@ export type Unsubscribe = () => void;
 // client). La clé de présence est celle du 1er appelant (pilote → pilotId).
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// LIBÉRATION DIFFÉRÉE — pourquoi on ne ferme pas tout de suite
+//
+// `supabase.removeChannel()` est ASYNCHRONE : l'instance passe par un état de
+// fermeture avant de mourir. Or `channel(topic)` DÉDOUBLONNE par topic. Si l'on
+// retirait l'entrée de la table aussitôt, un abonné arrivant pendant la
+// fermeture — fermer puis rouvrir une fiche direct, ce qui arrive tout le temps —
+// recevrait l'instance MOURANTE : son `.subscribe()` ne rendrait jamais son
+// SUBSCRIBED, et l'écran resterait « Hors ligne » sur un flux pourtant vivant.
+//
+// On laisse donc le canal vivre un court instant après le départ du dernier
+// abonné. Si quelqu'un revient dans cette fenêtre, on annule la fermeture et on
+// réutilise le canal encore chaud. Sinon, il est fermé pour de bon.
+// ---------------------------------------------------------------------------
+
+const DELAI_FERMETURE_MS = 2000;
+
+interface TopicLiberable {
+  channel: RealtimeChannel;
+  refs: number;
+  /** Fermeture programmée, annulable si un abonné revient. */
+  fermeture?: ReturnType<typeof setTimeout> | null;
+}
+
+/** Décrémente, et programme la fermeture quand plus personne n'écoute. */
+function libererApresDelai<T extends TopicLiberable>(table: Map<string, T>, cle: string): void {
+  const state = table.get(cle);
+  if (!state) return;
+  state.refs -= 1;
+  if (state.refs > 0) return;
+  if (state.fermeture) return;
+  state.fermeture = setTimeout(() => {
+    // Un abonné a pu revenir puis repartir : on revérifie avant de fermer.
+    const courant = table.get(cle);
+    if (!courant || courant !== state || courant.refs > 0) return;
+    supabase.removeChannel(courant.channel);
+    table.delete(cle);
+  }, DELAI_FERMETURE_MS);
+}
+
+/** Annule une fermeture programmée : le canal est encore chaud, on le reprend. */
+function annulerFermeture(state: TopicLiberable): void {
+  if (state.fermeture) {
+    clearTimeout(state.fermeture);
+    state.fermeture = null;
+  }
+}
+
 interface RosterTopicState {
   channel: RealtimeChannel;
   refs: number;
+  /** Fermeture différée en cours, annulable si un abonné revient. */
+  fermeture?: ReturnType<typeof setTimeout> | null;
   track: RosterMeta | null;
   syncCbs: Set<() => void>;
 }
@@ -64,7 +114,11 @@ const rosters = new Map<string, RosterTopicState>();
 
 function ensureRoster(coachId: string, preferredKey: string): RosterTopicState {
   const existing = rosters.get(coachId);
-  if (existing) return existing;
+  if (existing) {
+    // Le canal était peut-être en cours de fermeture : on la rappelle.
+    annulerFermeture(existing);
+    return existing;
+  }
   const channel = supabase.channel(rosterTopic(coachId), {
     config: { private: true, presence: { key: preferredKey } },
   });
@@ -82,13 +136,7 @@ function ensureRoster(coachId: string, preferredKey: string): RosterTopicState {
 }
 
 function releaseRoster(coachId: string): void {
-  const state = rosters.get(coachId);
-  if (!state) return;
-  state.refs -= 1;
-  if (state.refs <= 0) {
-    supabase.removeChannel(state.channel);
-    rosters.delete(coachId);
-  }
+  libererApresDelai(rosters, coachId);
 }
 
 /** COACH — s'abonne à la présence des pilotes en piste QUI LUI ONT CONSENTI (son roster). */
@@ -166,6 +214,8 @@ export function joinRoster(coachId: string, meta: RosterMeta): Unsubscribe {
 interface SessionTopicState {
   channel: RealtimeChannel;
   refs: number;
+  /** Fermeture différée en cours, annulable si un abonné revient. */
+  fermeture?: ReturnType<typeof setTimeout> | null;
   /** Statut courant, rejoué à tout abonné qui arrive après le SUBSCRIBED. */
   subscribed: boolean;
   frameCbs: Set<(frame: LiveFrame) => void>;
@@ -176,7 +226,11 @@ const sessions = new Map<string, SessionTopicState>();
 
 function ensureSession(sessionId: string): SessionTopicState {
   const existing = sessions.get(sessionId);
-  if (existing) return existing;
+  if (existing) {
+    // Le canal était peut-être en cours de fermeture : on la rappelle.
+    annulerFermeture(existing);
+    return existing;
+  }
 
   const channel: RealtimeChannel = supabase.channel(sessionChannel(sessionId), {
     config: { private: true },
@@ -207,13 +261,7 @@ function ensureSession(sessionId: string): SessionTopicState {
 }
 
 function releaseSession(sessionId: string): void {
-  const state = sessions.get(sessionId);
-  if (!state) return;
-  state.refs -= 1;
-  if (state.refs <= 0) {
-    supabase.removeChannel(state.channel);
-    sessions.delete(sessionId);
-  }
+  libererApresDelai(sessions, sessionId);
 }
 
 /** COACH — s'abonne au flux live d'un pilote (canal privé, RLS binôme consenti). */
@@ -313,6 +361,8 @@ export function openPilotBroadcast(sessionId: string): {
 interface BoardTopicState {
   channel: RealtimeChannel;
   refs: number;
+  /** Fermeture différée en cours, annulable si un abonné revient. */
+  fermeture?: ReturnType<typeof setTimeout> | null;
   /** Statut courant, rejoué à tout abonné qui arrive après le SUBSCRIBED. */
   subscribed: boolean;
   boardCbs: Set<(event: BoardEvent) => void>;
@@ -322,7 +372,11 @@ const boards = new Map<string, BoardTopicState>();
 
 function ensureBoard(sessionId: string): BoardTopicState {
   const existing = boards.get(sessionId);
-  if (existing) return existing;
+  if (existing) {
+    // Le canal était peut-être en cours de fermeture : on la rappelle.
+    annulerFermeture(existing);
+    return existing;
+  }
 
   const channel: RealtimeChannel = supabase.channel(boardTopic(sessionId), {
     config: { private: true },
@@ -352,13 +406,7 @@ function ensureBoard(sessionId: string): BoardTopicState {
 }
 
 function releaseBoard(sessionId: string): void {
-  const state = boards.get(sessionId);
-  if (!state) return;
-  state.refs -= 1;
-  if (state.refs <= 0) {
-    supabase.removeChannel(state.channel);
-    boards.delete(sessionId);
-  }
+  libererApresDelai(boards, sessionId);
 }
 
 /**
