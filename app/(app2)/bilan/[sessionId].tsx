@@ -355,12 +355,13 @@ export default function BilanScreen() {
                       <ListRow
                         label={m.title}
                         sublabel={m.fact}
-                        // TODO_L3_TARGET — DETTE CONSIGNÉE (V2-L1, bloc 5) :
-                        // cible SPEC = /data/session/[id] avec ANCRE sur ce
-                        // moment. L'écran n'existe pas avant le lot L3 (Data) ;
-                        // en attendant, la porte Data placeholder. Le lot L3
-                        // DOIT rebrancher cette cible (grep TODO_L3_TARGET).
-                        onPress={() => router.navigate('/(app2)/data' as never)}
+                        // Lot L6 — la séance s'ouvre bien dans Data. L'ANCRE sur
+                        // ce moment précis reste impossible : l'écran de séance
+                        // ne lit que l'identifiant, pas de position. Le pilote
+                        // arrive donc en haut de SA séance, pas sur ce moment.
+                        onPress={() =>
+                          router.navigate(`/(app2)/data/session/${sessionId}` as never)
+                        }
                       />
                     </View>
                   </View>
@@ -520,11 +521,8 @@ export default function BilanScreen() {
               <ListRow
                 label="Ouvrir dans Data"
                 divider={false}
-                // TODO_L3_TARGET — DETTE CONSIGNÉE (V2-L1, footer bilan) :
-                // cible SPEC = /data/session/[id] (la séance ouverte dans
-                // Data). Porte Data placeholder tant que le lot L3 n'a pas
-                // livré l'écran — à rebrancher au lot L3.
-                onPress={() => router.navigate('/(app2)/data' as never)}
+                // Lot L6 — dette levée : la séance elle-même, plus la porte Data.
+                onPress={() => router.navigate(`/(app2)/data/session/${sessionId}` as never)}
                 accessibilityLabel="Ouvrir cette séance dans Data"
               />
             </View>

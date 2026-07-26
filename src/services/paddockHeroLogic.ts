@@ -9,6 +9,13 @@
  * Doctrine : l'app DÉCRIT la situation (hint factuel), elle ne dirige pas le
  * pilotage. Le hint situe (« votre séance vient de se terminer »), il ne commande
  * pas. En piste (S5/S6), aucune action : silence. Vouvoiement, pas d'emoji.
+ *
+ * Lot L6 — les destinations pointent désormais vers l'arbre V2. Trois écrans v1
+ * distincts (trace du jour, débrief, bilan) sont servis par le même
+ * `/(app2)/bilan/[sessionId]`, qui les réunit en sections. Les libellés restent
+ * ceux de la maquette et n'ont pas été retouchés : ils disent au pilote POURQUOI
+ * il y va, la section atteinte diffère selon le moment. À confirmer avec Gabin si
+ * « Découvrir ma trace du jour » doit viser une ancre plus précise.
  */
 
 import type { PilotState } from '@/types/state';
@@ -26,8 +33,14 @@ export interface PaddockHeroInput {
   recentSessionId: string | null;
 }
 
-function withSession(base: string, sessionId: string | null): string {
-  return sessionId ? `${base}?sessionId=${sessionId}` : base;
+/**
+ * La séance ouverte dans l'arbre V2. Le bilan V2 prend l'identifiant en segment
+ * de chemin (`bilan/[sessionId]`) et non en paramètre de requête : sans
+ * identifiant, `/(app2)/bilan` n'est pas une route valide. On renvoie alors vers
+ * la liste des séances, qui est vraie plutôt que cassée.
+ */
+function sessionHref(sessionId: string | null): string {
+  return sessionId ? `/(app2)/bilan/${sessionId}` : '/(app2)/data';
 }
 
 /**
@@ -45,14 +58,14 @@ export function decidePaddockAction(input: PaddockHeroInput): PaddockAction | nu
     case 'S4_anticipation':
       return {
         label: 'Préparer ma session',
-        href: '/(app)/preparation',
+        href: '/(app2)/rec/preparation',
         hint: 'Votre prochaine session approche.',
       };
 
     case 'S7_paddock':
       return {
         label: 'Mon Pass du jour',
-        href: '/(app)/pass-oxv',
+        href: '/(app2)/club/pass',
         hint: 'Vous êtes au circuit.',
       };
 
@@ -60,19 +73,19 @@ export function decidePaddockAction(input: PaddockHeroInput): PaddockAction | nu
       return hasRecentSession
         ? {
             label: 'Découvrir ma trace du jour',
-            href: withSession('/(app)/trace', recentSessionId),
+            href: sessionHref(recentSessionId),
             hint: 'Votre séance vient de se terminer.',
           }
-        : { label: 'Préparer ma session', href: '/(app)/session', hint: null };
+        : { label: 'Préparer ma session', href: '/(app2)/rec', hint: null };
 
     case 'S9_decantation':
       return hasRecentSession
         ? {
             label: 'Mon débrief',
-            href: withSession('/(app)/debrief', recentSessionId),
+            href: sessionHref(recentSessionId),
             hint: 'À tête reposée.',
           }
-        : { label: 'Préparer ma session', href: '/(app)/session', hint: null };
+        : { label: 'Préparer ma session', href: '/(app2)/rec', hint: null };
 
     // Repos, attente, et tout état hors flux : dernier bilan si présent, sinon
     // la première préparation.
@@ -83,9 +96,9 @@ export function decidePaddockAction(input: PaddockHeroInput): PaddockAction | nu
         ? {
             // Copie maquette §7.1 : « Lire le bilan » (sec, direct).
             label: 'Lire le bilan',
-            href: withSession('/(app)/bilan', recentSessionId),
+            href: sessionHref(recentSessionId),
             hint: null,
           }
-        : { label: 'Préparer ma première session', href: '/(app)/session', hint: null };
+        : { label: 'Préparer ma première session', href: '/(app2)/rec', hint: null };
   }
 }

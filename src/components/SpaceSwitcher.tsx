@@ -22,7 +22,7 @@ type Space = 'pilot' | 'coach' | 'admin';
 // rôle canoniques (roleColors, décision fondateur 2026-07-06) : pilote neutre
 // (jamais l'or), coach rouge de marque, admin cyan.
 const TARGETS: { space: Space; label: string; href: string; color: string }[] = [
-  { space: 'pilot', label: 'Espace pilote', href: '/(app)', color: roleColors.pilot },
+  { space: 'pilot', label: 'Espace pilote', href: '/(app2)', color: roleColors.pilot },
   { space: 'coach', label: 'Espace coach', href: '/(coach)', color: roleColors.coach },
   { space: 'admin', label: 'Espace admin', href: '/(admin)', color: roleColors.admin },
 ];

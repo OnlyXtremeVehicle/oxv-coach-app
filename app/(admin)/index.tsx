@@ -163,7 +163,7 @@ export default function AdminHubScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Sortir de l'admin"
-            onPress={() => router.replace('/(app)')}
+            onPress={() => router.replace('/(app2)' as never)}
             hitSlop={theme.hitSlop}
             style={({ pressed }) => ({
               paddingVertical: theme.spacing.sm,

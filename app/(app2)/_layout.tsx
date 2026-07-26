@@ -60,12 +60,10 @@ export default function App2Layout() {
   const pilotState = useAppStateStore((s) => s.state);
   const central = useCentralButtonState();
 
-  // Garde de build à retirer au lot L6 (bascule) : tant que la V2 n'est pas
-  // livrée, le groupe est réellement orphelin en production (deep links
-  // compris) — redirection vers le routeur racine.
-  if (!__DEV__) {
-    return <Redirect href="/" />;
-  }
+  // Lot L6 — bascule faite. Le garde de build qui renvoyait ce groupe vers la
+  // racine hors développement a été retiré : c'est désormais (app2) qui reçoit
+  // le pilote depuis app/index.tsx. Le conserver produirait une boucle de
+  // redirection en production (/ → /(app2) → / → …).
 
   // Si la session expire en cours d'usage, le store passe automatiquement en
   // 'unauthenticated' via onAuthStateChange → on renvoie au login (même

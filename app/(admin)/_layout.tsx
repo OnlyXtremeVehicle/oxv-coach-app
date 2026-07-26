@@ -15,7 +15,7 @@ export default function AdminLayout() {
   const profile = useAuthStore((s) => s.profile);
 
   if (!profile?.is_admin) {
-    return <Redirect href="/(app)" />;
+    return <Redirect href={'/(app2)' as never} />;
   }
 
   return (

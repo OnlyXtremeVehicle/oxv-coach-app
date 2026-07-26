@@ -374,7 +374,7 @@ function RitualBanner({ text, onDismiss }: { text: string; onDismiss: () => void
     <GestureDetector gesture={pan}>
       <Animated.View style={[styles.ritualBanner, swipeStyle]}>
         <PressScale
-          onPress={() => router.navigate('/(app)/preparation' as never)}
+          onPress={() => router.navigate('/(app2)/rec/preparation' as never)}
           accessibilityLabel={`${text} Ouvrir la préparation`}
           // Écarter le bandeau n'existe qu'au swipe (Gesture.Pan) : un
           // utilisateur de lecteur d'écran ne peut pas produire ce geste.
@@ -521,7 +521,7 @@ function HeroEntreJournees({
             </Text>
           ) : null}
           <PressScale
-            onPress={() => router.navigate('/(app)/preparation' as never)}
+            onPress={() => router.navigate('/(app2)/rec/preparation' as never)}
             accessibilityLabel="Préparer la journée"
             // Pastille ~29 pts de haut : hitSlop 8 porte la cible à 45.
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}

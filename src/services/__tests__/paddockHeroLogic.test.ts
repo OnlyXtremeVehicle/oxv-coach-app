@@ -11,44 +11,59 @@ describe('decidePaddockAction', () => {
     expect(decidePaddockAction(input({ state: 'S6_roulage' }))).toBeNull();
   });
 
-  it('séance fraîche (S8) → Trace du jour', () => {
+  it('séance fraîche (S8) → la séance, dans l arbre V2', () => {
     const a = decidePaddockAction(input({ state: 'S8_atterrissage' }));
     expect(a?.label).toContain('trace du jour');
-    expect(a?.href).toBe('/(app)/trace?sessionId=sess-1');
+    expect(a?.href).toBe('/(app2)/bilan/sess-1');
     expect(a?.hint).toBeTruthy();
   });
 
-  it('lendemain (S9) → débrief', () => {
+  it('lendemain (S9) → débrief, même écran de séance V2', () => {
     const a = decidePaddockAction(input({ state: 'S9_decantation' }));
-    expect(a?.href).toBe('/(app)/debrief?sessionId=sess-1');
+    expect(a?.href).toBe('/(app2)/bilan/sess-1');
   });
 
   it('au circuit (S7) → Pass du jour', () => {
     const a = decidePaddockAction(input({ state: 'S7_paddock' }));
-    expect(a?.href).toBe('/(app)/pass-oxv');
+    expect(a?.href).toBe('/(app2)/club/pass');
   });
 
   it('anticipation (S4) → préparation', () => {
     const a = decidePaddockAction(input({ state: 'S4_anticipation' }));
-    expect(a?.href).toBe('/(app)/preparation');
+    expect(a?.href).toBe('/(app2)/rec/preparation');
   });
 
   it('repos (S10) avec séance → dernier bilan', () => {
     const a = decidePaddockAction(input({ state: 'S10_repos' }));
-    expect(a?.href).toBe('/(app)/bilan?sessionId=sess-1');
+    expect(a?.href).toBe('/(app2)/bilan/sess-1');
   });
 
   it('aucune séance → préparer (jamais un lien de bilan vide)', () => {
     const a = decidePaddockAction(input({ state: 'S10_repos', hasRecentSession: false }));
-    expect(a?.href).toBe('/(app)/session');
+    expect(a?.href).toBe('/(app2)/rec');
     expect(a?.label).toContain('Préparer');
   });
 
-  it('séance fraîche sans id → trace sans param (pas de ?sessionId=null)', () => {
+  it('séance fraîche sans id → liste des séances, jamais une route à segment vide', () => {
     const a = decidePaddockAction(
       input({ state: 'S8_atterrissage', hasRecentSession: true, recentSessionId: null })
     );
-    expect(a?.href).toBe('/(app)/trace');
+    expect(a?.href).toBe('/(app2)/data');
+  });
+
+  it('aucune destination ne pointe plus vers l arbre v1', () => {
+    for (const state of ALL_PILOT_STATES) {
+      for (const recentSessionId of ['sess-1', null]) {
+        for (const hasRecentSession of [true, false]) {
+          const a = decidePaddockAction(input({ state, recentSessionId, hasRecentSession }));
+          if (!a) continue;
+          expect(a.href.startsWith('/(app2)/')).toBe(true);
+          // Un segment de chemin vide produirait une route morte.
+          expect(a.href).not.toMatch(/\/$/);
+          expect(a.href).not.toContain('//');
+        }
+      }
+    }
   });
 
   it('chaque état hors piste produit une action (jamais de cul-de-sac)', () => {

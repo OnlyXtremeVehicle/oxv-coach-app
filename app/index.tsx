@@ -100,7 +100,11 @@ export default function IndexRoute() {
     return <Redirect href={'/(pro)' as never} />;
   }
 
-  return <Redirect href="/(app)" />;
+  // Lot L6 — le pilote arrive désormais dans l'arbre V2. L'arbre v1 reste en
+  // place et atteignable : (app2) y renvoie encore volontairement pour trois
+  // écrans non portés (planificateur de route, import de tracé, carte trophée).
+  // Il sera retiré après la validation terrain, pas avant.
+  return <Redirect href={'/(app2)' as never} />;
 }
 
 const s = {

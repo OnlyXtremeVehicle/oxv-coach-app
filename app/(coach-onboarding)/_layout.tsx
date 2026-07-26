@@ -17,7 +17,7 @@ export default function CoachOnboardingLayout() {
 
   if (!profile) return null;
   if (profile.role !== 'coach') {
-    return <Redirect href="/(app)" />;
+    return <Redirect href={'/(app2)' as never} />;
   }
 
   return (

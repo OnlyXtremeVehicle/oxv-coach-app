@@ -96,28 +96,31 @@ export default function RootLayout() {
           initiatorId?: string;
         }
       | undefined;
+    // Lot L6 — les notifications sont la seule porte d'entrée de l'app depuis
+    // l'extérieur : elles visent l'arbre V2 depuis la bascule. Les écrans v1
+    // debrief / session-media sont réunis dans /(app2)/bilan/[sessionId], qui
+    // les sert en sections.
     if (data?.type === 'debrief' && data.sessionId) {
       router.push({
-        pathname: '/(app)/debrief',
+        pathname: '/(app2)/bilan/[sessionId]',
         params: { sessionId: data.sessionId },
-      });
+      } as never);
     } else if (data?.type === 'session_reminder') {
-      router.push('/(app)');
+      router.push('/(app2)' as never);
     } else if (data?.type === 'media_ready' && data.sessionId) {
-      // Médias OXV disponibles pour une séance → galerie de cette séance (PR-68).
+      // Médias OXV disponibles → section SOUVENIRS du bilan de cette séance.
       router.push({
-        pathname: '/(app)/session-media/[sessionId]',
+        pathname: '/(app2)/bilan/[sessionId]',
         params: { sessionId: data.sessionId },
       } as never);
     } else if (data?.type === 'coach_annotation' && data.cornerIndex) {
-      // Note du coach : ouvrir le zoom virage concerné (avec sessionId si lié)
-      router.push({
-        pathname: '/(app)/virage',
-        params: {
-          index: String(data.cornerIndex),
-          sessionId: data.sessionId ?? '',
-        },
-      });
+      // Note du coach sur un virage. LIMITE CONNUE : l'écran de séance V2
+      // n'accepte que l'identifiant de séance, pas d'ancre virage — on ouvre
+      // donc la séance, le pilote descend jusqu'au virage. Sans identifiant de
+      // séance, on ouvre la liste plutôt qu'une route incomplète.
+      router.push(
+        (data.sessionId ? `/(app2)/data/session/${data.sessionId}` : '/(app2)/data') as never
+      );
     } else if (data?.type === 'session_analyzed' && data.pilotId) {
       // Côté coach : nouvelle session analysée pour un pilote suivi.
       // Ouvre le détail pilote — le coach voit la nouvelle session en
@@ -127,19 +130,20 @@ export default function RootLayout() {
         params: { id: data.pilotId },
       } as never);
     } else if (data?.type === 'coach_assigned') {
-      // Pilote tape la notif "Un coach vous suit" → ouvre l'écran consentement
-      router.push('/(app)/mon-coach' as never);
+      // Pilote tape la notif "Un coach vous suit" → onglet Mon coach, où se
+      // règlent les consentements.
+      router.push('/(app2)/club/coaching' as never);
     } else if (data?.type === 'pilot_consented') {
       // Coach tape la notif "Un pilote a consenti" → ouvre son hub
       router.push('/(coach)' as never);
     } else if (data?.type === 'friend_request') {
-      // Pilote tape la notif "X souhaite vous comparer" → ouvre la liste
-      // d'amis pour qu'il puisse accepter/décliner la demande.
-      router.push('/(app)/amis' as never);
+      // Pilote tape la notif "X souhaite vous comparer" → onglet Amis, pour
+      // accepter ou décliner la demande.
+      router.push('/(app2)/club/roulages?tab=amis' as never);
     } else if (data?.type === 'friend_accepted' && data.friendId) {
-      // Pilote tape la notif "X a accepté" → ouvre directement la vue
-      // côte à côte pour qu'il puisse comparer avec son copain.
-      router.push(`/(app)/cote-a-cote/${data.friendId}` as never);
+      // Pilote tape la notif "X a accepté" → la comparaison ouverte sur cet
+      // ami (le comparateur V2 lit le paramètre `friend`).
+      router.push(`/(app2)/data/comparer?friend=${data.friendId}` as never);
     }
   }, [lastNotifResponse, navState?.key]);
 

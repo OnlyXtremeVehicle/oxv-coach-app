@@ -18,7 +18,7 @@
 
 import { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { FlashList } from '@shopify/flash-list';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,7 +85,11 @@ export default function ClubRoulagesScreen() {
   const profile = useAuthStore((s) => s.profile);
   const roulages = useClubRoulages();
   const amis = useClubAmis(profile?.id ?? null);
-  const [tab, setTab] = useState(0);
+  // L'onglet est adressable : une notification « X souhaite vous comparer »
+  // doit ouvrir Amis, pas Roulages. Seule la valeur 'amis' est reconnue, toute
+  // autre valeur — ou son absence — laisse l'onglet par défaut.
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [tab, setTab] = useState(params.tab === 'amis' ? 1 : 0);
 
   const goTo = (index: number) => {
     if (index === tab) return;

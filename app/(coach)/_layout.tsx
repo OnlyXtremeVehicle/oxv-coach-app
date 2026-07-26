@@ -31,7 +31,7 @@ export default function CoachLayout() {
 
   if (!profile) return null;
   if (profile.role !== 'coach') {
-    return <Redirect href="/(app)" />;
+    return <Redirect href={'/(app2)' as never} />;
   }
 
   const stack = (

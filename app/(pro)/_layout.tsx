@@ -24,7 +24,7 @@ export default function ProPilotLayout() {
 
   if (!profile) return null;
   if (profile.role !== 'pro_pilot') {
-    return <Redirect href="/(app)" />;
+    return <Redirect href={'/(app2)' as never} />;
   }
 
   const showTabBar = shouldShowProTabBar(pathname);
