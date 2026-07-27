@@ -45,9 +45,16 @@ export interface WeatherData {
   precipitationProbabilityPct: number | null;
 
   // Conditions
-  weatherCode: number;
-  weatherLabel: string;
-  weatherIcon: string;
+  //
+  // A-WEATHER-1 s'applique ICI AUSSI, et c'est le repli le plus trompeur du
+  // fichier : le code météo absent était converti en `0`, et 0 vaut « Ciel
+  // dégagé » chez Open-Meteo. L'application annonçait donc un ciel dégagé
+  // qu'elle n'avait jamais mesuré — à un pilote qui prépare sa séance.
+  //
+  // Un ciel inconnu se dit inconnu. Les trois champs tombent ensemble.
+  weatherCode: number | null;
+  weatherLabel: string | null;
+  weatherIcon: string | null;
 
   // Sun
   isDay: boolean;
@@ -157,8 +164,9 @@ export async function fetchCurrentWeather(
     const current = json.current || {};
     const daily = json.daily || {};
 
-    const code = current.weather_code ?? 0;
-    const info = getWeatherInfo(code);
+    // Le code ABSENT reste absent. Le convertir en 0 annoncerait « Ciel dégagé ».
+    const code: number | null = current.weather_code ?? null;
+    const info = code !== null ? getWeatherInfo(code) : null;
 
     const data: WeatherData = {
       latitude: lat,
@@ -180,8 +188,8 @@ export async function fetchCurrentWeather(
       precipitationProbabilityPct: daily.precipitation_probability_max?.[0] ?? null,
 
       weatherCode: code,
-      weatherLabel: info.label,
-      weatherIcon: info.icon,
+      weatherLabel: info?.label ?? null,
+      weatherIcon: info?.icon ?? null,
 
       isDay: current.is_day === 1,
       sunriseAt: daily.sunrise?.[0] ?? null,
@@ -291,9 +299,15 @@ export async function fetchSessionWeather(sessionId: string): Promise<WeatherDat
         windGustKmh: n(row.wind_gust_kmh),
         precipitationMm: n(row.precipitation_mm),
         precipitationProbabilityPct: n(row.precipitation_probability_pct),
-        weatherCode: nReq(row.weather_code),
-        weatherLabel: s(row.weather_label),
-        weatherIcon: getWeatherInfo(nReq(row.weather_code)).icon,
+        // Même règle à la RELECTURE qu'à la source : `nReq` rendait 0 sur une
+        // colonne nulle, donc « Ciel dégagé », et `s` rendait une chaîne vide.
+        // La fabrication passait par cette seconde porte.
+        weatherCode: n(row.weather_code),
+        weatherLabel: row.weather_label ?? null,
+        weatherIcon:
+          row.weather_code !== null && row.weather_code !== undefined
+            ? getWeatherInfo(Number(row.weather_code)).icon
+            : null,
         isDay: true,
         sunriseAt: null,
         sunsetAt: null,

@@ -408,7 +408,9 @@ export default function CarnetScreen() {
   // une mesure ABSENTE (null) n'invente PAS de chip — pas de « 0 °C » fabriqué.
   const conditionChips: ConditionChip[] = [];
   if (todayWeather) {
-    const sky = todayWeather.weatherLabel.trim();
+    // Ciel INCONNU : pas de chip. Le libellé est nullable depuis qu'un code
+    // météo absent ne se convertit plus en « Ciel dégagé ».
+    const sky = todayWeather.weatherLabel?.trim() ?? '';
     if (sky) conditionChips.push({ key: 'ciel', label: sky, icon: <CloudIcon /> });
     if (todayWeather.temperatureC != null) {
       conditionChips.push({

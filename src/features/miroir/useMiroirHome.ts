@@ -243,7 +243,10 @@ async function fetchNextDayWeather(nextDay: NextTrackDay): Promise<MiroirWeather
   // météo. Mesure ABSENTE (null) → on OMET le chip entièrement plutôt que de
   // fabriquer un « 0° » (Math.round(null) === 0). Jamais un degré inventé.
   if (!w || w.temperatureC === null) return null;
-  return { temperatureC: w.temperatureC, label: w.weatherLabel };
+  // Le libellé de ciel est lui aussi nullable depuis qu'un code météo absent ne
+  // se convertit plus en « Ciel dégagé ». Une température mesurée sans ciel
+  // connu reste affichable : c'est le degré qui porte le chip, pas le ciel.
+  return { temperatureC: w.temperatureC, label: w.weatherLabel ?? '' };
 }
 
 // ---------------------------------------------------------------------------
