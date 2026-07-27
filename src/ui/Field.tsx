@@ -18,8 +18,6 @@ import {
   Text,
   TextInput,
   View,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
@@ -68,11 +66,15 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
   const borderColor = error ? palette.red : focused ? palette.gold : palette.line;
   const count = typeof value === 'string' ? value.length : 0;
 
-  const handleFocus = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+  // Le type de l'événement est DÉRIVÉ de `TextInputProps` plutôt que nommé en
+  // dur : React Native 0.81 a renommé `NativeSyntheticEvent<TextInputFocusEventData>`
+  // en `FocusEvent` / `BlurEvent`, et un nom figé casse à chaque renommage.
+  // Dériver suit la bibliothèque sans rien à reprendre.
+  const handleFocus: NonNullable<TextInputProps['onFocus']> = (e) => {
     setFocused(true);
     onFocus?.(e);
   };
-  const handleBlur = (e: NativeSyntheticEvent<TextInputFocusEventData>) => {
+  const handleBlur: NonNullable<TextInputProps['onBlur']> = (e) => {
     setFocused(false);
     onBlur?.(e);
   };

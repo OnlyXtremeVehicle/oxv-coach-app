@@ -89,7 +89,6 @@ export default function ClubPartenairesScreen() {
         <FlashList
           data={partenaires.cards}
           keyExtractor={(c) => c.id}
-          estimatedItemSize={200}
           contentContainerStyle={{
             paddingHorizontal: space.xl,
             paddingTop: space.md,

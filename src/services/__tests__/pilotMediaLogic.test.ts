@@ -12,7 +12,7 @@ import { parsePilotMedia } from '../pilotMediaService';
 // Le service importe le client Supabase (throw sans env) et des modules Expo
 // natifs ; on les mocke — seul le parse pur est testé ici.
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
-jest.mock('expo-file-system', () => ({}));
+jest.mock('expo-file-system/legacy', () => ({}));
 jest.mock('expo-image-picker', () => ({}));
 
 describe('parsePilotMedia (jsonb tolérant)', () => {

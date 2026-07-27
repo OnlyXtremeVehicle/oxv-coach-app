@@ -231,7 +231,6 @@ function TrouverTab({
     <FlashList
       data={coaching.coaches}
       keyExtractor={(c) => c.coachId}
-      estimatedItemSize={220}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{ paddingBottom: bottomInset + space.xl }}
       renderItem={({ item, index }) => (

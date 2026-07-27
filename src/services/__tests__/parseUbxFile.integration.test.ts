@@ -13,7 +13,7 @@
 
 const fixtureCache: { bytes: Uint8Array | null } = { bytes: null };
 
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   getInfoAsync: jest.fn(async () => ({ exists: true, size: fixtureCache.bytes?.length ?? 0 })),
   readAsStringAsync: jest.fn(async () => {
     if (!fixtureCache.bytes) throw new Error('Fixture non initialisée');

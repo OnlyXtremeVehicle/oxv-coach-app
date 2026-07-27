@@ -487,7 +487,6 @@ export default function BilanScreen() {
                   horizontal
                   data={souvenirPhotos}
                   keyExtractor={(item: SessionMediaItem) => item.id}
-                  estimatedItemSize={SOUVENIR_CELL + space.sm}
                   showsHorizontalScrollIndicator={false}
                   ListFooterComponent={
                     data.videoOverlayEnabled ? (

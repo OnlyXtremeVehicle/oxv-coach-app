@@ -13,7 +13,7 @@
  */
 
 import { Buffer } from 'buffer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { supabase } from '@/lib/supabase';
 

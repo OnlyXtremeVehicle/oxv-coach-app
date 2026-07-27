@@ -84,8 +84,6 @@ import {
 } from '@/features/miroir/signatureLogic';
 import { useSignature } from '@/features/miroir/useSignature';
 
-/** Largeur estimée d'une cellule mois (RadarQdi s 140 + padding + marge). */
-const MONTH_CELL_ESTIMATE = 176;
 /** Hauteur de la bande Empreinte (mini-radar + libellé + padding carte). */
 const MONTH_STRIP_HEIGHT = 212;
 
@@ -314,7 +312,6 @@ export default function SignatureScreen() {
                     data={monthly}
                     keyExtractor={(m) => m.monthKey}
                     renderItem={renderMonth}
-                    estimatedItemSize={MONTH_CELL_ESTIMATE}
                     showsHorizontalScrollIndicator={false}
                     extraData={effectiveSelection}
                     contentContainerStyle={styles.monthStripContent}

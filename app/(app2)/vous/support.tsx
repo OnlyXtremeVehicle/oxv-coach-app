@@ -184,7 +184,6 @@ export default function SupportScreen() {
       <FlashList
         data={sup.tickets}
         keyExtractor={(t) => t.id}
-        estimatedItemSize={76}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingHorizontal: space.xl,

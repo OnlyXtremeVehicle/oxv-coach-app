@@ -396,7 +396,6 @@ function VisiblePanel({
           <FlashList
             data={items}
             keyExtractor={(it) => it.id}
-            estimatedItemSize={60}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: bottomInset + space.sm }}
             renderItem={({ item, index }) => (
@@ -447,7 +446,6 @@ function TerritoryList({
       <FlashList
         data={items}
         keyExtractor={(it) => it.id}
-        estimatedItemSize={60}
         showsVerticalScrollIndicator={false}
         renderItem={({ item, index }) => (
           <ListRow
@@ -513,7 +511,6 @@ function RoutesTab({
     <FlashList
       data={routes}
       keyExtractor={(r) => r.id}
-      estimatedItemSize={150}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={{
         paddingHorizontal: space.xl,

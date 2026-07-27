@@ -14,7 +14,7 @@
  */
 
 // eslint-disable-next-line import/no-unresolved -- expo-file-system installé, résolu au build natif
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 
 import { supabase } from '@/lib/supabase';

@@ -404,7 +404,6 @@ export default function DataHubScreen() {
               data={filtered}
               renderItem={renderItem}
               keyExtractor={(item) => item.id}
-              estimatedItemSize={96}
               ListHeaderComponent={bigHeader}
               showsVerticalScrollIndicator={false}
               onScroll={onScroll}

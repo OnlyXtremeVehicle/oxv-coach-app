@@ -139,7 +139,6 @@ export default function ReserverCatalogScreen() {
         <FlashList
           data={state.days}
           keyExtractor={(d) => d.sessionId}
-          estimatedItemSize={210}
           showsVerticalScrollIndicator={false}
           refreshing={state.refreshing}
           onRefresh={refresh}

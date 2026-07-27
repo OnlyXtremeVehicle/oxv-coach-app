@@ -472,7 +472,6 @@ export default function PreparationScreen() {
                   horizontal
                   data={shownMembers}
                   keyExtractor={(m: AttendanceMember) => m.userId}
-                  estimatedItemSize={AVATAR + space.lg}
                   showsHorizontalScrollIndicator={false}
                   renderItem={({ item }: { item: AttendanceMember }) => (
                     <AvatarCell member={item} />

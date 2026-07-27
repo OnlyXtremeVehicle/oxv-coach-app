@@ -206,7 +206,6 @@ export default function GarageScreen() {
           <FlashList
             data={entries}
             keyExtractor={(e) => e.vehicle.id}
-            estimatedItemSize={222}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
               paddingHorizontal: space.xl,

@@ -12,7 +12,7 @@
  * Ton OXV : vouvoiement, sec, sans emoji.
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Buffer } from 'buffer';
 
 import { supabase } from '@/lib/supabase';

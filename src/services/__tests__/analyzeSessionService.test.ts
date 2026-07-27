@@ -12,7 +12,7 @@
  */
 
 // Mocks chargés AVANT l'import du module sous test
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   getInfoAsync: jest.fn(),
   readAsStringAsync: jest.fn(),
   EncodingType: { Base64: 'base64' },

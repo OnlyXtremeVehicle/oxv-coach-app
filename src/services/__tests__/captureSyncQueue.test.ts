@@ -57,7 +57,7 @@ function sbCtrl(): SbCtrl {
   return g.__OXV_SB__;
 }
 
-jest.mock('expo-file-system', () => {
+jest.mock('expo-file-system/legacy', () => {
   const g = globalThis as any;
   if (!g.__OXV_FS__) g.__OXV_FS__ = new Map<string, string>();
   const files: Map<string, string> = g.__OXV_FS__;
@@ -199,7 +199,7 @@ jest.mock('@/services/telemetryStorage', () => ({
   }),
 }));
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { RACEBOX_PROTOCOL } from '@/types/telemetry';
 

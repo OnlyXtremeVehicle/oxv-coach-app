@@ -170,7 +170,6 @@ function RoulagesTab({ roulages, bottomInset }: { roulages: ClubRoulages; bottom
     <FlashList
       data={history}
       keyExtractor={(item) => item.invitationId}
-      estimatedItemSize={72}
       contentContainerStyle={{
         paddingHorizontal: space.xl,
         paddingTop: space.md,
@@ -383,7 +382,6 @@ function AmisTab({ amis, bottomInset }: { amis: ClubAmis; bottomInset: number })
         <FlashList
           data={accepted}
           keyExtractor={(f) => f.friendshipId}
-          estimatedItemSize={92}
           contentContainerStyle={{
             paddingHorizontal: space.xl,
             paddingTop: space.md,

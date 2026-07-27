@@ -253,7 +253,6 @@ export default function GalerieScreen() {
           data={g.rows}
           keyExtractor={(row) => `${row.kind}-${row.sessionId}`}
           getItemType={(row) => row.kind}
-          estimatedItemSize={240}
           stickyHeaderIndices={g.stickyHeaderIndices}
           renderItem={renderRow}
           showsVerticalScrollIndicator={false}

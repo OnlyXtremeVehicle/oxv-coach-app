@@ -97,7 +97,7 @@
  */
 
 import { Buffer } from 'buffer';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { captureException } from '@/lib/sentry';
 import { supabase } from '@/lib/supabase';

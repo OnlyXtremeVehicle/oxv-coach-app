@@ -318,7 +318,6 @@ function NotesPanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset: numb
         <FlashList
           data={carnet.notes}
           keyExtractor={(item) => item.note.id}
-          estimatedItemSize={140}
           contentContainerStyle={{
             paddingHorizontal: space.xl,
             paddingTop: space.md,
@@ -420,7 +419,6 @@ function IntentionsPanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset:
       <FlashList
         data={carnet.intentions}
         keyExtractor={(item) => item.intention.id}
-        estimatedItemSize={104}
         contentContainerStyle={{
           paddingHorizontal: space.xl,
           paddingTop: space.md,
@@ -491,7 +489,6 @@ function ObjectifsPanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset: 
       <FlashList
         data={carnet.goals}
         keyExtractor={(item) => item.id}
-        estimatedItemSize={96}
         contentContainerStyle={{
           paddingHorizontal: space.xl,
           paddingTop: space.md,
@@ -547,7 +544,6 @@ function ProgrammePanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset: 
       <FlashList
         data={carnet.cycles}
         keyExtractor={(item) => item.id}
-        estimatedItemSize={180}
         contentContainerStyle={{
           paddingHorizontal: space.xl,
           paddingTop: space.md,
