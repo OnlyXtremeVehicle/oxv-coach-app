@@ -103,5 +103,10 @@
     "sharp": "^0.34.5",
     "ts-jest": "^29.4.11",
     "typescript": "~5.8.3"
+  },
+  "overrides": {
+    "react-native-health": {
+      "@expo/config-plugins": "~10.1.1"
+    }
   }
 }
