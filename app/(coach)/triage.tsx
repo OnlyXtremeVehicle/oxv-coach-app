@@ -45,11 +45,16 @@ import { Card } from '@/ui/Card';
 import { RoleBadge } from '@/ui/RoleBadge';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, spacing, fonts, fontSize, dataColors } = theme;
 
 export default function CoachTriageScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le
+  // nom d'une séance courue ailleurs. `resolving` est replié dans l'état de
+  // l'écran pour qu'aucun message d'absence ne clignote pendant la requête.
+  const { circuitName, resolving: circuitResolving } = useSessionCircuitName(params.sessionId);
   const sessionId = params.sessionId;
 
   const { width } = useWindowDimensions();
@@ -106,13 +111,14 @@ export default function CoachTriageScreen() {
   // Légende de marge seulement si au moins un virage est qualifié (honnêteté).
   const hasMargins = useMemo(() => corners.some((c) => c.marginZone != null), [corners]);
 
-  const state: ScreenState = loading
-    ? 'loading'
-    : error
-      ? 'error'
-      : !sessionId || corners.length === 0
-        ? 'empty'
-        : 'nominal';
+  const state: ScreenState =
+    loading || circuitResolving
+      ? 'loading'
+      : error
+        ? 'error'
+        : !sessionId || corners.length === 0
+          ? 'empty'
+          : 'nominal';
 
   return (
     <Screen>
@@ -155,6 +161,7 @@ export default function CoachTriageScreen() {
                 suffit à situer ; les couleurs de zone marquent où c'est serré. */}
             <View style={isConsole ? { flex: 1.05 } : undefined}>
               <PilotPreset
+                circuitName={circuitName}
                 animate
                 trajectory={trajectory ?? undefined}
                 zoneByIndex={zoneByIndex}

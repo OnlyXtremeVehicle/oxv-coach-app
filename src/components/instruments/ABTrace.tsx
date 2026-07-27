@@ -63,9 +63,18 @@ export interface ABTraceProps {
   note?: string;
   /** Message de l'EmptyState quand les frames manquent. */
   emptyMessage?: string;
+  /**
+   * Circuit COMMUN aux deux séances. OBLIGATOIRE.
+   *
+   * Ce composant reste présentatif : c'est l'appelant qui sait si A et B ont
+   * bien couru au même endroit. Superposer deux séances de circuits différents
+   * n'aurait aucun sens, et l'appelant doit alors passer `null`.
+   */
+  circuitName: string | null;
 }
 
 export function ABTrace({
+  circuitName,
   sessionA,
   sessionB,
   labelA = 'Référence A',
@@ -113,6 +122,7 @@ export function ABTrace({
   return (
     <View>
       <TrackStage
+        circuitName={circuitName}
         mode="ab"
         trajectoryA={a}
         trajectoryB={b}

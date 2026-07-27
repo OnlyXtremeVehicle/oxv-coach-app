@@ -59,6 +59,7 @@ import { Button } from '@/ui/Button';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatDateShort, formatDelta, formatLapTime } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
 
@@ -219,6 +220,10 @@ function buildPhaseDraws(reading: TrajectoryReading, points: CornerTrajectoryPoi
 
 export default function VirageScreen() {
   const params = useLocalSearchParams<{ index?: string; sessionId?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le
+  // nom d'une séance courue ailleurs. `resolving` est replié dans l'état de
+  // l'écran pour qu'aucun message d'absence ne clignote pendant la requête.
+  const { circuitName } = useSessionCircuitName(params.sessionId);
   const cornerIndex = Number(params.index ?? '1');
   const corner = getCorner(cornerIndex);
 
@@ -453,6 +458,7 @@ export default function VirageScreen() {
               style={s.graphPanel}
             >
               <CircuitMap
+                circuitName={circuitName}
                 viewBox={viewBox}
                 height={220}
                 background={GRAPH_BG}

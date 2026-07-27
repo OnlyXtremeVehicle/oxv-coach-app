@@ -39,13 +39,20 @@ export interface ScrubFrame {
 
 export interface LapScrubberProps {
   frames: ScrubFrame[];
+  /** Circuit de la séance affichée. OBLIGATOIRE — voir CircuitMap. */
+  circuitName: string | null;
   /** Affiche les g (mode détaillé). */
   showGs?: boolean;
   /** Hauteur de la mini-carte en pixels. */
   mapHeight?: number;
 }
 
-export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScrubberProps) {
+export function LapScrubber({
+  frames,
+  showGs = false,
+  mapHeight = 280,
+  circuitName,
+}: LapScrubberProps) {
   const [index, setIndex] = useState(0);
   const [barWidth, setBarWidth] = useState(0);
 
@@ -100,7 +107,7 @@ export function LapScrubber({ frames, showGs = false, mapHeight = 280 }: LapScru
   return (
     <View>
       {/* Mini-carte avec point courant superposé */}
-      <CircuitMap height={mapHeight}>
+      <CircuitMap height={mapHeight} circuitName={circuitName}>
         <TrackLayer animate={false} opacity={0.35} strokeWidth={4} />
         {trajectoryPoints.length > 1 ? (
           <TrajectoryLayer points={trajectoryPoints} colorMode="uniform" />

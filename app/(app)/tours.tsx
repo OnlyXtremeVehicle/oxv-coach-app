@@ -43,6 +43,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatLapTime } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 /** Écart au meilleur tour, compact façon maquette : « +0,42 » (virgule fr). */
 function formatDeltaCompact(deltaSeconds: number): string {
@@ -410,6 +411,9 @@ type Pt = { lat: number; lon: number; speed: number };
  *  frames de chaque tour en parallèle ; on écarte les tours sans position.
  *  Vide tant que telemetry_frames n'est pas alimentée (avant Valence). */
 function LapsBeam({ sessionId, laps }: { sessionId: string; laps: Lap[] }) {
+  // Ce sous-composant connaît sa séance : il déclare son propre circuit plutôt
+  // que de le recevoir en cascade.
+  const { circuitName } = useSessionCircuitName(sessionId);
   const [beam, setBeam] = useState<Pt[][]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -457,6 +461,7 @@ function LapsBeam({ sessionId, laps }: { sessionId: string; laps: Lap[] }) {
 
   return (
     <TrackStage
+      circuitName={circuitName}
       mode="beam"
       laps={beam}
       height={300}

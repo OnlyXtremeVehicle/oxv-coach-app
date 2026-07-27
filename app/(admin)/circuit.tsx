@@ -148,7 +148,7 @@ export default function CircuitInspectorScreen() {
 
         {/* Carte SVG — composition manuelle pour mode admin (toggle pace/zone) */}
         <View style={{ marginTop: theme.spacing.xl }}>
-          <CircuitMap height={360}>
+          <CircuitMap height={360} circuitName="Haute Saintonge">
             <TrackLayer animate={false} />
             <StartArrowLayer />
             <CornersLayer

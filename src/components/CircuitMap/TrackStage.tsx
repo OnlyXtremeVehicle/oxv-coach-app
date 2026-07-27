@@ -50,6 +50,12 @@ export interface TrackStageHeatPoint {
 
 export interface TrackStageProps {
   mode: TrackStageMode;
+  /**
+   * Circuit de la séance affichée. OBLIGATOIRE : la carte sous-jacente n'a
+   * qu'une géométrie, et un appelant qui l'ignore doit passer `null` plutôt
+   * que de laisser dessiner un tracé qui n'est pas le sien.
+   */
+  circuitName: string | null;
   /** Hauteur du cadre en pixels. */
   height?: number;
 
@@ -427,6 +433,7 @@ export function TrackStage({
   caption = null,
   spineColor = palette.gold,
   background = palette.night,
+  circuitName,
 }: TrackStageProps) {
   const vbStr = cornerApex ? getCornerViewBox(cornerApex, cornerRadiusM) : getCircuitViewBox();
   const [vx, vy, vw, vh] = vbStr.split(' ').map(Number);
@@ -441,6 +448,7 @@ export function TrackStage({
           background={background}
           borderRadius={radius.xl}
           viewBox={vbStr}
+          circuitName={circuitName}
         >
           <CockpitBackdrop x={vx} y={vy} w={vw} h={vh} />
 

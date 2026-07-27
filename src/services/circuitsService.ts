@@ -172,3 +172,31 @@ export async function fetchSessionCircuitCenterlineExact(
   if (!circuitId) return null;
   return fetchCircuitCenterline(circuitId);
 }
+
+/**
+ * NOM du circuit réel d'une séance. Pendant STRICT de
+ * `fetchSessionCircuitCenterlineExact` : aucun repli sur le circuit par défaut.
+ *
+ * `null` couvre trois cas que l'appelant n'a pas à distinguer, parce qu'ils
+ * appellent la même conduite — ne rien dessiner et le dire : séance sans
+ * `circuit_id`, circuit introuvable, ou lecture en erreur.
+ *
+ * Sert à armer la garde de `CircuitMap`. Cette garde existait déjà, mais son
+ * champ était OPTIONNEL et aucun appelant ne le passait : elle ne s'est jamais
+ * déclenchée. Une garde présente mais inerte rassure à tort.
+ */
+export async function fetchSessionCircuitName(sessionId: string): Promise<string | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const table = supabase.from('telemetry_sessions') as any;
+  const { data, error } = await table.select('circuit_id').eq('id', sessionId).maybeSingle();
+
+  const circuitId = !error && data?.circuit_id ? (data.circuit_id as string) : null;
+  if (!circuitId) return null;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const circuits = supabase.from('circuits') as any;
+  const { data: c, error: e2 } = await circuits.select('name').eq('id', circuitId).maybeSingle();
+
+  if (e2 || !c?.name) return null;
+  return c.name as string;
+}

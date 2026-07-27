@@ -47,6 +47,7 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { formatDateShort, formatLapTime } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
 
@@ -145,6 +146,13 @@ export default function CoteACoteScreen() {
   );
 
   const selectedTheirsRow = friendSessions.find((s) => s.sessionId === selectedTheirs);
+
+  // Les deux séances sont SUPERPOSÉES dans un seul tracé : leurs circuits doivent
+  // concorder. S'ils diffèrent — ou si l'un des deux est inconnu — la carte se
+  // tait. Superposer deux circuits différents ne dirait rien de vrai.
+  const { circuitName: circuitMine } = useSessionCircuitName(selectedMine);
+  const { circuitName: circuitTheirs } = useSessionCircuitName(selectedTheirs);
+  const circuitCommun = circuitMine !== null && circuitMine === circuitTheirs ? circuitMine : null;
   const myMetric = selectedMine ? (myMetrics[selectedMine] ?? null) : null;
 
   if (loading) {
@@ -209,6 +217,7 @@ export default function CoteACoteScreen() {
             {selectedMine && selectedTheirs ? (
               <View style={s.traceBlock}>
                 <ABTrace
+                  circuitName={circuitCommun}
                   sessionA={selectedMine}
                   sessionB={selectedTheirs}
                   labelA="Vous"

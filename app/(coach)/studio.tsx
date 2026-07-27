@@ -437,7 +437,7 @@ function TrajectoryPanel({
           {/* Même composition de couches que CoachPreset, mais le tracé du circuit
           se DESSINE à l'entrée (DrawInPath du kit — reduce-motion : rendu
           complet immédiat). Trajectoire, virages et couleurs : inchangés. */}
-          <CircuitMap height={height}>
+          <CircuitMap height={height} circuitName={circuitName}>
             <DrawInPath
               d={track.d}
               length={track.length}

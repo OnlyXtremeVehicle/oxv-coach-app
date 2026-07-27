@@ -54,6 +54,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { formatLapTime } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 // Fond de l'encart graphe — couleur maquette non tokenisée, même valeur que
 // l'encart du Zoom virage (virage.tsx, 07-zoom-virage.png).
@@ -109,6 +110,10 @@ function sliceCorner(
 
 export default function VirageComparerScreen() {
   const params = useLocalSearchParams<{ index?: string; sessionA?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le
+  // nom d'une séance courue ailleurs. `resolving` est replié dans l'état de
+  // l'écran pour qu'aucun message d'absence ne clignote pendant la requête.
+  const { circuitName } = useSessionCircuitName(params.sessionA);
   const cornerIndex = Number(params.index ?? '1');
   const corner = getCorner(cornerIndex);
 
@@ -360,6 +365,7 @@ export default function VirageComparerScreen() {
                   accessibilityLabel={`Tracés superposés du virage ${corner.index} : tour ${lapA} en or, tour ${lapB} en bleu, points d'apex marqués.`}
                 >
                   <CircuitMap
+                    circuitName={circuitName}
                     viewBox={viewBox}
                     height={240}
                     background={GRAPH_BG}

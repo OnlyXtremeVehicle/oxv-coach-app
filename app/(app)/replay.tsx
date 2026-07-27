@@ -45,6 +45,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatChronoTenths, formatLapTime } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 /** G en « fr » : 2 décimales, virgule, − U+2212, « — » si non mesuré. */
 function formatG(g: number | null | undefined): string {
@@ -64,6 +65,10 @@ function lapKindLabel(lap: Lap): string {
 
 export default function ReplayScreen() {
   const params = useLocalSearchParams<{ sessionId?: string; lapNumber?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le nom
+  // d'une séance courue ailleurs. `resolving` évite que « circuit non identifié »
+  // clignote le temps de la requête.
+  const { circuitName, resolving: circuitResolving } = useSessionCircuitName(params.sessionId);
   const [laps, setLaps] = useState<Lap[]>([]);
   const [selectedLap, setSelectedLap] = useState<number | null>(null);
   const [frames, setFrames] = useState<SessionFrame[]>([]);
@@ -131,15 +136,16 @@ export default function ReplayScreen() {
   );
 
   // États de l'écran (SPEC_BUILD §5) — un seul wrapper pour tours + frames.
-  const state: ScreenState = loadingLaps
-    ? 'loading'
-    : errorLaps
-      ? 'error'
-      : laps.length === 0
-        ? 'empty'
-        : loadingFrames
-          ? 'loading'
-          : 'nominal';
+  const state: ScreenState =
+    loadingLaps || circuitResolving
+      ? 'loading'
+      : errorLaps
+        ? 'error'
+        : laps.length === 0
+          ? 'empty'
+          : loadingFrames
+            ? 'loading'
+            : 'nominal';
 
   return (
     <Screen>
@@ -252,7 +258,7 @@ export default function ReplayScreen() {
           errorCause="Vos tours n'ont pas pu être chargés."
           onRetry={() => setReloadKey((k) => k + 1)}
         >
-          <ReplayStage frames={frames} showGs={level === 'detailed'} />
+          <ReplayStage frames={frames} showGs={level === 'detailed'} circuitName={circuitName} />
         </StateWrapper>
       </View>
     </Screen>
@@ -264,7 +270,16 @@ export default function ReplayScreen() {
  * vitesse dans la carte + scrubber manuel (chrono or) + pastilles ‹ ⏸ ›.
  * Aucune lecture automatique : la lecture ne part que sur geste du pilote.
  */
-function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boolean }) {
+function ReplayStage({
+  frames,
+  showGs,
+  circuitName,
+}: {
+  frames: SessionFrame[];
+  showGs: boolean;
+  /** Circuit de la séance — voir CircuitMap. Déclaré, jamais deviné. */
+  circuitName: string | null;
+}) {
   const [progress, setProgress] = useState(0);
   const [playing, setPlaying] = useState(false);
   const widthRef = useRef(1);
@@ -351,6 +366,7 @@ function ReplayStage({ frames, showGs }: { frames: SessionFrame[]; showGs: boole
           la vitesse est une donnée, l'or reste au chrono). */}
       <View style={{ position: 'relative' }}>
         <TrackStage
+          circuitName={circuitName}
           mode="replay"
           trajectory={trajectory}
           progress={progress}

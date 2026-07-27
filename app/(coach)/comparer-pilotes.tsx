@@ -62,6 +62,7 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatChronoTenths, formatDateShort, formatDelta } from '@/utils/format';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, dataColors, fonts, spacing, radius } = theme;
 
@@ -235,11 +236,23 @@ export default function CoachComparerPilotesScreen() {
 
   const cardA =
     sideA.snapshot && nameA ? (
-      <SnapshotCard side="A" name={nameA} snap={sideA.snapshot} height={isConsole ? 180 : 200} />
+      <SnapshotCard
+        side="A"
+        name={nameA}
+        snap={sideA.snapshot}
+        height={isConsole ? 180 : 200}
+        sessionId={sideA.selectedSessionId}
+      />
     ) : null;
   const cardB =
     sideB.snapshot && nameB ? (
-      <SnapshotCard side="B" name={nameB} snap={sideB.snapshot} height={isConsole ? 180 : 200} />
+      <SnapshotCard
+        side="B"
+        name={nameB}
+        snap={sideB.snapshot}
+        height={isConsole ? 180 : 200}
+        sessionId={sideB.selectedSessionId}
+      />
     ) : null;
 
   return (
@@ -404,12 +417,16 @@ function SnapshotCard({
   name,
   snap,
   height,
+  sessionId,
 }: {
   side: 'A' | 'B';
   name: string;
   snap: SessionSnapshot;
   height: number;
+  /** Séance de CETTE carte : chaque côté déclare son propre circuit. */
+  sessionId: string | null;
 }) {
+  const { circuitName } = useSessionCircuitName(sessionId);
   const record = snap.bestLapSeconds !== null ? formatChronoTenths(snap.bestLapSeconds) : '—';
   const marge = snap.marginGlobal !== null ? `${Math.round(snap.marginGlobal)} %` : '—';
   const sideColor = SIDE_COLOR[side];
@@ -433,6 +450,7 @@ function SnapshotCard({
         </View>
 
         <CoachPreset
+          circuitName={circuitName}
           trajectory={snap.trajectory.length > 1 ? snap.trajectory : undefined}
           zoneByIndex={snap.zoneByIndex}
           height={height}

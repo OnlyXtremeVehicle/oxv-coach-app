@@ -31,6 +31,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, speedHeat, fonts, fontSize, spacing, radius, hitSlop } = theme;
 
@@ -40,6 +41,10 @@ const NO_RED_REMINDER = 'Le rouge n’existe pas ici — juste du plus lent au p
 export default function HeatmapScreen() {
   const profile = useAuthStore((s) => s.profile);
   const params = useLocalSearchParams<{ sessionId?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le
+  // nom d'une séance courue ailleurs. `resolving` est replié dans l'état de
+  // l'écran pour qu'aucun message d'absence ne clignote pendant la requête.
+  const { circuitName } = useSessionCircuitName(params.sessionId);
 
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
   const [stats, setStats] = useState<{ min: number; max: number } | null>(null);
@@ -160,7 +165,12 @@ export default function HeatmapScreen() {
                     : 'Carte de chaleur de votre vitesse sur le tracé, du froid pour le lent au chaud pour le rapide.'
                 }
               >
-                <TrackStage mode="heatmap" heatPoints={heatPoints} height={400} />
+                <TrackStage
+                  circuitName={circuitName}
+                  mode="heatmap"
+                  heatPoints={heatPoints}
+                  height={400}
+                />
               </View>
             </FadeInSection>
 

@@ -35,6 +35,7 @@ import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Screen } from '@/ui/Screen';
+import { useSessionCircuitName } from '@/hooks/useSessionCircuitName';
 
 const { palette, dataColors, fonts, spacing, radius } = theme;
 
@@ -46,6 +47,10 @@ interface MarginData {
 
 export default function CarteScreen() {
   const params = useLocalSearchParams<{ sessionId?: string }>();
+  // Circuit DÉCLARÉ à la carte : sans lui, elle dessinerait Beltoise sous le
+  // nom d'une séance courue ailleurs. `resolving` est replié dans l'état de
+  // l'écran pour qu'aucun message d'absence ne clignote pendant la requête.
+  const { circuitName } = useSessionCircuitName(params.sessionId);
   const [circuit, setCircuit] = useState<Circuit | null>(null);
   const [marginData, setMarginData] = useState<MarginData | null>(null);
   const [trajectory, setTrajectory] = useState<TrajectoryPoint[] | null>(null);
@@ -174,6 +179,7 @@ export default function CarteScreen() {
           {/* Tracé plein cadre (maquette) : pastilles colorées par marge. */}
           <View accessible accessibilityLabel={mapA11yLabel}>
             <PilotPreset
+              circuitName={circuitName}
               animate
               trajectory={trajectory ?? undefined}
               trajectoryColorMode={trajectoryColorMode}
