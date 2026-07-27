@@ -1,6 +1,6 @@
 /**
  * Forme des insights de session (table `session_insights`, une colonne JSONB par bloc).
- * Sous-ensemble consommé par <CircuitTrace> ; voir le contrat complet :
+ * Sous-ensemble consommé par les lectures d'insight ; voir le contrat complet :
  * `docs/specs-bundle-v4/CONTRAT_DONNEES_session_insights.json`.
  *
  * Doctrine : la donnée peut être absente (insights précoces). `dispersion` et

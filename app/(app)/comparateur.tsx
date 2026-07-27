@@ -10,7 +10,7 @@
  *
  * DROP net (hors maquette) : les 3 modes temporels (Segmented), le panneau
  * « écart de marge » (la marge vit dans le Bilan), la superposition ABTrace et
- * la couche coach CircuitTraceHero (la superposition de tracés vit dans
+ * la couche coach de tracé (la superposition de tracés vit dans
  * virage-comparer, §7bis #6d). Héritage gardé et retravaillé : le choix de
  * 2 séances réelles du pilote, en cartes v2 dépliables.
  *

@@ -31,7 +31,8 @@ function realRouteSegments(): string[] {
 // ici pour que le test reste un garde-fou contre les VRAIES orphelines.
 const UNMAPPED_ALLOWLIST = new Set([
   'debug-capture',
-  'debug-circuit',
+  // 'debug-circuit' est parti au lot T0 : son unique objet était de prévisualiser
+  // le tracé three.js, retiré avec le moteur.
   'session-media',
   'share',
   'decharge',

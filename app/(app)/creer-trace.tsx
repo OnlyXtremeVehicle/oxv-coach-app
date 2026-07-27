@@ -3,7 +3,8 @@
  *
  * Mode « import OpenStreetMap » : l'utilisateur saisit l'identifiant d'un « way »
  * OSM, on récupère ses points, on génère la géométrie (générateur testé), on
- * prévisualise le tracé 3D, puis on enregistre dans `circuits`.
+ * prévisualise le tracé, puis on enregistre dans `circuits`. La prévisualisation
+ * est rendue par TraceCircuit (Skia) depuis le lot T0, qui a retiré three.js.
  *
  * Visibilité (décision fondateur) : tracé PRIVÉ par défaut, ou PROPOSÉ à OXV
  * (review_status='submitted'). Le partage via social viendra ensuite. Un tracé
@@ -19,7 +20,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { CircuitTrace } from '@/circuit/CircuitTrace';
+import { TraceCircuit } from '@/ui/v2/TraceCircuit';
 import {
   fetchOsmWay,
   generateCircuit,
@@ -126,7 +127,7 @@ export default function CreerTraceScreen() {
         {circuit ? (
           <View style={{ marginTop: theme.spacing.xl }}>
             <Card style={{ padding: 0, overflow: 'hidden', ...cockpitHalo }}>
-              <CircuitTrace circuit={circuit} height={300} defaultLayer="geometry" />
+              <TraceCircuit centerline={circuit.centerline} closed={circuit.closed} height={300} />
             </Card>
             <Text style={s.attribution}>
               {(circuit.length_m / 1000).toFixed(2)} km · {circuit.corners.length} virages détectés

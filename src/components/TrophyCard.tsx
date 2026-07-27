@@ -7,8 +7,8 @@
  * 4:5, capturable en image (forwardRef sur le View racine → react-native-view-shot).
  *
  * Le tracé réutilise la même géométrie que le héros du bilan (centerline RÉELLE
- * du circuit de la séance) mais rendu STATIQUE en polyline SVG : le rendu 3D
- * animé/interactif (CircuitTrace) ne se capture pas. Géométrie absente → AUCUN
+ * du circuit de la séance) mais rendu STATIQUE en polyline SVG : un tracé animé
+ * ne se capture pas. Géométrie absente → AUCUN
  * tracé (jamais la silhouette de substitution d'un autre circuit — cette carte
  * est publique et « données réelles » l'emporte sur « jamais vide »).
  *

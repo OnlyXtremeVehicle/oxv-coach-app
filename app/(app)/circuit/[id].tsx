@@ -9,15 +9,17 @@
  * réservation (étape A). Annuaire neutre (roulages OXV et concurrents).
  *
  * Doctrine : factuel, sobre, aucun classement.
- * Reskin V2 : Screen + AppBar, Card/SectionLabel. Le tracé (CircuitTraceHero)
- * et la logique de données sont inchangés.
+ * Reskin V2 : Screen + AppBar, Card/SectionLabel. La logique de données est
+ * inchangée. Le tracé est rendu par TraceCircuit (Skia) depuis le lot T0, qui a
+ * retiré three.js ; l'écran retient désormais les points de la centerline plutôt
+ * qu'un booléen, l'ancien composant les rechargeant lui-même.
  */
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
-import { CircuitTraceHero } from '@/circuit/CircuitTraceHero';
+import type { LatLon } from '@/circuit/circuitGenerator';
 import {
   type CircuitService,
   type DirectoryCircuit,
@@ -32,6 +34,7 @@ import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
+import { TraceCircuit } from '@/ui/v2/TraceCircuit';
 
 export default function CircuitDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -40,7 +43,9 @@ export default function CircuitDetailScreen() {
   const [circuit, setCircuit] = useState<DirectoryCircuit | null>(null);
   const [services, setServices] = useState<CircuitService[]>([]);
   // Tracé affiché seulement si CE circuit a une géométrie réelle (jamais maquillé).
-  const [hasTrace, setHasTrace] = useState(false);
+  // On retient les POINTS et non un booléen : le rendu Skia les consomme
+  // directement, là où l'ancien composant three.js les rechargeait lui-même.
+  const [centerline, setCenterline] = useState<LatLon[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,11 +56,11 @@ export default function CircuitDetailScreen() {
       listCircuitServices(circuitId),
       fetchCircuitCenterline(circuitId),
     ])
-      .then(([circuits, svcs, centerline]) => {
+      .then(([circuits, svcs, points]) => {
         if (!cancelled) {
           setCircuit(circuits.find((c) => c.id === circuitId) ?? null);
           setServices(svcs);
-          setHasTrace(!!centerline && centerline.length > 1);
+          setCenterline(points && points.length > 1 ? points : null);
           setLoading(false);
         }
       })
@@ -92,15 +97,17 @@ export default function CircuitDetailScreen() {
           <Text style={s.subtitle}>{circuitSubtitle(circuit)}</Text>
         ) : null}
 
-        {/* Tracé 3D du circuit (specs v4 §05 §5.2) — géométrie seule, sans session. */}
-        {hasTrace ? (
+        {/* Tracé du circuit — géométrie seule, sans session. Rendu Skia (TraceCircuit),
+            le moteur three.js ayant été retiré au lot T0. Sans géométrie réelle en
+            base, la section entière disparaît : jamais de silhouette inventée. */}
+        {centerline ? (
           <View style={{ marginTop: theme.spacing.xxl }}>
             <View style={s.headRow}>
               <View style={s.headDot} accessibilityElementsHidden importantForAccessibility="no" />
               <SectionLabel>Le tracé</SectionLabel>
             </View>
             <View style={{ marginTop: theme.spacing.md }}>
-              <CircuitTraceHero circuitId={circuitId} height={300} defaultLayer="geometry" />
+              <TraceCircuit centerline={centerline} height={300} />
             </View>
           </View>
         ) : null}
