@@ -263,15 +263,34 @@ function scanFile(filePath: string): Violation[] {
   return violations;
 }
 
+/**
+ * Un fichier de TEST cite les verbes interdits par fonction : il vérifie qu'ils
+ * sont bien attrapés. L'y signaler serait un contresens — le test EST la garde.
+ */
+function estTest(filePath: string): boolean {
+  return /__tests__|\.test\.tsx?$/.test(filePath);
+}
+
 function main(): void {
-  const appDir = path.join(process.cwd(), 'app');
-  if (!fs.existsSync(appDir)) {
-    console.error(`Répertoire app/ introuvable depuis ${process.cwd()}`);
+  // `src/` EST scanné, désormais. Le scan ne regardait que `app/` : les
+  // 125 composants et écrans partagés de `src/` — montés dans les vrais écrans —
+  // n'étaient jamais contrôlés. La doctrine gouverne ce qui est LU par le
+  // pilote, et il lit tout autant ce qui vient de `src/`.
+  const racines = ['app', 'src']
+    .map((d) => path.join(process.cwd(), d))
+    .filter((d) => fs.existsSync(d));
+
+  if (racines.length === 0) {
+    console.error(`Ni app/ ni src/ trouvés depuis ${process.cwd()}`);
     process.exit(2);
   }
 
-  const files = listTsxFiles(appDir);
-  console.log(`Scan doctrinal : ${files.length} fichiers .tsx dans app/`);
+  const files = racines.flatMap((d) => listTsxFiles(d)).filter((f) => !estTest(f));
+  console.log(
+    `Scan doctrinal : ${files.length} fichiers .tsx (${racines
+      .map((r) => path.basename(r) + '/')
+      .join(' + ')}, tests exclus)`
+  );
 
   const allViolations: Violation[] = [];
   for (const file of files) {
