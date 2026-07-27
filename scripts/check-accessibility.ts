@@ -1,31 +1,39 @@
 /**
- * Scanner d'accessibilité — flag les Pressables sans accessibilityRole.
+ * Scanner d'accessibilité — exige un RÔLE et un NOM sur chaque commande.
  *
  * Usage :
- *   npx tsx scripts/check-accessibility.ts          # report only (warn)
- *   npx tsx scripts/check-accessibility.ts --strict # exit 1 si manquants
+ *   npx tsx scripts/check-accessibility.ts          # rapport seul
+ *   npx tsx scripts/check-accessibility.ts --strict # sortie 1 si manquants
  *
- * Heuristique : un <Pressable ... onPress={...}> sans `accessibilityRole`
- * dans les 20 lignes suivantes (du tag d'ouverture jusqu'à la fin de
- * ses props) est flag.
+ * DEUX ÉLARGISSEMENTS, tous deux nés du même constat : ce scanner passait au
+ * vert sans regarder grand-chose.
  *
- * Tolérances :
- *   - Les Pressables qui ne sont pas des CTA réels (ex: areas de geste)
- *     peuvent être annotés avec `// accessibility: not-applicable` dans
- *     un commentaire immédiatement avant.
+ *   1. IL NE VOYAIT QUE `app/`. Le kit d'interface et les composants partagés,
+ *      qui sont montés partout, n'étaient jamais scannés — 125 fichiers hors
+ *      champ sur 344. Il couvre maintenant `app/` ET `src/`.
  *
- * Pas intégré au CI en strict mode V1 (pour ne pas bloquer alpha avec
- * un debt accessibility historique). À promouvoir en CI strict V1.1
- * après couverture complète.
+ *   2. IL NE VÉRIFIAIT QUE LE RÔLE. Une commande annoncée « bouton » sans nom
+ *      dit ce qu'elle EST, jamais ce qu'elle FAIT : au lecteur d'écran, elle est
+ *      inutilisable. Le nom est désormais exigé, qu'il vienne d'un
+ *      `accessibilityLabel` ou d'un enfant textuel.
+ *
+ * Heuristique : un `<Pressable ... onPress={...}>` est examiné sur son bloc de
+ * props, puis sur les 40 lignes de son corps pour y chercher un nom.
+ *
+ * Tolérance : un Pressable qui n'est pas une commande réelle (zone de geste)
+ * peut porter `// accessibility: not-applicable` sur la ligne juste au-dessus.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 
+type Manque = 'role' | 'nom';
+
 interface Issue {
   file: string;
   line: number;
   excerpt: string;
+  manque: Manque;
 }
 
 function listTsxFiles(dir: string): string[] {
@@ -70,16 +78,37 @@ function scanFile(filePath: string): Issue[] {
     }
     const block = lines.slice(i, blockEnd + 1).join(' ');
 
-    // Si pas d'accessibilityRole dans le block, c'est un manque
+    // Un wrapper sans onPress n'est pas une commande : rien à exiger de lui.
+    if (!/onPress\s*=/.test(block)) continue;
+
     if (!/accessibilityRole/.test(block)) {
-      // Vérifier qu'il y a bien un onPress (sinon c'est juste un wrapper)
-      if (/onPress\s*=/.test(block)) {
-        issues.push({
-          file: filePath,
-          line: i + 1,
-          excerpt: line.trim().slice(0, 80),
-        });
-      }
+      issues.push({
+        file: filePath,
+        line: i + 1,
+        excerpt: line.trim().slice(0, 80),
+        manque: 'role',
+      });
+      continue;
+    }
+
+    // LE RÔLE NE SUFFIT PAS, et c'est l'angle mort que ce scanner avait.
+    // Une commande annoncée « bouton » sans nom dit ce qu'elle EST, jamais ce
+    // qu'elle FAIT : au lecteur d'écran, elle est inutilisable. Un enfant
+    // textuel fournit ce nom ; à défaut, il faut un `accessibilityLabel`.
+    const corps = lines.slice(blockEnd, Math.min(blockEnd + 40, lines.length)).join(' ');
+    const aNom =
+      /accessibilityLabel/.test(block) ||
+      /<Text[\s>]/.test(corps) ||
+      // Un composant maison qui reçoit son libellé en prop en porte un aussi.
+      /\b(label|title)=/.test(corps);
+
+    if (!aNom) {
+      issues.push({
+        file: filePath,
+        line: i + 1,
+        excerpt: line.trim().slice(0, 80),
+        manque: 'nom',
+      });
     }
   }
 
@@ -88,40 +117,68 @@ function scanFile(filePath: string): Issue[] {
 
 function main(): void {
   const strict = process.argv.includes('--strict');
-  const appDir = path.join(process.cwd(), 'app');
-  if (!fs.existsSync(appDir)) {
-    console.error(`Répertoire app/ introuvable depuis ${process.cwd()}`);
+
+  // `src/` EST scanné, désormais. Le scanner ne regardait que `app/` — donc
+  // jamais le kit d'interface ni les composants partagés, alors que ce sont eux
+  // qui sont montés partout. Un angle mort de cette taille rendait le contrôle
+  // rassurant plutôt qu'utile.
+  const racines = ['app', 'src']
+    .map((d) => path.join(process.cwd(), d))
+    .filter((d) => fs.existsSync(d));
+
+  if (racines.length === 0) {
+    console.error(`Ni app/ ni src/ trouvés depuis ${process.cwd()}`);
     process.exit(2);
   }
 
-  const files = listTsxFiles(appDir);
+  const files = racines.flatMap((d) => listTsxFiles(d));
   const allIssues: Issue[] = [];
   for (const file of files) {
     allIssues.push(...scanFile(file));
   }
 
-  console.log(`Scan accessibilité : ${files.length} fichiers .tsx dans app/`);
+  const sansRole = allIssues.filter((i) => i.manque === 'role');
+  const sansNom = allIssues.filter((i) => i.manque === 'nom');
+
+  console.log(
+    `Scan accessibilité : ${files.length} fichiers .tsx (${racines
+      .map((r) => path.basename(r) + '/')
+      .join(' + ')})`
+  );
 
   if (allIssues.length === 0) {
-    console.log('OK — toutes les Pressables avec onPress ont accessibilityRole.');
+    console.log('OK — chaque Pressable actionnable a un rôle ET un nom accessible.');
     process.exit(0);
   }
 
-  console.log(
-    `\nWARN — ${allIssues.length} Pressable(s) avec onPress mais sans accessibilityRole :`
-  );
+  if (sansRole.length > 0) console.log(`\n${sansRole.length} sans accessibilityRole :`);
+  for (const issue of sansRole) {
+    console.log(`  ${path.relative(process.cwd(), issue.file)}:${issue.line}`);
+  }
+
+  if (sansNom.length > 0) {
+    console.log(`\n${sansNom.length} avec un rôle mais SANS NOM accessible :`);
+    console.log('  (annoncées « bouton » et rien d’autre au lecteur d’écran)');
+  }
+  for (const issue of sansNom) {
+    console.log(`  ${path.relative(process.cwd(), issue.file)}:${issue.line}`);
+  }
+
+  console.log(`\nExtraits :`);
   for (const issue of allIssues) {
     const rel = path.relative(process.cwd(), issue.file);
-    console.log(`  ${rel}:${issue.line}`);
+    console.log(`  [${issue.manque}] ${rel}:${issue.line}`);
     console.log(`    ${issue.excerpt}`);
   }
 
-  console.log(`\nTotal : ${allIssues.length} à couvrir (V1.1).`);
   console.log(
-    'Ajouter accessibilityRole="button" + accessibilityLabel="..." sur chaque Pressable.'
+    `\nTotal : ${allIssues.length} à couvrir — ${sansRole.length} sans rôle, ${sansNom.length} sans nom.`
   );
   console.log(
-    'Ou ajouter `// accessibility: not-applicable` juste au-dessus si le Pressable n\'est pas un CTA réel.'
+    'Un rôle dit ce que la commande EST ; un nom dit ce qu’elle FAIT. Les deux sont requis.'
+  );
+  console.log(
+    "Ou ajouter `// accessibility: not-applicable` juste au-dessus si le Pressable n'est pas un CTA réel."
   );
 
   process.exit(strict ? 1 : 0);

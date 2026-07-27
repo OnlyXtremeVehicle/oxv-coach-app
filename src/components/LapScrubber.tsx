@@ -168,6 +168,18 @@ export function LapScrubber({
       <View style={{ marginTop: spacing.lg }}>
         <Pressable
           accessibilityRole="adjustable"
+          // Cette barre n'a que des rails pour enfants : sans libellé, un lecteur
+          // d'écran annonçait « réglable » et rien d'autre. Le rôle seul ne
+          // nomme pas la commande.
+          accessibilityLabel="Position dans le tour"
+          accessibilityValue={{
+            min: 1,
+            max: Math.max(1, total),
+            now: safeIndex + 1,
+            // Le texte prime sur les bornes chez la plupart des lecteurs : on
+            // annonce un rang lisible plutôt qu'un indice brut.
+            text: total > 0 ? `Point ${safeIndex + 1} sur ${total}` : 'Aucun point',
+          }}
           onPress={(e) => onBarPress(e.nativeEvent.locationX)}
           onLayout={onBarLayout}
           style={{
