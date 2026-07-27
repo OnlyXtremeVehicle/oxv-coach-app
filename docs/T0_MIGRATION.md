@@ -12,13 +12,13 @@ Point de retour : étiquette `pre-migration-sdk55` (`2788a4e`), poussée.
 
 ## État de départ, constaté
 
-| | Départ | Cible | Saut |
-|---|---|---|---|
-| Expo SDK | **51.0.28** | 55.0.28 | **4 majeures** |
-| React Native | 0.74.5 | 0.83 | 9 mineures |
-| React | 18.2.0 | 19.2 | 1 majeure |
-| Skia | 1.2.3 | 2.8.x | 1 majeure |
-| Reanimated | 3.10.1 | 4.x | 1 majeure |
+|              | Départ                                                                                          | Cible    | Saut             |
+| ------------ | ----------------------------------------------------------------------------------------------- | -------- | ---------------- |
+| Expo SDK     | **51.0.28**                                                                                     | 55.0.28  | **4 majeures**   |
+| React Native | 0.74.5                                                                                          | 0.83     | 9 mineures       |
+| React        | 18.2.0                                                                                          | 19.2     | 1 majeure        |
+| Skia         | 1.2.3                                                                                           | 2.8.x    | 1 majeure        |
+| Reanimated   | 3.10.1                                                                                          | 4.x      | 1 majeure        |
 | Architecture | **ancienne** — `newArchEnabled` absent de `app.json`, à la racine comme sous `ios` et `android` | nouvelle | bascule complète |
 
 Autres faits relevés dans `app.json` avant toute modification : `updates` **absent**,
@@ -42,14 +42,14 @@ Deux paquets enveloppent la chaîne de build et devront suivre :
 
 Fichiers supprimés — **1 065 lignes**, 26 ajoutées :
 
-| Fichier | Lignes | Motif |
-|---|---|---|
-| `src/circuit/CircuitTrace.tsx` | 393 | seul importateur de `three` et `@react-three/fiber` |
-| `src/circuit/layers.ts` | 245 | aucun autre consommateur |
-| `src/circuit/CircuitTraceHero.tsx` | 120 | enveloppe de `CircuitTrace` |
-| `app/(app)/debug-circuit.tsx` | 81 | son unique objet était de prévisualiser ce tracé |
-| `src/circuit/cornerFacts.ts` | 47 | aucun autre consommateur |
-| `src/circuit/__tests__/layers.test.ts` · `cornerFacts.test.ts` | — | tests des modules supprimés |
+| Fichier                                                        | Lignes | Motif                                               |
+| -------------------------------------------------------------- | ------ | --------------------------------------------------- |
+| `src/circuit/CircuitTrace.tsx`                                 | 393    | seul importateur de `three` et `@react-three/fiber` |
+| `src/circuit/layers.ts`                                        | 245    | aucun autre consommateur                            |
+| `src/circuit/CircuitTraceHero.tsx`                             | 120    | enveloppe de `CircuitTrace`                         |
+| `app/(app)/debug-circuit.tsx`                                  | 81     | son unique objet était de prévisualiser ce tracé    |
+| `src/circuit/cornerFacts.ts`                                   | 47     | aucun autre consommateur                            |
+| `src/circuit/__tests__/layers.test.ts` · `cornerFacts.test.ts` | —      | tests des modules supprimés                         |
 
 `circuitGenerator`, `circuitCorners`, `hauteSaintonge` et `sessionInsights` ont
 d'autres consommateurs, vérifiés un par un : **ils restent**.
@@ -108,18 +108,18 @@ Une majeure à la fois, comme le plan l'impose.
 `npm install expo@^52.0.0` puis `npx expo install --fix`. Les deux rendent 0.
 **43 lignes de `package.json` changées.**
 
-| | Avant | Après |
-|---|---|---|
-| expo | 51.0.28 | **52.0.49** |
-| react | 18.2.0 | 18.3.1 |
-| react-native | 0.74.5 | 0.76.9 |
-| **expo-router** | 3.5.23 | **4.0.22** — une majeure au passage |
-| @sentry/react-native | 5.24.3 | 6.10.0 |
-| react-native-gesture-handler | 2.16.1 | 2.20.2 |
-| react-native-svg | 15.2.0 | 15.8.0 |
-| Reanimated | 3.10.1 | **3.16.1** — reste en v3, voulu |
-| Skia | 1.2.3 | **1.5.0** — reste en v1, voulu |
-| react-native-mmkv | 2.12.2 | inchangé — hors gestion Expo |
+|                              | Avant   | Après                               |
+| ---------------------------- | ------- | ----------------------------------- |
+| expo                         | 51.0.28 | **52.0.49**                         |
+| react                        | 18.2.0  | 18.3.1                              |
+| react-native                 | 0.74.5  | 0.76.9                              |
+| **expo-router**              | 3.5.23  | **4.0.22** — une majeure au passage |
+| @sentry/react-native         | 5.24.3  | 6.10.0                              |
+| react-native-gesture-handler | 2.16.1  | 2.20.2                              |
+| react-native-svg             | 15.2.0  | 15.8.0                              |
+| Reanimated                   | 3.10.1  | **3.16.1** — reste en v3, voulu     |
+| Skia                         | 1.2.3   | **1.5.0** — reste en v1, voulu      |
+| react-native-mmkv            | 2.12.2  | inchangé — hors gestion Expo        |
 
 ### Ce que `expo-doctor` a révélé, et ce qui en a été fait
 
@@ -165,7 +165,111 @@ des `as never`. **Le compilateur ne valide donc aucune cible de navigation.** Et
 `*.test.ts` : **la suite ne monte aucun composant React Native.** Les 1 851 tests
 valident de la logique pure ; ils ne sont pas un filet pour cette migration.
 
-### Paliers 53, 54, 55 · non commencés
+### Palier 52 → 53 · **FAIT**, après un accident
+
+C'est le palier de React 19. Il n'est pas passé du premier coup, et le détail
+compte plus que le résultat.
+
+#### L'accident : un dépôt à moitié migré, et vert
+
+`npx expo install --fix` a rendu **1** sur un conflit de résolution npm autour de
+`@react-native-community/datetimepicker`, dans la fenêtre où React passe de 18 à
+19 et React Native de 0.76 à 0.79.
+
+**L'état laissé est le vrai enseignement.** `package.json` déclarait le SDK 53
+pendant que `node_modules` était resté au 52 :
+
+|              | Demandé | Installé   |
+| ------------ | ------- | ---------- |
+| react        | 19.0.0  | **18.3.1** |
+| react-native | 0.79.6  | **0.76.9** |
+| expo-router  | 5.1.11  | **4.0.22** |
+
+**Neuf paquets sur onze étaient en arrière.** Un `tsc` lancé dans cette fenêtre
+aurait typé l'ancien arbre en croyant valider le nouveau, et rendu vert.
+
+La confrontation explicite entre ce que `package.json` demande et ce que
+`node_modules` porte devient donc une vérification obligatoire de chaque palier.
+
+#### La remise en état
+
+`npm install` seul échoue aussi : npm lit l'arbre existant, y trouve les versions
+du 52, et n'arrive plus à en sortir. **`--legacy-peer-deps` a été écarté** — cette
+option fait accepter une résolution que npm lui-même qualifie de potentiellement
+cassée, ce qui sur quatre majeures avec du natif Bluetooth et HealthKit derrière
+produirait un build vert et une application qui ne démarre pas.
+
+Installation propre : `node_modules` et `package-lock.json` retirés — état dérivé,
+verrou suivi par git, aucun dossier `patches/` — puis `npm install`. **1 173
+paquets, zéro erreur, toutes les versions alignées.**
+
+#### Un incident d'environnement, à connaître
+
+`ENOSPC` en pleine installation : le disque C: était **plein à 100 %**, 216 Go
+utilisés, zéro disponible. Ce n'est pas le projet — `node_modules` pèse 968 Mo.
+Le cache npm (4,5 Go) a été vidé pour continuer. **Le disque reste à 99 %**, ce
+qui est étroit pour une migration qui reconstruit l'arbre à chaque palier.
+
+#### Quatre paquets ont bougé au-delà de leur épingle précédente
+
+Effet de la régénération du verrou, tous dans leur plage semver :
+
+|                            | Avant   | Après            |
+| -------------------------- | ------- | ---------------- |
+| @shopify/react-native-skia | 1.5.0   | **2.0.0-next.4** |
+| react-native-maps          | 1.18.0  | 1.20.1           |
+| react-native-svg           | 15.8.0  | 15.11.2          |
+| react-native-webview       | 13.12.5 | 13.13.5          |
+
+**Skia entre en v2 dès le SDK 53, et sur une préversion.** Le plan prévoyait cette
+majeure à l'étape 6 : elle est déjà là. `react-native-ble-plx` n'a pas bougé — il
+était déjà en 3.5.1.
+
+#### Les cinq erreurs de typage, et ce qu'elles étaient vraiment
+
+**TypeScript 5.3.3 ne comprenait plus le tsconfig du SDK.** `expo/tsconfig.base.json`
+emploie `"module": "preserve"`, inconnu de la 5.3. Porté en **5.8.3**.
+
+**React 19 a changé `useRef`.** `useRef<T>(null)` rend désormais
+`RefObject<T | null>`. Quatre déclarations affirmaient `RefObject<View>` —
+`HeroMorph.tsx:83` et trois signatures de `data/comparer.tsx`. Le type suit
+maintenant le réel : la ref EST nulle avant montage.
+
+**`expo-notifications` a scindé l'alerte, et cela touchait le Principe 3.**
+Depuis la 0.29, `shouldShowAlert` est déprécié au profit de `shouldShowBanner` et
+`shouldShowList`, tous deux **obligatoires**. Les trois suivent désormais le même
+interrupteur : en laisser un seul à `true` en piste aurait rouvert le silence par
+la porte de derrière — la notification ne se serait plus affichée en bannière,
+mais aurait atterri dans le centre de notifications.
+
+`shouldShowAlert` est **conservé** bien que déprécié : il reste lu par les
+runtimes plus anciens, et l'ôter rendrait le silence moins étanche là-bas.
+
+Le test a été étendu, et porte en plus un garde-fou générique : **toute clé
+commençant par `shouldShow` doit être fausse pendant le roulage.** Une surface
+d'affichage ajoutée plus tard et laissée à `true` sera attrapée.
+
+#### Deux décisions de version, consignées
+
+**Prettier épinglé en `~3.8.3`.** La 3.9.6, résolue par l'installation propre,
+reformate les types union : 45 erreurs `prettier/prettier` d'un coup sur
+15 fichiers, sans qu'une ligne de code ait bougé. Un lot de migration ne charrie
+pas une passe de mise en forme. Voir `docs/DETTE.md`, D-7.
+
+**`eslint-config-expo` porté en `~9.2.0`**, exigé par le SDK 53. Zéro erreur, mais
+les avertissements passent de 5 à 17 : la version 9 ajoute des règles.
+
+### Portes du palier 53
+
+`tsc` **0** · `jest` **1 852 passés**, 141 suites — un de plus, le garde-fou de
+silence · `eslint` **0 erreur**, 17 avertissements · doctrine 0 · accessibilité 0
+· prettier 0 · `expo-doctor` **15/18**.
+
+Les trois échecs restants de `expo-doctor` sont connus et documentés :
+`@expo/config-plugins` périmé par `react-native-health` (D-8), `expo-av` non
+maintenu (étape 7), `buffer` sans métadonnées.
+
+### Paliers 54 et 55 · non commencés
 
 ---
 

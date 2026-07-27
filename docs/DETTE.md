@@ -89,6 +89,49 @@ modification sans votre accord.
 
 ---
 
+## D-7 · Prettier épinglé en 3.8 — une passe de mise en forme reste à faire
+
+**Constaté le 27/07/2026, T0 palier 53.**
+
+L'installation propre a résolu `prettier@^3.3.3` en **3.9.6**, alors que le verrou
+précédent portait **3.8.3**. La 3.9 change le formatage des **types union** :
+45 erreurs `prettier/prettier` sont apparues d'un coup, sur **15 fichiers**, sans
+qu'une seule ligne de code ait été touchée. Aucun fichier protégé n'était concerné.
+
+**Ce qui a été fait** : `prettier` épinglé en `~3.8.3` (résolu 3.8.5). Le lint
+revient à sa ligne de base — 0 erreur.
+
+**Le motif** : un lot de migration ne doit pas charrier une passe de mise en
+forme. Le dépôt porte déjà la trace d'un reformatage accidentel — la remise
+`stash@{0}`, voir D-5. Mêler 15 fichiers reformatés au diff d'une migration de
+quatre majeures rendrait la relecture impossible.
+
+**Traité par** : un lot dédié, après T0. Passer en `prettier@^3.9`, lancer
+`prettier --write`, un commit qui ne contient que cela.
+
+---
+
+## D-8 · `@expo/config-plugins` restera périmé tant que `react-native-health` vivra
+
+**Constaté le 27/07/2026, T0 paliers 52 et 53.**
+
+`expo-doctor` échoue à chaque palier sur le même point : `@expo/config-plugins@7.9.2`
+là où le SDK 53 attend `~10.1.1`. `npm why` désigne **une source unique** —
+`react-native-health@1.19.0`, qui l'épingle en `^7.2.2`.
+
+**1.19.0 est la version la plus récente publiée.** Aucune mise à jour ne réglera
+cela. La même bibliothèque est par ailleurs signalée **« non testée sur la
+nouvelle architecture »**.
+
+C'est le candidat blocage de l'étape 3. Trois issues existent, aucune n'est
+gratuite : `overrides` npm pour forcer la version du plugin, remplacement de la
+bibliothèque, ou abandon de HealthKit — ce qui viderait la branche Intensité.
+
+**Traité par** : à l'étape 3 de T0, quand la bascule d'architecture le rendra
+concret. Voir `docs/T0_MIGRATION.md`.
+
+---
+
 ## D-5 · La remise `stash@{0}` est sauvegardée mais toujours en place
 
 **Constaté le 27/07/2026, jalon 0.1, étape 2.**

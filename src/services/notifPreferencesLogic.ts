@@ -18,7 +18,17 @@ export type NotifChannel = 'debrief' | 'reminder';
 
 /** Comportement d'affichage d'une notif reçue au premier plan. */
 export interface NotifForegroundBehavior {
+  /**
+   * @deprecated depuis expo-notifications 0.29 (SDK 53), qui a scindé l'alerte
+   * en bannière et liste. Conservé parce qu'il reste lu par les runtimes plus
+   * anciens : le retirer rendrait le silence en piste moins étanche sur un
+   * appareil qui n'a pas encore la nouvelle interface.
+   */
   shouldShowAlert: boolean;
+  /** Bannière transitoire en haut de l'écran. */
+  shouldShowBanner: boolean;
+  /** Entrée persistante dans le centre de notifications. */
+  shouldShowList: boolean;
   shouldPlaySound: boolean;
   shouldSetBadge: boolean;
 }
@@ -32,8 +42,14 @@ export interface NotifForegroundBehavior {
  */
 export function notificationBehaviorForState(state: PilotState): NotifForegroundBehavior {
   const driving = state === 'S6_roulage';
+  // Les trois surfaces d'affichage suivent le MÊME interrupteur. Le SDK 53 a
+  // scindé l'alerte en bannière et liste : en laisser une seule à `true` en
+  // piste rouvrirait le silence par la porte de derrière — la notification ne
+  // s'afficherait plus en bannière, mais atterrirait dans le centre.
   return {
     shouldShowAlert: !driving,
+    shouldShowBanner: !driving,
+    shouldShowList: !driving,
     shouldPlaySound: false,
     shouldSetBadge: !driving,
   };

@@ -27,6 +27,8 @@ describe('notifPreferencesLogic (D5)', () => {
     it('supprime tout affichage pendant le roulage (S6_roulage)', () => {
       const b = notificationBehaviorForState('S6_roulage');
       expect(b.shouldShowAlert).toBe(false);
+      expect(b.shouldShowBanner).toBe(false);
+      expect(b.shouldShowList).toBe(false);
       expect(b.shouldPlaySound).toBe(false);
       expect(b.shouldSetBadge).toBe(false);
     });
@@ -35,9 +37,22 @@ describe('notifPreferencesLogic (D5)', () => {
       for (const state of ['S5_approche', 'S7_paddock', 'S8_atterrissage'] as const) {
         const b = notificationBehaviorForState(state);
         expect(b.shouldShowAlert).toBe(true);
+        expect(b.shouldShowBanner).toBe(true);
+        expect(b.shouldShowList).toBe(true);
         expect(b.shouldSetBadge).toBe(true);
         expect(b.shouldPlaySound).toBe(false); // sobriété : jamais de son
       }
+    });
+
+    // Le SDK 53 a scindé `shouldShowAlert` en `shouldShowBanner` et
+    // `shouldShowList`. Une surface d'affichage ajoutée plus tard et laissée à
+    // `true` en piste percerait le silence sans qu'aucun test ne bronche : on
+    // exige donc que TOUTE clé d'affichage soit fausse pendant le roulage.
+    it('aucune surface d’affichage n’échappe au silence en piste', () => {
+      const b = notificationBehaviorForState('S6_roulage') as unknown as Record<string, boolean>;
+      const surfaces = Object.keys(b).filter((k) => k.startsWith('shouldShow'));
+      expect(surfaces.length).toBeGreaterThanOrEqual(3);
+      for (const k of surfaces) expect([k, b[k]]).toEqual([k, false]);
     });
   });
 

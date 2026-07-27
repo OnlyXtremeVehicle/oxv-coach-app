@@ -584,7 +584,7 @@ function SeancesBody({
   onReplace,
   rows,
 }: {
-  captureRef: React.RefObject<View>;
+  captureRef: React.RefObject<View | null>;
   sessionA: TelemetrySession | undefined;
   sessionB: TelemetrySession | undefined;
   onReplace: (slot: Slot) => void;
@@ -657,7 +657,7 @@ function ToursBody({
   framesB,
   onReplace,
 }: {
-  captureRef: React.RefObject<View>;
+  captureRef: React.RefObject<View | null>;
   sessionA: TelemetrySession | undefined;
   sessionB: TelemetrySession | undefined;
   lapsA: Lap[] | undefined;
@@ -1073,7 +1073,7 @@ function AmiBody({
   rows,
 }: {
   hasFriendParam: boolean;
-  captureRef: React.RefObject<View>;
+  captureRef: React.RefObject<View | null>;
   friendName: string;
   myInitials: string;
   friendInitials: string;

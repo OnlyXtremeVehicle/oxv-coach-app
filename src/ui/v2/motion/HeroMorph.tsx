@@ -80,7 +80,9 @@ export function HeroMorphProvider({ children }: { children: ReactNode }) {
  * juste avant de naviguer (dans le onPress).
  */
 export function useHeroMorphSource(id: string): {
-  ref: RefObject<View>;
+  // React 19 : `useRef<View>(null)` rend `RefObject<View | null>` et non plus
+  // `RefObject<View>`. Le type suit le réel — la ref EST nulle avant montage.
+  ref: RefObject<View | null>;
   capture: () => void;
 } {
   const registry = useContext(HeroMorphContext);
