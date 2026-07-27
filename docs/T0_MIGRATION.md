@@ -273,9 +273,60 @@ maintenu (étape 7), `buffer` sans métadonnées.
 
 ---
 
-## Étape 3 — Nouvelle architecture · non commencée
+## Étape 3 — Nouvelle architecture · **FAITE**, et mesurée
 
-## Étape 4 — Reanimated 3 → 4 · non commencée
+`newArchEnabled: true` posé explicitement dans `app.json`.
+
+**Le défaut n'a pas été supposé, il a été mesuré.** `npx expo config --type introspect`
+avant et après :
+
+|       | `newArchEnabled` résolu     |
+| ----- | --------------------------- |
+| avant | **ABSENT du config résolu** |
+| après | `true`                      |
+
+Le drapeau était donc réellement absent, laissé au défaut implicite de l'outillage
+natif. Savoir si ce défaut aurait valu `true` de toute façon est **INCONNU depuis
+ce poste** — et sans importance : sur une migration de quatre majeures, un drapeau
+qui définit le build ne se laisse pas implicite.
+
+React Native 0.83.6 livre **les deux moteurs** — Fabric et Paper sont tous deux
+présents dans `node_modules`. Leur seule présence ne dit pas lequel s'applique ;
+c'est la déclaration qui tranche.
+
+**Ce qui ne peut pas être vérifié ici.** La bascule est le point de rupture du lot :
+c'est là que les bibliothèques natives incompatibles échouent. Cela se produit au
+`prebuild` et à la compilation native, qui demandent EAS et une chaîne macOS. Le
+projet ne porte ni `ios/` ni `android/` — le natif est généré au build.
+
+**Le candidat désigné reste `react-native-health`**, toujours déclaré comme plugin
+et toujours marqué « non testé sur la nouvelle architecture » par React Native
+Directory. Voir `docs/DETTE.md`, D-8.
+
+## Étape 4 — Reanimated 3 → 4 · **FAITE** au palier 54
+
+Le nom canonique `react-native-worklets/plugin` est posé dans `babel.config.js`.
+
+**Le piège annoncé par le plan n'existe pas dans cette version**, et c'est vérifié
+à l'identité : `react-native-reanimated/plugin` en 4.1.7 puis 4.2.1 est un relais
+de quatre lignes qui réexporte `react-native-worklets/plugin`, et les deux noms
+rendent le **même objet fonction**. C'était vrai en 4.0, ce ne l'est plus.
+
+Le nom canonique est posé quand même : un relais de compatibilité peut disparaître,
+et le jour où il partira, rien ne le dira.
+
+## Étape 5 — MMKV 2 → 3 · **NON FAITE**, et volontairement
+
+`react-native-mmkv` reste en **2.12.2**. Le SDK 55 ne l'épingle pas — il n'est pas
+un module géré par Expo — et rien dans la migration ne l'a exigé : les portes
+passent toutes, la confrontation est à zéro écart.
+
+Le plan la donnait pour obligatoire sur la nouvelle architecture. Ce n'est pas ce
+que le dépôt montre. **À éprouver au premier build natif** : si MMKV v2 échoue sous
+Fabric, la migration v3 devient un lot à part entière — 1 import direct,
+15 consommateurs.
+
+## Étape 6 — Skia 1.2 → 2.8 · **FAITE**, mais pas où le plan l'attendait
 
 **Le piège est confirmé et localisé.** `babel.config.js` contient aujourd'hui,
 en son unique entrée de `plugins` :
@@ -287,13 +338,61 @@ plugins: ['react-native-reanimated/plugin'],
 En version 4 ce plugin devient `react-native-worklets/plugin`. **L'ancien nom ne
 produit aucune erreur** — les animations cessent simplement de fonctionner.
 
-## Étape 5 — MMKV 2 → 3 · non commencée
+Skia est passé de **1.2.3 à 2.4.18**, mais la majeure v1 → v2 est arrivée dès le
+**SDK 53**, sur une préversion `2.0.0-next.4`, et non à cette étape. Elle s'est
+stabilisée en 2.2.12 au SDK 54 puis 2.4.18 au SDK 55.
 
-## Étape 6 — Skia 1.2 → 2.8 · non commencée
+Aucune reprise de code n'a été nécessaire : le relevé confirmait `Vertices`,
+`Atlas`, `RuntimeEffect`, `Picture` et `useFont` à zéro occurrence. Tout reste à
+écrire en T1.
 
-## Étape 7 — `expo-av` → `expo-audio` · non commencée
+**Réserve établie par le relevé.** Trois composants passent des `SharedValue`
+Reanimated **directement** à Skia — `Dial.tsx`, `BiometryStrip.tsx`,
+`GlowStroke.tsx`. Cette passerelle est couplée aux internes de Reanimated. Si elle
+rompt, les valeurs restent figées à leur état initial : cadran vide, tracé jamais
+dessiné, pulsation immobile. **Aucune erreur ne serait levée.** À regarder au
+premier build.
 
-## Étape 8 — `expo-updates` · non commencée
+## Étape 7 — `expo-av` → `expo-audio` · **FAITE**, et pas triviale
+
+**`expo-av` a disparu du SDK 55** : il n'y est plus épinglé du tout. L'étape
+cesse d'être optionnelle.
+
+Le plan avait raison sur le périmètre — deux fichiers, `Audio` seulement, aucun
+usage vidéo — et se trompait sur la difficulté. `expo-audio` **n'est pas un
+renommage** :
+
+| expo-av                                           | expo-audio                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------- |
+| `Audio.requestPermissionsAsync`                   | `requestRecordingPermissionsAsync`                                |
+| `Audio.setAudioModeAsync({ allowsRecordingIOS })` | `setAudioModeAsync({ allowsRecording })` — le suffixe `IOS` tombe |
+| `Audio.Recording.createAsync`                     | `prepareToRecordAsync()` puis `record()`                          |
+| `recording.stopAndUnloadAsync`                    | `stop()`                                                          |
+| `recording.getURI()`                              | propriété `.uri`                                                  |
+
+**Le point dur n'est pas dans ce tableau.** `expo-audio` n'expose **aucune fabrique
+d'enregistreur hors React** : `AudioRecorder` est un TYPE, `useAudioRecorder` est un
+hook. Un service ne peut donc plus créer l'enregistreur. `annoter.tsx` le tient
+désormais, et `coachAudioService` **opère dessus**. L'inversion est imposée par la
+bibliothèque, pas choisie.
+
+**Réserve honnête.** Ce chemin n'a **jamais tourné** : il exigeait déjà un build
+natif qui n'a pas eu lieu, et aucun compte coach n'existe en production. La
+réécriture n'a donc pas pu être confrontée à un comportement observé — elle suit
+l'interface déclarée, rien de plus.
+
+## Étape 8 — `expo-updates` · **FAITE**, en réglage délibérément conservateur
+
+Ajouté en `~55.0.26`, avec `runtimeVersion` suivant `appVersion`.
+
+**Pas en réglage par défaut** : `checkAutomatically: "ON_ERROR_RECOVERY"` et
+`fallbackToCacheTimeout: 0`. Un contrôle de mise à jour au lancement ajouterait une
+latence réseau **au paddock**, là où la connectivité est mauvaise et le pilote
+pressé. L'application ne bloquera jamais son démarrage pour aller voir s'il existe
+une version plus récente.
+
+C'est un arbitrage de ma part, réversible en une ligne si vous préférez la
+livraison immédiate.
 
 ---
 

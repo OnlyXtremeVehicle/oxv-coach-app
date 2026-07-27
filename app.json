@@ -3,6 +3,7 @@
     "name": "OXV",
     "slug": "oxv-app",
     "version": "1.0.0",
+    "newArchEnabled": true,
     "runtimeVersion": {
       "policy": "appVersion"
     },
