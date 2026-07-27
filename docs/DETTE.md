@@ -6,7 +6,36 @@ Chaque entrée porte son fichier, sa ligne, et le lot qui la traitera. Rien n'es
 
 ---
 
-## D-1 · Un coach rétrogradé conserve l'accès aux données — **ouvert**
+## D-1 · Un coach rétrogradé conserve l'accès aux données — **côté app CLOS, RLS en attente d'accord**
+
+**Mis à jour le 27/07/2026.** Deux corrections à ce qui suit.
+
+**La cause n'était pas celle décrite.** La fiche affirmait que `is_coach_of()` ne
+vérifie pas `active`. C'est faux : elle le vérifie, ainsi que `pilot_consent_at`.
+Le seul chaînon manquant est **`users.role`**. Le trou venait de l'autre bout —
+`demoteToPilot` n'écrivait que le rôle, laissant les affiliations `active = true`,
+que `is_coach_of` acceptait donc sans broncher.
+
+**Le vrai coupable était un commentaire.** `demoteToPilot` affirmait que « les
+assignations deviennent dormantes […] la double-protection RLS tient ». Rien ne
+mettait `active` à false. Le code décrivait une protection inexistante : qui le
+relisait repartait rassuré. C'est ainsi que le défaut a survécu à ses relectures.
+
+**Fait** : `demoteToPilot` coupe désormais les affiliations **avant** de changer
+le rôle, et refuse de rétrograder si cette coupure échoue — sans transaction
+depuis le client, l'état intermédiaire doit échouer FERMÉ. Trois tests fixent le
+comportement, l'ordre et le refus.
+
+**Reste** : la RLS. Tant que `is_coach_of` ignore `users.role`, la sécurité
+repose sur la discipline de chaque écrivain du rôle — un `UPDATE` depuis le SQL
+Editor rouvrirait le trou. La migration est écrite et **non appliquée** :
+`supabase/migrations/PROPOSITION_D1_is_coach_of_role.sql`. Elle touche le schéma
+de production, donc elle attend votre accord. Elle contient aussi la requête de
+comptage des lignes déjà désaccordées, et le rattrapage à décider séparément.
+
+---
+
+## D-1 (constat d'origine, conservé)
 
 **Constaté le 27/07/2026, jalon 0.1.**
 

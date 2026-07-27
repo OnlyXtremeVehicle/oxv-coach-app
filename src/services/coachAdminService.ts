@@ -256,20 +256,49 @@ export async function promoteToCoach(userId: string): Promise<{ ok: boolean; err
 }
 
 /**
- * Rétrograde un coach en pilote (role='pilot').
+ * Rétrograde un coach en pilote (role='pilot') ET coupe ses affiliations.
  *
- * À utiliser quand l'admin se trompe, ou quand un coach quitte ses
- * fonctions. Les assignations coach_pilots existantes deviennent
- * dormantes (le user perd ses droits via is_coach_of qui filtre sur
- * active=true ET consent NOT NULL — la double-protection RLS tient).
+ * D-1 — CE QUE CETTE FONCTION AFFIRMAIT ET QUI ÉTAIT FAUX
  *
- * V1.1 : faire en transaction avec désactivation explicite des
- * assignations pour un nettoyage immédiat.
+ * Son commentaire disait : « les assignations coach_pilots existantes deviennent
+ * dormantes, le user perd ses droits via is_coach_of qui filtre sur active=true
+ * — la double-protection RLS tient ». Rien ne mettait `active` à false. Les
+ * affiliations restaient actives, `is_coach_of` les acceptait donc, et un coach
+ * rétrogradé continuait de lire les séances, les tours et les bilans de ses
+ * anciens pilotes au niveau de la BASE.
+ *
+ * Le commentaire décrivait une protection inexistante, ce qui est pire qu'un
+ * silence : qui relisait ce code était rassuré et passait son chemin.
+ *
+ * ORDRE DES DEUX ÉCRITURES — les affiliations D'ABORD.
+ *
+ * Il n'y a pas de transaction depuis le client. Si la seconde écriture échoue,
+ * l'état intermédiaire doit être le PLUS SÛR des deux :
+ *   — affiliations coupées puis rôle non changé → un « coach » sans pilote, sans
+ *     accès. Inoffensif.
+ *   — rôle changé puis affiliations non coupées → exactement la faille. Interdit.
+ *
+ * La RLS reste la barrière de fond : voir la migration proposée qui fait
+ * dépendre `is_coach_of` de `users.role`, pour que ce trou ne puisse plus être
+ * rouvert par un autre chemin d'écriture.
  */
 export async function demoteToPilot(userId: string): Promise<{ ok: boolean; error?: string }> {
+  const { error: affErr } = await supabase
+    .from('coach_pilots')
+    .update({ active: false })
+    .eq('coach_id', userId)
+    .eq('active', true);
+
+  if (affErr) {
+    console.warn('[OXV][admin] demoteToPilot (affiliations) :', affErr.message);
+    // On NE rétrograde PAS : mieux vaut un coach encore coach qu'un ex-coach
+    // qui garde l'accès sans que personne ne le sache.
+    return { ok: false, error: affErr.message };
+  }
+
   const { error } = await supabase.from('users').update({ role: 'pilot' }).eq('id', userId);
   if (error) {
-    console.warn('[OXV][admin] demoteToPilot :', error.message);
+    console.warn('[OXV][admin] demoteToPilot (rôle) :', error.message);
     return { ok: false, error: error.message };
   }
   return { ok: true };
