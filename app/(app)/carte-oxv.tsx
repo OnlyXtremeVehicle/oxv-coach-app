@@ -159,7 +159,7 @@ export default function CarteOxvScreen() {
               provider={PROVIDER_DEFAULT}
               style={{ flex: 1 }}
               initialRegion={DEFAULT_REGION}
-              showsPointsOfInterest={false}
+              showsPointsOfInterests={false}
               showsCompass={false}
               toolbarEnabled={false}
               onPress={() => setSelected(null)}

@@ -328,7 +328,7 @@ function CarteTab({
         style={StyleSheet.absoluteFill}
         initialRegion={DEFAULT_REGION}
         onRegionChangeComplete={(r) => setRegion(r)}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         showsCompass={false}
         toolbarEnabled={false}
         // Style sombre demandé au provider (Apple Maps iOS l'honore ;

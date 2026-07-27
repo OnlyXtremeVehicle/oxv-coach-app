@@ -63,7 +63,7 @@ import {
   startRecording,
   stopRecording,
 } from '@/services/coachAudioService';
-import { type Audio } from 'expo-av';
+import { RecordingPresets, useAudioRecorder } from 'expo-audio';
 import { type CoachAnnotationTemplate } from '@/services/coachCurationLogic';
 import { listMyTemplates } from '@/services/coachCurationService';
 import { theme } from '@/theme/v2';
@@ -120,8 +120,15 @@ export default function CoachAnnoterScreen() {
   const [saving, setSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<CoachAnnotationTemplate[]>([]);
-  // Note vocale (PR-59) — l'enregistrement requiert expo-av (build natif).
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  // Note vocale (PR-59) — l'enregistrement requiert expo-audio (build natif).
+  //
+  // Depuis le SDK 55, expo-audio n'offre AUCUNE fabrique d'enregistreur hors
+  // React : `useAudioRecorder` est la seule voie. L'enregistreur vit donc ici,
+  // et coachAudioService opere dessus au lieu de le creer. `recording` ne porte
+  // plus l'objet mais l'ETAT — l'enregistreur, lui, est stable sur la duree de
+  // l'ecran.
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
   const [recordedUri, setRecordedUri] = useState<string | null>(null);
   // Chrono réel de l'enregistrement (source : horloge de démarrage).
   const [recElapsedMs, setRecElapsedMs] = useState(0);
@@ -185,17 +192,16 @@ export default function CoachAnnoterScreen() {
 
   async function onToggleRecord() {
     if (recording) {
-      const uri = await stopRecording(recording);
-      setRecording(null);
+      const uri = await stopRecording(recorder);
+      setRecording(false);
       setRecordedUri(uri);
       return;
     }
     const ok = await requestRecordingPermission();
     if (!ok) return;
-    const rec = await startRecording();
-    if (rec) {
+    if (await startRecording(recorder)) {
       setRecordedUri(null);
-      setRecording(rec);
+      setRecording(true);
     }
   }
 

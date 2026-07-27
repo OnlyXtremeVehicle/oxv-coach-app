@@ -7,11 +7,36 @@
  * l'uuid de l'annotation (pas d'extension, pas de dossier). Le pilote ne peut lire
  * que les notes des annotations partagees avec lui (policy deja en place).
  *
- * IMPORTANT : l'enregistrement requiert le module natif expo-av, fonctionnel a
+ * IMPORTANT : l'enregistrement requiert le module natif expo-audio, fonctionnel a
  * partir du prochain build natif (rebuild EAS). Le code est complet et compile.
+ *
+ * MIGRATION T0 — expo-av a DISPARU du SDK 55 : il n'y est plus epingle du tout,
+ * expo-audio le remplace. Ce n'est pas un renommage, l'interface est differente :
+ *   Audio.requestPermissionsAsync   -> requestRecordingPermissionsAsync
+ *   Audio.setAudioModeAsync         -> setAudioModeAsync, dont les cles perdent
+ *                                      leur suffixe IOS (allowsRecordingIOS
+ *                                      devient allowsRecording)
+ *   Audio.Recording.createAsync     -> new AudioRecorder(...) puis
+ *                                      prepareToRecordAsync() puis record()
+ *   recording.stopAndUnloadAsync    -> stop()
+ *   recording.getURI()              -> propriete .uri
+ *
+ * expo-audio n'expose AUCUNE fabrique d'enregistreur hors React : `AudioRecorder`
+ * est un TYPE, et `useAudioRecorder` un hook. Un service ne peut donc plus creer
+ * l'enregistreur — c'est l'ecran qui le tient, et ce module OPERE dessus.
+ * L'inversion est imposee par la bibliotheque, pas choisie.
+ *
+ * RESERVE HONNETE : ce chemin n'a JAMAIS tourne. Il exigeait deja un build natif
+ * qui n'a pas eu lieu, et aucun compte coach n'existe en production. La reecriture
+ * n'a donc PAS pu etre comparee a un comportement observe — elle suit l'interface
+ * declaree d'expo-audio, rien de plus. A eprouver au premier build.
  */
 
-import { Audio } from 'expo-av';
+import {
+  type AudioRecorder,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+} from 'expo-audio';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { supabase } from '@/lib/supabase';
@@ -22,7 +47,7 @@ const AUDIO_MIME = 'audio/m4a';
 /** Demande la permission micro. Retourne true si accordee. */
 export async function requestRecordingPermission(): Promise<boolean> {
   try {
-    const { granted } = await Audio.requestPermissionsAsync();
+    const { granted } = await requestRecordingPermissionsAsync();
     return granted;
   } catch (e) {
     console.warn('[OXV][coachAudio] permission :', e);
@@ -30,26 +55,30 @@ export async function requestRecordingPermission(): Promise<boolean> {
   }
 }
 
-/** Demarre un enregistrement. Retourne l'objet Recording ou null. */
-export async function startRecording(): Promise<Audio.Recording | null> {
+/**
+ * Demarre l'enregistrement sur l'enregistreur fourni par l'ecran
+ * (`useAudioRecorder`). Retourne true si l'enregistrement a bien demarre.
+ */
+export async function startRecording(recorder: AudioRecorder): Promise<boolean> {
   try {
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    const { recording } = await Audio.Recording.createAsync(
-      Audio.RecordingOptionsPresets.HIGH_QUALITY
-    );
-    return recording;
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    return true;
   } catch (e) {
     console.warn('[OXV][coachAudio] startRecording :', e);
-    return null;
+    return false;
   }
 }
 
 /** Stoppe l'enregistrement et retourne l'URI local du fichier, ou null. */
-export async function stopRecording(recording: Audio.Recording): Promise<string | null> {
+export async function stopRecording(recorder: AudioRecorder): Promise<string | null> {
   try {
-    await recording.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-    return recording.getURI();
+    await recorder.stop();
+    // Rendre la session audio au systeme : sans cela, le telephone reste en mode
+    // enregistrement et la lecture suivante sort par l'ecouteur.
+    await setAudioModeAsync({ allowsRecording: false });
+    return recorder.uri;
   } catch (e) {
     console.warn('[OXV][coachAudio] stopRecording :', e);
     return null;

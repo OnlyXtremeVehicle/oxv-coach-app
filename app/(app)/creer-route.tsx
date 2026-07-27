@@ -361,7 +361,7 @@ export default function CreerRouteScreen() {
             latitudeDelta: 0.6,
             longitudeDelta: 0.6,
           }}
-          showsPointsOfInterest={false}
+          showsPointsOfInterests={false}
           showsCompass={false}
           toolbarEnabled={false}
           onPress={onMapPress}
