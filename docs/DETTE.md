@@ -1,6 +1,6 @@
 # Dette — défauts constatés hors du périmètre du lot en cours
 
-Règle de travail V3 : *« Ne jamais élargir le périmètre d'un lot. Si un défaut apparaît hors périmètre, le consigner ici et continuer. »*
+Règle de travail V3 : _« Ne jamais élargir le périmètre d'un lot. Si un défaut apparaît hors périmètre, le consigner ici et continuer. »_
 
 Chaque entrée porte son fichier, sa ligne, et le lot qui la traitera. Rien n'est corrigé ici.
 
@@ -56,6 +56,36 @@ Ces 68 commits ne sont **pas du travail en danger** : ils sont tous atteignables
 Pousser `main` ferait avancer la **branche par défaut publique** du dépôt pour y intégrer du travail de branches de fonctionnalité. **C'est une décision de publication, pas une sauvegarde** — et le jalon 0.1 interdit explicitement de fusionner quoi que ce soit.
 
 **Traité par** : arbitrage du fondateur, hors programme V3.
+
+---
+
+## D-6 · Un `catch` délibérément vide, dans un fichier protégé — arbitrage à rendre
+
+**Constaté le 27/07/2026, T0 palier 52.**
+
+`eslint-config-expo` passe de 7 à 8, ce qui tire typescript-eslint v8, où
+`@typescript-eslint/no-unused-vars` bascule `caughtErrors` de `none` à `all`.
+`src/services/captureSessionService.ts:597` porte alors une erreur :
+
+```ts
+} catch (e) {
+  // Insert direct KO […] : on NE PERD PAS le lot. On le REQUEUE sur fichier […]
+```
+
+Le binding est **délibérément inutilisé** : le commentaire dit que le filet est la
+file fichier, pas l'erreur. Le code est juste ; c'est la règle qui a changé.
+
+**Ce qui a été fait** : `caughtErrors: "none"` posé dans `.eslintrc.json`, ce qui
+**restaure exactement** la strictesse d'avant la migration. T0 est une migration,
+pas une passe de durcissement.
+
+**Ce qui reste à trancher.** L'option plus stricte est `caughtErrors: "all"` avec
+`caughtErrorsIgnorePattern: "^_"` — déjà posé en prévision — et le renommage de
+`e` en `_e`. **Un seul caractère**, mais dans
+`src/services/captureSessionService.ts`, qui est sous règle cardinale : aucune
+modification sans votre accord.
+
+**Traité par** : votre arbitrage. Aucun blocage : la porte ESLint est verte en l'état.
 
 ---
 
