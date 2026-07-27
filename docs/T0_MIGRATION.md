@@ -315,16 +315,50 @@ rendent le **même objet fonction**. C'était vrai en 4.0, ce ne l'est plus.
 Le nom canonique est posé quand même : un relais de compatibilité peut disparaître,
 et le jour où il partira, rien ne le dira.
 
-## Étape 5 — MMKV 2 → 3 · **NON FAITE**, et volontairement
+## Étape 5 — MMKV 2 → 3 · **FAITE** — après une erreur de ma part
 
-`react-native-mmkv` reste en **2.12.2**. Le SDK 55 ne l'épingle pas — il n'est pas
-un module géré par Expo — et rien dans la migration ne l'a exigé : les portes
-passent toutes, la confrontation est à zéro écart.
+**J'avais d'abord conclu que cette étape était inutile**, au motif que le SDK 55
+n'épingle pas MMKV et qu'aucune porte ne tombait. C'était faux, et la vérification
+statique le montre sans ambiguïté.
 
-Le plan la donnait pour obligatoire sur la nouvelle architecture. Ce n'est pas ce
-que le dépôt montre. **À éprouver au premier build natif** : si MMKV v2 échoue sous
-Fabric, la migration v3 devient un lot à part entière — 1 import direct,
-15 consommateurs.
+### Ce que la lecture du natif a établi
+
+`react-native-mmkv@2.12.2` installe son HostObject **par l'ancien pont**.
+`ios/MmkvModule.mm` porte, lignes 32 à 41 :
+
+```objc
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(install : (nullable NSString*)storageDirectory)
+RCTCxxBridge* cxxBridge = (RCTCxxBridge*)_bridge;
+auto jsiRuntime = (jsi::Runtime*)cxxBridge.runtime;
+```
+
+Un export synchrone bloquant de l'ancien pont, un cast vers `RCTCxxBridge`, et un
+accès au runtime JSI **à travers ce pont**. En mode **sans pont** — le défaut de la
+nouvelle architecture — cette référence est nulle : l'installation échoue, et MMKV
+ne s'initialise pas.
+
+Aucune porte statique ne pouvait attraper cela : `tsc` et `jest` ne lisent pas
+l'Objective-C. **Le plan avait raison, mon arbitrage était faux.**
+
+### Ce qui a été fait
+
+`react-native-mmkv` porté en **3.3.3**, avec `react-native-nitro-modules` 0.36.1
+qu'il exige. La v3 ne référence plus le pont nulle part — vérifié : aucun fichier
+de `ios/` ne mentionne `RCTBridge` ni `RCT_EXPORT_BLOCKING`.
+
+**Zéro ligne de code de production modifiée.** `src/lib/mmkv.ts` n'emploie que
+`new MMKV({ id })`, `set`, `getString`, `delete` et `clearAll` — identiques en v3.
+`tsc` passe sans un changement.
+
+### Un effet de bord, traité
+
+La v3 exige son module natif : `new MMKV()` échoue sous Jest, qui tourne en
+environnement node. La v2 le tolérait. Deux suites sont tombées d'un coup, **sans
+qu'aucune ligne de production ait bougé**.
+
+Un simulacre en mémoire est posé dans `__mocks__/react-native-mmkv.ts`. Jest le
+charge seul, ce dossier étant adjacent à `node_modules`. Il reproduit le contrat
+réellement utilisé, et rien de plus.
 
 ## Étape 6 — Skia 1.2 → 2.8 · **FAITE**, mais pas où le plan l'attendait
 
