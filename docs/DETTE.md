@@ -49,7 +49,25 @@ comptage des lignes déjà désaccordées, et le rattrapage à décider séparé
 
 ---
 
-## D-2 · `.gitignore` — quatre gardes sur huit sont absentes
+## D-2 · `.gitignore` — les gardes existaient, ancrées à des chemins inexistants — **CLOS**
+
+**Mis à jour le 27/07/2026.** Correction à ce qui suit : les quatre gardes
+dites « absentes » ÉTAIENT présentes, mais écrites `ios/*.mobileprovision`,
+`android/app/google-services.json`, `android/app/*.keystore`. Or ce projet ne
+contient NI `ios/` NI `android/` — le natif est généré au build par prebuild.
+Elles ne couvraient donc rien.
+
+Éprouvé plutôt que déduit : avant correction, `git check-ignore` laissait passer
+les quatre déposés à la racine. Après, huit chemins d'épreuve sont couverts, y
+compris profonds.
+
+**Aucune fuite, ni maintenant ni jamais** — vérifié sur l'index ET sur tout
+l'historique (`git log --all --diff-filter=A`). Les motifs sont désormais GLOBAUX,
+et `*.jks` a été ajouté au passage.
+
+---
+
+## D-2 (constat d'origine, conservé)
 
 **Constaté le 27/07/2026, jalon 0.1, étape 3.**
 
@@ -62,7 +80,23 @@ Couverts : `.env`, `.env.local`, `*.p8`, `*.p12`.
 
 ---
 
-## D-3 · Deux documents publiés affirment un état de sécurité périmé
+## D-3 · Deux documents publiés affirment un état de sécurité périmé — **CLOS**
+
+**Corrigé le 27/07/2026**, après avoir VÉRIFIÉ que SEC-2 est bien appliqué :
+`supabase/migrations/20260726152049_sec2_guard_is_admin.sql` est dans les
+migrations appliquées et `migrations_a_valider/` est vide. Sans cette
+vérification, j'aurais pu transformer un avertissement juste en fausse
+assurance — le sens le plus dangereux de l'erreur.
+
+`ETAT_COMPLET_APP_2026-07-26.md` porte un encadré de correction, le texte
+d'origine conservé au passé : effacer un constat efface la mémoire de ce qui a
+été corrigé. `BILAN_COMPLET_OXV.md` (à la RACINE, pas dans docs/) porte une note
+expliquant que le hit existe, qu'il s'agit de la clé anon publique, et que ce
+qui est corrigé est l'affirmation, pas un risque.
+
+---
+
+## D-3 (constat d'origine, conservé)
 
 **Constaté le 27/07/2026, jalon 0.1, étape 3.**
 

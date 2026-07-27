@@ -15,24 +15,40 @@ vous ne lisez qu'une page.
 
 ## À traiter en priorité
 
-**Une élévation de privilège est ouverte en production.** N'importe quel compte
-authentifié peut exécuter `update public.users set is_admin = true where id =
-auth.uid()` et devenir administrateur au sens de la base — ce qui ouvre toutes
-les policies gardées par `is_admin()`. Trois faits se combinent : le privilège
-UPDATE sur la colonne est accordé à `authenticated`, la policy
-`users_update_own_or_admin` autorise l'écriture de sa propre ligne, et le
-déclencheur `guard_users_privileged_columns` ne protège que `role` et
-`kyc_status` — `is_admin` n'y figure pas. Aucun audit ne le tracerait : le
-déclencheur d'audit n'observe que `role`.
+> **CORRIGÉ LE 27/07/2026 — l'élévation de privilège `is_admin` est FERMÉE.**
+>
+> Le passage qui suit décrivait la faille comme **ouverte en production**, avec
+> le détail de son exploitation. Ce n'est plus vrai : le correctif SEC-2 a été
+> appliqué. `supabase/migrations/20260726152049_sec2_guard_is_admin.sql` est
+> dans les migrations appliquées, et `migrations_a_valider/` est vide.
+>
+> **Ce dépôt est PUBLIC.** Un document qui publie le mode d'emploi d'une faille
+> déjà refermée n'aggrave rien, mais il désinforme dans les deux sens : il
+> effraie sur un risque éteint, et il use la confiance qu'on accorde au reste du
+> document. Un état qui se trompe sur la sécurité perd sa fonction.
+>
+> Le texte d'origine est conservé ci-dessous, barré de cet avertissement, parce
+> qu'effacer un constat efface aussi la mémoire de ce qui a été corrigé.
+
+**~~Une élévation de privilège est ouverte en production.~~** *(fermée — voir
+l'encadré ci-dessus)* N'importe quel compte
+authentifié pouvait exécuter `update public.users set is_admin = true where id =
+auth.uid()` et devenir administrateur au sens de la base — ce qui ouvrait toutes
+les policies gardées par `is_admin()`. Trois faits se combinaient : le privilège
+UPDATE sur la colonne était accordé à `authenticated`, la policy
+`users_update_own_or_admin` autorisait l'écriture de sa propre ligne, et le
+déclencheur `guard_users_privileged_columns` ne protégeait que `role` et
+`kyc_status` — `is_admin` n'y figurait pas. Aucun audit ne l'aurait tracé : le
+déclencheur d'audit n'observait que `role`.
 
 Vérifié le 26 juillet 2026 par lecture directe du corps du déclencheur et des
 privilèges de colonne. Un seul compte porte aujourd'hui le drapeau :
 `administration@oxvehicle.fr`, le vôtre.
 
-Le correctif est écrit — `supabase/migrations_a_valider/20260726_sec2_guard_is_admin.sql` —
-mais **il n'a pas été appliqué** : modifier le schéma de production demande votre
-accord. Il étend la garde existante à `is_admin` et ajoute la trace d'audit
-manquante. Purement restrictif, réversible.
+Le correctif **a été appliqué le 26/07/2026** :
+`supabase/migrations/20260726152049_sec2_guard_is_admin.sql`. Il étend la garde
+existante à `is_admin` et ajoute la trace d'audit manquante. Purement
+restrictif, réversible.
 
 ---
 

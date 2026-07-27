@@ -23,13 +23,26 @@ secrets/
 *.p12
 serviceAccountKey.json
 
-# Credentials Apple
-ios/*.mobileprovision
-ios/*.cer
-
-# Credentials Google
-android/app/google-services.json
-android/app/*.keystore
+# Credentials Apple et Google
+#
+# D-2 — CES GARDES ÉTAIENT ANCRÉES À DES CHEMINS QUI N'EXISTENT PAS.
+#
+# Elles étaient écrites `ios/*.mobileprovision` et `android/app/*.keystore`.
+# Or ce projet ne contient NI `ios/` NI `android/` : le natif est généré au
+# build par prebuild. Un fichier de signature déposé ailleurs — à la racine,
+# dans un dossier de travail, à côté d'un script — n'était donc pas couvert.
+#
+# Vérifié plutôt que supposé : avant correction, `git check-ignore` laissait
+# passer les quatre. Rien n'a fuité (aucun fichier de ce type n'est suivi, ni
+# ne l'a jamais été dans l'historique), mais la garde ne tenait pas.
+#
+# Les motifs sont désormais GLOBAUX : ils valent où que le fichier atterrisse.
+*.mobileprovision
+*.cer
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
 
 # ----------------------------------------------------------------
 # REACT NATIVE / EXPO

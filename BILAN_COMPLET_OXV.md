@@ -403,7 +403,19 @@ Périmètre vérifié : 108 fichiers dans `supabase/migrations/` + 6 archivés (
 | Vérification | Résultat | Preuve |
 |---|---|---|
 | Clés en dur (`sk_`, `service_role`, `eyJhbGciOi`, `api_key`) dans `src/`+`app/` | **Aucune** — 8 hits, tous commentaires/tests | grep : seuls commentaires (`src/services/accountService.ts:7`, etc.) |
-| JWT anon en dur repo entier | Aucun (`eyJhbGciOi` : 0 hit) | grep repo |
+| JWT anon en dur repo entier | **PÉRIMÉ — 1 hit depuis le 18/07/2026** (voir note) | grep repo |
+
+> **Note du 27/07/2026 — la ligne ci-dessus était vraie à sa rédaction, elle ne
+> l'est plus.** `supabase/migrations/20260718133742_fix_relay_validate_inscription_jwt.sql:35`
+> contient un `eyJhbGciOi`, arrivé avec la reconstitution des 94 migrations.
+>
+> **La situation reste saine** : il s'agit de la clé **anon**, publique par
+> construction — elle est destinée à être embarquée dans les clients. Aucune clé
+> `service_role` n'est en dur, ce que la ligne précédente vérifie séparément.
+>
+> Ce qui est corrigé ici n'est donc pas un risque mais une AFFIRMATION FAUSSE.
+> Sur un dépôt public, un tableau de sécurité qui annonce « 0 hit » là où il y en
+> a un perd sa valeur de preuve, même quand le hit est inoffensif.
 | `.env` committé | Non — seul `.env.example` tracké (placeholders) | `git ls-files` |
 | Client app | anon key via `process.env.EXPO_PUBLIC_*`, throw si absent | `src/lib/supabase.ts:15-22` |
 | Edge functions | Secrets via `Deno.env.get` uniquement (RESEND, OpenAI, SERVICE_ROLE, INVOKE_SECRET) ; triggers pg_net lisent le secret dans le **Vault** | `send-document-status/index.ts:81-94` ; `20260525150006_0025_notif_triggers_use_vault.sql` |
