@@ -1,12 +1,13 @@
 /**
- * Layout du groupe (app2) — coquille V2 (lot L0, Livrable 8).
+ * Layout du groupe (app2) — l'arbre pilote ACTIF.
  *
- * Groupe ORPHELIN pour l'instant : aucun lien depuis (app), seul l'écran
- * dev-galerie (__DEV__) y donne accès. Les cinq portes sont des placeholders
- * en attendant les lots L1-L5.
+ * Ce groupe n'est plus orphelin : depuis la bascule du lot L6, `app/index.tsx`
+ * y envoie le pilote, et la garde de build qui le renvoyait vers la racine hors
+ * développement a été retirée (voir le commentaire dans le corps, plus bas —
+ * la conserver produirait une boucle de redirection en production).
  *
- * - garde de build : hors __DEV__, tout le groupe redirige vers la racine —
- *   réellement orphelin en production, deep links compris (retrait au L6) ;
+ * Quatre portes, déclarées dans TAB_ROUTES : Miroir, Data, Club, Vous.
+ *
  * - garde d'auth : session expirée → login (même garde que app/(app)) ;
  * - GestureHandlerRootView racine (Sheet et PullToRefreshDial en dépendent) ;
  * - Stack sans header natif, animation 'none' : l'entrée d'écran est la

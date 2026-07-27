@@ -33,7 +33,17 @@ import * as path from 'path';
 //      ne sait pas naviguer son téléphone)
 //   3. Jugements gratuits (« bravo », « parfait » : on n'évalue pas
 //      l'humain, on lui montre les chiffres)
-const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
+/**
+ * `prose` restreint la recherche au texte réellement affichable — littéraux de
+ * chaîne contenant une espace, et nœuds de texte JSX. Sans cette portée, un
+ * terme anglais employé comme IDENTIFIANT (`haptic="tap"`, `const swipe = …`)
+ * remonte comme violation : soixante-quinze fois, ce qui rendait le scanner
+ * rouge en permanence et donc inutile. Un scanner qu'on n'écoute plus n'attrape
+ * plus rien de réel.
+ */
+type Portee = 'ligne' | 'prose';
+
+const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string; portee?: Portee }[] = [
   // Catégorie 1 : verbes de pilotage
   { pattern: /\bfreinez\b/gi, verb: 'freinez' },
   { pattern: /\baccélérez\b/gi, verb: 'accélérez' },
@@ -60,10 +70,13 @@ const FORBIDDEN_PATTERNS: { pattern: RegExp; verb: string }[] = [
   { pattern: /\bparfait\s*!/gi, verb: 'parfait !' },
   { pattern: /\bexcellent\s*!/gi, verb: 'excellent !' },
   { pattern: /\battention\s*!/gi, verb: 'attention !' },
-  // Catégorie 4 : termes anglais dans texte UI (la doctrine OXV est en français)
-  { pattern: /\btap\b/gi, verb: 'tap (anglais)' },
-  { pattern: /\bswipe\b/gi, verb: 'swipe (anglais)' },
-  { pattern: /\bclick\b/gi, verb: 'click (anglais)' },
+  // Catégorie 4 : termes anglais dans texte UI (la doctrine OXV est en français).
+  // Portée `prose` : ces mots sont aussi le vocabulaire de Gesture Handler et du
+  // service haptique. Les chercher sur la ligne entière confondait le texte lu
+  // par le pilote avec le nom d'une variable.
+  { pattern: /\btap\b/gi, verb: 'tap (anglais)', portee: 'prose' },
+  { pattern: /\bswipe\b/gi, verb: 'swipe (anglais)', portee: 'prose' },
+  { pattern: /\bclick\b/gi, verb: 'click (anglais)', portee: 'prose' },
   // Catégorie 5 : conseils reformulés en groupe nominal (frontière fait/cause,
   // Pattern 4). Le scanner par verbes ne les capte pas ; ces tournures
   // désignent une cause à corriger et sont réservées au CoachBand (coach
@@ -106,11 +119,38 @@ const ADDITIONAL_PATTERNS: { pattern: RegExp; verb: string }[] = [
 // Patterns à ignorer (faux positifs structurels)
 const IGNORE_LINE_PATTERNS = [
   /^\s*\/\//, // commentaire ligne
+  /^\s*\/\*/, // OUVERTURE de commentaire bloc — `/**` en début de ligne n'était
+  //             pas couvert par la règle suivante, qui exige une étoile seule.
+  /^\s*\{\s*\/\*/, // commentaire JSX `{/* … */}`
   /^\s*\*/, // commentaire bloc (étoile en début)
   /FORBIDDEN_VERBS/, // tableau de test anti-doctrine
   /'freinez'|'accélérez'|'évitez'/, // tableau de test
   /haptics\.tap/, // appel de fonction RN haptics, pas du texte UI
 ];
+
+/**
+ * Extrait d'une ligne ce qui peut réellement s'afficher : les littéraux de
+ * chaîne porteurs d'au moins une espace — donc de la phrase, non un code — et
+ * les nœuds de texte JSX.
+ *
+ * Une chaîne d'un seul mot (`'tap'`, `"swipe"`) est écartée : c'est la forme
+ * d'une valeur passée à une fonction, jamais celle d'une phrase lue par un
+ * pilote. C'est la distinction qui sépare les soixante-quinze faux positifs
+ * d'une vraie violation.
+ */
+function portionsAffichables(line: string): string {
+  const morceaux: string[] = [];
+
+  const litteraux = line.matchAll(/(['"`])((?:\\.|(?!\1)[^\\])*)\1/g);
+  for (const m of litteraux) {
+    if (m[2].includes(' ')) morceaux.push(m[2]);
+  }
+
+  const texteJsx = line.matchAll(/>([^<>{}]{2,})</g);
+  for (const m of texteJsx) morceaux.push(m[1]);
+
+  return morceaux.join('\n');
+}
 
 interface Violation {
   file: string;
@@ -137,23 +177,74 @@ function listTsxFiles(rootDir: string): string[] {
   return result;
 }
 
+/**
+ * Un écran gardé par `__DEV__` ne s'affiche jamais à un pilote : la doctrine
+ * gouverne ce qui est lu, et rien n'est lu là. La galerie de développement
+ * documente le nom des retours haptiques — l'y traduire en français
+ * décrirait faussement l'interface de programmation.
+ */
+function estGardeDev(content: string): boolean {
+  return /if\s*\(\s*!__DEV__\s*\)/.test(content);
+}
+
+/** État de traversée d'un commentaire bloc, porté d'une ligne à la suivante. */
+interface EtatBloc {
+  dedans: boolean;
+}
+
+/**
+ * Retire d'une ligne ce qui appartient à un commentaire bloc `/* … *\/`,
+ * y compris sa forme JSX `{/* … *\/}`.
+ *
+ * Le scanner lit ligne à ligne. Un commentaire sur plusieurs lignes ne porte
+ * son marqueur que sur la première : les suivantes sont nues et étaient donc
+ * scannées comme du code. C'est ainsi qu'une note d'accessibilité expliquant
+ * le « double-tap d'un lecteur d'écran » remontait comme anglicisme affiché.
+ */
+function horsCommentaireBloc(line: string, etat: EtatBloc): string {
+  let reste = line;
+  let sortie = '';
+
+  for (;;) {
+    if (etat.dedans) {
+      const fin = reste.indexOf('*/');
+      if (fin === -1) return sortie;
+      reste = reste.slice(fin + 2);
+      etat.dedans = false;
+      continue;
+    }
+    const debut = reste.indexOf('/*');
+    if (debut === -1) return sortie + reste;
+    sortie += reste.slice(0, debut);
+    reste = reste.slice(debut + 2);
+    etat.dedans = true;
+  }
+}
+
 function scanFile(filePath: string): Violation[] {
   const violations: Violation[] = [];
   const content = fs.readFileSync(filePath, 'utf-8');
+  if (estGardeDev(content)) return violations;
   const lines = content.split('\n');
+  const etat: EtatBloc = { dedans: false };
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+    const brute = lines[i];
+    const line = horsCommentaireBloc(brute, etat);
+    if (line.trim() === '') continue;
     if (IGNORE_LINE_PATTERNS.some((p) => p.test(line))) continue;
+    const prose = portionsAffichables(line);
 
-    for (const { pattern, verb } of FORBIDDEN_PATTERNS) {
+    for (const { pattern, verb, portee } of FORBIDDEN_PATTERNS) {
+      const cible = portee === 'prose' ? prose : line;
+      if (cible === '') continue;
       pattern.lastIndex = 0; // reset le regex global
-      if (pattern.test(line)) {
+      if (pattern.test(cible)) {
         violations.push({
           file: filePath,
           line: i + 1,
           verb,
-          excerpt: line.trim().slice(0, 100),
+          excerpt: brute.trim().slice(0, 100),
         });
       }
     }
@@ -164,7 +255,7 @@ function scanFile(filePath: string): Violation[] {
           file: filePath,
           line: i + 1,
           verb,
-          excerpt: line.trim().slice(0, 100),
+          excerpt: brute.trim().slice(0, 100),
         });
       }
     }

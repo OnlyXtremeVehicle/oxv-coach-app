@@ -96,7 +96,7 @@ function messageEchecEmission(code: string | undefined): string {
     case 'vat_rate_missing':
       return "Votre régime indique que vous facturez la TVA, mais aucun taux exploitable n'est enregistré. Complétez votre identité de facturation avant d'émettre.";
     case 'billing_profile_incomplete':
-      return "Votre identité de facturation est incomplète : il faut au minimum l'aide à la facture activée, un nom d'émetteur et un SIRET.";
+      return "Votre identité de facturation est incomplète : l'aide à la facture activée, un nom d'émetteur et un SIRET sont nécessaires.";
     case 'not_authenticated':
       return 'Votre session a expiré. Reconnectez-vous, puis réessayez.';
     case 'numbering_failed':
