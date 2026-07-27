@@ -1,0 +1,86 @@
+# Mesure de performance — lot T3
+#
+# ⚠️  CE WORKFLOW NE TOURNE PAS ENCORE. Il attend un exécuteur auto-hébergé
+#     portant un APPAREIL ANDROID RÉEL. Son déclenchement est volontairement
+#     manuel (`workflow_dispatch`) : programmé, il échouerait à chaque exécution
+#     et le rouge permanent finirait par être ignoré — ce qui est pire qu'une
+#     mesure absente.
+#
+# POURQUOI UN APPAREIL RÉEL, ET PAS UN ÉMULATEUR
+#
+# Le défaut qu'on traque est le THROTTLING THERMIQUE : l'appareil chauffe, et le
+# rendu décroche par à-coups au bout de quelques dizaines de secondes. Un
+# émulateur ne chauffe pas. Il rendrait une trace propre et une conclusion
+# fausse — exactement le genre de garde rassurante que ce dépôt a déjà trouvée
+# trois fois.
+#
+# CE QUI EST DÉJÀ UTILISABLE SANS APPAREIL
+#
+# L'analyse des traces — `src/perf/frameTimes.ts`, 14 tests. Elle applique la
+# règle du dossier : centiles et dérive, jamais la moyenne. Elle tourne dans le
+# workflow `check`, et n'attend rien.
+#
+# POUR L'ACTIVER
+#
+#   1. Enregistrer un exécuteur auto-hébergé avec un appareil branché en ADB.
+#   2. Remplacer `runs-on` par son étiquette.
+#   3. Renseigner la liste des écrans à mesurer ci-dessous.
+#   4. Retirer le `if: false`.
+
+name: mesure
+
+on:
+  workflow_dispatch:
+
+jobs:
+  flashlight:
+    name: temps d'image sur appareil réel
+    # Garde explicite : tant qu'aucun exécuteur ne porte d'appareil, ce travail
+    # ne doit pas être lancé par erreur et rendre un rouge permanent.
+    if: false
+    runs-on: ubuntu-latest # ← à remplacer par l'étiquette de l'exécuteur à appareil
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # Flashlight pilote l'appareil par ADB et relève les temps d'image du
+      # processus. Il exige un APK installé : la mesure porte sur un build réel,
+      # jamais sur un bundle de développement — le mode debug fausse tout.
+      - name: Installer Flashlight
+        run: curl https://get.flashlight.dev | bash
+
+      - name: Vérifier qu'un appareil est bien branché
+        run: |
+          adb devices -l
+          # Sans cette garde, Flashlight rendrait une trace vide et le rapport
+          # conclurait « aucune image hors budget » — un faux vert.
+          test "$(adb devices | grep -c 'device$')" -ge 1
+
+      # Les parcours restent à écrire : un par écran mesuré, dans le fichier
+      # `perf/parcours/<ecran>.yml`. Le dossier les nommera au lot qui les
+      # concerne — mesurer un écran avant de l'avoir refondu n'a pas d'intérêt.
+      - name: Mesurer les parcours
+        run: |
+          echo "Aucun parcours défini pour l'instant."
+          echo "Voir docs/T3_MESURE.md — la liste vient avec les écrans refondus."
+          exit 1
+
+      - name: Juger les traces
+        run: npx --yes tsx scripts/juger-mesure.ts perf/resultats/*.json
+
+      - name: Conserver les traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traces-temps-image
+          path: perf/resultats/

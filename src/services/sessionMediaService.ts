@@ -211,7 +211,20 @@ export async function uploadSessionMedia(opts: {
     return { error: insertErr?.message ?? 'unknown_insert_error' };
   }
 
-  return mapRow(createdRaw as unknown as DbRow);
+  const cree = createdRaw as unknown as DbRow;
+
+  // T2 — ThumbHash. Demandé au serveur, PAS attendu : l'aperçu est un agrément,
+  // et le pilote n'a aucune raison de patienter pour lui. Sans hash, l'affichage
+  // retombe sur l'aplat titane, ce qui reste correct.
+  //
+  // L'appel est délibérément silencieux en cas d'échec : une fonction Edge
+  // indisponible ne doit pas transformer un envoi RÉUSSI en erreur. Le média est
+  // en base ; le rattrapage par lot le reprendra.
+  void supabase.functions
+    .invoke('generate-thumbhash', { body: { mediaId: cree.id } })
+    .catch(() => undefined);
+
+  return mapRow(cree);
 }
 
 /**
