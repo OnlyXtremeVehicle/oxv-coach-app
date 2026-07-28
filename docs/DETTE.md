@@ -102,11 +102,27 @@ qui est corrigé est l'affirmation, pas un risque.
 
 `BILAN_COMPLET_OXV.md` affirme « JWT anon en dur repo entier | Aucun (`eyJhbGciOi` : 0 hit) ». Vrai à la rédaction, **faux depuis la reconstitution des 94 migrations** : `supabase/migrations/20260718133742_fix_relay_validate_inscription_jwt.sql:35` en porte un. Il s'agit de la clé anon, publique par construction — l'affirmation est fausse, la situation reste saine.
 
-`docs/ETAT_COMPLET_APP_2026-07-26.md:18` et `:1369` décrivent l'élévation de privilège `is_admin` comme **ouverte en production**, avec le détail de son exploitabilité. **Elle a été fermée par SEC-2 le 26/07.** Le document n'a pas suivi.
+~~`docs/ETAT_COMPLET_APP_2026-07-26.md:18` et `:1369` décrivent l'élévation de privilège `is_admin` comme **ouverte en production**, avec le détail de son exploitabilité. **Elle a été fermée par SEC-2 le 26/07.** Le document n'a pas suivi.~~
 
-Les deux sont désormais publics. L'erreur va dans le sens prudent — elle surestime le risque — mais un document d'état qui se trompe sur la sécurité perd sa fonction.
+> **RECTIFIÉ LE 28/07/2026. Le paragraphe barré ci-dessus était faux, et c'est moi qui l'ai écrit.**
+>
+> La faille est **toujours ouverte**. Le document d'état avait raison ; c'est ma rectification du 27/07 qui se trompait.
+>
+> Mon raisonnement d'alors : la migration `20260726152049_sec2_guard_is_admin.sql` figure dans les migrations appliquées, donc le correctif est en place. **J'ai confondu « appliquée » et « effective ».**
+>
+> La migration exécute `create or replace function guard_users_privileged_columns()` — le corps couvre bien `is_admin`. Mais elle ne recrée jamais le DÉCLENCHEUR, qui date du 20/06 et se lit encore `BEFORE UPDATE OF role, kyc_status`. `is_admin` n'y figure pas, et `UPDATE OF <liste>` ne déclenche que si une colonne de la liste est au `SET`. La garde est inerte depuis le jour de sa pose.
+>
+> Le protocole de SEC-2 prévoyait deux contrôles. Le premier, sur la définition de la fonction, passe et ne prouve rien. Le second — tenter l'écriture depuis une session pilote — l'aurait attrapé. C'est celui qui n'a pas été fait, et c'est le seul qui prouvait quelque chose.
+>
+> **C'est le même motif que tout ce que ce dépôt m'a appris ce mois-ci** : une garde présente et non armée, doublée d'un document qui affirme un accord rompu. Cette fois le document était le mien.
+>
+> Atténuation factuelle : le déclencheur d'audit de la même migration est, lui, correctement armé (`after update on public.users`, sans liste). `admin_audit` ne porte **aucune** ligne `user_is_admin_change` depuis le 26/07, et un seul compte a `is_admin = true` — `administration@oxvehicle.fr`, depuis le 17/06, légitimement. Rien n'indique une exploitation. Avant le 26/07 il n'y avait pas d'audit : rien ne peut en être dit.
+>
+> Correctif proposé, non appliqué : `supabase/migrations/PROPOSITION_SEC3_garde_is_admin_inerte.sql`. Il retire la clause `OF` au lieu d'y ajouter `is_admin` — pour supprimer la classe du défaut et non son instance.
 
-**Traité par** : à rattacher au premier lot qui touche ces documents.
+Le JWT anon reste, lui, exact : clé publique par construction, situation saine.
+
+**Traité par** : décision fondateur sur SEC-3. Les deux documents sont corrigés.
 
 ---
 

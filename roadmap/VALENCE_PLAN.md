@@ -61,7 +61,7 @@ Aujourd'hui, entre « boîtier connecté » et « données en base », **rien n'
 ### 🟠 P2 — Processus comptes Valence (pas du code, à documenter)
 Pas d'inscription in-app ni d'attribution auto du rôle coach. Pour le 1er essai :
 1. Un admin crée les 2 comptes (Dashboard Supabase ou site).
-2. `is_admin=true` sur un compte staff (1 UPDATE SQL — bootstrap).
+2. `role='admin'` sur un compte staff (1 UPDATE SQL — bootstrap). *(28/07 : `is_admin` ne fait plus autorité seule ; voir PROPOSITION_L8_role_autorite.sql.)*
 3. Cet admin promeut le coach via `/(admin)/preparation` (fonctionne).
 4. Coach + pilote se connectent, font leur onboarding/pacte.
 5. Admin assigne le pilote au coach ; le pilote consent (`mon-coach`).

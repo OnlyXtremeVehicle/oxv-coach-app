@@ -14,7 +14,7 @@
 2. **Bootstrap admin** (une seule fois, pour pouvoir promouvoir le coach) :
    sur le compte staff OXV, en SQL :
    ```sql
-   update public.users set is_admin = true where email = 'staff@oxvehicle.fr';
+   update public.users set role = 'admin' where email = 'staff@oxvehicle.fr';  -- 28/07 : role fait autorité, pas is_admin (voir PROPOSITION_L8)
    ```
    (à faire via le Dashboard SQL — c'est la seule action SQL manuelle.)
 

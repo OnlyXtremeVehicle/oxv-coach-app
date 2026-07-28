@@ -226,7 +226,7 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 
 ---
 
-## Phase H — Smoke admin (si user `is_admin = true`)
+## Phase H — Smoke admin (si user `role = 'admin'`)
 
 - [ ] `/(admin)/` accessible (sinon redirect /(app))
 - [ ] Préparation : liste les pilotes avec leur niveau et KYC

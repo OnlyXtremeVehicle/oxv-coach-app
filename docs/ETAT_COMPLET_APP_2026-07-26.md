@@ -15,23 +15,47 @@ vous ne lisez qu'une page.
 
 ## À traiter en priorité
 
-> **CORRIGÉ LE 27/07/2026 — l'élévation de privilège `is_admin` est FERMÉE.**
+> **RECTIFICATION DU 28/07/2026 — LA FAILLE EST TOUJOURS OUVERTE.**
 >
-> Le passage qui suit décrivait la faille comme **ouverte en production**, avec
-> le détail de son exploitation. Ce n'est plus vrai : le correctif SEC-2 a été
-> appliqué. `supabase/migrations/20260726152049_sec2_guard_is_admin.sql` est
-> dans les migrations appliquées, et `migrations_a_valider/` est vide.
+> Cet encadré affirmait, depuis le 27/07, que l'élévation de privilège était
+> fermée. **C'était faux, et je l'avais écrit.**
 >
-> **Ce dépôt est PUBLIC.** Un document qui publie le mode d'emploi d'une faille
-> déjà refermée n'aggrave rien, mais il désinforme dans les deux sens : il
-> effraie sur un risque éteint, et il use la confiance qu'on accorde au reste du
-> document. Un état qui se trompe sur la sécurité perd sa fonction.
+> Le raisonnement d'alors : la migration `20260726152049_sec2_guard_is_admin.sql`
+> figure dans les migrations appliquées, donc le correctif est en place. La
+> migration a bien été appliquée. **Elle ne fait pas ce qu'elle annonce.**
 >
-> Le texte d'origine est conservé ci-dessous, barré de cet avertissement, parce
-> qu'effacer un constat efface aussi la mémoire de ce qui a été corrigé.
+> Elle exécute `create or replace function guard_users_privileged_columns()`,
+> qui met à jour le CORPS de la garde — celui-ci couvre bien `is_admin`. Mais le
+> DÉCLENCHEUR n'a jamais été recréé. Il date du 20/06 et se lit toujours :
+>
+>     BEFORE UPDATE OF role, kyc_status ON public.users
+>
+> `is_admin` n'y figure pas. En PostgreSQL, `UPDATE OF <liste>` ne déclenche que
+> si une colonne de la liste figure au `SET`. Un ordre qui ne touche que
+> `is_admin` passe donc à côté de la garde. **Le correctif est inerte depuis le
+> jour de sa pose.**
+>
+> Le protocole de vérification de SEC-2 prévoyait deux contrôles. Le premier —
+> « la définition de la fonction contient-elle `is_admin is distinct from` » —
+> passe, et ne prouve rien sur le déclencheur. Le second — tenter réellement
+> l'écriture depuis une session pilote — l'aurait attrapé. **C'est celui qui n'a
+> pas été fait.**
+>
+> **Ce dépôt est PUBLIC et la RLS est la seule barrière.** Le passage ci-dessous
+> est donc rétabli tel qu'il était : il décrit un risque réel.
+>
+> **Ce qui atténue, factuellement.** Le déclencheur d'audit posé par la même
+> migration, lui, est correctement armé (`after update on public.users`, sans
+> liste de colonnes). `admin_audit` ne contient **aucune** ligne
+> `user_is_admin_change` depuis le 26/07. Et en base, un seul compte porte
+> `is_admin = true` — `administration@oxvehicle.fr`, depuis le 17/06, ce qui est
+> légitime. Rien n'indique une exploitation. Sur la période antérieure au 26/07,
+> aucun audit n'existait : rien ne peut en être dit.
+>
+> Correctif proposé, non appliqué :
+> `supabase/migrations/PROPOSITION_SEC3_garde_is_admin_inerte.sql`.
 
-**~~Une élévation de privilège est ouverte en production.~~** *(fermée — voir
-l'encadré ci-dessus)* N'importe quel compte
+**Une élévation de privilège est ouverte en production.** N'importe quel compte
 authentifié pouvait exécuter `update public.users set is_admin = true where id =
 auth.uid()` et devenir administrateur au sens de la base — ce qui ouvrait toutes
 les policies gardées par `is_admin()`. Trois faits se combinaient : le privilège

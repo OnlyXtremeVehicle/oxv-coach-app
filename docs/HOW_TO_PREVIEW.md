@@ -31,7 +31,7 @@ Au démarrage, un QR code s'affiche dans le terminal et une page web s'ouvre sur
 L'app se télécharge sur le téléphone (~30 s la première fois) puis se lance. Vous voyez :
 - Écran de login OXV
 - Possibilité de naviguer dans tous les écrans une fois loggué
-- Tous les écrans pilote et admin (avec `is_admin = true`)
+- Tous les écrans pilote et admin (avec `role = 'admin'`)
 
 **Logs en direct** dans le terminal Windows. Modifications de code → reload automatique du téléphone (cmd+R sur iPhone secoué, double-tap sur Android).
 
@@ -70,7 +70,7 @@ SET pilot_level = 'intermediaire',
     cgu_accepted_at = NOW(),
     privacy_accepted_at = NOW(),
     profile_completed_at = NOW(),
-    is_admin = true  -- pour voir les vues admin
+    role = 'admin'  -- pour voir les vues admin (28/07 : role fait autorité)
 WHERE email = 'alpha-test@oxvehicle.fr';
 ```
 

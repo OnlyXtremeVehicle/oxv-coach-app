@@ -21,12 +21,43 @@
 -- 14 comptes au total. Aucun coach. Un partenaire : gabinfillat@gmail.com.
 --
 -- -----------------------------------------------------------------------------
--- PREMIÈRE CONTRADICTION : LES 167 POLICIES NE LISENT PAS LA COLONNE
+-- RECTIFICATION DU 28/07/2026 — DEUX CHIFFRES ET UNE PHRASE ÉTAIENT FAUX
+-- -----------------------------------------------------------------------------
+--
+-- Ce fichier annonçait « 167 policies sur 93 tables, aucune ne lit la colonne ».
+-- Les deux moitiés sont fausses, et pour la même raison : ma requête comptait
+-- toutes les policies dont le prédicat CONTIENT la chaîne `is_admin`, sans
+-- distinguer l'appel de fonction de la lecture de colonne.
+--
+-- Mesure corrigée :
+--
+--   * **162 policies appellent `public.is_admin()`** — 154 dans `public` sur
+--     87 tables, plus 8 sur `storage.objects`.
+--   * **5 policies lisent `public.users.is_admin` EN DIRECT**, sans passer par
+--     la fonction : `ai_safety_reviews_admin_select`,
+--     `coach_annotations_admin_select`, `coach_queue_admin_select`,
+--     `device_health_logs_admin_all` (USING et WITH CHECK),
+--     `media_exports_admin_select`.
+--
+-- (Une sixième, `support_messages_insert`, ressort d'une recherche naïve : elle
+--  lit sa PROPRE colonne `support_messages.is_admin`, qui dit si un message
+--  vient du staff. Rien à voir. Elle appelle bien `is_admin()` par ailleurs.)
+--
+-- Conséquence pour ce lot : l'étape 3 ci-dessous annonce une colonne « inerte ».
+-- Elle ne le serait pas tant que ces cinq policies la lisent. Elles sont à
+-- réaligner sur `is_admin()` dans la même migration, sinon le fichier ment.
+--
+-- Effet de bord à assumer : les réaligner OUVRE ces cinq tables à
+-- `bitaube.p@gmail.com` et `julie.huet.perso@gmail.com`, aujourd'hui exclus
+-- (`role = 'admin'`, `is_admin = false`). Les cinq tables sont vides et aucun
+-- écran ne les lit. Acceptable, mais dit.
+--
+-- -----------------------------------------------------------------------------
+-- CE QUI RESTE VRAI : `role` FAIT DÉJÀ AUTORITÉ POUR L'ÉCRASANTE MAJORITÉ
 -- -----------------------------------------------------------------------------
 --
 -- Le plan veut conserver `is_admin` « pour ne pas casser les policies
--- existantes ». Elles ne la lisent pas. Les 167 policies, sur 93 tables,
--- appellent toutes la fonction :
+-- existantes ». 162 sur 167 ne la lisent pas — elles appellent la fonction :
 --
 --   CREATE FUNCTION public.is_admin() RETURNS boolean
 --   LANGUAGE sql STABLE SECURITY DEFINER AS $$
@@ -36,11 +67,31 @@
 --   $$;
 --
 -- Autrement dit `role` fait DÉJÀ autorité, à égalité avec la colonne, par un OU.
--- Le quatrième défaut cherché par le lot 9 — « une policy qui lit is_admin sans
--- passer par role » — N'EXISTE PAS EN BASE. Zéro policy sur 167.
 --
--- Il existe, mais dans l'APPLICATION. Corrigé sans schéma, voir
--- `src/services/accesLogic.ts` et son test.
+-- Le quatrième défaut cherché par le lot 9 — « une policy qui lit is_admin sans
+-- passer par role » — existe donc bien, mais **cinq fois sur 167**, pas partout,
+-- et sur cinq tables vides sans écran. Ce n'est pas là qu'il fait mal.
+--
+-- Il fait mal dans l'APPLICATION, où il était total : `SpaceSwitcher` et le
+-- garde de `(admin)/_layout` lisaient la colonne seule, enfermant dehors deux
+-- administrateurs réels. Corrigé sans schéma — `src/services/accesLogic.ts`.
+--
+-- -----------------------------------------------------------------------------
+-- ET UNE TROISIÈME DÉFINITION D'ADMINISTRATEUR, PLUS ÉTROITE
+-- -----------------------------------------------------------------------------
+--
+--   CREATE FUNCTION public.oxv_is_admin() RETURNS boolean ... AS $$
+--     select exists (select 1 from public.users where id = auth.uid() and role = 'admin');
+--   $$;
+--
+-- Pas de `OR is_admin`. Elle garde `corporate_leads` (2 policies),
+-- `demandes_inscription` (2 policies) et la RPC `admin_validate_inscription`.
+-- `administration@oxvehicle.fr` en est **refoulé aujourd'hui**, malgré
+-- `is_admin = true`.
+--
+-- C'est le meilleur argument POUR l'option B : elle fait converger les deux
+-- définitions rivales. Après elle, `is_admin()` et `oxv_is_admin()` disent la
+-- même chose, et il n'y a plus qu'une réponse à « qui est administrateur ».
 --
 -- -----------------------------------------------------------------------------
 -- SECONDE CONTRADICTION : L'EXEMPTION N'EST PAS UN ACCIDENT
@@ -92,11 +143,45 @@
 -- OPTION B — supprimer le cas particulier au lieu de l'inscrire
 -- =============================================================================
 --
--- Préalable OBLIGATOIRE : que `administration@oxvehicle.fr` cesse d'être un
--- compte mixte, c'est-à-dire le lot 9bis. Tant que ce compte roule ET
--- administre, l'option B lui retire l'un des deux.
+-- RECTIFICATION DU 28/07/2026 — J'AVAIS ÉCRIT « PRÉALABLE OBLIGATOIRE ». C'EST FAUX.
 --
--- Une fois le compte scindé :
+-- J'affirmais ici que le lot 9bis devait précéder, « tant que ce compte roule ET
+-- administre ». Cela supposait que `role = 'pilot'` PORTE la qualité de pilote.
+-- Ce n'est pas le cas dans ce dépôt. Trois lectures, toutes vérifiées :
+--
+--   a) EN BASE — aucune policy ne conditionne quoi que ce soit à
+--      `users.role = 'pilot'`. Les données du pilote sont gardées par
+--      `auth.uid() = user_id`. (Une policy sort d'une recherche naïve,
+--      `coach_pilots_insert_by_pilot` : son `'pilot'` est la valeur d'enum
+--      `initiated_by = 'pilot'::affiliation_initiator`, pas un rôle.)
+--      Passer le compte en `admin` ne lui retire aucune ligne, aucune table,
+--      aucune de ses 7 séances.
+--
+--   b) AU ROUTAGE — `app/index.tsx` traite `'admin'` et `'pilot'` de façon
+--      rigoureusement identique : les deux atterrissent dans `/(app2)`. Son
+--      propre commentaire ligne 92 le dit déjà : « admin/pilot → flux pilote
+--      standard (admin a accès en plus à /(admin)) ». L'application n'est pas
+--      mono-rôle sur ce point ; elle est mono-arbre, et l'administrateur y est
+--      un pilote.
+--
+--   c) DANS LE CODE — hors gardes d'espaces (qui testent leur propre rôle et ne
+--      concernent pas l'admin), il reste UN endroit qui change quelque chose
+--      pour ce compte : `src/hooks/detailLevelLogic.ts`.
+--
+-- Ce que le compte perd en passant de `pilot` à `admin` tient donc dans DEUX
+-- LIGNES de TypeScript, pas dans un lot de séparation de comptes.
+--
+-- **Corrigé dans le même commit que ce fichier** : `defaultLevelForRole` et
+-- `canToggleForRole` ne traitent plus l'administrateur comme un professionnel.
+-- Un administrateur qui roule est un pilote ; c'est le coach, et lui seul, qui a
+-- un besoin professionnel des chiffres exacts. Sans ce correctif, l'option B
+-- aurait imposé le mode détaillé sans retour possible sur quatre écrans — une
+-- violation du principe 5, « un seul chiffre par écran ».
+--
+-- Le lot 9bis reste une question d'hygiène de comptes, à trancher sur ses
+-- propres mérites. Aucune dépendance technique ne le rend préalable.
+--
+-- La migration :
 --
 -- BEGIN;
 --

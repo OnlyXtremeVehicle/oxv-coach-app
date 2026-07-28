@@ -1,0 +1,128 @@
+-- =============================================================================
+-- PROPOSITION — SEC-3 : la garde de `is_admin` ne se déclenche jamais
+--
+--   *** ÉLÉVATION DE PRIVILÈGE OUVERTE. À TRANCHER EN PRIORITÉ. ***
+--   *** NON APPLIQUÉE — décision fondateur. ***
+--
+-- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- =============================================================================
+--
+-- CONSTATÉ EN PRODUCTION LE 28/07/2026, PAR LECTURE DU CATALOGUE
+--
+-- Le corps de la fonction est JUSTE. Il couvre bien les trois colonnes :
+--
+--   if (new.role       is distinct from old.role
+--       or new.kyc_status is distinct from old.kyc_status
+--       or new.is_admin   is distinct from old.is_admin) then
+--     if current_user not in ('service_role','postgres','supabase_admin','supabase_auth_admin')
+--        and not coalesce(public.is_admin(), false) then
+--       raise exception 'OXV: la modification de role/kyc_status/is_admin est réservée…';
+--
+-- La DÉCLARATION du déclencheur, elle, ne l'écoute pas :
+--
+--   CREATE TRIGGER trg_guard_users_privileged_columns
+--     BEFORE UPDATE OF role, kyc_status ON public.users     <-- `is_admin` absent
+--     FOR EACH ROW EXECUTE FUNCTION guard_users_privileged_columns()
+--
+-- En PostgreSQL, `UPDATE OF <liste>` ne déclenche **que** si une colonne de la
+-- liste figure au `SET`. Un ordre qui ne touche que `is_admin` passe donc à côté
+-- de la garde, sans que rien ne le signale.
+--
+-- La migration `20260726152049_sec2_guard_is_admin.sql` a remplacé la FONCTION
+-- (`CREATE OR REPLACE`) sans jamais recréer le DÉCLENCHEUR. Le correctif est
+-- inerte depuis le 26/07/2026 — c'est-à-dire depuis le jour de sa pose.
+--
+-- -----------------------------------------------------------------------------
+-- LA CHAÎNE COMPLÈTE, VÉRIFIÉE MAILLON PAR MAILLON
+-- -----------------------------------------------------------------------------
+--
+-- 1. `authenticated` détient UPDATE sur `public.users.is_admin`
+--    (information_schema.column_privileges — vérifié).
+-- 2. La policy `users_update_own_or_admin` a pour prédicat
+--    `((id = auth.uid()) OR is_admin())`, en USING **comme** en WITH CHECK :
+--    tout compte peut écrire sur sa propre ligne.
+-- 3. La garde ne se déclenche pas (ci-dessus).
+-- 4. `public.is_admin()` rend `role = 'admin' OR is_admin = true` — la colonne
+--    ouvre donc, à elle seule, les 162 policies qui appellent cette fonction.
+--
+-- Conclusion : `update public.users set is_admin = true where id = auth.uid()`
+-- est exécutable par n'importe quel compte authentifié.
+--
+-- **Le dépôt est public. La RLS est la seule barrière.**
+--
+-- Je n'ai PAS exécuté cette requête. La chaîne se lit dans le catalogue, elle
+-- n'a pas besoin d'être jouée — et la jouer serait précisément l'attaque.
+--
+-- -----------------------------------------------------------------------------
+-- DEUX DOCUMENTS AFFIRMENT LE CONTRAIRE
+-- -----------------------------------------------------------------------------
+--
+--   docs/ETAT_COMPLET_APP_2026-07-26.md : « CORRIGÉ LE 27/07/2026 —
+--     l'élévation de privilège `is_admin` est FERMÉE. »
+--   docs/DETTE.md : « Elle a été fermée par SEC-2 le 26/07. »
+--
+-- Elle ne l'est pas. Les deux sont corrigés dans le même commit que ce fichier.
+--
+-- =============================================================================
+-- LE CORRECTIF
+-- =============================================================================
+--
+-- BEGIN;
+--
+-- DROP TRIGGER IF EXISTS trg_guard_users_privileged_columns ON public.users;
+--
+-- -- SANS clause `OF`. Délibérément.
+-- --
+-- -- Lister les colonnes a produit exactement ce défaut : une colonne oubliée
+-- -- rend la garde muette, et rien ne le dit. La fonction se garde déjà
+-- -- elle-même par `is distinct from` — elle ne fait rien quand rien ne change.
+-- -- Le coût est de trois comparaisons par UPDATE sur une table de 14 lignes.
+-- --
+-- -- On supprime la CLASSE du défaut, pas son instance : plus aucune colonne
+-- -- privilégiée ajoutée demain ne pourra échapper à la garde par omission.
+-- CREATE TRIGGER trg_guard_users_privileged_columns
+--   BEFORE UPDATE ON public.users
+--   FOR EACH ROW EXECUTE FUNCTION public.guard_users_privileged_columns();
+--
+-- COMMIT;
+--
+-- -----------------------------------------------------------------------------
+-- VÉRIFICATION APRÈS APPLICATION
+-- -----------------------------------------------------------------------------
+--
+-- 1. La déclaration ne porte plus de liste de colonnes :
+--
+--      select pg_get_triggerdef(oid) from pg_trigger
+--      where tgname = 'trg_guard_users_privileged_columns';
+--
+--    Attendu : « BEFORE UPDATE ON public.users », sans « OF … ».
+--
+-- 2. Depuis une session PILOTE (jeton `authenticated`, pas la console SQL qui
+--    tourne en `postgres` et serait exemptée) :
+--
+--      update public.users set is_admin = true where id = auth.uid();
+--
+--    Attendu : erreur 42501, « réservée aux administrateurs ».
+--
+--    **Cette seconde vérification est la seule qui prouve quoi que ce chose.**
+--    La première ne montre que la déclaration ; c'est justement l'écart entre la
+--    déclaration et l'effet qui a créé ce défaut.
+--
+-- 3. Un administrateur doit continuer à changer les rôles depuis la console.
+--    Vérifier `setUserRole` sur un compte de test après application.
+--
+-- =============================================================================
+-- CE QUE CE CORRECTIF NE FERME PAS
+-- =============================================================================
+--
+-- Cinq policies lisent `users.is_admin` EN DIRECT, sans passer par la fonction :
+--
+--   ai_safety_reviews_admin_select · coach_annotations_admin_select
+--   coach_queue_admin_select · device_health_logs_admin_all
+--   media_exports_admin_select
+--
+-- Une fois l'écriture fermée, elles ne sont plus un vecteur — plus personne ne
+-- pose la colonne à son profit. Elles restent une divergence à traiter avec le
+-- lot 8 : tant qu'elles existent, la phrase « la colonne est inerte » serait
+-- fausse. Voir PROPOSITION_L8_role_autorite.sql.
+-- =============================================================================
