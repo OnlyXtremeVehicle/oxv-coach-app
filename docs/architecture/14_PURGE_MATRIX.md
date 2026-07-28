@@ -164,12 +164,24 @@ positif silencieux, sur la table la plus sensible du lot. La requête corrigée
 exige que la même instruction cite la table **et** la colonne. Elle se rejoue :
 `supabase/verifications/couverture_purge.sql`.
 
-**88 couples (table, colonne) référencent `public.users`. 60 couverts, 28 non.**
+**87 couples (table, colonne) référencent `public.users`. 59 couverts, 28 non.**
+
+> **Chiffres rectifiés le 28/07/2026 par l'audit.** J'avais écrit « 88 » — un
+> comptage à l'œil sur une longue liste JSON au lieu d'un `count(*)`. Et
+> « 60 couverts avant », impossible par construction : faire entrer une table
+> dans la purge fait forcément CROÎTRE le nombre de couverts.
+>
+> **Et le périmètre lui-même était trop étroit.** La requête ne regardait que
+> les clés étrangères vers `public.users`. **32 couples pointent vers
+> `auth.users`**, dont 25 hors purge. La cascade ne les sauve pas :
+> `purge-deleted-accounts` anonymise le compte Auth au lieu de le supprimer,
+> précisément pour ne pas déclencher la cascade. Voir le §« angle mort » plus bas.
 
 > **CORRIGÉ le 28/07/2026.** Le vingt-huitième — `coach_payout_details` — est
 > entré dans la purge : migration `20260728161513_l10_purge_coach_payout_details.sql`,
-> appliquée sur accord du fondateur. La couverture est passée à **60 / 27**, et
-> les 27 restants sont tous justifiés ci-dessus.
+> appliquée sur accord du fondateur. La couverture est passée de **59 / 28** à
+> **60 / 27** sur le référentiel `public.users`, et ces 27 sont tous justifiés
+> ci-dessus.
 
 Sur ces 28, cette matrice en justifiait déjà 27 — rétention comptable de dix
 ans, colonnes d'acteur administratif conservées, capitanat d'équipe. Ce sont des
@@ -212,3 +224,47 @@ instruction qui vise sa table ; elle ne prouve pas que le prédicat est juste.
 La preuve complète est celle que demande le plan — créer un compte, produire de
 la donnée partout, purger, vérifier qu'il ne reste rien. Elle ne peut pas tourner
 en production : il faut une branche Supabase, qui se facture. Non faite.
+
+---
+
+## L'angle mort de la vérification — rectifié le 28/07/2026
+
+La requête de couverture ne regardait que les clés étrangères vers
+`public.users`. **Trente-deux couples pointent vers `auth.users`**, et vingt-cinq
+d'entre eux ne sont dans aucune instruction de `purge_user_data`.
+
+**La défense évidente ne tient pas.** Ces clés sont majoritairement en
+`ON DELETE CASCADE` — mais `supabase/functions/purge-deleted-accounts/index.ts`
+**anonymise et bannit** le compte Auth au lieu de le supprimer, avec son motif
+écrit dans le code : « pas de hard-delete pour ne pas déclencher la cascade
+bloquée par `payments` ». La cascade ne part donc jamais, et ces lignes
+survivent à la purge.
+
+Vérification élargie : **119 couples, 67 couverts, 52 non couverts.**
+
+### Les vingt-cinq, et ce qu'ils portent aujourd'hui
+
+| Table | Colonnes | Lignes |
+|---|---|---|
+| `app_feature_flags` | `updated_by` | 7 |
+| `app_config` | `updated_by` | 1 |
+| `pilot_notes` · `pilot_waiver_signatures` · `pilot_signature_snapshots` · `pilot_goal_events` | `user_id` | 0 |
+| `coach_invoices` · `coach_queue` · `coach_ai_drafts` · `coach_objective_events` · `pilot_development_cycles` | `coach_id`, `pilot_id` | 0 |
+| `coach_invoice_counters` | `coach_id` | 0 |
+| `ai_safety_reviews` | `pilot_id` | 0 |
+| `notif_throttle_log` | `source_user_id`, `recipient_user_id` | 0 |
+| `pro_team_members` | `pro_user_id`, `member_user_id` | 0 |
+| `moderation_reports` · `moderation_report_reviews` | `reporter_id`, `reviewed_by` | 0 |
+| `ambassador_profiles` | `user_id` | 0 |
+
+**Le préjudice est nul aujourd'hui.** Les deux seules colonnes peuplées sont des
+colonnes d'acteur administratif, que cette matrice conserve déjà par principe.
+
+**Il ne le restera pas.** `pilot_notes`, `pilot_waiver_signatures`,
+`pilot_signature_snapshots`, `coach_invoices` et `pilot_development_cycles` se
+rempliront à la première journée réelle. Six des vingt-cinq relèvent de classes
+déjà écrites plus haut — facturation coach, colonnes d'acteur — sans y être
+nommées ; les autres demandent un arbitrage.
+
+**À statuer avant l'alpha, pas après.** Une purge qui laisse derrière elle des
+notes de pilote et des signatures de décharge n'est pas une purge.

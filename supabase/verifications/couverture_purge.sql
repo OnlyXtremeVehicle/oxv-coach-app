@@ -16,6 +16,22 @@
 -- la table la plus sensible du lot. La requête ci-dessous exige que la MÊME
 -- instruction cite la table ET la colonne.
 --
+-- ELLE PORTE SUR LES DEUX RÉFÉRENTIELS. Deuxième correction, celle de l'audit
+-- du 28/07 : la version d'origine ne regardait que les clés étrangères vers
+-- `public.users`. **32 couples pointent vers `auth.users`**, dont 25 hors
+-- purge — `pilot_notes`, `pilot_waiver_signatures`, `pilot_signature_snapshots`,
+-- `coach_invoices`, `pilot_development_cycles`, et treize autres.
+--
+-- La défense évidente — « ces FK sont ON DELETE CASCADE » — ne tient pas :
+-- `purge-deleted-accounts/index.ts` étape 4 ANONYMISE et bannit le compte Auth
+-- au lieu de le supprimer, motif écrit dans le code (« pas de hard-delete pour
+-- ne pas déclencher la cascade bloquée par payments »). La cascade ne part
+-- jamais. Ces lignes survivent donc à la purge.
+--
+-- Toutes ces tables sont à zéro ligne au 28/07/2026, sauf deux colonnes
+-- d'acteur administratif. Le préjudice est nul aujourd'hui ; la classe est
+-- réelle et se remplira.
+--
 -- Elle reste une heuristique textuelle : elle prouve qu'une colonne est
 -- mentionnée dans une instruction qui vise sa table, pas que le prédicat est
 -- juste. Elle sert à ne rien OUBLIER, pas à valider une logique.
@@ -32,7 +48,8 @@ with fk as (
   join unnest(c.conkey) k on true
   join pg_attribute a on a.attrelid = c.conrelid and a.attnum = k
   where c.contype = 'f'
-    and c.confrelid = 'public.users'::regclass
+    -- LES DEUX référentiels. `public.users` seul laissait 25 couples hors champ.
+    and c.confrelid in ('public.users'::regclass, 'auth.users'::regclass)
 ),
 def as (
   select pg_get_functiondef(p.oid) as d
@@ -56,10 +73,18 @@ from fk
 order by couverte, fk.tbl, fk.col;
 
 -- -----------------------------------------------------------------------------
--- ÉTAT AU 28/07/2026, APRÈS CORRECTION : 88 couples, 60 couverts, 27 non couverts.
+-- ÉTAT AU 28/07/2026, sur le SEUL référentiel `public.users` : 87 couples —
+-- 59 couverts avant la migration 20260728161513, 60 après. (J'avais écrit
+-- « 88 » puis « 60 avant » : le premier venait d'un comptage à l'œil sur une
+-- longue liste JSON au lieu d'un count(*), le second était impossible par
+-- construction — faire entrer une table dans la purge fait forcément CROÎTRE
+-- le nombre de couverts.)
 --
--- Sur ces 27, la matrice de purge (docs/architecture/14_PURGE_MATRIX.md) les
--- justifie TOUS :
+-- En ajoutant `auth.users` : **119 couples, 67 couverts, 52 non couverts** —
+-- chiffres obtenus par count(*), pas par addition.
+--
+-- Sur les 27 du seul référentiel `public.users`, la matrice de purge
+-- (docs/architecture/14_PURGE_MATRIX.md) les justifie TOUS :
 --
 --   * rétention comptable de 10 ans  → payments, registrations, invoices,
 --     subscriptions (§ « conservation volontaire »)
@@ -69,9 +94,19 @@ order by couverte, fk.tbl, fk.col;
 --     kyc_validated_by, suspended_by, assigned_by
 --   * décision produit assumée → crews.captain_id
 --
--- Le seul vrai trou, `coach_payout_details`, est FERMÉ depuis le 28/07/2026 :
--- migration 20260728161513_l10_purge_coach_payout_details.sql. Avant elle, un
--- IBAN survivait à la suppression du compte.
+-- Le seul vrai trou de CE référentiel, `coach_payout_details`, est FERMÉ depuis
+-- le 28/07/2026 : migration 20260728161513. Avant elle, un IBAN survivait à la
+-- suppression du compte.
+--
+-- LES 25 AUTRES, côté `auth.users`, NE SONT PAS STATUÉS. La matrice ne les
+-- mentionne nulle part. Toutes leurs tables sont à zéro ligne au 28/07 sauf
+-- `app_feature_flags.updated_by` (7) et `app_config.updated_by` (1), deux
+-- colonnes d'acteur administratif que la matrice conserve déjà par principe.
+--
+-- Le préjudice est donc nul aujourd'hui. Il ne le restera pas : `pilot_notes`,
+-- `pilot_waiver_signatures`, `pilot_signature_snapshots`, `coach_invoices` et
+-- `pilot_development_cycles` se rempliront à la première journée réelle.
+-- À statuer AVANT l'alpha, pas après.
 -- -----------------------------------------------------------------------------
 
 -- Copies de données personnelles hors de tout périmètre de purge.

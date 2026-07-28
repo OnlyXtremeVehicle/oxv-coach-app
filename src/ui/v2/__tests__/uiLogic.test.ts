@@ -48,9 +48,40 @@ describe('msToLapLabel — millisecondes → label chrono', () => {
 describe('chronoHeroFontSize — tailles s/m/l', () => {
   it('couvre les trois tailles, strictement croissantes', () => {
     expect(CHRONO_HERO_SIZES).toEqual(['s', 'm', 'l']);
-    const [s, m, l] = CHRONO_HERO_SIZES.map(chronoHeroFontSize);
+    // `.map` passe l'INDEX en second argument, qui est désormais `valeur`.
+    // Sans la lambda, `chronoHeroFontSize('m', 1)` — et le test ne mesurerait
+    // plus ce qu'il croit.
+    const [s, m, l] = CHRONO_HERO_SIZES.map((t) => chronoHeroFontSize(t));
     expect(s).toBeLessThan(m);
     expect(m).toBeLessThan(l);
+  });
+
+  /**
+   * LE PLAFOND ET LE REPLI, branchés au jalon 3 après l'audit.
+   *
+   * `chronoHeroFontSize` rendait 56 pt sans jamais regarder la longueur du
+   * chrono ni la largeur offerte. Sur iPhone SE, `1:41,203` occupe 268,8 pt
+   * pour un budget réel d'environ 236 — le dernier millième passait sous
+   * l'`overflow: 'hidden'` du héros, coupé sans erreur.
+   */
+  it('sans valeur, rend la table — compatibilité des appelants existants', () => {
+    expect(chronoHeroFontSize('l')).toBe(CHRONO_HERO_FONT_SIZES.l);
+  });
+
+  it('plafonne un chrono de huit glyphes', () => {
+    expect(chronoHeroFontSize('l', '1:41,203')).toBeLessThanOrEqual(56);
+  });
+
+  it('replie quand la largeur ne suffit pas', () => {
+    const large = chronoHeroFontSize('l', '1:41,203', 400);
+    const etroit = chronoHeroFontSize('l', '1:41,203', 236);
+    expect(etroit).toBeLessThan(large);
+    // Et le résultat TIENT dans le budget, réserve comprise.
+    expect('1:41,203'.length * 0.6 * etroit).toBeLessThanOrEqual(236 * 0.9);
+  });
+
+  it('un chrono court n’est pas rapetissé pour rien', () => {
+    expect(chronoHeroFontSize('l', '58,4', 236)).toBe(CHRONO_HERO_FONT_SIZES.l);
   });
 
   it('suit le record exporté', () => {

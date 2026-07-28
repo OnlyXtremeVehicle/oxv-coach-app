@@ -9,6 +9,8 @@
  * longueur calculée — jamais estimée à la main).
  */
 
+import { tailleChiffreRoi } from '@/theme/metriques';
+
 import { formatLapTimeMs } from '@/utils/format';
 
 import { radius } from './tokens';
@@ -41,8 +43,40 @@ export const CHRONO_HERO_FONT_SIZES: Record<ChronoHeroSize, number> = {
   l: 56,
 };
 
-export function chronoHeroFontSize(size: ChronoHeroSize): number {
-  return CHRONO_HERO_FONT_SIZES[size];
+/**
+ * Taille du chrono héros — SOUHAITÉE, puis plafonnée et repliée.
+ *
+ * ---
+ *
+ * CE QUI DÉBORDAIT, ET QUE PERSONNE NE VOYAIT
+ *
+ * Cette fonction rendait la valeur de la table, sans regarder ni la longueur du
+ * chrono ni la largeur offerte. `RollingCounter` rend une rangée de cellules à
+ * largeur intrinsèque : ni `flexShrink` (0 par défaut en React Native), ni
+ * `numberOfLines`, ni `adjustsFontSizeToFit`.
+ *
+ * Sur iPhone SE, `1:41,203` — huit glyphes, virgule comprise — occupe
+ * 8 × 0,6 × 56 = **268,8 pt**. Le budget réel du héros n'est pas la largeur
+ * utile : il faut en retirer le remplissage du bloc et celui du cadre. Le
+ * dernier millième passait donc sous l'`overflow: 'hidden'` du héros, coupé
+ * sans qu'aucune erreur ne se lève.
+ *
+ * Le plafond et le repli existaient déjà — `src/theme/metriques.ts`, posés au
+ * jalon 2 — mais branchés sur `KingNumber`, cinq appels surtout côté coach.
+ * **Le chiffre que le pilote lit vraiment n'en bénéficiait pas.**
+ *
+ * `valeur` et `largeurDisponible` sont facultatifs : sans eux, on rend la
+ * valeur de la table, comme avant. Les appelants qui connaissent leur largeur
+ * la passent — c'est `ChronoHero` qui s'en charge.
+ */
+export function chronoHeroFontSize(
+  size: ChronoHeroSize,
+  valeur?: string,
+  largeurDisponible?: number | null
+): number {
+  const souhaitee = CHRONO_HERO_FONT_SIZES[size];
+  if (valeur == null) return souhaitee;
+  return tailleChiffreRoi(valeur, souhaitee, largeurDisponible);
 }
 
 // ---------------------------------------------------------------------------
