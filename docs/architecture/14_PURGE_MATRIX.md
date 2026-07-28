@@ -144,3 +144,65 @@ Politique : PURGE = DELETE ; ANONYMISER = la ligne reste, le lien/texte identifi
 | `sessions.private_client_name/contact`                        | texte libre saisi par l'admin, non rattachable automatiquement à un `user_id` | procédure manuelle documentée + resserrage policy (SEC-1 ACTION 3)                      |
 | `_backup_sessions_20260719`, `_backup_registrations_20260719` | copies de tables avec PII, hors RLS applicative et hors purge                 | **DROP à faire approuver par le fondateur** après vérification qu'elles ne servent plus |
 | `crews.captain_id` d'un capitaine supprimé                    | l'équipe appartient à ses membres                                             | conservé (pseudonymisé) ; réattribution du capitanat = décision produit                 |
+
+---
+
+## Vérification du 28/07/2026 — colonne par colonne (lot 10)
+
+La consigne du plan de montage était double : retirer la référence morte à
+`coach_reviews`, puis **vérifier table par table**.
+
+**La première moitié était déjà faite.** La fonction en production porte la
+correction depuis `20260719155347_coach_testimonials_replace_reviews` — elle
+supprime bien dans `coach_testimonials`, avec le commentaire qui l'explique.
+L'audit décrivait un état antérieur.
+
+**La seconde est faite ici, au niveau de la colonne** et non de la table. Un
+premier essai comparait des noms de tables : `registrations` ressortait
+« couverte » parce que `event_registrations` apparaît dans la fonction — faux
+positif silencieux, sur la table la plus sensible du lot. La requête corrigée
+exige que la même instruction cite la table **et** la colonne. Elle se rejoue :
+`supabase/verifications/couverture_purge.sql`.
+
+**88 couples (table, colonne) référencent `public.users`. 60 couverts, 28 non.**
+
+Sur ces 28, cette matrice en justifiait déjà 27 — rétention comptable de dix
+ans, colonnes d'acteur administratif conservées, capitanat d'équipe. Ce sont des
+décisions écrites, pas des oublis. La vérification les confirme une par une.
+
+### Le vingt-huitième
+
+| Table | Colonnes | Constat |
+|---|---|---|
+| `coach_payout_details` | `coach_id`, `iban`, `bic`, `account_holder` | **Absente de la fonction ET de cette matrice.** Un coach qui exerce son droit à l'effacement laisse ses coordonnées bancaires complètes. Aucune rétention ne le justifie : ce n'est pas une pièce comptable, c'est un moyen de versement. 0 ligne aujourd'hui, aucun coach en base — le défaut est réel et pas encore exercé. |
+
+Proposition : `supabase/migrations/PROPOSITION_L10_purge_completude.sql`.
+
+### Les copies de sauvegarde : cinq, pas deux
+
+Cette matrice en citait deux. Il y en a cinq, dont `_backup_payments_20260719`
+qui n'était pas listée.
+
+| Table | Lignes |
+|---|---|
+| `_backup_sessions_20260719` | 44 |
+| `_backup_weather_20260719` | 14 |
+| `_backup_registrations_20260719` | 5 |
+| `_backup_payments_20260719` | 2 |
+| `_backup_session_feedback_20260719` | 0 |
+
+**Ce n'est pas une exposition.** Vérifié : aucune n'accorde `SELECT` à `anon` ni
+à `authenticated`. Le GRANT est absent, donc PostgREST ne les sert pas — que la
+RLS soit active ou non, et quatre l'ont désactivée. Seul `service_role` y accède.
+
+C'est un défaut d'**effacement** : un compte purgé survit dans ces copies.
+Décision fondateur, comme prévu par la ligne d'origine de cette matrice.
+
+### Ce qui n'est pas prouvé
+
+La vérification est textuelle. Elle établit qu'une colonne est citée dans une
+instruction qui vise sa table ; elle ne prouve pas que le prédicat est juste.
+
+La preuve complète est celle que demande le plan — créer un compte, produire de
+la donnée partout, purger, vérifier qu'il ne reste rien. Elle ne peut pas tourner
+en production : il faut une branche Supabase, qui se facture. Non faite.
