@@ -21,14 +21,16 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Canvas, Path as SkPath } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { bluetoothService } from '@/ble/bluetoothService';
 import type { LatLon } from '@/circuit/circuitGenerator';
+import { libelleAction, verdictArmement } from '@/features/rec/armementGateLogic';
 import { ARM_HOLD_MS } from '@/features/rec/armementLogic';
 import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
 import { startCaptureSession } from '@/services/captureSessionService';
@@ -204,6 +206,24 @@ export default function PlacementScreen() {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * ÉTAT DE LA LIAISON — la garde qui manquait.
+   *
+   * Le bouton d'armement recevait `disabled={starting}`, un garde de
+   * ré-entrance. L'état Bluetooth n'était consulté nulle part : boîtier éteint,
+   * hors de portée ou Bluetooth coupé, le pilote armait quand même et roulait
+   * une séance entière sans rien enregistrer. Aucune erreur n'était levée — un
+   * flux BLE qui ne vient jamais n'est pas une panne, c'est un silence.
+   *
+   * On lit l'état au montage puis on suit ses changements : le boîtier peut
+   * tomber pendant que le pilote choisit son circuit.
+   */
+  const [ble, setBle] = useState(() => bluetoothService.getStatus());
+  useEffect(() => bluetoothService.onStatusChange(setBle), []);
+
+  const verdict = verdictArmement(ble, starting);
+  const actionSecondaire = libelleAction(verdict.action);
+
   // Circuits disponibles (même source et même préférence officiel que la v1).
   useEffect(() => {
     let cancelled = false;
@@ -247,7 +267,10 @@ export default function PlacementScreen() {
   }, [centerline, selected]);
 
   async function onArm() {
-    if (starting) return;
+    // Seconde barrière, côté action. Le bouton est déjà désactivé, mais un
+    // chemin non gestuel existe (le double-tap d'accessibilité) et une garde qui
+    // ne vit que dans le rendu est une garde qu'on contourne sans le savoir.
+    if (!verdictArmement(bluetoothService.getStatus(), starting).peutArmer) return;
     haptic('arm');
     if (!profile?.id) {
       setError('Profil non chargé. Reconnectez-vous.');
@@ -317,7 +340,30 @@ export default function PlacementScreen() {
       </View>
 
       <View style={[styles.footer, { paddingBottom: tabBarSpace(insets.bottom) + space.lg }]}>
-        <ArmButton onArm={onArm} disabled={starting} />
+        {/* La raison du refus est dite AVANT le geste, pas après. Un pilote qui
+            maintient six cents millisecondes pour rien a déjà perdu son tour. */}
+        {verdict.raison ? (
+          <Text style={styles.armRaison} accessibilityLiveRegion="polite">
+            {verdict.raison}
+          </Text>
+        ) : null}
+
+        <ArmButton onArm={onArm} disabled={!verdict.peutArmer} />
+
+        {/* Refuser n'est pas bloquer la journée : la panne route par le
+            diagnostic. `patienter` n'offre rien — proposer une action pendant
+            qu'une connexion s'établit invite à l'interrompre. */}
+        {actionSecondaire ? (
+          <Pressable
+            onPress={() => router.push('/(app2)/rec/equipement' as never)}
+            accessibilityRole="button"
+            accessibilityLabel={actionSecondaire}
+            hitSlop={12}
+            style={styles.armSecondaire}
+          >
+            <Text style={styles.armSecondaireLabel}>{actionSecondaire}</Text>
+          </Pressable>
+        ) : null}
       </View>
     </Animated.View>
   );
@@ -388,6 +434,30 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingTop: space.md,
+  },
+  // Raison du refus d'armement — dite AVANT le geste. `text.hi` et non une
+  // couleur faible : cet écran se lit en plein soleil, casque à la main.
+  armRaison: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 15,
+    lineHeight: 21,
+    color: colors.text.hi,
+    textAlign: 'center',
+    marginBottom: space.md,
+  },
+  // Porte de sortie vers le diagnostic. Hauteur au-dessus du plancher de 44 pt
+  // (cible gantée, sous vibration), sans concurrencer l'armement.
+  armSecondaire: {
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: space.md,
+  },
+  armSecondaireLabel: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 15,
+    color: colors.text.hi,
+    textDecorationLine: 'underline',
   },
   // Bouton d'armement
   armBtn: {
