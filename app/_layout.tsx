@@ -14,6 +14,7 @@ import { MaintenanceGate } from '@/components/MaintenanceGate';
 import { OfflineBanner } from '@/components/OfflineBanner';
 import { UpdateModal } from '@/components/UpdateModal';
 import { initGeolocation, teardownGeolocation } from '@/lib/initGeolocation';
+import { initEtatPilote, teardownEtatPilote } from '@/lib/initEtatPilote';
 import { initNetInfo, teardownNetInfo } from '@/lib/netinfo';
 import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
@@ -55,6 +56,9 @@ export default function RootLayout() {
       initFlic();
     }
     initGeolocation().catch(() => undefined);
+    // Réveille la machine d'état pilote : sans elle, `hasAccount` reste faux,
+    // l'état ne quitte jamais S1, et le silence en piste ne s'arme jamais.
+    initEtatPilote();
     return () => {
       teardownNetInfo();
       if (!isExpoGo()) {
@@ -62,6 +66,7 @@ export default function RootLayout() {
         teardownFlic();
       }
       teardownGeolocation();
+      teardownEtatPilote();
     };
   }, [initialize]);
 
