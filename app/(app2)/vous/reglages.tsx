@@ -23,7 +23,7 @@
  * Doctrine : sobre, vouvoiement, zéro emoji, jamais prescriptif.
  */
 
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
@@ -31,7 +31,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
 import { RITUAL_CHANNELS } from '@/features/vous/reglagesRitualsLogic';
-import { requiresCaptureRevokeConfirm } from '@/features/vous/reglagesConsentLogic';
+import { isFlagEnabled } from '@/services/featureFlagsService';
+import {
+  biometrieVisible,
+  requiresCaptureRevokeConfirm,
+} from '@/features/vous/reglagesConsentLogic';
 import { useReglages } from '@/features/vous/useReglages';
 import {
   Dial,
@@ -149,6 +153,30 @@ export default function ReglagesScreen() {
   const s = r.state;
 
   const [bioConfirm, setBioConfirm] = useState(false);
+
+  /**
+   * DRAPEAU BIOMÉTRIE — il manquait ici.
+   *
+   * `equipement.tsx` garde tout son bloc derrière `isFlagEnabled('biometry')`.
+   * Cet écran affichait les mêmes interrupteurs sans aucun contrôle : un pilote
+   * pouvait accorder la captation de son rythme cardiaque — donnée de santé,
+   * article 9 — pendant que le drapeau déclarait la fonction absente.
+   *
+   * Fail-closed : tant que la réponse n'est pas revenue, on considère le
+   * drapeau éteint. Un consentement de santé ne s'obtient pas par défaut.
+   */
+  const [bioFlag, setBioFlag] = useState(false);
+  useEffect(() => {
+    let annule = false;
+    isFlagEnabled('biometry')
+      .then((v) => {
+        if (!annule) setBioFlag(v);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, []);
   const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   // Phase LOCALE de l'export : indépendante du flag async du hook, pour éviter
@@ -320,26 +348,30 @@ export default function ReglagesScreen() {
               disabled={disabled}
             />
           ) : null}
-          <ToggleRow
-            label="Rythme cardiaque"
-            caption="Capté en séance (boîtier cardio). Coupé par défaut, données de santé."
-            value={s.biometry.capture}
-            onValueChange={onToggleCapture}
-            disabled={disabled}
-            divider={s.biometry.capture}
-          />
-          {s.biometry.capture ? (
-            <ToggleRow
-              label="Partager mon cardio au coach"
-              caption="Votre rythme cardiaque visible par votre coach binôme."
-              value={s.biometry.coachShare}
-              onValueChange={(v) => {
-                if (!v) haptic('warn');
-                void r.toggleBiometryCoachShare(v);
-              }}
-              disabled={disabled}
-              divider={false}
-            />
+          {biometrieVisible(bioFlag, s.biometry) ? (
+            <>
+              <ToggleRow
+                label="Rythme cardiaque"
+                caption="Capté en séance (boîtier cardio). Coupé par défaut, données de santé."
+                value={s.biometry.capture}
+                onValueChange={onToggleCapture}
+                disabled={disabled}
+                divider={s.biometry.capture}
+              />
+              {s.biometry.capture ? (
+                <ToggleRow
+                  label="Partager mon cardio au coach"
+                  caption="Votre rythme cardiaque visible par votre coach binôme."
+                  value={s.biometry.coachShare}
+                  onValueChange={(v) => {
+                    if (!v) haptic('warn');
+                    void r.toggleBiometryCoachShare(v);
+                  }}
+                  disabled={disabled}
+                  divider={false}
+                />
+              ) : null}
+            </>
           ) : null}
         </Group>
 

@@ -50,3 +50,34 @@ export function requiresCaptureRevokeConfirm(
 ): boolean {
   return change.which === 'capture' && change.value === false && current.capture;
 }
+
+/**
+ * Le bloc biométrie doit-il être visible dans les Réglages ?
+ *
+ * ---
+ *
+ * LE DÉFAUT QUE CETTE FONCTION FERME
+ *
+ * `equipement.tsx` garde tout son bloc biométrie derrière le drapeau distant
+ * `biometry`, semé à `false`. Les Réglages, eux, affichaient les mêmes
+ * interrupteurs **sans aucun contrôle de drapeau**.
+ *
+ * Deux portes vers le même consentement, dont une seule gatée. Un pilote
+ * pouvait donc accorder la captation de son rythme cardiaque — une donnée de
+ * santé, article 9 — pendant que le drapeau déclarait la fonction absente. Et
+ * l'interrupteur ne faisait rien, puisque le chemin de capture est gaté ailleurs.
+ *
+ * ---
+ *
+ * MAIS RÉVOQUER RESTE TOUJOURS POSSIBLE
+ *
+ * Masquer le bloc à un pilote qui a DÉJÀ consenti l'enfermerait dans son
+ * consentement : plus aucun endroit pour le retirer. Pour une donnée de santé,
+ * ce serait pire que le défaut d'origine.
+ *
+ * La règle est donc asymétrique, comme le pointage de présence : fermé pour
+ * accorder, ouvert pour retirer.
+ */
+export function biometrieVisible(drapeauActif: boolean, etat: BiometryState): boolean {
+  return drapeauActif || etat.capture || etat.coachShare;
+}

@@ -1,0 +1,95 @@
+-- =============================================================================
+-- PROPOSITION — JALON 3 : « consentement, première fois seulement »
+--
+--   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--
+-- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- =============================================================================
+--
+-- CE QUE LE PLAN DEMANDE
+--
+-- Une étape `consentement` dans le flux REC, « **première fois seulement** — le
+-- flux reste à huit étapes ».
+--
+-- =============================================================================
+-- CE QUI EMPÊCHE DE L'ÉCRIRE AUJOURD'HUI
+-- =============================================================================
+--
+-- La table `public.users` porte exactement deux colonnes de biométrie, vérifiées
+-- le 28/07/2026 :
+--
+--   biometry_capture_consent_at      timestamptz NULL
+--   biometry_coach_share_consent_at  timestamptz NULL
+--
+-- **Un refus et une question jamais posée valent tous les deux NULL.**
+--
+-- Conséquence directe : un flux qui demanderait « à la première fois » ne
+-- pourrait pas savoir qu'il y a déjà eu une première fois. Il redemanderait à
+-- chaque journée au pilote qui a dit non — c'est-à-dire qu'il transformerait un
+-- refus en question permanente.
+--
+-- Ce n'est pas seulement pénible. Le RGPD veut qu'un refus soit respecté, pas
+-- re-sollicité ; et la doctrine OXV dit que l'application montre, elle ne dirige
+-- pas. Reposer indéfiniment la même question est une forme d'insistance.
+--
+-- -----------------------------------------------------------------------------
+-- ÉTAT ACTUEL, POUR MÉMOIRE
+-- -----------------------------------------------------------------------------
+--
+-- La feuille de consentement existe déjà, DANS `equipement.tsx` (l.277), ouverte
+-- à la demande depuis le bloc biométrie — pas comme une étape. Et tout ce bloc
+-- est derrière le drapeau `biometry`, semé à `false`
+-- (`20260719020940_be1_feature_flags.sql`). Aujourd'hui, le pilote ne voit donc
+-- rien du tout.
+--
+-- Une seconde porte existe hors flux, dans `vous/reglages.tsx`, sans garde de
+-- drapeau. Deux chemins vers le même consentement, dont un seul est gaté : à
+-- signaler, indépendamment de cette proposition.
+--
+-- =============================================================================
+-- DEUX ISSUES
+-- =============================================================================
+--
+-- OPTION A — une colonne de sollicitation, côté serveur.
+--
+--   ALTER TABLE public.users
+--     ADD COLUMN IF NOT EXISTS biometry_asked_at timestamptz;
+--
+--   COMMENT ON COLUMN public.users.biometry_asked_at IS
+--     'Date à laquelle la question du consentement biométrique a été POSÉE. '
+--     'Distincte des colonnes de consentement : NULL ici signifie jamais '
+--     'demandé, alors que NULL sur consent_at signifie refusé OU jamais '
+--     'demandé. Sans cette distinction, un refus serait re-sollicité.';
+--
+--   Le refus suit alors le pilote d'un téléphone à l'autre, ce qui est le
+--   comportement juste pour une donnée de santé.
+--
+--   Coût : une colonne, et une écriture de plus au moment où la feuille
+--   s'affiche — même si le pilote la ferme sans répondre.
+--
+-- OPTION B — un marqueur local, sans schéma.
+--
+--   Une clé MMKV par pilote, comme la check-list de `preparation`
+--   (`checklistStorageKey`). Zéro migration, livrable immédiatement.
+--
+--   Coût, et il est réel : le marqueur ne survit ni à une réinstallation, ni au
+--   passage à un nouveau téléphone. Un pilote qui a refusé se verrait
+--   redemander. Pour une donnée de santé, c'est un compromis qui se défend mal.
+--
+-- **Recommandation : option A.** Le refus d'une donnée de santé appartient au
+-- pilote, pas à son appareil.
+--
+-- =============================================================================
+-- CE QUI RESTE À TRANCHER, ET QUI N'EST PAS TECHNIQUE
+-- =============================================================================
+--
+-- Le plan place `consentement` entre `appairage` et `preparation`. Or
+-- `preparation` est aujourd'hui un écran d'AVANT-JOURNÉE, atteint depuis le hub
+-- et le héros Paddock, pas une étape du jour J.
+--
+-- Insérer `consentement` sans trancher cet ordre reviendrait à poser une étape
+-- dans une chaîne dont on ne connaît pas la forme. Je ne l'ai donc pas fait.
+--
+-- Et le drapeau `biometry` reste à `false` : tant qu'il n'est pas levé, l'étape
+-- ne s'afficherait de toute façon jamais.
+-- =============================================================================
