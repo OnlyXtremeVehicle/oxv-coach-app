@@ -23,15 +23,15 @@ import {
 
 describe('msToLapLabel — millisecondes → label chrono', () => {
   it('convertit les ms en secondes et suit formatLapTimeMs (référence du repo)', () => {
-    expect(msToLapLabel(84318)).toBe('1:24.318');
+    expect(msToLapLabel(84318)).toBe('1:24,318');
     expect(msToLapLabel(84318)).toBe(formatLapTimeMs(84.318));
-    expect(msToLapLabel(45123)).toBe('45.123 s');
+    expect(msToLapLabel(45123)).toBe('45,123 s');
     expect(msToLapLabel(45123)).toBe(formatLapTimeMs(45.123));
   });
 
   it('arrondit au millième', () => {
-    expect(msToLapLabel(84318.4)).toBe('1:24.318');
-    expect(msToLapLabel(84318.6)).toBe('1:24.319');
+    expect(msToLapLabel(84318.4)).toBe('1:24,318');
+    expect(msToLapLabel(84318.6)).toBe('1:24,319');
   });
 
   it('borne les entrées invalides sur le tiret', () => {
@@ -41,7 +41,7 @@ describe('msToLapLabel — millisecondes → label chrono', () => {
   });
 
   it('gère zéro', () => {
-    expect(msToLapLabel(0)).toBe('0.000 s');
+    expect(msToLapLabel(0)).toBe('0,000 s');
   });
 });
 

@@ -3,6 +3,8 @@
  */
 
 import {
+  virgule,
+  formatChronoTenths,
   formatDateLong,
   formatDateShort,
   formatDelta,
@@ -13,19 +15,19 @@ import {
 
 describe('formatLapTime', () => {
   it('formate un tour sous 60s en ss.cc s', () => {
-    expect(formatLapTime(45.123)).toBe('45.12 s');
-    expect(formatLapTime(0.5)).toBe('0.50 s');
+    expect(formatLapTime(45.123)).toBe('45,12 s');
+    expect(formatLapTime(0.5)).toBe('0,50 s');
   });
 
   it("formate un tour au-dessus de 60s en mm'ss.cc", () => {
-    expect(formatLapTime(82.45)).toBe("1'22.45");
-    expect(formatLapTime(125)).toBe("2'05.00");
-    expect(formatLapTime(3725)).toBe("62'05.00");
+    expect(formatLapTime(82.45)).toBe("1'22,45");
+    expect(formatLapTime(125)).toBe("2'05,00");
+    expect(formatLapTime(3725)).toBe("62'05,00");
   });
 
   it('zero-pad les secondes < 10', () => {
-    expect(formatLapTime(63)).toBe("1'03.00");
-    expect(formatLapTime(60.5)).toBe("1'00.50");
+    expect(formatLapTime(63)).toBe("1'03,00");
+    expect(formatLapTime(60.5)).toBe("1'00,50");
   });
 
   it('renvoie em-dash pour valeurs invalides', () => {
@@ -65,7 +67,7 @@ describe('formatDelta', () => {
   });
 
   it('formate un delta négatif avec signe − (U+2212)', () => {
-    expect(formatDelta(82.5, 81.8, 's', 2)).toBe('−0.70 s');
+    expect(formatDelta(82.5, 81.8, 's', 2)).toBe('−0,70 s');
     expect(formatDelta(100, 95, 'km/h')).toBe('−5 km/h');
   });
 
@@ -74,7 +76,7 @@ describe('formatDelta', () => {
   });
 
   it('respecte le nombre de décimales', () => {
-    expect(formatDelta(0, 1.234, 'g', 2)).toBe('+1.23 g');
+    expect(formatDelta(0, 1.234, 'g', 2)).toBe('+1,23 g');
     expect(formatDelta(0, 1.234, 'g', 0)).toBe('+1 g');
   });
 
@@ -116,8 +118,8 @@ describe('formatLapTimeMs — le piège PostgREST', () => {
     // `laps.duration_seconds` et `sessions.best_lap_seconds` sont des colonnes
     // `numeric` : PostgREST les rend en chaîne. Le formateur rendait « — » sur
     // des chronos parfaitement présents — débrief, studio, fiche pilote.
-    expect(formatLapTimeMs('95.200' as unknown as number)).toBe('1:35.200');
-    expect(formatLapTimeMs('45.123' as unknown as number)).toBe('45.123 s');
+    expect(formatLapTimeMs('95.200' as unknown as number)).toBe('1:35,200');
+    expect(formatLapTimeMs('45.123' as unknown as number)).toBe('45,123 s');
   });
 
   it('formate identiquement le nombre et sa chaîne', () => {
@@ -131,5 +133,58 @@ describe('formatLapTimeMs — le piège PostgREST', () => {
     expect(formatLapTimeMs('abc' as unknown as number)).toBe('—');
     expect(formatLapTimeMs(-1)).toBe('—');
     expect(formatLapTimeMs(Number.NaN)).toBe('—');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Séparateur décimal — jalon 2, phase 1
+// ---------------------------------------------------------------------------
+
+describe('virgule — le séparateur décimal français', () => {
+  it('convertit le point décimal', () => {
+    expect(virgule('1:41.203')).toBe('1:41,203');
+    expect(virgule('45.12 s')).toBe('45,12 s');
+  });
+
+  // Le point de fin de phrase, ou celui d'une abréviation, n'est PAS un
+  // séparateur : le convertir abîmerait des libellés qui n'ont rien à voir.
+  it('ne touche pas un point qui n’est pas entre deux chiffres', () => {
+    expect(virgule('4 juil. 2026')).toBe('4 juil. 2026');
+    expect(virgule('Voir la méthode.')).toBe('Voir la méthode.');
+    expect(virgule('v1.')).toBe('v1.');
+  });
+
+  it('convertit plusieurs séparateurs dans une même chaîne', () => {
+    expect(virgule('1.5 puis 2.75')).toBe('1,5 puis 2,75');
+  });
+
+  it('laisse intacte une chaîne sans décimale', () => {
+    expect(virgule('—')).toBe('—');
+    expect(virgule('62 pts')).toBe('62 pts');
+  });
+});
+
+describe('les formateurs canoniques rendent TOUS une virgule', () => {
+  it('aucun ne laisse échapper un point décimal', () => {
+    const rendus = [
+      formatLapTime(82.45),
+      formatLapTime(45.123),
+      formatLapTimeMs(84.318),
+      formatLapTimeMs(45.123),
+      formatChronoTenths(84.318),
+      formatChronoTenths(45.1),
+      formatDelta(82.5, 81.8, 's', 2),
+      formatDelta(0, 1.234, 'g', 2),
+    ];
+    for (const r of rendus) {
+      // Un point ENTRE DEUX CHIFFRES serait un séparateur oublié.
+      expect(r).not.toMatch(/\d\.\d/);
+    }
+  });
+
+  it('rend bien la virgule là où il y a des décimales', () => {
+    expect(formatLapTime(82.45)).toContain(',');
+    expect(formatLapTimeMs(84.318)).toContain(',');
+    expect(formatChronoTenths(84.318)).toContain(',');
   });
 });

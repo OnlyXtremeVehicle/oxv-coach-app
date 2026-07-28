@@ -8,13 +8,14 @@
 
 ## Ce qui est livré
 
-| Élément                 | Fichier                       | État                                                   |
-| ----------------------- | ----------------------------- | ------------------------------------------------------ |
-| Codec ThumbHash         | `src/media/thumbhashCodec.ts` | **fait** — porté, 17 tests                             |
-| API applicative         | `src/media/thumbhash.ts`      | **fait** — encodage, décodage, bornes, couleur moyenne |
-| Consommation par le kit | `src/ui/v2/media/Photo.tsx`   | **fait** — `thumbhash` prioritaire sur `blurhash`      |
-| Colonne en base         | —                             | **PROPOSÉE, non appliquée**                            |
-| Génération à l'envoi    | —                             | **NON FAITE** — voir la contrainte ci-dessous          |
+| Élément                 | Fichier                                  | État                                                   |
+| ----------------------- | ---------------------------------------- | ------------------------------------------------------ |
+| Codec ThumbHash         | `src/media/thumbhashCodec.ts`            | **fait** — porté, 17 tests                             |
+| API applicative         | `src/media/thumbhash.ts`                 | **fait** — encodage, décodage, bornes, couleur moyenne |
+| Consommation par le kit | `src/ui/v2/media/Photo.tsx`              | **fait** — `thumbhash` prioritaire sur `blurhash`      |
+| Génération serveur      | `supabase/functions/generate-thumbhash/` | **fait** — envoi + rattrapage par lot                  |
+| Appel à l'envoi         | `src/services/sessionMediaService.ts`    | **fait** — lancé sans être attendu                     |
+| Colonne en base         | `PROPOSITION_T2_thumbhash.sql`           | **PROPOSÉE, non appliquée**                            |
 
 ---
 
@@ -63,7 +64,7 @@ lignes de CRC et de flux zlib pour un besoin qui n'existe pas encore.
 
 ---
 
-## LA CONTRAINTE QUI RESTE — la génération
+## La génération — chemin serveur retenu et RÉALISÉ
 
 Le module encode du **RGBA déjà décodé**. Obtenir ces pixels est le travail de
 l'appelant, et c'est là que le lot n'est pas terminé.
@@ -73,7 +74,7 @@ React Native. La mention du plan de montage — _« génération à l'upload, `s
 est déjà en devDependencies »_ — désigne donc un traitement **côté serveur**, pas
 dans l'application.
 
-Deux chemins possibles, et le choix vous revient :
+Deux chemins étaient possibles. **A a été retenu et écrit.**
 
 **A · Côté serveur, à l'arrivée du média.** Une fonction Edge Supabase lit
 l'objet déposé, le réduit sous 100 px avec `sharp`, encode, écrit la colonne.
@@ -86,9 +87,12 @@ RGBA — l'appareil n'expose pas les pixels bruts. Avantage : aucun serveur. Co�
 un décodeur de plus, du calcul sur l'appareil au moment de l'envoi, et **rien
 pour l'existant**.
 
-**Recommandation : A.** Le parc de médias déjà déposé n'a pas de ThumbHash ; seul
-le chemin serveur peut le rattraper sans demander aux pilotes de renvoyer leurs
-photos.
+**A est fait** : `supabase/functions/generate-thumbhash/`. Le parc déjà déposé n'a
+pas de ThumbHash, et seul ce chemin peut le rattraper sans demander aux pilotes
+de renvoyer leurs photos.
+
+Le hash reste un AGRÉMENT : l'appel applicatif est lancé sans être attendu, son
+échec est silencieux, et les vidéos sont écartées ET comptées.
 
 ---
 
@@ -96,7 +100,9 @@ photos.
 
 `supabase/migrations/PROPOSITION_T2_thumbhash.sql` — **non appliquée**, nommée
 `PROPOSITION_` et non horodatée, donc ignorée par `db push`. Elle ajoute une
-colonne `thumbhash text` nullable sur les tables de médias.
+colonne `thumbhash text` nullable sur `session_media` — vérifié : `pilot_media` et
+`coach_media` N'EXISTENT PAS, les médias de profil vivent en colonnes sur `users`
+et `coach_profiles`.
 
 `null` est l'état normal tant que la génération n'existe pas : l'affichage
 retombe sur l'aplat titane, ce qui reste correct. Aucune migration de données,

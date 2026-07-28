@@ -4,7 +4,30 @@
  * Centralisés pour éviter la duplication entre tours.tsx, stats.tsx,
  * replay.tsx, virage.tsx, virage-comparer.tsx et le PDF export, et
  * pour pouvoir les unit-tester sans monter un écran React.
+ *
+ * ---
+ *
+ * SÉPARATEUR DÉCIMAL : LA VIRGULE (jalon 2, phase 1)
+ *
+ * `1:41,203`, jamais `1:41.203`. L'application est en français et s'adresse à
+ * des pilotes francophones ; un point décimal y lit comme une faute, ou pire,
+ * comme un séparateur de milliers.
+ *
+ * `toFixed` rend TOUJOURS un point, quelle que soit la locale. Toute valeur
+ * décimale destinée à l'écran passe donc par `virgule()`. Ce module est la
+ * source canonique : les écrans ne reformatent pas eux-mêmes.
  */
+
+/**
+ * Convertit le point décimal de `toFixed` en virgule.
+ *
+ * N'agit que sur le SÉPARATEUR — le point qui suit un chiffre et précède un
+ * chiffre. Un point de fin de phrase ou d'abréviation reste intact, ce qui
+ * permet d'appliquer la fonction à une chaîne déjà composée sans la casser.
+ */
+export function virgule(texte: string): string {
+  return texte.replace(/(\d)\.(\d)/g, '$1,$2');
+}
 
 /**
  * Formate un temps au tour en mm'ss.cc ou ss.cc s.
@@ -21,8 +44,8 @@ export function formatLapTime(seconds: number): string {
   const total = Math.round(seconds * 100) / 100;
   const mins = Math.floor(total / 60);
   const secs = total - mins * 60;
-  if (mins > 0) return `${mins}'${secs.toFixed(2).padStart(5, '0')}`;
-  return `${secs.toFixed(2)} s`;
+  if (mins > 0) return virgule(`${mins}'${secs.toFixed(2).padStart(5, '0')}`);
+  return virgule(`${secs.toFixed(2)} s`);
 }
 
 /**
@@ -53,8 +76,8 @@ function formatLapTimeSecondes(seconds: number): string {
   const total = Math.round(seconds * 1000) / 1000;
   const mins = Math.floor(total / 60);
   const secs = total - mins * 60;
-  if (mins > 0) return `${mins}:${secs.toFixed(3).padStart(6, '0')}`;
-  return `${secs.toFixed(3)} s`;
+  if (mins > 0) return virgule(`${mins}:${secs.toFixed(3).padStart(6, '0')}`);
+  return virgule(`${secs.toFixed(3)} s`);
 }
 
 /**
@@ -70,8 +93,8 @@ export function formatChronoTenths(seconds: number): string {
   const total = Math.round(seconds * 10) / 10;
   const mins = Math.floor(total / 60);
   const secs = total - mins * 60;
-  if (mins > 0) return `${mins}:${secs.toFixed(1).padStart(4, '0')}`;
-  return `${secs.toFixed(1)} s`;
+  if (mins > 0) return virgule(`${mins}:${secs.toFixed(1).padStart(4, '0')}`);
+  return virgule(`${secs.toFixed(1)} s`);
 }
 
 /**
@@ -191,5 +214,5 @@ export function formatDelta(
   if (a === null || b === null || !Number.isFinite(a) || !Number.isFinite(b)) return '—';
   const delta = b - a;
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±';
-  return `${sign}${Math.abs(delta).toFixed(decimals)} ${unit}`;
+  return virgule(`${sign}${Math.abs(delta).toFixed(decimals)} ${unit}`);
 }

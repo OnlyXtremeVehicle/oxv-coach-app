@@ -152,6 +152,38 @@ modification sans votre accord.
 
 ---
 
+## D-9 · Séparateur décimal — la source canonique est faite, 77 sites la contournent
+
+**Constaté le 27/07/2026, jalon 2 phase 1.**
+
+Le dossier impose la VIRGULE : `1:41,203`, jamais `1:41.203`. `src/utils/format.ts`
+est corrigé — sept formateurs, un helper `virgule()`, et des tests qui exigent
+qu'aucun rendu ne laisse un point entre deux chiffres.
+
+**Mais 174 `toFixed` vivent hors de ce fichier**, et un remplacement massif serait
+FAUX. Le décompte, fait plutôt que supposé :
+
+| Nature                                                    | Compte | Conduite                                                       |
+| --------------------------------------------------------- | ------ | -------------------------------------------------------------- |
+| **Géométrie SVG** — chemins, transformations, coordonnées | **30** | **NE PAS convertir** — une virgule dans un `d=` casse le tracé |
+| Texte affiché                                             | 77     | à convertir, écran par écran                                   |
+| Interne / indéterminé                                     | 67     | à trancher au cas par cas                                      |
+
+**Le vrai défaut n'est pas la ponctuation, c'est la duplication.**
+`src/components/DebriefMirror.tsx:192` réimplémente le formateur canonique —
+un découpage minutes/secondes suivi de `toFixed(3).padStart(6)`, qui est
+`formatLapTimeMs` récrit sur place.
+
+Convertir ce site en virgule le rendrait juste et laisserait la duplication —
+**donc le prochain écart**. La correction est de PASSER PAR le formateur, pas de
+le recopier correctement.
+
+**Traité par** : un lot dédié, écran par écran, qui remplace les
+réimplémentations par des appels à `format.ts`. La conversion de ponctuation en
+découle alors gratuitement, et ne peut plus diverger.
+
+---
+
 ## D-7 · Prettier épinglé en 3.8 — une passe de mise en forme reste à faire
 
 **Constaté le 27/07/2026, T0 palier 53.**
