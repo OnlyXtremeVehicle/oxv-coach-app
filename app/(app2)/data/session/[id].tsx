@@ -74,6 +74,7 @@ import { GGViz, type GGPoint } from '@/components/insights/GGViz';
 import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
+import { etatLecture, sectionAffichable } from '@/components/insights/disponibilite';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import type { SessionInsights } from '@/circuit/sessionInsights';
 import { loadSessionFlow } from '@/services/flowService';
@@ -1617,23 +1618,73 @@ function ConstatsSection({
     return <StateView state="error" emptyMessage="Lectures indisponibles pour le moment." />;
   }
 
-  // Le sous-libellé est le NIVEAU de la lecture (neutre, factuel) — jamais l'ancien
-  // `fact` de démo (chiffres fabriqués). La donnée réelle vit dans la viz du Sheet.
+  /**
+   * LISTE BLANCHE À TROIS ÉTATS — lot 13.
+   *
+   * Les six lectures étaient offertes en permanence. Le pilote voyait six
+   * portes, les ouvrait une à une, et trouvait six fois « Données
+   * insuffisantes ». Rien n'était faux ; l'information arrivait simplement
+   * après le geste au lieu de le précéder.
+   *
+   * Chaque lecture dit maintenant son état AVANT d'être ouverte, et seules les
+   * disponibles sont pressables. La décision est dans `disponibilite.ts` — une
+   * règle répartie sur six composants est une règle qu'on applique cinq fois.
+   */
+  const etats = READINGS.map((r) =>
+    etatLecture(r.key, {
+      insights,
+      nbPointsGG: ggPoints.length,
+      nbPointsFlow: flowPoints.length,
+    })
+  );
+
+  /**
+   * Conséquence assumée par le dossier : tant que rien n'est mesuré, la section
+   * ne propose plus rien.
+   *
+   * Nuance délibérée : l'en-tête « CONSTATS » reste, porté par le parent. Le
+   * retirer ferait disparaître la section sans explication — et décalerait les
+   * ancres de défilement (`registerSection`). Une section qui dit pourquoi elle
+   * est vide vaut mieux qu'une section qui s'évapore.
+   */
+  if (!sectionAffichable(etats)) {
+    return (
+      <StateView
+        state="empty"
+        emptyMessage="Aucune lecture sur cette séance. Elles apparaîtront à la première mesure."
+      />
+    );
+  }
+
   return (
     <View>
       <View style={styles.constatsList}>
-        {READINGS.map((r) => (
-          <ListRow
-            key={r.key}
-            label={r.name}
-            sublabel={r.eyebrow}
-            onPress={() => {
-              haptic('tap');
-              setOpen(r.key);
-            }}
-            accessibilityLabel={`${r.name} — lecture approfondie`}
-          />
-        ))}
+        {READINGS.map((r, i) => {
+          const d = etats[i];
+          const dispo = d.etat === 'disponible';
+          return (
+            <ListRow
+              key={r.key}
+              label={r.name}
+              // Disponible → le niveau. Absente → la raison, à la place du
+              // tiret : « — » seul n'apprendrait rien.
+              sublabel={dispo ? r.eyebrow : d.raison}
+              disabled={!dispo}
+              chevron={dispo}
+              onPress={
+                dispo
+                  ? () => {
+                      haptic('tap');
+                      setOpen(r.key);
+                    }
+                  : undefined
+              }
+              accessibilityLabel={
+                dispo ? `${r.name} — lecture approfondie` : `${r.name} — ${d.raison}`
+              }
+            />
+          );
+        })}
       </View>
 
       <Sheet visible={open !== null} onClose={() => setOpen(null)} snapHeight={520}>
