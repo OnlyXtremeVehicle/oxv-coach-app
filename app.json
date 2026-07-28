@@ -28,11 +28,7 @@
       "buildNumber": "1",
       "usesAppleSignIn": true,
       "infoPlist": {
-        "NSBluetoothAlwaysUsageDescription": "OXV se connecte en Bluetooth à votre boîtier RaceBox, et à votre ceinture cardiaque si vous en portez une.",
-        "NSBluetoothPeripheralUsageDescription": "OXV communique en Bluetooth avec votre boîtier RaceBox et votre ceinture cardiaque.",
         "NSLocationWhenInUseUsageDescription": "Votre position sert à détecter votre arrivée au circuit, à enregistrer un lieu ou un tracé que vous créez, et au scan Bluetooth qu'iOS exige. Aucun suivi en arrière-plan.",
-        "NSHealthShareUsageDescription": "Avec votre accord, OXV lit votre fréquence cardiaque pendant vos séances pour la mettre en regard de votre conduite.",
-        "NSHealthUpdateUsageDescription": "OXV n'écrit rien dans votre dossier Santé.",
         "NSCameraUsageDescription": "OXV utilise l'appareil photo pour votre photo de profil et la lecture des documents.",
         "NSPhotoLibraryUsageDescription": "OXV utilise vos photos pour votre profil et vos véhicules.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -89,7 +85,7 @@
         {
           "isBackgroundEnabled": false,
           "modes": ["central"],
-          "bluetoothAlwaysPermission": "OXV se connecte à votre RaceBox pour récupérer la télémétrie."
+          "bluetoothAlwaysPermission": "OXV se connecte en Bluetooth à votre boîtier RaceBox, et à votre ceinture cardiaque si vous en portez une."
         }
       ],
       [
