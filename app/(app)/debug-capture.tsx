@@ -538,7 +538,7 @@ function Btn({
 }
 
 const styles = StyleSheet.create({
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  body: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   eyebrow: {
     fontFamily: fonts.mono,

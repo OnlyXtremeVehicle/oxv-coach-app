@@ -583,7 +583,7 @@ export default function AdminCartePointsScreen() {
 }
 
 const s = {
-  body: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
+  body: { paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl },
   eyebrow: {
     fontFamily: theme.fonts.mono,
     fontSize: theme.fontSize.eyebrow,

@@ -48,7 +48,7 @@ export default function SessionHubScreen() {
   return (
     <Screen>
       <AppBar title="SESSION" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE SORTIE</Text>
         <Text style={s.title} accessibilityRole="header">
           Préparer, rouler, revenir.

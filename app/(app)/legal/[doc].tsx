@@ -27,7 +27,7 @@ export default function LegalDocScreen() {
   return (
     <Screen>
       <AppBar title="DOCUMENT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {document ? (
           <>
             <Text style={styles.screenTitle} accessibilityRole="header">

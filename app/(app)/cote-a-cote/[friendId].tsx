@@ -400,7 +400,7 @@ function displayNameSelf(profile: { first_name?: string | null } | null): string
 
 const s = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  page: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  page: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   duo: {
     flexDirection: 'row',

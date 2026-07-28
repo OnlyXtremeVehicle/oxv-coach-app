@@ -82,7 +82,7 @@ export default function SharedProgressionScreen() {
   return (
     <Screen>
       <AppBar title="PROGRESSION PARTAGÉE" />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {!share ? (
           <View style={{ marginTop: theme.spacing.xxl, alignItems: 'center' }}>
             <Text

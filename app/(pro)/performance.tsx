@@ -74,7 +74,7 @@ export default function ProPerformanceScreen() {
   return (
     <Screen>
       <AppBar title="PERFORMANCE" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>LECTURE COMPARÉE</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos faits, côte à côte.

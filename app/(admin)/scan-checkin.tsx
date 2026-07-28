@@ -62,7 +62,11 @@ export default function AdminScanCheckinScreen() {
     <Screen scroll={false}>
       <AppBar title="SCAN PRÉSENCE" onBack={() => router.back()} />
       <View
-        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+        style={{
+          flex: 1,
+          paddingHorizontal: theme.spacing.screen,
+          paddingBottom: theme.spacing.xxl,
+        }}
       >
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />

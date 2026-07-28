@@ -167,7 +167,7 @@ export default function CarteScreen() {
   return (
     <Screen>
       <AppBar title="Carte du circuit" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Eyebrow une seule ligne (maquette) — circuit + nature de la lecture.
             Le TRACÉ se dessine déjà à l'entrée : PilotPreset `animate` porte le
             dessin progressif (même technique dash que DrawInPath du kit). */}

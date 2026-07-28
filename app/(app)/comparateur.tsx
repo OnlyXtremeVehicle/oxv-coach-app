@@ -162,7 +162,7 @@ export default function ComparateurScreen() {
   return (
     <Screen>
       <AppBar title="Comparateur" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {sessions.length < 2 ? (
           <EmptyBlock count={sessions.length} />
         ) : (

@@ -90,7 +90,7 @@ export default function MesRoutesScreen() {
   return (
     <Screen>
       <AppBar title="MES BELLES ROUTES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <StatusLine
           label={`${routes.length} route${routes.length > 1 ? 's' : ''} enregistrée${routes.length > 1 ? 's' : ''}`}
         />

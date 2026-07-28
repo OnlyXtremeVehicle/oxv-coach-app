@@ -184,7 +184,7 @@ export default function PasseportScreen() {
   return (
     <Screen>
       <AppBar title="Passeport piste" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* ── Carte d'identité (dégradé sombre, maquette) — entre en fondu,
             puis respire très discrètement (seul BreathingGlow de l'écran). ── */}
         <FadeInSection>

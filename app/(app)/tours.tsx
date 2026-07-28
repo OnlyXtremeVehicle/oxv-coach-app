@@ -135,7 +135,7 @@ export default function ToursScreen() {
   return (
     <Screen>
       <AppBar title="Tour par tour" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* ——— Bandeau récap (maquette #6a) : meilleur tour OR à gauche,
             moyenne crème à droite. Inline mono, sans panneau cockpit. ——— */}
         {bestLap ? (

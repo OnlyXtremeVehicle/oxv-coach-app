@@ -414,7 +414,7 @@ export default function BilanScreen() {
           </PressableScale>
         }
       />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Contexte de séance — eyebrow mono centré. */}
         <Text style={s.contextEyebrow}>{contextLine.toUpperCase()}</Text>
 

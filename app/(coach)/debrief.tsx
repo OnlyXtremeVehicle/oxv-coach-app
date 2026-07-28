@@ -136,7 +136,7 @@ export default function CoachDebriefScreen() {
   return (
     <Screen>
       <AppBar title="DÉBRIEF" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <View style={{ marginBottom: spacing.lg }}>
           <RoleBadge role="coach" />
         </View>

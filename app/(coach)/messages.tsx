@@ -571,7 +571,7 @@ const s = StyleSheet.create({
   sendGlyph: { fontFamily: fonts.mono, fontSize: 18, color: palette.cream },
 
   // ── Téléphone ──
-  mobilePad: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  mobilePad: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
   mobileHead: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -337,7 +337,7 @@ export default function CoachPilotDetailScreen() {
   return (
     <Screen>
       <AppBar title="Fiche pilote" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <FadeInSection style={s.companionIdentity}>
           <Avatar initials={initials} size={68} />
           <Text style={[s.title, { textAlign: 'center' }]} accessibilityRole="header">

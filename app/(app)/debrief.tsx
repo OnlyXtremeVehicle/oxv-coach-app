@@ -141,7 +141,7 @@ export default function DebriefScreen() {
   return (
     <Screen>
       <AppBar title="DÉBRIEF" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title}>
           {formatDateLong(data.startedAt)} — {data.circuitName}
         </Text>

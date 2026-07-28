@@ -302,7 +302,7 @@ function IntentionRow({
 }
 
 const s = StyleSheet.create({
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  body: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   // Intro muted sous la barre (maquette : gris, deux lignes).
   intro: {

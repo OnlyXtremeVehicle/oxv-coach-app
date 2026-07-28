@@ -95,7 +95,7 @@ export default function RegulariteScreen() {
   return (
     <Screen>
       <AppBar title="RÉGULARITÉ" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title}>La constance, en chiffres.</Text>
 
         {!hasContent ? (

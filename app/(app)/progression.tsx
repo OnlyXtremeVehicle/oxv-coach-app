@@ -201,7 +201,7 @@ export default function ProgressionScreen() {
   return (
     <Screen>
       <AppBar title="Progression" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* ── MODULE 1 — MEILLEUR TOUR ─────────────────────────────────── */}
         <FadeInSection>
           <Text style={[s.moduleEyebrow, { color: palette.gold }]}>

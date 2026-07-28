@@ -43,7 +43,7 @@ export default function ProgrammeScreen() {
   return (
     <Screen>
       <AppBar title="PROGRAMME" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE COACH</Text>
         <Text style={s.title} accessibilityRole="header">
           Votre programme.

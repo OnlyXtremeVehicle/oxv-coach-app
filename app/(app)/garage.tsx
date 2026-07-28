@@ -169,7 +169,7 @@ export default function GarageScreen() {
         }
       />
 
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* ── Composer d'ajout (CRUD existant, restylé v2). Présence animée :
             le panneau monte en fondu à l'ouverture, sort avant démontage. ── */}
         <AnimatedPresence visible={composing}>

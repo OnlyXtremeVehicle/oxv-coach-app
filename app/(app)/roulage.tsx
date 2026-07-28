@@ -152,7 +152,7 @@ export default function RoulageScreen() {
   return (
     <Screen scroll={false}>
       <AppBar title="ROULAGE" />
-      <View style={{ flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ flex: 1, paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* En piste — doctrine du silence (canon §6) : voyant REC qui pulse, trois
             fragments éditoriaux. AUCUNE donnée, AUCUN chrono, AUCUN tour affiché.
             Exception d'HONNÊTETÉ : si le lien BLE décroche, on le DIT (sans rouge,

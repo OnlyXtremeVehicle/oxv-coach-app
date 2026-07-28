@@ -96,7 +96,7 @@ export default function PartenairesScreen() {
   return (
     <Screen>
       <AppBar title="PARTENAIRES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>AUTOUR DE VOS SORTIES</Text>
         <Text style={s.title} accessibilityRole="header">
           Les partenaires OXV

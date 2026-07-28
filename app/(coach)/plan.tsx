@@ -379,7 +379,7 @@ export default function CoachPlanScreen() {
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}
+          contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}
         >
           <Text style={s.eyebrow}>{eyebrowText}</Text>
           <Text style={s.title} accessibilityRole="header">

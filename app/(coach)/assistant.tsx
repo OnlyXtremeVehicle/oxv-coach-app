@@ -780,7 +780,7 @@ export default function CoachAssistantScreen() {
   return (
     <Screen>
       <AppBar title="ASSISTANT IA" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>

@@ -43,7 +43,7 @@ export default function ProMediaScreen() {
   return (
     <Screen>
       <AppBar title="MÉDIA" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOS MÉDIAS OXV</Text>
         <Text style={s.title} accessibilityRole="header">
           Tout, au même endroit.

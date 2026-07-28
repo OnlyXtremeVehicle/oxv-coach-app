@@ -196,7 +196,7 @@ export default function CarteLicenceScreen() {
   return (
     <Screen>
       <AppBar title="Ma licence" subtitle="Licence circuit" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* — Strate 1 : la carte d'identité licence (données réelles `users`) — */}
         <FadeInSection>
           <View style={s.licence}>

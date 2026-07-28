@@ -256,7 +256,7 @@ export default function SignatureScreen() {
   return (
     <Screen>
       <AppBar title="Signature de pilotage" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Accroche — eyebrow centré (maquette ; vouvoiement, doctrine). */}
         <Text style={s.accroche}>VOTRE STYLE, RIEN QUE LE VÔTRE</Text>
 

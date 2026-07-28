@@ -182,7 +182,7 @@ export default function CoachDetailScreen() {
   return (
     <Screen>
       <AppBar title="Fiche coach" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Héros centré — avatar cerclé rouge, nom, eyebrow rouge (maquette).
             Entrée en fondu sobre (kit motion, reduce-motion respecté). */}
         <FadeInSection>

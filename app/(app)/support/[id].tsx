@@ -91,7 +91,7 @@ export default function SupportThreadScreen() {
   return (
     <Screen>
       <AppBar title="DEMANDE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {loading || !thread ? (
           <Text style={s.muted}>{loading ? 'Chargement…' : 'Demande introuvable.'}</Text>
         ) : (

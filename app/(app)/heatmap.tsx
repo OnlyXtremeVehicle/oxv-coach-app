@@ -143,7 +143,7 @@ export default function HeatmapScreen() {
   return (
     <Screen>
       <AppBar title="Carte de chaleur" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Eyebrow centré sous le header (maquette). */}
         <Text style={s.eyebrow}>Vitesse le long du tour</Text>
 

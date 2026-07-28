@@ -155,7 +155,7 @@ export default function VehicleDetailScreen() {
   return (
     <Screen>
       <AppBar title="VÉHICULE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {loading || !vehicle ? (
           <Text style={s.muted}>{loading ? 'Chargement…' : 'Véhicule introuvable.'}</Text>
         ) : (

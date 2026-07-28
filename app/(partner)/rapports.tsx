@@ -42,7 +42,7 @@ export default function PartnerReportsScreen() {
   return (
     <Screen>
       <AppBar title="MES RAPPORTS" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="partner" />
         </View>

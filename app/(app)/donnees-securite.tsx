@@ -99,7 +99,7 @@ export default function DonneesSecuriteScreen() {
   return (
     <Screen>
       <AppBar title="Données & sécurité" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* SÉCURITÉ DU COMPTE — uniquement le réel (2FA et mot de passe : aucun
             backend/flux, lignes de la maquette masquées, cf. en-tête). */}
         <View style={{ marginTop: theme.spacing.sm }}>

@@ -86,7 +86,7 @@ export default function PassOxvScreen() {
   return (
     <Screen>
       <AppBar title="PASS OXV" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE JOURNÉE</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos passes.

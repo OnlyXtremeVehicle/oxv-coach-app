@@ -110,7 +110,7 @@ export default function ProBibliothequeScreen() {
   return (
     <Screen>
       <AppBar title="BIBLIOTHÈQUE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOS SÉANCES</Text>
         <Text style={s.title} accessibilityRole="header">
           Retrouver une séance.

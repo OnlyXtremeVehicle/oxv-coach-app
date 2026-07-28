@@ -89,7 +89,7 @@ export default function PartnerHubScreen() {
   return (
     <Screen>
       <AppBar title="PARTENAIRE OXV" leading={<Logo size={26} />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="partner" />
         </View>

@@ -327,7 +327,7 @@ const s = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  companionPad: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  companionPad: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   // En-tête
   consoleHead: {

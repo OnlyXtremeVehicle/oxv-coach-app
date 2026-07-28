@@ -101,7 +101,7 @@ export default function MesDemandesScreen() {
   return (
     <Screen>
       <AppBar title="MES DEMANDES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ACCOMPAGNEMENT</Text>
         <Text style={s.title} accessibilityRole="header">
           Vos demandes de séance.

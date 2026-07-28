@@ -191,7 +191,7 @@ export default function EmpreinteSaisonScreen() {
   return (
     <Screen>
       <AppBar title="Empreinte saison" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Intro — transposée de la maquette (vouvoiement, jamais une courbe). */}
         <Text style={s.intro}>
           Chaque séance, posée à côté des autres. On ne trace pas de courbe — on regarde comment

@@ -89,7 +89,7 @@ export default function AdminSupportScreen() {
   return (
     <Screen>
       <AppBar title="SUPPORT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />
         </View>

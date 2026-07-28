@@ -589,7 +589,7 @@ const s = StyleSheet.create({
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
-  body: { flex: 1, paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  body: { flex: 1, paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   // Eyebrow : info utile (« Votre dernier bilan », « Explorer », mode courant).
   // creamMute (≈ 6.4:1 sur night) pour passer WCAG AA, là où faint échouait.

@@ -183,7 +183,7 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <AppBar title="RÉGLAGES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* Signature Pacte en haut */}
         <Card style={[s.dataPanel, { marginBottom: theme.spacing.xxl }]}>
           <View style={s.headRow} accessibilityRole="header">

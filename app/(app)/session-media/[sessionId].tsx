@@ -65,7 +65,7 @@ export default function SessionMediaScreen() {
   return (
     <Screen>
       <AppBar title="SOUVENIRS" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title} accessibilityRole="header">
           Vos médias de session
         </Text>

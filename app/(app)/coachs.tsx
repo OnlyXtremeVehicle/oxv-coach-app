@@ -233,7 +233,7 @@ export default function DecouverteScreen() {
   return (
     <Screen>
       <AppBar title="Découverte" />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Onglets pills (maquette) — état local, Coachs actif par défaut. */}
         <View style={s.pillsRow} accessibilityRole="tablist">
           {TABS.map(({ key, label }) => {

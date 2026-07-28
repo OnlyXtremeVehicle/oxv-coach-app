@@ -472,7 +472,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 }
 
 const s = StyleSheet.create({
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl },
+  body: { paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl },
 
   // Héros — eyebrow mono + puce météo fine à droite (maquette §7.13).
   eyebrowRow: {

@@ -82,7 +82,7 @@ export default function DataLabCanvasScreen() {
   return (
     <Screen>
       <AppBar title="VUE UNIFIÉE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>APERÇU TECHNIQUE</Text>
         <Text style={s.title} accessibilityRole="header">
           Le tracé, d’un seul tenant.

@@ -44,7 +44,7 @@ export default function ClubHubScreen() {
   return (
     <Screen>
       <AppBar title="CLUB" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE ÉCOSYSTÈME</Text>
         <Text style={s.title} accessibilityRole="header">
           Qui vous entoure.

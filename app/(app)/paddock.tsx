@@ -36,7 +36,11 @@ export default function PaddockScreen() {
     <Screen scroll={false}>
       <AppBar title="PADDOCK" />
       <View
-        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+        style={{
+          flex: 1,
+          paddingHorizontal: theme.spacing.screen,
+          paddingBottom: theme.spacing.xxl,
+        }}
       >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>BIENVENUE</Text>

@@ -92,7 +92,11 @@ export default function PlacementScreen() {
     <Screen scroll={false}>
       <AppBar title="PLACEMENT" />
       <View
-        style={{ flex: 1, paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}
+        style={{
+          flex: 1,
+          paddingHorizontal: theme.spacing.screen,
+          paddingBottom: theme.spacing.xxl,
+        }}
       >
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <Text style={s.eyebrow}>PLACEMENT</Text>

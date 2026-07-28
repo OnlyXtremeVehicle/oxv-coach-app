@@ -4,6 +4,12 @@
 // donnée a SA couleur ; l'OR est réservé au CHRONO/RECORD/RYTHME uniquement.
 // Les clés de tokens sont conservées (compat 159 écrans) ; seules les valeurs
 // changent. Rôles inchangés. Cf. design-retours/refonte-v2 §5 Design tokens.
+//
+// CE MODULE NE DÉPEND DE RIEN. Pas de `react-native`, pas de hook, pas de
+// contexte : il est importé par la couche logique pure, qui tourne sur un banc
+// sans chaîne native. Une première version de `spacing.screen` lisait
+// `Dimensions` — elle a cassé deux suites d'un coup. Le test
+// `themeSansRuntime.test.ts` monte la garde.
 export const palette = {
   night: '#0B0B0D', // --bg fond app
   nightCard: '#111113', // --surface
@@ -82,6 +88,30 @@ export const fonts = {
   serifItalic: 'HankenGrotesk_400Regular_Italic',
 } as const;
 
+/**
+ * Variantes typographiques du CHIFFRE ROI — jalon 2, phase 1.
+ *
+ * Le dossier demande « JetBrains Mono ligatures désactivées ». La table de la
+ * fonte a été lue (`node_modules/@expo-google-fonts/jetbrains-mono/700Bold`)
+ * plutôt que supposée :
+ *
+ * - `calt` PRÉSENT → c'est par les alternatives contextuelles que JetBrains Mono
+ *   livre ses ligatures de code (`->`, `!=`, `//`). `no-contextual` est donc le
+ *   levier juste, et le seul qui morde.
+ * - `dlig`, `ss01`, `ss02` ABSENTS → rien à désactiver de ce côté.
+ * - `tnum` ABSENT → `tabular-nums` n'a aucun effet sur cette fonte. C'est sans
+ *   conséquence : une fonte à chasse fixe est tabulaire par construction. La
+ *   valeur est conservée parce qu'elle dit l'intention, et qu'elle protégerait
+ *   un jour un repli sur une fonte proportionnelle.
+ *
+ * **Le « zéro non pointé » du dossier n'est PAS atteignable ici.** La fonte
+ * expose bien un tag `zero`, mais `fontVariant` de React Native est une
+ * énumération fermée qui ne le contient pas, et RN n'offre pas de
+ * `fontFeatureSettings`. Il faudrait une autre fonte ou un sous-ensemble
+ * construit au build — décision fondateur, notée en dette (D-12).
+ */
+export const monoVariant = ['tabular-nums', 'no-contextual'] as const;
+
 // Couleurs d'IDENTITÉ DE RÔLE (navigation, badges, hubs — jamais de la donnée).
 // Décision fondateur 2026-07-06 : on adopte les couleurs des maquettes Claude
 // Design. Le pilote reste NEUTRE (crème) — jamais l'or, réservé à la donnée
@@ -109,7 +139,24 @@ export const fontSize = {
   hud: 62,
 } as const;
 
-export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 22, xxl: 28 } as const;
+/**
+ * Rythme vertical — base 8 pt, demi-pas 4 pt (dossier de conception §IV.2).
+ *
+ * Toute valeur tombe sur le demi-pas. `xl` valait 22 : ni un pas, ni un
+ * demi-pas. Désalignement invisible à l'œil sur un bloc isolé, visible dès que
+ * deux blocs voisins l'emploient — et il l'était sur 386 emplacements.
+ *
+ * `screen` est la MARGE LATÉRALE D'ÉCRAN (§IV.1). Elle vaut 20 pt : le palier
+ * qui couvre 320 à 414 pt, c'est-à-dire tout iPhone du SE au 16 Pro.
+ *
+ * **Le palier de 24 pt au-delà de 414 pt n'est PAS porté par ce jeton**, et c'est
+ * délibéré : le lire demanderait `Dimensions`, donc une dépendance native dans un
+ * module que la couche logique importe. Le composant qui connaît sa largeur
+ * obtient la bonne valeur par `margeEcran()` — c'est ce que fait `KingNumber`
+ * pour calculer son budget. Conséquence assumée et mesurée : 4 pt de marge en
+ * moins sur Plus et Pro Max, jamais l'inverse. Noté en dette (D-10).
+ */
+export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 28, screen: 20 } as const;
 // `hud` (6px) = angle d'instrument des panneaux cockpit NG (refonte) — plus sec
 // que les cartes web arrondies. Cf. CockpitPanel, GUIDE_INTEGRATION §2.
 export const radius = { hud: 6, sm: 10, md: 12, lg: 14, xl: 18, pill: 999 } as const;
@@ -129,6 +176,7 @@ export const theme = {
   motion,
   easing,
   hitSlop,
+  monoVariant,
 };
 export type ThemeV2 = typeof theme;
 

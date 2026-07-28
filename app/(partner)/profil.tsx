@@ -114,7 +114,7 @@ export default function PartnerProfilScreen() {
   return (
     <Screen>
       <AppBar title="MA FICHE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md, marginTop: theme.spacing.sm }}>
           <RoleBadge role="partner" />
         </View>

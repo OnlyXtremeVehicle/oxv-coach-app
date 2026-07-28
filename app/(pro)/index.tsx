@@ -107,7 +107,7 @@ export default function ProPaddockScreen() {
   return (
     <Screen>
       <AppBar title="PILOTE PRO OXV" leading={<Logo size={26} />} trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>ESPACE PROFESSIONNEL</Text>
         <Text style={s.title} accessibilityRole="header">
           {greeting}.

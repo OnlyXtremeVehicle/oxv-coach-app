@@ -131,7 +131,7 @@ export default function PartageScreen() {
   return (
     <Screen>
       <AppBar title="PARTAGE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <StatusLine label="Partage · à vos conditions" />
         <Text style={s.title}>Une vue, à vos conditions.</Text>
 

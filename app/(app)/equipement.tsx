@@ -139,7 +139,7 @@ export default function EquipementScreen() {
   return (
     <Screen>
       <AppBar title="ÉQUIPEMENT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title} accessibilityRole="header">
           À la recherche de votre équipement OXV Mirror…
         </Text>

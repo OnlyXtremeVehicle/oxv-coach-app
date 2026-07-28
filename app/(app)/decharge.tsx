@@ -104,7 +104,7 @@ export default function DechargeScreen() {
     <Screen>
       <AppBar title="DÉCHARGE" onBack={() => router.back()} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}
+        contentContainerStyle={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}
       >
         <StateWrapper
           state={state}

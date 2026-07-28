@@ -252,7 +252,7 @@ export default function TelemetryScreen() {
   return (
     <Screen>
       <AppBar title="Télémétrie" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <FadeInSection>
           <Text style={s.eyebrow}>{eyebrowText}</Text>
         </FadeInSection>

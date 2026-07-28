@@ -89,7 +89,7 @@ export default function CircuitDetailScreen() {
   return (
     <Screen>
       <AppBar title="CIRCUIT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title} accessibilityRole="header">
           {title}
         </Text>

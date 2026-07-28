@@ -59,7 +59,7 @@ export default function MonEquipementScreen() {
   return (
     <Screen>
       <AppBar title="MON BOÎTIER" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE ÉQUIPEMENT</Text>
         <Text style={s.title} accessibilityRole="header">
           Votre boîtier OXV.

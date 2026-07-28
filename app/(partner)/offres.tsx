@@ -373,7 +373,7 @@ export default function PartnerOffersScreen() {
 }
 
 const s = {
-  body: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
+  body: { paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl },
   h1: {
     fontFamily: theme.fonts.display,
     fontSize: theme.fontSize.h2,

@@ -153,7 +153,7 @@ export default function ReplayScreen() {
         title={currentLap ? `Rejouer · Tour ${currentLap.lap_number}` : 'Rejouer'}
         onBack={() => router.back()}
       />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* Sélecteur de tour (héritage utile, chips au langage v2). */}
         {laps.length > 0 ? (
           <FadeInSection>

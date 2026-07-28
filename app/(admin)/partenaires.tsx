@@ -80,7 +80,7 @@ export default function AdminPartnersScreen() {
   return (
     <Screen>
       <AppBar title="PARTENAIRES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />
         </View>

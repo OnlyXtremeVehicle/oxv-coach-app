@@ -136,7 +136,7 @@ export default function CoachStudioScreen() {
   return (
     <Screen>
       <AppBar title="STUDIO" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>

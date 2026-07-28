@@ -81,7 +81,7 @@ export default function ConditionsScreen() {
   return (
     <Screen>
       <AppBar title="CONDITIONS & RESSENTI" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>CETTE SÉANCE</Text>
         <Text style={s.title} accessibilityRole="header">
           Les faits, et vous.

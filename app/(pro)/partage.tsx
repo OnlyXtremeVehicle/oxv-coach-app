@@ -112,7 +112,7 @@ export default function ProPartageScreen() {
   return (
     <Screen>
       <AppBar title="PARTAGE" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VITRINE CONTRÔLÉE</Text>
         <Text style={s.title} accessibilityRole="header">
           Vous choisissez ce qui se voit.

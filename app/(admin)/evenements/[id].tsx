@@ -154,7 +154,7 @@ export default function AdminEventDetailScreen() {
   return (
     <Screen>
       <AppBar title="ÉVÉNEMENT" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <View style={{ marginBottom: theme.spacing.md }}>
           <RoleBadge role="admin" />
         </View>

@@ -272,7 +272,7 @@ export default function CircuitsScreen() {
     <Screen>
       <AppBar title="Circuits" onBack={() => router.back()} />
 
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {loading ? (
           <View style={{ paddingVertical: spacing.xxl, alignItems: 'center' }}>
             <ActivityIndicator color={palette.creamMute} />

@@ -83,7 +83,7 @@ export default function ProEquipeScreen() {
   return (
     <Screen>
       <AppBar title="ÉQUIPE" trailing={<AccountButton />} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.eyebrow}>VOTRE ENTOURAGE</Text>
         <Text style={s.title} accessibilityRole="header">
           Qui vous entoure.

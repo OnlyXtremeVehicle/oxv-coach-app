@@ -67,7 +67,7 @@ export default function StatsScreen() {
   return (
     <Screen>
       <AppBar title="STATISTIQUES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <Text style={s.title}>L&apos;ensemble de votre histoire.</Text>
         <Text style={s.manifest}>Toutes vos sessions agrégées.</Text>
 

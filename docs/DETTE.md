@@ -236,3 +236,84 @@ Le plan prescrit de la vider. Son contenu — « SEC-1 : reformatage prettier ac
 `git stash drop` reste à faire, quand vous aurez confirmé que la branche vous suffit.
 
 **Traité par** : geste manuel du fondateur.
+
+---
+
+## D-10 · Le palier de marge à 24 pt n'est pas porté par le jeton
+
+**Constaté le 28/07/2026, jalon 2 phase 1.**
+
+Le dossier de conception §IV.1 fixe deux paliers de marge latérale : **20 pt de
+320 à 414 pt, 24 pt au-delà**. Le jeton `spacing.screen` ne porte que le premier.
+
+La raison est mesurée, pas supposée : la première version lisait
+`Dimensions.get('window').width` dans `src/theme/v2.ts`. **Deux suites de tests
+sont tombées d'un coup** — le banc Jest de ce dépôt est volontairement dépourvu
+de la chaîne native (`jest.config.js` : « ts-jest pour ne pas hériter du preset
+jest-expo »), et toute la couche logique importe le thème. Une dépendance native
+dans les jetons rend la logique pure intestable.
+
+**Conséquence exacte** : 4 pt de marge en moins sur iPhone Plus et Pro Max.
+Jamais l'inverse — le sens de l'écart est sûr. Les composants qui connaissent
+leur largeur obtiennent, eux, la bonne valeur par `margeEcran()` ; c'est ce que
+fait `KingNumber` pour son budget, qui reste donc conservateur sur grand écran.
+
+**Traité par** : la refonte écran par écran (jalons 3 à 8), où un
+`useWindowDimensions()` par écran est de toute façon nécessaire. Le test
+`src/theme/__tests__/themeSansRuntime.test.ts` garde la porte d'ici là.
+
+---
+
+## D-11 · 37 écrans sur 157 n'ont pas basculé sur la marge d'écran
+
+**Constaté le 28/07/2026, jalon 2 phase 1.**
+
+Le balayage a converti **120 écrans** dont le corps suit l'idiome
+`paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl`. Les 37 autres ont
+une structure différente : carte plein cadre (`carte-oxv`, `galerie`,
+`carte-trophee`), écran de direct, conversation, ou marge posée ailleurs qu'à la
+racine.
+
+Les convertir demande de **lire chaque écran** pour distinguer la marge de
+racine d'un remplissage intérieur — un remplacement mécanique aurait élargi des
+cartes internes. Ce n'est pas un travail de jeton, c'est un travail d'écran.
+
+Liste : `(admin)/b2b-rapport`, `(admin)/evenements/nouveau`, `(app)/belle-route`,
+`bilan-pret`, `carte-oxv`, `carte-trophee`, `catalogue`, `creer-route`,
+`debrief-presentiel`, `entre-runs`, `galerie`, `mon-coach`, `objectifs`,
+`partenaire/[id]`, `pilotage-fini`, `preservation`, `support/index`, `trace`,
+`virage`, `(auth)/lier`, `(auth)/login`, `(coach)/annoter`, `comparer-pilotes`,
+`comparer`, `contexte`, `cycles/[id]`, `cycles`, `en-direct/[sessionId]`,
+`facturation-identite`, `gabarits`, `lecture`, `messages/[coachPilotId]`,
+`priorites`, `profil`, `rapport`, `repere/[index]`, `+not-found`.
+
+**Conséquence** : ces écrans gardent 16 pt de marge au lieu de 20.
+
+**Traité par** : la refonte écran par écran (jalons 3 à 8).
+
+---
+
+## D-12 · Le « zéro non pointé » n'est pas atteignable en style
+
+**Constaté le 28/07/2026, jalon 2 phase 1.**
+
+Le dossier demande « JetBrains Mono ligatures désactivées **et zéro non
+pointé** ». La première moitié est faite : la table de la fonte a été lue, `calt`
+est présent, `no-contextual` le coupe (`monoVariant` dans `src/theme/v2.ts`).
+
+La seconde ne l'est pas. La fonte expose bien un tag `zero`, mais **`fontVariant`
+de React Native est une énumération fermée** qui ne le contient pas, et RN
+n'offre pas de `fontFeatureSettings`. Le paquet `@expo-google-fonts/jetbrains-mono`
+ne livre pas non plus de variante alternative — pas de « NL », pas de `ss01`.
+
+Deux issues, toutes deux à votre main : changer de fonte de chiffres, ou
+construire un sous-ensemble de JetBrains Mono avec la fonctionnalité appliquée
+au build.
+
+**À rapprocher du même arbitrage** : le dossier nomme le trio « Söhne Breit,
+SF Pro, JetBrains Mono ». Le système V3 adopté est Hanken Grotesk + JetBrains
+Mono. Söhne est une fonte commerciale (Klim), SF Pro est réservée à Apple. **Je
+n'ai rien changé** — un changement de fonte est une décision de doctrine, et
+celle-ci a un prix.
+
+**Traité par** : décision fondateur.

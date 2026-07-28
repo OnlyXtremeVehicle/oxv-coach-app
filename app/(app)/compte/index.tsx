@@ -352,7 +352,7 @@ export default function CompteHubScreen() {
   return (
     <Screen>
       <AppBar title="Compte" />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Bloc profil — identité réelle (users), séances réelles. */}
         <FadeInSection>
           <View style={s.profileRow}>

@@ -90,7 +90,7 @@ export default function CreerTraceScreen() {
   return (
     <Screen>
       <AppBar title="CRÉER UN TRACÉ" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         <StatusLine label="Depuis OpenStreetMap" />
         <Text style={s.title}>Créer un tracé</Text>
 

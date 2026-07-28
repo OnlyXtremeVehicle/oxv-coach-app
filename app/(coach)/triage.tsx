@@ -123,7 +123,7 @@ export default function CoachTriageScreen() {
   return (
     <Screen>
       <AppBar title="TRIAGE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <View style={{ marginBottom: spacing.md }}>
           <RoleBadge role="coach" />
         </View>

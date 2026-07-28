@@ -321,7 +321,7 @@ export default function CoachReperesScreen() {
   return (
     <Screen>
       <AppBar title="REPÈRES" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <View style={isConsole ? s.headerRow : undefined}>
           <View style={{ flexShrink: 1 }}>
             <Text style={s.eyebrow}>MES REPÈRES</Text>

@@ -576,7 +576,7 @@ export default function CoachHubScreen() {
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <Text style={[s.title, { marginTop: spacing.md }]} accessibilityRole="header">
           Mes pilotes
         </Text>

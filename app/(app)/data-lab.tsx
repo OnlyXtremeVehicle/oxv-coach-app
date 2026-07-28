@@ -736,7 +736,7 @@ export default function DataLabScreen() {
   return (
     <Screen>
       <AppBar title="Data Lab" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <FadeInSection>
           <Text style={s.eyebrow}>DATA LAB · LECTURE DE SÉANCE</Text>
           <Text style={s.title} accessibilityRole="header">

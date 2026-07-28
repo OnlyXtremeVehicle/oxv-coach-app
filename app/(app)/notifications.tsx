@@ -124,7 +124,7 @@ export default function NotificationsScreen() {
   return (
     <Screen>
       <AppBar title="Notifications" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* Phrase de sobriété (maquette, transposée au vouvoiement). */}
         <Text style={s.intro} accessibilityRole="text">
           On vous parle peu, et seulement quand ça compte.

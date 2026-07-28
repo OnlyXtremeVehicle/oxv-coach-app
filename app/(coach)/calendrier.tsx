@@ -544,7 +544,7 @@ function CompanionAgenda({
 
   return (
     <Screen>
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         <FadeInSection>
           <Text style={[s.title, { marginTop: spacing.md }]} accessibilityRole="header">
             Agenda

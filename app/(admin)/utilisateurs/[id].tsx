@@ -138,7 +138,7 @@ export default function AdminUserDetailScreen() {
   return (
     <Screen>
       <AppBar title="COMPTE" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {/* Pas de RoleBadge ici : c'est la fiche d'un AUTRE utilisateur — un
             badge « admin » se lirait comme le rôle de la personne consultée,
             pas comme l'espace. L'identité admin vit au hub. */}

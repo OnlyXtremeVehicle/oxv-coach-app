@@ -260,7 +260,7 @@ export default function VirageComparerScreen() {
         subtitle={corner.name}
         onBack={() => router.back()}
       />
-      <View style={{ paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.xxl }}>
+      <View style={{ paddingHorizontal: theme.spacing.screen, paddingBottom: theme.spacing.xxl }}>
         {!params.sessionA ? (
           <EmptyBlock
             title="Aucune séance à comparer."

@@ -241,7 +241,7 @@ export default function AmisScreen() {
   return (
     <Screen>
       <AppBar title="Amis" onBack={() => router.back()} />
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* Ajout par @handle — flux d'invitation existant, restylé v2 */}
         <FadeInSection>
           <Field

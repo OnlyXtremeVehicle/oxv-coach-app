@@ -465,7 +465,7 @@ export default function CarnetScreen() {
         }
       />
 
-      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.xxl }}>
+      <View style={{ paddingHorizontal: spacing.screen, paddingBottom: spacing.xxl }}>
         {/* ── OUVERTURE — la raison d'être du Carnet en une phrase, puis trois
             repères visuels de ce qu'on y fait (insignes en cascade). ───────── */}
         <FadeInSection style={s.hero}>
