@@ -166,6 +166,11 @@ exige que la même instruction cite la table **et** la colonne. Elle se rejoue :
 
 **88 couples (table, colonne) référencent `public.users`. 60 couverts, 28 non.**
 
+> **CORRIGÉ le 28/07/2026.** Le vingt-huitième — `coach_payout_details` — est
+> entré dans la purge : migration `20260728161513_l10_purge_coach_payout_details.sql`,
+> appliquée sur accord du fondateur. La couverture est passée à **60 / 27**, et
+> les 27 restants sont tous justifiés ci-dessus.
+
 Sur ces 28, cette matrice en justifiait déjà 27 — rétention comptable de dix
 ans, colonnes d'acteur administratif conservées, capitanat d'équipe. Ce sont des
 décisions écrites, pas des oublis. La vérification les confirme une par une.
@@ -174,9 +179,9 @@ décisions écrites, pas des oublis. La vérification les confirme une par une.
 
 | Table | Colonnes | Constat |
 |---|---|---|
-| `coach_payout_details` | `coach_id`, `iban`, `bic`, `account_holder` | **Absente de la fonction ET de cette matrice.** Un coach qui exerce son droit à l'effacement laisse ses coordonnées bancaires complètes. Aucune rétention ne le justifie : ce n'est pas une pièce comptable, c'est un moyen de versement. 0 ligne aujourd'hui, aucun coach en base — le défaut est réel et pas encore exercé. |
+| `coach_payout_details` | `coach_id`, `iban`, `bic`, `account_holder` | **PURGÉE depuis le 28/07/2026.** Elle était absente de la fonction ET de cette matrice. Un coach qui exerce son droit à l'effacement laisse ses coordonnées bancaires complètes. Aucune rétention ne le justifie : ce n'est pas une pièce comptable, c'est un moyen de versement. 0 ligne aujourd'hui, aucun coach en base — le défaut est réel et pas encore exercé. |
 
-Proposition : `supabase/migrations/PROPOSITION_L10_purge_completude.sql`.
+Appliquée : `supabase/migrations/20260728161513_l10_purge_coach_payout_details.sql`.
 
 ### Les copies de sauvegarde : cinq, pas deux
 
@@ -196,7 +201,8 @@ qui n'était pas listée.
 RLS soit active ou non, et quatre l'ont désactivée. Seul `service_role` y accède.
 
 C'est un défaut d'**effacement** : un compte purgé survit dans ces copies.
-Décision fondateur, comme prévu par la ligne d'origine de cette matrice.
+Décision fondateur, comme prévu par la ligne d'origine de cette matrice. Les deux
+issues sont chiffrées dans `supabase/migrations/PROPOSITION_L10_purge_completude.sql`.
 
 ### Ce qui n'est pas prouvé
 

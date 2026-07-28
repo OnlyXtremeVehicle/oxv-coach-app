@@ -118,7 +118,9 @@ qui est corrigé est l'affirmation, pas un risque.
 >
 > Atténuation factuelle : le déclencheur d'audit de la même migration est, lui, correctement armé (`after update on public.users`, sans liste). `admin_audit` ne porte **aucune** ligne `user_is_admin_change` depuis le 26/07, et un seul compte a `is_admin = true` — `administration@oxvehicle.fr`, depuis le 17/06, légitimement. Rien n'indique une exploitation. Avant le 26/07 il n'y avait pas d'audit : rien ne peut en être dit.
 >
-> Correctif proposé, non appliqué : `supabase/migrations/PROPOSITION_SEC3_garde_is_admin_inerte.sql`. Il retire la clause `OF` au lieu d'y ajouter `is_admin` — pour supprimer la classe du défaut et non son instance.
+> **CORRIGÉ le 28/07/2026** — migration `20260728161300_sec3_garde_is_admin_et_l8_role_autorite.sql`, appliquée sur accord explicite du fondateur. Le déclencheur est recréé **sans clause `OF`** : aucune colonne privilégiée ne pourra plus lui échapper par omission. Et `is_admin()` ne consulte plus la colonne, désormais annotée INERTE.
+>
+> **Ce qui reste à faire, et qui seul prouve quelque chose** : depuis une session pilote réelle, `update public.users set is_admin = true where id = auth.uid()` doit échouer avec 42501. La console SQL tourne en `postgres`, exemptée — elle ne prouverait rien. C'est le contrôle que SEC-2 avait omis, et je ne le referai pas omettre.
 
 Le JWT anon reste, lui, exact : clé publique par construction, situation saine.
 

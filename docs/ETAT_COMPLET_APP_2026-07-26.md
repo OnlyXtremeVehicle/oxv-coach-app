@@ -15,7 +15,26 @@ vous ne lisez qu'une page.
 
 ## À traiter en priorité
 
-> **RECTIFICATION DU 28/07/2026 — LA FAILLE EST TOUJOURS OUVERTE.**
+> **FERMÉE LE 28/07/2026 — cette fois en armant le déclencheur, et voici comment le vérifier.**
+>
+> Migration `20260728161300_sec3_garde_is_admin_et_l8_role_autorite.sql`,
+> appliquée sur accord explicite du fondateur. Le déclencheur est recréé **sans
+> clause `OF`** : plus aucune colonne privilégiée ne pourra lui échapper par
+> omission. Et `is_admin()` ne consulte plus la colonne du tout — elle est
+> annotée INERTE.
+>
+> **Le contrôle qui compte reste à faire sur appareil** : depuis une session
+> pilote réelle, `update public.users set is_admin = true where id = auth.uid()`
+> doit échouer avec 42501. La console SQL tourne en `postgres` et serait
+> exemptée — elle ne prouverait rien. C'est exactement le contrôle que SEC-2
+> avait omis.
+>
+> Le récit de l'erreur est conservé ci-dessous : il dit pourquoi il ne faut pas
+> conclure d'une migration appliquée qu'elle est effective.
+>
+> ---
+>
+> **CE QUI S'ÉTAIT PASSÉ — rectification du 28/07/2026.**
 >
 > Cet encadré affirmait, depuis le 27/07, que l'élévation de privilège était
 > fermée. **C'était faux, et je l'avais écrit.**

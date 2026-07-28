@@ -8,22 +8,34 @@
  * La base de données et l'application ne répondaient pas la même chose à
  * « ce compte est-il administrateur ? ».
  *
- * Côté base, `public.is_admin()` — la fonction qu'appellent **167 policies sur
- * 93 tables** — dit :
- *
- *     SELECT role = 'admin' OR is_admin = true FROM public.users WHERE id = auth.uid()
- *
- * Côté application, deux endroits lisaient **la seule colonne `is_admin`** :
- * `SpaceSwitcher` (la porte) et le garde de `app/(admin)/_layout.tsx` (le seuil).
- *
- * Conséquence constatée en production le 28/07/2026 : deux comptes portent
- * `role = 'admin'` avec `is_admin = false`. La base leur accorde **tout** ;
- * l'application ne leur montre pas la porte et les refoule si elles l'atteignent
- * autrement. Des administrateurs enfermés dehors.
+ * Au matin du 28/07/2026, `public.is_admin()` disait
+ * `role = 'admin' OR is_admin = true`, quand deux endroits de l'application ne
+ * lisaient que **la colonne** : `SpaceSwitcher` (la porte) et le garde de
+ * `app/(admin)/_layout.tsx` (le seuil). Deux comptes portaient `role = 'admin'`
+ * avec `is_admin = false` : la base leur accordait tout, l'application ne leur
+ * montrait pas la porte. Des administrateurs enfermés dehors.
  *
  * L'écart n'a jamais levé d'erreur — il n'y avait rien à lever. L'application
  * était simplement **plus restrictive que la base**, ce qui ne casse rien de
  * visible et ne se voit donc pas.
+ *
+ * ---
+ *
+ * DEPUIS LE LOT 8 (OPTION B), LA RÈGLE S'EST SIMPLIFIÉE
+ *
+ * Migration `20260728161300`, appliquée sur accord du fondateur :
+ * `administration@oxvehicle.fr` est passé en `role = 'admin'`, et la fonction ne
+ * consulte plus la colonne du tout :
+ *
+ *     SELECT role = 'admin' FROM public.users WHERE id = auth.uid()
+ *
+ * Ce module suit, et **le `OR is_admin` a été retiré**. Le garder aurait recréé
+ * le même défaut dans l'autre sens : un compte portant la colonne sans le rôle
+ * aurait vu la porte, franchi le seuil, puis reçu un refus muet de la RLS à
+ * chaque requête. Un échec silencieux derrière une porte ouverte est plus
+ * difficile à diagnostiquer qu'une porte fermée.
+ *
+ * `users.is_admin` est désormais annotée INERTE en base. Ne plus s'en servir.
  *
  * ---
  *
@@ -38,21 +50,26 @@
 
 import type { UserRole } from '@/store/useAuthStore';
 
-/** La part du profil qui décide de l'accès. Rien d'autre n'est nécessaire. */
+/**
+ * La part du profil qui décide de l'accès.
+ *
+ * `is_admin` reste dans le type parce que la colonne existe encore en base et
+ * que le store la charge — mais **elle ne décide plus de rien ici**.
+ */
 export interface ProfilAcces {
   role: UserRole;
-  is_admin: boolean;
+  is_admin?: boolean;
 }
 
 /**
- * Miroir exact de `public.is_admin()`.
+ * Miroir exact de `public.is_admin()` : le rôle, et lui seul.
  *
- * Le `OR` n'est pas une largesse : c'est la règle en vigueur dans la base. Un
- * `AND`, ou la seule colonne, refoulerait des comptes que la RLS admet.
+ * Ne pas réintroduire un repli sur `is_admin`. La colonne est inerte en base
+ * depuis le 28/07/2026 : un compte qui la porterait sans le rôle passerait la
+ * porte de l'application et se ferait refuser en silence par la RLS.
  */
 export function estAdmin(profil: ProfilAcces | null | undefined): boolean {
-  if (!profil) return false;
-  return profil.role === 'admin' || profil.is_admin === true;
+  return profil?.role === 'admin';
 }
 
 /**

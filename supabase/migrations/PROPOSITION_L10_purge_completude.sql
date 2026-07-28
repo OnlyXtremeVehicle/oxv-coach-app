@@ -1,60 +1,27 @@
 -- =============================================================================
--- PROPOSITION — LOT 10 : complétude de la purge RGPD
+-- PROPOSITION — LOT 10, CE QUI RESTE : cinq copies de données personnelles
+--                hors de tout périmètre de purge
 --
 --   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
 --
 -- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
 -- =============================================================================
 --
--- CE QUE LE PLAN ANNONÇAIT, ET CE QUI EST VRAI
+-- CE QUI EST DÉJÀ FAIT
 --
--- Le plan de montage dit : « La purge référence coach_reviews, table supprimée :
--- elle échoue silencieusement. » **Ce n'est plus le cas.** La fonction en
--- production porte déjà la correction, avec son commentaire :
+-- La partie principale du lot 10 est APPLIQUÉE, le 28/07/2026 :
+-- `20260728161513_l10_purge_coach_payout_details.sql` — un IBAN survivait à la
+-- suppression du compte. Voir ce fichier pour la méthode et les vérifications.
 --
---   -- coach_reviews supprimée → coach_testimonials (auteur OU coach = p_user).
---   delete from public.coach_testimonials where author_user_id = p_user or coach_id = p_user;
+-- La couverture est passée de 60/28 à 60/27 sur les 88 couples (table, colonne)
+-- qui référencent `public.users`. Les 27 restants sont tous justifiés par la
+-- matrice de purge : rétention comptable de dix ans, colonnes d'acteur
+-- administratif conservées, capitanat d'équipe.
 --
--- Appliquée par la migration 20260719155347_coach_testimonials_replace_reviews.
--- L'audit décrivait un état antérieur.
---
--- La seconde moitié de la consigne — « vérifier table par table, y compris les
--- ajouts récents » — a été faite, au niveau de la COLONNE. 88 couples
--- (table, colonne) référencent public.users. 60 sont couverts, 28 ne le sont pas.
--- La requête se rejoue : supabase/verifications/couverture_purge.sql.
---
--- Sur ces 28, la matrice de purge en justifie 27 : rétention comptable de dix
--- ans, colonnes d'acteur administratif conservées, capitanat d'équipe. Ce ne
--- sont pas des oublis, ce sont des décisions écrites.
---
--- IL EN RESTE UN.
+-- Il reste un point, et il ne se tranche pas par une requête.
 --
 -- =============================================================================
--- A — coach_payout_details : un IBAN qui survit à la suppression du compte
--- =============================================================================
---
---   Colonnes : coach_id, iban, bic, account_holder.
---
---   Absente de `purge_user_data`. Absente de la matrice de purge. Un coach qui
---   exerce son droit à l'effacement laisse derrière lui **ses coordonnées
---   bancaires complètes et le nom du titulaire du compte**.
---
---   Aucune rétention ne le justifie : contrairement à `payments` et `invoices`,
---   ce n'est pas une pièce comptable — c'est un moyen de versement, sans objet
---   dès que la relation cesse.
---
---   La table compte 0 ligne aujourd'hui, et la base ne compte aucun coach.
---   Le défaut est donc RÉEL mais PAS ENCORE EXERCÉ. C'est le meilleur moment.
---
--- CREATE OR REPLACE FUNCTION public.purge_user_data(p_user uuid) ...
---   -- à insérer dans le bloc coach, après coach_reading_weights :
---   delete from public.coach_payout_details where coach_id = p_user;
---
--- (La fonction fait 90 lignes ; la migration réelle la réécrira en entier plutôt
---  que par fragment, pour rester lisible en revue.)
---
--- =============================================================================
--- B — cinq copies de données personnelles hors de tout périmètre de purge
+-- LES CINQ COPIES DE SAUVEGARDE
 -- =============================================================================
 --
 --   _backup_sessions_20260719          44 lignes
@@ -63,46 +30,48 @@
 --   _backup_payments_20260719           2
 --   _backup_session_feedback_20260719   0
 --
---   La matrice en cite DEUX (`_backup_sessions`, `_backup_registrations`) et les
---   marque « à DROP après vérification, décision fondateur ». Il y en a cinq —
---   dont `_backup_payments`, qui n'était pas listée.
+-- La matrice de purge en cite DEUX (`_backup_sessions`, `_backup_registrations`)
+-- et les marque « à DROP après vérification, décision fondateur ». Il y en a
+-- cinq — dont `_backup_payments`, qui n'était pas listée.
 --
---   CE N'EST PAS UNE EXPOSITION. Vérifié : aucune de ces tables n'accorde SELECT
---   à `anon` ni à `authenticated`. Le GRANT est absent, donc PostgREST ne les
---   sert pas, que la RLS soit active ou non. Seul `service_role` y accède.
+-- CE N'EST PAS UNE EXPOSITION. Vérifié le 28/07/2026 : aucune de ces tables
+-- n'accorde SELECT à `anon` ni à `authenticated`. Le GRANT est absent, donc
+-- PostgREST ne les sert pas — que la RLS soit active ou non, et quatre l'ont
+-- désactivée. Seul `service_role` y accède.
 --
---   C'est un défaut d'EFFACEMENT : un compte purgé survit dans ces copies, et
---   `purge_user_data` ne les touche pas.
+-- C'est un défaut d'EFFACEMENT : un compte purgé survit dans ces copies, et
+-- `purge_user_data` ne les touche pas.
 --
---   Deux issues, à votre main :
+-- -----------------------------------------------------------------------------
+-- DEUX ISSUES, À VOTRE MAIN
+-- -----------------------------------------------------------------------------
 --
---   1. Les supprimer, si elles ont fini de servir (elles datent du 19/07/2026,
---      posées en filet pendant SEC-1) :
+-- 1. LES SUPPRIMER, si elles ont fini de servir. Elles datent du 19/07/2026,
+--    posées en filet pendant SEC-1 — il y a neuf jours.
 --
---        DROP TABLE IF EXISTS public._backup_sessions_20260719;
---        DROP TABLE IF EXISTS public._backup_registrations_20260719;
---        DROP TABLE IF EXISTS public._backup_payments_20260719;
---        DROP TABLE IF EXISTS public._backup_session_feedback_20260719;
---        DROP TABLE IF EXISTS public._backup_weather_20260719;
+--      DROP TABLE IF EXISTS public._backup_sessions_20260719;
+--      DROP TABLE IF EXISTS public._backup_registrations_20260719;
+--      DROP TABLE IF EXISTS public._backup_payments_20260719;
+--      DROP TABLE IF EXISTS public._backup_session_feedback_20260719;
+--      DROP TABLE IF EXISTS public._backup_weather_20260719;
 --
---      *** Une suppression ne se reprend pas. Vérifiez d'abord qu'elles ne
---          servent plus à rien — je ne peux pas le savoir d'ici. ***
+--    *** Une suppression ne se reprend pas. Vérifiez d'abord qu'elles ne
+--        servent plus — je ne peux pas le savoir d'ici. ***
 --
---   2. Les garder et les inclure dans la purge, ce qui revient à maintenir cinq
---      tables de plus dans une fonction déjà longue, pour un filet posé il y a
---      neuf jours.
+-- 2. LES GARDER et les inclure dans la purge : cinq tables de plus dans une
+--    fonction déjà longue, pour un filet de neuf jours.
 --
---   La première issue est la plus propre SI le filet a fait son office.
+-- La première est la plus propre SI le filet a fait son office.
 --
 -- =============================================================================
--- CE QUI N'EST PAS PROUVÉ ICI
+-- CE QUI N'EST TOUJOURS PAS PROUVÉ
 -- =============================================================================
 --
--- La vérification est TEXTUELLE : elle établit qu'une colonne est citée dans une
--- instruction qui vise sa table. Elle ne prouve pas que le prédicat est juste.
+-- La vérification de couverture est TEXTUELLE : elle établit qu'une colonne est
+-- citée dans une instruction visant sa table, pas que le prédicat est juste.
 --
 -- La preuve complète est celle que demande le plan : créer un compte, produire
 -- de la donnée partout, purger, vérifier qu'il ne reste rien. Elle ne peut pas
--- tourner en production — il faut une branche Supabase, qui se facture. Décision
--- fondateur, non prise ici.
+-- tourner en production — il faut une branche Supabase, qui se facture.
+-- Décision fondateur, non prise.
 -- =============================================================================

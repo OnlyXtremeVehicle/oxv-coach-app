@@ -40,10 +40,16 @@ describe('estAdmin — miroir exact de public.is_admin()', () => {
     expect(estAdmin(ADMIN_PAR_ROLE)).toBe(true);
   });
 
-  // La branche historique. `administration@oxvehicle.fr` en dépend, et un
-  // miroir role→is_admin la lui retirerait — voir la proposition du lot 8.
-  it('admet un compte dont la COLONNE est vraie, rôle pilote', () => {
-    expect(estAdmin(ADMIN_PAR_COLONNE)).toBe(true);
+  /**
+   * LA BRANCHE HISTORIQUE EST FERMÉE — lot 8, option B, appliqué le 28/07/2026.
+   *
+   * `administration@oxvehicle.fr` en dépendait ; il porte désormais
+   * `role = 'admin'`. La fonction `public.is_admin()` ne consulte plus la
+   * colonne, et ce test défend la symétrie : garder un repli côté application
+   * ouvrirait la porte à un compte que la RLS refuse ensuite en silence.
+   */
+  it('REFUSE un compte qui n’a que la colonne, sans le rôle', () => {
+    expect(estAdmin(ADMIN_PAR_COLONNE)).toBe(false);
   });
 
   it('refuse un pilote ordinaire', () => {
@@ -65,13 +71,20 @@ describe('estAdmin — miroir exact de public.is_admin()', () => {
   /**
    * LE TEST QUI DÉFEND LA RÈGLE, PAS LE CODE.
    *
-   * Un `AND` passerait tous les cas ci-dessus sauf ceux-ci. C'est exactement
-   * l'erreur d'origine, sous une autre forme : une condition plus sévère que
-   * celle de la base.
+   * La colonne ne doit avoir AUCUNE influence, dans aucun sens. Ni ouvrir
+   * (l'application deviendrait plus permissive que la base, et la RLS refuserait
+   * en silence derrière une porte ouverte), ni fermer (le défaut d'origine).
    */
-  it('c’est un OU, jamais un ET', () => {
+  it('la colonne n’a plus aucune influence', () => {
     expect(estAdmin({ role: 'admin', is_admin: false })).toBe(true);
-    expect(estAdmin({ role: 'pilot', is_admin: true })).toBe(true);
+    expect(estAdmin({ role: 'admin', is_admin: true })).toBe(true);
+    expect(estAdmin({ role: 'pilot', is_admin: true })).toBe(false);
+    expect(estAdmin({ role: 'pilot', is_admin: false })).toBe(false);
+  });
+
+  it('le seul rôle suffit, la colonne peut être absente', () => {
+    expect(estAdmin({ role: 'admin' })).toBe(true);
+    expect(estAdmin({ role: 'pilot' })).toBe(false);
   });
 });
 

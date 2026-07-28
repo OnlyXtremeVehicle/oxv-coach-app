@@ -56,10 +56,10 @@ from fk
 order by couverte, fk.tbl, fk.col;
 
 -- -----------------------------------------------------------------------------
--- ÉTAT AU 28/07/2026 : 88 couples, 60 couverts, 28 non couverts.
+-- ÉTAT AU 28/07/2026, APRÈS CORRECTION : 88 couples, 60 couverts, 27 non couverts.
 --
--- Sur ces 28, la matrice de purge (docs/architecture/14_PURGE_MATRIX.md) en
--- justifie déjà la quasi-totalité :
+-- Sur ces 27, la matrice de purge (docs/architecture/14_PURGE_MATRIX.md) les
+-- justifie TOUS :
 --
 --   * rétention comptable de 10 ans  → payments, registrations, invoices,
 --     subscriptions (§ « conservation volontaire »)
@@ -69,8 +69,9 @@ order by couverte, fk.tbl, fk.col;
 --     kyc_validated_by, suspended_by, assigned_by
 --   * décision produit assumée → crews.captain_id
 --
--- RESTE UN SEUL VRAI TROU : `coach_payout_details`. Voir la proposition
--- PROPOSITION_L10_purge_completude.sql.
+-- Le seul vrai trou, `coach_payout_details`, est FERMÉ depuis le 28/07/2026 :
+-- migration 20260728161513_l10_purge_coach_payout_details.sql. Avant elle, un
+-- IBAN survivait à la suppression du compte.
 -- -----------------------------------------------------------------------------
 
 -- Copies de données personnelles hors de tout périmètre de purge.
