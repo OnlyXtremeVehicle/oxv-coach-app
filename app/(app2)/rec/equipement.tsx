@@ -43,6 +43,7 @@ import Svg, { Path } from 'react-native-svg';
 
 import { bluetoothService, type PolarDevice } from '@/ble/bluetoothService';
 import { requestBlePermissions } from '@/ble/permissions';
+import { diagnostiquer, texteDiagnostic } from '@/features/rec/diagnosticBle';
 import {
   clampBatteryLevel,
   deriveScanPhase,
@@ -732,7 +733,12 @@ export default function EquipementScreen() {
             ) : phase === 'error' ? (
               <StateView
                 state="error"
-                errorMessage={error ?? 'Le scan a échoué.'}
+                /* Le service BLE émet la chaîne anglaise de react-native-ble-plx
+                   (« Operation timed out », « Device <UUID> connection failed »).
+                   Le service est protégé : la traduction se fait ici, à la
+                   lecture — et c'est de toute façon sa place. Voir
+                   `src/features/rec/diagnosticBle.ts`. */
+                errorMessage={error ? texteDiagnostic(diagnostiquer(error)) : 'Le scan a échoué.'}
                 onRetry={onRescan}
                 style={styles.stateGap}
               />
