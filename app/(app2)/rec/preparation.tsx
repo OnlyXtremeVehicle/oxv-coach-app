@@ -21,8 +21,16 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { Canvas } from '@shopify/react-native-skia';
 import { FlashList } from '@shopify/flash-list';
 import QRCode from 'react-native-qrcode-svg';
@@ -505,6 +513,40 @@ export default function PreparationScreen() {
             )}
           </View>
         ) : null}
+
+        {/*
+          LA SORTIE — sans elle, cet écran est une impasse.
+
+          `preparation` n'importait aucune primitive de navigation : ni `router`,
+          ni `Link`, ni `Redirect`. Tous ses gestes étaient locaux — cocher,
+          filtrer, ouvrir le QR. Et c'est la SEULE entrée du flux de capture
+          (`paddockHeroLogic.ts:61`). La suite — appairage, placement, roulage —
+          n'avait donc aucune porte : `equipement` était atteignable seulement
+          depuis `placement`, lui-même atteignable seulement depuis `equipement`.
+
+          L'aiguilleur ne comblait pas ce trou : l'état pilote ne quitte jamais
+          `S1_decouverte`, faute d'appelant à `setUser`, et `captureStepLogic`
+          rend alors `route: null`.
+
+          Autrement dit : le flux de capture ne pouvait pas être entré. Ce lien
+          l'ouvre — préparation, appairage, placement, roulage.
+
+          Le geste va d'écran à écran, jamais par le hub : « une chaîne, pas une
+          étoile ». Et `push`, non `replace` — revenir à la préparation doit
+          rester possible, c'est consulter, pas rembobiner.
+        */}
+        <Pressable
+          onPress={() => {
+            haptic('tap');
+            router.push('/(app2)/rec/equipement' as never);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Passer à l’appairage du boîtier"
+          style={({ pressed }) => [styles.suite, pressed && styles.suitePressed]}
+        >
+          <Text style={styles.suiteLabel}>APPAIRER LE BOÎTIER</Text>
+          <Text style={styles.suiteHint}>Étape suivante</Text>
+        </Pressable>
       </Animated.ScrollView>
 
       <CondensingHeaderBar
@@ -913,6 +955,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingVertical: space.xs,
     marginTop: space.sm,
+  },
+  /**
+   * Sortie vers l'appairage — l'action la plus importante de l'écran.
+   *
+   * 72 pt : les 44 pt d'Apple sont un plancher, et le dossier situe l'optimum
+   * cockpit entre 18 et 21 mm. Le taux d'erreur passe de 10,3 % en statique à
+   * 16,6 % sous vibration ; cet écran se touche gants aux mains, au paddock.
+   *
+   * En bas du contenu, jamais dans le tiers supérieur : aucune action critique
+   * ne se place là où le pouce ne va pas.
+   */
+  suite: {
+    minHeight: 72,
+    marginTop: space.xl,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.text.hi,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+  },
+  suitePressed: { opacity: 0.7 },
+  suiteLabel: {
+    fontFamily: typo.bodySemi,
+    fontSize: 15,
+    letterSpacing: 1.4,
+    color: colors.text.hi,
+  },
+  suiteHint: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    color: colors.text.mid,
+    marginTop: space.xs,
   },
   muted: {
     fontFamily: typo.body,
