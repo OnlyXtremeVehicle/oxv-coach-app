@@ -1,0 +1,134 @@
+-- =============================================================================
+-- PROPOSITION — LOT 8 : « role fait autorité »
+--
+--   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--
+-- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- =============================================================================
+--
+-- ÉTAT RÉEL, LU EN PRODUCTION LE 28/07/2026
+--
+-- Le plan de montage demande de vérifier avant d'écrire. C'est fait, et la
+-- lecture contredit deux hypothèses du plan.
+--
+--   select id, email, role, is_admin from public.users
+--   where is_admin = true or role in ('admin','coach');
+--
+--   administration@oxvehicle.fr   role = pilot   is_admin = true    7 séances
+--   bitaube.p@gmail.com           role = admin   is_admin = false   0 séance
+--   julie.huet.perso@gmail.com    role = admin   is_admin = false   0 séance
+--
+-- 14 comptes au total. Aucun coach. Un partenaire : gabinfillat@gmail.com.
+--
+-- -----------------------------------------------------------------------------
+-- PREMIÈRE CONTRADICTION : LES 167 POLICIES NE LISENT PAS LA COLONNE
+-- -----------------------------------------------------------------------------
+--
+-- Le plan veut conserver `is_admin` « pour ne pas casser les policies
+-- existantes ». Elles ne la lisent pas. Les 167 policies, sur 93 tables,
+-- appellent toutes la fonction :
+--
+--   CREATE FUNCTION public.is_admin() RETURNS boolean
+--   LANGUAGE sql STABLE SECURITY DEFINER AS $$
+--     SELECT COALESCE(
+--       (SELECT role = 'admin' OR is_admin = true FROM public.users WHERE id = auth.uid()),
+--       false);
+--   $$;
+--
+-- Autrement dit `role` fait DÉJÀ autorité, à égalité avec la colonne, par un OU.
+-- Le quatrième défaut cherché par le lot 9 — « une policy qui lit is_admin sans
+-- passer par role » — N'EXISTE PAS EN BASE. Zéro policy sur 167.
+--
+-- Il existe, mais dans l'APPLICATION. Corrigé sans schéma, voir
+-- `src/services/accesLogic.ts` et son test.
+--
+-- -----------------------------------------------------------------------------
+-- SECONDE CONTRADICTION : L'EXEMPTION N'EST PAS UN ACCIDENT
+-- -----------------------------------------------------------------------------
+--
+-- Le plan présente `administration@oxvehicle.fr` comme un cas à exempter. Ses
+-- 7 séances disent autre chose : ce compte ROULE. Son `role = 'pilot'` est un
+-- choix, pas une erreur — c'est la seule façon, dans une application mono-rôle,
+-- d'être pilote ET administrateur. La colonne `is_admin` porte le cumul.
+--
+-- Une exemption codée en dur perpétuerait le cas particulier que le lot 9bis
+-- (« séparation admin et pilote, deux comptes distincts ») existe pour supprimer.
+--
+-- => LE LOT 8 NE DEVRAIT PAS ÊTRE APPLIQUÉ AVANT QUE LE LOT 9BIS SOIT TRANCHÉ.
+--
+-- =============================================================================
+-- OPTION A — le miroir du plan, avec exemption
+-- =============================================================================
+--
+-- Effets : `administration@` conserve l'accès par l'exemption ; les deux comptes
+-- `role = 'admin'` voient leur colonne passer à true (ils sont déjà admins par
+-- la fonction — aucun droit nouveau). La colonne survit, l'exemption aussi.
+--
+-- Coût : un cas particulier nominatif inscrit dans un déclencheur, à maintenir
+-- à chaque changement d'adresse.
+--
+-- BEGIN;
+--
+-- CREATE OR REPLACE FUNCTION public.sync_is_admin() RETURNS trigger
+-- LANGUAGE plpgsql AS $$
+-- BEGIN
+--   -- Exemption nominative : ce compte administre avec role = 'pilot'.
+--   IF NEW.email = 'administration@oxvehicle.fr' THEN
+--     NEW.is_admin := true;
+--   ELSE
+--     NEW.is_admin := (NEW.role = 'admin');
+--   END IF;
+--   RETURN NEW;
+-- END;
+-- $$;
+--
+-- CREATE TRIGGER trg_sync_is_admin
+--   BEFORE INSERT OR UPDATE OF role, is_admin ON public.users
+--   FOR EACH ROW EXECUTE FUNCTION public.sync_is_admin();
+--
+-- COMMIT;
+--
+-- =============================================================================
+-- OPTION B — supprimer le cas particulier au lieu de l'inscrire
+-- =============================================================================
+--
+-- Préalable OBLIGATOIRE : que `administration@oxvehicle.fr` cesse d'être un
+-- compte mixte, c'est-à-dire le lot 9bis. Tant que ce compte roule ET
+-- administre, l'option B lui retire l'un des deux.
+--
+-- Une fois le compte scindé :
+--
+-- BEGIN;
+--
+-- -- 1. Le compte d'administration devient un administrateur pur.
+-- UPDATE public.users SET role = 'admin' WHERE email = 'administration@oxvehicle.fr';
+--
+-- -- 2. La fonction cesse de consulter la colonne. `role` fait seul autorité.
+-- CREATE OR REPLACE FUNCTION public.is_admin() RETURNS boolean
+-- LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public','pg_temp' AS $$
+--   SELECT COALESCE((SELECT role = 'admin' FROM public.users WHERE id = auth.uid()), false);
+-- $$;
+--
+-- -- 3. La colonne devient inerte. NE PAS la supprimer dans la même migration :
+-- --    le site web la lit peut-être. À vérifier côté oxv-site d'abord.
+-- COMMENT ON COLUMN public.users.is_admin IS
+--   'INERTE depuis le lot 8 — role fait autorité. Conservée le temps de vérifier le site.';
+--
+-- COMMIT;
+--
+-- Aucun déclencheur, aucune exemption, aucun nom propre dans le schéma.
+--
+-- =============================================================================
+-- VÉRIFICATION D'ACCEPTATION, APRÈS APPLICATION (quelle que soit l'option)
+-- =============================================================================
+--
+--   -- Personne ne doit perdre l'accès :
+--   select email, role, is_admin,
+--          (role = 'admin' or is_admin = true) as admin_apres
+--   from public.users
+--   where role = 'admin' or is_admin = true;
+--
+-- Puis, et seulement ensuite : se connecter avec le compte d'administration et
+-- vérifier l'accès effectif à l'espace admin. Une requête ne prouve pas une
+-- session.
+-- =============================================================================

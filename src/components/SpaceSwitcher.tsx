@@ -2,15 +2,20 @@
  * SpaceSwitcher — sélecteur d'espace pour les comptes cumulant les rôles.
  * Transposition gaming.
  *
- * Visible UNIQUEMENT si `profile.is_admin === true`. Un compte « admin +
- * coach » navigue entre les trois espaces ; les comptes normaux ne voient
- * jamais ce bloc. S'appuie sur les gardes des layouts (admin/coach/app).
- * Migration legacy→v2 achevée.
+ * Visible uniquement pour un compte administrateur — qui navigue entre les
+ * trois espaces. Les comptes normaux ne voient jamais ce bloc. S'appuie sur les
+ * gardes des layouts (admin/coach/app).
+ *
+ * La condition passe par `peutChangerEspace` : elle lisait `is_admin` seul, là
+ * où la base admet `role = 'admin' OR is_admin = true`. Deux comptes en
+ * production sont dans cet écart — administrateurs pour la RLS, sans porte dans
+ * l'application. Voir `src/services/accesLogic.ts`.
  */
 
 import { Link } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
+import { peutChangerEspace } from '@/services/accesLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 
@@ -28,8 +33,8 @@ const TARGETS: { space: Space; label: string; href: string; color: string }[] = 
 ];
 
 export function SpaceSwitcher({ current }: { current: Space }) {
-  const isAdmin = useAuthStore((s) => s.profile?.is_admin === true);
-  if (!isAdmin) return null;
+  const multiEspace = useAuthStore((s) => peutChangerEspace(s.profile));
+  if (!multiEspace) return null;
 
   const others = TARGETS.filter((t) => t.space !== current);
 

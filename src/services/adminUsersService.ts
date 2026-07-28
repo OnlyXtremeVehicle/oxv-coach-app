@@ -114,8 +114,41 @@ export interface MutationResult {
 /**
  * Change le rôle (tracé dans admin_audit par le trigger 0015). `is_admin` est
  * synchronisé pour rester cohérent avec `role='admin'`.
+ *
+ * ---
+ *
+ * UN CHANGEMENT VERS LA VALEUR ACTUELLE NE CHANGE RIEN
+ *
+ * Le garde ci-dessous ferme un piège vivant. `administration@oxvehicle.fr` porte
+ * `role = 'pilot'` **et** `is_admin = true` : il roule (7 séances) et administre.
+ * La synchronisation `is_admin: role === 'admin'` s'appliquait à **toute**
+ * écriture, y compris une écriture qui ne modifiait pas le rôle.
+ *
+ * Autrement dit : ouvrir la fiche de ce compte et revalider « Pilote » — sa
+ * valeur actuelle, donc un geste sans intention — effaçait `is_admin` et le
+ * verrouillait hors de son propre espace d'administration. La reprise
+ * demandait un accès SQL direct.
+ *
+ * Le garde ne touche PAS la sémantique de la rétrogradation : rétrograder un
+ * administrateur vers pilote lui retire toujours `is_admin`, et c'est voulu.
+ * Il interdit seulement l'effet de bord d'un non-changement.
+ *
+ * Le fond — `role` fait-il autorité, `is_admin` doit-il survivre — est une
+ * décision de schéma. Elle est posée, non appliquée, dans
+ * `supabase/migrations/PROPOSITION_L8_role_autorite.sql`.
  */
 export async function setUserRole(userId: string, role: UserRole): Promise<MutationResult> {
+  const { data: actuel, error: lecture } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+
+  // Fail-closed : sans lecture fiable de l'état actuel, on n'écrit pas. Écrire
+  // à l'aveugle, c'est reprendre le risque qu'on vient de fermer.
+  if (lecture) return { ok: false, error: lecture.message };
+  if (actuel?.role === role) return { ok: true };
+
   const { error } = await supabase
     .from('users')
     .update({ role, is_admin: role === 'admin' } as never)
