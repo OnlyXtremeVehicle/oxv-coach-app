@@ -57,7 +57,12 @@ function RecPulse({ active }: { active: boolean }) {
   useEffect(() => {
     if (!active || reduce) {
       cancelAnimation(pulse);
-      pulse.value = 0;
+      // 1 et non 0. `dotStyle` calcule `0.5 + 0.5 * pulse.value` : figer à 0
+      // laissait le voyant à 50 % d'opacité, soit 1,55 de contraste sur le
+      // fond — invisible en plein soleil, et précisément chez l'utilisateur
+      // qui a demandé l'absence de mouvement. À 1, le voyant est plein et
+      // immobile : 3,10, ce qu'exige un indicateur graphique (WCAG 1.4.11).
+      pulse.value = 1;
       return;
     }
     pulse.value = 0;
@@ -201,12 +206,16 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: colors.text.low,
   },
+  // Contraste renforcé (jalon 3, règle 1) : sur les écrans du flux REC, lus en
+  // plein soleil, le 7:1 de l'AAA est un PLANCHER. `accent` ne mesure que 3,10
+  // sur le fond — le rouge reste au VOYANT, qui est un indicateur graphique et
+  // relève du 3:1 de la règle 1.4.11, tenu.
   rec: {
     fontFamily: typo.mono,
     fontSize: 15,
     letterSpacing: 6,
     textTransform: 'uppercase',
-    color: colors.accent,
+    color: colors.text.hi, // 15,03 — était accent, 3,10
   },
   // Le groupe d'accessibilité reprend À L'IDENTIQUE ce que le conteneur
   // `center` appliquait aux deux textes (gap + centrage) : le rendu ne bouge
@@ -222,11 +231,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: colors.text.mid,
   },
+  // 7:1 plancher : `text.low` ne mesure que 6,11 sur ce fond.
   linkSub: {
     fontFamily: typo.body,
     fontSize: 13,
     lineHeight: 20,
-    color: colors.text.low,
+    color: colors.text.mid, // 8,15 — était text.low, 6,11
     textAlign: 'center',
     maxWidth: 280,
   },
@@ -265,10 +275,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: space.md,
   },
+  // 7:1 plancher, et le tertiaire est interdit sur ces écrans : `text.dim` ne
+  // mesure que 4,38. Rendre MOINS visible l'abandon d'une capture serait de
+  // toute façon un mauvais arbitrage — c'est un geste qu'on doit trouver du
+  // premier coup d'œil quand quelque chose se passe mal.
   abortLabel: {
     fontFamily: typo.mono,
     fontSize: 11,
     letterSpacing: 0.6,
-    color: colors.text.dim,
+    color: colors.text.mid, // 8,15 — était text.dim, 4,38
   },
 });

@@ -1,6 +1,10 @@
 /**
  * ENTRE-RUNS — écran 7/8 du flux capture v2 (lot V2-L2, PORTE REC).
- * Route : /(app2)/rec/entre-runs (segment immersif — la TabBar s'efface).
+ * Route : /(app2)/rec/entre-runs. **La TabBar RESTE VISIBLE ici** : le segment
+ * n'est pas dans `V2_HIDDEN_SEGMENTS` (arrivee, equipement, placement, roulage,
+ * fin), conformément au contrat de coquille du lot L0. Cet en-tête affirmait
+ * l'inverse, et l'écran en tirait un `paddingBottom: insets.bottom` — la barre
+ * recouvrait donc le bas du contenu, bouton de sortie compris.
  *
  * La pause au stand : LE cadran du break au centre, le meilleur tour du jour
  * (célébré une fois s'il bat le précédent), une note rapide (carnet réel), et
@@ -16,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -39,6 +43,7 @@ import {
   PressScale,
   radius,
   space,
+  tabBarSpace,
   typo,
   useDoorTransition,
 } from '@/ui/v2';
@@ -163,13 +168,7 @@ export default function EntreRunsScreen() {
     : null;
 
   return (
-    <Animated.View
-      style={[
-        styles.root,
-        { paddingTop: insets.top + space.lg, paddingBottom: insets.bottom },
-        door,
-      ]}
-    >
+    <Animated.View style={[styles.root, door]}>
       {/* Le tracé respire derrière les chiffres — motif générique, 6 %. */}
       <Svg
         style={styles.filigrane}
@@ -181,126 +180,145 @@ export default function EntreRunsScreen() {
         <Path d={EMPTY_CIRCUIT_PATH} stroke={colors.text.dim} strokeWidth={2} fill="none" />
       </Svg>
 
-      <Text style={styles.eyebrow} accessibilityRole="header">
-        ENTRE DEUX RUNS
-      </Text>
+      {/*
+        Le contenu DÉFILE, et réserve la hauteur de la barre d'onglets.
 
-      {/* Cadran du break — affiché SEULEMENT pour un vrai départ du jour. */}
-      {countdownMin !== null ? (
-        <View
-          style={styles.dialWrap}
-          accessible
-          accessibilityLabel={`Prochain run dans ${formatMmSs(countdown.remainingMs)}`}
-        >
-          <Dial
-            value={countdownMin}
-            max={BREAK_DIAL_MAX_MIN}
-            label="PROCHAIN RUN"
-            unit="min"
-            size="l"
-          />
-        </View>
-      ) : (
-        <Text style={styles.soften}>Soufflez.</Text>
-      )}
+        L'écran était un bloc fixe : tout ce qui dépassait était perdu, sans
+        indice. Trois débordements le guettaient — la ligne biométrie quand son
+        drapeau passera à ON, le Dynamic Type, et le clavier pendant la saisie
+        de la note. `tabBarSpace` rend la hauteur que la barre occupe.
+      */}
+      <ScrollView
+        style={styles.defile}
+        contentContainerStyle={{
+          paddingTop: insets.top + space.lg,
+          paddingBottom: tabBarSpace(insets.bottom) + space.xl,
+          alignItems: 'center',
+        }}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={styles.eyebrow} accessibilityRole="header">
+          ENTRE DEUX RUNS
+        </Text>
 
-      {/* Meilleur tour du jour — le seul or de l'écran (chrono/record). */}
-      {/* Groupé : l'étiquette et la valeur sont un seul fait. Sans tour bouclé,
+        {/* Cadran du break — affiché SEULEMENT pour un vrai départ du jour. */}
+        {countdownMin !== null ? (
+          <View
+            style={styles.dialWrap}
+            accessible
+            accessibilityLabel={`Prochain run dans ${formatMmSs(countdown.remainingMs)}`}
+          >
+            <Dial
+              value={countdownMin}
+              max={BREAK_DIAL_MAX_MIN}
+              label="PROCHAIN RUN"
+              unit="min"
+              size="l"
+            />
+          </View>
+        ) : (
+          <Text style={styles.soften}>Soufflez.</Text>
+        )}
+
+        {/* Meilleur tour du jour — le seul or de l'écran (chrono/record). */}
+        {/* Groupé : l'étiquette et la valeur sont un seul fait. Sans tour bouclé,
           la valeur affichée est le seul caractère « — », qu'un lecteur d'écran
           annonce « tiret » ou saute selon sa verbosité — l'absence de mesure se
           dit donc en toutes lettres. */}
-      <View
-        style={styles.bestBlock}
-        accessible
-        accessibilityLabel={
-          bestLapMs !== null
-            ? `Meilleur tour du jour : ${msToLapLabel(bestLapMs)}`
-            : // « non mesuré », pas « aucun tour bouclé » : bestLapMs reste nul
-              // aussi bien quand le pilote n'a bouclé aucun tour que quand rien
-              // n'a pu être mesuré (fix GNSS perdu, ligne d'arrivée absente,
-              // boîtier décroché). Dire le second cas comme le premier ferait
-              // affirmer à l'app un fait de pilotage qu'elle n'a pas constaté.
-              'Meilleur tour du jour : non mesuré'
-        }
-      >
-        <Text style={styles.bestEyebrow}>MEILLEUR TOUR DU JOUR</Text>
-        {bestLapMs !== null ? (
-          <ChronoHero chronoMs={bestLapMs} size="s" celebrate={celebrateDayRecord} />
-        ) : (
-          <Text style={styles.bestEmpty}>—</Text>
-        )}
-      </View>
-
-      {/* Biométrie phase A : honnêteté ou rien (fail-closed). */}
-      {pauseBio === 'hint' ? (
-        <View style={styles.hintRow}>
-          <ListRow
-            icon="montre"
-            label="Cœur disponible au bilan"
-            sublabel="Votre fréquence cardiaque vous sera restituée après la séance."
-            divider={false}
-            accessibilityLabel="Votre fréquence cardiaque sera disponible au bilan"
-          />
-        </View>
-      ) : null}
-
-      {/* Note rapide — vos mots, dans votre carnet. Aucun gabarit. */}
-      <View style={styles.noteCard}>
-        <Text style={styles.noteEyebrow}>NOTE RAPIDE</Text>
-        <TextInput
-          value={draft}
-          onChangeText={(t) => {
-            setDraft(t);
-            if (saved) setSaved(false);
-            if (noteError) setNoteError(null);
-          }}
-          multiline
-          maxLength={5000}
-          placeholder="Écrivez ici, si vous le souhaitez."
-          placeholderTextColor={colors.text.dim}
-          selectionColor={colors.accent}
-          accessibilityLabel="Votre note rapide"
-          style={styles.noteInput}
-        />
-        {/* L'issue de l'enregistrement doit s'entendre : le champ se vide, ce
-            qui sans annonce peut se lire comme une perte. */}
-        {saved ? (
-          <Text style={styles.noteFeedback} accessibilityLiveRegion="polite">
-            Notée. À retrouver dans votre carnet.
-          </Text>
-        ) : null}
-        {noteError ? (
-          <Text style={styles.noteFeedback} accessibilityLiveRegion="assertive">
-            {noteError}
-          </Text>
-        ) : null}
-        <PressScale
-          onPress={onSaveNote}
-          disabled={saving || !draft.trim()}
-          accessibilityLabel="Enregistrer la note dans le carnet"
-          // L'état annoncé suit l'état RÉEL : pendant l'enregistrement d'une
-          // note non vide, le bouton est inerte et doit se dire tel quel.
-          accessibilityState={{ disabled: saving || !draft.trim(), busy: saving }}
-          containerStyle={styles.noteActionContainer}
-          style={[styles.noteAction, !draft.trim() && styles.noteActionDim]}
+        <View
+          style={styles.bestBlock}
+          accessible
+          accessibilityLabel={
+            bestLapMs !== null
+              ? `Meilleur tour du jour : ${msToLapLabel(bestLapMs)}`
+              : // « non mesuré », pas « aucun tour bouclé » : bestLapMs reste nul
+                // aussi bien quand le pilote n'a bouclé aucun tour que quand rien
+                // n'a pu être mesuré (fix GNSS perdu, ligne d'arrivée absente,
+                // boîtier décroché). Dire le second cas comme le premier ferait
+                // affirmer à l'app un fait de pilotage qu'elle n'a pas constaté.
+                'Meilleur tour du jour : non mesuré'
+          }
         >
-          <Text style={styles.noteActionTxt}>
-            {saving ? 'Enregistrement…' : 'Enregistrer dans le carnet'}
-          </Text>
-        </PressScale>
-      </View>
+          <Text style={styles.bestEyebrow}>MEILLEUR TOUR DU JOUR</Text>
+          {bestLapMs !== null ? (
+            <ChronoHero chronoMs={bestLapMs} size="s" celebrate={celebrateDayRecord} />
+          ) : (
+            <Text style={styles.bestEmpty}>—</Text>
+          )}
+        </View>
 
-      {/* Préparer le prochain run — l'accès à l'équipement DEPUIS le paddock
+        {/* Biométrie phase A : honnêteté ou rien (fail-closed). */}
+        {pauseBio === 'hint' ? (
+          <View style={styles.hintRow}>
+            <ListRow
+              icon="montre"
+              label="Cœur disponible au bilan"
+              sublabel="Votre fréquence cardiaque vous sera restituée après la séance."
+              divider={false}
+              accessibilityLabel="Votre fréquence cardiaque sera disponible au bilan"
+            />
+          </View>
+        ) : null}
+
+        {/* Note rapide — vos mots, dans votre carnet. Aucun gabarit. */}
+        <View style={styles.noteCard}>
+          <Text style={styles.noteEyebrow}>NOTE RAPIDE</Text>
+          <TextInput
+            value={draft}
+            onChangeText={(t) => {
+              setDraft(t);
+              if (saved) setSaved(false);
+              if (noteError) setNoteError(null);
+            }}
+            multiline
+            maxLength={5000}
+            placeholder="Écrivez ici, si vous le souhaitez."
+            placeholderTextColor={colors.text.dim}
+            selectionColor={colors.accent}
+            accessibilityLabel="Votre note rapide"
+            style={styles.noteInput}
+          />
+          {/* L'issue de l'enregistrement doit s'entendre : le champ se vide, ce
+            qui sans annonce peut se lire comme une perte. */}
+          {saved ? (
+            <Text style={styles.noteFeedback} accessibilityLiveRegion="polite">
+              Notée. À retrouver dans votre carnet.
+            </Text>
+          ) : null}
+          {noteError ? (
+            <Text style={styles.noteFeedback} accessibilityLiveRegion="assertive">
+              {noteError}
+            </Text>
+          ) : null}
+          <PressScale
+            onPress={onSaveNote}
+            disabled={saving || !draft.trim()}
+            accessibilityLabel="Enregistrer la note dans le carnet"
+            // L'état annoncé suit l'état RÉEL : pendant l'enregistrement d'une
+            // note non vide, le bouton est inerte et doit se dire tel quel.
+            accessibilityState={{ disabled: saving || !draft.trim(), busy: saving }}
+            containerStyle={styles.noteActionContainer}
+            style={[styles.noteAction, !draft.trim() && styles.noteActionDim]}
+          >
+            <Text style={styles.noteActionTxt}>
+              {saving ? 'Enregistrement…' : 'Enregistrer dans le carnet'}
+            </Text>
+          </PressScale>
+        </View>
+
+        {/* Préparer le prochain run — l'accès à l'équipement DEPUIS le paddock
           (parité v1, vérif L2 [1]) : sans lui, un pilote arrivé au circuit
           (état S7) ne pourrait pas démarrer/relancer une capture. */}
-      <PressScale
-        onPress={() => router.replace(REC_ROUTES.equipement as never)}
-        accessibilityLabel="Préparer le prochain run"
-        containerStyle={styles.nextRunContainer}
-        style={styles.nextRun}
-      >
-        <Text style={styles.nextRunTxt}>Préparer le prochain run</Text>
-      </PressScale>
+        <PressScale
+          onPress={() => router.replace(REC_ROUTES.equipement as never)}
+          accessibilityLabel="Préparer le prochain run"
+          containerStyle={styles.nextRunContainer}
+          style={styles.nextRun}
+        >
+          <Text style={styles.nextRunTxt}>Préparer le prochain run</Text>
+        </PressScale>
+      </ScrollView>
     </Animated.View>
   );
 }
@@ -309,8 +327,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,
+  },
+  defile: {
+    flex: 1,
     paddingHorizontal: space.xl,
-    alignItems: 'center',
   },
   filigrane: {
     position: 'absolute',
