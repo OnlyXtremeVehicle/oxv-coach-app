@@ -9,6 +9,12 @@ complet avec boîtier, plein soleil, test ganté, autonomie sur vingt minutes à
 deux liaisons BLE, comportement au verrouillage. Le build est repoussé. Ce
 document sépare donc ce qui est livré de ce qui attend la piste.
 
+> **Rectifié le 28/07 par l'audit.** Ce document annonçait « six vérifications »
+> plus bas alors que le préambule en énumère cinq groupes, et le cardinal
+> n'était établi nulle part. Les contrôles sont désormais posés en cases, pas en
+> prose : `docs/SMOKE_TEST_DEVICE.md` § Phase I. Un contrôle qui ne vit qu'en
+> paragraphe est un contrôle qu'on oublie le jour du build.
+
 ---
 
 ## Ce que le jalon a révélé
@@ -95,7 +101,7 @@ la chaîne. Rien à construire.
 | Place de `preparation` dans la chaîne | **Décision produit.** Le plan la met entre consentement et placement ; c'est aujourd'hui un écran d'avant-journée. |
 | Seuil d'interruption sur le tour de référence | **Règle cardinale.** Aucun consommateur sans toucher `captureSessionService`. |
 | `declared_at`, extension de `pilot_notes`, colonne `source` | **Schéma.** |
-| Six vérifications d'acceptation | **Appareil.** |
+| Les vérifications d'acceptation | **Appareil.** Posées en cases dans `docs/SMOKE_TEST_DEVICE.md` § Phase I. |
 
 ---
 

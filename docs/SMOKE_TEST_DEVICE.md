@@ -236,6 +236,51 @@ Récupérer le `.ipa` (TestFlight interne) ou le `.apk` (sideload Android).
 
 ---
 
+## Phase I — Autorisation et silence en piste (28/07/2026)
+
+**Ces trois contrôles ne se font QUE sur appareil.** Ils vivaient en prose dans
+quatre documents et dans une migration appliquée ; ils n'étaient dans aucune
+case, donc ils auraient été oubliés.
+
+### I.1 — SEC-3 : l'élévation de privilège est-elle vraiment fermée ?
+
+Le correctif SEC-2 avait été déclaré effectif sur la seule foi de la définition
+de la fonction. Le déclencheur, lui, ne l'écoutait pas — pendant deux jours.
+**Le contrôle par la définition passe et ne prouve rien.** Celui-ci prouve.
+
+- [ ] Depuis une session PILOTE réelle dans l'application (pas la console SQL,
+      qui tourne en `postgres` et serait exemptée), tenter :
+      `update public.users set is_admin = true where id = auth.uid()`
+      → doit échouer avec le code **42501**.
+- [ ] Après l'essai, `select count(*) from admin_audit where action =
+      'user_is_admin_change'` → doit valoir **0** (l'écriture a été refusée
+      avant le déclencheur d'audit).
+
+### I.2 — Le silence en piste s'arme-t-il réellement ?
+
+`setSilenceMode` ne recevait jamais autre chose que `false` : la machine d'état
+n'avait aucun appelant. Le pont est posé ; son effet ne se constate qu'en piste.
+
+- [ ] Armer une capture, rouler au-dessus de 60 km/h pendant plus de cinq
+      secondes, puis déclencher une notification depuis un autre appareil
+      → **aucune bannière, aucun son, aucune vibration**.
+- [ ] Repasser sous 60 km/h au stand, plus de cinq secondes
+      → les notifications reviennent.
+- [ ] Débrancher le boîtier pendant le roulage
+      → **aucune fenêtre d'erreur BLE ne s'affiche** (elle attend le paddock).
+
+### I.3 — La chaîne REC est-elle entrable ?
+
+Six écrans sur huit n'avaient aucun lien entrant.
+
+- [ ] Depuis le héros Paddock : préparation → appairage → placement → roulage,
+      d'un geste par écran, sans passer par un hub.
+- [ ] Boîtier ÉTEINT sur `placement` : le bouton d'armement est refusé, la
+      raison est lisible **avant** le geste, et « Régler l'appairage » y mène.
+- [ ] Revenir depuis `preparation` : rien ne redémarre.
+
+---
+
 ## Checklist finale avant submission stores (sem 14)
 
 - [ ] 1 smoke test complet iPhone OK (phases A-G)
