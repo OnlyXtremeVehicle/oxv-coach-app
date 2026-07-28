@@ -27,7 +27,7 @@ import { View, Text, ScrollView, StyleSheet, Animated, Easing } from 'react-nati
 import Svg, { Path, Circle } from 'react-native-svg';
 
 import { guardDebriefActs } from '../services/debriefRenderGuard';
-import { dataColors, palette } from '@/theme/v2';
+import { dataColors, fonts, palette } from '@/theme/v2';
 
 /* ============================ THÈME ============================ */
 // Mappé sur les tokens theme/v2 (R2) ; seuls grey/copper et les rgba locaux
@@ -48,12 +48,20 @@ export const C = {
   gold: palette.gold, // OR = donnée (cockpit) — plus l'or Heritage #C4A459
   green: dataColors.accel,
 };
-// Aligné sur le thème v2 (refonte NG) : Geist (display/body) + JetBrains Mono
-// (données), les familles réellement chargées par l'app. Cf. src/theme/v2.ts.
+// Les polices viennent du THÈME, elles ne sont plus recopiées ici.
+//
+// Ce bloc figeait `Geist_600SemiBold` et `Geist_400Regular` sous un commentaire
+// qui affirmait être « aligné sur le thème v2 […] les familles réellement
+// chargées par l'app ». La refonte V3 est passée à Hanken Grotesk : l'affirmation
+// avait cessé d'être vraie, et ce composant était le DERNIER à retenir Geist —
+// il maintenait à lui seul cinq graisses au chargement.
+//
+// Recopier une valeur de thème, c'est s'engager à la resuivre. Pointer dessus
+// évite la question.
 export const F: { display?: string; body?: string; mono?: string } = {
-  display: 'Geist_600SemiBold',
-  body: 'Geist_400Regular',
-  mono: 'JetBrainsMono_400Regular',
+  display: fonts.display,
+  body: fonts.body,
+  mono: fonts.mono,
 };
 
 /* ============================ TYPES (contrats) ============================ */

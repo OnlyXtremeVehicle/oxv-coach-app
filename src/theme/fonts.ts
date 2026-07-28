@@ -1,16 +1,4 @@
 import { useFonts } from 'expo-font';
-import {
-  Geist_300Light,
-  Geist_400Regular,
-  Geist_500Medium,
-  Geist_600SemiBold,
-  Geist_700Bold,
-} from '@expo-google-fonts/geist';
-import { GeistMono_400Regular, GeistMono_500Medium } from '@expo-google-fonts/geist-mono';
-import {
-  InstrumentSerif_400Regular,
-  InstrumentSerif_400Regular_Italic,
-} from '@expo-google-fonts/instrument-serif';
 // Refonte NG (2026-07-06, compromis fondateur) : Rajdhani = chiffre roi (HUD),
 // JetBrains Mono = données/labels. Geist conservé pour le texte.
 import {
@@ -19,7 +7,6 @@ import {
   JetBrainsMono_600SemiBold,
   JetBrainsMono_700Bold,
 } from '@expo-google-fonts/jetbrains-mono';
-import { Rajdhani_500Medium, Rajdhani_600SemiBold } from '@expo-google-fonts/rajdhani';
 // Refonte V3 (2026-07-10, handoff design complet) : Hanken Grotesk = texte/titres/
 // UI ; JetBrains Mono = données + CHIFFRE ROI (mono, plus de Rajdhani ni serif).
 import {
@@ -73,17 +60,5 @@ export function useAppFonts() {
     Inter_600SemiBold,
     // Programme V2 (DA Instrument) : display Michroma des écrans (app2).
     Michroma_400Regular,
-    // Conservées en secours (anciens tokens éventuels non migrés).
-    Geist_300Light,
-    Geist_400Regular,
-    Geist_500Medium,
-    Geist_600SemiBold,
-    Geist_700Bold,
-    GeistMono_400Regular,
-    GeistMono_500Medium,
-    Rajdhani_500Medium,
-    Rajdhani_600SemiBold,
-    InstrumentSerif_400Regular,
-    InstrumentSerif_400Regular_Italic,
   });
 }
