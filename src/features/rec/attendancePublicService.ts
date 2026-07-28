@@ -78,6 +78,28 @@ export async function setMyAttendanceOptIn(
  * `loadDayLogistics`) : nécessaire comme `p_session` pour l'attendance et pour
  * `convoysService.getForSession`. RLS registrations own-row. Aucune journée
  * correspondante (ou annulée/archivée) → null.
+ *
+ * ---
+ *
+ * L'AMBIGUÏTÉ NE SE TRANCHE PAS TOUTE SEULE
+ *
+ * Cette fonction faisait `.find(...)` sur la liste des sessions du jour et
+ * retenait **la première** non annulée. Tant qu'un pilote n'a qu'une inscription
+ * par date, la première EST la bonne. Dès qu'il en a deux — deux circuits, une
+ * journée privée et une publique — le choix devenait arbitraire, silencieux, et
+ * décidait à quelle journée sa présence et son convoi seraient rattachés.
+ *
+ * Rien ne l'aurait signalé : l'ordre de `.in(...)` n'est pas garanti, donc le
+ * défaut aurait pu changer de réponse d'un appel à l'autre.
+ *
+ * Doctrine du lot 12 : « une séance sans inscription reste sans inscription —
+ * c'est un fait, pas un trou à combler. » Ici : **plusieurs journées candidates
+ * rendent `null`**, comme aucune. L'appelant affiche l'absence plutôt qu'un
+ * rattachement inventé.
+ *
+ * Le rapprochement PAR DATE reste, lui, légitime et nécessaire : c'est la seule
+ * façon de savoir laquelle de mes journées est aujourd'hui. Ce qui était fautif,
+ * c'est de trancher une égalité sans le dire.
  */
 export async function resolveDaySessionId(userId: string, dateIso: string): Promise<string | null> {
   const { data: regs } = await supabase
@@ -96,6 +118,16 @@ export async function resolveDaySessionId(userId: string, dateIso: string): Prom
     .in('id', sessionIds)
     .eq('date', dateIso)
     .limit(5);
-  const day = (sessions ?? []).find((s) => s.status !== 'cancelled' && s.status !== 'archived');
-  return day?.id ?? null;
+  const candidates = (sessions ?? []).filter(
+    (s) => s.status !== 'cancelled' && s.status !== 'archived'
+  );
+  if (candidates.length !== 1) {
+    if (candidates.length > 1) {
+      console.warn(
+        `[OXV][rec] ${candidates.length} journées inscrites le ${dateIso} : aucune retenue.`
+      );
+    }
+    return null;
+  }
+  return candidates[0].id;
 }

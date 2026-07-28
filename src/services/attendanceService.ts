@@ -12,6 +12,8 @@
 
 import { supabase } from '@/lib/supabase';
 
+import { decisionPointage } from './presenceLogic';
+
 export interface AttendanceRegistration {
   id: string;
   userId: string;
@@ -108,11 +110,46 @@ export async function listTodayAttendance(): Promise<AttendanceSession[]> {
   }));
 }
 
-/** Pointe (ou dépointe) la présence — horodatage `attended_at` du site. */
+/**
+ * Pointe (ou dépointe) la présence — horodatage `attended_at` du site.
+ *
+ * ---
+ *
+ * LA PRÉSENCE NE SE POSE QUE DEPUIS `pending` OU `confirmed`
+ *
+ * Cette fonction écrivait `attended_at` sans jamais regarder le statut. Un
+ * pilote **annulé**, **déclaré absent** ou dont le paiement est en attente
+ * pouvait donc être marqué présent d'un seul geste. `attended_at` alimente les
+ * indicateurs du site, la demande d'avis J+1 et la livraison des médias : une
+ * présence fausse s'y propage sans jamais lever d'erreur.
+ *
+ * L'enum de `registration_status_enum` ne protégeait rien ici : il borne
+ * `status`, pas `attended_at`. Les deux colonnes pouvaient diverger librement.
+ *
+ * La garde est **fail-closed** : sans lecture fiable du statut courant, on
+ * n'écrit pas. Décider à l'aveugle, c'est reprendre le risque qu'on ferme.
+ *
+ * Le DÉPOINTAGE reste toujours permis — c'est la correction d'une erreur, et
+ * une garde qui empêche de réparer finit contournée à la main dans la base.
+ */
 export async function setAttendance(
   registrationId: string,
   attended: boolean
 ): Promise<{ ok: boolean; error?: string }> {
+  if (attended) {
+    const { data, error: lecture } = await supabase
+      .from('registrations')
+      .select('status, attended_at')
+      .eq('id', registrationId)
+      .maybeSingle();
+
+    if (lecture) return { ok: false, error: lecture.message };
+    if (!data) return { ok: false, error: 'Inscription introuvable.' };
+
+    const decision = decisionPointage(data.status, data.attended_at != null, true);
+    if (!decision.autorise) return { ok: false, error: decision.raison };
+  }
+
   const { error } = await supabase
     .from('registrations')
     .update({ attended_at: attended ? new Date().toISOString() : null })

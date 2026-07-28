@@ -13,6 +13,7 @@
 import { useCallback, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 import {
   listTodayAttendance,
@@ -73,6 +74,15 @@ export default function AdminPresencesScreen() {
           ),
         }))
       );
+    } else {
+      // Un refus était jusqu'ici avalé : la case ne bougeait pas, et rien ne
+      // disait pourquoi. Le pointage est désormais borné aux inscriptions en
+      // attente ou confirmées — la raison doit être lisible sur la piste.
+      Toast.show({
+        type: 'info',
+        text1: 'Présence non enregistrée.',
+        text2: res.error,
+      });
     }
     setBusyId(null);
   };
