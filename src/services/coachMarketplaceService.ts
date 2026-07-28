@@ -80,10 +80,34 @@ export interface CoachAvailabilitySlot {
 }
 
 /**
- * Statut d'un créneau de disponibilité (`coach_availability.status`). `open` est
- * le défaut posé en base ; `full` indique un créneau complet ; `closed` /
- * `cancelled` retirent le créneau de la découverte pilote (cf. `getCoachProfile`
- * qui ne lit que `open`/`full`).
+ * Statut d'un créneau de disponibilité (`coach_availability.status`). `full`
+ * indique un créneau complet ; `closed` / `cancelled` retirent le créneau de la
+ * découverte pilote (cf. `getCoachProfile` qui ne lit que `open`/`full`).
+ *
+ * ---
+ *
+ * `open` N'EST PAS CE QUE VOUS DEMANDEZ, C'EST CE QUE LA BASE ACCORDE
+ *
+ * Ce commentaire affirmait : « `open` est le défaut posé en base ». C'était faux
+ * depuis la migration `20260718111150`. Le déclencheur
+ * `oxv_coach_availability_open_gate` réécrit la valeur pour tout appelant qui
+ * n'est pas administrateur :
+ *
+ *   INSERT  avec status = 'open'            → 'closed'
+ *   UPDATE  vers 'open' depuis autre chose  → l'ancien statut est restauré
+ *
+ * Le motif est légitime — une ouverture passe par une validation OXV. **Le
+ * silence ne l'est pas.** Aucune exception n'est levée, aucun message n'est
+ * renvoyé : l'écriture réussit et la valeur diffère. L'application affichait
+ * « Créneau ouvert. Il apparaît désormais sur votre fiche. » alors que ni l'un
+ * ni l'autre n'était vrai.
+ *
+ * D'où la règle tenue ici : **on relit toujours le statut effectif après
+ * écriture**, et c'est lui qu'on rend. Jamais celui qu'on a demandé.
+ *
+ * Un état `pending_validation` distinct de `closed` serait plus juste — un
+ * créneau en attente n'est pas un créneau fermé. Il demande un changement de
+ * schéma : `supabase/migrations/PROPOSITION_L27bis_creneau_en_attente.sql`.
  */
 export type AvailabilityStatus = 'open' | 'full' | 'closed' | 'cancelled';
 
@@ -538,13 +562,18 @@ export async function cancelBooking(
 /**
  * Ouvre un créneau de disponibilité pour le coach courant. Le `coach_id` est
  * posé à `auth.uid()` (un appel non authentifié échoue). La capacité est bornée
- * à ≥ 1, le circuit et les notes sont nettoyés (trim → `null` si vide). Le
- * statut initial est `open` (défaut métier). Renvoie un résultat défensif,
- * jamais d'exception remontée à l'écran.
+ * à ≥ 1, le circuit et les notes sont nettoyés (trim → `null` si vide).
+ *
+ * `open` est DEMANDÉ, pas obtenu : le déclencheur le rabat sur `closed` pour un
+ * appelant non administrateur. `statusEffectif` porte ce que la base a retenu —
+ * c'est lui que l'écran doit dire. Renvoie un résultat défensif, jamais
+ * d'exception remontée à l'écran.
  */
 export async function createAvailability(
   input: CreateAvailabilityInput
-): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; id: string; statusEffectif: AvailabilityStatus } | { ok: false; error: string }
+> {
   const { data: auth } = await supabase.auth.getUser();
   const coachId = auth.user?.id;
   if (!coachId) {
@@ -561,6 +590,8 @@ export async function createAvailability(
     return { ok: false, error: 'La capacité doit être un nombre valide.' };
   }
 
+  // `select('id, status')` et non `select('id')` : le déclencheur peut avoir
+  // réécrit le statut demandé. On rend ce que la base a retenu.
   const { data, error } = await supabase
     .from('coach_availability')
     .insert({
@@ -572,7 +603,7 @@ export async function createAvailability(
       notes: input.notes?.trim() || null,
       status: 'open',
     })
-    .select('id')
+    .select('id, status')
     .single();
 
   if (error || !data) {
@@ -583,7 +614,7 @@ export async function createAvailability(
     };
   }
 
-  return { ok: true, id: data.id };
+  return { ok: true, id: data.id, statusEffectif: data.status as AvailabilityStatus };
 }
 
 /**
@@ -623,22 +654,32 @@ export async function listMyAvailability(): Promise<MyAvailabilitySlot[]> {
  * Met à jour le statut d'un créneau du coach courant (`open` → `closed` /
  * `cancelled`, etc.). La RLS borne déjà à `coach_id = auth.uid()`. Renvoie un
  * résultat défensif, jamais d'exception remontée à l'écran.
+ *
+ * Le statut EFFECTIF est relu et rendu. Cette fonction répondait `{ ok: true }`
+ * pour une écriture que le déclencheur pouvait annuler — un succès annoncé pour
+ * une opération sans effet. Un appelant qui demande `open` reçoit désormais le
+ * statut réellement retenu, et peut le dire.
  */
 export async function updateAvailabilityStatus(
   id: string,
   status: AvailabilityStatus
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { error } = await supabase.from('coach_availability').update({ status }).eq('id', id);
+): Promise<{ ok: true; statusEffectif: AvailabilityStatus } | { ok: false; error: string }> {
+  const { data, error } = await supabase
+    .from('coach_availability')
+    .update({ status })
+    .eq('id', id)
+    .select('status')
+    .single();
 
-  if (error) {
-    console.warn('[OXV][marketplace] updateAvailabilityStatus :', error.message);
+  if (error || !data) {
+    console.warn('[OXV][marketplace] updateAvailabilityStatus :', error?.message);
     return {
       ok: false,
       error: "Le créneau n'a pas pu être mis à jour. Réessayez dans un instant.",
     };
   }
 
-  return { ok: true };
+  return { ok: true, statusEffectif: data.status as AvailabilityStatus };
 }
 
 /**

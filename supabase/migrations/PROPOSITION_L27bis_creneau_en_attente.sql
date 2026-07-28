@@ -1,0 +1,117 @@
+-- =============================================================================
+-- PROPOSITION — LOT 27bis : un créneau en attente n'est pas un créneau fermé
+--
+--   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--
+-- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- =============================================================================
+--
+-- LE DÉFAUT, VÉRIFIÉ EN PRODUCTION LE 28/07/2026
+--
+-- Le déclencheur `trg_coach_availability_open_gate` appelle
+-- `oxv_coach_availability_open_gate()`, dont voici le corps réel :
+--
+--   IF NOT public.is_admin() THEN
+--     IF TG_OP = 'INSERT' AND NEW.status = 'open' THEN
+--       NEW.status := 'closed';        -- créneau proposé → en attente de validation OXV
+--     ELSIF TG_OP = 'UPDATE' AND NEW.status = 'open' AND OLD.status IS DISTINCT FROM 'open' THEN
+--       NEW.status := OLD.status;      -- ouverture réservée à l'admin
+--     END IF;
+--   END IF;
+--
+-- Conforme au constat du plan de montage. **Un coach ne peut jamais ouvrir un
+-- créneau**, et rien ne le lui dit : l'écriture réussit, la valeur diffère.
+--
+-- Le motif est légitime — une ouverture passe par une validation OXV. Le silence
+-- ne l'est pas.
+--
+-- -----------------------------------------------------------------------------
+-- LA MOITIÉ QUI EST DÉJÀ FAITE, SANS SCHÉMA
+-- -----------------------------------------------------------------------------
+--
+-- La seconde correction demandée par le plan — « l'information retournée au
+-- client pour que l'interface puisse la dire » — ne demandait aucun changement
+-- de schéma, seulement de RELIRE ce que la base a retenu :
+--
+--   * `createAvailability` et `updateAvailabilityStatus` relisent le statut
+--     effectif (`.select('status')`) et le rendent ;
+--   * `src/services/creneauMessageLogic.ts` en déduit le message ;
+--   * l'écran disait « Créneau ouvert. Il apparaît désormais sur votre fiche. » —
+--     deux phrases fausses, puisque `getCoachProfile` ne lit que `open`/`full`.
+--     Il dit maintenant « Créneau proposé. Il apparaîtra sur votre fiche après
+--     validation par OXV. »
+--
+-- Livré, testé, hors de cette proposition.
+--
+-- =============================================================================
+-- CE QUI RESTE, ET QUI DEMANDE LE SCHÉMA
+-- =============================================================================
+--
+-- `closed` porte aujourd'hui DEUX sens : « fermé par le coach » et « en attente
+-- de validation OXV ». Ils ne se distinguent pas, donc :
+--
+--   * la console d'administration ne peut pas lister ce qu'il y a à valider ;
+--   * un coach ne peut pas distinguer ses créneaux fermés de ses propositions ;
+--   * fermer un créneau et en proposer un produisent le même état.
+--
+-- D'où un état distinct.
+--
+-- ÉTAPE 1 — la contrainte. Vérifier d'abord ce qui borne la colonne :
+--
+--   select conname, pg_get_constraintdef(oid)
+--   from pg_constraint
+--   where conrelid = 'public.coach_availability'::regclass and contype = 'c';
+--
+-- ÉTAPE 2 — ajouter la valeur, sans retirer les anciennes (rien à migrer :
+-- `closed` posé par un coach reste `closed`, et l'historique n'est pas réécrit).
+--
+-- BEGIN;
+--
+-- ALTER TABLE public.coach_availability DROP CONSTRAINT IF EXISTS coach_availability_status_check;
+-- ALTER TABLE public.coach_availability ADD CONSTRAINT coach_availability_status_check
+--   CHECK (status IN ('open','full','closed','cancelled','pending_validation'));
+--
+-- ÉTAPE 3 — le déclencheur nomme l'attente au lieu de la déguiser en fermeture.
+--
+-- CREATE OR REPLACE FUNCTION public.oxv_coach_availability_open_gate()
+-- RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public' AS $$
+-- BEGIN
+--   IF NOT public.is_admin() THEN
+--     IF TG_OP = 'INSERT' AND NEW.status = 'open' THEN
+--       NEW.status := 'pending_validation';
+--     ELSIF TG_OP = 'UPDATE' AND NEW.status = 'open' AND OLD.status IS DISTINCT FROM 'open' THEN
+--       -- Une demande de réouverture redevient une demande, pas un retour en arrière.
+--       NEW.status := 'pending_validation';
+--     END IF;
+--   END IF;
+--   RETURN NEW;
+-- END $$;
+--
+-- COMMIT;
+--
+-- =============================================================================
+-- CE QUE L'ÉTAPE 3 CHANGE, ET QU'IL FAUT PESER
+-- =============================================================================
+--
+-- Aujourd'hui, une demande de réouverture RESTAURE l'ancien statut : un créneau
+-- annulé reste annulé. Avec la proposition ci-dessus, il passerait en attente de
+-- validation — donc un coach pourrait faire remonter n'importe quel créneau,
+-- même annulé, dans la file de validation OXV.
+--
+-- Est-ce voulu ? Si non, garder `NEW.status := OLD.status` pour l'UPDATE et ne
+-- changer que l'INSERT. La question est produit, pas technique : **un créneau
+-- annulé peut-il être re-proposé ?**
+--
+-- =============================================================================
+-- CE QUI SUIT CÔTÉ APPLICATION, UNE FOIS LA MIGRATION APPLIQUÉE
+-- =============================================================================
+--
+--   * `AvailabilityStatus` gagne `'pending_validation'` ;
+--   * `availabilityStatusLabel` gagne « En attente de validation » ;
+--   * `creneauMessageLogic` distingue attente et fermeture — ses tests couvrent
+--     déjà l'écart, ils n'auront qu'à nommer le nouvel état ;
+--   * la console d'administration gagne la liste de ce qu'il y a à valider.
+--     **Elle n'existe pas aujourd'hui** : personne ne peut valider un créneau
+--     depuis l'application. C'est le vrai préalable à toute économie coach, et
+--     il dépasse ce lot.
+-- =============================================================================

@@ -56,6 +56,7 @@ import {
   type MyAvailabilitySlot,
   updateAvailabilityStatus,
 } from '@/services/coachMarketplaceService';
+import { messageChangement, messageCreation } from '@/services/creneauMessageLogic';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -274,10 +275,15 @@ export default function CoachDisponibilitesScreen() {
       return;
     }
 
+    // On annonce le statut RETENU par la base, pas celui demandé. Le déclencheur
+    // `oxv_coach_availability_open_gate` rabat `open` sur `closed` : l'ancien
+    // message — « Créneau ouvert. Il apparaît désormais sur votre fiche. » —
+    // était faux sur ses deux phrases.
+    const message = messageCreation(result.statusEffectif);
     Toast.show({
-      type: 'success',
-      text1: 'Créneau ouvert.',
-      text2: 'Il apparaît désormais sur votre fiche.',
+      type: message.ecart ? 'info' : 'success',
+      text1: message.titre,
+      text2: message.detail,
     });
     // Réinitialise le formulaire (sauf la date, prête pour le créneau suivant),
     // le replie, et recharge la grille.
@@ -297,9 +303,11 @@ export default function CoachDisponibilitesScreen() {
       Toast.show({ type: 'error', text1: result.error });
       return;
     }
+    const message = messageChangement(status, result.statusEffectif);
     Toast.show({
-      type: 'success',
-      text1: status === 'closed' ? 'Créneau fermé.' : 'Créneau annulé.',
+      type: message.ecart ? 'info' : 'success',
+      text1: message.titre,
+      text2: message.detail,
     });
     await reload();
   }
