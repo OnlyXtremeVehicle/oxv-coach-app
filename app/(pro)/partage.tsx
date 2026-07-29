@@ -40,6 +40,9 @@ const SCOPES: { v: ShareScope; label: string }[] = [
 
 const METRIC_LABEL = new Map(SHAREABLE_METRICS.map((m) => [m.key, m.label]));
 
+/** Expiration des liens de l'espace pro — pas de sélecteur ici, une valeur. */
+const PRO_SHARE_EXPIRY_DAYS = 30;
+
 function statusOf(link: ShareLink): { label: string; active: boolean } {
   if (link.revokedAt) return { label: 'Révoqué', active: false };
   if (link.expiresAt && new Date(link.expiresAt).getTime() < new Date().getTime()) {
@@ -83,7 +86,15 @@ export default function ProPartageScreen() {
   async function onCreate() {
     if (creating) return;
     setCreating(true);
-    const link = await createShare({ scope, includedMetrics: [...metrics] });
+    // `expiresInDays` est OBLIGATOIRE : `sharesService.ts` ne pose `expires_at`
+    // que s'il le reçoit, et l'omettre créait ici des liens qui n'expiraient
+    // jamais. Trente jours — l'espace pro n'offre pas de sélecteur, et la
+    // décision fondateur du 29/07/2026 borne tout partage dans le temps.
+    const link = await createShare({
+      scope,
+      expiresInDays: PRO_SHARE_EXPIRY_DAYS,
+      includedMetrics: [...metrics],
+    });
     setCreating(false);
     if (!link) {
       Toast.show({ type: 'error', text1: 'La création du lien a échoué.' });

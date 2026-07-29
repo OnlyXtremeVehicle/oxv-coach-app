@@ -43,6 +43,7 @@ import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 
 import {
+  Button,
   Chip,
   Dial,
   HeritageBand,
@@ -73,8 +74,10 @@ import { useHeritageBook } from '@/features/club/useHeritageBook';
 import { VIEWER_PAN_ZOOM_THRESHOLD, viewerShouldDismiss } from '@/features/miroir/bilanLogic';
 import { TrophyCard } from '@/components/TrophyCard';
 import {
+  SHAREABLE_METRICS,
   createShare,
   revokeShare,
+  sanitizeIncludedMetrics,
   shareUrlFor,
   type ShareLink,
   type ShareScope,
@@ -98,6 +101,25 @@ function scopeLabel(scope: ShareScope): string {
   return SCOPES.find((s) => s.key === scope)?.label ?? 'Partage';
 }
 
+/**
+ * Durées d'expiration offertes — décision fondateur du 29/07/2026.
+ *
+ * L'écran V1 `app/(app)/partage.tsx` en proposait TROIS : 7 jours, 30 jours et
+ * « sans limite ». Le portage n'en retient que deux : **tout lien finit par
+ * expirer**, conformément à l'esprit de minimisation de l'article 25 déjà porté
+ * à l'avocat.
+ *
+ * Ce qui existait ici avant ce portage était pire que « sans limite » : la
+ * galerie appelait `createShare({ scope })` sans durée du tout, et
+ * `sharesService.ts` ne pose `expires_at` que si `expiresInDays` est fourni.
+ * Tout lien créé depuis app2 n'expirait donc JAMAIS, sans que personne ne
+ * l'ait choisi.
+ */
+const DUREES: { days: number; label: string }[] = [
+  { days: 7, label: '7 jours' },
+  { days: 30, label: '30 jours' },
+];
+
 export default function GalerieScreen() {
   const insets = useSafeAreaInsets();
   const userId = useAuthStore((s) => s.profile?.id ?? null);
@@ -108,6 +130,12 @@ export default function GalerieScreen() {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [shareSheet, setShareSheet] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Le lien se COMPOSE avant d'exister : portée, durée, données exposées.
+  // Défaut des métriques = ensemble VIDE — le pilote construit son partage
+  // activement, il ne retire pas ce qu'on aurait coché pour lui (RGPD §2.2).
+  const [shareScope, setShareScope] = useState<ShareScope | null>(null);
+  const [shareDays, setShareDays] = useState<number>(DUREES[0].days);
+  const [shareMetrics, setShareMetrics] = useState<string[]>([]);
   const door = useDoorTransition();
 
   const { width: winW } = useWindowDimensions();
@@ -141,21 +169,37 @@ export default function GalerieScreen() {
     [g.shares]
   );
 
-  const onCreateShare = useCallback(
-    (scope: ShareScope) => {
-      if (creating) return;
-      setCreating(true);
-      createShare({ scope })
-        .then((link) => {
-          if (link) g.reloadShares();
-        })
-        .finally(() => {
-          setCreating(false);
-          setShareSheet(false);
-        });
-    },
-    [creating, g]
-  );
+  const toggleShareMetric = useCallback((key: string) => {
+    setShareMetrics((prev) =>
+      prev.includes(key) ? prev.filter((m) => m !== key) : [...prev, key]
+    );
+  }, []);
+
+  // Un lien sans métrique n'expose rien : le créer n'aurait aucun sens, et
+  // c'est la garde que portait déjà l'écran V1.
+  const shareReady = shareScope !== null && shareMetrics.length > 0;
+
+  const onCreateShare = useCallback(() => {
+    if (creating || shareScope === null || shareMetrics.length === 0) return;
+    setCreating(true);
+    createShare({
+      scope: shareScope,
+      expiresInDays: shareDays,
+      includedMetrics: sanitizeIncludedMetrics(shareMetrics),
+    })
+      .then((link) => {
+        if (link) g.reloadShares();
+      })
+      .finally(() => {
+        setCreating(false);
+        setShareSheet(false);
+        // La composition ne survit pas à la feuille : le prochain partage
+        // repart d'un choix explicite, jamais du précédent.
+        setShareScope(null);
+        setShareDays(DUREES[0].days);
+        setShareMetrics([]);
+      });
+  }, [creating, shareScope, shareDays, shareMetrics, g]);
 
   const onRevoke = useCallback(
     (id: string) => {
@@ -322,21 +366,71 @@ export default function GalerieScreen() {
         />
       ) : null}
 
-      <Sheet visible={shareSheet} onClose={() => setShareSheet(false)} snapHeight={380}>
-        <SectionHeader eyebrow="CRÉER UN LIEN" />
-        <Text style={styles.sheetNote}>
-          Un lien public, révocable à tout moment. Seules des données factuelles — jamais de
-          jugement — sont exposées.
-        </Text>
-        {SCOPES.map((sc, i) => (
-          <ListRow
-            key={sc.key}
-            label={sc.label}
-            divider={i < SCOPES.length - 1}
-            disabled={creating}
-            onPress={() => onCreateShare(sc.key)}
-          />
-        ))}
+      <Sheet visible={shareSheet} onClose={() => setShareSheet(false)} snapHeight={620}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <SectionHeader eyebrow="CRÉER UN LIEN" />
+          <Text style={styles.sheetNote}>
+            Un lien public, révocable à tout moment. Seules des données factuelles — jamais de
+            jugement — sont exposées.
+          </Text>
+
+          <SectionHeader eyebrow="CE QUE LE LIEN COUVRE" />
+          {SCOPES.map((sc, i) => (
+            <ListRow
+              key={sc.key}
+              label={sc.label}
+              divider={i < SCOPES.length - 1}
+              disabled={creating}
+              chevron={false}
+              value={shareScope === sc.key ? 'CHOISI' : undefined}
+              onPress={() => setShareScope(sc.key)}
+            />
+          ))}
+
+          <SectionHeader eyebrow="JUSQU'À QUAND" />
+          <View style={styles.sheetChips}>
+            {DUREES.map((d) => (
+              <Chip
+                key={d.days}
+                label={d.label}
+                active={shareDays === d.days}
+                onPress={() => setShareDays(d.days)}
+              />
+            ))}
+          </View>
+          <Text style={styles.sheetNote}>
+            Passé ce délai, le lien cesse de répondre. Aucun partage ne reste ouvert indéfiniment.
+          </Text>
+
+          <SectionHeader eyebrow="CE QUI EST EXPOSÉ" />
+          <View style={styles.sheetChips}>
+            {SHAREABLE_METRICS.map((m) => (
+              <Chip
+                key={m.key}
+                label={m.label}
+                active={shareMetrics.includes(m.key)}
+                onPress={() => toggleShareMetric(m.key)}
+              />
+            ))}
+          </View>
+          <Text style={styles.sheetNote}>
+            Rien n&apos;est coché par défaut : vous ajoutez ce que vous acceptez de montrer.
+          </Text>
+
+          <View style={styles.sheetAction}>
+            <Button
+              label="Créer le lien"
+              onPress={onCreateShare}
+              disabled={!shareReady}
+              loading={creating}
+              accessibilityLabel={
+                shareReady
+                  ? 'Créer le lien de partage'
+                  : 'Créer le lien de partage — choisissez une portée et au moins une donnée'
+              }
+            />
+          </View>
+        </ScrollView>
       </Sheet>
     </View>
   );
@@ -964,6 +1058,18 @@ const styles = StyleSheet.create({
     color: colors.text.mid,
     marginTop: space.sm,
     marginBottom: space.md,
+  },
+  sheetChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    // `space.sm` en écart : les hitSlop verticaux des Chip ne se recouvrent
+    // pas horizontalement, et deux pills voisines restent deux cibles.
+    gap: space.sm,
+    marginTop: space.sm,
+  },
+  sheetAction: {
+    marginTop: space.lg,
+    marginBottom: space.xl,
   },
   // ── Viewer ────────────────────────────────────────────────────────────
   viewerRoot: {
