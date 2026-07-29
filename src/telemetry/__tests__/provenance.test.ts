@@ -37,9 +37,16 @@ const MODULES = readdirSync(DOSSIER)
   .map((f) => f.replace(/\.ts$/, ''));
 
 describe('le registre couvre la banque', () => {
-  it('les sept modules de calcul sont bien là', () => {
+  /**
+   * La liste est CLOSE, et c'est le point.
+   *
+   * En ajoutant `adaptation.ts` à la banque, ce test est tombé — exactement ce
+   * qu'il doit faire. Un module de calcul nouveau ne peut pas rejoindre la
+   * banque sans que quelqu'un dise ce qu'il produit et d'où ça vient.
+   */
+  it('les huit modules de calcul sont bien là', () => {
     expect(MODULES.sort()).toEqual(
-      ['accel', 'braking', 'delta', 'gg', 'kinematics', 'resample', 'segment'].sort()
+      ['accel', 'adaptation', 'braking', 'delta', 'gg', 'kinematics', 'resample', 'segment'].sort()
     );
   });
 
@@ -50,7 +57,7 @@ describe('le registre couvre la banque', () => {
    * calcul dont rien n'est étiqueté produit des chiffres sans provenance — ce
    * que la règle fondateur interdit.
    */
-  it.each(['kinematics', 'delta', 'braking', 'accel', 'gg', 'resample', 'segment'])(
+  it.each(['kinematics', 'delta', 'braking', 'accel', 'gg', 'resample', 'segment', 'adaptation'])(
     'le module « %s » a au moins une grandeur enregistrée',
     (mod) => {
       expect(BANQUE.filter((g) => g.cle.startsWith(`${mod}.`)).length).toBeGreaterThan(0);

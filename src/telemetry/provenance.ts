@@ -77,7 +77,7 @@ export interface Grandeur {
 }
 
 /**
- * LA BANQUE. Sept modules de `src/telemetry/`.
+ * LA BANQUE. Huit modules de `src/telemetry/`.
  *
  * Ordre : les mesures d'abord, puis ce qu'on en déduit, puis ce qu'on en
  * infère. C'est aussi l'ordre de confiance décroissante.
@@ -179,6 +179,14 @@ export const BANQUE: readonly Grandeur[] = [
     prov: 'D',
     source: 'Seuil sur la courbure, avec hystérésis.',
     convention: 'L’hystérésis évite qu’un virage se hache en trois à la moindre oscillation.',
+  },
+  {
+    cle: 'adaptation.longueurTour',
+    nom: 'Longueur d’un tour',
+    prov: 'D',
+    source: 'Distance curviligne au dernier point exploitable du tour, par ∫ v dt.',
+    convention:
+      'Deux tours sont comparables si leurs longueurs diffèrent de moins de dix pour cent. Le seuil est un choix, pas une mesure.',
   },
   {
     cle: 'gg.reachedHull',
