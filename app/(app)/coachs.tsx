@@ -840,7 +840,7 @@ const ROUTE_LINKS: { path: string; title: string; desc: string; create: boolean 
     create: true,
   },
   {
-    path: '/(app)/creer-trace',
+    path: '/(app2)/club/importer-trace',
     title: 'Créer un tracé',
     desc: 'Un circuit importé depuis OpenStreetMap.',
     create: true,

@@ -623,7 +623,7 @@ function CreerTab({ bottomInset }: { bottomInset: number }) {
         eyebrow="IMPORT OSM"
         title="Importer un tracé"
         hint="Reconstituez un circuit à partir d’un tracé OpenStreetMap."
-        onPress={() => router.push('/(app)/creer-trace' as never)}
+        onPress={() => router.push('/(app2)/club/importer-trace' as never)}
       />
     </View>
   );

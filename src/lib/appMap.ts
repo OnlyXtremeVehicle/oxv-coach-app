@@ -104,7 +104,9 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   'composer-route': 'decouverte',
   // `mes-routes` retiré le 29/07/2026 : porté en `app/(app2)/club/routes`.
   routes: 'decouverte',
-  'creer-trace': 'decouverte',
+  // L'import OpenStreetMap est porté en app2 le 29/07/2026 : `creer-trace`
+  // devient `importer-trace`, sous `app/(app2)/club/`.
+  'importer-trace': 'decouverte',
   galerie: 'decouverte',
   roulages: 'decouverte',
   partage: 'decouverte',
