@@ -60,9 +60,19 @@ describe('le registre couvre la banque', () => {
    * qu'il doit faire. Un module de calcul nouveau ne peut pas rejoindre la
    * banque sans que quelqu'un dise ce qu'il produit et d'où ça vient.
    */
-  it('les huit modules de calcul sont bien là', () => {
+  it('les neuf modules de calcul sont bien là', () => {
     expect(MODULES.sort()).toEqual(
-      ['accel', 'adaptation', 'braking', 'delta', 'gg', 'kinematics', 'resample', 'segment'].sort()
+      [
+        'accel',
+        'adaptation',
+        'bande',
+        'braking',
+        'delta',
+        'gg',
+        'kinematics',
+        'resample',
+        'segment',
+      ].sort()
     );
   });
 
@@ -73,12 +83,19 @@ describe('le registre couvre la banque', () => {
    * calcul dont rien n'est étiqueté produit des chiffres sans provenance — ce
    * que la règle fondateur interdit.
    */
-  it.each(['kinematics', 'delta', 'braking', 'accel', 'gg', 'resample', 'segment', 'adaptation'])(
-    'le module « %s » a au moins une grandeur enregistrée',
-    (mod) => {
-      expect(BANQUE.filter((g) => g.cle.startsWith(`${mod}.`)).length).toBeGreaterThan(0);
-    }
-  );
+  it.each([
+    'kinematics',
+    'delta',
+    'braking',
+    'accel',
+    'gg',
+    'resample',
+    'segment',
+    'adaptation',
+    'bande',
+  ])('le module « %s » a au moins une grandeur enregistrée', (mod) => {
+    expect(BANQUE.filter((g) => g.cle.startsWith(`${mod}.`)).length).toBeGreaterThan(0);
+  });
 
   it('les clés sont uniques', () => {
     expect(new Set(BANQUE.map((g) => g.cle)).size).toBe(BANQUE.length);

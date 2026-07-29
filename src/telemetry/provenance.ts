@@ -197,6 +197,22 @@ export const BANQUE: readonly Grandeur[] = [
       'Deux tours sont comparables si leurs longueurs diffèrent de moins de dix pour cent. Le seuil est un choix, pas une mesure.',
   },
   {
+    cle: 'bande.mediane',
+    nom: 'Ligne centrale de vos tours',
+    prov: 'D',
+    source: 'Médiane des tours ré-échantillonnés, à chaque pas de distance.',
+    convention:
+      'Médiane et non moyenne : une séance porte des tours gâchés par le trafic, qu’une moyenne absorberait et qui déplaceraient toute la courbe. Un pas mesuré par moins de trois tours rend « — ».',
+  },
+  {
+    cle: 'bande.ecartAbsoluMedian',
+    nom: 'Écart absolu médian',
+    prov: 'D',
+    source: 'Médiane des écarts à la médiane.',
+    convention:
+      'Dispersion robuste, retenue plutôt que l’écart-type quand l’effectif est petit ou qu’un tour est aberrant.',
+  },
+  {
     cle: 'gg.reachedHull',
     nom: 'Enveloppe atteinte',
     prov: 'D',
