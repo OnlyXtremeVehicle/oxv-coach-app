@@ -19,7 +19,7 @@
  *     carte reste une surface calme (aucun tracé fabriqué).
  *
  * En tête : CTA sobre vers « Créer votre route » (planificateur GraphHopper,
- * retour fondateur build 23) — route `/(app)/creer-route`.
+ * retour fondateur build 23) — route `/(app2)/club/composer-route`.
  *
  * Motion (kit src/components/motion) : entrée en fondu décalé, cartes route en
  * cascade (Stagger), CTA en PressableScale. Courbes et durées du kit,
@@ -88,7 +88,7 @@ export default function BellesRoutesScreen() {
         {/* CTA planificateur (retour fondateur build 23) — sobre, jamais d'or. */}
         <FadeInSection delay={80}>
           <PressableScale
-            onPress={() => router.push('/(app)/creer-route' as never)}
+            onPress={() => router.push('/(app2)/club/composer-route' as never)}
             accessibilityRole="button"
             accessibilityLabel="Créer votre route"
             haptic="tap"

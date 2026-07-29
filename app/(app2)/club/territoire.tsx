@@ -616,7 +616,7 @@ function CreerTab({ bottomInset }: { bottomInset: number }) {
         eyebrow="PLANIFICATEUR"
         title="Créer une route"
         hint="Composez un itinéraire sinueux depuis votre position, étape par étape."
-        onPress={() => router.push('/(app)/creer-route' as never)}
+        onPress={() => router.push('/(app2)/club/composer-route' as never)}
       />
       <EntryCard
         icon="circuit"

@@ -26,6 +26,19 @@
  * désactivée si « réduire les animations » est actif. Écran hors flux capture.
  *
  * Attribution : « Powered by GraphHopper · © OpenStreetMap » (exigence licence).
+ *
+ * ---
+ *
+ * PORTÉ EN app2 LE 29/07/2026 — LOT 19
+ *
+ * Depuis `app/(app)/creer-route.tsx`. **Le moteur n'a pas bougé d'une ligne** :
+ * seules la coquille d'écran et les jetons changent, du kit V1 (#0B0B0D) vers
+ * le kit V2 « DA Instrument » (#14151A).
+ *
+ * Le fichier destructurait cinq familles de jetons V1 et cinq cent soixante-dix
+ * lignes de styles s'en servaient. Plutôt que de les retoucher une à une — avec
+ * le risque de transcription que cela porte — la correspondance est posée EN
+ * TÊTE, explicite et justifiée, ci-dessous.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -56,13 +69,51 @@ import { findScenicPois } from '@/services/routing/scenicPoiService';
 import { planScenicRoute } from '@/services/routing/scenicRouteService';
 import { saveRoute } from '@/services/routing/scenicRoutesService';
 import type { Curviness, GeoPoint, ScenicPoi, ScenicRoute } from '@/services/routing/types';
-import { theme } from '@/theme/v2';
-import { AppBar } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
-import { Screen } from '@/ui/Screen';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Button, PressScale, colors, motionTokens, radius as radiusV2, space, typo } from '@/ui/v2';
 import { haversineDistance } from '@/utils/geo';
 
-const { palette, fonts, fontSize, spacing, radius } = theme;
+/**
+ * CORRESPONDANCE V1 → V2, POSÉE UNE FOIS
+ *
+ * Les styles de cet écran nomment les jetons V1. Les traduire ici, plutôt que
+ * de réécrire cinq cent soixante-dix lignes, garde le portage lisible et
+ * vérifiable : chaque ligne dit quel jeton V2 remplace lequel, et pourquoi.
+ *
+ * Deux collapsus assumés, faute d'équivalent :
+ *   · `creamSoft` (secondaire fort) rejoint `text.hi` — V2 n'a pas de palier
+ *     entre le texte principal et `text.mid`, nettement plus sombre ;
+ *   · `bodyLight` rejoint `body` — le kit V2 n'a pas de graisse légère.
+ *
+ * Deux paliers de trait sont en revanche PRÉSERVÉS : `line` (bordure de carte)
+ * et `separator` (filet fin) tombent sur `border.card` et `border.hairline`,
+ * qui gardent le même ordre de force.
+ */
+const palette = {
+  card: colors.bg.card,
+  card2: colors.bg.card2,
+  cardBorderProminent: colors.border.strong,
+  cream: colors.text.hi,
+  creamSoft: colors.text.hi,
+  creamMute: colors.text.low,
+  eyebrow: colors.text.dim,
+  // Vert d'ÉTAT (« validé »), pas de donnée de conduite — l'étape retenue.
+  green: colors.qdi.acceleration,
+  line: colors.border.card,
+  separator: colors.border.hairline,
+} as const;
+
+const fonts = { body: typo.body, bodyLight: typo.body, mono: typo.mono } as const;
+const fontSize = { small: 12, bodyLg: 15 } as const;
+const spacing = { sm: space.sm, md: space.md, lg: space.lg, xl: space.xl } as const;
+const radius = { sm: radiusV2.cell, lg: radiusV2.card, pill: radiusV2.pill } as const;
+
+/** Cible tactile regagnée sur les petits glyphes — le kit V1 la portait en jeton. */
+const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 } as const;
+
+/** Durée de révélation du tracé. `reveal` (640 ms) n'existe pas en V2 ; `radar` en est le voisin. */
+const DUREE_REVELATION = motionTokens.radar + 360;
 
 // Repli si la géoloc est refusée : Circuit de Haute Saintonge (Beltoise).
 const BELTOISE: GeoPoint = { lat: 45.2415, lon: -0.0915 };
@@ -90,7 +141,7 @@ const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
 const POI_COLOR: Record<ScenicPoi['kind'], string> = {
   viewpoint: palette.cream,
   water: '#60A5FA', // bleu « eau » (catégorie POI, distinct du bleu trajectoire QDI)
-  pass: theme.dataColors.regularity, // violet non-or (choix V1 conservé, catégorie POI)
+  pass: colors.qdi.regularite, // violet non-or (choix V1 conservé, catégorie POI)
   peak: palette.creamSoft,
 };
 const POI_LABEL: Record<ScenicPoi['kind'], string> = {
@@ -130,7 +181,36 @@ function routeName(route: ScenicRoute, arrival: Arrival | null): string {
   return `Boucle · ${km} km`;
 }
 
+/**
+ * L'en-tête de l'écran.
+ *
+ * Le kit V2 n'a pas d'`AppBar` : les écrans de `app/(app2)` composent le leur.
+ * Celui-ci reprend le patron des autres — chevron de retour à gauche, titre en
+ * mono capitales, largeur symétrique à droite pour que le titre reste centré.
+ */
+function EnTete({ insetsTop, sous }: { insetsTop: number; sous?: string }) {
+  return (
+    <View style={[s.entete, { paddingTop: insetsTop + spacing.sm }]}>
+      <PressScale
+        onPress={() => router.back()}
+        accessibilityLabel="Retour"
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Text style={s.chevron}>‹</Text>
+      </PressScale>
+      <View style={s.enteteCentre}>
+        <Text style={s.enteteTitre} accessibilityRole="header">
+          CRÉER VOTRE ROUTE
+        </Text>
+        {sous ? <Text style={s.enteteSous}>{sous}</Text> : null}
+      </View>
+      <View style={s.enteteEspaceur} />
+    </View>
+  );
+}
+
 export default function CreerRouteScreen() {
+  const insets = useSafeAreaInsets();
   const [start, setStart] = useState<GeoPoint>(BELTOISE);
   const [startSource, setStartSource] = useState<StartSource>('circuit');
   const [pois, setPois] = useState<ScenicPoi[]>([]);
@@ -292,14 +372,14 @@ export default function CreerRouteScreen() {
 
   if (isExpoGo()) {
     return (
-      <Screen scroll={false}>
-        <AppBar title="Créer votre route" onBack={() => router.back()} />
+      <View style={s.root}>
+        <EnTete insetsTop={insets.top} />
         <View style={s.centered}>
           <Text style={s.fallback}>
             La carte n&apos;est disponible que dans l&apos;application installée.
           </Text>
         </View>
-      </Screen>
+      </View>
     );
   }
 
@@ -309,12 +389,8 @@ export default function CreerRouteScreen() {
   const durationMin = route ? Math.round(route.durationMin) : 0;
 
   return (
-    <Screen scroll={false}>
-      <AppBar
-        title="Créer votre route"
-        subtitle="Balade · hors chrono"
-        onBack={() => router.back()}
-      />
+    <View style={s.root}>
+      <EnTete insetsTop={insets.top} sous="Balade · hors chrono" />
 
       {/* Composeur : préférence de sinuosité (eyebrow + hairline, pills mono v2). */}
       <View style={s.composer}>
@@ -331,7 +407,7 @@ export default function CreerRouteScreen() {
                 key={o.value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: on }}
-                hitSlop={theme.hitSlop}
+                hitSlop={HIT_SLOP}
                 onPress={() => {
                   setCurviness(o.value);
                   resetResult();
@@ -516,7 +592,7 @@ export default function CreerRouteScreen() {
           ) : null}
         </View>
       </View>
-    </Screen>
+    </View>
   );
 }
 
@@ -548,7 +624,7 @@ function AnimatedRouteLine({ coordinates }: { coordinates: GeoPoint[] }) {
     });
     const anim = Animated.timing(progress, {
       toValue: 1,
-      duration: theme.motion.reveal + 360,
+      duration: DUREE_REVELATION,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false, // la valeur pilote un découpage JS, pas un style natif
     });
@@ -604,7 +680,7 @@ function CompositionChip({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={removeLabel ?? label}
-      hitSlop={theme.hitSlop}
+      hitSlop={HIT_SLOP}
       onPress={onRemove}
       style={({ pressed }) => [s.chip, pressed && { opacity: 0.7 }]}
     >
@@ -632,6 +708,38 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 /* ------------------------------------------------------------------ */
 
 const s = StyleSheet.create({
+  // — Coquille (portée depuis Screen + AppbBar du kit V1) —
+  root: { flex: 1, backgroundColor: colors.bg.base },
+  entete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  chevron: {
+    fontFamily: fonts.body,
+    fontSize: 28,
+    lineHeight: 30,
+    color: palette.cream,
+    width: 24,
+  },
+  enteteCentre: { flex: 1, alignItems: 'center' },
+  enteteTitre: {
+    fontFamily: fonts.mono,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: palette.creamMute,
+  },
+  enteteSous: {
+    fontFamily: fonts.mono,
+    fontSize: 10,
+    letterSpacing: 1,
+    color: palette.eyebrow,
+    marginTop: 2,
+  },
+  enteteEspaceur: { width: 24 },
+
   centered: {
     flex: 1,
     alignItems: 'center',

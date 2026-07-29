@@ -99,7 +99,9 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   catalogue: 'decouverte',
   'carte-oxv': 'decouverte',
   'belle-route': 'decouverte',
-  'creer-route': 'decouverte',
+  // Le planificateur est porté en app2 le 29/07/2026 : `creer-route` devient
+  // `composer-route`, sous `app/(app2)/club/`.
+  'composer-route': 'decouverte',
   // `mes-routes` retiré le 29/07/2026 : porté en `app/(app2)/club/routes`.
   routes: 'decouverte',
   'creer-trace': 'decouverte',

@@ -834,7 +834,7 @@ const ROUTE_LINKS: { path: string; title: string; desc: string; create: boolean 
     create: false,
   },
   {
-    path: '/(app)/creer-route',
+    path: '/(app2)/club/composer-route',
     title: 'Créer une route',
     desc: 'Votre itinéraire de balade, à composer.',
     create: true,

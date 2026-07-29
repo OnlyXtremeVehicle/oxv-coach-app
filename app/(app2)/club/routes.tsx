@@ -153,7 +153,7 @@ export default function MesRoutesScreen() {
             <View style={styles.videAction}>
               <Button
                 label="Composer une route"
-                onPress={() => router.push('/(app)/creer-route' as never)}
+                onPress={() => router.push('/(app2)/club/composer-route' as never)}
               />
             </View>
           </View>
