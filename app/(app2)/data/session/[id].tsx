@@ -64,6 +64,7 @@ import {
   space,
   tabBarSpace,
   typo,
+  useFirstViewport,
   useReduceMotion,
 } from '@/ui/v2';
 import { formatDeltaMs } from '@/features/data/comparerLogic';
@@ -624,14 +625,16 @@ export default function SeanceScreen() {
               accessibilityLabel="Comparer cette séance à une autre"
             />
           </View>
-          <View style={styles.footerPlain}>
-            <ListRow
-              label="Ouvrir le bilan"
-              divider={false}
-              onPress={() => router.push(`/(app2)/bilan/${data.session.id}` as never)}
-              accessibilityLabel="Ouvrir le bilan de cette séance"
-            />
-          </View>
+          {/*
+            PAS DE SORTIE VERS LE BILAN — le plan de montage l'écrit dans les
+            deux sens : « Le Bilan […] une seule sortie : la Séance » et « La
+            Séance […] aucune sortie vers le Bilan ».
+
+            La circulation voulue est à sens unique : on entre par le Bilan, lu
+            debout au paddock, et on descend vers la Séance, lue assise. Un lien
+            de retour refermerait la boucle et effacerait cette intention. Le
+            geste arrière suffit.
+          */}
         </View>
       </Animated.ScrollView>
 
@@ -1181,8 +1184,22 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
   const [traj, setTraj] = useState<TrajectoryFramePoint[] | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
 
-  // Chargement PARESSEUX unique — les trames sont lourdes (jusqu'à 60k lignes).
+  const reduceTele = useReduceMotion();
+  const { ref: refTele, visible: teleVisible } = useFirstViewport(!reduceTele);
+
+  /**
+   * Chargement différé jusqu'à l'entrée dans la fenêtre.
+   *
+   * Le commentaire disait « chargement PARESSEUX » et l'effet partait au
+   * montage : quatre requêtes lourdes, dont trois passent par
+   * `loadSessionFrames` — lecture paginée jusqu'à soixante mille lignes, sans
+   * cache — pour un écran dont on ne voit que le haut.
+   *
+   * `useFirstViewport` sert déjà à `SectionDelta`. Même motif, aucun module
+   * neuf.
+   */
   useEffect(() => {
+    if (!teleVisible) return;
     let cancelled = false;
     setStatus('loading');
     (async () => {
@@ -1204,7 +1221,7 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, teleVisible]);
 
   const hasAny =
     (gg?.length ?? 0) > 0 ||
@@ -1213,7 +1230,7 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
     (traj?.length ?? 0) > 1;
 
   return (
-    <View>
+    <Animated.View ref={refTele}>
       <View style={styles.tabRow}>
         <Chip label="G-G" active={tab === 'gg'} onPress={() => setTab('gg')} />
         <Chip label="Canaux" active={tab === 'canaux'} onPress={() => setTab('canaux')} />
@@ -1239,7 +1256,7 @@ function TelemetrieSection({ sessionId }: { sessionId: string }) {
       ) : (
         <ReplayTrace traj={traj ?? []} />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -2157,13 +2174,6 @@ const styles = StyleSheet.create({
   footerAccent: {
     borderWidth: 1,
     borderColor: colors.accent,
-    borderRadius: radius.card,
-    paddingHorizontal: space.lg,
-  },
-  footerPlain: {
-    marginTop: space.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.card,
     borderRadius: radius.card,
     paddingHorizontal: space.lg,
   },

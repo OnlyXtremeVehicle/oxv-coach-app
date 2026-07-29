@@ -107,33 +107,37 @@ function parseReseaux(raw: unknown): ReseauxProfil {
   };
 }
 
-/** Erreur PostgREST « colonne inconnue » (migration non appliquée, §5.4). */
-function estColonneInconnue(erreur: { code?: string; message?: string } | null): boolean {
-  return erreur?.code === '42703';
-}
-
 /**
- * Lit la ligne `users` du pilote connecté, avec repli si la migration
- * profil/pavillon n'est pas appliquée (§5.4) : second select sans les
- * colonnes bio / car_number / pavilion_name_optin.
+ * Lit la ligne `users` du pilote connecté.
+ *
+ * ---
+ *
+ * LE REPLI 42703 A ÉTÉ RETIRÉ LE 29/07/2026
+ *
+ * Ce chargement portait un second `select` sans `bio`, `car_number` ni
+ * `pavilion_name_optin`, déclenché sur le code PostgREST « colonne inconnue »
+ * quand la migration n'était pas appliquée.
+ *
+ * Elle l'est. Vérifié en base, pas dans les types générés :
+ * `information_schema.columns` rend les trois colonnes sur `public.users` —
+ * `bio` texte, `car_number` smallint, `pavilion_name_optin` booléen non nul.
+ *
+ * Un repli qui ne peut plus se déclencher est du code mort qui affirme une
+ * incertitude levée : il ferait croire, à la relecture, que le schéma peut
+ * encore varier.
  */
 async function lireLigneUser(
   userId: string
 ): Promise<{ ligne: LigneUserBrute; migrationPavillon: boolean }> {
-  const complet = await supabase.from('users').select(COLONNES_MIGRATION).eq('id', userId).single();
-  if (!complet.error && complet.data) {
-    return { ligne: complet.data as unknown as LigneUserBrute, migrationPavillon: true };
+  const { data, error } = await supabase
+    .from('users')
+    .select(COLONNES_MIGRATION)
+    .eq('id', userId)
+    .single();
+  if (error || !data) {
+    throw new Error(error?.message ?? 'PROFIL_ILLISIBLE');
   }
-  if (!estColonneInconnue(complet.error)) {
-    throw new Error(complet.error?.message ?? 'PROFIL_ILLISIBLE');
-  }
-
-  console.warn('MIGRATION_PROFIL_PAVILLON absente');
-  const repli = await supabase.from('users').select(COLONNES_BASE).eq('id', userId).single();
-  if (repli.error || !repli.data) {
-    throw new Error(repli.error?.message ?? 'PROFIL_ILLISIBLE');
-  }
-  return { ligne: repli.data as unknown as LigneUserBrute, migrationPavillon: false };
+  return { ligne: data as unknown as LigneUserBrute, migrationPavillon: true };
 }
 
 /**
