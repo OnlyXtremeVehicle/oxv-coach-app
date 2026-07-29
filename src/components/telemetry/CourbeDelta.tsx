@@ -10,7 +10,8 @@
  * POURQUOI L'OR, ET POURQUOI D'UNE SEULE COULEUR
  *
  * `heritage.gold` porte déjà la courbe du tour de référence dans la Saison
- * (`app/(app2)/data/saison.tsx`, GoldCurveChart). Le delta cumulé est du TEMPS,
+ * (`src/features/data/saison/SaisonSections.tsx`, `GoldCurveChart` — l'écran a
+ * fusionné dans le hub Data au jalon 4). Le delta cumulé est du TEMPS,
  * comme elle : il hérite de la même couleur, et l'application garde une seule
  * langue pour parler de chrono.
  *

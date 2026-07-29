@@ -66,6 +66,11 @@ import {
 } from '@/features/data/dataHubLogic';
 import { fetchAllSessions } from '@/services/sessionsService';
 import { exportAndShareMyData } from '@/services/dataExportService';
+import {
+  SaisonCircuitSheet,
+  SaisonSections,
+  useSaisonData,
+} from '@/features/data/saison/SaisonSections';
 import { useAuthStore } from '@/store/useAuthStore';
 
 // Le type de session vient du service (mirroir de `TelemetrySession`) — pas
@@ -106,6 +111,9 @@ export default function DataHubScreen() {
   const door = useDoorTransition();
   const header = useCondensingHeader();
   const userId = useAuthStore((s) => s.profile?.id ?? null);
+
+  // La saison, chargée une fois et partagée par les sections et la feuille.
+  const saison = useSaisonData();
 
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -326,6 +334,19 @@ export default function DataHubScreen() {
   // headerStyle = pleine opacité).
   const bigHeader = (
     <View style={styles.headerBlock}>
+      {/*
+        LA SAISON D'ABORD — c'est la fusion du jalon 4.
+
+        « Le hub Data devient la Saison, data/saison fusionne et disparaît. »
+        L'écran de saison existait, faisait treize cents lignes, et AUCUNE route
+        du dépôt n'y menait. Ses quatre lectures ouvrent désormais le hub : la
+        saison est l'objet principal, littéralement, et la liste des séances
+        devient ce qu'elle est — le chemin vers une séance précise.
+      */}
+      <SaisonSections data={saison} />
+
+      <View style={styles.ruptureSeances} />
+
       <Animated.View style={header.headerStyle}>
         <Text style={styles.eyebrow}>VOS SÉANCES</Text>
         <Animated.Text style={[styles.title, header.titleStyle]} accessibilityRole="header">
@@ -425,6 +446,13 @@ export default function DataHubScreen() {
   return (
     <Animated.View style={[styles.root, door]}>
       {body}
+
+      {/*
+        La feuille de circuit se pose en position absolue sur tout l'écran.
+        Montée dans l'en-tête de la liste, elle se placerait par rapport à lui
+        et défilerait avec — d'où sa place ici, hors de la liste.
+      */}
+      <SaisonCircuitSheet data={saison} />
 
       {/* Barre condensée « DATA » (patron Airbnb) — invisible tant qu'on n'a pas scrollé. */}
       <CondensingHeaderBar
@@ -538,6 +566,20 @@ const styles = StyleSheet.create({
   headerBlock: {
     paddingTop: space.md,
     marginBottom: space.md,
+  },
+  /**
+   * La frontière entre la saison et la liste des séances.
+   *
+   * *« Une frontière de mise en page, pas une convention de couleur : une
+   * convention s'oublie, une rupture de fond se voit avant qu'on lise. »*
+   * — plan de montage. Une barre pleine largeur, précédée d'air.
+   */
+  ruptureSeances: {
+    marginTop: space.xxl,
+    marginBottom: space.xl,
+    marginHorizontal: -space.xl,
+    height: 1,
+    backgroundColor: colors.border.card,
   },
   eyebrow: {
     fontFamily: typo.mono,

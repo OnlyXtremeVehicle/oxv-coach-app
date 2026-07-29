@@ -1,6 +1,33 @@
 /**
- * SAISON — lot V2-L3 (Data), écran « votre trajectoire, contre vous-même ».
- * Route : `/(app2)/data/saison`. DA Instrument (kit @/ui/v2, tokens L0).
+ * SAISON — les quatre lectures, extraites de l'écran pour entrer dans le hub.
+ * DA Instrument (kit @/ui/v2, tokens L0).
+ *
+ * ---
+ *
+ * POURQUOI CE FICHIER EXISTE — LA FUSION DU JALON 4
+ *
+ * *« Le hub Data devient la Saison, `data/saison` fusionne et disparaît. Seule
+ * solution qui règle trois défauts d'un coup : l'orphelin disparaît, le hub
+ * cesse d'être une liste sans destination, et "la saison est l'objet
+ * principal" devient vrai littéralement. »* — plan de montage, jalon 4.
+ *
+ * `app/(app2)/data/saison.tsx` était un écran de treize cents lignes **que
+ * personne ne pouvait atteindre** : aucune route du dépôt n'y menait. Son
+ * contenu vit désormais ici, et le hub Data le monte en tête.
+ *
+ * ---
+ *
+ * TROIS EXPORTS, ET LA RAISON DE LA DÉCOUPE
+ *
+ *   `useSaisonData()`   — le chargement, sans rien afficher ;
+ *   `<SaisonSections>`  — les quatre lectures, montées en tête de la liste ;
+ *   `<SaisonCircuitSheet>` — la feuille de détail, montée AILLEURS.
+ *
+ * La feuille est séparée parce qu'elle se pose en position absolue sur tout
+ * l'écran. Rendue dans l'en-tête d'une liste défilante, elle se positionnerait
+ * par rapport à cet en-tête — donc de travers, et elle défilerait avec lui.
+ *
+ * ---
  *
  * SELF-ONLY : rien que les données du pilote courant (useAuthStore). Aucune
  * comparaison à un autre pilote, aucun rang, aucun palmarès — des FAITS sur soi.
@@ -40,7 +67,6 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Path as SvgPath } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   Chip,
@@ -59,9 +85,7 @@ import {
   msToLapLabel,
   radius,
   space,
-  tabBarSpace,
   typo,
-  useDoorTransition,
   useFirstViewport,
   useReduceMotion,
 } from '@/ui/v2';
@@ -184,11 +208,15 @@ function statInputsFrom(stats: PilotStats): PilotStatInput[] {
 
 type LoadStatus = 'loading' | 'ready' | 'error';
 
-export default function SaisonScreen() {
-  const insets = useSafeAreaInsets();
+/**
+ * Le chargement de la saison, sans rien afficher.
+ *
+ * Rendu séparément des vues pour que la feuille de détail — qui vit ailleurs
+ * dans l'arbre — partage le même état que les sections sans le recharger.
+ */
+export function useSaisonData() {
   const { width } = useWindowDimensions();
   const userId = useAuthStore((s) => s.profile?.id ?? null);
-  const door = useDoorTransition();
 
   const [status, setStatus] = useState<LoadStatus>('loading');
   const [reloadKey, setReloadKey] = useState(0);
@@ -337,38 +365,77 @@ export default function SaisonScreen() {
 
   const contentWidth = Math.max(0, width - space.xl * 2 - space.md * 2);
 
+  return {
+    status,
+    userId,
+    reload,
+    chips,
+    selectedCircuitId,
+    setSelectedCircuitId,
+    selectedName,
+    curve,
+    regularity,
+    lapsStatus,
+    statCells,
+    driven,
+    discover,
+    directoryById,
+    contentWidth,
+    focus,
+    setFocus,
+  };
+}
+
+export type SaisonData = ReturnType<typeof useSaisonData>;
+
+/**
+ * Les quatre lectures de la saison.
+ *
+ * **Sans coquille d'écran** : ni vue racine, ni défilement, ni encoche. Elle se
+ * monte en tête d'une liste, et c'est l'hôte qui porte tout cela.
+ */
+export function SaisonSections({ data }: { data: SaisonData }) {
+  const {
+    status,
+    userId,
+    reload,
+    chips,
+    selectedCircuitId,
+    setSelectedCircuitId,
+    selectedName,
+    curve,
+    regularity,
+    lapsStatus,
+    statCells,
+    driven,
+    discover,
+    contentWidth,
+    setFocus,
+  } = data;
+
   // ── États non nominaux ──────────────────────────────────────────────────────
   if (status === 'loading') {
     return (
-      <View style={styles.root}>
-        <View style={{ paddingTop: insets.top + 56, paddingHorizontal: space.xl }}>
-          <StateView state="loading" shape="list" />
-        </View>
-        <Header insetsTop={insets.top} />
+      <View style={styles.stateWrap}>
+        <StateView state="loading" shape="list" />
       </View>
     );
   }
   if (status === 'error') {
     return (
-      <View style={styles.root}>
-        <View style={[styles.stateWrap, { paddingTop: insets.top + 56 }]}>
-          <StateView
-            state="error"
-            errorMessage="Votre saison n'a pas pu être chargée."
-            onRetry={reload}
-          />
-        </View>
-        <Header insetsTop={insets.top} />
+      <View style={styles.stateWrap}>
+        <StateView
+          state="error"
+          errorMessage="Votre saison n'a pas pu être chargée."
+          onRetry={reload}
+        />
       </View>
     );
   }
   if (!userId) {
     return (
-      <View style={styles.root}>
-        <View style={[styles.stateWrap, { paddingTop: insets.top + 56 }]}>
-          <StateView state="empty" emptyMessage="Connectez-vous pour retrouver votre saison." />
-        </View>
-        <Header insetsTop={insets.top} />
+      <View style={styles.stateWrap}>
+        <StateView state="empty" emptyMessage="Connectez-vous pour retrouver votre saison." />
       </View>
     );
   }
@@ -377,196 +444,174 @@ export default function SaisonScreen() {
   const withinPct = regularity?.withinOneSecPct ?? null;
 
   return (
-    <View style={styles.root}>
-      <Animated.ScrollView
-        style={door}
-        contentContainerStyle={{
-          paddingTop: insets.top + 56,
-          paddingBottom: tabBarSpace(insets.bottom) + space.xxl,
-        }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── En-tête éditorial ───────────────────────────────────────────── */}
-        <View style={styles.intro}>
-          <Text style={styles.eyebrow}>SAISON</Text>
-          <Text style={styles.title} accessibilityRole="header">
-            Votre trajectoire, contre vous-même.
-          </Text>
-          <Text style={styles.lede}>
-            Des faits posés côte à côte — jamais un classement, jamais un autre pilote.
-          </Text>
-        </View>
+    <View>
+      {/* ── En-tête éditorial ───────────────────────────────────────────── */}
+      <View style={styles.intro}>
+        <Text style={styles.eyebrow}>SAISON</Text>
+        <Text style={styles.title} accessibilityRole="header">
+          Votre trajectoire, contre vous-même.
+        </Text>
+        <Text style={styles.lede}>
+          Des faits posés côte à côte — jamais un classement, jamais un autre pilote.
+        </Text>
+      </View>
 
-        {/* ── Sélecteur de circuit (pilote courbe + régularité) ───────────── */}
-        {chips.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipRow}
-            style={styles.chipScroll}
-          >
-            {chips.map((c) => (
-              <Chip
+      {/* ── Sélecteur de circuit (pilote courbe + régularité) ───────────── */}
+      {chips.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+          style={styles.chipScroll}
+        >
+          {chips.map((c) => (
+            <Chip
+              key={c.id}
+              label={c.label}
+              active={c.id === selectedCircuitId}
+              onPress={() => setSelectedCircuitId(c.id)}
+            />
+          ))}
+        </ScrollView>
+      ) : null}
+
+      {/* ── 1. Tour de référence — courbe dorée ─────────────────────────── */}
+      <View style={styles.section}>
+        <SectionHeader eyebrow="TOUR DE RÉFÉRENCE" title={selectedName ?? undefined} />
+        <View style={styles.card}>
+          {hasCurve ? (
+            <GoldCurveChart
+              points={curve}
+              width={contentWidth}
+              onPointPress={(i) => router.push(`/bilan/${curve[i].id}` as never)}
+            />
+          ) : (
+            <StateView
+              state="empty"
+              emptyMessage="Aucun tour chronométré ici pour l'instant. Votre référence s'installera séance après séance."
+            />
+          )}
+        </View>
+        {hasCurve ? (
+          <Text style={styles.caption}>
+            Chaque point, une séance. La ligne pointillée dorée, votre record. Touchez un point pour
+            rouvrir la séance.
+          </Text>
+        ) : null}
+      </View>
+
+      {/* ── 2. Régularité — histogramme des écarts ──────────────────────── */}
+      <View style={styles.section}>
+        <SectionHeader eyebrow="RÉGULARITÉ" />
+        <View style={styles.card}>
+          {lapsStatus === 'loading' ? (
+            <StateView state="loading" shape="list" />
+          ) : regularity ? (
+            <>
+              <RegularityHistogram histogram={regularity} width={contentWidth} />
+              <Text style={styles.fact}>
+                <Text style={styles.factNum}>
+                  {withinPct !== null ? `${withinPct.toString().replace('.', ',')} %` : '—'}
+                </Text>{' '}
+                de vos tours à moins d&apos;une seconde de votre meilleur.
+              </Text>
+            </>
+          ) : (
+            <StateView
+              state="empty"
+              emptyMessage="Pas encore de tours lus sur ce circuit — la distribution s'affichera dès les premières boucles."
+            />
+          )}
+        </View>
+      </View>
+
+      {/* ── 3. Vos faits — statistiques consolidées ─────────────────────── */}
+      <View style={styles.section}>
+        <SectionHeader eyebrow="VOS FAITS" />
+        {statCells.length > 0 ? (
+          <StatsGrid cells={statCells} />
+        ) : (
+          <View style={styles.card}>
+            <StateView state="empty" emptyMessage="Vos statistiques se consolideront ici." />
+          </View>
+        )}
+      </View>
+
+      {/* ── 4. Circuits — roulés + à découvrir ──────────────────────────── */}
+      <View style={styles.section}>
+        <SectionHeader eyebrow="CIRCUITS" count={driven.length > 0 ? driven.length : undefined} />
+        {driven.length > 0 ? (
+          <Stagger style={styles.circuitStack}>
+            {driven.map((c) => (
+              <DrivenCircuitCard
                 key={c.id}
-                label={c.label}
-                active={c.id === selectedCircuitId}
-                onPress={() => setSelectedCircuitId(c.id)}
+                circuit={c}
+                onPress={() => setFocus({ id: c.id, name: c.name, driven: c })}
               />
             ))}
-          </ScrollView>
-        ) : null}
-
-        {/* ── 1. Tour de référence — courbe dorée ─────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader eyebrow="TOUR DE RÉFÉRENCE" title={selectedName ?? undefined} />
+          </Stagger>
+        ) : (
           <View style={styles.card}>
-            {hasCurve ? (
-              <GoldCurveChart
-                points={curve}
-                width={contentWidth}
-                onPointPress={(i) => router.push(`/bilan/${curve[i].id}` as never)}
-              />
-            ) : (
-              <StateView
-                state="empty"
-                emptyMessage="Aucun tour chronométré ici pour l'instant. Votre référence s'installera séance après séance."
-              />
-            )}
+            <StateView
+              state="empty"
+              emptyMessage="Vos circuits roulés apparaîtront ici, séance après séance."
+            />
           </View>
-          {hasCurve ? (
-            <Text style={styles.caption}>
-              Chaque point, une séance. La ligne pointillée dorée, votre record. Touchez un point
-              pour rouvrir la séance.
-            </Text>
-          ) : null}
-        </View>
+        )}
 
-        {/* ── 2. Régularité — histogramme des écarts ──────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader eyebrow="RÉGULARITÉ" />
-          <View style={styles.card}>
-            {lapsStatus === 'loading' ? (
-              <StateView state="loading" shape="list" />
-            ) : regularity ? (
-              <>
-                <RegularityHistogram histogram={regularity} width={contentWidth} />
-                <Text style={styles.fact}>
-                  <Text style={styles.factNum}>
-                    {withinPct !== null ? `${withinPct.toString().replace('.', ',')} %` : '—'}
-                  </Text>{' '}
-                  de vos tours à moins d&apos;une seconde de votre meilleur.
-                </Text>
-              </>
-            ) : (
-              <StateView
-                state="empty"
-                emptyMessage="Pas encore de tours lus sur ce circuit — la distribution s'affichera dès les premières boucles."
-              />
-            )}
-          </View>
-        </View>
-
-        {/* ── 3. Vos faits — statistiques consolidées ─────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader eyebrow="VOS FAITS" />
-          {statCells.length > 0 ? (
-            <StatsGrid cells={statCells} />
-          ) : (
-            <View style={styles.card}>
-              <StateView state="empty" emptyMessage="Vos statistiques se consolideront ici." />
-            </View>
-          )}
-        </View>
-
-        {/* ── 4. Circuits — roulés + à découvrir ──────────────────────────── */}
-        <View style={styles.section}>
-          <SectionHeader eyebrow="CIRCUITS" count={driven.length > 0 ? driven.length : undefined} />
-          {driven.length > 0 ? (
-            <Stagger style={styles.circuitStack}>
-              {driven.map((c) => (
-                <DrivenCircuitCard
+        {discover.length > 0 ? (
+          <>
+            <Text style={styles.subEyebrow}>À DÉCOUVRIR</Text>
+            <View style={styles.discoverRow}>
+              {discover.map((c) => (
+                <DiscoverCircuitCard
                   key={c.id}
                   circuit={c}
-                  onPress={() => setFocus({ id: c.id, name: c.name, driven: c })}
+                  onPress={() => setFocus({ id: c.id, name: c.name, driven: null })}
                 />
               ))}
-            </Stagger>
-          ) : (
-            <View style={styles.card}>
-              <StateView
-                state="empty"
-                emptyMessage="Vos circuits roulés apparaîtront ici, séance après séance."
-              />
             </View>
-          )}
+          </>
+        ) : null}
+      </View>
 
-          {discover.length > 0 ? (
-            <>
-              <Text style={styles.subEyebrow}>À DÉCOUVRIR</Text>
-              <View style={styles.discoverRow}>
-                {discover.map((c) => (
-                  <DiscoverCircuitCard
-                    key={c.id}
-                    circuit={c}
-                    onPress={() => setFocus({ id: c.id, name: c.name, driven: null })}
-                  />
-                ))}
-              </View>
-            </>
-          ) : null}
-        </View>
-
-        {/* ── Pied — votre signature ──────────────────────────────────────── */}
-        <View style={styles.section}>
-          <PressScale
-            onPress={() => router.push('/signature' as never)}
-            accessibilityLabel="Votre signature"
-          >
-            <View style={styles.signatureRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.signatureLabel}>Votre signature</Text>
-                <Text style={styles.signatureSub}>
-                  La forme de votre saison, d&apos;un seul tenant.
-                </Text>
-              </View>
-              <Chevron />
+      {/* ── Pied — votre signature ──────────────────────────────────────── */}
+      <View style={styles.section}>
+        <PressScale
+          onPress={() => router.push('/signature' as never)}
+          accessibilityLabel="Votre signature"
+        >
+          <View style={styles.signatureRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.signatureLabel}>Votre signature</Text>
+              <Text style={styles.signatureSub}>
+                La forme de votre saison, d&apos;un seul tenant.
+              </Text>
             </View>
-          </PressScale>
-        </View>
-      </Animated.ScrollView>
-
-      <Header insetsTop={insets.top} />
-
-      {/* Sheet détail circuit — records perso + écosystème */}
-      <CircuitSheet
-        focus={focus}
-        directory={focus ? (directoryById.get(focus.id) ?? null) : null}
-        onClose={() => setFocus(null)}
-      />
+            <Chevron />
+          </View>
+        </PressScale>
+      </View>
     </View>
   );
 }
 
-// ===========================================================================
-// En-tête fixe
-// ===========================================================================
-
-function Header({ insetsTop }: { insetsTop: number }) {
+/**
+ * La feuille de détail d'un circuit — records perso et écosystème.
+ *
+ * **Se monte au niveau de l'ÉCRAN, jamais dans l'en-tête de la liste.** Elle se
+ * pose en position absolue sur toute la surface : rendue dans un en-tête
+ * défilant, elle se placerait par rapport à lui et partirait avec le
+ * défilement.
+ */
+export function SaisonCircuitSheet({ data }: { data: SaisonData }) {
+  const { focus, directoryById, setFocus } = data;
   return (
-    <View style={[styles.headerFixed, { height: insetsTop + 48, paddingTop: insetsTop }]}>
-      <PressScale
-        onPress={() => router.back()}
-        accessibilityLabel="Retour"
-        // Glyphe de 20 pt : hitSlop 12 pour atteindre la cible de 44 pt.
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
-        <BackGlyph />
-      </PressScale>
-      <Text style={styles.headerTitle} accessibilityRole="header">
-        SAISON
-      </Text>
-      <View style={styles.headerSpacer} />
-    </View>
+    <CircuitSheet
+      focus={focus}
+      directory={focus ? (directoryById.get(focus.id) ?? null) : null}
+      onClose={() => setFocus(null)}
+    />
   );
 }
 
@@ -963,21 +1008,6 @@ function CircuitSheet({
 // Glyphes
 // ===========================================================================
 
-function BackGlyph() {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <SvgPath
-        d="M15 5 L8.5 12 L15 19"
-        stroke={colors.text.hi}
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </Svg>
-  );
-}
-
 function Chevron() {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24">
@@ -1003,8 +1033,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.base,
   },
   stateWrap: {
-    flex: 1,
-    paddingHorizontal: space.xl,
+    // Marge laterale fournie par l hote.
+    paddingVertical: space.xl,
   },
   headerFixed: {
     position: 'absolute',
@@ -1029,7 +1059,7 @@ const styles = StyleSheet.create({
     width: 20,
   },
   intro: {
-    paddingHorizontal: space.xl,
+    // Marge laterale fournie par l hote.
   },
   eyebrow: {
     fontFamily: typo.mono,
@@ -1053,6 +1083,8 @@ const styles = StyleSheet.create({
   },
   chipScroll: {
     marginTop: space.xl,
+    // Les puces defilent jusqu au bord : on annule la marge de l hote.
+    marginHorizontal: -space.xl,
   },
   chipRow: {
     flexDirection: 'row',
@@ -1060,7 +1092,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.xl,
   },
   section: {
-    paddingHorizontal: space.xl,
+    // Marge laterale fournie par l hote.
     marginTop: space.xxl,
   },
   card: {

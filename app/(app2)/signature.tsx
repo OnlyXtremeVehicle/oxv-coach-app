@@ -330,8 +330,9 @@ export default function SignatureScreen() {
               </View>
             ) : null}
 
-            {/* Saison complète — cible provisoire /(app2)/data : le lot L3
-                apportera la vraie route /data/saison (commentaire de contrat). */}
+            {/* Saison complète — la cible est DÉFINITIVE depuis la fusion du
+                jalon 4 : « le hub Data devient la Saison, data/saison fusionne
+                et disparaît ». Ce n'est plus un renvoi provisoire. */}
             <View style={styles.sectionGap}>
               <ListRow
                 icon="data"
