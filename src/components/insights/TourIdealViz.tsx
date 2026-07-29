@@ -27,6 +27,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/theme/v2';
+import { ProvenanceTag } from '@/ui/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import type { IdealLap } from '@/circuit/sessionInsights';
 
@@ -113,6 +114,21 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
           <Text style={styles.heroNum}>{idealStr}</Text>
           <Text style={styles.heroLabel}>TOUR IDÉAL · {deltaStr} SOUS VOTRE MEILLEUR RÉEL</Text>
         </View>
+
+        {/*
+          « Tour idéal sur 50 à 200 micro-secteurs, ANNONCÉ THÉORIQUE » — dossier
+          de montage, phase 4septies.
+
+          Le mot « théorique » ne vivait que dans l'en-tête de ce fichier. À
+          l'écran, ce chrono s'affichait en chiffre héros, sans rien dire de sa
+          nature : un temps que personne n'a jamais réalisé, présenté comme la
+          mesure principale de la séance.
+
+          L'étiquette vient du registre `src/telemetry/provenance.ts`, qui classe
+          `delta.idealLapTime` en [I] et nomme l'hypothèse — les meilleurs
+          secteurs supposés combinables dans un même tour.
+        */}
+        <ProvenanceTag cle="delta.idealLapTime" />
 
         <View style={styles.refRow}>
           <Text style={styles.refKey}>Meilleur tour réel</Text>

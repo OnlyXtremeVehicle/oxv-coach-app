@@ -19,6 +19,7 @@ export * from './media';
 
 // Composants noyau
 export { StateView } from './StateView';
+export { ProvenanceTag } from './ProvenanceTag';
 export { SectionHeader } from './SectionHeader';
 export { Chip } from './Chip';
 export { ListRow } from './ListRow';
