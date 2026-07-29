@@ -57,6 +57,15 @@ export interface TrameBrute {
   elapsedMs: number;
   /** Vitesse en km/h. `null` = non mesurée. */
   speedKmh: number | null;
+  /**
+   * Vitesse de lacet en RADIANS par seconde. `null` ou absent = pas de
+   * gyroscope exploitable sur cette trame.
+   *
+   * La conversion depuis les degrés que stocke la base est faite en amont, par
+   * `frameRowToSessionFrame`. Ce module ne convertit pas d'angle : il reçoit
+   * déjà la bonne unité, et le nom du champ le dit.
+   */
+  yawRateRadS?: number | null;
 }
 
 /** Mètres par seconde depuis des kilomètres par heure. */
@@ -81,7 +90,13 @@ export function versSamples(trames: readonly TrameBrute[]): Sample[] {
     if (f.speedKmh == null) continue;
     if (!Number.isFinite(f.speedKmh) || f.speedKmh < 0) continue;
     if (!Number.isFinite(f.elapsedMs)) continue;
-    out.push({ t: f.elapsedMs / 1000, speed: msDepuisKmh(f.speedKmh) });
+    const s: Sample = { t: f.elapsedMs / 1000, speed: msDepuisKmh(f.speedKmh) };
+    // Le lacet ne se pose que s'il est mesuré. `lateralAcceleration` et
+    // `curvature` rendent `null` sur un champ absent — c'est le comportement
+    // voulu, et il vaut mieux qu'un zéro qui dirait « la voiture va tout droit ».
+    const w = f.yawRateRadS;
+    if (w != null && Number.isFinite(w)) s.yawRate = w;
+    out.push(s);
   }
   return out.sort((a, b) => a.t - b.t);
 }

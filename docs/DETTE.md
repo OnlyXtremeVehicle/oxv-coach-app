@@ -335,3 +335,68 @@ n'ai rien changé** — un changement de fonte est une décision de doctrine, et
 celle-ci a un prix.
 
 **Traité par** : décision fondateur.
+
+---
+
+## D-13 · `total_frames` se trompe dans les deux sens
+
+**Constaté le 29/07/2026, jalon 4, phase 4septies.**
+
+La colonne dénormalisée `telemetry_sessions.total_frames` ne correspond à rien
+de vérifiable aujourd'hui :
+
+- **dix séances** en statut `completed` annoncent des trames qu'elles n'ont pas
+  (par exemple `f13545a1` : `total_frames = 223`, zéro ligne dans
+  `telemetry_frames`) ;
+- la **seule** séance qui porte de vraies trames (`7f40d5ad`, 53 lignes)
+  affiche `total_frames = 0`.
+
+La réconciliation ne tourne qu'au statut `completed` (`captureSyncQueue.ts`,
+`execComplete`), donc jamais pour une séance interrompue — d'où le second cas.
+
+**Conséquence** : tout portillon posé sur `total_frames` ouvrirait un niveau
+vide ou fermerait un niveau qui a de quoi s'ouvrir. `etatDepuisSeance` compte
+les trames reçues et **ne lit jamais cette colonne** ; sa signature l'impose.
+
+**Traité par** : hors lot. La réconciliation vit dans `captureSyncQueue.ts`,
+fichier sous votre garde — je n'y touche pas sans votre accord.
+
+---
+
+## D-14 · La détection de tours a produit un tour de 22 millisecondes
+
+**Constaté le 29/07/2026, jalon 4, phase 4septies.**
+
+L'unique ligne de `laps` en production : `duration_seconds = 0,022`,
+`max_speed_kmh = 1,39`, `distance_meters = 0`, `start_lat = 0,0000000`,
+`is_outlap = true`.
+
+Une latitude nulle et une distance nulle ne décrivent pas un franchissement de
+ligne : c'est un artefact de détection, sur une séance de test à l'arrêt.
+
+**Conséquence** : contenue pour l'affichage — `estTourChronometre` écarte les
+tours de sortie et de rentrée, et le chrono ne s'ouvre donc pas sur cette
+ligne. Mais **le drapeau `is_outlap` est ce qui sauve** ; un artefact du même
+genre sans ce drapeau passerait.
+
+**Traité par** : à revoir avec la première capture réelle en roulage. Un seuil
+de plausibilité serait une invention tant qu'aucune séance vraie n'existe.
+
+---
+
+## D-15 · Le delta ne lit que le repli, pas la source primaire
+
+**Constaté le 29/07/2026, jalon 4, phase 4septies.**
+
+`analyzeSessionService` pose une priorité explicite : source 1 = fichier `.ubx`
+local, source 2 = `telemetry_frames` en base (`AnalyzeSourceKind`).
+
+`deltaService` et `etatDepuisSeance` ne lisent que la base. Un appareil qui
+porte un fichier UBX local alimenterait donc les niveaux avec zéro ligne, et
+tout s'afficherait fermé alors que la donnée existe sur le téléphone.
+
+**Conséquence** : sous-estimation de ce qui est disponible. Jamais une valeur
+fausse — l'absence s'affiche comme telle.
+
+**Traité par** : hors lot. Demande d'unifier les deux sources derrière une
+seule façade, ce qui touche à la chaîne de capture.

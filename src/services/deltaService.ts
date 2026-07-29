@@ -17,12 +17,20 @@
  *
  * IL NE FABRIQUE RIEN
  *
- * `telemetry_frames` est vide en production tant que la première capture réelle
- * n'a pas eu lieu. Ce service rendra donc `null` avec une raison, et l'écran
- * dira l'absence — comme les six lectures d'insight du lot 13.
+ * *Correction du 29/07 : j'avais écrit ici que `telemetry_frames` était vide en
+ * production. C'est faux — la table porte 53 trames.* Ce qui est vrai est plus
+ * précis, et pire : **aucune séance ne porte à la fois des trames et un tour.**
+ * Les 53 trames sont sur une séance sans tour ; l'unique ligne `laps` est sur
+ * une séance sans trame.
  *
- * C'est voulu. Un delta inventé sur des tours fabriqués serait indiscernable
- * d'un delta réel, et le premier vrai tour ne se verrait pas arriver.
+ * `loadLapFrames` rendra donc bien un tableau vide sur toute séance — mais pour
+ * cette raison-là, et pas parce que rien n'aurait jamais été capturé. La
+ * distinction compte le jour où l'on jugera un écran éteint.
+ *
+ * Ce service rendra `null` avec sa raison, et l'écran dira l'absence — comme
+ * les six lectures d'insight du lot 13. C'est voulu : un delta inventé sur des
+ * tours fabriqués serait indiscernable d'un delta réel, et le premier vrai tour
+ * ne se verrait pas arriver.
  */
 
 import { tousDeuxComparables, versSerieDistance, type TrameBrute } from '@/telemetry/adaptation';

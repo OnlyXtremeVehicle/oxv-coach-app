@@ -11,7 +11,16 @@ import type { SessionFrame } from '@/services/sessionTelemetryMapping';
  * du min-max, il est indépendant du référentiel géographique réel.
  */
 function frame(lat: number | null, lon: number | null): SessionFrame {
-  return { elapsedMs: 0, lat, lon, speedKmh: null, gLat: null, gLong: null, gVert: null };
+  return {
+    elapsedMs: 0,
+    lat,
+    lon,
+    speedKmh: null,
+    gLat: null,
+    gLong: null,
+    gVert: null,
+    yawRateRadS: null,
+  };
 }
 
 const FULL: CornerWindow = { startProgress: 0, endProgress: 1 };

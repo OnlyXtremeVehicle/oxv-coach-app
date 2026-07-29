@@ -83,33 +83,79 @@ s'efface tant que rien n'est mesuré.
 
 ---
 
+### Les cinq niveaux de restitution — phase 4septies
+
+**Vous avez tranché l'axe : du moins technique au plus technique.** Le dossier
+de conception a fourni la matière — sa séquence du coach, *delta → vitesse →
+dérivés → segmentation par virage*, est elle-même un gradient de technicité.
+
+| | Niveau | Ce qu'on y lit | Ce qui l'ouvre |
+|---|---|---|---|
+| 1 | Le chrono | Temps au tour, nombre de tours, vitesse la plus haute | Un tour chronométré |
+| 2 | La régularité | Le milieu et l'étalement de vos tours | Trois tours chronométrés |
+| 3 | Le delta et la trace | Où le temps se fait, et la forme de la trace — freinages compris | Deux tours de même longueur |
+| 4 | Les phases du virage | Découpage droites/virages, point le plus lent, relance | La vitesse de lacet |
+| 5 | L'enveloppe | Le nuage des accélérations et sa forme | Les deux accélérations |
+
+**Ce ne sont pas des paliers, et c'est la propriété centrale.** Chaque niveau
+s'ouvre sur SA condition, sans aucun égard aux autres : avec deux tours et un
+gyroscope, `phases` est ouvert pendant que `regularite` est fermé. On ne peut
+pas les gravir. Le test `niveaux.test.ts` en fait la démonstration et tombera
+si quelqu'un les enchaîne un jour.
+
+Le rang n'ordonne que l'affichage. Le mot « niveau » n'atteint jamais l'écran :
+les titres nomment le sujet.
+
+### Le tuyau coupé, et sa réparation
+
+`telemetry_frames` porte `rotation_x/y/z` depuis toujours, la capture les écrit
+(`captureFrameMapping`), et **les 53 trames de production les portent toutes**.
+Mais aucune requête de lecture ne sélectionnait `rotation_z`.
+
+Conséquence : `aLat`, `curvature` et tout le découpage en virages étaient nuls
+par construction. `segmentLap`, recevant une courbure entièrement nulle,
+rendait **un segment « droite » couvrant le tour entier**. Le niveau 4 n'aurait
+jamais pu s'ouvrir — non par manque de mesure, mais par une liste de colonnes.
+
+La conversion qui manquait porte un facteur 57,3 : la base stocke des **degrés**
+par seconde, la banque attend des **radians**. Câblé tel quel, le segmenteur
+aurait lu le tour entier comme un seul virage — en restant « cohérent avec
+lui-même ». Le champ s'appelle donc `yawRateRadS`, et le test part d'une ligne
+en degrés pour vérifier qu'un virage de 100 m rend bien 100 m.
+
+### Ce qu'un tour n'est pas
+
+L'unique ligne `laps` de production est un `is_outlap` de **22 millisecondes à
+1,39 km/h sur zéro mètre**. Comptée, elle ouvrait le chrono et lui faisait
+afficher 22 ms en chiffre roi. `estTourChronometre` écarte sorties et rentrées
+de stand — voir `DETTE.md` D-14, le drapeau est ce qui sauve.
+
+---
+
 ## Ce qui reste
 
 | Lot | État | Ce qui bloque |
 |---|---|---|
-| Brancher la banque de calculs aux écrans | À faire | Rien. C'est le cœur du jalon. |
-| Courbe de delta, virages nommés dessus | À faire | Dépend du précédent. |
+| Courbe de delta, virages nommés dessus | À faire | Le service existe ; aucun écran ne l'appelle. |
+| Section des cinq niveaux à l'écran | À faire | La logique est faite et testée, le rendu non. |
 | Bande — *functional boxplot* en base distance | À faire | Le rendu n'existe pas ; la logique seule serait inerte. |
 | Bascule superposition → bande au-delà de 20-30 tours | À faire | Idem : sans les deux formes, la bascule ne bascule rien. |
-| Les cinq niveaux ouverts par la donnée | À faire | **Le dossier ne les nomme pas.** Aucun document du dépôt ne les définit. |
 | Les trois écrans — Bilan, Séance, Saison | À faire | La Saison absorbe le hub Data ; `data/saison` disparaît. |
 
 ### Acceptation du jalon
 
-1. Le delta se referme à zéro — **fait**.
+1. Le delta se referme à zéro — **fait**, et depuis les trames réelles.
 2. Temps de rendu de la Saison au 95ᵉ centile, jamais en moyenne — appareil.
 3. Mémorisation de position au retour de feuille — appareil.
 4. Six lectures sur six en `absent` — **fait**.
 5. Seuil réel de bascule superposition-bande, mesuré — demande les deux formes.
 
----
+### Ce qu'il faut savoir avant Valence
 
-## La question ouverte
+Les 53 trames de production portent une vitesse de lacet comprise entre 0,84 et
+0,90 °/s, soit ~0,015 rad/s : à 30 m/s, une courbure d'environ 0,0005 /m, très
+loin du seuil d'entrée en virage. **Le niveau 4 s'affichera donc encore fermé
+sur ce jeu** — cette fois légitimement, comme condition de donnée et non comme
+tuyau coupé. C'est une séance à l'arrêt, pas un roulage.
 
-**Quels sont les cinq niveaux ?** Le plan écrit « cinq niveaux ouverts par la
-donnée · un niveau fermé reste visible, éteint, avec son compteur », sans les
-nommer. Le catalogue d'insights porte trois tiers — N2, N3, N4 — pas cinq. Rien
-dans `docs/` ne les définit.
-
-Je ne les invente pas. La règle d'ouverture est claire et se construira en une
-séance ; la liste, elle, vous appartient.
+Ne pas lire cet écran éteint comme le retour du défaut.

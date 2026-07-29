@@ -38,7 +38,7 @@ function trame(
   gLong: number | null,
   speedKmh: number | null
 ): SessionFrame {
-  return { elapsedMs, lat: null, lon: null, speedKmh, gLat, gLong, gVert: null };
+  return { elapsedMs, lat: null, lon: null, speedKmh, gLat, gLong, gVert: null, yawRateRadS: null };
 }
 
 /** Cadence nominale RaceBox : 25 Hz → 40 ms. Les tests ne la SUPPOSENT jamais. */

@@ -64,7 +64,12 @@ export async function loadSessionFrames(
   for (let from = 0; from < maxFrames; from += PAGE) {
     const { data, error } = await supabase
       .from('telemetry_frames')
-      .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z')
+      // `rotation_z` = vitesse de lacet. Sans elle, `aLat`, `curvature` et tout
+      // le découpage en virages sont nuls par construction : la colonne est
+      // écrite par la capture depuis le premier jour et n'était jamais relue.
+      .select(
+        'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
+      )
       .eq('session_id', sessionId)
       .order('elapsed_ms', { ascending: true })
       .range(from, Math.min(from + PAGE, maxFrames) - 1);
@@ -135,7 +140,9 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
   // 3. Filtre les frames sur la fenêtre du tour
   const { data, error } = await supabase
     .from('telemetry_frames')
-    .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z')
+    .select(
+      'elapsed_ms, latitude, longitude, speed_kmh, g_force_x, g_force_y, g_force_z, rotation_z'
+    )
     .eq('session_id', sessionId)
     .gte('elapsed_ms', lapStartMs)
     .lte('elapsed_ms', lapEndMs)

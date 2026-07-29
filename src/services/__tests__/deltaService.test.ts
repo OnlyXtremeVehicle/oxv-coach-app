@@ -9,8 +9,8 @@
  * `computeDelta` est juste — `delta.test.ts` le prouve, et `adaptation.test.ts`
  * prouve que la chaîne tient depuis la forme réellement stockée. Ce qui reste à
  * vérifier, c'est ce que le service fait quand il n'y a RIEN — et c'est le cas
- * courant : `telemetry_frames` est vide tant que la première capture réelle n'a
- * pas eu lieu.
+ * courant : aucune séance de production ne porte à la fois des trames et un
+ * tour, donc `loadLapFrames` rend un tableau vide sur toutes.
  *
  * Un service qui rendrait zéro plutôt que null dirait « les deux tours sont
  * identiques ». C'est un fait, et ce n'est pas celui qu'on connaît.
@@ -36,6 +36,7 @@ function tour(kmh: number, secondes: number) {
     gLat: null,
     gLong: null,
     gVert: null,
+    yawRateRadS: null,
   }));
 }
 

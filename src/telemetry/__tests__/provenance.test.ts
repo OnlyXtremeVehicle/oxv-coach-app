@@ -31,10 +31,24 @@ import {
 
 const DOSSIER = join(__dirname, '..');
 
-/** Les modules de calcul, hors le registre lui-même. */
+/**
+ * Modules de `src/telemetry/` qui ne PRODUISENT aucune grandeur.
+ *
+ * Le registre se décrit lui-même ; `niveaux` déclare quelles grandeurs chaque
+ * niveau de restitution met à l'écran, sans en calculer une seule. Exiger d'eux
+ * une entrée au registre n'aurait aucun sens.
+ *
+ * Cette liste est nommée plutôt que devinée : un module nouveau fait tomber le
+ * test tant que quelqu'un n'a pas tranché s'il produit ou non. C'est la même
+ * exigence que pour la banque, prise par l'autre bout.
+ */
+const NON_PRODUCTEURS = ['provenance', 'niveaux'];
+
+/** Les modules de calcul, hors ceux qui ne produisent rien. */
 const MODULES = readdirSync(DOSSIER)
-  .filter((f) => f.endsWith('.ts') && f !== 'provenance.ts')
-  .map((f) => f.replace(/\.ts$/, ''));
+  .filter((f) => f.endsWith('.ts'))
+  .map((f) => f.replace(/\.ts$/, ''))
+  .filter((m) => !NON_PRODUCTEURS.includes(m));
 
 describe('le registre couvre la banque', () => {
   /**

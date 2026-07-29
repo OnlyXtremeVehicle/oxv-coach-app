@@ -111,6 +111,14 @@ export const BANQUE: readonly Grandeur[] = [
 
   // ---- [D] ce qui se déduit sans rien supposer ----------------------------
   {
+    cle: 'laps.lapTime',
+    nom: 'Temps au tour',
+    prov: 'D',
+    source: 'Écart entre deux franchissements de la ligne d’arrivée, horodatés par le boîtier.',
+    convention:
+      'Le franchissement suit une ligne déclarée. Une ligne mal placée décale tous les tours de la même façon — leurs écarts restent justes, leurs valeurs absolues non.',
+  },
+  {
     cle: 'kinematics.distance',
     nom: 'Distance parcourue',
     prov: 'D',
