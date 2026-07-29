@@ -75,13 +75,18 @@ de provisionnement.
 | Bande — *functional boxplot* en base distance | `src/telemetry/bande.ts` + `BandeTours.tsx` |
 | Bascule superposition → bande | `SectionBande.tsx` |
 | Huitième ancre de la Séance | `app/(app2)/data/session/[id].tsx` |
+| **Fusion hub Data → Saison** | `src/features/data/saison/SaisonSections.tsx` |
+
+La fusion supprime `app/(app2)/data/saison.tsx` — treize cents lignes que
+**aucune route du dépôt n'atteignait**. Ses quatre lectures ouvrent désormais le
+hub, séparées de la liste des séances par une rupture de fond pleine largeur.
+Elle solde à elle seule cinq entrées d'inventaire, comptées dans deux jalons.
 
 ### Reste
 
 | Lot | Ce qui bloque |
 |---|---|
-| Fusion hub Data → Saison | rien — c'est le prochain gros lot |
-| Le carnet en section séparée | dépend de la fusion |
+| Le carnet en section séparée | rien — la rupture de fond est posée, le déplacement reste |
 | Strip map | rien, mais tout est à écrire |
 | Petits multiples / sparklines | rien — les primitives existent (`vizMath.ts`) |
 | Bandes de saison en rampe séquentielle | rien — `src/render/ramp.ts` existe, sans appelant |
