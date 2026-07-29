@@ -13,10 +13,17 @@ Le plan demande quatre choses : l'état des quatre-vingt-un écrans, le résulta
 des treize vérifications sur appareil, ce qui reste bloqué par une dépendance
 externe, et ce qui n'a jamais pu être testé faute de données réelles.
 
-**Trois des quatre sont renseignées ici. La première ne l'est pas.** Un
-inventaire écran par écran des quatre-vingt-un a été commencé et rendu à
-l'échelle du LOT, pas de l'écran. Le compléter demande une passe dédiée ; le
-présenter comme fait serait exactement le travers que ce programme combat.
+**Trois des quatre sont renseignées ici. La première l'est désormais en partie.**
+L'inventaire avait été rendu à l'échelle du LOT, pas de l'écran. La passe dédiée
+a été faite le 29/07 pour **l'arbre V1 seul** — les 71 écrans de `app/(app)`,
+classés un par un dans [`J5_ARBRE_V1.md`](J5_ARBRE_V1.md). Les autres groupes
+n'ont toujours pas d'inventaire écran par écran.
+
+Et le nombre de quatre-vingt-un est à corriger : `app/` contient **205 fichiers
+de route** hors layouts, répartis en neuf groupes — 71 en `(app)`, 40 en
+`(app2)`, 36 en `(coach)`, 30 en `(admin)`, le reste en `(partner)`, `(pro)`,
+`(auth)` et les deux onboardings. Le chiffre du plan compte les écrans SPÉCIFIÉS,
+pas les fichiers existants.
 
 Et il faut redire ce que le plan met en dernière ligne :
 
@@ -168,21 +175,31 @@ Quand un commentaire décrit une garde, la vérifier vaut mieux que le croire.
 
 ## 7 · Ce qui vous revient
 
-**Trois propositions de schéma**, écrites et non appliquées :
+**Trois propositions de schéma** restent écrites et non appliquées :
 
-- `PROPOSITION_L18_vehicules_colonnes.sql` — `is_primary` et la masse, un seul arbitrage sur une seule table ;
-- `PROPOSITION_L21j_fuseau_pilote.sql` — `users.timezone`, pour que le report nocturne ne suppose pas Paris ;
-- `PROPOSITION_L21s_drop_duels.sql` — la table porte l'idée d'un vainqueur ; zéro ligne, zéro lecteur.
+- `PROPOSITION_L21s_drop_duels.sql` — la table porte l'idée d'un vainqueur ; zéro ligne, zéro lecteur. **Destructive : tenue par la règle 0.5**, pas de suppression avant sauvegarde vérifiée ;
+- `PROPOSITION_L10_purge_completude.sql` ;
+- `PROPOSITION_L21_consentement_premiere_fois.sql`.
 
-Plus celles restées de la semaine : `D1_is_coach_of_role`, `L10_purge_completude`,
-`L21_consentement_premiere_fois`, `L27bis_creneau_en_attente`, `T2_thumbhash`.
+Les cinq autres ont été **appliquées en production le 29/07**, sur votre décision
+« les additives, pas les destructives » : `d1_is_coach_of_exige_le_role`,
+`l18_vehicules_is_primary_et_masse`, `l21j_fuseau_horaire_pilote`,
+`t2_thumbhash_session_media`, `l27bis_creneau_en_attente_de_validation`.
+La première fermait une faille réelle : `is_coach_of()` ne vérifiait pas
+`users.role`.
 
-**Sept arbitrages** sur les orphelins de l'arbre V1 : porter, ou abandonner. Le
-lot 21 — la suppression de l'arbre V1, 77 routes et 37 551 lignes — attend ces
-sept décisions.
+**Sept arbitrages** sur l'arbre V1 : ils sont désormais posés sur pièces dans
+[`J5_ARBRE_V1.md`](J5_ARBRE_V1.md), avec pour chaque écran sa taille, ses entrées
+et son équivalent. Le lot 21 — **71 écrans et 35 488 lignes**, mesurés — attend
+ces sept décisions. Le chiffre de 77 routes / 37 551 lignes annoncé plus haut
+dans la semaine était une estimation ; celui-ci est un comptage.
+
+Ce classement a produit **deux blocages** qui ne se règlent pas en supprimant des
+fichiers : l'écriture d'intention disparaîtrait de toute l'application, et
+`app/(pro)` retient l'arbre par neuf liens et cinq `AccountButton`.
 
 **Une décision de publication** : avancer `origin/main`, ou non.
 
-**Une question de fond, posée par ce bilan** : le plan demande l'état des
-quatre-vingt-un écrans. Faut-il le produire écran par écran, ou la vue par lot
-suffit-elle ? Le premier coûte une passe entière ; le second est ce document.
+**La question de fond posée par ce bilan est tranchée** : l'inventaire écran par
+écran a été produit, pour l'arbre V1. Reste à décider s'il faut le même travail
+sur les huit autres groupes — 134 écrans de plus.
