@@ -101,6 +101,11 @@ const VIEWS: { href: string; label: string; description: string }[] = [
     description: 'Assignations coach ↔ pilote, gestion des consentements.',
   },
   {
+    href: '/(admin)/creneaux-a-valider',
+    label: 'Créneaux à valider',
+    description: 'Les disponibilités proposées par les coachs, en attente d’ouverture.',
+  },
+  {
     href: '/(admin)/partenaires',
     label: 'Partenaires',
     description: 'Valider les comptes partenaires, superviser les leads.',
