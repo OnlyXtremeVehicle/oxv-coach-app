@@ -35,14 +35,16 @@ const DOSSIER = join(__dirname, '..');
  * Modules de `src/telemetry/` qui ne PRODUISENT aucune grandeur.
  *
  * Le registre se décrit lui-même ; `niveaux` déclare quelles grandeurs chaque
- * niveau de restitution met à l'écran, sans en calculer une seule. Exiger d'eux
- * une entrée au registre n'aurait aucun sens.
+ * niveau de restitution met à l'écran, sans en calculer une seule ;
+ * `courbeDelta` projette en coordonnées de dessin une grandeur déjà
+ * enregistrée (`delta.cumulative`) et n'en crée aucune. Exiger d'eux une entrée
+ * au registre n'aurait aucun sens.
  *
  * Cette liste est nommée plutôt que devinée : un module nouveau fait tomber le
  * test tant que quelqu'un n'a pas tranché s'il produit ou non. C'est la même
  * exigence que pour la banque, prise par l'autre bout.
  */
-const NON_PRODUCTEURS = ['provenance', 'niveaux'];
+const NON_PRODUCTEURS = ['provenance', 'niveaux', 'courbeDelta'];
 
 /** Les modules de calcul, hors ceux qui ne produisent rien. */
 const MODULES = readdirSync(DOSSIER)

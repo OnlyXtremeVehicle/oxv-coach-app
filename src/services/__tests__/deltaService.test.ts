@@ -17,10 +17,11 @@
  */
 
 import { loadDeltaEntreTours, TEXTE_ABSENCE } from '../deltaService';
-import { loadLapFrames } from '../sessionTelemetryService';
+import { loadLapFrames, PLAFOND_TRAMES_TOUR } from '../sessionTelemetryService';
 
 jest.mock('../sessionTelemetryService', () => ({
   loadLapFrames: jest.fn(),
+  PLAFOND_TRAMES_TOUR: 2000,
 }));
 
 const charge = loadLapFrames as jest.MockedFunction<typeof loadLapFrames>;
@@ -97,6 +98,45 @@ describe('quand il y a de quoi', () => {
     charge.mockResolvedValue(tour(100, 36));
     const r = await loadDeltaEntreTours('s', 2, 2);
     expect(Math.abs(r.delta!.total!)).toBeLessThan(1e-9);
+  });
+});
+
+describe('le tour tronqué', () => {
+  /**
+   * `loadLapFrames` plafonne à deux mille trames, soit quatre-vingts secondes
+   * à vingt-cinq hertz — moins qu'un tour sur beaucoup de circuits.
+   *
+   * LE PIÈGE : un delta calculé sur deux tours tronqués SE REFERME PROPREMENT.
+   * Il décrit un début de tour en se faisant passer pour le tour entier, et
+   * rien dans la courbe ne le trahit. D'où ce drapeau.
+   */
+  it('signale la troncature quand un tour atteint le plafond', async () => {
+    const long = Array.from({ length: PLAFOND_TRAMES_TOUR }, (_, i) => ({
+      elapsedMs: i * 40,
+      lat: null,
+      lon: null,
+      speedKmh: 100,
+      gLat: null,
+      gLong: null,
+      gVert: null,
+      yawRateRadS: null,
+    }));
+    charge.mockResolvedValue(long);
+    const r = await loadDeltaEntreTours('s', 2, 1);
+    expect(r.tronque).toBe(true);
+    // Le delta reste calculé : il décrit vraiment la portion chargée.
+    expect(r.delta).not.toBeNull();
+  });
+
+  it('ne signale rien sur un tour court', async () => {
+    charge.mockResolvedValue(tour(100, 36));
+    expect((await loadDeltaEntreTours('s', 2, 2)).tronque).toBe(false);
+  });
+
+  /** Le drapeau accompagne aussi les refus : la raison ne l'efface pas. */
+  it('accompagne un refus', async () => {
+    charge.mockResolvedValue([]);
+    expect((await loadDeltaEntreTours('s', 2, 1)).tronque).toBe(false);
   });
 });
 

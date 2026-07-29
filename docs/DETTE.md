@@ -400,3 +400,80 @@ fausse — l'absence s'affiche comme telle.
 
 **Traité par** : hors lot. Demande d'unifier les deux sources derrière une
 seule façade, ce qui touche à la chaîne de capture.
+
+---
+
+## D-16 · La Séance sort vers le Bilan, ce que la spec interdit
+
+**Constaté le 29/07/2026, jalon 4, rendu de la restitution.**
+
+`app/(app2)/data/session/[id].tsx` porte en pied un lien « Ouvrir le bilan »
+vers `/(app2)/bilan/{id}`.
+
+Or les deux documents versionnés disent l'inverse, et dans les deux sens :
+`OXV_Mirror_V3_Plan_Montage.md` — « Le Bilan […] **une seule sortie : la
+Séance** » et « La Séance […] **aucune sortie vers le Bilan** ».
+
+La circulation voulue est à sens unique : on entre par le Bilan, lu debout au
+paddock, et on descend vers la Séance, lue assise. Le lien de retour rend la
+boucle fermée et efface cette intention.
+
+**Traité par** : décision fondateur. Retirer un chemin de navigation existant
+n'est pas une micro-décision d'interface — je n'y touche pas seul.
+
+---
+
+## D-17 · Le rail d'ancres coûte 18 % de hauteur, la spec en veut 10 %
+
+**Constaté le 29/07/2026.**
+
+`Plan_Montage` exige des ancres collantes « sous 10 % de la hauteur d'écran ».
+
+Le rail seul fait 44 pt, soit 5,2 % d'un écran de 844 pt — conforme. Mais il
+est posé sous un bandeau fixe de `insets.top + 48` : l'ensemble immobilise
+151 pt, soit **17,9 %**. Arithmétique tirée des constantes, non mesurée sur
+appareil.
+
+L'ajout de la huitième ancre ne change rien à ce chiffre — le rail défile
+horizontalement, il ne grandit pas.
+
+**Traité par** : à mesurer sur appareil avant de trancher. Si le budget vise
+l'ensemble bandeau + rail, c'est le bandeau condensé qu'il faut revoir, pas le
+rail.
+
+---
+
+## D-18 · La Télémétrie charge au montage, et la séance lit cinq fois les mêmes trames
+
+**Constaté le 29/07/2026.**
+
+`TelemetrieSection` est montée sans condition et son effet n'a que `sessionId`
+en dépendance : ses quatre requêtes partent dès l'ouverture de l'écran, que le
+pilote descende jusqu'à elle ou non.
+
+Conséquence chiffrée : `loadSessionFrames` — lecture paginée jusqu'à soixante
+mille lignes, **sans cache** — est atteinte **cinq fois** sur un seul montage,
+par `loadGGPoints` (deux fois), `loadSessionFlow`, `loadSpeedTracePoints` et
+`loadThrottleBrakePoints`. `loadSessionTrajectory` part deux fois de plus.
+
+**Le rendu différé est réputé obligatoire** par le plan, et n'existe nulle part
+dans ce fichier.
+
+**Contourné, pas résolu** : la nouvelle section Delta n'ajoute rien au montage
+— elle attend `useFirstViewport`, primitive qui existait déjà dans le kit et ne
+servait qu'aux animations. Le reste demande de toucher aux sections existantes.
+
+---
+
+## D-19 · La Saison est un écran que personne ne peut atteindre
+
+**Constaté le 29/07/2026.**
+
+Aucun fichier de `app/` ne navigue vers `/(app2)/data/saison`. Les seules
+occurrences du chemin sont son propre en-tête et un commentaire de
+`app/(app2)/signature.tsx` dont le `onPress` réel pointe ailleurs.
+
+Mille trois cents lignes d'écran, quatre sections, inatteignables.
+
+**Traité par** : le plan tranche déjà — « le hub Data devient la Saison,
+`data/saison` fusionne et disparaît ». C'est un lot à part entière du jalon 4.

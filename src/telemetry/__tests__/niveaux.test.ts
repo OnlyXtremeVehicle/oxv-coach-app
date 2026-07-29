@@ -18,6 +18,7 @@
 
 import { BANQUE } from '../provenance';
 import {
+  compteCanaux,
   compteToursComparables,
   etatDepuisSeance,
   etatNiveau,
@@ -252,6 +253,7 @@ describe('ce qu’un compteur a le droit de dire', () => {
 
 describe('ce qui compte comme un tour', () => {
   const trame = { gLat: null, gLong: null, yawRateRadS: null };
+  const RIEN = { tramesAvecLacet: 0, tramesAvecAcceleration: 0 };
 
   /**
    * LE CAS RÉEL, PRIS EN BASE.
@@ -262,31 +264,31 @@ describe('ce qui compte comme un tour', () => {
    * afficher vingt-deux millisecondes en chiffre roi.
    */
   it('un tour de sortie de stand n’ouvre pas le chrono', () => {
-    const etat = etatDepuisSeance([], [{ longueurM: 0, estOutlap: true }]);
+    const etat = etatDepuisSeance([{ longueurM: 0, estOutlap: true }], RIEN);
     expect(etat.toursChronometres).toBe(0);
     expect(etatNiveau('chrono', etat).ouvert).toBe(false);
   });
 
   it('un tour de rentrée non plus', () => {
-    expect(etatDepuisSeance([], [{ longueurM: 3000, estInlap: true }]).toursChronometres).toBe(0);
+    expect(etatDepuisSeance([{ longueurM: 3000, estInlap: true }], RIEN).toursChronometres).toBe(0);
   });
 
   it('un tour ordinaire compte', () => {
-    const etat = etatDepuisSeance([], [{ longueurM: 3000 }]);
+    const etat = etatDepuisSeance([{ longueurM: 3000 }], RIEN);
     expect(etat.toursChronometres).toBe(1);
     expect(etatNiveau('chrono', etat).ouvert).toBe(true);
   });
 
   it('sortie et rentrée sont retirées d’une séance complète', () => {
     const etat = etatDepuisSeance(
-      [],
       [
         { longueurM: 500, estOutlap: true },
         { longueurM: 3000 },
         { longueurM: 3010 },
         { longueurM: 2990 },
         { longueurM: 800, estInlap: true },
-      ]
+      ],
+      RIEN
     );
     expect(etat.toursChronometres).toBe(3);
     expect(etat.toursComparables).toBe(3);
@@ -306,17 +308,33 @@ describe('ce qui compte comme un tour', () => {
   });
 
   it('les trames se comptent par canal réellement présent', () => {
-    const etat = etatDepuisSeance(
-      [
-        { ...trame, yawRateRadS: 0.3 },
-        { ...trame, gLat: 0.4, gLong: -0.2 },
-        // Un seul axe : pas un point du plan (g_lat, g_long).
-        { ...trame, gLat: 0.4 },
-        trame,
-      ],
-      []
-    );
-    expect(etat.tramesAvecLacet).toBe(1);
-    expect(etat.tramesAvecAcceleration).toBe(1);
+    const c = compteCanaux([
+      { ...trame, yawRateRadS: 0.3 },
+      { ...trame, gLat: 0.4, gLong: -0.2 },
+      // Un seul axe : pas un point du plan (g_lat, g_long).
+      { ...trame, gLat: 0.4 },
+      trame,
+    ]);
+    expect(c.tramesAvecLacet).toBe(1);
+    expect(c.tramesAvecAcceleration).toBe(1);
+  });
+
+  it('un canal non fini ne compte pas', () => {
+    const c = compteCanaux([
+      { gLat: NaN, gLong: 0.2, yawRateRadS: Infinity },
+      { gLat: 0.1, gLong: 0.2, yawRateRadS: 0.1 },
+    ]);
+    expect(c.tramesAvecLacet).toBe(1);
+    expect(c.tramesAvecAcceleration).toBe(1);
+  });
+
+  /** Un compte venu de la base est un entier positif ; on s'en assure. */
+  it('un compte aberrant est ramené à un entier positif', () => {
+    const etat = etatDepuisSeance([], {
+      tramesAvecLacet: -5,
+      tramesAvecAcceleration: 12.7,
+    });
+    expect(etat.tramesAvecLacet).toBe(0);
+    expect(etat.tramesAvecAcceleration).toBe(12);
   });
 });

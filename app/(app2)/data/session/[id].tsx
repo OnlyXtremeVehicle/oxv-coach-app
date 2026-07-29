@@ -75,6 +75,10 @@ import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
 import { etatLecture, sectionAffichable } from '@/components/insights/disponibilite';
+import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
+import { SectionDelta } from '@/components/telemetry/SectionDelta';
+import { ETAT_SEANCE_VIDE, loadEtatSeance } from '@/services/etatSeanceService';
+import type { EtatSeance } from '@/telemetry/niveaux';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
 import type { SessionInsights } from '@/circuit/sessionInsights';
 import { loadSessionFlow } from '@/services/flowService';
@@ -107,10 +111,18 @@ import { formatDateShort } from '@/utils/format';
 // Ancres — le rail horizontal collant sous le header condensé.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Les sept ancres de la séance, dans l'ordre de lecture. */
+/**
+ * Les huit ancres de la séance, dans l'ordre de lecture.
+ *
+ * Le delta suit immédiatement les tours, parce qu'il en compare deux et n'a de
+ * sens qu'une fois qu'on sait lesquels — c'est aussi la séquence du dossier de
+ * conception, qui décrit le coach ouvrant le delta EN PREMIER pour localiser
+ * où le temps se fait, avant toute autre lecture.
+ */
 const ANCHORS = [
   { key: 'resume', label: 'Résumé' },
   { key: 'tours', label: 'Tours' },
+  { key: 'delta', label: 'Delta' },
   { key: 'trace', label: 'Tracé' },
   { key: 'telemetrie', label: 'Télémétrie' },
   { key: 'constats', label: 'Constats' },
@@ -149,6 +161,8 @@ interface SeanceData {
   ggPoints: GGPoint[];
   /** Jerk résiduel RÉEL (loadSessionFlow) — vide si trames insuffisantes. */
   flowPoints: FlowPoint[];
+  /** Ce que la séance contient — ouvre ou ferme les cinq niveaux de lecture. */
+  etatSeance: EtatSeance;
   /** Sections dont le chargement a ÉCHOUÉ (erreur DB) — distinct de « vide ». */
   failed: Record<string, boolean>;
 }
@@ -227,7 +241,7 @@ function useSeance(id: string | undefined) {
       }
 
       // Sections indépendantes — l'échec de l'une n'entache pas les autres.
-      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR, flowR] =
+      const [lapsR, segmentsR, weatherR, correlationR, insightsR, ggR, flowR, niveauxR] =
         await Promise.allSettled([
           fetchSessionLaps(id, { strict: true }),
           listSegmentAnalysesForSession(id),
@@ -236,6 +250,9 @@ function useSeance(id: string | undefined) {
           fetchSessionInsights(id),
           loadGGPoints(id),
           loadSessionFlow(id),
+          // Trois COMPTES côté base (head: true) : rien ne transite. C'est ce
+          // qui autorise à l'ajouter ici sans alourdir l'ouverture d'écran.
+          loadEtatSeance(id),
         ]);
       if (cancelled) return;
 
@@ -271,6 +288,11 @@ function useSeance(id: string | undefined) {
       let flowPoints: FlowPoint[] = [];
       if (flowR.status === 'fulfilled') flowPoints = flowR.value;
 
+      // Une panne de compte devient un état vide, donc des niveaux fermés qui
+      // disent leur absence — jamais un niveau ouvert sur rien.
+      let etatSeance: EtatSeance = ETAT_SEANCE_VIDE;
+      if (niveauxR.status === 'fulfilled') etatSeance = niveauxR.value;
+
       setData({
         session,
         laps,
@@ -282,6 +304,7 @@ function useSeance(id: string | undefined) {
         insights,
         ggPoints,
         flowPoints,
+        etatSeance,
         failed,
       });
       setStatus('ready');
@@ -494,6 +517,14 @@ export default function SeanceScreen() {
         {/* ── 1 · RÉSUMÉ ──────────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(0)}>
           <ResumeSection session={data.session} laps={data.laps} />
+          {/*
+            Ce que la séance permet de lire, posé d'emblée : le pilote sait
+            avant de descendre ce qu'il trouvera et ce qui manque. Sans ancre
+            propre — c'est une orientation, pas une section.
+          */}
+          <View style={styles.niveaux}>
+            <NiveauxRestitution seance={data.etatSeance} />
+          </View>
         </View>
 
         {/* ── 2 · TOURS ───────────────────────────────────────────────── */}
@@ -508,8 +539,23 @@ export default function SeanceScreen() {
           />
         </View>
 
-        {/* ── 3 · TRACÉ & VIRAGES ─────────────────────────────────────── */}
+        {/* ── 3 · DELTA ───────────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(2)}>
+          <SectionHeader eyebrow="DELTA" title="Où le temps se fait" />
+          <SectionDelta
+            sessionId={data.session.id}
+            tours={data.laps.map((l) => ({
+              lapNumber: l.lap_number,
+              durationSeconds: l.duration_seconds,
+              isOutlap: l.is_outlap,
+              isInlap: l.is_inlap,
+            }))}
+            tourSelectionne={selectedLap}
+          />
+        </View>
+
+        {/* ── 4 · TRACÉ & VIRAGES ─────────────────────────────────────── */}
+        <View style={styles.section} onLayout={registerSection(3)}>
           <SectionHeader eyebrow="TRACÉ & VIRAGES" />
           <TraceSection
             sessionId={data.session.id}
@@ -520,14 +566,14 @@ export default function SeanceScreen() {
           />
         </View>
 
-        {/* ── 4 · TÉLÉMÉTRIE ──────────────────────────────────────────── */}
-        <View style={styles.section} onLayout={registerSection(3)}>
+        {/* ── 5 · TÉLÉMÉTRIE ──────────────────────────────────────────── */}
+        <View style={styles.section} onLayout={registerSection(4)}>
           <SectionHeader eyebrow="TÉLÉMÉTRIE" />
           <TelemetrieSection sessionId={data.session.id} />
         </View>
 
-        {/* ── 5 · CONSTATS ────────────────────────────────────────────── */}
-        <View style={styles.section} onLayout={registerSection(4)}>
+        {/* ── 6 · CONSTATS ────────────────────────────────────────────── */}
+        <View style={styles.section} onLayout={registerSection(5)}>
           <SectionHeader eyebrow="CONSTATS" title="Les lectures approfondies" />
           <ConstatsSection
             insights={data.insights}
@@ -537,14 +583,14 @@ export default function SeanceScreen() {
           />
         </View>
 
-        {/* ── 6 · CŒUR ────────────────────────────────────────────────── */}
-        <View style={styles.section} onLayout={registerSection(5)}>
+        {/* ── 7 · CŒUR ────────────────────────────────────────────────── */}
+        <View style={styles.section} onLayout={registerSection(6)}>
           <SectionHeader eyebrow="CŒUR" />
           <CoeurSection />
         </View>
 
-        {/* ── 7 · CONDITIONS ──────────────────────────────────────────── */}
-        <View style={styles.section} onLayout={registerSection(6)}>
+        {/* ── 8 · CONDITIONS ──────────────────────────────────────────── */}
+        <View style={styles.section} onLayout={registerSection(7)}>
           <SectionHeader eyebrow="CONDITIONS" />
           <ConditionsSection
             weather={data.weather}
@@ -1863,6 +1909,10 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: space.xl,
     marginTop: space.xxl,
+  },
+  /** L'orientation de lecture, sous le résumé — dans la même section. */
+  niveaux: {
+    marginTop: space.lg,
   },
   // ── Résumé ──
   resumeCard: {

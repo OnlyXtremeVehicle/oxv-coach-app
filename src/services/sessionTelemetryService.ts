@@ -102,6 +102,20 @@ export async function loadGGPoints(
 }
 
 /**
+ * Plafond de trames rendues pour UN tour.
+ *
+ * Deux mille trames font quatre-vingts secondes à vingt-cinq hertz. Un tour
+ * plus long — et beaucoup de circuits en produisent — revient AMPUTÉ, sans que
+ * la requête ne signale quoi que ce soit.
+ *
+ * Le plafond est exporté parce qu'un appelant ne peut détecter la troncature
+ * qu'en comparant à lui : `frames.length === PLAFOND_TRAMES_TOUR` est le seul
+ * indice disponible. Le laisser en nombre magique dans la requête rendrait
+ * cette détection impossible à écrire sans le dupliquer.
+ */
+export const PLAFOND_TRAMES_TOUR = 2000;
+
+/**
  * Charge les frames d'un tour spécifique en filtrant par la fenêtre
  * temporelle de ce tour (laps.started_at -> laps.ended_at convertis
  * en elapsed_ms relativement à session.started_at côté requête).
@@ -109,6 +123,9 @@ export async function loadGGPoints(
  * V1 simple : on charge toutes les frames de la session et on filtre
  * côté client par lap_number. À terme on stockera lap_number sur
  * `telemetry_frames` pour requêter direct.
+ *
+ * **Le résultat peut être TRONQUÉ** — voir `PLAFOND_TRAMES_TOUR`. Un appelant
+ * qui en tire une grandeur cumulée (distance, delta) doit le dire à l'écran.
  */
 export async function loadLapFrames(sessionId: string, lapNumber: number): Promise<SessionFrame[]> {
   // 1. Récupère les bornes du tour
@@ -147,7 +164,7 @@ export async function loadLapFrames(sessionId: string, lapNumber: number): Promi
     .gte('elapsed_ms', lapStartMs)
     .lte('elapsed_ms', lapEndMs)
     .order('elapsed_ms', { ascending: true })
-    .limit(2000);
+    .limit(PLAFOND_TRAMES_TOUR);
 
   if (error || !data) {
     if (error) console.warn('[OXV][telemetry] loadLapFrames frames :', error.message);

@@ -36,7 +36,7 @@
 import { tousDeuxComparables, versSerieDistance, type TrameBrute } from '@/telemetry/adaptation';
 import { computeDelta, type DeltaResult } from '@/telemetry/delta';
 
-import { loadLapFrames } from './sessionTelemetryService';
+import { loadLapFrames, PLAFOND_TRAMES_TOUR } from './sessionTelemetryService';
 
 /** Pourquoi un delta n'a pas pu être établi. Descriptif, jamais prescriptif. */
 export type RaisonAbsence =
@@ -51,6 +51,18 @@ export interface DeltaEntreTours {
   raison?: RaisonAbsence;
   /** Numéros des deux tours, tels que demandés. */
   tours: { courant: number; reference: number };
+  /**
+   * L'un des deux tours est-il arrivé AMPUTÉ ?
+   *
+   * `loadLapFrames` plafonne à `PLAFOND_TRAMES_TOUR` trames, soit quatre-vingts
+   * secondes à vingt-cinq hertz — moins qu'un tour sur beaucoup de circuits.
+   *
+   * Le piège est qu'un delta sur deux tours tronqués **se referme proprement**
+   * et paraît juste : il décrit simplement un début de tour en se faisant
+   * passer pour le tour entier. Rien dans la courbe ne le trahit, d'où ce
+   * drapeau, que l'écran doit rendre visible.
+   */
+  tronque: boolean;
 }
 
 /** Ce que chaque raison dit au pilote. Un constat, jamais une consigne. */
@@ -84,24 +96,30 @@ export async function loadDeltaEntreTours(
       loadLapFrames(sessionId, tourReference),
     ]);
   } catch {
-    return { delta: null, raison: 'erreur-chargement', tours };
+    return { delta: null, raison: 'erreur-chargement', tours, tronque: false };
   }
 
+  // Le seul indice de troncature disponible : la requête a rendu exactement son
+  // plafond. Un tour qui compte pile ce nombre de trames est possible, mais
+  // improbable ; on préfère un avertissement de trop à un delta muet et faux.
+  const tronque =
+    brutCourant.length >= PLAFOND_TRAMES_TOUR || brutReference.length >= PLAFOND_TRAMES_TOUR;
+
   if (brutCourant.length === 0 || brutReference.length === 0) {
-    return { delta: null, raison: 'aucune-trame', tours };
+    return { delta: null, raison: 'aucune-trame', tours, tronque };
   }
 
   const serieCourant = versSerieDistance(brutCourant);
   const serieReference = versSerieDistance(brutReference);
   if (serieCourant.distance.length < 2 || serieReference.distance.length < 2) {
-    return { delta: null, raison: 'tour-trop-court', tours };
+    return { delta: null, raison: 'tour-trop-court', tours, tronque };
   }
 
   // Comparer un tour complet à un demi-tour tronqué produirait un delta qui
   // diverge sans jamais se refermer — un écart lisible, et faux.
   if (!tousDeuxComparables(brutCourant, brutReference)) {
-    return { delta: null, raison: 'tours-non-comparables', tours };
+    return { delta: null, raison: 'tours-non-comparables', tours, tronque };
   }
 
-  return { delta: computeDelta(serieCourant, serieReference, pasM), tours };
+  return { delta: computeDelta(serieCourant, serieReference, pasM), tours, tronque };
 }

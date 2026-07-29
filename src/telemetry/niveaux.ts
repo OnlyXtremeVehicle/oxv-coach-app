@@ -318,30 +318,19 @@ export function estTourChronometre(t: TourComptable): boolean {
   return t.estOutlap !== true && t.estInlap !== true;
 }
 
+/** Ce que les canaux inertiels rendent, une fois comptés. */
+export interface ComptesCanaux {
+  tramesAvecLacet: number;
+  tramesAvecAcceleration: number;
+}
+
 /**
- * L'état d'une séance depuis ce qu'elle contient réellement.
+ * Compte les canaux présents sur un lot de trames déjà chargées.
  *
  * **Ne compte que le mesuré.** Une trame dont le gyroscope n'a rien rendu ne
  * compte pas, et ne compte pas non plus pour zéro : elle n'entre nulle part.
- *
- * ---
- *
- * COMPTER LES TRAMES, JAMAIS LIRE `total_frames`
- *
- * La colonne dénormalisée `telemetry_sessions.total_frames` se trompe dans les
- * deux sens sur la base d'aujourd'hui : dix séances annoncent des trames
- * qu'elles n'ont pas, et la seule qui en porte cinquante-trois affiche zéro.
- * Elle n'est réconciliée qu'au statut `completed`, donc jamais pour une séance
- * interrompue.
- *
- * Un portillon posé dessus ouvrirait un niveau vide, ou fermerait un niveau
- * qui a de quoi s'ouvrir. D'où la signature : on passe les TRAMES, pas leur
- * compte annoncé.
  */
-export function etatDepuisSeance(
-  trames: readonly TrameComptable[],
-  tours: readonly TourComptable[]
-): EtatSeance {
+export function compteCanaux(trames: readonly TrameComptable[]): ComptesCanaux {
   let lacet = 0;
   let accel = 0;
   for (const t of trames) {
@@ -350,11 +339,37 @@ export function etatDepuisSeance(
     // pas un point du plan (g_lat, g_long).
     if (fini(t.gLat) && fini(t.gLong)) accel++;
   }
+  return { tramesAvecLacet: lacet, tramesAvecAcceleration: accel };
+}
+
+/**
+ * L'état d'une séance depuis ce qu'elle contient réellement.
+ *
+ * Les comptes de canaux sont passés SÉPARÉMENT des tours, parce qu'ils
+ * s'obtiennent le plus souvent en comptant côté base plutôt qu'en rapatriant
+ * les trames : l'écran de séance atteint déjà `loadSessionFrames` cinq fois par
+ * ouverture, et une sixième lecture pour compter serait indéfendable.
+ *
+ * ---
+ *
+ * COMPTER, JAMAIS LIRE `total_frames`
+ *
+ * La colonne dénormalisée `telemetry_sessions.total_frames` se trompe dans les
+ * deux sens sur la base d'aujourd'hui : dix séances annoncent des trames
+ * qu'elles n'ont pas, et la seule qui en porte cinquante-trois affiche zéro.
+ * Elle n'est réconciliée qu'au statut `completed`, donc jamais pour une séance
+ * interrompue. Un portillon posé dessus ouvrirait un niveau vide, ou fermerait
+ * un niveau qui a de quoi s'ouvrir.
+ */
+export function etatDepuisSeance(
+  tours: readonly TourComptable[],
+  canaux: ComptesCanaux
+): EtatSeance {
   const chronometres = tours.filter(estTourChronometre);
   return {
     toursChronometres: chronometres.length,
     toursComparables: compteToursComparables(chronometres.map((t) => t.longueurM)),
-    tramesAvecLacet: lacet,
-    tramesAvecAcceleration: accel,
+    tramesAvecLacet: Math.max(0, Math.trunc(canaux.tramesAvecLacet)),
+    tramesAvecAcceleration: Math.max(0, Math.trunc(canaux.tramesAvecAcceleration)),
   };
 }
