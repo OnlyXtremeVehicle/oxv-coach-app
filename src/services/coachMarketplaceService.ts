@@ -105,11 +105,15 @@ export interface CoachAvailabilitySlot {
  * D'où la règle tenue ici : **on relit toujours le statut effectif après
  * écriture**, et c'est lui qu'on rend. Jamais celui qu'on a demandé.
  *
- * Un état `pending_validation` distinct de `closed` serait plus juste — un
- * créneau en attente n'est pas un créneau fermé. Il demande un changement de
- * schéma : `supabase/migrations/PROPOSITION_L27bis_creneau_en_attente.sql`.
+ * **L'état `pending_validation` existe depuis le 29/07/2026** (migration
+ * `20260729034324`). Un créneau proposé par un coach n'est plus rabattu sur
+ * `closed` : il attend, et il le dit. Le déclencheur ne touche que l'INSERT —
+ * une réouverture reste annulée, un créneau annulé reste annulé.
+ *
+ * Ce qui manque encore : **aucun écran ne permet de VALIDER un créneau**. La
+ * seule sortie de l'attente passe par la console Supabase.
  */
-export type AvailabilityStatus = 'open' | 'full' | 'closed' | 'cancelled';
+export type AvailabilityStatus = 'open' | 'full' | 'closed' | 'cancelled' | 'pending_validation';
 
 /**
  * Libellé humain d'un statut de créneau. Comme pour les demandes, le statut
@@ -126,6 +130,9 @@ export function availabilityStatusLabel(status: AvailabilityStatus): string {
       return 'Fermé';
     case 'cancelled':
       return 'Annulé';
+    // « En attente » et non « Fermé » : le créneau existe, il n'est pas refusé.
+    case 'pending_validation':
+      return 'En attente de validation';
     default:
       return 'Statut inconnu';
   }

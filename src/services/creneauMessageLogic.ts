@@ -55,7 +55,17 @@ export function messageCreation(statusEffectif: AvailabilityStatus): MessageCren
     };
   }
 
-  // Le cas courant, et celui que personne ne voyait.
+  // Le cas courant depuis le 29/07 : la base retient `pending_validation`, et
+  // l'attente se nomme. Auparavant elle se déguisait en `closed`, et le coach
+  // lisait « fermé » là où rien n'était refusé.
+  if (statusEffectif === 'pending_validation') {
+    return {
+      titre: 'Créneau proposé.',
+      detail: 'Il attend une validation OXV avant d’apparaître sur votre fiche.',
+      ecart: true,
+    };
+  }
+
   return {
     titre: 'Créneau proposé.',
     detail: 'Il apparaîtra sur votre fiche après validation par OXV.',
@@ -96,6 +106,7 @@ const LIBELLES: Record<AvailabilityStatus, string> = {
   full: 'Créneau marqué complet.',
   closed: 'Créneau fermé.',
   cancelled: 'Créneau annulé.',
+  pending_validation: 'Créneau proposé.',
 };
 
 /** Adjectif d'état, pour une phrase qui décrit la situation. */
@@ -104,4 +115,6 @@ const ETATS: Record<AvailabilityStatus, string> = {
   full: 'complet',
   closed: 'fermé',
   cancelled: 'annulé',
+  // « en attente » : le créneau existe et rien n'est refusé.
+  pending_validation: 'en attente de validation',
 };

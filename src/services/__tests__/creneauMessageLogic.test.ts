@@ -106,3 +106,46 @@ describe('ton OXV', () => {
     }
   });
 });
+
+describe('l’attente se nomme — L-27bis appliqué le 29/07/2026', () => {
+  /**
+   * Avant la migration, le déclencheur rabattait `open` sur `closed` : le coach
+   * lisait « fermé » là où rien n'était refusé. L'état existe maintenant, et le
+   * message doit le refléter.
+   */
+  it('un créneau proposé attend, il n’est pas fermé', () => {
+    const m = messageCreation('pending_validation');
+    expect(m.ecart).toBe(true);
+    expect(m.titre).toBe('Créneau proposé.');
+    expect(`${m.titre} ${m.detail ?? ''}`).toMatch(/attend/i);
+    expect(`${m.titre} ${m.detail ?? ''}`).not.toMatch(/ferm/i);
+  });
+
+  it('« fermé » reste réservé à une vraie fermeture', () => {
+    expect(messageChangement('closed', 'closed').titre).toBe('Créneau fermé.');
+  });
+
+  /** Un créneau annulé reste annulé : le déclencheur ne touche que l'INSERT. */
+  it('une réouverture refusée dit l’état réel, sans le maquiller', () => {
+    const m = messageChangement('open', 'cancelled');
+    expect(m.ecart).toBe(true);
+    expect(`${m.titre} ${m.detail ?? ''}`).toMatch(/annulé/i);
+  });
+
+  it('le nouvel état a son adjectif dans les phrases d’écart', () => {
+    const m = messageChangement('open', 'pending_validation');
+    expect(`${m.titre} ${m.detail ?? ''}`).toMatch(/en attente de validation/i);
+  });
+
+  it('le nouvel état garde le ton OXV', () => {
+    for (const m of [
+      messageCreation('pending_validation'),
+      messageChangement('open', 'pending_validation'),
+    ]) {
+      const t = `${m.titre} ${m.detail ?? ''}`;
+      expect(t).not.toMatch(/\p{Extended_Pictographic}/u);
+      expect(t).not.toMatch(/\btu\b|\bton\b|\btes\b/i);
+      expect(t).not.toMatch(/vous devez|il faut|veuillez/i);
+    }
+  });
+});
