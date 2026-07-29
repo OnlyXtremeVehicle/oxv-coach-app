@@ -76,6 +76,7 @@ import { TransfertViz } from '@/components/insights/TransfertViz';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
 import { etatLecture, sectionAffichable } from '@/components/insights/disponibilite';
 import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
+import { SectionBande } from '@/components/telemetry/SectionBande';
 import { SectionDelta } from '@/components/telemetry/SectionDelta';
 import { ETAT_SEANCE_VIDE, loadEtatSeance } from '@/services/etatSeanceService';
 import type { EtatSeance } from '@/telemetry/niveaux';
@@ -536,6 +537,16 @@ export default function SeanceScreen() {
             selectedLap={selectedLap}
             onSelect={setSelectedLap}
             onRetry={reload}
+          />
+          {/*
+            Au-delà du seuil, les traces individuelles cessent de se distinguer :
+            la bande prend le relais. En deçà, elle ne s'affiche pas du tout —
+            la liste des tours dit mieux ce qu'il y a à dire.
+          */}
+          <SectionBande
+            sessionId={data.session.id}
+            debutSeanceIso={data.session.started_at}
+            laps={data.laps}
           />
         </View>
 
