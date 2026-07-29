@@ -28,15 +28,19 @@ const TOOLS: { label: string; hint: string; href: string }[] = [
     hint: 'Retrouver une séance par circuit et période',
     href: '/(pro)/bibliotheque',
   },
+  // Recâblés sur l'arbre V2 au lot J5, étape 9 : `comparateur` et
+  // `progression` sont classés « meurt », leurs équivalents app2 existent —
+  // `data/comparer` pour le côte à côte, les sections RÉGULARITÉ et TOUR DE
+  // RÉFÉRENCE du hub Data pour l'évolution.
   {
     label: 'Comparer deux séances',
     hint: 'Côte à côte, fait par fait',
-    href: '/(app)/comparateur',
+    href: '/(app2)/data/comparer',
   },
   {
-    label: 'Ma progression',
+    label: 'Votre progression',
     hint: 'Votre évolution, soi contre soi',
-    href: '/(app)/progression',
+    href: '/(app2)/data',
   },
 ];
 

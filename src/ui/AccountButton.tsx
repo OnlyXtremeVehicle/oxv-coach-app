@@ -4,6 +4,18 @@
  * Canon plateforme : « Compte = icône haut-droite, JAMAIS un onglet ». Cette
  * icône (silhouette sobre, pas d'emoji) se passe en `trailing` de l'AppBar des
  * écrans de zone, ou directement dans un en-tête racine. Vouvoiement, sobre.
+ *
+ * ---
+ *
+ * LA CIBLE A CHANGÉ D'ARBRE (lot J5, étape 9)
+ *
+ * Elle visait `/(app)/compte`, classé « meurt ». Ce bouton était l'une des deux
+ * attaches qui retenaient l'arbre V1 : cinq montages dans `app/(pro)`, trois
+ * dans `app/(app)` — ces derniers sur des écrans que plus aucun pilote
+ * n'atteint depuis la bascule L6.
+ *
+ * Elle vise désormais `/(app2)/vous`, le hub VOUS — le seul, selon le
+ * classement J5, qui atteigne tous ses enfants.
  */
 
 import { Pressable } from 'react-native';
@@ -14,7 +26,7 @@ import { theme } from '@/theme/v2';
 
 export function AccountButton({ size = 22 }: { size?: number }) {
   return (
-    <Link href={'/(app)/compte' as never} asChild>
+    <Link href={'/(app2)/vous' as never} asChild>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Compte"

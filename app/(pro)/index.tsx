@@ -26,12 +26,30 @@ import { Card } from '@/ui/Card';
 import { Screen } from '@/ui/Screen';
 import { timeAgoFr } from '@/utils/time';
 
+/**
+ * Les outils du pilote professionnel, RECÂBLÉS SUR L'ARBRE V2 (lot J5,
+ * étape 9, décision fondateur du 29/07/2026).
+ *
+ * Le pilote pro EST un pilote : mêmes données, mêmes policies. Ces tuiles
+ * visaient `app/(app)`, classé « meurt » — et c'était le dernier espace à
+ * retenir l'arbre V1, par neuf liens et cinq boutons de compte. Elles pointent
+ * désormais l'arbre V2. Cet espace part sur le web à terme ; ce recâblage ne
+ * décide pas de sa date, il libère seulement l'arbre.
+ *
+ * Correspondances, telles qu'établies par le classement J5 :
+ *   bilan       → la séance du jour a son propre lien plus bas ; la tuile mène
+ *                 au hub Data, où les séances se listent.
+ *   data-lab    → `/(app2)/data` (le hub Data est devenu la Saison)
+ *   passeport   → `/(app2)/vous` (héros passeport : identité, palier, faits)
+ *   signature   → `/(app2)/signature`
+ *   garage      → `/(app2)/vous/garage`
+ */
 const TOOLS: { label: string; hint: string; href: string }[] = [
-  { label: 'Mon bilan', hint: 'La lecture de votre dernière séance', href: '/(app)/bilan' },
-  { label: 'Data Lab', hint: 'Relire une séance en profondeur', href: '/(app)/data-lab' },
-  { label: 'Mon passeport', hint: 'Votre identité de pilote, cumulée', href: '/(app)/passeport' },
-  { label: 'Ma signature', hint: 'Votre empreinte de pilotage', href: '/(app)/signature' },
-  { label: 'Mon garage', hint: 'Vos véhicules et leurs réglages', href: '/(app)/garage' },
+  { label: 'Vos séances', hint: 'Les relire une par une', href: '/(app2)/data' },
+  { label: 'Votre saison', hint: 'Régularité, tour de référence, circuits', href: '/(app2)/data' },
+  { label: 'Votre passeport', hint: 'Votre identité de pilote, cumulée', href: '/(app2)/vous' },
+  { label: 'Votre signature', hint: 'Votre empreinte de pilotage', href: '/(app2)/signature' },
+  { label: 'Votre garage', hint: 'Vos véhicules et leurs réglages', href: '/(app2)/vous/garage' },
   { label: 'Ambassadeur OXV', hint: 'Porter les couleurs OXV', href: '/(pro)/ambassadeur' },
 ];
 
@@ -119,7 +137,7 @@ export default function ProPaddockScreen() {
             <ActivityIndicator color={theme.palette.creamMute} accessibilityLabel="Chargement" />
           </View>
         ) : last ? (
-          <Link href={{ pathname: '/(app)/bilan', params: { sessionId: last.id } }} asChild>
+          <Link href={`/(app2)/bilan/${last.id}` as never} asChild>
             <Card
               onPress={() => {}}
               accessibilityLabel={`Votre dernière séance, ${last.circuitName ?? 'séance'}, ${timeAgoFr(
@@ -180,7 +198,9 @@ export default function ProPaddockScreen() {
           <View style={{ gap: theme.spacing.sm, marginTop: theme.spacing.sm }}>
             {TOOLS.map((t) => (
               <Card
-                key={t.href}
+                // Clé sur le LIBELLÉ : deux tuiles mènent au même hub Data
+                // depuis le recâblage V2, et `href` ne les distingue plus.
+                key={t.label}
                 onPress={() => router.push(t.href as never)}
                 accessibilityLabel={`${t.label}. ${t.hint}`}
               >

@@ -172,12 +172,10 @@ export default function ProBibliothequeScreen() {
               {sessions.map((sess) => (
                 <Card
                   key={sess.id}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/(app)/bilan',
-                      params: { sessionId: sess.id },
-                    } as never)
-                  }
+                  // Recâblé sur l'arbre V2 au lot J5, étape 9. Le pilote pro
+                  // lit SA propre séance : le bilan V2 est un bilan de soi, ce
+                  // qui convient ici — contrairement au lien coach (voir D-20).
+                  onPress={() => router.push(`/(app2)/bilan/${sess.id}` as never)}
                   accessibilityLabel={`${sess.name || sess.circuit_name}, ${formatDate(
                     sess.started_at
                   )}`}
