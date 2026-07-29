@@ -27,15 +27,15 @@
  * fait, et pas celui qu'on connaît.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { colors, radius, space, typo, useFirstViewport, useReduceMotion } from '@/ui/v2';
 import { CourbeDelta } from '@/components/telemetry/CourbeDelta';
 import { choisitPaireTours, type TourCandidat } from '@/features/data/choixPaireTours';
+import { reperesDepuisSegments, type SegmentSituable } from '@/features/data/reperesVirages';
 import { loadDeltaEntreTours, TEXTE_ABSENCE, type DeltaEntreTours } from '@/services/deltaService';
-import type { Repere } from '@/telemetry/courbeDelta';
 
 export interface SectionDeltaProps {
   sessionId: string;
@@ -44,12 +44,12 @@ export interface SectionDeltaProps {
   /** Le tour sélectionné dans la section Tours, s'il y en a un. */
   tourSelectionne: number | null;
   /**
-   * Repères nommés à poser sur la courbe — les virages.
+   * Le découpage du tracé, d'où viennent les noms de virages.
    *
-   * Vides tant que le découpage n'existe pas : il seuille la courbure, donc la
-   * vitesse de lacet. La courbe se dessine sans eux, et c'est voulu.
+   * Vide tant qu'aucune analyse de segments n'existe pour la séance — la
+   * courbe se dessine alors sans repères, et c'est le comportement voulu.
    */
-  reperes?: readonly Repere[];
+  segments?: readonly SegmentSituable[];
 }
 
 /** Marge latérale de l'écran de séance (`space.xl`), des deux côtés. */
@@ -61,7 +61,7 @@ export function SectionDelta({
   sessionId,
   tours,
   tourSelectionne,
-  reperes = [],
+  segments = [],
 }: SectionDeltaProps) {
   const reduce = useReduceMotion();
   const { width: largeurEcran } = useWindowDimensions();
@@ -92,6 +92,17 @@ export function SectionDelta({
   }, [visible, sessionId, paire?.courant, paire?.reference]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const largeurCourbe = Math.max(1, largeurEcran - MARGE_ECRAN * 2 - PAD_CARTE * 2);
+
+  /**
+   * Les repères se composent APRÈS le calcul : leur position vient d'une
+   * fraction du tour, et la longueur du tour n'est connue qu'une fois la
+   * grille du delta établie. La déduire ailleurs ferait glisser les virages.
+   */
+  const reperes = useMemo(() => {
+    const grille = resultat?.delta?.distance;
+    if (!grille || grille.length === 0) return [];
+    return reperesDepuisSegments(segments, grille[grille.length - 1]);
+  }, [resultat, segments]);
 
   // Moins de deux tours chronométrés : rien à comparer, et on le dit.
   if (!paire) {

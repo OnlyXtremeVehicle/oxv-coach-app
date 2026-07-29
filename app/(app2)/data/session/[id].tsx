@@ -562,6 +562,7 @@ export default function SeanceScreen() {
               isInlap: l.is_inlap,
             }))}
             tourSelectionne={selectedLap}
+            segments={data.segments}
           />
         </View>
 
