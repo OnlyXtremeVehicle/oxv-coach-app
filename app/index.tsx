@@ -100,10 +100,18 @@ export default function IndexRoute() {
     return <Redirect href={'/(pro)' as never} />;
   }
 
-  // Lot L6 — le pilote arrive désormais dans l'arbre V2. L'arbre v1 reste en
-  // place et atteignable : (app2) y renvoie encore volontairement pour trois
-  // écrans non portés (planificateur de route, import de tracé, carte trophée).
-  // Il sera retiré après la validation terrain, pas avant.
+  // Lot L6 — le pilote arrive dans l'arbre V2.
+  //
+  // Ce commentaire disait que l'arbre v1 restait atteignable « pour trois
+  // écrans non portés : planificateur de route, import de tracé, carte
+  // trophée ». **Les trois sont portés depuis le 29/07/2026** — lots 19 et 20 —
+  // et `app/(app2)` ne pointe plus une seule fois vers `app/(app)`.
+  //
+  // L'arbre v1 reste néanmoins en place, pour deux raisons qui n'ont rien à
+  // voir avec le pilote : `app/(pro)` en dépend (cinq écrans montent
+  // `AccountButton`, qui vise `/(app)/compte`), et les espaces coach et admin
+  // vivent encore à côté. Le retrait passe donc par le classement écran par
+  // écran du lot 21, pas par une suppression de dossier.
   return <Redirect href={'/(app2)' as never} />;
 }
 
