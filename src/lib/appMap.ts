@@ -47,7 +47,8 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   debrief: 'miroir',
   'debrief-presentiel': 'miroir',
   signature: 'miroir',
-  regularite: 'miroir',
+  // `regularite` retiré le 29/07/2026 : l'écran V1 est supprimé, la Saison
+  // porte désormais sa section RÉGULARITÉ dans le hub Data.
   progression: 'miroir',
   stats: 'miroir',
   comparateur: 'miroir',

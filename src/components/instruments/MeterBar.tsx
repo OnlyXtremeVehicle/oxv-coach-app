@@ -16,7 +16,7 @@
  *   <MeterBar label="S2" value="38,1" fillPct={68} tone="gold" />
  *   <MeterBar label="Consistance" value="87 %" fillPct={87}
  *             color={dataColors.regularity}
- *             onPress={() => router.push('/(app)/regularite')} />
+ *             onPress={() => router.push('/(app2)/data')} />
  */
 
 import { useEffect, useRef, useState } from 'react';
