@@ -1,4 +1,16 @@
 /**
+ * REMPLACÉ — n'éditez plus ce fichier.
+ *
+ * Le banc est porté en `app/(app2)/dev-capture.tsx` (lot J5, décision fondateur
+ * du 29/07/2026). Celui-ci meurt avec l'arbre V1, à l'étape 10 de l'ordre
+ * d'exécution ; il est conservé jusque-là pour ne pas supprimer hors séquence.
+ *
+ * Le portage a corrigé un défaut qui vit encore ici : `BELTOISE_FINISH` ne
+ * correspond à AUCUNE ligne de la table `circuits`. Toute validation de
+ * détection de tours faite depuis cet écran porte sur une ligne inexistante.
+ *
+ * ---
+ *
  * Écran de debug : capture des bytes UBX bruts depuis un RaceBox +
  * détection de tours live + simulation Flic 2.
  *
