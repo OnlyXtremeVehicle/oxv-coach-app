@@ -313,43 +313,51 @@ L'étape 1, elle, est **faite** : `SaisonSections.tsx` pousse désormais
 
 ---
 
-## LES SEPT ARBITRAGES QUI VOUS REVIENNENT
+## ÉTAT DES ARBITRAGES — TRANCHÉS LE 29/07/2026
 
-Aucun de ces sept ne se tranche en lisant le code. Ils décident du produit.
+| # | Sujet | Décision | Suite |
+|---:|---|---|---|
+| 1 | `virage` | **Ancre partagée** dans la séance du pilote, action selon le rôle | **Fait** — `?corner=` + « Annoter ce virage » ; lien coach recâblé |
+| 2 | `debug-capture` | **Porter en app2 sous `__DEV__`** | **Fait** — `dev-capture.tsx`, ligne d'arrivée lue en base |
+| 3 | Retrait de `(pro)` | **Recâbler maintenant, retirer plus tard** | **Fait** — 9 liens + 5 boutons partis |
+| 4 | `partage`, durée | **7 et 30 jours seulement** | **Fait** — « sans limite » retiré, garde lexicale posée |
+| 5 | `catalogue`, octet nul | *Résolu sans arbitrage* | La sentinelle est construite au rendu, jamais écrite en base |
+| 6 | `virage-comparer` | **Ouvert** | Deux tours choisis contre tous les passages : décision produit |
+| 7 | `ReportButton` | **Ouvert** | Le signalement quitte-t-il l'app pilote ? |
 
-**1. `virage.tsx` — où le coach écrit-il ?**
-Aujourd'hui le coach annote **sur l'écran du pilote** : `virage.tsx:235` teste
-son rôle et lui affiche « Annoter ce virage ». Faut-il une vue virage propre à
-`(coach)`, ou une ancre partagée dans la séance du pilote ? Le programme ne
-prévoit ni l'un ni l'autre : l'Arbre pilote annonce « les virages et leur
-évolution » dans `data/session`, mais la table `ANCHORS` n'en contient aucune
-trace.
+### Ce que la décision 1 a changé au classement
 
-**2. `debug-capture.tsx` — le banc de capture survit-il ?**
-Absent des 37 routes pilote, mais seule surface d'export de trames UBX réelles,
-alors que le programme constate que rien n'a jamais tourné et exige une journée
-avec boîtier. Le garder sous `__DEV__` comme `dev-galerie`, ou perdre le banc.
+`virage.tsx` était le seul écran classé **RESTE**, et pour une seule raison :
+il portait l'unique chemin par lequel un coach désigne un virage à annoter.
+**Ce chemin existe maintenant en app2.** Sa justification tombe.
 
-**3. La date de retrait de `app/(pro)`.**
-Neuf liens et cinq `AccountButton`. Tant que `(pro)` vit, huit écrans classés
-« meurt » restent atteints.
+Ce qu'il détient encore : `cornerDeepDiveService` et `GForceBars`, que la feuille
+virage d'app2 ne reprend pas. Faut-il les porter ou les abandonner ? C'est une
+question neuve, et beaucoup plus petite que celle qu'elle remplace.
 
-**4. `partage` — la durée « sans limite ».**
-Le sélecteur 7 / 30 / illimité migre-t-il tel quel, ou l'illimité tombe-t-il sous
-la réserve article 25 déjà portée à l'avocat ?
+**Le classement devient donc : 0 reste · 8 migre (sous réserve du sort du
+deep-dive) · 63 meurt.**
 
-**5. `virage-comparer` — deux tours ou tous les passages ?**
-La V1 compare **deux tours choisis** ; app2 superpose **tous les passages** d'un
-même virage. Objets voisins, pas identiques. Classer le premier mort contre le
-second est une décision produit.
+---
 
-**6. `ReportButton` — le signalement quitte-t-il l'app ?**
+## LES DEUX ARBITRAGES ENCORE OUVERTS
+
+Aucun des deux ne se tranche en lisant le code. Ils décident du produit.
+
+**1. `ReportButton` — le signalement quitte-t-il l'app ?**
 Il disparaît intégralement avec `coachs` et `partenaires`. Volontaire — la
 modération vit dans l'admin, donc sur le web — ou oubli ?
 
-**7. `catalogue` — l'octet nul a-t-il voyagé jusqu'en base ?**
-Voir ci-dessous. Le code est corrigé ; reste à savoir si des lignes ont été
-écrites avec la sentinelle corrompue.
+**2. `virage-comparer` — deux tours ou tous les passages ?**
+La V1 compare **deux tours choisis** ; la feuille virage d'app2 superpose **tous
+les passages** d'un même virage. Objets voisins, pas identiques. Classer le
+premier mort contre le second est une décision produit.
+
+### Et un troisième, plus petit, ouvert par la décision 1
+
+`virage.tsx` détient encore `cornerDeepDiveService` et `GForceBars`, que la
+feuille virage d'app2 ne reprend pas. Les porter, ou les abandonner avec
+l'écran ?
 
 ---
 

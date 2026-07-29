@@ -505,11 +505,15 @@ en or, sans qu'aucune donnée ne le justifie.
 Le bilan V1, lui, ne calcule aucun record — c'est une capacité ajoutée en V2,
 sous l'hypothèse implicite « le lecteur est le pilote ».
 
-**Non corrigé, volontairement.** Le recâblage a été annulé et le lien laissé sur
-V1, avec la raison écrite en commentaire. Corriger demande de décider ce que le
-coach lit — sa propre vue de la séance, ou le bilan du pilote paramétré par
-l'identité du pilote. C'est l'arbitrage 1 de `docs/J5_ARBRE_V1.md`, pas une
-retouche.
+**TOUJOURS PRÉSENT DANS `useBilan`.** Le recâblage vers le bilan a été annulé et
+le lien laissé sur V1, la raison écrite en commentaire à l'endroit du geste.
 
-**Ce que cela bloque** : l'étape 2 de l'ordre d'exécution du lot J5, donc la
-suppression de `app/(app)/bilan.tsx` (1 428 lignes).
+**Ce que cela bloque** : la suppression de `app/(app)/bilan.tsx` (1 428 lignes).
+
+**Ce qui a été corrigé ailleurs, le même jour.** L'arbitrage 1 a tranché en
+faveur de l'ancre partagée, et `app/(app2)/data/session/[id].tsx` a donc dû
+apprendre à lire la séance d'autrui. Il le fait SANS reproduire ce défaut :
+l'identité de référence bascule sur `session.user_id` dès que le lecteur n'est
+pas le pilote, et `fetchAllSessions` comme `loadWeatherCorrelation` la prennent.
+Le motif de correction est écrit là-bas ; `useBilan` reste à traiter de la même
+manière.

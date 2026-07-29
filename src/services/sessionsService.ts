@@ -411,3 +411,25 @@ export async function fetchUsedCircuits(
     return [];
   }
 }
+
+/**
+ * Une séance PAR SON ID, sans filtre de propriétaire — la RLS arbitre l'accès.
+ *
+ * Sert aux lectures NON self : un coach ouvrant la séance de son pilote, là où
+ * `fetchAllSessions(monId)` ne peut par construction pas la trouver.
+ *
+ * Ne l'utilisez PAS pour décider ce qui s'affiche : savoir charger la séance
+ * d'autrui ne suffit pas. Tout calcul qui compare à un historique doit prendre
+ * l'identité du PILOTE (`session.user_id`), jamais celle du lecteur — c'est
+ * exactement le défaut D-20, où un coach voyait la séance de son pilote
+ * comparée à ses propres séances.
+ */
+export async function fetchSessionById(sessionId: string): Promise<TelemetrySession | null> {
+  const { data, error } = await supabase
+    .from('telemetry_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as TelemetrySession | null) ?? null;
+}

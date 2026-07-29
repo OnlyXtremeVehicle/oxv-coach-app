@@ -805,14 +805,15 @@ function SessionRow({
           // Une note est classée PAR VIRAGE en base. Ouvrir directement
           // l'éditeur depuis la liste des séances n'indiquait aucun virage :
           // la note partait alors sur le premier, sans que le coach l'ait
-          // désigné. On passe donc par la vue virage de la séance, où il
-          // choisit — et d'où le bouton « Annoter » transmet le bon numéro.
-          onPress={() =>
-            router.push({
-              pathname: '/(app)/virage',
-              params: { sessionId: session.id },
-            } as never)
-          }
+          // désigné. On passe donc par la vue de la séance, où il choisit — et
+          // d'où le bouton « Annoter ce virage » transmet le bon numéro.
+          //
+          // Recâblé sur l'arbre V2 au lot J5 (décision fondateur du 29/07/2026 :
+          // ancre partagée dans la séance du pilote). `data/session/[id]` sait
+          // désormais lire la séance d'autrui — la RLS arbitre — et bascule son
+          // identité de référence sur le PROPRIÉTAIRE de la séance, pour ne pas
+          // reproduire le défaut D-20.
+          onPress={() => router.push(`/(app2)/data/session/${session.id}` as never)}
           style={[s.sessionAction, s.sessionActionDivider]}
         >
           <Text style={s.action}>Annoter</Text>

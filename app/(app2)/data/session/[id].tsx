@@ -4,8 +4,21 @@
  * courant, section par section, dans un seul scroll ancré.
  *
  * DOCTRINE (non négociable) :
- *  - SELF-ONLY : uniquement les données du pilote courant (useAuthStore).
- *    Aucun service coach, aucune trace d'un autre pilote.
+ *  - UNE SEULE SÉANCE, UN SEUL PILOTE. L'écran n'a jamais montré deux pilotes à
+ *    la fois et ne le fera pas. Il était STRICTEMENT self jusqu'au 29/07/2026 ;
+ *    depuis le lot J5 (décision fondateur « ancre partagée dans la séance du
+ *    pilote »), un coach peut ouvrir la séance d'un de ses pilotes — la RLS
+ *    arbitre l'accès, jamais ce fichier.
+ *
+ *    LA RÈGLE QUI EN DÉCOULE : dès que le lecteur n'est pas le pilote,
+ *    l'identité de référence bascule sur le PROPRIÉTAIRE de la séance
+ *    (`data.pilotId`). Tout calcul qui compare à un historique — superposition
+ *    des passages, corrélation météo — prend cette identité. Prendre celle du
+ *    lecteur produirait le défaut D-20, où le bilan V2 marquait « record » la
+ *    séance d'un pilote après l'avoir comparée aux séances du coach.
+ *
+ *    Le RÔLE ne décide que d'une ACTION — « Annoter ce virage » — jamais d'une
+ *    lecture. Le pilote voit le même écran, sans cette commande.
  *  - DONNÉES RÉELLES : une donnée absente devient « — » ou un StateView vide —
  *    JAMAIS un chiffre fabriqué. La prod n'a presque aucune trame (1 séance /
  *    1 tour) : chaque section doit se dégrader proprement en vide honnête.
@@ -27,7 +40,14 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
+import {
+  InteractionManager,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Canvas, Circle, Group, Path, Rect } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -45,6 +65,7 @@ import Svg, { Path as SvgPath } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  Button,
   ChronoHero,
   Chip,
   CondensingHeaderBar,
@@ -86,7 +107,7 @@ import type { SessionInsights } from '@/circuit/sessionInsights';
 import { loadSessionFlow } from '@/services/flowService';
 import type { FlowPoint } from '@/services/flowLogic';
 import { supabase } from '@/lib/supabase';
-import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
+import { fetchAllSessions, fetchSessionById, fetchSessionLaps } from '@/services/sessionsService';
 import { loadCornerEvolution } from '@/services/cornerEvolutionService';
 import type { CornerEvolution } from '@/services/cornerEvolutionService';
 import {
@@ -153,7 +174,19 @@ interface SeanceData {
   segments: SegmentAnalysisRow[];
   weather: SeanceWeather | null;
   correlation: WeatherCorrelation | null;
-  /** Séances du MÊME circuit (self-only), pour la superposition B4. */
+  /**
+   * Identité du PILOTE de la séance — pas celle du lecteur.
+   *
+   * Les deux coïncident dans le cas courant. Elles divergent quand un coach
+   * ouvre la séance d'un de ses pilotes : tout ce qui compare à un historique
+   * doit alors prendre CETTE identité, jamais celle du lecteur. C'est le
+   * défaut D-20, où le bilan V2 marquait « record » la séance d'un pilote après
+   * l'avoir comparée aux séances du coach.
+   */
+  pilotId: string;
+  /** Vrai quand le lecteur n'est pas le pilote (lecture coach). */
+  lectureDAutrui: boolean;
+  /** Séances du MÊME circuit et du MÊME pilote, pour la superposition B4. */
   circuitSessionIds: string[];
   /** Tour retenu par séance pour la superposition (best_lap_number, sinon 1). */
   lapNumberBySession: Record<string, number>;
@@ -219,7 +252,7 @@ function useSeance(id: string | undefined) {
     setStatus('loading');
 
     (async () => {
-      // Socle : la séance du pilote. `strict` distingue panne (error) de vide.
+      // Socle : la séance. `strict` distingue panne (error) de vide.
       let sessions: TelemetrySession[];
       try {
         sessions = await fetchAllSessions(userId, { strict: true });
@@ -227,10 +260,40 @@ function useSeance(id: string | undefined) {
         if (!cancelled) setStatus('error');
         return;
       }
-      const session = sessions.find((s) => s.id === id) ?? null;
+
+      let session = sessions.find((s) => s.id === id) ?? null;
+      let pilotId = userId;
+
+      // LECTURE D'AUTRUI (coach ouvrant la séance de son pilote, lot J5).
+      //
+      // L'écran était strictement self : une séance absente de MA liste rendait
+      // « introuvable », et le coach n'avait donc aucun chemin vers un virage à
+      // annoter. Le repli lit la séance par son id — la RLS arbitre l'accès, ce
+      // n'est pas ce code qui autorise quoi que ce soit.
+      //
+      // Une fois la séance obtenue, l'identité de référence bascule sur son
+      // PROPRIÉTAIRE. Sans ce basculement, la superposition des passages
+      // comparerait la séance du pilote aux séances du coach : le défaut D-20,
+      // reproduit ici.
       if (!session) {
-        if (!cancelled) setStatus('notfound');
-        return;
+        try {
+          session = await fetchSessionById(id);
+        } catch {
+          if (!cancelled) setStatus('error');
+          return;
+        }
+        if (!session) {
+          if (!cancelled) setStatus('notfound');
+          return;
+        }
+        pilotId = session.user_id;
+        try {
+          sessions = await fetchAllSessions(pilotId, { strict: true });
+        } catch {
+          // L'historique du pilote reste hors de portée : on lit la séance
+          // seule. La superposition se réduira honnêtement à ce passage-ci.
+          sessions = [session];
+        }
       }
 
       const circuitSessions = session.circuit_id
@@ -248,7 +311,9 @@ function useSeance(id: string | undefined) {
           fetchSessionLaps(id, { strict: true }),
           listSegmentAnalysesForSession(id),
           loadSeanceWeather(id),
-          loadWeatherCorrelation(userId, session.circuit_id ?? undefined),
+          // `pilotId`, pas `userId` : la corrélation météo se lit sur
+          // l'historique de CELUI QUI A ROULÉ (voir D-20).
+          loadWeatherCorrelation(pilotId, session.circuit_id ?? undefined),
           fetchSessionInsights(id),
           loadGGPoints(id),
           loadSessionFlow(id),
@@ -297,6 +362,8 @@ function useSeance(id: string | undefined) {
 
       setData({
         session,
+        pilotId,
+        lectureDAutrui: pilotId !== userId,
         laps,
         segments,
         weather,
@@ -415,10 +482,42 @@ function lapMs(lap: Lap): number {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function SeanceScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; corner?: string }>();
   const id = params.id;
+
+  /**
+   * Ancre `?corner=` — arriver DIRECTEMENT sur un virage (lot J5, décision
+   * fondateur du 29/07/2026 : « ancre partagée dans la séance du pilote »).
+   *
+   * L'Arbre pilote annonce « les virages et leur évolution » dans `data/session`
+   * mais la table `ANCHORS` n'en portait aucune trace : on n'entrait sur un
+   * virage que par un tap, jamais par un lien. Un débrief qui dit « regardez le
+   * virage 4 » n'avait donc pas de chemin.
+   *
+   * L'index est celui de `segments[].segmentIndex`, à zéro comme en base. Une
+   * valeur illisible ou hors liste est IGNORÉE — l'écran s'ouvre normalement
+   * plutôt que d'afficher un virage arbitraire.
+   */
+  const cornerParam = useMemo(() => {
+    if (typeof params.corner !== 'string') return null;
+    const n = Number.parseInt(params.corner, 10);
+    return Number.isInteger(n) && n >= 0 ? n : null;
+  }, [params.corner]);
   const insets = useSafeAreaInsets();
   const { status, data, reload } = useSeance(id);
+
+  /**
+   * Le rôle décide de l'ACTION, jamais de la lecture.
+   *
+   * Un coach ou un administrateur peut poser une note sur un virage ; le pilote
+   * lit le même écran sans jamais voir cette commande. La combinaison avec
+   * `lectureDAutrui` évite le cas absurde d'un coach s'annotant lui-même.
+   *
+   * Ce test ne protège RIEN : c'est la RLS qui autorise ou refuse l'écriture.
+   * Il décide seulement de ce qu'il est utile de montrer.
+   */
+  const role = useAuthStore((s) => s.profile?.role ?? null);
+  const peutAnnoter = role === 'coach' || role === 'admin';
 
   const headerH = insets.top + HEADER_BASE;
   const railTop = headerH;
@@ -471,6 +570,26 @@ export default function SeanceScreen() {
     },
     []
   );
+
+  /**
+   * Ancre `?corner=` : amener aussi le DÉFILEMENT sur la section Tracé.
+   *
+   * La feuille du virage s'ouvre par-dessus tout ; sans ce déplacement, la
+   * refermer laisserait le lecteur en haut de l'écran, loin du virage dont on
+   * venait de lui parler.
+   *
+   * `runAfterInteractions` parce que `sectionY` se remplit aux `onLayout`, qui
+   * n'ont pas encore eu lieu à l'instant où cet effet part.
+   */
+  const ancreDefilee = useRef(false);
+  useEffect(() => {
+    if (ancreDefilee.current || cornerParam === null || status !== 'ready') return;
+    ancreDefilee.current = true;
+    const tache = InteractionManager.runAfterInteractions(() => {
+      goToAnchor(ANCHORS.findIndex((a) => a.key === 'trace'));
+    });
+    return () => tache.cancel();
+  }, [cornerParam, status, goToAnchor]);
 
   // Style du header condensé (fondu entrant au-delà du seuil).
   const condensedStyle = useAnimatedStyle(() => ({
@@ -576,6 +695,9 @@ export default function SeanceScreen() {
             segments={data.segments}
             circuitSessionIds={data.circuitSessionIds}
             lapNumberBySession={data.lapNumberBySession}
+            initialCorner={cornerParam}
+            pilotId={data.pilotId}
+            peutAnnoter={peutAnnoter && data.lectureDAutrui}
           />
         </View>
 
@@ -902,16 +1024,44 @@ function TraceSection({
   segments,
   circuitSessionIds,
   lapNumberBySession,
+  initialCorner,
+  pilotId,
+  peutAnnoter,
 }: {
   sessionId: string;
   selectedLap: number | null;
   segments: SegmentAnalysisRow[];
   circuitSessionIds: string[];
   lapNumberBySession: Record<string, number>;
+  /** Virage à ouvrir d'emblée (ancre `?corner=`). null = aucun. */
+  initialCorner?: number | null;
+  /** Propriétaire de la séance — destinataire d'une éventuelle annotation. */
+  pilotId: string;
+  /** Le lecteur peut-il annoter ce virage ? (coach ou admin, séance d'autrui) */
+  peutAnnoter: boolean;
 }) {
   const [trace, setTrace] = useState<{ lat: number; lon: number }[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [openCorner, setOpenCorner] = useState<SegmentAnalysisRow | null>(null);
+
+  // L'ancre n'ouvre le virage QU'UNE FOIS. Sans ce garde-fou, refermer la
+  // feuille la rouvrirait au rendu suivant : le virage deviendrait impossible
+  // à quitter tant que le paramètre est dans l'URL.
+  const ancreConsommee = useRef(false);
+
+  useEffect(() => {
+    if (ancreConsommee.current) return;
+    if (initialCorner === null || initialCorner === undefined) return;
+    // Les segments arrivent après le premier rendu : on attend qu'ils soient là
+    // plutôt que de conclure trop tôt que le virage n'existe pas.
+    if (segments.length === 0) return;
+    ancreConsommee.current = true;
+    const cible = segments.find((s) => s.segmentIndex === initialCorner);
+    // Introuvable → on ne substitue RIEN. L'écran s'ouvre sur la séance.
+    if (cible && cible.startProgress !== null && cible.endProgress !== null) {
+      setOpenCorner(cible);
+    }
+  }, [initialCorner, segments]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1006,10 +1156,13 @@ function TraceSection({
         </View>
       ) : null}
 
-      <Sheet visible={openCorner !== null} onClose={() => setOpenCorner(null)} snapHeight={420}>
+      <Sheet visible={openCorner !== null} onClose={() => setOpenCorner(null)} snapHeight={480}>
         {openCorner ? (
           <CornerZoomSheet
             corner={openCorner}
+            sessionId={sessionId}
+            pilotId={pilotId}
+            peutAnnoter={peutAnnoter}
             circuitSessionIds={circuitSessionIds}
             lapNumberBySession={lapNumberBySession}
           />
@@ -1026,10 +1179,16 @@ function TraceSection({
  */
 function CornerZoomSheet({
   corner,
+  sessionId,
+  pilotId,
+  peutAnnoter,
   circuitSessionIds,
   lapNumberBySession,
 }: {
   corner: SegmentAnalysisRow;
+  sessionId: string;
+  pilotId: string;
+  peutAnnoter: boolean;
   circuitSessionIds: string[];
   lapNumberBySession: Record<string, number>;
 }) {
@@ -1102,6 +1261,37 @@ function CornerZoomSheet({
           emptyMessage="Pas encore assez de passages sur ce virage pour une superposition."
         />
       )}
+
+      {/*
+        L'ACTION DU COACH, DANS L'ÉCRAN DU PILOTE (lot J5, décision fondateur du
+        29/07/2026 : « ancre partagée, l'action apparaissant selon le rôle »).
+
+        C'était la seule capacité que `app/(app)/virage.tsx` détenait en propre :
+        désigner LE virage sur lequel une note se pose. Une note est classée par
+        virage en base ; ouvrir l'éditeur sans en désigner un ferait partir la
+        note sur le premier venu.
+
+        Le pilote ne voit rien de tout cela : il lit son virage.
+      */}
+      {peutAnnoter ? (
+        <View style={styles.annoterAction}>
+          <Button
+            label="Annoter ce virage"
+            variant="ghost"
+            onPress={() =>
+              router.push({
+                pathname: '/(coach)/annoter',
+                params: {
+                  pilotId,
+                  cornerIndex: String(corner.segmentIndex),
+                  sessionId,
+                },
+              } as never)
+            }
+            accessibilityLabel={`Annoter ${title}`}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -2048,6 +2238,9 @@ const styles = StyleSheet.create({
     marginTop: space.md,
     marginBottom: space.md,
   },
+  // L'action du coach se pose SOUS les faits, jamais au-dessus : on lit le
+  // virage d'abord, on écrit ensuite.
+  annoterAction: { marginTop: space.lg, marginBottom: space.md },
   factCard: {
     backgroundColor: colors.bg.card2,
     borderRadius: radius.cell,
