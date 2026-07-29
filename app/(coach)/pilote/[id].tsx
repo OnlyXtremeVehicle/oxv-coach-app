@@ -755,6 +755,21 @@ function SessionRow({
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={`Ouvrir le bilan. ${rowA11yLabel}`}
+        // LIEN À RECÂBLER, MAIS PAS TEL QUEL (lot J5, étape 2).
+        //
+        // `app/(app)/bilan.tsx` est classé « meurt » : ce lien tombera avec
+        // l'arbre V1. Le pointer sur `/(app2)/bilan/[sessionId]` a été tenté
+        // puis ANNULÉ — le bilan V2 est un bilan de SOI.
+        //
+        // `useBilan` charge bien la séance d'autrui (repli `fetchSessionById`,
+        // RLS arbitre), mais il calcule ensuite le record avec
+        // `isPersonalRecord(bestLapMs, id, fetchAllSessions(MON id))` : le coach
+        // verrait la séance du pilote comparée à SES propres séances. Et
+        // `bilanLogic.ts:91` renvoie `true` quand la liste est vide — un coach
+        // sans séance verrait la séance du pilote marquée RECORD, en or.
+        //
+        // Le recâblage demande donc une lecture coach de la séance, pas un
+        // changement de chemin. Voir docs/J5_ARBRE_V1.md, arbitrage 1.
         onPress={() =>
           router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
         }

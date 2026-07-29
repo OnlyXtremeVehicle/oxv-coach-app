@@ -578,7 +578,11 @@ export function SaisonSections({ data }: { data: SaisonData }) {
       {/* ── Pied — votre signature ──────────────────────────────────────── */}
       <View style={styles.section}>
         <PressScale
-          onPress={() => router.push('/signature' as never)}
+          // Le groupe est OBLIGATOIRE ici. `/signature` est réclamée par deux
+          // fichiers — `app/(app)/signature.tsx` et `app/(app2)/signature.tsx` —
+          // et un push non qualifié laisse expo-router arbitrer. Le pilote lit
+          // sa signature dans l'arbre V2 : on la nomme.
+          onPress={() => router.push('/(app2)/signature' as never)}
           accessibilityLabel="Votre signature"
         >
           <View style={styles.signatureRow}>

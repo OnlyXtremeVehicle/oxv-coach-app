@@ -276,7 +276,7 @@ maison avant de supprimer.**
 | # | Geste | Pourquoi à cette place |
 |---:|---|---|
 | 1 | Qualifier `SaisonSections.tsx:581` en `/(app2)/signature` | Une ligne. Tant qu'elle est ambiguë, aucune suppression n'est sûre |
-| 2 | Recâbler les deux liens `(coach) → (app)` | Le coach reste dans l'application : c'est le seul blocage dur |
+| 2 | Recâbler les deux liens `(coach) → (app)` | Le coach reste dans l'application. **Ce n'est pas un changement de chemin** — voir l'encadré ci-dessous |
 | 3 | Trancher et porter **`virage`** | 1 204 lignes, deux services exclusifs, un arbitrage doctrinal : il commande le calendrier |
 | 4 | Réhéberger **l'écriture d'intention** vers `rec/fin` acte 3 | Sans elle, l'étape 8 du flux REC est une spécification sans code |
 | 5 | Porter **`partage`** — durée d'expiration + `sanitizeIncludedMetrics` | Petit, sans dépendance, et c'est une régression RGPD à la seconde où V1 tombe |
@@ -285,6 +285,31 @@ maison avant de supprimer.**
 | 8 | Porter **`belle-route`** vers `club/routes` | Conformément à l'Arbre, **pas** vers Territoire |
 | 9 | Couper les 9 liens `(pro) → (app)` et les 5 `AccountButton` | Même geste que retirer `(pro)` ; n'a pas à retarder le reste |
 | 10 | **Supprimer**, dans l'ordre inverse des dépendances | Les 63 écrans et leurs modules exclusifs ; `_layout.tsx` et `AppTabBar` en dernier |
+
+### L'étape 2 a été tentée le 29/07, et annulée
+
+Le lien `(coach)/pilote/[id].tsx:759` a été pointé sur
+`/(app2)/bilan/[sessionId]`, puis remis en place. **Le bilan V2 est un bilan de
+soi.**
+
+Il charge bien la séance d'autrui — repli `fetchSessionById`, RLS arbitre. Mais
+il calcule ensuite le record avec `fetchAllSessions(MON id)`
+(`useBilan.ts:189` et `:277`) : le coach verrait la séance du pilote comparée à
+**ses propres** séances. Pire, `bilanLogic.ts:91` renvoie `true` quand la liste
+des autres séances est vide — **un coach sans séance verrait la séance du pilote
+marquée RECORD, en or**, sans qu'aucune donnée ne le justifie.
+
+Le bilan V1 ne calcule aucun record. La capacité est née en V2, sous
+l'hypothèse silencieuse « le lecteur est le pilote ».
+
+Recâbler demande donc de décider **ce que le coach lit** — sa propre vue de la
+séance, ou le bilan du pilote paramétré par l'identité du pilote. C'est
+l'arbitrage 1 ci-dessous, et cela bloque la suppression de `bilan.tsx`
+(1 428 lignes). Consigné en `D-20` dans [`DETTE.md`](DETTE.md), la raison écrite
+en commentaire à l'endroit du lien.
+
+L'étape 1, elle, est **faite** : `SaisonSections.tsx` pousse désormais
+`/(app2)/signature`, groupe qualifié.
 
 ---
 

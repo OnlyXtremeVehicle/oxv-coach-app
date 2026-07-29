@@ -477,3 +477,39 @@ Mille trois cents lignes d'écran, quatre sections, inatteignables.
 
 **Traité par** : le plan tranche déjà — « le hub Data devient la Saison,
 `data/saison` fusionne et disparaît ». C'est un lot à part entière du jalon 4.
+
+---
+
+## D-20 · Le bilan V2 est un bilan de SOI, et son record le prouve
+
+**Constaté le 29/07/2026**, en tentant de recâbler
+`app/(coach)/pilote/[id].tsx:759` vers l'arbre V2 (étape 2 du lot J5).
+
+`useBilan` sait charger la séance d'autrui : quand l'id n'est pas dans les
+séances de l'utilisateur, il retombe sur `fetchSessionById`, dont le commentaire
+dit « même chemin que le bilan v1 (RLS arbitre l'accès) ». Le chargement
+fonctionne donc pour un coach.
+
+**Le calcul qui suit, non.**
+
+```
+useBilan.ts:277   isPersonalRecord(bestLapMs, session.id, allSessions)
+useBilan.ts:189   allSessions = fetchAllSessions(userId)   ← MON id, pas celui du pilote
+```
+
+Un coach ouvrant la séance d'un pilote la verrait comparée à **ses propres**
+séances. Et `bilanLogic.ts:91` renvoie `true` quand la liste des autres séances
+est vide : **un coach sans séance verrait la séance du pilote marquée RECORD**,
+en or, sans qu'aucune donnée ne le justifie.
+
+Le bilan V1, lui, ne calcule aucun record — c'est une capacité ajoutée en V2,
+sous l'hypothèse implicite « le lecteur est le pilote ».
+
+**Non corrigé, volontairement.** Le recâblage a été annulé et le lien laissé sur
+V1, avec la raison écrite en commentaire. Corriger demande de décider ce que le
+coach lit — sa propre vue de la séance, ou le bilan du pilote paramétré par
+l'identité du pilote. C'est l'arbitrage 1 de `docs/J5_ARBRE_V1.md`, pas une
+retouche.
+
+**Ce que cela bloque** : l'étape 2 de l'ordre d'exécution du lot J5, donc la
+suppression de `app/(app)/bilan.tsx` (1 428 lignes).
