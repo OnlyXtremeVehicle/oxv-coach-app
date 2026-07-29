@@ -21,6 +21,7 @@ export * from './media';
 export { StateView } from './StateView';
 export { ProvenanceTag } from './ProvenanceTag';
 export { SectionHeader } from './SectionHeader';
+export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Chip } from './Chip';
 export { ListRow } from './ListRow';
 export { StatCell } from './StatCell';

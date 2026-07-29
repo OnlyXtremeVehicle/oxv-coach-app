@@ -827,7 +827,8 @@ const ROUTE_LINKS: { path: string; title: string; desc: string; create: boolean 
     create: false,
   },
   {
-    path: '/(app)/mes-routes',
+    // Porté en app2 au lot 19 (29/07/2026) — l'écran V1 est supprimé.
+    path: '/(app2)/club/routes',
     title: 'Mes routes',
     desc: 'Vos routes enregistrées et leur statut.',
     create: false,

@@ -10,18 +10,68 @@ import {
   zoneOfRoute,
 } from '../appMap';
 
-/** Segments de route RÉELS sous app/(app) (fichiers .tsx + dossiers), hors système. */
-function realRouteSegments(): string[] {
-  const dir = path.join(process.cwd(), 'app', '(app)');
-  const out = new Set<string>();
+/**
+ * Segments de route RÉELS, sur les DEUX arbres.
+ *
+ * ---
+ *
+ * POURQUOI LES DEUX, ET POURQUOI EN PROFONDEUR
+ *
+ * Ce balayage ne connaissait que `app/(app)`. À mesure que les écrans migrent
+ * vers `app/(app2)`, il devenait aveugle : une entrée d'`appMap` pointant vers
+ * un écran porté était déclarée orpheline, et la seule issue était de retirer
+ * l'entrée — donc de désarmer la carte au lieu de la corriger.
+ *
+ * Constaté le 29/07/2026 en portant `mes-routes` vers `app/(app2)/club/routes`.
+ *
+ * La descente est RÉCURSIVE parce que l'arbre app2 range ses écrans en
+ * sous-dossiers (`club/`, `data/`, `bilan/`, `rec/`) : un segment d'`appMap`
+ * est un nom, pas un chemin, et il peut vivre à n'importe quelle profondeur.
+ */
+function segmentsDeArbre(dir: string, out: Set<string>): void {
+  if (!fs.existsSync(dir)) return;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const name = e.isDirectory() ? e.name : e.name.replace(/\.tsx$/, '');
     if (!e.isDirectory() && !e.name.endsWith('.tsx')) continue;
     if (name === '_layout' || name === '+not-found') continue;
-    if (name.startsWith('[') || name.startsWith('(')) continue;
-    if (name === 'index') continue; // l'index correspond à '' (paddock)
-    out.add(name);
+    if (name.startsWith('[')) continue;
+    // Un groupe `(xxx)` ne produit pas de segment d'URL — on le TRAVERSE.
+    if (name.startsWith('(')) {
+      if (e.isDirectory()) segmentsDeArbre(path.join(dir, e.name), out);
+      continue;
+    }
+    if (name !== 'index') out.add(name);
+    if (e.isDirectory()) segmentsDeArbre(path.join(dir, e.name), out);
   }
+}
+
+/**
+ * TOUS les segments atteignables, les deux arbres confondus.
+ *
+ * Sert à vérifier qu'aucune entrée d'`appMap` ne pointe dans le vide — un écran
+ * porté vers app2 reste un écran, et la carte doit pouvoir le désigner.
+ */
+function realRouteSegments(): string[] {
+  const out = new Set<string>();
+  segmentsDeArbre(path.join(process.cwd(), 'app', '(app)'), out);
+  segmentsDeArbre(path.join(process.cwd(), 'app', '(app2)'), out);
+  return [...out];
+}
+
+/**
+ * Les segments du SEUL arbre V1.
+ *
+ * `appMap` est une carte des ZONES V1 : elle range les écrans de `app/(app)`
+ * dans les cinq zones de sa barre d'onglets. L'arbre app2 a sa propre
+ * structure, et exiger qu'`appMap` le couvre lui ferait dire ce pour quoi elle
+ * n'existe pas.
+ *
+ * Le test d'orphelines porte donc sur V1 seul. Le jour où l'arbre V1 disparaît
+ * (lot 21), c'est `appMap` entière qui part avec.
+ */
+function segmentsV1(): string[] {
+  const out = new Set<string>();
+  segmentsDeArbre(path.join(process.cwd(), 'app', '(app)'), out);
   return [...out];
 }
 
@@ -97,7 +147,11 @@ describe('appMap — cohérence avec les routes réelles', () => {
   const real = realRouteSegments();
 
   it('chaque écran (app) est mappé à une zone (pas d’orpheline)', () => {
-    const orphans = real.filter((seg) => !(seg in ROUTE_TO_ZONE) && !UNMAPPED_ALLOWLIST.has(seg));
+    // V1 SEUL : appMap range les écrans de la barre d'onglets V1. L'arbre app2
+    // a sa propre structure et n'est pas de son ressort.
+    const orphans = segmentsV1().filter(
+      (seg) => !(seg in ROUTE_TO_ZONE) && !UNMAPPED_ALLOWLIST.has(seg)
+    );
     expect(orphans).toEqual([]);
   });
 
