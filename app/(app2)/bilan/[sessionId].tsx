@@ -568,12 +568,14 @@ export default function BilanScreen() {
         />
         <ListRow
           icon="insigne"
-          label="Carte trophée"
+          label="Carte-souvenir"
           sublabel="La carte à partager de la séance"
           divider={false}
           onPress={() => {
             setSheetVisible(false);
-            router.push(`/(app)/carte-trophee?sessionId=${sessionId}` as never);
+            // Portée en app2 au lot 20 (29/07/2026). Le nom suit l'écran :
+            // « carte-souvenir » était déjà son titre en V1.
+            router.push(`/(app2)/bilan/carte-souvenir?sessionId=${sessionId}` as never);
           }}
         />
         {exportFailed ? (

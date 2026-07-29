@@ -110,7 +110,9 @@ export const ROUTE_TO_ZONE: Record<string, Zone> = {
   galerie: 'decouverte',
   roulages: 'decouverte',
   partage: 'decouverte',
-  'carte-trophee': 'decouverte',
+  // La carte-souvenir est portée en app2 le 29/07/2026, sous `bilan/` : c'est
+  // un objet du Miroir (la séance mise en carte), pas de la Découverte.
+  'carte-souvenir': 'miroir',
 
   // ── COMPTE — réglages (5e onglet dans les maquettes)
   compte: 'compte',

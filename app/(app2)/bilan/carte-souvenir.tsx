@@ -45,11 +45,9 @@ import { computeRegularity } from '@/services/regularityService';
 import { fetchSessionLaps } from '@/services/sessionsService';
 import { supabase } from '@/lib/supabase';
 import type { TelemetrySession } from '@/types/telemetry';
-import { theme } from '@/theme/v2';
-import { AppBar } from '@/ui/AppBar';
-import { Button } from '@/ui/Button';
-import { Screen } from '@/ui/Screen';
-import { StatusLine, cockpitHalo } from '@/ui/Cockpit';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { Button, PressScale, SectionHeader, colors, radius, space, typo } from '@/ui/v2';
 import { formatDateLong, formatLapTime } from '@/utils/format';
 
 const SITE_URL = 'https://oxvehicle.fr';
@@ -85,7 +83,51 @@ function ExportGlyph() {
   );
 }
 
-export default function CarteTropheeScreen() {
+/**
+ * CORRESPONDANCE V1 → V2, POSÉE UNE FOIS
+ *
+ * Vingt-six références aux jetons V1 vivent dans les styles. Les traduire ici
+ * plutôt que de les réécrire garde le portage vérifiable, et nomme les deux
+ * seuls renoncements : `bodyLight` rejoint `body` — le kit V2 n'a pas de
+ * graisse légère — et `cardBorderProminent` rejoint `border.strong`.
+ */
+const theme = {
+  palette: {
+    card2: colors.bg.card2,
+    cardBorderProminent: colors.border.strong,
+    cream: colors.text.hi,
+    creamMute: colors.text.low,
+  },
+  fonts: { body: typo.body, bodyLight: typo.body, display: typo.display },
+  fontSize: { small: 12, body: 14, h2: 21 },
+  spacing: { xs: space.xs, sm: space.sm, md: space.md, lg: space.lg, xl: space.xl },
+  radius: { md: radius.cell },
+} as const;
+
+/**
+ * L'en-tête de l'écran. Le kit V2 n'a pas d'`AppBar` : les écrans de app2
+ * composent le leur — chevron à gauche, titre mono centré, largeur symétrique
+ * à droite pour que le centrage tienne.
+ */
+function EnTete({ insetsTop }: { insetsTop: number }) {
+  return (
+    <View style={[s.entete, { paddingTop: insetsTop + space.sm }]}>
+      <PressScale
+        onPress={() => router.back()}
+        accessibilityLabel="Retour"
+        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      >
+        <Text style={s.chevron}>‹</Text>
+      </PressScale>
+      <Text style={s.enteteTitre} accessibilityRole="header">
+        CARTE-SOUVENIR
+      </Text>
+      <View style={s.enteteEspaceur} />
+    </View>
+  );
+}
+export default function CarteSouvenirScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const cardRef = useRef<View>(null);
 
@@ -179,22 +221,22 @@ export default function CarteTropheeScreen() {
 
   if (loading) {
     return (
-      <Screen scroll={false}>
-        <AppBar title="Carte-souvenir" onBack={() => router.back()} />
+      <View style={s.root}>
+        <EnTete insetsTop={insets.top} />
         <View style={s.center}>
           <ActivityIndicator
             color={theme.palette.creamMute}
             accessibilityLabel="Préparation de la carte"
           />
         </View>
-      </Screen>
+      </View>
     );
   }
 
   if (!data) {
     return (
-      <Screen scroll={false}>
-        <AppBar title="Carte-souvenir" onBack={() => router.back()} />
+      <View style={s.root}>
+        <EnTete insetsTop={insets.top} />
         <View style={s.empty}>
           <Text style={s.emptyTitle} accessibilityRole="header">
             Aucune séance à mettre en carte.
@@ -203,21 +245,21 @@ export default function CarteTropheeScreen() {
             Ouvrez une séance depuis votre bilan pour en faire un souvenir.
           </Text>
         </View>
-      </Screen>
+      </View>
     );
   }
 
   return (
-    <Screen scroll={false}>
-      <AppBar title="Carte-souvenir" onBack={() => router.back()} />
+    <View style={s.root}>
+      <EnTete insetsTop={insets.top} />
       <View style={s.page}>
         {/* En-tête révélé en douceur. La carte elle-même (capturée en image par
             react-native-view-shot) reste STATIQUE et hors de toute animation. */}
         <FadeInSection delay={0}>
-          <StatusLine label="Prêt à partager" />
+          <SectionHeader eyebrow="PRÊT À PARTAGER" />
         </FadeInSection>
 
-        <View style={[s.cardHalo, cockpitHalo]}>
+        <View style={s.cardHalo}>
           <TrophyCard
             ref={cardRef}
             bestLapLabel={data.bestLapLabel}
@@ -269,11 +311,33 @@ export default function CarteTropheeScreen() {
           </Text>
         </FadeInSection>
       </View>
-    </Screen>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg.base },
+  entete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.xl,
+    paddingBottom: space.sm,
+  },
+  chevron: {
+    fontFamily: typo.body,
+    fontSize: 28,
+    lineHeight: 30,
+    color: colors.text.hi,
+    width: 24,
+  },
+  enteteTitre: {
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 1.6,
+    color: colors.text.mid,
+  },
+  enteteEspaceur: { width: 24 },
   page: {
     flex: 1,
     paddingHorizontal: theme.spacing.lg,
