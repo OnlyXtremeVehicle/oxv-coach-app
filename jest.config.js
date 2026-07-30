@@ -21,7 +21,9 @@ module.exports = {
   testMatch: ['**/__tests__/**/*.test.ts'],
   // Ignore les copies de tests dans les worktrees git éphémères (.claude/worktrees/*)
   // créés par les agents en arrière-plan : sinon jest exécute les mêmes suites en double.
-  testPathIgnorePatterns: ['/node_modules/', '/\\.claude/worktrees/'],
+  // `archive/` : l'arbre V1 y dort depuis le lot J5. Il n'est ni construit, ni
+  // typé, ni testé — le ramasser ferait échouer des suites sur du code retiré.
+  testPathIgnorePatterns: ['/node_modules/', '/\\.claude/worktrees/', '/archive/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },

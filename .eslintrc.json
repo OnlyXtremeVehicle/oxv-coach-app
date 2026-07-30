@@ -1,7 +1,12 @@
 {
   "root": true,
-  "extends": ["expo", "prettier"],
-  "plugins": ["prettier"],
+  "extends": [
+    "expo",
+    "prettier"
+  ],
+  "plugins": [
+    "prettier"
+  ],
   "ignorePatterns": [
     "node_modules/",
     ".expo/",
@@ -13,11 +18,20 @@
     "coverage/",
     "web-snippets/",
     "src/types/database.types.ts",
-    "*.config.js"
+    "*.config.js",
+    "archive/"
   ],
   "rules": {
     "prettier/prettier": "error",
-    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "no-console": [
+      "warn",
+      {
+        "allow": [
+          "warn",
+          "error"
+        ]
+      }
+    ],
     "@typescript-eslint/no-explicit-any": "warn",
     "@typescript-eslint/no-unused-vars": [
       "error",
@@ -33,8 +47,14 @@
   },
   "overrides": [
     {
-      "files": ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}"],
-      "env": { "browser": false, "node": false }
+      "files": [
+        "app/**/*.{ts,tsx}",
+        "src/**/*.{ts,tsx}"
+      ],
+      "env": {
+        "browser": false,
+        "node": false
+      }
     }
   ]
 }
