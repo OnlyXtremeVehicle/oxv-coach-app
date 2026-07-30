@@ -366,10 +366,24 @@ d'exécution sont faites ; **plus aucun code hors de `app/(app)` ne navigue
 vers `app/(app)`**, hormis `src/lib/appMap.ts`, la table de navigation de
 l'arbre V1 lui-même.
 
-Reste l'étape 10 : supprimer, dans l'ordre inverse des dépendances — les 63
-écrans et leurs modules exclusifs, `_layout.tsx` et `AppTabBar` en dernier.
-Elle n'est PAS engagée, et la règle 0.5 s'y applique : pas de suppression
-avant sauvegarde vérifiée.
+**L'étape 10 est FAITE** — le 29/07/2026 au soir, sur décision fondateur
+« le supprimer et en faire un dossier à part pour garder une sauvegarde ».
+
+L'arbre n'a donc pas été supprimé : il est **archivé sous `archive/arbre-v1/`**,
+hors de `app/`, exclu de `tsconfig`, `.eslintrc` et `jest.config`. Il reste
+lisible sans peser sur une seule porte. 74 fichiers plus 28 modules devenus
+orphelins — **39 107 lignes**. Les scans doctrine et accessibilité passent de
+355 à 257 fichiers.
+
+Sauvegarde exigée par la règle 0.5 : tag `avant-suppression-arbre-v1`, poussé
+sur origin.
+
+**Deux choses ont failli mal tourner.** Le premier relevé de dépendances ne
+suivait que les imports `@/…` et déclarait morts `marginCalculator` — le calcul
+de la marge — et `traceNarrativeLogic`, vivants tous deux par des imports
+relatifs. Et `appMap` a failli partir : `app/(app2)/_layout.tsx` l'importe. Il a
+été réduit à son seul export survivant, `shouldShowTabBar`, qui porte le
+Principe 3.
 
 **Ce que la suppression devra rejouer.** Les 63 justifications de mort n'ont pas
 été vérifiées une par une (voir la section méthode). Chaque suppression rejoue
