@@ -523,3 +523,39 @@ l'identité de référence bascule sur `session.user_id` dès que le lecteur n'e
 pas le pilote, et `fetchAllSessions` comme `loadWeatherCorrelation` la prennent.
 Le motif de correction est écrit là-bas ; `useBilan` reste à traiter de la même
 manière.
+
+---
+
+## D-21 · Les virages sont affichés avec un numéro de trop
+
+**Constaté le 29/07/2026**, en vérifiant les trouvailles de la revue J5.
+**Antérieur au lot J5.**
+
+`app_segment_analyses.segment_index` est numéroté **à partir de 1** — la chaîne
+le prouve : `BELTOISE_CORNERS[].index` vaut 1..7, `hauteSaintonge.ts` pose
+`order: corner.index`, `analysis.ts:137` écrit `segmentIndex: segment.order`.
+C'est aussi ce qu'exige `(coach)/annoter.tsx:106`, qui refuse tout
+`cornerIndex < 1`.
+
+Mais plusieurs écrans affichent `segmentIndex + 1` :
+
+```
+src/features/data/reperesVirages.ts:54     `V${s.segmentIndex + 1}`
+app/(app2)/data/session/[id].tsx           `V${c.segmentIndex + 1}`  (pastille)
+app/(app2)/data/session/[id].tsx           `Virage ${corner.segmentIndex + 1}`
+```
+
+Le virage 1 s'affiche donc « V2 », et le dernier virage porte un numéro qui
+n'existe pas sur le circuit. Un pilote qui dit « le V4 » et un coach qui ouvre
+le virage 4 ne parlent pas du même endroit.
+
+**Pourquoi personne ne l'a vu** : `app_segment_analyses` est VIDE en production.
+Aucune donnée n'est jamais venue démentir le décalage.
+
+**Non corrigé ici, volontairement** : le défaut précède le lot J5 et touche des
+écrans hors de son périmètre. Le corriger demande de vérifier chaque affichage
+de numéro de virage de l'application d'un coup, sans quoi on déplace
+l'incohérence au lieu de la fermer.
+
+**Ce qui EST fait** : `src/telemetry/__tests__/indexVirage.guard.test.ts` relie
+les deux extrémités de la chaîne, pour que la base ne se perde plus en route.

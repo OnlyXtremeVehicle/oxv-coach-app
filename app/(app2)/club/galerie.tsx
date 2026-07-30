@@ -136,6 +136,7 @@ export default function GalerieScreen() {
   const [shareScope, setShareScope] = useState<ShareScope | null>(null);
   const [shareDays, setShareDays] = useState<number>(DUREES[0].days);
   const [shareMetrics, setShareMetrics] = useState<string[]>([]);
+  const [shareErreur, setShareErreur] = useState<string | null>(null);
   const door = useDoorTransition();
 
   const { width: winW } = useWindowDimensions();
@@ -179,27 +180,47 @@ export default function GalerieScreen() {
   // c'est la garde que portait déjà l'écran V1.
   const shareReady = shareScope !== null && shareMetrics.length > 0;
 
+  /** Ramène le composeur à zéro — appelé à la fermeture, quelle qu'en soit la cause. */
+  const reinitialiserComposeur = useCallback(() => {
+    setShareScope(null);
+    setShareDays(DUREES[0].days);
+    setShareMetrics([]);
+    setShareErreur(null);
+  }, []);
+
+  const fermerComposeur = useCallback(() => {
+    setShareSheet(false);
+    // La composition ne survit PAS à la feuille, y compris quand elle est
+    // abandonnée : rouvrir doit repartir d'un choix explicite. Sans cela, des
+    // métriques cochées puis oubliées se retrouveraient dans le lien suivant.
+    reinitialiserComposeur();
+  }, [reinitialiserComposeur]);
+
   const onCreateShare = useCallback(() => {
     if (creating || shareScope === null || shareMetrics.length === 0) return;
     setCreating(true);
+    setShareErreur(null);
     createShare({
       scope: shareScope,
       expiresInDays: shareDays,
       includedMetrics: sanitizeIncludedMetrics(shareMetrics),
     })
       .then((link) => {
-        if (link) g.reloadShares();
+        if (link) {
+          g.reloadShares();
+          setShareSheet(false);
+          reinitialiserComposeur();
+          return;
+        }
+        // ÉCHEC. La feuille RESTE ouverte et le dit. La fermer comme si de rien
+        // n'était laisserait le pilote croire qu'un lien existe — et il
+        // partagerait une adresse qui n'a jamais été créée.
+        setShareErreur(
+          "Le lien n'a pas pu être créé. Réessayez quand votre connexion sera revenue."
+        );
       })
-      .finally(() => {
-        setCreating(false);
-        setShareSheet(false);
-        // La composition ne survit pas à la feuille : le prochain partage
-        // repart d'un choix explicite, jamais du précédent.
-        setShareScope(null);
-        setShareDays(DUREES[0].days);
-        setShareMetrics([]);
-      });
-  }, [creating, shareScope, shareDays, shareMetrics, g]);
+      .finally(() => setCreating(false));
+  }, [creating, shareScope, shareDays, shareMetrics, g, reinitialiserComposeur]);
 
   const onRevoke = useCallback(
     (id: string) => {
@@ -366,7 +387,7 @@ export default function GalerieScreen() {
         />
       ) : null}
 
-      <Sheet visible={shareSheet} onClose={() => setShareSheet(false)} snapHeight={620}>
+      <Sheet visible={shareSheet} onClose={fermerComposeur} snapHeight={620}>
         <ScrollView showsVerticalScrollIndicator={false}>
           <SectionHeader eyebrow="CRÉER UN LIEN" />
           <Text style={styles.sheetNote}>
@@ -416,6 +437,8 @@ export default function GalerieScreen() {
           <Text style={styles.sheetNote}>
             Rien n&apos;est coché par défaut : vous ajoutez ce que vous acceptez de montrer.
           </Text>
+
+          {shareErreur !== null ? <Text style={styles.sheetErreur}>{shareErreur}</Text> : null}
 
           <View style={styles.sheetAction}>
             <Button
@@ -1070,6 +1093,13 @@ const styles = StyleSheet.create({
   sheetAction: {
     marginTop: space.lg,
     marginBottom: space.xl,
+  },
+  sheetErreur: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.accent,
+    marginTop: space.md,
   },
   // ── Viewer ────────────────────────────────────────────────────────────
   viewerRoot: {

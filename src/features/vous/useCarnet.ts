@@ -31,6 +31,7 @@ import {
   type SessionIntention,
   getIntentionForSession,
   getPendingIntention,
+  setIntentionShared,
 } from '@/services/intentionsService';
 import { type PilotGoal, listMyGoals } from '@/services/pilotGoalsService';
 import {
@@ -78,6 +79,15 @@ export interface Carnet extends CarnetState {
   addNote: (body: string) => Promise<boolean>;
   /** Bascule le partage coach d'une note (optimiste, recharge en cas d'échec). */
   toggleNoteShared: (noteId: string, next: boolean) => Promise<void>;
+  /**
+   * Bascule le partage coach d'une INTENTION.
+   *
+   * La carte de fin de séance promet « révocable à tout moment ». Jusqu'au lot
+   * J5, `setIntentionShared` n'avait AUCUN appelant dans le dépôt : la promesse
+   * était écrite, la révocation n'existait pas. Le carnet est l'endroit où le
+   * pilote retrouve ses intentions — c'est donc là qu'il les reprend.
+   */
+  toggleIntentionShared: (intentionId: string, next: boolean) => Promise<void>;
 }
 
 const INITIAL: CarnetState = {
@@ -242,5 +252,23 @@ export function useCarnet(userId: string | null): Carnet {
     [reload]
   );
 
-  return { ...state, reload, addNote: addNoteCb, toggleNoteShared };
+  const toggleIntentionShared = useCallback(
+    async (intentionId: string, next: boolean): Promise<void> => {
+      // Même patron que les notes : optimiste, puis rechargement si le serveur
+      // refuse — l'interrupteur ne reste jamais sur un état que la base ignore.
+      setState((s) => ({
+        ...s,
+        intentions: s.intentions.map((it) =>
+          it.intention.id === intentionId
+            ? { ...it, intention: { ...it.intention, sharedWithCoach: next } }
+            : it
+        ),
+      }));
+      const res = await setIntentionShared(intentionId, next);
+      if (!res.ok) reload();
+    },
+    [reload]
+  );
+
+  return { ...state, reload, addNote: addNoteCb, toggleNoteShared, toggleIntentionShared };
 }

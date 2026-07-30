@@ -434,7 +434,7 @@ function IntentionsPanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset:
         }
         renderItem={({ item, index }) => (
           <Animated.View entering={staggerEntering(index)}>
-            <IntentionCard item={item} />
+            <IntentionCard item={item} onToggleShare={carnet.toggleIntentionShared} />
           </Animated.View>
         )}
       />
@@ -442,39 +442,72 @@ function IntentionsPanel({ carnet, bottomInset }: { carnet: Carnet; bottomInset:
   );
 }
 
-function IntentionCard({ item }: { item: CarnetIntentionItem }) {
+function IntentionCard({
+  item,
+  onToggleShare,
+}: {
+  item: CarnetIntentionItem;
+  onToggleShare: Carnet['toggleIntentionShared'];
+}) {
   const state = intentionState(item.intention.sessionId);
   const honored = state === 'honored';
   return (
     <View style={styles.intentionCard}>
-      <View style={styles.intentionGlyph}>
-        <CircuitGlyph />
-      </View>
-      <View style={styles.intentionBody}>
-        <Text style={[styles.intentionText, !honored && styles.intentionTextPending]}>
-          {item.intention.body}
-        </Text>
-        <View style={styles.intentionMetaRow}>
-          <View style={[styles.intentionDot, honored ? styles.dotHonored : styles.dotPending]} />
-          <Text style={styles.intentionMeta} numberOfLines={1}>
-            {intentionStateLabel(state)}
-            {item.circuitName ? ` · ${item.circuitName}` : ''}
-            {honored && item.sessionStartedAt
-              ? ` · ${dayMonth(item.sessionStartedAt)}`
-              : ` · posée le ${dayMonth(item.intention.createdAt)}`}
-          </Text>
+      <View style={styles.intentionCorps}>
+        <View style={styles.intentionGlyph}>
+          <CircuitGlyph />
         </View>
+        <View style={styles.intentionBody}>
+          <Text style={[styles.intentionText, !honored && styles.intentionTextPending]}>
+            {item.intention.body}
+          </Text>
+          <View style={styles.intentionMetaRow}>
+            <View style={[styles.intentionDot, honored ? styles.dotHonored : styles.dotPending]} />
+            <Text style={styles.intentionMeta} numberOfLines={1}>
+              {intentionStateLabel(state)}
+              {item.circuitName ? ` · ${item.circuitName}` : ''}
+              {honored && item.sessionStartedAt
+                ? ` · ${dayMonth(item.sessionStartedAt)}`
+                : ` · posée le ${dayMonth(item.intention.createdAt)}`}
+            </Text>
+          </View>
+        </View>
+        {honored && item.intention.sessionId ? (
+          <PressScale
+            onPress={() => router.push(`/(app2)/bilan/${item.intention.sessionId}` as never)}
+            accessibilityLabel="Ouvrir la séance liée"
+            // Chevron de 16 pt : hitSlop 14 porte la cible à 44 × 44.
+            hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
+          >
+            <Chevron />
+          </PressScale>
+        ) : null}
       </View>
-      {honored && item.intention.sessionId ? (
-        <PressScale
-          onPress={() => router.push(`/(app2)/bilan/${item.intention.sessionId}` as never)}
-          accessibilityLabel="Ouvrir la séance liée"
-          // Chevron de 16 pt : hitSlop 14 porte la cible à 44 × 44.
-          hitSlop={{ top: 14, bottom: 14, left: 14, right: 14 }}
-        >
-          <Chevron />
-        </PressScale>
-      ) : null}
+
+      {/*
+        LA RÉVOCATION, LÀ OÙ ELLE MANQUAIT.
+
+        La carte de fin de séance promet « révocable à tout moment ». Jusqu'au
+        lot J5, `setIntentionShared` n'avait aucun appelant : la phrase était
+        écrite, le chemin n'existait pas. Le carnet est l'endroit où le pilote
+        retrouve ses intentions — c'est ici qu'il les reprend.
+      */}
+      <View style={styles.shareRow}>
+        <Text style={styles.shareLabel}>Partagée avec le coach</Text>
+        <Switch
+          value={item.intention.sharedWithCoach}
+          onValueChange={(v) => {
+            haptic(v ? 'tap' : 'warn');
+            void onToggleShare(item.intention.id, v);
+          }}
+          // Même piste neutre que les notes : un consentement n'est pas une
+          // alerte, et l'accent reste unique par zone.
+          trackColor={{ false: colors.bg.card2, true: colors.text.mid }}
+          thumbColor={colors.text.hi}
+          ios_backgroundColor={colors.bg.card2}
+          accessibilityLabel="Partager cette intention avec le coach"
+        />
+      </View>
     </View>
   );
 }
@@ -776,6 +809,8 @@ const styles = StyleSheet.create({
   },
 
   // Intentions
+  /** Ligne haute de la carte : glyphe, texte, chevron. La bascule vient sous elle. */
+  intentionCorps: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   intentionCard: {
     flexDirection: 'row',
     alignItems: 'center',

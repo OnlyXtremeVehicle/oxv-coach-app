@@ -499,14 +499,23 @@ export default function SeanceScreen() {
    * virage que par un tap, jamais par un lien. Un débrief qui dit « regardez le
    * virage 4 » n'avait donc pas de chemin.
    *
-   * L'index est celui de `segments[].segmentIndex`, à zéro comme en base. Une
-   * valeur illisible ou hors liste est IGNORÉE — l'écran s'ouvre normalement
-   * plutôt que d'afficher un virage arbitraire.
+   * L'index est celui de `segments[].segmentIndex`, **numéroté à partir de 1**.
+   * La chaîne le prouve : `trackviz/analysis.ts` écrit `segmentIndex:
+   * segment.order`, `trackviz/hauteSaintonge.ts` pose `order: corner.index`, et
+   * `BELTOISE_CORNERS` commence à 1. C'est aussi ce qu'exige
+   * `(coach)/annoter.tsx`, qui refuse tout `cornerIndex < 1`.
+   *
+   * Le premier jet de cette ancre annonçait « à zéro comme en base » et
+   * acceptait 0 : le contrat écrit contredisait le code. Un lien composé
+   * d'après ce commentaire aurait ouvert le virage voisin.
+   *
+   * Une valeur illisible ou hors liste est IGNORÉE — l'écran s'ouvre
+   * normalement plutôt que d'afficher un virage arbitraire.
    */
   const cornerParam = useMemo(() => {
     if (typeof params.corner !== 'string') return null;
     const n = Number.parseInt(params.corner, 10);
-    return Number.isInteger(n) && n >= 0 ? n : null;
+    return Number.isInteger(n) && n >= 1 ? n : null;
   }, [params.corner]);
   const insets = useSafeAreaInsets();
   const { status, data, reload } = useSeance(id);
@@ -705,6 +714,7 @@ export default function SeanceScreen() {
             peutAnnoter={peutAnnoter && data.lectureDAutrui}
             laps={data.laps}
             circuitName={data.session.circuit_name ?? null}
+            meilleurTour={data.session.best_lap_number ?? null}
           />
         </View>
 
@@ -1036,6 +1046,7 @@ function TraceSection({
   peutAnnoter,
   laps,
   circuitName,
+  meilleurTour,
 }: {
   sessionId: string;
   selectedLap: number | null;
@@ -1052,6 +1063,8 @@ function TraceSection({
   laps: Lap[];
   /** Nom du circuit en base — sert à retrouver la corde de référence. */
   circuitName: string | null;
+  /** Meilleur tour de la séance selon la base. null si non désigné. */
+  meilleurTour: number | null;
 }) {
   const [trace, setTrace] = useState<{ lat: number; lon: number }[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1180,6 +1193,7 @@ function TraceSection({
             lapNumberBySession={lapNumberBySession}
             laps={laps}
             circuitName={circuitName}
+            meilleurTour={meilleurTour}
           />
         ) : null}
       </Sheet>
@@ -1201,6 +1215,7 @@ function CornerZoomSheet({
   lapNumberBySession,
   laps,
   circuitName,
+  meilleurTour,
 }: {
   corner: SegmentAnalysisRow;
   sessionId: string;
@@ -1212,6 +1227,8 @@ function CornerZoomSheet({
   laps: Lap[];
   /** Nom du circuit tel qu'il est en base — sert à retrouver la corde. */
   circuitName: string | null;
+  /** Meilleur tour de la séance selon la base. null si non désigné. */
+  meilleurTour: number | null;
 }) {
   const [tab, setTab] = useState<'detail' | 'trace' | 'evolution'>('detail');
   const [evolution, setEvolution] = useState<CornerEvolution | null>(null);
@@ -1255,7 +1272,18 @@ function CornerZoomSheet({
   const g = (v: number | null) => (v !== null ? `${v.toFixed(2)} g` : '—');
 
   return (
-    <View>
+    // DÉFILEMENT OBLIGATOIRE — la `Sheet` du kit V2 rend ses enfants dans un
+    // `View` à hauteur fixe (`snapHeight`), sans scroll ni débordement. Le
+    // contenu ajouté au lot J5 — barres de G, onglet Tracé, bouton d'annotation
+    // — dépasse largement les ~400 pt utiles, et ce qui déborde sort du cadre
+    // du parent : invisible sur Android, jamais tappable sur iOS.
+    //
+    // « Annoter ce virage » est le DERNIER enfant. Sans ce ScrollView, le coach
+    // ne peut pas annoter — la capacité pour laquelle ce lot existe.
+    //
+    // C'est le motif déjà en place pour la feuille des lectures Insight, plus
+    // bas dans ce fichier, et pour celle de `club/galerie`.
+    <ScrollView showsVerticalScrollIndicator={false}>
       <SectionHeader eyebrow="VIRAGE" title={title} />
       <View style={styles.tabRow}>
         <Chip label="Détail" active={tab === 'detail'} onPress={() => setTab('detail')} />
@@ -1298,6 +1326,7 @@ function CornerZoomSheet({
           sessionId={sessionId}
           laps={laps}
           circuitName={circuitName}
+          meilleurTour={meilleurTour}
         />
       ) : evoStatus === 'loading' || evoStatus === 'idle' ? (
         <StateView state="loading" shape="hero" />
@@ -1342,7 +1371,7 @@ function CornerZoomSheet({
           />
         </View>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -1365,11 +1394,14 @@ function TraceVirageOnglet({
   sessionId,
   laps,
   circuitName,
+  meilleurTour,
 }: {
   corner: SegmentAnalysisRow;
   sessionId: string;
   laps: Lap[];
   circuitName: string | null;
+  /** Meilleur tour de la séance selon la base. null si non désigné. */
+  meilleurTour: number | null;
 }) {
   const chronometres = useMemo(
     () =>
@@ -1384,11 +1416,17 @@ function TraceVirageOnglet({
   const [chargement, setChargement] = useState(false);
   const [echec, setEchec] = useState(false);
 
-  // Choix initial du tour A : jamais imposé si aucun tour n'est chronométré.
+  // Choix initial : le MEILLEUR tour de la séance quand la base le désigne,
+  // sinon le premier chronométré. On ne présente jamais un tour quelconque
+  // comme une référence — c'est aussi ce qui décide de la couleur du tracé.
   useEffect(() => {
     if (tourA !== null || chronometres.length === 0) return;
-    setTourA(chronometres[0].lap_number);
-  }, [chronometres, tourA]);
+    const meilleur =
+      meilleurTour !== null && chronometres.some((l) => l.lap_number === meilleurTour)
+        ? meilleurTour
+        : chronometres[0].lap_number;
+    setTourA(meilleur);
+  }, [chronometres, tourA, meilleurTour]);
 
   useEffect(() => {
     if (tourA === null) return;
@@ -1452,8 +1490,8 @@ function TraceVirageOnglet({
 
   return (
     <View>
-      <Text style={styles.sheetNote}>Tour de référence</Text>
-      <View style={styles.tabRow}>
+      <Text style={styles.sheetNote}>Tour lu</Text>
+      <View style={styles.choixTours}>
         {chronometres.map((l) => (
           <Chip
             key={`a-${l.lap_number}`}
@@ -1469,7 +1507,7 @@ function TraceVirageOnglet({
       </View>
 
       <Text style={styles.sheetNote}>Comparer à (facultatif)</Text>
-      <View style={styles.tabRow}>
+      <View style={styles.choixTours}>
         <Chip label="Aucun" active={tourB === null} onPress={() => setTourB(null)} />
         {chronometres
           .filter((l) => l.lap_number !== tourA)
@@ -1491,7 +1529,14 @@ function TraceVirageOnglet({
         <TraceVirage
           reference={trancheA}
           compare={trancheB}
-          labelReference={tourA !== null ? `Tour ${tourA}` : 'Tour de référence'}
+          referenceEstMeilleurTour={tourA !== null && tourA === meilleurTour}
+          labelReference={
+            tourA !== null
+              ? tourA === meilleurTour
+                ? `Tour ${tourA} — meilleur`
+                : `Tour ${tourA}`
+              : 'Tour lu'
+          }
           labelCompare={tourB !== null ? `Tour ${tourB}` : 'Tour comparé'}
         />
       )}
@@ -2398,6 +2443,18 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     color: colors.text.low,
     marginTop: space.sm,
+  },
+  /**
+   * Choix des tours : il REPLIE. Une séance ordinaire compte dix à vingt tours ;
+   * sur une seule rangée, les derniers sortent de l'écran et deviennent
+   * intouchables — on ne pourrait plus composer la comparaison qui intéresse.
+   */
+  choixTours: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginTop: space.sm,
+    marginBottom: space.sm,
   },
   /** Note de la feuille virage : dit à quelle échelle une valeur est vraie. */
   sheetNote: {

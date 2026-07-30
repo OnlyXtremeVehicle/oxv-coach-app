@@ -27,10 +27,15 @@
  * MÊME cadre — deux cadres séparés les feraient coïncider visuellement alors
  * qu'ils ne passent pas au même endroit.
  *
- * Le tour de référence est en or (c'est du chrono), l'autre en bleu
- * trajectoire. Aucun n'est déclaré meilleur, aucun écart n'est peint : ce sont
- * deux faits côte à côte. La convention est celle du PLAN_V3 — « A or / B bleu,
- * aucun gagnant ».
+ * L'OR NE SE DONNE PAS À UN TOUR QUELCONQUE. Dans le canon, `heritage.gold`
+ * code le chrono et le record — le même écran l'emploie pour le meilleur tour
+ * de la séance. Peindre en or le tour qu'on regarde parce qu'il est « celui de
+ * gauche » lui prêterait un statut qu'il n'a pas.
+ *
+ * L'or n'est donc pris que si le tour lu EST le meilleur tour de la séance
+ * (`referenceEstMeilleurTour`). Sinon il passe en crème, et le tour comparé
+ * garde le bleu trajectoire. Dans les deux cas, aucun n'est déclaré meilleur et
+ * aucun écart n'est peint : ce sont deux faits côte à côte.
  *
  * ---
  *
@@ -56,8 +61,13 @@ const BLEU = colors.qdi.trajectoire;
 const OR = colors.heritage.gold;
 
 export interface TraceVirageProps {
-  /** Tour de référence — dessiné en or. */
+  /** Le tour qu'on lit. */
   reference: TrancheVirage;
+  /**
+   * Ce tour est-il le meilleur de la séance ? Seul ce cas autorise l'or —
+   * ailleurs, la couleur mentirait sur le statut du tour.
+   */
+  referenceEstMeilleurTour?: boolean;
   /** Second tour à superposer. Absent = un seul tracé. */
   compare?: TrancheVirage | null;
   /** Libellés des deux tours, pour la légende et le lecteur d'écran. */
@@ -67,10 +77,12 @@ export interface TraceVirageProps {
 
 export const TraceVirage = memo(function TraceVirage({
   reference,
+  referenceEstMeilleurTour = false,
   compare,
-  labelReference = 'Tour de référence',
+  labelReference = 'Tour lu',
   labelCompare = 'Tour comparé',
 }: TraceVirageProps) {
+  const teinteRef = referenceEstMeilleurTour ? OR : colors.text.hi;
   const [largeur, setLargeur] = useState(0);
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -144,8 +156,10 @@ export const TraceVirage = memo(function TraceVirage({
                 {dessin.cheminRef ? (
                   <GlowStroke
                     path={dessin.cheminRef}
-                    color={OR}
-                    glowColor={colors.heritage.glow}
+                    color={teinteRef}
+                    glowColor={
+                      referenceEstMeilleurTour ? colors.heritage.glow : 'rgba(232,233,237,0.22)'
+                    }
                     strokeWidth={2.4}
                   />
                 ) : null}
@@ -153,14 +167,14 @@ export const TraceVirage = memo(function TraceVirage({
                   <Circle cx={dessin.apexCmp.x} cy={dessin.apexCmp.y} r={3.5} color={BLEU} />
                 ) : null}
                 {dessin.apexRef ? (
-                  <Circle cx={dessin.apexRef.x} cy={dessin.apexRef.y} r={3.5} color={OR} />
+                  <Circle cx={dessin.apexRef.x} cy={dessin.apexRef.y} r={3.5} color={teinteRef} />
                 ) : null}
               </Canvas>
             ) : null}
           </View>
 
           <View style={styles.legende}>
-            <Legende teinte={OR} texte={labelReference} />
+            <Legende teinte={teinteRef} texte={labelReference} />
             {compare ? <Legende teinte={BLEU} texte={labelCompare} /> : null}
           </View>
 
