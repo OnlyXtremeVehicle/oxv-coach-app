@@ -17,7 +17,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, {
@@ -58,6 +58,7 @@ import {
 } from '@/ui/v2';
 
 import { bilanHeroMorphId } from '@/features/miroir/bilanLogic';
+import { CarteProchaineFois } from '@/features/rec/CarteProchaineFois';
 import { bio1GuardKey, runBio1, type Bio1Deps } from '@/features/rec/bio1Trigger';
 import {
   buildFinSummary,
@@ -212,20 +213,41 @@ export default function FinScreen() {
         {phase === 'preservation' ? <PreservationPhase /> : null}
 
         {phase === 'pret' ? (
-          <Animated.View entering={FadeIn.duration(260)} style={styles.phaseBlock}>
-            {bestLapMs !== null ? <ChronoHero chronoMs={bestLapMs} size="l" /> : null}
-            <Text style={styles.pretTitle} accessibilityRole="header">
-              {finPhaseTitle('pret')}
-            </Text>
-            <PressScale
-              onPress={openBilan}
-              accessibilityLabel="Ouvrir le bilan"
-              containerStyle={styles.ctaContainer}
-              style={styles.cta}
-            >
-              <Text style={styles.ctaLabel}>Ouvrir le bilan</Text>
-            </PressScale>
-          </Animated.View>
+          // Défilement : le troisième acte porte un champ de saisie, et le
+          // clavier mange la moitié de l'écran sur un téléphone court.
+          <ScrollView
+            style={styles.pretScroll}
+            contentContainerStyle={styles.pretScrollContenu}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Animated.View entering={FadeIn.duration(260)} style={styles.phaseBlock}>
+              {bestLapMs !== null ? <ChronoHero chronoMs={bestLapMs} size="l" /> : null}
+              <Text style={styles.pretTitle} accessibilityRole="header">
+                {finPhaseTitle('pret')}
+              </Text>
+              <PressScale
+                onPress={openBilan}
+                accessibilityLabel="Ouvrir le bilan"
+                containerStyle={styles.ctaContainer}
+                style={styles.cta}
+              >
+                <Text style={styles.ctaLabel}>Ouvrir le bilan</Text>
+              </PressScale>
+            </Animated.View>
+
+            {/*
+              ACTE 3 — « poser la variable de la prochaine fois » (Arbre pilote,
+              étape 8). Il vient APRÈS l'accès au bilan, et il est facultatif :
+              la séance se lit d'abord, l'intention se pose si elle vient. Rien
+              n'oblige à écrire pour sortir de cet écran.
+
+              C'était, avant ce lot, la seule capacité que l'arbre V1 détenait
+              sans équivalent : `savePendingIntention` n'avait que deux
+              appelants, tous deux en V1.
+            */}
+            <CarteProchaineFois circuitId={meta?.circuitId ?? null} />
+          </ScrollView>
         ) : null}
 
         {phase === 'erreur' ? (
@@ -517,6 +539,9 @@ const styles = StyleSheet.create({
     gap: space.lg,
     width: '100%',
   },
+  /** Phase « prêt » : elle défile, contrairement aux deux autres. */
+  pretScroll: { flex: 1, width: '100%' },
+  pretScrollContenu: { flexGrow: 1, justifyContent: 'center', paddingVertical: space.xl },
   finiTitle: {
     fontFamily: typo.display,
     fontSize: 24,

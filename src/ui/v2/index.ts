@@ -24,6 +24,7 @@ export { SectionHeader } from './SectionHeader';
 export { Button, type ButtonProps, type ButtonVariant } from './Button';
 export { Field, type FieldProps } from './Field';
 export { ReportLink, type ReportLinkProps } from './ReportLink';
+export { ConsentRow, type ConsentRowProps } from './ConsentRow';
 export { Chip } from './Chip';
 export { ListRow } from './ListRow';
 export { StatCell } from './StatCell';
