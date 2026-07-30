@@ -396,6 +396,34 @@ export default function ReglagesScreen() {
           <ActionRow label="Déconnexion" divider={false} onPress={() => void r.signOut()} />
         </Group>
 
+        {/*
+          5 — DÉVELOPPEMENT. Invisible en production : le groupe entier est
+          conditionné à `__DEV__`, et les deux écrans redirigent d'eux-mêmes
+          si la condition tombe.
+
+          Il existe parce que les deux bancs n'avaient AUCUNE porte. Le banc de
+          capture, porté au lot J5, justifie sa survie en tête de fichier —
+          « la seule surface qui capture et exporte des trames UBX réelles » —
+          et rien dans l'application n'y menait : la capacité était conservée
+          et perdue en même temps. `dev-galerie` était dans le même cas depuis
+          plus longtemps.
+        */}
+        {__DEV__ ? (
+          <Group eyebrow="DÉVELOPPEMENT">
+            <ActionRow
+              label="Banc de capture"
+              caption="Boîtier, trames UBX, détection de tours."
+              onPress={() => router.push('/(app2)/dev-capture' as never)}
+            />
+            <ActionRow
+              label="Banc visuel"
+              caption="Composants et mouvements du kit."
+              divider={false}
+              onPress={() => router.push('/(app2)/dev-galerie' as never)}
+            />
+          </Group>
+        ) : null}
+
         <Text style={styles.footer}>
           Une question sur vos données ? Écrivez à contact@oxvehicle.fr.
         </Text>

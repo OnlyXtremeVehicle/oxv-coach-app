@@ -52,15 +52,24 @@ const SCOPES: ScopeOption[] = [
   { id: 'full_history', label: 'Historique complet', description: 'Tout votre parcours.' },
 ];
 
-const DURATIONS: { days: number | null; label: string }[] = [
+/**
+ * « Sans limite » RETIRÉ — décision fondateur du 29/07/2026 : tout lien finit
+ * par expirer, dans l'esprit de la minimisation de l'article 25.
+ *
+ * Cette option ne se contentait pas d'offrir un lien perpétuel : elle passait
+ * `expiresInDays: duration ?? undefined`, ce qui franchissait la garde lexicale
+ * du dépôt (elle ne vérifiait qu'une PRÉSENCE) tout en produisant exactement le
+ * défaut qu'elle prétendait interdire. `createShare` exige désormais une durée
+ * dans sa SIGNATURE — c'est ce type qui a fait tomber cet appel.
+ */
+const DURATIONS: { days: number; label: string }[] = [
   { days: 7, label: '7 jours' },
   { days: 30, label: '30 jours' },
-  { days: null, label: 'Sans limite' },
 ];
 
 export default function PartageScreen() {
   const [scope, setScope] = useState<ShareScope>('last_session');
-  const [duration, setDuration] = useState<number | null>(7);
+  const [duration, setDuration] = useState<number>(DURATIONS[0].days);
   // Défaut = ensemble VIDE : le pilote construit son partage activement (RGPD §2.2).
   const [metrics, setMetrics] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -88,7 +97,7 @@ export default function PartageScreen() {
     setSubmitting(true);
     const link = await createShare({
       scope,
-      expiresInDays: duration ?? undefined,
+      expiresInDays: duration,
       includedMetrics: sanitizeIncludedMetrics(metrics),
     });
     setSubmitting(false);

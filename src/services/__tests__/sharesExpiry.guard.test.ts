@@ -15,8 +15,15 @@
  * `createShare({ scope, includedMetrics })` — les deux sans durée. Aucun test
  * de comportement n'aurait pu le voir : le service fait ce qu'on lui demande.
  *
- * La seule garde qui tient est donc lexicale — lire les appels réels et exiger
- * que chacun nomme une durée.
+ * Une garde lexicale a d'abord été posée : lire les appels réels et exiger que
+ * chacun NOMME une durée. Elle était insuffisante, et la revue adversariale du
+ * 29/07 l'a montré — `expiresInDays: duree ?? undefined` la franchit tout en
+ * produisant le lien éternel qu'elle prétend interdire.
+ *
+ * La vraie garde est donc le TYPE : `createShare` exige désormais
+ * `expiresInDays: number` dans sa signature, et refuse à l'exécution toute
+ * valeur nulle ou négative. Ce fichier ne fait plus que veiller sur la forme
+ * des appels — un filet, pas la barrière.
  *
  * ---
  *
@@ -126,6 +133,24 @@ describe('garde — aucun lien de partage sans expiration', () => {
     const appels = appelsCreateShare(sansCommentaires(avecCommentaire));
     expect(appels).toHaveLength(1);
     expect(appels[0].includes('expiresInDays')).toBe(true);
+  });
+
+  it('aucun appel ne contourne la durée par un repli sur undefined', () => {
+    // C'est le cas qui a franchi la première version de cette garde :
+    // `expiresInDays: duration ?? undefined` NOMME bien la clé, et produit
+    // pourtant `expires_at = null`. Le type l'interdit maintenant ; ce contrôle
+    // le rappelle à qui lirait ce fichier plutôt que la signature.
+    const contournements: string[] = [];
+    for (const fichier of fichiers) {
+      const source = sansCommentaires(readFileSync(fichier, 'utf8'));
+      if (!source.includes('createShare')) continue;
+      for (const appel of appelsCreateShare(source)) {
+        if (/expiresInDays\s*:\s*[^,}]*\?\?\s*undefined/.test(appel)) {
+          contournements.push(fichier.slice(RACINE.length + 1));
+        }
+      }
+    }
+    expect(contournements).toEqual([]);
   });
 
   it('la garde lit un appel étalé sur plusieurs lignes', () => {

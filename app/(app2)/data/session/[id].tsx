@@ -1165,7 +1165,7 @@ function TraceSection({
               // La pastille fait ~28 pt de haut : hitSlop pour atteindre 44.
               // La zone de marge n'est sinon portée que par la couleur du point.
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-              accessibilityLabel={`Virage ${c.segmentName ?? c.segmentIndex + 1}${
+              accessibilityLabel={`Virage ${c.segmentName ?? c.segmentIndex}${
                 c.marginZone ? `, marge ${marginLabel(c.marginZone).toLowerCase()}` : ''
               }`}
             >
@@ -1174,7 +1174,16 @@ function TraceSection({
                   style={[styles.cornerDot, { backgroundColor: marginZoneColor(c.marginZone) }]}
                 />
                 <Text style={styles.cornerPillLabel}>
-                  {c.segmentName ?? `V${c.segmentIndex + 1}`}
+                  {/*
+                    PAS de `+ 1`. `segment_index` part de 1 — la base le
+                    contraint (`CHECK segment_index >= 1 AND <= 7`). Ajouter un
+                    décalage faisait afficher « V2 » sur le premier virage, et
+                    surtout : depuis ce lot, la même feuille mène à
+                    `(coach)/annoter`, qui titre le virage avec l'index BRUT.
+                    Le coach lisait « Virage 5 » puis « VIRAGE 4 » dans le même
+                    parcours.
+                  */}
+                  {c.segmentName ?? `V${c.segmentIndex}`}
                 </Text>
               </View>
             </PressScale>
@@ -1261,7 +1270,9 @@ function CornerZoomSheet({
     };
   }, [tab, evoStatus, corner, circuitSessionIds, lapNumberBySession]);
 
-  const title = corner.segmentName ?? `Virage ${corner.segmentIndex + 1}`;
+  // Index BRUT : voir la pastille plus haut. Le titre de cette feuille et celui
+  // de l'écran d'annotation doivent désigner le même virage.
+  const title = corner.segmentName ?? `Virage ${corner.segmentIndex}`;
   const fact = (label: string, value: string) => (
     <View style={styles.factRow}>
       <Text style={styles.factLabel}>{label}</Text>

@@ -552,10 +552,17 @@ le virage 4 ne parlent pas du même endroit.
 **Pourquoi personne ne l'a vu** : `app_segment_analyses` est VIDE en production.
 Aucune donnée n'est jamais venue démentir le décalage.
 
-**Non corrigé ici, volontairement** : le défaut précède le lot J5 et touche des
-écrans hors de son périmètre. Le corriger demande de vérifier chaque affichage
-de numéro de virage de l'application d'un coup, sans quoi on déplace
-l'incohérence au lieu de la fermer.
+**CORRIGÉ dans `data/session/[id].tsx`** — parce que le lot J5 y a créé une
+COLLISION, et pas seulement hérité d'un décalage. Depuis ce lot, cette feuille
+mène à `(coach)/annoter`, qui titre le virage avec l'index BRUT : le coach
+lisait « Virage 5 » puis « VIRAGE 4 » dans le même parcours. Le décalage était
+sans conséquence tant que l'écran ne menait nulle part.
 
-**Ce qui EST fait** : `src/telemetry/__tests__/indexVirage.guard.test.ts` relie
-les deux extrémités de la chaîne, pour que la base ne se perde plus en route.
+**Reste ouvert** : `src/features/data/reperesVirages.ts:54` porte le même
+`+ 1`. Hors du périmètre J5, et il faut vérifier tous les affichages de numéro
+de virage d'un coup — sinon on déplace l'incohérence au lieu de la fermer.
+
+**Garde posée** : `src/telemetry/__tests__/indexVirage.guard.test.ts` relie les
+deux extrémités de la chaîne, pour que la base ne se perde plus en route.
+La contrainte SQL `CHECK (segment_index >= 1 AND segment_index <= 7)` la fixe
+côté base.

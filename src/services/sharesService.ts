@@ -88,7 +88,20 @@ function generateShareToken(): string {
 
 export async function createShare(opts: {
   scope: ShareScope;
-  expiresInDays?: number;
+  /**
+   * Durée de vie du lien, en jours. **OBLIGATOIRE, et strictement positive.**
+   *
+   * Elle l'était `?`-optionnelle, et l'omettre produisait silencieusement un
+   * lien public éternel : `expires_at` n'est posé que si la valeur est
+   * fournie. Deux écrans l'ont omise sans que rien ne le signale.
+   *
+   * Une garde lexicale a d'abord été posée
+   * (`__tests__/sharesExpiry.guard.test.ts`), mais elle ne vérifiait qu'une
+   * PRÉSENCE : `expiresInDays: duree ?? undefined` la passait tout en
+   * reproduisant le défaut. Le type est la seule garde qui ne se contourne pas
+   * par inadvertance.
+   */
+  expiresInDays: number;
   includedMetrics?: string[];
 }): Promise<ShareLink | null> {
   const { data: authData } = await supabase.auth.getUser();
@@ -96,9 +109,14 @@ export async function createShare(opts: {
   if (!userId) return null;
 
   const token = generateShareToken();
-  const expiresAt = opts.expiresInDays
-    ? new Date(Date.now() + opts.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-    : null;
+
+  // Ceinture ET bretelles : le type interdit l'absence, ce contrôle interdit le
+  // zéro et le négatif — qui produiraient un lien déjà expiré ou éternel.
+  if (!Number.isFinite(opts.expiresInDays) || opts.expiresInDays <= 0) {
+    console.warn('[OXV] createShare refusé : durée de vie invalide.');
+    return null;
+  }
+  const expiresAt = new Date(Date.now() + opts.expiresInDays * 24 * 60 * 60 * 1000).toISOString();
 
   const { data, error } = await supabase
     .from('app_progression_shares')
