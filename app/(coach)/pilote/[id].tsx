@@ -754,25 +754,22 @@ function SessionRow({
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <PressableScale
         accessibilityRole="button"
-        accessibilityLabel={`Ouvrir le bilan. ${rowA11yLabel}`}
-        // LIEN À RECÂBLER, MAIS PAS TEL QUEL (lot J5, étape 2).
+        accessibilityLabel={`Ouvrir la séance. ${rowA11yLabel}`}
+        // LE COACH LIT LA SÉANCE, PAS LE BILAN (lot J5).
         //
-        // `app/(app)/bilan.tsx` est classé « meurt » : ce lien tombera avec
-        // l'arbre V1. Le pointer sur `/(app2)/bilan/[sessionId]` a été tenté
-        // puis ANNULÉ — le bilan V2 est un bilan de SOI.
+        // Ce lien visait `/(app)/bilan`, classé « meurt ». Le pointer sur
+        // `/(app2)/bilan/[sessionId]` a été TENTÉ puis annulé : le bilan est le
+        // miroir du PILOTE. Il porte la célébration d'un record, l'intention de
+        // la prochaine fois, le fil avec son coach — des objets de soi. Et
+        // `useBilan` calcule ce record avec `fetchAllSessions(MON id)` : le
+        // coach aurait vu la séance de son pilote comparée à SES séances, et un
+        // coach sans séance l'aurait vue marquée RECORD, en or (D-20).
         //
-        // `useBilan` charge bien la séance d'autrui (repli `fetchSessionById`,
-        // RLS arbitre), mais il calcule ensuite le record avec
-        // `isPersonalRecord(bestLapMs, id, fetchAllSessions(MON id))` : le coach
-        // verrait la séance du pilote comparée à SES propres séances. Et
-        // `bilanLogic.ts:91` renvoie `true` quand la liste est vide — un coach
-        // sans séance verrait la séance du pilote marquée RECORD, en or.
-        //
-        // Le recâblage demande donc une lecture coach de la séance, pas un
-        // changement de chemin. Voir docs/J5_ARBRE_V1.md, arbitrage 1.
-        onPress={() =>
-          router.push({ pathname: '/(app)/bilan', params: { sessionId: session.id } } as never)
-        }
+        // La destination juste est la LECTURE de la séance, qui sait depuis le
+        // lot J5 lire la séance d'autrui en basculant son identité de référence
+        // sur le propriétaire. Le coach y trouve aussi les virages et le bouton
+        // d'annotation — c'est le même écran que celui du bouton « Annoter ».
+        onPress={() => router.push(`/(app2)/data/session/${session.id}` as never)}
         style={{
           padding: theme.spacing.md,
           minHeight: 44,

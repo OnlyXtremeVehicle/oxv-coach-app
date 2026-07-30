@@ -40,6 +40,7 @@ import {
   Photo,
   PressScale,
   radius,
+  ReportLink,
   SectionHeader,
   Sheet,
   Shimmer,
@@ -699,7 +700,21 @@ function FicheSheet({
           {fiche.citations.map((c) => (
             <View key={c.id} style={styles.citation}>
               <Text style={styles.citationQuote}>« {c.quote} »</Text>
-              <Text style={styles.citationAuthor}>{c.author}</Text>
+              <View style={styles.citationPied}>
+                <Text style={styles.citationAuthor}>{c.author}</Text>
+                {/*
+                  Ces citations sont écrites PAR DES PILOTES : c'est du contenu
+                  d'utilisateur, et il doit pouvoir être signalé depuis l'endroit
+                  où il se lit. `c.id` est bien l'identifiant de la ligne
+                  `coach_testimonials` — c'est ce que le trigger
+                  `moderation_validate_target` vérifie pour `coach_review`.
+                */}
+                <ReportLink
+                  targetType="coach_review"
+                  targetId={c.id}
+                  accessibilityLabel={`Signaler l'avis de ${c.author}`}
+                />
+              </View>
             </View>
           ))}
         </View>
@@ -1191,11 +1206,19 @@ const styles = StyleSheet.create({
     color: colors.text.hi,
     fontStyle: 'italic',
   },
+  citationPied: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: space.xs,
+    // L'auteur et le lien de signalement sont deux cibles distinctes : l'écart
+    // évite que leurs hitSlop se recouvrent.
+    gap: space.md,
+  },
   citationAuthor: {
     fontFamily: typo.mono,
     fontSize: 11,
     color: colors.text.low,
-    marginTop: space.xs,
   },
   slotRow: {
     flexDirection: 'row',

@@ -505,10 +505,16 @@ en or, sans qu'aucune donnée ne le justifie.
 Le bilan V1, lui, ne calcule aucun record — c'est une capacité ajoutée en V2,
 sous l'hypothèse implicite « le lecteur est le pilote ».
 
-**TOUJOURS PRÉSENT DANS `useBilan`.** Le recâblage vers le bilan a été annulé et
+**TOUJOURS PRÉSENT DANS `useBilan`, MAIS DEVENU LATENT.** Le recâblage vers le bilan a été annulé et
 le lien laissé sur V1, la raison écrite en commentaire à l'endroit du geste.
 
-**Ce que cela bloque** : la suppression de `app/(app)/bilan.tsx` (1 428 lignes).
+**Plus aucun chemin n'y mène.** Le lien coach ne vise plus le bilan mais la
+LECTURE de la séance (`/(app2)/data/session/[id]`), qui, elle, bascule son
+identité de référence sur le propriétaire. Le bilan reste un miroir de soi : un
+coach n'atteint que le sien, où lecteur et pilote coïncident.
+
+Le défaut dort donc au lieu de mordre. Il se réveillerait au premier lien qui
+ferait lire un bilan à quelqu'un d'autre que son pilote.
 
 **Ce qui a été corrigé ailleurs, le même jour.** L'arbitrage 1 a tranché en
 faveur de l'ancre partagée, et `app/(app2)/data/session/[id].tsx` a donc dû

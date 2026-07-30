@@ -29,6 +29,7 @@ import {
   OxvIcon,
   PressScale,
   radius,
+  ReportLink,
   Sheet,
   space,
   staggerEntering,
@@ -214,6 +215,17 @@ function PartnerSheet({
             <View key={o.id} style={styles.offerRow}>
               <OxvIcon name="insigne" size={16} color={colors.text.low} />
               <Text style={styles.offerText}>{offerSummaryLabel(o)}</Text>
+              {/*
+                Une offre est rédigée par le partenaire : contenu publié par un
+                utilisateur, donc signalable là où il se lit. `o.id` est
+                l'identifiant de `partner_offers`, ce que le trigger
+                `moderation_validate_target` vérifie pour `partner_offer`.
+              */}
+              <ReportLink
+                targetType="partner_offer"
+                targetId={o.id}
+                accessibilityLabel={`Signaler cette offre de ${partner.displayName}`}
+              />
             </View>
           ))}
         </View>
