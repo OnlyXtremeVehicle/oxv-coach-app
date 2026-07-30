@@ -28,6 +28,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import {
   colors,
   CondensingHeaderBar,
+  ListRow,
   OxvIcon,
   Photo,
   PressScale,
@@ -119,22 +120,46 @@ export default function ClubHubScreen() {
                   errorMessage="Le club n'a pas pu se charger."
                   onRetry={hub.refresh}
                 />
-              ) : !hasAnyBlock ? (
-                <StateView
-                  state="empty"
-                  emptyMessage="La vie du club s'installera ici — coaching, écurie, roulages."
-                  style={styles.emptyState}
-                />
               ) : (
-                <Stagger step={45} initialDelay={45}>
-                  {hub.coaching !== null ? <CoachingBlock coaching={hub.coaching} /> : null}
-                  {hub.crew !== null ? <CrewBlock crew={hub.crew} /> : null}
-                  {hub.roulages.length > 0 ? (
-                    <RoulagesBlock roulages={hub.roulages} onRespond={hub.respondRoulage} />
-                  ) : null}
-                  {hub.pass !== null ? <PassBlock pass={hub.pass} /> : null}
-                  {hub.partners.length > 0 ? <PartnersBlock partners={hub.partners} /> : null}
-                </Stagger>
+                <>
+                  {!hasAnyBlock ? (
+                    <StateView
+                      state="empty"
+                      emptyMessage="La vie du club s'installera ici — coaching, écurie, roulages."
+                      style={styles.emptyState}
+                    />
+                  ) : (
+                    <Stagger step={45} initialDelay={45}>
+                      {hub.coaching !== null ? <CoachingBlock coaching={hub.coaching} /> : null}
+                      {hub.crew !== null ? <CrewBlock crew={hub.crew} /> : null}
+                      {hub.roulages.length > 0 ? (
+                        <RoulagesBlock roulages={hub.roulages} onRespond={hub.respondRoulage} />
+                      ) : null}
+                      {hub.pass !== null ? <PassBlock pass={hub.pass} /> : null}
+                      {hub.partners.length > 0 ? <PartnersBlock partners={hub.partners} /> : null}
+                    </Stagger>
+                  )}
+
+                  {/*
+                    LES LIEUX DU CLUB — HORS DE TOUTE CONDITION DE DONNÉE.
+
+                    Tous les blocs ci-dessus dépendent de ce que le pilote
+                    POSSÈDE : un coach, une écurie, une invitation, un pass, des
+                    partenaires. Sans rien de tout cela, `hasAnyBlock` est faux et
+                    le Club se réduisait à une phrase — trois écrans entiers
+                    (galerie, routes, territoire) devenaient inatteignables, sans
+                    qu'aucun lien n'existe ailleurs pour les rattraper.
+
+                    C'est le critère d'acceptation 2 du jalon 5 : « chaque hub
+                    atteint-il tous ses enfants ? » Le plan relevait « le Club
+                    trois sur sept » ; le compte est refait ici.
+
+                    Ces trois entrées ne montrent aucune donnée : ce sont des
+                    PORTES. Elles s'affichent pour un pilote de son premier jour
+                    comme pour un habitué.
+                  */}
+                  <LieuxBlock />
+                </>
               )}
             </Animated.ScrollView>
           );
@@ -372,6 +397,40 @@ function PassBlock({ pass }: { pass: HubPass }) {
 // ---------------------------------------------------------------------------
 // Bloc — Partenaires (jamais de push télémétrique)
 // ---------------------------------------------------------------------------
+
+/**
+ * Les lieux du Club — trois portes, aucune donnée.
+ *
+ * L'ordre suit les trois couches du plan : *« le Pass en tête, puis ce que vous
+ * partagez, puis ce que vous découvrez »*. Le Pass a son bloc plus haut ; voici
+ * les deux autres couches, plus vos propres routes.
+ *
+ * Aucun compte, aucun chiffre : une porte qui annonce « 0 souvenir » se lit
+ * comme un reproche. Elle dit ce qu'il y a derrière, pas ce qui manque.
+ */
+function LieuxBlock() {
+  return (
+    <View style={styles.block}>
+      <SectionHeader eyebrow="LES LIEUX" />
+      <ListRow
+        label="Vos souvenirs"
+        sublabel="Photos de séance, carte-souvenir, liens de partage."
+        onPress={() => router.navigate('/(app2)/club/galerie' as never)}
+      />
+      <ListRow
+        label="Vos belles routes"
+        sublabel="Les itinéraires que vous avez composés."
+        onPress={() => router.navigate('/(app2)/club/routes' as never)}
+      />
+      <ListRow
+        label="Le territoire"
+        sublabel="Circuits, routes certifiées, points de la carte OXV."
+        divider={false}
+        onPress={() => router.navigate('/(app2)/club/territoire' as never)}
+      />
+    </View>
+  );
+}
 
 function PartnersBlock({ partners }: { partners: HubPartner[] }) {
   return (
