@@ -24,8 +24,25 @@
  * module ne prend donc que des trames de tour, et le type l'impose.
  *
  * La correction propre demande une colonne de progression par trame. Elle n'est
- * pas inventée ici.
+ * pas inventée ici. En attendant, l'apex n'est marqué que s'il tombe RÉELLEMENT
+ * près de la corde — voir `DISTANCE_APEX_MAX_M`.
  */
+
+import { haversineDistance } from '@/utils/geo';
+
+/**
+ * Distance maximale entre la corde de référence et la trame retenue comme apex.
+ *
+ * L'apex est cherché par plus-proche-voisin DANS la fenêtre. Si la fenêtre rate
+ * le virage — ce qui arrive, l'approximation ci-dessus n'étant pas exacte — le
+ * « plus proche » peut se trouver à des centaines de mètres de la corde, et le
+ * point marqué désignerait un endroit où le pilote n'a pas tourné.
+ *
+ * Au-delà de ce seuil, AUCUN apex n'est rendu. Un point absent se lit ; un point
+ * faux se croit. Cinquante mètres : large pour le bruit GPS et le décalage de
+ * fenêtre, trop court pour désigner le virage d'à côté.
+ */
+export const DISTANCE_APEX_MAX_M = 50;
 
 /** Une trame exploitable : position connue, vitesse éventuellement absente. */
 export interface PointTour {
@@ -97,7 +114,15 @@ export function trancheVirage(
       meilleur = i;
     }
   }
-  return { points: fenetree, apex: fenetree[meilleur] };
+
+  // Le plus proche n'est pas forcément proche. On mesure vraiment avant de
+  // marquer : au-delà du seuil, la fenêtre a raté le virage et l'apex serait un
+  // point inventé au milieu d'une ligne droite.
+  const candidat = fenetree[meilleur];
+  const metres = haversineDistance(candidat.lat, candidat.lon, apexRef.lat, apexRef.lon);
+  if (metres > DISTANCE_APEX_MAX_M) return { points: fenetree, apex: null };
+
+  return { points: fenetree, apex: candidat };
 }
 
 export interface Cadre {

@@ -119,12 +119,21 @@ export default function RootLayout() {
         params: { sessionId: data.sessionId },
       } as never);
     } else if (data?.type === 'coach_annotation' && data.cornerIndex) {
-      // Note du coach sur un virage. LIMITE CONNUE : l'écran de séance V2
-      // n'accepte que l'identifiant de séance, pas d'ancre virage — on ouvre
-      // donc la séance, le pilote descend jusqu'au virage. Sans identifiant de
-      // séance, on ouvre la liste plutôt qu'une route incomplète.
+      // Note du coach sur un virage → la séance, OUVERTE SUR CE VIRAGE.
+      //
+      // Ce commentaire disait jusqu'au lot J5 : « LIMITE CONNUE : l'écran de
+      // séance V2 n'accepte que l'identifiant de séance, pas d'ancre virage ».
+      // L'ancre `?corner=` existe depuis, et cette notification était le seul
+      // endroit de l'application qui porte un numéro de virage — elle le
+      // jetait. Le pilote recevait « votre coach a annoté un virage » et
+      // atterrissait en haut d'un écran de deux mille lignes.
+      //
+      // L'index est à base 1, comme `app_segment_analyses.segment_index` ;
+      // l'écran ignore proprement une valeur hors liste.
       router.push(
-        (data.sessionId ? `/(app2)/data/session/${data.sessionId}` : '/(app2)/data') as never
+        (data.sessionId
+          ? `/(app2)/data/session/${data.sessionId}?corner=${String(data.cornerIndex)}`
+          : '/(app2)/data') as never
       );
     } else if (data?.type === 'session_analyzed' && data.pilotId) {
       // Côté coach : nouvelle session analysée pour un pilote suivi.

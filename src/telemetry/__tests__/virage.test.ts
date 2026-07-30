@@ -1,4 +1,4 @@
-import { cadreCommun, projette, trancheVirage } from '../virage';
+import { DISTANCE_APEX_MAX_M, cadreCommun, projette, trancheVirage } from '../virage';
 
 const p = (lat: number, lon: number, speedKmh: number | null = null) => ({ lat, lon, speedKmh });
 
@@ -41,11 +41,37 @@ describe('trancheVirage', () => {
   });
 
   it('retient comme apex une trame MESURÉE, jamais un point construit', () => {
-    const trames = [p(0, 0, 100), p(1, 0, 80), p(2, 0, 120)];
-    const r = trancheVirage(trames, null, { lat: 1.1, lon: 0 });
-    expect(r.apex).toEqual(p(1, 0, 80));
+    // Coordonnées à l'échelle d'un virage — quelques dizaines de mètres. Un
+    // degré de latitude vaut ~111 km : les fixtures « 0, 1, 2 » d'un premier
+    // jet plaçaient les trames à des centaines de kilomètres les unes des
+    // autres, et le garde de distance les rejette à juste titre.
+    const trames = [p(45.24, -0.094, 100), p(45.2402, -0.094, 80), p(45.2404, -0.094, 120)];
+    const r = trancheVirage(trames, null, { lat: 45.2402, lon: -0.094 });
+    expect(r.apex).toEqual(p(45.2402, -0.094, 80));
     // L'apex appartient bien à la tranche rendue.
     expect(r.points).toContainEqual(r.apex);
+  });
+
+  it('ne marque AUCUN apex quand le plus proche est loin de la corde', () => {
+    // Le plus proche voisin existe toujours ; encore faut-il qu'il soit proche.
+    // Ici la fenêtre a raté le virage : les trames sont à ~1,1 km de la corde.
+    // Un point marqué désignerait un endroit où le pilote n'a pas tourné.
+    const loin = [p(45.24, -0.094), p(45.25, -0.094)];
+    const r = trancheVirage(loin, null, { lat: 45.26, lon: -0.094 });
+    expect(r.points).toHaveLength(2);
+    expect(r.apex).toBeNull();
+  });
+
+  it("marque l'apex quand la trame tombe bien près de la corde", () => {
+    // ~11 m au nord de la corde : sous le seuil, l'apex est légitime.
+    const proche = [p(45.2401, -0.094), p(45.2405, -0.094)];
+    const r = trancheVirage(proche, null, { lat: 45.2401, lon: -0.094 });
+    expect(r.apex).toEqual(p(45.2401, -0.094));
+  });
+
+  it('le seuil est une distance réelle, pas un écart de degrés', () => {
+    expect(DISTANCE_APEX_MAX_M).toBeGreaterThan(0);
+    expect(DISTANCE_APEX_MAX_M).toBeLessThan(200);
   });
 
   it("n'invente pas d'apex quand aucune corde de référence n'est connue", () => {
