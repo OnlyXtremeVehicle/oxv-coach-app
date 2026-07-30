@@ -29,6 +29,21 @@ Le total des trois lignes fait 35 488 : **chaque fichier de l'arbre est classé*
 aucun n'est resté hors du relevé. Le seul non classé est `app/(app)/_layout.tsx`
 lui-même (41 lignes), qui tombe en dernier par construction.
 
+### Ce que la soirée du 29/07 a changé à ce tableau
+
+Les tableaux de ce document décrivent le classement **tel qu'il a été établi**.
+Les huit arbitrages ont été tranchés dans la foulée, et trois lignes ont bougé —
+elles sont détaillées plus bas, résumées ici :
+
+- **RESTE passe de 1 à 0.** `virage.tsx` n'était « reste » que parce qu'il
+  portait l'unique chemin d'annotation du coach. Ce chemin existe en app2.
+- **MIGRE passe de 7 à 8**, le temps que le deep-dive virage soit porté — ce
+  qui est fait. Les huit sont désormais traités.
+- **Le second blocage est levé** : `app/(pro)` est recâblé, ses neuf liens et
+  cinq boutons ne visent plus l'arbre V1.
+
+Le premier blocage — l'écriture d'intention — **tient toujours**.
+
 ### Rien de `app/(app)` ne part sur le web
 
 La colonne « sort » est vide, et ce n'est pas un oubli. Ce qui quitte
@@ -322,8 +337,12 @@ L'étape 1, elle, est **faite** : `SaisonSections.tsx` pousse désormais
 | 3 | Retrait de `(pro)` | **Recâbler maintenant, retirer plus tard** | **Fait** — 9 liens + 5 boutons partis |
 | 4 | `partage`, durée | **7 et 30 jours seulement** | **Fait** — « sans limite » retiré, garde lexicale posée |
 | 5 | `catalogue`, octet nul | *Résolu sans arbitrage* | La sentinelle est construite au rendu, jamais écrite en base |
-| 6 | `virage-comparer` | **Ouvert** | Deux tours choisis contre tous les passages : décision produit |
-| 7 | `ReportButton` | **Ouvert** | Le signalement quitte-t-il l'app pilote ? |
+| 6 | `virage-comparer` | **Le choix de deux tours rejoint la feuille** | **Fait** — onglet TRACÉ, deux passages superposés, aucun vainqueur |
+| 7 | `ReportButton` | **Porter le signalement en app2** | **Fait** — `ReportLink` sous chaque citation et chaque offre |
+| 8 | Deep-dive virage | **Porter les deux** | **Fait** — tracé du virage recalculé, trois barres de G |
+
+**Les huit sont tranchés.** Ce qui reste du lot J5 est l'étape 10 : la
+suppression elle-même.
 
 ### Ce que la décision 1 a changé au classement
 
@@ -340,24 +359,21 @@ deep-dive) · 63 meurt.**
 
 ---
 
-## LES DEUX ARBITRAGES ENCORE OUVERTS
+## CE QUI RESTE APRÈS LES ARBITRAGES
 
-Aucun des deux ne se tranche en lisant le code. Ils décident du produit.
+Les huit décisions sont prises et appliquées. Les étapes 1 à 9 de l'ordre
+d'exécution sont faites ; **plus aucun code hors de `app/(app)` ne navigue
+vers `app/(app)`**, hormis `src/lib/appMap.ts`, la table de navigation de
+l'arbre V1 lui-même.
 
-**1. `ReportButton` — le signalement quitte-t-il l'app ?**
-Il disparaît intégralement avec `coachs` et `partenaires`. Volontaire — la
-modération vit dans l'admin, donc sur le web — ou oubli ?
+Reste l'étape 10 : supprimer, dans l'ordre inverse des dépendances — les 63
+écrans et leurs modules exclusifs, `_layout.tsx` et `AppTabBar` en dernier.
+Elle n'est PAS engagée, et la règle 0.5 s'y applique : pas de suppression
+avant sauvegarde vérifiée.
 
-**2. `virage-comparer` — deux tours ou tous les passages ?**
-La V1 compare **deux tours choisis** ; la feuille virage d'app2 superpose **tous
-les passages** d'un même virage. Objets voisins, pas identiques. Classer le
-premier mort contre le second est une décision produit.
-
-### Et un troisième, plus petit, ouvert par la décision 1
-
-`virage.tsx` détient encore `cornerDeepDiveService` et `GForceBars`, que la
-feuille virage d'app2 ne reprend pas. Les porter, ou les abandonner avec
-l'écran ?
+**Ce que la suppression devra rejouer.** Les 63 justifications de mort n'ont pas
+été vérifiées une par une (voir la section méthode). Chaque suppression rejoue
+sa vérification au moment où elle est faite.
 
 ---
 
