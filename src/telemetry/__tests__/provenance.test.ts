@@ -40,11 +40,16 @@ const DOSSIER = join(__dirname, '..');
  * enregistrée (`delta.cumulative`) et n'en crée aucune. Exiger d'eux une entrée
  * au registre n'aurait aucun sens.
  *
+ * `virage` a rejoint la liste au lot J5, pour la même raison : il DÉCOUPE des
+ * trames mesurées et les PROJETTE en coordonnées de dessin. Son « apex » n'est
+ * pas une grandeur calculée mais la trame mesurée la plus proche d'une corde de
+ * référence — un choix parmi des points existants, pas un nouveau chiffre.
+ *
  * Cette liste est nommée plutôt que devinée : un module nouveau fait tomber le
  * test tant que quelqu'un n'a pas tranché s'il produit ou non. C'est la même
  * exigence que pour la banque, prise par l'autre bout.
  */
-const NON_PRODUCTEURS = ['provenance', 'niveaux', 'courbeDelta'];
+const NON_PRODUCTEURS = ['provenance', 'niveaux', 'courbeDelta', 'virage'];
 
 /** Les modules de calcul, hors ceux qui ne produisent rien. */
 const MODULES = readdirSync(DOSSIER)

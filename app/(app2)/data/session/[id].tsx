@@ -97,9 +97,13 @@ import { TourIdealViz } from '@/components/insights/TourIdealViz';
 import { TransfertViz } from '@/components/insights/TransfertViz';
 import { READINGS, type ReadingKey } from '@/components/insights/catalogue';
 import { etatLecture, sectionAffichable } from '@/components/insights/disponibilite';
+import { BarresG } from '@/components/telemetry/BarresG';
 import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
 import { SectionBande } from '@/components/telemetry/SectionBande';
 import { SectionDelta } from '@/components/telemetry/SectionDelta';
+import { TraceVirage } from '@/components/telemetry/TraceVirage';
+import { getCornerDuCircuit } from '@/lib/circuitTopology';
+import { trancheVirage } from '@/telemetry/virage';
 import { ETAT_SEANCE_VIDE, loadEtatSeance } from '@/services/etatSeanceService';
 import type { EtatSeance } from '@/telemetry/niveaux';
 import { fetchSessionInsights } from '@/services/sessionInsightsService';
@@ -121,6 +125,7 @@ import {
   loadSpeedTracePoints,
   loadThrottleBrakePoints,
 } from '@/services/sessionTelemetryService';
+import type { SessionFrame } from '@/services/sessionTelemetryMapping';
 import { loadWeatherCorrelation } from '@/services/weatherCorrelationService';
 import type { WeatherBucket, WeatherCorrelation } from '@/services/weatherCorrelationService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -698,6 +703,8 @@ export default function SeanceScreen() {
             initialCorner={cornerParam}
             pilotId={data.pilotId}
             peutAnnoter={peutAnnoter && data.lectureDAutrui}
+            laps={data.laps}
+            circuitName={data.session.circuit_name ?? null}
           />
         </View>
 
@@ -1027,6 +1034,8 @@ function TraceSection({
   initialCorner,
   pilotId,
   peutAnnoter,
+  laps,
+  circuitName,
 }: {
   sessionId: string;
   selectedLap: number | null;
@@ -1039,6 +1048,10 @@ function TraceSection({
   pilotId: string;
   /** Le lecteur peut-il annoter ce virage ? (coach ou admin, séance d'autrui) */
   peutAnnoter: boolean;
+  /** Tours de la séance — le choix de deux passages dans l'onglet TRACÉ. */
+  laps: Lap[];
+  /** Nom du circuit en base — sert à retrouver la corde de référence. */
+  circuitName: string | null;
 }) {
   const [trace, setTrace] = useState<{ lat: number; lon: number }[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1165,6 +1178,8 @@ function TraceSection({
             peutAnnoter={peutAnnoter}
             circuitSessionIds={circuitSessionIds}
             lapNumberBySession={lapNumberBySession}
+            laps={laps}
+            circuitName={circuitName}
           />
         ) : null}
       </Sheet>
@@ -1184,6 +1199,8 @@ function CornerZoomSheet({
   peutAnnoter,
   circuitSessionIds,
   lapNumberBySession,
+  laps,
+  circuitName,
 }: {
   corner: SegmentAnalysisRow;
   sessionId: string;
@@ -1191,8 +1208,12 @@ function CornerZoomSheet({
   peutAnnoter: boolean;
   circuitSessionIds: string[];
   lapNumberBySession: Record<string, number>;
+  /** Tours de la séance — pour le choix de deux passages dans l'onglet TRACÉ. */
+  laps: Lap[];
+  /** Nom du circuit tel qu'il est en base — sert à retrouver la corde. */
+  circuitName: string | null;
 }) {
-  const [tab, setTab] = useState<'detail' | 'evolution'>('detail');
+  const [tab, setTab] = useState<'detail' | 'trace' | 'evolution'>('detail');
   const [evolution, setEvolution] = useState<CornerEvolution | null>(null);
   const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
@@ -1238,17 +1259,46 @@ function CornerZoomSheet({
       <SectionHeader eyebrow="VIRAGE" title={title} />
       <View style={styles.tabRow}>
         <Chip label="Détail" active={tab === 'detail'} onPress={() => setTab('detail')} />
+        <Chip label="Tracé" active={tab === 'trace'} onPress={() => setTab('trace')} />
         <Chip label="Évolution" active={tab === 'evolution'} onPress={() => setTab('evolution')} />
       </View>
 
       {tab === 'detail' ? (
-        <View style={styles.factCard}>
-          {fact('Vitesse d’entrée', km(corner.entrySpeedKmh))}
-          {fact('Vitesse à la corde', km(corner.minSpeedKmh ?? corner.apexSpeedKmh))}
-          {fact('Vitesse de sortie', km(corner.exitSpeedKmh))}
-          {fact('G latéral maxi', g(corner.maxGLateral))}
-          {corner.marginZone ? fact('Marge', marginLabel(corner.marginZone)) : null}
-        </View>
+        <>
+          <View style={styles.factCard}>
+            {fact('Vitesse d’entrée', km(corner.entrySpeedKmh))}
+            {fact('Vitesse à la corde', km(corner.minSpeedKmh ?? corner.apexSpeedKmh))}
+            {fact('Vitesse de sortie', km(corner.exitSpeedKmh))}
+            {fact('G latéral maxi', g(corner.maxGLateral))}
+            {corner.marginZone ? fact('Marge', marginLabel(corner.marginZone)) : null}
+          </View>
+
+          {/*
+            Les trois axes de G, portés au lot J5 (décision « porter les deux »).
+            La ligne « G latéral maxi » ci-dessus reste : le chiffre exact se lit
+            en mono, les barres donnent l'équilibre entre les axes d'un coup
+            d'œil. Elles décrivent le virage sur TOUTE LA SÉANCE — la table
+            `app_segment_analyses` n'a pas de colonne de tour, et c'est dit sous
+            le bloc plutôt que laissé à deviner.
+          */}
+          <SectionHeader eyebrow="CE QUE LA VOITURE A VÉCU" />
+          <BarresG
+            lateralG={corner.maxGLateral}
+            freinageG={corner.maxGBraking}
+            accelerationG={corner.maxGAccel}
+          />
+          <Text style={styles.sheetNote}>
+            Ces trois valeurs décrivent le virage sur l&apos;ensemble de la séance : la mesure
+            n&apos;existe pas tour par tour.
+          </Text>
+        </>
+      ) : tab === 'trace' ? (
+        <TraceVirageOnglet
+          corner={corner}
+          sessionId={sessionId}
+          laps={laps}
+          circuitName={circuitName}
+        />
       ) : evoStatus === 'loading' || evoStatus === 'idle' ? (
         <StateView state="loading" shape="hero" />
       ) : evoStatus === 'error' ? (
@@ -1292,6 +1342,159 @@ function CornerZoomSheet({
           />
         </View>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * Onglet TRACÉ du zoom virage — le passage dessiné, et le choix d'un second.
+ *
+ * Décision fondateur du 29/07/2026 : « ajouter le choix de deux tours à la
+ * feuille » plutôt que porter l'écran `virage-comparer` en entier.
+ *
+ * Le tour A est celui de référence de la séance (`best_lap_number`), sinon le
+ * premier tour chronométré. Le tour B est facultatif : sans lui, on lit un
+ * passage ; avec lui, deux passages se superposent — sans vainqueur, sans
+ * écart peint.
+ *
+ * Les tours d'entrée et de sortie de piste sont écartés du choix : ils ne
+ * décrivent pas un passage en virage.
+ */
+function TraceVirageOnglet({
+  corner,
+  sessionId,
+  laps,
+  circuitName,
+}: {
+  corner: SegmentAnalysisRow;
+  sessionId: string;
+  laps: Lap[];
+  circuitName: string | null;
+}) {
+  const chronometres = useMemo(
+    () =>
+      laps.filter((l) => !l.is_outlap && !l.is_inlap).sort((a, b) => a.lap_number - b.lap_number),
+    [laps]
+  );
+
+  const [tourA, setTourA] = useState<number | null>(null);
+  const [tourB, setTourB] = useState<number | null>(null);
+  const [tramesA, setTramesA] = useState<SessionFrame[] | null>(null);
+  const [tramesB, setTramesB] = useState<SessionFrame[] | null>(null);
+  const [chargement, setChargement] = useState(false);
+  const [echec, setEchec] = useState(false);
+
+  // Choix initial du tour A : jamais imposé si aucun tour n'est chronométré.
+  useEffect(() => {
+    if (tourA !== null || chronometres.length === 0) return;
+    setTourA(chronometres[0].lap_number);
+  }, [chronometres, tourA]);
+
+  useEffect(() => {
+    if (tourA === null) return;
+    let annule = false;
+    setChargement(true);
+    setEchec(false);
+    Promise.all([
+      loadLapFrames(sessionId, tourA),
+      tourB !== null ? loadLapFrames(sessionId, tourB) : Promise.resolve<SessionFrame[]>([]),
+    ])
+      .then(([a, b]) => {
+        if (annule) return;
+        setTramesA(a);
+        setTramesB(tourB !== null ? b : null);
+      })
+      .catch(() => {
+        if (!annule) setEchec(true);
+      })
+      .finally(() => {
+        if (!annule) setChargement(false);
+      });
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, tourA, tourB]);
+
+  // La corde de référence dépend du CIRCUIT réel de la séance. Circuit inconnu
+  // → pas de corde, donc pas d'apex marqué : aucun point n'est placé au hasard.
+  const corde = useMemo(() => {
+    const topo = getCornerDuCircuit(corner.segmentIndex, circuitName);
+    return topo ? { lat: topo.apexLat, lon: topo.apexLon } : null;
+  }, [corner.segmentIndex, circuitName]);
+
+  // Mémorisé : un objet recréé à chaque rendu invaliderait les deux découpes
+  // ci-dessous, qui reparcourraient les trames pour rien à chaque frappe.
+  const fenetre = useMemo(
+    () =>
+      corner.startProgress !== null && corner.endProgress !== null
+        ? { start: corner.startProgress, end: corner.endProgress }
+        : null,
+    [corner.startProgress, corner.endProgress]
+  );
+
+  const trancheA = useMemo(
+    () => (tramesA ? trancheVirage(tramesA, fenetre, corde) : null),
+    [tramesA, fenetre, corde]
+  );
+  const trancheB = useMemo(
+    () => (tramesB ? trancheVirage(tramesB, fenetre, corde) : null),
+    [tramesB, fenetre, corde]
+  );
+
+  if (chronometres.length === 0) {
+    return (
+      <StateView
+        state="empty"
+        emptyMessage="Aucun tour chronométré sur cette séance : rien à dessiner."
+      />
+    );
+  }
+
+  return (
+    <View>
+      <Text style={styles.sheetNote}>Tour de référence</Text>
+      <View style={styles.tabRow}>
+        {chronometres.map((l) => (
+          <Chip
+            key={`a-${l.lap_number}`}
+            label={`T${l.lap_number}`}
+            active={tourA === l.lap_number}
+            onPress={() => {
+              // Un tour ne se compare pas à lui-même : on libère l'autre côté.
+              if (tourB === l.lap_number) setTourB(null);
+              setTourA(l.lap_number);
+            }}
+          />
+        ))}
+      </View>
+
+      <Text style={styles.sheetNote}>Comparer à (facultatif)</Text>
+      <View style={styles.tabRow}>
+        <Chip label="Aucun" active={tourB === null} onPress={() => setTourB(null)} />
+        {chronometres
+          .filter((l) => l.lap_number !== tourA)
+          .map((l) => (
+            <Chip
+              key={`b-${l.lap_number}`}
+              label={`T${l.lap_number}`}
+              active={tourB === l.lap_number}
+              onPress={() => setTourB(l.lap_number)}
+            />
+          ))}
+      </View>
+
+      {echec ? (
+        <StateView state="error" errorMessage="Les trames de ce virage n'ont pas pu être lues." />
+      ) : chargement || trancheA === null ? (
+        <StateView state="loading" shape="hero" />
+      ) : (
+        <TraceVirage
+          reference={trancheA}
+          compare={trancheB}
+          labelReference={tourA !== null ? `Tour ${tourA}` : 'Tour de référence'}
+          labelCompare={tourB !== null ? `Tour ${tourB}` : 'Tour comparé'}
+        />
+      )}
     </View>
   );
 }
@@ -2195,6 +2398,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     color: colors.text.low,
     marginTop: space.sm,
+  },
+  /** Note de la feuille virage : dit à quelle échelle une valeur est vraie. */
+  sheetNote: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 17,
+    color: colors.text.low,
+    marginTop: space.md,
   },
   // ── Tracé ──
   traceCard: {
