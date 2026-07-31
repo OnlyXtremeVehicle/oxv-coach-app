@@ -19,17 +19,17 @@
  *     non publiable au grand public tant que la GA n'est pas ouverte. La
  *     fonctionnalité est marquée « EXPÉRIMENTAL » dans l'UI. On NE simule PAS de
  *     connexion lunettes : état neutre « non appairées — aperçu ». On NE fabrique
- *     JAMAIS de fausse valeur (les chronos vus dans la maquette in-lens sont
- *     rendus par la route web, jamais codés en dur ici).
+ *     JAMAIS de fausse valeur — hors direct, le cadre in-lens est ÉTEINT et le
+ *     dit ; il ne montre aucun chrono d'exemple.
  *   - DIRECT (LIVE-B, livrable 3). Dès qu'une session est choisie, l'écran
  *     s'abonne au canal COACH DÉJÀ EN PLACE (`live:session:<id>`, via
  *     usePilotLive) — aucun canal neuf, et surtout pas le canal board. Le cadre
  *     d'aperçu devient alors le MIROIR de ce que lit le porteur : trois lignes,
  *     contraste maximal, faits seuls. La FC a le droit d'y être — c'est le canal
  *     privé du binôme consenti, pas le board (écran de paddock, public). Elle est
- *     rendue EN NATIF et n'est JAMAIS passée à la WebView ni ajoutée à l'URL de
- *     la route web : aucune donnée de santé ne quitte cet écran coach. Elle
- *     n'apparaît que si le flux en porte réellement ; sinon la ligne n'existe
+ *     rendue EN NATIF et ne sort d'aucune manière de cet écran coach : aucun
+ *     appel distant ne part d'ici, donc aucune donnée de santé ne peut fuir par
+ *     une URL. Elle n'apparaît que si le flux en porte réellement ; sinon la ligne n'existe
  *     pas — on n'écrit pas « — » pour de la santé, ce serait faire exister une
  *     mesure qu'on n'a pas.
  *
@@ -46,29 +46,34 @@
  * sélection, action, garde-fou) ; coachAlert (#E2685A) pour le rappel doux.
  * L'or reste au chrono/record (jamais ici). Pas de bronze (admin).
  *
- * La vue in-lens elle-même (E0.2, page `ar-view`) est servie côté WEB (route
- * dédiée, hors bundle Expo) pour pouvoir évoluer sans repasser par les stores.
- * Ici on en montre un APERÇU via WebView. La route web peut ne pas être live :
- * on gère loading + erreur/404 proprement, jamais un crash.
+ * LA VUE IN-LENS EST NATIVE — ET ELLE L'ÉTAIT DÉJÀ (31/07/2026)
+ *
+ * Cet écran a longtemps chargé, dans une WebView, la route ar-view d'un
+ * sous-domaine app. de oxvehicle.fr — au titre d'un « aperçu générique servi par
+ * le web ». Le nom exact est volontairement absent de ce fichier : une garde de
+ * source interdit désormais qu'il y reparaisse, même en commentaire, parce qu'un
+ * accent grave autour d'une URL ne se distingue pas d'un littéral. L'équipe du site
+ * a résolu le sous-domaine le 31/07/2026 : **il n'existe pas au niveau DNS, et
+ * n'a jamais existé.** Vérifié une seconde fois ici, sur les onze hôtes que
+ * l'application appelle — c'était le seul mort.
+ *
+ * Arbitrage du fondateur : le sous-domaine ne sera pas créé, c'est l'application
+ * qui est corrigée. La WebView est donc retirée, et rien n'est perdu :
+ *
+ *   - `MetaMirror`, plus bas, REND DÉJÀ la vue in-lens en natif, à partir du
+ *     flux réel du direct. C'est la vraie vue, elle marche, elle est ici.
+ *   - La WebView ne recevait AUCUN paramètre — ni pilote, ni séance, ni jeton.
+ *     Une page sans paramètre n'aurait de toute façon jamais pu montrer autre
+ *     chose qu'une image fixe.
+ *
+ * Hors direct, on ne charge donc plus rien : on dit ce que la vue montrera, et
+ * quand elle s'allumera. Un cadre vide qui s'explique vaut mieux qu'un cadre qui
+ * tente indéfiniment de joindre un hôte inexistant.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
-import { WebView } from 'react-native-webview';
-import type {
-  WebViewErrorEvent,
-  WebViewHttpErrorEvent,
-  WebViewNavigationEvent,
-} from 'react-native-webview/lib/WebViewTypes';
-
 import { EmptyState } from '@/components/instruments/EmptyState';
 import { useLiveRoster } from '@/hooks/useLiveRoster';
 import { usePilotLive } from '@/hooks/usePilotLive';
@@ -91,15 +96,6 @@ import { SectionLabel } from '@/ui/SectionLabel';
 import { formatChronoTenths, formatDateLong } from '@/utils/format';
 
 const { palette, dataColors, fonts, fontSize, spacing, radius } = theme;
-
-/**
- * Route web de la vue in-lens (E0.2). Construite côté site, peut ne pas être
- * encore en ligne : la WebView gère ce cas avec un repli sobre.
- */
-const AR_VIEW_URL = 'https://app.oxvehicle.fr/ar-view';
-
-/** Statut de chargement de l'aperçu in-lens (WebView). */
-type PreviewState = 'loading' | 'ready' | 'error';
 
 /**
  * État du flux dit honnêtement, avec les mots de l'écran En direct. Le hors-ligne
@@ -125,8 +121,6 @@ export default function CoachArScreen() {
   const [sessions, setSessions] = useState<PilotSessionSummary[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-
-  const [previewState, setPreviewState] = useState<PreviewState>('loading');
 
   // LIVE-B — le miroir suit la séance EN COURS, pas celle qu'on a choisie plus
   // haut. Le sélecteur de séances ne propose que des séances TERMINÉES
@@ -213,27 +207,6 @@ export default function CoachArScreen() {
     setSelectedSessionId((prev) => (prev === sessionId ? null : sessionId));
   }, []);
 
-  // WebView : démarrage d'un chargement (peut survenir à chaque navigation interne).
-  const onPreviewLoadStart = useCallback(() => {
-    setPreviewState('loading');
-  }, []);
-
-  const onPreviewLoad = useCallback((e: WebViewNavigationEvent) => {
-    // Certaines plateformes 404 servent une page : on la traite via onHttpError.
-    // Ici on bascule "ready" seulement si l'URL a bien chargé.
-    if (e.nativeEvent.url) setPreviewState('ready');
-  }, []);
-
-  // Échec réseau / route absente → repli sobre, jamais de crash ni fausse valeur.
-  const onPreviewError = useCallback((_e: WebViewErrorEvent) => {
-    setPreviewState('error');
-  }, []);
-
-  const onPreviewHttpError = useCallback((_e: WebViewHttpErrorEvent) => {
-    // 404 / 5xx : la route web n'est pas (encore) servie.
-    setPreviewState('error');
-  }, []);
-
   // « Lancer la vue AR » : prototype. La vue live in-lens (E0.2) est une route
   // web poussée vers les lunettes du coach — non embarquée. Tant que ce n'est
   // pas branché, on reste honnête : pas de fausse mise en route.
@@ -255,9 +228,9 @@ export default function CoachArScreen() {
   // ── Pièces réutilisées entre les deux formats ──────────────────────────────
 
   // Le MÊME cadre sert les deux situations — un seul système d'affichage, jamais
-  // deux : sans session choisie, l'aperçu générique servi par le web ; session
-  // choisie, le miroir du direct (ce que le porteur lit, à l'identique, sur le
-  // téléphone quand les lunettes ne sont pas appairées).
+  // deux : pilote en piste, le miroir du direct (ce que le porteur lit, à
+  // l'identique, sur le téléphone quand les lunettes ne sont pas appairées) ;
+  // hors direct, le cadre éteint qui dit ce qu'il montrera et quand.
   const previewHeight = isConsole ? 380 : 200;
   // Le miroir n'a de sens que sur une séance VIVANTE : il ne s'ouvre donc que
   // lorsque le pilote choisi est réellement en piste (présent au roster).
@@ -274,21 +247,14 @@ export default function CoachArScreen() {
       bio={bio}
     />
   ) : (
-    <InLensPreview
-      height={previewHeight}
-      state={previewState}
-      onLoadStart={onPreviewLoadStart}
-      onLoad={onPreviewLoad}
-      onError={onPreviewError}
-      onHttpError={onPreviewHttpError}
-    />
+    <InLensPreview height={previewHeight} />
   );
 
   const previewCaption = (
     <Text style={s.previewCaption}>
       {isMirroring
         ? 'Miroir de ce que lit le porteur. Trois lignes, rien de plus.'
-        : `Ce que vous lirez dans vos lunettes. Servie côté web (${AR_VIEW_URL}).`}
+        : 'Le cadre s’allume quand votre pilote est en piste.'}
     </Text>
   );
 
@@ -516,50 +482,24 @@ function ExperimentalBadge() {
 }
 
 /**
- * Aperçu in-lens = la WebView de la route web (E0.2) dans un cadre sombre. On ne
- * fabrique aucun contenu : la vue vient du web. Overlays honnêtes pour le
- * chargement et l'indisponibilité (route pas encore servie).
+ * Le cadre in-lens ÉTEINT — hors direct.
+ *
+ * Il n'y a rien à charger : la vue in-lens est `MetaMirror`, native, et elle
+ * n'existe que sur un flux vivant. Plutôt qu'un cadre qui tourne dans le vide,
+ * on dit ce qu'il montrera et ce qui l'allume.
+ *
+ * Aucune valeur d'exemple, aucun chrono de démonstration : le coach ne doit
+ * jamais pouvoir confondre une maquette avec une mesure.
  */
-function InLensPreview({
-  height,
-  state,
-  onLoadStart,
-  onLoad,
-  onError,
-  onHttpError,
-}: {
-  height: number;
-  state: PreviewState;
-  onLoadStart: () => void;
-  onLoad: (e: WebViewNavigationEvent) => void;
-  onError: (e: WebViewErrorEvent) => void;
-  onHttpError: (e: WebViewHttpErrorEvent) => void;
-}) {
+function InLensPreview({ height }: { height: number }) {
   return (
-    <View style={[s.previewFrame, { height }]}>
-      <WebView
-        source={{ uri: AR_VIEW_URL }}
-        originWhitelist={['https://*']}
-        onLoadStart={onLoadStart}
-        onLoad={onLoad}
-        onError={onError}
-        onHttpError={onHttpError}
-        style={s.webview}
-        // Fond sombre pendant le rendu, cohérent avec la vue in-lens.
-        containerStyle={{ backgroundColor: palette.night }}
-      />
-      {state === 'loading' ? (
-        <View style={s.previewOverlay} pointerEvents="none">
-          <ActivityIndicator color={palette.creamMute} />
-          <Text style={s.previewOverlayText}>Chargement de l&apos;aperçu…</Text>
-        </View>
-      ) : null}
-      {state === 'error' ? (
-        <View style={s.previewOverlay}>
-          <Text style={s.previewErrorTitle}>Aperçu indisponible</Text>
-          <Text style={s.previewErrorText}>La vue web arrive bientôt.</Text>
-        </View>
-      ) : null}
+    <View style={[s.previewFrame, s.previewIdle, { height }]}>
+      <Text style={s.previewIdleTitle}>Cadre éteint</Text>
+      <Text style={s.previewIdleText}>
+        Vous lirez ici trois lignes de faits — le tour en cours, le dernier tour bouclé,
+        l&apos;écart avec la référence de votre pilote. Elles apparaissent dès qu&apos;il entre en
+        piste.
+      </Text>
     </View>
   );
 }
@@ -865,32 +805,24 @@ const s = StyleSheet.create({
     backgroundColor: palette.night,
     justifyContent: 'center',
   },
-  webview: {
-    flex: 1,
-    backgroundColor: palette.night,
-  },
-  previewOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  previewIdle: {
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
     backgroundColor: palette.night,
   },
-  previewOverlayText: {
-    fontFamily: fonts.body,
-    fontSize: fontSize.small,
-    color: palette.creamMute,
-  },
-  previewErrorTitle: {
+  previewIdleTitle: {
     fontFamily: fonts.display,
     fontSize: fontSize.h3,
     color: palette.cream,
   },
-  previewErrorText: {
+  previewIdleText: {
     fontFamily: fonts.body,
     fontSize: fontSize.small,
+    lineHeight: 19,
     color: palette.creamMute,
-    marginTop: spacing.xs,
+    textAlign: 'center',
   },
   previewCaption: {
     fontFamily: fonts.mono,

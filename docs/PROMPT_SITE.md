@@ -1,5 +1,27 @@
 # Prompt — travaux sur le site oxvehicle.fr
 
+> ## PÉRIMÉ — NE PAS DONNER À UN AGENT
+>
+> **Remplacé le 31/07/2026** par `PROMPT_REPRISE.md`, rédigé côté site après
+> mesure. Trois constats de ce document se sont révélés **inexacts** :
+>
+> 1. **La panne n'était pas celle décrite.** Ce document supposait un filtre
+>    anti-robots ; la réécriture SPA de Vercel ne s'applique tout simplement
+>    pas, et les routes profondes rendent un 404 **à tout le monde**.
+> 2. **Le chantier « chemins de l'espace pilote » n'existait pas.** `/compte`,
+>    `/compte-sessions` et les autres **sont bien** dans le routeur, avec sept
+>    chemins de plus. Rien n'était mal câblé.
+> 3. **Le sitemap déclare 35 chemins, pas 33.**
+>
+> Conservé comme trace, et parce que la cause de ces trois erreurs vaut d'être
+> retenue : elles viennent toutes d'avoir conclu depuis l'extérieur, sur des
+> codes de réponse, sans lire le routeur du site. Un 404 ne dit pas pourquoi.
+>
+> La leçon est passée dans le document de remplacement, qui impose de nommer ce
+> qui n'a pas pu être vérifié.
+
+---
+
 > À donner tel quel à l'agent qui travaillera sur le dépôt du site. Il est
 > autonome : il ne suppose aucune connaissance de l'application ni de cette
 > conversation.

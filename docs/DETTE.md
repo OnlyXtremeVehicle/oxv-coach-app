@@ -566,3 +566,36 @@ de virage d'un coup — sinon on déplace l'incohérence au lieu de la fermer.
 deux extrémités de la chaîne, pour que la base ne se perde plus en route.
 La contrainte SQL `CHECK (segment_index >= 1 AND segment_index <= 7)` la fixe
 côté base.
+
+---
+
+## D-22 — Les deux liens de l'app vers le site tombent sur un 404
+
+**Relevé le 31/07/2026**, à partir du constat de l'équipe du site et vérifié
+côté application.
+
+Le site sert bien sa racine, mais **toutes ses routes profondes rendent un 404
+réel** — la réécriture SPA de Vercel ne s'applique pas. L'application pose
+exactement deux liens vers une route profonde, et les deux sont donc morts
+aujourd'hui :
+
+| Lien | Source | Ce qui se passe |
+|---|---|---|
+| `www.oxvehicle.fr/compte-sessions` | `src/features/club/passLogic.ts:143` | Le pilote touche « réserver une journée » depuis `club/pass`, son navigateur s'ouvre sur un 404 |
+| `oxvehicle.fr/share/<jeton>` | `src/services/sharesService.ts:58` | Tout lien de partage produit par l'application est mort — la route `/share` n'existe même pas dans le routeur du site |
+
+**Aucun code n'est corrigé ici, et c'est délibéré.** Les deux URL sont les
+bonnes destinations. Le site porte un correctif de réécriture déjà committé,
+non encore vérifié en déploiement. Rebrancher l'application sur la racine pour
+contourner une panne de serveur en cours de réparation dégraderait
+durablement le parcours et serait à défaire.
+
+**Ce qui rendrait le geste nécessaire** : que le correctif du site ne parte pas.
+À re-tester alors, et à trancher.
+
+**Le `.catch()` de `pass.tsx:137` ne protège de rien ici** : `Linking.openURL`
+ne rejette que faute de navigateur. Une page 404 s'ouvre avec succès. Aucune
+détection n'est possible côté application.
+
+**Dégât réel à ce jour : nul.** Un seul lien de partage existe en production, et
+il est déjà expiré. Personne n'a encore pu tomber sur ces 404.
