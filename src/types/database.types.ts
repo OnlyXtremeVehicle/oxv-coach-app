@@ -2491,79 +2491,6 @@ export type Database = {
           },
         ]
       }
-      coach_testimonials: {
-        Row: {
-          author_first_name: string | null
-          author_user_id: string
-          body: string
-          coach_id: string
-          created_at: string
-          id: string
-          published: boolean
-        }
-        Insert: {
-          author_first_name?: string | null
-          author_user_id: string
-          body: string
-          coach_id: string
-          created_at?: string
-          id?: string
-          published?: boolean
-        }
-        Update: {
-          author_first_name?: string | null
-          author_user_id?: string
-          body?: string
-          coach_id?: string
-          created_at?: string
-          id?: string
-          published?: boolean
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coach_testimonials_author_user_id_fkey"
-            columns: ["author_user_id"]
-            isOneToOne: false
-            referencedRelation: "admin_ritual_dispatches_view"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "coach_testimonials_author_user_id_fkey"
-            columns: ["author_user_id"]
-            isOneToOne: false
-            referencedRelation: "coach_pilots_view"
-            referencedColumns: ["pilot_id"]
-          },
-          {
-            foreignKeyName: "coach_testimonials_author_user_id_fkey"
-            columns: ["author_user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "coach_testimonials_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "admin_ritual_dispatches_view"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "coach_testimonials_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_pilots_view"
-            referencedColumns: ["pilot_id"]
-          },
-          {
-            foreignKeyName: "coach_testimonials_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       coach_roulages: {
         Row: {
           circuit_name: string
@@ -2726,6 +2653,79 @@ export type Database = {
             columns: ["session_id"]
             isOneToOne: false
             referencedRelation: "telemetry_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coach_testimonials: {
+        Row: {
+          author_first_name: string | null
+          author_user_id: string
+          body: string
+          coach_id: string
+          created_at: string
+          id: string
+          published: boolean
+        }
+        Insert: {
+          author_first_name?: string | null
+          author_user_id: string
+          body: string
+          coach_id: string
+          created_at?: string
+          id?: string
+          published?: boolean
+        }
+        Update: {
+          author_first_name?: string | null
+          author_user_id?: string
+          body?: string
+          coach_id?: string
+          created_at?: string
+          id?: string
+          published?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_testimonials_author_user_id_fkey"
+            columns: ["author_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "coach_testimonials_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -4406,6 +4406,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      founding_members: {
+        Row: {
+          consent_rgpd: boolean
+          created_at: string
+          email: string
+          fonction_pro: string | null
+          id: string
+          nom: string
+          prenom: string
+          session_pref: string | null
+          statut: string
+          vehicule: string | null
+          yousign_request_id: string | null
+        }
+        Insert: {
+          consent_rgpd?: boolean
+          created_at?: string
+          email: string
+          fonction_pro?: string | null
+          id?: string
+          nom: string
+          prenom: string
+          session_pref?: string | null
+          statut?: string
+          vehicule?: string | null
+          yousign_request_id?: string | null
+        }
+        Update: {
+          consent_rgpd?: boolean
+          created_at?: string
+          email?: string
+          fonction_pro?: string | null
+          id?: string
+          nom?: string
+          prenom?: string
+          session_pref?: string | null
+          statut?: string
+          vehicule?: string | null
+          yousign_request_id?: string | null
+        }
+        Relationships: []
       }
       heritage_packs: {
         Row: {
@@ -7002,6 +7044,7 @@ export type Database = {
           pilot_user_id: string
           storage_path: string
           telemetry_session_id: string
+          thumbhash: string | null
           uploaded_at: string
           uploaded_by_user_id: string | null
           width_px: number | null
@@ -7019,6 +7062,7 @@ export type Database = {
           pilot_user_id: string
           storage_path: string
           telemetry_session_id: string
+          thumbhash?: string | null
           uploaded_at?: string
           uploaded_by_user_id?: string | null
           width_px?: number | null
@@ -7036,6 +7080,7 @@ export type Database = {
           pilot_user_id?: string
           storage_path?: string
           telemetry_session_id?: string
+          thumbhash?: string | null
           uploaded_at?: string
           uploaded_by_user_id?: string | null
           width_px?: number | null
@@ -7755,11 +7800,13 @@ export type Database = {
           ritual_jminus2_enabled: boolean
           ritual_jminus7_enabled: boolean
           role: Database["public"]["Enums"]["user_role"] | null
+          show_attendance: boolean
           socials: Json | null
           stripe_customer_id: string | null
           suspended_at: string | null
           suspended_by: string | null
           suspension_reason: string | null
+          timezone: string | null
           two_factor_enabled: boolean | null
           updated_at: string | null
           vehicle: string | null
@@ -7828,11 +7875,13 @@ export type Database = {
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
+          show_attendance?: boolean
           socials?: Json | null
           stripe_customer_id?: string | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
+          timezone?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
           vehicle?: string | null
@@ -7901,11 +7950,13 @@ export type Database = {
           ritual_jminus2_enabled?: boolean
           ritual_jminus7_enabled?: boolean
           role?: Database["public"]["Enums"]["user_role"] | null
+          show_attendance?: boolean
           socials?: Json | null
           stripe_customer_id?: string | null
           suspended_at?: string | null
           suspended_by?: string | null
           suspension_reason?: string | null
+          timezone?: string | null
           two_factor_enabled?: boolean | null
           updated_at?: string | null
           vehicle?: string | null
@@ -8029,7 +8080,9 @@ export type Database = {
           created_at: string | null
           declared_value: number | null
           id: string
+          is_primary: boolean
           license_plate: string | null
+          mass_kg: number | null
           model: string
           notes: string | null
           photo_front_url: string | null
@@ -8046,7 +8099,9 @@ export type Database = {
           created_at?: string | null
           declared_value?: number | null
           id?: string
+          is_primary?: boolean
           license_plate?: string | null
+          mass_kg?: number | null
           model: string
           notes?: string | null
           photo_front_url?: string | null
@@ -8063,7 +8118,9 @@ export type Database = {
           created_at?: string | null
           declared_value?: number | null
           id?: string
+          is_primary?: boolean
           license_plate?: string | null
+          mass_kg?: number | null
           model?: string
           notes?: string | null
           photo_front_url?: string | null
@@ -8886,6 +8943,15 @@ export type Database = {
       schedule_rituals_for_registration: {
         Args: { p_registration_id: string }
         Returns: undefined
+      }
+      session_attendance_public: {
+        Args: { p_session: string }
+        Returns: {
+          avatar_url: string
+          crew_id: string
+          public_handle: string
+          user_id: string
+        }[]
       }
       session_availability_rows: {
         Args: never

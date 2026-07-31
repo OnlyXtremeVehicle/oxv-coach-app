@@ -33,6 +33,7 @@ import {
   readNotifPref,
 } from '@/services/notifPreferencesLogic';
 import { NOTIF_COPY } from '@/services/notifCopy';
+import { delaiApresReport, fuseauDeLAppareil } from '@/services/reportNocturne';
 import { useAppStateStore } from '@/store/useAppStateStore';
 
 // Configuration globale du handler — comment réagir quand une notif arrive
@@ -123,7 +124,40 @@ export async function registerForPushNotifications(userId: string): Promise<Regi
     }
   }
 
+  await enregistrerFuseau(userId);
+
   return { granted: true, token };
+}
+
+/**
+ * Enregistre le fuseau du pilote — celui de son téléphone.
+ *
+ * La colonne `users.timezone` existe depuis la migration
+ * `l21j_fuseau_horaire_pilote`, appliquée en production le 29/07/2026. Au moment
+ * d'écrire ces lignes, **aucune des quatorze lignes de la table ne la
+ * renseignait** : la colonne était posée, jamais remplie, jamais lue.
+ *
+ * Elle est nécessaire au report nocturne calculé CÔTÉ SERVEUR : une fonction
+ * edge ne connaît pas l'heure qu'il est chez le pilote. L'application, elle, la
+ * connaît — le pilote est là où est son téléphone.
+ *
+ * L'écriture accompagne l'enregistrement du jeton push : c'est le moment où le
+ * pilote accepte d'être notifié, donc exactement celui où savoir QUAND ne pas le
+ * faire devient utile. Un échec ne remonte pas : ne pas connaître le fuseau
+ * dégrade le confort, jamais la capture.
+ */
+async function enregistrerFuseau(userId: string): Promise<void> {
+  const fuseau = fuseauDeLAppareil();
+  if (fuseau === null) return;
+
+  const { data } = await supabase.from('users').select('timezone').eq('id', userId).maybeSingle();
+  const actuel = (data as { timezone?: string | null } | null)?.timezone ?? null;
+  // Un pilote qui voyage change de fuseau : on écrit dès que ça diffère, pas
+  // seulement à la première fois.
+  if (actuel === fuseau) return;
+
+  const { error } = await supabase.from('users').update({ timezone: fuseau }).eq('id', userId);
+  if (error) console.warn('[OXV] fuseau non enregistré :', error.message);
 }
 
 // ============================================================================
@@ -153,7 +187,12 @@ export async function scheduleDebriefNotification(
   if (!enabled) return null;
 
   const delayMs = input.delayMs ?? 24 * 60 * 60 * 1000;
-  const triggerSeconds = Math.max(60, Math.floor(delayMs / 1000));
+
+  // REPORT NOCTURNE — une séance finie à 23h40 poussait son bilan à 23h40 le
+  // lendemain soir. Le délai est allongé jusqu'au prochain 8 h local quand la
+  // cible tombe entre 22 h et 8 h. Il DIFFÈRE, il n'annule pas.
+  const delaiReporte = delaiApresReport(delayMs, fuseauDeLAppareil() ?? undefined);
+  const triggerSeconds = Math.max(60, Math.floor(delaiReporte / 1000));
 
   try {
     const id = await Notifications.scheduleNotificationAsync({
@@ -198,7 +237,10 @@ export async function scheduleSessionReminder(
   const delayMs = trigger.getTime() - Date.now();
   if (delayMs <= 0) return null; // déjà passé, on ne programme pas
 
-  const triggerSeconds = Math.floor(delayMs / 1000);
+  // Même report : un rappel « demain, vous roulez » n'a rien à faire à 2 h du
+  // matin. Décaler au matin ne lui retire rien — la séance est le lendemain.
+  const delaiReporte = delaiApresReport(delayMs, fuseauDeLAppareil() ?? undefined);
+  const triggerSeconds = Math.floor(delaiReporte / 1000);
 
   try {
     const id = await Notifications.scheduleNotificationAsync({
