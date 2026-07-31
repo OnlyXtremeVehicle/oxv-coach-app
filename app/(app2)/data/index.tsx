@@ -19,7 +19,7 @@
  * états vides doivent rester dignes.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -38,7 +38,6 @@ import {
   Chip,
   colors,
   CondensingHeaderBar,
-  Dial,
   haptic,
   motionTokens,
   msToLapLabel,
@@ -65,7 +64,6 @@ import {
   type SessionFilter,
 } from '@/features/data/dataHubLogic';
 import { fetchAllSessions } from '@/services/sessionsService';
-import { exportAndShareMyData } from '@/services/dataExportService';
 import {
   SaisonCircuitSheet,
   SaisonSections,
@@ -124,13 +122,6 @@ export default function DataHubScreen() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
-  // Export : le service est atomique (pas de progression réelle) → cadran
-  // indéterminé qui monte pendant l'attente. // TODO device-tune : brancher une
-  // vraie progression le jour où `dataExportService` en publie une.
-  const [exporting, setExporting] = useState(false);
-  const [exportPct, setExportPct] = useState(0);
-  const exportTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-
   // -------------------------------------------------------------------------
   // Chargement (strict : erreur DB → état erreur + Réessayer, jamais un [] muet).
   // -------------------------------------------------------------------------
@@ -155,14 +146,6 @@ export default function DataHubScreen() {
   useEffect(() => {
     void load('initial');
   }, [load]);
-
-  // Nettoyage du minuteur d'export au démontage.
-  useEffect(
-    () => () => {
-      if (exportTimer.current) clearInterval(exportTimer.current);
-    },
-    []
-  );
 
   // La sélection vidée referme le mode comparaison.
   useEffect(() => {
@@ -237,31 +220,6 @@ export default function DataHubScreen() {
     opacity: barProgress.value,
     transform: [{ translateY: (1 - barProgress.value) * 120 }],
   }));
-
-  // -------------------------------------------------------------------------
-  // Export de VOS données (droit à la portabilité).
-  // -------------------------------------------------------------------------
-  const runExport = useCallback(async () => {
-    if (exporting || !userId) return;
-    setExporting(true);
-    setExportPct(0);
-    exportTimer.current = setInterval(() => {
-      setExportPct((p) => (p < 90 ? p + 6 : p));
-    }, 120);
-    try {
-      const res = await exportAndShareMyData(userId);
-      if (!res.ok) haptic('warn');
-    } catch {
-      haptic('warn');
-    } finally {
-      if (exportTimer.current) {
-        clearInterval(exportTimer.current);
-        exportTimer.current = null;
-      }
-      setExportPct(100);
-      setTimeout(() => setExporting(false), 350);
-    }
-  }, [exporting, userId]);
 
   // -------------------------------------------------------------------------
   // Rendu de la liste.
@@ -463,20 +421,6 @@ export default function DataHubScreen() {
         <Text style={styles.condensedTitle}>DATA</Text>
       </CondensingHeaderBar>
 
-      {/* Action export — toujours visible, au-dessus de la barre condensée. */}
-      <View style={[styles.exportSlot, { top: insets.top + space.sm }]} pointerEvents="box-none">
-        <PressScale
-          onPress={runExport}
-          disabled={exporting}
-          accessibilityLabel="Exporter mes données"
-          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-        >
-          <View style={styles.exportPill}>
-            <Text style={styles.exportLabel}>EXPORTER</Text>
-          </View>
-        </PressScale>
-      </View>
-
       {/* Barre flottante de comparaison — ressort en spring en mode sélection. */}
       <Animated.View
         style={[styles.compareBar, { bottom: tabBarSpace(insets.bottom) }, barStyle]}
@@ -507,16 +451,6 @@ export default function DataHubScreen() {
           </View>
         </PressScale>
       </Animated.View>
-
-      {/* Voile d'export avec cadran de progression (indéterminé, voir TODO). */}
-      {exporting ? (
-        <View style={styles.exportOverlay}>
-          <View style={styles.exportCard}>
-            <Dial value={exportPct} max={100} size="m" label="Export" unit="%" />
-            <Text style={styles.exportNote}>Préparation de vos données</Text>
-          </View>
-        </View>
-      ) : null}
     </Animated.View>
   );
 }
@@ -606,50 +540,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     letterSpacing: 2,
     color: colors.text.hi,
-  },
-
-  // Export
-  exportSlot: {
-    position: 'absolute',
-    right: space.xl,
-    zIndex: 12,
-  },
-  exportPill: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.strong,
-    borderRadius: radius.pill,
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-    backgroundColor: colors.bg.card2,
-  },
-  exportLabel: {
-    fontFamily: typo.mono,
-    fontSize: 10,
-    letterSpacing: 1.4,
-    color: colors.text.mid,
-  },
-  exportOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.bg.scrim,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 30,
-  },
-  exportCard: {
-    backgroundColor: colors.bg.card,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border.card,
-    borderRadius: radius.card,
-    paddingVertical: space.xl,
-    paddingHorizontal: space.xxl,
-    alignItems: 'center',
-    gap: space.md,
-  },
-  exportNote: {
-    fontFamily: typo.mono,
-    fontSize: 11,
-    letterSpacing: 1,
-    color: colors.text.mid,
   },
 
   // États
