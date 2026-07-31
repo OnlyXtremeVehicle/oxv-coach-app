@@ -11,6 +11,7 @@ import {
   canShowQr,
   isActiveStatus,
   offerLabel,
+  URL_JOURNEES_SITE,
   passEmptyCta,
   qrCheckinPayload,
   splitPasses,
@@ -109,9 +110,18 @@ describe('QR & statuts', () => {
 });
 
 describe('passEmptyCta — fail-closed sur le drapeau paiement', () => {
-  it('paiements armés → réserver ; sinon → club', () => {
+  it('paiements armés → réserver ; sinon → le site', () => {
     expect(passEmptyCta(true)).toBe('reserve');
-    expect(passEmptyCta(false)).toBe('club');
+    // Paiements fermés : le SITE, pas la porte Club. Le repli précédent
+    // ramenait le pilote à l'écran d'où il venait — voir le plan, jalon 5 :
+    // « un lien vers le site avec le chemin exact, jamais un bouton mort ».
+    expect(passEmptyCta(false)).toBe('site');
+  });
+
+  it("l'adresse du site est complète et sûre — jamais un chemin relatif", () => {
+    // Un `openURL` sur un chemin relatif ne fait rien, en silence.
+    expect(URL_JOURNEES_SITE).toMatch(/^https:\/\/[a-z0-9.-]+\/[a-z-]+$/);
+    expect(URL_JOURNEES_SITE).toContain('oxvehicle.fr');
   });
 });
 

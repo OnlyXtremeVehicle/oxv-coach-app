@@ -126,13 +126,36 @@ export function statusLabel(status: string): string {
 // État vide — destination du CTA (fail-closed sur le drapeau paiement)
 // ---------------------------------------------------------------------------
 
-export type PassEmptyCta = 'reserve' | 'club';
+export type PassEmptyCta = 'reserve' | 'site';
 
 /**
- * Aucune inscription → où mène le CTA ? Vers le flux de réservation SI le
- * drapeau `app_payments` est armé, sinon vers la porte Club (fail-closed :
- * jamais un bouton « Réserver » mort avant l'ouverture des paiements).
+ * Espace du pilote sur le site, où ses journées se réservent et se paient.
+ *
+ * **Ce n'est PAS l'URL de paiement d'une demande donnée.** Celle-là est une
+ * demande ouverte au site — D-06 du dossier de raccordement : *« Ce qu'il faut
+ * du site : l'URL exacte et stable de la page de paiement d'une demande
+ * donnée. »* Tant qu'elle n'est pas fournie, on mène le pilote à son espace,
+ * pas à une adresse inventée.
+ *
+ * Ce chemin-ci est vérifié : les courriels de retour de journée l'emploient
+ * déjà (`supabase/functions/feedback-request`).
+ */
+export const URL_JOURNEES_SITE = 'https://www.oxvehicle.fr/compte-sessions';
+
+/**
+ * Aucune inscription → où mène le CTA ?
+ *
+ * Paiements ARMÉS : le flux de réservation de l'application.
+ *
+ * Paiements FERMÉS : **le site**, pas la porte Club. Le repli précédent
+ * renvoyait vers `/(app2)/club` — c'est-à-dire l'écran d'où le pilote venait
+ * d'arriver. Un aller-retour n'est pas un bouton mort, mais il ne vaut guère
+ * mieux : le pilote voulait réserver une journée, et l'application le ramenait
+ * à son point de départ.
+ *
+ * Le plan tranche : *« Paiement fermé : un lien vers le site avec le chemin
+ * exact, jamais un bouton mort. »*
  */
 export function passEmptyCta(paymentsEnabled: boolean): PassEmptyCta {
-  return paymentsEnabled === true ? 'reserve' : 'club';
+  return paymentsEnabled === true ? 'reserve' : 'site';
 }

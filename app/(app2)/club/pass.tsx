@@ -17,9 +17,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Linking, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
+import Toast from 'react-native-toast-message';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
@@ -50,6 +51,7 @@ import {
   canShowQr,
   offerLabel,
   passEmptyCta,
+  URL_JOURNEES_SITE,
   qrCheckinPayload,
   splitPasses,
   statusLabel,
@@ -123,8 +125,23 @@ export default function PassScreen() {
   const { upcoming, history } = useMemo(() => splitPasses(regs, Date.now()), [regs]);
 
   const onEmptyCta = useCallback(() => {
-    const target = passEmptyCta(paymentsEnabled);
-    router.push((target === 'reserve' ? '/(app2)/reserver' : '/(app2)/club') as never);
+    // Paiements fermés → LE SITE, pas la porte Club. Le repli précédent
+    // ramenait le pilote à l'écran dont il venait d'arriver ; il voulait
+    // réserver une journée. Voir `passLogic.URL_JOURNEES_SITE` : ce chemin mène
+    // à son espace, pas à l'URL de paiement d'une demande — celle-là est encore
+    // attendue du site (D-06 du dossier de raccordement).
+    if (passEmptyCta(paymentsEnabled) === 'reserve') {
+      router.push('/(app2)/reserver' as never);
+      return;
+    }
+    Linking.openURL(URL_JOURNEES_SITE).catch(() => {
+      // Aucun navigateur disponible : on ne laisse pas le geste sans réponse.
+      Toast.show({
+        type: 'error',
+        text1: 'Le site ne s’est pas ouvert.',
+        text2: 'Retrouvez vos journées sur oxvehicle.fr, espace compte.',
+      });
+    });
   }, [paymentsEnabled]);
 
   return (
@@ -170,10 +187,17 @@ export default function PassScreen() {
               state="empty"
               emptyMessage="Aucune inscription pour l'instant. Votre prochaine journée s'affichera ici."
             />
-            <PressScale onPress={onEmptyCta} accessibilityLabel="Voir les journées à venir">
+            <PressScale
+              onPress={onEmptyCta}
+              accessibilityLabel={
+                paymentsEnabled
+                  ? 'Réserver une journée'
+                  : 'Voir les journées sur le site OXV — ouvre votre navigateur'
+              }
+            >
               <View style={styles.emptyCta}>
                 <Text style={styles.emptyCtaLabel}>
-                  {paymentsEnabled ? 'Réserver une journée' : 'Découvrir le club'}
+                  {paymentsEnabled ? 'Réserver une journée' : 'Voir les journées sur le site'}
                 </Text>
               </View>
             </PressScale>
