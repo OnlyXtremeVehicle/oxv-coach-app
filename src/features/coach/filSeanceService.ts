@@ -7,7 +7,7 @@
  *
  * ---
  *
- * CINQ SOURCES, ET UNE SIXIÈME ÉCARTÉE
+ * CINQ SOURCES, ET DEUX ÉCARTÉES
  *
  *   `app_session_analyses`  machine · la lecture globale de la séance
  *   `app_segment_analyses`  machine · la marge virage par virage
@@ -19,12 +19,10 @@
  * pointe vers `sessions` — la JOURNÉE au calendrier — et non vers
  * `telemetry_sessions`, la capture. Vérifié sur les clés étrangères le
  * 01/08/2026. La joindre sur l'identifiant de capture aurait rapproché deux
- * grains différents et affiché l'avis d'une journée entière comme s'il portait
- * sur un run. Un fil doit dire d'où vient chaque ligne, ou se taire.
+ * grains différents.
  *
- * `coach_pilot_highlight` est écartée pour la même raison de grain : elle vit
- * par BINÔME, sans lien de séance. Ce qu'un coach met en avant pour un pilote
- * n'appartient pas au fil d'une capture particulière.
+ * `coach_pilot_highlight` l'est pour la même raison : elle vit par BINÔME, sans
+ * lien de séance.
  *
  * ---
  *
@@ -32,24 +30,45 @@
  *
  * Seuls les tours portent un instant DANS la séance (`laps.ended_at`). Les
  * analyses portent un `computed_at`, mais c'est l'heure du CALCUL, postérieure
- * au roulage : la placer dans le fil situerait « la lecture OXV » après le
- * dernier tour, ce qui est vrai du calcul et faux de la séance. Elles remontent
- * donc en entête, avec leur ancrage de virage quand elles en ont un.
+ * au roulage : elles remontent en entête, avec leur ancrage de virage.
  *
- * Les annotations du coach, elles, sont datées de leur écriture — un vrai
- * moment, même s'il tombe après le roulage. Elles descendent dans le fil.
+ * Les annotations du coach sont datées de leur ÉCRITURE — un vrai moment, mais
+ * qui n'est pas un moment de la séance. Elles descendent dans le fil, et l'écran
+ * affiche leur date complète pour que la différence saute aux yeux.
  *
  * ---
  *
- * TOUT ÉCHEC EST SILENCIEUX ET PARTIEL
+ * L'ÉCHEC N'EST PAS LE VIDE
  *
- * Une source qui ne répond pas retire ses lignes du fil, elle ne le fait pas
- * échouer. Le coach voit alors moins de choses — jamais une erreur à la place de
- * sa séance, jamais une valeur inventée pour combler.
+ * Une source qui ne répond pas ne rend pas « rien » : elle rend un ÉCHEC, et le
+ * fil le porte (`panne`). Une première version avalait toutes les erreurs
+ * Supabase et affichait « Ce fil est vide » sur une panne totale de réseau —
+ * l'état d'erreur de l'écran était injoignable. Relevé par la revue adversariale
+ * du 01/08/2026.
+ *
+ * ---
+ *
+ * CET ÉCRAN EST LU PAR LE COACH
+ *
+ * Les libellés s'adressent à LUI, pas au pilote : « Votre note », pas « la note
+ * de votre coach » ; « Ce que le pilote voulait garder en tête », pas « ce que
+ * VOUS vouliez ». Une première version reprenait les formulations de l'espace
+ * pilote et faisait dire au coach qu'il était son propre coach.
  */
 
 import { type EvenementFil, type FilSeance, assembleFil } from '@/features/coach/filSeanceLogic';
 import { supabase } from '@/lib/supabase';
+import { type MarginZone, marginLabelOf } from '@/types/domain';
+import { formatChronoTenths } from '@/utils/format';
+
+/** Résultat d'une source : ses événements, et si sa lecture a échoué. */
+interface Morceau {
+  evenements: EvenementFil[];
+  panne: boolean;
+}
+
+const RIEN: Morceau = { evenements: [], panne: false };
+const PANNE: Morceau = { evenements: [], panne: true };
 
 /** Convertit un horodatage ISO en ms, ou null s'il est absent ou illisible. */
 function instant(iso: string | null | undefined): number | null {
@@ -58,21 +77,51 @@ function instant(iso: string | null | undefined): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Chrono en secondes → « 1:23.4 ». Rend null si la mesure n'existe pas. */
-function chrono(secondes: number | null | undefined): string | null {
-  if (typeof secondes !== 'number' || !Number.isFinite(secondes) || secondes <= 0) return null;
-  const m = Math.floor(secondes / 60);
-  const s = secondes - m * 60;
-  return `${m}:${s.toFixed(1).padStart(4, '0')}`;
+/**
+ * Étiquette humaine d'une zone de marge — « Confortable », « À explorer »,
+ * « Terrain serré ».
+ *
+ * `margin_zone` est un CODE COULEUR interne (`green` · `yellow` · `red`,
+ * contraint en base), pas une étiquette. Une première version le rendait tel
+ * quel : le coach lisait « green » sous un chiffre roi, dans un écran vouvoyé —
+ * et « red » lu seul à côté d'une marge se lit comme un verdict. La table de
+ * correspondance existait déjà et était appliquée partout ailleurs.
+ */
+function libelleZone(zone: unknown): string | null {
+  if (zone !== 'green' && zone !== 'yellow' && zone !== 'red') return null;
+  return marginLabelOf(zone as MarginZone);
 }
 
-async function lectureGlobale(captureId: string): Promise<EvenementFil[]> {
-  const { data } = await supabase
+/**
+ * Première phrase utile d'un texte long, séparateurs Markdown retirés.
+ *
+ * `debrief_text` est rédigé en Markdown : titres, listes, traits de séparation.
+ * L'afficher brut faisait apparaître des « --- » et des « ## » dans le fil.
+ */
+function premierParagraphe(texte: string): string | null {
+  const propre = texte
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0 && !/^[-*_]{3,}$/.test(l))
+    .map((l) =>
+      l
+        .replace(/^#+\s*/, '')
+        .replace(/^[-*]\s+/, '')
+        .trim()
+    )
+    .filter((l) => l.length > 0);
+  return propre.length > 0 ? propre.join(' ') : null;
+}
+
+async function lectureGlobale(captureId: string): Promise<Morceau> {
+  const { data, error } = await supabase
     .from('app_session_analyses')
     .select('id, margin_global, margin_zone, next_focus_phrase, debrief_text')
     .eq('telemetry_session_id', captureId)
     .maybeSingle();
-  if (!data) return [];
+
+  if (error) return PANNE;
+  if (!data) return RIEN;
 
   const r = data as {
     id: string;
@@ -94,20 +143,23 @@ async function lectureGlobale(captureId: string): Promise<EvenementFil[]> {
       tour: null,
       virage: null,
       titre: `Marge globale ${Math.round(r.margin_global)} %`,
-      corps: r.margin_zone ?? null,
+      corps: libelleZone(r.margin_zone),
     });
   }
 
   if (typeof r.debrief_text === 'string' && r.debrief_text.trim().length > 0) {
-    out.push({
-      id: `analyse-debrief-${r.id}`,
-      registre: 'machine',
-      instantMs: null,
-      tour: null,
-      virage: null,
-      titre: 'Lecture de la séance',
-      corps: r.debrief_text,
-    });
+    const corps = premierParagraphe(r.debrief_text);
+    if (corps !== null) {
+      out.push({
+        id: `analyse-debrief-${r.id}`,
+        registre: 'machine',
+        instantMs: null,
+        tour: null,
+        virage: null,
+        titre: 'Lecture de la séance',
+        corps,
+      });
+    }
   }
 
   if (typeof r.next_focus_phrase === 'string' && r.next_focus_phrase.trim().length > 0) {
@@ -122,22 +174,25 @@ async function lectureGlobale(captureId: string): Promise<EvenementFil[]> {
     });
   }
 
-  return out;
+  return { evenements: out, panne: false };
 }
 
-async function margesParVirage(captureId: string): Promise<EvenementFil[]> {
-  const { data } = await supabase
+async function margesParVirage(captureId: string): Promise<Morceau> {
+  const { data, error } = await supabase
     .from('app_segment_analyses')
     .select('id, segment_index, segment_name, margin_percent, margin_zone')
     .eq('telemetry_session_id', captureId)
     .order('segment_index', { ascending: true });
-  if (!Array.isArray(data)) return [];
 
-  return (data as Record<string, unknown>[])
+  if (error) return PANNE;
+  if (!Array.isArray(data)) return RIEN;
+
+  const evenements = (data as Record<string, unknown>[])
     .map((row): EvenementFil | null => {
       const marge = row.margin_percent;
       if (typeof marge !== 'number' || !Number.isFinite(marge)) return null;
       const index = row.segment_index;
+      const zone = libelleZone(row.margin_zone);
       return {
         id: `segment-${String(row.id)}`,
         registre: 'machine',
@@ -150,26 +205,35 @@ async function margesParVirage(captureId: string): Promise<EvenementFil[]> {
           typeof row.segment_name === 'string' && row.segment_name.length > 0
             ? row.segment_name
             : 'Virage',
-        corps: `Marge ${Math.round(marge)} %${row.margin_zone ? ` · ${String(row.margin_zone)}` : ''}`,
+        corps: `Marge ${Math.round(marge)} %${zone !== null ? ` · ${zone}` : ''}`,
       };
     })
     .filter((e): e is EvenementFil => e !== null);
+
+  return { evenements, panne: false };
 }
 
-async function toursBoucles(captureId: string): Promise<EvenementFil[]> {
-  const { data } = await supabase
+async function toursBoucles(captureId: string): Promise<Morceau> {
+  const { data, error } = await supabase
     .from('laps')
     .select('id, lap_number, ended_at, duration_seconds, is_best_lap, is_outlap, is_inlap')
     .eq('session_id', captureId)
     .order('lap_number', { ascending: true });
-  if (!Array.isArray(data)) return [];
 
-  return (data as Record<string, unknown>[])
+  if (error) return PANNE;
+  if (!Array.isArray(data)) return RIEN;
+
+  const evenements = (data as Record<string, unknown>[])
     .map((row): EvenementFil | null => {
       const fin = instant(row.ended_at as string | null);
       if (fin === null) return null; // sans fin de tour, pas d'événement daté
-      const duree = chrono(row.duration_seconds as number | null);
       const numero = row.lap_number;
+      // `duration_seconds` est NUMERIC : PostgREST peut le rendre en chaîne.
+      // `formatChronoTenths` est le formateur du dépôt — il arrondit AVANT de
+      // découper les minutes, ce qui évite le « 1:60.0 » qu'une réécriture
+      // maison produisait sur les tours tombant juste sous la minute ronde.
+      const secondes = Number(row.duration_seconds);
+      const duree = Number.isFinite(secondes) && secondes > 0 ? formatChronoTenths(secondes) : null;
       // Un tour d'entrée ou de sortie n'est pas un tour de référence : on le dit
       // plutôt que de le présenter comme un chrono comparable.
       const nature = row.is_outlap === true ? 'Sortie' : row.is_inlap === true ? 'Rentrée' : null;
@@ -184,18 +248,22 @@ async function toursBoucles(captureId: string): Promise<EvenementFil[]> {
       };
     })
     .filter((e): e is EvenementFil => e !== null);
+
+  return { evenements, panne: false };
 }
 
-async function annotationsCoach(captureId: string): Promise<EvenementFil[]> {
-  const { data } = await supabase
+async function annotationsCoach(captureId: string): Promise<Morceau> {
+  const { data, error } = await supabase
     .from('coach_annotations')
     .select('id, body, corner_index, lap_index, created_at, audio_url')
     .eq('telemetry_session_id', captureId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true });
-  if (!Array.isArray(data)) return [];
 
-  return (data as Record<string, unknown>[])
+  if (error) return PANNE;
+  if (!Array.isArray(data)) return RIEN;
+
+  const evenements = (data as Record<string, unknown>[])
     .map((row): EvenementFil | null => {
       const corps = row.body;
       const aAudio = typeof row.audio_url === 'string' && row.audio_url.length > 0;
@@ -209,55 +277,79 @@ async function annotationsCoach(captureId: string): Promise<EvenementFil[]> {
         instantMs: instant(row.created_at as string | null),
         tour: typeof tour === 'number' && Number.isFinite(tour) ? tour : null,
         virage: typeof virage === 'number' && Number.isFinite(virage) ? virage : null,
-        titre: aAudio ? 'Note vocale de votre coach' : 'Note de votre coach',
+        // Écran LU PAR LE COACH : c'est SA note, pas celle d'un tiers.
+        titre: aAudio ? 'Votre note vocale' : 'Votre note',
         corps: typeof corps === 'string' && corps.trim().length > 0 ? corps : null,
       };
     })
     .filter((e): e is EvenementFil => e !== null);
+
+  return { evenements, panne: false };
 }
 
-async function intentionPilote(captureId: string): Promise<EvenementFil[]> {
-  const { data } = await supabase
+async function intentionPilote(captureId: string): Promise<Morceau> {
+  // `session_intentions.session_id` ne porte AUCUNE contrainte d'unicité : deux
+  // intentions peuvent viser la même capture. `.maybeSingle()` lèverait alors.
+  // On prend la plus récente, comme le lecteur pilote voisin.
+  const { data, error } = await supabase
     .from('session_intentions')
     .select('id, body, created_at')
     .eq('session_id', captureId)
-    .maybeSingle();
-  if (!data) return [];
+    .order('created_at', { ascending: false })
+    .limit(1);
 
-  const r = data as { id: string; body: string | null };
-  if (typeof r.body !== 'string' || r.body.trim().length === 0) return [];
+  if (error) return PANNE;
+  if (!Array.isArray(data) || data.length === 0) return RIEN;
 
-  return [
-    {
-      id: `intention-${r.id}`,
-      registre: 'pilote',
-      // Posée AVANT le roulage : la dater dans le fil la placerait au mauvais
-      // endroit. Elle encadre la séance, elle n'en est pas un moment.
-      instantMs: null,
-      tour: null,
-      virage: null,
-      titre: 'Ce que vous vouliez garder en tête',
-      corps: r.body,
-    },
-  ];
+  const r = data[0] as { id: string; body: string | null };
+  if (typeof r.body !== 'string' || r.body.trim().length === 0) return RIEN;
+
+  return {
+    evenements: [
+      {
+        id: `intention-${r.id}`,
+        registre: 'pilote',
+        // Posée AVANT le roulage : la dater dans le fil la placerait au mauvais
+        // endroit. Elle encadre la séance, elle n'en est pas un moment.
+        instantMs: null,
+        tour: null,
+        virage: null,
+        // Écran LU PAR LE COACH : c'est l'intention du PILOTE.
+        titre: 'Ce que le pilote voulait garder en tête',
+        corps: r.body,
+      },
+    ],
+    panne: false,
+  };
+}
+
+/** Le fil, plus l'aveu qu'une source au moins n'a pas répondu. */
+export interface FilCharge {
+  fil: FilSeance;
+  /** Vrai si UNE source au moins a échoué. Un fil incomplet le dit. */
+  panne: boolean;
 }
 
 /**
- * Charge le fil d'une capture. Ne rejette jamais : une source muette retire ses
- * lignes, elle ne fait pas tomber l'écran.
+ * Charge le fil d'une capture. Ne rejette jamais — mais distingue l'ÉCHEC du
+ * VIDE, pour que l'écran ne présente pas une panne comme une séance sans
+ * matière.
  */
-export async function chargerFilSeance(captureId: string): Promise<FilSeance> {
+export async function chargerFilSeance(captureId: string): Promise<FilCharge> {
   if (typeof captureId !== 'string' || captureId.length === 0) {
-    return assembleFil([]);
+    return { fil: assembleFil([]), panne: false };
   }
 
   const morceaux = await Promise.all([
-    lectureGlobale(captureId).catch(() => []),
-    margesParVirage(captureId).catch(() => []),
-    toursBoucles(captureId).catch(() => []),
-    annotationsCoach(captureId).catch(() => []),
-    intentionPilote(captureId).catch(() => []),
+    lectureGlobale(captureId).catch(() => PANNE),
+    margesParVirage(captureId).catch(() => PANNE),
+    toursBoucles(captureId).catch(() => PANNE),
+    annotationsCoach(captureId).catch(() => PANNE),
+    intentionPilote(captureId).catch(() => PANNE),
   ]);
 
-  return assembleFil(morceaux.flat());
+  return {
+    fil: assembleFil(morceaux.flatMap((m) => m.evenements)),
+    panne: morceaux.some((m) => m.panne),
+  };
 }

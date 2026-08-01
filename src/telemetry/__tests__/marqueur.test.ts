@@ -74,8 +74,8 @@ describe('resoudreMarqueur', () => {
     expect(m.virage).toBe(5);
     expect(m.vitesseEntreeKmh).toBe(118);
     expect(m.decelerationG).toBeCloseTo(1.2, 5);
-    expect(m.distanceAvantCordeM).toBeGreaterThan(30);
-    expect(m.distanceAvantCordeM).toBeLessThan(60);
+    expect(m.distanceCordeM).toBeGreaterThan(30);
+    expect(m.distanceCordeM).toBeLessThan(60);
     expect(m.ecartTrameMs).toBe(20);
   });
 
@@ -142,7 +142,7 @@ describe('resoudreMarqueur', () => {
       const loin: CordeVirage[] = [{ numero: 2, lat: 45.35, lon: -0.32 }];
       const m = resoudreMarqueur(1000, [trame({ elapsedMs: 1000 })], BORNES, loin);
       expect(m.virage).toBe(null);
-      expect(m.distanceAvantCordeM).toBe(null);
+      expect(m.distanceCordeM).toBe(null);
       // La vitesse, elle, reste mesurée : l'un n'empêche pas l'autre.
       expect(m.vitesseEntreeKmh).toBe(118);
     });
@@ -163,11 +163,17 @@ describe('resoudreMarqueur', () => {
       expect(m.tour).toBe(null);
     });
 
-    it('aucune trame → tout est nul, rien n’est levé', () => {
+    it('aucune trame → le TOUR tient quand même, le reste est nul', () => {
+      // Ce test encodait le défaut : il exigeait que le tour soit perdu. Or le
+      // tour se déduit des BORNES, pas des trames — c'est écrit dans le module,
+      // et une garde plus haut sautait par-dessus le calcul. Relevé par la revue
+      // adversariale du 01/08/2026.
       const m = resoudreMarqueur(1000, [], BORNES, CORDES);
       expect(m.instantMs).toBe(1000);
-      expect(m.tour).toBe(null);
+      expect(m.tour).toBe(3);
       expect(m.ecartTrameMs).toBe(null);
+      expect(m.vitesseEntreeKmh).toBe(null);
+      expect(m.virage).toBe(null);
     });
 
     it('des entrées absentes ne font pas tomber la résolution', () => {

@@ -32,6 +32,7 @@ import * as haptics from '@/lib/haptics';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import {
   groupQueue,
+  ordonnePourLecture,
   seanceParLaquelleCommencer,
   type QueueItem,
   type QueueStatus,
@@ -117,7 +118,13 @@ export default function FileLectureScreen() {
    * désormais un point de départ, et ne presse personne (jalon 6, phase 5).
    */
   const aCommencer = seanceParLaquelleCommencer(items);
-  const primary = groups[filter];
+  // La file arrive du plus récent au plus ancien : sans ce replacement, la
+  // séance désignée — la plus ANCIENNE — se retrouvait en bas de l'écran, et
+  // « à commencer par celle-ci » pointait vers la dernière ligne.
+  const nonLues = ordonnePourLecture(groups.unread, aCommencer);
+  // Même ordre sur les deux chemins : sinon la séance désignée changerait de
+  // place selon l'onglet, et « à commencer par celle-ci » perdrait son sens.
+  const primary = filter === 'unread' ? nonLues : groups[filter];
   // Sous « à lire », on montre en second un rappel des dernières lues (maquette
   // « LUES RÉCEMMENT ») — composition d'écran, aucune requête supplémentaire.
   const hasRecentRead = filter === 'unread' && groups.read.length > 0;
@@ -173,7 +180,7 @@ export default function FileLectureScreen() {
                       Rien à lire pour l’instant.
                     </Text>,
                   ]
-                : groups.unread.map((item) => (
+                : nonLues.map((item) => (
                     <QueueRow
                       key={item.sessionId}
                       item={item}

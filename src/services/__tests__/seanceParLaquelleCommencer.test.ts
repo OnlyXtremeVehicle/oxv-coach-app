@@ -20,7 +20,11 @@
  * doctrine refuse.
  */
 
-import { type QueueItem, seanceParLaquelleCommencer } from '@/services/coachQueueLogic';
+import {
+  type QueueItem,
+  ordonnePourLecture,
+  seanceParLaquelleCommencer,
+} from '@/services/coachQueueLogic';
 
 const item = (p: Partial<QueueItem>): QueueItem => ({
   sessionId: 's1',
@@ -92,5 +96,56 @@ describe('seanceParLaquelleCommencer', () => {
     it('une liste absente rend null plutôt que d’échouer', () => {
       expect(seanceParLaquelleCommencer(null as unknown as QueueItem[])).toBe(null);
     });
+  });
+});
+
+/**
+ * L'ORDRE D'AFFICHAGE — la désignée doit être la PREMIÈRE.
+ *
+ * La file arrive du plus récent au plus ancien, alors que la séance par laquelle
+ * commencer est la plus ANCIENNE : elle se retrouvait en bas de l'écran, et
+ * « à commencer par celle-ci » désignait la dernière ligne. Relevé par la revue
+ * adversariale du 01/08/2026.
+ */
+describe('ordonnePourLecture', () => {
+  const recente = item({ sessionId: 'recente', startedAt: '2026-07-20T10:00:00.000Z' });
+  const moyenne = item({ sessionId: 'moyenne', startedAt: '2026-07-10T10:00:00.000Z' });
+  const ancienne = item({ sessionId: 'ancienne', startedAt: '2026-07-02T10:00:00.000Z' });
+  // Telle que la base la rend : du plus récent au plus ancien.
+  const file = [recente, moyenne, ancienne];
+
+  it('la séance désignée passe en TÊTE', () => {
+    const ordre = ordonnePourLecture(file, 'ancienne');
+    expect(ordre.map((i) => i.sessionId)).toEqual(['ancienne', 'recente', 'moyenne']);
+  });
+
+  it('le reste garde son ordre — on ne renverse pas la file', () => {
+    // L'ordre du plus récent au plus ancien est celui qu'on attend d'une liste
+    // d'arrivées : seule la désignée remonte.
+    const ordre = ordonnePourLecture(file, 'ancienne');
+    expect(ordre.slice(1).map((i) => i.sessionId)).toEqual(['recente', 'moyenne']);
+  });
+
+  it('aucune désignation → l’ordre est intact', () => {
+    expect(ordonnePourLecture(file, null).map((i) => i.sessionId)).toEqual([
+      'recente',
+      'moyenne',
+      'ancienne',
+    ]);
+  });
+
+  it('une désignation absente de la file ne perd aucune ligne', () => {
+    const ordre = ordonnePourLecture(file, 'inconnue');
+    expect(ordre).toHaveLength(3);
+  });
+
+  it('ne mute pas la liste reçue', () => {
+    const copie = [...file];
+    ordonnePourLecture(file, 'ancienne');
+    expect(file.map((i) => i.sessionId)).toEqual(copie.map((i) => i.sessionId));
+  });
+
+  it('une liste absente rend un tableau vide', () => {
+    expect(ordonnePourLecture(null as unknown as QueueItem[], 'x')).toEqual([]);
   });
 });

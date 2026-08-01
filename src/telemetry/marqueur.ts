@@ -2,7 +2,7 @@
  * LE MARQUEUR RÉSOLU (jalon 6, phase 5).
  *
  * *« L'application ne stocke pas un horodatage : elle le résout en tour, virage,
- * vitesse d'entrée, décélération, distance avant la corde. »* — Plan de montage.
+ * vitesse d'entrée, décélération, distance à la corde. »* — Plan de montage.
  *
  * Module PUR : des trames entrent, un marqueur résolu sort. Aucun accès réseau,
  * aucune dépendance React.
@@ -99,7 +99,14 @@ export interface MarqueurResolu {
   vitesseEntreeKmh: number | null;
   /** Décélération maximale relevée dans les deux secondes précédentes, en g. */
   decelerationG: number | null;
-  distanceAvantCordeM: number | null;
+  /**
+   * Distance entre le marqueur et la corde la plus proche, en mètres.
+   *
+   * C'est une DISTANCE, pas un sens : rien ici n'établit que le marqueur est en
+   * AMONT de la corde. Le dire serait affirmer une direction qu'on ne calcule
+   * pas. L'affichage doit donc lire « à N m de la corde », jamais « N m avant ».
+   */
+  distanceCordeM: number | null;
   /**
    * Écart entre le marqueur et la trame retenue. Dit la PRÉCISION de la
    * résolution : un écart de 800 ms se lit autrement qu'un écart de 20 ms.
@@ -220,17 +227,21 @@ export function resoudreMarqueur(
     virage: null,
     vitesseEntreeKmh: null,
     decelerationG: null,
-    distanceAvantCordeM: null,
+    distanceCordeM: null,
     ecartTrameMs: null,
   };
 
-  if (!nombreFini(instantMs) || !Array.isArray(trames) || trames.length === 0) return vide;
+  if (!nombreFini(instantMs)) return vide;
 
-  const proche = trameLaPlusProche(trames, instantMs);
   // Le tour se déduit des BORNES, pas des trames : il reste connaissable même
-  // quand aucune trame n'est assez proche de l'instant.
+  // sans aucune trame. Il se calcule donc AVANT toute garde sur les trames —
+  // une première rédaction sortait plus haut et perdait le tour, contredisant
+  // la promesse écrite juste ici. Relevé par la revue adversariale du 01/08.
   const tour = tourDe(bornes, instantMs);
 
+  if (!Array.isArray(trames) || trames.length === 0) return { ...vide, tour };
+
+  const proche = trameLaPlusProche(trames, instantMs);
   if (proche === null) return { ...vide, tour };
 
   const { trame, ecart } = proche;
@@ -242,7 +253,7 @@ export function resoudreMarqueur(
     virage: situe?.virage ?? null,
     vitesseEntreeKmh: nombreFini(trame.speedKmh) && trame.speedKmh >= 0 ? trame.speedKmh : null,
     decelerationG: decelerationAvant(trames, instantMs),
-    distanceAvantCordeM: situe?.distanceM ?? null,
+    distanceCordeM: situe?.distanceM ?? null,
     ecartTrameMs: ecart,
   };
 }
@@ -260,8 +271,9 @@ export function phraseMarqueur(m: MarqueurResolu): string | null {
   if (nombreFini(m.virage)) bouts.push(`virage ${m.virage}`);
   if (nombreFini(m.vitesseEntreeKmh)) bouts.push(`${Math.round(m.vitesseEntreeKmh)} km/h`);
   if (nombreFini(m.decelerationG)) bouts.push(`${m.decelerationG.toFixed(1)} g`);
-  if (nombreFini(m.distanceAvantCordeM)) {
-    bouts.push(`${Math.round(m.distanceAvantCordeM)} m avant la corde`);
+  if (nombreFini(m.distanceCordeM)) {
+    // « de la corde », pas « avant » : le sens n'est pas calculé.
+    bouts.push(`à ${Math.round(m.distanceCordeM)} m de la corde`);
   }
   return bouts.length > 0 ? bouts.join(' · ') : null;
 }

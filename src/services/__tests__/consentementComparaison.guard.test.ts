@@ -76,7 +76,12 @@ describe('garde — la comparaison d’élèves est divulguée', () => {
     expect(tableau).not.toMatch(/autres pilotes/i);
   });
 
-  it('elle est AFFICHÉE dans l’écran de consentement, pas seulement définie', () => {
-    expect(ecran).toContain('COACH_COMPARAISON_PHRASE');
+  it('elle est AFFICHÉE dans l’écran de consentement, pas seulement importée', () => {
+    // PIÈGE ÉVITÉ : `toContain('COACH_COMPARAISON_PHRASE')` était satisfait par
+    // la seule ligne d'import. La garde serait restée verte si le rendu avait
+    // disparu — exactement le défaut qu'elle prétendait interdire.
+    // On exige donc une INTERPOLATION JSX : { … COACH_COMPARAISON_PHRASE … }.
+    const rendu = /\{\s*COACH_COMPARAISON_PHRASE\s*\}/.test(ecran);
+    expect(rendu).toBe(true);
   });
 });

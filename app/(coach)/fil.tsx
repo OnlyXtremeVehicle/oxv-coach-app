@@ -48,7 +48,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 
 import {
@@ -81,19 +81,34 @@ const COULEUR_REGISTRE: Record<RegistreFil, string> = {
   pilote: palette.cream,
 };
 
+/**
+ * Le nom d'un registre — DIT AU COACH, qui est celui qui lit cet écran.
+ *
+ * Une première rédaction annonçait « Votre coach » pour le registre coach :
+ * l'écran faisait dire au coach qu'il était son propre coach. Les libellés de
+ * l'espace pilote ne se transposent pas tels quels.
+ */
 const NOM_REGISTRE: Record<RegistreFil, string> = {
   machine: 'Mesuré par OXV',
-  coach: 'Votre coach',
+  coach: 'Vous',
   pilote: 'Le pilote',
 };
 
-/** Heure locale d'un instant — « 14:32 ». Rend null si l'instant est absent. */
-function heure(ms: number | null): string | null {
+/**
+ * DATE ET heure d'un instant — « 4 juil · 14:32 ».
+ *
+ * La date est indispensable, et son absence était un défaut : le fil mêle des
+ * tours bouclés PENDANT la séance et des notes écrites des jours plus tard. Avec
+ * l'heure seule, un tour de 14:32 suivi d'une note de 09:15 donnait l'impression
+ * que le fil remontait le temps. Relevé par la revue adversariale du 01/08/2026.
+ */
+function quand(ms: number | null): string | null {
   if (typeof ms !== 'number' || !Number.isFinite(ms)) return null;
   try {
-    return new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(
-      new Date(ms)
-    );
+    const d = new Date(ms);
+    const jour = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' }).format(d);
+    const h = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(d);
+    return `${jour} · ${h}`;
   } catch {
     return null;
   }
@@ -103,13 +118,18 @@ function heure(ms: number | null): string | null {
 function LigneFil({ e, avecHeure }: { e: EvenementFil; avecHeure: boolean }) {
   const couleur = COULEUR_REGISTRE[e.registre];
   const situe = ancrage(e);
-  const h = avecHeure ? heure(e.instantMs) : null;
+  const h = avecHeure ? quand(e.instantMs) : null;
 
   return (
     <View
       style={s.ligne}
       accessible
-      accessibilityLabel={`${NOM_REGISTRE[e.registre]} : ${e.titre}${situe ? `, ${situe}` : ''}`}
+      // `accessible` fusionne les enfants en UN élément : sans le corps ici, le
+      // détail de chaque ligne était INAUDIBLE. La couleur du registre ne parle
+      // pas non plus à un lecteur d'écran — d'où son nom en tête.
+      accessibilityLabel={[NOM_REGISTRE[e.registre], e.titre, situe, h, e.corps]
+        .filter(Boolean)
+        .join('. ')}
     >
       <View style={[s.trait, { backgroundColor: couleur }]} />
       <View style={s.ligneCorps}>
@@ -138,14 +158,27 @@ function Legende({ registres }: { registres: RegistreFil[] }) {
   );
 }
 
-function CorpsFil({ fil, isConsole }: { fil: FilSeance; isConsole: boolean }) {
+function CorpsFil({
+  fil,
+  isConsole,
+  panne,
+}: {
+  fil: FilSeance;
+  isConsole: boolean;
+  /** Vrai si une source au moins n'a pas répondu — le fil est incomplet. */
+  panne: boolean;
+}) {
   if (filEstVide(fil)) {
     return (
       <View style={s.vide}>
-        <Text style={s.videTitre}>Ce fil est vide</Text>
+        {/* UN FIL VIDE N'EST PAS UNE PANNE, et l'inverse non plus. Avaler les
+            erreurs faisait passer une coupure réseau pour une séance sans
+            matière — l'état d'erreur de l'écran était injoignable. */}
+        <Text style={s.videTitre}>{panne ? 'Fil incomplet' : 'Ce fil est vide'}</Text>
         <Text style={s.videTexte}>
-          Rien n&apos;a encore été mesuré ni écrit sur cette séance. Les tours bouclés, la lecture
-          d&apos;OXV et vos notes apparaîtront ici, chacun dans sa voix.
+          {panne
+            ? 'Une partie de cette séance n’a pas pu être lue. Ce que vous voyez peut être incomplet — réessayez.'
+            : 'Rien n’a encore été mesuré ni écrit sur cette séance. Les tours bouclés, la lecture d’OXV et vos notes apparaîtront ici, chacun dans sa voix.'}
         </Text>
       </View>
     );
@@ -153,6 +186,11 @@ function CorpsFil({ fil, isConsole }: { fil: FilSeance; isConsole: boolean }) {
 
   return (
     <View style={isConsole ? s.corpsConsole : undefined}>
+      {panne && (
+        <Text style={s.note}>
+          Une partie de cette séance n&apos;a pas pu être lue. Ce fil est incomplet.
+        </Text>
+      )}
       <Legende registres={fil.registresPresents} />
 
       {fil.entete.length > 0 && (
@@ -174,12 +212,11 @@ function CorpsFil({ fil, isConsole }: { fil: FilSeance; isConsole: boolean }) {
       )}
 
       {fil.chronologie.length === 0 && fil.entete.length > 0 && (
-        // On dit pourquoi la chronologie manque, plutôt que de la laisser
-        // absente sans explication : le coach doit savoir que ce n'est pas une
-        // panne d'affichage.
-        <Text style={s.note}>
-          Aucun événement daté sur cette séance — les tours n&apos;ont pas été enregistrés.
-        </Text>
+        // On CONSTATE l'absence, on n'en donne pas la cause : une première
+        // rédaction affirmait « les tours n'ont pas été enregistrés », ce que
+        // rien ici n'établit — les tours peuvent exister sans heure de fin, ou
+        // la lecture peut avoir échoué.
+        <Text style={s.note}>Aucun événement daté sur cette séance.</Text>
       )}
     </View>
   );
@@ -192,6 +229,7 @@ export default function CoachFilScreen() {
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [fil, setFil] = useState<FilSeance | null>(null);
+  const [panne, setPanne] = useState(false);
   const [chargement, setChargement] = useState(true);
   const [echec, setEchec] = useState(false);
   const [cleRecharge, setCleRecharge] = useState(0);
@@ -204,10 +242,12 @@ export default function CoachFilScreen() {
     let annule = false;
     setChargement(true);
     setEchec(false);
+    setPanne(false);
     chargerFilSeance(sessionId)
-      .then((f) => {
+      .then((r) => {
         if (annule) return;
-        setFil(f);
+        setFil(r.fil);
+        setPanne(r.panne);
         setChargement(false);
       })
       .catch(() => {
@@ -235,7 +275,10 @@ export default function CoachFilScreen() {
   return (
     <Screen>
       <AppBar title="FIL DE SÉANCE" onBack={() => router.back()} />
-      <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
+      {/* PAS de ScrollView ici : `StateWrapper` en pose déjà une. Deux ScrollView
+          verticales imbriquées faisaient défiler la barre de retour hors de
+          l'écran. Relevé par la revue adversariale du 01/08/2026. */}
+      <View style={s.scroll}>
         <StateWrapper
           state={etat}
           skeletonLines={6}
@@ -244,9 +287,9 @@ export default function CoachFilScreen() {
           errorCause="Le fil n'a pas pu être chargé."
           onRetry={relancer}
         >
-          {fil !== null ? <CorpsFil fil={fil} isConsole={isConsole} /> : null}
+          {fil !== null ? <CorpsFil fil={fil} isConsole={isConsole} panne={panne} /> : null}
         </StateWrapper>
-      </ScrollView>
+      </View>
     </Screen>
   );
 }

@@ -408,8 +408,11 @@ function AssignmentCard({
         <View style={{ flex: 1 }}>
           <Text style={styles.switchLabel}>Accès à vos séances</Text>
           {levelHint ? <Text style={styles.switchHint}>{levelHint}</Text> : null}
-          {/* Ce que l'accès permet AUSSI — dit, pas deviné (jalon 6, phase 5). */}
-          <Text style={styles.switchHint}>{COACH_COMPARAISON_PHRASE}</Text>
+          {/* Ce que l'accès permet AUSSI — dit, pas deviné (jalon 6, phase 5).
+              À l'indicatif présent, donc SEULEMENT quand l'accès est accordé :
+              annoncer « votre coach peut… » sous « Accès en attente de votre
+              accord » décrirait un pouvoir qu'il n'a pas encore. */}
+          {consented ? <Text style={styles.switchHint}>{COACH_COMPARAISON_PHRASE}</Text> : null}
         </View>
         <Switch
           value={consented}

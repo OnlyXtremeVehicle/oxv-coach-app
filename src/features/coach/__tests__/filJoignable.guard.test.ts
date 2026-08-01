@@ -66,10 +66,14 @@ describe('garde — le fil de séance est joignable', () => {
     expect(sources.length).toBeGreaterThan(200);
   });
 
-  it('au moins un écran navigue vers /(coach)/fil', () => {
-    const motif = /['"`]\/\(coach\)\/fil['"`]/;
+  it('au moins un écran NAVIGUE vers /(coach)/fil', () => {
+    // PIÈGE ÉVITÉ : chercher la seule chaîne « /(coach)/fil » se satisfaisait
+    // d'une mention en commentaire, d'un mapping de navigation, ou d'un test.
+    // La garde serait restée verte alors que plus aucun bouton n'y menait.
+    // On exige un APPEL de navigation qui porte la route.
+    const motif = /router\.(push|replace|navigate)\s*\(\s*\{[^}]*['"`]\/\(coach\)\/fil['"`]/s;
     const menant = sources.filter((f) => motif.test(readFileSync(f, 'utf8')));
 
-    expect(menant.length).toBeGreaterThan(0);
+    expect(menant.map((f) => f.replace(process.cwd(), ''))).not.toEqual([]);
   });
 });

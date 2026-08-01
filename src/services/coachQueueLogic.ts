@@ -104,3 +104,27 @@ export function seanceParLaquelleCommencer(items: readonly QueueItem[]): string 
 
   return choisie?.sessionId ?? null;
 }
+
+/**
+ * Place en TÊTE la séance désignée, sans toucher au reste de l'ordre.
+ *
+ * La file arrive du plus récent au plus ancien (`loadReadingQueue` trie
+ * `started_at` décroissant), alors que la séance par laquelle commencer est la
+ * plus ANCIENNE : elle se retrouvait donc en bas de l'écran. « À commencer par
+ * celle-ci » désignait la dernière ligne — relevé par la revue adversariale du
+ * 01/08/2026.
+ *
+ * On ne renverse pas la file pour autant : l'ordre du plus récent au plus ancien
+ * est celui qu'on attend d'une liste d'arrivées. Seule la séance désignée
+ * remonte, et elle est alors littéralement la première.
+ */
+export function ordonnePourLecture(
+  items: readonly QueueItem[],
+  designee: string | null
+): QueueItem[] {
+  if (!Array.isArray(items)) return [];
+  if (designee === null) return [...items];
+  const tete = items.filter((i) => i?.sessionId === designee);
+  if (tete.length === 0) return [...items];
+  return [...tete, ...items.filter((i) => i?.sessionId !== designee)];
+}
