@@ -674,3 +674,67 @@ suppression n'a été prise. Le point RGPD soulevé par la proposition L10 (des
 copies de données personnelles hors de tout périmètre de purge :
 `_backup_registrations` 5 lignes, `_backup_payments` 2) reste ouvert, sans
 urgence tant que rien n'est en production réelle.
+
+---
+
+## D-24 — Un `drop table` doit balayer les FONCTIONS, pas seulement le code
+
+**Incident du 01/08/2026, réparé le jour même. Dégât réel : nul.**
+
+La suppression de `duels` (L21s) a été précédée de trois vérifications : zéro
+ligne, aucune clé étrangère entrante, aucun code applicatif ne la touche. Toutes
+justes, toutes insuffisantes.
+
+**`purge_user_data` la référençait deux fois.** La fonction du droit à
+l'effacement était cassée pendant vingt minutes.
+
+**Pourquoi cela ne s'est pas vu tout de suite** : plpgsql ne vérifie pas
+l'existence d'une table à la création de la fonction. `create or replace` passe
+sans broncher. La casse ne serait apparue qu'à la **première demande
+d'effacement réelle** — et elle l'aurait fait échouer entièrement.
+
+C'est la pire forme de panne : silencieuse, et qui n'éclate qu'au moment où l'on
+a le plus besoin que ça marche.
+
+**La règle, désormais** : avant tout `drop table`, balayer
+`pg_get_functiondef` sur l'ensemble des fonctions du schéma. La requête tient en
+cinq lignes :
+
+```sql
+select p.proname
+from pg_proc p
+where p.pronamespace = 'public'::regnamespace
+  and pg_get_functiondef(p.oid) like '%public.<table>%';
+```
+
+**Ce qui a été fait en réparant** : les deux `delete` ajoutés sur les
+sauvegardes sont gardés par `to_regclass`. Le jour où ces tables partiront, la
+purge continuera de fonctionner. On ne refait pas deux fois la même erreur dans
+la même journée.
+
+---
+
+## D-25 — L10 et L21 : arbitrées et appliquées le 01/08/2026
+
+**L10 — les cinq sauvegardes.** Conservées. Les deux qui portent des données
+personnelles (`_backup_registrations` 5 lignes, `_backup_payments` 2) entrent
+dans `purge_user_data` : le droit à l'effacement redevient complet. Les trois
+autres n'en portent pas. Ce n'était pas une exposition — aucune n'accorde SELECT
+à `anon` ni `authenticated`, PostgREST ne les sert pas — c'était un trou
+d'effacement.
+
+**L21 — `users.biometry_asked_at` posée.** Elle date la SOLLICITATION, pas la
+réponse : écrite quand la feuille s'affiche, même si le pilote la referme sans
+répondre. Sans elle, un refus et une question jamais posée valaient tous deux
+NULL, et l'application aurait redemandé à chaque journée à celui qui a dit non.
+
+**Deux faits ont changé depuis la rédaction de la proposition**, vérifiés le
+01/08 : le drapeau `biometry` est passé à **true** — le bloc est vivant, la
+proposition affirmait le contraire — et la seconde porte non gardée de
+`vous/reglages.tsx` **a été corrigée** entre-temps.
+
+**RESTE À FAIRE — le câblage applicatif.** La colonne existe, personne ne
+l'écrit ni ne la lit. Décision du fondateur sur le placement : l'étape
+`consentement` va **juste après l'appairage**, dans le flux du jour J —
+`preparation` n'y entre pas, c'est un écran d'avant-journée. Tant que ce câblage
+n'est pas fait, la colonne est une garde posée, non armée.
