@@ -2,8 +2,17 @@
 
 > ## PÉRIMÉ — NE PAS DONNER À UN AGENT
 >
-> **Remplacé le 31/07/2026** par `PROMPT_REPRISE.md`, rédigé côté site après
-> mesure. Trois constats de ce document se sont révélés **inexacts** :
+> **Remplacé par `docs/SITE_TRAVAIL_COMPLET.md`** (01/08/2026), qui tient l'état
+> complet et vérifié. Voir aussi `PROMPT_REPRISE.md`, rédigé côté site le 31/07.
+>
+> **QUATRE** constats de ce document se sont révélés inexacts. Le quatrième
+> n'a été vu que le 01/08 : j'affirmais que la page de partage « ne peut pas
+> être bâtie telle quelle », faute d'une policy lisant par jeton. C'était vrai
+> des policies et faux du problème — **trois fonctions `security definer`
+> existaient déjà**, accordées à `anon`. J'avais lu une couche sans regarder la
+> suivante.
+>
+> Les trois premiers :
 >
 > 1. **La panne n'était pas celle décrite.** Ce document supposait un filtre
 >    anti-robots ; la réécriture SPA de Vercel ne s'applique tout simplement
