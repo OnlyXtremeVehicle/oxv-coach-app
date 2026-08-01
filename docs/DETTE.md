@@ -757,3 +757,36 @@ ouverte, fermée — et seul `fermee` libère la navigation.
 `undefined`, si bien qu'un champ ABSENT franchissait la garde et déclenchait la
 question. Le test l'a montré avant le commit. Seul un `null` explicite vaut
 désormais « jamais posée ».
+
+---
+
+## D-26 — Le marqueur n'a pas encore d'endroit où naître
+
+**Relevé le 01/08/2026** en préparant le câblage du résolveur (jalon 6, phase 5).
+
+`src/telemetry/marqueur.ts` sait résoudre un instant en tour, virage, vitesse,
+freinage et distance à la corde. **Aucun code ne lui fournit d'instant.**
+
+Trois colonnes de `coach_annotations` existent en base et ne sont écrites nulle
+part, vérifié par recherche sur tout le dépôt :
+
+| Colonne | État |
+|---|---|
+| `marker_s_norm` | **zéro référence** dans `src/` et `app/` — ni lecture, ni écriture |
+| `lap_index` | lue par `filSeanceService`, jamais écrite |
+| `audio_url` | lue par `filSeanceService`, jamais écrite |
+
+Le chemin d'écriture (`coachAnnotationsService`) ne pose que `corner_index` et
+`body`.
+
+**Ce n'est pas un défaut du résolveur** : il est juste, testé, et rendra des
+`null` honnêtes. C'est un manque en amont — le geste « poser un marqueur » n'a
+pas de surface.
+
+**Une question de schéma reste ouverte, et elle n'est pas la mienne.**
+`marker_s_norm` suggère une abscisse curviligne normalisée ; le résolveur
+travaille sur `elapsed_ms`. Les deux se défendent : l'instant est ce qu'on capte
+au moment où le coach appuie, l'abscisse est ce qui se compare entre deux tours.
+Choisir engage le schéma — décision fondateur.
+
+**Rien à rattraper** : 0 annotation en production.

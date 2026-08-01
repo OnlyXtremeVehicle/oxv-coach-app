@@ -38,6 +38,37 @@ export const COACH_ACCESS_LEVELS: { value: CoachAccessLevel; label: string; hint
   },
 ];
 
+/**
+ * CE QUE LE CONSENTEMENT NE DISAIT PAS — la comparaison d'élèves.
+ *
+ * *« La phrase de consentement doit dire la comparaison d'élèves »* — Plan de
+ * montage, jalon 6, phase 5.
+ *
+ * Les trois niveaux ci-dessus décrivent CE QUE le coach voit. Aucun ne disait
+ * qu'il peut rapprocher vos données de celles de ses autres pilotes — alors que
+ * c'est exactement ce que fait son métier, et ce que l'espace coach permet.
+ *
+ * Un consentement qui décrit l'accès sans décrire l'usage est incomplet. Le
+ * pilote accepte ce qu'on lui dit ; il ne devine pas le reste.
+ *
+ * ---
+ *
+ * CE N'EST PAS UNE ENTORSE À LA DOCTRINE
+ *
+ * « Aucun classement entre pilotes » vaut pour ce que l'APPLICATION montre : elle
+ * ne publie ni palmarès, ni rang, ni vainqueur. Un coach qui compare ses élèves
+ * pour construire sa pédagogie fait autre chose — un travail humain, sous sa
+ * responsabilité. La doctrine n'interdit pas ce travail ; elle exige qu'il soit
+ * dit.
+ *
+ * ---
+ *
+ * PHRASE UNIQUE, TOUS NIVEAUX. Elle ne dépend pas du niveau accordé : dès que le
+ * coach voit quelque chose, il peut le rapprocher d'autre chose.
+ */
+export const COACH_COMPARAISON_PHRASE =
+  'Votre coach peut rapprocher vos données de celles de ses autres pilotes, pour sa lecture. Rien de cette comparaison ne vous est présenté comme un classement.';
+
 export interface MyCoachAssignment {
   /** ID de la ligne coach_pilots. */
   id: string;

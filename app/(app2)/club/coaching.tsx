@@ -29,7 +29,11 @@ import {
   type CoachAvailabilitySlot,
   type MyBooking,
 } from '@/services/coachMarketplaceService';
-import { COACH_ACCESS_LEVELS, type MyCoachAssignment } from '@/services/pilotConsentService';
+import {
+  COACH_ACCESS_LEVELS,
+  COACH_COMPARAISON_PHRASE,
+  type MyCoachAssignment,
+} from '@/services/pilotConsentService';
 import { formatInvoiceAmount, type MyCoachInvoice } from '@/services/pilotCoachBillingService';
 import {
   Chip,
@@ -404,6 +408,8 @@ function AssignmentCard({
         <View style={{ flex: 1 }}>
           <Text style={styles.switchLabel}>Accès à vos séances</Text>
           {levelHint ? <Text style={styles.switchHint}>{levelHint}</Text> : null}
+          {/* Ce que l'accès permet AUSSI — dit, pas deviné (jalon 6, phase 5). */}
+          <Text style={styles.switchHint}>{COACH_COMPARAISON_PHRASE}</Text>
         </View>
         <Switch
           value={consented}
