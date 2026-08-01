@@ -117,6 +117,70 @@ export interface BiometryConsents {
   coachShare: boolean;
 }
 
+/**
+ * État nécessaire pour décider s'il faut SOLLICITER le pilote (lot L21).
+ *
+ * Distinct de `BiometryConsents`, qui répond « a-t-il consenti ». Ici on répond
+ * « lui a-t-on déjà demandé » — deux questions différentes, que les colonnes de
+ * consentement seules ne savaient pas distinguer.
+ */
+export interface BiometrySollicitation {
+  /** Date ISO de la dernière sollicitation, ou null si jamais posée. */
+  solliciteLe: string | null;
+  /** Date ISO du consentement de capture, ou null (refusé OU jamais demandé). */
+  consentementCaptureLe: string | null;
+}
+
+/** Lit de quoi décider s'il faut poser la question. Fail-closed : en cas d'échec,
+ *  on rend « déjà sollicité » — on préfère ne pas demander que demander à tort. */
+export async function loadBiometrySollicitation(userId: string): Promise<BiometrySollicitation> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('biometry_asked_at, biometry_capture_consent_at')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data) {
+    // Lecture impossible : on se comporte comme si la question avait été posée.
+    // Une sollicitation en trop sur une donnée de santé coûte plus qu'une de moins.
+    return { solliciteLe: new Date().toISOString(), consentementCaptureLe: null };
+  }
+
+  const row = data as {
+    biometry_asked_at?: string | null;
+    biometry_capture_consent_at?: string | null;
+  };
+  return {
+    solliciteLe: row.biometry_asked_at ?? null,
+    consentementCaptureLe: row.biometry_capture_consent_at ?? null,
+  };
+}
+
+/**
+ * Date la SOLLICITATION — appelée quand la feuille s'AFFICHE, pas quand le
+ * pilote répond.
+ *
+ * C'est délibéré : une feuille refermée sans réponse est une question posée. Ne
+ * la dater qu'en cas de réponse rouvrirait la question à la journée suivante,
+ * ce qui est exactement l'insistance que le lot supprime.
+ *
+ * N'écrase JAMAIS une sollicitation antérieure (`is null` dans le filtre) : la
+ * date qui compte est celle de la PREMIÈRE fois.
+ */
+export async function markBiometryAsked(userId: string): Promise<ConsentWriteResult> {
+  const { error } = await supabase
+    .from('users')
+    .update({ biometry_asked_at: new Date().toISOString() } as never)
+    .eq('id', userId)
+    .is('biometry_asked_at', null);
+
+  if (error) {
+    console.warn('[OXV][consent] markBiometryAsked :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
 export async function loadBiometryConsents(userId: string): Promise<BiometryConsents> {
   const { data } = await supabase
     .from('users')

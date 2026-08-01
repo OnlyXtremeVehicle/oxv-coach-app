@@ -733,8 +733,27 @@ NULL, et l'application aurait redemandé à chaque journée à celui qui a dit n
 proposition affirmait le contraire — et la seconde porte non gardée de
 `vous/reglages.tsx` **a été corrigée** entre-temps.
 
-**RESTE À FAIRE — le câblage applicatif.** La colonne existe, personne ne
-l'écrit ni ne la lit. Décision du fondateur sur le placement : l'étape
-`consentement` va **juste après l'appairage**, dans le flux du jour J —
-`preparation` n'y entre pas, c'est un écran d'avant-journée. Tant que ce câblage
-n'est pas fait, la colonne est une garde posée, non armée.
+**CÂBLAGE FAIT le 01/08/2026.** La colonne est lue et écrite ; la garde est
+armée.
+
+La question s'ouvre **juste après l'appairage** — placement décidé par le
+fondateur. Le flux reste à HUIT étapes : aucune vue neuve, on ouvre la feuille de
+consentement qui existait déjà dans `rec/equipement`, au moment où le pilote
+vient de connecter son boîtier et comprend de quoi on parle.
+
+La décision est portée par `doitSolliciterConsentementBio` (pur, 8 tests) et la
+date écrite par `markBiometryAsked`, qui n'écrase jamais une sollicitation
+antérieure.
+
+**Deux pièges fermés en chemin :**
+
+*Une course.* Le minuteur qui mène à Placement vaut 1,4 s ; une lecture de la
+base au bord d'une piste peut être plus lente. Un booléen « feuille ouverte »
+aurait laissé la navigation partir pendant la requête, et la feuille se serait
+ouverte sur un écran déjà quitté. L'état est donc à TROIS valeurs — inconnu,
+ouverte, fermée — et seul `fermee` libère la navigation.
+
+*Un fail-closed qui ne l'était pas.* La première rédaction écartait `null` ET
+`undefined`, si bien qu'un champ ABSENT franchissait la garde et déclenchait la
+question. Le test l'a montré avant le commit. Seul un `null` explicite vaut
+désormais « jamais posée ».

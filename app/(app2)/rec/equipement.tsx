@@ -56,8 +56,11 @@ import {
   shouldOfferWatchReminder,
 } from '@/features/rec/equipementLogic';
 import { isFlagEnabled } from '@/services/featureFlagsService';
+import { doitSolliciterConsentementBio } from '@/features/rec/consentementBioLogic';
 import {
   loadBiometryConsents,
+  loadBiometrySollicitation,
+  markBiometryAsked,
   setBiometryCaptureConsent,
   setBiometryCoachShareConsent,
 } from '@/services/consentService';
@@ -415,6 +418,20 @@ export default function EquipementScreen() {
   const [captureConsent, setCaptureConsent] = useState(false);
   const [coachShareConsent, setCoachShareConsent] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  /**
+   * Sort de la feuille de consentement L21, du point de vue de la NAVIGATION.
+   *
+   * `inconnu` tant qu'on n'a pas fini d'interroger la base : la navigation vers
+   * Placement attend. `ouverte` pendant que le pilote la lit. `fermee` dès qu'il
+   * n'y a rien à demander, ou qu'il a refermé — la navigation repart alors.
+   *
+   * Un booléen n'aurait pas suffi : il aurait laissé « pas encore ouverte » et
+   * « déjà refermée » se confondre, et la navigation serait partie sous la
+   * requête. Trois états, parce qu'il y a trois situations.
+   */
+  const [porteConsentement, setPorteConsentement] = useState<'inconnu' | 'ouverte' | 'fermee'>(
+    'inconnu'
+  );
 
   // Ceinture cardio (BIO-2, L2) — état SÉPARÉ du RaceBox : le scan cardio ne
   // s'ouvre QUE sous drapeau + consentement de capture (gate absolue), et son
@@ -550,11 +567,85 @@ export default function EquipementScreen() {
     if (selectedId) {
       SecureStore.setItemAsync(LAST_DEVICE_KEY, selectedId).catch(() => undefined);
     }
+    // On ne navigue QUE lorsque le sort de la feuille de consentement est
+    // tranché — pas ouverte, et pas encore inconnue.
+    //
+    // COURSE FERMÉE ICI. Le minuteur vaut 1,4 s ; une lecture de la base au
+    // bord d'une piste peut être plus lente. Un simple booléen « la feuille
+    // est-elle ouverte » aurait laissé partir la navigation pendant que la
+    // requête était en vol, et la feuille se serait ouverte sur un écran déjà
+    // quitté. L'état inconnu retient la navigation ; lui seul la libère.
+    if (porteConsentement !== 'fermee') return;
     const timer = setTimeout(() => {
       router.replace('/(app2)/rec/placement' as never);
     }, PAIRED_REVEAL_MS);
     return () => clearTimeout(timer);
-  }, [status, selectedId]);
+  }, [status, selectedId, porteConsentement]);
+
+  /**
+   * L21 — LA QUESTION DU CARDIO, UNE FOIS, JUSTE APRÈS L'APPAIRAGE.
+   *
+   * Placement décidé par le fondateur le 01/08/2026 : ici, dans le flux du jour
+   * J, et pas à l'onboarding. Le pilote vient de connecter son boîtier — c'est
+   * le moment où la question a un sens et où il comprend de quoi on parle. Le
+   * flux reste à HUIT étapes : aucune vue neuve, on ouvre la feuille qui existe.
+   *
+   * On ne demande qu'une fois : `doitSolliciterConsentementBio` exige que la
+   * question n'ait JAMAIS été posée. Un refus vaut réponse et ne se
+   * re-sollicite pas — voir `consentementBioLogic`.
+   *
+   * La date est écrite à l'OUVERTURE, pas à la réponse : une feuille refermée
+   * sans répondre est une question posée.
+   */
+  const [consentDemande, setConsentDemande] = useState(false);
+  useEffect(() => {
+    if (status !== 'connected') return;
+    if (consentDemande) return; // une seule tentative par passage sur l'écran
+    const pilotId = profile?.id;
+
+    let annule = false;
+    setConsentDemande(true);
+
+    // Sans compte connu, on ne peut ni lire ni dater : on ne demande pas, et on
+    // libère la navigation plutôt que de retenir le pilote sur cet écran.
+    if (!pilotId) {
+      setPorteConsentement('fermee');
+      return;
+    }
+
+    void (async () => {
+      const [flagActif, sollicitation] = await Promise.all([
+        isFlagEnabled('biometry').catch(() => false),
+        loadBiometrySollicitation(pilotId).catch(() => null),
+      ]);
+      if (annule) return;
+
+      const doit =
+        sollicitation !== null &&
+        doitSolliciterConsentementBio({
+          flagActif,
+          solliciteLe: sollicitation.solliciteLe,
+          consentementCaptureLe: sollicitation.consentementCaptureLe,
+        });
+
+      if (!doit) {
+        // Rien à demander : la navigation reprend son cours normal.
+        setPorteConsentement('fermee');
+        return;
+      }
+
+      // On date AVANT d'ouvrir : si l'application meurt feuille ouverte, la
+      // question a tout de même été posée, et on ne la reposera pas.
+      await markBiometryAsked(pilotId);
+      if (annule) return;
+      setPorteConsentement('ouverte');
+      setConsentOpen(true);
+    })();
+
+    return () => {
+      annule = true;
+    };
+  }, [status, consentDemande, profile?.id]);
 
   // Scan au montage (permissions + timeout) — identique à la v1.
   useEffect(() => {
@@ -875,7 +966,11 @@ export default function EquipementScreen() {
         visible={consentOpen}
         initialCapture={captureConsent}
         initialShare={coachShareConsent}
-        onClose={() => setConsentOpen(false)}
+        onClose={() => {
+          setConsentOpen(false);
+          // La question a été posée et refermée : la navigation reprend.
+          setPorteConsentement('fermee');
+        }}
         onSave={onSaveConsent}
       />
     </Animated.View>
