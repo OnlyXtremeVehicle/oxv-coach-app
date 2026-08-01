@@ -291,7 +291,7 @@ function StudioHeader({ data, isConsole }: { data: StudioSession; isConsole: boo
           {data.pilotName ?? data.circuitName ?? 'Séance'}
         </Text>
         <Text style={s.meta}>{subParts.join(' · ')}</Text>
-        <PresentationLink sessionId={data.sessionId} />
+        <SortiesLecture sessionId={data.sessionId} />
       </View>
     </View>
   );
@@ -326,17 +326,38 @@ function ReportButton({ sessionId, full }: { sessionId: string; full?: boolean }
   );
 }
 
-function PresentationLink({ sessionId }: { sessionId: string }) {
+/**
+ * Les deux sorties de lecture d'une séance.
+ *
+ * HITSLOP VOLONTAIREMENT ASYMÉTRIQUE. Deux liens empilés dont les zones de
+ * toucher se recouvrent laissent le dernier frère rafler le geste destiné au
+ * premier — le piège est connu et a déjà mordu ici. Chaque lien ne déborde donc
+ * que du côté opposé à son voisin, et un vrai espace les sépare.
+ */
+function SortiesLecture({ sessionId }: { sessionId: string }) {
   return (
-    <PressableScale
-      accessibilityRole="button"
-      accessibilityLabel="Ouvrir le mode présentation du débrief"
-      hitSlop={{ top: 16, bottom: 16, left: 12, right: 12 }}
-      onPress={() => router.push({ pathname: '/(coach)/debrief', params: { sessionId } } as never)}
-      style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}
-    >
-      <Text style={s.link}>Mode présentation ›</Text>
-    </PressableScale>
+    <View style={{ marginTop: spacing.md, alignSelf: 'flex-start' }}>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Ouvrir le fil de la séance"
+        hitSlop={{ top: 16, bottom: 4, left: 12, right: 12 }}
+        onPress={() => router.push({ pathname: '/(coach)/fil', params: { sessionId } } as never)}
+      >
+        <Text style={s.link}>Le fil de la séance ›</Text>
+      </PressableScale>
+
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel="Ouvrir le mode présentation du débrief"
+        hitSlop={{ top: 4, bottom: 16, left: 12, right: 12 }}
+        onPress={() =>
+          router.push({ pathname: '/(coach)/debrief', params: { sessionId } } as never)
+        }
+        style={{ marginTop: spacing.md }}
+      >
+        <Text style={s.link}>Mode présentation ›</Text>
+      </PressableScale>
+    </View>
   );
 }
 
