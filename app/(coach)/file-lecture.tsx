@@ -30,7 +30,12 @@ import { router, useFocusEffect } from 'expo-router';
 import { FadeInSection, PressableScale, Stagger } from '@/components/motion';
 import * as haptics from '@/lib/haptics';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
-import { groupQueue, type QueueItem, type QueueStatus } from '@/services/coachQueueLogic';
+import {
+  groupQueue,
+  seanceParLaquelleCommencer,
+  type QueueItem,
+  type QueueStatus,
+} from '@/services/coachQueueLogic';
 import { loadCoachQueue, setQueueStatus } from '@/services/coachQueueService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
@@ -104,6 +109,14 @@ export default function FileLectureScreen() {
   );
 
   const groups = groupQueue(items);
+  /**
+   * LA séance par laquelle commencer — une seule, la plus ancienne en attente.
+   *
+   * Le liseré était posé sur TOUTES les séances non lues : un mur rouge qui
+   * n'aidait pas à choisir. Si tout est signalé, rien ne l'est. Il désigne
+   * désormais un point de départ, et ne presse personne (jalon 6, phase 5).
+   */
+  const aCommencer = seanceParLaquelleCommencer(items);
   const primary = groups[filter];
   // Sous « à lire », on montre en second un rappel des dernières lues (maquette
   // « LUES RÉCEMMENT ») — composition d'écran, aucune requête supplémentaire.
@@ -166,6 +179,7 @@ export default function FileLectureScreen() {
                       item={item}
                       isConsole={isConsole}
                       onMark={mark}
+                      estLePointDeDepart={item.sessionId === aCommencer}
                     />
                   ))),
               ...(groups.read.length > 0
@@ -185,7 +199,13 @@ export default function FileLectureScreen() {
                 : []),
             ]
           : primary.map((item) => (
-              <QueueRow key={item.sessionId} item={item} isConsole={isConsole} onMark={mark} />
+              <QueueRow
+                key={item.sessionId}
+                item={item}
+                isConsole={isConsole}
+                onMark={mark}
+                estLePointDeDepart={item.sessionId === aCommencer}
+              />
             ))}
       </Stagger>
     </StateWrapper>
@@ -254,10 +274,13 @@ function QueueRow({
   item,
   isConsole,
   onMark,
+  estLePointDeDepart,
 }: {
   item: QueueItem;
   isConsole: boolean;
   onMark: (item: QueueItem, status: QueueStatus) => void;
+  /** Vrai pour UNE seule ligne de la file : celle par laquelle commencer. */
+  estLePointDeDepart?: boolean;
 }) {
   const recu = receivedLabel(item.startedAt);
   const circuit = item.circuitName ?? '—';
@@ -267,10 +290,13 @@ function QueueRow({
   const openStudio = () =>
     router.push({ pathname: '/(coach)/studio', params: { sessionId: item.sessionId } } as never);
 
-  const a11y = `${item.pilotName}. ${item.circuitName ?? 'circuit inconnu'}. Reçu ${recu}. Ouvrir le studio.`;
+  // Le liseré est une information visuelle : sans cette mention, un lecteur
+  // d'écran ne saurait pas laquelle est désignée.
+  const depart = estLePointDeDepart ? 'À commencer par celle-ci. ' : '';
+  const a11y = `${depart}${item.pilotName}. ${item.circuitName ?? 'circuit inconnu'}. Reçu ${recu}. Ouvrir le studio.`;
 
   return (
-    <View style={[s.rowCard, item.status === 'unread' && s.rowCardUnread]}>
+    <View style={[s.rowCard, estLePointDeDepart === true && s.rowCardUnread]}>
       <PressableScale
         accessibilityRole="button"
         accessibilityLabel={a11y}
