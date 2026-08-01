@@ -1,11 +1,8 @@
 -- =============================================================================
--- PROPOSITION — canal biométrie PAR COACH (jalon 6, lot 27a-bis)
+-- L27 — canal biométrie PAR COACH (jalon 6, lot 27a-bis)
 --
--- NON APPLIQUÉE. Ce fichier n'est PAS horodaté : `supabase db push` l'ignore.
--- Il attend l'accord du fondateur, comme toute modification du schéma de
--- production.
---
--- Rédigé le 01/08/2026.
+-- APPLIQUÉE EN PRODUCTION le 01/08/2026 (version 20260801140838), sur accord
+-- explicite du fondateur.
 -- =============================================================================
 --
 -- CE QU'ELLE CORRIGE
@@ -19,12 +16,10 @@
 -- était absurde : un coach détaillé perdait le cardio parce qu'un confrère en
 -- lecture simple s'était connecté.
 --
--- Le code applicatif est désormais passé à un canal par coach,
--- `live:bio:<coachId>:<sessionId>` — livré, testé. **Ces deux policies sont ce
--- qui rend le découpage réel.** Sans elles, le canal est privé et sans
--- autorisation : personne ne lit, et le cardio ne circule pas du tout. L'échec
--- est donc FERMÉ, pas ouvert — mais la fonctionnalité reste éteinte tant que
--- cette proposition n'est pas appliquée.
+-- Le code applicatif est passé à un canal par coach,
+-- `live:bio:<coachId>:<sessionId>`. **Ces deux policies sont ce qui rend le
+-- découpage réel.** Sans elles, le canal serait privé et sans autorisation :
+-- personne ne lirait, et le cardio ne circulerait pas du tout.
 --
 -- ---------------------------------------------------------------------------
 -- CE QUI CHANGE PAR RAPPORT À `live_session_recv`
@@ -98,8 +93,8 @@ drop policy if exists live_bio_send on realtime.messages;
 -- POURQUOI LE PILOTE FIGURE DANS UNE POLICY DE *LECTURE*
 --
 -- Une première rédaction ne nommait que le coach. Elle aurait rendu la
--- fonctionnalité entièrement muette, et la revue adversariale du 01/08 l'a
--- montré : **Realtime exige une autorisation de LECTURE pour REJOINDRE un canal
+-- fonctionnalité entièrement muette — la revue adversariale du 01/08 l'a
+-- montré AVANT toute application : **Realtime exige une autorisation de LECTURE pour REJOINDRE un canal
 -- privé**, y compris pour n'y écrire que des messages. Le serveur
 -- (`realtime_channel.ex`, `maybe_assign_policies`) n'évalue que
 -- `get_read_authorizations` au moment du join ; la policy d'INSERT n'est pas

@@ -14,9 +14,8 @@
  *
  * L'émetteur ne sert que les coachs au niveau détaillé (`destinatairesBiometrie`)
  * et la RLS serveur exige de l'abonné qu'il SOIT le coach nommé dans le topic —
- * **policies proposées, non encore appliquées** (`PROPOSITION_L27_bio_par_coach`).
- * Tant qu'elles ne le sont pas, le canal est privé sans autorisation : rien
- * n'arrive. L'échec est fermé, pas ouvert.
+ * policies **appliquées en production le 01/08/2026** (migration
+ * `20260801140838_l27_bio_par_coach_realtime_policies`).
  *
  * PRÉCISION D'HONNÊTETÉ : la protection décrite ci-dessus est STRUCTURELLE (la FC
  * n'est jamais écrite dans RosterMeta), elle n'est PAS le fait d'un filtre à

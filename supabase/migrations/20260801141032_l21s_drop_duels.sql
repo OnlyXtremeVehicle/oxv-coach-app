@@ -1,0 +1,43 @@
+-- ============================================================================
+-- L21s — suppression de la table `duels`
+--
+-- APPLIQUÉE EN PRODUCTION le 01/08/2026 (version 20260801141032), sur accord
+-- explicite du fondateur, APRÈS sauvegarde vérifiée.
+-- ============================================================================
+--
+-- POURQUOI ELLE EST PARTIE — DOCTRINAL, PAS TECHNIQUE
+--
+-- Le schéma décrivait un affrontement qui se « résout » : `challenger_lap_s`
+-- contre `opponent_lap_s`, un `status` qui passe à `completed`, un
+-- `resolved_at`. Un duel qui se résout a un vainqueur, et la doctrine OXV
+-- interdit tout classement entre pilotes.
+--
+-- La laisser vide n'était pas neutre : une table présente rouvre la question à
+-- chaque relecture du schéma, et un jour quelqu'un la remplit.
+--
+-- ---------------------------------------------------------------------------
+-- RÈGLE 0.5 TENUE — LA SAUVEGARDE EXISTE ET A ÉTÉ VÉRIFIÉE
+--
+-- Définition complète capturée dans
+-- `supabase/sauvegardes/duels_20260801_avant_suppression.sql`, puis contrôlée
+-- élément par élément contre la production avant la suppression :
+--
+--   15 colonnes · 6 contraintes · 5 index · 4 policies · 6 valeurs d'énuméré
+--
+-- Les 41 éléments étaient présents. La table portait **zéro ligne** : il n'y
+-- avait aucune donnée à perdre, seulement une définition à ne pas oublier.
+--
+-- ---------------------------------------------------------------------------
+-- VÉRIFIÉ AVANT DE SUPPRIMER
+--
+--   · `select count(*) from duels` → 0 ligne (01/08/2026) ;
+--   · AUCUNE table ne référence `duels` — aucune clé étrangère entrante ;
+--   · les six contraintes étaient toutes sortantes (users, circuits,
+--     telemetry_sessions) ou la clé primaire ;
+--   · aucun code applicatif ne la lit ni ne l'écrit.
+--
+-- Le type `duel_status` part avec elle : il n'était utilisé nulle part ailleurs.
+-- ============================================================================
+
+drop table if exists public.duels;
+drop type if exists public.duel_status;

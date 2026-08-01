@@ -19,11 +19,11 @@
  *
  * CE QUE CE TEST NE PROUVE PAS
  *
- * Qu'un coach puisse lire le canal d'un autre. Il n'y arriverait pas : la RLS
- * l'en empêche — quand elle sera appliquée (`PROPOSITION_L27_bio_par_coach`).
- * Ce qui est en jeu ici est plus modeste et bien réel : un abonnement laissé sur
- * un topic auquel on n'a plus droit ne reçoit plus rien, et la pastille cardio
- * du roster resterait muette sans qu'on sache pourquoi.
+ * Qu'un coach puisse lire le canal d'un autre. Il n'y arrive pas : la RLS
+ * `realtime.messages` l'en empêche, appliquée le 01/08/2026. Ce qui est en jeu
+ * ici est plus modeste et bien réel : un abonnement laissé sur un topic auquel
+ * on n'a plus droit ne reçoit plus rien, et la pastille cardio du roster
+ * resterait muette sans qu'on sache pourquoi.
  */
 
 import { abonnementAGarder } from '@/hooks/rosterBiometryLogic';

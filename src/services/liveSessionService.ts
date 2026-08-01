@@ -353,27 +353,22 @@ export function openPilotBroadcast(sessionId: string): {
 // `realtime.messages`, qui exige de l'abonné qu'il SOIT le coach nommé dans le
 // topic. Les canaux sont PRIVÉS (`private: true`) : sans policy, personne ne lit.
 //
-// **Les deux policies ne sont pas appliquées** — elles attendent l'accord du
-// fondateur dans `supabase/migrations/PROPOSITION_L27_bio_par_coach.sql`. Tant
-// qu'elles ne le sont pas, un abonnement sur ce topic est refusé par défaut : le
-// canal est privé et aucune policy ne l'autorise. Le cardio ne circule pas du
-// tout. C'est le bon sens de l'échec — fermé, pas ouvert.
+// **Les deux policies sont APPLIQUÉES** en production depuis le 01/08/2026
+// (migration `20260801140838_l27_bio_par_coach_realtime_policies`). Elles
+// exigent, pour lire : être le pilote propriétaire de la séance — l'émetteur,
+// sans quoi rien ne partirait jamais — ou être le coach nommé dans le topic,
+// actif, consenti au direct et au niveau détaillé.
 //
-// ET CE QU'ELLE NE PROTÈGE PAS — la revue adversariale du 01/08 l'a établi.
+// UNE RÉSERVE FERMÉE LE MÊME JOUR, ET POURQUOI ELLE COMPTAIT
 //
 // La policy s'appuie sur `coach_pilots.active`, `live_sharing_at` et `level`.
-// **Un compte coach peut poser ces trois colonnes lui-même**, en un seul INSERT,
-// pour un pilote qu'il n'a jamais rencontré : `coach_pilots_insert_by_coach`
-// n'impose aucune restriction de colonne, et le garde-fou SEC-3 qui l'interdit
-// est un trigger `BEFORE UPDATE` — il ne voit pas les insertions.
+// Jusqu'au 01/08, un compte coach pouvait poser ces trois colonnes LUI-MÊME, en
+// un seul INSERT, pour un pilote qu'il n'avait jamais rencontré : la condition
+// « consenti au direct » était posée par celui-là même qu'elle filtre.
 //
-// La condition « consenti au direct » est donc posée par celui-là même qu'elle
-// filtre. Le trou est antérieur à ce lot et ouvre bien plus que la biométrie
-// (`is_detailed_coach_of` commande aussi les trames et les analyses). Il est
-// traité à part : `PROPOSITION_L28_coach_pilots_insert.sql`.
-//
-// Ne pas lire ce bloc comme « la santé est protégée ». Elle l'est contre un
-// coach consenti au mauvais niveau ; pas contre un compte coach malveillant.
+// Fermé par la migration `20260801140905_l28_...` : une affiliation demandée par
+// un coach naît en attente, et le garde-fou SEC-3 couvre désormais l'insertion
+// autant que la modification.
 // ---------------------------------------------------------------------------
 
 interface BioTopicState {

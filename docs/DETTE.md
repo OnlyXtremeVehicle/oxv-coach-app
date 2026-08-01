@@ -602,7 +602,7 @@ il est déjà expiré. Personne n'a encore pu tomber sur ces 404.
 
 ---
 
-## D-23 — Le canal biométrie par coach est livré, sa RLS ne l'est pas
+## D-23 — RÉSOLUE le 01/08/2026 — canal biométrie par coach, RLS comprise
 
 **Posé le 01/08/2026**, lot 27a-bis (jalon 6).
 
@@ -612,16 +612,11 @@ détaillé (`destinatairesBiometrie`), et le TOUT OU RIEN est levé : un coach
 détaillé ne perd plus le cardio parce qu'un confrère en lecture simple s'est
 connecté.
 
-**Ce qui manque est la barrière elle-même.** Les deux policies
-`realtime.messages` sont rédigées dans
-`supabase/migrations/PROPOSITION_L27_bio_par_coach.sql` — **non appliquées**,
-en attente de l'accord du fondateur. Le fichier n'est pas horodaté, donc
-`supabase db push` l'ignore.
-
-**Conséquence tant qu'elles ne sont pas appliquées** : le canal est privé et sans
-autorisation. Personne ne peut s'y abonner, donc **le cardio ne circule pas du
-tout**. L'échec est FERMÉ, pas ouvert — mais la fonctionnalité est éteinte, et
-il ne faut pas la croire vivante.
+**La barrière est posée.** Les deux policies `realtime.messages` ont été
+APPLIQUÉES le 01/08/2026 sur accord du fondateur
+(`20260801140838_l27_bio_par_coach_realtime_policies`). Elles autorisent le
+pilote émetteur — Realtime exige une lecture pour rejoindre un canal privé — et
+le coach nommé dans le topic, au niveau détaillé.
 
 **Ce qui protège vraiment n'est pas le nom du topic.** Le deviner est facile.
 Seule la policy de lecture, qui exige que l'abonné SOIT le coach nommé dans le
@@ -631,17 +626,51 @@ l'obscurité pour une sécurité.
 **Rien à rattraper** : 0 compte coach en production, aucune donnée biométrique
 n'a jamais été collectée.
 
-**Ce que la policy NE protège PAS** — établi par revue adversariale le
-01/08/2026, et vérifié en production. Elle s'appuie sur `coach_pilots.active`,
-`live_sharing_at` et `level` ; **un compte coach peut poser ces trois colonnes
-lui-même**, pour un pilote inconnu, en un seul INSERT. `coach_pilots_insert_by_coach`
-n'impose aucune restriction de colonne, et le garde-fou SEC-3 qui l'interdit est
-un trigger `BEFORE UPDATE` — il ne voit pas les insertions.
+**La réserve trouvée par la revue est fermée elle aussi.** La policy s'appuie
+sur `coach_pilots.active`, `live_sharing_at` et `level` ; jusqu'au 01/08 un
+compte coach pouvait poser ces trois colonnes lui-même, pour un pilote inconnu,
+en un seul INSERT — la condition « consenti » était posée par celui-là même
+qu'elle filtre. Corrigé par `20260801140905_l28_...` : la policy d'insertion
+impose une naissance en attente, et le garde-fou SEC-3 couvre désormais
+l'insertion autant que la modification.
 
-Le trou est ANTÉRIEUR à ce lot et ouvre bien plus que la biométrie
+Le trou était ANTÉRIEUR au lot et ouvrait bien plus que la biométrie
 (`is_detailed_coach_of` commande aussi les trames et les analyses de segments).
-Correctif proposé à part : `PROPOSITION_L28_coach_pilots_insert.sql` — une
-affiliation demandée par un coach naît en attente, jamais consentie.
 
-Ne pas lire D-23 comme « la santé est protégée ». Elle l'est contre un coach
-consenti au mauvais niveau ; pas contre un compte coach malveillant.
+---
+
+## D-01 — RÉSOLUE le 01/08/2026 — il n'y a jamais eu de perte
+
+Le dossier de reprise du site posait ce point comme le plus grave et le plus
+urgent : `sessions` porte **une** ligne alors qu'une sauvegarde du 19/07 en
+portait **quarante-quatre**. « Personne n'a établi ce qui s'est passé. »
+Il commandait le calendrier, la réservation, et tout écran qui montre une
+journée.
+
+**Mesuré le 01/08/2026 :** les deux ensembles sont TOTALEMENT DISJOINTS. Aucune
+des 44 lignes de `_backup_sessions_20260719` n'existe dans la table vivante, et
+l'unique ligne vivante (24/12/2026) n'existe pas dans la sauvegarde. La
+sauvegarde couvre un calendrier entier, du 05/05/2026 au 06/04/2027.
+
+**Réponse du fondateur, 01/08/2026 :**
+
+> « Je n'ai encore aucune journée de validée, j'attends la confirmation du
+> calendrier par le circuit et j'ajouterai chaque session par le compte admin. »
+
+**Il n'y a donc pas eu de perte.** Les 44 lignes étaient un calendrier
+prévisionnel, jamais validé ; la table vivante est dans l'état attendu. Ce qui
+ressemblait à une suppression accidentelle était un état normal mal interprété —
+de l'extérieur, et sans demander.
+
+**Ce qui reste vrai :** aucun écran de calendrier ni de réservation ne peut être
+validé sur des données réelles avant que le circuit confirme les dates. Ce n'est
+plus un incident à élucider, c'est une dépendance externe à attendre.
+
+**À transmettre au site** : leur `PROMPT_REPRISE.md` fait de D-01 un préalable
+bloquant à tout. Il ne l'est plus.
+
+**Les cinq tables `_backup_*_20260719` sont conservées** — aucune décision de
+suppression n'a été prise. Le point RGPD soulevé par la proposition L10 (des
+copies de données personnelles hors de tout périmètre de purge :
+`_backup_registrations` 5 lignes, `_backup_payments` 2) reste ouvert, sans
+urgence tant que rien n'est en production réelle.

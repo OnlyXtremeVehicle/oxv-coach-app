@@ -322,8 +322,8 @@ describe('topic live:board — refcompté aussi', () => {
  * et la même discipline de refcomptage que les autres familles de canaux.
  *
  * Ce qui ne l'est pas : le droit de LIRE le canal d'un autre. Cela relève de la
- * RLS `realtime.messages` (proposition `L27_bio_par_coach`, non appliquée), pas
- * du client — un faux client ne peut rien en dire.
+ * RLS `realtime.messages` (appliquée le 01/08/2026), pas du client — un faux
+ * client ne peut rien en dire.
  */
 describe('topic live:bio — un canal par coach', () => {
   it('chaque coach reçoit sur SON topic, et rien sur celui du confrère', () => {

@@ -21,9 +21,9 @@
  *
  * Qu'un coach non retenu ne peut pas lire le canal d'un autre. Cette fonction
  * décide à qui l'on ENVOIE ; ce qui empêche de LIRE est la RLS
- * `realtime.messages`, proposée dans `supabase/migrations/PROPOSITION_L27_bio_par_coach.sql`
- * et **non appliquée à ce jour**. Tant qu'elle ne l'est pas, le canal est privé
- * sans policy : personne ne lit, et le cardio ne circule pas du tout.
+ * `realtime.messages` — appliquée en production le 01/08/2026, migration
+ * `20260801140838_l27_bio_par_coach_realtime_policies`. Un test unitaire ne peut
+ * rien en dire : il ne joint aucun canal.
  */
 
 import { destinatairesBiometrie } from '@/services/v2/liveHealthGate';

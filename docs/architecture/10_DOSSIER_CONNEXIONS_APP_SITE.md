@@ -5257,19 +5257,19 @@ for (const c of destinataires) bio.sendTo(c.coachId, event);
 
 **Ce qui protège, et ce qui ne protège pas.** Pas le nom du topic — le deviner
 est facile. La barrière est la RLS `realtime.messages`, qui exige de l'abonné
-qu'il SOIT le coach nommé dans le topic et qu'il soit au niveau détaillé. **Ces
-policies ne sont pas appliquées** : elles attendent l'accord du fondateur
-(`supabase/migrations/PROPOSITION_L27_bio_par_coach.sql`). Tant qu'elles ne le
-sont pas, le canal est privé sans autorisation — personne ne s'y abonne, et le
-cardio ne circule pas du tout. L'échec est fermé, pas ouvert.
+qu'il SOIT le coach nommé dans le topic et qu'il soit au niveau détaillé.
+**Policies APPLIQUÉES le 01/08/2026** (`20260801140838_l27_...`). Elles
+autorisent aussi le pilote propriétaire de la séance : Realtime exige une
+autorisation de LECTURE pour REJOINDRE un canal privé, même pour n'y écrire que
+des messages — sans cette branche, rien ne serait jamais parti.
 
-Une réserve, établie par revue adversariale le 01/08/2026 : la policy s'appuie
-sur `coach_pilots.active`, `live_sharing_at` et `level`, **et un compte coach
-peut poser ces trois colonnes lui-même** en un seul INSERT
-(`coach_pilots_insert_by_coach` n'impose aucune restriction de colonne ; le
-garde-fou SEC-3 est un trigger `BEFORE UPDATE` seulement). Le trou est antérieur
-à ce lot et ouvre bien plus que la biométrie. Traité à part :
-`PROPOSITION_L28_coach_pilots_insert.sql`.
+Une réserve, établie par revue adversariale le même jour et **fermée le même
+jour** : la policy s'appuie sur `coach_pilots.active`, `live_sharing_at` et
+`level`, et un compte coach pouvait poser ces trois colonnes lui-même en un seul
+INSERT — `coach_pilots_insert_by_coach` n'imposait aucune restriction de colonne,
+et le garde-fou SEC-3 était un trigger `BEFORE UPDATE` seulement. Corrigé par
+`20260801140905_l28_...` : une affiliation demandée par un coach naît en attente,
+et le garde-fou couvre désormais l'insertion.
 
 **Ce qui coupe la biométrie**, dans l'ordre où cela se produit :
 
