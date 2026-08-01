@@ -182,6 +182,38 @@ export const BANQUE: readonly Grandeur[] = [
     source: 'Reprise d’accélération après le point de vitesse minimale.',
   },
   {
+    cle: 'marqueur.tour',
+    nom: 'Tour d’un marqueur',
+    prov: 'D',
+    source: 'Bornes de tour encadrant l’instant posé par le coach.',
+    convention:
+      'Le tour vient des BORNES, pas des trames : il reste connaissable même quand aucune trame n’est assez proche de l’instant pour dire la vitesse.',
+  },
+  {
+    cle: 'marqueur.virage',
+    nom: 'Virage d’un marqueur',
+    prov: 'D',
+    source: 'Corde de référence la plus proche de la position au marqueur.',
+    convention:
+      'Au-delà de trois cents mètres, aucun virage n’est nommé — un marqueur posé en ligne droite reste posé en ligne droite. Le numéro est rendu en base 1, jamais ré-incrémenté.',
+  },
+  {
+    cle: 'marqueur.vitesseEntree',
+    nom: 'Vitesse au marqueur',
+    prov: 'M',
+    source: 'Vitesse de la trame la plus proche de l’instant (canal direct du boîtier).',
+    convention:
+      'Rendue seulement si une trame se trouve à moins d’une seconde. Dans un freinage, une seconde d’écart vaut trente kilomètres-heure d’erreur : on préfère se taire.',
+  },
+  {
+    cle: 'marqueur.deceleration',
+    nom: 'Freinage avant un marqueur',
+    prov: 'M',
+    source: 'Maximum de la part POSITIVE de gForceX sur les deux secondes précédentes.',
+    convention:
+      'Convention verrouillée par captureFrameMapping : gForceX > 0 vaut freinage. On ne regarde qu’EN ARRIÈRE — un marqueur décrit ce qui vient de se passer. La fenêtre s’arrête à deux secondes pour ne pas attraper le freinage du virage d’avant.',
+  },
+  {
     cle: 'segment.segments',
     nom: 'Découpage droites / virages',
     prov: 'D',

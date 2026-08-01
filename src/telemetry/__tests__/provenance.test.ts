@@ -65,7 +65,7 @@ describe('le registre couvre la banque', () => {
    * qu'il doit faire. Un module de calcul nouveau ne peut pas rejoindre la
    * banque sans que quelqu'un dise ce qu'il produit et d'où ça vient.
    */
-  it('les neuf modules de calcul sont bien là', () => {
+  it('les dix modules de calcul sont bien là', () => {
     expect(MODULES.sort()).toEqual(
       [
         'accel',
@@ -75,6 +75,7 @@ describe('le registre couvre la banque', () => {
         'delta',
         'gg',
         'kinematics',
+        'marqueur',
         'resample',
         'segment',
       ].sort()
@@ -98,6 +99,7 @@ describe('le registre couvre la banque', () => {
     'segment',
     'adaptation',
     'bande',
+    'marqueur',
   ])('le module « %s » a au moins une grandeur enregistrée', (mod) => {
     expect(BANQUE.filter((g) => g.cle.startsWith(`${mod}.`)).length).toBeGreaterThan(0);
   });
