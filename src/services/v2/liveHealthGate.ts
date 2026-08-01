@@ -112,3 +112,57 @@ export function canEmitBiometry(gate: BiometryGate): boolean {
   if (gate === null || typeof gate !== 'object') return false;
   return gate.consentCapture === true && gate.detailedBinome === true && gate.flagBiometry === true;
 }
+
+/** Un coach candidat à recevoir la biométrie, avec son niveau d'accès. */
+export interface CoachCandidat {
+  coachId: string;
+  /** true si le pilote lui a accordé la lecture détaillée (ou le programme). */
+  detailed: boolean;
+}
+
+/**
+ * Destinataires de la biométrie — UN CANAL PAR COACH (jalon 6, lot 27a-bis).
+ *
+ * ---
+ *
+ * CE QUE CETTE FONCTION REMPLACE
+ *
+ * La biométrie voyageait sur le canal de séance, PARTAGÉ. Impossible d'y
+ * réserver un message à certains : la seule position tenable était le TOUT OU
+ * RIEN — n'émettre que si CHAQUE coach à l'écoute était au niveau détaillé.
+ *
+ * Elle protégeait, mais son prix était absurde : un coach détaillé perdait le
+ * cardio parce qu'un confrère en lecture simple s'était connecté. La donnée la
+ * plus sensible du produit était la seule à dépendre de qui d'autre regardait.
+ *
+ * ---
+ *
+ * LA RÈGLE, MAINTENANT
+ *
+ * Les deux verrous du PILOTE — son consentement, le flag serveur — valent pour
+ * tout le monde : s'ils tombent, la liste est vide, personne ne reçoit. Le
+ * troisième, le niveau du binôme, s'évalue COACH PAR COACH.
+ *
+ * Le prédicat reste `canEmitBiometry`, appelé une fois par candidat : la règle
+ * fail-closed n'a pas changé, seul son grain. Un coach non retenu n'est pas
+ * filtré à la réception — le message ne part pas vers lui.
+ */
+export function destinatairesBiometrie(
+  coaches: readonly CoachCandidat[],
+  socleConsenti: boolean,
+  flagBiometry: boolean
+): CoachCandidat[] {
+  if (!Array.isArray(coaches)) return [];
+  return coaches.filter(
+    (c) =>
+      c !== null &&
+      typeof c === 'object' &&
+      typeof c.coachId === 'string' &&
+      c.coachId.length > 0 &&
+      canEmitBiometry({
+        consentCapture: socleConsenti,
+        detailedBinome: c.detailed,
+        flagBiometry,
+      })
+  );
+}

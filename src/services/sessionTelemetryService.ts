@@ -16,15 +16,15 @@ import {
   type TrajectoryFramePoint,
   type TrajectoryFrameRow,
 } from '@/services/trajectoryLogic';
-
-// Convention d'axes + mapper pur : src/services/sessionTelemetryMapping.ts
-// (source unique, testée). Ré-exportés ici pour les consommateurs existants.
-export {
+import {
   frameRowToSessionFrame,
   type FrameRow,
   type SessionFrame,
 } from '@/services/sessionTelemetryMapping';
-import {
+
+// Convention d'axes + mapper pur : src/services/sessionTelemetryMapping.ts
+// (source unique, testée). Ré-exportés ici pour les consommateurs existants.
+export {
   frameRowToSessionFrame,
   type FrameRow,
   type SessionFrame,

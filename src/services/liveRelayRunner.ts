@@ -24,12 +24,13 @@ import { type RosterMeta, shouldEmitBiometry, shouldEmitFrame } from '@/services
 import {
   joinRoster,
   openBoardBroadcast,
+  openBiometryBroadcast,
   openPilotBroadcast,
   retrackRoster,
 } from '@/services/liveSessionService';
 import { buildBiometryEvent, raceBoxToLiveFrame } from '@/services/liveRelayLogic';
 import { buildBoardEvent, shouldEmitBoard } from '@/services/boardLogic';
-import { canEmitBiometry, stripHealth } from '@/services/v2/liveHealthGate';
+import { destinatairesBiometrie, stripHealth } from '@/services/v2/liveHealthGate';
 import { type BioSample } from '@/services/v2/biometryBufferLogic';
 import { loadBiometryConsents } from '@/services/consentService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
@@ -280,9 +281,14 @@ export async function startPilotLiveRelay(input: {
   // révocation en vol, réseau tombé, flag retiré — plus rien ne part. Tant que le
   // flag est OFF, TOUT ce bloc reste DORMANT (aucun abonnement, aucune I/O) : la
   // donnée de santé (RGPD art. 9) ne circule pas. La biométrie n'emprunte JAMAIS
-  // le canal roster/frame — uniquement `sendBiometry` (event dédié, même canal privé).
+  // le canal roster/frame ni le canal de séance — elle a le SIEN, un par coach
+  // (`live:bio:<coachId>:<sessionId>`), ce qui permet de la réserver à ceux qui y
+  // ont droit au lieu de couper pour tout le monde dès qu'un seul n'y a pas droit.
   let stopBiometry: (() => void) | null = null;
-  if (bioFlagOn) {
+  // Émetteur biométrie — ouvert seulement si le flag est ON, comme le reste du
+  // bloc : tant qu'il est OFF, aucun canal de santé n'est même créé.
+  const bio = bioFlagOn ? openBiometryBroadcast(input.sessionId) : null;
+  if (bioFlagOn && bio) {
     const BIO_BASELINE_MS = 60000;
     const bioBuffer: BioSample[] = [];
     const offBio = bluetoothService.onBiometry((s) => {
@@ -312,40 +318,59 @@ export async function startPilotLiveRelay(input: {
         // ne lui a accordé que la lecture simple. Une donnée de l'article 9
         // partait à quelqu'un qui n'y avait pas droit.
         //
-        // La biométrie voyage sur le canal de séance, PARTAGÉ par tous les coachs
-        // consentis : on ne peut donc pas la réserver à certains d'entre eux au
-        // moment de l'émission. Tant que ce canal est commun, la seule position
-        // tenable est TOUT OU RIEN — on n'émet que si CHAQUE coach à l'écoute est
-        // au niveau détaillé. Dès qu'un seul ne l'est pas, personne ne reçoit.
+        // UN CANAL PAR COACH — le TOUT OU RIEN est levé (jalon 6, lot 27a-bis).
         //
-        // C'est volontairement plus restrictif que nécessaire : un coach détaillé
-        // perd le cardio parce qu'un confrère en lecture simple est connecté. On
-        // préfère cette privation à une divulgation. La réponse propre est un
-        // canal par coach (patron du roster, `live:bio:<coachId>:<sessionId>`,
-        // avec une RLS exigeant le niveau détaillé) — à faire avant d'élargir.
-        const tousDetailles = coaches.length > 0 && coaches.every((c) => c.detailed);
-        const gate = {
-          consentCapture: consent.capture === true && consent.coachShare === true,
-          detailedBinome: tousDetailles,
-          flagBiometry: flag === true,
-        };
+        // La biométrie voyageait sur le canal de séance, partagé par tous les
+        // coachs consentis : impossible d'y réserver un message à certains. La
+        // seule position tenable était donc de n'émettre que si CHAQUE coach à
+        // l'écoute était au niveau détaillé — un coach détaillé perdait le cardio
+        // parce qu'un confrère en lecture simple s'était connecté.
+        //
+        // Le destinataire est désormais dans le topic. On garde les deux verrous
+        // qui relèvent du PILOTE — son consentement, le flag serveur — et on
+        // évalue le troisième, le niveau du binôme, POUR CHAQUE COACH. Le gate
+        // reste `canEmitBiometry`, appelé une fois par destinataire : la règle
+        // fail-closed n'a pas changé, seul son grain.
+        //
+        // LE NIVEAU EST RELU ICI, comme les deux autres verrous.
+        //
+        // `coaches` est bien réconcilié en vol par le canal `relay-consent`
+        // (plus bas) : une rétrogradation en `lecture_simple` y est vue. Mais
+        // c'est la SEULE source de fraîcheur, alors que le consentement et le
+        // flag sont relus à chaque tick. Si ce canal tombe — réseau de circuit,
+        // socket coupé — le niveau reste figé sur sa dernière valeur connue et
+        // un coach rétrogradé continuerait de recevoir du cardio.
+        //
+        // Une asymétrie sur trois verrous dont deux sont frais est un piège :
+        // on croit la règle tenue par le tick alors qu'elle dépend d'un canal.
+        // Relevé par la revue adversariale du 01/08/2026.
+        const niveaux = await consentedCoaches(input.pilotId).catch(() => null);
+        // Lecture impossible → on garde la dernière liste connue, mais on ne
+        // l'élargit pas : `coaches` ne contient que des binômes déjà consentis.
+        const aJour = niveaux ?? coaches;
+
+        const socleConsenti = consent.capture === true && consent.coachShare === true;
+        const flagOn = flag === true;
+        const destinataires = destinatairesBiometrie(aJour, socleConsenti, flagOn);
 
         // Le marqueur de partage publié dans le roster SUIT le consentement, il
         // n'est pas figé au démarrage : sans ce ré-envoi, le coach continuerait
         // de voir « Cardio » après une révocation en séance (état périmé affiché
         // comme actuel). On ne re-publie que sur CHANGEMENT, pour ne pas marteler
         // la présence à chaque tick.
-        const shared = gate.consentCapture && gate.flagBiometry;
+        const shared = socleConsenti && flagOn;
         if (shared !== meta.bioShared) {
           meta.bioShared = shared;
           for (const cid of rosterLeaves.keys()) retrackRoster(cid, meta);
         }
 
-        if (!canEmitBiometry(gate)) return; // fail-closed : aucune biométrie ne part
+        if (destinataires.length === 0) return; // fail-closed : personne d'éligible
         const event = buildBiometryEvent(bioBuffer, now);
         if (!event) return; // rien d'exploitable dans la fenêtre → honnête silence
         lastBioEmit = now;
-        broadcast.sendBiometry(event);
+        // Un envoi par destinataire, sur SON canal. Un coach non éligible n'est
+        // pas filtré à la réception : le message ne part simplement pas vers lui.
+        for (const c of destinataires) bio.sendTo(c.coachId, event);
       })();
     }, 2000);
 
@@ -384,6 +409,7 @@ export async function startPilotLiveRelay(input: {
   stopFn = () => {
     off();
     stopBiometry?.();
+    bio?.close();
     broadcast.close();
     board?.close();
     for (const leave of rosterLeaves.values()) leave();

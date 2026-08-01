@@ -599,3 +599,49 @@ détection n'est possible côté application.
 
 **Dégât réel à ce jour : nul.** Un seul lien de partage existe en production, et
 il est déjà expiré. Personne n'a encore pu tomber sur ces 404.
+
+---
+
+## D-23 — Le canal biométrie par coach est livré, sa RLS ne l'est pas
+
+**Posé le 01/08/2026**, lot 27a-bis (jalon 6).
+
+Le code applicatif est passé à un canal par coach,
+`live:bio:<coachId>:<sessionId>`. L'émetteur ne sert que les coachs au niveau
+détaillé (`destinatairesBiometrie`), et le TOUT OU RIEN est levé : un coach
+détaillé ne perd plus le cardio parce qu'un confrère en lecture simple s'est
+connecté.
+
+**Ce qui manque est la barrière elle-même.** Les deux policies
+`realtime.messages` sont rédigées dans
+`supabase/migrations/PROPOSITION_L27_bio_par_coach.sql` — **non appliquées**,
+en attente de l'accord du fondateur. Le fichier n'est pas horodaté, donc
+`supabase db push` l'ignore.
+
+**Conséquence tant qu'elles ne sont pas appliquées** : le canal est privé et sans
+autorisation. Personne ne peut s'y abonner, donc **le cardio ne circule pas du
+tout**. L'échec est FERMÉ, pas ouvert — mais la fonctionnalité est éteinte, et
+il ne faut pas la croire vivante.
+
+**Ce qui protège vraiment n'est pas le nom du topic.** Le deviner est facile.
+Seule la policy de lecture, qui exige que l'abonné SOIT le coach nommé dans le
+topic, isole les confrères les uns des autres. La nommer ici évite de prendre
+l'obscurité pour une sécurité.
+
+**Rien à rattraper** : 0 compte coach en production, aucune donnée biométrique
+n'a jamais été collectée.
+
+**Ce que la policy NE protège PAS** — établi par revue adversariale le
+01/08/2026, et vérifié en production. Elle s'appuie sur `coach_pilots.active`,
+`live_sharing_at` et `level` ; **un compte coach peut poser ces trois colonnes
+lui-même**, pour un pilote inconnu, en un seul INSERT. `coach_pilots_insert_by_coach`
+n'impose aucune restriction de colonne, et le garde-fou SEC-3 qui l'interdit est
+un trigger `BEFORE UPDATE` — il ne voit pas les insertions.
+
+Le trou est ANTÉRIEUR à ce lot et ouvre bien plus que la biométrie
+(`is_detailed_coach_of` commande aussi les trames et les analyses de segments).
+Correctif proposé à part : `PROPOSITION_L28_coach_pilots_insert.sql` — une
+affiliation demandée par un coach naît en attente, jamais consentie.
+
+Ne pas lire D-23 comme « la santé est protégée ». Elle l'est contre un coach
+consenti au mauvais niveau ; pas contre un compte coach malveillant.

@@ -36,6 +36,16 @@ const rosterTopic = (coachId: string) => `live:roster:${coachId}`;
 const sessionChannel = (sessionId: string) => `live:session:${sessionId}`;
 const boardTopic = (sessionId: string) => `live:board:${sessionId}`;
 
+/**
+ * Canal biométrie PAR COACH (jalon 6, lot 27a-bis).
+ *
+ * Le coach est dans le TOPIC, pas seulement dans le message : c'est ce qui
+ * permet à la RLS de refuser la lecture à quelqu'un d'autre, et à l'émetteur de
+ * choisir ses destinataires un par un. Voir le bloc « POURQUOI UN CANAL PAR
+ * COACH » plus bas.
+ */
+const bioTopic = (coachId: string, sessionId: string) => `live:bio:${coachId}:${sessionId}`;
+
 /** Nettoyage d'un abonnement. */
 export type Unsubscribe = () => void;
 
@@ -219,7 +229,6 @@ interface SessionTopicState {
   /** Statut courant, rejoué à tout abonné qui arrive après le SUBSCRIBED. */
   subscribed: boolean;
   frameCbs: Set<(frame: LiveFrame) => void>;
-  bioCbs: Set<(event: BiometryLiveEvent) => void>;
   statusCbs: Set<(subscribed: boolean) => void>;
 }
 const sessions = new Map<string, SessionTopicState>();
@@ -240,17 +249,12 @@ function ensureSession(sessionId: string): SessionTopicState {
     refs: 0,
     subscribed: false,
     frameCbs: new Set(),
-    bioCbs: new Set(),
     statusCbs: new Set(),
   };
   channel
     .on('broadcast', { event: 'frame' }, (msg) => {
       const frame = msg.payload as LiveFrame;
       state.frameCbs.forEach((cb) => cb(frame));
-    })
-    .on('broadcast', { event: 'biometry' }, (msg) => {
-      const event = msg.payload as BiometryLiveEvent;
-      state.bioCbs.forEach((cb) => cb(event));
     })
     .subscribe((status) => {
       state.subscribed = status === 'SUBSCRIBED';
@@ -270,22 +274,14 @@ export function subscribePilotStream(
   handlers: {
     onFrame: (frame: LiveFrame) => void;
     onStatus?: (subscribed: boolean) => void;
-    /**
-     * BIO-2 — événement biométrique (FC + tendance R-R + contact), reçu sur le
-     * MÊME canal privé, event `biometry`. N'arrive QUE si le pilote émet sous
-     * triple verrou (cf. liveRelayRunner) ; côté coach on ne fait qu'afficher.
-     */
-    onBiometry?: (event: BiometryLiveEvent) => void;
   }
 ): Unsubscribe {
   const state = ensureSession(sessionId);
   state.refs += 1;
 
   const onFrame = handlers.onFrame;
-  const onBio = handlers.onBiometry;
   const onStatus = handlers.onStatus;
   state.frameCbs.add(onFrame);
-  if (onBio) state.bioCbs.add(onBio);
   if (onStatus) {
     state.statusCbs.add(onStatus);
     // Retardataire : le canal a pu être souscrit AVANT cet abonnement (topic
@@ -301,7 +297,6 @@ export function subscribePilotStream(
     if (released) return;
     released = true;
     state.frameCbs.delete(onFrame);
-    if (onBio) state.bioCbs.delete(onBio);
     if (onStatus) state.statusCbs.delete(onStatus);
     releaseSession(sessionId);
   };
@@ -315,7 +310,6 @@ export function subscribePilotStream(
  */
 export function openPilotBroadcast(sessionId: string): {
   send: (frame: LiveFrame) => void;
-  sendBiometry: (event: BiometryLiveEvent) => void;
   close: Unsubscribe;
 } {
   const state = ensureSession(sessionId);
@@ -326,17 +320,157 @@ export function openPilotBroadcast(sessionId: string): {
       if (closed || !state.subscribed) return;
       state.channel.send({ type: 'broadcast', event: 'frame', payload: frame });
     },
-    // BIO-2 — même canal PRIVÉ (audience = binôme consenti), event distinct
-    // `biometry`. La décision d'émettre (triple verrou) est prise en amont par
-    // le relais ; ici on ne fait que transporter vers le coach.
-    sendBiometry: (event: BiometryLiveEvent) => {
-      if (closed || !state.subscribed) return;
+    close: () => {
+      if (closed) return; // idempotent : ne libère jamais deux fois la même réf
+      closed = true;
+      releaseSession(sessionId);
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// BIOMÉTRIE — UN CANAL PAR COACH (jalon 6, lot 27a-bis)
+//
+// POURQUOI ON A CHANGÉ
+//
+// La fréquence cardiaque voyageait sur `live:session:<id>`, canal PARTAGÉ par
+// tous les coachs consentis du pilote. Impossible d'y réserver un message à
+// certains d'entre eux : ce qui part sur ce canal part à tout le monde.
+//
+// La seule position tenable était donc TOUT OU RIEN — n'émettre que si CHAQUE
+// coach à l'écoute était au niveau détaillé. Elle protégeait, mais elle avait un
+// prix absurde : un coach au niveau détaillé perdait le cardio parce qu'un
+// confrère en lecture simple s'était connecté. La donnée la plus sensible du
+// produit était la seule à dépendre de qui d'autre regardait.
+//
+// Désormais le destinataire est DANS LE TOPIC. L'émetteur ouvre un canal par
+// coach éligible et n'envoie qu'à ceux-là ; les autres ne reçoivent rien, et
+// n'ont plus d'effet sur ce que reçoivent leurs confrères.
+//
+// CE QUI PROTÈGE VRAIMENT
+//
+// Pas le nom du topic — le deviner n'est pas difficile. La barrière est la RLS
+// `realtime.messages`, qui exige de l'abonné qu'il SOIT le coach nommé dans le
+// topic. Les canaux sont PRIVÉS (`private: true`) : sans policy, personne ne lit.
+//
+// **Les deux policies ne sont pas appliquées** — elles attendent l'accord du
+// fondateur dans `supabase/migrations/PROPOSITION_L27_bio_par_coach.sql`. Tant
+// qu'elles ne le sont pas, un abonnement sur ce topic est refusé par défaut : le
+// canal est privé et aucune policy ne l'autorise. Le cardio ne circule pas du
+// tout. C'est le bon sens de l'échec — fermé, pas ouvert.
+//
+// ET CE QU'ELLE NE PROTÈGE PAS — la revue adversariale du 01/08 l'a établi.
+//
+// La policy s'appuie sur `coach_pilots.active`, `live_sharing_at` et `level`.
+// **Un compte coach peut poser ces trois colonnes lui-même**, en un seul INSERT,
+// pour un pilote qu'il n'a jamais rencontré : `coach_pilots_insert_by_coach`
+// n'impose aucune restriction de colonne, et le garde-fou SEC-3 qui l'interdit
+// est un trigger `BEFORE UPDATE` — il ne voit pas les insertions.
+//
+// La condition « consenti au direct » est donc posée par celui-là même qu'elle
+// filtre. Le trou est antérieur à ce lot et ouvre bien plus que la biométrie
+// (`is_detailed_coach_of` commande aussi les trames et les analyses). Il est
+// traité à part : `PROPOSITION_L28_coach_pilots_insert.sql`.
+//
+// Ne pas lire ce bloc comme « la santé est protégée ». Elle l'est contre un
+// coach consenti au mauvais niveau ; pas contre un compte coach malveillant.
+// ---------------------------------------------------------------------------
+
+interface BioTopicState {
+  channel: RealtimeChannel;
+  refs: number;
+  /** Fermeture différée en cours, annulable si un abonné revient. */
+  fermeture?: ReturnType<typeof setTimeout> | null;
+  subscribed: boolean;
+  cbs: Set<(event: BiometryLiveEvent) => void>;
+}
+/** Clé = le topic complet : un pilote émet vers N coachs, un coach lit N séances. */
+const bios = new Map<string, BioTopicState>();
+
+function ensureBio(coachId: string, sessionId: string): BioTopicState {
+  const cle = bioTopic(coachId, sessionId);
+  const existing = bios.get(cle);
+  if (existing) {
+    annulerFermeture(existing);
+    return existing;
+  }
+
+  const channel: RealtimeChannel = supabase.channel(cle, { config: { private: true } });
+  const state: BioTopicState = { channel, refs: 0, subscribed: false, cbs: new Set() };
+  channel
+    .on('broadcast', { event: 'biometry' }, (msg) => {
+      const event = msg.payload as BiometryLiveEvent;
+      state.cbs.forEach((cb) => cb(event));
+    })
+    .subscribe((status) => {
+      state.subscribed = status === 'SUBSCRIBED';
+    });
+  bios.set(cle, state);
+  return state;
+}
+
+/**
+ * COACH — s'abonne à SA biométrie pour une séance donnée.
+ *
+ * `coachId` doit être celui du compte connecté. Le passer ne donne aucun droit :
+ * la RLS vérifie que l'abonné est bien ce coach. Un coach qui nommerait celui
+ * d'un confrère se verrait refuser l'abonnement, pas servir ses données.
+ */
+export function subscribeBiometry(
+  coachId: string,
+  sessionId: string,
+  onEvent: (event: BiometryLiveEvent) => void
+): Unsubscribe {
+  const state = ensureBio(coachId, sessionId);
+  state.refs += 1;
+  state.cbs.add(onEvent);
+
+  let released = false;
+  return () => {
+    if (released) return; // idempotent : cf. subscribePilotStream (topic refcompté)
+    released = true;
+    state.cbs.delete(onEvent);
+    libererApresDelai(bios, bioTopic(coachId, sessionId));
+  };
+}
+
+/**
+ * PILOTE — ouvre l'émission biométrique vers les coachs éligibles.
+ *
+ * Les canaux sont ouverts À LA DEMANDE, au premier envoi vers un coach donné :
+ * l'ensemble des éligibles bouge en séance (arrivée, révocation, changement de
+ * niveau), et une liste figée à l'ouverture serait fausse dès la première
+ * minute. Le relais décide à chaque tick à qui il envoie ; ici on transporte.
+ *
+ * Un coach devenu inéligible cesse simplement d'être servi. Son canal reste
+ * ouvert jusqu'à `close()` — quelques topics inertes pour une poignée de coachs,
+ * contre le risque de fermer un canal qu'on rouvrirait au tick suivant.
+ */
+export function openBiometryBroadcast(sessionId: string): {
+  sendTo: (coachId: string, event: BiometryLiveEvent) => void;
+  close: Unsubscribe;
+} {
+  const ouverts = new Set<string>();
+  let closed = false;
+  return {
+    sendTo: (coachId: string, event: BiometryLiveEvent) => {
+      if (closed) return;
+      const state = ensureBio(coachId, sessionId);
+      if (!ouverts.has(coachId)) {
+        // Première émission vers ce coach : on prend la référence UNE fois.
+        state.refs += 1;
+        ouverts.add(coachId);
+      }
+      // Le canal met un instant à être souscrit. À 0,5 Hz, la perte se compte en
+      // une ou deux mesures — jamais on ne met en file une donnée de santé.
+      if (!state.subscribed) return;
       state.channel.send({ type: 'broadcast', event: 'biometry', payload: event });
     },
     close: () => {
       if (closed) return; // idempotent : ne libère jamais deux fois la même réf
       closed = true;
-      releaseSession(sessionId);
+      for (const coachId of ouverts) libererApresDelai(bios, bioTopic(coachId, sessionId));
+      ouverts.clear();
     },
   };
 }

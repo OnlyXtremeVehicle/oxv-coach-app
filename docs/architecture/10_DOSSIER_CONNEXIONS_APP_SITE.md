@@ -4933,7 +4933,8 @@ l'application ne fait pas — à confirmer par vous.
 | Topic | Mécanisme | Émetteur | Audience autorisée | Cadence |
 | --- | --- | --- | --- | --- |
 | `live:roster:<coachId>` | presence | le pilote (une inscription par coach consenti) | ce coach, et lui seul | à l'événement |
-| `live:session:<sessionId>` | broadcast, events `frame` et `biometry` | le pilote propriétaire de la séance | les coachs du binôme actif et consenti au live | ~3–4 Hz / 0,5 Hz |
+| `live:session:<sessionId>` | broadcast, event `frame` | le pilote propriétaire de la séance | les coachs du binôme actif et consenti au live | ~3–4 Hz |
+| `live:bio:<coachId>:<sessionId>` | broadcast, event `biometry` | le pilote propriétaire de la séance | **ce coach seul**, s'il est au niveau détaillé | 0,5 Hz |
 | `live:board:<sessionId>` | broadcast, event `board` | le pilote propriétaire de la séance | aujourd'hui : le pilote et les coachs consentis. Rien de plus. | 1 Hz max |
 
 Les trois noms sont construits à un seul endroit, `src/services/liveSessionService.ts:35-37` **[code app]** :
@@ -5207,11 +5208,17 @@ un tableau de marche réel afficherait au mieux deux lignes, toutes deux sans
 numéro, donc toutes deux triées par le seul départage alphabétique. La clé
 d'affichage du board est vide en production.
 
-### La biométrie : article 9, canal partagé, position tout ou rien
+### La biométrie : article 9, UN CANAL PAR COACH
+
+> **Mis à jour le 01/08/2026** (jalon 6, lot 27a-bis). La section décrivait
+> jusque-là un canal partagé et une position « tout ou rien » : les deux ont
+> changé. Le code cité alors n'existe plus.
 
 La fréquence cardiaque et la variabilité R-R relèvent de l'article 9 du RGPD.
-Elles ne circulent **que** sur l'event `biometry` du canal privé
-`live:session:<sessionId>` (`liveSessionService.ts:284-287`) **[code app]**.
+Elles circulent **uniquement** sur l'event `biometry` d'un canal privé **propre à
+chaque coach** — `live:bio:<coachId>:<sessionId>` (`liveSessionService.ts`,
+`subscribeBiometry` / `openBiometryBroadcast`) **[code app]**. Elles ne passent
+plus par `live:session:<sessionId>`, qui ne transporte plus que les trames.
 
 **Jamais sur la présence, jamais sur le board.** `RosterMeta` porte un booléen
 `bioShared` (`liveSessionLogic.ts:64`) — un état de partage, pas une mesure. La
@@ -5231,30 +5238,47 @@ au démarrage (`liveRelayRunner.ts:297-344`) **[code app]** :
 `canEmitBiometry` exige les trois strictement à `true` ; toute valeur absente ou
 douteuse vaut refus (`liveHealthGate.ts:111-114`) **[code app]**.
 
-**La position tout ou rien, et pourquoi.** Le canal `live:session:` est **partagé
-par tous les coachs consentis**. On ne peut donc pas réserver la biométrie à
-certains d'entre eux au moment de l'émission. La règle retenue
-(`liveRelayRunner.ts:326`) est : on n'émet **que si chaque coach à l'écoute est au
-niveau détaillé**.
+**Pourquoi un canal par coach.** `live:session:` est **partagé par tous les
+coachs consentis** : ce qui y part, part à tout le monde. On ne pouvait donc pas
+réserver la biométrie à certains, et la seule position tenable était le **tout ou
+rien** — n'émettre que si CHAQUE coach à l'écoute était au niveau détaillé. Un
+coach détaillé perdait alors le cardio parce qu'un confrère en `lecture_simple`
+s'était connecté.
+
+Le destinataire est désormais **dans le topic**. L'émetteur choisit ses
+destinataires un par un (`destinatairesBiometrie`, `liveHealthGate.ts`) et
+n'ouvre un canal que vers ceux-là. Un coach non éligible n'est pas filtré à la
+réception : le message ne part pas vers lui.
 
 ```ts
-const tousDetailles = coaches.length > 0 && coaches.every((c) => c.detailed);
+const destinataires = destinatairesBiometrie(aJour, socleConsenti, flagOn);
+for (const c of destinataires) bio.sendTo(c.coachId, event);
 ```
 
-Un coach au niveau détaillé perd donc le cardio parce qu'un confrère en
-`lecture_simple` est connecté. C'est volontairement plus restrictif que
-nécessaire : on préfère la privation à la divulgation. La réponse propre est un
-canal par coach — `live:bio:<coachId>:<sessionId>`, sur le patron du roster, avec
-une policy exigeant `level in ('lecture_detaillee','programme')` — et elle n'est
-pas écrite. Elle devra l'être **avant** tout élargissement d'audience.
+**Ce qui protège, et ce qui ne protège pas.** Pas le nom du topic — le deviner
+est facile. La barrière est la RLS `realtime.messages`, qui exige de l'abonné
+qu'il SOIT le coach nommé dans le topic et qu'il soit au niveau détaillé. **Ces
+policies ne sont pas appliquées** : elles attendent l'accord du fondateur
+(`supabase/migrations/PROPOSITION_L27_bio_par_coach.sql`). Tant qu'elles ne le
+sont pas, le canal est privé sans autorisation — personne ne s'y abonne, et le
+cardio ne circule pas du tout. L'échec est fermé, pas ouvert.
+
+Une réserve, établie par revue adversariale le 01/08/2026 : la policy s'appuie
+sur `coach_pilots.active`, `live_sharing_at` et `level`, **et un compte coach
+peut poser ces trois colonnes lui-même** en un seul INSERT
+(`coach_pilots_insert_by_coach` n'impose aucune restriction de colonne ; le
+garde-fou SEC-3 est un trigger `BEFORE UPDATE` seulement). Le trou est antérieur
+à ce lot et ouvre bien plus que la biométrie. Traité à part :
+`PROPOSITION_L28_coach_pilots_insert.sql`.
 
 **Ce qui coupe la biométrie**, dans l'ordre où cela se produit :
 
 - le pilote révoque `biometry_capture_consent_at` ou
   `biometry_coach_share_consent_at` sur `public.users` — révoquer la capture
   révoque aussi le partage (`src/services/consentService.ts`) **[code app]** ;
-- un coach passe en `lecture_simple`, ou un coach en `lecture_simple` se
-  connecte : `tousDetailles` tombe, plus personne ne reçoit ;
+- un coach passe en `lecture_simple` : **lui seul** cesse de recevoir, ses
+  confrères au niveau détaillé continuent. Le niveau est relu à chaque tick
+  depuis la base, pas seulement à la réconciliation du canal de révocation ;
 - le drapeau serveur `biometry` repasse à `false` ;
 - le réseau tombe ou la lecture d'un consentement échoue : les `catch` renvoient
   `{ capture: false, coachShare: false }` et `false` — **fail-closed**

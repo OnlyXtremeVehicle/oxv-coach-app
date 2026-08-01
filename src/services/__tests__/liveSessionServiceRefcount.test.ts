@@ -92,8 +92,10 @@ jest.mock('@/lib/supabase', () => ({
 }));
 
 import {
+  openBiometryBroadcast,
   openBoardBroadcast,
   openPilotBroadcast,
+  subscribeBiometry,
   subscribeBoard,
   subscribePilotStream,
 } from '@/services/liveSessionService';
@@ -131,13 +133,10 @@ describe('topic live:session — refcompté', () => {
   it('deux consommateurs partagent UNE instance, et le premier départ ne ferme rien', () => {
     const topic = 'live:session:S1';
     const framesA: unknown[] = [];
-    const biosB: unknown[] = [];
+    const framesB: unknown[] = [];
 
     const unsubA = subscribePilotStream('S1', { onFrame: (f) => framesA.push(f) });
-    const unsubB = subscribePilotStream('S1', {
-      onFrame: () => {},
-      onBiometry: (e) => biosB.push(e),
-    });
+    const unsubB = subscribePilotStream('S1', { onFrame: (f) => framesB.push(f) });
 
     // Une seule instance ouverte pour les deux.
     expect(ctrl().channels.size).toBe(1);
@@ -146,8 +145,11 @@ describe('topic live:session — refcompté', () => {
     // Le canal DOIT survivre : B le tient encore. C'est le défaut historique.
     expect(vivant(topic)).toBe(true);
 
-    emit(topic, 'biometry', { hrBpm: 150, rrTrend: 'stable', contact: 'ok', atMs: 1 });
-    expect(biosB).toHaveLength(1);
+    // La biométrie ne passe PLUS par ce canal (lot 27a-bis) : on vérifie donc la
+    // survie du topic avec ce qu'il transporte encore, les trames.
+    emit(topic, 'frame', { atMs: 1 });
+    expect(framesB).toHaveLength(1);
+    expect(framesA).toHaveLength(0); // A est parti : il ne reçoit plus rien
 
     unsubB();
     laisserFermer();
@@ -310,5 +312,115 @@ describe('topic live:board — refcompté aussi', () => {
     emetteur.close();
     laisserFermer();
     expect(vivant(topic)).toBe(false);
+  });
+});
+
+/**
+ * BIOMÉTRIE — un canal PAR COACH (jalon 6, lot 27a-bis).
+ *
+ * Ce qui est vérifié ici est le TRANSPORT : le bon topic, le bon destinataire,
+ * et la même discipline de refcomptage que les autres familles de canaux.
+ *
+ * Ce qui ne l'est pas : le droit de LIRE le canal d'un autre. Cela relève de la
+ * RLS `realtime.messages` (proposition `L27_bio_par_coach`, non appliquée), pas
+ * du client — un faux client ne peut rien en dire.
+ */
+describe('topic live:bio — un canal par coach', () => {
+  it('chaque coach reçoit sur SON topic, et rien sur celui du confrère', () => {
+    const recusA: unknown[] = [];
+    const recusB: unknown[] = [];
+    const unsubA = subscribeBiometry('coach-A', 'S9', (e) => recusA.push(e));
+    const unsubB = subscribeBiometry('coach-B', 'S9', (e) => recusB.push(e));
+
+    // Deux topics DISTINCTS pour la même séance : c'est tout l'objet du lot.
+    expect(vivant('live:bio:coach-A:S9')).toBe(true);
+    expect(vivant('live:bio:coach-B:S9')).toBe(true);
+
+    emit('live:bio:coach-A:S9', 'biometry', { hrBpm: 150, atMs: 1 });
+    expect(recusA).toHaveLength(1);
+    expect(recusB).toHaveLength(0); // l'isolement, mesuré
+
+    unsubA();
+    unsubB();
+  });
+
+  it('l’émetteur n’envoie qu’aux coachs nommés — le confrère non servi ne reçoit rien', () => {
+    const emetteur = openBiometryBroadcast('S10');
+    const evenement = { hrBpm: 148, rrTrend: 'stable', contact: 'ok', atMs: 2 };
+
+    emetteur.sendTo('coach-detaille', evenement as never);
+
+    const servi = ctrl().channels.get('live:bio:coach-detaille:S10');
+    expect(servi?.sent).toHaveLength(1);
+    expect(servi?.sent[0]?.event).toBe('biometry');
+    // Le canal du coach en lecture simple n'a même pas été OUVERT : le message
+    // ne part pas vers lui, il n'est pas filtré à l'arrivée.
+    expect(vivant('live:bio:coach-simple:S10')).toBe(false);
+
+    emetteur.close();
+  });
+
+  it('émettre plusieurs fois vers le même coach ne prend qu’UNE référence', () => {
+    const topic = 'live:bio:coach-C:S11';
+    const lecteur = subscribeBiometry('coach-C', 'S11', () => {});
+    const emetteur = openBiometryBroadcast('S11');
+
+    emetteur.sendTo('coach-C', { hrBpm: 140, atMs: 1 } as never);
+    emetteur.sendTo('coach-C', { hrBpm: 141, atMs: 2 } as never);
+    emetteur.sendTo('coach-C', { hrBpm: 142, atMs: 3 } as never);
+
+    // Trois envois, une seule référence : sinon `close()` en libérerait une et
+    // laisserait le canal ouvert pour toujours.
+    emetteur.close();
+    expect(vivant(topic)).toBe(true); // le lecteur le tient encore
+
+    lecteur();
+    laisserFermer();
+    expect(vivant(topic)).toBe(false);
+  });
+
+  it('le désabonnement est IDEMPOTENT, comme les autres familles de topics', () => {
+    const topic = 'live:bio:coach-D:S12';
+    const a = subscribeBiometry('coach-D', 'S12', () => {});
+    const b = subscribeBiometry('coach-D', 'S12', () => {});
+
+    a();
+    a(); // second appel : ne doit pas arracher le canal à b
+    expect(vivant(topic)).toBe(true);
+
+    b();
+    laisserFermer();
+    expect(vivant(topic)).toBe(false);
+  });
+
+  it('fermer l’émetteur ne coupe pas le coach qui écoute encore', () => {
+    const topic = 'live:bio:coach-E:S13';
+    const recus: unknown[] = [];
+    const lecteur = subscribeBiometry('coach-E', 'S13', (e) => recus.push(e));
+    const emetteur = openBiometryBroadcast('S13');
+    emetteur.sendTo('coach-E', { hrBpm: 130, atMs: 1 } as never);
+
+    emetteur.close();
+    expect(vivant(topic)).toBe(true);
+
+    emit(topic, 'biometry', { hrBpm: 131, atMs: 2 });
+    expect(recus).toHaveLength(1);
+
+    lecteur();
+    laisserFermer();
+    expect(vivant(topic)).toBe(false);
+  });
+
+  it('la biométrie ne transite PLUS par le canal de séance', () => {
+    const recus: unknown[] = [];
+    subscribeBiometry('coach-F', 'S14', (e) => recus.push(e));
+    const unsubSession = subscribePilotStream('S14', { onFrame: () => {} });
+
+    // Le canal de séance n'écoute plus l'événement `biometry` : personne ne
+    // l'attrape s'il y passe. C'est la garantie que l'ancien chemin est mort.
+    const session = ctrl().channels.get('live:session:S14');
+    expect(session?.handlers.some((h) => h.event === 'biometry')).toBe(false);
+
+    unsubSession();
   });
 });

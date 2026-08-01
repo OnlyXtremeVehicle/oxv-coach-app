@@ -8,6 +8,8 @@
  * Deux garanties sont fixées ici, et l'ordre en est une à part entière.
  */
 
+import { demoteToPilot } from '../coachAdminService';
+
 const updates: { table: string; payload: Record<string, unknown> }[] = [];
 let echecAffiliations = false;
 
@@ -30,8 +32,6 @@ jest.mock('@/lib/supabase', () => ({
     }),
   },
 }));
-
-import { demoteToPilot } from '../coachAdminService';
 
 beforeEach(() => {
   updates.length = 0;

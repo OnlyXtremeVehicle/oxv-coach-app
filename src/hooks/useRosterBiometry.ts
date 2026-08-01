@@ -4,10 +4,19 @@
  * POURQUOI un hook séparé plutôt qu'un champ de plus dans le roster : la présence
  * (`live:roster:<coachId>`) transporte une méta d'IDENTITÉ (prénom, circuit, en
  * piste) qui n'est pas prévue pour de la santé. Y faire passer une FC ferait
- * emprunter à une donnée RGPD art. 9 un canal choisi pour autre chose. La
- * biométrie ne circule donc QUE par l'événement `biometry` du canal PRIVÉ
- * `live:session:<sessionId>`, dont la RLS serveur (binôme consenti) arbitre déjà
- * l'accès : un coach non autorisé ne reçoit rien, ici on ne fait qu'écouter.
+ * emprunter à une donnée RGPD art. 9 un canal choisi pour autre chose.
+ *
+ * CANAL PROPRE À CE COACH (jalon 6, lot 27a-bis, 01/08/2026). La biométrie
+ * circule sur `live:bio:<coachId>:<sessionId>` — plus sur le canal de séance,
+ * qui était PARTAGÉ entre tous les coachs consentis du pilote. Ce hook ouvrait
+ * d'ailleurs ce canal de séance pour n'y lire que le cardio, en ignorant les
+ * trames : il tenait un abonnement à la télémétrie dont il n'avait aucun usage.
+ *
+ * L'émetteur ne sert que les coachs au niveau détaillé (`destinatairesBiometrie`)
+ * et la RLS serveur exige de l'abonné qu'il SOIT le coach nommé dans le topic —
+ * **policies proposées, non encore appliquées** (`PROPOSITION_L27_bio_par_coach`).
+ * Tant qu'elles ne le sont pas, le canal est privé sans autorisation : rien
+ * n'arrive. L'échec est fermé, pas ouvert.
  *
  * PRÉCISION D'HONNÊTETÉ : la protection décrite ci-dessus est STRUCTURELLE (la FC
  * n'est jamais écrite dans RosterMeta), elle n'est PAS le fait d'un filtre à
@@ -30,7 +39,10 @@ import {
   cardioZone,
   updateObservedRange,
 } from '@/services/cardioZoneLogic';
-import { type Unsubscribe, subscribePilotStream } from '@/services/liveSessionService';
+import { type Unsubscribe, subscribeBiometry } from '@/services/liveSessionService';
+import { useAuthStore } from '@/store/useAuthStore';
+
+import { abonnementAGarder } from './rosterBiometryLogic';
 
 /**
  * Péremption du cardio (10 s), identique à usePilotLive. Passé ce délai sans
@@ -59,6 +71,16 @@ export interface RosterBioState {
 interface PilotSubscription {
   /** Session écoutée : si elle change, l'abonnement doit être refait. */
   sessionId: string;
+  /**
+   * Coach SOUS LEQUEL l'abonnement a été ouvert.
+   *
+   * Sans lui, la réconciliation ne comparait que la session : un changement de
+   * compte relançait bien l'effet (le coach est dans `subscriptionKey`), mais la
+   * boucle gardait les abonnements dont la session n'avait pas bougé — et l'app
+   * continuait d'écouter le canal du coach PRÉCÉDENT. La garde était posée, elle
+   * ne se déclenchait pas. Relevé par la revue adversariale du 01/08/2026.
+   */
+  coachId: string;
   /** Plage observée PAR PILOTE — jamais partagée, jamais persistée. */
   observed: ObservedRange | null;
   unsub: Unsubscribe;
@@ -69,19 +91,26 @@ export function useRosterBiometry(
 ): Record<string, RosterBioState> {
   const [states, setStates] = useState<Record<string, RosterBioState>>({});
 
+  // Le lecteur EST le coach : son canal biométrie porte son identité (lot
+  // 27a-bis). Sans compte connu, aucun abonnement — le cardio n'a pas de
+  // destinataire anonyme.
+  const coachId = useAuthStore((st) => st.profile?.id ?? null);
+
   // Fail-closed : seul un partage EXPLICITEMENT vrai ouvre un abonnement. Un
   // `undefined` (méta ancienne, pilote sans capteur) n'écoute rien.
-  const sharers = pilots.filter((p) => p.bioShared === true);
+  const sharers = coachId ? pilots.filter((p) => p.bioShared === true) : [];
 
   // PIÈGE ÉVITÉ : `pilots` est un tableau NEUF à chaque rendu du parent ; le
   // mettre en dépendance relancerait l'effet en boucle (fermer/rouvrir tous les
   // canaux à chaque image). On dérive une clé STABLE — la liste triée des
   // couples pilote+session des seuls partageurs — qui ne change que lorsque le
   // besoin d'abonnement change réellement (arrivée, départ, révocation, session).
-  const subscriptionKey = sharers
+  // `coachId` est DANS la clé : changer de compte doit refaire tous les
+  // abonnements, sinon on continuerait d'écouter le canal du coach précédent.
+  const subscriptionKey = `${coachId ?? ''}#${sharers
     .map((p) => `${p.pilotId}~${p.sessionId}`)
     .sort()
-    .join('|');
+    .join('|')}`;
 
   const subsRef = useRef<Map<string, PilotSubscription>>(new Map());
   /**
@@ -121,9 +150,10 @@ export function useRosterBiometry(
 
     const dropped: string[] = [];
     for (const [pilotId, sub] of subs) {
-      // Parti, révoqué, ou reparti sur une autre session : l'abonnement tombe,
-      // et avec lui la plage observée (elle appartient au pilote, pas au coach).
-      if (desired.get(pilotId) === sub.sessionId) continue;
+      // Parti, révoqué, reparti sur une autre session — ou lu sous un AUTRE
+      // compte coach : l'abonnement tombe, et avec lui la plage observée (elle
+      // appartient au pilote, pas au coach).
+      if (abonnementAGarder(sub, desired.get(pilotId), coachId)) continue;
       sub.unsub();
       subs.delete(pilotId);
       lastSeenRef.current.delete(pilotId);
@@ -138,34 +168,43 @@ export function useRosterBiometry(
       });
     }
 
+    // Sans compte connu, `sharers` est vide : les abonnements existants viennent
+    // d'être tombés ci-dessus, et on n'en ouvre aucun. La garde rend la chose
+    // explicite au lieu de la laisser dépendre d'un filtre plus haut.
+    if (!coachId) return;
+
     for (const [pilotId, sessionId] of desired) {
       if (subs.has(pilotId)) continue;
-      const entry: PilotSubscription = { sessionId, observed: null, unsub: () => undefined };
+      const entry: PilotSubscription = {
+        sessionId,
+        coachId,
+        observed: null,
+        unsub: () => undefined,
+      };
       subs.set(pilotId, entry);
-      entry.unsub = subscribePilotStream(sessionId, {
-        // La pastille roster ne lit QUE le cardio ; la télémétrie du pilote ne
-        // sort pas d'ici (elle a son écran dédié, usePilotLive).
-        onFrame: () => undefined,
-        onBiometry: (e) => {
-          // Deux gardes : hook démonté, et abonnement remplacé/fermé pendant
-          // qu'un événement était en vol (removeChannel est asynchrone).
-          if (!mountedRef.current) return;
-          if (subsRef.current.get(pilotId) !== entry) return;
-          // Frontière non typée (payload réseau) : une FC non finie n'est pas une
-          // mesure, elle ne rafraîchit donc rien — ni la plage, ni la péremption,
-          // ni l'affichage. Fail-closed, comme cardioZoneLogic et liveHealthGate.
-          if (typeof e.hrBpm !== 'number' || !Number.isFinite(e.hrBpm)) return;
-          const observed = updateObservedRange(entry.observed, e.hrBpm);
-          entry.observed = observed;
-          lastSeenRef.current.set(pilotId, Date.now());
-          // Plage encore inconnue ou trop étroite → zone null : la pastille reste
-          // inerte plutôt que d'inventer une couleur (« absence égale rien »).
-          const zone = observed === null ? null : cardioZone(e.hrBpm, observed);
-          setStates((prev) => ({
-            ...prev,
-            [pilotId]: { zone, hrBpm: e.hrBpm, atMs: e.atMs },
-          }));
-        },
+      // Canal PROPRE à ce coach. Auparavant ce hook ouvrait le canal de SÉANCE
+      // pour n'y lire que le cardio, en ignorant les trames — il tenait donc un
+      // abonnement à la télémétrie dont il n'avait aucun usage. Le canal dédié
+      // supprime ce détour : on n'ouvre plus que ce qu'on lit.
+      entry.unsub = subscribeBiometry(coachId, sessionId, (e) => {
+        // Deux gardes : hook démonté, et abonnement remplacé/fermé pendant
+        // qu'un événement était en vol (removeChannel est asynchrone).
+        if (!mountedRef.current) return;
+        if (subsRef.current.get(pilotId) !== entry) return;
+        // Frontière non typée (payload réseau) : une FC non finie n'est pas une
+        // mesure, elle ne rafraîchit donc rien — ni la plage, ni la péremption,
+        // ni l'affichage. Fail-closed, comme cardioZoneLogic et liveHealthGate.
+        if (typeof e.hrBpm !== 'number' || !Number.isFinite(e.hrBpm)) return;
+        const observed = updateObservedRange(entry.observed, e.hrBpm);
+        entry.observed = observed;
+        lastSeenRef.current.set(pilotId, Date.now());
+        // Plage encore inconnue ou trop étroite → zone null : la pastille reste
+        // inerte plutôt que d'inventer une couleur (« absence égale rien »).
+        const zone = observed === null ? null : cardioZone(e.hrBpm, observed);
+        setStates((prev) => ({
+          ...prev,
+          [pilotId]: { zone, hrBpm: e.hrBpm, atMs: e.atMs },
+        }));
       });
     }
     // `sharers` est volontairement hors dépendances : c'est un tableau neuf à
