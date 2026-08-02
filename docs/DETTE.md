@@ -841,3 +841,47 @@ commun entre les deux tables est l'e-mail — une identification faible : une
 adresse change, se partage, se réutilise. La proposition pose donc la mécanique
 et LAISSE le rattachement à un geste explicite. Automatiser sur l'e-mail seul
 attribuerait un statut de fondateur à quelqu'un qui ne l'a peut-être pas demandé.
+
+---
+
+## D-28 — Le bouton « Marquer » ne peut pas écrire : la contrainte refuse la ligne
+
+**Introduit et constaté le 02/08/2026, dans la même journée.**
+
+`coach_annotations.body` porte, depuis la migration 0020 :
+
+```sql
+body TEXT NOT NULL CHECK (length(body) BETWEEN 1 AND 1000)
+```
+
+`poserMarqueur()` insère `body: ''`. **Longueur zéro : la contrainte refuse la
+ligne, à tous les coups.** Le geste livré une heure plus tôt est inerte — il
+affiche une erreur et n'écrit rien.
+
+**Pourquoi rien ne l'a vu.** Le typage passe, le lint passe, les 2 605 tests
+passent. Ils portent sur la DÉCISION (`decideMarqueur`, 10 tests) et jamais sur
+l'ÉCRITURE. **Aucune garde du dépôt ne compare un `insert` aux contraintes de sa
+table** — et les types générés ne portent pas les CHECK.
+
+**La règle, désormais** : avant de livrer un chemin d'écriture nouveau, relire
+les contraintes de la table cible.
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint where conrelid = 'public.<table>'::regclass;
+```
+
+C'est la sœur de D-24 (balayer les fonctions avant un `drop table`) : les deux
+défauts viennent d'avoir raisonné sur le code sans regarder le schéma.
+
+**Le correctif est dans `PROPOSITION_L30_marqueur_sans_texte.sql`** — relâcher
+la contrainte, jamais remplir `body`. Écrire « Marqueur » ou un point produirait
+une NOTE FABRIQUÉE qui ressortirait dans le fil à côté des faits mesurés, comme
+si le coach l'avait écrite. Un marqueur n'a pas de texte, et c'est sa nature.
+
+**Ce qui est sauf, vérifié** : le trigger de notification (`0021`) sort
+immédiatement si `visibility != 'shared'`, et un marqueur naît `private`. Aucun
+pilote n'est notifié d'un repère que le coach s'est posé à lui-même.
+
+**Dégât réel : nul.** 0 annotation, 0 compte coach — le bouton n'a jamais pu
+être pressé.
