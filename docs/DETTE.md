@@ -760,7 +760,7 @@ désormais « jamais posée ».
 
 ---
 
-## D-26 — Le marqueur n'a pas encore d'endroit où naître
+## D-26 — RÉSOLUE le 02/08/2026 — le marqueur a sa forme
 
 **Relevé le 01/08/2026** en préparant le câblage du résolveur (jalon 6, phase 5).
 
@@ -783,11 +783,27 @@ Le chemin d'écriture (`coachAnnotationsService`) ne pose que `corner_index` et
 `null` honnêtes. C'est un manque en amont — le geste « poser un marqueur » n'a
 pas de surface.
 
-**Une question de schéma reste ouverte, et elle n'est pas la mienne.**
-`marker_s_norm` suggère une abscisse curviligne normalisée ; le résolveur
-travaille sur `elapsed_ms`. Les deux se défendent : l'instant est ce qu'on capte
-au moment où le coach appuie, l'abscisse est ce qui se compare entre deux tours.
-Choisir engage le schéma — décision fondateur.
+**TRANCHÉ le 02/08/2026 — et la réponse du fondateur vaut mieux que mes
+options.** Ni l'instant seul, ni l'abscisse seule : **l'instant, l'abscisse quand
+elle sera calculable, ET le point précis où se trouvait le pilote**.
+
+C'est la position qui décide. Elle est une MESURE directe, reprise de la trame :
+elle ne dépend d'aucune géométrie de circuit. Or `app_segment_analyses` est vide
+et aucune corde de référence n'existe — `virage` vaudra donc `null` sur toutes
+les séances actuelles. La position, elle, est toujours là : on peut montrer le
+point exact sur le tracé sans rien calculer.
+
+L'instant fait foi. L'abscisse s'ajoutera sans rien contredire, puisqu'elle se
+dérive de la position.
+
+**Posé en base** (`20260802042524_l29_...`) : `marker_elapsed_ms`, `marker_lat`,
+`marker_lon` sur `coach_annotations` — `marker_s_norm` existait déjà et reste
+nullable. Le résolveur rend désormais `position`, et la banque de provenance
+l'enregistre comme grandeur MESURÉE.
+
+**RESTE : le geste.** Le plan dit où il vit — `rapport` devient l'écran où le
+coach « choisit ou enregistre son audio, écrit sa phrase, RETIENT UN MARQUEUR,
+envoie ». C'est la prochaine tranche.
 
 **Rien à rattraper** : 0 annotation en production.
 

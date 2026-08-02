@@ -77,6 +77,29 @@ describe('resoudreMarqueur', () => {
     expect(m.distanceCordeM).toBeGreaterThan(30);
     expect(m.distanceCordeM).toBeLessThan(60);
     expect(m.ecartTrameMs).toBe(20);
+    // La POSITION est la mesure qui tient toujours : elle ne dépend d'aucune
+    // corde de référence, et c'est elle qu'on stocke (décision du 02/08).
+    expect(m.position).toEqual({ lat: AVANT_CORDE.lat, lon: AVANT_CORDE.lon });
+  });
+
+  it('la position tient même quand AUCUN virage n’est nommable', () => {
+    // Cas réel aujourd'hui : `app_segment_analyses` est vide, aucune corde de
+    // référence n'existe. Le marqueur doit rester lisible — « le pilote était
+    // ICI » — sans que le virage soit connu.
+    const m = resoudreMarqueur(1000, [trame({ elapsedMs: 1000 })], BORNES, []);
+    expect(m.virage).toBe(null);
+    expect(m.distanceCordeM).toBe(null);
+    expect(m.position).toEqual({ lat: AVANT_CORDE.lat, lon: AVANT_CORDE.lon });
+  });
+
+  it('sans position mesurée, on ne fabrique pas de point', () => {
+    const m = resoudreMarqueur(
+      1000,
+      [trame({ elapsedMs: 1000, lat: null, lon: null })],
+      BORNES,
+      CORDES
+    );
+    expect(m.position).toBe(null);
   });
 
   describe('la convention des axes G', () => {

@@ -1,11 +1,12 @@
 -- =============================================================================
--- PROPOSITION — LE STATUT FONDATEUR (jalon 6, phase 5bis)
+-- L29 — LE STATUT FONDATEUR + LE MARQUEUR RÉSOLU (jalon 6, phases 5 et 5bis)
 --
---   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+-- APPLIQUÉE EN PRODUCTION le 02/08/2026 (version 20260802042524), sur accord
+-- explicite du fondateur.
 --
--- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
---
--- Rédigé le 01/08/2026, après relevé de l'état réel en production.
+-- LE FICHIER DE RÉFÉRENCE EST CELUI DE LA BASE. Ce document conserve le
+-- raisonnement ; la version exécutée porte en plus le marqueur (partie 2) et le
+-- bras de purge complet (partie 3), écrits après les décisions du fondateur.
 -- =============================================================================
 --
 -- CE QUE LE PLAN DEMANDE
@@ -62,19 +63,16 @@
 -- rang d'arrivée.
 --
 -- ---------------------------------------------------------------------------
--- LA PROPAGATION AU RATTACHEMENT — CE QUI RESTE À TRANCHER
+-- LE RATTACHEMENT — TRANCHÉ : UN GESTE EXPLICITE D'ADMINISTRATEUR
 --
--- Le plan dit « propagation au rattachement » sans dire par quoi on rattache.
--- Le seul point commun entre `founding_members` et `users` est l'**e-mail**.
+-- Le plan disait « propagation au rattachement » sans dire par quoi on rattache.
+-- Le seul point commun entre `founding_members` et `users` est l'**e-mail** —
+-- une identification faible : une adresse change, se partage, se réutilise.
 --
--- Rattacher sur l'e-mail est simple et suffit ici (1 ligne, un fondateur unique
--- au 01/08). Mais c'est une identification faible : une adresse change, se
--- partage, se réutilise. **Ce fichier pose donc la mécanique et LAISSE le
--- rattachement à un geste explicite** — un administrateur relie, ou le pilote
--- confirme. Automatiser sur l'e-mail seul attribuerait un statut à quelqu'un qui
--- ne l'a peut-être pas demandé.
---
--- À trancher par le fondateur avant d'écrire la partie automatique.
+-- **Décision du fondateur, 02/08/2026 : aucune déduction.** Un administrateur
+-- relie la candidature au compte. Attribuer un statut de fondateur par
+-- déduction le donnerait à qui contrôle la boîte aux lettres, et le coût du
+-- geste est nul — il restera juste quand ils seront cinquante.
 -- =============================================================================
 
 -- --- 1. La séquence — un rang d'arrivée, jamais réattribué -------------------

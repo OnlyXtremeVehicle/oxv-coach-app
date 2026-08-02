@@ -108,6 +108,18 @@ export interface MarqueurResolu {
    */
   distanceCordeM: number | null;
   /**
+   * OÙ le pilote se trouvait à cet instant. Mesure DIRECTE, reprise de la trame
+   * retenue — elle ne dépend d'aucune géométrie de circuit.
+   *
+   * C'est ce qui rend un marqueur lisible aujourd'hui : `app_segment_analyses`
+   * est vide et aucune corde de référence n'existe, donc `virage` vaut `null`
+   * sur toutes les séances actuelles. La position, elle, est toujours là — on
+   * peut montrer le point exact sur le tracé sans rien calculer.
+   *
+   * `null` si la trame retenue ne portait pas de position exploitable.
+   */
+  position: { lat: number; lon: number } | null;
+  /**
    * Écart entre le marqueur et la trame retenue. Dit la PRÉCISION de la
    * résolution : un écart de 800 ms se lit autrement qu'un écart de 20 ms.
    * `null` quand aucune trame n'a pu être retenue.
@@ -228,6 +240,7 @@ export function resoudreMarqueur(
     vitesseEntreeKmh: null,
     decelerationG: null,
     distanceCordeM: null,
+    position: null,
     ecartTrameMs: null,
   };
 
@@ -254,6 +267,7 @@ export function resoudreMarqueur(
     vitesseEntreeKmh: nombreFini(trame.speedKmh) && trame.speedKmh >= 0 ? trame.speedKmh : null,
     decelerationG: decelerationAvant(trames, instantMs),
     distanceCordeM: situe?.distanceM ?? null,
+    position: positionne(trame) ? { lat: trame.lat, lon: trame.lon } : null,
     ecartTrameMs: ecart,
   };
 }

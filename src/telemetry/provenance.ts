@@ -206,6 +206,14 @@ export const BANQUE: readonly Grandeur[] = [
       'Rendue seulement si une trame se trouve à moins d’une seconde. Dans un freinage, une seconde d’écart vaut trente kilomètres-heure d’erreur : on préfère se taire.',
   },
   {
+    cle: 'marqueur.position',
+    nom: 'Où le pilote se trouvait au marqueur',
+    prov: 'M',
+    source: 'Latitude et longitude de la trame la plus proche de l’instant.',
+    convention:
+      'Mesure DIRECTE : elle ne dépend d’aucune géométrie de circuit. C’est la seule grandeur du marqueur qui reste lisible quand aucune corde de référence n’existe — le cas de toutes les séances au 02/08/2026.',
+  },
+  {
     cle: 'marqueur.deceleration',
     nom: 'Freinage avant un marqueur',
     prov: 'M',
