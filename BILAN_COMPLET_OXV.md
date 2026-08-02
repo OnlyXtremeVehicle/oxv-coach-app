@@ -673,9 +673,9 @@ Aucun autre `fetch(` externe trouvé (grep https:// exhaustif sur src/app/supaba
 | Connexion | Fichier(s) | Statut | Manque/note |
 |---|---|---|---|
 | Appairage site→app (code 8 car. → magiclink) | src/services/pairingService.ts:33 → edge `pair-app` (déployée v2, **source hors repo**) ; tables `app_pairing_codes`/`app_pairing_redeem_attempts` en prod | À VÉRIFIER | source edge non versionnée ici ; test bout-en-bout réel INCONNU |
-| Partage progression `oxvehicle.fr/share/{token}` | sharesService.ts:58 + RPC `get_shared_progression` (:167) | À FINIR | la page `/share/{token}` côté site : existence INCONNUE depuis ce repo (« ou un futur micro-site », sharesService.ts:7) |
+| Partage progression `www.oxvehicle.fr/share/{token}` | sharesService.ts + RPC `get_shared_progression` | À FINIR | **MESURÉ le 02/08/2026** : la route rend 200 mais affiche `page-home` — le destinataire voit la page commerciale. La page est écrite, sur une branche du dépôt du site NON MERGÉE. Ce n'est plus une inconnue : c'est un merge en attente. |
 | Catalogue partenaires | `partner_offers`/`partner_accounts`/`partner_leads` (13/13/12 occ.) ; app/(app)/catalogue.tsx, partenaire/[id].tsx | FINIE côté app | 0 ligne `partner_offers` en prod → catalogue vide tant que le site n'alimente pas |
-| Vue AR in-lens | `https://app.oxvehicle.fr/ar-view` WebView, app/(coach)/ar.tsx:84 | À FINIR | le commentaire :81-83 dit « peut ne pas être encore en ligne » — repli sobre géré ; route site à construire |
+| Vue AR in-lens | `MetaMirror`, natif — app/(coach)/ar.tsx | **CLOSE (31/07/2026)** | La WebView vers `app.oxvehicle.fr/ar-view` a été RETIRÉE : le sous-domaine n'a jamais existé et ne sera pas créé. Aucune route site à construire. La vue in-lens réelle est native et existait déjà. |
 | Emails documents (branche courante) | edge `send-document-status` + trigger sur `public.documents` (table site, 5 lignes prod) | À VÉRIFIER | dépend du secret Vault + de l'UPDATE admin côté site |
 | TV Pavillon | `design-retours/maquettes-tv/tv-accueil.html` (429 lignes, commit 8fe0cd6) | PAS COMMENCÉE (code) | maquette statique uniquement, rien de branché |
 | Snippets circuit à porter au site | `web-snippets/` (app/circuit, components/CircuitMap, data/hauteSaintonge.ts…) | À FINIR | livrable pour le site, intégration côté site INCONNUE |

@@ -569,36 +569,75 @@ côté base.
 
 ---
 
-## D-22 — Les deux liens de l'app vers le site tombent sur un 404
+## D-22 — Le lien de partage ouvre la page d'accueil du site
 
-**Relevé le 31/07/2026**, à partir du constat de l'équipe du site et vérifié
-côté application.
+> **ATTENTION — NUMÉRO PARTAGÉ.** « D-22 » désigne aussi, dans le registre des
+> décisions (`docs/programme-v3/OXV_Dossier_Raccordement_Site.md:229` et
+> `docs/CE_QUI_ME_MANQUE.md:101`), le choix du mécanisme `app_pairing_codes` —
+> un sujet sans rapport. Dire « D-22 est fermé » sans préciser le registre est
+> donc ambigu : une équipe comprendra que l'appairage est tranché, l'autre que
+> les liens sont réparés. Ici, D-22 = **le registre de dette**, les liens.
 
-Le site sert bien sa racine, mais **toutes ses routes profondes rendent un 404
-réel** — la réécriture SPA de Vercel ne s'applique pas. L'application pose
-exactement deux liens vers une route profonde, et les deux sont donc morts
-aujourd'hui :
+> **Mesuré à nouveau le 02/08/2026, dans le DOM.** Le titre et le contenu de
+> cette entrée ont été refaits : ils décrivaient des 404, ce qui était faux.
 
-| Lien | Source | Ce qui se passe |
+### Ce qui était écrit, et pourquoi c'était faux
+
+L'entrée d'origine s'intitulait « Les deux liens de l'app vers le site tombent
+sur un 404 » et affirmait que « toutes ses routes profondes rendent un 404
+réel ». **Aucune des deux URL n'a jamais rendu de 404 au 02/08.** Elles rendent
+200 — c'est plus difficile à détecter, pas moins gênant.
+
+Un lecteur appliquant la consigne finale (« à re-tester ») aurait lu deux fois
+200, conclu que le site avait livré son correctif, et clos la dette. L'un des
+deux liens serait resté cassé.
+
+### État mesuré au 02/08/2026
+
+| Lien | Source | Ce qui se passe RÉELLEMENT |
 |---|---|---|
-| `www.oxvehicle.fr/compte-sessions` | `src/features/club/passLogic.ts:143` | Le pilote touche « réserver une journée » depuis `club/pass`, son navigateur s'ouvre sur un 404 |
-| `oxvehicle.fr/share/<jeton>` | `src/services/sharesService.ts:58` | Tout lien de partage produit par l'application est mort — la route `/share` n'existe même pas dans le routeur du site |
+| `www.oxvehicle.fr/compte-sessions` | `src/features/club/passLogic.ts:143` | **RÉSOLU.** La route existe. Un visiteur déconnecté voit la section `page-login` (« Bon retour en piste. / Se connecter. ») — comportement correct d'une page de compte. |
+| `www.oxvehicle.fr/share/<jeton>` | `src/services/sharesService.ts` | **OUVERT.** 200, mais la section rendue est `page-home` : le destinataire voit la page commerciale (« Trois offres. Une exigence. »), pas la progression du pilote. |
 
-**Aucun code n'est corrigé ici, et c'est délibéré.** Les deux URL sont les
-bonnes destinations. Le site porte un correctif de réécriture déjà committé,
-non encore vérifié en déploiement. Rebrancher l'application sur la racine pour
-contourner une panne de serveur en cours de réparation dégraderait
-durablement le parcours et serait à défaire.
+### Comment vérifier — et comment NE PAS vérifier
 
-**Ce qui rendrait le geste nécessaire** : que le correctif du site ne parte pas.
-À re-tester alors, et à trancher.
+Le site sert **un seul document contenant 64 sections `page-*`**. Chercher
+`id="page-compte-sessions"` dans le HTML ne prouve donc RIEN sur cette route :
+l'identifiant est présent pour les 64 pages, y compris quand la page affichée est
+tout autre. Ce contrôle réussit à l'identique que la route marche ou non.
+
+Ce qui décide : ouvrir l'URL et lire **quelle section est visible**.
+`document.querySelectorAll('[id^="page-"]')` filtré sur `getClientRects().length`.
+Au 02/08, `page-share` est ABSENTE des 64 — la page n'est pas déployée.
+
+### Où en est la réparation
+
+La page `/share` est écrite et vérifiée, sur une branche du dépôt du site non
+poussée (5 commits d'avance sur `origin/main`). **Ce n'est plus du
+développement, c'est un merge.** Tant qu'il n'a pas lieu, tout lien de partage
+émis ouvre la page d'accueil.
+
+### Ce qui a été fait côté application le 02/08
+
+- Les URL visent `www` et non l'apex : mesuré, `oxvehicle.fr` répond **307**, et
+  tous les clients ne suivent pas les redirections.
+- Le compteur de vues n'affiche plus « 0 vue » : il ne peut pas bouger tant que
+  la page n'est pas servie, et un zéro se lit comme une audience mesurée.
+- La phrase « passé ce délai, le lien cesse de répondre » disait faux — le lien
+  répond, avant comme après. C'est l'ACCÈS AUX DONNÉES qui expire.
 
 **Le `.catch()` de `pass.tsx:137` ne protège de rien ici** : `Linking.openURL`
-ne rejette que faute de navigateur. Une page 404 s'ouvre avec succès. Aucune
-détection n'est possible côté application.
+ne rejette que faute de navigateur. Une page qui répond 200 s'ouvre avec succès,
+quel que soit son contenu. Aucune détection n'est possible côté application.
 
-**Dégât réel à ce jour : nul.** Un seul lien de partage existe en production, et
-il est déjà expiré. Personne n'a encore pu tomber sur ces 404.
+### Dégât
+
+**À ce jour : nul.** Un seul lien de partage existe en production, déjà expiré.
+
+Mais l'ancienne formulation — « personne n'a encore pu tomber sur ces 404 » —
+parlait du passé en le présentant comme un état stable. Rien n'empêche un pilote
+de créer un lien neuf aujourd'hui ; il tomberait sur la page d'accueil, et le
+compteur ne le dirait pas.
 
 ---
 

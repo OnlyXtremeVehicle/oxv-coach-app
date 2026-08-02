@@ -223,8 +223,12 @@ export default function ProPartageScreen() {
                         ? link.includedMetrics.map((k) => METRIC_LABEL.get(k) ?? k).join(' · ')
                         : 'Aucune métrique exposée'}
                     </Text>
+                    {/* Même règle que côté pilote : un compteur qui ne peut pas
+                        bouger ne s'affiche pas comme une audience. */}
                     <Text style={s.shareMeta}>
-                      {link.viewCount} vue{link.viewCount > 1 ? 's' : ''}
+                      {link.viewCount > 0
+                        ? `${link.viewCount} vue${link.viewCount > 1 ? 's' : ''}`
+                        : 'Aucune ouverture enregistrée'}
                     </Text>
                     {st.active ? (
                       <View style={s.actions}>

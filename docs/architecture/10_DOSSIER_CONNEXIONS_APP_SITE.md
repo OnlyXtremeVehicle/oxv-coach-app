@@ -4251,7 +4251,16 @@ Il existe pourtant un écran de lecture in-app, `app/(app)/share/[token].tsx`. I
 
 ### La vue AR servie par `app.oxvehicle.fr/ar-view`
 
-Vérifié dans le code : `app/(coach)/ar.tsx:99`, `const AR_VIEW_URL = 'https://app.oxvehicle.fr/ar-view'`.
+> **CETTE VÉRIFICATION EST PÉRIMÉE (02/08/2026).** `AR_VIEW_URL` n'existe plus
+> nulle part dans `app/` ni `src/`, pas plus que l'import de `react-native-webview`.
+> La WebView a été retirée le 31/07/2026 et le sous-domaine ne sera pas créé.
+>
+> C'était le marqueur `[APP]` de ce dossier — celui que l'en-tête présente comme
+> « vérifié dans le code, chemin et ligne donnés », donc le plus fiable des
+> trois. Une vérification datée et chiffrée qui a cessé d'être vraie coûte plus
+> cher qu'une absence de vérification : elle est crue sans être recontrôlée.
+
+~~Vérifié dans le code : `app/(coach)/ar.tsx:99`, `const AR_VIEW_URL = 'https://app.oxvehicle.fr/ar-view'`.~~
 
 Cet écran est **réservé au coach** (il vit sous `app/(coach)/`, gardé par rôle) et concerne les lunettes Ray-Ban Display portées **au bord de piste**. L'en-tête du fichier (lignes 5 à 34) pose la doctrine : jamais côté pilote, des faits et jamais une consigne, matériel en avant-première donc marqué « EXPÉRIMENTAL ».
 

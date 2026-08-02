@@ -419,8 +419,14 @@ export default function GalerieScreen() {
               />
             ))}
           </View>
+          {/* CE QUE LA DATE FAIT VRAIMENT. La phrase disait « le lien cesse de
+              répondre » — il répond, et rendra la même chose avant comme après.
+              Ce qui expire, c'est l'ACCÈS AUX DONNÉES : la lecture est refusée
+              passé la date. Dire l'un pour l'autre laissait croire à une porte
+              qui se ferme alors que c'est le contenu qui se retire. */}
           <Text style={styles.sheetNote}>
-            Passé ce délai, le lien cesse de répondre. Aucun partage ne reste ouvert indéfiniment.
+            Passé cette date, le lien ne donne plus accès à vos données. Aucun partage ne reste
+            ouvert indéfiniment.
           </Text>
 
           <SectionHeader eyebrow="CE QUI EST EXPOSÉ" />
@@ -621,12 +627,23 @@ function PartagesTab({
   );
 }
 
+/**
+ * Ce qu'on dit d'un lien, sans rien inventer.
+ *
+ * LE COMPTEUR NE S'AFFICHE QUE S'IL A QUELQUE CHOSE À DIRE. « 0 vue » se lit
+ * comme une mesure d'audience — « personne ne l'a ouvert » — alors que le
+ * compteur n'est incrémenté que par la lecture de la page de partage. Tant que
+ * cette page n'est pas servie, il ne PEUT pas bouger : le pilote lisait un zéro
+ * qui ne distinguait pas « personne n'est venu » de « rien ne peut compter ».
+ *
+ * La doctrine interdit le zéro fabriqué. On se tait donc jusqu'à la première
+ * ouverture réelle. Relevé par l'audit des liens sortants du 02/08/2026.
+ */
 function shareSubLabel(sh: ShareLink): string {
   const parts: string[] = [];
-  parts.push(`${sh.viewCount} ${sh.viewCount > 1 ? 'vues' : 'vue'}`);
-  if (sh.expiresAt !== null) parts.push(`expire le ${formatDateShort(sh.expiresAt)}`);
-  else parts.push('sans expiration');
-  return parts.join(' · ');
+  if (sh.viewCount > 0) parts.push(`${sh.viewCount} ${sh.viewCount > 1 ? 'vues' : 'vue'}`);
+  if (sh.expiresAt !== null) parts.push(`valable jusqu'au ${formatDateShort(sh.expiresAt)}`);
+  return parts.length > 0 ? parts.join(' · ') : 'Aucune ouverture enregistrée';
 }
 
 // ---------------------------------------------------------------------------

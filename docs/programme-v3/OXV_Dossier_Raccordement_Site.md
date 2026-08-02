@@ -228,6 +228,10 @@ Le calcul de profondeur pour l'agrégation des trajectoires demande **environ un
 
 ## D-22 · `app_pairing_codes`
 
+> **NUMÉRO PARTAGÉ.** « D-22 » désigne aussi, dans `docs/DETTE.md`, une dette
+> sans rapport (les liens de l'app vers le site). Préciser le registre en
+> parlant de « D-22 ». Ici : **le registre des décisions**, l'appairage.
+
 **Constat.** La table existe et compte **zéro ligne**. Le mécanisme n'a jamais fonctionné.
 
 **Bonne nouvelle** : le modèle de réservation retenu — panier pré-rempli, authentification partagée — **rend l'appairage moins critique**. Le pilote se connecte simplement au site avec son compte.

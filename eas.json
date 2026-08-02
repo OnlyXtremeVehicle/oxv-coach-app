@@ -22,7 +22,7 @@
       "autoIncrement": true,
       "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
+        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "mirror.oxvehicle.fr"
       },
       "android": {
         "buildType": "apk"
@@ -36,7 +36,7 @@
       "autoIncrement": true,
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "oxvehicle.fr"
+        "EXPO_PUBLIC_PLAUSIBLE_DOMAIN": "mirror.oxvehicle.fr"
       },
       "android": {
         "buildType": "app-bundle"

@@ -20,8 +20,18 @@ technique ne peut l'atténuer.
 (`app.oxvehicle.fr/ar-view`) est chargée dans une WebView de l'application.
 Aujourd'hui elle ne peut rien afficher.
 
-**À ajouter** : soit le sous-domaine et la page `ar-view`, soit une décision de
-la servir ailleurs — auquel cas l'application doit être corrigée.
+> **PÉRIMÉ AU 31/07/2026 — NE RIEN CONSTRUIRE ICI.**
+>
+> Le sous-domaine `app.oxvehicle.fr` **n'a jamais existé** : ni chez le
+> registrar, ni parmi les domaines déclarés au projet Vercel. Arbitrage du
+> fondateur : il ne sera pas créé.
+>
+> La WebView qui le consommait a été **retirée de l'application** (commit
+> 5854345). La vraie vue in-lens (`MetaMirror`) est native et existait déjà.
+>
+> Il n'y a donc **rien à faire côté site**. Ce paragraphe est conservé pour
+> qu'on ne le redécouvre pas dans six mois comme une tâche en attente — et
+> parce que ce document a déjà été transmis tel quel à l'équipe du site.
 
 ### 2. Le site annonce l'application pour le printemps 2027
 
