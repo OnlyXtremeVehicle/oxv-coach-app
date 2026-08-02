@@ -24,6 +24,15 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
 
+/**
+ * Un compte, ou son absence.
+ *
+ * `null` = la lecture n'a pas abouti. Afficher « 0 » dirait qu'on a compté.
+ */
+function compte(v: number | null): string {
+  return typeof v === 'number' && Number.isFinite(v) ? String(v) : '—';
+}
+
 export default function AnalytiqueScreen() {
   const [data, setData] = useState<BusinessAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +98,8 @@ export default function AnalytiqueScreen() {
                   {data.totalSessions}
                 </Text>
                 <Text style={s.statLabel}>Séances complétées</Text>
-                <Text style={s.heroSub}>{data.sessions30d} sur les 30 derniers jours</Text>
+                {/* « — » et jamais « 0 » : un compte inconnu se tait. */}
+                <Text style={s.heroSub}>{compte(data.sessions30d)} sur les 30 derniers jours</Text>
               </Card>
 
               <View style={s.row}>
@@ -103,17 +113,17 @@ export default function AnalytiqueScreen() {
               <View style={{ marginTop: theme.spacing.xl }}>
                 <SectionLabel>COMMUNAUTÉ</SectionLabel>
                 <View style={[s.row, { marginTop: theme.spacing.sm }]}>
-                  <MiniStat label="Pilotes" value={String(data.pilotsCount)} />
-                  <MiniStat label="Coachs" value={String(data.coachesCount)} />
-                  <MiniStat label="Partenaires" value={String(data.partnersValidated)} />
+                  <MiniStat label="Pilotes" value={compte(data.pilotsCount)} />
+                  <MiniStat label="Coachs" value={compte(data.coachesCount)} />
+                  <MiniStat label="Partenaires" value={compte(data.partnersValidated)} />
                 </View>
               </View>
 
               <View style={{ marginTop: theme.spacing.xl }}>
                 <SectionLabel>ÉVÉNEMENTS</SectionLabel>
                 <View style={[s.row, { marginTop: theme.spacing.sm }]}>
-                  <MiniStat label="Total" value={String(data.eventsTotal)} />
-                  <MiniStat label="À venir" value={String(data.eventsUpcoming)} />
+                  <MiniStat label="Total" value={compte(data.eventsTotal)} />
+                  <MiniStat label="À venir" value={compte(data.eventsUpcoming)} />
                 </View>
               </View>
 

@@ -11,14 +11,21 @@ import { supabase } from '@/lib/supabase';
 
 export interface BusinessAnalytics {
   totalSessions: number;
-  sessions30d: number;
   uniquePilots: number;
   avgMarginPct: number | null;
-  pilotsCount: number;
-  coachesCount: number;
-  partnersValidated: number;
-  eventsTotal: number;
-  eventsUpcoming: number;
+  /**
+   * SIX COMPTES QUI PEUVENT VALOIR « INCONNU ».
+   *
+   * `null` = la requête a échoué. Ils valaient `number` et retombaient sur `0` :
+   * « 0 pilote · 0 coach · 0 partenaire validé » s'affichait comme un fait sur
+   * l'écran même où l'on juge la santé de la plateforme.
+   */
+  sessions30d: number | null;
+  pilotsCount: number | null;
+  coachesCount: number | null;
+  partnersValidated: number | null;
+  eventsTotal: number | null;
+  eventsUpcoming: number | null;
 }
 
 /** Charge le tableau de bord business. `null` si la lecture de base échoue. */
@@ -66,15 +73,34 @@ export async function loadBusinessAnalytics(now: Date): Promise<BusinessAnalytic
     supabase.from('events').select('*', { count: 'exact', head: true }).gte('starts_at', nowIso),
   ]);
 
+  // CHAQUE COMPTE LIT SON ERREUR.
+  //
+  // Les six requêtes `head: true` étaient déstructurées sans jamais consulter
+  // `error` : Supabase rend alors `count: null`, et `?? 0` transformait chacune
+  // en un compte de zéro. « 0 pilote », « 0 coach », « 0 partenaire validé »
+  // s'affichaient comme des faits mesurés alors que la lecture avait échoué —
+  // et c'est l'écran sur lequel on juge la santé de la plateforme.
+  //
+  // Relevé par la cartographie du 02/08/2026.
   return {
     totalSessions: sessions.length,
-    sessions30d: sessions30d.count ?? 0,
+    sessions30d: compte(sessions30d),
     uniquePilots,
     avgMarginPct,
-    pilotsCount: pilots.count ?? 0,
-    coachesCount: coaches.count ?? 0,
-    partnersValidated: partners.count ?? 0,
-    eventsTotal: eventsTotal.count ?? 0,
-    eventsUpcoming: eventsUpcoming.count ?? 0,
+    pilotsCount: compte(pilots),
+    coachesCount: compte(coaches),
+    partnersValidated: compte(partners),
+    eventsTotal: compte(eventsTotal),
+    eventsUpcoming: compte(eventsUpcoming),
   };
+}
+
+/**
+ * Un compte lu, ou `null` si la lecture n'a pas abouti.
+ *
+ * `null` n'est pas `0`. Le premier se tait, le second affirme.
+ */
+function compte(res: { count: number | null; error: unknown }): number | null {
+  if (res.error !== null && res.error !== undefined) return null;
+  return typeof res.count === 'number' && Number.isFinite(res.count) ? res.count : null;
 }

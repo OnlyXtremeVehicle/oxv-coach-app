@@ -132,13 +132,17 @@ export default function AnalyseSessionScreen() {
                     value={String(diag.segmentCount)}
                     tone={diag.segmentCount === 0 ? 'warn' : 'ok'}
                   />
+                  {/* LA VALEUR DE LA MARGE N'A PAS SA PLACE ICI.
+                      Cet écran sert à VÉRIFIER qu'une analyse a bien tourné, pas
+                      à lire la conduite de quelqu'un. Il affichait « 34% ·
+                      confortable » : l'indicateur central du pilote, son chiffre
+                      roi, sous les yeux de l'administrateur qui n'a aucune
+                      raison de le connaître. On dit désormais si l'analyse
+                      EXISTE — le fait technique — et rien de son contenu.
+                      Relevé par la cartographie du 02/08/2026. */}
                   <Row
-                    label="Marge globale"
-                    value={
-                      diag.hasAnalysis && diag.marginGlobal != null
-                        ? `${Math.round(diag.marginGlobal)}% · ${diag.marginZone ?? '—'}`
-                        : 'absente'
-                    }
+                    label="Analyse de marge"
+                    value={diag.hasAnalysis ? 'calculée' : 'absente'}
                     tone={diag.hasAnalysis ? 'ok' : 'warn'}
                     sub={
                       diag.hasAnalysis

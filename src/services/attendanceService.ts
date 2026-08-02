@@ -53,7 +53,14 @@ export async function listTodayAttendance(): Promise<AttendanceSession[]> {
     .select('id, date, start_time, end_time, format, is_private, private_client_name, circuit_id')
     .eq('date', dayIso)
     .order('start_time', { ascending: true });
-  if (sessionsError || !sessions || sessions.length === 0) return [];
+  // UNE PANNE N'EST PAS UNE JOURNÉE SANS SÉANCE.
+  //
+  // Les deux rendaient `[]`, et l'écran de pointage affichait « aucune séance
+  // aujourd'hui » aussi bien quand il n'y en avait pas que quand la lecture
+  // avait échoué. Le jour J, au portail, c'est la différence entre « personne
+  // n'est attendu » et « je ne sais pas qui est attendu ».
+  if (sessionsError) throw new Error(sessionsError.message);
+  if (!sessions || sessions.length === 0) return [];
 
   // Résout le nom du circuit de chaque journée (M6), une requête groupée.
   const circuitIds = [...new Set(sessions.map((s) => s.circuit_id).filter(Boolean))] as string[];

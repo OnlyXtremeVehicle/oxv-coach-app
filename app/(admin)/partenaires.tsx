@@ -68,7 +68,10 @@ export default function AdminPartnersScreen() {
     reload();
   }
 
-  const newLeads = leadCounts?.new ?? 0;
+  // `?? 0` affichait « 0 lead nouveau à traiter » pendant le chargement ET en
+  // cas d'échec, hors du StateWrapper qui ne couvre que la liste plus bas.
+  // L'administrateur pouvait passer devant sans voir qu'on n'avait rien lu.
+  const newLeads = leadCounts?.new ?? null;
   const state: ScreenState = loading
     ? 'loading'
     : error
@@ -89,8 +92,14 @@ export default function AdminPartnersScreen() {
           Comptes & leads
         </Text>
         <Text style={s.summary}>
-          <Text style={s.summaryNum}>{newLeads}</Text> lead{newLeads > 1 ? 's' : ''} nouveau
-          {newLeads > 1 ? 'x' : ''} à traiter.
+          {newLeads === null ? (
+            <Text style={s.summaryNum}>—</Text>
+          ) : (
+            <>
+              <Text style={s.summaryNum}>{newLeads}</Text> lead{newLeads > 1 ? 's' : ''} nouveau
+              {newLeads > 1 ? 'x' : ''} à traiter.
+            </>
+          )}
         </Text>
 
         <View style={{ marginTop: theme.spacing.lg }}>
