@@ -58,6 +58,12 @@
 
 import { type EvenementFil, type FilSeance, assembleFil } from '@/features/coach/filSeanceLogic';
 import { supabase } from '@/lib/supabase';
+import {
+  type BorneTour,
+  type TrameMarqueur,
+  phraseMarqueur,
+  resoudreMarqueur,
+} from '@/telemetry/marqueur';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { formatChronoTenths } from '@/utils/format';
 
@@ -69,6 +75,11 @@ interface Morceau {
 
 const RIEN: Morceau = { evenements: [], panne: false };
 const PANNE: Morceau = { evenements: [], panne: true };
+
+/** Un nombre exploitable — les frontières non typées en rendent rarement. */
+function nombreFini(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v);
+}
 
 /** Convertit un horodatage ISO en ms, ou null s'il est absent ou illisible. */
 function instant(iso: string | null | undefined): number | null {
@@ -252,10 +263,69 @@ async function toursBoucles(captureId: string): Promise<Morceau> {
   return { evenements, panne: false };
 }
 
-async function annotationsCoach(captureId: string): Promise<Morceau> {
+/**
+ * Les trames de la capture, pour resoudre les marqueurs.
+ *
+ * Chargees SEULEMENT si au moins une annotation porte un marqueur : lire des
+ * milliers de trames pour un fil qui n'en a pas besoin serait du gachis, et le
+ * fil doit rester ouvrable au bord d'une piste.
+ */
+async function tramesPourMarqueurs(captureId: string): Promise<TrameMarqueur[]> {
+  const { data, error } = await supabase
+    .from('telemetry_frames')
+    .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x')
+    .eq('session_id', captureId)
+    .order('elapsed_ms', { ascending: true });
+
+  if (error || !Array.isArray(data)) return [];
+
+  // PostgREST rend le NUMERIC en CHAINE : sans coercition, chaque comparaison
+  // serait lexicographique et le resolveur travaillerait sur du texte.
+  return (data as Record<string, unknown>[]).map((r) => ({
+    elapsedMs: Number(r.elapsed_ms),
+    lat: r.latitude === null ? null : Number(r.latitude),
+    lon: r.longitude === null ? null : Number(r.longitude),
+    speedKmh: r.speed_kmh === null ? null : Number(r.speed_kmh),
+    gForceX: r.g_force_x === null ? null : Number(r.g_force_x),
+  }));
+}
+
+/**
+ * Bornes de tour en ms ECOULEES, pour situer un marqueur dans un tour.
+ *
+ * Les tours portent des horodatages ABSOLUS, les trames un temps ECOULE depuis
+ * le debut de la capture. On ramene les bornes sur la meme origine — sans quoi
+ * la comparaison n'aurait aucun sens et chaque marqueur tomberait hors tour.
+ */
+async function bornesDesTours(captureId: string, debutIso: string | null): Promise<BorneTour[]> {
+  const debut = instant(debutIso);
+  if (debut === null) return [];
+
+  const { data, error } = await supabase
+    .from('laps')
+    .select('lap_number, started_at, ended_at')
+    .eq('session_id', captureId)
+    .order('lap_number', { ascending: true });
+
+  if (error || !Array.isArray(data)) return [];
+
+  return (data as Record<string, unknown>[])
+    .map((r): BorneTour | null => {
+      const d = instant(r.started_at as string | null);
+      const f = instant(r.ended_at as string | null);
+      const n = r.lap_number;
+      if (d === null || f === null || !nombreFini(n)) return null;
+      return { numero: n, debutMs: d - debut, finMs: f - debut };
+    })
+    .filter((b): b is BorneTour => b !== null);
+}
+
+async function annotationsCoach(captureId: string, debutIso: string | null): Promise<Morceau> {
   const { data, error } = await supabase
     .from('coach_annotations')
-    .select('id, body, corner_index, lap_index, created_at, audio_url')
+    .select(
+      'id, body, corner_index, lap_index, created_at, audio_url, marker_elapsed_ms, marker_lat, marker_lon'
+    )
     .eq('telemetry_session_id', captureId)
     .is('deleted_at', null)
     .order('created_at', { ascending: true });
@@ -263,7 +333,16 @@ async function annotationsCoach(captureId: string): Promise<Morceau> {
   if (error) return PANNE;
   if (!Array.isArray(data)) return RIEN;
 
-  const evenements = (data as Record<string, unknown>[])
+  const lignes = data as Record<string, unknown>[];
+
+  // LE MARQUEUR EST RESOLU A LA LECTURE, jamais stocke resolu — c'est la lettre
+  // du plan. On ne charge les trames que s'il y a quelque chose a resoudre.
+  const aResoudre = lignes.some((r) => nombreFini(r.marker_elapsed_ms));
+  const [trames, bornes] = aResoudre
+    ? await Promise.all([tramesPourMarqueurs(captureId), bornesDesTours(captureId, debutIso)])
+    : [[] as TrameMarqueur[], [] as BorneTour[]];
+
+  const evenements = lignes
     .map((row): EvenementFil | null => {
       const corps = row.body;
       const aAudio = typeof row.audio_url === 'string' && row.audio_url.length > 0;
@@ -271,15 +350,27 @@ async function annotationsCoach(captureId: string): Promise<Morceau> {
       if ((typeof corps !== 'string' || corps.trim().length === 0) && !aAudio) return null;
       const virage = row.corner_index;
       const tour = row.lap_index;
+
+      // UN MARQUEUR POSE : on le resout ICI. Ce que le calcul rend PRIME sur les
+      // index saisis a la main — la mesure sait ou etait le pilote, la saisie
+      // dit ou le coach croyait qu'il etait.
+      const m = nombreFini(row.marker_elapsed_ms)
+        ? resoudreMarqueur(row.marker_elapsed_ms, trames, bornes, [])
+        : null;
+      const faits = m !== null ? phraseMarqueur(m) : null;
+      const texte = typeof corps === 'string' && corps.trim().length > 0 ? corps : null;
+
       return {
         id: `annotation-${String(row.id)}`,
         registre: 'coach',
         instantMs: instant(row.created_at as string | null),
-        tour: typeof tour === 'number' && Number.isFinite(tour) ? tour : null,
-        virage: typeof virage === 'number' && Number.isFinite(virage) ? virage : null,
+        tour: m?.tour ?? (nombreFini(tour) ? tour : null),
+        virage: m?.virage ?? (nombreFini(virage) ? virage : null),
         // Écran LU PAR LE COACH : c'est SA note, pas celle d'un tiers.
-        titre: aAudio ? 'Votre note vocale' : 'Votre note',
-        corps: typeof corps === 'string' && corps.trim().length > 0 ? corps : null,
+        titre: m !== null ? 'Votre marqueur' : aAudio ? 'Votre note vocale' : 'Votre note',
+        // Les FAITS d'abord, la note ensuite : il a vu, la machine dit ou et
+        // quoi, personne n'interprete.
+        corps: [faits, texte].filter(Boolean).join(' — ') || null,
       };
     })
     .filter((e): e is EvenementFil => e !== null);
@@ -340,11 +431,21 @@ export async function chargerFilSeance(captureId: string): Promise<FilCharge> {
     return { fil: assembleFil([]), panne: false };
   }
 
+  // Origine des temps de la capture : les trames comptent en ms ECOULEES, les
+  // tours en horodatages absolus. Sans cette origine, aucun marqueur ne peut
+  // etre situe dans un tour.
+  const { data: seance } = await supabase
+    .from('telemetry_sessions')
+    .select('started_at')
+    .eq('id', captureId)
+    .maybeSingle();
+  const debutIso = (seance as { started_at?: string | null } | null)?.started_at ?? null;
+
   const morceaux = await Promise.all([
     lectureGlobale(captureId).catch(() => PANNE),
     margesParVirage(captureId).catch(() => PANNE),
     toursBoucles(captureId).catch(() => PANNE),
-    annotationsCoach(captureId).catch(() => PANNE),
+    annotationsCoach(captureId, debutIso).catch(() => PANNE),
     intentionPilote(captureId).catch(() => PANNE),
   ]);
 

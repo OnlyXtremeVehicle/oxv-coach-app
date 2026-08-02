@@ -1432,6 +1432,9 @@ export type Database = {
           deleted_at: string | null
           id: string
           lap_index: number | null
+          marker_elapsed_ms: number | null
+          marker_lat: number | null
+          marker_lon: number | null
           marker_s_norm: number | null
           pilot_id: string
           telemetry_session_id: string | null
@@ -1448,6 +1451,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           lap_index?: number | null
+          marker_elapsed_ms?: number | null
+          marker_lat?: number | null
+          marker_lon?: number | null
           marker_s_norm?: number | null
           pilot_id: string
           telemetry_session_id?: string | null
@@ -1464,6 +1470,9 @@ export type Database = {
           deleted_at?: string | null
           id?: string
           lap_index?: number | null
+          marker_elapsed_ms?: number | null
+          marker_lat?: number | null
+          marker_lon?: number | null
           marker_s_norm?: number | null
           pilot_id?: string
           telemetry_session_id?: string | null
@@ -3784,138 +3793,6 @@ export type Database = {
           },
         ]
       }
-      duels: {
-        Row: {
-          challenger_id: string
-          challenger_lap_number: number | null
-          challenger_lap_s: number | null
-          challenger_session_id: string | null
-          circuit_id: string
-          created_at: string
-          id: string
-          message: string | null
-          opponent_id: string | null
-          opponent_lap_number: number | null
-          opponent_lap_s: number | null
-          opponent_session_id: string | null
-          resolved_at: string | null
-          status: Database["public"]["Enums"]["duel_status"]
-          updated_at: string
-        }
-        Insert: {
-          challenger_id: string
-          challenger_lap_number?: number | null
-          challenger_lap_s?: number | null
-          challenger_session_id?: string | null
-          circuit_id: string
-          created_at?: string
-          id?: string
-          message?: string | null
-          opponent_id?: string | null
-          opponent_lap_number?: number | null
-          opponent_lap_s?: number | null
-          opponent_session_id?: string | null
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["duel_status"]
-          updated_at?: string
-        }
-        Update: {
-          challenger_id?: string
-          challenger_lap_number?: number | null
-          challenger_lap_s?: number | null
-          challenger_session_id?: string | null
-          circuit_id?: string
-          created_at?: string
-          id?: string
-          message?: string | null
-          opponent_id?: string | null
-          opponent_lap_number?: number | null
-          opponent_lap_s?: number | null
-          opponent_session_id?: string | null
-          resolved_at?: string | null
-          status?: Database["public"]["Enums"]["duel_status"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "duels_challenger_id_fkey"
-            columns: ["challenger_id"]
-            isOneToOne: false
-            referencedRelation: "admin_ritual_dispatches_view"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "duels_challenger_id_fkey"
-            columns: ["challenger_id"]
-            isOneToOne: false
-            referencedRelation: "coach_pilots_view"
-            referencedColumns: ["pilot_id"]
-          },
-          {
-            foreignKeyName: "duels_challenger_id_fkey"
-            columns: ["challenger_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "duels_challenger_session_id_fkey"
-            columns: ["challenger_session_id"]
-            isOneToOne: false
-            referencedRelation: "day_rollups"
-            referencedColumns: ["best_session_id"]
-          },
-          {
-            foreignKeyName: "duels_challenger_session_id_fkey"
-            columns: ["challenger_session_id"]
-            isOneToOne: false
-            referencedRelation: "telemetry_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "duels_circuit_id_fkey"
-            columns: ["circuit_id"]
-            isOneToOne: false
-            referencedRelation: "circuits"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "duels_opponent_id_fkey"
-            columns: ["opponent_id"]
-            isOneToOne: false
-            referencedRelation: "admin_ritual_dispatches_view"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "duels_opponent_id_fkey"
-            columns: ["opponent_id"]
-            isOneToOne: false
-            referencedRelation: "coach_pilots_view"
-            referencedColumns: ["pilot_id"]
-          },
-          {
-            foreignKeyName: "duels_opponent_id_fkey"
-            columns: ["opponent_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "duels_opponent_session_id_fkey"
-            columns: ["opponent_session_id"]
-            isOneToOne: false
-            referencedRelation: "day_rollups"
-            referencedColumns: ["best_session_id"]
-          },
-          {
-            foreignKeyName: "duels_opponent_session_id_fkey"
-            columns: ["opponent_session_id"]
-            isOneToOne: false
-            referencedRelation: "telemetry_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       eligibility_items: {
         Row: {
           document_id: string | null
@@ -4418,6 +4295,7 @@ export type Database = {
           prenom: string
           session_pref: string | null
           statut: string
+          user_id: string | null
           vehicule: string | null
           yousign_request_id: string | null
         }
@@ -4431,6 +4309,7 @@ export type Database = {
           prenom: string
           session_pref?: string | null
           statut?: string
+          user_id?: string | null
           vehicule?: string | null
           yousign_request_id?: string | null
         }
@@ -4444,8 +4323,49 @@ export type Database = {
           prenom?: string
           session_pref?: string | null
           statut?: string
+          user_id?: string | null
           vehicule?: string | null
           yousign_request_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "founding_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ritual_dispatches_view"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "founding_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "coach_pilots_view"
+            referencedColumns: ["pilot_id"]
+          },
+          {
+            foreignKeyName: "founding_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      founding_submit_attempts: {
+        Row: {
+          created_at: string
+          id: number
+          ip_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          ip_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          ip_hash?: string
         }
         Relationships: []
       }
@@ -7747,6 +7667,7 @@ export type Database = {
           ai_debrief_enabled: boolean
           avatar_url: string | null
           bio: string | null
+          biometry_asked_at: string | null
           biometry_capture_consent_at: string | null
           biometry_coach_share_consent_at: string | null
           birth_date: string | null
@@ -7770,6 +7691,8 @@ export type Database = {
           expo_push_token: string | null
           ffsa_license: string | null
           first_name: string | null
+          founder_number: number | null
+          founder_since: string | null
           id: string
           is_admin: boolean | null
           kyc_status: Database["public"]["Enums"]["kyc_status_enum"] | null
@@ -7822,6 +7745,7 @@ export type Database = {
           ai_debrief_enabled?: boolean
           avatar_url?: string | null
           bio?: string | null
+          biometry_asked_at?: string | null
           biometry_capture_consent_at?: string | null
           biometry_coach_share_consent_at?: string | null
           birth_date?: string | null
@@ -7845,6 +7769,8 @@ export type Database = {
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
+          founder_number?: number | null
+          founder_since?: string | null
           id?: string
           is_admin?: boolean | null
           kyc_status?: Database["public"]["Enums"]["kyc_status_enum"] | null
@@ -7897,6 +7823,7 @@ export type Database = {
           ai_debrief_enabled?: boolean
           avatar_url?: string | null
           bio?: string | null
+          biometry_asked_at?: string | null
           biometry_capture_consent_at?: string | null
           biometry_coach_share_consent_at?: string | null
           birth_date?: string | null
@@ -7920,6 +7847,8 @@ export type Database = {
           expo_push_token?: string | null
           ffsa_license?: string | null
           first_name?: string | null
+          founder_number?: number | null
+          founder_since?: string | null
           id?: string
           is_admin?: boolean | null
           kyc_status?: Database["public"]["Enums"]["kyc_status_enum"] | null
@@ -8989,6 +8918,7 @@ export type Database = {
           weather_status: Database["public"]["Enums"]["weather_status_enum"]
         }[]
       }
+      share_public_view: { Args: { p_token: string }; Returns: Json }
       should_send_notif: {
         Args: {
           notif: string
@@ -9021,13 +8951,6 @@ export type Database = {
         | "id_card"
         | "insurance_road"
         | "insurance_track"
-      duel_status:
-        | "pending"
-        | "accepted"
-        | "declined"
-        | "completed"
-        | "expired"
-        | "cancelled"
       email_status_enum: "sent" | "delivered" | "bounced" | "opened"
       event_partner_status: "invited" | "confirmed" | "declined"
       event_registration_status:
@@ -9245,14 +9168,6 @@ export const Constants = {
         "id_card",
         "insurance_road",
         "insurance_track",
-      ],
-      duel_status: [
-        "pending",
-        "accepted",
-        "declined",
-        "completed",
-        "expired",
-        "cancelled",
       ],
       email_status_enum: ["sent", "delivered", "bounced", "opened"],
       event_partner_status: ["invited", "confirmed", "declined"],
