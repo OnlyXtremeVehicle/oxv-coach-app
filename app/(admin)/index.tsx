@@ -34,7 +34,12 @@ const VIEWS: { href: string; label: string; description: string }[] = [
   {
     href: '/(admin)/en-cours',
     label: 'En cours',
-    description: 'État Bluetooth en temps réel pendant la session.',
+    // AUCUN CANAL TEMPS RÉEL N'EXISTE dans tout `app/(admin)/` — vérifié :
+    // zéro `.channel(`, zéro `postgres_changes`, zéro `.subscribe(` sur les
+    // 31 fichiers. L'écran visé le dit lui-même dans son pied de page. Une
+    // promesse que le code dément fait chercher une panne là où il n'y a
+    // qu'une absence. Relevé le 02/08/2026 ; le temps réel reste à faire.
+    description: 'Pilotes en roulage, lus à l’ouverture de l’écran.',
   },
   {
     href: '/(admin)/devices',

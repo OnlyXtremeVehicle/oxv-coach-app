@@ -130,7 +130,15 @@ export default function AdminAmbassadeursScreen() {
                       accessibilityLabel={`Activer ${a.pilotName}`}
                       accessibilityState={{ busy: busy === a.id }}
                       disabled={busy === a.id}
-                      hitSlop={6}
+                      // PAS DE hitSlop HORIZONTAL. « Activer » et « Révoquer »
+                      // sont frères, séparés de 8 px : deux débordements de 6 px
+                      // se recouvrent sur 4 px, et le dernier rendu rafle le
+                      // toucher destiné à l'autre. Ici les deux actions sont
+                      // OPPOSÉES — on active quelqu'un en croyant le révoquer.
+                      // Le piège a déjà mordu deux fois dans ce dépôt ; la
+                      // hauteur de cible vient du minHeight de 40, qui
+                      // n'empiète sur personne.
+                      hitSlop={{ top: 8, bottom: 8 }}
                       onPress={() => onSet(a, 'active')}
                       style={({ pressed }) => [s.actionBtn, pressed && { opacity: 0.8 }]}
                     >
@@ -143,7 +151,7 @@ export default function AdminAmbassadeursScreen() {
                       accessibilityLabel={`Révoquer ${a.pilotName}`}
                       accessibilityState={{ busy: busy === a.id }}
                       disabled={busy === a.id}
-                      hitSlop={6}
+                      hitSlop={{ top: 8, bottom: 8 }}
                       onPress={() => onSet(a, 'revoked')}
                       style={({ pressed }) => [s.actionBtn, pressed && { opacity: 0.8 }]}
                     >
@@ -203,7 +211,8 @@ const s = {
   },
   actions: {
     flexDirection: 'row' as const,
-    gap: theme.spacing.sm,
+    // `spacing.lg` et non `sm` : deux actions opposées ne se touchent pas.
+    gap: theme.spacing.lg,
     marginTop: theme.spacing.md,
   },
   actionBtn: {

@@ -33,6 +33,14 @@ export default function MaintenanceScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [maintenance, setMaintenance] = useState(false);
+  /**
+   * L'ÉTAT RÉELLEMENT ENREGISTRÉ, distinct de celui de l'interrupteur.
+   *
+   * Sans cette distinction, le bandeau « Kill-switch ARMÉ » affirmait que
+   * l'application était bloquée pour tous dès qu'on touchait le Switch — avant
+   * toute écriture. On disait un fait qui n'existait pas encore.
+   */
+  const [enBase, setEnBase] = useState(false);
   const [message, setMessage] = useState('');
   const [minVersion, setMinVersion] = useState('');
 
@@ -42,10 +50,17 @@ export default function MaintenanceScreen() {
     setError(false);
     loadAppConfig()
       .then((c) => {
-        if (cancelled || !c) {
+        if (cancelled) return;
+        // `loadAppConfig` rend `null` sur ERREUR. L'écran restait alors sur ses
+        // valeurs initiales — `maintenance = false` — et affichait donc que
+        // l'application n'était PAS bloquée, sans rien savoir. Un kill-switch
+        // dont on ignore l'état doit le dire, pas rassurer.
+        if (!c) {
+          setError(true);
           setLoading(false);
           return;
         }
+        setEnBase(c.maintenanceMode);
         setMaintenance(c.maintenanceMode);
         setMessage(c.maintenanceMessage ?? '');
         setMinVersion(c.minSupportedVersion ?? '');
@@ -73,6 +88,10 @@ export default function MaintenanceScreen() {
       minSupportedVersion: minVersion.trim() ? minVersion.trim() : null,
     });
     setSaving(false);
+    // L'état enregistré ne suit que l'écriture RÉUSSIE : c'est ce qui permet au
+    // bandeau de dire la vérité, et à l'avertissement « non enregistrée » de
+    // rester affiché tant que la base n'a pas pris la modification.
+    if (res.ok) setEnBase(maintenance);
     Toast.show({
       type: res.ok ? 'success' : 'error',
       text1: res.ok ? 'Configuration enregistrée.' : (res.error ?? 'Échec de l’enregistrement.'),
@@ -97,10 +116,24 @@ export default function MaintenanceScreen() {
             Maintenance & version
           </Text>
 
-          {maintenance ? (
+          {/* LE BANDEAU DIT L'ÉTAT ENREGISTRÉ, PAS CELUI DE L'INTERRUPTEUR.
+              Il suivait l'état local, que le Switch modifie AVANT tout
+              enregistrement : basculer l'interrupteur affichait aussitôt
+              « l'app est actuellement bloquée pour tous » alors que rien
+              n'était encore écrit. Relevé le 02/08/2026. */}
+          {enBase ? (
             <Card style={{ borderColor: theme.palette.red, marginTop: theme.spacing.lg }}>
               <Text style={s.armed}>
                 Kill-switch ARMÉ — l’app est actuellement bloquée pour tous.
+              </Text>
+            </Card>
+          ) : null}
+
+          {maintenance !== enBase ? (
+            <Card style={{ marginTop: theme.spacing.lg }}>
+              <Text style={s.rowHint}>
+                Modification non enregistrée. Elle ne prendra effet qu&apos;après avoir touché
+                Enregistrer.
               </Text>
             </Card>
           ) : null}

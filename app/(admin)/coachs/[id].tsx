@@ -119,12 +119,54 @@ export default function AdminCoachDetailScreen() {
 
   async function onToggleActive(a: AssignmentRow, next: boolean) {
     const result = await toggleAssignmentActive(a.id, next);
-    if (result.ok) await reload();
+    if (result.ok) {
+      await reload();
+      return;
+    }
+    // Sans cette branche, l'interrupteur revenait à sa place sans un mot et
+    // l'administrateur croyait avoir agi.
+    Alert.alert('Rien n’a changé', result.error ?? 'La base a refusé l’écriture.');
   }
 
+  /**
+   * FORCER LE CONSENTEMENT — le geste le plus lourd de cet écran.
+   *
+   * Il inscrit, au nom d'un pilote, qu'il a consenti à ce qu'un coach lise ses
+   * séances. Il s'exécutait d'un seul toucher, sans confirmation, et son échec
+   * était ignoré : `if (result.ok) await reload()` sans branche `else`. Un refus
+   * de la base laissait donc l'écran inchangé, et l'administrateur repartait en
+   * croyant le consentement enregistré.
+   *
+   * CE QUE CE CORRECTIF NE RÈGLE PAS, et qu'il faut savoir : la base n'inscrit
+   * AUCUN AUTEUR. `coach_pilots` ne porte pas la colonne, aucun déclencheur
+   * d'audit ne couvre la table. En cas de contestation, rien ne dit qui a posé
+   * ce consentement ni quand. Cela demande une migration — consigné en D-30.
+   *
+   * Relevé par la cartographie du 02/08/2026.
+   */
   async function onForceConsent(a: AssignmentRow) {
-    const result = await forcePilotConsent(a.id);
-    if (result.ok) await reload();
+    Alert.alert(
+      'Consentement sur papier signé',
+      'Vous allez inscrire que ce pilote a consenti à ce que ce coach lise ses séances. ' +
+        'Ne le faites que si vous détenez son accord écrit. Ce geste ne conserve pas votre ' +
+        "nom : la base n'enregistre pas qui l'a posé.",
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Inscrire le consentement',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await forcePilotConsent(a.id);
+            if (result.ok) {
+              await reload();
+              return;
+            }
+            // L'échec se disait par le silence. Il se dit maintenant.
+            Alert.alert('Rien n’a été inscrit', result.error ?? 'La base a refusé l’écriture.');
+          },
+        },
+      ]
+    );
   }
 
   async function onSendInvitation() {

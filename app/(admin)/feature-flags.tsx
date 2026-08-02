@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, Switch, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -91,14 +91,39 @@ export default function FeatureFlagsScreen() {
     reload();
   }
 
+  /**
+   * SUPPRIMER UN DRAPEAU N'EST PAS UN GESTE ORDINAIRE.
+   *
+   * Ces drapeaux commandent des fonctions vivantes de l'espace pilote —
+   * biométrie, décharges, convois, paiements, statut fondateur. En effacer un
+   * d'un seul toucher éteint une fonction pour tout le monde, sans retour
+   * possible depuis cet écran : il faut le recréer à la main, avec la bonne
+   * clé, et personne ne se souvient de son état exact.
+   *
+   * Relevé par la cartographie du 02/08/2026.
+   */
   async function onDelete(flag: FeatureFlag) {
-    const res = await deleteFlag(flag.key);
-    if (res.ok) {
-      haptics.tap();
-      reload();
-    } else {
-      Toast.show({ type: 'error', text1: 'La suppression a échoué.' });
-    }
+    Alert.alert(
+      'Supprimer ce drapeau',
+      `« ${flag.key} » sera retiré. La fonction qu'il commande prendra sa valeur par défaut ` +
+        'pour tous les comptes, immédiatement. Ce retrait ne se défait pas depuis cet écran.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await deleteFlag(flag.key);
+            if (res.ok) {
+              haptics.tap();
+              reload();
+            } else {
+              Toast.show({ type: 'error', text1: 'La suppression a échoué.' });
+            }
+          },
+        },
+      ]
+    );
   }
 
   const state: ScreenState = loading

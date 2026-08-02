@@ -44,9 +44,15 @@ export async function detectSessionAnomalies(limit = 100): Promise<SessionAnomal
     .select('id, user_id, name, circuit_name, started_at, status, total_frames')
     .order('started_at', { ascending: false })
     .limit(limit);
+  // Un échec de lecture n'est pas « aucune anomalie » : c'est le contraire
+  // d'une bonne nouvelle, et l'écran doit pouvoir le dire.
   if (error || !sessions) {
     if (error) console.warn('[OXV][admin] detectSessionAnomalies :', error.message);
-    return [];
+    throw new Error(
+      typeof error === 'object' && error !== null && 'message' in error
+        ? String((error as { message: unknown }).message)
+        : 'lecture impossible'
+    );
   }
 
   const ids = sessions.map((s) => s.id);

@@ -33,7 +33,8 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 const ADMIN = '#22D3EE';
 
 const LINKS: { href: string; label: string; hint: string }[] = [
-  { href: '/(admin)/en-cours', label: 'En cours', hint: 'État Bluetooth en temps réel' },
+  // Même correction : la promesse de temps réel n'était tenue nulle part.
+  { href: '/(admin)/en-cours', label: 'En cours', hint: 'Lu à l’ouverture' },
   { href: '/(admin)/scan-checkin', label: 'Scan présence', hint: 'Pointer les arrivées' },
   { href: '/(admin)/qualite-data', label: 'Qualité data', hint: 'Sessions à surveiller' },
   { href: '/(admin)/evenements', label: 'Événements', hint: 'Gérer et inscrire' },
@@ -48,6 +49,16 @@ function timeWindow(startsAt: string, endsAt: string): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * Un compte, ou son absence.
+ *
+ * `null` = la lecture n'a pas abouti. La doctrine impose « — » : un zéro
+ * fabriqué se lit comme une mesure, et ici il se lirait comme « personne ».
+ */
+function compte(v: number | null): string {
+  return typeof v === 'number' && Number.isFinite(v) ? String(v) : '—';
 }
 
 export default function TourControleScreen() {
@@ -105,7 +116,12 @@ export default function TourControleScreen() {
 
           {/* Chiffre dominant : pilotes attendus aujourd'hui. */}
           <View style={s.heroRow}>
-            <Text style={s.hero}>{ct?.expectedPilots ?? 0}</Text>
+            {/* « — » ET JAMAIS « 0 ».
+                Ces quatre comptes retombaient sur zéro dès qu'une lecture
+                échouait : le réseau coupé affichait le tableau d'une journée où
+                personne ne serait venu, et l'administrateur y lisait un fait.
+                Un compte inconnu se tait. Relevé le 02/08/2026. */}
+            <Text style={s.hero}>{compte(ct?.expectedPilots ?? null)}</Text>
             <Text style={s.heroLabel}>
               {(ct?.expectedPilots ?? 0) > 1 ? 'pilotes attendus' : 'pilote attendu'}
             </Text>
@@ -113,12 +129,20 @@ export default function TourControleScreen() {
 
           {/* Comptes secondaires. */}
           <View style={s.factsRow}>
-            <Fact value={String(ct?.checkedInPilots ?? 0)} label="pointés" />
-            <Fact value={String(ct?.sessionsToday ?? 0)} label="sessions du jour" />
+            <Fact value={compte(ct?.checkedInPilots ?? null)} label="pointés" />
+            <Fact value={compte(ct?.sessionsToday ?? null)} label="sessions du jour" />
             <Fact
-              value={String(ct?.anomaliesCount ?? 0)}
+              value={compte(ct?.anomaliesCount ?? null)}
               label="à surveiller"
-              tone={(ct?.anomaliesCount ?? 0) > 0 ? 'warn' : 'ok'}
+              // Une anomalie INCONNUE n'est pas une anomalie absente : on ne
+              // colore pas en « tout va bien » ce qu'on n'a pas pu lire.
+              tone={
+                ct?.anomaliesCount === null || ct?.anomaliesCount === undefined
+                  ? 'warn'
+                  : ct.anomaliesCount > 0
+                    ? 'warn'
+                    : 'ok'
+              }
             />
           </View>
 

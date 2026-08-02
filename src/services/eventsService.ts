@@ -128,8 +128,14 @@ export async function listEvents(): Promise<AdminEvent[]> {
     .order('starts_at', { ascending: false })
     .limit(200);
   if (error) {
+    // UN ÉCHEC DE LECTURE N'EST PAS UNE JOURNÉE SANS ÉVÉNEMENT.
+    //
+    // Rendre `[]` ici faisait afficher « 0 pilote attendu » au tour de contrôle
+    // quand la requête avait simplement échoué. L'administrateur en concluait
+    // que personne ne venait. On lève : l'appelant décide, et il ne le peut
+    // qu'en sachant. Relevé par la cartographie du 02/08/2026.
     console.warn('[OXV][admin][events] listEvents :', error.message);
-    return [];
+    throw new Error(error.message);
   }
   return (data ?? []).map((r) => mapEvent(r as Record<string, unknown>));
 }
@@ -250,8 +256,10 @@ export async function listEventRegistrations(eventId: string): Promise<EventRegi
     .eq('event_id', eventId)
     .order('created_at', { ascending: true });
   if (error) {
+    // Même règle : zéro inscrit et lecture impossible sont deux états
+    // différents, et seul le second doit se dire.
     console.warn('[OXV][admin][events] listEventRegistrations :', error.message);
-    return [];
+    throw new Error(error.message);
   }
   return (data ?? []).map((row: Record<string, unknown>) => {
     const joined = row.users as

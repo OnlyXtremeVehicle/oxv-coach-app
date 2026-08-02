@@ -1,13 +1,29 @@
 /**
- * Admin vue 2 — En cours.
+ * Admin — En piste.
  *
- * Suivi temps réel de la session : état BLE des équipements en piste,
- * pilotes en roulage vs paddock. V1 : structure visuelle ; le live state
- * vient des subscriptions Supabase Realtime sur `telemetry_sessions`
- * (à câbler quand on aura plusieurs équipements simultanés).
+ * Qui roule en ce moment, lu à l'ouverture de l'écran. **Rien ne se met à jour
+ * tout seul** : aucun canal Supabase Realtime n'existe dans `app/(admin)/` —
+ * vérifié le 02/08/2026, zéro `.channel(` sur les 31 fichiers. L'en-tête
+ * annonçait « Suivi temps réel de la session » et « état BLE des équipements » :
+ * les deux étaient faux, et l'écran ne lit aucune donnée Bluetooth.
  *
- * Reskin V2 : Screen + AppBar, Card. Accent bronze conservé (couleur de
- * rôle admin). Logique de données inchangée.
+ * ---
+ *
+ * DES NUMÉROS, PAS DES NOMS — ET AUCUN CLASSEMENT
+ *
+ * *« Les numéros en piste sont des numéros, pas des noms. Aucun chrono, aucun
+ * ordre de performance : BOARD_MODE = 'A'. »* — Plan de montage, Jalon 7.
+ *
+ * L'écran affichait l'état civil des pilotes et les triait par heure de départ
+ * décroissante — le dernier parti en tête, donc un ordre de passage, donc une
+ * hiérarchie. Il ordonne maintenant par NUMÉRO DE VOITURE croissant, via
+ * `compareCarNo` : la règle unique du dépôt, déjà écrite et verrouillée par
+ * test, qui n'était branchée que sur le roster du coach.
+ *
+ * L'administrateur surveille la piste. Il n'identifie personne depuis ici, et
+ * il ne classe personne.
+ *
+ * Garde : `src/services/__tests__/tableauDePisteAdmin.guard.test.ts`.
  */
 
 import { useEffect, useState } from 'react';
@@ -15,6 +31,7 @@ import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
+import { compareCarNo } from '@/services/boardLogic';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -26,12 +43,23 @@ import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 // Cyan = identité de rôle admin (canon fondateur 2026-07-06, ex-bronze).
 const ADMIN = '#22D3EE';
 
+/**
+ * Ce que l'administrateur voit passer depuis son poste.
+ *
+ * UN NUMÉRO, PAS UN NOM. « Les numéros en piste sont des numéros, pas des
+ * noms » — Plan de montage, Jalon 7 Phase 6. L'écran lisait
+ * `users(first_name, last_name)` et affichait l'état civil : c'est ce que
+ * l'administrateur a sous les yeux au bord de la piste, et ce n'est pas ce
+ * qu'il y voit passer. Relevé par la cartographie du 02/08/2026.
+ */
 interface LiveSession {
   id: string;
   userId: string;
-  pilotName: string;
+  /** Numéro de voiture. `null` si le pilote n'en a pas déclaré. */
+  carNo: number | null;
   startedAt: string;
-  lapCount: number;
+  /** `null` = non mesuré. Jamais 0 : la colonne est nullable en base. */
+  lapCount: number | null;
   status: string;
 }
 
@@ -48,9 +76,13 @@ export default function EnCoursScreen() {
     (async () => {
       const { data, error } = await supabase
         .from('telemetry_sessions')
-        .select('id, user_id, started_at, lap_count, status, users(first_name, last_name)')
+        .select('id, user_id, started_at, lap_count, status, users(car_number)')
         .eq('status', 'recording')
-        .order('started_at', { ascending: false })
+        // AUCUN ORDRE DE PERFORMANCE. Le tri était `started_at` décroissant —
+        // le dernier parti en tête —, ce qui est un ordre de passage, donc une
+        // hiérarchie. `BOARD_MODE = 'A'` l'interdit. L'ordre est posé plus bas
+        // par `compareCarNo`, la règle unique du dépôt : par NUMÉRO croissant,
+        // pour retrouver sa voiture d'un coup d'œil, et rien d'autre.
         .limit(20);
       if (cancelled) return;
       if (error) {
@@ -58,20 +90,30 @@ export default function EnCoursScreen() {
         setLoading(false);
         return;
       }
-      setSessions(
-        (data ?? []).map((row) => {
-          const u = row.users as { first_name: string | null; last_name: string | null } | null;
-          const name = u ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : '';
-          return {
-            id: row.id,
-            userId: row.user_id ?? '',
-            pilotName: name || `Pilote ${(row.user_id ?? '').slice(0, 8)}`,
-            startedAt: row.started_at ?? '',
-            lapCount: row.lap_count ?? 0,
-            status: row.status ?? 'unknown',
-          };
-        })
+      const lignes: LiveSession[] = (data ?? []).map((row) => {
+        const u = row.users as { car_number: number | null } | null;
+        const brut = u?.car_number;
+        return {
+          id: row.id,
+          userId: row.user_id ?? '',
+          carNo: typeof brut === 'number' && Number.isFinite(brut) ? brut : null,
+          startedAt: row.started_at ?? '',
+          // `?? 0` fabriquait « 0 tour » sur une colonne nullable : un pilote
+          // qui vient de partir et un pilote dont on n'a rien mesuré
+          // s'affichaient pareil.
+          lapCount: typeof row.lap_count === 'number' ? row.lap_count : null,
+          status: row.status ?? 'unknown',
+        };
+      });
+      // La règle d'ordre du dépôt, déjà écrite et verrouillée par test — elle
+      // n'était branchée que sur le roster coach.
+      lignes.sort((a, b) =>
+        compareCarNo(
+          { carNo: a.carNo, tieBreak: a.startedAt },
+          { carNo: b.carNo, tieBreak: b.startedAt }
+        )
       );
+      setSessions(lignes);
       setLoading(false);
     })();
     return () => {
@@ -111,19 +153,29 @@ export default function EnCoursScreen() {
           <View style={{ gap: theme.spacing.sm }}>
             {sessions.map((session) => (
               <Card key={session.id} style={{ borderColor: ADMIN }}>
-                <Text style={s.pilotName}>{session.pilotName}</Text>
+                {/* Le numéro, ou « — » s'il n'en a pas déclaré. Jamais un nom :
+                    l'administrateur surveille la piste, il n'identifie pas des
+                    personnes depuis cet écran. */}
+                <Text style={s.pilotName}>
+                  {session.carNo !== null ? `N° ${session.carNo}` : 'Numéro non déclaré'}
+                </Text>
                 <Text style={s.meta}>
                   Départ <Text style={s.metaNum}>{timeOnly(session.startedAt)}</Text> ·{' '}
-                  <Text style={s.metaNum}>{session.lapCount}</Text> tour
-                  {session.lapCount > 1 ? 's' : ''}
+                  <Text style={s.metaNum}>{session.lapCount ?? '—'}</Text> tour
+                  {(session.lapCount ?? 0) > 1 ? 's' : ''}
                 </Text>
               </Card>
             ))}
           </View>
         </StateWrapper>
 
+        {/* Cette note dit VRAI — aucun canal temps réel n'existe dans l'espace
+            admin. Ce sont le hub et le tour de contrôle qui annoncent à tort
+            « État Bluetooth en temps réel » ; ils ont été corrigés, pas cette
+            phrase-ci. */}
         <Text style={s.footnote}>
-          Données rafraîchies à l&apos;ouverture. Suivi temps réel en V1.1.
+          Données lues à l&apos;ouverture de l&apos;écran, et à chaque « Réessayer ». Aucun
+          rafraîchissement automatique.
         </Text>
       </View>
     </Screen>
