@@ -52,6 +52,7 @@ import {
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { getMyNextTrackDay } from '@/services/nextTrackDayService';
 import { resolveDaySessionId } from '@/features/rec/attendancePublicService';
+import { lienOuvrable } from '@/features/vous/profilLogic';
 import * as convoysService from '@/services/v2/convoysService';
 import {
   Chip,
@@ -915,10 +916,20 @@ function MetaCell({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * Un point de carte porte des adresses saisies à la main par un administrateur
+ * (site, Instagram, évènement, courriel). Le formulaire ne fait qu'un `trim` :
+ * `cafeducircuit.fr` arrive donc sans schéma. On complète ici plutôt que de
+ * laisser un bouton inerte.
+ */
 function LinkButton({ label, url, primary }: { label: string; url: string; primary?: boolean }) {
+  const cible = lienOuvrable(url);
+  // Pas d'adresse ouvrable → pas de bouton. Un contrôle mort vaut moins que
+  // pas de contrôle : il promet une action et n'en rend aucune.
+  if (cible === null) return null;
   return (
     <PressScale
-      onPress={() => Linking.openURL(url).catch(() => undefined)}
+      onPress={() => void Linking.openURL(cible).catch(() => undefined)}
       accessibilityLabel={label}
       style={[styles.linkBtn, primary ? styles.linkBtnPrimary : styles.linkBtnGhost]}
     >

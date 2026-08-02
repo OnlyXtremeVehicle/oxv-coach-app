@@ -25,6 +25,7 @@ import {
   identityChips,
   initials,
   isHttpUrl,
+  lienOuvrable,
   memberSince,
   normalizeHandle,
   pickCoverUri,
@@ -169,5 +170,53 @@ describe('couverture (données réelles)', () => {
   it('aucune source réelle → undefined (jamais fabriquée)', () => {
     expect(pickCoverUri([], undefined)).toBeUndefined();
     expect(pickCoverUri([media({ signedUrl: null })], '')).toBeUndefined();
+  });
+});
+
+/**
+ * LE HELPER QUI DÉCIDE SI UN BOUTON EXISTE.
+ *
+ * Sans lui, `Linking.openURL('instagram.com/x')` rejette, le `.catch()` avale,
+ * et l'utilisateur touche un contrôle qui ne fait RIEN — sans message, sans
+ * trace, indéfiniment. C'est le pire des états : il croit l'application cassée.
+ */
+describe('lienOuvrable', () => {
+  it('complète le schéma manquant — personne ne tape « https:// »', () => {
+    expect(lienOuvrable('instagram.com/monpseudo')).toBe('https://instagram.com/monpseudo');
+    expect(lienOuvrable('cafeducircuit.fr')).toBe('https://cafeducircuit.fr');
+    expect(lienOuvrable('  oxvehicle.fr/circuit  ')).toBe('https://oxvehicle.fr/circuit');
+  });
+
+  it('ne réécrit pas un schéma déjà choisi', () => {
+    expect(lienOuvrable('https://x.fr')).toBe('https://x.fr');
+    expect(lienOuvrable('http://x.fr')).toBe('http://x.fr');
+    expect(lienOuvrable('mailto:a@b.fr')).toBe('mailto:a@b.fr');
+    expect(lienOuvrable('tel:+33600000000')).toBe('tel:+33600000000');
+  });
+
+  it('une adresse électronique nue devient un mailto', () => {
+    expect(lienOuvrable('accueil@cafeducircuit.fr')).toBe('mailto:accueil@cafeducircuit.fr');
+  });
+
+  it('une PHRASE n’est pas une adresse', () => {
+    // Cas réel du champ « Email de contact » : « Contact : accueil@… » a été
+    // saisi tel quel. Un espace suffit à trancher.
+    expect(lienOuvrable('Contact : accueil@x.fr')).toBe(null);
+    expect(lienOuvrable('voir avec le patron')).toBe(null);
+  });
+
+  it('ce qui ne ressemble à rien d’ouvrable rend null', () => {
+    expect(lienOuvrable('brouillon')).toBe(null);
+    expect(lienOuvrable('')).toBe(null);
+    expect(lienOuvrable('   ')).toBe(null);
+    expect(lienOuvrable(null)).toBe(null);
+    expect(lienOuvrable(undefined)).toBe(null);
+  });
+
+  it('ne fabrique pas une adresse à partir d’un schéma non navigable', () => {
+    // `javascript:` et `file:` ne doivent jamais être complétés ni ouverts au
+    // motif qu'ils « ressemblent » à quelque chose.
+    expect(lienOuvrable('javascript:alert(1)')).toBe(null);
+    expect(lienOuvrable('file:///etc/passwd')).toBe(null);
   });
 });

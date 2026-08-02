@@ -924,3 +924,34 @@ pilote n'est notifié d'un repère que le coach s'est posé à lui-même.
 
 **Dégât réel : nul.** 0 annotation, 0 compte coach — le bouton n'a jamais pu
 être pressé.
+
+---
+
+## D-29 — Ce que l'audit des liens sortants a trouvé et que je n'ai pas traité
+
+**Relevé le 02/08/2026** par l'audit adversarial des liens app → site (107
+agents, 4 sondes : URL, partage de bout en bout, affirmations des documents,
+promesses d'interface). 51 constats bruts, 27 retenus après réfutation, 7 angles
+morts ajoutés par le critique de complétude.
+
+Ce qui suit est **confirmé et non corrigé**. Chaque ligne dit pourquoi.
+
+| Constat | Où | Pourquoi c'est resté ouvert |
+|---|---|---|
+| Le lien App Store de l'invitation coach est invalide : `apps.apple.com/app/oxv` ne porte aucun identifiant numérique | `supabase/functions/send-coach-invitation/index.ts:61` (HTML) et `:85` (texte) | **Je ne peux pas l'inventer.** L'identifiant n'existe qu'une fois la fiche créée sur App Store Connect. Le coach reçoit un message dont l'étape 1 ne mène nulle part. À corriger au dépôt de l'application. |
+| `oxv://virage?index=…&sessionId=…` ne résout sur rien : aucune route ne s'appelle « virage » | `supabase/functions/notify-pilot-coach-annotated/index.ts:120-121`, expédié sous la clé `deepLink` | Rien ne casse aujourd'hui — le tap sur la notification passe par une autre branche qui fonctionne. Mais la charge utile transporte une adresse morte. À trancher : créer la route, ou retirer la clé. |
+| Aucun `associatedDomains` (iOS) ni `intentFilters` (Android) : un lien `https://www.oxvehicle.fr/share/<jeton>` ne peut pas être capté par l'application | `app.json:18` — seul `"scheme": "oxv"` est déclaré | Le destinataire qui a l'app installée ouvre quand même le navigateur. Décision produit + configuration du domaine côté site. Sans objet tant que la page `/share` n'est pas déployée. |
+| `"usesAppleSignIn": true` et le plugin `expo-apple-authentication` sont déclarés, mais aucun fichier n'importe ni n'appelle Apple Sign-In | `app.json:29` et `:82` | La capacité est embarquée dans chaque build iOS et réclamée par l'App ID, sans un seul bouton pour s'en servir. À trancher : brancher, ou retirer de la configuration. Toucher à `app.json` change le build. |
+| `fetchSharedProgression` n'a aucun appelant | `src/services/sharesService.ts:195` | Le lecteur sécurisé existe, personne ne l'appelle : il donne l'impression qu'un chemin de lecture existe côté app. Il n'en existe aucun. À retirer, ou à brancher le jour où l'app saura afficher un partage. |
+| Le message de parrainage ne nomme aucune adresse — « Rejoignez-moi sur OXV — ABCD1234 » — et le code n'est utilisable nulle part dans l'app | `src/features/vous/vousHubLogic.ts:201`, partagé depuis `app/(app2)/vous/index.tsx:314` | Le destinataire reçoit huit caractères et un nom. Deux défauts liés : le message est muet ET `redeem` n'a aucun appelant. Corriger le texte sans brancher la saisie ne ferait que déplacer l'impasse. Décision produit. |
+| Les documents d'un partenaire sont affichés en texte non pressable, et n'apparaissent sur aucun écran pilote | `app/(partner)/profil.tsx:167` et `:180` | Le partenaire saisit une adresse que personne ne peut ouvrir — ni lui, ni le pilote. Décision produit : exposer, ou retirer le champ. |
+
+**Ce qui a été corrigé le même jour** (voir D-22 et l'historique Git) : les URL
+d'apex, le compteur de vues fabriqué, la phrase d'expiration fausse, le
+consentement à la mesure d'audience, la garde d'apex trop étroite, les liens
+morts de la fiche pilote et des points de carte, le chemin des documents
+juridiques annoncé aux CGU, l'en-tête de la carte-souvenir.
+
+**Deux propositions attendent une décision** :
+`supabase/migrations/PROPOSITION_L31_jeton_partage_par_la_base.sql` et
+`docs/PROPOSITION_POLITIQUE_8_3.md`.

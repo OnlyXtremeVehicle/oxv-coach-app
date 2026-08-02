@@ -60,6 +60,7 @@ import { Screen } from '@/ui/Screen';
 import { SectionLabel } from '@/ui/SectionLabel';
 import { StateWrapper, type ScreenState } from '@/ui/StateWrapper';
 import { formatChronoTenths, formatDateShort } from '@/utils/format';
+import { lienOuvrable } from '@/features/vous/profilLogic';
 
 type Mode = 'browse' | 'compare';
 
@@ -603,7 +604,13 @@ function ProfileMetaSection({ pilot }: { pilot: CoachPilotRow }) {
                 key={label}
                 accessibilityRole="link"
                 accessibilityLabel={label}
-                onPress={() => url && Linking.openURL(url).catch(() => undefined)}
+                // Le pilote saisit rarement « https:// ». Sans complétion,
+                // `openURL` rejetait, le `.catch()` avalait, et le coach
+                // touchait un bouton qui ne faisait rien — définitivement.
+                onPress={() => {
+                  const cible = lienOuvrable(url);
+                  if (cible !== null) void Linking.openURL(cible).catch(() => undefined);
+                }}
                 style={{
                   minHeight: 44,
                   paddingHorizontal: theme.spacing.lg,

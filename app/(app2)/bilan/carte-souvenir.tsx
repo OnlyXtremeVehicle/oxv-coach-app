@@ -12,8 +12,12 @@
  *   — « Partager » (crème, primaire) : capture la carte en image
  *     (react-native-view-shot) → feuille de partage OS (expo-sharing). La feuille
  *     système couvre Story et Enregistrer.
- *   — bouton carré d'export (à droite) : Share.share() natif, un lien simple vers
- *     le site — le même souvenir, sans image.
+ *   — bouton carré d'export (à droite) : Share.share() natif, qui envoie le nom
+ *     du circuit et l'adresse du site. PAS « le même souvenir sans image » :
+ *     l'adresse est celle de la RACINE, sans identifiant de séance ni jeton, et
+ *     le destinataire arrive sur la page d'accueil. Rien de la séance ne part.
+ *     Cette description a été corrigée le 02/08/2026 — elle promettait un
+ *     partage de contenu là où il n'y a qu'un renvoi vers le site.
  *
  * Doctrine (OXV Moment) : le meilleur tour est un FAIT, pas un classement.
  * MethodLimitBlock + ExportWatermark posent la portée honnête AVANT le geste.

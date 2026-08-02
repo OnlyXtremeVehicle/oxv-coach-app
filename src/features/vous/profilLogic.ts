@@ -150,6 +150,47 @@ export function isHttpUrl(url: string): boolean {
 }
 
 /**
+ * L'ADRESSE TELLE QU'ON PEUT L'OUVRIR — ou `null` si on ne peut pas.
+ *
+ * `Linking.openURL` a besoin d'un schéma. Sans lui, l'appel rejette, le
+ * `.catch()` avale, et le bouton ne fait RIEN — sans message, sans trace,
+ * indéfiniment. Personne ne saisit « https:// » spontanément : un pilote tape
+ * `instagram.com/monpseudo`, un administrateur tape `cafeducircuit.fr`.
+ *
+ * On complète donc le schéma manquant plutôt que de faire disparaître le
+ * bouton : l'intention est claire, et une adresse sans `https://` reste une
+ * adresse. Ce qui ne ressemble à rien d'ouvrable rend `null`, et l'appelant
+ * n'affiche pas de bouton — un contrôle mort vaut moins que pas de contrôle.
+ *
+ * `mailto:` et `tel:` passent tels quels : ce sont des schémas valides.
+ *
+ * Relevé par l'audit des liens sortants du 02/08/2026 : la fiche pilote côté
+ * COACH ouvrait sans aucun contrôle les mêmes valeurs que l'écran pilote
+ * filtrait déjà par `isHttpUrl`.
+ */
+export function lienOuvrable(valeur: string | null | undefined): string | null {
+  if (typeof valeur !== 'string') return null;
+  const v = valeur.trim();
+  if (v.length === 0) return null;
+
+  // Un schéma déjà présent : on ne réécrit pas ce que l'auteur a choisi.
+  if (/^(https?|mailto|tel):/i.test(v)) return v;
+
+  // Un espace, et ce n'est plus une adresse mais une phrase — « Contact :
+  // accueil@… » a été saisi tel quel dans un champ « Email ».
+  if (/\s/.test(v)) return null;
+
+  // Une adresse électronique nue devient un `mailto:`.
+  if (/^[^@]+@[^@]+\.[a-z]{2,}$/i.test(v)) return `mailto:${v}`;
+
+  // Reste le cas ordinaire : un hôte, avec ou sans chemin. On exige au moins un
+  // point suivi de deux lettres, sans quoi « brouillon » deviendrait une URL.
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(\/|\?|#|$)/i.test(v)) return `https://${v}`;
+
+  return null;
+}
+
+/**
  * URI de couverture — donnée réelle uniquement, dans l'ordre :
  *  1. la photo de PROFIL la plus récente (dernière du tableau media, signée) —
  *     ainsi « changer la photo » (ajout d'un média) la promeut aussitôt ;

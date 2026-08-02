@@ -116,8 +116,15 @@ export default function CguScreen() {
             label="J'autorise le débrief enrichi par une IA (transfert de données non nominatives hors UE). Sans cela, votre débrief reste rédigé localement. Modifiable à tout moment."
           />
 
+          {/* LA PHRASE DÉSIGNAIT LE MAUVAIS ÉCRAN. Elle disait « depuis vos
+              paramètres » — or Réglages ne contient aucun texte juridique. Le
+              pilote qui coche « J'ai lu » sans avoir pu lire, et qui cherche
+              ensuite ce qu'il a accepté, faisait défiler notifications, IA et
+              données pour ne rien trouver. Les documents vivent dans
+              « Licence & documents » (vous/index.tsx:68). */}
           <Text style={[s.caption, { marginTop: spacing.xl }]}>
-            Les documents complets sont consultables à tout moment depuis vos paramètres.
+            Les documents complets sont consultables à tout moment depuis Vous, rubrique « Licence &
+            documents ».
           </Text>
         </View>
 
