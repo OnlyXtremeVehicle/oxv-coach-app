@@ -34,20 +34,55 @@ const DEBUT_MS = Date.parse(DEBUT);
 const TRAME = DEBUT_MS + 42000;
 
 describe('decideMarqueur', () => {
-  it('l’horloge du coach n’entre jamais dans le calcul', () => {
-    // `maintenantMs` est délibérément DÉCALÉ de deux minutes : il ne sert qu'à
-    // juger la fraîcheur, jamais à dater. L'instant reste 42 s.
+  it('un décalage d’horloge entre les deux téléphones ne change RIEN', () => {
+    // LE TEST QUI COMPTE, ET QUI NE PROUVAIT RIEN.
+    //
+    // Sa première version écrivait `maintenantMs: TRAME + 120000 - 120000 + 500`.
+    // Les deux termes s'annulent : c'était `TRAME + 500`, décalage NUL. Le
+    // commentaire annonçait « délibérément décalé de deux minutes » et
+    // l'arithmétique le contredisait. Il serait passé à l'identique si tout
+    // traitement du décalage avait disparu — la garde posée, non armée.
+    //
+    // Ici le coach est réellement 90 s EN AVANCE sur le pilote. La trame vient
+    // d'être reçue (300 ms) : le geste doit rester posable, et l'instant doit
+    // valoir 42 s — celui de la capture, pas celui du coach.
+    const decalage = 90000;
     const d = decideMarqueur({
       derniereTrameAtMs: TRAME,
+      receptionMs: TRAME + decalage,
       debutCaptureIso: DEBUT,
-      maintenantMs: TRAME + 120000 - 120000 + 500,
+      maintenantMs: TRAME + decalage + 300,
     });
     expect(d).toEqual({ posable: true, elapsedMs: 42000 });
+  });
+
+  it('un coach EN RETARD ne laisse pas passer une trame morte', () => {
+    // Cas miroir : sans la correction, `maintenantMs - atMs` devenait négatif et
+    // la garde ne pouvait STRUCTURELLEMENT plus se déclencher — un marqueur se
+    // posait sur une trame vieille de plusieurs minutes.
+    const d = decideMarqueur({
+      derniereTrameAtMs: TRAME,
+      receptionMs: TRAME - 60000,
+      debutCaptureIso: DEBUT,
+      maintenantMs: TRAME - 60000 + 10000,
+    });
+    expect(d).toEqual({ posable: false, motif: 'trame-perimee' });
+  });
+
+  it('sans instant de réception, on ne sait pas juger l’âge — on refuse', () => {
+    const d = decideMarqueur({
+      derniereTrameAtMs: TRAME,
+      receptionMs: null,
+      debutCaptureIso: DEBUT,
+      maintenantMs: TRAME + 100,
+    });
+    expect(d).toEqual({ posable: false, motif: 'pas-de-trame' });
   });
 
   it('désigne l’instant de la capture, pas celui du geste', () => {
     const d = decideMarqueur({
       derniereTrameAtMs: TRAME,
+      receptionMs: TRAME,
       debutCaptureIso: DEBUT,
       maintenantMs: TRAME + 900,
     });
@@ -59,6 +94,7 @@ describe('decideMarqueur', () => {
     it('aucune trame → refus nommé', () => {
       const d = decideMarqueur({
         derniereTrameAtMs: null,
+        receptionMs: TRAME,
         debutCaptureIso: DEBUT,
         maintenantMs: TRAME,
       });
@@ -70,6 +106,7 @@ describe('decideMarqueur', () => {
       // d'affichage : dater le geste là placerait le pilote où il ÉTAIT.
       const d = decideMarqueur({
         derniereTrameAtMs: TRAME,
+        receptionMs: TRAME,
         debutCaptureIso: DEBUT,
         maintenantMs: TRAME + TRAME_FRAICHE_MAX_MS + 1,
       });
@@ -79,6 +116,7 @@ describe('decideMarqueur', () => {
     it('une trame juste à la limite reste posable', () => {
       const d = decideMarqueur({
         derniereTrameAtMs: TRAME,
+        receptionMs: TRAME,
         debutCaptureIso: DEBUT,
         maintenantMs: TRAME + TRAME_FRAICHE_MAX_MS,
       });
@@ -87,7 +125,12 @@ describe('decideMarqueur', () => {
 
     it('début de capture inconnu → refus', () => {
       expect(
-        decideMarqueur({ derniereTrameAtMs: TRAME, debutCaptureIso: null, maintenantMs: TRAME })
+        decideMarqueur({
+          derniereTrameAtMs: TRAME,
+          receptionMs: TRAME,
+          debutCaptureIso: null,
+          maintenantMs: TRAME,
+        })
       ).toEqual({ posable: false, motif: 'debut-inconnu' });
     });
 
@@ -95,6 +138,7 @@ describe('decideMarqueur', () => {
       expect(
         decideMarqueur({
           derniereTrameAtMs: TRAME,
+          receptionMs: TRAME,
           debutCaptureIso: 'pas une date',
           maintenantMs: TRAME,
         })
@@ -106,6 +150,7 @@ describe('decideMarqueur', () => {
       // marqueur négatif serait illisible pour toujours.
       const d = decideMarqueur({
         derniereTrameAtMs: DEBUT_MS - 5000,
+        receptionMs: DEBUT_MS - 5000,
         debutCaptureIso: DEBUT,
         maintenantMs: DEBUT_MS - 5000,
       });

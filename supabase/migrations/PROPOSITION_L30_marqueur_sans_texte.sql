@@ -76,3 +76,56 @@ comment on constraint coach_annotations_texte_ou_marqueur on public.coach_annota
   'le coach marque en regardant la piste, il n''écrit pas. Remplir body d''un '
   'mot quelconque produirait une note fabriquée qui ressortirait dans le fil '
   'comme si le coach l''avait écrite.';
+
+-- =============================================================================
+-- SECOND BLOCAGE — `corner_index` EST NOT NULL
+--
+-- Trouvé par la revue adversariale du 02/08/2026, APRÈS que j'aie cru avoir
+-- identifié le seul défaut. Il y en avait deux.
+--
+--     corner_index INTEGER NOT NULL CHECK (corner_index BETWEEN 1 AND 7)
+--
+-- `poserMarqueur()` écrit `corner_index: null` : violation 23502. L'insertion
+-- échoue donc pour DEUX raisons indépendantes, et corriger `body` seul n'aurait
+-- rien débloqué.
+--
+-- Le typage ne pouvait pas le voir : l'objet inséré est casté `as never` — un
+-- contournement que j'avais repris du code voisin sans mesurer qu'il éteint
+-- exactement la vérification qui aurait servi ici.
+--
+-- ---------------------------------------------------------------------------
+-- POURQUOI LE VIRAGE DOIT DEVENIR NULLABLE
+--
+-- Un marqueur ne connaît PAS son virage au moment du geste. Le coach appuie en
+-- regardant la piste ; le virage se résout à la lecture, contre les cordes de
+-- référence — qui n'existent pas encore.
+--
+-- Aucune valeur ne conviendrait : la contrainte impose 1 à 7, et écrire « 1 »
+-- par défaut désignerait un virage précis que personne n'a mesuré. Ce serait la
+-- valeur fabriquée que la doctrine interdit.
+--
+-- La colonne reste NOT NULL pour une NOTE — une annotation écrite vise toujours
+-- un virage, c'est ainsi qu'elle est classée. Seul un marqueur en est dispensé.
+-- =============================================================================
+
+alter table public.coach_annotations
+  alter column corner_index drop not null;
+
+-- On maintient la borne 1..7 pour les valeurs présentes, et on exige un virage
+-- dès qu'il ne s'agit PAS d'un marqueur : une note sans virage n'aurait nulle
+-- part où se classer.
+alter table public.coach_annotations
+  drop constraint if exists coach_annotations_corner_index_check;
+
+alter table public.coach_annotations
+  add constraint coach_annotations_virage_note_ou_marqueur
+  check (
+    (corner_index is null and marker_elapsed_ms is not null)
+    or (corner_index between 1 and 7)
+  );
+
+comment on constraint coach_annotations_virage_note_ou_marqueur on public.coach_annotations is
+  'Une NOTE vise toujours un virage (1 à 7) — c''est ainsi qu''elle se classe. '
+  'Un MARQUEUR en est dispensé : il ne connaît pas son virage au moment du '
+  'geste, celui-ci se résout à la lecture contre les cordes de référence. '
+  'Écrire une valeur par défaut désignerait un virage que personne n''a mesuré.';

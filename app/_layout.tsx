@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, router, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import Toast from 'react-native-toast-message';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
@@ -181,6 +182,24 @@ export default function RootLayout() {
           <BleErrorModal />
           <UpdateModal />
           <MaintenanceGate />
+          {/*
+            L'HÔTE DES MESSAGES — il manquait.
+
+            VINGT-QUATRE fichiers appellent `Toast.show`, et aucun `<Toast />`
+            n'était monté nulle part : chaque confirmation et chaque refus de
+            l'application partait dans le vide, depuis toujours. Un pilote qui
+            enregistrait son intention, un coach dont l'envoi échouait — aucun
+            des deux ne voyait quoi que ce soit.
+
+            Trouvé par la revue adversariale du 02/08/2026, en cherchant si les
+            quatre phrases du marqueur s'affichaient. Elles ne s'affichaient pas,
+            ni elles ni les autres.
+
+            Monté EN DERNIER, donc au-dessus : un message doit passer par-dessus
+            les bandeaux et les modales, sinon il se cache derrière ce qu'il
+            commente.
+          */}
+          <Toast />
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>

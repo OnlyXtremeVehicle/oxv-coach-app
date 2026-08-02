@@ -25,7 +25,7 @@
  * expo-print ne tourne pas en Expo Go (build natif) : on le signale honnêtement.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -141,6 +141,23 @@ export default function CoachRapportScreen() {
     };
   }, [sessionId, reloadKey]);
 
+  /**
+   * CE QUI PARTIRA DANS LE DOCUMENT — calculé UNE fois.
+   *
+   * L'aperçu et la génération lisent la même liste. Deux calculs séparés
+   * finiraient par diverger, et le coach enverrait autre chose que ce qu'il a
+   * relu. Dans l'ORDRE DE LA SÉANCE, pas dans l'ordre où il a coché : le
+   * document raconte le roulage, pas la sélection.
+   */
+  const lignesRetenues = useMemo(
+    () =>
+      marqueurs
+        .filter((m) => retenus.has(m.id))
+        .map(ligneDocument)
+        .filter((l): l is string => l !== null),
+    [marqueurs, retenus]
+  );
+
   /** Retenir ou relacher un moment. Rien n'est retenu par defaut. */
   function basculeRetenu(id: string) {
     setRetenus((prev) => {
@@ -158,12 +175,8 @@ export default function CoachRapportScreen() {
       sessionId,
       coachBilan: bilan,
       startedAt: params.startedAt ?? null,
-      // Dans l'ORDRE DE LA SEANCE, pas dans l'ordre ou le coach a coche : le
-      // document raconte le roulage, pas la selection.
-      marqueurs: marqueurs
-        .filter((m) => retenus.has(m.id))
-        .map(ligneDocument)
-        .filter((l): l is string => l !== null),
+      // La MÊME liste que celle relue dans l'aperçu — cf. `lignesRetenues`.
+      marqueurs: lignesRetenues,
     });
     setGenerating(false);
     Toast.show(
@@ -259,6 +272,7 @@ export default function CoachRapportScreen() {
                           dateLabel={dateLabel}
                           coachName={coachName}
                           coachInitials={coachInitials}
+                          moments={lignesRetenues}
                         />
                       </View>
                     </View>
@@ -279,6 +293,7 @@ export default function CoachRapportScreen() {
                       dateLabel={dateLabel}
                       coachName={coachName}
                       coachInitials={coachInitials}
+                      moments={lignesRetenues}
                     />
                     <GenerateButton
                       generating={generating}
@@ -355,9 +370,14 @@ function MomentsPanel({
               accessibilityRole="checkbox"
               accessibilityState={{ checked: retenu }}
               accessibilityLabel={`${ligne}. ${retenu ? 'Retenu' : 'Non retenu'}.`}
-              hitSlop={8}
+              // PAS DE hitSlop VERTICAL : les lignes sont jointives, et un
+              // débordement de 8 px au-dessus et en dessous fait que le dernier
+              // frère rafle le toucher destiné à son voisin. Le piège a déjà
+              // mordu deux fois dans ce dépôt. La hauteur de cible vient du
+              // padding, qui lui n'empiète sur personne.
+              hitSlop={{ left: 12, right: 12 }}
               onPress={() => onToggle(m.id)}
-              style={{ paddingVertical: spacing.sm, flexDirection: 'row', gap: spacing.md }}
+              style={{ paddingVertical: spacing.md, flexDirection: 'row', gap: spacing.md }}
             >
               <Text style={[s.facts, { color: retenu ? palette.cream : palette.creamMute }]}>
                 {retenu ? '■' : '□'}
@@ -402,12 +422,22 @@ function PdfPreview({
   dateLabel,
   coachName,
   coachInitials,
+  moments,
 }: {
   studio: StudioSession;
   bilan: string;
   dateLabel: string | null;
   coachName: string;
   coachInitials: string;
+  /**
+   * Les lignes des moments RETENUS, dans l'ordre de la séance.
+   *
+   * L'aperçu les ignorait : le coach cochait, le papier ne bougeait pas, et il
+   * ne pouvait vérifier ce qu'il envoyait qu'APRÈS l'avoir envoyé. Un aperçu qui
+   * ne montre pas ce qui part n'est pas un aperçu. Relevé par la revue
+   * adversariale du 02/08/2026.
+   */
+  moments: string[];
 }) {
   const cells = [
     {
@@ -450,6 +480,19 @@ function PdfPreview({
             </View>
           ))}
         </View>
+
+        {moments.length > 0 ? (
+          <>
+            <Text style={s.paperBandLabel}>LES MOMENTS RETENUS</Text>
+            <View style={{ marginBottom: spacing.md }}>
+              {moments.map((ligne, i) => (
+                <Text key={i} style={s.paperMoment}>
+                  {ligne}
+                </Text>
+              ))}
+            </View>
+          </>
+        ) : null}
 
         <Text style={s.paperBandLabel}>LE BILAN DE VOTRE COACH</Text>
         <Text style={body ? s.paperBilan : s.paperBilanEmpty}>
@@ -663,6 +706,16 @@ const s = StyleSheet.create({
     fontFamily: fonts.monoMedium,
     fontSize: fontSize.body,
     color: INK,
+  },
+  paperMoment: {
+    fontFamily: fonts.body,
+    fontSize: 11,
+    lineHeight: 17,
+    color: INK_SOFT,
+    paddingLeft: spacing.sm,
+    borderLeftWidth: 1,
+    borderLeftColor: PAPER_LINE,
+    marginBottom: 6,
   },
   paperBandLabel: {
     fontFamily: fonts.mono,

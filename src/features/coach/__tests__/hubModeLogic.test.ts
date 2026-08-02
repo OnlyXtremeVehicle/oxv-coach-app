@@ -82,7 +82,19 @@ describe('phraseMode', () => {
   it('le jour J s’explique — sinon le coach croit à une panne', () => {
     const p = phraseMode('jour-j');
     expect(p).not.toBe(null);
-    expect(p).toMatch(/ce soir/i);
+    // Elle doit dire OÙ sont passés les outils, pas seulement qu'ils sont
+    // partis. « Rangés », « repliés », « plus bas » : une direction.
+    expect(p).toMatch(/rangé|replié|plus bas/i);
+  });
+
+  it('elle ne promet aucune heure de retour', () => {
+    // LA VERSION PRÉCÉDENTE ANNONÇAIT « les outils de fond reviennent ce soir »,
+    // et le test EXIGEAIT ce « ce soir ». Or le mode tient tant qu'une séance
+    // est arrivée aujourd'hui — donc jusqu'à MINUIT. Le test verrouillait donc
+    // la promesse fausse au lieu de la détecter. Relevé par la revue
+    // adversariale du 02/08/2026.
+    const p = phraseMode('jour-j') ?? '';
+    expect(p).not.toMatch(/ce soir|demain|dans une heure|à \d{1,2}\s?h/i);
   });
 
   it('hors journée, rien à dire : le hub est complet', () => {

@@ -83,8 +83,20 @@ export function familleVisible(famille: FamilleOutil, mode: ModeHub): boolean {
  *
  * Une phrase, pas un badge : le coach doit comprendre POURQUOI il voit moins
  * d'outils, sinon il croit à une panne. Aucune pression, aucun décompte.
+ *
+ * ELLE NE PROMET PLUS « CE SOIR ». Le mode tient tant qu'un pilote roule ou
+ * qu'une séance est arrivée aujourd'hui — donc jusqu'à minuit, pas jusqu'au
+ * soir. Une phrase qui annonce un retour à une heure que le code ne tient pas
+ * est un mensonge de plus, même petit. Relevé par la revue adversariale du
+ * 02/08/2026.
+ *
+ * Et elle dit COMMENT y accéder quand même. Le jour J RANGE les outils, il ne
+ * les supprime pas : deux d'entre eux — Programmes et Tableau de bord — n'ont
+ * aucune autre porte d'entrée (vérifié : le rail mène à `calendrier` et à
+ * `facturation`, jamais à `cycles` ni à `business`). Les filtrer les rendait
+ * inatteignables jusqu'à minuit. Le hub les replie désormais.
  */
 export function phraseMode(mode: ModeHub): string | null {
   // Hors journée, le hub est complet : rien à expliquer.
-  return mode === 'jour-j' ? 'Journée en cours — les outils de fond reviennent ce soir.' : null;
+  return mode === 'jour-j' ? 'Journée en cours. Les outils de fond sont rangés plus bas.' : null;
 }

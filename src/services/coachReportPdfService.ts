@@ -150,6 +150,17 @@ function buildReportHtml(d: ReportHtmlData): string {
   .branch-val { color: #FFB703; }
   .branch-track { height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
   .branch-fill { height: 5px; border-radius: 3px; background: #FFB703; }
+  /* LES MOMENTS RETENUS. Un <ul> nu héritait du navigateur : 16 px, blanc plein,
+     puces rondes, marges par défaut — le seul bloc du document à parler une
+     autre langue que le reste. Relevé par la revue adversariale du 02/08/2026. */
+  .moments { list-style: none; margin: 0; padding: 0; }
+  .moments li {
+    font-size: 12px; line-height: 1.6; font-weight: 300;
+    color: rgba(255,255,255,0.82);
+    padding: 8px 0 8px 14px; border-left: 1px solid rgba(255,255,255,0.14);
+    margin-bottom: 6px;
+  }
+  .moments li:last-child { margin-bottom: 0; }
   .coach-band { margin-top: 24px; padding: 16px 18px; border-left: 2px solid #C8102E; background: rgba(200,16,46,0.06); border-radius: 4px; }
   .coach-band .label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #C8102E; margin-bottom: 8px; }
   .coach-band p { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.9); margin: 0; white-space: pre-wrap; }
@@ -174,7 +185,7 @@ function buildReportHtml(d: ReportHtmlData): string {
 
   ${
     Array.isArray(d.marqueurs) && d.marqueurs.length > 0
-      ? `<p class="section-title">Les moments retenus</p><ul>${d.marqueurs
+      ? `<p class="section-title">Les moments retenus</p><ul class="moments">${d.marqueurs
           .map((m) => `<li>${escapeHtml(m)}</li>`)
           .join('')}</ul>`
       : ''

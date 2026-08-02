@@ -138,3 +138,52 @@ create index if not exists founding_members_user_idx
 --
 -- Le garde `to_regclass` suit la règle apprise le 01/08 : une fonction ne doit
 -- pas tomber parce qu'une table a disparu (cf. D-24, l'incident `duels`).
+
+-- =============================================================================
+-- PARTIE 2 — LE MARQUEUR RÉSOLU
+--
+-- AJOUTÉE AU FICHIER LE 02/08/2026, après qu'une revue adversariale a constaté
+-- que ce fichier NE CONTENAIT PAS ce qui avait été appliqué. La proposition
+-- d'origine ne portait que le statut fondateur ; les parties 2 et 3 ont été
+-- écrites dans l'appel de migration et jamais reportées ici.
+--
+-- Conséquence de l'écart : quiconque aurait reconstruit la base depuis les
+-- fichiers aurait obtenu un schéma DIFFÉRENT de la production. Le fichier doit
+-- dire ce qui a tourné, toujours.
+--
+-- « L'application ne stocke pas un horodatage, elle le résout. » On stocke ce
+-- que le GESTE produit : l'instant, et la position quand elle est connue.
+-- =============================================================================
+
+alter table public.coach_annotations
+  add column if not exists marker_elapsed_ms integer,
+  add column if not exists marker_lat numeric,
+  add column if not exists marker_lon numeric;
+
+comment on column public.coach_annotations.marker_elapsed_ms is
+  'Instant du marqueur, en ms depuis le début de la capture. Ce que le geste produit. Le tour, le virage, la vitesse et le freinage s''en déduisent à la lecture.';
+
+comment on column public.coach_annotations.marker_lat is
+  'Latitude du pilote AU MOMENT du marqueur. Mesure directe, indépendante de toute géométrie de circuit : lisible même sans corde de référence.';
+
+comment on column public.coach_annotations.marker_lon is
+  'Longitude du pilote au moment du marqueur. Voir marker_lat.';
+
+-- =============================================================================
+-- PARTIE 3 — L'EFFACEMENT DES CANDIDATURES FONDATEUR (D-27)
+--
+-- Le corps complet de `purge_user_data` tel qu'appliqué vit dans la base. Il
+-- reprend celui de `20260801150110_l10_...` avec DEUX ajouts : le bras
+-- `founding_members` (anonymisation, pas suppression — la candidature est une
+-- trace de gestion) et la remise à zéro des colonnes fondateur sur `users`.
+--
+-- Il n'est pas recopié ici pour ne pas entretenir deux versions divergentes du
+-- même corps : la source de vérité est la base, et la commande qui la lit est
+--
+--   select pg_get_functiondef(oid) from pg_proc
+--    where proname = 'purge_user_data' and pronamespace = 'public'::regnamespace;
+--
+-- Ce que le bras fait, en une ligne :
+--   update founding_members set prenom = null, nom = null, email = null,
+--          user_id = null where user_id = p_user;   -- gardé par to_regclass
+-- =============================================================================

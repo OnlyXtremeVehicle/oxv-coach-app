@@ -49,6 +49,15 @@ export function usePilotLive(sessionId: string | null): {
   bio: BiometryLiveEvent | null;
   /** Série FC des 60 dernières secondes (sparkline). Vide si aucune biométrie. */
   bioSeries: LiveBioPoint[];
+  /**
+   * Instant de RÉCEPTION de la dernière trame, sur l'horloge LOCALE.
+   *
+   * Exposé pour que l'appelant puisse juger la fraîcheur sans mélanger les
+   * horloges : `frame.atMs` vient de l'appareil du pilote, celui-ci du nôtre.
+   * Les comparer reviendrait à mesurer un âge PLUS le décalage entre deux
+   * téléphones. Même règle que `useRosterBiometry`.
+   */
+  derniereReceptionMs: number | null;
 } {
   const [frame, setFrame] = useState<LiveFrame | null>(null);
   const [conn, setConn] = useState<LiveConn>('connecting');
@@ -90,8 +99,6 @@ export function usePilotLive(sessionId: string | null): {
       },
     });
 
-    // BIO — canal PROPRE à ce coach (`live:bio:<coachId>:<sessionId>`, lot
-    // 27a-bis). Sans compte connu, on n'ouvre rien : le cardio n'a pas de
     // Tick : réévalue l'état même sans nouvelle trame (live → stale → offline).
     const tick = setInterval(() => {
       if (!active) return;
@@ -160,5 +167,8 @@ export function usePilotLive(sessionId: string | null): {
     };
   }, [sessionId, coachId]);
 
-  return { frame, conn, bio, bioSeries };
+  // `lastFrameMsRef` est une ref : sa mutation ne redéclenche pas de rendu. On
+  // la rend telle quelle — l'appelant la lit au moment où il en a besoin, à
+  // l'instant d'un geste, jamais en boucle d'affichage.
+  return { frame, conn, bio, bioSeries, derniereReceptionMs: lastFrameMsRef.current };
 }

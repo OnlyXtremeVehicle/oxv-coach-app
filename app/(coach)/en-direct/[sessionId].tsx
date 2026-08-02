@@ -94,7 +94,7 @@ export default function CockpitFocusScreen() {
   const { width } = useWindowDimensions();
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
-  const { frame, conn, bio, bioSeries } = usePilotLive(sessionId);
+  const { frame, conn, bio, bioSeries, derniereReceptionMs } = usePilotLive(sessionId);
 
   // Tours terminés (table `laps`, best-effort) — la liste TOURS de la maquette,
   // le meilleur en or. Vide tant que le boîtier n'a rien déposé : EmptyState.
@@ -215,6 +215,8 @@ export default function CockpitFocusScreen() {
       cornerIndex={frame?.cornerIndex ?? null}
       marqueur={decideMarqueur({
         derniereTrameAtMs: frame?.atMs ?? null,
+        // La FRAÎCHEUR se juge sur notre horloge, l'INSTANT sur celle du pilote.
+        receptionMs: derniereReceptionMs,
         debutCaptureIso,
         maintenantMs: Date.now(),
       })}

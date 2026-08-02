@@ -28,13 +28,33 @@ import { bornesDesTours, tramesPourMarqueurs } from '@/features/coach/filSeanceS
 import { supabase } from '@/lib/supabase';
 import { phraseMarqueur, resoudreMarqueur } from '@/telemetry/marqueur';
 
+/**
+ * Plafond de trames lues pour résoudre les marqueurs d'une séance.
+ *
+ * À 25 Hz, mille trames couvrent QUARANTE SECONDES. C'est la limite par défaut
+ * de PostgREST, et elle s'applique en silence : au-delà, les marqueurs tardifs
+ * perdaient leurs faits sans qu'aucune erreur ne soit levée.
+ *
+ * On demande donc explicitement une fenêtre large, et on DIT quand elle est
+ * atteinte plutôt que de rendre des faits muets. Relevé par la revue
+ * adversariale du 02/08/2026.
+ */
+export const TRAMES_MAX = 50000;
+
 export interface MarqueurSeance {
   id: string;
   /** Instant dans la capture, en ms. Ce que le geste a produit. */
   elapsedMs: number;
   /** Les faits résolus, en une phrase. `null` si rien n'a pu être établi. */
   faits: string | null;
-  /** La note du coach, si elle existe. Un marqueur naît sans texte. */
+  /**
+   * La note du coach, si elle existe ET si elle est PARTAGÉE.
+   *
+   * Une note `private` est un mot que le coach s'est écrit à lui-même. La
+   * porter au document du pilote la publierait à son insu — une première
+   * version lisait `body` sans jamais regarder `visibility`. Relevé par la
+   * revue adversariale du 02/08/2026.
+   */
   note: string | null;
   tour: number | null;
   virage: number | null;
@@ -54,7 +74,7 @@ export async function chargerMarqueursSeance(captureId: string): Promise<Marqueu
 
   const { data, error } = await supabase
     .from('coach_annotations')
-    .select('id, body, marker_elapsed_ms')
+    .select('id, body, marker_elapsed_ms, visibility')
     .eq('telemetry_session_id', captureId)
     .is('deleted_at', null)
     .not('marker_elapsed_ms', 'is', null)
@@ -69,8 +89,15 @@ export async function chargerMarqueursSeance(captureId: string): Promise<Marqueu
     .maybeSingle();
   const debutIso = (seance as { started_at?: string | null } | null)?.started_at ?? null;
 
+  // On ne lit QUE les secondes utiles autour de chaque marqueur. Sans ce
+  // ciblage, afficher trois cases à cocher téléchargeait toute la télémétrie
+  // de la séance — sur le réseau du circuit.
+  const instants = (data as Record<string, unknown>[])
+    .map((r) => r.marker_elapsed_ms)
+    .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
+
   const [trames, bornes] = await Promise.all([
-    tramesPourMarqueurs(captureId).catch(() => []),
+    tramesPourMarqueurs(captureId, instants).catch(() => []),
     bornesDesTours(captureId, debutIso).catch(() => []),
   ]);
 
@@ -81,7 +108,11 @@ export async function chargerMarqueursSeance(captureId: string): Promise<Marqueu
       // Aucune corde de référence n'existe encore : `virage` vaudra `null`, et
       // c'est l'affichage juste. La position, elle, tient toujours.
       const m = resoudreMarqueur(at, trames, bornes, []);
-      const note = typeof row.body === 'string' && row.body.trim().length > 0 ? row.body : null;
+      // FAIL-CLOSED : seul un `shared` EXPLICITE ouvre le texte au document.
+      // Une visibilité inconnue vaut privé.
+      const partagee = row.visibility === 'shared';
+      const note =
+        partagee && typeof row.body === 'string' && row.body.trim().length > 0 ? row.body : null;
       return {
         id: String(row.id),
         elapsedMs: at,

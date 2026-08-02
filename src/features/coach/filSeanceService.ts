@@ -270,12 +270,60 @@ async function toursBoucles(captureId: string): Promise<Morceau> {
  * milliers de trames pour un fil qui n'en a pas besoin serait du gachis, et le
  * fil doit rester ouvrable au bord d'une piste.
  */
-export async function tramesPourMarqueurs(captureId: string): Promise<TrameMarqueur[]> {
-  const { data, error } = await supabase
+/**
+ * Marge de trames chargée de part et d'autre d'un marqueur.
+ *
+ * Le résolveur ne regarde JAMAIS plus loin que `FENETRE_FREINAGE_MS` en arrière
+ * (2 s) et `ECART_TRAME_MAX_MS` en avant (1 s). Trois secondes de chaque côté
+ * couvrent les deux avec de la marge, y compris si un trou de GPS décale la
+ * trame la plus proche.
+ */
+const MARGE_TRAMES_MS = 3000;
+
+/** Au-delà, l'URL du filtre devient plus coûteuse que la lecture complète. */
+const FENETRES_MAX = 25;
+
+/**
+ * Trames d'une capture, pour résoudre des marqueurs.
+ *
+ * `instantsMs` — les instants à résoudre. Fourni, on ne lit QUE les quelques
+ * secondes utiles autour de chacun ; absent, on lit toute la capture.
+ *
+ * Ce n'est pas une optimisation de confort. Une séance de vingt minutes à 25 Hz
+ * fait TRENTE MILLE trames : les télécharger entièrement pour afficher trois
+ * cases à cocher se paie sur le réseau du circuit, celui-là même qui est mauvais
+ * le jour où le coach en a besoin. Relevé par la revue adversariale du
+ * 02/08/2026.
+ */
+export async function tramesPourMarqueurs(
+  captureId: string,
+  instantsMs?: readonly number[]
+): Promise<TrameMarqueur[]> {
+  const instants = Array.isArray(instantsMs)
+    ? instantsMs.filter((n): n is number => typeof n === 'number' && Number.isFinite(n))
+    : [];
+
+  let requete = supabase
     .from('telemetry_frames')
     .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x')
-    .eq('session_id', captureId)
-    .order('elapsed_ms', { ascending: true });
+    .eq('session_id', captureId);
+
+  if (instants.length > 0 && instants.length <= FENETRES_MAX) {
+    // Une branche par marqueur. PostgREST rend chaque ligne une seule fois même
+    // si deux fenêtres se recouvrent — pas de dédoublonnage à faire ici.
+    const branches = instants.map(
+      (t) =>
+        `and(elapsed_ms.gte.${Math.max(0, t - MARGE_TRAMES_MS)},elapsed_ms.lte.${t + MARGE_TRAMES_MS})`
+    );
+    requete = requete.or(branches.join(','));
+  }
+
+  const { data, error } = await requete
+    .order('elapsed_ms', { ascending: true })
+    // PostgREST plafonne à 1000 lignes par défaut — QUARANTE SECONDES à 25 Hz.
+    // Sans borne explicite, les marqueurs tardifs perdaient leurs faits en
+    // silence. Relevé par la revue adversariale du 02/08/2026.
+    .range(0, 49999);
 
   if (error || !Array.isArray(data)) return [];
 
@@ -340,17 +388,29 @@ async function annotationsCoach(captureId: string, debutIso: string | null): Pro
 
   // LE MARQUEUR EST RESOLU A LA LECTURE, jamais stocke resolu — c'est la lettre
   // du plan. On ne charge les trames que s'il y a quelque chose a resoudre.
-  const aResoudre = lignes.some((r) => nombreFini(r.marker_elapsed_ms));
-  const [trames, bornes] = aResoudre
-    ? await Promise.all([tramesPourMarqueurs(captureId), bornesDesTours(captureId, debutIso)])
-    : [[] as TrameMarqueur[], [] as BorneTour[]];
+  const instants = lignes.map((r) => r.marker_elapsed_ms).filter((v): v is number => nombreFini(v));
+  const [trames, bornes] =
+    instants.length > 0
+      ? await Promise.all([
+          tramesPourMarqueurs(captureId, instants),
+          bornesDesTours(captureId, debutIso),
+        ])
+      : [[] as TrameMarqueur[], [] as BorneTour[]];
 
   const evenements = lignes
     .map((row): EvenementFil | null => {
       const corps = row.body;
       const aAudio = typeof row.audio_url === 'string' && row.audio_url.length > 0;
-      // Une annotation sans texte NI audio ne porte rien : on ne l'affiche pas.
-      if ((typeof corps !== 'string' || corps.trim().length === 0) && !aAudio) return null;
+      const aMarqueur = nombreFini(row.marker_elapsed_ms);
+      // Une annotation sans texte, sans audio NI marqueur ne porte rien.
+      //
+      // LE MARQUEUR MANQUAIT À CETTE LISTE, et c'est ce qui rendait fausse la
+      // phrase « À retrouver dans le fil » affichée après le geste : un
+      // marqueur naît SANS TEXTE, il était donc écarté avant même d'être
+      // résolu. Relevé par la revue adversariale du 02/08/2026.
+      if ((typeof corps !== 'string' || corps.trim().length === 0) && !aAudio && !aMarqueur) {
+        return null;
+      }
       const virage = row.corner_index;
       const tour = row.lap_index;
 

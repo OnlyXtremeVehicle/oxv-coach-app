@@ -177,7 +177,7 @@ export default function CoachHubScreen() {
    * annulee, un pilote peut rouler un jour non prevu. Un pilote au roster, ou
    * une seance arrivee aujourd'hui — l'un ou l'autre suffit.
    */
-  const { roster } = useLiveRoster(profile?.id ?? null);
+  const { roster, ready: rosterPret } = useLiveRoster(profile?.id ?? null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [summary, setSummary] = useState<CoachDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -320,6 +320,16 @@ export default function CoachHubScreen() {
     }).length;
   }, [queue]);
 
+  /**
+   * LES DEUX SIGNAUX DOIVENT ÊTRE ARRIVÉS AVANT DE TRANCHER.
+   *
+   * Le roster et la file se chargent séparément. Trancher sur un seul donnait
+   * `hors-journee` par défaut — le hub s'ouvrait complet, puis se repliait sous
+   * le doigt du coach dès que le roster arrivait. Tant que les deux ne sont pas
+   * là, le bloc d'outils reste en attente : il apparaît une fois, dans son
+   * arrangement final. Relevé par la revue adversariale du 02/08/2026.
+   */
+  const signauxPrets = rosterPret && !loading;
   const mode = modeHub({ pilotesEnPiste: roster.length, seancesDuJour });
   const noteMode = phraseMode(mode);
 
@@ -372,10 +382,32 @@ export default function CoachHubScreen() {
         route: '/(coach)/facturation',
       });
     }
-    // LE JOUR J NE GARDE QUE CE QUI SERT AU BORD DE LA PISTE. Quinze sorties,
-    // c'est un menu ; on ne regle pas ses gabarits pendant qu'un pilote roule.
-    return list.filter((t) => familleVisible(t.family as FamilleOutil, mode));
-  }, [permissions, pilots.length, billingOn, mode]);
+    return list;
+  }, [permissions, pilots.length, billingOn]);
+
+  /**
+   * LE JOUR J RANGE, IL NE SUPPRIME PAS.
+   *
+   * Quinze sorties, c'est un menu : au bord de la piste on ne garde que les
+   * pilotes et la lecture. Mais une première version FILTRAIT la liste, et deux
+   * écrans — Programmes et Tableau de bord — n'ont aucune autre porte d'entrée :
+   * ni le rail, ni un autre écran n'y mène. Ils devenaient donc INATTEIGNABLES
+   * jusqu'à minuit, sans que rien ne le dise.
+   *
+   * Ils sont désormais repliés, pas retirés. Un coach qui les cherche les
+   * trouve ; celui qui travaille ne les voit pas. Relevé par la revue
+   * adversariale du 02/08/2026.
+   */
+  const [rangesOuverts, setRangesOuverts] = useState(false);
+
+  const [outils, outilsRanges] = useMemo(() => {
+    const visibles: ToolDef[] = [];
+    const ranges: ToolDef[] = [];
+    for (const t of tools) {
+      (familleVisible(t.family as FamilleOutil, mode) ? visibles : ranges).push(t);
+    }
+    return [visibles, ranges] as const;
+  }, [tools, mode]);
 
   // ---- Blocs partagés entre les deux formats ------------------------------
 
@@ -536,19 +568,60 @@ export default function CoachHubScreen() {
     </FadeInSection>
   ) : null;
 
-  const outilsBlock = (
+  const outilsBlock = !signauxPrets ? (
+    // Les deux signaux ne sont pas tous là : on n'affiche pas un arrangement
+    // qu'on va défaire une seconde plus tard.
+    <View style={s.panel}>
+      <SectionLabel>Outils</SectionLabel>
+      <StateWrapper state="loading" skeletonLines={3}>
+        {null}
+      </StateWrapper>
+    </View>
+  ) : (
     <View style={s.panel}>
       <SectionLabel>Outils</SectionLabel>
       {/* LE MODE S'EXPLIQUE. Sans cette phrase, un coach qui cherche ses
           gabarits un jour de roulage croirait à une panne, pas à un mode. */}
       {noteMode !== null ? <Text style={s.modeNote}>{noteMode}</Text> : null}
       <View style={s.toolGrid}>
-        {tools.map((tool, i) => (
+        {outils.map((tool, i) => (
           <FadeInSection key={tool.key} delay={200 + i * 45} style={s.toolWrap}>
             <ToolTile tool={tool} onPress={() => router.push(tool.route as never)} />
           </FadeInSection>
         ))}
       </View>
+
+      {/* CE QUI EST RANGÉ RESTE ATTEIGNABLE. Sans ce repli, Programmes et
+          Tableau de bord n'avaient plus aucune porte d'entrée du jour J. */}
+      {outilsRanges.length > 0 ? (
+        <View style={{ marginTop: spacing.lg }}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: rangesOuverts }}
+            accessibilityLabel={
+              rangesOuverts
+                ? 'Replier les outils de fond'
+                : `Afficher les ${outilsRanges.length} outils de fond`
+            }
+            onPress={() => setRangesOuverts((v) => !v)}
+            hitSlop={{ left: 12, right: 12 }}
+            style={({ pressed }) => [s.repli, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={s.repliTxt}>
+              {rangesOuverts ? 'Replier' : `Outils de fond (${outilsRanges.length})`}
+            </Text>
+          </Pressable>
+          {rangesOuverts ? (
+            <View style={[s.toolGrid, { marginTop: spacing.md }]}>
+              {outilsRanges.map((tool, i) => (
+                <FadeInSection key={tool.key} delay={40 + i * 45} style={s.toolWrap}>
+                  <ToolTile tool={tool} onPress={() => router.push(tool.route as never)} />
+                </FadeInSection>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 
@@ -1218,6 +1291,19 @@ const s = StyleSheet.create({
     lineHeight: 19,
     color: palette.creamMute,
     marginTop: spacing.sm,
+  },
+  repli: {
+    alignSelf: 'flex-start',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: palette.cardBorderProminent,
+  },
+  repliTxt: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: palette.creamMute,
   },
   toolGrid: {
     flexDirection: 'row',

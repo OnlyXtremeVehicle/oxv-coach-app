@@ -20,6 +20,11 @@
  * qui a horodaté le début de la capture. La soustraction des deux est donc
  * exacte par construction, quel que soit l'état de l'horloge du coach.
  *
+ * Et l'inverse vaut pour la FRAÎCHEUR : elle se juge entre deux instants de
+ * l'horloge DU COACH — la réception de la trame, et maintenant. Mélanger les
+ * deux mesures ne donnerait pas un âge, mais un âge plus le décalage entre les
+ * appareils.
+ *
  * ---
  *
  * ON NE POSE RIEN SUR DU VIDE
@@ -38,11 +43,26 @@
 export const TRAME_FRAICHE_MAX_MS = 3000;
 
 export interface ContexteMarqueur {
-  /** Horodatage de la dernière trame reçue, posé par l'appareil DU PILOTE. */
+  /** Horodatage de la dernière trame, posé par l'appareil DU PILOTE. */
   derniereTrameAtMs: number | null;
-  /** Début de la capture, ISO — même appareil, même horloge. */
+  /**
+   * Instant de RÉCEPTION de cette trame, sur l'horloge DU COACH.
+   *
+   * C'est le seul terme comparable à `maintenantMs` : les deux viennent du même
+   * appareil. Une première version soustrayait `maintenantMs` à
+   * `derniereTrameAtMs` — deux horloges différentes — et ne mesurait donc pas un
+   * âge mais un âge PLUS le décalage entre deux téléphones. Le bouton pouvait
+   * rester éteint toute une séance pendant que l'en-tête affichait « en direct »,
+   * ou laisser poser un marqueur sur une trame morte depuis des minutes.
+   *
+   * La règle est déjà écrite ailleurs dans le dépôt (`useRosterBiometry`) : on
+   * périme sur l'horloge du coach, jamais sur `atMs`. Relevé par la revue
+   * adversariale du 02/08/2026.
+   */
+  receptionMs: number | null;
+  /** Début de la capture, ISO — même appareil que `derniereTrameAtMs`. */
   debutCaptureIso: string | null;
-  /** Horloge locale, injectée pour rester pur et testable. */
+  /** Horloge locale DU COACH, injectée pour rester pur et testable. */
   maintenantMs: number;
 }
 
@@ -67,10 +87,17 @@ export function decideMarqueur(ctx: ContexteMarqueur): DecisionMarqueur {
     return { posable: false, motif: 'pas-de-trame' };
   }
 
+  // FRAÎCHEUR — mesurée entre DEUX instants de la MÊME horloge, celle du coach :
+  // la réception de la trame, et maintenant. Jamais `at`, qui vient du pilote.
+  const recu = ctx.receptionMs;
+  if (typeof recu !== 'number' || !Number.isFinite(recu)) {
+    // Sans instant de réception, on ne sait pas juger l'âge. Fail-closed.
+    return { posable: false, motif: 'pas-de-trame' };
+  }
   if (
     typeof ctx.maintenantMs === 'number' &&
     Number.isFinite(ctx.maintenantMs) &&
-    ctx.maintenantMs - at > TRAME_FRAICHE_MAX_MS
+    ctx.maintenantMs - recu > TRAME_FRAICHE_MAX_MS
   ) {
     return { posable: false, motif: 'trame-perimee' };
   }

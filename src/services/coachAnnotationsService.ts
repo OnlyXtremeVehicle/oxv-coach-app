@@ -272,7 +272,14 @@ export async function poserMarqueur(input: {
     // n'en porte pas.
     body: '',
     visibility: 'private',
-    corner_index: null,
+    // `corner_index` N'EST PAS ÉCRIT — ni valeur, ni null explicite.
+    //
+    // La colonne est NOT NULL avec CHECK (1..7) jusqu'à ce que
+    // `PROPOSITION_L30` soit appliquée. Envoyer `null` produisait une violation
+    // 23502 : l'insertion échouait à tous les coups, pour cette raison EN PLUS
+    // de la contrainte sur `body`. Deux blocages indépendants, tous deux
+    // invisibles au typage — l'objet est casté, et un cast éteint exactement la
+    // vérification qui aurait servi ici.
   } as never);
 
   if (error) {
