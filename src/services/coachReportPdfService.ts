@@ -24,6 +24,14 @@ export interface CoachReportInput {
   coachBilan: string;
   /** Date de séance (ISO) pour l'en-tête ; résolue si absente. */
   startedAt?: string | null;
+  /**
+   * Marqueurs RETENUS par le coach, déjà résolus en phrases de faits.
+   *
+   * *« Il a vu, la machine dit où et quoi, personne n'interprète. »* Ce sont des
+   * mesures, pas des consignes : le document les pose, il n'en tire aucune
+   * conclusion. Vide ou absent → la section n'existe pas.
+   */
+  marqueurs?: string[];
 }
 
 export interface CoachReportResult {
@@ -63,6 +71,9 @@ export async function exportAndShareCoachReport(
           }
         : null,
       coachBilan: input.coachBilan.trim(),
+      // Les marqueurs RETENUS. Vides ou absents → la section n'existe pas :
+      // un document ne porte pas de titre sur du néant.
+      marqueurs: (input.marqueurs ?? []).map((m) => m.trim()).filter((m) => m.length > 0),
     });
 
     const { uri } = await Print.printToFileAsync({ html, base64: false, width: 595, height: 842 });
@@ -90,6 +101,7 @@ interface ReportHtmlData {
   marginGlobal: number | null;
   branches: QdiBranches | null;
   coachBilan: string;
+  marqueurs: string[];
 }
 
 function buildReportHtml(d: ReportHtmlData): string {
@@ -159,6 +171,14 @@ function buildReportHtml(d: ReportHtmlData): string {
 
   <p class="section-title">QDI · 5 branches</p>
   ${branchRows}
+
+  ${
+    Array.isArray(d.marqueurs) && d.marqueurs.length > 0
+      ? `<p class="section-title">Les moments retenus</p><ul>${d.marqueurs
+          .map((m) => `<li>${escapeHtml(m)}</li>`)
+          .join('')}</ul>`
+      : ''
+  }
 
   ${
     d.coachBilan

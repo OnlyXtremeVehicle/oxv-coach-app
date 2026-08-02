@@ -41,6 +41,12 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
+import {
+  chargerMarqueursSeance,
+  ligneDocument,
+  type MarqueurSeance,
+} from '@/features/coach/marqueursSeanceService';
+import { PressableScale } from '@/components/motion';
 import { exportAndShareCoachReport } from '@/services/coachReportPdfService';
 import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -83,6 +89,31 @@ export default function CoachRapportScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const [bilan, setBilan] = useState('');
   const [generating, setGenerating] = useState(false);
+  /**
+   * LES MOMENTS RETENUS — « le coach retient un marqueur, envoie ».
+   *
+   * Les marqueurs de la seance, resolus. Rien n'est retenu par defaut : le
+   * document ne porte que ce que le coach a choisi d'y mettre.
+   */
+  const [marqueurs, setMarqueurs] = useState<MarqueurSeance[]>([]);
+  const [retenus, setRetenus] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!sessionId) {
+      setMarqueurs([]);
+      return;
+    }
+    let annule = false;
+    chargerMarqueursSeance(sessionId)
+      .then((liste) => {
+        if (!annule) setMarqueurs(liste);
+      })
+      // Best-effort : sans marqueurs, le coach ecrit quand meme sa phrase.
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -110,6 +141,16 @@ export default function CoachRapportScreen() {
     };
   }, [sessionId, reloadKey]);
 
+  /** Retenir ou relacher un moment. Rien n'est retenu par defaut. */
+  function basculeRetenu(id: string) {
+    setRetenus((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function onGenerate() {
     if (!sessionId || generating) return;
     setGenerating(true);
@@ -117,6 +158,12 @@ export default function CoachRapportScreen() {
       sessionId,
       coachBilan: bilan,
       startedAt: params.startedAt ?? null,
+      // Dans l'ORDRE DE LA SEANCE, pas dans l'ordre ou le coach a coche : le
+      // document raconte le roulage, pas la selection.
+      marqueurs: marqueurs
+        .filter((m) => retenus.has(m.id))
+        .map(ligneDocument)
+        .filter((l): l is string => l !== null),
     });
     setGenerating(false);
     Toast.show(
@@ -198,6 +245,11 @@ export default function CoachRapportScreen() {
                     <View style={s.cols}>
                       <View style={s.colEditor}>
                         <FaitsPanel studio={studio} />
+                        <MomentsPanel
+                          marqueurs={marqueurs}
+                          retenus={retenus}
+                          onToggle={basculeRetenu}
+                        />
                         <Editor bilan={bilan} onChange={setBilan} />
                       </View>
                       <View style={s.colPreview}>
@@ -215,6 +267,11 @@ export default function CoachRapportScreen() {
                 ) : (
                   <View style={{ gap: spacing.xl }}>
                     <FaitsPanel studio={studio} />
+                    <MomentsPanel
+                      marqueurs={marqueurs}
+                      retenus={retenus}
+                      onToggle={basculeRetenu}
+                    />
                     <Editor bilan={bilan} onChange={setBilan} />
                     <PdfPreview
                       studio={studio}
@@ -255,6 +312,66 @@ function FaitsPanel({ studio }: { studio: StudioSession }) {
       <Text style={s.eyebrow}>{studio.circuitName ?? 'Séance'}</Text>
       <Text style={s.facts}>{factsLine(studio)}</Text>
     </CockpitPanel>
+  );
+}
+
+/**
+ * LES MOMENTS RETENUS — « le coach retient un marqueur, envoie ».
+ *
+ * Chaque ligne porte les FAITS que la mesure a résolus, puis la note du coach
+ * s'il en a écrit une. L'ordre est celui de la SÉANCE, pas celui des choix : le
+ * document raconte le roulage.
+ *
+ * RIEN N'EST RETENU PAR DÉFAUT. Un marqueur est un repère que le coach s'est
+ * posé à lui-même ; le porter au document est un second geste, délibéré.
+ *
+ * Aucun marqueur → le panneau n'existe pas. Un titre sur une liste vide ferait
+ * exister une attente qu'on ne peut pas satisfaire.
+ */
+function MomentsPanel({
+  marqueurs,
+  retenus,
+  onToggle,
+}: {
+  marqueurs: MarqueurSeance[];
+  retenus: Set<string>;
+  onToggle: (id: string) => void;
+}) {
+  // On n'offre que les marqueurs qui ÉCRIRAIENT quelque chose : un repère dont
+  // rien n'a pu être résolu et qui ne porte aucune note n'a rien à dire.
+  const offrables = marqueurs.filter((m) => ligneDocument(m) !== null);
+  if (offrables.length === 0) return null;
+
+  return (
+    <View>
+      <Text style={s.sectionLabel}>LES MOMENTS RETENUS</Text>
+      <CockpitPanel>
+        {offrables.map((m) => {
+          const retenu = retenus.has(m.id);
+          const ligne = ligneDocument(m) as string;
+          return (
+            <PressableScale
+              key={m.id}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: retenu }}
+              accessibilityLabel={`${ligne}. ${retenu ? 'Retenu' : 'Non retenu'}.`}
+              hitSlop={8}
+              onPress={() => onToggle(m.id)}
+              style={{ paddingVertical: spacing.sm, flexDirection: 'row', gap: spacing.md }}
+            >
+              <Text style={[s.facts, { color: retenu ? palette.cream : palette.creamMute }]}>
+                {retenu ? '■' : '□'}
+              </Text>
+              <Text
+                style={[s.facts, { flex: 1, color: retenu ? palette.cream : palette.creamMute }]}
+              >
+                {ligne}
+              </Text>
+            </PressableScale>
+          );
+        })}
+      </CockpitPanel>
+    </View>
   );
 }
 

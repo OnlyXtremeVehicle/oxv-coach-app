@@ -270,7 +270,7 @@ async function toursBoucles(captureId: string): Promise<Morceau> {
  * milliers de trames pour un fil qui n'en a pas besoin serait du gachis, et le
  * fil doit rester ouvrable au bord d'une piste.
  */
-async function tramesPourMarqueurs(captureId: string): Promise<TrameMarqueur[]> {
+export async function tramesPourMarqueurs(captureId: string): Promise<TrameMarqueur[]> {
   const { data, error } = await supabase
     .from('telemetry_frames')
     .select('elapsed_ms, latitude, longitude, speed_kmh, g_force_x')
@@ -297,7 +297,10 @@ async function tramesPourMarqueurs(captureId: string): Promise<TrameMarqueur[]> 
  * le debut de la capture. On ramene les bornes sur la meme origine — sans quoi
  * la comparaison n'aurait aucun sens et chaque marqueur tomberait hors tour.
  */
-async function bornesDesTours(captureId: string, debutIso: string | null): Promise<BorneTour[]> {
+export async function bornesDesTours(
+  captureId: string,
+  debutIso: string | null
+): Promise<BorneTour[]> {
   const debut = instant(debutIso);
   if (debut === null) return [];
 
