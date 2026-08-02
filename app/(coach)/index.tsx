@@ -63,6 +63,13 @@ import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
 import { CountUpNumber, FadeInSection, useReduceMotion } from '@/components/motion';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
+import {
+  familleVisible,
+  modeHub,
+  phraseMode,
+  type FamilleOutil,
+} from '@/features/coach/hubModeLogic';
+import { useLiveRoster } from '@/hooks/useLiveRoster';
 import { useCoachPermissions } from '@/hooks/useCoachPermissions';
 import { COACH_CONSOLE_MIN_WIDTH } from '@/lib/coachNav';
 import * as haptics from '@/lib/haptics';
@@ -163,6 +170,14 @@ export default function CoachHubScreen() {
   const isConsole = width >= COACH_CONSOLE_MIN_WIDTH;
 
   const [pilots, setPilots] = useState<CoachPilotRow[]>([]);
+  /**
+   * LE MODE DU HUB — temporel le jour J, structure le reste du temps.
+   *
+   * Lu sur ce qui SE PASSE, jamais sur le calendrier : une journee peut etre
+   * annulee, un pilote peut rouler un jour non prevu. Un pilote au roster, ou
+   * une seance arrivee aujourd'hui — l'un ou l'autre suffit.
+   */
+  const { roster } = useLiveRoster(profile?.id ?? null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [summary, setSummary] = useState<CoachDashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -294,6 +309,20 @@ export default function CoachHubScreen() {
 
   // Grille d'outils — mêmes routes et mêmes conditions d'accès qu'avant,
   // regroupées par famille d'identité (cf. mapping en tête de fichier).
+  const seancesDuJour = useMemo(() => {
+    const debutDuJour = new Date();
+    debutDuJour.setHours(0, 0, 0, 0);
+    const seuil = debutDuJour.getTime();
+    return queue.filter((i) => {
+      const t = Date.parse(i.startedAt);
+      // Une date illisible ne compte pas : elle ne prouve rien sur aujourd'hui.
+      return Number.isFinite(t) && t >= seuil;
+    }).length;
+  }, [queue]);
+
+  const mode = modeHub({ pilotesEnPiste: roster.length, seancesDuJour });
+  const noteMode = phraseMode(mode);
+
   const tools = useMemo<ToolDef[]>(() => {
     const list: ToolDef[] = [
       { key: 'demandes', label: 'Demandes', family: 'pilotes', route: '/(coach)/demandes' },
@@ -343,8 +372,10 @@ export default function CoachHubScreen() {
         route: '/(coach)/facturation',
       });
     }
-    return list;
-  }, [permissions, pilots.length, billingOn]);
+    // LE JOUR J NE GARDE QUE CE QUI SERT AU BORD DE LA PISTE. Quinze sorties,
+    // c'est un menu ; on ne regle pas ses gabarits pendant qu'un pilote roule.
+    return list.filter((t) => familleVisible(t.family as FamilleOutil, mode));
+  }, [permissions, pilots.length, billingOn, mode]);
 
   // ---- Blocs partagés entre les deux formats ------------------------------
 
@@ -508,6 +539,9 @@ export default function CoachHubScreen() {
   const outilsBlock = (
     <View style={s.panel}>
       <SectionLabel>Outils</SectionLabel>
+      {/* LE MODE S'EXPLIQUE. Sans cette phrase, un coach qui cherche ses
+          gabarits un jour de roulage croirait à une panne, pas à un mode. */}
+      {noteMode !== null ? <Text style={s.modeNote}>{noteMode}</Text> : null}
       <View style={s.toolGrid}>
         {tools.map((tool, i) => (
           <FadeInSection key={tool.key} delay={200 + i * 45} style={s.toolWrap}>
@@ -1178,6 +1212,13 @@ const s = StyleSheet.create({
   },
 
   // Grille d'outils (tuiles à insigne)
+  modeNote: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: palette.creamMute,
+    marginTop: spacing.sm,
+  },
   toolGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
