@@ -1,9 +1,13 @@
 -- =============================================================================
--- PROPOSITION — UNE AFFILIATION NON ACCEPTÉE NE DONNE AUCUN ACCÈS
+-- UNE AFFILIATION NON ACCEPTÉE NE DONNE AUCUN ACCÈS
 --
---   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--   *** APPLIQUÉE EN PRODUCTION LE 02/08/2026 (version 20260802183047). ***
 --
--- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- Décision fondateur : appliquer maintenant.
+--
+-- ÉPROUVÉ APRÈS APPLICATION : le balayage `update coach_pilots set status =
+-- status` a fait passer l'unique ligne de `active=true` à `active=false` —
+-- l'accès de l'affiliation `pending` est refermé. Zéro incohérence restante.
 --
 -- Rédigé le 02/08/2026, après la cartographie adversariale de l'espace admin.
 -- =============================================================================

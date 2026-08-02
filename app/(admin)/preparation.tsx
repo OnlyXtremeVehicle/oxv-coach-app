@@ -14,8 +14,12 @@ import { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { router } from 'expo-router';
 
-import { supabase } from '@/lib/supabase';
 import { promoteToCoach } from '@/services/coachAdminService';
+import {
+  type ProchaineSeance,
+  inscritsDeLaSeance,
+  prochaineSeance,
+} from '@/services/prochaineSeanceService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -37,40 +41,53 @@ interface PilotEntry {
   email: string;
   kycStatus: string;
   level: string | null;
+  /** Déjà pointé présent — on ne prépare pas deux fois le même véhicule. */
+  attended: boolean;
 }
 
 export default function PreparationScreen() {
   const [pilots, setPilots] = useState<PilotEntry[]>([]);
+  const [seance, setSeance] = useState<ProchaineSeance | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [promotingId, setPromotingId] = useState<string | null>(null);
 
+  /**
+   * LES INSCRITS DE LA PROCHAINE SÉANCE.
+   *
+   * L'écran lisait l'ANNUAIRE : les cinquante premiers comptes de rôle `pilot`,
+   * triés par nom, sans aucune jointure sur `registrations` ni `sessions`. Il
+   * montrait donc des gens qui ne viennent pas, et pouvait manquer ceux qui
+   * viennent — la liste étant tronquée par ordre alphabétique.
+   *
+   * Relevé par la cartographie du 02/08/2026.
+   */
   const reload = async () => {
     setLoading(true);
     setFailed(false);
-    // ANNUAIRE, PAS LISTE D'INSCRITS. Aucun filtre de session, d'événement ni
-    // de date : c'est l'ensemble des comptes pilotes, tronqué à 50.
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, first_name, last_name, email, kyc_status, pilot_level')
-      .eq('role', 'pilot')
-      .order('last_name', { ascending: true })
-      .limit(50);
-    if (error) {
+    try {
+      const aujourdHui = new Date();
+      const jour = `${aujourdHui.getFullYear()}-${String(aujourdHui.getMonth() + 1).padStart(2, '0')}-${String(aujourdHui.getDate()).padStart(2, '0')}`;
+      const seance = await prochaineSeance(jour);
+      setSeance(seance);
+      // Aucune séance à venir est un FAIT, pas une panne : la liste est vide et
+      // l'écran le dit autrement qu'une erreur.
+      const inscrits = seance === null ? [] : await inscritsDeLaSeance(seance.id);
+      setPilots(
+        inscrits.map((i) => ({
+          id: i.pilotId,
+          fullName: i.fullName,
+          email: i.email,
+          kycStatus: i.kycStatus,
+          level: i.level,
+          attended: i.attended,
+        }))
+      );
+    } catch {
+      // Une lecture ratée n'est pas une journée sans inscrit. La veille d'une
+      // séance, c'est la différence entre préparer douze véhicules et aucun.
       setFailed(true);
-      setLoading(false);
-      return;
     }
-    setFailed(false);
-    setPilots(
-      (data ?? []).map((row) => ({
-        id: row.id,
-        fullName: `${row.first_name ?? ''} ${row.last_name ?? ''}`.trim() || row.email || '—',
-        email: row.email ?? '',
-        kycStatus: row.kyc_status ?? 'pending',
-        level: row.pilot_level,
-      }))
-    );
     setLoading(false);
   };
 
@@ -119,7 +136,22 @@ export default function PreparationScreen() {
         </View>
         <Text style={s.eyebrow}>ADMIN · PRÉPARATION</Text>
         <Text style={s.title} accessibilityRole="header">
-          Pilotes (<Text style={s.titleNum}>{pilots.length}</Text>)
+          Inscrits (<Text style={s.titleNum}>{pilots.length}</Text>)
+        </Text>
+        {/* QUELLE séance on prépare. Sans cette ligne, un nombre d'inscrits ne
+            veut rien dire : l'écran pourrait aussi bien parler d'hier. */}
+        <Text style={s.subtitle}>
+          {seance !== null
+            ? [
+                seance.isPrivate
+                  ? (seance.privateClientName ?? 'Journée privée')
+                  : (seance.format ?? 'Séance'),
+                seance.date,
+                seance.startTime?.slice(0, 5),
+              ]
+                .filter(Boolean)
+                .join(' · ')
+            : 'Aucune séance à venir n’est programmée.'}
         </Text>
 
         <StateWrapper
@@ -134,7 +166,11 @@ export default function PreparationScreen() {
           // inscrit, alors que l'annuaire était simplement vide.
           // Relevé par la cartographie du 02/08/2026. Brancher la vraie liste
           // d'inscrits est un lot à part, consigné en D-30.
-          emptyMessage="Aucun compte pilote dans l'annuaire."
+          emptyMessage={
+            seance === null
+              ? 'Aucune séance à venir n’est programmée.'
+              : 'Aucun inscrit pour cette séance.'
+          }
           errorCause="La lecture des pilotes a échoué. Vérifiez la connexion, puis réessayez."
           onRetry={reload}
         >
@@ -220,6 +256,14 @@ const s = {
     marginTop: theme.spacing.md,
     marginBottom: theme.spacing.xxl,
   },
+  subtitle: {
+    fontFamily: theme.fonts.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: theme.palette.creamMute,
+    marginTop: theme.spacing.xs,
+  },
+
   titleNum: { fontFamily: theme.fonts.mono },
   row: {
     flexDirection: 'row' as const,

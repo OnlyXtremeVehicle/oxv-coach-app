@@ -16,7 +16,8 @@ export interface CoachAiDraft {
   id: string;
   pilotId: string;
   telemetrySessionId: string | null;
-  cornerIndex: number;
+  /** `null` pour un marqueur : il n'a pas de virage au moment du geste (L30). */
+  cornerIndex: number | null;
   generatedText: string;
   status: CoachAiDraftStatus;
   provenance: string;
@@ -29,7 +30,9 @@ function mapDraft(r: Record<string, unknown>): CoachAiDraft {
     id: r.id as string,
     pilotId: r.pilot_id as string,
     telemetrySessionId: (r.telemetry_session_id as string | null) ?? null,
-    cornerIndex: Number(r.corner_index),
+    // `Number(null)` vaut 0 — un virage 0 n'existe pas (la borne est 1..7) et
+    // se serait affiché comme un fait. On garde l'absence.
+    cornerIndex: r.corner_index === null ? null : Number(r.corner_index),
     generatedText: r.generated_text as string,
     status: r.status as CoachAiDraftStatus,
     provenance: (r.provenance as string) ?? 'openai_gpt-4o-mini',

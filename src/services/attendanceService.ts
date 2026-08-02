@@ -139,9 +139,21 @@ export async function listTodayAttendance(): Promise<AttendanceSession[]> {
  * Le DÉPOINTAGE reste toujours permis — c'est la correction d'une erreur, et
  * une garde qui empêche de réparer finit contournée à la main dans la base.
  */
+/**
+ * Pointe ou dépointe une présence.
+ *
+ * `pointeurId` — QUI pointe. La colonne `registrations.attended_by` existe
+ * depuis L33 (02/08/2026) : sans elle, la ligne affirmait une présence que
+ * personne n'assumait, et une contestation de facturation était insoluble. Le
+ * cahier le dit : « une inscription vaut un paiement ».
+ *
+ * L'identité vient de l'appelant plutôt que d'`auth.uid()` : un service ne
+ * devine pas qui agit, il le reçoit.
+ */
 export async function setAttendance(
   registrationId: string,
-  attended: boolean
+  attended: boolean,
+  pointeurId: string | null = null
 ): Promise<{ ok: boolean; error?: string }> {
   if (attended) {
     const { data, error: lecture } = await supabase
@@ -157,9 +169,17 @@ export async function setAttendance(
     if (!decision.autorise) return { ok: false, error: decision.raison };
   }
 
+  const maintenant = new Date().toISOString();
   const { error } = await supabase
     .from('registrations')
-    .update({ attended_at: attended ? new Date().toISOString() : null })
+    .update({
+      attended_at: attended ? maintenant : null,
+      // L'AUTEUR ET L'INSTANT DU GESTE, distincts de l'heure de présence.
+      // Dépointer efface la présence mais garde la trace de qui l'a fait :
+      // c'est justement le geste qu'on voudra pouvoir expliquer.
+      attended_by: pointeurId,
+      attendance_updated_at: maintenant,
+    })
     .eq('id', registrationId);
   return error ? { ok: false, error: error.message } : { ok: true };
 }

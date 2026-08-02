@@ -1427,7 +1427,7 @@ export type Database = {
           audio_url: string | null
           body: string
           coach_id: string
-          corner_index: number
+          corner_index: number | null
           created_at: string
           deleted_at: string | null
           id: string
@@ -1446,7 +1446,7 @@ export type Database = {
           audio_url?: string | null
           body: string
           coach_id: string
-          corner_index: number
+          corner_index?: number | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -1465,7 +1465,7 @@ export type Database = {
           audio_url?: string | null
           body?: string
           coach_id?: string
-          corner_index?: number
+          corner_index?: number | null
           created_at?: string
           deleted_at?: string | null
           id?: string
@@ -2188,6 +2188,8 @@ export type Database = {
           affiliation_price_eur: number | null
           coach_consent_at: string | null
           coach_id: string
+          consent_forced_at: string | null
+          consent_forced_by: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -2204,6 +2206,8 @@ export type Database = {
           affiliation_price_eur?: number | null
           coach_consent_at?: string | null
           coach_id: string
+          consent_forced_at?: string | null
+          consent_forced_by?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2220,6 +2224,8 @@ export type Database = {
           affiliation_price_eur?: number | null
           coach_consent_at?: string | null
           coach_id?: string
+          consent_forced_at?: string | null
+          consent_forced_by?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -4433,6 +4439,41 @@ export type Database = {
           },
         ]
       }
+      incident_followups: {
+        Row: {
+          author_id: string
+          created_at: string
+          id: string
+          incident_id: string
+          note: string | null
+          state: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          id?: string
+          incident_id: string
+          note?: string | null
+          state: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          id?: string
+          incident_id?: string
+          note?: string | null
+          state?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "incident_followups_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "incident_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incident_reports: {
         Row: {
           created_at: string
@@ -6106,7 +6147,9 @@ export type Database = {
       }
       registrations: {
         Row: {
+          attendance_updated_at: string | null
           attended_at: string | null
+          attended_by: string | null
           balance_paid_at: string | null
           cancellation_reason: string | null
           cancelled_at: string | null
@@ -6132,7 +6175,9 @@ export type Database = {
           vehicle_id: string | null
         }
         Insert: {
+          attendance_updated_at?: string | null
           attended_at?: string | null
+          attended_by?: string | null
           balance_paid_at?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null
@@ -6160,7 +6205,9 @@ export type Database = {
           vehicle_id?: string | null
         }
         Update: {
+          attendance_updated_at?: string | null
           attended_at?: string | null
+          attended_by?: string | null
           balance_paid_at?: string | null
           cancellation_reason?: string | null
           cancelled_at?: string | null

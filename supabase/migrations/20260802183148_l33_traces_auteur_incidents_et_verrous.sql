@@ -1,10 +1,23 @@
 -- =============================================================================
--- PROPOSITION — CE QUI ENGAGE DOIT LAISSER UNE TRACE, ET CE QUI EST CERTIFIÉ
+-- CE QUI ENGAGE DOIT LAISSER UNE TRACE, ET CE QUI EST CERTIFIÉ
 -- DOIT LE RESTER
 --
---   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--   *** APPLIQUÉE EN PRODUCTION LE 02/08/2026 (version 20260802183148). ***
 --
--- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- Décision fondateur : appliquer les quatre volets.
+--
+-- ÉPROUVÉ APRÈS APPLICATION, dans une transaction ANNULÉE :
+--   • créer une route déjà certifiée      → REFUSÉ (correct)
+--   • réécrire le contenu d'une certifiée → REFUSÉ (correct)
+--   • toucher un champ HORS contenu       → ACCEPTÉ (le verrou n'est pas trop strict)
+--
+-- Le premier essai de réécriture avait échoué pour une AUTRE raison
+-- (`start_lat` obligatoire) : il ne prouvait rien, et a été refait avec une
+-- route complète. Un test qui échoue pour le mauvais motif ne vérifie rien.
+--
+-- Le suivi d'incident n'a pas pu être éprouvé : aucun signalement n'existe en
+-- base. La table et ses policies sont créées, leur comportement réel reste à
+-- constater au premier incident.
 --
 -- Rédigé le 02/08/2026, après la cartographie adversariale de l'espace admin.
 -- Trois défauts sans rapport entre eux, réunis parce qu'ils demandent tous une

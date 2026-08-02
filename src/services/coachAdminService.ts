@@ -313,12 +313,34 @@ export async function demoteToPilot(userId: string): Promise<{ ok: boolean; erro
  *
  * Trace : created_by côté admin_audit (à câbler en V1.1).
  */
+/**
+ * Inscrit le consentement d'un pilote sur présentation d'un papier signé.
+ *
+ * `administrateurId` — QUI l'inscrit. Les colonnes `consent_forced_by` et
+ * `consent_forced_at` existent depuis L33 (02/08/2026). Jusque-là, un
+ * consentement au traitement de données personnelles était posé au nom de
+ * quelqu'un sans que rien ne dise par qui : il ne valait rien devant qui le
+ * conteste.
+ *
+ * Sans auteur, on REFUSE d'écrire. Un consentement anonyme ne vaut pas mieux
+ * qu'une absence de consentement, et il a l'inconvénient d'en avoir l'air.
+ */
 export async function forcePilotConsent(
-  assignmentId: string
+  assignmentId: string,
+  administrateurId: string | null = null
 ): Promise<{ ok: boolean; error?: string }> {
+  if (typeof administrateurId !== 'string' || administrateurId.length === 0) {
+    return { ok: false, error: 'Auteur inconnu — rien n’a été inscrit.' };
+  }
+
+  const maintenant = new Date().toISOString();
   const { error } = await supabase
     .from('coach_pilots')
-    .update({ pilot_consent_at: new Date().toISOString() })
+    .update({
+      pilot_consent_at: maintenant,
+      consent_forced_by: administrateurId,
+      consent_forced_at: maintenant,
+    })
     .eq('id', assignmentId);
 
   if (error) {

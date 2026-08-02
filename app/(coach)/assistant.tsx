@@ -130,7 +130,14 @@ interface HistoryItem {
   id: string;
   pilotId: string;
   sessionId: string | null;
-  cornerIndex: number;
+  /**
+   * `null` DEPUIS L30 (02/08/2026) : un MARQUEUR ne connaît pas son virage au
+   * moment du geste — il se résout à la lecture, contre les cordes de
+   * référence. La colonne est devenue nullable, et le typage régénéré depuis la
+   * base l'a révélé : l'ancien fichier de types, périmé, l'affirmait obligatoire
+   * et masquait la conséquence.
+   */
+  cornerIndex: number | null;
   body: string;
   visibility: 'private' | 'shared';
   createdAt: string;
@@ -232,10 +239,13 @@ async function fetchAssistantData(): Promise<AssistantData | null> {
 }
 
 /** Ligne de contexte d'une carte : circuit · date · virage. Absent = « — ». */
-function contextLine(meta: SessionMeta | undefined, cornerIndex: number): string {
+function contextLine(meta: SessionMeta | undefined, cornerIndex: number | null): string {
   const circuit = meta?.circuitName ?? 'Circuit —';
   const date = meta?.startedAt ? formatDateShort(meta.startedAt) : '—';
-  return `${circuit} · ${date} · Virage ${cornerIndex}`;
+  // Un marqueur n'a pas de virage : on ne fabrique pas « Virage null », et on
+  // n'invente pas un numéro. On dit ce qu'on sait.
+  const virage = cornerIndex !== null ? `Virage ${cornerIndex}` : 'Instant marqué';
+  return `${circuit} · ${date} · ${virage}`;
 }
 
 /** Nom complet d'un pilote suivi (fallback neutre, jamais inventé). */
