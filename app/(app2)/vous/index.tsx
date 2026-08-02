@@ -129,17 +129,6 @@ export default function VousHubScreen() {
                   />
                 ))}
               </Stagger>
-
-              {/* LA SEULE PORTE VERS L'ESPACE ADMIN.
-                  Le `SpaceSwitcher` n'était rendu que dans le hub COACH et dans
-                  l'espace admin lui-même — donc déjà dedans. Un administrateur
-                  qui n'est pas coach ouvrait l'application, arrivait dans le
-                  flux pilote, et n'avait AUCUN chemin vers `/(admin)` : ni lien,
-                  ni onglet, ni geste. L'espace existait sans entrée.
-                  Le composant se ferme de lui-même pour un compte ordinaire
-                  (`peutChangerEspace`) : le rendre ici n'expose rien.
-                  Jalon 7, Phase 6 — première des trois corrections structurelles. */}
-              <SpaceSwitcher current="pilot" />
             </View>
 
             <Text style={styles.version}>
@@ -147,6 +136,20 @@ export default function VousHubScreen() {
             </Text>
           </>
         )}
+
+        {/* LA PORTE VERS L'ESPACE ADMIN VIT HORS DU TERNAIRE.
+            Posée une heure plus tôt DANS la branche `ready`, elle disparaissait
+            dès que `useVousHub` ratait sa lecture d'identité — c'est-à-dire
+            exactement quand le réseau du circuit flanche, le jour où
+            l'administrateur en a besoin. Elle ne dépend pourtant pas du hub
+            pilote : elle dépend du PROFIL D'AUTHENTIFICATION, que le composant
+            lit lui-même. La garde était posée, non armée : le commentaire
+            annonçait « la première des trois corrections structurelles » et
+            la correction s'effaçait à la première erreur.
+            Relevé par la cartographie de l'espace admin du 02/08/2026. */}
+        <View style={{ paddingHorizontal: space.lg }}>
+          <SpaceSwitcher current="pilot" />
+        </View>
       </Animated.ScrollView>
 
       <CondensingHeaderBar

@@ -34,6 +34,24 @@ type AuthState = {
   session: Session | null;
   user: User | null;
   profile: UserProfile | null;
+  /**
+   * LA LECTURE DU PROFIL A-T-ELLE ÉCHOUÉ ?
+   *
+   * `profile === null` avait DEUX sens confondus : « ce compte n'a pas encore
+   * de fiche » et « je n'ai pas pu lire sa fiche ». Tout le reste de
+   * l'application lisait le second comme le premier :
+   *
+   *   • `app/index.tsx` envoyait l'administrateur vers l'onboarding pilote ;
+   *   • le seuil `app/(admin)/_layout.tsx` le refoulait vers l'espace pilote —
+   *     en pleine surveillance du jour J, au rafraîchissement du jeton, sur la
+   *     4G du circuit ;
+   *   • le `SpaceSwitcher`, sa seule porte de retour, disparaissait avec.
+   *
+   * Il ne restait qu'à tuer l'application. L'absence de donnée était lue comme
+   * une absence de droit. Relevé par la cartographie de l'espace admin du
+   * 02/08/2026.
+   */
+  profilIndisponible: boolean;
   status: 'idle' | 'loading' | 'authenticated' | 'unauthenticated' | 'error';
   error: string | null;
 };
@@ -49,11 +67,21 @@ const initialState: AuthState = {
   session: null,
   user: null,
   profile: null,
+  profilIndisponible: false,
   status: 'idle',
   error: null,
 };
 
-async function fetchProfile(userId: string): Promise<UserProfile | null> {
+/**
+ * Le profil, et la raison de son absence.
+ *
+ * `echec` distingue une lecture IMPOSSIBLE (réseau, RLS, jeton) d'une fiche
+ * réellement absente. Les deux rendent `profil: null` — seul l'appelant peut
+ * décider quoi en faire, et il ne le peut qu'en le sachant.
+ */
+async function fetchProfile(
+  userId: string
+): Promise<{ profil: UserProfile | null; echec: boolean }> {
   const { data, error } = await supabase
     .from('users')
     .select(
@@ -63,9 +91,11 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     .maybeSingle();
   if (error) {
     console.warn('[OXV] Échec chargement profil :', error.message);
-    return null;
+    return { profil: null, echec: true };
   }
-  if (!data) return null;
+  // Pas d'erreur et pas de ligne : la fiche n'existe pas. C'est un FAIT, pas
+  // une panne — l'onboarding a précisément pour objet de la créer.
+  if (!data) return { profil: null, echec: false };
 
   // MIROIR LOCAL DU CONSENTEMENT À LA MESURE D'AUDIENCE.
   //
@@ -80,7 +110,10 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   setAnalyticsConsent(typeof accepte === 'string' && accepte.length > 0);
 
   // Fallback de sécurité : si role est absent, on assume pilot.
-  return { ...(data as UserProfile), role: (data as { role?: UserRole }).role ?? 'pilot' };
+  return {
+    profil: { ...(data as UserProfile), role: (data as { role?: UserRole }).role ?? 'pilot' },
+    echec: false,
+  };
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
@@ -96,11 +129,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       if (!session) {
         set({ ...initialState, status: 'unauthenticated' });
       } else {
-        const profile = await fetchProfile(session.user.id);
+        const lu = await fetchProfile(session.user.id);
         set({
           session,
           user: session.user,
-          profile,
+          profile: lu.profil,
+          profilIndisponible: lu.echec,
           status: 'authenticated',
           error: null,
         });
@@ -110,11 +144,17 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           set({ ...initialState, status: 'unauthenticated' });
           return;
         }
-        const profile = await fetchProfile(nextSession.user.id);
+        // LE RAFRAÎCHISSEMENT DE JETON PASSE ICI, toutes les heures. Une lecture
+        // ratée y écrasait un profil valide par `null` : c'est le chemin exact
+        // par lequel l'administrateur se faisait expulser en pleine séance.
+        const lu = await fetchProfile(nextSession.user.id);
         set({
           session: nextSession,
           user: nextSession.user,
-          profile,
+          // On CONSERVE le profil déjà connu plutôt que de l'effacer : un jeton
+          // rafraîchi ne change pas qui est la personne.
+          profile: lu.echec ? get().profile : lu.profil,
+          profilIndisponible: lu.echec,
           status: 'authenticated',
           error: null,
         });
@@ -132,11 +172,12 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       set({ status: 'unauthenticated', error: translateAuthError(error.message) });
       return;
     }
-    const profile = await fetchProfile(data.user.id);
+    const lu = await fetchProfile(data.user.id);
     set({
       session: data.session,
       user: data.user,
-      profile,
+      profile: lu.profil,
+      profilIndisponible: lu.echec,
       status: 'authenticated',
       error: null,
     });
@@ -155,8 +196,10 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   refreshProfile: async () => {
     const user = get().user;
     if (!user) return;
-    const profile = await fetchProfile(user.id);
-    set({ profile });
+    const lu = await fetchProfile(user.id);
+    // Même règle qu'au rafraîchissement de jeton : un échec ne détruit pas ce
+    // qu'on savait déjà. Il le SIGNALE, et l'écran propose de réessayer.
+    set({ profile: lu.echec ? get().profile : lu.profil, profilIndisponible: lu.echec });
   },
 }));
 

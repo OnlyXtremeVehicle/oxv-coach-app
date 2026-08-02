@@ -22,13 +22,18 @@ import {
   shouldShowCoachTabBar,
 } from '@/lib/coachNav';
 import { useAuthStore } from '@/store/useAuthStore';
+import { ProfilIndisponible } from '@/components/ProfilIndisponible';
 import { theme } from '@/theme/v2';
 
 export default function CoachLayout() {
   const profile = useAuthStore((s) => s.profile);
+  const profilIndisponible = useAuthStore((s) => s.profilIndisponible);
   const pathname = usePathname();
   const { width } = useWindowDimensions();
 
+  // `return null` rendait un écran NOIR, sans un mot, aussi bien pour une fiche
+  // absente que pour une lecture ratée. Le coach ne pouvait rien en faire.
+  if (profilIndisponible) return <ProfilIndisponible />;
   if (!profile) return null;
   if (profile.role !== 'coach') {
     return <Redirect href={'/(app2)' as never} />;

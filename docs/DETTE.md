@@ -955,3 +955,169 @@ juridiques annoncé aux CGU, l'en-tête de la carte-souvenir.
 **Deux propositions attendent une décision** :
 `supabase/migrations/PROPOSITION_L31_jeton_partage_par_la_base.sql` et
 `docs/PROPOSITION_POLITIQUE_8_3.md`.
+
+---
+
+## D-30 — La cartographie de l'espace admin : 62 constats, 9 angles morts
+
+**Relevé le 02/08/2026** par la cartographie adversariale des 30 écrans de
+`app/(admin)/` face au cahier Jalon 7 Phase 6 (150 agents, 5 sondes : accès,
+deux modes, tableau de piste, gestes qui engagent, écrans morts). 72 constats
+bruts, **62 retenus** après double réfutation, plus 9 angles morts.
+
+**Traité le jour même** : la confusion entre « lecture impossible » et « droit
+refusé » (voir en fin d'entrée), la cible morte du sélecteur d'espace, et les
+trois corrections structurelles du Jalon 7 (commit `8203e53`).
+
+**Ce qui suit est confirmé et NON corrigé.** Groupé par nature, parce que la
+plupart de ces défauts partagent une racine.
+
+### Le hub admin ne fait pas ce que le cahier décrit
+
+`app/(admin)/index.tsx` est une liste figée de **22 cartes** (`VIEWS`, l. 23-134)
+rendue à l'identique le jour J et un mardi de février. Aucun état, aucun hook de
+donnée, aucune section. Manquent donc, tous exigés Jalon 7 Phase 6 :
+
+- **les deux modes** — le coach en a un, `src/features/coach/hubModeLogic.ts`,
+  pur et testé : il servirait de modèle ;
+- **la séparation verticale** surveillance / « À faire » / plateau :
+  `SectionLabel` n'est même pas importé ;
+- **les compteurs** : les 22 `description` sont des chaînes littérales figées.
+
+### Rien n'est en temps réel, et deux écrans affirment le contraire
+
+`grep` de `.channel(`, `postgres_changes`, `.subscribe(` sur les 31 fichiers de
+`app/(admin)/` : **zéro occurrence**. Or le hub annonce « État Bluetooth en temps
+réel pendant la session » (`index.tsx:36`), `tour-controle.tsx:36` le répète — et
+`en-cours.tsx:126` dément dans son propre pied de page : « Suivi temps réel en
+V1.1. » Le motif existe déjà ailleurs (`src/services/liveSessionService.ts`).
+
+### Le tableau de piste montre des noms, et impose un ordre
+
+- `en-cours.tsx:51` lit `users(first_name, last_name)` et rend `session.pilotName`
+  (l. 114) : de l'état civil, là où le cahier impose des NUMÉROS.
+  `users.car_number` existe, et la règle d'ordre `compareCarNo`
+  (`src/services/boardLogic.ts:124`) est déjà écrite ET verrouillée par test —
+  branchée sur le seul roster coach.
+- `en-cours.tsx:53` trie par `started_at` décroissant : le dernier parti en tête.
+  C'est un ordre de passage, donc une hiérarchie, là où `BOARD_MODE = 'A'`
+  l'interdit.
+- `analyse-session/[id].tsx:136` montre à l'administrateur la marge globale d'une
+  séance nominative — l'indicateur central du pilote.
+
+### Des zéros fabriqués, présentés comme des mesures
+
+Chacun transforme une lecture EN ÉCHEC en un chiffre affiché comme un fait :
+
+| Où | Quoi |
+|---|---|
+| `adminControlTowerService.ts:73` puis `:85` | `const { count } = ...` sans lire `error`, puis `count ?? 0` |
+| `adminAnalyticsService.ts:71-78` | six comptages `head: true`, aucun ne lit `error` |
+| `en-cours.tsx:70` | `lap_count ?? 0` rendu « 0 tour » alors que la colonne est nullable |
+| `partenaires.tsx:92` | compteur de leads hors du `StateWrapper`, retombe à 0 pendant le chargement |
+| `attendanceService.ts:56` | `if (error || !data || length === 0) return []` — panne et journée vide confondues |
+| `qualite-data.tsx:57` | état d'erreur INATTEIGNABLE : `detectSessionAnomalies` rend `[]` sur erreur |
+| `support/[id].tsx:115` | idem — `'error'` jamais atteint, `errorCause` et `onRetry` morts |
+| `adminUsersService.ts:93` | `listUsers` avale l'erreur, l'écran n'a ni `.catch` ni état |
+| `utilisateurs/[id].tsx:55` | `null` rendu aussi bien pour compte absent que pour lecture refusée |
+
+C'est la règle fondateur « données réelles câblées » enfreinte neuf fois.
+
+### Des gestes qui engagent, sans confirmation ni trace
+
+- **`coachs/[id].tsx:125`** — « Forcer le consentement (papier signé) » écrit un
+  consentement AU NOM D'UN PILOTE, sans confirmation, et ignore l'échec
+  (`if (result.ok) await reload()`, pas de branche `else`).
+  `coachAdminService.ts:321` n'inscrit **aucun auteur** : la table ne porte pas la
+  colonne, aucun déclencheur d'audit ne couvre `coach_pilots`. Un consentement
+  sans auteur ni trace est indéfendable en cas de contestation.
+- **`feature-flags.tsx:179`** — « Supprimer » efface un drapeau d'un seul toucher.
+  Ces drapeaux commandent des fonctions vivantes de l'espace pilote
+  (`biometry`, `pilot_waivers`, `convoys`, `app_payments`, `founders`).
+- **`maintenance.tsx:103`** — le bandeau « Kill-switch ARMÉ » suit l'état LOCAL,
+  modifié par l'interrupteur avant tout enregistrement : il affirme que l'app est
+  bloquée pour tous avant que quoi que ce soit ne soit écrit.
+- **`maintenance.tsx:45`** — `loadAppConfig` rendant `null` sur erreur, l'écran ne
+  passe pas en erreur et **reste sur ses valeurs initiales** : `maintenance=false`.
+- **`attendanceService.ts:155`** — seule écriture admin dans `registrations` :
+  aucun auteur (`attended_by` n'existe pas), aucun trigger d'audit. Le cahier
+  l'exige : « une inscription vaut un paiement, et sans trace un désaccord de
+  facturation est insoluble ».
+- **`evenements/[id].tsx:101/109/117/125`** — quatre écritures dont le
+  `MutationResult` est jeté ; `moderation.tsx:84/91` et `devices.tsx:59` de même.
+- **`ambassadeurs.tsx:146`** — « Activer » et « Révoquer », frères à 8 px, chacun
+  `hitSlop={6}` : les zones se recouvrent sur 4 px et le dernier rendu rafle le
+  toucher. Le piège `hitSlop` pour la troisième fois dans ce dépôt.
+
+### Le briefing collectif n'existe pas
+
+Le cahier : « un geste bascule tous les présents — seul des neuf items à l'être
+par nature ». Réalité : les neuf items vivent en base
+(`20260703200426_eligibility_items_hub02.sql:16`, avec une policy admin) et
+**aucun fichier de `app/(admin)/` ne mentionne `eligibility_items`**. Les cinq
+occurrences de « briefing » sont un champ d'horaire à la création d'un événement
+(`evenements/nouveau.tsx`), jamais réaffiché. `presences.tsx:63` pointe un pilote
+à la fois, et écarte tout autre appui pendant l'aller-retour serveur.
+
+### L'incident n'a pas d'état
+
+`20260719021027_be1_incident_reports.sql` : la table porte `occurred_at`,
+`description`, `photo_path`, `created_at`. **Aucune colonne d'état** (reçu /
+traité / clos), aucun auteur de traitement, aucune date — et la ligne 38 interdit
+explicitement toute policy UPDATE ou DELETE. Le suivi exigé demande une migration.
+
+### Deux systèmes de présence qui ne se voient pas
+
+`presences.tsx:65` écrit `registrations.attended_at` (tables du site) ;
+`scan-checkin.tsx:47` et `evenements/[id].tsx:109` écrivent
+`event_registrations.status = 'checked_in'` (tables héritées). Pointer d'un côté
+ne se voit pas de l'autre.
+
+### Sécurité — les angles morts du critique de complétude
+
+- **`adminSessionDiagnosticService.ts:75`** — l'en-tête affirme « Admin-only (RLS
+  `is_admin()` sur ces tables) ». **Faux pour deux des quatre** :
+  `session_insights` n'a que trois policies (propriétaire, service_role, coach).
+  Le dépôt est PUBLIC, la RLS est la seule barrière.
+- **`20260729034051_d1_is_coach_of_exige_le_role.sql:50`** — `is_coach_of`, qui
+  commande l'accès du coach aux séances, aux tours et aux analyses, teste
+  `active`, `pilot_consent_at` et `users.role` mais **JAMAIS
+  `coach_pilots.status`**. `is_detailed_coach_of` non plus.
+- **`20260621172308_scenic_routes.sql:96`** — le verrou de certification est un
+  trigger `before update of status` : l'INSERT n'est pas couvert, et le
+  propriétaire d'une route déjà certifiée peut en réécrire `name`, `geometry` et
+  `pois` sans qu'aucune garde ne s'arme (`for all`, l. 39-42).
+- **`src/__tests__/rls/adminTablesRLS.test.ts:49`** — le test affirme qu'un pilote
+  ne lit aucune ligne de `device_assignments`, mais **ne crée jamais
+  d'affectation** : il passe parce que la table est vide, pas parce qu'une policy
+  écarte. Garde posée, non armée.
+- **`devices.tsx:205`** — aucune écriture dans `device_assignments` n'existe dans
+  tout le dépôt : les trois seuls accès sont des SELECT. L'écran laisse croire
+  qu'on peut affecter un boîtier.
+
+### Écrans qui mentent sur leur contenu
+
+- **`preparation.tsx:51`** — l'écran « Préparation » tire les 50 premiers `users`
+  de rôle `pilot` triés par nom, **sans aucune jointure sur `registrations` ni sur
+  `events`**, alors que son état vide annonce « Aucun pilote inscrit à la
+  prochaine session ».
+- **`coachs.tsx:118`** — l'état vide délivre une instruction SQL de console
+  Supabase (« Dashboard → SQL → UPDATE users SET role... ») alors que
+  `preparation.tsx:151` sait faire ce geste dans l'application.
+- **`devices.tsx:101`** — le type d'équipement est codé en dur (`type: 'racebox'`)
+  puis réaffiché ligne 201 comme une donnée lue en base.
+
+### Ce qui a été corrigé le 02/08 — la racine des plus graves
+
+`profile === null` avait deux sens confondus : « pas de fiche » et « je n'ai pas
+pu lire la fiche ». Trois seuils tiraient la même conclusion du second, et
+`onAuthStateChange` fabriquait ce `null` à CHAQUE rafraîchissement de jeton dont
+la lecture échouait — toutes les heures, sur la 4G du circuit. L'administrateur
+était expulsé en plein pointage, sa porte de retour disparaissait au même
+instant, et il ne restait qu'à tuer l'application.
+
+Corrigé : `profilIndisponible` dans le magasin, un écran de reprise aux trois
+seuils, un profil connu qui n'est plus détruit par une lecture ratée, et la porte
+vers l'admin sortie de la branche de succès dont elle ne dépendait pas.
+Garde : `src/store/__tests__/profilIndisponible.guard.test.ts` — vérifiée
+échouante sur la version d'avant, sur ses six assertions structurelles.

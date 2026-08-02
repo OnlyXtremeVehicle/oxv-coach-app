@@ -2,6 +2,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
 
 import { isOnboardingComplete } from '@/services/onboardingService';
+import { ProfilIndisponible } from '@/components/ProfilIndisponible';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 
@@ -10,6 +11,7 @@ const { palette, fonts, fontSize, spacing, radius } = theme;
 export default function IndexRoute() {
   const status = useAuthStore((s) => s.status);
   const profile = useAuthStore((s) => s.profile);
+  const profilIndisponible = useAuthStore((s) => s.profilIndisponible);
   const initialize = useAuthStore((s) => s.initialize);
 
   if (status === 'idle' || status === 'loading') {
@@ -76,6 +78,14 @@ export default function IndexRoute() {
   // l'onboarding adapté au rôle :
   //  - coach → /(coach-onboarding) (pacte de coaching distinct)
   //  - pilote/admin → /(onboarding) standard (pacte de pilotage)
+  // UNE LECTURE RATÉE N'EST PAS UN ONBOARDING À FAIRE.
+  //
+  // `!profile` couvrait les deux, et un administrateur hors réseau se voyait
+  // proposer de créer son compte. On le dit, et on propose de réessayer.
+  if (profilIndisponible) {
+    return <ProfilIndisponible />;
+  }
+
   if (!profile || !isOnboardingComplete(profile)) {
     if (profile?.role === 'coach') {
       return <Redirect href={'/(coach-onboarding)' as never} />;

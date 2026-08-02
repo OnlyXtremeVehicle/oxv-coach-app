@@ -13,12 +13,24 @@
 
 import { Redirect, Stack } from 'expo-router';
 
+import { ProfilIndisponible } from '@/components/ProfilIndisponible';
 import { estAdmin } from '@/services/accesLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 
 export default function AdminLayout() {
   const profile = useAuthStore((s) => s.profile);
+  const profilIndisponible = useAuthStore((s) => s.profilIndisponible);
+
+  // LE SEUIL AVAIT DEUX RÉPONSES LÀ OÙ L'ÉTAT EN A TROIS.
+  //
+  // `estAdmin(null)` vaut `false`, et le rafraîchissement de jeton fabrique ce
+  // `null` dès qu'une lecture échoue — toutes les heures, sur la 4G du circuit.
+  // L'administrateur était donc éjecté en plein pointage, sans un mot, et sa
+  // porte de retour disparaissait au même instant.
+  if (profilIndisponible) {
+    return <ProfilIndisponible />;
+  }
 
   if (!estAdmin(profile)) {
     return <Redirect href={'/(app2)' as never} />;

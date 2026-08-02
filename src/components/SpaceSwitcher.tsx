@@ -26,9 +26,23 @@ type Space = 'pilot' | 'coach' | 'admin';
 // Accents d'identité de section (navigation, PAS viz). Couleurs d'identité de
 // rôle canoniques (roleColors, décision fondateur 2026-07-06) : pilote neutre
 // (jamais l'or), coach rouge de marque, admin cyan.
+/**
+ * LES ESPACES OÙ L'ON PEUT RÉELLEMENT ENTRER.
+ *
+ * « Espace coach » figurait ici et menait à un refus. Ce bloc ne s'affiche que
+ * pour un administrateur (`peutChangerEspace` = `estAdmin` = `role === 'admin'`),
+ * et le seuil `app/(coach)/_layout.tsx` renvoie tout `role !== 'coach'` vers
+ * l'espace pilote : la cible était proposée exactement au seul public qui ne
+ * pouvait jamais la franchir. Un contrôle qui mène à une redirection est un
+ * contrôle mort — il fait douter du compte, pas du bouton.
+ *
+ * L'application est MONO-RÔLE. Le jour où un compte cumulera coach et admin, la
+ * cible se rajoutera ici — et pas avant.
+ *
+ * Relevé par la cartographie de l'espace admin du 02/08/2026.
+ */
 const TARGETS: { space: Space; label: string; href: string; color: string }[] = [
   { space: 'pilot', label: 'Espace pilote', href: '/(app2)', color: roleColors.pilot },
-  { space: 'coach', label: 'Espace coach', href: '/(coach)', color: roleColors.coach },
   { space: 'admin', label: 'Espace admin', href: '/(admin)', color: roleColors.admin },
 ];
 
