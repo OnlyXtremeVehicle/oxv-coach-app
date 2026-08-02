@@ -960,6 +960,26 @@ juridiques annoncé aux CGU, l'en-tête de la carte-souvenir.
 
 ## D-30 — La cartographie de l'espace admin : 62 constats, 9 angles morts
 
+> **ÉTAT AU 02/08/2026, FIN DE JOURNÉE — l'entrée ci-dessous décrit l'état
+> AVANT correction.** Tout ce qui ne demandait pas de migration a été corrigé
+> (commits `8203e53`, `a7ee182`, `8e977ed`, `aa7f1b6`, `5ed9da1`, `510317f`) :
+> les quinze zéros fabriqués, les sept écritures muettes, le tableau de piste
+> qui classait, les promesses de temps réel, le hub à deux modes avec ses
+> familles et ses compteurs, le briefing collectif, les deux écrans qui
+> décrivaient autre chose qu'eux-mêmes, le test RLS qui passait sur du vide, et
+> l'affirmation de protection qui était fausse.
+>
+> **CE QUI RESTE OUVERT tient en trois propositions non appliquées**, chacune
+> demandant une décision : `PROPOSITION_L31` (jeton de partage),
+> `PROPOSITION_L32` (affiliation non acceptée — trou d'accès VIVANT, mesuré en
+> production), `PROPOSITION_L33` (auteur du pointage et du consentement forcé,
+> état suivi des incidents, verrou des routes certifiées).
+>
+> Deux chantiers restent aussi, hors migration : le TEMPS RÉEL de l'espace admin
+> (aucun canal n'existe — les écrans ne le prétendent plus, mais ils ne le font
+> pas), et la LISTE DES INSCRITS de l'écran Préparation, qui lit l'annuaire au
+> lieu de la prochaine séance.
+
 **Relevé le 02/08/2026** par la cartographie adversariale des 30 écrans de
 `app/(admin)/` face au cahier Jalon 7 Phase 6 (150 agents, 5 sondes : accès,
 deux modes, tableau de piste, gestes qui engagent, écrans morts). 72 constats
