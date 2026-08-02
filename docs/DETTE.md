@@ -790,3 +790,38 @@ au moment où le coach appuie, l'abscisse est ce qui se compare entre deux tours
 Choisir engage le schéma — décision fondateur.
 
 **Rien à rattraper** : 0 annotation en production.
+
+---
+
+## D-27 — Les données d'un membre fondateur survivent à l'effacement de son compte
+
+**Relevé le 01/08/2026** en préparant la phase 5bis (statut fondateur).
+
+`founding_members` porte `prenom`, `nom`, `email` — des données personnelles — et
+**n'est pas dans `purge_user_data`**. Elle ne peut pas y être : la table n'a
+**aucune colonne `user_id`**, donc rien ne relie une ligne à un compte.
+
+Conséquence : un membre fondateur qui crée un compte, puis exerce son droit à
+l'effacement, voit son compte anonymisé et son nom rester ici.
+
+**Ce n'est PAS une exposition.** Vérifié : la RLS est active sur la table et
+**aucune policy n'existe** — ni `anon` ni `authenticated` n'y lisent quoi que ce
+soit, malgré les GRANT présents. Seul `service_role` y accède, ce dont l'edge
+function `capture-membre-fondateur` a besoin. C'est le bon état ; ne pas y
+ajouter de policy sans raison.
+
+**Dégât réel : nul aujourd'hui.** Une seule ligne, et aucune demande
+d'effacement n'a jamais été exercée.
+
+**Le correctif est dans `PROPOSITION_L29_statut_fondateur.sql`** — la colonne
+`user_id` sert d'abord à cela, la propagation du statut ne vient qu'ensuite.
+L'anonymisation y est préférée à la suppression : la candidature est une trace de
+gestion (une demande de signature Yousign a pu être facturée sur elle), c'est
+l'identité qui doit disparaître, pas l'existence de la ligne.
+
+**Un point reste à trancher, et il n'est pas technique.** Le plan dit
+« propagation au rattachement » sans dire par quoi on rattache. Le seul point
+commun entre les deux tables est l'e-mail — une identification faible : une
+adresse change, se partage, se réutilise. La proposition pose donc la mécanique
+et LAISSE le rattachement à un geste explicite. Automatiser sur l'e-mail seul
+attribuerait un statut de fondateur à quelqu'un qui ne l'a peut-être pas demandé.
