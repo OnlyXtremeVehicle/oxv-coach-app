@@ -10,6 +10,7 @@
 import { useCallback, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 import {
   type ModerationReport,
@@ -81,17 +82,30 @@ export default function AdminModerationScreen() {
 
   useFocusEffect(reload);
 
+  /**
+   * Prendre en charge un signalement : l'échec se disait par le silence.
+   * `if (res.ok) reload()` sans branche `else` laissait le bouton sans effet
+   * apparent, et le modérateur recommençait.
+   */
   async function onTake(r: ModerationReport) {
     setBusy(true);
     const res = await takeReport(r.id);
     setBusy(false);
-    if (res.ok) reload();
+    if (res.ok) {
+      reload();
+      return;
+    }
+    Toast.show({ type: 'error', text1: res.error ?? "La prise en charge n'a pas abouti." });
   }
 
   async function onResolve(r: ModerationReport, status: 'resolu' | 'rejete') {
     setBusy(true);
     const res = await resolveReport(r.id, status, resolution || undefined);
     setBusy(false);
+    if (!res.ok) {
+      Toast.show({ type: 'error', text1: res.error ?? "La décision n'a pas été enregistrée." });
+      return;
+    }
     if (res.ok) {
       setSelectedId(null);
       setResolution('');

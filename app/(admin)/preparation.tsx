@@ -48,6 +48,8 @@ export default function PreparationScreen() {
   const reload = async () => {
     setLoading(true);
     setFailed(false);
+    // ANNUAIRE, PAS LISTE D'INSCRITS. Aucun filtre de session, d'événement ni
+    // de date : c'est l'ensemble des comptes pilotes, tronqué à 50.
     const { data, error } = await supabase
       .from('users')
       .select('id, first_name, last_name, email, kyc_status, pilot_level')
@@ -124,7 +126,15 @@ export default function PreparationScreen() {
           state={state}
           skeletonLines={5}
           emptyLabel="Préparation"
-          emptyMessage="Aucun pilote inscrit à la prochaine session."
+          // L'ÉCRAN NE LIT PAS LA PROCHAINE SESSION. Il tire les 50 premiers
+          // comptes de rôle `pilot`, triés par nom, sans aucune jointure sur
+          // `registrations` ni sur `events`. L'ancien message — « Aucun pilote
+          // inscrit à la prochaine session » — décrivait un filtre qui n'existe
+          // pas : un administrateur en concluait que personne ne s'était
+          // inscrit, alors que l'annuaire était simplement vide.
+          // Relevé par la cartographie du 02/08/2026. Brancher la vraie liste
+          // d'inscrits est un lot à part, consigné en D-30.
+          emptyMessage="Aucun compte pilote dans l'annuaire."
           errorCause="La lecture des pilotes a échoué. Vérifiez la connexion, puis réessayez."
           onRetry={reload}
         >

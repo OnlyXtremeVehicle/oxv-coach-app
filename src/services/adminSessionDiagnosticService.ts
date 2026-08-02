@@ -4,7 +4,22 @@
  * DIAGNOSTIC (lecture) : agrège, pour une session, l'état réel du pipeline à
  * partir des tables existantes (telemetry_sessions, app_session_analyses,
  * app_segment_analyses, session_insights, laps). Aucune table de diagnostic —
- * zéro schéma. Admin-only (RLS `is_admin()` sur ces tables).
+ * zéro schéma.
+ *
+ * ATTENTION — CETTE LIGNE AFFIRMAIT « Admin-only (RLS `is_admin()` sur ces
+ * tables) ». **C'EST FAUX POUR AU MOINS UNE DES QUATRE.** Vérifié le
+ * 02/08/2026 : `session_insights` ne porte que trois policies — propriétaire,
+ * `service_role`, et coach — sans aucune branche administrateur.
+ *
+ * Deux conséquences, opposées et toutes deux mauvaises :
+ *   • un administrateur qui n'est pas propriétaire n'y lit RIEN, et le
+ *     diagnostic paraît vide sans dire pourquoi ;
+ *   • un mainteneur qui croit ce commentaire ajoutera demain une requête en
+ *     supposant une protection qui n'existe pas. Le dépôt est PUBLIC : la RLS
+ *     est la seule barrière réelle.
+ *
+ * Ne rien conclure d'ici sur la protection d'une table : la lire dans
+ * `pg_policies`. Consigné en D-30.
  *
  * RELANCE (écriture) : ne réécrit rien côté client. Délègue aux edge functions
  * serveur (service_role), qui sont la SEULE voie autorisée à recalculer pour le

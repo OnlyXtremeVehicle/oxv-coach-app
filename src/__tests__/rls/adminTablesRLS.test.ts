@@ -3,6 +3,11 @@
  * `data_quality_reports`, `devices`, `device_assignments`.
  * Policy unique `*_admin_all` (is_admin) → invisibles à tout non-admin.
  *
+ * CHAQUE ASSERTION D'INVISIBILITÉ DOIT PORTER SUR UNE LIGNE QUI EXISTE. Une
+ * table vide rend toute vérification de RLS vraie par accident : le test passe,
+ * et il passerait aussi bien sans aucune policy. C'était le cas de
+ * `device_assignments` jusqu'au 02/08/2026.
+ *
  * Skip automatique si TEST_SUPABASE_URL / TEST_SUPABASE_SERVICE_KEY absents.
  */
 
@@ -21,8 +26,12 @@ const describeIf = RLS_TEST_ENABLED ? describe : describe.skip;
 describeIf('RLS — tables admin-only (qualité data / équipements)', () => {
   const created: TestUser[] = [];
   let deviceId: string | null = null;
+  let assignmentId: string | null = null;
 
   afterAll(async () => {
+    // L'affectation d'abord : elle référence le boîtier.
+    if (assignmentId)
+      await adminClient().from('device_assignments').delete().eq('id', assignmentId);
     if (deviceId) await adminClient().from('devices').delete().eq('id', deviceId);
     await cleanupTestUsers(created);
   });
@@ -42,6 +51,26 @@ describeIf('RLS — tables admin-only (qualité data / équipements)', () => {
       .select('id')
       .single()) as unknown as { data: { id: string } | null };
     deviceId = dev?.id ?? null;
+
+    // L'AFFECTATION MANQUAIT — LE TEST PASSAIT SUR DU VIDE.
+    //
+    // Les deux premières assertions insèrent bien une ligne avant de vérifier
+    // qu'un pilote ne la voit pas. La troisième n'insérait RIEN : elle passait
+    // parce que `device_assignments` était vide, pas parce qu'une policy
+    // écartait le pilote. Elle aurait passé à l'identique sans aucune RLS —
+    // exactement le motif « garde posée, non armée », dans un test de sécurité.
+    //
+    // Relevé par la cartographie du 02/08/2026. Le dépôt est PUBLIC : la RLS
+    // est la seule barrière, et ses tests doivent mordre.
+    const { data: aff } = (await admin
+      .from('device_assignments')
+      .insert({ device_id: deviceId, session_id: sessionId } as never)
+      .select('id')
+      .single()) as unknown as { data: { id: string } | null };
+    assignmentId = aff?.id ?? null;
+    // Si l'insertion échoue, l'assertion suivante redeviendrait vide de sens :
+    // on exige donc qu'une ligne existe réellement avant de tester la lecture.
+    expect(assignmentId).not.toBeNull();
 
     const c = await userClient(pilot.email, pilot.password);
     expect((await c.from('data_quality_reports').select('id')).data ?? []).toHaveLength(0);

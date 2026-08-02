@@ -8,6 +8,7 @@
 import { useCallback, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import Toast from 'react-native-toast-message';
 
 import {
   EVENT_STATUSES,
@@ -95,36 +96,52 @@ export default function AdminEventDetailScreen() {
 
   useFocusEffect(reload);
 
-  async function onStatus(status: EventStatus) {
-    if (!id || busy || event?.status === status) return;
+  /**
+   * QUATRE ÉCRITURES QUI SE TAISAIENT EN CAS DE REFUS.
+   *
+   * Chacune faisait `await …` sans lire le `MutationResult` retourné, puis
+   * `reload()`. Un refus de la base — RLS, contrainte, réseau — laissait donc
+   * l'écran se recharger à l'identique, et l'administrateur repartait en
+   * croyant avoir agi. Changer le statut d'un événement ou pointer une arrivée
+   * ne sont pas des gestes anodins.
+   *
+   * `dire()` centralise la réponse : on ne recharge que si l'écriture a abouti,
+   * et on nomme l'échec sinon. Relevé par la cartographie du 02/08/2026.
+   */
+  async function dire(
+    action: () => Promise<{ ok: boolean; error?: string }>,
+    echec: string
+  ): Promise<void> {
+    if (busy) return;
     setBusy(true);
-    await updateEvent(id, { status });
+    const res = await action();
     setBusy(false);
-    reload();
+    if (res.ok) {
+      reload();
+      return;
+    }
+    Toast.show({ type: 'error', text1: res.error ?? echec });
+  }
+
+  async function onStatus(status: EventStatus) {
+    if (!id || event?.status === status) return;
+    await dire(() => updateEvent(id, { status }), "Le statut n'a pas changé.");
   }
 
   async function onCheckIn(regId: string) {
-    if (busy) return;
-    setBusy(true);
-    await setRegistrationStatus(regId, 'checked_in');
-    setBusy(false);
-    reload();
+    await dire(
+      () => setRegistrationStatus(regId, 'checked_in'),
+      "L'arrivée n'a pas été enregistrée."
+    );
   }
 
   async function onAddPartner(partnerId: string) {
-    if (!id || busy) return;
-    setBusy(true);
-    await addEventPartner(id, partnerId);
-    setBusy(false);
-    reload();
+    if (!id) return;
+    await dire(() => addEventPartner(id, partnerId), "Le partenaire n'a pas été ajouté.");
   }
 
   async function onRemovePartner(rowId: string) {
-    if (busy) return;
-    setBusy(true);
-    await removeEventPartner(rowId);
-    setBusy(false);
-    reload();
+    await dire(() => removeEventPartner(rowId), "Le partenaire n'a pas été retiré.");
   }
 
   if (loading || error || !event) {

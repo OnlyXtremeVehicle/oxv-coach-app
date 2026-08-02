@@ -115,7 +115,12 @@ export default function AdminCoachsScreen() {
           state={state}
           skeletonLines={5}
           emptyLabel="Aucun coach pour l'instant."
-          emptyMessage="Pour ajouter un coach : Dashboard Supabase → SQL → UPDATE users SET role = 'coach' WHERE id = '...'"
+          // L'ÉTAT VIDE DÉLIVRAIT UNE INSTRUCTION SQL de console Supabase, alors
+          // que l'application sait faire ce geste : `preparation.tsx` promeut un
+          // pilote en coach depuis son écran. Envoyer un administrateur écrire
+          // un UPDATE à la main, c'est lui faire contourner toutes les gardes
+          // que le code pose autour de ce changement de rôle.
+          emptyMessage="Aucun coach pour l'instant. Un pilote se promeut en coach depuis l'écran Préparation."
           errorCause="La liste des coachs n'a pas pu être chargée."
           onRetry={() => setReloadKey((k) => k + 1)}
         >

@@ -64,6 +64,11 @@ export default function AdminDevicesScreen() {
         )
       );
       setEditingId(null);
+    } else {
+      // Sans cette branche, un refus laissait le formulaire ouvert et inchangé :
+      // ni toast, ni message. L'administrateur croyait avoir enregistré le nom
+      // d'un boîtier. Relevé par la cartographie du 02/08/2026.
+      Toast.show({ type: 'error', text1: res.error ?? "Le boîtier n'a pas été enregistré." });
     }
     setSavingIdentity(false);
   };
