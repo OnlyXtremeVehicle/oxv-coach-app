@@ -1,12 +1,26 @@
 /**
  * Tests du service de mesure d'audience (§9).
- * Vérifie les garde-fous RGPD : inactif sans domaine, opt-out, no-op.
+ * Vérifie les garde-fous RGPD : inactif sans domaine, sans accord, opt-out, no-op.
+ *
+ * ---
+ *
+ * LE CONTRAT A CHANGÉ LE 02/08/2026 — CES TESTS ENCODAIENT L'ANCIEN.
+ *
+ * Ils tenaient pour acquis qu'un domaine configuré suffisait à émettre. C'était
+ * exactement le défaut : la mesure partait sans que personne ait rien accepté,
+ * dès le montage de la racine, avant même l'écran de connexion.
+ *
+ * Il fallait donc les corriger, PAS assouplir la garde. Les cas nominaux
+ * déclarent maintenant l'accord explicitement — ce que fait l'application à
+ * l'acceptation des CGU. Le fail-closed, lui, est éprouvé dans
+ * `analyticsConsentement.test.ts`.
  */
 
 // Mock MMKV (indisponible en environnement Jest).
 import {
   isAnalyticsEnabled,
   isAnalyticsOptedOut,
+  setAnalyticsConsent,
   setAnalyticsOptOut,
   trackEvent,
 } from '../analyticsService';
@@ -29,6 +43,11 @@ describe('analyticsService', () => {
     fetchMock.mockClear();
     global.fetch = fetchMock as unknown as typeof fetch;
     delete process.env.EXPO_PUBLIC_PLAUSIBLE_DOMAIN;
+    // L'accord est le point de départ des cas nominaux ci-dessous : ils testent
+    // le DOMAINE et l'OPT-OUT, pas le consentement. Sans cette ligne ils
+    // vérifieraient la garde de consentement par accident, et ne diraient plus
+    // rien de ce qu'ils prétendent couvrir.
+    setAnalyticsConsent(true);
   });
 
   it('est INACTIF tant que le domaine Plausible n est pas configuré', () => {

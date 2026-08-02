@@ -9,6 +9,7 @@
 import { create } from 'zustand';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { setAnalyticsConsent } from '@/services/analyticsService';
 
 export type UserRole = 'pilot' | 'admin' | 'coach' | 'partner' | 'pro_pilot';
 
@@ -65,6 +66,19 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     return null;
   }
   if (!data) return null;
+
+  // MIROIR LOCAL DU CONSENTEMENT À LA MESURE D'AUDIENCE.
+  //
+  // `trackEvent` est synchrone et ne peut pas interroger la base ; il lit un
+  // miroir en stockage local, fermé par défaut. Sans cette recopie, un pilote
+  // ayant accepté sur une version précédente resterait muet pour toujours — et
+  // la garde, en s'appliquant à des gens qui avaient déjà consenti, ne
+  // protégerait plus personne.
+  //
+  // La base fait foi dans les deux sens : elle rouvre, et elle referme.
+  const accepte = (data as { privacy_accepted_at?: string | null }).privacy_accepted_at;
+  setAnalyticsConsent(typeof accepte === 'string' && accepte.length > 0);
+
   // Fallback de sécurité : si role est absent, on assume pilot.
   return { ...(data as UserProfile), role: (data as { role?: UserRole }).role ?? 'pilot' };
 }

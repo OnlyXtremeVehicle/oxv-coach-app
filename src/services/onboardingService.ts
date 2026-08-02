@@ -14,6 +14,7 @@ import { supabase } from '@/lib/supabase';
 import { OxvEvent } from '@/services/analyticsEvents';
 import { enqueueAction } from '@/services/offlineQueue';
 import { useAuthStore } from '@/store/useAuthStore';
+import { setAnalyticsConsent } from '@/services/analyticsService';
 
 export const PACT_VERSION = '1.0';
 export const COACH_PACT_VERSION = '1.0';
@@ -70,6 +71,10 @@ export async function acceptCguAndPrivacy(aiDebriefConsent = false): Promise<boo
     console.warn('[OXV] acceptCguAndPrivacy offline-queued :', error.message);
     return false;
   }
+  // Le miroir local du consentement : `trackEvent` est synchrone et ne peut pas
+  // lire la base. Sans cette ligne, la mesure d'audience resterait muette pour
+  // toujours — fermée par défaut, c'est voulu.
+  setAnalyticsConsent(true);
   await useAuthStore.getState().refreshProfile();
   return true;
 }

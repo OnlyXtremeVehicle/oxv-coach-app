@@ -25,6 +25,21 @@ import { storage } from '@/lib/mmkv';
 const PLAUSIBLE_API = 'https://plausible.io/api/event';
 const OPT_OUT_KEY = 'analytics.optOut';
 
+/**
+ * CONSENTEMENT — MIROIR LOCAL, LU SYNCHRONIQUEMENT.
+ *
+ * Le consentement fait foi côté serveur (`users.privacy_accepted_at`), mais
+ * `trackEvent` est synchrone et ne peut pas interroger la base. On garde donc un
+ * miroir local, écrit à l'acceptation et au chargement du profil.
+ *
+ * ABSENT = PAS DE CONSENTEMENT. C'est l'inverse de l'ancien comportement, et
+ * c'est le seul défaut acceptable : le 02/08/2026, `app_ouverte` partait au
+ * montage de la racine — avant l'écran de connexion, donc avant les cases CGU et
+ * confidentialité. Le premier évènement d'un pilote était émis avant qu'il ait
+ * vu un seul écran.
+ */
+const CONSENT_KEY = 'analytics.consentement';
+
 /** Domaine Plausible configuré côté env. Vide = analytics désactivé. */
 function plausibleDomain(): string {
   return process.env.EXPO_PUBLIC_PLAUSIBLE_DOMAIN ?? '';
@@ -39,6 +54,29 @@ export function isAnalyticsOptedOut(): boolean {
   }
 }
 
+/**
+ * Le pilote a-t-il accepté ? Fermé par défaut.
+ *
+ * Toute anomalie de lecture vaut REFUS : on préfère perdre une mesure d'audience
+ * que d'émettre sans accord.
+ */
+export function hasAnalyticsConsent(): boolean {
+  try {
+    return storage.getBoolean(CONSENT_KEY) === true;
+  } catch {
+    return false;
+  }
+}
+
+/** Enregistre l'accord (ou son retrait) sur cet appareil. */
+export function setAnalyticsConsent(donne: boolean): void {
+  try {
+    storage.set(CONSENT_KEY, donne);
+  } catch {
+    // MMKV indisponible (ex : tests) — on ignore : sans écriture, on reste fermé.
+  }
+}
+
 /** Active / désactive la mesure d'audience pour cet appareil. */
 export function setAnalyticsOptOut(optedOut: boolean): void {
   try {
@@ -48,9 +86,9 @@ export function setAnalyticsOptOut(optedOut: boolean): void {
   }
 }
 
-/** Analytics actif ? (domaine configuré ET pas d'opt-out) */
+/** Analytics actif ? (domaine configuré ET consenti ET pas d'opt-out) */
 export function isAnalyticsEnabled(): boolean {
-  return plausibleDomain() !== '' && !isAnalyticsOptedOut();
+  return plausibleDomain() !== '' && hasAnalyticsConsent() && !isAnalyticsOptedOut();
 }
 
 /**
@@ -96,7 +134,8 @@ export function trackEvent(name: string, props?: Record<string, string | number 
   }
 
   const domain = plausibleDomain();
-  if (domain === '' || isAnalyticsOptedOut()) return;
+  // Trois conditions, toutes nécessaires : configuré, consenti, non refusé.
+  if (domain === '' || !hasAnalyticsConsent() || isAnalyticsOptedOut()) return;
 
   // Plausible attend un champ `url` ; pour une app mobile on utilise un
   // pseudo-URL app://<event> qui n'expose aucune donnée personnelle.

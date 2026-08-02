@@ -34,7 +34,7 @@ Deno.serve(async (req: Request) => {
   try {
     const r = await fetch(url, {
       headers: {
-        'User-Agent': 'OXV-Mirror/1.0 (https://oxvehicle.fr; contact@oxvehicle.fr)',
+        'User-Agent': 'OXV-Mirror/1.0 (https://www.oxvehicle.fr; contact@oxvehicle.fr)',
         'Accept-Language': 'fr',
         'Accept': 'application/json',
       },
