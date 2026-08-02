@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 
 import { Logo } from '@/brand/Logo';
 import { SpaceSwitcher } from '@/components/SpaceSwitcher';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -133,6 +134,7 @@ const VIEWS: { href: string; label: string; description: string }[] = [
 ];
 
 export default function AdminHubScreen() {
+  const signOut = useAuthStore((st) => st.signOut);
   return (
     <Screen>
       <AppBar title="ADMIN OXV" leading={<Logo size={26} />} />
@@ -177,6 +179,28 @@ export default function AdminHubScreen() {
             })}
           >
             <Text style={s.minorLink}>Sortir de l&apos;admin</Text>
+          </Pressable>
+
+          {/* SORTIR DE L'ADMIN N'EST PAS SE DÉCONNECTER.
+              Le contrôle au-dessus ne fait que NAVIGUER vers l'espace pilote :
+              la session reste ouverte. Aucun `signOut` n'existait dans tout
+              `app/(admin)/` — un administrateur qui prête son téléphone au bord
+              de la piste, ou qui le pose, n'avait aucun moyen de fermer sa
+              session depuis là où il travaille.
+              Jalon 7, Phase 6 — deuxième des trois corrections structurelles. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Se déconnecter"
+            onPress={signOut}
+            hitSlop={theme.hitSlop}
+            style={({ pressed }) => ({
+              marginTop: theme.spacing.lg,
+              paddingVertical: theme.spacing.sm,
+              paddingHorizontal: theme.spacing.md,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={s.minorLink}>Se déconnecter</Text>
           </Pressable>
         </View>
       </View>

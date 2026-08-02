@@ -1,7 +1,40 @@
 /**
- * Vue Admin — Inspecteur de circuit.
+ * Vue Admin — Inspecteur de circuit, POUR LES TROIS CIRCUITS OFFICIELS.
  *
- * Affiche tout ce qu'on a en base sur le circuit Beltoise :
+ * *« L'inspecteur est codé en dur sur Haute Saintonge alors qu'il devient
+ * l'éditeur des trois circuits. »* — Plan de montage, Jalon 7, Phase 6.
+ *
+ * ---
+ *
+ * CE QUI A CHANGÉ LE 02/08/2026
+ *
+ * L'écran importait `HAUTE_SAINTONGE_TRACK`, `HAUTE_SAINTONGE_SEGMENTS` et
+ * `BELTOISE_CORNERS` — trois constantes locales — et affichait leur nom en dur.
+ * La production compte pourtant QUATRE circuits, dont **Ricardo Tormo
+ * (Valence)**, celui où la première capture réelle doit avoir lieu :
+ * l'administrateur ne pouvait pas l'ouvrir.
+ *
+ * Il choisit désormais parmi les circuits OFFICIELS, et chaque fait affiché est
+ * lu sur la ligne de ce circuit-là.
+ *
+ * ---
+ *
+ * DEUX LIMITES ASSUMÉES, DITES À L'ÉCRAN PLUTÔT QUE MASQUÉES
+ *
+ * 1. `CircuitMap` ne sait DESSINER que Haute Saintonge — c'est écrit dans son
+ *    code (`estHauteSaintonge`), et elle affiche d'elle-même « le tracé de X
+ *    n'est pas encore disponible ». On la laisse dire vrai plutôt que de lui
+ *    faire tracer une piste approximative. Rendre la carte pilotable par une
+ *    polyline touche un composant partagé avec l'espace pilote : c'est un lot
+ *    à part entière.
+ * 2. Les métadonnées riches — nom de virage, allure, bbox — n'existent QUE pour
+ *    Haute Saintonge, dans les constantes locales. Les autres circuits n'ont en
+ *    base que ce que le calcul a produit : numéro, sens, apex, rayon. On montre
+ *    ce qui existe, on n'invente ni un nom ni une allure.
+ *
+ * ---
+ *
+ * Affiche tout ce qu'on a en base sur le circuit sélectionné :
  *   - Tracé SVG calculé depuis les GPS (HAUTE_SAINTONGE_TRACK)
  *   - Les virages avec leurs métadonnées (nom, pace, lat/lon, progress)
  *   - Stats agrégées sur l'historique des analyses (sessions × pilotes)
@@ -30,6 +63,15 @@ import {
   type CornerColorMode as ColorMode,
 } from '@/components/CircuitMap';
 import { BELTOISE_CORNERS, type CornerTopology } from '@/lib/circuitTopology';
+import {
+  type VirageCircuit,
+  circuitParDefaut,
+  resumeCircuit,
+} from '@/features/admin/inspecteurCircuitLogic';
+import {
+  type CircuitInspectable,
+  chargerCircuitsInspectables,
+} from '@/services/circuitInspectionService';
 import { type SegmentAggregate, aggregateSegmentStats } from '@/services/segmentAnalysesService';
 import {
   HAUTE_SAINTONGE_CIRCUIT,
@@ -60,11 +102,49 @@ export default function CircuitInspectorScreen() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // LES CIRCUITS — chargés une fois, jamais mis en cache : l'administrateur
+  // inspecte l'état RÉEL de la base, pas celui d'hier.
+  const [circuits, setCircuits] = useState<CircuitInspectable[]>([]);
+  const [circuitsCharges, setCircuitsCharges] = useState(false);
+  const [circuitId, setCircuitId] = useState<string | null>(null);
+
   useEffect(() => {
+    let annule = false;
+    chargerCircuitsInspectables()
+      .then((liste) => {
+        if (annule) return;
+        setCircuits(liste);
+        setCircuitsCharges(true);
+        // On ouvre sur le circuit le plus documenté : tomber sur un circuit sans
+        // géométrie donnerait l'impression d'un écran cassé.
+        const defaut = circuitParDefaut(liste, (c) => c.geometrie);
+        setCircuitId(defaut?.id ?? null);
+      })
+      .catch(() => {
+        if (!annule) setCircuitsCharges(true);
+      });
+    return () => {
+      annule = true;
+    };
+  }, []);
+
+  const circuit = useMemo(
+    () => circuits.find((c) => c.id === circuitId) ?? null,
+    [circuits, circuitId]
+  );
+
+  useEffect(() => {
+    // Tant qu'aucun circuit n'est choisi, on ne charge RIEN : agréger sans
+    // rattachement mélangerait les marges de deux circuits.
+    if (circuitId === null) {
+      setAggregates([]);
+      setLoading(!circuitsCharges);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(false);
-    aggregateSegmentStats()
+    aggregateSegmentStats(undefined, circuitId)
       .then((rows) => {
         if (!cancelled) {
           setAggregates(rows);
@@ -80,7 +160,16 @@ export default function CircuitInspectorScreen() {
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, [reloadKey, circuitId, circuitsCharges]);
+
+  // Changer de circuit efface la sélection : le virage 3 de Valence n'est pas
+  // le virage 3 de Haute Saintonge.
+  useEffect(() => {
+    setSelected(null);
+  }, [circuitId]);
+
+  /** Les constantes locales riches n'existent QUE pour Haute Saintonge. */
+  const estHauteSaintonge = circuit?.nom === HAUTE_SAINTONGE_CIRCUIT.name;
 
   const aggregateByIndex = useMemo(() => {
     const map = new Map<number, SegmentAggregate>();
@@ -132,12 +221,55 @@ export default function CircuitInspectorScreen() {
         </View>
         <Text style={s.eyebrow}>ADMIN OXV · INSPECTEUR</Text>
         <Text style={s.title} accessibilityRole="header">
-          {HAUTE_SAINTONGE_CIRCUIT.name}
+          {circuit?.nom ?? (circuitsCharges ? 'Aucun circuit officiel' : '—')}
         </Text>
         <Text style={s.meta}>
-          {HAUTE_SAINTONGE_TRACK.length} points GPS · {HAUTE_SAINTONGE_SEGMENTS.length} segments ·{' '}
-          {HAUTE_SAINTONGE_CIRCUIT.totalLengthM} m
+          {circuit !== null
+            ? [circuit.ville, resumeCircuit(circuit.geometrie)].filter(Boolean).join(' · ')
+            : '—'}
         </Text>
+
+        {/* LE SÉLECTEUR. Sans lui, l'écran ne montrait que Haute Saintonge —
+            et Valence, où la première capture doit avoir lieu, était
+            inatteignable. */}
+        {circuits.length > 1 ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: theme.spacing.sm,
+              marginTop: theme.spacing.md,
+            }}
+          >
+            {circuits.map((c) => (
+              <Pressable
+                key={c.id}
+                accessibilityRole="button"
+                accessibilityState={{ selected: c.id === circuitId }}
+                accessibilityLabel={`Inspecter ${c.nom}`}
+                onPress={() => setCircuitId(c.id)}
+                style={({ pressed }) => ({
+                  paddingVertical: theme.spacing.sm,
+                  paddingHorizontal: theme.spacing.md,
+                  borderRadius: theme.radius.sm,
+                  borderWidth: 1,
+                  borderColor: c.id === circuitId ? ADMIN : theme.palette.line,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.body,
+                    fontSize: 13,
+                    color: c.id === circuitId ? ADMIN : theme.palette.creamMute,
+                  }}
+                >
+                  {c.nom}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
 
         {/* Toggle mode de couleur */}
         <ColorModeToggle
@@ -148,7 +280,10 @@ export default function CircuitInspectorScreen() {
 
         {/* Carte SVG — composition manuelle pour mode admin (toggle pace/zone) */}
         <View style={{ marginTop: theme.spacing.xl }}>
-          <CircuitMap height={360} circuitName="Haute Saintonge">
+          {/* `CircuitMap` ne sait dessiner que Haute Saintonge et le DIT
+              elle-même pour les autres. On lui passe le vrai nom plutôt que de
+              lui faire tracer une piste qui n'est pas la bonne. */}
+          <CircuitMap height={360} circuitName={circuit?.nom ?? null}>
             <TrackLayer animate={false} />
             <StartArrowLayer />
             <CornersLayer
@@ -163,21 +298,49 @@ export default function CircuitInspectorScreen() {
         <Legend mode={colorMode} />
 
         {/* Stats globales */}
-        <SectionHeader label="DONNÉES STATIQUES" />
+        <SectionHeader label="DONNÉES EN BASE" />
         <StatTable
           rows={[
-            ['Bbox latitude', formatBboxLat()],
-            ['Bbox longitude', formatBboxLon()],
-            ['Apex rapides (fast)', String(paceDistribution.fast)],
-            ['Apex moyens (medium)', String(paceDistribution.medium)],
-            ['Apex lents (slow)', String(paceDistribution.slow)],
-            ['Polyline interpolée', `${HAUTE_SAINTONGE_TRACK.length} points`],
+            ['Ville', circuit?.ville ?? '—'],
+            ['Statut de revue', circuit?.statut ?? '—'],
             [
-              'Segments uniformes',
-              `${HAUTE_SAINTONGE_SEGMENTS.length} (span 1/${HAUTE_SAINTONGE_SEGMENTS.length} chacun)`,
+              'Points de la centerline',
+              circuit && circuit.geometrie.points.length > 0
+                ? String(circuit.geometrie.points.length)
+                : '—',
+            ],
+            [
+              'Virages calculés',
+              circuit && circuit.geometrie.virages.length > 0
+                ? String(circuit.geometrie.virages.length)
+                : '—',
             ],
           ]}
         />
+
+        {/* CE BLOC N'EXISTE QUE POUR HAUTE SAINTONGE. Ces chiffres viennent des
+            constantes locales (`BELTOISE_CORNERS`, `HAUTE_SAINTONGE_*`), pas de
+            la base : les afficher sous un autre circuit lui attribuerait la
+            géométrie de celui-ci. */}
+        {estHauteSaintonge ? (
+          <>
+            <SectionHeader label="TOPOLOGIE LOCALE (HAUTE SAINTONGE)" />
+            <StatTable
+              rows={[
+                ['Bbox latitude', formatBboxLat()],
+                ['Bbox longitude', formatBboxLon()],
+                ['Apex rapides (fast)', String(paceDistribution.fast)],
+                ['Apex moyens (medium)', String(paceDistribution.medium)],
+                ['Apex lents (slow)', String(paceDistribution.slow)],
+                ['Polyline interpolée', `${HAUTE_SAINTONGE_TRACK.length} points`],
+                [
+                  'Segments uniformes',
+                  `${HAUTE_SAINTONGE_SEGMENTS.length} (span 1/${HAUTE_SAINTONGE_SEGMENTS.length} chacun)`,
+                ],
+              ]}
+            />
+          </>
+        ) : null}
 
         {/* Stats historiques */}
         <SectionHeader label="DONNÉES HISTORIQUES" />
@@ -191,29 +354,65 @@ export default function CircuitInspectorScreen() {
         >
           <StatTable
             rows={[
-              ['Sessions analysées (max)', String(totalSessions)],
-              ['Virages avec donnée', `${aggregates.length} / ${BELTOISE_CORNERS.length}`],
+              ['Sessions analysées (max)', totalSessions > 0 ? String(totalSessions) : '—'],
+              [
+                'Virages avec donnée',
+                // Le dénominateur suit le circuit choisi. L'ancien affichait les
+                // 7 virages de Haute Saintonge quel que soit le circuit.
+                circuit && circuit.geometrie.virages.length > 0
+                  ? `${aggregates.length} / ${circuit.geometrie.virages.length}`
+                  : aggregates.length > 0
+                    ? String(aggregates.length)
+                    : '—',
+              ],
               ['Marge moyenne (tous virages)', formatGlobalMargin(aggregates)],
             ]}
           />
         </StateWrapper>
 
-        {/* Liste des virages */}
-        <SectionHeader label={`LES ${BELTOISE_CORNERS.length} VIRAGES`} />
-        <View style={{ gap: theme.spacing.xs }}>
-          {BELTOISE_CORNERS.map((corner) => (
-            <CornerRow
-              key={corner.index}
-              corner={corner}
-              aggregate={aggregateByIndex.get(corner.index) ?? null}
-              isSelected={selected === corner.index}
-              onPress={() => setSelected(selected === corner.index ? null : corner.index)}
-            />
-          ))}
-        </View>
+        {/* LES VIRAGES.
+            Deux rendus, parce qu'il existe deux natures de donnée. Haute
+            Saintonge dispose de métadonnées locales riches — nom, allure,
+            position d'apex. Les autres circuits n'ont en base que ce que le
+            calcul a produit. On montre ce qui existe de chacun ; on n'invente ni
+            un nom ni une allure pour faire tenir un circuit dans le gabarit de
+            l'autre. */}
+        {estHauteSaintonge ? (
+          <>
+            <SectionHeader label={`LES ${BELTOISE_CORNERS.length} VIRAGES`} />
+            <View style={{ gap: theme.spacing.xs }}>
+              {BELTOISE_CORNERS.map((corner) => (
+                <CornerRow
+                  key={corner.index}
+                  corner={corner}
+                  aggregate={aggregateByIndex.get(corner.index) ?? null}
+                  isSelected={selected === corner.index}
+                  onPress={() => setSelected(selected === corner.index ? null : corner.index)}
+                />
+              ))}
+            </View>
+          </>
+        ) : (
+          <>
+            <SectionHeader label="LES VIRAGES CALCULÉS" />
+            {circuit && circuit.geometrie.virages.length > 0 ? (
+              <View style={{ gap: theme.spacing.xs }}>
+                {circuit.geometrie.virages.map((v) => (
+                  <VirageBrutRow key={v.index} virage={v} />
+                ))}
+              </View>
+            ) : (
+              <Text style={[s.note, { marginTop: theme.spacing.md }]}>
+                {circuit === null
+                  ? 'Choisissez un circuit.'
+                  : 'Aucun virage n’a encore été calculé pour ce circuit. La centerline est en base ; le découpage en virages ne l’est pas.'}
+              </Text>
+            )}
+          </>
+        )}
 
         {/* Détail du virage sélectionné */}
-        {selectedCorner ? (
+        {estHauteSaintonge && selectedCorner ? (
           <CornerDetail
             corner={selectedCorner}
             aggregate={selectedAggregate}
@@ -227,11 +426,11 @@ export default function CircuitInspectorScreen() {
                 : null
             }
           />
-        ) : (
+        ) : estHauteSaintonge ? (
           <Text style={[s.note, { marginTop: theme.spacing.xxl, textAlign: 'center' }]}>
             Un toucher révèle les détails d&apos;un virage.
           </Text>
-        )}
+        ) : null}
       </View>
     </Screen>
   );
@@ -240,6 +439,36 @@ export default function CircuitInspectorScreen() {
 // ============================================================================
 // Sous-composants
 // ============================================================================
+
+/**
+ * Un virage tel que la base le décrit, sans habillage.
+ *
+ * Pas de nom : la colonne `name` vaut `null` en production. Pas d'allure : elle
+ * n'est calculée nulle part pour ces circuits. Chaque champ absent s'écrit
+ * « — » — jamais un zéro, qui se lirait comme une mesure.
+ */
+function VirageBrutRow({ virage }: { virage: VirageCircuit }) {
+  const sens =
+    virage.direction === 'left' ? 'gauche' : virage.direction === 'right' ? 'droite' : '—';
+  const apex =
+    virage.apexProgression !== null ? `${Math.round(virage.apexProgression * 100)} %` : '—';
+  const rayon = virage.rayonM !== null ? `${Math.round(virage.rayonM)} m` : '—';
+  return (
+    <Card>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md }}>
+        <Text style={[s.title, { fontSize: 20, color: ADMIN }]}>{virage.index}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={s.note}>
+            {virage.nom ?? 'Sans nom'} · {sens}
+          </Text>
+          <Text style={s.note}>
+            apex {apex} · rayon {rayon}
+          </Text>
+        </View>
+      </View>
+    </Card>
+  );
+}
 
 function ColorModeToggle(props: {
   value: ColorMode;

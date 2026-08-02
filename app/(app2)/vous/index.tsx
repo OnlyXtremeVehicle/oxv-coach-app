@@ -28,6 +28,7 @@ import { router } from 'expo-router';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SpaceSwitcher } from '@/components/SpaceSwitcher';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   colors,
@@ -128,6 +129,17 @@ export default function VousHubScreen() {
                   />
                 ))}
               </Stagger>
+
+              {/* LA SEULE PORTE VERS L'ESPACE ADMIN.
+                  Le `SpaceSwitcher` n'était rendu que dans le hub COACH et dans
+                  l'espace admin lui-même — donc déjà dedans. Un administrateur
+                  qui n'est pas coach ouvrait l'application, arrivait dans le
+                  flux pilote, et n'avait AUCUN chemin vers `/(admin)` : ni lien,
+                  ni onglet, ni geste. L'espace existait sans entrée.
+                  Le composant se ferme de lui-même pour un compte ordinaire
+                  (`peutChangerEspace`) : le rendre ici n'expose rien.
+                  Jalon 7, Phase 6 — première des trois corrections structurelles. */}
+              <SpaceSwitcher current="pilot" />
             </View>
 
             <Text style={styles.version}>

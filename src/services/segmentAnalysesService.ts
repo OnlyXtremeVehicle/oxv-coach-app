@@ -144,15 +144,48 @@ export interface SegmentAggregate {
  * Si `userId` est omis, on agrège sur l'ensemble des sessions de tous
  * les pilotes — réservé aux vues admin.
  */
-export async function aggregateSegmentStats(userId?: string): Promise<SegmentAggregate[]> {
-  let query = supabase
-    .from('app_segment_analyses')
-    .select(
-      'segment_index, margin_percent, margin_zone, entry_speed_kmh, apex_speed_kmh, exit_speed_kmh, max_g_lateral, avg_lateral_error_m'
-    );
-  if (userId) query = query.eq('user_id', userId);
+export async function aggregateSegmentStats(
+  userId?: string,
+  circuitId?: string
+): Promise<SegmentAggregate[]> {
+  // RATTACHEMENT AU CIRCUIT — indispensable depuis que l'inspecteur admin en
+  // montre plusieurs.
+  //
+  // `app_segment_analyses` ne porte AUCUNE colonne de circuit : le lien passe
+  // par la séance (`telemetry_sessions.circuit_id`). Sans ce filtre, la fonction
+  // agrège TOUTES les analyses du dépôt et l'écran attribuerait les marges de
+  // Haute Saintonge au circuit de Valence — un « virage 3 » y existe aussi, et
+  // rien à l'affichage ne trahirait la confusion.
+  //
+  // La jointure est `!inner` : une analyse dont la séance a disparu ne doit pas
+  // être comptée dans un circuit au hasard.
+  //
+  // Aujourd'hui la table est VIDE en production (0 ligne, vérifié le
+  // 02/08/2026) : le défaut n'a encore trompé personne. C'est le moment de le
+  // fermer.
+  // DEUX BRANCHES, DEUX `select` LITTÉRAUX. Le typage de PostgREST analyse la
+  // chaîne de sélection à la compilation : un `select` ternaire produit une
+  // union que son parseur refuse. Séparer coûte quelques lignes et garde le
+  // typage réel des colonnes — le contourner par un `as unknown` éteindrait
+  // précisément la vérification qui protège ces noms de champs.
+  const COLONNES =
+    'segment_index, margin_percent, margin_zone, entry_speed_kmh, apex_speed_kmh, exit_speed_kmh, max_g_lateral, avg_lateral_error_m';
 
-  const { data, error } = await query;
+  const executer = async () => {
+    if (circuitId) {
+      let q = supabase
+        .from('app_segment_analyses')
+        .select(`${COLONNES}, telemetry_sessions!inner(circuit_id)`)
+        .eq('telemetry_sessions.circuit_id', circuitId);
+      if (userId) q = q.eq('user_id', userId);
+      return q;
+    }
+    let q = supabase.from('app_segment_analyses').select(COLONNES);
+    if (userId) q = q.eq('user_id', userId);
+    return q;
+  };
+
+  const { data, error } = await executer();
   if (error || !data) {
     if (error) console.warn('[OXV] aggregateSegmentStats :', error.message);
     return [];

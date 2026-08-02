@@ -12,7 +12,7 @@
  *    doit être défendue comme une règle, pas comme une convention.
  */
 
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 import { estHauteSaintonge } from '@/lib/circuitTopology';
@@ -64,15 +64,54 @@ describe('contrat de type — la garde ne peut pas être contournée', () => {
 });
 
 describe('aucun montage ne contourne la garde', () => {
-  // Un montage qui passerait un littéral au lieu d'une valeur résolue
-  // rétablirait le silence que ce lot supprime. Seul l'inspecteur admin a le
-  // droit de nommer le circuit en dur : il EST le tracé de référence.
+  /**
+   * LA DÉROGATION A DISPARU — ET C'EST UN DURCISSEMENT, PAS UN RELÂCHEMENT.
+   *
+   * Ce bloc exigeait auparavant que `app/(admin)/circuit.tsx` contienne
+   * littéralement `circuitName="Haute Saintonge"` : l'inspecteur était réputé
+   * ÊTRE le tracé de référence, donc autorisé à se nommer en dur.
+   *
+   * C'était vrai tant qu'il ne montrait qu'un circuit. Depuis le Jalon 7,
+   * Phase 6, il en montre trois et lit le nom sur la ligne choisie. La
+   * dérogation n'a plus d'objet, et la règle vaut désormais pour TOUT le dépôt,
+   * sans exception : un nom de circuit écrit à la main est un tracé affirmé
+   * sans preuve.
+   *
+   * Le test ne vérifie plus la présence d'un littéral, il vérifie son ABSENCE
+   * partout. Il aurait échoué sur la version d'avant — c'est ce qui le rend
+   * armé plutôt que décoratif.
+   */
   const RACINE = join(__dirname, '..', '..', '..', '..');
-  const DEROGATION = ['app/(admin)/circuit.tsx'];
+  const IGNORES = new Set(['node_modules', 'archive', '__tests__', '.expo', 'dist', '.claude']);
 
-  it('la dérogation admin est unique et explicite', () => {
-    expect(DEROGATION).toHaveLength(1);
-    const src = readFileSync(join(RACINE, DEROGATION[0]), 'utf8');
-    expect(src).toContain('circuitName="Haute Saintonge"');
+  function sources(racine: string): string[] {
+    const trouves: string[] = [];
+    const parcourir = (dossier: string) => {
+      let entrees: string[];
+      try {
+        entrees = readdirSync(dossier);
+      } catch {
+        return;
+      }
+      for (const entree of entrees) {
+        if (IGNORES.has(entree)) continue;
+        const chemin = join(dossier, entree);
+        if (statSync(chemin).isDirectory()) parcourir(chemin);
+        else if (/\.tsx$/.test(entree)) trouves.push(chemin);
+      }
+    };
+    parcourir(join(RACINE, racine));
+    return trouves;
+  }
+
+  it('aucun fichier ne nomme un circuit en dur', () => {
+    const fichiers = [...sources('app'), ...sources('src')];
+    // Sans ce contrôle, un dossier renommé rendrait la garde verte et vide.
+    expect(fichiers.length).toBeGreaterThan(200);
+
+    // `circuitName="…"` : un littéral JSX. Une valeur résolue s'écrit
+    // `circuitName={…}` et ne correspond pas.
+    const fautifs = fichiers.filter((f) => /circuitName="/.test(readFileSync(f, 'utf8')));
+    expect(fautifs.map((f) => f.replace(RACINE, ''))).toEqual([]);
   });
 });
