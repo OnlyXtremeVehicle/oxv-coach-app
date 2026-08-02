@@ -90,4 +90,25 @@ describe('garde — hôtes distants', () => {
 
     expect(fautifs.map((f) => f.replace(process.cwd(), ''))).toEqual([]);
   });
+
+  /**
+   * L'APEX RENVOIE UN 307 — ON VISE `www` DIRECTEMENT.
+   *
+   * Mesuré le 02/08/2026 : `oxvehicle.fr` (sans `www`) répond 307 vers
+   * `www.oxvehicle.fr`. Un navigateur suit la redirection sans qu'on le voie ;
+   * un client configuré pour ne PAS la suivre — et `Linking.openURL` délègue à
+   * des applications tierces dont on ne maîtrise pas la politique — s'arrête sur
+   * le 307 et n'affiche rien.
+   *
+   * Le coût de viser `www` est nul. Le coût de l'apex est un lien qui marche
+   * partout sauf chez quelqu'un, un jour, sans qu'on sache pourquoi.
+   */
+  it('aucune URL ne vise l’apex : le domaine s’écrit avec www', () => {
+    // `https://oxvehicle.fr` MAIS PAS `https://www.oxvehicle.fr`. On exige donc
+    // que le caractère suivant `//` ne soit pas le début de `www.`.
+    const motif = /['"`]https:\/\/(?!www\.)[^'"`\n]*oxvehicle\.fr/;
+    const fautifs = sources.filter((f) => motif.test(readFileSync(f, 'utf8')));
+
+    expect(fautifs.map((f) => f.replace(process.cwd(), ''))).toEqual([]);
+  });
 });

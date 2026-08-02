@@ -55,10 +55,21 @@ export interface ShareLink {
   createdAt: string;
 }
 
-const SHARE_BASE_URL = 'https://oxvehicle.fr/share';
+/**
+ * ON VISE `www`, PAS L'APEX.
+ *
+ * Mesuré le 02/08/2026 : `oxvehicle.fr` répond 307 vers `www.oxvehicle.fr`. Un
+ * navigateur suit ; un client qui ne suit pas les redirections s'arrête là. Le
+ * lien part par `Share.share` vers une application tierce — messagerie, réseau,
+ * bloc-notes — dont on ne maîtrise pas la politique de redirection.
+ */
+const SHARE_BASE_URL = 'https://www.oxvehicle.fr/share';
 
 export function shareUrlFor(token: string): string {
-  return `${SHARE_BASE_URL}/${token}`;
+  // Le jeton est encodé : il est produit en base64url et n'a en principe rien à
+  // échapper, mais une URL se construit en encodant ses segments — pas en
+  // pariant sur la forme de ce qu'on y met.
+  return `${SHARE_BASE_URL}/${encodeURIComponent(token)}`;
 }
 
 /**

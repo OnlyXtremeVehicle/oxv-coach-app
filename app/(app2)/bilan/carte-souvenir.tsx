@@ -50,7 +50,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, PressScale, SectionHeader, colors, radius, space, typo } from '@/ui/v2';
 import { formatDateLong, formatLapTime } from '@/utils/format';
 
-const SITE_URL = 'https://oxvehicle.fr';
+// `www` et non l'apex : celui-ci répond 307, et tous les clients ne suivent pas
+// les redirections. Mesuré le 02/08/2026.
+const SITE_URL = 'https://www.oxvehicle.fr';
 
 interface CardData {
   bestLapLabel: string;
