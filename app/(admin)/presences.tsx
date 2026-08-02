@@ -10,8 +10,8 @@
  * pointage attend la réponse serveur avant de changer d'état.
  */
 
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import Toast from 'react-native-toast-message';
 
@@ -20,6 +20,8 @@ import {
   setAttendance,
   type AttendanceSession,
 } from '@/services/attendanceService';
+import { validerBriefingCollectif } from '@/services/briefingService';
+import { useAuthStore } from '@/store/useAuthStore';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -35,6 +37,19 @@ export default function AdminPresencesScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [briefingEnCours, setBriefingEnCours] = useState(false);
+  const validateurId = useAuthStore((st) => st.profile?.id ?? null);
+
+  /**
+   * TOUS LES INSCRITS DU JOUR, toutes séances confondues.
+   *
+   * Le briefing se tient une fois pour tout le monde : il ne se découpe pas
+   * par séance.
+   */
+  const inscriptionsDuJour = useMemo(
+    () => sessions.flatMap((se) => se.registrations.map((r) => r.id)),
+    [sessions]
+  );
 
   const reload = useCallback(() => {
     let cancelled = false;
@@ -58,6 +73,47 @@ export default function AdminPresencesScreen() {
   }, []);
 
   useFocusEffect(reload);
+
+  /**
+   * LE BRIEFING EST COLLECTIF — un geste, tous les présents.
+   *
+   * Il n'existait aucun geste de ce genre : la table `eligibility_items` et sa
+   * policy admin dormaient depuis le 03/07/2026 sans qu'un seul écran les
+   * touche. Le cocher pilote par pilote décrirait vingt briefings là où il n'y
+   * en a eu qu'un.
+   *
+   * Confirmé avant d'écrire : c'est une déclaration qui engage l'organisateur,
+   * et elle porte son nom (`validated_by`).
+   */
+  const onBriefingCollectif = () => {
+    if (briefingEnCours || inscriptionsDuJour.length === 0) return;
+    Alert.alert(
+      'Briefing tenu',
+      `Vous déclarez avoir tenu le briefing devant les ${inscriptionsDuJour.length} inscrits du ` +
+        'jour. Votre nom et l’heure seront enregistrés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déclarer',
+          onPress: async () => {
+            if (validateurId === null) {
+              Toast.show({ type: 'error', text1: 'Compte inconnu — rien n’a été enregistré.' });
+              return;
+            }
+            setBriefingEnCours(true);
+            const res = await validerBriefingCollectif(inscriptionsDuJour, validateurId);
+            setBriefingEnCours(false);
+            Toast.show({
+              type: res.ok ? 'success' : 'error',
+              text1: res.ok
+                ? 'Briefing enregistré pour tous les inscrits.'
+                : (res.error ?? 'L’enregistrement a échoué.'),
+            });
+          },
+        },
+      ]
+    );
+  };
 
   const onToggle = async (registrationId: string, attended: boolean) => {
     if (busyId) return;
@@ -110,6 +166,30 @@ export default function AdminPresencesScreen() {
           La présence alimente les indicateurs du site, la demande d’avis du lendemain et la
           livraison des médias.
         </Text>
+
+        {/* UN SEUL GESTE POUR TOUT LE MONDE. Il n'apparaît que s'il y a des
+            inscrits : proposer de déclarer un briefing devant personne n'aurait
+            aucun sens. */}
+        {inscriptionsDuJour.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Déclarer le briefing tenu pour les ${inscriptionsDuJour.length} inscrits du jour`}
+            accessibilityState={{ busy: briefingEnCours }}
+            disabled={briefingEnCours}
+            onPress={onBriefingCollectif}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={({ pressed }) => [
+              s.briefingBtn,
+              (pressed || briefingEnCours) && { opacity: 0.7 },
+            ]}
+          >
+            <Text style={s.briefingTxt}>
+              {briefingEnCours
+                ? 'Enregistrement…'
+                : `Briefing tenu — ${inscriptionsDuJour.length} inscrits`}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <StateWrapper
           state={state}
@@ -210,6 +290,22 @@ const s = {
     lineHeight: theme.fontSize.small * 1.6,
     marginTop: theme.spacing.md,
   },
+  briefingBtn: {
+    marginTop: theme.spacing.lg,
+    minHeight: 48,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: ADMIN,
+  },
+  briefingTxt: {
+    fontFamily: theme.fonts.bodyMedium,
+    fontSize: theme.fontSize.body,
+    color: ADMIN,
+  },
+
   sessionTitle: {
     fontFamily: theme.fonts.bodyMedium,
     fontSize: theme.fontSize.bodyLg,
