@@ -218,3 +218,66 @@ export async function deleteAnnotation(id: string): Promise<boolean> {
   }
   return true;
 }
+
+/**
+ * POSER UN MARQUEUR — le geste du bord de piste (jalon 6, phase 5).
+ *
+ * *« Il a vu, la machine dit où et quoi, personne n'interprète. »*
+ *
+ * ---
+ *
+ * UN MARQUEUR N'EST PAS UNE NOTE
+ *
+ * Il ne porte AUCUN texte. Le coach marque en regardant la piste — il n'écrit
+ * pas, il ne juge pas, il pose un repère. Le sens viendra plus tard, quand il
+ * relira le fil et ajoutera peut-être une phrase.
+ *
+ * C'est pourquoi il entre en `visibility = 'private'` : tant que rien n'est
+ * écrit, il n'y a rien à montrer au pilote. Le passage au partage est un second
+ * geste, délibéré.
+ *
+ * ---
+ *
+ * ON N'ÉCRIT QUE CE QUE LE GESTE PRODUIT
+ *
+ * L'instant, et rien d'autre. Ni tour, ni virage, ni vitesse : tout cela se
+ * RÉSOUT à la lecture (`src/telemetry/marqueur.ts`), à partir des trames. Écrire
+ * un tour au moment du geste figerait une valeur que la mesure sait mieux dire.
+ *
+ * La position suit la même règle : `marker_lat` et `marker_lon` restent nulles
+ * ici. Le direct ne transporte pas de position — délibérément — et le résolveur
+ * la retrouve dans les trames stockées.
+ */
+export async function poserMarqueur(input: {
+  pilotId: string;
+  telemetrySessionId: string;
+  /** Instant dans la capture, en ms. Décidé par `decideMarqueur`. */
+  elapsedMs: number;
+}): Promise<{ ok: boolean; error?: string }> {
+  const coachId = (await supabase.auth.getUser()).data.user?.id;
+  if (!coachId) return { ok: false, error: 'Session expirée.' };
+
+  if (!Number.isFinite(input.elapsedMs) || input.elapsedMs < 0) {
+    // La garde vit dans `decideMarqueur` ; celle-ci empêche qu'un appelant
+    // distrait écrive un instant que personne ne saura relire.
+    return { ok: false, error: 'Instant invalide.' };
+  }
+
+  const { error } = await supabase.from('coach_annotations').insert({
+    coach_id: coachId,
+    pilot_id: input.pilotId,
+    telemetry_session_id: input.telemetrySessionId,
+    marker_elapsed_ms: Math.round(input.elapsedMs),
+    // Pas de texte : un marqueur n'est pas une note. Reste privé tant qu'il
+    // n'en porte pas.
+    body: '',
+    visibility: 'private',
+    corner_index: null,
+  } as never);
+
+  if (error) {
+    console.warn('[OXV][annotations] poserMarqueur :', error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}

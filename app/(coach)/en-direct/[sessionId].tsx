@@ -58,6 +58,15 @@ import { fetchSessionLaps } from '@/services/sessionsService';
 import { supabase } from '@/lib/supabase';
 import { theme } from '@/theme/v2';
 import type { Lap } from '@/types/telemetry';
+import Toast from 'react-native-toast-message';
+
+import * as haptics from '@/lib/haptics';
+import {
+  decideMarqueur,
+  motifLisible,
+  type DecisionMarqueur,
+} from '@/features/coach/marqueurGesteLogic';
+import { poserMarqueur } from '@/services/coachAnnotationsService';
 import { KingNumber } from '@/ui/KingNumber';
 import { Screen } from '@/ui/Screen';
 import { formatChronoTenths } from '@/utils/format';
@@ -111,19 +120,33 @@ export default function CockpitFocusScreen() {
   // sans destinataire et l'enregistrement échouait en silence. Même motif que
   // app/(app)/virage.tsx ; RLS arbitre la lecture.
   const [pilotId, setPilotId] = useState<string | null>(null);
+  /**
+   * Début de la capture — l'ORIGINE des temps du marqueur.
+   *
+   * La trame du direct porte `atMs`, posé par l'appareil DU PILOTE. Le début
+   * l'est par le même appareil : leur différence est donc exacte, quelle que
+   * soit l'heure du téléphone du coach. Sans cette origine, aucun marqueur ne
+   * peut être daté.
+   */
+  const [debutCaptureIso, setDebutCaptureIso] = useState<string | null>(null);
   useEffect(() => {
     if (!sessionId) {
       setPilotId(null);
+      setDebutCaptureIso(null);
       return;
     }
     let cancelled = false;
     (async () => {
+      // `started_at` voyage avec `user_id` : une seule requete pour deux besoins,
+      // et l'origine des temps arrive en meme temps que le destinataire.
       const { data } = await supabase
         .from('telemetry_sessions')
-        .select('user_id')
+        .select('user_id, started_at')
         .eq('id', sessionId)
         .maybeSingle();
-      if (!cancelled) setPilotId((data?.user_id as string | undefined) ?? null);
+      if (cancelled) return;
+      setPilotId((data?.user_id as string | undefined) ?? null);
+      setDebutCaptureIso((data?.started_at as string | undefined) ?? null);
     })();
     return () => {
       cancelled = true;
@@ -190,6 +213,11 @@ export default function CockpitFocusScreen() {
       sessionId={sessionId}
       pilotId={pilotId}
       cornerIndex={frame?.cornerIndex ?? null}
+      marqueur={decideMarqueur({
+        derniereTrameAtMs: frame?.atMs ?? null,
+        debutCaptureIso,
+        maintenantMs: Date.now(),
+      })}
     />
   );
   // BIO-2 — bande FC : n'existe QUE si le pilote émet (triple verrou côté pilote).
@@ -571,10 +599,13 @@ function ActionsPanel({
   sessionId,
   pilotId,
   cornerIndex,
+  marqueur,
 }: {
   sessionId: string | null;
   pilotId: string | null;
   cornerIndex: number | null;
+  /** Décision pure : le geste est-il posable, et sur quel instant. */
+  marqueur: DecisionMarqueur;
 }) {
   // Une note est classée par pilote ET par virage en base. Tant que le pilote
   // n'est pas résolu ou que la trame n'indique aucun virage, la note n'aurait
@@ -585,6 +616,33 @@ function ActionsPanel({
     <View>
       <Text style={[s.eyebrow, { marginBottom: spacing.sm }]}>Actions rapides</Text>
       <View style={{ gap: spacing.sm }}>
+        {/* MARQUER — le geste du bord de piste. Il vient EN PREMIER parce que
+            c'est celui qu'on fait sans quitter la piste des yeux : le coach voit
+            quelque chose et marque. Aucun texte, aucun jugement — le sens
+            viendra quand il relira le fil. */}
+        <ActionButton
+          label="Marquer cet instant"
+          primary
+          disabled={!marqueur.posable || !pilotId || !sessionId}
+          onPress={() => {
+            if (!marqueur.posable || !pilotId || !sessionId) return;
+            haptics.confirm();
+            void poserMarqueur({
+              pilotId,
+              telemetrySessionId: sessionId,
+              elapsedMs: marqueur.elapsedMs,
+            }).then((r) => {
+              Toast.show(
+                r.ok
+                  ? { type: 'success', text1: 'Marqué.', text2: 'À retrouver dans le fil.' }
+                  : { type: 'error', text1: 'Le marqueur n’a pas été posé.', text2: r.error }
+              );
+            });
+          }}
+        />
+        {!marqueur.posable ? (
+          <Text style={s.actionHint}>{motifLisible(marqueur.motif)}</Text>
+        ) : null}
         <ActionButton
           label="Note vocale"
           primary
