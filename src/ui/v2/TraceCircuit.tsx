@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Canvas, Path } from '@shopify/react-native-skia';
 import Animated, {
   Easing,
@@ -30,7 +30,7 @@ import type { LatLon } from '@/circuit/circuitGenerator';
 import { GlowStroke } from './motion/GlowStroke';
 import { useReduceMotion } from './motion/useReduceMotion';
 import { SpringDot } from './SpringDot';
-import { colors, motion, radius, space } from './tokens';
+import { colors, motion, radius, space, type } from './tokens';
 import { useFirstViewport } from './useFirstViewport';
 import { DOT_STAGGER_MS, centerlineToTrace, pointAtRatio, type XY } from './vizMath';
 
@@ -60,6 +60,18 @@ export interface TraceCircuitProps {
   animateOnViewport?: boolean;
   /** Bande annotation coach sous le tracé (bord or Heritage 2 px). */
   annotationBand?: ReactNode;
+  /**
+   * Masque l'attribution OpenStreetMap. **À n'employer que si l'écran la porte
+   * déjà par ailleurs** — jamais pour alléger un rendu.
+   *
+   * Le défaut est `false`, et c'est délibéré : les tracés de `circuits.
+   * centerline_latlon` sont dérivés d'OpenStreetMap, donc sous ODbL, qui
+   * impose l'attribution partout où la donnée est montrée. Poser l'obligation
+   * ICI la fait suivre la donnée, au lieu de la confier à la mémoire de chaque
+   * écran. Relevé le 03/08/2026 : cinq écrans affichaient ce tracé sans
+   * attribution.
+   */
+  attributionMasquee?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -72,6 +84,7 @@ export function TraceCircuit({
   centerline,
   height = 180,
   closed = true,
+  attributionMasquee = false,
   progress,
   markers = [],
   color = colors.accent,
@@ -160,12 +173,32 @@ export function TraceCircuit({
         </Canvas>
       ) : null}
 
+      {/*
+        ODbL — l'attribution accompagne le tracé, pas l'écran. Elle n'apparaît
+        que lorsqu'un tracé est EFFECTIVEMENT dessiné : rien d'affiché, rien à
+        attribuer.
+      */}
+      {width > 0 && trace.path !== '' && !attributionMasquee ? (
+        <Text style={styles.attribution}>© contributeurs OpenStreetMap</Text>
+      ) : null}
+
       {annotationBand ? <View style={styles.annotation}>{annotationBand}</View> : null}
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Mention de licence : lisible, jamais bruyante. `dim` est le seul ton assez
+  // discret pour ne pas concurrencer la donnée, tout en restant au-dessus du
+  // seuil de contraste que les jetons documentent.
+  attribution: {
+    marginTop: space.xs,
+    fontFamily: type.mono,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    color: colors.text.dim,
+    textAlign: 'right',
+  },
   // Bord or Heritage 2 px — RÉSERVÉ à l'annotation coach (jamais décoratif).
   annotation: {
     marginTop: space.md,
