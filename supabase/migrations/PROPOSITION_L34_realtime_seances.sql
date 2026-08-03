@@ -1,0 +1,71 @@
+-- =============================================================================
+-- PROPOSITION — LE TEMPS RÉEL DE L'ESPACE ADMIN A BESOIN D'UNE PUBLICATION
+--
+--   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--
+-- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+--
+-- Rédigé le 03/08/2026.
+-- =============================================================================
+--
+-- CE QUI BLOQUE
+--
+-- Le cahier (Jalon 7, Phase 6) exige « temps réel sur tout l'espace, pas
+-- seulement sur les séances en cours ». L'espace admin n'a aujourd'hui AUCUN
+-- canal : zéro `.channel(`, zéro `postgres_changes` sur ses 31 fichiers.
+--
+-- Écrire l'abonnement ne suffit pas. `postgres_changes` ne livre que les tables
+-- inscrites à la publication `supabase_realtime`. Vérifié le 03/08/2026 :
+--
+--     select tablename from pg_publication_tables
+--      where pubname = 'supabase_realtime';
+--     → coach_annotations
+--
+-- **Une seule table.** `telemetry_sessions` n'y est pas.
+--
+-- Conséquence si l'on code sans cette migration : le canal REJOINT avec succès,
+-- le statut passe à `SUBSCRIBED`, et il ne reçoit jamais rien. L'écran
+-- afficherait « en direct » en se fondant sur un abonnement qui ne transporte
+-- rien. C'est le motif exact que ce dépôt combat — la garde posée, non armée,
+-- doublée d'un texte qui affirme qu'elle fonctionne.
+--
+-- ---------------------------------------------------------------------------
+-- CE QUE LE CODE FAIT EN ATTENDANT, ET POURQUOI IL RESTE HONNÊTE
+--
+-- L'écran livré dans le même lot n'annonce PAS « en direct » parce qu'il s'est
+-- abonné. Il l'annonce quand il a REÇU un évènement, et pas avant. Sans cette
+-- migration, il continue donc de dire « lu à l'ouverture » — ce qui est vrai.
+--
+-- La migration ne change pas le code : elle rend vrai ce que le code sait déjà
+-- dire.
+--
+-- ---------------------------------------------------------------------------
+-- CE QUI SORT, ET POUR QUI
+--
+-- La RLS s'applique aux évènements Realtime comme aux lectures. Les policies de
+-- `telemetry_sessions` sont déjà en place :
+--
+--     Users can view own sessions        [SELECT]  — le pilote, les siennes
+--     telemetry_sessions_admin_all       [ALL]     — l'administration
+--     telemetry_sessions_coach_select    [SELECT]  — le coach de ce pilote
+--     telemetry_sessions_select_friend   [SELECT]  — un ami, selon le partage
+--
+-- Publier la table n'élargit donc AUCUN accès : chacun reçoit ce qu'il pouvait
+-- déjà lire. C'est le point important, et il a été vérifié plutôt que supposé.
+--
+-- Aucune donnée de télémétrie ne circule ici : `telemetry_sessions` porte des
+-- métadonnées de séance (début, statut, nombre de tours), pas les trames.
+-- =============================================================================
+
+alter publication supabase_realtime add table public.telemetry_sessions;
+
+-- =============================================================================
+-- APRÈS APPLICATION — CE QU'IL FAUT VÉRIFIER
+--
+--   select tablename from pg_publication_tables where pubname = 'supabase_realtime';
+--   -- attendu : coach_annotations ET telemetry_sessions
+--
+-- Puis, et SEULEMENT là, la preuve qui compte : ouvrir l'écran « En piste »,
+-- démarrer une capture depuis un autre appareil, et voir la ligne apparaître
+-- sans toucher à rien. Une table publiée ne prouve pas qu'un évènement arrive.
+-- =============================================================================

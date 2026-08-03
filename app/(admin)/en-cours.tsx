@@ -26,12 +26,14 @@
  * Garde : `src/services/__tests__/tableauDePisteAdmin.guard.test.ts`.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 
 import { supabase } from '@/lib/supabase';
+import { type EtatDirect, phraseFraicheur } from '@/features/admin/fraicheurLogic';
 import { compareCarNo } from '@/services/boardLogic';
+import { suivreSeancesEnDirect } from '@/services/adminLiveSessionsService';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Card } from '@/ui/Card';
@@ -65,13 +67,30 @@ interface LiveSession {
 
 export default function EnCoursScreen() {
   const [sessions, setSessions] = useState<LiveSession[]>([]);
+  /**
+   * L'ÉTAT DU DIRECT — abonné, et surtout : a-t-on REÇU quelque chose ?
+   *
+   * `telemetry_sessions` n'est pas (encore) dans la publication
+   * `supabase_realtime` : le canal rejoindra sans jamais rien livrer. On
+   * n'annonce donc le direct qu'après un évènement réel.
+   * Voir `PROPOSITION_L34_realtime_seances.sql`.
+   */
+  const [direct, setDirect] = useState<EtatDirect>({ abonne: false, recuAuMoinsUn: false });
+  const [luLe, setLuLe] = useState<Date | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
+  /**
+   * La lecture, extraite pour être RAPPELÉE par le direct.
+   *
+   * Un évènement Realtime ne porte que la ligne modifiée ; on recharge plutôt
+   * que d'appliquer un delta. Une séance qui démarre ou s'arrête touche
+   * plusieurs champs, et reconstruire depuis la base évite d'entretenir deux
+   * vérités à l'écran.
+   */
+  const charger = useCallback(() => {
     let cancelled = false;
-    setLoading(true);
     setFailed(false);
     (async () => {
       const { data, error } = await supabase
@@ -87,6 +106,7 @@ export default function EnCoursScreen() {
       if (cancelled) return;
       if (error) {
         setFailed(true);
+        setLuLe(new Date());
         setLoading(false);
         return;
       }
@@ -114,12 +134,33 @@ export default function EnCoursScreen() {
         )
       );
       setSessions(lignes);
+      setLuLe(new Date());
       setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [reloadKey]);
+  }, []);
+
+  // Premier chargement, et rechargement manuel via « Réessayer ».
+  useEffect(() => {
+    setLoading(true);
+    return charger();
+  }, [charger, reloadKey]);
+
+  /**
+   * LE DIRECT — s'il arrive un jour.
+   *
+   * `telemetry_sessions` n'est pas dans la publication `supabase_realtime` au
+   * 03/08/2026 : ce canal rejoindra et ne recevra rien. L'écran ne prétendra
+   * donc PAS être en direct — `phraseFraicheur` n'emploie ce mot qu'après un
+   * évènement REÇU. Voir `PROPOSITION_L34_realtime_seances.sql`.
+   */
+  useEffect(() => {
+    return suivreSeancesEnDirect(() => {
+      charger();
+    }, setDirect);
+  }, [charger]);
 
   const state: ScreenState = loading
     ? 'loading'
@@ -173,10 +214,9 @@ export default function EnCoursScreen() {
             admin. Ce sont le hub et le tour de contrôle qui annoncent à tort
             « État Bluetooth en temps réel » ; ils ont été corrigés, pas cette
             phrase-ci. */}
-        <Text style={s.footnote}>
-          Données lues à l&apos;ouverture de l&apos;écran, et à chaque « Réessayer ». Aucun
-          rafraîchissement automatique.
-        </Text>
+        {/* La fraîcheur, dite par l'état RÉEL du canal — jamais par le fait de
+            s'être abonné. Voir `fraicheurLogic`. */}
+        <Text style={s.footnote}>{phraseFraicheur(direct, luLe)}</Text>
       </View>
     </Screen>
   );
