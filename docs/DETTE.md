@@ -1259,9 +1259,30 @@ Le profil date de mai 2026 — antérieur à l'ajout de la biométrie. Il faut :
 Connect n'est configuré dans ce dépôt, et une authentification Apple demande vos
 propres identifiants. C'est une action de compte, elle vous revient.
 
-Une fois la case cochée, `eas build -p ios --profile preview` régénère le profil
-tout seul — la capacité est en libre-service, contrairement à celle des dossiers
-de santé.
+### CORRECTION DU 03/08 — COCHER LA CASE NE SUFFIT PAS
+
+J'avais écrit : « une fois la case cochée, `eas build` régénère le profil tout
+seul ». **C'est faux, et le build n°35 l'a montré.**
+
+Les capacités HealthKit et Push ont bien été activées sur l'identifiant. Le build
+suivant a échoué avec le MÊME message, et surtout le MÊME profil — au caractère
+près : `*[expo] fr.oxvehicle.app AdHoc 1778931827644`, aux builds 33, 34 et 35.
+
+EAS conserve le profil dans son propre magasin de credentials. Il ne le régénère
+que s'il le juge invalide — expiré ou révoqué. Une capacité ajoutée à
+l'identifiant ne le rend pas invalide de son point de vue : il le reprend tel
+quel, et Xcode refuse de signer.
+
+**Il faut forcer la régénération**, ce qui exige une authentification Apple :
+
+    npx eas-cli credentials --platform ios
+
+puis, dans le menu : le profil `preview` → *Build Credentials* → supprimer ou
+recréer le profil de provisionnement. EAS demande alors l'identifiant Apple,
+synchronise les capacités depuis l'identifiant, et crée un profil à jour.
+
+Le build suivant reprend ce nouveau profil. Aucune modification de code n'est
+nécessaire — le dépôt est prêt.
 
 ### Ce que HealthKit sert, pour mémoire
 
