@@ -1346,3 +1346,99 @@ les liens universels), il faudra activer la capacité À LA MAIN dans le portail
 EAS ne le fera plus pour nous. C'est le prix de la variable.
 
 Elle peut être retirée à tout moment en repassant par la sortie A.
+
+---
+
+## D-34 — Le build 36 s'installait et mourait : la faute était à nous
+
+**Constaté le 03/08/2026.** Réglé le jour même. Consigné parce que la classe de
+faute reste ouverte pour toute la famille Reanimated, et parce que la manière
+dont elle s'est cachée mérite d'être connue.
+
+### Ce qui s'est passé
+
+Le build 36 — le premier à réussir depuis la migration SDK 55 — s'installait,
+affichait le splash, et se fermait au bout de ~600 ms. En release il n'y a pas
+d'écran rouge : le processus meurt, sans rien dire.
+
+Rapport de plantage de l'appareil (`OXV-2026-08-03-112835.ips`), thread 0 :
+
+    hermesvm    HermesRuntimeImpl::throwPendingError()
+    RNWorklets  WorkletRuntime::runSync<>()
+    RNWorklets  UIScheduler::triggerUI()
+    libc++abi   __cxa_throw -> std::terminate -> abort()   (SIGABRT)
+
+Sentry, qui avait le nom :
+
+    ReferenceError: Property 'PULL_SWEEP_DEG' doesn't exist
+      at pullAngle (motionMath.ts) / PullToRefreshDial.tsx / useAnimatedStyle
+
+### La cause
+
+    export function pullAngle(d, t, sweep = PULL_SWEEP_DEG) { 'worklet'; ... }
+
+Le greffon `react-native-worklets` capture bien la constante — mais il ouvre la
+fermeture **en tête du corps** :
+
+    function pullAngle(d, t, sweep = PULL_SWEEP_DEG) {
+      const { PULL_SWEEP_DEG } = this.__closure;   // <- trop tard
+    }
+
+Une valeur par défaut s'évalue AVANT le corps, dans la portée des paramètres.
+Sur le runtime UI il n'existe aucune portée de module : le nom n'est nulle part.
+Relevé en compilant le fichier, pas déduit.
+
+**Deux fonctions portaient la faute.** `staggerDelayV2` n'avait pas encore
+explosé : elle attendait un appel à trois arguments au lieu de quatre.
+
+### Pourquoi rien ne l'a vue
+
+`src/ui/v2/__tests__/motionMath.test.ts` appelle `pullAngle(0, 72)` **sous
+node**, où la portée de module existe. Le test passait, et prouvait le contraire
+de ce qu'il semblait prouver. Le motif habituel de ce dépôt, appliqué au
+contexte d'exécution : un test vert sur la mauvaise machine.
+
+### Ce qui est en place
+
+`src/ui/v2/__tests__/gardeWorkletsDefauts.test.ts` compile chaque fichier avec
+les greffons réels du projet, lit le corps destiné au runtime UI, et refuse tout
+défaut de paramètre qui lit la fermeture. Elle lit la liste des API
+workletisantes DANS le greffon installé — elle suivra ses évolutions. Quatre
+fixtures l'arment à chaque exécution.
+
+### Ce qui reste ouvert
+
+La garde ne couvre QUE la fenêtre entre l'entrée dans la fonction et l'ouverture
+de la fermeture. Les autres façons de mourir sur le fil UI — appeler une
+fonction non workletisée, capturer un objet non sérialisable — n'ont pas de
+garde. Elles ont d'autres symptômes, et personne ne les a cherchées
+systématiquement.
+
+### Ce qu'il faut savoir pour diagnostiquer le prochain
+
+Deux sources, complémentaires, toutes deux accessibles depuis Windows :
+
+1. **Le rapport de l'appareil** — Réglages > Confidentialité et sécurité >
+   Analyse et améliorations > Données d'analyse > `OXV-<date>.ips`. Donne la
+   forme du plantage (signal, pile native), jamais le nom.
+2. **Sentry** — le DSN est actif dans les builds preview et production, et
+   `initSentry()` tourne à la première ligne évaluée de `app/_layout.tsx`. Donne
+   le nom et la pile JS. C'est la source la plus rapide des deux.
+
+---
+
+## D-35 — `react-native` est quatre correctifs derrière ce qu'Expo attend
+
+**Constaté le 03/08/2026.** Non traité.
+
+    npx expo install --check
+    react-native@0.83.6 - expected version: 0.83.10
+
+Le build 37 passe avec 0.83.6, donc ce n'est pas bloquant aujourd'hui. Ce n'est
+pas non plus anodin : c'est le premier cycle de vie du SDK 55 sur ce projet, et
+les correctifs de patch d'une version majeure de React Native corrigent souvent
+exactement ce genre de plantage au lancement.
+
+Non traité délibérément : une modification de dépendance a déjà cassé un build
+cette semaine (`sharp`, build 32). Un alignement de version se fait dans un lot
+qui ne fait que ça, avec un build derrière pour le prouver.
