@@ -8,6 +8,42 @@
  *
  * Les fonctions appelées depuis l'UI thread portent la directive 'worklet'
  * (inoffensive sous node, indispensable dans les useAnimatedStyle).
+ *
+ * ---------------------------------------------------------------------------
+ * RÈGLE ABSOLUE — AUCUNE VALEUR PAR DÉFAUT NE LIT UNE CONSTANTE DE MODULE
+ * ---------------------------------------------------------------------------
+ *
+ * Dans un worklet, ceci fait planter l'application :
+ *
+ *     export function pullAngle(d, t, sweep = PULL_SWEEP_DEG) { 'worklet'; … }
+ *
+ * et ceci fonctionne :
+ *
+ *     export function pullAngle(d, t, sweep) { 'worklet';
+ *       const course = sweep ?? PULL_SWEEP_DEG; … }
+ *
+ * POURQUOI. Le greffon `react-native-worklets` capture bien la constante, mais
+ * il ouvre la fermeture EN TÊTE DU CORPS. Sortie réelle du compilateur, relevée
+ * le 03/08/2026 :
+ *
+ *     function pullAngle(d, t, sweep = PULL_SWEEP_DEG) {
+ *       const { PULL_SWEEP_DEG } = this.__closure;   // ← trop tard
+ *       …
+ *     }
+ *
+ * Une valeur par défaut s'évalue AVANT le corps, dans la portée des paramètres.
+ * Sur le runtime UI il n'y a pas de portée de module : le nom n'existe nulle
+ * part. Hermes lève `ReferenceError`, l'erreur remonte en exception C++ que
+ * personne n'attrape, et le processus meurt sur `abort()`.
+ *
+ * CE QUE ÇA A COÛTÉ. Le build 36 (03/08/2026) s'installait et se fermait au
+ * bout de ~600 ms, sans écran rouge — en release il n'y en a pas. Quatre échecs
+ * de build avaient précédé, tous pour d'autres raisons ; celui-ci ne se voyait
+ * qu'à l'exécution, sur un appareil.
+ *
+ * LA GARDE. `src/ui/v2/__tests__/gardeWorkletsDefauts.test.ts` compile chaque
+ * fichier avec le vrai greffon et refuse tout défaut qui lit la fermeture. Elle
+ * a été vérifiée en réintroduisant la faute : elle échoue.
  */
 
 import { motion } from '../tokens';
@@ -34,17 +70,23 @@ export const STAGGER_MAX_DELAY_MS = 450;
 /**
  * Délai d'entrée du n-ième enfant d'une cascade V2 (ms, jamais négatif).
  * Pas de cascade infinie sur les longues listes : plafonné à `maxDelay`.
+ *
+ * Les défauts sont résolus DANS LE CORPS, jamais dans la signature —
+ * voir l'avertissement en tête de fichier. Ce n'est pas un goût de style :
+ * `step: number = motion.stagger` faisait planter l'application au lancement.
  */
 export function staggerDelayV2(
   index: number,
-  step: number = motion.stagger,
+  step?: number,
   initialDelay = 0,
-  maxDelay: number = STAGGER_MAX_DELAY_MS
+  maxDelay?: number
 ): number {
   'worklet';
+  const pas = step ?? motion.stagger;
+  const plafond = maxDelay ?? STAGGER_MAX_DELAY_MS;
   const safeIndex = Math.max(0, Math.floor(index));
-  const raw = Math.max(0, initialDelay) + safeIndex * Math.max(0, step);
-  return Math.min(raw, Math.max(0, maxDelay));
+  const raw = Math.max(0, initialDelay) + safeIndex * Math.max(0, pas);
+  return Math.min(raw, Math.max(0, plafond));
 }
 
 // ---------------------------------------------------------------------------
@@ -138,16 +180,16 @@ export const PULL_SWEEP_DEG = 270;
  * jusqu'au seuil (0 → PULL_SWEEP_DEG), puis une sur-course amortie
  * plafonnée à +30° — l'aiguille « résiste » en butée.
  */
-export function pullAngle(
-  distance: number,
-  threshold: number,
-  sweep: number = PULL_SWEEP_DEG
-): number {
+export function pullAngle(distance: number, threshold: number, sweep?: number): number {
   'worklet';
+  // Défaut résolu ici, et non dans la signature : c'est cette ligne, écrite
+  // `sweep: number = PULL_SWEEP_DEG`, qui a tué le build 36 au lancement.
+  // Voir l'avertissement en tête de fichier.
+  const course = sweep ?? PULL_SWEEP_DEG;
   if (threshold <= 0) return 0;
   const d = Math.max(0, distance);
-  const base = sweep * Math.min(d / threshold, 1);
-  const over = d > threshold ? Math.min(30, ((d - threshold) / threshold) * sweep * 0.12) : 0;
+  const base = course * Math.min(d / threshold, 1);
+  const over = d > threshold ? Math.min(30, ((d - threshold) / threshold) * course * 0.12) : 0;
   return base + over;
 }
 
