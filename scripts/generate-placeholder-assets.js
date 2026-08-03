@@ -7,11 +7,44 @@
  * un designer avant la soumission App Store (semaine 14).
  *
  * Usage :
- *   node scripts/generate-placeholder-assets.js
+ *   npm i -D sharp && node scripts/generate-placeholder-assets.js
+ *
+ * ---
+ *
+ * POURQUOI `sharp` N'EST PLUS UNE DÉPENDANCE DU PROJET
+ *
+ * Le build EAS iOS n°32 (03/08/2026) a échoué en phase « Install
+ * dependencies » : `sharp@0.34.5` n'a pas trouvé de binaire précompilé
+ * utilisable sur le builder macOS, a tenté une compilation depuis les sources
+ * via node-gyp, et a réclamé `node-addon-api` qui n'était pas là.
+ *
+ *     npm error command sh -c node install/check.js || npm run build
+ *     npm error sharp: Attempting to build from source via node-gyp
+ *     npm error sharp: Please add node-addon-api to your dependencies
+ *
+ * Or ce paquet ne sert QU'À CE SCRIPT — un générateur de visuels provisoires,
+ * lancé à la main, jamais par le build. Le laisser en devDependency mettait une
+ * compilation native sur le chemin critique de chaque build, pour une image que
+ * personne ne regénère.
+ *
+ * Il s'installe donc à la demande. Le jour où les visuels définitifs arrivent,
+ * ce script disparaît avec eux.
  */
 
 /* eslint-disable */
-const sharp = require('sharp');
+let sharp;
+try {
+  sharp = require('sharp');
+} catch {
+  console.error(
+    "sharp n'est pas installé — il ne fait plus partie des dépendances du projet.
+" +
+      'Pour lancer ce script :  npm i -D sharp && node scripts/generate-placeholder-assets.js
+' +
+      "(voir l'en-tête du fichier : il mettait une compilation native sur le chemin de chaque build EAS)"
+  );
+  process.exit(1);
+}
 const path = require('path');
 const fs = require('fs');
 
