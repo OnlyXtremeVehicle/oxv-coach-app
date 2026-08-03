@@ -158,3 +158,79 @@ Aucune migration destructive n'a été écrite ni exécutée. Les cinq tables `_
 ---
 
 *Constat produit en lecture seule. Seul ce fichier a été créé.*
+
+---
+
+# AUDIT DU 03/08/2026 — « tout est-il commité et poussé depuis le début ? »
+
+Demandé par le fondateur. Vérifié, pas supposé : chaque ligne ci-dessous
+correspond à une commande exécutée.
+
+## Réponse
+
+**Oui. Rien n'est perdu, et plus rien n'est en attente.**
+
+| Contrôle | Résultat |
+|---|---|
+| Commits sur aucun distant | **0** |
+| Fichiers non commités | **0** |
+| Branches locales | 14, **toutes** couvertes par un distant |
+| Étiquettes | 6 locales, 6 distantes — identiques |
+| Commits orphelins au contenu unique | **0** après ancrage (voir plus bas) |
+| Remise `stash@{0}` | récupérable — **preuve à l'octet près** |
+| Histoire | 811 commits, du 24/05/2026 au 03/08/2026, sans trou |
+
+## Ce que l'audit a trouvé, et corrigé
+
+**Vingt et un commits inaccessibles.** Dix-sept portaient un contenu identique
+à des commits accessibles — restes de rebase, sans enjeu. **Quatre portaient un
+contenu unique**, et le ramasse-miettes de git les aurait effacés (défaut : 90
+jours ; trois dataient du 07/06).
+
+Ils sont désormais ancrés par des étiquettes annotées, poussées sur GitHub :
+
+| Étiquette | Ce qu'elle sauve | Superseédé par |
+|---|---|---|
+| `sauvegarde/orphelin-analytics-plausible` | feat(analytics) du 07/06 | `src/services/analyticsService.ts`, présent |
+| `sauvegarde/orphelin-carte-sociale-1` | `app/(app)/social-carte.tsx`, 156 lignes | `app/(app2)/club/territoire.tsx`, 1435 lignes |
+| `sauvegarde/orphelin-carte-sociale-2` | jumeau du précédent, 3 s plus tôt | idem |
+| `sauvegarde/orphelin-carte-oxv-wip` | remise abandonnée du 13/07 sur `carte-oxv.tsx` | arbre V1, retiré au lot J5 |
+
+`social-carte.tsx` était le seul fichier du dépôt à n'exister NI sur une branche
+NI dans l'étiquette `avant-suppression-arbre-v1`. Il n'était pas perdu au sens
+fonctionnel — `territoire.tsx` reprend la même bibliothèque et les mêmes pings —
+mais il n'était plus nulle part.
+
+## La remise, et pourquoi elle peut dormir
+
+`stash@{0}` porte le reformatage prettier accidentel de 154 documents. Le
+fondateur a choisi le 03/08 de ne pas la vider. C'est sans risque, et la preuve
+est plus forte qu'une intuition :
+
+    git rev-parse stash@{0}^{tree}                        -> dd6e781c…
+    git rev-parse origin/wip/sec1-remise-prettier^{tree}  -> dd6e781c…
+
+Même SHA d'arbre : le contenu est **identique à l'octet près**, et un `git diff`
+sur les 154 fichiers ne rend rien.
+
+## Un piège de mesure, à connaître
+
+`git log --all --not --remotes` ne considère que les branches de suivi, **pas
+les étiquettes**. Depuis l'ancrage ci-dessus, il rend donc « 5 commits hors
+distant » alors que les cinq sont sur GitHub via les étiquettes poussées. Le
+contrôle honnête est `git ls-remote --tags origin`.
+
+## Ce qui reste en attente, et qui n'est pas un défaut
+
+`origin/main` est **68 commits derrière** le `main` local. Aucun de ces commits
+n'est en danger : tous sont sur cinq branches distantes, dont
+`origin/migration/sdk-55`. Avancer `main` sur un dépôt **public** est un acte de
+publication, pas une sauvegarde — il revient au fondateur.
+
+## Hors périmètre, relevé au passage
+
+Trois clones **imbriqués** du dépôt du site coexistent sur la machine :
+`oxv-site/`, `oxv-site/oxv-site/`, `oxv-site/oxv-site/oxv-site/`. Aucun ne porte
+de commit hors distant ; deux portent un fichier non commité. C'est un autre
+dépôt, mais l'imbrication est le genre de configuration où du travail finit par
+se perdre.
