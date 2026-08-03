@@ -27,7 +27,8 @@ export interface CoachAnnotation {
   /**
    * Note vocale attachée (PR-59) — URL du fichier audio dans le bucket coach.
    * `null` tant qu'aucun audio n'est joint. La lecture passe par cette URL ;
-   * l'ENREGISTREMENT nécessite un module natif (expo-av) à brancher au build.
+   * l'ENREGISTREMENT nécessite un module natif — `expo-audio` depuis le lot
+   *   T0 (expo-av retiré du projet) — à éprouver sur un build natif.
    */
   audioUrl: string | null;
   createdAt: string;

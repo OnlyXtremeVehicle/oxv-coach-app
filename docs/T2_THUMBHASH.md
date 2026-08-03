@@ -13,9 +13,9 @@
 | Codec ThumbHash         | `src/media/thumbhashCodec.ts`            | **fait** — porté, 17 tests                             |
 | API applicative         | `src/media/thumbhash.ts`                 | **fait** — encodage, décodage, bornes, couleur moyenne |
 | Consommation par le kit | `src/ui/v2/media/Photo.tsx`              | **fait** — `thumbhash` prioritaire sur `blurhash`      |
-| Génération serveur      | `supabase/functions/generate-thumbhash/` | **fait** — envoi + rattrapage par lot                  |
+| Génération serveur      | `supabase/functions/generate-thumbhash/` | **fait ET DÉPLOYÉE** le 03/08/2026 — voir plus bas     |
 | Appel à l'envoi         | `src/services/sessionMediaService.ts`    | **fait** — lancé sans être attendu                     |
-| Colonne en base         | `PROPOSITION_T2_thumbhash.sql`           | **PROPOSÉE, non appliquée**                            |
+| Colonne en base         | `20260729034239_t2_thumbhash_session_media.sql` | **appliquée** le 29/07/2026            |
 
 ---
 
@@ -115,3 +115,46 @@ aucun défaut fabriqué.
 Le rendu **à l'écran** du placeholder n'a pas été observé : cela demande un build
 et un média porteur d'un ThumbHash, donc la génération. Les 17 tests portent sur
 le codec et ses bornes, pas sur l'affichage.
+
+---
+
+## 03/08/2026 — LA FONCTION N'ÉTAIT PAS DÉPLOYÉE
+
+Ce document annonçait la génération serveur « fait ». Elle l'était au sens du
+code : `supabase/functions/generate-thumbhash/index.ts` existe, 224 lignes,
+appelée depuis `src/services/sessionMediaService.ts:224`.
+
+**Elle n'était pas déployée.** Le projet comptait 33 fonctions Edge actives ;
+`generate-thumbhash` n'en faisait pas partie. Chaque envoi de média lançait donc
+un appel voué à échouer.
+
+Et l'appel est délibérément silencieux — `void … .catch(() => undefined)`, avec
+un commentaire qui explique pourquoi : un aperçu est un agrément, il ne doit pas
+transformer un envoi réussi en erreur. Le raisonnement est juste. Sa conséquence
+ne l'était pas : **rien n'aurait jamais signalé que la fonction n'existait pas.**
+Le seul symptôme aurait été des aperçus qui ne s'affichent pas, indistinguables
+d'un choix de conception.
+
+### Ce qui a été fait
+
+Déployée le 03/08/2026, puis exercée en mode rattrapage :
+
+    POST /functions/v1/generate-thumbhash  { "limit": 5 }
+    -> 200 {"ok":true,"traites":0,"ecartesVideo":0,"echecs":0,"candidats":0}
+
+Zéro candidat : `session_media` ne porte aucune ligne en production. La fonction
+répond correctement à un lot vide — c'est ce qu'on voulait vérifier, et c'est
+tout ce que ce test prouve. **Aucun ThumbHash n'a encore été calculé sur une
+vraie image.** Cela viendra au premier média déposé.
+
+### Ce qui reste ouvert
+
+**Aucun écran ne passe la prop.** `src/ui/v2/media/Photo.tsx:46` donne bien la
+priorité au `thumbhash` sur le `blurhash`, mais un `grep` sur `app/`,
+`src/components`, `src/features` et le reste de `src/ui` ne rend rien. Même avec
+un hash en base, l'aplat titane resterait affiché.
+
+**Rien n'appelle le mode rattrapage.** La fonction sait traiter par lot, l'index
+partiel `idx_session_media_thumbhash_manquant` est en place pour ça — mais aucun
+cron ne l'invoque. Tant que le chemin d'envoi fonctionne, ce n'est pas gênant ;
+le jour où il échouera, personne ne reprendra les médias manqués.

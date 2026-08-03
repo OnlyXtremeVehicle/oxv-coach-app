@@ -99,7 +99,12 @@ sont la taille du paquet npm, pas celle qu'il ajoutait à l'application.
 
 ---
 
-## Étape 2 — 51 → 52 → 53 → 54 → 55 · **EN COURS**
+## Étape 2 — 51 → 52 → 53 → 54 → 55 · **FAIT**
+
+> Ce titre a porté « EN COURS » jusqu'au 03/08/2026, alors que les paliers
+> étaient franchis depuis des jours et que les étapes 4 à 8 de ce même
+> document parlaient déjà du SDK 55. Un document qui se contredit sur son
+> propre état est pire qu'un document absent : on le croit.
 
 Une majeure à la fois, comme le plan l'impose.
 
@@ -269,7 +274,15 @@ Les trois échecs restants de `expo-doctor` sont connus et documentés :
 `@expo/config-plugins` périmé par `react-native-health` (D-8), `expo-av` non
 maintenu (étape 7), `buffer` sans métadonnées.
 
-### Paliers 54 et 55 · non commencés
+### Paliers 54 et 55 · **franchis**
+
+Constaté le 03/08/2026 dans `package.json` : `expo ^55.0.28`,
+`react-native 0.83.6`, `react 19.2.0`, `expo-router ~55.0.17`.
+`npx tsc --noEmit` ne rend rien. Et surtout : les builds iOS 32 à 37 ont
+compilé le natif sur ce socle, le 37 s'installe et se lance.
+
+Réserve qui vaut plus que le reste : rien EN AVAL de l'accueil pilote n'a
+tourné sur un appareil depuis la migration. Voir `docs/DETTE.md` D-36.
 
 ---
 

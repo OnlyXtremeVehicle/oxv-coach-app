@@ -1,7 +1,8 @@
 /**
  * Service note vocale coach (PR-59).
  *
- * Enregistre une note vocale (expo-av), l'envoie dans le bucket prive `coach-audio`
+ * Enregistre une note vocale (`expo-audio` ; expo-av retiré au lot T0),
+ * l'envoie dans le bucket prive `coach-audio`
  * et l'attache a une annotation. La RLS storage (coach_audio_select) lit l'objet
  * par son NOM = l'id de l'annotation : l'objet doit donc s'appeler EXACTEMENT
  * l'uuid de l'annotation (pas d'extension, pas de dossier). Le pilote ne peut lire

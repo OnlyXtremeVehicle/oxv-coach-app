@@ -30,7 +30,10 @@
  * Doctrine : ton sobre en placeholder ; la voix du coach reste ATTRIBUÉE (rappel
  * « à votre nom, jamais une consigne »). Le rempart réel des notes partagées est
  * le filtre doctrinal du service (createAnnotation → isDoctrineSafe) : inchangé.
- * expo-av (enregistrement) requiert un build natif : signalé honnêtement.
+ * L'enregistrement requiert un build natif : signalé honnêtement. Le module
+ * est `expo-audio` depuis la migration SDK 55 (lot T0, étape 7) — expo-av a
+ * été retiré du projet. Ce chemin n'a encore jamais tourné : il demande un
+ * build natif ET un compte coach, qui n'existe pas en production.
  */
 
 import { useEffect, useRef, useState } from 'react';
