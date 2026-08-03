@@ -1202,3 +1202,70 @@ ne réglerait rien.
   s'en serve (vérifié : zéro import, zéro appel). Capacité, plugin et
   dépendance **retirés**. À rétablir le jour où l'authentification Apple sera
   réellement branchée — pas avant.
+
+---
+
+## D-32 — Le build iOS : trois causes, deux réglées, une qui vous revient
+
+**03/08/2026.** Premier build iOS depuis la migration SDK 55 — le dernier réussi
+(n°31, 25/07) tournait encore sous SDK 51. Trois échecs successifs, trois causes
+différentes, chacune lue dans le journal plutôt que devinée.
+
+### n°32 — `sharp` (RÉGLÉ)
+
+Phase « Install dependencies ». `sharp@0.34.5` n'a pas trouvé de binaire
+précompilé utilisable sur le builder macOS, a tenté une compilation depuis les
+sources via node-gyp, et a réclamé `node-addon-api` absent.
+
+Le verrou contenait pourtant `@img/sharp-darwin-arm64` et `darwin-x64` avec les
+bons `os`/`cpu`. **Je ne sais pas pourquoi le contrôle a échoué**, et je préfère
+le dire que d'inventer.
+
+Ce qui est certain : `sharp` ne servait qu'à
+`scripts/generate-placeholder-assets.js`, un générateur de visuels provisoires
+lancé à la main, branché à aucun script npm. Il mettait une compilation native
+sur le chemin critique de chaque build. **Sorti du graphe**, s'installe à la
+demande, et le script le dit quand il manque.
+
+### n°33 — l'entitlement « dossiers de santé » (RÉGLÉ)
+
+    Provisioning Profile ... does not support the HealthKit Access
+    (Verifiable Health Records) capability.
+
+OXV ne lit aucun dossier de santé. Lu dans la source de
+`react-native-health/app.plugin.js` (l. 32-38) : le greffon écrit
+**inconditionnellement** `com.apple.developer.healthkit.access = []`, et
+n'ajoute `'health-records'` que si l'option clinique est vraie. Le drapeau
+commande le contenu, jamais la présence — et pour Apple, c'est la présence qui
+réclame la capacité.
+
+`plugins/withoutHealthRecords.js` retire la clé quand elle est vide. **Il doit
+être déclaré AVANT `react-native-health`** : les mods Expo s'exécutent dans
+l'ordre inverse de leur déclaration. Constaté par témoin, pas supposé.
+
+### n°34 — la capacité HealthKit sur le profil (VOUS)
+
+    Provisioning profile "*[expo] fr.oxvehicle.app AdHoc 1778931827644"
+    doesn't include the HealthKit capability.
+
+Le profil date de mai 2026 — antérieur à l'ajout de la biométrie. Il faut :
+
+1. activer **HealthKit** sur l'identifiant `fr.oxvehicle.app` dans le portail
+   développeur Apple (Certificates, Identifiers & Profiles → Identifiers →
+   fr.oxvehicle.app → cocher HealthKit → Save) ;
+2. laisser EAS régénérer le profil au build suivant.
+
+**Je ne peux pas le faire d'ici** : aucun identifiant Apple ni clé API App Store
+Connect n'est configuré dans ce dépôt, et une authentification Apple demande vos
+propres identifiants. C'est une action de compte, elle vous revient.
+
+Une fois la case cochée, `eas build -p ios --profile preview` régénère le profil
+tout seul — la capacité est en libre-service, contrairement à celle des dossiers
+de santé.
+
+### Ce que HealthKit sert, pour mémoire
+
+La lecture de la fréquence cardiaque enregistrée pendant un roulage
+(`src/services/v2/healthKitService.ts`, `bio1Trigger.ts`, écran équipement). Ce
+n'est pas un reliquat : c'est la biométrie, et le canal par coach a été livré le
+02/08. Retirer HealthKit ferait passer le build au prix de cette fonction.
