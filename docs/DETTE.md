@@ -1400,7 +1400,7 @@ contexte d'exécution : un test vert sur la mauvaise machine.
 
 ### Ce qui est en place
 
-`src/ui/v2/__tests__/gardeWorkletsDefauts.test.ts` compile chaque fichier avec
+`src/ui/v2/__tests__/gardeWorklets.test.ts` compile chaque fichier avec
 les greffons réels du projet, lit le corps destiné au runtime UI, et refuse tout
 défaut de paramètre qui lit la fermeture. Elle lit la liste des API
 workletisantes DANS le greffon installé — elle suivra ses évolutions. Quatre

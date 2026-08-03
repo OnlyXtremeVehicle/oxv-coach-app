@@ -25,13 +25,26 @@ let started = false;
 
 export async function initGeolocation(): Promise<void> {
   if (started) return;
-  started = true;
 
   const circuit = await getDefaultCircuit();
   if (!circuit) {
+    // `started` N'EST PAS POSÉ ICI, ET C'EST DÉLIBÉRÉ.
+    //
+    // Il l'était, juste avant la lecture. Or cette fonction est appelée au
+    // montage de la racine, donc AVANT la connexion, et la policy `SELECT` de
+    // `circuits` est `TO authenticated` : la lecture rend zéro ligne, on
+    // ressortait ici — et le verrou restait fermé pour toute la session.
+    // Conséquence : la permission de localisation n'était jamais demandée, et
+    // le suivi jamais démarré, de tout l'usage.
+    //
+    // Un échec ne doit pas consommer l'unique tentative. L'effet racine ne se
+    // rejoue pas, mais l'appel redevient au moins possible une fois le pilote
+    // connecté.
     console.warn('[OXV Geo] Aucun circuit officiel trouvé, géoloc non démarrée');
     return;
   }
+
+  started = true;
   setReferenceCircuit({ lat: circuit.finishLineLat, lon: circuit.finishLineLon });
 
   const perm = await requestLocationPermissions();

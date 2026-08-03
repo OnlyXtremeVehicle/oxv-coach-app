@@ -41,7 +41,7 @@
  * de build avaient précédé, tous pour d'autres raisons ; celui-ci ne se voyait
  * qu'à l'exécution, sur un appareil.
  *
- * LA GARDE. `src/ui/v2/__tests__/gardeWorkletsDefauts.test.ts` compile chaque
+ * LA GARDE. `src/ui/v2/__tests__/gardeWorklets.test.ts` compile chaque
  * fichier avec le vrai greffon et refuse tout défaut qui lit la fermeture. Elle
  * a été vérifiée en réintroduisant la faute : elle échoue.
  */

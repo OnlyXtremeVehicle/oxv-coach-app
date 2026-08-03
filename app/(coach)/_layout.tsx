@@ -27,9 +27,19 @@ import { theme } from '@/theme/v2';
 
 export default function CoachLayout() {
   const profile = useAuthStore((s) => s.profile);
+  const status = useAuthStore((s) => s.status);
   const profilIndisponible = useAuthStore((s) => s.profilIndisponible);
   const pathname = usePathname();
   const { width } = useWindowDimensions();
+
+  // Déconnexion : `profile` retombe à null et ce layout ne rendait plus rien —
+  // écran noir définitif, sans porte de sortie. Rien ne renavigue tout seul
+  // quand la route courante est /(coach). Cette garde doit passer AVANT
+  // `profilIndisponible` : après un signOut, l'état repart de `initialState`,
+  // où le drapeau est faux ; c'est `status` qui dit la vérité.
+  if (status === 'unauthenticated') {
+    return <Redirect href={'/(auth)/login' as never} />;
+  }
 
   // `return null` rendait un écran NOIR, sans un mot, aussi bien pour une fiche
   // absente que pour une lecture ratée. Le coach ne pouvait rien en faire.

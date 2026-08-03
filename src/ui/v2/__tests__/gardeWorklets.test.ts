@@ -366,6 +366,96 @@ export function analyser(fichier: string): Constat[] {
   return constats;
 }
 
+/**
+ * SECONDE RÈGLE — UN WORKLET N'ÉCRIT PAS SUR UN OBJET DE SA FERMETURE.
+ *
+ * Le fil UI ne reçoit pas les objets JS : il en reçoit des COPIES sérialisées
+ * (`clonePlainJSObject` → `createSerializableObject`, dans
+ * `react-native-worklets/lib/module/memory/serializable.native.js`). Écrire sur
+ * une propriété de ce clone ne remonte JAMAIS vers l'objet d'origine.
+ *
+ * Trouvé le 03/08/2026 dans `app/(app2)/rec/placement.tsx` : un verrou
+ * anti-double-armement (`useRef(false)`) était posé sur le fil JS et rouvert
+ * depuis un worklet de geste. La réouverture n'atteignait que le clone. Après
+ * un premier armement raté, l'anneau se remplissait encore et rien ne partait —
+ * sans message, et sans se débloquer autrement qu'en dépilant l'écran.
+ *
+ * CE QUI REND CETTE FAUTE PARTICULIÈREMENT DIFFICILE À VOIR : elle S'INVERSE
+ * entre développement et release. En dev, `freezeObjectInDev` remplace
+ * `current` par un accesseur inerte qui se contente d'avertir ; le verrou ne
+ * s'arme donc jamais et le symptôme est l'inverse exact de celui de production.
+ * La bibliothèque le dit elle-même : « they may be doing a faulty assumption in
+ * their code expecting that the updates are going to automatically propagate ».
+ *
+ * `.value` est exclu : c'est l'interface des SharedValue, seul objet
+ * explicitement conçu pour traverser la frontière.
+ */
+function ecrituresSurFermeture(fichier: string): Constat[] {
+  const code: string = babel.transformFileSync(fichier, {
+    cwd: RACINE,
+    root: RACINE,
+    configFile: false,
+    babelrc: false,
+    presets: [
+      ['@babel/preset-typescript', { isTSX: fichier.endsWith('.tsx'), allExtensions: true }],
+    ],
+    plugins: GREFFONS,
+    caller: { name: 'metro', platform: 'ios', isDev: false, bundler: 'metro' },
+  }).code;
+
+  const constats: Constat[] = [];
+
+  for (const m of code.matchAll(/code:\s*("(?:[^"\\]|\\.)*")/g)) {
+    let fn: Record<string, unknown>;
+    try {
+      const ast = parser.parse('(' + JSON.parse(m[1]) + ')', { sourceType: 'script' });
+      fn = ast.program.body[0].expression;
+    } catch {
+      continue;
+    }
+    if (!fn || (fn.type !== 'FunctionExpression' && fn.type !== 'ArrowFunctionExpression')) {
+      continue;
+    }
+
+    const nom = ((fn.id as Record<string, unknown>)?.name as string) ?? '(anonyme)';
+    const fermeture = nomsDeLaFermeture(fn.body as { body?: unknown[] });
+    if (fermeture.size === 0) continue;
+
+    // Toute affectation `X.p = …` / `X.p += …` / `++X.p` où X vient de la
+    // fermeture et où `p` n'est pas `value`.
+    const viser = (cible: unknown): void => {
+      const n = cible as Record<string, unknown> | null;
+      if (!n || n.type !== 'MemberExpression') return;
+      const objet = n.object as Record<string, unknown>;
+      const prop = n.property as Record<string, unknown>;
+      if (objet?.type !== 'Identifier' || !fermeture.has(objet.name as string)) return;
+      if (!n.computed && prop?.name === 'value') return;
+      constats.push({
+        fichier,
+        worklet: nom,
+        identifiant: `${objet.name as string}.${(prop?.name as string) ?? '[…]'}`,
+        genre: 'fermeture',
+      });
+    };
+
+    const parcourir = (node: unknown): void => {
+      if (!node || typeof node !== 'object') return;
+      const n = node as Record<string, unknown> & { type?: string };
+      if (n.type === 'AssignmentExpression') viser(n.left);
+      if (n.type === 'UpdateExpression') viser(n.argument);
+      for (const clef of Object.keys(n)) {
+        if (clef === 'loc' || clef === 'start' || clef === 'end' || clef === 'type') continue;
+        const v = n[clef];
+        if (Array.isArray(v)) v.forEach(parcourir);
+        else if (v && typeof v === 'object') parcourir(v);
+      }
+    };
+    parcourir(fn.body);
+  }
+
+  return constats;
+}
+
 // ---------------------------------------------------------------------------
 // Énumération des fichiers à inspecter.
 // ---------------------------------------------------------------------------
@@ -381,7 +471,7 @@ function sourcesDe(dossier: string, acc: string[] = []): string[] {
 
 // ---------------------------------------------------------------------------
 
-describe('worklets — aucune valeur par défaut ne lit la fermeture', () => {
+describe('worklets — la frontière avec le fil UI est respectée', () => {
   const api = apiWorkletisantes();
 
   it('la liste des API workletisantes a bien été lue dans le greffon', () => {
@@ -403,14 +493,15 @@ describe('worklets — aucune valeur par défaut ne lit la fermeture', () => {
     expect(candidats.length).toBeGreaterThan(20);
   });
 
+  const lisible = (c: Constat): string =>
+    `${c.fichier.replace(RACINE, '').replace(/\\/g, '/')} :: ${c.worklet} -> ${c.identifiant}`;
+
   it('aucun worklet du dépôt ne lit sa fermeture dans un défaut', () => {
-    const constats = candidats.flatMap((f) => analyser(f));
-    const lisible = constats.map(
-      (c) =>
-        `${c.fichier.replace(RACINE, '').replace(/\\/g, '/')} :: ${c.worklet} ` +
-        `-> ${c.identifiant} (${c.genre})`
-    );
-    expect(lisible).toEqual([]);
+    expect(candidats.flatMap((f) => analyser(f)).map(lisible)).toEqual([]);
+  });
+
+  it('aucun worklet du dépôt n’écrit sur un objet de sa fermeture', () => {
+    expect(candidats.flatMap((f) => ecrituresSurFermeture(f)).map(lisible)).toEqual([]);
   });
 });
 
@@ -479,5 +570,41 @@ describe('la garde est armée', () => {
       ].join('\n')
     );
     expect(analyser(f)).toEqual([]);
+  });
+
+  it('elle SIGNALE une écriture sur un objet de la fermeture', () => {
+    const f = join(dossier, 'ecriture.ts');
+    writeFileSync(
+      f,
+      [
+        'declare function useAnimatedStyle(g: unknown): unknown;',
+        'export function useTruc(verrou: { current: boolean }) {',
+        '  return useAnimatedStyle(() => {',
+        '    verrou.current = false;',
+        '    return { opacity: 1 };',
+        '  });',
+        '}',
+      ].join('\n')
+    );
+    expect(ecrituresSurFermeture(f).map((c) => c.identifiant)).toEqual(['verrou.current']);
+  });
+
+  it('elle LAISSE PASSER `.value` — c’est l’interface des SharedValue', () => {
+    // Sans ce cas, la garde interdirait toute animation et serait retirée dès
+    // le premier lot qui en écrit une.
+    const f = join(dossier, 'sharedvalue.ts');
+    writeFileSync(
+      f,
+      [
+        'declare function useAnimatedStyle(g: unknown): unknown;',
+        'export function useTruc(progress: { value: number }) {',
+        '  return useAnimatedStyle(() => {',
+        '    progress.value = 1;',
+        '    return { opacity: progress.value };',
+        '  });',
+        '}',
+      ].join('\n')
+    );
+    expect(ecrituresSurFermeture(f)).toEqual([]);
   });
 });

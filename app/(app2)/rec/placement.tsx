@@ -111,6 +111,27 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
     onArmRef.current();
   };
 
+  /**
+   * Rouvre le verrou, SUR LE FIL JS.
+   *
+   * Elle était appelée directement depuis `.onBegin`, qui est un worklet : le
+   * fil UI ne reçoit qu'une COPIE sérialisée de `fired`, et l'écriture n'y
+   * atteignait jamais l'objet que `fire()` relit côté JS. Conséquence, si un
+   * premier armement échouait et que l'écran restait monté : l'anneau se
+   * remplissait à nouveau, `fire()` voyait encore `true`, et rien ne partait —
+   * sans message, et sans se débloquer autrement qu'en dépilant l'écran.
+   *
+   * Le défaut ne se voyait pas en développement : `freezeObjectInDev` de
+   * `react-native-worklets` remplace alors `current` par un accesseur inerte,
+   * et le verrou ne s'armait tout simplement jamais.
+   *
+   * L'ordre est garanti : `onBegin` survient au poser du doigt, `onStart` 600 ms
+   * plus tard, et les deux passent par la même file `runOnJS`.
+   */
+  const rouvrirVerrou = () => {
+    fired.current = false;
+  };
+
   // Anneau plein (départ à midi, sens horaire) — GlowStroke le trime 0..progress.
   const c = GAUGE_SIZE / 2;
   const r = c - 8;
@@ -124,7 +145,9 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
         // l'annule pas sur un petit déplacement.
         .maxDistance(10_000)
         .onBegin(() => {
-          fired.current = false;
+          // `runOnJS` est indispensable : voir `rouvrirVerrou`. Écrire
+          // `fired.current` ici ne toucherait que le clone du fil UI.
+          runOnJS(rouvrirVerrou)();
           progress.value = 0;
           progress.value = withTiming(1, { duration: ARM_HOLD_MS, easing: Easing.linear });
         })
@@ -278,20 +301,30 @@ export default function PlacementScreen() {
     }
     setStarting(true);
     setError(null);
-    // Rattache la session au circuit CHOISI (repli défaut). Arguments IDENTIQUES
-    // à la v1 (app/(app)/placement.tsx) — aucune logique de capture nouvelle.
-    const circuit = selected ?? (await getDefaultCircuit());
-    const res = await startCaptureSession({
-      userId: profile.id,
-      circuitId: circuit?.id ?? null,
-      circuitName: circuit?.name ?? null,
-      finishLine: captureFinishLineFor(circuit),
-    });
-    if (res.ok) {
-      router.replace('/(app2)/rec/roulage' as never);
-    } else {
+    // Le try/catch n'est pas décoratif : `starting` désactive le bouton, et sans
+    // lui la moindre exception — `getDefaultCircuit()` sur un réseau muet, un
+    // appel de capture qui lève — laissait l'écran figé sur « Démarrage en
+    // cours », définitivement et sans un mot. Un second verrou permanent, sur
+    // le seul geste de l'écran.
+    try {
+      // Rattache la session au circuit CHOISI (repli défaut). Arguments IDENTIQUES
+      // à la v1 (app/(app)/placement.tsx) — aucune logique de capture nouvelle.
+      const circuit = selected ?? (await getDefaultCircuit());
+      const res = await startCaptureSession({
+        userId: profile.id,
+        circuitId: circuit?.id ?? null,
+        circuitName: circuit?.name ?? null,
+        finishLine: captureFinishLineFor(circuit),
+      });
+      if (res.ok) {
+        router.replace('/(app2)/rec/roulage' as never);
+        return;
+      }
       setStarting(false);
       setError(res.error ?? "L'enregistrement n'a pas pu démarrer.");
+    } catch (err) {
+      setStarting(false);
+      setError(err instanceof Error ? err.message : "L'enregistrement n'a pas pu démarrer.");
     }
   }
 

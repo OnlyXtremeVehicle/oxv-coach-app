@@ -56,7 +56,12 @@ export default function RootLayout() {
       initBle();
       initFlic();
     }
-    initGeolocation().catch(() => undefined);
+    // `initGeolocation()` NE PART PLUS D'ICI — voir l'effet dédié plus bas.
+    // Cet effet tourne au montage de la racine, donc pendant l'écran de
+    // connexion, et la première chose que fait la géolocalisation est de lire
+    // le circuit de référence. Or la policy de lecture des circuits est
+    // réservée aux comptes authentifiés : la requête partait en anonyme et
+    // revenait vide, sans erreur.
     // Réveille la machine d'état pilote : sans elle, `hasAccount` reste faux,
     // l'état ne quitte jamais S1, et le silence en piste ne s'arme jamais.
     initEtatPilote();
@@ -76,6 +81,23 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [status, fontsLoaded, fontError]);
+
+  // Démarre la géolocalisation UNE FOIS LE PILOTE CONNECTÉ.
+  //
+  // Elle partait du montage de la racine, avant toute connexion. La lecture du
+  // circuit de référence revenait alors vide — la policy `SELECT` de `circuits`
+  // est `TO authenticated`, et la RLS filtre à zéro ligne sans lever d'erreur —
+  // et `initGeolocation` refermait son verrou sur cet échec : la permission de
+  // localisation n'était jamais demandée, et le suivi jamais démarré, de toute
+  // la session. Le même appel anonyme empoisonnait au passage le cache des
+  // circuits avec une liste vide, pour vingt-quatre heures.
+  //
+  // `initGeolocation` est idempotente : la rappeler après un aller-retour par
+  // 'unauthenticated' ne redémarre rien qui tourne déjà.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    initGeolocation().catch(() => undefined);
+  }, [status]);
 
   // Enregistre le token Expo Push après connexion réussie. Idempotent.
   // Skip en Expo Go (le token push remote n'y est pas généré, et l'app

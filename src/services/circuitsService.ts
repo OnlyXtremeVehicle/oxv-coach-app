@@ -70,7 +70,27 @@ export async function fetchCircuits(forceRefresh = false): Promise<Circuit[]> {
     bboxMaxLon: row.bbox_max_lon !== null ? Number(row.bbox_max_lon) : null,
   }));
 
-  cacheSet(STORAGE_KEYS.CIRCUITS, circuits, CIRCUITS_CACHE_TTL_MS);
+  // ON NE MET JAMAIS UNE LISTE VIDE EN CACHE, ET SURTOUT PAS POUR 24 HEURES.
+  //
+  // La policy `SELECT` de `circuits` est `TO authenticated`. Une requête émise
+  // avant la connexion — et il en part une, `initGeolocation()` au montage de
+  // la racine — ne reçoit PAS d'erreur : PostgREST rend 200 avec zéro ligne,
+  // la RLS ayant simplement filtré à vide. Vérifié en sondant la base avec la
+  // clé anonyme le 03/08/2026.
+  //
+  // On tombait donc ici avec `circuits = []`, on l'écrivait pour 24 h, et
+  // `if (cached) return cached` le resservait ensuite au pilote CONNECTÉ —
+  // `[]` étant truthy. Pendant une journée : aucun circuit sélectionnable à
+  // l'armement d'une capture, carte du territoire vide, météo du circuit
+  // perdue, `getDefaultCircuit()` nul partout. Aucun purgeur ne rattrapait le
+  // coup : `cacheClearReadCache` et `cacheClearAll` n'ont aucun appelant.
+  //
+  // Un vide est presque toujours un vide d'accès, pas un vide de vérité. Le
+  // coût de ne pas le mettre en cache est une requête de plus ; le coût de
+  // l'inverse est le cœur du produit muet pour la journée.
+  if (circuits.length > 0) {
+    cacheSet(STORAGE_KEYS.CIRCUITS, circuits, CIRCUITS_CACHE_TTL_MS);
+  }
   return circuits;
 }
 
