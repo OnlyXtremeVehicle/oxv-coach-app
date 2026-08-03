@@ -27,7 +27,6 @@
       "bundleIdentifier": "fr.oxvehicle.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Votre position sert à détecter votre arrivée au circuit, à enregistrer un lieu ou un tracé que vous créez, et au scan Bluetooth qu'iOS exige. Aucun suivi en arrière-plan.",
         "NSCameraUsageDescription": "OXV utilise l'appareil photo pour votre photo de profil et la lecture des documents.",
         "NSPhotoLibraryUsageDescription": "OXV utilise vos photos pour votre profil et vos véhicules.",
         "ITSAppUsesNonExemptEncryption": false,
@@ -78,7 +77,24 @@
     },
     "plugins": [
       "./plugins/withoutHealthRecords.js",
+      "./plugins/texteReseauLocal.js",
       "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Votre position sert à détecter votre arrivée au circuit, à enregistrer un lieu ou un tracé que vous créez, et au scan Bluetooth qu'iOS exige. Aucun suivi en arrière-plan.",
+          "locationAlwaysPermission": false,
+          "locationAlwaysAndWhenInUsePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Le coach enregistre une note vocale pour vous, après votre séance. Rien n'est capté pendant que vous roulez.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
+      ],
       [
         "react-native-ble-plx",
         {

@@ -82,6 +82,8 @@ function optionsPlugin(nom: string): Record<string, unknown> | null {
 
 const BLE_PLX = optionsPlugin('react-native-ble-plx');
 const SANTE_PLUGIN = optionsPlugin('react-native-health');
+const LOCALISATION = optionsPlugin('expo-location');
+const AUDIO = optionsPlugin('expo-audio');
 
 const GEO = lire('src', 'lib', 'geolocation.ts');
 const BLE = lire('src', 'ble', 'bluetoothService.ts');
@@ -116,6 +118,11 @@ describe('la source qui gagne', () => {
       'NSBluetoothPeripheralUsageDescription',
       'NSHealthShareUsageDescription',
       'NSHealthUpdateUsageDescription',
+      // Ajoutées le 03/08/2026 : `expo-location` et `expo-audio` possèdent ces
+      // clés, les laisser au manifeste les rendrait inertes.
+      'NSLocationWhenInUseUsageDescription',
+      'NSLocationAlwaysUsageDescription',
+      'NSMicrophoneUsageDescription',
     ]) {
       expect(PLIST[cle]).toBeUndefined();
     }
@@ -143,27 +150,85 @@ describe('Bluetooth — l’option du plugin', () => {
   });
 });
 
-describe('localisation — le manifeste, car aucun plugin ne la possède', () => {
+/**
+ * LOCALISATION — CE BLOC AFFIRMAIT LE CONTRAIRE, ET IL AVAIT TORT.
+ *
+ * Il s'intitulait « le manifeste, car aucun plugin ne la possède » et interdisait
+ * de déclarer `expo-location`. La convention paraissait saine : le libellé
+ * français vivait dans `ios.infoPlist`, et le test le lisait là.
+ *
+ * **`expo-location` possède bel et bien ces clés.** Son greffon est appliqué par
+ * l'autolinking, qu'on le déclare ou non, et il écrit TROIS clés — dont deux que
+ * personne n'avait demandées :
+ *
+ *     NSLocationAlwaysUsageDescription            = « Allow $(PRODUCT_NAME)… »
+ *     NSLocationAlwaysAndWhenInUseUsageDescription = « Allow $(PRODUCT_NAME)… »
+ *
+ * En anglais, dans une application entièrement française, et réclamant un suivi
+ * PERMANENT alors que le libellé voisin promet « aucun suivi en arrière-plan ».
+ *
+ * Le test ne le voyait pas : il vérifiait `app.json`, pas l'Info.plist construit.
+ * Il assertait `NSLocationAlwaysAndWhenInUseUsageDescription` absente **du
+ * manifeste** — ce qui était vrai, et sans rapport avec ce que l'appareil
+ * recevait. Une garde verte sur la mauvaise surface, exactement ce que l'en-tête
+ * de ce fichier dénonce pour les clés Bluetooth et santé.
+ *
+ * Constaté le 03/08/2026 par `expo config --type introspect --json`, en
+ * préparant un build. La seule façon de RETIRER les deux clés est de déclarer le
+ * greffon et de lui passer `false` — d'où le renversement de la règle ici.
+ */
+describe('localisation — les options du plugin, qui possède les clés', () => {
   it('le code surveille bien la position', () => {
     expect(GEO).toContain('watchPositionAsync');
   });
 
-  it('aucun plugin ne revendique la clé de localisation', () => {
-    for (const p of APP.expo.plugins) {
-      const nom = Array.isArray(p) ? p[0] : p;
-      expect(nom).not.toMatch(/expo-location/);
-    }
+  it('le greffon est déclaré — c’est la seule façon de brider ce qu’il écrit', () => {
+    expect(LOCALISATION).not.toBeNull();
   });
 
-  it('le libellé annonce la détection d’arrivée, pas seulement le Bluetooth', () => {
-    const s = String(PLIST.NSLocationWhenInUseUsageDescription ?? '');
+  it('le libellé effectif annonce la détection d’arrivée, pas seulement le Bluetooth', () => {
+    const s = String(LOCALISATION?.locationWhenInUsePermission ?? '');
     expect(s).toMatch(/arriv/i);
     expect(s).toMatch(/arrière-plan/i);
+    expect(s).not.toMatch(/^Allow /);
   });
 
-  it('aucun suivi en arrière-plan n’est déclaré', () => {
+  it('les deux clés « Always » sont EXPLICITEMENT refusées', () => {
+    // `false` demande au greffon de SUPPRIMER la clé. L'omettre la laisserait
+    // avec le texte anglais par défaut : ne rien dire, ici, c'est accepter.
+    expect(LOCALISATION?.locationAlwaysPermission).toBe(false);
+    expect(LOCALISATION?.locationAlwaysAndWhenInUsePermission).toBe(false);
+  });
+
+  it('aucun suivi en arrière-plan n’est déclaré au manifeste', () => {
     expect(PLIST.UIBackgroundModes).toBeUndefined();
     expect(PLIST.NSLocationAlwaysAndWhenInUseUsageDescription).toBeUndefined();
+  });
+});
+
+/**
+ * MICROPHONE — même histoire, même correction.
+ *
+ * `expo-audio` possède `NSMicrophoneUsageDescription` et l'écrivait en anglais
+ * par défaut. Son greffon ajoute EN PLUS le mode d'arrière-plan `audio` dès que
+ * `enableBackgroundPlayback` est vrai — ce qui est son défaut. Or rien dans le
+ * code ne lit en arrière-plan : `playsInSilentMode` sert à jouer malgré le
+ * silencieux, ce n'est pas la même chose.
+ *
+ * Un mode d'arrière-plan déclaré sans usage est une cause de refus classique à
+ * la revue App Store, et une promesse faite à l'utilisateur qu'on ne tient pas.
+ */
+describe('microphone — les options du plugin audio', () => {
+  it('le libellé effectif est en français et nomme l’usage', () => {
+    const s = String(AUDIO?.microphonePermission ?? '');
+    expect(s.length).toBeGreaterThan(0);
+    expect(s).not.toMatch(/^Allow /);
+    expect(s).toMatch(/vocale|voix|note/i);
+  });
+
+  it('ni lecture ni enregistrement en arrière-plan', () => {
+    expect(AUDIO?.enableBackgroundPlayback).toBe(false);
+    expect(AUDIO?.enableBackgroundRecording).toBe(false);
   });
 });
 
