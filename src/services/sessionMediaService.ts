@@ -33,6 +33,16 @@ export interface SessionMediaItem {
   uploadedAt: string;
   displayOrder: number;
   /**
+   * Aperçu ThumbHash, calculé côté serveur par la fonction
+   * `generate-thumbhash`. `null` tant qu'il n'a pas été produit — et ce n'est
+   * pas une anomalie : le kit retombe alors sur l'aplat titane.
+   *
+   * Il manquait ici jusqu'au 03/08/2026. La colonne était en base depuis le
+   * 29/07, les `select('*')` la ramenaient, et `mapRow` la jetait : le hash
+   * n'atteignait donc jamais l'application, quoi qu'il arrive côté serveur.
+   */
+  thumbhash: string | null;
+  /**
    * Signed URL temporaire pour afficher le média (15 min de validité).
    * Calculée à la demande via getSignedUrlFor.
    */
@@ -54,6 +64,7 @@ interface DbRow {
   uploaded_by_user_id: string | null;
   uploaded_at: string;
   display_order: number;
+  thumbhash: string | null;
 }
 
 const BUCKET = 'session-media';
@@ -75,6 +86,7 @@ function mapRow(row: DbRow): SessionMediaItem {
     uploadedByUserId: row.uploaded_by_user_id,
     uploadedAt: row.uploaded_at,
     displayOrder: row.display_order,
+    thumbhash: row.thumbhash ?? null,
   };
 }
 
