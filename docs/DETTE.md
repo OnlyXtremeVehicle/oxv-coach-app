@@ -1290,3 +1290,59 @@ La lecture de la fréquence cardiaque enregistrée pendant un roulage
 (`src/services/v2/healthKitService.ts`, `bio1Trigger.ts`, écran équipement). Ce
 n'est pas un reliquat : c'est la biométrie, et le canal par coach a été livré le
 02/08. Retirer HealthKit ferait passer le build au prix de cette fonction.
+
+---
+
+## D-33 — `EXPO_NO_CAPABILITY_SYNC=1` est désormais nécessaire à chaque build iOS
+
+**Posé le 03/08/2026.** Contrainte durable, choisie en connaissance de cause.
+
+### Ce qui se passe sans la variable
+
+EAS traite l'identifiant Apple comme un **miroir des entitlements de
+l'application**. L'app ne déclare que `com.apple.developer.healthkit` et
+`aps-environment` ; voyant quatre capacités de plus activées sur
+`fr.oxvehicle.app`, EAS tente de les **désactiver** :
+
+    Failed to patch capabilities: [
+      { capabilityType: 'APPLE_ID_AUTH',      option: 'OFF' },
+      { capabilityType: 'ASSOCIATED_DOMAINS', option: 'OFF' },
+      { capabilityType: 'NFC_TAG_READING',    option: 'OFF' },
+      { capabilityType: 'APP_GROUPS',         option: 'OFF' },
+    ]
+
+Apple refuse, avec un message trompeur qui ne parle pas de ce qu'il fait :
+« The bundle 'RL4QM2C8KV' cannot be deleted. Delete all the Apps related to this
+bundle to proceed. » Il ne s'agit d'aucune suppression : c'est son refus
+générique de retirer des capacités d'un identifiant déjà utilisé.
+
+### L'erreur de conseil qui a mené là
+
+J'avais écrit au fondateur : « cocher dans le portail ne coûte rien, la case ne
+met rien dans l'application ». **Vrai pour le binaire, faux pour EAS**, qui
+réconcilie activement les deux surfaces. Les quatre capacités ont donc été
+activées en prévision de lots futurs, et EAS bute dessus à chaque passage.
+
+### Les deux sorties, et celle qui a été choisie
+
+**A — décocher les quatre dans le portail**, ne garder que ce que l'app déclare.
+Le portail redevient le reflet exact de l'application, la synchronisation
+d'EAS devient sans effet, et chaque capacité se recoche dans le lot qui ajoute
+son entitlement. C'était la recommandation.
+
+**B — poser `EXPO_NO_CAPABILITY_SYNC=1`.** Retenu par le fondateur le 03/08.
+
+### Ce que B implique, et qu'il ne faut pas redécouvrir
+
+La variable est nécessaire pour **`eas credentials` ET pour `eas build`** : EAS
+resynchronise aux deux moments. Un build lancé sans elle échouera de la même
+façon, avec le même message incompréhensible.
+
+    $env:EXPO_NO_CAPABILITY_SYNC = "1"; npx eas-cli build -p ios --profile preview
+
+Conséquence à garder en tête : **EAS ne synchronisera plus rien**. Le jour où un
+lot ajoutera un entitlement (App Groups pour le widget, Associated Domains pour
+les liens universels), il faudra activer la capacité À LA MAIN dans le portail —
+EAS ne le fera plus pour nous. C'est le prix de la variable.
+
+Elle peut être retirée à tout moment en repassant par la sortie A.
