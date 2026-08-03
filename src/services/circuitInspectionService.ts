@@ -15,8 +15,10 @@
  * régie : les faire remonter dans un écran d'administration les exposerait sans
  * que personne l'ait demandé.
  *
- * Au 02/08/2026, la production compte trois officiels — Charente, Ricardo Tormo
- * (Valence) et Haute Saintonge — et un privé, « La charade ».
+ * Au 03/08/2026, la production compte trois circuits, tous officiels :
+ * Charente, Ricardo Tormo (Valence) et Haute Saintonge. Le seul privé,
+ * « La charade », a été retiré au jalon 0.H — c'était un doublon d'essai posé
+ * à cent mètres de Haute Saintonge.
  */
 
 import { supabase } from '@/lib/supabase';

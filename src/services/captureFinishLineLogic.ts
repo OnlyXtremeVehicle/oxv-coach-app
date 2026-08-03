@@ -9,8 +9,13 @@
  *
  * Le CAP (`finishLineHeading`) est transmis quand il est renseigné : il fait
  * basculer la détection en mode PORTE (segment perpendiculaire à la piste), seul
- * mode capable d'exclure une voie des stands parallèle. Cap absent (« La charade »
- * a `finish_line_heading` NULL) → mode rayon, comportement historique.
+ * mode capable d'exclure une voie des stands parallèle. Cap absent → mode rayon,
+ * comportement historique.
+ *
+ * Ce repli n'a plus AUCUN circuit pour l'exercer depuis le 03/08/2026 : « La
+ * charade », seule fiche sans cap, a été retirée (jalon 0.H). Il reste parce
+ * qu'un tracé pilote fraîchement dessiné n'a pas de cap relevé — mais plus rien
+ * en production ne passe par là, et un défaut y dormirait sans se voir.
  */
 
 export interface FinishLineSource {

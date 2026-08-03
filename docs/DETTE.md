@@ -1508,3 +1508,97 @@ prouve que l'application atteignait l'accueil pilote. Tout ce qui est en aval
 de cet écran n'a **jamais tourné sur un appareil** depuis la migration SDK 55.
 Les corrections ci-dessus réduisent le risque ; elles ne remplacent pas un
 parcours complet, écran par écran, sur le téléphone.
+
+---
+
+## D-37 — Jalon 0 : ce qui est fermé, et les trois points qui restent dehors
+
+**Traité le 03/08/2026.** Le jalon 0 du programme V3 s'intitule « ce qui bloque
+tout ». Voici son état après passage, point par point.
+
+### Fermé
+
+**0.1 — sauvegarde.** Les trente commits qui n'étaient sur aucun distant ont été
+poussés sur `origin/migration/sdk-55` (`cda5968..504e455`). Ils portaient quatre
+migrations déjà appliquées en production et les correctifs de crash au
+lancement : la base et le dépôt divergeaient depuis un jour et demi.
+
+**0.2 — la CI ne voyait aucune branche de travail.** `check.yml` se déclenchait
+sur `branches: [main]` en push comme en pull request. Typage, lint, format,
+tests, scan doctrinal et scan d'accessibilité n'avaient donc jamais tourné sur
+`migration/sdk-55` — quatre cents commits. Élargi à tout push et toute pull
+request.
+
+À écarter au passage : le plan reprochait l'absence de `scripts/juger-mesure.ts`
+dans la CI. Ce script juge des traces d'appareil ; sans trace il n'a rien à
+lire. Sa place est dans `mesure.yml`, pas dans `check.yml`.
+
+**0.3 (0.G) — les virages de Valence et Charente.** Le plan les classait en
+dépendance terrain. C'était faux, et vérifiable : `detect-circuit-corners` ne
+lisait que `track_svg_path`, NULL sur les deux, alors qu'ils portent une
+`centerline_latlon` de 135 et 26 points. Elle répondait `no_geometry` en HTTP
+200 — sans erreur, donc sans que rien ne le signale.
+
+La fonction lit désormais la centerline en priorité, en réutilisant le moteur de
+l'application plutôt qu'une seconde implémentation. Déployée et exécutée :
+
+    Circuit Ricardo Tormo   14 virages   calibration centerline_latlon
+    Charente                 3 virages   calibration centerline_latlon
+
+Le 14 correspond exactement à ce que le client dérivait déjà : les deux chemins
+s'accordent, ce qui était l'objet du moteur partagé.
+
+Réserve sur Charente : 26 points de centerline pour un circuit entier, c'est un
+tracé grossier. Trois virages est ce que cette géométrie permet de dire, pas
+nécessairement ce que le circuit contient.
+
+**0.3 (0.H) — La Charade.** Séance détachée (`circuit_name` conservé), fiche
+supprimée. Sauvegarde dans `supabase/sauvegardes/`, balayage `pg_get_functiondef`
+fait selon D-24, dix tables référençant `circuits` comptées une par une — une
+seule portait une ligne. Quatre commentaires du code la citaient comme cas de
+référence : réécrits, sinon ils auraient désigné une fiche inexistante.
+
+### Tranché, contre le plan
+
+**Le rayon d'arrivée de Valence reste à 10 m.** Le plan demande 15–20 m. Le
+suivre casserait la détection de tours.
+
+Relevés déjà consignés dans `src/utils/lapDetection.ts:15` : à Ricardo Tormo, la
+voie des stands est à **16,2 m** de la ligne, cap 55,6° contre 55,2° — 0,4°
+d'écart. Un rayon de 15 à 20 m engloberait donc les stands, et chaque passage y
+compterait un tour. Le même fichier établit qu'en mode rayon la fenêtre
+admissible à Valence fait **20 cm**, et se vide dès que la voie des stands a sa
+largeur normale : aucun rayon ne fonctionne.
+
+Depuis qu'un cap y est posé, Valence est en mode PORTE, où le champ vaut une
+demi-largeur : 10 m donnent une porte de 20 m perpendiculaire à la piste, qui
+n'atteint pas les stands. La demande du plan visait le mode rayon et a perdu son
+objet — la suivre aurait réintroduit le défaut que le mode porte a été écrit
+pour supprimer.
+
+### Reste dehors — rien de logiciel
+
+**0.4 — envois à des tiers.** Le dossier avocat (décharge, mandat
+d'encaissement) n'est pas revenu, et rien dans le dépôt n'atteste qu'il ait été
+envoyé. Les vingt-deux demandes du raccordement site ne sont ventilées nulle
+part demande par demande. Le SIRET n'est pas obtenu — il ferme Stripe,
+l'encaissement coach, Tap to Pay, le tunnel de paiement, et laisse un document
+juridique affiché au pilote avec « [SIRET à compléter] ».
+
+**Terrain.** Les noms officiels des virages, et une séance de télémétrie dense à
+Valence. La détection, elle, n'attendait rien — voir plus haut.
+
+**La remise `stash@{0}`** reste locale. Décision fondateur du 03/08 : ne pas la
+vider. Sans risque, son contenu est sur `origin/wip/sec1-remise-prettier`.
+
+### Ouvert par ce lot
+
+`PROPOSITION_corner_index_valence.sql` — la contrainte `corner_index between 1
+and 7` est le nombre de virages de Haute Saintonge gravé dans le schéma. Valence
+en a quatorze : un coach n'y pourra pas annoter au-delà du septième. Aucune ligne
+n'est concernée aujourd'hui, `coach_annotations` étant vide. Décision fondateur.
+
+Et un effet de bord à connaître : la centerline passant désormais AVANT le
+schéma SVG, relancer la détection sur **Haute Saintonge** — qui porte les deux —
+remplacerait ses 7 virages par un calcul depuis ses 65 points de centerline.
+Le circuit n'a pas été recalculé, précisément pour cette raison.

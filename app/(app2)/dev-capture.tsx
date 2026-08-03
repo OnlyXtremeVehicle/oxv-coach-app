@@ -24,10 +24,11 @@
  *
  *     const BELTOISE_FINISH = { lat: 45.6004, lon: -0.141, radiusM: 40 };
  *
- * Elle ne correspond à AUCUNE ligne de la table `circuits`. La plus proche —
- * « La charade », 45.5988 / -0.1339 — est à plusieurs centaines de mètres, et
- * son rayon réel est 30 m, pas 40. Un banc censé valider la détection de tours
- * validait donc une ligne qui n'existe nulle part.
+ * Elle ne correspond à AUCUNE ligne de la table `circuits`. La plus proche
+ * était « La charade », 45.5988 / -0.1339 — à plusieurs centaines de mètres, et
+ * de rayon 30 m, pas 40 ; cette fiche a elle-même été retirée le 03/08/2026
+ * (jalon 0.H). Un banc censé valider la détection de tours validait donc une
+ * ligne qui n'existait nulle part.
  *
  * Le circuit se CHOISIT désormais, et ses coordonnées viennent de
  * `fetchCircuits()` — mêmes valeurs que la capture réelle, cap de porte inclus

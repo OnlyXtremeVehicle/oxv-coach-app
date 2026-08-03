@@ -21,9 +21,15 @@
  *
  * ── MODE RAYON (repli, quand aucun cap n'est renseigné) ───────────────────────
  * Comportement historique, conservé à l'identique : entrée dans un disque de
- * `finishLineRadius` autour de la ligne → tour. Sert aux circuits dont le cap
- * n'est pas relevé (« La charade » a `finish_line_heading` NULL) et au repli
- * `BELTOISE_FINISH`. Aucune vérification de direction dans ce mode.
+ * `finishLineRadius` autour de la ligne → tour. Sert aux tracés dont le cap
+ * n'est pas relevé, et au repli `BELTOISE_FINISH`. Aucune vérification de
+ * direction dans ce mode.
+ *
+ * DEPUIS LE 03/08/2026, PLUS AUCUN CIRCUIT DE PRODUCTION NE L'EMPRUNTE. Les
+ * trois restants portent un cap. « La charade », qui était l'exemple cité ici,
+ * a été retirée au jalon 0.H. Le mode reste pour les tracés pilote nouvellement
+ * dessinés — mais il n'est plus exercé par personne, et c'est le genre de
+ * chemin où un défaut s'installe sans bruit.
  *
  * Communs aux deux modes :
  *   - cooldown de 10 s minimum entre deux tours (anti-double-comptage) ;
