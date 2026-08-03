@@ -1164,9 +1164,22 @@ côté SITE :
 - Android — servir `https://www.oxvehicle.fr/.well-known/assetlinks.json` avec
   l'empreinte SHA-256 du certificat de signature.
 
-Ces deux fichiers dépendent d'informations que l'application ne détient pas
-(identifiant d'équipe Apple, empreinte du certificat de production). C'est donc
-un lot conjoint app + site, pas une ligne de configuration.
+**CORRECTION DU 03/08, quelques minutes après avoir écrit le contraire.** J'ai
+d'abord noté que « l'application ne détient pas ces informations ». C'est faux
+pour la première : l'identifiant d'équipe Apple est **`K53YDJ3Y55`** (Gabin
+FILLAT, compte individuel) — il s'affiche dans les identifiants EAS à chaque
+build, et il n'a rien de secret : tout fichier `apple-app-site-association`
+l'expose publiquement par construction.
+
+Reste donc UNE inconnue : l'empreinte SHA-256 du certificat de signature
+Android de production, à relever dans la console Google Play une fois
+l'application publiée.
+
+C'est un lot conjoint app + site, mais la moitié iOS est déjà documentable :
+
+    { "applinks": { "details": [
+        { "appIDs": ["K53YDJ3Y55.fr.oxvehicle.app"], "components": [
+            { "/": "/share/*" } ] } ] } }
 
 **Sans objet tant que la page `/share` n'est pas déployée** (voir D-22) : capter
 le lien pour l'ouvrir dans une application qui ne sait pas afficher un partage
