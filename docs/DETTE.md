@@ -1442,3 +1442,69 @@ exactement ce genre de plantage au lancement.
 Non traité délibérément : une modification de dépendance a déjà cassé un build
 cette semaine (`sharp`, build 32). Un alignement de version se fait dans un lot
 qui ne fait que ça, avec un build derrière pour le prouver.
+
+---
+
+## D-36 — La chasse aux fautes de lancement : ce qui a été trouvé, et le seul point qui vous revient
+
+**Chasse menée le 03/08/2026**, après le crash du build 36 (voir D-34). Six
+angles indépendants sur le chemin de démarrage, puis chaque trouvaille attaquée
+par un sceptique chargé de la démolir. Neuf ont survécu.
+
+**Aucune ne tuait l'application au lancement.** Le crash du build 36 était bien
+seul de son espèce. Huit ont été corrigées le jour même (commits `4f4f6c4` et
+`2995499`). La neuvième vous revient — elle est plus bas.
+
+### Le plus grave, et il ne se voyait pas
+
+**Aucun RaceBox ne pouvait être appairé sur iOS, et cela n'avait jamais
+fonctionné.** Le greffon `react-native-permissions` n'était pas déclaré dans
+`app.json` ; l'historique git montre qu'il ne l'a jamais été. Sans lui, le
+Podfile ne contient pas `setup_permissions([…])`, la poignée Bluetooth n'est
+pas compilée, `request()` rend `unavailable`, et les trois écrans d'appairage
+refusaient d'appeler `startScan()`.
+
+Rien ne le signalait : le seul avertissement du module natif est sous
+`#if RCT_DEV`. Aucun test ne le couvrait. Le commentaire d'en-tête de
+`src/ble/permissions.ts` affirmait même qu'iOS invitait tout seul au premier
+scan — ce qui est vrai, et rendait le garde-fou d'autant plus absurde.
+
+### Ce qui reste ouvert — DÉCISION FONDATEUR
+
+**`bluetoothService.ts` crée son `CBCentralManager` à l'import du module.**
+Conséquence : iOS affiche la demande d'autorisation Bluetooth **au lancement**,
+avant que le pilote ait ouvert quoi que ce soit et sans qu'il ait rien demandé.
+Une autorisation réclamée hors contexte est refusée bien plus souvent qu'une
+autorisation réclamée au moment où elle sert — et un refus, ici, coûte
+l'appairage.
+
+Ce fichier est sous **règle cardinale** : aucune modification sans votre accord.
+Je ne l'ai donc pas touché, et je ne propose pas de correctif tant que la
+question n'est pas tranchée.
+
+La correction serait de créer le gestionnaire à la première utilisation plutôt
+qu'à l'import. C'est une modification du cœur de la capture, à faire avec un
+essai terrain derrière — pas à la veille de Valence sans preuve.
+
+### Les huit corrigées
+
+| Défaut | Symptôme |
+|---|---|
+| Greffon `react-native-permissions` absent | appairage RaceBox impossible sur iOS |
+| `unavailable` traduit en refus | idem, et le resterait si le Podfile échouait |
+| Mode d'arrière-plan `bluetooth-central` déclaré | motif de refus App Store, et un test vert l'affirmait absent |
+| Splash sans montre de garde | l'application reste sur l'écran de lancement, indéfiniment |
+| Verrou d'armement rouvert depuis le fil UI | l'écran de capture devient inerte après un échec |
+| `onArm` sans try/catch | bouton figé sur « Démarrage en cours », définitivement |
+| Quatre espaces sans sortie après déconnexion | écran noir jusqu'à ce que l'application soit tuée |
+| Cache des circuits empoisonné par un appel anonyme | aucun circuit sélectionnable pendant 24 h |
+
+### Ce que la chasse dit d'elle-même
+
+Le critique de complétude a nommé un manque qui commande les autres :
+**personne n'a établi jusqu'où le build 36 était allé.** `PullToRefreshDial`
+n'est monté qu'à un seul endroit — `app/(app2)/index.tsx` — donc le crash
+prouve que l'application atteignait l'accueil pilote. Tout ce qui est en aval
+de cet écran n'a **jamais tourné sur un appareil** depuis la migration SDK 55.
+Les corrections ci-dessus réduisent le risque ; elles ne remplacent pas un
+parcours complet, écran par écran, sur le téléphone.
