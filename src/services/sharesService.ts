@@ -73,29 +73,22 @@ export function shareUrlFor(token: string): string {
 }
 
 /**
- * Génère un token cryptographiquement sûr — 32 chars base64url.
+ * LE JETON N'EST PLUS FABRIQUÉ ICI — et c'était le défaut.
  *
- * On utilise crypto.getRandomValues (présent sur RN via react-native-url-polyfill
- * et nativement en Node pour les tests). Pas de dépendance ajoutée.
+ * `generateShareToken()` vivait à cet endroit, commentée « génère un token
+ * cryptographiquement sûr », et s'appuyait sur `crypto.getRandomValues`, réputé
+ * « présent sur RN via react-native-url-polyfill ».
+ *
+ * VÉRIFIÉ le 02/08/2026 en lisant le paquet installé : il n'expose que `URL` et
+ * `URLSearchParams`. Aucun paquet du projet ne fournit `getRandomValues`, et le
+ * runtime « winter » d'Expo 55 ne pose pas de `crypto` global. Sur appareil, la
+ * branche de repli `Math.random` était donc la SEULE empruntée — un générateur
+ * de commodité, pas de sécurité, pour le seul secret qui protège un lien.
+ *
+ * Personne ne pouvait le voir en relisant : le code avait l'air correct, et le
+ * commentaire affirmait la garantie. La base le produit désormais
+ * (`gen_random_bytes`, 192 bits, base64url) et le client le REÇOIT.
  */
-function generateShareToken(): string {
-  const bytes = new Uint8Array(24); // 192 bits
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(bytes);
-  } else {
-    for (let i = 0; i < bytes.length; i++) {
-      bytes[i] = Math.floor(Math.random() * 256);
-    }
-  }
-  let out = '';
-  for (const b of bytes) {
-    out += String.fromCharCode(b);
-  }
-  // Conversion vers base64url : btoa + remplace +/= → -_/(rien)
-  const b64 =
-    typeof btoa !== 'undefined' ? btoa(out) : Buffer.from(out, 'binary').toString('base64');
-  return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
 
 export async function createShare(opts: {
   scope: ShareScope;
@@ -119,8 +112,6 @@ export async function createShare(opts: {
   const userId = authData.user?.id;
   if (!userId) return null;
 
-  const token = generateShareToken();
-
   // Ceinture ET bretelles : le type interdit l'absence, ce contrôle interdit le
   // zéro et le négatif — qui produiraient un lien déjà expiré ou éternel.
   if (!Number.isFinite(opts.expiresInDays) || opts.expiresInDays <= 0) {
@@ -133,7 +124,11 @@ export async function createShare(opts: {
     .from('app_progression_shares')
     .insert({
       user_id: userId,
-      share_token: token,
+      // AUCUN JETON ENVOYÉ : la base le fabrique (L31, 02/08/2026,
+      // `gen_random_bytes`, 192 bits, base64url). Le `.select()` ci-dessous le
+      // récupère. L'inverse — fabriquer le secret sur l'appareil de celui qu'il
+      // protège — était le défaut : le générateur employé était `Math.random`,
+      // faute de `crypto.getRandomValues` sur RN.
       share_scope: opts.scope,
       // Liste blanche stricte : on n'écrit QUE des clés connues, jamais plus.
       included_metrics: sanitizeIncludedMetrics(opts.includedMetrics ?? []),

@@ -641,7 +641,7 @@ export type Database = {
           last_viewed_at?: string | null
           revoked_at?: string | null
           share_scope: string
-          share_token: string
+          share_token?: string
           user_id: string
           view_count?: number
         }

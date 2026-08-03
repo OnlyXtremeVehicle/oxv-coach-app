@@ -1,9 +1,17 @@
 -- =============================================================================
--- PROPOSITION — LE JETON DE PARTAGE EST FABRIQUÉ PAR LA BASE
+-- LE JETON DE PARTAGE EST FABRIQUÉ PAR LA BASE
 --
---   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
+--   *** APPLIQUÉE EN PRODUCTION LE 03/08/2026. ***
 --
--- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
+-- Décision fondateur.
+--
+-- ÉPROUVÉE APRÈS APPLICATION, dans une transaction ANNULÉE : deux insertions
+-- SANS jeton ont reçu deux jetons DISTINCTS de 32 caractères, alphabet
+-- base64url — le format exact de celui déjà en production. Les URL émises
+-- restent valides.
+--
+-- Le code client a été retiré dans le même lot, dans l'ordre prescrit :
+-- migration d'abord, retrait ensuite.
 --
 -- Rédigé le 02/08/2026. Décision fondateur du même jour : « faire fabriquer le
 -- jeton par la base ».
