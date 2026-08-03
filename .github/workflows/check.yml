@@ -1,10 +1,22 @@
 name: check
 
+# CES CONTRÔLES N'AVAIENT JAMAIS VU LA BRANCHE DE TRAVAIL.
+#
+# Le déclencheur portait `branches: [main]` en push comme en pull_request. Or
+# tout le travail vit sur des branches de fonctionnalité — `migration/sdk-55`
+# porte à elle seule quatre cents commits — et aucune n'a jamais été typée,
+# lintée, testée ni passée au scan doctrinal par la forge. Les contrôles ne
+# tombaient qu'une fois le travail fondu dans `main`, c'est-à-dire trop tard
+# pour servir à quelque chose.
+#
+# Relevé le 03/08/2026, en dressant l'état du jalon 0.
+#
+# Désormais : tout push, sur toute branche, et toute pull request quelle que
+# soit sa cible. `concurrency` annule déjà les exécutions dépassées, donc une
+# série de commits rapprochés ne coûte qu'une exécution.
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 concurrency:
   group: check-${{ github.ref }}

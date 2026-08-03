@@ -256,6 +256,31 @@ export function buildRibbon(pts: Point[], width: number, closed: boolean): Ribbo
   return ribbon;
 }
 
+/**
+ * Réglage de dérivation des virages depuis une centerline lat/lon en base.
+ *
+ * IL VIT ICI, ET PAS AILLEURS, POUR UNE RAISON PRÉCISE.
+ *
+ * Deux appelants dérivent les virages d'un même circuit :
+ *
+ *   - l'application, pour les repères affichés au coach
+ *     (`src/circuit/circuitCorners.ts`) ;
+ *   - la fonction serveur `detect-circuit-corners`, qui écrit `circuits.corners`.
+ *
+ * S'ils partaient de réglages distincts, le même circuit porterait deux
+ * vérités : quatorze virages à l'écran, un autre compte en base, et un coach
+ * annotant « le virage 9 » désignerait deux endroits différents selon qui
+ * regarde. Ce module n'importe rien — il est donc lisible par le moteur Deno
+ * comme par Metro, et ce réglage est le seul.
+ *
+ * `smoothWin: 0` est mesuré, pas supposé : voir l'en-tête de `circuitCorners.ts`.
+ */
+export const PARAMS_CENTERLINE = {
+  smoothWin: 0,
+  resampleStep: 10,
+  cornerRadius: 100,
+} as const;
+
 // --- 8. Pipeline complet -----------------------------------------------------
 export function generateCircuit(rawPoints: LatLon[], opts: GenerateCircuitOptions = {}): Circuit {
   const {

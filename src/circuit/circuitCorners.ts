@@ -22,7 +22,12 @@
 
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
 
-import { type CornerDirection, type LatLon, generateCircuit } from './circuitGenerator';
+import {
+  type CornerDirection,
+  type LatLon,
+  PARAMS_CENTERLINE,
+  generateCircuit,
+} from './circuitGenerator';
 
 /** Un virage listable d'un circuit (repères coach, écrans par circuit). */
 export interface CircuitCorner {
@@ -72,19 +77,18 @@ export function hauteSaintongeCorners(): CircuitCorner[] {
 }
 
 /**
- * Paramètres de dérivation des virages depuis une centerline en base.
- * smoothWin: 0 — voir l'en-tête du fichier (mesuré, pas supposé).
- */
-const DERIVE_PARAMS = { smoothWin: 0, resampleStep: 10, cornerRadius: 100 } as const;
-
-/**
  * Dérive les virages d'un tracé réel (liste de points lat/lon) via la
  * détection de courbure existante. Pur et déterministe : testé sur la
  * fixture Ricardo Tormo. Tracé dégénéré (< 4 points) → [].
+ *
+ * Le réglage vient de `circuitGenerator.ts` et n'est PAS redéfini ici : la
+ * fonction serveur `detect-circuit-corners` lit le même, afin que l'écran du
+ * coach et la base ne comptent jamais deux nombres de virages différents pour
+ * le même circuit.
  */
 export function deriveCornersFromCenterline(points: readonly LatLon[]): CircuitCorner[] {
   if (points.length < 4) return [];
-  const circuit = generateCircuit([...points], DERIVE_PARAMS);
+  const circuit = generateCircuit([...points], PARAMS_CENTERLINE);
   return circuit.corners.map((c) => ({
     index: c.index,
     name:

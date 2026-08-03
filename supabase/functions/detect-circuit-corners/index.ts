@@ -23,6 +23,15 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
+// LE MÊME MOTEUR QUE L'APPLICATION, PAS UNE COPIE.
+//
+// `circuitGenerator.ts` n'importe rien : il est lisible par Deno comme par
+// Metro. L'écran coach « repères » et cette fonction partent donc du même
+// algorithme et du même réglage. Une seconde implémentation aurait fini par
+// diverger, et le même circuit aurait porté deux nombres de virages — celui
+// affiché et celui écrit en base.
+import { PARAMS_CENTERLINE, generateCircuit } from '../../../src/circuit/circuitGenerator.ts';
+
 const ENGINE = 'corners-v1';
 const P = { ds: 4, k: 4, smooth: 1, thr: 0.012, merge_gap_pct: 5.5 };
 
@@ -98,8 +107,49 @@ Deno.serve(async (req) => {
     );
 
     const { data: circuit } = await supabase
-      .from('circuits').select('id, name, track_svg_path, length_km').eq('id', circuitId).maybeSingle();
+      .from('circuits').select('id, name, track_svg_path, centerline_latlon, length_km').eq('id', circuitId).maybeSingle();
     if (!circuit) return new Response(JSON.stringify({ error: 'circuit_not_found' }), { status: 404 });
+
+    // LA CENTERLINE PASSE AVANT LE SCHÉMA, ET C'EST L'ORDRE JUSTE.
+    //
+    // `centerline_latlon` est une géométrie RÉELLE en degrés ; `track_svg_path`
+    // est un dessin. L'en-tête de ce fichier annonçait déjà le calage définitif
+    // « sur le centre de piste dérivé des vrais tours » : c'est ce chemin.
+    //
+    // Il a fallu l'écrire parce que la fonction ne lisait QUE le schéma. Sur
+    // Valence et Charente — track_svg_path NULL, centerline présente — elle
+    // répondait `no_geometry` en HTTP 200, sans erreur, et les deux circuits
+    // sont restés sans virages tout en portant une géométrie exploitable. Le
+    // plan V3 en avait conclu une dépendance terrain ; ce n'en était pas une.
+    const ligne = Array.isArray(circuit.centerline_latlon) ? circuit.centerline_latlon : null;
+    if (ligne && ligne.length >= 4) {
+      const c = generateCircuit(ligne, PARAMS_CENTERLINE);
+      const n = c.centerline.length;
+      const corners = c.corners.map((v, i) => ({
+        corner_index: i + 1,
+        direction: v.direction,
+        apex_s_norm: n > 0 ? Number((v.apexIdx / n).toFixed(4)) : 0,
+        r_m: Number.isFinite(v.radius_m) ? Number(v.radius_m.toFixed(1)) : null,
+        // Les NOMS restent une couche éditoriale, jamais devinés ici.
+        name: null,
+        calibration: 'centerline_latlon',
+      }));
+      const payload = {
+        engine_version: ENGINE,
+        params: PARAMS_CENTERLINE,
+        calibration: 'centerline_latlon',
+        n_corners: corners.length,
+        corners,
+      };
+      const { error } = await supabase.from('circuits')
+        .update({ corners: payload, corners_engine_version: ENGINE, corners_computed_at: new Date().toISOString() })
+        .eq('id', circuitId);
+      if (error) return new Response(JSON.stringify({ error: 'persist_failed', detail: error.message }), { status: 500 });
+      return new Response(
+        JSON.stringify({ ok: true, circuitId, name: circuit.name, n_corners: corners.length, engine: ENGINE, calibration: 'centerline_latlon' }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Géométrie absente (ex. tracé pilote non encore dessiné) : retour clair, pas d'échec.
     if (!circuit.track_svg_path) {
