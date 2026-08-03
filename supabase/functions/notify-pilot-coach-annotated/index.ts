@@ -116,9 +116,18 @@ serve(async (req) => {
     const cornerName = CORNER_NAMES[payload.corner_index] ?? `Virage ${payload.corner_index}`;
     const excerpt = payload.body.length > 60 ? payload.body.slice(0, 57) + '…' : payload.body;
 
-    const deepLink = payload.telemetry_session_id
-      ? `oxv://virage?index=${payload.corner_index}&sessionId=${payload.telemetry_session_id}`
-      : `oxv://virage?index=${payload.corner_index}`;
+    // LA CLÉ `deepLink` A ÉTÉ RETIRÉE.
+    //
+    // Elle transportait `oxv://virage?index=…` : aucune route de l'application
+    // ne s'appelle « virage » (vérifié sur les 145 fichiers de `app/`), et
+    // `app.json` déclare bien le schéma `oxv` mais aucun `associatedDomains`
+    // ni `intentFilters`. L'adresse ne résolvait sur rien.
+    //
+    // Rien ne cassait pour autant : le tap passe par la branche
+    // `coach_annotation` de `app/_layout.tsx`, qui construit elle-même
+    // `/(app2)/data/session/<id>?corner=<n>` et fonctionne. La clé était donc
+    // une adresse fabriquée que personne ne lisait — et qu'un mainteneur aurait
+    // fini par croire. Relevé par la cartographie du 02/08/2026.
 
     const message = {
       to: pilot.expo_push_token,
@@ -130,7 +139,6 @@ serve(async (req) => {
         annotationId: payload.annotation_id,
         cornerIndex: payload.corner_index,
         sessionId: payload.telemetry_session_id,
-        deepLink,
       },
       // Catégorie iOS pour grouper les notifs coach
       categoryId: 'coach_message',

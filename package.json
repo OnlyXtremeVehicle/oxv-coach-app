@@ -40,7 +40,6 @@
     "@supabase/supabase-js": "^2.45.4",
     "buffer": "^6.0.3",
     "expo": "^55.0.28",
-    "expo-apple-authentication": "~55.0.15",
     "expo-application": "~55.0.17",
     "expo-asset": "~55.0.18",
     "expo-audio": "~55.0.16",

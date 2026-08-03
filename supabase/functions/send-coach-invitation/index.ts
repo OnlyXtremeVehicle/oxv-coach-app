@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
       <h2 style="margin: 32px 0 16px 0; color: #ffffff; font-size: 18px; font-weight: 400;">Pour commencer</h2>
       <ol style="margin: 0; padding-left: 20px; color: #cccccc; font-size: 14px; line-height: 1.8;">
         <li>Installez l'application OXV Mirror&nbsp;:
-          <br><a href="https://apps.apple.com/app/oxv" style="color: #C8102E; text-decoration: none;">iPhone</a> &middot; <a href="https://play.google.com/store/apps/details?id=fr.oxvehicle.app" style="color: #C8102E; text-decoration: none;">Android</a>
+          <br><a href="https://play.google.com/store/apps/details?id=fr.oxvehicle.app" style="color: #C8102E; text-decoration: none;">Android</a> &middot; <span style="color: #888888;">iPhone : nous vous enverrons le lien dès la publication</span>
         </li>
         <li>Ouvrez l'application et connectez-vous avec votre email&nbsp;: <strong style="color: #ffffff;">${email}</strong></li>
         ${passwordLine}
@@ -82,7 +82,7 @@ Votre rôle : accompagner des pilotes qui vous seront assignés et qui vous acco
 L'app est un miroir. Votre regard l'est aussi.
 
 Pour commencer :
-1. Installez OXV Mirror (iPhone : https://apps.apple.com/app/oxv, Android : https://play.google.com/store/apps/details?id=fr.oxvehicle.app)
+1. Installez OXV Mirror (Android : https://play.google.com/store/apps/details?id=fr.oxvehicle.app — le lien iPhone suivra dès la publication)
 2. Connectez-vous avec votre email : ${email}
 ${temporaryPassword ? `3. Mot de passe temporaire : ${temporaryPassword} (vous pourrez le changer après la connexion)\n4. Signez le Pacte de coaching\n5. Vos premiers pilotes vous seront assignés par OXV` : `3. Signez le Pacte de coaching\n4. Vos premiers pilotes vous seront assignés par OXV`}
 

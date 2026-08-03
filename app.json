@@ -26,7 +26,6 @@
       "supportsTablet": false,
       "bundleIdentifier": "fr.oxvehicle.app",
       "buildNumber": "1",
-      "usesAppleSignIn": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Votre position sert à détecter votre arrivée au circuit, à enregistrer un lieu ou un tracé que vous créez, et au scan Bluetooth qu'iOS exige. Aucun suivi en arrière-plan.",
         "NSCameraUsageDescription": "OXV utilise l'appareil photo pour votre photo de profil et la lecture des documents.",
@@ -79,7 +78,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-apple-authentication",
       [
         "react-native-ble-plx",
         {

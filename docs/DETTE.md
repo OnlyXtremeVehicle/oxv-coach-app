@@ -1141,3 +1141,51 @@ seuils, un profil connu qui n'est plus détruit par une lecture ratée, et la po
 vers l'admin sortie de la branche de succès dont elle ne dépendait pas.
 Garde : `src/store/__tests__/profilIndisponible.guard.test.ts` — vérifiée
 échouante sur la version d'avant, sur ses six assertions structurelles.
+
+---
+
+## D-31 — Les liens universels : ce qui ne dépend pas que de l'application
+
+**Relevé le 02/08/2026**, traité partiellement le 03/08.
+
+`app.json` déclare `"scheme": "oxv"` mais ni `associatedDomains` (iOS) ni
+`intentFilters` (Android). Un lien `https://www.oxvehicle.fr/share/<jeton>`
+touché sur un téléphone où OXV est installé ouvre donc le navigateur, jamais
+l'application.
+
+**JE NE L'AI PAS AJOUTÉ, ET C'EST DÉLIBÉRÉ.** Déclarer `associatedDomains` sans
+le fichier de vérification correspondant produit exactement le motif que ce
+dépôt combat : une capacité déclarée qui ne se déclenche jamais. Il faut,
+côté SITE :
+
+- iOS — servir `https://www.oxvehicle.fr/.well-known/apple-app-site-association`
+  (JSON, sans extension, `Content-Type: application/json`, sans redirection),
+  contenant l'identifiant d'équipe Apple et `fr.oxvehicle.app` ;
+- Android — servir `https://www.oxvehicle.fr/.well-known/assetlinks.json` avec
+  l'empreinte SHA-256 du certificat de signature.
+
+Ces deux fichiers dépendent d'informations que l'application ne détient pas
+(identifiant d'équipe Apple, empreinte du certificat de production). C'est donc
+un lot conjoint app + site, pas une ligne de configuration.
+
+**Sans objet tant que la page `/share` n'est pas déployée** (voir D-22) : capter
+le lien pour l'ouvrir dans une application qui ne sait pas afficher un partage
+ne réglerait rien.
+
+### Ce qui a été traité le 03/08
+
+- **`oxv://virage`** — la clé `deepLink` de la notification « note du coach »
+  transportait une adresse qui ne résolvait sur rien : aucune route ne s'appelle
+  « virage ». Rien ne cassait — le tap passe par la branche `coach_annotation`
+  de `app/_layout.tsx`, qui construit elle-même le bon chemin. La clé était donc
+  une adresse fabriquée que personne ne lisait, et qu'un mainteneur aurait fini
+  par croire. **Retirée.**
+- **Lien App Store** — `apps.apple.com/app/oxv` ne porte aucun identifiant
+  numérique et ne mène nulle part. Le courriel d'invitation coach (HTML et
+  texte) annonce désormais Android seul, et dit que le lien iPhone suivra à la
+  publication. **À rebrancher dès la fiche App Store créée.**
+- **`usesAppleSignIn`** — la capacité était réclamée par chaque build iOS et le
+  plugin `expo-apple-authentication` déclaré, sans une seule ligne de code qui
+  s'en serve (vérifié : zéro import, zéro appel). Capacité, plugin et
+  dépendance **retirés**. À rétablir le jour où l'authentification Apple sera
+  réellement branchée — pas avant.
