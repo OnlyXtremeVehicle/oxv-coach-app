@@ -5,7 +5,6 @@
 
 import { HAUTE_SAINTONGE_SEGMENTS, HAUTE_SAINTONGE_TRACK } from '../hauteSaintonge';
 import {
-  TrackProjection,
   buildTrackGeometry,
   mapMatchPoint,
   phaseForProgress,
@@ -95,16 +94,6 @@ describe('phaseForProgress', () => {
   });
 });
 
-describe('TrackProjection', () => {
-  it('projette le centre du tracé en (0, 0) approximativement', () => {
-    const proj = new TrackProjection(HAUTE_SAINTONGE_TRACK);
-    const center = HAUTE_SAINTONGE_TRACK[Math.floor(HAUTE_SAINTONGE_TRACK.length / 2)];
-    const scene = proj.toScene(center);
-    // Les coordonnées en scène doivent être petites (en mètres autour de l'origine)
-    expect(Math.abs(scene.x)).toBeLessThan(2000);
-    expect(Math.abs(scene.y)).toBeLessThan(2000);
-  });
-});
 
 describe('analyzeTrackVizSession (sanity sur demo)', () => {
   it('produit ~7 segments analysés sur la session demo (refactor sem 16)', () => {

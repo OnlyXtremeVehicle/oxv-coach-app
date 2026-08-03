@@ -1704,3 +1704,110 @@ croit.
 Décomposer les 8,8 m en composante longitudinale et latérale demande le cap
 local au point de ligne. Non fait. À trancher avec un vrai passage chronométré,
 qui répondra à la question mieux que n'importe quel calcul.
+
+---
+
+## D-40 — Les neuf modules orphelins T1/T1bis : aucun n'est à brancher
+
+**Enquêté le 03/08/2026.** Neuf enquêteurs indépendants, puis un sceptique par
+verdict « à brancher ». **Les neuf verdicts sont tombés.** Résultat unanime :
+laisser dormir.
+
+### Pourquoi la question se posait
+
+Les lots T1 et T1bis ont livré neuf modules purs, testés, sans consommateur :
+
+    src/render/{projection,decimate,ramp,ribbon,gg}.ts
+    src/telemetry/{segment,braking,accel,gg}.ts
+
+La tentation est de « finir le travail » en les branchant. Le critère retenu
+était plus dur : un module ne vaut d'être branché que s'il REMPLACE du code
+existant qui fait moins bien. Sinon il faut lui inventer un consommateur, et
+c'est de la dette qu'on ajoute, pas qu'on retire.
+
+### Les trois candidats sérieux, et pourquoi chacun échoue
+
+**`src/render/projection.ts`.** Son propre en-tête le justifie par un défaut
+réel : la carte projetait en dur sur Haute-Saintonge, donc « une séance de
+Valence serait projetée avec l'origine de Haute-Saintonge, sans qu'aucune erreur
+ne soit levée ». **Ce défaut est déjà fermé, autrement.** `CircuitMap.tsx:56`
+exige `circuitName`, et la garde ligne 71 refuse de dessiner en le disant. La
+carte ne ment plus : elle se tait.
+
+Et le brancher seul serait PIRE. `TrackLayer.tsx:43` et `StartArrowLayer.tsx:13`
+dessinent `HAUTE_SAINTONGE_TRACK` en dur, `CornersLayer.tsx:39` pose
+`BELTOISE_CORNERS`. On obtiendrait la trajectoire de Valence correctement
+projetée, posée sur le ruban et les sept pastilles de Beltoise, sous le nom
+« Valence ». Un tracé faux se lit comme un tracé vrai — le vide honnête vaut
+mieux.
+
+La voie du multi-circuit côté coach existe, et ce n'est pas celle-là : les
+écrans pilotes rendent DÉJÀ n'importe quel circuit, via
+`TraceCircuit → centerlineToTrace` (`src/ui/v2/vizMath.ts:292`) alimenté par
+`circuits.centerline_latlon`. Migrer les écrans coach vers cette chaîne
+supprimerait les 117 lignes codées en dur **sans employer ce module**.
+
+**`src/render/ramp.ts`.** Une fois les quatre arrêts canoniques employés des
+deux côtés, l'écart avec l'existant tombe à quelques millièmes d'unité Oklab. Et
+l'écran visé puise dans une autre palette. Changer de palette sur un écran livré
+est une décision, pas un câblage.
+
+**`src/telemetry/braking.ts`.** Son entrée n'existe pas : `a_long` n'est produit
+nulle part dans l'application vivante, et `kinematics.ts` n'a aucun appelant
+hors tests.
+
+### Ce que le lot T1bis a bien tenu
+
+Son critère d'acceptation était unique et vérifiable : le delta cumulé se
+referme à zéro. Tenu à 10⁻⁹ près, sur trois familles de profils et cinq pas de
+grille. Et deux de ses six modules SONT branchés — `delta.ts` sous
+`deltaService.ts`, `resample.ts` sous `bandeService.ts`. Le lot n'est pas
+stérile : il est branché là où un écran le demandait, et pas ailleurs.
+
+### Un module dormant est un actif — à une condition
+
+Que rien n'affirme le contraire. La condition est tenue pour T1bis :
+`docs/T1BIS_CALCUL.md:3` écrit « six modules purs, aucun écran touché ».
+
+**Elle est indéterminée pour T1** : `docs/T1_RENDU.md`, livrable d'acceptation
+réclamé par le plan de montage, **n'existe pas**. Cinq modules livrés sans
+registre. Personne n'affirme qu'ils sont branchés ; personne n'écrit non plus
+qu'ils ne le sont pas.
+
+### Ce qui a été fait
+
+Deux doublons morts retirés — le seul geste que l'enquête ait recommandé :
+
+- `TrackProjection` (`src/trackviz/geometry.ts`) — doublon exact de
+  `buildProjection`, sans consommateur hors son test.
+- `buildRibbon` / `RibbonSection` / `Circuit.ribbon`
+  (`src/circuit/circuitGenerator.ts`) — le ruban était calculé à CHAQUE appel
+  de `generateCircuit`, puis jeté. Y compris par la fonction serveur
+  `detect-circuit-corners`, pour chaque circuit, depuis ce matin.
+
+Neutralité prouvée après redéploiement : Haute Saintonge 8, Valence 14,
+Charente 3 — identiques.
+
+`src/render/ribbon.ts` n'est PAS le remplaçant de ce qui a été retiré : il ne
+prend pas de paramètre `closed`, donc il ne sait pas refermer un tour.
+
+### Trois constats de bord, à vous
+
+**La chaîne freinage est morte de bout en bout, à une ligne d'être vivante.**
+`brakingPointsService.ts` (115 lignes) n'est importé que par son test. Il rend
+exactement le `BrakingMarker` qu'attend `BrakingPointsLayer.tsx`, lequel est
+monté dans `PilotPreset.tsx:58` derrière une garde `brakingPoints && length > 0`
+— et **aucun appelant ne passe jamais cette prop**. Un layer entier qui ne peut
+pas s'allumer. Deux issues, et c'est un choix produit : l'armer, ou le retirer
+franchement.
+
+**Deux commentaires affirment un mécanisme inexistant.**
+`src/components/telemetry/CourbeDelta.tsx:82` et
+`src/features/data/__tests__/reperesVirages.test.ts:95` écrivent que le
+découpage « seuille la courbure ». Or `HAUTE_SAINTONGE_SEGMENTS` est une table
+fixe bâtie sur sept apex. Aucun seuil, aucune courbure.
+
+**`sessionInsightsEngine.ts` n'est pas supprimable** malgré son absence
+d'appelant : c'est le miroir testable de l'edge `compute-session-insights`,
+`session_insights` étant en écriture `service_role` seule. Le supprimer
+retirerait la seule version testée de cette logique.

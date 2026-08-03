@@ -3,7 +3,6 @@ import {
   projectToMeters,
   curvature,
   resampleByDistance,
-  buildRibbon,
   detectCorners,
   type LatLon,
 } from '../circuitGenerator';
@@ -21,9 +20,11 @@ describe('generateCircuit — Haute Saintonge (OSM 54412766)', () => {
     expect(circuit.length_m).toBeLessThan(2400);
   });
 
-  it('produit un ruban aligné sur la ligne médiane', () => {
+  it('produit une ligne médiane non vide', () => {
+    // Cette assertion vérifiait aussi que le ruban suivait la médiane. Le ruban
+    // a été retiré le 03/08/2026 : personne ne le lisait, et il était reconstruit
+    // à chaque appel — y compris par la fonction serveur, pour chaque circuit.
     expect(circuit.centerline.length).toBeGreaterThan(0);
-    expect(circuit.ribbon).toHaveLength(circuit.centerline.length);
   });
 
   it('numérote les virages séquentiellement à partir de 1', () => {
@@ -52,13 +53,12 @@ describe('generateCircuit — Haute Saintonge (OSM 54412766)', () => {
     });
   });
 
-  it('garde une largeur de piste constante (demi-largeur = trackWidth/2)', () => {
-    const half = circuit.params.trackWidth / 2;
-    const mid = circuit.ribbon[Math.floor(circuit.ribbon.length / 2)];
-    const dLeft = Math.hypot(mid.left[0] - mid.center[0], mid.left[1] - mid.center[1]);
-    const dRight = Math.hypot(mid.right[0] - mid.center[0], mid.right[1] - mid.center[1]);
-    expect(dLeft).toBeCloseTo(half, 5);
-    expect(dRight).toBeCloseTo(half, 5);
+  it('rappelle le réglage qui a produit le tracé', () => {
+    // `trackWidth` ne pilote plus aucun calcul depuis le retrait du ruban ; il
+    // reste dans `params` pour que l'on sache avec quel réglage un tracé a été
+    // produit. Ce test dit exactement cela, et rien de plus.
+    expect(circuit.params.trackWidth).toBe(12);
+    expect(circuit.params.resampleStep).toBeGreaterThan(0);
   });
 });
 
@@ -108,15 +108,4 @@ describe('briques pures du générateur', () => {
     }
   });
 
-  it('buildRibbon génère deux bords symétriques', () => {
-    const line = [
-      { x: 0, y: 0 },
-      { x: 10, y: 0 },
-      { x: 20, y: 0 },
-    ];
-    const rib = buildRibbon(line, 12, false);
-    expect(rib).toHaveLength(3);
-    // piste horizontale → bords décalés de ±6 en y
-    expect(Math.abs(rib[1].left[1] - rib[1].right[1])).toBeCloseTo(12, 6);
-  });
 });

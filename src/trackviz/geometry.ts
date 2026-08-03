@@ -136,32 +136,20 @@ export function phaseForProgress(
   return 'exit';
 }
 
-/**
- * TrackProjection : utilitaire pour projeter un point GPS dans un
- * système de coordonnées local 2D (centré sur le tracé). Utile pour
- * le rendu SVG du composant TrackVizMap.
+/*
+ * `TrackProjection` VIVAIT ICI. Retirée le 03/08/2026.
+ *
+ * Elle projetait un point GPS dans un repère local, pour « le rendu SVG du
+ * composant TrackVizMap ». Ce composant ne l'a jamais appelée : ses seules
+ * références dans tout le dépôt étaient sa propre déclaration et son propre
+ * test.
+ *
+ * C'était par ailleurs un doublon exact de `buildProjection`
+ * (`src/render/projection.ts`) — même barycentre, même 111 320, même correction
+ * par cos(latitude), même Y inversé — en faisant strictement moins : ni bornes,
+ * ni viewBox, et une liste vide y fabriquait une origine NaN au lieu de rendre
+ * l'absence.
+ *
+ * Retirée comme code mort, PAS migrée : `src/render/projection.ts` reste sans
+ * consommateur après cette suppression. Voir docs/DETTE.md D-40.
  */
-export class TrackProjection {
-  private originLat: number;
-  private originLon: number;
-  private mPerDegLat: number;
-  private mPerDegLon: number;
-
-  constructor(trackPoints: { lat: number; lon: number }[]) {
-    const sumLat = trackPoints.reduce((s, p) => s + p.lat, 0);
-    const sumLon = trackPoints.reduce((s, p) => s + p.lon, 0);
-    this.originLat = sumLat / Math.max(1, trackPoints.length);
-    this.originLon = sumLon / Math.max(1, trackPoints.length);
-    // À l'échelle d'un circuit (< 5 km), on néglige la courbure terrestre.
-    this.mPerDegLat = 111_320; // ≈ constant
-    this.mPerDegLon = 111_320 * Math.cos((this.originLat * Math.PI) / 180);
-  }
-
-  toScene(point: { lat: number; lon: number }): ScenePoint {
-    return {
-      x: (point.lon - this.originLon) * this.mPerDegLon,
-      // Y inversé pour cohérence SVG (Y vers le bas)
-      y: -(point.lat - this.originLat) * this.mPerDegLat,
-    };
-  }
-}

@@ -33,11 +33,6 @@ export interface Corner {
   direction: CornerDirection;
 }
 
-export interface RibbonSection {
-  center: [number, number];
-  left: [number, number];
-  right: [number, number];
-}
 
 export interface CircuitParams {
   smoothWin: number;
@@ -50,7 +45,6 @@ export interface CircuitParams {
 export interface Circuit {
   centerline: Point[];
   corners: Corner[];
-  ribbon: RibbonSection[];
   length_m: number;
   closed: boolean;
   params: CircuitParams;
@@ -233,28 +227,22 @@ export function detectCorners(pts: Point[], k: number[], rThresh: number): Corne
   return corners;
 }
 
-// --- 7. Géométrie du ruban 3D (deux bords parallèles) ------------------------
-// width = largeur de piste en mètres. Renvoie sommets gauche/droite + centre.
-export function buildRibbon(pts: Point[], width: number, closed: boolean): RibbonSection[] {
-  const half = width / 2;
-  const n = pts.length;
-  const ribbon: RibbonSection[] = [];
-  for (let i = 0; i < n; i++) {
-    const prev = closed ? pts[(((i - 1) % n) + n) % n] : pts[Math.max(0, i - 1)];
-    const next = closed ? pts[(i + 1) % n] : pts[Math.min(n - 1, i + 1)];
-    const tx = next.x - prev.x;
-    const ty = next.y - prev.y;
-    const len = Math.hypot(tx, ty) || 1;
-    const nx = -ty / len;
-    const ny = tx / len; // normale
-    ribbon.push({
-      center: [pts[i].x, pts[i].y],
-      left: [pts[i].x + nx * half, pts[i].y + ny * half],
-      right: [pts[i].x - nx * half, pts[i].y - ny * half],
-    });
-  }
-  return ribbon;
-}
+/*
+ * --- 7. LE RUBAN 3D A ÉTÉ RETIRÉ LE 03/08/2026 -------------------------------
+ *
+ * `buildRibbon` produisait deux bords parallèles au tracé, et `generateCircuit`
+ * les posait dans `Circuit.ribbon`. Personne ne les lisait : hors ce fichier et
+ * son test, le mot n'apparaissait nulle part dans le dépôt.
+ *
+ * Ce n'était pas gratuit. `generateCircuit` est vivant — la carte-trophée
+ * l'appelle, et depuis le 03/08 la fonction serveur `detect-circuit-corners`
+ * aussi, pour chaque circuit. Chaque appel construisait donc un ruban de la
+ * longueur du tracé, pour le jeter aussitôt.
+ *
+ * `src/render/ribbon.ts` n'est PAS son remplaçant, et il ne faut pas le croire :
+ * il ne prend pas de paramètre `closed`, donc il ne sait pas refermer un tour.
+ * Ceci est une suppression de code mort, pas une migration.
+ */
 
 /**
  * Réglage de dérivation des virages depuis une centerline lat/lon en base.
@@ -287,7 +275,11 @@ export function generateCircuit(rawPoints: LatLon[], opts: GenerateCircuitOption
     smoothWin = 1, // débruitage (OSM propre = 1 ; GPS brut = 6-10)
     resampleStep = 10, // mètres entre points rééchantillonnés
     cornerRadius = 100, // seuil de rayon (m) pour qu'une courbe soit un virage
-    trackWidth = 12, // largeur de piste (m) pour le ruban 3D
+    // `trackWidth` NE PILOTE PLUS RIEN depuis le retrait du ruban (03/08/2026).
+    // Conservé dans `params` parce qu'il fait partie du type public, et pour
+    // que les tracés déjà enregistrés gardent la trace du réglage qui les a
+    // produits. Aucun calcul ne le lit.
+    trackWidth = 12,
     closed = true,
   } = opts;
 
@@ -296,7 +288,6 @@ export function generateCircuit(rawPoints: LatLon[], opts: GenerateCircuitOption
   const resampled = resampleByDistance(smoothed, resampleStep);
   const k = curvature(resampled);
   const corners = detectCorners(resampled, k, cornerRadius);
-  const ribbon = buildRibbon(resampled, trackWidth, closed);
 
   let length_m = 0;
   for (let i = 1; i < resampled.length; i++) {
@@ -315,7 +306,6 @@ export function generateCircuit(rawPoints: LatLon[], opts: GenerateCircuitOption
   return {
     centerline: resampled, // [{x,y}] débruité, en mètres
     corners, // virages détectés
-    ribbon, // géométrie 3D
     length_m: Math.round(length_m),
     closed,
     params: { smoothWin, resampleStep, cornerRadius, trackWidth, closed },
