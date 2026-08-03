@@ -1602,3 +1602,105 @@ Et un effet de bord à connaître : la centerline passant désormais AVANT le
 schéma SVG, relancer la détection sur **Haute Saintonge** — qui porte les deux —
 remplacerait ses 7 virages par un calcul depuis ses 65 points de centerline.
 Le circuit n'a pas été recalculé, précisément pour cette raison.
+
+---
+
+## D-38 — La détection de virages dépend de la densité du tracé, et ça piège la calibration prévue
+
+**Constaté le 03/08/2026**, en intégrant le relevé OSM de Haute Saintonge.
+**Non corrigé.** Sans conséquence aujourd'hui, bloquant demain.
+
+### La mesure
+
+Un seul circuit, un seul relevé, un seul moteur. On ne fait varier que
+l'espacement des points du tracé fourni :
+
+| espacement | 1 m | 2 m | 3 m | 5 m | 8 m | 12 m | 20 m |
+|---|---|---|---|---|---|---|---|
+| virages | 12 | 14 | 16 | 14 | 8 | 12 | 8 |
+
+Sept réponses. La cause est `PARAMS_CENTERLINE.smoothWin = 0` — aucun lissage.
+Le réglage a été validé sur le tracé de Valence, espacé de 30 m, où il n'y a
+rien à lisser. Sur un tracé dense, l'irrégularité du relevé devient courbure,
+et la courbure devient virage.
+
+### Pourquoi ce n'est pas théorique
+
+L'en-tête de `supabase/functions/detect-circuit-corners/index.ts` annonce le
+calage définitif : « relancer cette fonction sur le centre de piste dérivé des
+vrais tours ». C'est le plan, et c'est le bon.
+
+Or un tour dérivé de la télémétrie RaceBox à 25 Hz, à 150 km/h, produit **un
+point tous les 1,7 mètre**. C'est exactement le régime qui rend 12 à 16 virages
+là où le relevé cadastral en rend 8. **Le jour où l'on calera le tracé sur la
+télémétrie, le nombre de virages changera — et rien ne dira si c'est le circuit
+qu'on lit mieux, ou le bruit qu'on compte.**
+
+### Ce qui a été fait en attendant
+
+Le fichier densifié à 1 m fourni par le fondateur a été écarté au profit de la
+source OSM à 30,7 m. La densification n'apporte aucune mesure : elle interpole
+entre les mêmes points relevés. Écrire ses 12 virages aurait été écrire un
+chiffre que la méthode ne soutient pas.
+
+Les trois circuits sont donc aujourd'hui dans le même régime — 26 à 135 points,
+30 m d'espacement — et leurs comptes sont comparables entre eux.
+
+### La piste de correction, mesurée mais non appliquée
+
+Lisser sur une DISTANCE constante plutôt que sur un nombre de points fixe :
+`smoothWin ≈ distance / espacement`. Testé sur le même tracé :
+
+| lissage | 1 m | 2 m | 3 m | 5 m | 8 m | 12 m | 20 m |
+|---|---|---|---|---|---|---|---|
+| 0 m (actuel) | 12 | 14 | 16 | 14 | 8 | 12 | 8 |
+| **10 m** | **9** | **9** | **9** | **9** | 8 | 8 | 8 |
+
+Un lissage de 10 m fait converger : neuf virages, quelle que soit la densité au
+moins jusqu'à 5 m. C'est le comportement qu'on attend d'une mesure.
+
+Non appliqué, pour deux raisons. Le réglage est PARTAGÉ entre l'application et
+la fonction serveur depuis ce lot — le changer changerait aussi Valence, et
+cette vérification n'a pas été faite. Et surtout : le bon moment pour figer ce
+paramètre est celui où l'on disposera d'un vrai tour de télémétrie, pas avant.
+
+---
+
+## D-39 — Deux mesures de terrain qui ne concordent pas avec ce que le code affirme
+
+**Constaté le 03/08/2026**, en exploitant le relevé de la voie des stands de
+Haute Saintonge fourni par le fondateur. **Non tranché.**
+
+### La voie des stands
+
+`src/utils/lapDetection.ts:14` documente, d'après des relevés fondateur :
+
+> Haute Saintonge : stands à **22,9 m** de la ligne, cap 300,8° contre 298,5°.
+
+Mesure faite sur le relevé OSM (`way/54412759`, `highway=service`), depuis la
+ligne d'arrivée en base (45.240578, −0.094391) jusqu'au point le plus proche de
+la voie : **33,8 m**.
+
+Onze mètres d'écart. Les deux mesures ne portent peut-être pas sur le même
+objet — la voie de service relevée peut inclure l'accès au paddock, quand le
+relevé fondateur visait la voie des stands elle-même. Aucune des deux n'a été
+retenue contre l'autre : la conclusion opérationnelle est la même. La
+demi-largeur de porte en base est de 15 m, soit une porte de 30 m ; elle
+n'atteint ni 22,9 ni 33,8 m. **La détection de tours est sûre dans les deux
+lectures.**
+
+### La ligne d'arrivée n'est pas sur la piste
+
+Distance entre le point de ligne d'arrivée en base et le point le plus proche
+du tracé relevé : **8,8 m**.
+
+Ce n'est pas nécessairement une erreur — un décalage le long de la piste est
+sans effet, la porte étant perpendiculaire au cap. Un décalage LATÉRAL, en
+revanche, décentre la porte : avec 15 m de demi-largeur et 8,8 m de décentrage,
+il ne resterait que 6,2 m du côté court. Sur une piste de 6 m de large (attribut
+`width=6` du relevé), cela reste couvrant — mais la marge n'est plus celle qu'on
+croit.
+
+Décomposer les 8,8 m en composante longitudinale et latérale demande le cap
+local au point de ligne. Non fait. À trancher avec un vrai passage chronométré,
+qui répondra à la question mieux que n'importe quel calcul.

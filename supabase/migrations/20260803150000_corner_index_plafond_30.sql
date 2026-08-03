@@ -1,11 +1,8 @@
 -- =============================================================================
--- PROPOSITION — LA CONTRAINTE DE VIRAGE PLAFONNE À 7, VALENCE EN A 14
+-- LA CONTRAINTE DE VIRAGE PLAFONNAIT À 7, VALENCE EN A 14
 --
---   *** NON APPLIQUÉE. NE PAS EXÉCUTER SANS DÉCISION FONDATEUR. ***
---
--- Fichier volontairement NON horodaté : `supabase db push` l'ignore.
---
--- Rédigée le 03/08/2026, après le calcul des virages du jalon 0.
+-- APPLIQUÉE le 03/08/2026, sur autorisation explicite du fondateur.
+-- `coach_annotations` était vide : aucune ligne à migrer.
 -- =============================================================================
 --
 -- CE QUI BLOQUE
@@ -57,7 +54,7 @@
 --     n'aurait plus aucun moyen de dire lesquelles. À rouvrir le jour où les
 --     virages seront figés par la télémétrie — pas avant.
 --
--- RECOMMANDATION : A. C'est le seul des trois qui ne crée pas de dette neuve.
+-- RETENU : A. C'est le seul des trois qui ne crée pas de dette neuve.
 -- =============================================================================
 
 alter table public.coach_annotations
