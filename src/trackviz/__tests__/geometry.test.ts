@@ -94,7 +94,6 @@ describe('phaseForProgress', () => {
   });
 });
 
-
 describe('analyzeTrackVizSession (sanity sur demo)', () => {
   it('produit ~7 segments analysés sur la session demo (refactor sem 16)', () => {
     const samples = buildDemoTrackVizSamples();

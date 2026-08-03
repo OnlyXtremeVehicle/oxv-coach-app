@@ -107,8 +107,11 @@ export interface TrackVizAnalysisResult {
   summary: TrackVizSummary;
 }
 
-/** Point projeté sur la "scène" SVG (avant remise à l'échelle viewBox). */
-export interface ScenePoint {
-  x: number;
-  y: number;
-}
+/*
+ * `ScenePoint` VIVAIT ICI. Retiré le 03/08/2026, avec `TrackProjection`
+ * (`geometry.ts`), qui en était le seul lecteur.
+ *
+ * ATTENTION EN CAS DE RETOUR : deux autres types portent ce nom dans le dépôt,
+ * et ce ne sont pas les mêmes — `src/render/projection.ts` et
+ * `src/components/CircuitMap/projection.ts`. Celui-ci était le troisième.
+ */

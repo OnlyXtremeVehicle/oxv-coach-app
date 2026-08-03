@@ -8,7 +8,7 @@
 
 import { haversineDistance } from '@/utils/geo';
 
-import type { ScenePoint, SegmentPhase, TrackVizSegmentDefinition } from './types';
+import type { SegmentPhase, TrackVizSegmentDefinition } from './types';
 
 export interface TrackGeometry {
   /** Points GPS du tracé. */

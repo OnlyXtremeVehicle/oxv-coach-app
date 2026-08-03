@@ -33,7 +33,6 @@ export interface Corner {
   direction: CornerDirection;
 }
 
-
 export interface CircuitParams {
   smoothWin: number;
   resampleStep: number;

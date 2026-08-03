@@ -107,5 +107,4 @@ describe('briques pures du générateur', () => {
       );
     }
   });
-
 });
