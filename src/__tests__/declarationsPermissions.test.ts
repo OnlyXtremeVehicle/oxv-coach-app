@@ -207,6 +207,99 @@ describe('localisation — les options du plugin, qui possède les clés', () =>
 });
 
 /**
+ * ARRIÈRE-PLAN BLUETOOTH — L'ASSERTION CI-DESSUS ÉTAIT VERTE, ET FAUSSE.
+ *
+ * `UIBackgroundModes` absente d'`app.json` ne prouvait rien : la clé est
+ * POSSÉDÉE par le greffon `react-native-ble-plx`, qui l'écrit après. Le
+ * 03/08/2026, `expo config --type introspect --json` a montré que l'Info.plist
+ * réellement livré contenait :
+ *
+ *     UIBackgroundModes = ["bluetooth-central"]
+ *
+ * Lu dans le greffon installé, pas déduit : `plugin/build/withBLE.js:15` lit
+ * `isBackgroundEnabled` mais ne le passe qu'à `withBLEAndroidManifest` —
+ * ANDROID uniquement. La ligne 22 passe `_props.modes` à
+ * `withBLEBackgroundModes`, qui pousse `bluetooth-central` dès que `modes`
+ * contient `'central'`, **sans jamais consulter `isBackgroundEnabled`**.
+ *
+ * Le drapeau `isBackgroundEnabled: false` était donc inopérant sur iOS, et
+ * l'application annonçait à Apple une activité Bluetooth en arrière-plan
+ * qu'elle n'exerce pas : `src/services/captureSessionService.ts:101` documente
+ * « PREMIER PLAN ASSUMÉ […] pas de mode arrière-plan BLE revendiqué », et le
+ * dépôt ne contient aucun identifiant de restauration CoreBluetooth. Motif de
+ * refus classique en revue App Store, et promesse contredite par le libellé de
+ * localisation livré dans le même binaire.
+ *
+ * `modes` a été retiré d'app.json. La garde porte désormais sur la SOURCE QUI
+ * GAGNE — les options du greffon — comme pour la localisation et l'audio.
+ */
+describe('arrière-plan Bluetooth — les options du greffon, qui possède la clé', () => {
+  it('aucun mode n’est réclamé : c’est `modes` qui écrit UIBackgroundModes', () => {
+    expect(BLE_PLX?.modes).toBeUndefined();
+  });
+
+  it('le drapeau Android reste explicitement faux', () => {
+    // Sans effet sur iOS, mais il commande bien le manifeste Android.
+    expect(BLE_PLX?.isBackgroundEnabled).toBe(false);
+  });
+
+  it('le code n’ouvre aucune session BLE restaurable', () => {
+    // Un identifiant de restauration serait le seul usage légitime du mode
+    // d'arrière-plan. Il n'y en a pas : la cohérence tient dans les deux sens.
+    expect(BLE).not.toMatch(/restoreStateIdentifier|CBCentralManagerOptionRestore/);
+  });
+});
+
+/**
+ * LE GREFFON `react-native-permissions` DOIT RESTER DÉCLARÉ.
+ *
+ * Il ne l'a jamais été jusqu'au 03/08/2026, et cela rendait l'appairage RaceBox
+ * IMPOSSIBLE sur iOS — le cœur du produit, muet depuis toujours.
+ *
+ * La chaîne, vérifiée dans le paquet installé : `RNPermissions.podspec` ne
+ * compile que `ios/*.{h,mm}` ; la poignée Bluetooth vit dans `ios/Bluetooth/`
+ * et n'entre dans le binaire que si le Podfile contient `setup_permissions([…])` ;
+ * seule la déclaration du greffon écrit cette ligne ; et `methods.ios.js` rend
+ * `RESULTS.UNAVAILABLE` pour toute permission absente de la liste compilée.
+ *
+ * Le greffon sort en silence si `iosPermissions` est vide — la liste doit donc
+ * être vérifiée, pas seulement la présence.
+ */
+describe('react-native-permissions — déclaré, et avec la bonne liste', () => {
+  const PERMISSIONS_PLUGIN = optionsPlugin('react-native-permissions');
+
+  it('le greffon est déclaré dans app.json', () => {
+    expect(PERMISSIONS_PLUGIN).not.toBeNull();
+  });
+
+  it('Bluetooth figure dans iosPermissions', () => {
+    // `dist/commonjs/expo.js` : `if (iosPermissions.length === 0) return config;`
+    // Déclarer le greffon sans liste ne compile aucune poignée.
+    expect(PERMISSIONS_PLUGIN?.iosPermissions).toContain('Bluetooth');
+  });
+
+  it('toute permission iOS demandée par le code figure dans la liste', () => {
+    // La liste doit suivre le code, pas l'inverse. Si quelqu'un ajoute demain
+    // PERMISSIONS.IOS.CAMERA dans un appel react-native-permissions, la poignée
+    // correspondante doit être compilée — sinon elle rendra `unavailable`.
+    const demandees = new Set<string>();
+    for (const fichier of ['src/ble/permissions.ts']) {
+      for (const m of lire(...fichier.split('/')).matchAll(/PERMISSIONS\.IOS\.([A-Z_]+)/g)) {
+        demandees.add(m[1]);
+      }
+    }
+    expect(demandees.size).toBeGreaterThan(0);
+
+    const declarees = ((PERMISSIONS_PLUGIN?.iosPermissions ?? []) as string[]).map((p) =>
+      p.toUpperCase()
+    );
+    for (const d of demandees) {
+      expect(declarees).toContain(d);
+    }
+  });
+});
+
+/**
  * MICROPHONE — même histoire, même correction.
  *
  * `expo-audio` possède `NSMicrophoneUsageDescription` et l'écrivait en anglais

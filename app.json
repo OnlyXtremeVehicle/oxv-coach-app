@@ -99,8 +99,13 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": false,
-          "modes": ["central"],
           "bluetoothAlwaysPermission": "OXV se connecte en Bluetooth à votre boîtier RaceBox, et à votre ceinture cardiaque si vous en portez une."
+        }
+      ],
+      [
+        "react-native-permissions",
+        {
+          "iosPermissions": ["Bluetooth"]
         }
       ],
       [

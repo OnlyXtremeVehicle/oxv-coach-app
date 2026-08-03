@@ -116,20 +116,68 @@ async function fetchProfile(
   };
 }
 
+/**
+ * Délai au-delà duquel on cesse d'attendre le réseau au démarrage.
+ *
+ * Généreux à dessein : une connexion de paddock est lente, pas forcément
+ * morte, et rendre la main trop tôt ferait clignoter un écran d'erreur devant
+ * un pilote dont la session allait aboutir. Vingt secondes tiennent les deux
+ * bouts — on laisse sa chance au réseau, sans jamais bloquer indéfiniment.
+ */
+const DELAI_INIT_MS = 20_000;
+
+/** Incrémenté à chaque `initialize()` : sert à ignorer les retours périmés. */
+let generationInit = 0;
+
+/** L'abonnement aux changements d'authentification n'est posé qu'une fois. */
+let ecouteurAuthPose = false;
+
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   ...initialState,
 
   initialize: async () => {
     if (get().status === 'loading') return;
+
+    // MONTRE DE GARDE — sans elle, l'application peut rester sur le splash
+    // indéfiniment. Constaté le 03/08/2026 : `getSession()` déclenche un
+    // rafraîchissement réseau dès que le jeton approche de l'expiration (marge
+    // de 90 s, donc à presque chaque démarrage à froid). Le `fetch` de React
+    // Native n'a AUCUN délai par défaut : derrière un portail captif — le Wi-Fi
+    // d'un paddock, exactement notre terrain — la requête ne répond ni ne
+    // tombe. La promesse ne se résout jamais, `status` reste 'loading', et
+    // `app/_layout.tsx` ne cache jamais le splash. Le try/catch ne sert à rien :
+    // il n'y a pas d'erreur, il y a une attente.
+    //
+    // La montre transforme cette attente en `status: 'error'`, ce qui affiche
+    // l'écran honnête de `app/index.tsx` — « Connexion impossible. Vérifiez
+    // votre réseau, puis réessayez. » — dont le bouton rappelle initialize().
+    //
+    // Le compteur de génération protège du retour tardif : si la requête
+    // aboutit après la montre, ou si le pilote a déjà réessayé, l'écriture
+    // périmée est ignorée plutôt que d'écraser un état plus récent.
+    const generation = ++generationInit;
+    const aJour = () => generation === generationInit;
+
     set({ status: 'loading', error: null });
+
+    const montre = setTimeout(() => {
+      if (!aJour() || get().status !== 'loading') return;
+      set({
+        status: 'error',
+        error: `Le réseau n'a pas répondu en ${Math.round(DELAI_INIT_MS / 1000)} s.`,
+      });
+    }, DELAI_INIT_MS);
+
     try {
       const { data, error } = await supabase.auth.getSession();
       if (error) throw error;
+      if (!aJour()) return;
       const session = data.session;
       if (!session) {
         set({ ...initialState, status: 'unauthenticated' });
       } else {
         const lu = await fetchProfile(session.user.id);
+        if (!aJour()) return;
         set({
           session,
           user: session.user,
@@ -139,29 +187,39 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
           error: null,
         });
       }
-      supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-        if (!nextSession) {
-          set({ ...initialState, status: 'unauthenticated' });
-          return;
-        }
-        // LE RAFRAÎCHISSEMENT DE JETON PASSE ICI, toutes les heures. Une lecture
-        // ratée y écrasait un profil valide par `null` : c'est le chemin exact
-        // par lequel l'administrateur se faisait expulser en pleine séance.
-        const lu = await fetchProfile(nextSession.user.id);
-        set({
-          session: nextSession,
-          user: nextSession.user,
-          // On CONSERVE le profil déjà connu plutôt que de l'effacer : un jeton
-          // rafraîchi ne change pas qui est la personne.
-          profile: lu.echec ? get().profile : lu.profil,
-          profilIndisponible: lu.echec,
-          status: 'authenticated',
-          error: null,
+      // Un seul abonnement pour toute la vie du processus. `initialize()` peut
+      // être rappelée — c'est ce que fait « Réessayer » — et sans ce garde-fou
+      // chaque tentative empilerait un écouteur de plus, donc une lecture de
+      // profil de plus à chaque rafraîchissement de jeton.
+      if (!ecouteurAuthPose) {
+        ecouteurAuthPose = true;
+        supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+          if (!nextSession) {
+            set({ ...initialState, status: 'unauthenticated' });
+            return;
+          }
+          // LE RAFRAÎCHISSEMENT DE JETON PASSE ICI, toutes les heures. Une lecture
+          // ratée y écrasait un profil valide par `null` : c'est le chemin exact
+          // par lequel l'administrateur se faisait expulser en pleine séance.
+          const lu = await fetchProfile(nextSession.user.id);
+          set({
+            session: nextSession,
+            user: nextSession.user,
+            // On CONSERVE le profil déjà connu plutôt que de l'effacer : un jeton
+            // rafraîchi ne change pas qui est la personne.
+            profile: lu.echec ? get().profile : lu.profil,
+            profilIndisponible: lu.echec,
+            status: 'authenticated',
+            error: null,
+          });
         });
-      });
+      }
     } catch (err) {
+      if (!aJour()) return;
       const message = err instanceof Error ? err.message : 'Erreur inconnue';
       set({ status: 'error', error: message });
+    } finally {
+      clearTimeout(montre);
     }
   },
 
