@@ -34,11 +34,45 @@ export interface NotifForegroundBehavior {
 }
 
 /**
- * Principe 3 — **silence en piste**. Pendant le roulage (`S6_roulage`, véhicule
- * en mouvement), une notification reçue au premier plan ne s'affiche pas, ne
- * joue aucun son et ne pose aucun badge — y compris un push distant (coach,
- * ami). Hors roulage : bannière sans son (sobriété). C'est le garde-fou que le
- * handler ne tenait pas (il affichait tout, sans consulter l'état pilote).
+ * Principe 3 — silence en piste, **AU PREMIER PLAN SEULEMENT**.
+ *
+ * Pendant le roulage (`S6_roulage`, véhicule en mouvement), une notification
+ * reçue ALORS QUE L'APPLICATION EST OUVERTE ET AU PREMIER PLAN ne s'affiche
+ * pas, ne joue aucun son et ne pose aucun badge. Hors roulage : bannière sans
+ * son (sobriété).
+ *
+ * ---
+ *
+ * CE COMMENTAIRE AFFIRMAIT « Y COMPRIS UN PUSH DISTANT (COACH, AMI) ». C'EST
+ * FAUX, ET C'ÉTAIT LE PLUS GRAVE DES MENSONGES DE CE DÉPÔT.
+ *
+ * Cette fonction alimente `setNotificationHandler` : elle décide de la
+ * PRÉSENTATION AU PREMIER PLAN, rien d'autre. Sur un téléphone verrouillé, dans
+ * une poche, pendant que le pilote roule, iOS rend la notification à partir de
+ * la CHARGE UTILE envoyée par le serveur. Ce code n'est jamais consulté.
+ *
+ * Et aucune des fonctions serveur ne regarde l'état du pilote — vérifié le
+ * 03/08/2026, zéro occurrence de `silence`, `recording` ou `roulage` dans les
+ * sept fonctions `notify-*`. Trois d'entre elles, destinées au PILOTE, portent
+ * `sound: 'default'` : `notify-pilot-coach-annotated`,
+ * `notify-pilot-friend-request`, `notify-pilot-friend-accepted`.
+ *
+ * Un pilote en piste, téléphone en poche, reçoit donc aujourd'hui une bannière
+ * ET un son quand son coach annote un virage.
+ *
+ * ---
+ *
+ * CE QU'IL FAUDRAIT POUR L'ARMER VRAIMENT
+ *
+ * Que le SERVEUR sache que le pilote roule. L'état ne vit qu'en mémoire de
+ * l'appareil (`src/lib/silence.ts`, drapeau de module ; `useAppStateStore`).
+ * Il faudrait publier une fenêtre de roulage côté base et la faire lire par les
+ * sept fonctions avant tout envoi — donc une modification de schéma, qui
+ * demande l'accord du fondateur.
+ *
+ * Tant que ce n'est pas fait, cette fonction reste utile — elle couvre le cas
+ * où l'application est ouverte — mais elle ne tient PAS la promesse du
+ * Principe 3. Relevé par la préparation des capacités iOS du 03/08/2026.
  */
 export function notificationBehaviorForState(state: PilotState): NotifForegroundBehavior {
   const driving = state === 'S6_roulage';
