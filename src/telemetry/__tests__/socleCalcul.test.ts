@@ -244,6 +244,54 @@ describe('segmentLap', () => {
     expect(segmentLap(c, d).filter((s) => s.kind === 'virage')).toHaveLength(0);
   });
 
+  // Le trou du filtre, relevé le 04/08/2026 : le premier segment n'a pas de
+  // voisin précédent, donc il échappait à l'absorption. Trois mètres de bruit
+  // en tête de tour ressortaient comme un segment ; les trois mêmes mètres au
+  // milieu du tour étaient absorbés. Le filtre était troué toujours au même
+  // endroit.
+  it('absorbe un segment de TÊTE trop court, qui n’a pas de précédent', () => {
+    const c: (number | null)[] = [];
+    const d: number[] = [];
+    for (let i = 0; i <= 600; i++) {
+      d.push(i);
+      c.push(i < 3 ? 1 / 20 : 0); // 3 m de courbure EN TÊTE : du bruit
+    }
+    const segs = segmentLap(c, d);
+    expect(segs.filter((s) => s.kind === 'virage')).toHaveLength(0);
+    expect(segs).toHaveLength(1);
+    // Le tour reste couvert de bout en bout : absorber n'est pas amputer.
+    expect(segs[0].distanceFrom).toBeCloseTo(0, 6);
+    expect(segs[0].distanceTo).toBeCloseTo(600, 6);
+  });
+
+  it('le segment de tête absorbé prend le sens de celui qui l’accueille', () => {
+    // Symétrie de l'absorption arrière, qui conserve le sens du PRÉCÉDENT :
+    // sans précédent, c'est le SUIVANT qui donne le sens.
+    const c: (number | null)[] = [];
+    const d: number[] = [];
+    for (let i = 0; i <= 600; i++) {
+      d.push(i);
+      c.push(i < 3 ? 0 : i < 400 ? -1 / 50 : 0); // 3 m droits, puis gauche
+    }
+    const segs = segmentLap(c, d);
+    expect(segs[0].kind).toBe('virage');
+    expect(segs[0].rotation).toBe('gauche');
+    expect(segs[0].distanceFrom).toBeCloseTo(0, 6);
+  });
+
+  it('un tour plus court que le filtre ne rend AUCUN segment', () => {
+    // Le contrat annoncé en tête de module : « pas un faux segment couvrant
+    // tout le tour, qui laisserait croire à une analyse ». Dix mètres ne se
+    // découpent pas en droites et en virages.
+    const c: (number | null)[] = [];
+    const d: number[] = [];
+    for (let i = 0; i <= 10; i++) {
+      d.push(i);
+      c.push(i >= 4 && i < 7 ? 1 / 20 : 0);
+    }
+    expect(segmentLap(c, d)).toEqual([]);
+  });
+
   it('rend une liste vide sur une entrée illisible', () => {
     expect(segmentLap([], [])).toEqual([]);
     expect(segmentLap([0], [0])).toEqual([]);
@@ -257,6 +305,24 @@ describe('apexIndex — la vitesse minimale, un fait mesuré', () => {
 
   it('rend null si rien n’est exploitable', () => {
     expect(apexIndex([null, null], 0, 1)).toBeNull();
+  });
+
+  // Le bornage EST la raison d'être des paramètres `from` et `to` : c'est lui
+  // qui rend la fonction utilisable segment par segment. Jusqu'au 04/08/2026,
+  // les deux tests ci-dessus portaient sur le tableau ENTIER — une
+  // implémentation qui aurait ignoré `from` et `to` les aurait passés tous les
+  // deux.
+  it('cherche DANS le segment, pas dans toute la trace', () => {
+    //                0   1   2   3   4   5   6
+    const v = [50, 40, 12, 35, 48, 26, 44];
+    // Le minimum global est à l'indice 2, hors du segment demandé.
+    expect(apexIndex(v, 3, 6)).toBe(5);
+    // Et symétriquement, un segment qui s'arrête avant le minimum global.
+    expect(apexIndex(v, 0, 1)).toBe(1);
+  });
+
+  it('rend null sur un segment vide plutôt que le minimum global', () => {
+    expect(apexIndex([50, 40, 12, 35], 3, 2)).toBeNull();
   });
 });
 
@@ -362,6 +428,60 @@ describe('analyzeCornerExit', () => {
   it('rend null si l’accélération ne redevient jamais franche', () => {
     const r = analyzeCornerExit([50, 40, 30], [null, -0.5, 0.01], 0, 2);
     expect(r.throttleOnIndexEstimated).toBeNull();
+  });
+
+  // Même trou que sur `apexIndex` : les quatre tests d'origine portaient tous
+  // sur la trace entière. Or un tour porte plusieurs virages, et c'est le
+  // bornage qui les distingue.
+  it('reste DANS le segment demandé', () => {
+    // Deux virages dans la même trace. Le second est plus lent que le premier :
+    // une implémentation qui ignorerait `from` verrait toujours le second.
+    //                0   1   2   3   4   5   6   7   8   9  10
+    const v = [60, 45, 34, 38, 55, 60, 50, 30, 22, 33, 55];
+    const a = [null, -0.5, -0.2, 0.3, 0.5, 0.1, -0.4, -0.5, 0.05, 0.45, null];
+
+    const premier = analyzeCornerExit(v, a, 0, 5);
+    expect(premier.apexIndex).toBe(2);
+    expect(premier.minSpeed).toBe(34);
+    expect(premier.exitSpeed).toBe(60);
+
+    const second = analyzeCornerExit(v, a, 6, 10);
+    expect(second.apexIndex).toBe(8);
+    expect(second.minSpeed).toBe(22);
+    expect(second.exitSpeed).toBe(55);
+  });
+
+  // Le seuil de relance était une constante privée jusqu'au 04/08/2026, alors
+  // que `docs/T1BIS_CALCUL.md:136` annonçait « les seuils sont tous
+  // paramétrables ». Ce test tient la promesse du document.
+  it('accepte un seuil de relance passé en option', () => {
+    const v = [50, 30, 32, 40];
+    const a = [null, 0.02, 0.05, 0.4];
+
+    // Au défaut (0,1 g), les 0,05 g ne comptent pas comme une remise des gaz.
+    expect(analyzeCornerExit(v, a, 0, 3).throttleOnIndexEstimated).toBe(3);
+    // Abaissé à 0,04 g, elle est retenue plus tôt.
+    expect(analyzeCornerExit(v, a, 0, 3, { seuilRelanceG: 0.04 }).throttleOnIndexEstimated).toBe(2);
+  });
+
+  // `meanAccelG` était calculé, exposé, et vérifié nulle part.
+  it('chiffre la relance moyenne sur la fenêtre apex → sortie', () => {
+    const v = [50, 30, 35, 45];
+    const a = [null, 0.2, 0.4, 0.6];
+    // Apex à l'indice 1. Moyenne de 0,2 · 0,4 · 0,6 = 0,4.
+    expect(analyzeCornerExit(v, a, 0, 3).meanAccelG).toBeCloseTo(0.4, 9);
+  });
+
+  it('la relance moyenne porte TOUTE la fenêtre, freinage résiduel compris', () => {
+    // Limite assumée, pas un défaut : la fenêtre est apex → sortie, et la
+    // moyenne ne filtre pas le signe. Sur un double apex — une reprise de
+    // frein après le premier point de corde — elle est diluée, et rien ne le
+    // dit à la lecture. À reprendre au premier jeu de données réel, où l'on
+    // saura si ce cas se présente.
+    const v = [50, 30, 34, 31, 45];
+    const a = [null, 0.4, -0.4, 0.4, 0.4];
+    // Apex à l'indice 1. Moyenne de 0,4 · −0,4 · 0,4 · 0,4 = 0,2.
+    expect(analyzeCornerExit(v, a, 0, 4).meanAccelG).toBeCloseTo(0.2, 9);
   });
 
   it('rend tout null sur un segment vide', () => {

@@ -117,17 +117,45 @@ export function segmentLap(
     }
   }
 
-  // 3) Absorption des segments trop courts par leur voisin précédent.
+  // 3) Absorption des segments trop courts.
+  //
+  // Par leur voisin PRÉCÉDENT quand il existe. Le premier segment du tour n'en
+  // a pas : jusqu'au 04/08/2026 il échappait donc au filtre, et trois mètres de
+  // bruit en tête de tour ressortaient comme un segment à part entière — alors
+  // que les mêmes trois mètres au milieu du tour étaient absorbés. Le filtre
+  // avait un trou, et il était toujours au même endroit.
+  //
+  // Sans précédent, on absorbe donc vers le SUIVANT : le début est reporté, et
+  // le segment qui l'accueille garde son propre sens. C'est la symétrie exacte
+  // de l'absorption arrière, qui conserve le sens du précédent.
   const fusionnes: typeof bruts = [];
+  let debutReporte: number | null = null;
   for (const s of bruts) {
-    const longueur = distance[s.to] - distance[s.from];
+    const depart: number = debutReporte ?? s.from;
+    const longueur = distance[s.to] - distance[depart];
     const precedent = fusionnes[fusionnes.length - 1];
-    if (longueur < minLength && precedent) {
-      precedent.to = s.to;
+    if (longueur < minLength) {
+      if (precedent) {
+        precedent.to = s.to;
+        debutReporte = null;
+      } else {
+        debutReporte = depart;
+      }
       continue;
     }
-    fusionnes.push({ ...s });
+    fusionnes.push({ ...s, from: depart });
+    debutReporte = null;
   }
+
+  // Si `debutReporte` survit à la boucle, c'est que le tour ENTIER tient sous
+  // `minLength` : les segments bruts partitionnent la trace, donc un début non
+  // consommé signifie que l'accumulation n'a jamais atteint le seuil.
+  //
+  // On rend alors une liste vide, conformément au contrat annoncé en tête de
+  // module : « pas un faux segment couvrant tout le tour, qui laisserait croire
+  // à une analyse ». Quinze mètres ne se découpent pas en droites et en
+  // virages. Avant le 04/08/2026 ce cas rendait un segment — parce que le
+  // premier échappait au filtre, pas parce que quelqu'un l'avait décidé.
 
   // 4) Enrichissement — sens et courbure de pointe.
   return fusionnes.map((s) => {

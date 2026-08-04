@@ -1846,3 +1846,125 @@ Deux issues, et aucune n'est urgente :
 Laissé tel quel délibérément : le lot T2 porte la colonne `session_media`, et
 l'élargir à une autre source aurait maquillé un manque de données en un manque
 de câblage.
+
+---
+
+## D-42 — T1bis : ce qui reste après l'armement du critère
+
+**Relevé le 04/08/2026, par inventaire adversarial des six calculs.**
+
+Le lot est en bon état : les trois contraintes du plan sont tenues et sous test
+— `a_lat = v × ω` sans repli sur l'accéléromètre (`kinematics.ts:121`), courbure
+`1/R` jamais rayon (`segment.ts:71-72`), seuil de freinage à −0,3 g en g vérifiés
+(`braking.ts:64`). Cinq calculs sur six sont des modules purs sans appelant,
+état déclaré et assumé en D-40.
+
+Quatre points restent ouverts, aucun bloquant.
+
+**Le raccord circulaire du découpage.** `segment.ts:110-118` regroupe de 0 à
+n−1 sans refermer le tour. Sur une boucle dont la ligne de départ tombe **dans**
+un virage, ce virage ressort en deux segments — un en tête, un en queue. La
+fixture de test commence et finit en ligne droite, donc le cas n'est pas
+couvert. La simplification est assumée ailleurs (`trackviz/hauteSaintonge.ts:126`
+l'écrit noir sur blanc) ; ici elle est silencieuse. Effort moyen.
+
+**Deux corps pour une formule.** `accel.ts:137` (`consistency`) et
+`braking.ts:165` (`brakingDispersion`) calculent la même dispersion, chacune
+avec sa fonction privée `mediane` identique. Seule différence : un champ `cv`.
+
+**Une recherche d'apex réimplémentée.** `accel.ts:80-89` refait ce que
+`segment.ts:169` fait déjà, bornes comprises. Les deux coïncident aujourd'hui,
+leurs signatures divergent déjà — `readonly (number|null)[]` contre
+`readonly number[]` — et aucun test ne les compare.
+
+**Une fixture jamais lue.** `test-fixtures/demo-session.ubx`, 21 120 octets,
+n'est référencé par aucun fichier de `src/` ni de `app/`. Trace réelle, trace
+fabriquée, ou fragment ? Personne ne le sait. Les traces des tests actuels sont
+des sinusoïdes analytiques : ni horodatage irrégulier, ni trou de trames, ni
+bruit. Pour trancher : parser le fichier et regarder la distribution des
+intervalles et la présence de `rotRateZ` non nul.
+
+**Et une question qui commande le reste, qui n'est pas résoluble ici.**
+`deltaService.ts:20-24` affirme qu'aucune séance de production ne porte à la
+fois des trames et un tour — donc que l'écran affiche partout « Aucune trame
+enregistrée sur ces tours ». C'est un commentaire, pas une mesure. Une requête
+de comptage croisé `telemetry_frames` × `laps` par `session_id` le dirait. Tant
+qu'elle n'est pas faite, le seul calcul branché du lot est peut-être branché sur
+du vide.
+
+---
+
+## D-43 — Les apex de Haute Saintonge sont posés en fraction d'INDICE, lus en fraction de DISTANCE
+
+**Mesuré le 04/08/2026. C'est le plus grave de ce relevé, et il est hors lot.**
+
+`src/trackviz/hauteSaintonge.ts:137` pose :
+
+```ts
+const apexProgress = apexIdx / (totalPoints - 1);
+```
+
+C'est une fraction d'**indice de polyline**. Or le `progress` auquel il est
+comparé est une fraction de **distance parcourue** — `geometry.ts:97`,
+`distanceM / totalLengthM`. Les deux ne coïncident que si les points du tracé
+sont équidistants.
+
+Ils ne le sont pas, et de très loin. Mesure sur les 76 points du tracé :
+**espacement de 5,9 m à 363,4 m**. Un relevé OSM dense les virages et espace les
+lignes droites — c'est sa nature.
+
+Écart entre la position supposée et la position réelle de chaque apex, mesuré :
+
+| Virage | Écart |
+|---|---|
+| corner-1 | 5 m |
+| corner-2 | **371 m** |
+| corner-3 | 305 m |
+| corner-4 | 307 m |
+| corner-5 | 211 m |
+| corner-6 | 179 m |
+| corner-7 | 22 m |
+
+**371 m sur un circuit de 2231 m — 17 % du tour.** Cinq virages sur sept sont
+décalés de plus de 170 m, très au-delà de la largeur d'un virage. La fenêtre
+d'analyse ne contient donc pas l'apex qu'elle prétend analyser.
+
+Et ce n'est pas dormant. `trackviz/analysis.ts:65` compare `match.progress` aux
+bornes de ces segments, `analyzeSessionService.ts:35` l'appelle, et
+`app/(app2)/rec/fin.tsx:34` appelle ce service **à la fin de chaque séance** —
+avec persistance du résultat.
+
+**Ce que je n'ai PAS vérifié, et qu'il ne faut pas déduire de ce qui précède :**
+je n'ai pas établi si `analyzeTrackVizSession` est bornée au circuit de Haute
+Saintonge, ni ce que devient cette analyse sur une séance à Valence. Le premier
+coup d'œil ne montre aucune garde de circuit dans `analyzeSessionService.ts`,
+mais un coup d'œil n'est pas une mesure — et c'est précisément le sous-système
+sur lequel trois conclusions hâtives sont déjà tombées le 03/08. **À enquêter
+avant Valence**, comme sujet propre, pas en marge d'un autre lot.
+
+---
+
+## D-44 — Quatre divergences relevées en passant, hors lot T1bis
+
+Nommées, non transformées en tâches. Toutes relevées le 04/08/2026.
+
+**Deux relevés OSM divergents de la même way 54412766** :
+`src/trackviz/hauteSaintonge.ts:28` en porte 76, `src/circuit/hauteSaintonge.ts:14`
+en porte 73, avec 55 points en commun. Deux vérités pour un circuit.
+
+**Trois seuils de freinage sans constante partagée** : −0,3 g
+(`telemetry/braking.ts:64`), −0,25 g (`qdiLogic.ts:150`, et c'est le seul des
+trois qui tourne aujourd'hui), −0,2 g (`telemetry/gg.ts:157`). Le plan V3 n'en
+fixe qu'un.
+
+**`src/trackviz/analysis.ts:110`** tire la moitié de la marge par segment de
+`g_force_y` — le canal que le plan écarte explicitement comme biaisé par le
+dévers — alors que la voie gyroscopique est disponible en base.
+
+**`src/lib/circuitTopology.ts:5-6`** renvoie à `scripts/analyze-track-corners.ts`,
+qui n'existe pas et dont git ne garde aucune trace de suppression. Le mécanisme
+vit dans `src/circuit/circuitGenerator.ts`.
+
+Et une correction à D-40 : `docs/DETTE.md:1756` affirmait que `kinematics.ts`
+n'a aucun appelant hors tests. C'est faux depuis `src/telemetry/adaptation.ts:48`
+(29/07/2026), pour `cumulativeDistance` seulement.

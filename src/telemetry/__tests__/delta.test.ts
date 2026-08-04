@@ -18,9 +18,34 @@ function trace(vitesseA: (t: number) => number, duree = 60, hz = 25): DistanceSe
   };
 }
 
-describe('computeDelta — LE CRITÈRE D’ACCEPTATION DE T1bis', () => {
-  // « Le delta cumulé se referme à zéro sur un tour comparé à lui-même. S'il ne
-  // le fait pas, le ré-échantillonnage ou l'intégration sont faux. »
+/**
+ * ===========================================================================
+ * LE CRITÈRE D'ACCEPTATION DE T1bis, ET POURQUOI IL A DÛ ÊTRE ARMÉ
+ * ===========================================================================
+ *
+ * Le plan de montage pose : « le delta cumulé se referme à zéro sur un tour
+ * comparé à lui-même. S'il ne le fait pas, le ré-échantillonnage ou
+ * l'intégration sont faux. »
+ *
+ * LES TROIS PREMIERS TESTS NE PROUVENT PAS CELA. Relevé le 04/08/2026.
+ *
+ * Ils passent le MÊME OBJET des deux côtés — `computeDelta(t, t, 5)`.
+ * `resampleOnGrid` étant pur et déterministe, les deux ré-échantillonnages
+ * sortent identiques bit à bit, donc `b - a` vaut exactement zéro à
+ * `delta.ts:111`, AVANT toute intégration. Le total est nul quelle que soit la
+ * justesse du ré-échantillonnage : **un resampleur faux passerait ces trois
+ * tests**. La tolérance à 1e-9 est décorative — le résultat est 0 strict.
+ *
+ * Ils gardent une valeur, et elle est réelle : ils prouvent le DÉTERMINISME et
+ * l'absence d'accumulation d'erreur en virgule flottante le long du cumul. Ce
+ * n'est pas ce que le plan demande, mais ce n'est pas rien. Ils restent, sous
+ * leur vrai nom.
+ *
+ * Ce que le plan demande vient ensuite : le MÊME TOUR PHYSIQUE, échantillonné
+ * autrement. Là, les deux séries diffèrent réellement, le ré-échantillonnage
+ * travaille, et l'intégration aussi.
+ */
+describe('computeDelta — déterminisme (ce n’est PAS le critère du plan)', () => {
   it('se referme à zéro sur un tour comparé à LUI-MÊME (vitesse variable)', () => {
     const t = trace((s) => 30 + 20 * Math.sin(s / 4) + 8 * Math.sin(s / 1.7));
     const d = computeDelta(t, t, 5);
@@ -53,6 +78,102 @@ describe('computeDelta — LE CRITÈRE D’ACCEPTATION DE T1bis', () => {
     });
     const d = computeDelta(t, t, 5);
     expect(Math.abs(d.total ?? 1)).toBeLessThan(1e-9);
+  });
+});
+
+describe('computeDelta — LE CRITÈRE D’ACCEPTATION DE T1bis', () => {
+  // Le même tour physique, échantillonné à deux cadences. Les deux séries
+  // diffèrent réellement — cadence, nombre de points, axe de distance obtenu
+  // par intégration trapézoïdale d'un profil différemment discrétisé. Le
+  // ré-échantillonnage travaille pour de bon, et l'intégration aussi.
+  const PROFIL = (t: number): number => 30 + 20 * Math.sin(t / 4) + 8 * Math.sin(t / 1.7);
+
+  it('se referme à quelques millisecondes sur le MÊME TOUR à deux cadences', () => {
+    const a = trace(PROFIL, 60, 25);
+    const b = trace(PROFIL, 60, 10);
+    const d = computeDelta(a, b, 5);
+
+    expect(d.total).not.toBeNull();
+
+    // LA GARDE CONTRE LA DÉGÉNÉRESCENCE. Si un jour quelqu'un « répare » ce
+    // test en repassant le même objet des deux côtés, le total redeviendra nul
+    // exactement et cette ligne le dira. Un critère qui ne peut pas échouer ne
+    // vérifie rien.
+    expect(Math.abs(d.total!)).toBeGreaterThan(0);
+
+    // Mesuré le 04/08/2026 : −5,347 ms sur un tour de 60 s. La borne laisse
+    // une marge d'un facteur deux ; elle n'est pas là pour absorber du bruit
+    // (le calcul est déterministe) mais pour rester lisible si le profil de
+    // test bouge. Un ré-échantillonnage faux sort de plusieurs centaines de
+    // millisecondes, pas de quelques-unes.
+    expect(Math.abs(d.total!)).toBeLessThan(0.012);
+  });
+
+  it('se resserre quand les deux cadences se rapprochent', () => {
+    // La signature d'un ré-échantillonnage juste : l'écart résiduel est un
+    // artefact de discrétisation, donc il DIMINUE quand les deux traces se
+    // ressemblent. Un écart qui ne bougerait pas viendrait d'ailleurs.
+    const a = trace(PROFIL, 60, 25);
+    const loin = Math.abs(computeDelta(a, trace(PROFIL, 60, 5), 5).total!);
+    const moyen = Math.abs(computeDelta(a, trace(PROFIL, 60, 10), 5).total!);
+    const proche = Math.abs(computeDelta(a, trace(PROFIL, 60, 20), 5).total!);
+
+    expect(proche).toBeLessThan(moyen);
+    expect(moyen).toBeLessThan(loin);
+    expect(proche).toBeLessThan(0.003);
+  });
+});
+
+describe('computeDelta — le biais de quadrature, mesuré et borné', () => {
+  // `delta.ts:109-111` prend les vitesses au seul indice `i` : rectangle à
+  // droite, ordre 1. `cumulativeDistance` intègre par trapèzes, ordre 2. Cette
+  // asymétrie a un coût, et il n'était mesuré nulle part.
+  //
+  // Profil à solution analytique : v(s) = v0 (1 + k s) sur une distance D.
+  //   ∫ ds / v(s) = ln(1 + k D) / (v0 k)
+  const v0 = 20;
+  const D = 2000;
+  const rampe = (k: number): DistanceSeries => {
+    const distance = Array.from({ length: Math.floor(D / 0.5) + 1 }, (_, i) => i * 0.5);
+    return { distance, values: distance.map((s) => v0 * (1 + k * s)) };
+  };
+  const tempsExact = (k: number): number => Math.log(1 + k * D) / (v0 * k);
+
+  it('l’erreur croît LINÉAIREMENT avec le pas — c’est la signature de l’ordre 1', () => {
+    const exact = tempsExact(0.002) - D / 30;
+    const plat: DistanceSeries = {
+      distance: rampe(0.002).distance,
+      values: rampe(0.002).distance.map(() => 30),
+    };
+    const erreur = (pas: number): number =>
+      Math.abs((computeDelta(rampe(0.002), plat, pas).total as number) - exact);
+
+    // Mesuré : 19,99 ms à 1 m · 99,80 ms à 5 m · 199,20 ms à 10 m. Le rapport
+    // suit le pas. Si un jour l'intégration passait aux trapèzes, ce test
+    // tomberait — et ce serait une bonne nouvelle à constater, pas un échec.
+    expect(erreur(5) / erreur(1)).toBeGreaterThan(4);
+    expect(erreur(5) / erreur(1)).toBeLessThan(6);
+    expect(erreur(10) / erreur(5)).toBeGreaterThan(1.8);
+    expect(erreur(10) / erreur(5)).toBeLessThan(2.2);
+  });
+
+  it('l’erreur est RELATIVE au delta, pas un décalage fixe', () => {
+    // Le fait qui rend le biais acceptable en production. Sur deux tours
+    // semblables — le cas réel, un pilote sur un même circuit — l'erreur vaut
+    // environ un millième du delta. Sur un écart d'une demi-seconde, c'est un
+    // demi-millième de seconde.
+    for (const [k1, k2] of [
+      [0.002, 0.0019],
+      [0.002, 0.0018],
+      [0.002, 0.0015],
+    ]) {
+      const exact = tempsExact(k1) - tempsExact(k2);
+      const obtenu = computeDelta(rampe(k1), rampe(k2), 5).total as number;
+      const relatif = Math.abs((obtenu - exact) / exact);
+
+      // Mesuré le 04/08/2026 : 0,099 % · 0,100 % · 0,104 %.
+      expect(relatif).toBeLessThan(0.002);
+    }
   });
 });
 

@@ -43,14 +43,28 @@ export interface CornerExit {
   meanAccelG: number | null;
 }
 
+export interface CornerExitOptions {
+  /**
+   * Seuil de remise des gaz, en g. Défaut 0,1.
+   *
+   * Symétrique du seuil de freinage dans son intention : au-dessus du simple
+   * roulement, en dessous d'une accélération franche. Un seuil à zéro
+   * attraperait la moindre oscillation du signal.
+   */
+  seuilRelanceG?: number;
+}
+
 /**
- * Seuil de remise des gaz, en g.
+ * Défaut du seuil de remise des gaz, en g.
  *
- * Symétrique du seuil de freinage dans son intention : au-dessus du simple
- * roulement, en dessous d'une accélération franche. Un seuil à zéro attraperait
- * la moindre oscillation du signal.
+ * IL EST EXPORTÉ, ET CE N'EST PAS COSMÉTIQUE. `docs/T1BIS_CALCUL.md:136`
+ * annonce que « les seuils sont tous paramétrables précisément pour cela » —
+ * pour la calibration au premier jeu de données réel. Jusqu'au 04/08/2026,
+ * celui-ci était une constante privée sans objet d'options : le document
+ * affirmait une capacité que le code n'avait pas. Le seul des trois modules à
+ * seuils qui ne suivait pas le patron de `braking.ts` et de `segment.ts`.
  */
-const SEUIL_RELANCE_G = 0.1;
+export const SEUIL_RELANCE_DEFAUT_G = 0.1;
 
 /**
  * Analyse la sortie d'un segment de virage.
@@ -61,8 +75,10 @@ export function analyzeCornerExit(
   speed: readonly number[],
   aLong: readonly (number | null)[],
   from: number,
-  to: number
+  to: number,
+  options: CornerExitOptions = {}
 ): CornerExit {
+  const seuilRelance = options.seuilRelanceG ?? SEUIL_RELANCE_DEFAUT_G;
   const lo = Math.max(0, from);
   const hi = Math.min(to, speed.length - 1);
 
@@ -95,7 +111,7 @@ export function analyzeCornerExit(
     for (let i = apexIndex; i <= hi; i++) {
       const a = aLong[i];
       if (a === null || !Number.isFinite(a)) continue;
-      if (a >= SEUIL_RELANCE_G) {
+      if (a >= seuilRelance) {
         throttleOn = i;
         break;
       }
