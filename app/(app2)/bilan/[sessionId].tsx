@@ -503,6 +503,7 @@ export default function BilanScreen() {
                       >
                         <Photo
                           uri={item.signedUrl as string}
+                          thumbhash={item.thumbhash ?? undefined}
                           recyclingKey={item.id}
                           style={styles.souvenirPhoto}
                         />

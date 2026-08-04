@@ -19,9 +19,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+
+import { Photo } from '@/ui/v2/media/Photo';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Buffer } from 'buffer';
 
@@ -397,10 +399,12 @@ function AdminMediaRow({
         }}
       >
         {item.mediaType === 'photo' && item.signedUrl ? (
-          <Image
-            source={{ uri: item.signedUrl }}
+          <Photo
+            uri={item.signedUrl}
+            thumbhash={item.thumbhash ?? undefined}
+            recyclingKey={item.id}
             style={{ width: '100%', height: '100%' }}
-            resizeMode="cover"
+            contentFit="cover"
           />
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>

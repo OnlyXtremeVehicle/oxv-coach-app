@@ -683,6 +683,7 @@ function Tile({
           {media.signedUrl ? (
             <Photo
               uri={media.signedUrl}
+              thumbhash={media.thumbhash ?? undefined}
               recyclingKey={media.id}
               style={StyleSheet.absoluteFillObject}
             />

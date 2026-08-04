@@ -9,10 +9,11 @@
  */
 
 import { useState } from 'react';
-import { Dimensions, Image, Linking, Modal, Pressable, Text, View } from 'react-native';
+import { Dimensions, Linking, Modal, Pressable, Text, View } from 'react-native';
 
 import type { SessionMediaItem } from '@/services/sessionMediaService';
 import { theme } from '@/theme/v2';
+import { Photo } from '@/ui/v2/media/Photo';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_GUTTER = 8;
@@ -61,12 +62,15 @@ function MediaTile({
       })}
     >
       {item.signedUrl ? (
-        <Image
-          source={{ uri: item.signedUrl }}
+        // `Photo` du kit plutôt que l'`Image` brute : il affiche le ThumbHash
+        // en attendant l'image, quand le serveur l'a produit. Sans label
+        // d'accessibilité il n'est pas un élément accessible — c'est le
+        // Pressable qui porte l'intitulé, comme avant.
+        <Photo
+          uri={item.signedUrl}
+          thumbhash={item.thumbhash ?? undefined}
           style={{ width: '100%', height: '100%' }}
-          resizeMode="cover"
-          accessibilityElementsHidden
-          importantForAccessibility="no"
+          contentFit="cover"
         />
       ) : (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -174,14 +178,15 @@ export function MediaModal({
             </Pressable>
           </View>
         ) : item.signedUrl ? (
-          <Image
-            source={{ uri: item.signedUrl }}
+          <Photo
+            uri={item.signedUrl}
+            thumbhash={item.thumbhash ?? undefined}
             accessibilityLabel={item.caption ?? 'Photo de session'}
             style={{
               width: SCREEN_WIDTH - 2 * theme.spacing.lg,
               height: SCREEN_WIDTH - 2 * theme.spacing.lg,
             }}
-            resizeMode="contain"
+            contentFit="contain"
           />
         ) : null}
         {item.caption ? (

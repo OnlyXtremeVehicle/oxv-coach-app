@@ -1811,3 +1811,38 @@ fixe bâtie sur sept apex. Aucun seuil, aucune courbure.
 d'appelant : c'est le miroir testable de l'edge `compute-session-insights`,
 `session_insights` étant en écriture `service_role` seule. Le supprimer
 retirerait la seule version testée de cette logique.
+
+---
+
+## D-41 — Les médias de profil pilote n'ont pas de ThumbHash, et n'en auront pas sans schéma
+
+**Relevé le 04/08/2026, en fermant la chaîne T2.**
+
+Le hash de prévisualisation est désormais lu de bout en bout pour les médias de
+**séance** : la colonne `session_media.thumbhash` est sélectionnée, transportée
+par `mapRow`, et consommée par `Photo` sur les quatre surfaces qui les
+affichent — `MediaGrid`, la grille de souvenirs du bilan, la galerie du club,
+et l'écran admin.
+
+Il reste **une cinquième surface hors de cette chaîne** :
+`app/(coach)/pilote/[id].tsx:651`, la bande de médias du profil pilote vue par
+son coach. Elle emploie encore l'`Image` brute de React Native.
+
+**Ce n'est pas un oubli de câblage, c'est une autre source de données.** Ces
+médias ne viennent pas de `session_media` mais d'une colonne `jsonb` du profil,
+lue par `parsePilotMedia` (`src/services/pilotMediaService.ts:51`). Ce jsonb ne
+porte aucun champ `thumbhash`, et rien ne le calcule à l'upload : la fonction
+`generate-thumbhash` est déclenchée sur le bucket des médias de séance.
+
+Deux issues, et aucune n'est urgente :
+
+- **La petite** : basculer sur `Photo` sans hash. Le kit retombe alors sur le
+  blurhash titane par défaut (`Photo.tsx:46`) et le fondu de 250 ms. On y gagne
+  la cohérence de rendu, pas la vraie vignette.
+- **La vraie** : porter un `thumbhash` dans le jsonb de profil et étendre la
+  fonction de génération à ce bucket. C'est une évolution de données, pas un
+  correctif — donc une décision, pas un glissement.
+
+Laissé tel quel délibérément : le lot T2 porte la colonne `session_media`, et
+l'élargir à une autre source aurait maquillé un manque de données en un manque
+de câblage.
