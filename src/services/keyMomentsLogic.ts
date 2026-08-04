@@ -7,6 +7,8 @@
  * manque, on renvoie moins de moments plutôt que d'en inventer.
  */
 
+import { virgule } from '@/utils/format';
+
 export interface KMLap {
   lapNumber: number;
   durationSeconds: number;
@@ -31,7 +33,7 @@ function fmtLap(s: number): string {
   const totalMs = Math.round(s * 1000);
   const m = Math.floor(totalMs / 60_000);
   const r = (totalMs % 60_000) / 1000;
-  return `${m}:${r.toFixed(3).padStart(6, '0')}`;
+  return virgule(`${m}:${r.toFixed(3).padStart(6, '0')}`);
 }
 
 /** Dérive jusqu'à 3 moments factuels (référence, passage engagé, plus grand écart). */

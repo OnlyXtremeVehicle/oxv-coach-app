@@ -40,7 +40,7 @@ export function formatDistance(meters: number): string {
   if (meters < 1000) {
     return `${Math.round(meters)} m`;
   }
-  return `${(meters / 1000).toFixed(2)} km`;
+  return `${(meters / 1000).toFixed(2).replace('.', ',')} km`;
 }
 
 export function formatChrono(milliseconds: number): string {

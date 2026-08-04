@@ -200,9 +200,9 @@ describe('generateSafeDebrief — garde-fou doctrinal (T-1)', () => {
 });
 
 describe('generateDebrief — formatage temps tour', () => {
-  it('formate le best lap au format m:ss.mmm', () => {
+  it('formate le best lap au format m:ss,mmm', () => {
     const out = generateDebrief({ ...baseInput, bestLapSeconds: 87.234 });
-    expect(out.recit).toContain('1:27.234');
+    expect(out.recit).toContain('1:27,234');
   });
 
   it('omet le temps si bestLapSeconds est null', () => {

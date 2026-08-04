@@ -55,6 +55,7 @@ import {
   tabBarSpace,
   typo,
 } from '@/ui/v2';
+import { virgule } from '@/utils/format';
 
 const VISIBILITES: { id: TraceVisibility; label: string; note: string }[] = [
   { id: 'private', label: 'Privé', note: 'Visible de vous seul.' },
@@ -163,8 +164,8 @@ export default function ImporterTraceScreen() {
             </View>
             {/* Chaque valeur vient du générateur — aucune n'est arrondie à l'aveugle. */}
             <Text style={s.attribution}>
-              {(circuit.length_m / 1000).toFixed(2)} km · {circuit.corners.length} virages détectés
-              · © contributeurs OpenStreetMap
+              {virgule((circuit.length_m / 1000).toFixed(2))} km · {circuit.corners.length} virages
+              détectés · © contributeurs OpenStreetMap
             </Text>
 
             <View style={s.carte}>

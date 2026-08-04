@@ -42,6 +42,7 @@ import { Easing, useSharedValue, withTiming, type SharedValue } from 'react-nati
 import { GlowStroke, colors, motionTokens, radius, space, typo, useReduceMotion } from '@/ui/v2';
 import type { Bande } from '@/telemetry/bande';
 import { formateDistance } from '@/telemetry/courbeDelta';
+import { virgule } from '@/utils/format';
 
 const HAUTEUR = 150;
 const PAD_L = 14;
@@ -214,7 +215,9 @@ function BandeToursBrut({ bande, width, raisonAbsence, unite = '' }: BandeToursP
       </View>
 
       <Text style={styles.echelle}>
-        {`échelle verticale ${geo.bas.toFixed(0)} à ${geo.haut.toFixed(0)}${suffixe} · pas de ${bande.pas} m`}
+        {virgule(
+          `échelle verticale ${geo.bas.toFixed(0)} à ${geo.haut.toFixed(0)}${suffixe} · pas de ${bande.pas} m`
+        )}
       </Text>
 
       <View style={styles.legende}>

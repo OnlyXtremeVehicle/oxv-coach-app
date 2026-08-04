@@ -16,6 +16,7 @@
  */
 
 import { formatChronoMs } from '@/utils/time';
+import { virgule } from '@/utils/format';
 
 /** Repère d'absence — une donnée non lue n'est jamais un zéro fabriqué. */
 const EMPTY = '—';
@@ -59,7 +60,7 @@ export function signedNumber(value: number, decimals = 0): string {
   // Arrondi AVANT le signe pour éviter un « -0 » quand la valeur est négligeable.
   const rounded = Number(value.toFixed(decimals));
   const sign = rounded > 0 ? '+' : rounded < 0 ? '-' : '±';
-  return `${sign}${Math.abs(rounded).toFixed(decimals)}`;
+  return virgule(`${sign}${Math.abs(rounded).toFixed(decimals)}`);
 }
 
 /**

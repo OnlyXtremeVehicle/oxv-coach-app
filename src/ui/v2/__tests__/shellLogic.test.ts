@@ -82,7 +82,7 @@ describe('Dial — géométrie', () => {
 
   it("dialDisplayValue n'affiche jamais NaN et garde une décimale utile", () => {
     expect(dialDisplayValue(87)).toBe('87');
-    expect(dialDisplayValue(87.46)).toBe('87.5');
+    expect(dialDisplayValue(87.46)).toBe('87,5');
     // Un zéro MESURÉ s'affiche ; une valeur absente ne devient jamais un
     // zéro d'apparence mesurée (règle données réelles) : tiret.
     expect(dialDisplayValue(0)).toBe('0');

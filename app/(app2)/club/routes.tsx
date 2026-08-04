@@ -50,6 +50,7 @@ import {
   tabBarSpace,
   typo,
 } from '@/ui/v2';
+import { virgule } from '@/utils/format';
 
 /**
  * Les quatre états d'une route, en mots.
@@ -166,7 +167,7 @@ export default function MesRoutesScreen() {
               const meta = [
                 r.distanceKm ? `${Math.round(r.distanceKm)} km` : null,
                 r.curviness,
-                r.sinuosity ? `sinuosité ${r.sinuosity.toFixed(2)}` : null,
+                r.sinuosity ? virgule(`sinuosité ${r.sinuosity.toFixed(2)}`) : null,
               ]
                 .filter(Boolean)
                 .join(' · ');

@@ -25,6 +25,7 @@ import {
 import { theme } from '@/theme/v2';
 
 import Svg, { Circle } from 'react-native-svg';
+import { virgule } from '@/utils/format';
 
 const { palette, fonts, fontSize, spacing, radius } = theme;
 
@@ -154,10 +155,13 @@ export function LapScrubber({
         />
         {showGs ? (
           <>
-            <Readout label="G LAT" value={current.gLat !== null ? current.gLat.toFixed(2) : '—'} />
+            <Readout
+              label="G LAT"
+              value={current.gLat !== null ? virgule(current.gLat.toFixed(2)) : '—'}
+            />
             <Readout
               label="G LONG"
-              value={current.gLong !== null ? current.gLong.toFixed(2) : '—'}
+              value={current.gLong !== null ? virgule(current.gLong.toFixed(2)) : '—'}
             />
           </>
         ) : null}

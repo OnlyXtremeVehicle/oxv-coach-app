@@ -20,7 +20,7 @@ describe('computeKeyMoments', () => {
     });
     const ref = m.find((x) => x.key === 'reference');
     expect(ref?.fact).toContain('Tour 3');
-    expect(ref?.fact).toContain('1:27.100');
+    expect(ref?.fact).toContain('1:27,100');
   });
 
   it('passage le plus engagé = G latéral max', () => {

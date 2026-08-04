@@ -42,6 +42,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, space, typo } from '@/ui/v2';
+import { virgule } from '@/utils/format';
 
 /** Échelle par défaut, en g. Couvre largement une voiture de série sur piste. */
 const ECHELLE_G = 2.0;
@@ -95,7 +96,7 @@ function Barre({
   const mesure = valeur !== null && Number.isFinite(valeur);
   // La barre sature à l'échelle ; le chiffre à droite, lui, reste exact.
   const part = mesure ? Math.min(Math.abs(valeur) / echelle, 1) : 0;
-  const texte = mesure ? `${Math.abs(valeur).toFixed(2)} g` : '—';
+  const texte = mesure ? virgule(`${Math.abs(valeur).toFixed(2)} g`) : '—';
 
   return (
     <View accessible accessibilityLabel={`${label}, ${mesure ? texte : 'non mesuré'}`}>

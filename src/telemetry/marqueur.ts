@@ -38,6 +38,7 @@
  */
 
 import { haversineDistance } from '@/utils/geo';
+import { virgule } from '@/utils/format';
 
 /**
  * Écart de temps maximal toléré entre le marqueur et la trame retenue.
@@ -284,7 +285,7 @@ export function phraseMarqueur(m: MarqueurResolu): string | null {
   if (nombreFini(m.tour)) bouts.push(`Tour ${m.tour}`);
   if (nombreFini(m.virage)) bouts.push(`virage ${m.virage}`);
   if (nombreFini(m.vitesseEntreeKmh)) bouts.push(`${Math.round(m.vitesseEntreeKmh)} km/h`);
-  if (nombreFini(m.decelerationG)) bouts.push(`${m.decelerationG.toFixed(1)} g`);
+  if (nombreFini(m.decelerationG)) bouts.push(virgule(`${m.decelerationG.toFixed(1)} g`));
   if (nombreFini(m.distanceCordeM)) {
     // « de la corde », pas « avant » : le sens n'est pas calculé.
     bouts.push(`à ${Math.round(m.distanceCordeM)} m de la corde`);

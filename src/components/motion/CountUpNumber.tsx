@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, type TextStyle } from 'react-native';
 
 import { useReduceMotion } from './useReduceMotion';
+import { virgule } from '@/utils/format';
 
 export interface CountUpNumberProps {
   /** Valeur finale à afficher. */
@@ -93,5 +94,5 @@ export function CountUpNumber({
 
 function formatValue(n: number, decimals: number): string {
   if (decimals === 0) return String(Math.round(n));
-  return n.toFixed(decimals);
+  return virgule(n.toFixed(decimals));
 }

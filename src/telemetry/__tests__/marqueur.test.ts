@@ -232,7 +232,7 @@ describe('phraseMarqueur', () => {
     // Le virage est rendu tel quel — base 1, jamais ré-incrémenté (D-21).
     expect(p).toContain('virage 5');
     expect(p).toContain('118 km/h');
-    expect(p).toContain('1.2 g');
+    expect(p).toContain('1,2 g');
   });
 
   it('rend null plutôt qu’une phrase à trous', () => {

@@ -10,6 +10,7 @@
 
 import type { OxvIconName } from './icons/registry';
 import { clamp, needleAngle } from './motion/motionMath';
+import { virgule } from '@/utils/format';
 
 // ---------------------------------------------------------------------------
 // Dial — LE cadran instrument
@@ -90,7 +91,7 @@ export function dialTickAngles(count: number): number[] {
 export function dialDisplayValue(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   if (Number.isInteger(value)) return String(value);
-  return value.toFixed(1);
+  return virgule(value.toFixed(1));
 }
 
 // ---------------------------------------------------------------------------

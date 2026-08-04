@@ -27,6 +27,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Line, Path } from 'react-native-svg';
 
 import { fonts, fontSize, motion, palette } from '@/theme/v2';
+import { virgule } from '@/utils/format';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -96,7 +97,7 @@ function hexToRgba(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-const defaultFormat = (v: number) => v.toFixed(1);
+const defaultFormat = (v: number) => virgule(v.toFixed(1));
 
 // ----------------------------------------------------------------------------
 // Composant

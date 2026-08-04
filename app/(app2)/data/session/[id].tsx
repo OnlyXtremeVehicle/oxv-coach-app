@@ -133,7 +133,7 @@ import type { MarginZone } from '@/types/domain';
 import type { Lap, TelemetrySession } from '@/types/telemetry';
 import type { TrajectoryFramePoint } from '@/services/trajectoryLogic';
 import { formatChronoMs } from '@/utils/time';
-import { formatDateShort } from '@/utils/format';
+import { formatDateShort, virgule } from '@/utils/format';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Ancres — le rail horizontal collant sous le header condensé.
@@ -1280,7 +1280,7 @@ function CornerZoomSheet({
     </View>
   );
   const km = (v: number | null) => (v !== null ? `${Math.round(v)} km/h` : '—');
-  const g = (v: number | null) => (v !== null ? `${v.toFixed(2)} g` : '—');
+  const g = (v: number | null) => (v !== null ? virgule(`${v.toFixed(2)} g`) : '—');
 
   return (
     // DÉFILEMENT OBLIGATOIRE — la `Sheet` du kit V2 rend ses enfants dans un
@@ -1866,7 +1866,7 @@ function ChannelsChart({
   // ce qui est affiché. « non lu » remplace le tiret cadratin, muet à l'oral.
   const speedRead = curSpeed ? `${Math.round(curSpeed.speedKmh)} km/h` : '—';
   const brakeRead = curBrake
-    ? `${curBrake.gLong >= 0 ? '+' : ''}${curBrake.gLong.toFixed(2)} g`
+    ? virgule(`${curBrake.gLong >= 0 ? '+' : ''}${curBrake.gLong.toFixed(2)} g`)
     : '—';
   const speedSpoken = curSpeed ? speedRead : 'non lu';
   const brakeSpoken = curBrake ? brakeRead : 'non lu';

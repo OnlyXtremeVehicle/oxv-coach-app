@@ -22,6 +22,7 @@ import { type MarginZone, marginZoneOf } from '@/types/domain';
 
 import { isDoctrineSafe } from './aiSafetyFilter';
 import type { SegmentAnalysisRow } from './segmentAnalysesService';
+import { virgule } from '@/utils/format';
 
 export interface DebriefInput {
   firstName: string | null | undefined;
@@ -167,12 +168,14 @@ function detailFromSegments(segments: SegmentAnalysisRow[], zone: MarginZone): s
   const gMax = top.maxGLateral ?? 0;
 
   if (zone === 'green') {
-    return `Le ${corner} est passé sans accroc, avec un appui à ${gMax.toFixed(2)} g.`;
+    return virgule(`Le ${corner} est passé sans accroc, avec un appui à ${gMax.toFixed(2)} g.`);
   }
   if (zone === 'yellow') {
-    return `Le ${corner} a porté l'appui le plus net de la session, à ${gMax.toFixed(2)} g.`;
+    return virgule(
+      `Le ${corner} a porté l'appui le plus net de la session, à ${gMax.toFixed(2)} g.`
+    );
   }
-  return `Le ${corner} a été le plus chargé, à ${gMax.toFixed(2)} g d'appui latéral.`;
+  return virgule(`Le ${corner} a été le plus chargé, à ${gMax.toFixed(2)} g d'appui latéral.`);
 }
 
 // ============================================================================
@@ -232,5 +235,5 @@ function focusPhrase(segments: SegmentAnalysisRow[]): string {
 function formatLap(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds - m * 60;
-  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
+  return virgule(`${m}:${s.toFixed(3).padStart(6, '0')}`);
 }

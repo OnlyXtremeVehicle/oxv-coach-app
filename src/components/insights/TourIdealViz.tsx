@@ -31,6 +31,7 @@ import { ProvenanceTag } from '@/ui/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import type { IdealLap } from '@/circuit/sessionInsights';
 import { useReduceMotion } from '@/components/motion/useReduceMotion';
+import { virgule } from '@/utils/format';
 
 const C = theme.dataColors;
 // Secteur qui concentre la perte : donnée principale en crème (neutre V3).
@@ -46,7 +47,7 @@ export interface TourIdealVizProps {
 function fmtChrono(totalSec: number): string {
   const m = Math.floor(totalSec / 60);
   const s = totalSec - m * 60;
-  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
+  return virgule(`${m}:${s.toFixed(3).padStart(6, '0')}`);
 }
 
 /** Nombre en écriture française (virgule décimale). */

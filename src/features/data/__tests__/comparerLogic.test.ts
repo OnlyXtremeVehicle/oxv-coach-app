@@ -18,7 +18,7 @@ const FULL_B: SideFacts = {
 
 describe('signedNumber', () => {
   it('préfixe un signe qui n’indique que le sens de la valeur', () => {
-    expect(signedNumber(0.412, 3)).toBe('+0.412');
+    expect(signedNumber(0.412, 3)).toBe('+0,412');
     expect(signedNumber(-3, 0)).toBe('-3');
     expect(signedNumber(0, 0)).toBe('±0');
   });
@@ -32,9 +32,9 @@ describe('signedNumber', () => {
 
 describe('formatDeltaMs', () => {
   it('exprime un écart de temps en secondes signées', () => {
-    expect(formatDeltaMs(412)).toBe('+0.412 s');
-    expect(formatDeltaMs(-1200)).toBe('-1.200 s');
-    expect(formatDeltaMs(0)).toBe('±0.000 s');
+    expect(formatDeltaMs(412)).toBe('+0,412 s');
+    expect(formatDeltaMs(-1200)).toBe('-1,200 s');
+    expect(formatDeltaMs(0)).toBe('±0,000 s');
   });
 });
 
@@ -51,7 +51,7 @@ describe('compareFacts — écarts NEUTRES signés', () => {
   });
 
   it('chaque écart est une chaîne signée neutre (b − a), sans lexique de mérite', () => {
-    expect(byKey.bestLap.deltaText).toBe('+0.412 s');
+    expect(byKey.bestLap.deltaText).toBe('+0,412 s');
     expect(byKey.regularity.deltaText).toBe('-3 %');
     expect(byKey.maxSpeed.deltaText).toBe('-3 km/h');
     expect(byKey.distance.deltaText).toBe('-0,3 km');

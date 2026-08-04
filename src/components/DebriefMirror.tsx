@@ -29,6 +29,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { guardDebriefActs } from '../services/debriefRenderGuard';
 import { dataColors, fonts, palette } from '@/theme/v2';
 import { useReduceMotion } from '@/components/motion/useReduceMotion';
+import { virgule } from '@/utils/format';
 
 /* ============================ THÈME ============================ */
 // Mappé sur les tokens theme/v2 (R2) ; seuls grey/copper et les rgba locaux
@@ -198,7 +199,7 @@ const fmtLap = (s?: number | null) => {
   if (s == null || !Number.isFinite(s)) return '—';
   const m = Math.floor(s / 60);
   const r = s - m * 60;
-  return `${m}:${r.toFixed(3).padStart(6, '0')}`;
+  return virgule(`${m}:${r.toFixed(3).padStart(6, '0')}`);
 };
 const PHASE_COLOR: Record<string, string> = { a: C.green, b: C.brake, c: C.grey };
 
@@ -342,7 +343,7 @@ const Counter: React.FC<{
   }, [value]);
   return (
     <Text style={style}>
-      {d.toFixed(dec)}
+      {virgule(d.toFixed(dec))}
       {suffix}
     </Text>
   );
@@ -696,11 +697,13 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
                   <Fact
                     first
                     k="Temps en roue libre"
-                    v={`${t.coasting_s.toFixed(1)} s · ${t.coasting_pct.toFixed(0)}%`}
+                    v={virgule(`${t.coasting_s.toFixed(1)} s · ${t.coasting_pct.toFixed(0)}%`)}
                   />
                   <Fact
                     k="Plus longue zone"
-                    v={`${t.longest_zone.dur_s.toFixed(1)} s${t.longest_zone.corner_index ? ` · V${t.longest_zone.corner_index}` : ''}`}
+                    v={virgule(
+                      `${t.longest_zone.dur_s.toFixed(1)} s${t.longest_zone.corner_index ? ` · V${t.longest_zone.corner_index}` : ''}`
+                    )}
                   />
                 </>
               );
@@ -720,10 +723,12 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
               const f = fc as FlowCoherence;
               return (
                 <>
-                  <Fact first k="Indice de fluidité (SVJ)" v={f.svj.toFixed(1)} />
+                  <Fact first k="Indice de fluidité (SVJ)" v={virgule(f.svj.toFixed(1))} />
                   <Fact
                     k="À-coup le plus fort"
-                    v={`${f.harshest.t_s.toFixed(1)} s${f.harshest.corner_index ? ` · V${f.harshest.corner_index}` : ''}`}
+                    v={virgule(
+                      `${f.harshest.t_s.toFixed(1)} s${f.harshest.corner_index ? ` · V${f.harshest.corner_index}` : ''}`
+                    )}
                   />
                   <HowTo>
                     Plus l'indice est bas, plus vos transitions sont continues. Élevé = haché.
@@ -781,11 +786,11 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
                   <View style={s.ggGrid}>
                     <GgStat
                       lab="G latéral max"
-                      v={`${(gg as GgEnvelope).g_lat_max.toFixed(2)} g`}
+                      v={virgule(`${(gg as GgEnvelope).g_lat_max.toFixed(2)} g`)}
                     />
                     <GgStat
                       lab="G combiné max"
-                      v={`${(gg as GgEnvelope).g_comb_max.toFixed(2)} g`}
+                      v={virgule(`${(gg as GgEnvelope).g_comb_max.toFixed(2)} g`)}
                     />
                   </View>
                 </>
@@ -815,7 +820,7 @@ const DebriefMirror: React.FC<DebriefMirrorProps> = ({
                         `Bascule ${tr.corner_from ? `V${tr.corner_from}` : ''}${tr.corner_to ? `→V${tr.corner_to}` : ''}`.trim() ||
                         'Bascule'
                       }
-                      v={`${tr.switch_time_s.toFixed(2)} s`}
+                      v={virgule(`${tr.switch_time_s.toFixed(2)} s`)}
                     />
                   ))}
                   <HowTo>
