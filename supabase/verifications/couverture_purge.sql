@@ -109,6 +109,36 @@ order by couverte, fk.tbl, fk.col;
 -- À statuer AVANT l'alpha, pas après.
 -- -----------------------------------------------------------------------------
 
+-- -----------------------------------------------------------------------------
+-- ÉTAT AU 04/08/2026 — ET C'EST LE CHIFFRE QUI COMPTE, PAS LA LISTE
+--
+-- Rejoué tel quel, sept jours après. Résultat par count(*) :
+--
+--                       28/07        04/08       écart
+--   couples totaux        119          129         +10
+--   couverts               67           66          −1
+--   NON couverts           52           63         +11
+--
+-- ONZE COUPLES DE PLUS HORS PURGE EN UNE SEMAINE. Le schéma ajoute des colonnes
+-- rattachées à une personne plus vite que la purge ne les rattrape, et rien ne
+-- le signale : ce fichier ne se rejoue que si quelqu'un y pense.
+--
+-- C'est le motif habituel du dépôt. La garde est écrite, elle est juste, elle
+-- est même bien documentée — et elle ne se déclenche pas. Elle a d'ailleurs
+-- déjà tenu une fois : `coach_payout_details` a été fermée le 28/07 parce que
+-- quelqu'un a lancé cette requête ce jour-là. Personne ne l'a relancée depuis.
+--
+-- Huit des 63 sont des tables internes de Supabase (`auth.identities`,
+-- `auth.sessions`, `auth.mfa_factors`…) : elles ne nous appartiennent pas et
+-- n'ont pas à figurer dans la purge. Le trou applicatif réel est donc de 55.
+--
+-- CE QUI MANQUE N'EST PAS UNE ANALYSE, C'EST UN DÉCLENCHEUR. Cette requête
+-- devrait échouer en intégration continue quand un couple non couvert apparaît
+-- sans être inscrit à la matrice de rétention. Elle ne le peut pas aujourd'hui :
+-- la chaîne n'a pas d'accès base, et les 85 tests RLS attendent les mêmes
+-- secrets depuis leur écriture. Même cause, même conséquence.
+-- -----------------------------------------------------------------------------
+
 -- Copies de données personnelles hors de tout périmètre de purge.
 -- La matrice en cite deux ; il y en a cinq.
 select c.relname,
