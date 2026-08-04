@@ -13,6 +13,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 
 import { theme } from '@/theme/v2';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 const { palette, fonts, radius, spacing } = theme;
 
@@ -35,10 +36,15 @@ export function StatusPill({
   live?: boolean;
 }) {
   const dotColor = TONE[tone];
+  const reduceMotion = useReduceMotion();
   const pulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!live) return;
+    // Le point de présence reste plein, sans respirer.
+    if (!live || reduceMotion) {
+      pulse.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 0.35, duration: 1300, useNativeDriver: true }),
@@ -47,7 +53,7 @@ export function StatusPill({
     );
     loop.start();
     return () => loop.stop();
-  }, [live, pulse]);
+  }, [live, pulse, reduceMotion]);
 
   return (
     <View style={s.pill} accessibilityRole="text" accessibilityLabel={label}>

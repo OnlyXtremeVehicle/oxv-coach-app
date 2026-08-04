@@ -27,6 +27,7 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import type { CornerRecord } from '@/circuit/sessionInsights';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 const C = theme.dataColors;
 // Roulis / transfert = donnée (ni chrono, ni alarme) → crème neutre. L'or reste
@@ -104,8 +105,17 @@ function deriveTransfer(transfer: CornerRecord | null): TransfertData | null {
 }
 
 export function TransfertViz({ transfer }: TransfertVizProps) {
+  const reduceMotion = useReduceMotion();
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
+    // « Réduire les animations » : le point reste allumé, sans respirer. Cinq de
+    // ces vues sont montées ensemble sur l'écran d'une séance — c'étaient donc
+    // cinq boucles infinies simultanées chez qui a demandé l'absence de
+    // mouvement. Relevé le 04/08/2026.
+    if (reduceMotion) {
+      blink.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
@@ -114,7 +124,7 @@ export function TransfertViz({ transfer }: TransfertVizProps) {
     );
     loop.start();
     return () => loop.stop();
-  }, [blink]);
+  }, [blink, reduceMotion]);
 
   const data = deriveTransfer(transfer);
   if (!data) {

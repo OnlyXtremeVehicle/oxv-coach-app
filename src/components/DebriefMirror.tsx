@@ -28,6 +28,7 @@ import Svg, { Path, Circle } from 'react-native-svg';
 
 import { guardDebriefActs } from '../services/debriefRenderGuard';
 import { dataColors, fonts, palette } from '@/theme/v2';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 /* ============================ THÈME ============================ */
 // Mappé sur les tokens theme/v2 (R2) ; seuls grey/copper et les rgba locaux
@@ -363,7 +364,16 @@ const TrackMini: React.FC<{
   );
   const draw = useRef(new Animated.Value(1)).current; // 1 -> 0 (dessine)
   const prog = useRef(new Animated.Value(0)).current; // 0 -> 1 (point)
+  const reduceMotion = useReduceMotion();
   useEffect(() => {
+    // « Réduire les animations » : le tracé est posé entier d'emblée, et le
+    // point ne parcourt pas la trace en boucle. L'information reste la même —
+    // c'est le mouvement qui disparaît, pas le contenu.
+    if (reduceMotion) {
+      draw.setValue(0);
+      prog.setValue(0);
+      return;
+    }
     Animated.timing(draw, {
       toValue: 0,
       duration: 1700,

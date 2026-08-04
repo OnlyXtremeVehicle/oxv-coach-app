@@ -27,6 +27,7 @@ import Svg, { Line, Rect } from 'react-native-svg';
 import { theme } from '@/theme/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import type { AnatomyCorner } from '@/circuit/sessionInsights';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 const C = theme.dataColors;
 // V3 : vitesse = donnée de perf → neutre crème (l'or reste au chrono/record).
@@ -65,8 +66,17 @@ function frDec(n: number, decimals: number): string {
 
 export function AnatomieViz({ anatomy }: AnatomieVizProps) {
   // Point de statut « vivant ».
+  const reduceMotion = useReduceMotion();
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
+    // « Réduire les animations » : le point reste allumé, sans respirer. Cinq de
+    // ces vues sont montées ensemble sur l'écran d'une séance — c'étaient donc
+    // cinq boucles infinies simultanées chez qui a demandé l'absence de
+    // mouvement. Relevé le 04/08/2026.
+    if (reduceMotion) {
+      blink.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
@@ -75,7 +85,7 @@ export function AnatomieViz({ anatomy }: AnatomieVizProps) {
     );
     loop.start();
     return () => loop.stop();
-  }, [blink]);
+  }, [blink, reduceMotion]);
 
   // HONNÊTE-VIDE : sans virage exploitable — ou avec un virage dont TOUS les
   // scalaires sont absents — on ne fabrique rien, on affiche l'état sobre.

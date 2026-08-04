@@ -30,6 +30,7 @@ import { theme } from '@/theme/v2';
 import { ProvenanceTag } from '@/ui/v2';
 import { cockpitPanel } from '@/components/insights/vizChrome';
 import type { IdealLap } from '@/circuit/sessionInsights';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 const C = theme.dataColors;
 // Secteur qui concentre la perte : donnée principale en crème (neutre V3).
@@ -54,8 +55,17 @@ function fmtFr(n: number, decimals: number): string {
 }
 
 export function TourIdealViz({ ideal }: TourIdealVizProps) {
+  const reduceMotion = useReduceMotion();
   const blink = useRef(new Animated.Value(1)).current;
   useEffect(() => {
+    // « Réduire les animations » : le point reste allumé, sans respirer. Cinq de
+    // ces vues sont montées ensemble sur l'écran d'une séance — c'étaient donc
+    // cinq boucles infinies simultanées chez qui a demandé l'absence de
+    // mouvement. Relevé le 04/08/2026.
+    if (reduceMotion) {
+      blink.setValue(1);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(blink, { toValue: 0.32, duration: 1200, useNativeDriver: true }),
@@ -64,7 +74,7 @@ export function TourIdealViz({ ideal }: TourIdealVizProps) {
     );
     loop.start();
     return () => loop.stop();
-  }, [blink]);
+  }, [blink, reduceMotion]);
 
   // Honnêteté : sans chronos calculés, aucun tour idéal à composer.
   if (!ideal || !Number.isFinite(ideal.ideal_time_s) || !Number.isFinite(ideal.real_best_s)) {

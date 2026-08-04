@@ -36,6 +36,7 @@ import { CircuitMap } from './CircuitMap';
 import { CornersLayer } from './layers/CornersLayer';
 import { TrajectoryLayer, type TrajectoryPoint } from './layers/TrajectoryLayer';
 import { getCircuitViewBox, getCornerViewBox, getScenePoints, projectToScene } from './projection';
+import { useReduceMotion } from '@/components/motion/useReduceMotion';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -319,9 +320,16 @@ function ReplayMarker({
     () => downsample(trajectory, 150).map((p) => projectToScene(p)),
     [trajectory]
   );
+  const reduceMotion = useReduceMotion();
   const t = useRef(new Animated.Value(progress ?? 0)).current;
 
   useEffect(() => {
+    // « Réduire les animations » : la trajectoire se pose à sa position, elle
+    // ne se rejoue pas en boucle.
+    if (reduceMotion) {
+      t.setValue(progress ?? 0);
+      return;
+    }
     if (autoplay) {
       const anim = Animated.loop(
         Animated.timing(t, {
