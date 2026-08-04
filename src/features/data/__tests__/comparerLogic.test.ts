@@ -44,7 +44,7 @@ describe('compareFacts — écarts NEUTRES signés', () => {
 
   it('rend les quatre lignes attendues avec des faits situés', () => {
     expect(rows.map((r) => r.key)).toEqual(['bestLap', 'regularity', 'maxSpeed', 'distance']);
-    expect(byKey.bestLap.aText).toBe('1:24.318');
+    expect(byKey.bestLap.aText).toBe('1:24,318');
     expect(byKey.regularity.aText).toBe('92 %');
     expect(byKey.maxSpeed.aText).toBe('210 km/h');
     expect(byKey.distance.aText).toBe('12,4 km');

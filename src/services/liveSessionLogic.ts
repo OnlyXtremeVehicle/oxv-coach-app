@@ -192,12 +192,18 @@ export function liveAlert(frame: LiveFrame, cornerName: string | null): string |
   return `${name} · à surveiller`;
 }
 
-/** Chrono live formaté « m:ss.d » (tour en cours). Null → tiret. */
+/**
+ * Chrono live formaté « m:ss,d » (tour en cours). Null → tiret.
+ *
+ * VIRGULE DÉCIMALE, posée le 04/08/2026 : ce formateur écrivait le point en
+ * dur, comme `formatChronoMs`. Deux séparateurs cohabitaient donc à l'écran
+ * selon le chemin d'affichage.
+ */
 export function formatLiveChrono(chronoMs: number | null): string {
   if (chronoMs === null || !Number.isFinite(chronoMs) || chronoMs < 0) return '—';
   const totalSec = chronoMs / 1000;
   const min = Math.floor(totalSec / 60);
   const sec = Math.floor(totalSec % 60);
   const tenth = Math.floor((totalSec * 10) % 10);
-  return `${min}:${String(sec).padStart(2, '0')}.${tenth}`;
+  return `${min}:${String(sec).padStart(2, '0')},${tenth}`;
 }

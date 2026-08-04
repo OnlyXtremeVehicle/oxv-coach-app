@@ -85,8 +85,8 @@ function formatLapTimeSecondes(seconds: number): string {
  * chiffre roi est allégé (Trace, scrubber du rejeu). Deux-points, 1 décimale.
  *
  * Exemples :
- *   formatChronoTenths(84.318) → "1:24.3"
- *   formatChronoTenths(45.1)   → "45.1 s"
+ *   formatChronoTenths(84.318) → "1:24,3"
+ *   formatChronoTenths(45.1)   → "45,1 s"
  */
 export function formatChronoTenths(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '—';

@@ -178,9 +178,9 @@ describe('liveAlert (factuel, jamais une consigne)', () => {
 });
 
 describe('formatLiveChrono', () => {
-  it('formate m:ss.d', () => {
-    expect(formatLiveChrono(84318)).toBe('1:24.3');
-    expect(formatLiveChrono(5000)).toBe('0:05.0');
+  it('formate m:ss,d', () => {
+    expect(formatLiveChrono(84318)).toBe('1:24,3');
+    expect(formatLiveChrono(5000)).toBe('0:05,0');
   });
   it('tiret si null/invalide', () => {
     expect(formatLiveChrono(null)).toBe('—');

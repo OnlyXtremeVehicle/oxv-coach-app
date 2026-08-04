@@ -84,7 +84,7 @@ describe('pilotStatCells', () => {
     ];
     expect(pilotStatCells(stats)).toEqual([
       { key: 'sessions', label: 'Séances', value: '12' },
-      { key: 'best', label: 'Tour de référence', value: '1:24.318' },
+      { key: 'best', label: 'Tour de référence', value: '1:24,318' },
       { key: 'vmax', label: 'Vitesse maxi', value: '210 km/h' },
       { key: 'dist', label: 'Distance', value: '12,4 km' },
       { key: 'reg', label: 'Régularité', value: '91 %' },

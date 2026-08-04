@@ -2,6 +2,7 @@
  * Tests motionMath — logique pure du langage de motion V2 (lot L0).
  */
 
+import { formatLapTimeMs } from '@/utils/format';
 import {
   PULL_SWEEP_DEG,
   RECORD_FLASH_MS,
@@ -56,18 +57,64 @@ describe('staggerDelayV2', () => {
   });
 });
 
+/**
+ * ===========================================================================
+ * CES TESTS ÉTAIENT VERTS SUR UN MÉCANISME MORT
+ * ===========================================================================
+ *
+ * Toutes leurs valeurs portaient un POINT décimal — une forme que
+ * l'application ne produit plus nulle part depuis l'entrée en vigueur de la
+ * règle de la virgule. `digitsOf` ne cherchait que le point : sur un chrono
+ * réel, `lastIndexOf('.')` rendait −1 et l'accent des millièmes s'éteignait,
+ * sans erreur, sur tous les écrans qui le demandent.
+ *
+ * Mesuré le 04/08/2026 :
+ *   digitsOf(formatLapTimeMs(101.203), true)  →  0 case accentuée sur 8
+ *   digitsOf('1:41.203', true)                →  3 cases accentuées sur 8
+ *
+ * Le premier cas est celui de l'application. Le second était celui des tests.
+ *
+ * Les fixtures portent désormais la VIRGULE, qui est la forme de production.
+ * Le point garde ses propres cas — il subsiste dans les exports HTML — mais il
+ * ne commande plus la couverture.
+ */
 describe('digitsOf', () => {
+  // La forme de production. Si ce test tombe, l'accent est éteint À L'ÉCRAN.
+  it('accentue les millièmes d’un chrono À LA VIRGULE — la forme réelle', () => {
+    const cells = digitsOf('1:41,203', true);
+    expect(cells.filter((c) => c.accent)).toHaveLength(3);
+    expect(cells.map((c) => c.accent)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false, // la virgule elle-même reste en base
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  it('la chaîne accentuée vient bien du formateur de l’application', () => {
+    // Le lien qui manquait : les tests fabriquaient leur chaîne à la main, avec
+    // un séparateur que le formateur ne produit pas. Ici la valeur vient de la
+    // même fonction que l'écran.
+    const cells = digitsOf(formatLapTimeMs(101.203), true);
+    expect(cells.filter((c) => c.accent)).toHaveLength(3);
+  });
+
   it('découpe un chrono en digits et séparateurs', () => {
-    const cells = digitsOf('1:41.203');
+    const cells = digitsOf('1:41,203');
     expect(cells).toHaveLength(8);
     expect(cells[0]).toEqual({ char: '1', digit: 1, accent: false });
     expect(cells[1]).toEqual({ char: ':', digit: null, accent: false });
-    expect(cells[4].char).toBe('.');
+    expect(cells[4].char).toBe(',');
     expect(cells[4].digit).toBeNull();
     expect(cells[7]).toEqual({ char: '3', digit: 3, accent: false });
   });
 
-  it('accentMillis marque uniquement ce qui suit le dernier point', () => {
+  it('accentMillis marque uniquement ce qui suit le dernier séparateur', () => {
+    // Le POINT reste accepté : les exports HTML en portent encore.
     const cells = digitsOf('1:41.203', true);
     expect(cells.map((c) => c.accent)).toEqual([
       false,
@@ -81,13 +128,13 @@ describe('digitsOf', () => {
     ]);
   });
 
-  it('sans point, accentMillis ne marque rien', () => {
+  it('sans séparateur décimal, accentMillis ne marque rien', () => {
     const cells = digitsOf('120', true);
     expect(cells.every((c) => !c.accent)).toBe(true);
   });
 
-  it("restreint l'accent aux chiffres : « 45.123 s » — l'espace et l'unité restent en base", () => {
-    const cells = digitsOf('45.123 s', true);
+  it("restreint l'accent aux chiffres : « 45,123 s » — l'espace et l'unité restent en base", () => {
+    const cells = digitsOf('45,123 s', true);
     expect(cells.map((c) => c.accent)).toEqual([
       false,
       false,

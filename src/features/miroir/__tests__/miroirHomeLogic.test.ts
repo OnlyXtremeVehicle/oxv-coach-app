@@ -310,7 +310,7 @@ describe('bandeau rituel J-3 — B3 minimal, données réelles', () => {
 
 describe('zeroLike — gabarit de départ du RollingCounter', () => {
   it('remet tous les digits à 0, séparateurs intacts', () => {
-    expect(zeroLike('1:24.318')).toBe('0:00.000');
+    expect(zeroLike('1:24,318')).toBe('0:00,000');
     expect(zeroLike('412')).toBe('000');
     expect(zeroLike('2/4')).toBe('0/0');
   });

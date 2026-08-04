@@ -104,13 +104,29 @@ export interface DigitCell {
 }
 
 /**
- * Découpe une valeur affichée ('1:41.203') en cases de compteur.
+ * Découpe une valeur affichée ('1:41,203') en cases de compteur.
  * `accentMillis` marque en accent les CHIFFRES qui suivent le DERNIER
- * point — les millièmes d'un chrono. Les séparateurs et une éventuelle
- * unité ('45.123 s') restent en base : l'accent ne déborde jamais.
+ * SÉPARATEUR DÉCIMAL — les millièmes d'un chrono. Les séparateurs et une
+ * éventuelle unité ('45,123 s') restent en base : l'accent ne déborde jamais.
+ *
+ * LES DEUX SÉPARATEURS SONT ACCEPTÉS, ET CE N'EST PAS DE LA TOLÉRANCE.
+ *
+ * Cette fonction ne cherchait que le POINT. Le jour où la règle de la virgule
+ * décimale est entrée en vigueur, les chronos ont cessé de porter un point —
+ * et `lastIndexOf('.')` rendant −1, l'accent des millièmes s'est éteint sur
+ * tous les écrans qui le demandent, sans erreur et sans que rien ne le dise.
+ * Vérifié le 04/08/2026 : `digitsOf(formatLapTimeMs(101.203), true)` accentuait
+ * zéro case sur huit ; la même chaîne à point en accentuait trois.
+ *
+ * Les tests étaient verts parce que toutes leurs valeurs portaient un point —
+ * une forme que l'application ne produit plus nulle part. Ils vérifiaient un
+ * mécanisme mort.
+ *
+ * Le point reste accepté : les exports HTML et les chaînes de test anciennes
+ * en portent encore, et refuser une forme n'aurait rien réparé.
  */
 export function digitsOf(value: string, accentMillis = false): DigitCell[] {
-  const lastDot = value.lastIndexOf('.');
+  const lastDot = Math.max(value.lastIndexOf(','), value.lastIndexOf('.'));
   const cells: DigitCell[] = [];
   for (let i = 0; i < value.length; i++) {
     const char = value.charAt(i);

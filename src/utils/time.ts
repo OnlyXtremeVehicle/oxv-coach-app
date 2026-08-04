@@ -18,14 +18,20 @@ export function timeBasedGreeting(now: Date = new Date()): 'Bonjour' | 'Bonsoir'
   return 'Bonsoir';
 }
 
-/** Format MM:SS.mmm pour un temps en millisecondes. */
+/**
+ * Format MM:SS,mmm pour un temps en millisecondes.
+ *
+ * VIRGULE DÉCIMALE. Ce formateur posait le point en dur, hors de portée de
+ * tout recensement par `toFixed` — et il alimente le chiffre roi « Meilleur
+ * tour » de la Saison. Corrigé le 04/08/2026.
+ */
 export function formatChronoMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const totalMs = Math.round(ms);
   const min = Math.floor(totalMs / 60_000);
   const sec = Math.floor((totalMs % 60_000) / 1_000);
   const mil = totalMs % 1_000;
-  return `${min}:${String(sec).padStart(2, '0')}.${String(mil).padStart(3, '0')}`;
+  return `${min}:${String(sec).padStart(2, '0')},${String(mil).padStart(3, '0')}`;
 }
 
 /** Formule "il y a X" en français pour une date passée. */
