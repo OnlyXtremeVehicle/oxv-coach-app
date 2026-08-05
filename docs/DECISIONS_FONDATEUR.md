@@ -164,27 +164,43 @@ cocher si c'est plus simple.
 
 ---
 
-## 1.5 — DÉCISION · Les Insights : la section entière va s'effacer
+## 1.5 — RIEN À DÉCIDER · Les Insights : c'était déjà fait
 
-**Jalon 2, Phase 3, lot 13.**
+**Entrée ouverte puis refermée le 04/08/2026, le jour même.** Je l'avais posée
+comme une décision en attente. Vérification faite, le lot 13 est livré et
+branché — il n'y a rien à trancher.
 
-Quatre des six lectures affichent aujourd'hui des **chiffres de démonstration
-sans aucun bandeau**. Le plan demande trois états — `disponible`, `absent` avec
-sa raison, `demo` jamais en production — et énonce la conséquence :
+`src/components/insights/disponibilite.ts` porte les trois états `disponible` ·
+`absent` · `demo`, avec `productionAutorise` qui interdit le rendu du troisième
+hors développement. `src/services/sessionInsightsService.ts` filtre par
+`engine_version` sur une liste blanche de moteurs réels, avec un second verrou
+côté client au cas où le filtre serveur sauterait. Et
+`app/(app2)/data/session/[id].tsx:99` consomme `etatLecture` et
+`sectionAffichable`.
 
-> *« Six lectures sur six rendront `absent`, et la section entière s'effacera
-> jusqu'à la première mesure réelle. »*
+La conséquence annoncée par le plan tient toujours : tant que rien n'est mesuré,
+la section s'efface. C'est le comportement voulu, et il est en place.
 
-C'est conforme à la doctrine : on n'invente pas une valeur. Mais c'est une page
-qui se vide, et je préfère que vous le sachiez avant qu'elle se vide.
+Consigné plutôt que supprimé : une entrée qui disparaît sans trace laisse penser
+qu'on l'a oubliée.
 
-> *Ma recommandation :* appliquer. Une section absente est honnête ; une section
-> qui montre des chiffres inventés sans le dire ne l'est pas. Et Valence la
-> remplira.
+---
 
-**Coût de l'attente :** l'application montre des chiffres faux sans le signaler.
-C'est le seul point de cette liste qui est un manquement à la doctrine, pas un
-inachèvement.
+## 1.6 — L'ÉTAT RÉEL DE LA PHASE 3, vérifié le 04/08
+
+Le plan décrit cinq lots bloquants. Trois n'en sont plus.
+
+| Lot | État vérifié |
+|---|---|
+| 10 · Purge RGPD | **Ouvert** — 55 couples sans statut. Voir §1.4. |
+| 11 · `registrations.status` | **Ouvert** — la RPC attend votre mot. Voir §2.1. |
+| 12 · `registration_id` jamais devinée | **Tenu par construction.** La colonne n'existe pas sur `telemetry_sessions`, et rien ne l'écrit. Consigné en D-45 : le jour où ce lien sera voulu, le chemin facile sera le rapprochement par date, et il se trompera. |
+| 13 · Insights, liste blanche | **Fait.** Voir §1.5. |
+| 27bis · Déclencheur `coach_availability` | **Fait, les deux moitiés.** Le déclencheur pose `pending_validation` et non plus `closed` ; `creneauMessageLogic.ts` le dit à l'écran — « Créneau proposé », « en attente de validation ». |
+
+Autrement dit : **le Jalon 2 tient en trois arbitrages** — la typographie
+(§1.1), la migration d'autorisation (§1.3), et la rétention RGPD (§1.4) — plus
+la RPC de pointage côté site (§2.1).
 
 ---
 

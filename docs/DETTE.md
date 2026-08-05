@@ -1973,3 +1973,38 @@ vit dans `src/circuit/circuitGenerator.ts`.
 Et une correction à D-40 : `docs/DETTE.md:1756` affirmait que `kinematics.ts`
 n'a aucun appelant hors tests. C'est faux depuis `src/telemetry/adaptation.ts:48`
 (29/07/2026), pour `cumulativeDistance` seulement.
+
+---
+
+## D-45 — Le lot 12 est tenu par CONSTRUCTION, et c'est fragile
+
+**Mesuré le 04/08/2026, sur la base de production.**
+
+Le plan V3 pose : *« `registration_id` jamais devinée. Elle se pose au moment de
+la clôture, depuis le contexte réel du flux REC, jamais par rapprochement de
+date ou de circuit. **Une séance sans inscription reste sans inscription** —
+c'est un fait, pas un trou à combler. »*
+
+**Il n'y a rien à corriger, parce qu'il n'y a rien.**
+
+`telemetry_sessions` ne porte **aucune** colonne `registration_id` — vérifié
+colonne par colonne sur les 28 qu'elle compte. La table porte bien un `event_id`,
+mais l'application ne l'écrit jamais : la seule occurrence du dépôt est une
+déclaration de type (`src/types/telemetry.ts:91`) et une clé étrangère générée
+(`database.types.ts:7669`). Aucun `insert`, aucun `update`.
+
+Le lien entre une séance télémétrique et une inscription **n'existe pas**. La
+doctrine est donc respectée, mais par absence, pas par garde.
+
+**POURQUOI CE CONSTAT EST CONSIGNÉ PLUTÔT QUE CLASSÉ SANS SUITE.**
+
+Le jour où quelqu'un voudra ce lien — et il le voudra, c'est ce qui relie une
+mesure à une journée payée — le chemin facile sera le rapprochement par date et
+par circuit. Il marchera presque toujours. Il se trompera le jour où deux
+pilotes roulent le même après-midi sur le même circuit, ou quand une séance est
+capturée hors inscription.
+
+Ce lot n'est pas « fait ». Il est **non commencé, et c'est correct**. La ligne à
+retenir est celle du plan : une séance sans inscription reste sans inscription.
+
+Rien à armer par un test : on ne peut pas garder l'absence d'une colonne.
