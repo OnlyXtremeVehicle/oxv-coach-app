@@ -21,11 +21,16 @@
  *
  * « DIAGNOSTIC DÈS LE PREMIER ÉCHEC »
  *
- * Le dossier insiste sur un point : **la localisation refusée est la cause la
- * plus fréquente et la moins comprise.** iOS l'exige pour scanner en Bluetooth,
- * ce qui n'a aucun sens du point de vue du pilote — il ne cherche pas sa
- * position, il cherche son boîtier. Un message générique le laisse chercher du
- * côté du boîtier, qui n'y est pour rien.
+ * Le dossier insiste sur un point : **une autorisation refusée est la cause la
+ * plus fréquente et la moins comprise.** Le pilote ne cherche pas sa position
+ * ni à régler son téléphone, il cherche son boîtier. Un message générique le
+ * laisse chercher du côté du boîtier, qui n'y est pour rien.
+ *
+ * PRÉCISION APPORTÉE LE 05/08/2026, parce que le dossier et ce fichier
+ * disaient tous deux « localisation » : depuis iOS 13, scanner en BLE demande
+ * l'autorisation **Bluetooth**, pas la localisation. Celle-ci reste exigée sur
+ * Android antérieur à 12. Les deux causes existent donc, mais elles ne se
+ * confondent pas — et elles n'envoient pas au même panneau des Réglages.
  *
  * Chaque cause a donc son libellé, et son geste quand il y en a un.
  */
@@ -52,10 +57,41 @@ export interface Diagnostic {
  */
 const MOTIFS: { test: RegExp; cause: string; geste?: string }[] = [
   {
-    // LA cause la plus fréquente, et la moins comprise.
-    test: /location|permission|unauthorized|not authorized/i,
+    /**
+     * L'AUTORISATION BLUETOOTH PASSE AVANT LA LOCALISATION, ET CE N'EST PAS UN
+     * DÉTAIL D'ORDRE.
+     *
+     * Le motif localisation portait `permission|unauthorized`. Il gagnait donc
+     * sur les deux chaînes que l'application émet réellement — « Bluetooth non
+     * disponible (état : Unauthorized) » et « Permissions Bluetooth refusées :
+     * Bluetooth » — et le pilote lisait « La localisation est refusée ». Le mot
+     * FRANÇAIS « Permissions » accrochait une expression écrite pour l'anglais.
+     *
+     * Conséquence au circuit : envoyé au mauvais panneau des Réglages, il
+     * accordait une autorisation qui n'était pas la bloquante, et revenait
+     * sur le même échec.
+     *
+     * Relevé le 05/08/2026. Aucune de ces chaînes françaises n'était testée.
+     */
+    test: /état\s*:\s*Unauthorized|Permissions?\s+Bluetooth\s+refus|not\s+authorized\s+to\s+use\s+Bluetooth|bluetooth.*unauthorized|unauthorized.*bluetooth/i,
+    cause: 'L’autorisation Bluetooth est refusée.',
+    geste: 'Réglages ▸ OXV ▸ Bluetooth.',
+  },
+  {
+    // LA cause la plus fréquente, et la moins comprise. Le motif est resserré
+    // sur la localisation SEULE : `permission` et `unauthorized` sont partis
+    // au motif ci-dessus, qui est plus spécifique.
+    test: /location|ACCESS_FINE_LOCATION|localisation/i,
     cause: 'La localisation est refusée.',
     geste: 'iOS l’exige pour chercher un appareil Bluetooth, même sans vous localiser.',
+  },
+  {
+    // « Liaison interrompue — reconnexion… » (bluetoothService) tombait au
+    // générique et se lisait comme un échec fermé. Une reconnexion EN COURS
+    // n'est pas une panne : elle se dit au présent.
+    test: /reconnexion|reconnect/i,
+    cause: 'La liaison s’est interrompue, la reconnexion est en cours.',
+    geste: 'Restez à proximité du boîtier.',
   },
   {
     test: /powered\s*off|poweredoff|bluetooth.*off|is off/i,
