@@ -87,20 +87,47 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: https://example.supabase.co
           EXPO_PUBLIC_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
 
-      # SEC-1 ACTION 6 — fail-closed : sans les 3 secrets, le job ÉCHOUE
-      # (fini le skip silencieux). Seule exception : PRs de forks et
-      # dependabot, à qui GitHub n'injecte jamais les secrets → skip
-      # EXPLICITE et loggé. Provision : docs/architecture/17_CI_RLS_SETUP.md.
+      # SEC-1 ACTION 6 — fail-closed sans les 3 secrets. L'intention est juste :
+      # avant, l'absence de secrets produisait un skip SILENCIEUX, et une garde
+      # qui se saute sans bruit ne garde rien.
+      #
+      # MAIS ELLE A ÉCHOUÉ SUR TOUS LES PUSHES DEPUIS LE 03/08/2026, jour où le
+      # déclencheur a été étendu à toutes les branches. Les secrets n'ayant
+      # jamais été créés, chaque exécution était rouge — y compris celles dont
+      # le job `typecheck + lint + format` passait. Le fondateur l'a relevé le
+      # 05/08 : « chaque run GitHub a fail depuis le début. »
+      #
+      # UN ROUGE PERMANENT N'EST PAS UNE GARDE, C'EST UN BRUIT. Il ne peut plus
+      # signaler une régression réelle, puisqu'il est déjà rouge. Le dépôt le
+      # dit lui-même ailleurs, à propos du workflow de mesure — et c'est au nom
+      # de cette phrase qu'il a été désactivé plutôt que laissé rouge :
+      #
+      #   « mieux vaut un workflow désactivé qu'un rouge permanent qu'on
+      #     apprend à ignorer »  (docs/T3_MESURE.md:88)
+      #
+      # LE COMPROMIS RETENU garde la porte là où elle mord :
+      #
+      #   - pull request, ou push sur `main`  → ÉCHEC. Rien ne rejoint la
+      #     branche principale sans que la RLS ait été éprouvée.
+      #   - push sur une branche de travail   → AVERTISSEMENT visible, et le
+      #     job passe. Le rouge redevient un signal.
+      #
+      # Ce n'est PAS un renoncement : le jour où les secrets existeront, les
+      # deux chemins exécuteront les tests. Provision : 17_CI_RLS_SETUP.md.
       # ATTENTION : ces secrets pointent un projet Supabase de TEST, JAMAIS la prod.
-      - name: Tests RLS (obligatoires — échec si secrets absents)
+      - name: Tests RLS (bloquants sur main et en pull request)
         run: |
           if [ -z "$TEST_SUPABASE_URL" ] || [ -z "$TEST_SUPABASE_ANON_KEY" ] || [ -z "$TEST_SUPABASE_SERVICE_KEY" ]; then
             if [ "$IS_FORK" = "true" ] || [ "$IS_DEPENDABOT" = "true" ]; then
               echo "::warning::Tests RLS SKIPPÉS explicitement : contexte fork/dependabot, GitHub n'injecte pas les secrets. Ils tourneront sur la branche interne."
               exit 0
             fi
-            echo "::error::Secrets CI RLS manquants — voir docs/architecture/17_CI_RLS_SETUP.md"
-            exit 1
+            if [ "$PORTE_DURE" = "true" ]; then
+              echo "::error::Secrets CI RLS manquants — 85 tests de politique n'ont JAMAIS tourné. Voir docs/architecture/17_CI_RLS_SETUP.md. Ne jamais les pointer vers la production."
+              exit 1
+            fi
+            echo "::warning::Secrets CI RLS absents — les 85 tests de politique n'ont pas tourné sur ce push. Ils resteront BLOQUANTS en pull request et sur main. Provision : docs/architecture/17_CI_RLS_SETUP.md"
+            exit 0
           fi
           npm run test:rls -- --ci --reporters=default
         env:
@@ -109,3 +136,4 @@ jobs:
           TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
           IS_FORK: ${{ github.event.pull_request.head.repo.fork == true }}
           IS_DEPENDABOT: ${{ github.actor == 'dependabot[bot]' }}
+          PORTE_DURE: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
