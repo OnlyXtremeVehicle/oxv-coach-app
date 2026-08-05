@@ -1243,8 +1243,29 @@ function CornerZoomSheet({
   const [evolution, setEvolution] = useState<CornerEvolution | null>(null);
   const [evoStatus, setEvoStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
 
+  /**
+   * LA DEMANDE DÉJÀ PARTIE EST RETENUE PAR UNE RÉFÉRENCE, ET NON PAR L'ÉTAT.
+   *
+   * Corrigé le 04/08/2026, même défaut que l'écran d'appairage du flux REC —
+   * trouvé par la garde `effetAutoAnnule.guard.test.ts` en cherchant celui-là.
+   *
+   * L'effet se gardait sur `evoStatus !== 'idle'` et portait `evoStatus` dans
+   * ses dépendances. Il appelait `setEvoStatus('loading')` AVANT le chargement :
+   * la valeur changeait, l'effet était relancé, React exécutait d'abord le
+   * nettoyage du passage précédent — `cancelled = true` —, et ce passage-là
+   * portait la requête en vol. Au retour, `if (!cancelled)` était faux :
+   * `'ready'` n'arrivait jamais et l'onglet Évolution tournait indéfiniment.
+   *
+   * La clé porte l'identité de la demande. Elle change quand le virage ou les
+   * séances changent, et alors seulement le chargement repart.
+   */
+  const cleEvolution = `${corner.startProgress}|${corner.endProgress}|${circuitSessionIds.join(',')}`;
+  const evolutionDemandee = useRef<string | null>(null);
+
   useEffect(() => {
-    if (tab !== 'evolution' || evoStatus !== 'idle') return;
+    if (tab !== 'evolution') return;
+    if (evolutionDemandee.current === cleEvolution) return;
+    evolutionDemandee.current = cleEvolution;
     if (corner.startProgress === null || corner.endProgress === null) {
       setEvolution({ passes: [] });
       setEvoStatus('ready');
@@ -1268,7 +1289,7 @@ function CornerZoomSheet({
     return () => {
       cancelled = true;
     };
-  }, [tab, evoStatus, corner, circuitSessionIds, lapNumberBySession]);
+  }, [tab, cleEvolution, corner, circuitSessionIds, lapNumberBySession]);
 
   // Index BRUT : voir la pastille plus haut. Le titre de cette feuille et celui
   // de l'écran d'annotation doivent désigner le même virage.

@@ -24,7 +24,7 @@
  * fail-closed. Skia natif (dev-client EAS), pas d'Expo Go.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
@@ -94,6 +94,12 @@ const LAST_DEVICE_KEY = 'oxv.lastPairedDeviceId';
 const LAST_BELT_KEY = 'oxv.lastPairedBeltId';
 /** Temps d'affichage de la carte « appairé » avant d'ouvrir Placement. */
 const PAIRED_REVEAL_MS = 1400;
+
+/**
+ * Délai au-delà duquel la question de consentement est considérée comme sans
+ * réponse, et la navigation libérée. Voir le garde-fou plus bas.
+ */
+const DELAI_SECOURS_CONSENTEMENT_MS = 8000;
 const RADAR_SIZE = 208;
 
 // ---------------------------------------------------------------------------
@@ -597,14 +603,38 @@ export default function EquipementScreen() {
    * La date est écrite à l'OUVERTURE, pas à la réponse : une feuille refermée
    * sans répondre est une question posée.
    */
-  const [consentDemande, setConsentDemande] = useState(false);
+  /**
+   * LA GARDE EST UNE RÉFÉRENCE, ET C'EST LA CORRECTION DU 04/08/2026.
+   *
+   * Elle était un état, et cet état figurait dans les dépendances de son propre
+   * effet. Le flux s'arrêtait donc à l'appairage : connecté, et plus rien.
+   *
+   * L'enchaînement, et il est déterministe — ce n'était pas un aléa réseau :
+   *
+   *   1. l'effet part, appelle `setConsentDemande(true)` ;
+   *   2. ce changement d'état relance l'effet, puisque la valeur est en
+   *      dépendance ;
+   *   3. React exécute d'abord le NETTOYAGE du passage précédent, qui pose
+   *      `annule = true` ;
+   *   4. or c'est ce passage-là qui porte la fonction asynchrone en vol.
+   *
+   * Quand les lectures revenaient, tous les `if (annule) return` se
+   * déclenchaient. `setPorteConsentement` n'était jamais appelé, la porte
+   * restait « inconnu », et l'effet de navigation — qui exige « fermee » —
+   * attendait indéfiniment.
+   *
+   * Une référence ne provoque pas de rendu, donc pas de relance, donc pas de
+   * nettoyage prématuré. `consentDemande` n'était lu nulle part au rendu :
+   * c'était un état qui n'avait aucune raison d'en être un.
+   */
+  const consentDemande = useRef(false);
   useEffect(() => {
     if (status !== 'connected') return;
-    if (consentDemande) return; // une seule tentative par passage sur l'écran
+    if (consentDemande.current) return; // une seule tentative par passage sur l'écran
     const pilotId = profile?.id;
 
     let annule = false;
-    setConsentDemande(true);
+    consentDemande.current = true;
 
     // Sans compte connu, on ne peut ni lire ni dater : on ne demande pas, et on
     // libère la navigation plutôt que de retenir le pilote sur cet écran.
@@ -636,7 +666,13 @@ export default function EquipementScreen() {
 
       // On date AVANT d'ouvrir : si l'application meurt feuille ouverte, la
       // question a tout de même été posée, et on ne la reposera pas.
-      await markBiometryAsked(pilotId);
+      //
+      // L'ÉCRITURE EST GARDÉE, comme les deux lectures au-dessus. Elle ne
+      // l'était pas : un rejet réseau au bord d'une piste faisait échouer la
+      // fonction asynchrone avant tout appel à `setPorteConsentement`, et
+      // laissait le pilote sur cet écran. Échouer à DATER la question ne
+      // justifie pas de retenir la journée — au pire, elle sera reposée.
+      await markBiometryAsked(pilotId).catch(() => undefined);
       if (annule) return;
       setPorteConsentement('ouverte');
       setConsentOpen(true);
@@ -645,7 +681,36 @@ export default function EquipementScreen() {
     return () => {
       annule = true;
     };
-  }, [status, consentDemande, profile?.id]);
+  }, [status, profile?.id]);
+
+  /**
+   * LE GARDE-FOU — au circuit, RIEN ne retient le pilote sur cet écran.
+   *
+   * Le correctif ci-dessus ferme la cause connue. Celui-ci ferme la CLASSE :
+   * quoi qu'il arrive à la question de consentement — un rejet qu'on n'a pas
+   * prévu, une lecture qui ne revient jamais, un chemin ajouté demain qui
+   * oublierait de refermer la porte —, la navigation reprend.
+   *
+   * C'est la règle que le plan pose pour l'écran d'arrivée, et elle vaut ici :
+   * permission refusée, GPS qui ne fixe pas, circuit sans coordonnées —
+   * « aucun de ces cas ne bloque la journée ».
+   *
+   * Huit secondes : deux lectures réseau en parallèle, au bord d'une piste, sur
+   * un réseau de campagne. Généreux à dessein — ce délai ne doit jamais couper
+   * une question légitime, seulement rattraper un silence.
+   */
+  useEffect(() => {
+    if (status !== 'connected') return;
+    if (porteConsentement !== 'inconnu') return;
+    const secours = setTimeout(() => {
+      console.warn(
+        '[OXV][rec] la question de consentement n’a pas abouti en ' +
+          `${DELAI_SECOURS_CONSENTEMENT_MS / 1000} s — la navigation reprend.`
+      );
+      setPorteConsentement('fermee');
+    }, DELAI_SECOURS_CONSENTEMENT_MS);
+    return () => clearTimeout(secours);
+  }, [status, porteConsentement]);
 
   // Scan au montage (permissions + timeout) — identique à la v1.
   useEffect(() => {
@@ -683,8 +748,15 @@ export default function EquipementScreen() {
     setSelectedId(deviceId);
     setError(null);
     bluetoothService.stopScan();
-    await bluetoothService.connect(deviceId);
-    setConnecting(false);
+    // `connect` n'était pas gardé : un rejet sautait `setConnecting(false)` et
+    // l'écran restait en attente, indéfiniment, sans message. Le `finally`
+    // rend la main dans tous les cas — l'erreur, elle, arrive par
+    // `onError`, qui est déjà branché.
+    try {
+      await bluetoothService.connect(deviceId);
+    } finally {
+      setConnecting(false);
+    }
   }, []);
 
   const onRescan = useCallback(() => {
