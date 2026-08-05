@@ -397,11 +397,34 @@ function IncidentSheet({
   sessionId: string | null;
   onClose: () => void;
 }) {
-  const [occurredAt] = useState(() => new Date());
+  /**
+   * L'HEURE EST POSÉE À L'OUVERTURE DE LA FEUILLE, PAS AU MONTAGE DE L'ÉCRAN.
+   *
+   * `IncidentSheet` est monté sans condition avec l'écran de fin. L'heure était
+   * donc figée à l'instant où le pilote ARRIVE sur l'écran — pas à celui où il
+   * décide de déclarer, et encore moins à celui de l'incident. Elle est
+   * affichée, et écrite dans `occurred_at` sur une ligne que la RLS rend
+   * immuable : un incident survenu vingt minutes plus tôt en piste était daté
+   * faux, sans recours.
+   *
+   * Poser l'heure à l'ouverture ne la rend pas vraie — elle reste l'heure de la
+   * DÉCLARATION. Le libellé le dit désormais, au lieu de laisser croire.
+   * Capturer la véritable heure de survenue demande un champ de saisie : c'est
+   * un lot, pas un correctif, et il est consigné.
+   */
+  const [occurredAt, setOccurredAt] = useState(() => new Date());
+  useEffect(() => {
+    if (visible) setOccurredAt(new Date());
+  }, [visible]);
   const [description, setDescription] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [done, setDone] = useState(false);
+  /**
+   * TROIS ISSUES, PARCE QU'IL Y EN A TROIS. `done` n'en distinguait que deux —
+   * « pas encore » et « c'est fait » — et rangeait dans la seconde un envoi qui
+   * n'avait pas eu lieu.
+   */
+  const [issue, setIssue] = useState<null | 'envoyee' | 'en_attente'>(null);
   const [error, setError] = useState<string | null>(null);
 
   const tooShort = description.trim().length < 10;
@@ -429,12 +452,19 @@ function IncidentSheet({
         photoUri: photoUri ?? undefined,
       });
       if (res.ok) {
-        setDone(true);
+        setIssue('envoyee');
         haptic('doorSnap');
         return;
       }
-      // Échec réseau/serveur : on préserve la déclaration dans le registre
-      // hors-ligne SÉPARÉ (jamais la file de capture) — rejouée plus tard.
+      // ÉCHEC. La déclaration est préservée dans le registre hors-ligne SÉPARÉ
+      // (jamais la file de capture), et le pilote l'apprend — il ne l'apprenait
+      // pas : `setDone(true)` affichait « votre déclaration est enregistrée »
+      // alors que le serveur venait de la refuser, et `res.error` était jeté.
+      //
+      // On ne cherche PAS à distinguer ici le refus de la panne : le service
+      // rend `{ ok: false }` pour les deux, et se tromper de côté coûterait une
+      // déclaration perdue au bord d'une piste. On garde tout, et on dit la
+      // vérité — « en attente », pas « enregistrée ».
       enqueueIncident(storage, {
         localId: makeLocalId(),
         sessionId,
@@ -443,7 +473,8 @@ function IncidentSheet({
         photoUri,
         queuedAt: new Date().toISOString(),
       });
-      setDone(true);
+      setError(res.error ?? null);
+      setIssue('en_attente');
     } catch {
       enqueueIncident(storage, {
         localId: makeLocalId(),
@@ -453,7 +484,7 @@ function IncidentSheet({
         photoUri,
         queuedAt: new Date().toISOString(),
       });
-      setDone(true);
+      setIssue('en_attente');
     } finally {
       setSending(false);
     }
@@ -462,10 +493,21 @@ function IncidentSheet({
   return (
     <Sheet visible={visible} onClose={onClose}>
       <View style={styles.sheet}>
-        {done ? (
+        {issue !== null ? (
           <>
-            <Text style={styles.sheetTitle}>Votre déclaration est enregistrée.</Text>
-            <Text style={styles.sheetBody}>Elle ne peut plus être modifiée.</Text>
+            <Text style={styles.sheetTitle}>
+              {issue === 'envoyee'
+                ? 'Votre déclaration est enregistrée.'
+                : 'Votre déclaration est en attente d’envoi.'}
+            </Text>
+            <Text style={styles.sheetBody}>
+              {issue === 'envoyee'
+                ? 'Elle ne peut plus être modifiée.'
+                : 'Elle est conservée sur cet appareil et partira dès que possible.'}
+            </Text>
+            {issue === 'en_attente' && error ? (
+              <Text style={styles.sheetError}>{error}</Text>
+            ) : null}
             <PressScale
               onPress={onClose}
               accessibilityLabel="Fermer"
@@ -479,7 +521,10 @@ function IncidentSheet({
           <>
             <Text style={styles.sheetTitle}>Déclarer un incident</Text>
             <Text style={styles.sheetMeta}>
-              {occurredAt.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+              {`Déclaré à ${occurredAt.toLocaleTimeString('fr-FR', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}`}
             </Text>
             <TextInput
               value={description}

@@ -2008,3 +2008,36 @@ Ce lot n'est pas « fait ». Il est **non commencé, et c'est correct**. La lign
 retenir est celle du plan : une séance sans inscription reste sans inscription.
 
 Rien à armer par un test : on ne peut pas garder l'absence d'une colonne.
+
+---
+
+## D-46 — Le rejeu d'un incident refusé n'a aucune borne
+
+**Relevé le 05/08/2026, en corrigeant l'annonce mensongère du même chemin.**
+
+`replayQueue` (`src/features/rec/incidentOffline.ts:141-164`) parcourt la file
+et ne retire un élément **que sur succès**. Aucun compteur de tentatives, aucun
+abandon, aucune mise à l'écart.
+
+Or `incidentService.report` rend `{ ok: false }` pour deux familles très
+différentes :
+
+- **des pannes** — réseau absent, envoi de photo interrompu. Elles passeront ;
+- **des refus** — description invalide (`validateIncidentDescription`), session
+  expirée, rejet de la RLS ou d'une contrainte. **Ceux-là ne passeront jamais.**
+
+Un refus définitif est donc réessayé à chaque montage de `rec/fin.tsx`
+(`:127-137`), sans fin, et sans que personne ne le sache. Le pilote voit
+désormais « en attente d'envoi » — ce qui est vrai — mais l'attente est
+éternelle et rien ne le dit.
+
+Ce n'est pas un mensonge, c'est un silence. Il coûte peu aujourd'hui : la file
+est vide en production. Il coûtera le jour où une déclaration sera refusée.
+
+**Ce qu'il faudrait**, et pourquoi je ne l'ai pas fait dans le même correctif :
+un compteur de tentatives sur chaque élément, un plafond, et un état
+« abandonnée » visible au pilote. Cela change le contrat du registre hors-ligne
+et de ses tests — c'est un lot, pas une retouche en marge d'un correctif
+d'affichage.
+
+**Non consigné ailleurs** : `docs/J3_JOUR_J.md` ne mentionne pas ce chemin.
