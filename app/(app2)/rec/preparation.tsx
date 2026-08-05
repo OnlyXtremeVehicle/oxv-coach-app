@@ -112,6 +112,7 @@ import {
   resolveDaySessionId,
   setMyAttendanceOptIn,
 } from '@/features/rec/attendancePublicService';
+import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 
 const HERO_HEIGHT = 170;
 const AVATAR = 44;
@@ -538,7 +539,7 @@ export default function PreparationScreen() {
         <Pressable
           onPress={() => {
             haptic('tap');
-            router.push('/(app2)/rec/equipement' as never);
+            router.push(REC_ROUTES.appairage as never);
           }}
           accessibilityRole="button"
           accessibilityLabel="Passer à l’appairage du boîtier"

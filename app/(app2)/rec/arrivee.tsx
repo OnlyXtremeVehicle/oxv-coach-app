@@ -148,7 +148,7 @@ export default function ArriveeScreen() {
     haptic('arm');
     // Même transition que la v1 (navigation vers l'équipement) — la porte du
     // prochain écran fait la bascule visuelle. La state machine n'est pas touchée.
-    router.replace(REC_ROUTES.equipement as never);
+    router.replace(REC_ROUTES.appairage as never);
   };
 
   return (

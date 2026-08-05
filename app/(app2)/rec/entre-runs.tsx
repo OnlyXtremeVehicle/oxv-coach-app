@@ -311,7 +311,7 @@ export default function EntreRunsScreen() {
           (parité v1, vérif L2 [1]) : sans lui, un pilote arrivé au circuit
           (état S7) ne pourrait pas démarrer/relancer une capture. */}
         <PressScale
-          onPress={() => router.replace(REC_ROUTES.equipement as never)}
+          onPress={() => router.replace(REC_ROUTES.appairage as never)}
           accessibilityLabel="Préparer le prochain run"
           containerStyle={styles.nextRunContainer}
           style={styles.nextRun}

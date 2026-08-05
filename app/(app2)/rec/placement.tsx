@@ -55,6 +55,7 @@ import {
   typo,
   useDoorTransition,
 } from '@/ui/v2';
+import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 
 /** Côté du canevas de la jauge circulaire d'armement. */
 const GAUGE_SIZE = 96;
@@ -388,7 +389,7 @@ export default function PlacementScreen() {
             qu'une connexion s'établit invite à l'interrompre. */}
         {actionSecondaire ? (
           <Pressable
-            onPress={() => router.push('/(app2)/rec/equipement' as never)}
+            onPress={() => router.push(REC_ROUTES.appairage as never)}
             accessibilityRole="button"
             accessibilityLabel={actionSecondaire}
             hitSlop={12}

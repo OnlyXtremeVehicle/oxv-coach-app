@@ -83,6 +83,14 @@ describe('captureStep — fonction totale et cohérence route/segment', () => {
     // arrivee / roulage sont dans V2_HIDDEN_SEGMENTS ; entre-runs et fin sont
     // portés par leurs propres missions — on vérifie ici seulement le préfixe.
     expect(REC_ROUTES.arrivee).toBe('/(app2)/rec/arrivee');
+    // Étapes 4a et 4b, posées le 05/08/2026 en scindant `rec/equipement`.
+    //
+    // CES DEUX LIGNES SONT LE SEUL MÉCANISME DU DÉPÔT qui fera échouer
+    // bruyamment un futur renommage de route. `typedRoutes` est actif mais ne
+    // connaît aucune route `(app2)`, et tous les appels sont castés `as never` :
+    // une route morte ne se verrait nulle part ailleurs.
+    expect(REC_ROUTES.appairage).toBe('/(app2)/rec/appairage');
+    expect(REC_ROUTES.consentement).toBe('/(app2)/rec/consentement');
     expect(REC_ROUTES.roulage).toBe('/(app2)/rec/roulage');
     expect(REC_ROUTES.entreRuns).toBe('/(app2)/rec/entre-runs');
     expect(REC_ROUTES.fin).toBe('/(app2)/rec/fin');

@@ -95,7 +95,23 @@ export function decideCentralButton(inputs: CentralButtonInputs): CentralButtonD
  * s'efface sur ces écrans (silence en piste). Les routes n'existent pas
  * encore (lot L2) — la liste fait foi, le layout (app2) est déjà branché.
  */
-export const V2_HIDDEN_SEGMENTS = ['arrivee', 'equipement', 'placement', 'roulage', 'fin'] as const;
+/**
+ * `equipement` est devenu `appairage` le 05/08/2026, et `consentement` s'y
+ * ajoute — l'étape 4b, hors des huit.
+ *
+ * SANS CES DEUX ENTRÉES, LA BARRE D'ONGLETS RÉAPPARAÎT sur les deux écrans
+ * neufs, et le test qui accompagne cette liste ITÈRE la liste : il serait
+ * resté vert. Le silence en piste aurait été rompu sans qu'aucune garde ne le
+ * dise.
+ */
+export const V2_HIDDEN_SEGMENTS = [
+  'arrivee',
+  'appairage',
+  'consentement',
+  'placement',
+  'roulage',
+  'fin',
+] as const;
 
 /**
  * Le chemin courant est-il un écran immersif du flux capture V2 ?

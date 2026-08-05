@@ -36,7 +36,7 @@ export type CaptureStep =
   | 'hors-jour'
   | 'preparation'
   | 'arrivee'
-  | 'equipement'
+  | 'appairage'
   | 'placement'
   | 'roulage'
   | 'entre-runs'
@@ -54,7 +54,7 @@ export interface CaptureStepResult {
 
 /**
  * Routes du flux de capture v2, sous /(app2)/rec/<segment>. Les segments
- * immersifs (arrivee, equipement, placement, roulage, fin) sont ceux de
+ * immersifs (arrivee, appairage, consentement, placement, roulage, fin) sont ceux de
  * `centralButtonLogic.V2_HIDDEN_SEGMENTS` — la TabBar s'y efface. `preparation`
  * et `entre-runs` restent hors de cette liste (barre visible), conformément au
  * contrat de coquille du lot L0.
@@ -63,7 +63,18 @@ export const REC_ROUTES = {
   hub: '/(app2)/rec',
   preparation: '/(app2)/rec/preparation',
   arrivee: '/(app2)/rec/arrivee',
-  equipement: '/(app2)/rec/equipement',
+  /**
+   * Étape 4a. S'appelait `equipement` jusqu'au 05/08/2026.
+   *
+   * LA CLÉ A ÉTÉ RETIRÉE, PAS REPOINTÉE, ET C'ÉTAIT L'INTÉRÊT DE L'OPÉRATION.
+   * `typedRoutes` est actif mais ne connaît aucune route `(app2)`, et tous les
+   * appels sont castés `as never` : rien n'aurait signalé une route morte.
+   * Supprimer la clé transforme chaque appelant en erreur de compilation
+   * franche — c'est le seul mécanisme du dépôt qui morde ici.
+   */
+  appairage: '/(app2)/rec/appairage',
+  /** Étape 4b, hors des huit : affichée la PREMIÈRE FOIS seulement. */
+  consentement: '/(app2)/rec/consentement',
   placement: '/(app2)/rec/placement',
   roulage: '/(app2)/rec/roulage',
   entreRuns: '/(app2)/rec/entre-runs',

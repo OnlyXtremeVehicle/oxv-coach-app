@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { Canvas, Circle } from '@shopify/react-native-skia';
@@ -61,8 +61,6 @@ import {
   loadBiometryConsents,
   loadBiometrySollicitation,
   markBiometryAsked,
-  setBiometryCaptureConsent,
-  setBiometryCoachShareConsent,
 } from '@/services/consentService';
 import { getMyAssignedDevice, type MyDevice } from '@/services/deviceHealthService';
 import { listMyCoaches } from '@/services/pilotConsentService';
@@ -75,7 +73,6 @@ import {
   PressScale,
   RollingCounter,
   SectionHeader,
-  Sheet,
   StateView,
   colors,
   radius,
@@ -86,6 +83,7 @@ import {
   useDoorTransition,
   useReduceMotion,
 } from '@/ui/v2';
+import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 
 const SCAN_TIMEOUT_MS = 30_000;
 /** Mémoire du dernier boîtier appairé — partagée avec la v1 (même clé). */
@@ -231,174 +229,10 @@ function PairedDot() {
 // Case à cocher (consentement) — carré hairline, coche accent
 // ---------------------------------------------------------------------------
 
-function CheckRow({
-  checked,
-  title,
-  hint,
-  onToggle,
-}: {
-  checked: boolean;
-  title: string;
-  hint: string;
-  onToggle: () => void;
-}) {
-  return (
-    // Le `hint` porte la PORTÉE RÉELLE du consentement (source :
-    // docs/juridique/consentement_biometrie.md). Le label seul écrasait ce
-    // texte : on cochait sans jamais l'entendre. Il est lu après le label et
-    // l'état, sans polluer la navigation par éléments.
-    <PressScale
-      onPress={onToggle}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel={title}
-      accessibilityHint={hint}
-    >
-      <View style={styles.checkRow}>
-        <View style={[styles.checkBox, checked && styles.checkBoxOn]}>
-          {checked ? (
-            <Svg width={14} height={14} viewBox="0 0 24 24">
-              <Path
-                d="M5 12.5 L10 17.5 L19 6.5"
-                stroke={colors.text.hi}
-                strokeWidth={2.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                fill="none"
-              />
-            </Svg>
-          ) : null}
-        </View>
-        <View style={styles.checkLabels}>
-          <Text style={styles.checkTitle}>{title}</Text>
-          <Text style={styles.checkHint}>{hint}</Text>
-        </View>
-      </View>
-    </PressScale>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Feuille de consentement biométrie (texte = docs/juridique/consentement_biometrie.md,
 // source avocat qui fait foi — tenir ce bloc synchronisé avec le .md).
 // ---------------------------------------------------------------------------
-
-function ConsentSheet({
-  visible,
-  initialCapture,
-  initialShare,
-  onClose,
-  onSave,
-}: {
-  visible: boolean;
-  initialCapture: boolean;
-  initialShare: boolean;
-  onClose: () => void;
-  onSave: (capture: boolean, share: boolean) => void;
-}) {
-  const { height } = useWindowDimensions();
-  const [capture, setCapture] = useState(initialCapture);
-  const [share, setShare] = useState(initialShare);
-
-  // Réinitialise le brouillon sur l'état persisté à chaque ouverture.
-  useEffect(() => {
-    if (visible) {
-      setCapture(initialCapture);
-      setShare(initialShare);
-    }
-  }, [visible, initialCapture, initialShare]);
-
-  // Invariant (miroir du garde-fou du service) : le partage implique la capture.
-  const toggleCapture = () => {
-    setCapture((prev) => {
-      const next = !prev;
-      if (!next) setShare(false); // couper la capture coupe le partage
-      return next;
-    });
-  };
-  const toggleShare = () => {
-    setShare((prev) => {
-      const next = !prev;
-      if (next) setCapture(true); // partager suppose capter
-      return next;
-    });
-  };
-
-  return (
-    <Sheet visible={visible} onClose={onClose} snapHeight={Math.round(height * 0.86)}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetBody}>
-        <View style={styles.sheetHead}>
-          <OxvIcon name="coeur" size={26} color={colors.text.hi} />
-          <Text style={styles.sheetTitle}>Biométrie cardiaque</Text>
-        </View>
-
-        <Text style={styles.sheetPara}>
-          Nous mesurons votre fréquence cardiaque pendant vos sessions, rien d’autre. Selon votre
-          équipement : votre Apple Watch (mesure au poignet, indicative) ou une ceinture Polar
-          appairée au paddock par le staff (mesure de précision).
-        </Text>
-        <Text style={styles.sheetPara}>
-          Aucune donnée cardiaque ne s’affiche pendant que vous roulez. La restitution se fait à
-          l’arrêt, pour une lecture posée de votre séance.
-        </Text>
-        <Text style={styles.sheetPara}>
-          Vous seul y avez accès. Votre coach ne la voit que si vous l’y autorisez. Vos données sont
-          conservées 30 jours, puis supprimées.
-        </Text>
-
-        <View style={styles.sheetChecks}>
-          <CheckRow
-            checked={capture}
-            title="Capter ma fréquence cardiaque en séance"
-            hint="Active la mesure et sa restitution, pour vous seul."
-            onToggle={toggleCapture}
-          />
-          <CheckRow
-            checked={share}
-            title="Partager avec mon coach"
-            hint="Ouvre à votre coach l’analyse détaillée de votre cardio. Suppose la capture."
-            onToggle={toggleShare}
-          />
-        </View>
-
-        <Text style={styles.sheetNote}>
-          Désactivé par défaut. Vous pouvez le retirer à tout moment, en un geste.
-        </Text>
-
-        {/* ~42 px de haut. On n'élargit QUE VERS L'EXTÉRIEUR — jamais vers le
-            bouton voisin.
-            POURQUOI : `PressScale` pose le `style` reçu sur sa vue INTERNE, pas
-            sur le Pressable externe qui porte le hitSlop. Le `marginTop` de
-            `ghostBtn` vit donc DANS « Refuser » : les deux zones tactiles
-            externes sont jointives, écart réel nul. Un hitSlop symétrique les
-            ferait se recouvrir à cheval sur la frontière, et « Refuser », frère
-            le plus tardif, gagnerait le hit-test : appuyer sur le bas
-            d'« Accorder » RÉVOQUERAIT le consentement. Sur un écran de
-            consentement, c'est le pire défaut possible. Deux bords opposés,
-            donc : aucun recouvrement possible. */}
-        <PressScale
-          onPress={() => onSave(capture, share)}
-          accessibilityLabel="Accorder"
-          hitSlop={{ top: 6 }}
-          style={styles.primaryBtn}
-        >
-          <Text style={styles.primaryBtnLabel}>Accorder</Text>
-        </PressScale>
-        <PressScale
-          onPress={() => onSave(false, false)}
-          accessibilityLabel="Refuser"
-          hitSlop={{ bottom: 6 }}
-          style={styles.ghostBtn}
-        >
-          {/* « Refuser » = révocation EXPLICITE (vérif L2 [8]) : écrit
-              capture=false/share=false via onSave, jamais un simple close qui
-              laisserait un consentement pré-coché intact. */}
-          <Text style={styles.ghostBtnLabel}>Refuser</Text>
-        </PressScale>
-      </ScrollView>
-    </Sheet>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Écran
@@ -423,7 +257,6 @@ export default function EquipementScreen() {
   const [isCoached, setIsCoached] = useState(false);
   const [captureConsent, setCaptureConsent] = useState(false);
   const [coachShareConsent, setCoachShareConsent] = useState(false);
-  const [consentOpen, setConsentOpen] = useState(false);
   /**
    * Sort de la feuille de consentement L21, du point de vue de la NAVIGATION.
    *
@@ -435,7 +268,20 @@ export default function EquipementScreen() {
    * « déjà refermée » se confondre, et la navigation serait partie sous la
    * requête. Trois états, parce qu'il y a trois situations.
    */
-  const [porteConsentement, setPorteConsentement] = useState<'inconnu' | 'ouverte' | 'fermee'>(
+  /**
+   * LA PORTE EST DEVENUE UNE DESTINATION, le 05/08/2026, en scindant l'écran.
+   *
+   * Elle valait `'inconnu' | 'ouverte' | 'fermee'` du temps où le consentement
+   * était une feuille posée SUR cet écran. Le consentement étant maintenant un
+   * écran à part, la question n'est plus « la feuille est-elle refermée » mais
+   * « où va-t-on ensuite ».
+   *
+   * TROIS ÉTATS, toujours, et pour la même raison qu'avant : `'inconnu'` retient
+   * la navigation pendant que les lectures sont en vol. Un booléen ferait
+   * repartir le pilote vers `placement` avant que la réponse n'arrive, et la
+   * question ne serait jamais posée.
+   */
+  const [destination, setDestination] = useState<'inconnu' | 'consentement' | 'placement'>(
     'inconnu'
   );
 
@@ -490,7 +336,9 @@ export default function EquipementScreen() {
 
   const onScanBelt = useCallback(async () => {
     if (!beltAllowed) {
-      setConsentOpen(true); // pas de consentement → on renvoie vers la feuille
+      // Pas de consentement : on renvoie vers l'écran qui le recueille, plutôt
+      // que d'ouvrir une feuille qui n'existe plus.
+      router.push(REC_ROUTES.consentement as never);
       return;
     }
     setBelts([]);
@@ -581,12 +429,13 @@ export default function EquipementScreen() {
     // est-elle ouverte » aurait laissé partir la navigation pendant que la
     // requête était en vol, et la feuille se serait ouverte sur un écran déjà
     // quitté. L'état inconnu retient la navigation ; lui seul la libère.
-    if (porteConsentement !== 'fermee') return;
+    if (destination === 'inconnu') return;
+    const route = destination === 'consentement' ? REC_ROUTES.consentement : REC_ROUTES.placement;
     const timer = setTimeout(() => {
-      router.replace('/(app2)/rec/placement' as never);
+      router.replace(route as never);
     }, PAIRED_REVEAL_MS);
     return () => clearTimeout(timer);
-  }, [status, selectedId, porteConsentement]);
+  }, [status, selectedId, destination]);
 
   /**
    * L21 — LA QUESTION DU CARDIO, UNE FOIS, JUSTE APRÈS L'APPAIRAGE.
@@ -619,7 +468,7 @@ export default function EquipementScreen() {
    *   4. or c'est ce passage-là qui porte la fonction asynchrone en vol.
    *
    * Quand les lectures revenaient, tous les `if (annule) return` se
-   * déclenchaient. `setPorteConsentement` n'était jamais appelé, la porte
+   * déclenchaient. `setDestination` n'était jamais appelé, la porte
    * restait « inconnu », et l'effet de navigation — qui exige « fermee » —
    * attendait indéfiniment.
    *
@@ -639,7 +488,7 @@ export default function EquipementScreen() {
     // Sans compte connu, on ne peut ni lire ni dater : on ne demande pas, et on
     // libère la navigation plutôt que de retenir le pilote sur cet écran.
     if (!pilotId) {
-      setPorteConsentement('fermee');
+      setDestination('placement');
       return;
     }
 
@@ -659,8 +508,8 @@ export default function EquipementScreen() {
         });
 
       if (!doit) {
-        // Rien à demander : la navigation reprend son cours normal.
-        setPorteConsentement('fermee');
+        // Rien à demander : on file droit au placement.
+        setDestination('placement');
         return;
       }
 
@@ -669,13 +518,24 @@ export default function EquipementScreen() {
       //
       // L'ÉCRITURE EST GARDÉE, comme les deux lectures au-dessus. Elle ne
       // l'était pas : un rejet réseau au bord d'une piste faisait échouer la
-      // fonction asynchrone avant tout appel à `setPorteConsentement`, et
+      // fonction asynchrone avant tout appel à `setDestination`, et
       // laissait le pilote sur cet écran. Échouer à DATER la question ne
       // justifie pas de retenir la journée — au pire, elle sera reposée.
-      await markBiometryAsked(pilotId).catch(() => undefined);
+      // ON DATE AVANT DE NAVIGUER, et l'ordre compte : si l'application meurt
+      // entre les deux, la question compte tout de même comme posée. L'écrire
+      // au montage de l'écran de consentement changerait cette règle sur une
+      // donnée sensible au sens de l'article 9.
+      const marque = await markBiometryAsked(pilotId).catch(() => ({
+        ok: false as const,
+        error: 'réseau',
+      }));
       if (annule) return;
-      setPorteConsentement('ouverte');
-      setConsentOpen(true);
+      if (!marque.ok) {
+        // Échouer à dater ne justifie pas de retenir la journée. On pose tout de
+        // même la question : au pire elle sera reposée une fois.
+        console.warn('[OXV][rec] datation de la question de consentement :', marque.error);
+      }
+      setDestination('consentement');
     })();
 
     return () => {
@@ -701,16 +561,16 @@ export default function EquipementScreen() {
    */
   useEffect(() => {
     if (status !== 'connected') return;
-    if (porteConsentement !== 'inconnu') return;
+    if (destination !== 'inconnu') return;
     const secours = setTimeout(() => {
       console.warn(
         '[OXV][rec] la question de consentement n’a pas abouti en ' +
           `${DELAI_SECOURS_CONSENTEMENT_MS / 1000} s — la navigation reprend.`
       );
-      setPorteConsentement('fermee');
+      setDestination('placement');
     }, DELAI_SECOURS_CONSENTEMENT_MS);
     return () => clearTimeout(secours);
-  }, [status, porteConsentement]);
+  }, [status, destination]);
 
   // Scan au montage (permissions + timeout) — identique à la v1.
   useEffect(() => {
@@ -783,25 +643,6 @@ export default function EquipementScreen() {
     hasPolarBelt: isCoached,
     isIOS: Platform.OS === 'ios',
   });
-
-  const onSaveConsent = useCallback(
-    async (capture: boolean, share: boolean) => {
-      setConsentOpen(false);
-      if (!profile?.id) return;
-      // Fail-closed : on n'écrit QUE les changements réels (rien coché et rien
-      // en base ⇒ aucune écriture). Le garde-fou partage⇒capture est DANS le
-      // service ; l'invariant UI (CheckRow) le reflète déjà.
-      try {
-        if (capture !== captureConsent) await setBiometryCaptureConsent(profile.id, capture);
-        if (share !== coachShareConsent) await setBiometryCoachShareConsent(profile.id, share);
-        setCaptureConsent(capture);
-        setCoachShareConsent(share);
-      } catch {
-        // best-effort — jamais bloquant
-      }
-    },
-    [profile?.id, captureConsent, coachShareConsent]
-  );
 
   const isPairing = phase === 'connecting' || phase === 'connected';
 
@@ -1019,7 +860,7 @@ export default function EquipementScreen() {
                     : 'Capture activée'
                   : 'Non activée'
               }
-              onPress={() => setConsentOpen(true)}
+              onPress={() => router.push(REC_ROUTES.consentement as never)}
             />
 
             {showWatchReminder ? (
@@ -1033,18 +874,6 @@ export default function EquipementScreen() {
           </View>
         ) : null}
       </ScrollView>
-
-      <ConsentSheet
-        visible={consentOpen}
-        initialCapture={captureConsent}
-        initialShare={coachShareConsent}
-        onClose={() => {
-          setConsentOpen(false);
-          // La question a été posée et refermée : la navigation reprend.
-          setPorteConsentement('fermee');
-        }}
-        onSave={onSaveConsent}
-      />
     </Animated.View>
   );
 }
@@ -1224,95 +1053,4 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   // Feuille de consentement
-  sheetBody: {
-    paddingBottom: space.lg,
-  },
-  sheetHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    marginBottom: space.lg,
-  },
-  sheetTitle: {
-    fontFamily: typo.display,
-    fontSize: 18,
-    letterSpacing: 0.5,
-    color: colors.text.hi,
-  },
-  sheetPara: {
-    fontFamily: typo.body,
-    fontSize: 14,
-    lineHeight: 21,
-    color: colors.text.mid,
-    marginBottom: space.md,
-  },
-  sheetChecks: {
-    marginTop: space.sm,
-    gap: space.sm,
-  },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: space.md,
-    paddingVertical: space.sm,
-  },
-  checkBox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: colors.border.strong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 1,
-  },
-  checkBoxOn: {
-    backgroundColor: colors.accent,
-    borderColor: colors.accent,
-  },
-  checkLabels: {
-    flex: 1,
-  },
-  checkTitle: {
-    fontFamily: typo.bodyMedium,
-    fontSize: 15,
-    color: colors.text.hi,
-  },
-  checkHint: {
-    fontFamily: typo.body,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.text.low,
-    marginTop: 2,
-  },
-  sheetNote: {
-    fontFamily: typo.body,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.text.low,
-    marginTop: space.md,
-    marginBottom: space.lg,
-  },
-  primaryBtn: {
-    backgroundColor: colors.accent,
-    borderRadius: radius.pill,
-    paddingVertical: space.md,
-    alignItems: 'center',
-  },
-  primaryBtnLabel: {
-    fontFamily: typo.bodySemi,
-    fontSize: 15,
-    letterSpacing: 0.5,
-    color: colors.text.hi,
-  },
-  ghostBtn: {
-    marginTop: space.sm,
-    paddingVertical: space.md,
-    alignItems: 'center',
-  },
-  ghostBtnLabel: {
-    fontFamily: typo.bodyMedium,
-    fontSize: 14,
-    color: colors.text.mid,
-  },
 });
