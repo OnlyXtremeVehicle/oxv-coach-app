@@ -1,5 +1,10 @@
 # Dette — défauts constatés hors du périmètre du lot en cours
 
+> **Ce document recense ce qui est CONSTATÉ.** Ce qui est *bloqué faute d'un
+> arbitrage* vit dans `docs/DECISIONS_FONDATEUR.md` — un seul endroit pour
+> toutes les décisions en attente, à travers les neuf jalons et la
+> coordination avec le site.
+
 Règle de travail V3 : _« Ne jamais élargir le périmètre d'un lot. Si un défaut apparaît hors périmètre, le consigner ici et continuer. »_
 
 Chaque entrée porte son fichier, sa ligne, et le lot qui la traitera. Rien n'est corrigé ici.
