@@ -265,6 +265,91 @@ produit.
 
 ---
 
+# 2bis · JALON 3 — LE FLUX REC
+
+Relevé le 05/08/2026 par inventaire adversarial des huit écrans.
+
+## 2bis.1 — DÉCISION · Le plan demande deux écrans que la dette dit inutiles
+
+`OXV_Mirror_V3_Arbre_Pilote.md:197` et `:218-224` réclament deux écrans neufs,
+`rec/appairage` et `rec/consentement`. Aucun n'existe.
+
+Ce n'est pas un oubli : votre décision du 01/08 (`DETTE.md:761`, commit `ea637f0`)
+a replié le consentement en feuille sur `equipement`, et maintenu le flux à huit
+étapes. Les deux textes coexistent, et se contredisent.
+
+**Conséquence pratique :** une relecture du plan conclut « il manque deux
+écrans » ; une relecture de la dette conclut « c'est fait ». Le prochain qui
+lira l'un sans l'autre se trompera.
+
+> *Ma recommandation :* amender le plan, pas le code. Votre décision est plus
+> récente et mieux motivée — le pilote vient de connecter son boîtier, c'est là
+> que la question du cardio a un sens.
+
+## 2bis.2 — DÉCISION · Le chrono en roulage : le code est plus strict que le plan
+
+`Arbre_Pilote.md:240` dit que l'écran de roulage « affiche le chrono et le
+dernier tour bouclé ». `roulage.tsx` n'affiche **aucun chrono** — et le revendique
+en en-tête, au nom du Principe 3.
+
+Je m'attendais à trouver une violation. C'est l'inverse : l'implémentation est
+plus silencieuse que ce que le plan autorise.
+
+> *Ma recommandation :* garder le silence total et amender le plan. Un chiffre
+> qui bouge en piste appelle le regard, et c'est exactement ce que le Principe 3
+> refuse. Le chrono figé existe déjà un écran plus loin.
+
+## 2bis.3 — DÉCISION · La barre d'onglets : deux règles écrites s'opposent
+
+`Plan_Montage.md:229` : « barre masquée en roulage seulement ».
+`centralButtonLogic.ts:98` la masque sur **cinq** segments du flux.
+
+L'une des deux doit céder.
+
+## 2bis.4 — DÉCISION · Le « passable » du QCM, en haut à droite
+
+`Arbre_Pilote.md:262` place l'action « passer » en haut à droite. La règle des
+cibles du même jalon dit : « aucune action critique dans le tiers supérieur ».
+À trancher **avant** de dessiner l'écran, pas après.
+
+## 2bis.5 — DÉCISION · La ceinture cardio réservée aux pilotes coachés
+
+`equipement.tsx:894` applique cette règle. Elle est assumée en commentaire et
+n'apparaît dans aucun document de cadrage.
+
+## 2bis.6 — SCHÉMA · Trois changements, à soumettre sans appliquer
+
+- **`pilot_notes` structuré.** La table ne porte qu'un `body text`. Le plan le
+  dit : « un texte libre ne se croise pas ». Le QCM de l'entre-runs ne peut pas
+  être livré proprement avant. Le vocabulaire des options devra rester aligné
+  sur celui de la variable coach.
+- **`declared_at` sur `eligibility_items`.** Absente ; dix occurrences dans le
+  dépôt, toutes documentaires.
+- **Une policy d'écriture pilote sur `eligibility_items`.** Même avec la
+  colonne, le pilote ne pourrait rien déclarer : l'`UPDATE` y est réservé à
+  `is_admin()`. Second changement, second accord.
+
+## 2bis.7 — DÉCISION PRODUIT puis SCHÉMA · Qui possède la ligne d'éligibilité
+
+Question D-13 de `docs/CE_QUI_ME_MANQUE.md:91`, jamais tranchée : le site ou
+l'application. Elle bloque le bloc d'éligibilité en tête de préparation.
+
+À savoir avant de trancher : **le pilote n'est pas aveugle aujourd'hui.** La
+fonction serveur `eligibility-reminders` lui envoie à J-14, J-7 et J-2 la liste
+nominative de ce qui manque, avec renvoi vers le site. Le défaut est un défaut
+de rapatriement dans l'application, pas une absence d'information.
+
+## 2bis.8 — DÉCISION · La préséance pilote : il n'y a rien à arbitrer, encore
+
+Le plan demande que le ressenti du pilote prime sur « la variable posée par le
+coach ». **Aucun producteur de cette variable n'existe.** Le coach écrit des
+objectifs que rien dans l'espace pilote ne lit, et ce n'est pas le même objet.
+
+Il faut d'abord trancher **quel objet** est cette variable. C'est un lot, pas un
+correctif.
+
+---
+
 # 3 · CE QUI ATTEND UN TIERS
 
 ## 3.1 — AVIS · L'avocat
