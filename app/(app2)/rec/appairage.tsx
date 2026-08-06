@@ -44,6 +44,7 @@ import Svg, { Path } from 'react-native-svg';
 import { bluetoothService, type PolarDevice } from '@/ble/bluetoothService';
 import { requestBlePermissions } from '@/ble/permissions';
 import { diagnostiquer, texteDiagnostic } from '@/features/rec/diagnosticBle';
+import { batirPanneau } from '@/features/rec/panneauDiagnostic';
 import {
   clampBatteryLevel,
   deriveScanPhase,
@@ -238,6 +239,77 @@ function PairedDot() {
 // Écran
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Le panneau de diagnostic — deux colonnes qui ne se mélangent pas
+// ---------------------------------------------------------------------------
+
+/**
+ * Ce que le téléphone a établi, et ce que seul le pilote peut regarder.
+ *
+ * La règle du plan tient en une phrase : « les quatre causes non vérifiables
+ * sont posées en questions, jamais en affirmations ». Le rendu la respecte de
+ * deux façons — les questions gardent leur point d'interrogation, et une ligne
+ * vérifiée dont l'état est inconnu ne prend NI la couleur d'un succès NI celle
+ * d'un échec. Elle reste au gris de fond, avec un tiret.
+ *
+ * Le tiret est le même que partout ailleurs dans l'application : une absence se
+ * dit, elle ne se remplace pas par zéro ni par une supposition.
+ */
+function PanneauDiagnostic({
+  cause,
+  permissionIndeterminee,
+}: {
+  cause: string | null;
+  permissionIndeterminee: boolean;
+}) {
+  const panneau = batirPanneau({
+    cause,
+    permissionIndeterminee,
+    // Sur iOS la localisation n'est pas interrogeable : `app.json` ne déclare
+    // que la poignée Bluetooth. Elle bascule alors du côté des questions.
+    localisationLisible: Platform.OS === 'android',
+  });
+
+  return (
+    <View style={styles.diagBloc}>
+      <SectionHeader eyebrow="VÉRIFIÉ" />
+      {panneau.verifie.map((l) => (
+        <View key={l.cle} style={styles.diagLigne}>
+          <Text
+            style={[
+              styles.diagMarque,
+              l.etat === 'ok' && styles.diagMarqueOk,
+              l.etat === 'echec' && styles.diagMarqueEchec,
+            ]}
+            accessibilityElementsHidden
+          >
+            {l.etat === 'ok' ? '·' : l.etat === 'echec' ? '×' : '—'}
+          </Text>
+          <View style={styles.diagTextes}>
+            <Text
+              style={styles.diagLibelle}
+              accessibilityLabel={`${l.libelle} : ${
+                l.etat === 'ok' ? 'en ordre' : l.etat === 'echec' ? 'bloquant' : 'non vérifiable'
+              }`}
+            >
+              {l.libelle}
+            </Text>
+            {l.geste ? <Text style={styles.diagGeste}>{l.geste}</Text> : null}
+          </View>
+        </View>
+      ))}
+
+      <View style={styles.diagEspace} />
+      <SectionHeader eyebrow="À REGARDER" />
+      {panneau.questions.map((q) => (
+        <Text key={q.cle} style={styles.diagQuestion}>
+          {q.texte}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export default function EquipementScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
@@ -246,6 +318,12 @@ export default function EquipementScreen() {
   const [status, setStatus] = useState<BleStatus>(bluetoothService.getStatus());
   const [devices, setDevices] = useState<RaceBoxDevice[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Vrai quand la permission Bluetooth n'a PAS pu être lue — le `indetermine`
+   * de `permissionsLogic`. Le panneau de diagnostic s'en sert pour ne pas
+   * afficher en vert une ligne dont il ne sait rien.
+   */
+  const [permissionIndeterminee, setPermissionIndeterminee] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [myDevice, setMyDevice] = useState<MyDevice | null>(null);
   const [lastPairedId, setLastPairedId] = useState<string | null>(null);
@@ -579,6 +657,8 @@ export default function EquipementScreen() {
     (async () => {
       const perm = await requestBlePermissions();
       if (cancelled) return;
+      // « Je ne sais pas » n'est pas « oui » : voir `permissionsLogic`.
+      setPermissionIndeterminee(perm.indetermine === true);
       if (!perm.granted) {
         setError(`Permissions Bluetooth refusées : ${perm.missing.join(', ')}`);
         return;
@@ -749,8 +829,23 @@ export default function EquipementScreen() {
             ) : phase === 'empty' ? (
               <StateView
                 state="empty"
-                emptyMessage="Aucun équipement à portée. Vérifiez qu'il est allumé et proche de votre téléphone."
+                // « Vérifiez » est un impératif, que la doctrine proscrit — et le
+                // panneau ci-dessous pose désormais la question sans l'ordonner.
+                emptyMessage="Aucun équipement à portée."
                 style={styles.stateGap}
+              />
+            ) : null}
+
+            {/* LE DIAGNOSTIC, DÈS LE PREMIER ÉCHEC — lot 21c.
+                Deux colonnes qui ne se mélangent pas : ce que le téléphone a pu
+                établir, et ce que seul le pilote peut regarder. La seconde est
+                posée en QUESTIONS : affirmer « le boîtier est hors de portée »
+                sans le savoir enverrait chercher du mauvais côté.
+                La construction est dans `panneauDiagnostic.ts`, pure et testée. */}
+            {phase === 'error' || phase === 'empty' ? (
+              <PanneauDiagnostic
+                cause={error ? diagnostiquer(error).cause : null}
+                permissionIndeterminee={permissionIndeterminee}
               />
             ) : null}
 
@@ -879,6 +974,62 @@ export default function EquipementScreen() {
 }
 
 const styles = StyleSheet.create({
+  // --- Panneau de diagnostic (lot 21c) --------------------------------------
+  diagBloc: {
+    marginTop: space.lg,
+    gap: space.xs,
+  },
+  diagLigne: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.md,
+    paddingVertical: space.xs,
+  },
+  /**
+   * La marque d'état. `—` pour l'inconnu, et c'est délibéré : le tiret est le
+   * signe d'absence employé partout dans l'application. Une ligne dont on n'a
+   * pas pu lire l'état ne prend ni le vert ni le rouge.
+   */
+  diagMarque: {
+    fontFamily: typo.mono,
+    fontSize: 15,
+    lineHeight: 21,
+    width: 16,
+    textAlign: 'center',
+    color: colors.text.low,
+  },
+  diagMarqueOk: {
+    color: colors.text.hi,
+  },
+  diagMarqueEchec: {
+    color: colors.accent,
+  },
+  diagTextes: {
+    flex: 1,
+  },
+  diagLibelle: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    lineHeight: 21,
+    color: colors.text.hi,
+  },
+  diagGeste: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.mid,
+    marginTop: 1,
+  },
+  diagEspace: {
+    height: space.md,
+  },
+  diagQuestion: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    lineHeight: 22,
+    color: colors.text.mid,
+    paddingVertical: 2,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,
