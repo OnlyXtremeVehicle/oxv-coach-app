@@ -43,8 +43,10 @@ describe('les questions sont des questions', () => {
 
   it('elles ne varient pas selon la cause — les masquer serait affirmer par omission', () => {
     const sansCause = batirPanneau({ cause: null, ...IOS }).questions.map((q) => q.cle);
-    const avecCause = batirPanneau({ cause: 'Le Bluetooth est éteint sur ce téléphone.', ...IOS })
-      .questions.map((q) => q.cle);
+    const avecCause = batirPanneau({
+      cause: 'Le Bluetooth est éteint sur ce téléphone.',
+      ...IOS,
+    }).questions.map((q) => q.cle);
     expect(avecCause).toEqual(sansCause);
   });
 });
@@ -96,13 +98,21 @@ describe('la localisation change de colonne selon ce qu’on peut lire', () => {
    * `unavailable`. Elle n'a donc rien à faire dans une colonne « vérifié ».
    */
   it('sur iOS elle est une QUESTION, pas une ligne vérifiée', () => {
-    const p = batirPanneau({ cause: null, permissionIndeterminee: false, localisationLisible: false });
+    const p = batirPanneau({
+      cause: null,
+      permissionIndeterminee: false,
+      localisationLisible: false,
+    });
     expect(p.verifie.map((l) => l.cle)).not.toContain('localisation');
     expect(p.questions.map((q) => q.cle)).toContain('localisation');
   });
 
   it('là où elle est lisible, elle remonte d’elle-même dans le vérifié', () => {
-    const p = batirPanneau({ cause: null, permissionIndeterminee: false, localisationLisible: true });
+    const p = batirPanneau({
+      cause: null,
+      permissionIndeterminee: false,
+      localisationLisible: true,
+    });
     expect(p.verifie.map((l) => l.cle)).toContain('localisation');
     expect(p.questions.map((q) => q.cle)).not.toContain('localisation');
   });
