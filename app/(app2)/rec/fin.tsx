@@ -40,6 +40,16 @@ import { readHeartRate } from '@/services/v2/healthKitService';
 import { report as reportIncident } from '@/services/v2/incidentService';
 import { captureException } from '@/lib/sentry';
 import { storage } from '@/lib/mmkv';
+import {
+  CUMUL_VIDE,
+  ajouterRun,
+  dayCompteKey,
+  dayCumulKey,
+  faitsJournee,
+  journeeAPlusieursRuns,
+  lireCumul,
+  localDayIso,
+} from '@/features/rec/journeeLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSessionStore } from '@/store/useSessionStore';
 import {
@@ -96,6 +106,44 @@ export default function FinScreen() {
       ? (meta.endedAt ?? new Date()).getTime() - meta.startedAt.getTime()
       : null;
   const summary = buildFinSummary({ lapCount, durationMs, distanceKm: null });
+
+  /**
+   * LE CUMUL DE LA JOURNÉE — lot 21g, « journée résumée ».
+   *
+   * L'écran est atteint à la fin de CHAQUE run. Le résumé au-dessus est donc
+   * celui du run, et il le reste : c'est ce que le pilote vient de faire. Mais
+   * un pilote qui a fait quatre sorties voyait quatre fois le chiffre de la
+   * dernière, et jamais celui de sa journée.
+   *
+   * Le cumul s'ajoute UNE FOIS par séance — la garde est une clé MMKV par
+   * `sessionId`, empruntée à la célébration du record du jour. Un remontage de
+   * l'écran, un retour arrière, une reprise d'application ne recomptent pas.
+   */
+  const [cumul, setCumul] = useState(CUMUL_VIDE);
+  const cumulCompte = useRef(false);
+  useEffect(() => {
+    if (cumulCompte.current) return;
+    if (!sessionId || meta?.startedAt == null) return;
+    cumulCompte.current = true;
+
+    const jour = localDayIso(new Date());
+    const cleJour = dayCumulKey(jour);
+    const dejaCompte = storage.getString(dayCompteKey(sessionId)) != null;
+    const actuel = lireCumul(storage.getString(cleJour));
+
+    if (dejaCompte) {
+      setCumul(actuel);
+      return;
+    }
+    const suivant = ajouterRun(actuel, { tours: lapCount, dureeMs: durationMs });
+    storage.set(cleJour, JSON.stringify(suivant));
+    storage.set(dayCompteKey(sessionId), new Date().toISOString());
+    setCumul(suivant);
+  }, [sessionId, meta, lapCount, durationMs]);
+
+  // Sur la première sortie, cumul et run disent le même chiffre : afficher les
+  // deux sous deux titres différents ferait douter des deux.
+  const faitsDuJour = journeeAPlusieursRuns(cumul) ? faitsJournee(cumul) : [];
 
   // Célébration : AUCUN RecordFlash ici. La garde partagée recordCelebration.ts
   // fait du Bilan la SOURCE UNIQUE de la célébration d'un record (all-time) —
@@ -202,6 +250,7 @@ export default function FinScreen() {
         {phase === 'fini' ? (
           <FiniPhase
             summary={summary}
+            faitsDuJour={faitsDuJour}
             durationMin={finDurationMin(
               meta?.startedAt?.getTime() ?? null,
               (meta?.endedAt ?? new Date()).getTime()
@@ -285,10 +334,12 @@ export default function FinScreen() {
 // ---------------------------------------------------------------------------
 
 function FiniPhase({
+  faitsDuJour,
   summary,
   durationMin,
   onPreserve,
 }: {
+  faitsDuJour: ReturnType<typeof faitsJournee>;
   summary: ReturnType<typeof buildFinSummary>;
   durationMin: number | null;
   onPreserve: () => void;
@@ -319,6 +370,27 @@ function FiniPhase({
           {durationMin !== null ? `${durationMin} min de piste.` : 'Séance enregistrée.'}
         </Text>
       )}
+
+      {/* LA JOURNÉE, et seulement à partir de la deuxième sortie. Sur la
+          première, elle répéterait le run mot pour mot. */}
+      {faitsDuJour.length > 0 ? (
+        <View style={styles.jourBloc}>
+          <Text style={styles.jourEyebrow}>DEPUIS CE MATIN</Text>
+          <View style={styles.summaryRow}>
+            {faitsDuJour.map((f) => (
+              <View
+                key={f.cle}
+                style={styles.summaryItem}
+                accessible
+                accessibilityLabel={`${f.valeur} ${f.label} depuis ce matin`}
+              >
+                <Text style={styles.summaryValue}>{f.valeur}</Text>
+                <Text style={styles.summaryLabel}>{f.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
       <PressScale
         onPress={onPreserve}
         accessibilityLabel="Préserver la séance"
@@ -569,6 +641,17 @@ function IncidentSheet({
 }
 
 const styles = StyleSheet.create({
+  jourBloc: {
+    marginTop: space.lg,
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  jourEyebrow: {
+    fontFamily: typo.mono,
+    fontSize: 10,
+    letterSpacing: 2,
+    color: colors.text.mid,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,
