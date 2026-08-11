@@ -234,3 +234,7 @@
 20260729034125|l21j_fuseau_horaire_pilote
 20260729034239|t2_thumbhash_session_media
 20260729034324|l27bis_creneau_en_attente_de_validation
+20260804174643|registrations_revoke_update_etape1        (posée par l'ÉQUIPE DU SITE)
+20260804174727|registrations_revoke_update_etape1_correctif (idem — liste corrigée)
+20260811232100|j3_21f_pilot_notes_ressenti_structure
+20260811232130|j3_21d_eligibility_declared_at_et_rpc
