@@ -532,7 +532,7 @@ function IncidentSheet({
               multiline
               maxLength={4000}
               placeholder="Décrivez ce qui s’est passé."
-              placeholderTextColor={colors.text.dim}
+              placeholderTextColor={colors.text.mid}
               selectionColor={colors.accent}
               accessibilityLabel="Description de l’incident"
               style={styles.sheetInput}
@@ -618,7 +618,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   summaryEmpty: {
     fontFamily: typo.body,
@@ -630,7 +630,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   preserveArc: {
     width: 56,
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 11,
     letterSpacing: 0.6,
-    color: colors.text.dim,
+    color: colors.text.mid,
   },
   // Sheet incident
   sheet: {
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 12,
     letterSpacing: 1,
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   sheetInput: {
     minHeight: 96,
@@ -722,7 +722,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 10,
     letterSpacing: 0.5,
-    color: colors.text.dim,
+    color: colors.text.mid,
     alignSelf: 'flex-end',
   },
   sheetError: {

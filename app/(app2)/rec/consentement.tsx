@@ -353,7 +353,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 12,
     lineHeight: 17,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginTop: space.md,
     marginBottom: space.lg,
   },
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 13,
     lineHeight: 19,
-    color: colors.accent,
+    color: colors.text.hi,
     marginBottom: space.md,
   },
   checkRow: {
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 12,
     lineHeight: 17,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginTop: 2,
   },
   primaire: {

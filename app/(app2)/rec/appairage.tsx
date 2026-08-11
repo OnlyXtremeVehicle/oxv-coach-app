@@ -996,13 +996,13 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     width: 16,
     textAlign: 'center',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   diagMarqueOk: {
     color: colors.text.hi,
   },
   diagMarqueEchec: {
-    color: colors.accent,
+    color: colors.text.hi,
   },
   diagTextes: {
     flex: 1,
@@ -1100,21 +1100,21 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 10,
     letterSpacing: 1.2,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginTop: 2,
   },
   deviceSignal: {
     fontFamily: typo.mono,
     fontSize: 11,
     letterSpacing: 0.6,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginTop: 2,
   },
   chevron: {
     fontFamily: typo.body,
     fontSize: 20,
     lineHeight: 20,
-    color: colors.text.dim,
+    color: colors.text.mid,
   },
   // Carte appairé
   pairedCard: {
@@ -1138,7 +1138,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 1.4,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   pairedName: {
     fontFamily: typo.bodySemi,
@@ -1158,7 +1158,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginBottom: space.sm,
   },
   batteryRow: {

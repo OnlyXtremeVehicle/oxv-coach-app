@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.text.low,
+    backgroundColor: colors.text.mid,
   },
   // Contraste renforcé (jalon 3, règle 1) : sur les écrans du flux REC, lus en
   // plein soleil, le 7:1 de l'AAA est un PLANCHER. `accent` ne mesure que 3,10

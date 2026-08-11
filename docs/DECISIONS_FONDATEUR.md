@@ -350,6 +350,54 @@ correctif.
 
 ---
 
+## 2bis.9 — DÉCISION · Le rouge de marque ne peut pas porter de texte à 7:1
+
+**Mesuré le 05/08/2026, pas estimé.** Sur `#C8102E`, aucune couleur de texte
+n'atteint le plancher de 7:1 que le jalon impose aux huit écrans du flux :
+
+| texte sur le rouge | contraste |
+|---|---|
+| blanc pur `#FFFFFF` | **5,88** — le maximum atteignable |
+| `#F5F5F7` | 5,40 |
+| `text.hi` `#E8E9ED` | 4,85 |
+
+Trois libellés sont dans ce cas, dont « Maintenez pour armer » sur le bouton
+d'armement. Il était à **2,90** — `text.hi` à 70 % d'opacité — c'est-à-dire que
+la consigne expliquant comment armer la capture était le texte le moins lisible
+du flux. Corrigé à 5,88 le 05/08 : l'opacité retirée, le blanc pur posé. C'est
+le mieux possible sans toucher au rouge.
+
+Trois issues, et la troisième est légitime :
+
+- **changer le rouge de marque** sur ces boutons — il faudrait un rouge bien
+  plus sombre, et ce n'est plus la couleur OXV ;
+- **passer ces boutons en bord seul**, texte clair sur fond sombre : le
+  plancher redevient atteignable, mais l'armement perd sa masse rouge, qui est
+  précisément ce qui le rend trouvable en plein soleil ;
+- **assumer 5,88 sur les boutons pleins**, en écrivant pourquoi. Le plancher
+  s'applique au texte qu'on doit lire pour comprendre ; un libellé de bouton
+  est doublé par la forme, la position et le geste.
+
+> *Ma recommandation :* la troisième, écrite noir sur blanc dans le dossier de
+> conception. Un plancher qu'on ne peut pas tenir et qu'on ne discute pas
+> devient un plancher qu'on ignore.
+
+## 2bis.10 — DÉCISION · `mid` sur `bg.card2` mesure 6,74
+
+Quatre centièmes sous le plancher. C'est un défaut de JETON, pas d'écran : les
+huit écrans du flux emploient désormais `mid` comme gris secondaire, et il passe
+sur `bg.base` (8,14) et `bg.card` (7,52).
+
+Le relever le rapprocherait de `hi` (12,44) et écraserait un palier de la
+hiérarchie — c'est exactement l'arbitrage que la note du 25/07 avait déjà tranché
+dans l'autre sens pour `low` et `dim`. Il se regarde sur un écran, pas dans un
+tableau.
+
+**Coût de l'attente :** trois écrans du flux emploient `bg.card2`. Faible, et
+mesurable.
+
+---
+
 # 3 · CE QUI ATTEND UN TIERS
 
 ## 3.1 — AVIS · L'avocat

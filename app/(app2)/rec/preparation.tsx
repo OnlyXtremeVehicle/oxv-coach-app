@@ -872,7 +872,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2.4,
     textTransform: 'uppercase',
-    color: colors.accent,
+    color: colors.text.hi,
   },
   headerTitle: {
     fontFamily: typo.display,
@@ -943,7 +943,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 12,
     letterSpacing: 1.6,
-    color: colors.accent,
+    color: colors.text.hi,
   },
 
   // Sections / cartes
@@ -1111,7 +1111,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 11,
     letterSpacing: 0.5,
-    color: colors.text.low,
+    color: colors.text.mid,
     marginTop: space.xs,
   },
   convoyBtn: {
@@ -1151,6 +1151,6 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 11,
     letterSpacing: 0.5,
-    color: colors.text.dim,
+    color: colors.text.mid,
   },
 });

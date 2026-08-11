@@ -255,6 +255,6 @@ const styles = StyleSheet.create({
     fontFamily: typo.mono,
     fontSize: 12,
     letterSpacing: 2,
-    color: colors.accent,
+    color: colors.text.hi,
   },
 });

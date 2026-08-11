@@ -355,7 +355,7 @@ export default function PlacementScreen() {
             <TraceCircuit centerline={centerline} height={180} markers={markers} />
           ) : (
             <View style={styles.trackFallback}>
-              <OxvIcon name="circuit" size={30} color={colors.text.low} />
+              <OxvIcon name="circuit" size={30} color={colors.text.mid} />
               <Text style={styles.trackFallbackName}>{selected?.name ?? 'Circuit'}</Text>
             </View>
           )}
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     fontFamily: typo.body,
     fontSize: 14,
     lineHeight: 20,
-    color: colors.accent,
+    color: colors.text.hi,
     marginTop: space.lg,
   },
   footer: {
@@ -516,12 +516,26 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     color: colors.text.hi,
   },
+  /**
+   * « Maintenez pour armer » — LE TEXTE LE MOINS LISIBLE DU FLUX, et c'était
+   * la consigne qui explique comment armer la capture.
+   *
+   * Mesuré le 05/08/2026 : `text.hi` à 70 % d'opacité sur le rouge de marque
+   * donne **2,90**. Sous le seuil AA ordinaire de 4,5, très loin du plancher de
+   * 7:1 que le jalon impose aux huit écrans du flux — et en plein soleil, au
+   * paddock, sur un bouton qu'il faut trouver avant de rouler.
+   *
+   * L'opacité est retirée et le blanc pur remplace le gris clair : 5,88, le
+   * MAXIMUM atteignable sur `#C8102E`. Le plancher de 7:1 reste hors de portée
+   * sur le rouge de marque — aucune couleur de texte ne l'atteint. C'est un
+   * arbitrage qui vous revient : changer le rouge, ou passer ces boutons en
+   * bord seul. Consigné au dossier de décisions.
+   */
   armHint: {
     fontFamily: typo.mono,
     fontSize: 10,
     letterSpacing: 1,
-    color: colors.text.hi,
-    opacity: 0.7,
+    color: '#FFFFFF',
     marginTop: 3,
   },
 });

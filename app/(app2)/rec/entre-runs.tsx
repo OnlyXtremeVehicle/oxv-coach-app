@@ -177,7 +177,7 @@ export default function EntreRunsScreen() {
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <Path d={EMPTY_CIRCUIT_PATH} stroke={colors.text.dim} strokeWidth={2} fill="none" />
+        <Path d={EMPTY_CIRCUIT_PATH} stroke={colors.text.mid} strokeWidth={2} fill="none" />
       </Svg>
 
       {/*
@@ -274,7 +274,7 @@ export default function EntreRunsScreen() {
             multiline
             maxLength={5000}
             placeholder="Écrivez ici, si vous le souhaitez."
-            placeholderTextColor={colors.text.dim}
+            placeholderTextColor={colors.text.mid}
             selectionColor={colors.accent}
             accessibilityLabel="Votre note rapide"
             style={styles.noteInput}
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     letterSpacing: 2,
     textTransform: 'uppercase',
-    color: colors.accent,
+    color: colors.text.hi,
     alignSelf: 'flex-start',
   },
   dialWrap: {
@@ -367,12 +367,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   bestEmpty: {
     fontFamily: typo.monoSemi,
     fontSize: 28,
-    color: colors.text.dim,
+    color: colors.text.mid,
   },
   hintRow: {
     width: '100%',
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 1.6,
     textTransform: 'uppercase',
-    color: colors.text.low,
+    color: colors.text.mid,
   },
   noteInput: {
     minHeight: 64,
