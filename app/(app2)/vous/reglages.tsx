@@ -377,6 +377,14 @@ export default function ReglagesScreen() {
 
         {/* 3 — DONNÉES & SÉCURITÉ */}
         <Group eyebrow="DONNÉES & SÉCURITÉ">
+          {/* L'entrée durable vers le suivi des incidents. Sans elle, l'écran
+              serait orphelin : le pilote ne peut pas revenir sur un run passé
+              pour savoir où en est sa déclaration. */}
+          <ActionRow
+            label="Mes déclarations d’incident"
+            caption="Ce que vous avez signalé, et où ça en est."
+            onPress={() => router.push('/(app2)/vous/declarations' as never)}
+          />
           <ActionRow
             label="Exporter mes données"
             caption="Une copie de vos données, au format ouvert."

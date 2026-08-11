@@ -16,6 +16,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { Buffer } from 'buffer';
 
 import { supabase } from '@/lib/supabase';
+import type { SuiviBrut } from '@/features/rec/incidentSuiviLogic';
 
 const BUCKET = 'pilot-media';
 
@@ -173,4 +174,46 @@ export async function listMine(): Promise<IncidentRow[]> {
     photoPath: r.photo_path,
     createdAt: r.created_at,
   }));
+}
+
+/**
+ * Les suivis d'une ou plusieurs déclarations.
+ *
+ * LA TABLE EXISTAIT SANS LECTEUR. `incident_followups` est en production depuis
+ * le 02/08/2026, avec une politique qui l'ouvre au pilote déclarant — et rien
+ * dans l'application ne la lisait. Un pilote déclarait un incident et n'en
+ * entendait plus jamais parler.
+ *
+ * La RLS borne déjà aux déclarations du pilote courant : la requête n'ajoute
+ * donc pas de filtre sur l'auteur, elle borne sur les incidents demandés. Une
+ * liste vide en entrée ne déclenche aucun appel.
+ */
+export async function listFollowups(
+  incidentIds: readonly string[]
+): Promise<Record<string, SuiviBrut[]>> {
+  const ids = incidentIds.filter((s) => typeof s === 'string' && s.length > 0);
+  if (ids.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('incident_followups')
+    .select('id, incident_id, state, note, created_at')
+    .in('incident_id', ids);
+
+  if (error) {
+    console.warn('[OXV][incident] listFollowups :', error.message);
+    return {};
+  }
+
+  const par: Record<string, SuiviBrut[]> = {};
+  for (const r of data ?? []) {
+    const cle = r.incident_id;
+    if (typeof cle !== 'string') continue;
+    (par[cle] ??= []).push({
+      id: r.id,
+      state: r.state,
+      note: r.note,
+      created_at: r.created_at,
+    });
+  }
+  return par;
 }
