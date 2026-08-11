@@ -59,7 +59,22 @@ export async function listMyNotes(): Promise<PilotNote[]> {
  * un lien optionnel (rattacher la note à une séance) — jamais une pré-saisie de
  * contenu.
  */
-export async function addNote(body: string, sessionId?: string | null): Promise<MutationResult> {
+export async function addNote(
+  body: string,
+  sessionId?: string | null,
+  /**
+   * Le ressenti structuré du QCM de l'entre-runs. Absent pour une note libre —
+   * et une note libre reste parfaitement valide : les deux colonnes sont
+   * nullables en base.
+   *
+   * `theme` est CONTRAINT côté Postgres (`pilot_notes_theme_check`) sur le
+   * vocabulaire de la variable coach. Une valeur hors liste ne serait pas
+   * silencieusement acceptée : l'insertion serait refusée. C'est voulu — le
+   * croisement avec ce que le coach observe n'a de sens que si les deux
+   * emploient les mêmes mots.
+   */
+  structure?: { theme: string; ressenti: string } | null
+): Promise<MutationResult> {
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
   if (!uid) return { ok: false, error: 'Session expirée.' };
@@ -68,7 +83,13 @@ export async function addNote(body: string, sessionId?: string | null): Promise<
 
   const { data, error } = await supabase
     .from('pilot_notes')
-    .insert({ user_id: uid, body: text, session_id: sessionId ?? null } as never)
+    .insert({
+      user_id: uid,
+      body: text,
+      session_id: sessionId ?? null,
+      theme: structure?.theme ?? null,
+      ressenti: structure?.ressenti ?? null,
+    } as never)
     .select('id')
     .single();
   if (error || !data) return { ok: false, error: error?.message ?? 'Enregistrement impossible.' };

@@ -29,6 +29,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { getMyNextTrackDay } from '@/services/nextTrackDayService';
 import { addNote } from '@/services/pilotNotesService';
+import {
+  QCM_INITIAL,
+  RESSENTIS,
+  THEMES,
+  chiffresAffichables,
+  choisirRessenti,
+  choisirTheme,
+  ecritureDepuis,
+  passer,
+  questionCourante,
+  type EtatQcm,
+} from '@/features/rec/qcmLogic';
 import { loadBiometryConsents } from '@/services/consentService';
 import { storage } from '@/lib/mmkv';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -167,6 +179,33 @@ export default function EntreRunsScreen() {
     ? Math.max(1, Math.ceil(countdown.remainingMs / 60_000))
     : null;
 
+  /**
+   * LE QCM, ET SON EFFET SUR TOUT L'ÉCRAN.
+   *
+   * Tant qu'il n'est pas traité, les CHIFFRES sont masqués — le cadran du break
+   * et le meilleur tour du jour. Le motif est doctrinal : un pilote qui lit
+   * « record du jour » avant qu'on lui demande ce qu'il a senti répondra que ça
+   * allait. Il ne mentira pas, il aura lu la réponse avant la question.
+   *
+   * « Traité » comprend « passé ». On ne retient personne au stand.
+   */
+  const [qcm, setQcm] = useState<EtatQcm>(QCM_INITIAL);
+  const chiffresVisibles = chiffresAffichables(qcm);
+
+  const repondreRessenti = (cle: (typeof RESSENTIS)[number]['cle']) => {
+    const suivant = choisirRessenti(qcm, cle);
+    setQcm(suivant);
+    const ecriture = ecritureDepuis(suivant);
+    // On n'écrit jamais une réponse à moitié : `ecritureDepuis` rend null tant
+    // que les deux moitiés ne sont pas là.
+    if (ecriture) {
+      void addNote(ecriture.body, meta?.id ?? null, {
+        theme: ecriture.theme,
+        ressenti: ecriture.ressenti,
+      }).catch(() => undefined);
+    }
+  };
+
   return (
     <Animated.View style={[styles.root, door]}>
       {/* Le tracé respire derrière les chiffres — motif générique, 6 %. */}
@@ -202,8 +241,54 @@ export default function EntreRunsScreen() {
           ENTRE DEUX RUNS
         </Text>
 
-        {/* Cadran du break — affiché SEULEMENT pour un vrai départ du jour. */}
-        {countdownMin !== null ? (
+        {/* LE QCM EN TÊTE — lot 21f. Il précède tout chiffre, et c'est la règle
+            elle-même : une valeur lue avant la question oriente la réponse.
+            L'action « Passer » est en BAS du bloc, jamais en haut à droite : le
+            plan des cibles interdit toute action dans le tiers supérieur, et le
+            geste au gant y est le moins sûr. */}
+        {!chiffresVisibles ? (
+          <View style={styles.qcmBloc}>
+            <Text style={styles.qcmQuestion} accessibilityRole="header">
+              {questionCourante(qcm)}
+            </Text>
+
+            <View style={styles.qcmOptions}>
+              {qcm.etape === 'theme'
+                ? THEMES.map((t) => (
+                    <PressScale
+                      key={t.cle}
+                      onPress={() => setQcm(choisirTheme(qcm, t.cle))}
+                      accessibilityLabel={t.label}
+                      style={styles.qcmOption}
+                    >
+                      <Text style={styles.qcmOptionTxt}>{t.label}</Text>
+                    </PressScale>
+                  ))
+                : RESSENTIS.map((r) => (
+                    <PressScale
+                      key={r.cle}
+                      onPress={() => repondreRessenti(r.cle)}
+                      accessibilityLabel={r.label}
+                      style={styles.qcmOption}
+                    >
+                      <Text style={styles.qcmOptionTxt}>{r.label}</Text>
+                    </PressScale>
+                  ))}
+            </View>
+
+            <PressScale
+              onPress={() => setQcm(passer(qcm))}
+              accessibilityLabel="Passer la question"
+              style={styles.qcmPasser}
+            >
+              <Text style={styles.qcmPasserTxt}>Passer</Text>
+            </PressScale>
+          </View>
+        ) : null}
+
+        {/* Cadran du break — affiché SEULEMENT pour un vrai départ du jour, ET
+            seulement une fois la question traitée. */}
+        {chiffresVisibles && countdownMin !== null ? (
           <View
             style={styles.dialWrap}
             accessible
@@ -217,36 +302,38 @@ export default function EntreRunsScreen() {
               size="l"
             />
           </View>
-        ) : (
+        ) : chiffresVisibles ? (
           <Text style={styles.soften}>Soufflez.</Text>
-        )}
+        ) : null}
 
         {/* Meilleur tour du jour — le seul or de l'écran (chrono/record). */}
         {/* Groupé : l'étiquette et la valeur sont un seul fait. Sans tour bouclé,
           la valeur affichée est le seul caractère « — », qu'un lecteur d'écran
           annonce « tiret » ou saute selon sa verbosité — l'absence de mesure se
           dit donc en toutes lettres. */}
-        <View
-          style={styles.bestBlock}
-          accessible
-          accessibilityLabel={
-            bestLapMs !== null
-              ? `Meilleur tour du jour : ${msToLapLabel(bestLapMs)}`
-              : // « non mesuré », pas « aucun tour bouclé » : bestLapMs reste nul
-                // aussi bien quand le pilote n'a bouclé aucun tour que quand rien
-                // n'a pu être mesuré (fix GNSS perdu, ligne d'arrivée absente,
-                // boîtier décroché). Dire le second cas comme le premier ferait
-                // affirmer à l'app un fait de pilotage qu'elle n'a pas constaté.
-                'Meilleur tour du jour : non mesuré'
-          }
-        >
-          <Text style={styles.bestEyebrow}>MEILLEUR TOUR DU JOUR</Text>
-          {bestLapMs !== null ? (
-            <ChronoHero chronoMs={bestLapMs} size="s" celebrate={celebrateDayRecord} />
-          ) : (
-            <Text style={styles.bestEmpty}>—</Text>
-          )}
-        </View>
+        {chiffresVisibles ? (
+          <View
+            style={styles.bestBlock}
+            accessible
+            accessibilityLabel={
+              bestLapMs !== null
+                ? `Meilleur tour du jour : ${msToLapLabel(bestLapMs)}`
+                : // « non mesuré », pas « aucun tour bouclé » : bestLapMs reste nul
+                  // aussi bien quand le pilote n'a bouclé aucun tour que quand rien
+                  // n'a pu être mesuré (fix GNSS perdu, ligne d'arrivée absente,
+                  // boîtier décroché). Dire le second cas comme le premier ferait
+                  // affirmer à l'app un fait de pilotage qu'elle n'a pas constaté.
+                  'Meilleur tour du jour : non mesuré'
+            }
+          >
+            <Text style={styles.bestEyebrow}>MEILLEUR TOUR DU JOUR</Text>
+            {bestLapMs !== null ? (
+              <ChronoHero chronoMs={bestLapMs} size="s" celebrate={celebrateDayRecord} />
+            ) : (
+              <Text style={styles.bestEmpty}>—</Text>
+            )}
+          </View>
+        ) : null}
 
         {/* Biométrie phase A : honnêteté ou rien (fail-closed). */}
         {pauseBio === 'hint' ? (
@@ -324,6 +411,49 @@ export default function EntreRunsScreen() {
 }
 
 const styles = StyleSheet.create({
+  qcmBloc: {
+    marginTop: space.lg,
+    gap: space.md,
+  },
+  qcmQuestion: {
+    fontFamily: typo.body,
+    fontSize: 17,
+    lineHeight: 24,
+    color: colors.text.hi,
+    textAlign: 'center',
+  },
+  qcmOptions: {
+    gap: space.sm,
+  },
+  /**
+   * 56 pt de haut : l'optimum cockpit du plan (18 à 21 mm), pas le plancher
+   * Apple de 44. Le taux d'erreur passe de 10,3 % en statique à 16,6 % sous
+   * vibration — et le pilote répond ganté, au stand.
+   */
+  qcmOption: {
+    minHeight: 56,
+    borderRadius: radius.cell,
+    borderWidth: 1,
+    borderColor: colors.border.strong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space.md,
+  },
+  qcmOptionTxt: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 16,
+    color: colors.text.hi,
+  },
+  qcmPasser: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  qcmPasserTxt: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    color: colors.text.mid,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,
