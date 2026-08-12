@@ -69,9 +69,18 @@ const [FINISH_LON, FINISH_LAT] = GEO.features.find((f) => f.properties.type === 
 
 /** Relevé sur le segment porteur de la ligne (sommets 44→45). */
 const CAP_DEG = 336.6;
-/** Longueur mesurée de la boucle : 5,913 km → seuil = la moitié. */
+/**
+ * Longueur mesurée de la boucle, et le seuil qu'en tire `captureFinishLineFor`.
+ *
+ * UN CINQUIÈME, et pas la moitié : l'odomètre se replie sur la corde pendant un
+ * trou de données, et cette corde minore la distance parcourue. À 50 %, une
+ * coupure BLE de quelques minutes faisait refuser un tour RÉEL — et un tour
+ * refusé fabrique un chrono double, parce que le runner ne déplace pas sa borne.
+ * À l'arrêt, la vitesse Doppler sous la bande morte fait avancer l'odomètre de
+ * zéro : les tours fantômes tombent aussi bien à 20 % qu'à 50 %.
+ */
 const LONGUEUR_M = 5913;
-const SEUIL_M = LONGUEUR_M / 2;
+const SEUIL_M = LONGUEUR_M * 0.2;
 
 const DEG = Math.PI / 180;
 function metresParDegre(latDeg: number) {
@@ -275,6 +284,27 @@ describe('un trou de liaison ne fait pas perdre le tour SUIVANT', () => {
    * `MAX_STEP_M` qui parle, et c'est voulu — un tour manqué se voit, un tour
    * inventé corrompt le bilan en silence.
    */
+  /**
+   * LE CAS QUI A CONDAMNÉ LE SEUIL À 50 %. Une coupure qui avale la MOITIÉ du
+   * tour laisse l'odomètre sous les 2 956 m qu'exigeait l'ancien seuil, et le
+   * tour suivant — parfaitement réel — était refusé. À 20 % (1 183 m), il passe.
+   */
+  it('une coupure de la MOITIÉ du tour ne fait pas refuser le tour suivant', () => {
+    graine = 20260812;
+    const etat = detecteur(SEUIL_M);
+    let ts = 0;
+    for (let n = 0; n < 3; n++) {
+      const pts = tour(100, 25, 1);
+      pts.forEach(([lon, lat], i) => {
+        // 50 % du tour jeté, hors de la zone de la ligne (31,6 %).
+        const dansLeTrou = n === 1 && i > pts.length * 0.4 && i < pts.length * 0.9;
+        if (!dansLeTrou) processGpsPoint(etat, lat, lon, ts, 100);
+        ts += 40;
+      });
+    }
+    expect(etat.lapEndTimestamps).toHaveLength(3);
+  });
+
   it("une coupure QUI AVALE la ligne fait perdre ce passage, et c'est le bon choix", () => {
     graine = 20260812;
     const etat = detecteur(SEUIL_M);

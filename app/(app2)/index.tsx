@@ -408,7 +408,24 @@ function Hero({
   scrollY: ReturnType<typeof useCondensingHeader>['scrollY'];
   parallaxOffset: number;
 }) {
-  if (home.mode === 'apres_seance' && home.lastSession !== null) {
+  /**
+   * UNE JOURNÉE EN COURS PRIME SUR LE DÉBRIEF — posé le 13/08/2026.
+   *
+   * `HeroApresSeance` ne mène QU'AU BILAN : il ne porte aucune entrée vers
+   * l'armement. Et `decideHomeMode` bascule en « après séance » dès qu'une
+   * séance close a moins de SEPT JOURS.
+   *
+   * Conséquence : la première séance bouclée d'une journée fermait la porte de
+   * la capture pour la semaine. Un pilote qui enchaîne deux relais dans la même
+   * journée — le cas nominal d'un track day — ne pouvait pas lancer le second.
+   *
+   * Tant que la journée réservée est CELLE D'AUJOURD'HUI, on garde donc le
+   * héros qui mène à la piste. Le débrief de la séance précédente reste
+   * atteignable par le Bilan ; c'est l'inverse qui ne l'était pas.
+   */
+  const journeeAujourdhui = home.nextDay !== null && home.daysToNextDay === 0;
+
+  if (home.mode === 'apres_seance' && home.lastSession !== null && !journeeAujourdhui) {
     return <HeroApresSeance home={home} scrollY={scrollY} parallaxOffset={parallaxOffset} />;
   }
   if (home.nextDay !== null) {

@@ -49,14 +49,33 @@ const DEFAULT_RADIUS_M = 40;
 /**
  * Fraction de la longueur du circuit exigée entre deux tours comptés.
  *
- * La MOITIÉ, et pas davantage. La garde vise les tours de quelques mètres
- * fabriqués par un véhicule arrêté sur la ligne (cf. l'en-tête de
- * `utils/lapDetection`) ; elle n'a pas à arbitrer une trajectoire qui coupe
- * court, ni à se prononcer sur un tracé dont la longueur déclarée serait
- * approximative. Trop haut, elle mangerait des tours réels — c'est la seule
- * façon dont elle peut nuire, et on s'en tient loin.
+ * ── POURQUOI UN CINQUIÈME, ET PAS LA MOITIÉ ──────────────────────────────────
+ *
+ * Première valeur posée : 0,5. Une vérification adversariale du même jour l'a
+ * condamnée, et le raisonnement est celui-ci.
+ *
+ * L'odomètre intègre la vitesse, SAUF pendant un trou de données — où il se
+ * replie sur la corde entre les deux points qui l'encadrent. Cette corde MINORE
+ * la distance réellement parcourue, et elle la minore d'autant plus que le trou
+ * est long : sur une boucle, elle est bornée par le diamètre du circuit, quelle
+ * que soit la durée de la coupure. Une interruption BLE de quelques minutes
+ * pouvait donc faire passer un tour RÉEL sous la barre des 50 %.
+ *
+ * Et un tour refusé ne disparaît pas proprement : le runner ne déplace pas sa
+ * borne de tour, si bien que le franchissement SUIVANT produit un chrono qui
+ * couvre DEUX tours. La garde ne perdait pas une donnée, elle en fabriquait une
+ * fausse — exactement ce qu'elle existait pour empêcher.
+ *
+ * Un cinquième garde tout le pouvoir utile et supprime le risque : à l'arrêt,
+ * la vitesse Doppler sous la bande morte de 3 km/h fait avancer l'odomètre de
+ * ZÉRO — les tours fantômes sont écartés aussi sûrement à 20 % qu'à 50 %. En
+ * revanche, refuser un tour réel exigerait désormais de perdre plus de QUATRE
+ * CINQUIÈMES de la boucle en trous de données, auquel cas il n'y a plus de tour
+ * à sauver.
+ *
+ * La garde ne peut nuire que dans un sens. On s'en tient loin.
  */
-const MIN_LAP_FRACTION = 0.5;
+const MIN_LAP_FRACTION = 0.2;
 
 export function captureFinishLineFor(
   c: FinishLineSource | null | undefined
