@@ -4,6 +4,15 @@
 **Version 1.0 — En vigueur au [date de mise en service]**
 **Éditeur : OXV (SASU) — [SIRET à compléter]**
 
+> **Ce document n'est pas complet.** Les mentions entre crochets — SIRET, RCS,
+> siège social, capital, date d'entrée en vigueur — attendent l'immatriculation
+> de la société. Elles doivent être renseignées avant toute mise en service
+> publique : une politique de confidentialité qui ne nomme pas son responsable
+> de traitement ne remplit pas l'article 13.1.a.
+>
+> Le reste du document décrit des traitements réels et est à jour au
+> 12 août 2026.
+
 ---
 
 ## Préambule
@@ -66,9 +75,9 @@ Si vous remplissez le formulaire de contact ou demandez un devis Corporate, nous
 
 Ces données sont conservées le temps nécessaire au traitement de votre demande, augmenté d'une période de trois ans pour conserver l'historique commercial.
 
-### 3.3 — Inscription à la newsletter (à venir)
+### 3.3 — Inscription à la newsletter
 
-Si vous vous inscrivez à notre newsletter (fonctionnalité en cours de déploiement), nous collectons :
+Cette fonctionnalité **n'est pas ouverte à ce jour**. Lorsqu'elle le sera, nous collecterons :
 
 - Votre **adresse email**
 - Votre **prénom** (optionnel)
@@ -140,18 +149,44 @@ Seuls les **collaborateurs habilités d'OXV** ont accès à vos données, et uni
 
 Tous les accès sont tracés et journalisés. Les accès aux données les plus sensibles (documents KYC) sont soumis à une double authentification.
 
-### 5.2 — Nos prestataires techniques
+### 5.2 — Nos prestataires et destinataires techniques
 
-Nous faisons appel à un nombre limité de prestataires techniques nécessaires au fonctionnement du service. Ces prestataires agissent en tant que **sous-traitants au sens du RGPD** (article 28) et sont liés à OXV par des contrats de traitement des données (DPA).
+Deux catégories, et la distinction compte : un **sous-traitant** (article 28)
+traite pour notre compte et sous nos instructions ; un **destinataire** reçoit
+une donnée et la traite sous sa propre responsabilité. L'absence de contrat de
+sous-traitance ne dispense pas de le nommer — elle oblige au contraire à dire
+en quelle qualité il reçoit.
+
+**Sous-traitants (article 28) — contrat de traitement des données en place :**
 
 | Prestataire | Rôle | Localisation des données |
 |---|---|---|
 | **Supabase** | Hébergement de la base de données et stockage de fichiers | Frankfurt, Allemagne (UE) |
 | **Vercel** | Hébergement du site oxvehicle.fr | Infrastructure globale, données techniques principalement en Europe |
 | **Resend** | Envoi des emails transactionnels (confirmations, factures) | Infrastructure Europe |
-| **OpenAI** | Génération du texte de debrief après session, à partir de vos données de roulage (sans prénom ni identifiant) | États-Unis (avec clauses contractuelles types validées par la Commission européenne) |
-| **ElevenLabs** | Synthèse vocale des messages audio | États-Unis (avec clauses contractuelles types) |
-| **Stripe (à venir)** | Traitement des paiements par carte (quand activé) | Irlande, Union européenne |
+| **Brevo** | Envoi d'emails (chemin secondaire) | Union européenne |
+| **OpenAI** | Génération du texte de debrief et du briefing audio, à partir de vos données de roulage | États-Unis (clauses contractuelles types) |
+| **ElevenLabs** | Synthèse vocale des messages audio | États-Unis (clauses contractuelles types) |
+| **Stripe** | Traitement des paiements par carte. **Le service n'est pas encore ouvert aux pilotes** ; des identifiants client Stripe existent toutefois déjà dans notre base. | Irlande, Union européenne |
+
+**Destinataires — services interrogés par l'application, qui traitent sous leur
+propre responsabilité :**
+
+| Destinataire | Ce qu'il reçoit | Quand |
+|---|---|---|
+| **GraphHopper** | Les points de départ et d'arrivée de l'itinéraire que vous composez, dont votre **position GPS réelle** si vous partez de votre position | Uniquement quand vous composez une belle route |
+| **Overpass (OpenStreetMap)** | Une zone géographique de recherche | Composition d'itinéraire |
+| **Nominatim, OpenStreetMap, LocationIQ** | Une adresse ou des coordonnées à convertir | Recherche de lieu |
+| **Open-Meteo** | Les coordonnées du **circuit**, jamais les vôtres | Météo d'une journée |
+| **Expo (notifications)** | Un jeton d'appareil, sans donnée d'identité | Envoi d'une notification |
+| **Plausible** | Une mesure d'audience sans cookie ni donnée identifiante — voir §8.3 | Navigation |
+
+**Ce que nous n'employons pas** : aucun cookie publicitaire, aucun traceur
+tiers, aucun partage comportemental avec un réseau social ou une régie.
+
+**Cette liste est tenue à jour depuis le code lui-même.** Le dépôt porte un
+contrôle automatique qui refuse tout hôte distant non déclaré : un nouveau
+destinataire ne peut pas apparaître sans que quelqu'un l'ait nommé.
 
 ### 5.3 — Tiers en cas d'obligation légale
 
@@ -211,6 +246,10 @@ Vous pouvez **demander la suppression de vos données**, sauf si une obligation 
 
 **Comment exercer** : utilisez l'option « Supprimer mon compte » dans vos paramètres. Un délai de grâce de **30 jours** vous permet de revenir sur cette décision avant suppression définitive.
 
+**Délai de traitement** : votre demande est exécutée dans les meilleurs délais et, en tout état de cause, dans le **mois** qui suit sa réception (article 12.3 RGPD). Ce délai peut être prolongé de deux mois si la demande est complexe ; nous vous en informerions alors, avec le motif, dans le mois suivant la réception.
+
+**Si nous ne pouvons pas donner suite** — parce qu'une obligation légale nous impose de conserver certaines données — nous vous en informons dans le même délai, avec le motif, et nous vous rappelons que vous pouvez saisir la CNIL et former un recours juridictionnel (article 12.4 RGPD).
+
 ### 7.4 — Droit à la portabilité (article 20 RGPD)
 
 Vous pouvez **télécharger vos données** dans un format structuré et lisible par machine (JSON), afin de les transférer à un autre service ou de les conserver pour vous-même.
@@ -267,11 +306,13 @@ Ces cookies sont exonérés de consentement préalable selon l'article 82 de la 
 
 **Aucun cookie publicitaire, aucun cookie de tracking tiers** n'est utilisé. Aucune donnée comportementale n'est partagée avec Facebook, Google, ou tout autre acteur de la publicité.
 
-### 8.3 — Outil de mesure d'audience (prévu)
+### 8.3 — Outil de mesure d'audience
 
-OXV envisage de déployer un outil de mesure d'audience **respectueux de la vie privée**, tel que **Plausible Analytics** (service européen). Cet outil ne dépose **aucun cookie** et ne collecte aucune donnée personnelle identifiante.
+OXV emploie **Plausible Analytics**, service européen de mesure d'audience. Cet outil ne dépose **aucun cookie** et ne collecte aucune donnée personnelle identifiante : ni adresse IP conservée, ni identifiant persistant, ni suivi entre sites.
 
-Lorsque cet outil sera activé, la présente politique sera mise à jour pour le mentionner explicitement. Aucun consentement préalable ne sera requis, car l'outil ne traite aucune donnée personnelle au sens du RGPD.
+Aucun consentement préalable n'est requis pour une mesure d'audience ainsi limitée, conformément à l'exemption prévue par la CNIL — à condition que la mesure reste strictement anonyme et cantonnée à nos propres services, ce qui est le cas.
+
+Vous pouvez vous y opposer depuis vos réglages dans l'application.
 
 ### 8.4 — Application mobile OXV Mirror
 
@@ -288,7 +329,7 @@ OXV met en œuvre des mesures techniques et organisationnelles pour protéger vo
 - **Chiffrement en transit** (HTTPS/TLS 1.3 sur l'ensemble des communications)
 - **Chiffrement au repos** des bases de données (AES-256)
 - **Mots de passe hachés** (bcrypt avec sel unique)
-- **Authentification forte** pour les comptes administrateurs (2FA TOTP obligatoire)
+- **Second facteur (TOTP)** pour les comptes administrateurs : l'espace d'administration **exige la présentation du second facteur** dès lors qu'il est enrôlé sur le compte, et son enrôlement est requis par notre politique interne pour tout compte disposant de privilèges
 - **Sauvegardes quotidiennes** chiffrées et géographiquement répliquées
 - **Mises à jour de sécurité** appliquées sans délai sur l'ensemble de l'infrastructure
 - **Tests de pénétration** annuels par un prestataire spécialisé
@@ -321,7 +362,13 @@ Deux exceptions concernent des prestataires américains, pour lesquels OXV s'est
 
 Les données transmises à OpenAI pour la génération du debrief ne comportent **ni votre prénom, ni votre nom, ni vos coordonnées, ni aucun identifiant de compte**. Elles se limitent à des données de roulage non nominatives (marges, forces latérales, temps au tour, nombre de tours, niveau déclaré) et au nom du circuit. Elles ne sont pas conservées par le prestataire au-delà du traitement immédiat, conformément à notre contrat de sous-traitance.
 
-Si vous le souhaitez, vous pouvez **désactiver le debrief assisté par IA** dans vos paramètres. Aucune donnée ne sera alors transmise à ce prestataire américain : le debrief est alors rédigé localement, sur votre appareil et nos serveurs européens.
+Si vous le souhaitez, vous pouvez **désactiver le traitement par intelligence artificielle** dans vos paramètres. Ce réglage ferme **tous** les chemins qui font appel à un modèle : le debrief de séance comme le briefing audio envoyé avant une journée. Aucune donnée ne part alors chez ces prestataires américains.
+
+**Ce réglage n'a pas toujours couvert les deux chemins.** Jusqu'au 12 août 2026, le briefing audio de veille de journée était commandé par son propre réglage seulement, et pouvait donc partir chez OpenAI puis ElevenLabs pour un pilote ayant désactivé l'IA. C'est corrigé, et nous le disons plutôt que de le taire.
+
+**Ce que reçoit OpenAI pour le briefing audio**, et qui va au-delà du debrief : votre **prénom**, la marque et le modèle de votre véhicule, et l'historique de vos séances passées. Ces éléments servent à composer un message qui vous est adressé personnellement.
+
+Tout contenu ainsi produit — texte ou voix — **vous est signalé comme généré par une machine**.
 
 ---
 
