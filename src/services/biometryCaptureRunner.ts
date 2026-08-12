@@ -35,6 +35,16 @@ import {
 /** Cadence de persistance locale de sûreté (crash / kill en séance). */
 const PERSIST_INTERVAL_MS = 10000;
 
+/**
+ * Un tick sur six — soit une relecture de consentement par minute.
+ *
+ * Le retrait fait DANS l'application coupe instantanément (l'écran de réglages
+ * appelle `discardBiometryCapture`). Cette relecture ne sert qu'au retrait venu
+ * d'ailleurs, et une minute est le compromis entre ce délai-là et le réseau du
+ * circuit.
+ */
+const CONSENT_RECHECK_TICKS = 6;
+
 /** Dépendances injectables (réelles par défaut) — test sans natif ni réseau. */
 export interface BiometryCaptureDeps {
   storage: KVStorage;
@@ -121,6 +131,8 @@ function resolveDeps(injected?: Partial<BiometryCaptureDeps>): BiometryCaptureDe
 
 interface ActiveCapture {
   sessionId: string;
+  /** Le pilote — nécessaire pour RELIRE son consentement en cours de séance. */
+  pilotId: string;
   buffer: BioSample[];
   off: () => void;
   timer: ReturnType<typeof setInterval> | null;
@@ -135,12 +147,45 @@ function teardownActive(state: ActiveCapture): void {
 }
 
 /**
- * Tente la préservation d'une séance : lit le local, écarte les lectures non
- * physiologiques, upsert idempotent, puis PURGE le local (minimisation). Un échec
- * (hors-ligne, auth) laisse le local intact pour un rejeu ultérieur — c'est
- * l'appelant qui décide d'avaler l'erreur.
+ * Tente la préservation d'une séance : RELIT LE CONSENTEMENT, lit le local,
+ * écarte les lectures non physiologiques, upsert idempotent, puis PURGE le local
+ * (minimisation). Un échec (hors-ligne, auth) laisse le local intact pour un
+ * rejeu ultérieur — c'est l'appelant qui décide d'avaler l'erreur.
+ *
+ * ===========================================================================
+ * LA RELECTURE N'EST PAS UNE PRÉCAUTION, C'EST LA GARANTIE
+ * ===========================================================================
+ *
+ * Le consentement n'était lu QU'UNE FOIS, à l'armement. Un pilote qui décochait
+ * « Capter ma fréquence cardiaque » entre deux runs voyait quand même son
+ * tampon téléversé à la clôture — le retrait n'avait aucun effet sur ce qui
+ * était déjà mesuré.
+ *
+ * Le document validé par le conseil dit pourtant : *« À la révocation, la
+ * mesure s'arrête et la lecture des données cesse immédiatement. »*
+ *
+ * C'est ici que la promesse se tient VRAIMENT : quel que soit le chemin — même
+ * écran, autre appareil, redémarrage de l'application —, aucune donnée de santé
+ * ne quitte l'appareil si le consentement est retombé. Et le local est PURGÉ
+ * plutôt que gardé : un tampon conservé « au cas où » est une donnée de santé
+ * conservée sans base légale.
  */
-async function flushSession(deps: BiometryCaptureDeps, sessionId: string): Promise<void> {
+async function flushSession(
+  deps: BiometryCaptureDeps,
+  sessionId: string,
+  pilotId: string
+): Promise<void> {
+  const consent = await deps.loadConsents(pilotId).catch(() => null);
+  // `null` = lecture impossible (hors-ligne). FAIL-CLOSED sur le TÉLÉVERSEMENT,
+  // pas sur le local : on ne téléverse pas, et on garde le tampon pour un rejeu
+  // quand le consentement pourra être relu. Purger sur une panne réseau
+  // détruirait une donnée que le pilote a acceptée de fournir.
+  if (consent === null) return;
+  if (consent.capture !== true) {
+    clearSession(deps.storage, sessionId); // consentement retiré → purge, aucun envoi
+    return;
+  }
+
   const samples = loadSamples(deps.storage, sessionId);
   const input = toBiometryInput(samples);
   if (input.length === 0) {
@@ -156,13 +201,18 @@ async function flushSession(deps: BiometryCaptureDeps, sessionId: string): Promi
  * si le flag est retiré. Chaque échec reste en attente. Ne rejoue jamais la séance
  * active en cours.
  */
-export async function flushPendingBiometry(injected?: Partial<BiometryCaptureDeps>): Promise<void> {
+export async function flushPendingBiometry(
+  pilotId: string,
+  injected?: Partial<BiometryCaptureDeps>
+): Promise<void> {
   const deps = resolveDeps(injected);
   const flag = await deps.isFlagEnabled('biometry').catch(() => false);
   if (!flag) return;
   for (const sessionId of loadPendingSessions(deps.storage)) {
     if (active && active.sessionId === sessionId) continue;
-    await flushSession(deps, sessionId).catch(() => undefined);
+    // `flushSession` relit le consentement : une séance orpheline d'un pilote
+    // qui a retiré son accord est PURGÉE, jamais téléversée.
+    await flushSession(deps, sessionId, pilotId).catch(() => undefined);
   }
 }
 
@@ -182,7 +232,7 @@ export async function startBiometryCapture(
   const deps = resolveDeps(injected);
 
   // Rejeu opportuniste des préservations offline antérieures.
-  await flushPendingBiometry(injected).catch(() => undefined);
+  await flushPendingBiometry(input.pilotId, injected).catch(() => undefined);
 
   const flag = await deps.isFlagEnabled('biometry').catch(() => false);
   if (!flag) return; // dormant : la santé ne circule pas tant que le flag est OFF
@@ -193,11 +243,36 @@ export async function startBiometryCapture(
   const off = deps.onBiometry((s) => {
     buffer.push({ ts: deps.nowMs(), hrBpm: s.hrBpm, rrMs: s.rrMs, contact: s.contact });
   });
+  /**
+   * Persistance locale de sûreté, ET relecture périodique du consentement.
+   *
+   * LA RELECTURE EST LE FILET, PAS LE MÉCANISME. Le chemin normal est
+   * instantané et ne coûte rien au réseau : l'écran de réglages appelle
+   * `discardBiometryCapture()` au moment où le pilote décoche. Ce filet-ci
+   * couvre le cas où le retrait vient d'AILLEURS — un autre appareil, le site.
+   *
+   * Une fois par minute, pas toutes les dix secondes : une lecture de
+   * consentement est un aller-retour réseau, et le réseau du circuit est le
+   * pire que cette application rencontre. Le tampon local, lui, est bien
+   * persisté toutes les dix secondes — c'est la garde anti-plantage.
+   */
+  let ticks = 0;
   const timer = setInterval(() => {
     if (buffer.length > 0) persistSamples(deps.storage, input.sessionId, buffer);
+
+    ticks += 1;
+    if (ticks % CONSENT_RECHECK_TICKS !== 0) return;
+    void deps
+      .loadConsents(input.pilotId)
+      .then((c) => {
+        // Retiré ailleurs → on coupe l'abonnement ET on purge le tampon local.
+        // Une panne de lecture NE COUPE PAS : elle n'est pas un retrait.
+        if (c.capture !== true) discardBiometryCapture();
+      })
+      .catch(() => undefined);
   }, PERSIST_INTERVAL_MS);
 
-  active = { sessionId: input.sessionId, buffer, off, timer, deps };
+  active = { sessionId: input.sessionId, pilotId: input.pilotId, buffer, off, timer, deps };
 }
 
 /**
@@ -211,7 +286,7 @@ export async function stopBiometryCapture(): Promise<void> {
   if (!state) return;
   teardownActive(state);
   if (state.buffer.length > 0) persistSamples(state.deps.storage, state.sessionId, state.buffer);
-  await flushSession(state.deps, state.sessionId).catch(() => undefined);
+  await flushSession(state.deps, state.sessionId, state.pilotId).catch(() => undefined);
 }
 
 /**

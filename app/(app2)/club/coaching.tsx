@@ -439,9 +439,22 @@ function AssignmentCard({
       <View style={[styles.switchRow, styles.switchRowDivider]}>
         <View style={{ flex: 1 }}>
           <Text style={styles.switchLabel}>Partage en direct</Text>
+          {/*
+            LA BORNE RÉELLE, PAS « IMMÉDIATEMENT ».
+
+            `coach_pilots` n'est pas dans la publication `supabase_realtime` :
+            l'abonnement qui devait couper à la seconde reste muet, et c'est une
+            réconciliation périodique qui tient la promesse
+            (`liveRelayRunner.RECONCILIATION_MS`, quinze secondes).
+
+            Le fichier de relais écrit lui-même « ce n'est pas instantané, et il
+            ne faut pas le présenter comme tel ». Cet écran le présentait comme
+            tel — corrigé le 12/08/2026. Quinze secondes tenues valent mieux
+            qu'une immédiateté annoncée.
+          */}
           <Text style={styles.switchHint}>
-            Votre télémétrie et votre position en temps réel, pendant que vous roulez. Coupé
-            immédiatement dès que vous le retirez.
+            Votre télémétrie et votre position en temps réel, pendant que vous roulez. Le flux
+            s’arrête dans les quinze secondes qui suivent votre retrait.
           </Text>
         </View>
         <Switch
@@ -863,9 +876,10 @@ function EndBinomeSheet({
   return (
     <View style={styles.sheetPad}>
       <Text style={styles.confirmTitle}>Mettre fin au binôme</Text>
+      {/* Même borne que le partage en direct — voir plus haut. */}
       <Text style={styles.confirmBody}>
-        {name || 'Votre coach'} cessera immédiatement de voir vos données. Vous pourrez consentir à
-        nouveau à tout moment.
+        {name || 'Votre coach'} cesse de voir vos données. Un flux en cours s’arrête dans les quinze
+        secondes. Vous pourrez consentir à nouveau à tout moment.
       </Text>
       <PressScale
         onPress={async () => {

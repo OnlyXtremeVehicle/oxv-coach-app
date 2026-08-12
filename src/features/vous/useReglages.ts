@@ -30,6 +30,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { requestAccountDeletion } from '@/services/accountService';
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from '@/services/analyticsService';
+import { discardBiometryCapture } from '@/services/biometryCaptureRunner';
 import {
   loadAiConsents,
   loadBiometryConsents,
@@ -308,7 +309,25 @@ export function useReglages() {
         patch({ lastError: null });
         return;
       }
-      // Révocation : n'écrit rien à l'écran tant que le serveur n'a pas confirmé.
+      /**
+       * RÉVOCATION — LA COUPURE D'ABORD, LE SERVEUR ENSUITE.
+       *
+       * `discardBiometryCapture()` coupe l'abonnement cardio ET purge le tampon
+       * local, sans réseau. C'est ce qui rend vraie la phrase du document validé
+       * par le conseil : *« à la révocation, la mesure s'arrête et la lecture
+       * des données cesse immédiatement »*.
+       *
+       * Avant le 12/08/2026, ce geste n'écrivait qu'en base. Une capture en
+       * cours continuait d'échantillonner, et le tampon partait quand même à la
+       * clôture : le consentement n'était lu qu'UNE fois, à l'armement.
+       *
+       * L'ORDRE COMPTE. On coupe même si l'écriture serveur échoue ensuite : un
+       * pilote qui a dit non a dit non, et le réseau du circuit n'a pas voix au
+       * chapitre. L'écran, lui, n'affiche le nouvel état qu'après confirmation
+       * — c'est le serveur qui fait foi pour l'AFFICHAGE, pas pour la coupure.
+       */
+      discardBiometryCapture();
+
       const res = await setBiometryCaptureConsent(userId, false);
       if (!res.ok) {
         patch({ lastError: REVOKE_ERROR });

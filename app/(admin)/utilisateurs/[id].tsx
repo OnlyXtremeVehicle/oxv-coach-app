@@ -94,7 +94,20 @@ export default function AdminUserDetailScreen() {
     Alert.alert(
       suspending ? 'Suspendre le compte' : 'Réactiver le compte',
       suspending
-        ? 'Le compte ne pourra plus accéder à ses données tant qu’il est suspendu.'
+        ? // CE QUE LA SUSPENSION FAIT VRAIMENT — corrigé le 12/08/2026.
+          //
+          // Ce texte annonçait « le compte ne pourra plus accéder à ses
+          // données ». AUCUNE policy de la base ne teste la suspension :
+          // balayage de `pg_policy` sur `public`, motif « suspend », zéro
+          // résultat. Seules deux fonctions la lisent — `qdi_public_rows` et
+          // `session_attendance_public` — pour retirer le compte des LISTES
+          // PUBLIQUES. Le pilote suspendu garde l'accès à ses séances, sa
+          // télémétrie, ses véhicules et ses notes : leurs policies tiennent
+          // en `user_id = auth.uid()`, condition qu'une suspension ne change
+          // pas.
+          //
+          // L'administrateur croyait couper un accès. Il masquait une fiche.
+          'Le compte sera retiré des listes publiques. Son accès à ses propres données n’est pas coupé.'
         : 'Le compte retrouvera son accès.',
       [
         { text: 'Annuler', style: 'cancel' },

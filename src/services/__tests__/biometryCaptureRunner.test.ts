@@ -1,5 +1,9 @@
 import type { KVStorage } from '@/features/rec/biometryCaptureBuffer';
-import { loadPendingSessions, loadSamples } from '@/features/rec/biometryCaptureBuffer';
+import {
+  loadPendingSessions,
+  loadSamples,
+  persistSamples,
+} from '@/features/rec/biometryCaptureBuffer';
 import type { HeartRateSample } from '@/services/v2/heartRateParser';
 import {
   type BiometryCaptureDeps,
@@ -146,7 +150,7 @@ describe('biometryCaptureRunner — verrous fail-closed', () => {
     expect(loadPendingSessions(d.storage!)).toEqual(['S1']);
     // Réseau revenu : le rejeu préserve puis purge.
     online = true;
-    await flushPendingBiometry(d);
+    await flushPendingBiometry('P', d);
     expect(saved).toEqual(['S1']);
     expect(loadPendingSessions(d.storage!)).toEqual([]);
   });
@@ -173,15 +177,103 @@ describe('biometryCaptureRunner — verrous fail-closed', () => {
     await stopBiometryCapture();
     expect(loadPendingSessions(st)).toEqual(['S1']);
     // Flag retiré : le rejeu ne fait rien.
-    await flushPendingBiometry({
+    await flushPendingBiometry('P', {
       storage: st,
       isFlagEnabled: async () => false,
-      saveSamples: async (sid) => {
+      loadConsents: async () => ({ capture: true }),
+      saveSamples: async (sid: string) => {
         saved.push(sid);
         return { saved: 1 };
       },
     });
     expect(saved).toEqual([]);
     expect(loadPendingSessions(st)).toEqual(['S1']); // toujours en attente
+  });
+
+  /**
+   * ===========================================================================
+   * LE RETRAIT DE CONSENTEMENT — CE QUI N'ÉTAIT PAS TESTÉ, ET NE MARCHAIT PAS
+   * ===========================================================================
+   *
+   * Le consentement n'était lu QU'UNE FOIS, à l'armement. Un pilote qui
+   * décochait « Capter ma fréquence cardiaque » entre deux runs voyait quand
+   * même son tampon téléversé à la clôture.
+   *
+   * Le document validé par le conseil promet pourtant : « à la révocation, la
+   * mesure s'arrête et la lecture des données cesse immédiatement ».
+   */
+  it('un consentement retiré empêche le téléversement ET purge le local', async () => {
+    const em = makeEmitter();
+    const st = fakeStorage();
+    const saved: string[] = [];
+    let consenti = true;
+
+    await startBiometryCapture(
+      { sessionId: 'S1', pilotId: 'P' },
+      {
+        storage: st,
+        isFlagEnabled: async () => true,
+        loadConsents: async () => ({ capture: consenti }),
+        onBiometry: em.onBiometry,
+        saveSamples: async (sid: string) => {
+          saved.push(sid);
+          return { saved: 1 };
+        },
+        nowMs: () => 1000,
+      }
+    );
+    em.emit(hr(150));
+
+    // Le pilote décoche entre deux runs.
+    consenti = false;
+    await stopBiometryCapture();
+
+    expect(saved).toEqual([]); // rien n'a quitté l'appareil
+    expect(loadPendingSessions(st)).toEqual([]); // et rien ne reste en local
+  });
+
+  it('une séance orpheline d’un pilote qui a retiré son accord est purgée, jamais rejouée', async () => {
+    const st = fakeStorage();
+    const saved: string[] = [];
+    persistSamples(st, 'ORPHELINE', [{ ts: 1000, hrBpm: 150, rrMs: [], contact: 'ok' as const }]);
+
+    await flushPendingBiometry('P', {
+      storage: st,
+      isFlagEnabled: async () => true,
+      loadConsents: async () => ({ capture: false }),
+      saveSamples: async (sid: string) => {
+        saved.push(sid);
+        return { saved: 1 };
+      },
+    });
+
+    expect(saved).toEqual([]);
+    expect(loadPendingSessions(st)).toEqual([]);
+  });
+
+  /**
+   * FAIL-CLOSED SUR L'ENVOI, PAS SUR LE LOCAL. Une panne réseau n'est pas un
+   * retrait de consentement : purger le tampon détruirait une donnée que le
+   * pilote a acceptée de fournir. On ne téléverse pas, on garde, on rejouera.
+   */
+  it('un consentement illisible ne téléverse rien et ne purge rien', async () => {
+    const st = fakeStorage();
+    const saved: string[] = [];
+    persistSamples(st, 'S9', [{ ts: 1000, hrBpm: 150, rrMs: [], contact: 'ok' as const }]);
+
+    await flushPendingBiometry('P', {
+      storage: st,
+      isFlagEnabled: async () => true,
+      loadConsents: async () => {
+        throw new Error('offline');
+      },
+      saveSamples: async (sid: string) => {
+        saved.push(sid);
+        return { saved: 1 };
+      },
+    });
+
+    expect(saved).toEqual([]);
+    expect(loadPendingSessions(st)).toEqual(['S9']); // gardé pour un rejeu
   });
 });
