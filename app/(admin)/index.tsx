@@ -126,6 +126,12 @@ const VIEWS: { href: string; label: string; description: string; famille: Famill
     description: 'Activer / désactiver des fonctionnalités, versions d’algos.',
   },
   {
+    href: '/(admin)/securite',
+    famille: 'structure' as FamilleAdmin,
+    label: 'Sécurité du compte',
+    description: 'Second facteur (TOTP) de votre compte administrateur.',
+  },
+  {
     href: '/(admin)/circuit',
     famille: 'plateau' as FamilleAdmin,
     label: 'Inspecteur circuit',
