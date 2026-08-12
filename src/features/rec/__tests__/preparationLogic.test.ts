@@ -16,12 +16,10 @@ import {
   heroCountdownKind,
   hydrateChecklist,
   mapAttendanceRows,
-  pickActivePass,
   qrCheckinPayload,
   serializeChecklist,
   toggleChecklistAt,
   type AttendanceRow,
-  type PassCandidate,
 } from '../preparationLogic';
 
 describe('checklistProgress — barre x/N', () => {
@@ -169,46 +167,6 @@ describe('convoyGate — fail-closed', () => {
     expect(convoyGate(false)).toBe(false);
     expect(convoyGate(null)).toBe(false);
     expect(convoyGate(undefined)).toBe(false);
-  });
-});
-
-describe('pickActivePass — pass à présenter', () => {
-  const NOW = Date.parse('2026-07-19T09:00:00Z');
-  const cand = (over: Partial<PassCandidate>): PassCandidate => ({
-    registrationId: 'r',
-    status: 'registered',
-    event: { startsAt: '2026-07-19T08:00:00Z', endsAt: '2026-07-19T18:00:00Z' },
-    ...over,
-  });
-
-  it('retient un événement en cours, inscrit', () => {
-    expect(pickActivePass([cand({})], NOW)?.registrationId).toBe('r');
-  });
-
-  it('écarte statut annulé et événement terminé', () => {
-    const regs = [
-      cand({ registrationId: 'cancelled', status: 'cancelled' }),
-      cand({
-        registrationId: 'past',
-        event: { startsAt: '2026-07-01T08:00:00Z', endsAt: '2026-07-01T18:00:00Z' },
-      }),
-    ];
-    expect(pickActivePass(regs, NOW)).toBeNull();
-  });
-
-  it('choisit le plus proche dans le temps', () => {
-    const regs = [
-      cand({
-        registrationId: 'later',
-        event: { startsAt: '2026-07-25T08:00:00Z', endsAt: '2026-07-25T18:00:00Z' },
-      }),
-      cand({ registrationId: 'today' }),
-    ];
-    expect(pickActivePass(regs, NOW)?.registrationId).toBe('today');
-  });
-
-  it('événement null → écarté', () => {
-    expect(pickActivePass([cand({ event: null })], NOW)).toBeNull();
   });
 });
 

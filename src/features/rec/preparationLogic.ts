@@ -167,30 +167,20 @@ export function convoyGate(flagEnabled: boolean | null | undefined): boolean {
 }
 
 // ---------------------------------------------------------------------------
-// Pass OXV — sélection de l'inscription active (mêmes règles que la v1)
+// Pass OXV — la sélection a déménagé
 // ---------------------------------------------------------------------------
-
-/** Forme minimale attendue (structurellement compatible avec MyRegistration). */
-export interface PassCandidate {
-  registrationId: string;
-  status: string;
-  event: { startsAt: string; endsAt: string } | null;
-}
-
-/**
- * L'inscription à présenter : événement encore ouvert (fin >= maintenant),
- * statut inscrit/présent, la plus proche dans le temps. `now` en ms epoch.
- */
-export function pickActivePass<T extends PassCandidate>(regs: readonly T[], now: number): T | null {
-  const eligible = regs.filter(
-    (r) =>
-      r.event !== null &&
-      (r.status === 'registered' || r.status === 'checked_in') &&
-      Date.parse(r.event.endsAt) >= now
-  );
-  eligible.sort((a, b) => Date.parse(a.event!.startsAt) - Date.parse(b.event!.startsAt));
-  return eligible[0] ?? null;
-}
+//
+// `pickActivePass` et `PassCandidate` ont été SUPPRIMÉS le 12/08/2026, avec
+// leurs tests.
+//
+// Ils filtraient sur les statuts `registered` / `checked_in` d'une inscription
+// à un `event` — vocabulaire d'`event_registrations`, table à ZÉRO ligne en
+// production. La section Pass de l'écran de préparation ne s'affichait donc
+// jamais, pour personne, et le pilote arrivait au portail sans son code.
+//
+// `passJourneeLogic.prochaineJourneeAvecQr` prend la suite sur `registrations`,
+// avec une règle plus stricte : une journée réservée mais non réglée ne produit
+// pas de code au paddock.
 
 /** Charge utile du QR de présence — jamais un QR inventé (flux pass-oxv v1). */
 export function qrCheckinPayload(registrationId: string): string {

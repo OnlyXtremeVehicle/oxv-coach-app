@@ -1,10 +1,23 @@
 /**
  * PASS OXV — porte CLUB, écran 7/7 (V2-L5, mission C). Route `club/pass`.
  *
- * PEAU v2 sur les mêmes données réelles que la v1 `app/(app)/pass-oxv.tsx` :
- *   - inscriptions à venir en cartes (date, circuit, offre en chip) avec QR de
- *     présence PLEIN au tap (fond clair, dismiss swipe — source QR pass-oxv v1
- *     via passLogic.qrCheckinPayload) ;
+ * IL LIT `registrations` + `sessions` DEPUIS LE 12/08/2026.
+ *
+ * Il lisait `event_registrations`, jointe à `events`. Cette table contient ZÉRO
+ * ligne en production et n'a jamais été écrite : l'écran affichait « aucune
+ * inscription » à tous les pilotes, y compris à ceux qui avaient réservé et
+ * réglé leur journée sur oxvehicle.fr. Il fonctionnait, ses tests passaient, et
+ * il ne pouvait rien montrer.
+ *
+ * Les journées se réservent sur le site, qui écrit dans `registrations`. Un
+ * seul projet Supabase pour les deux : ce sont les mêmes tables.
+ *
+ *   - inscriptions à venir en cartes (date, circuit, créneau, offre en chip)
+ *     avec QR de présence PLEIN au tap (fond clair, dismiss swipe — source QR
+ *     pass-oxv v1 via passLogic.qrCheckinPayload) ;
+ *   - une journée PRIVÉE n'est pas lisible par le pilote qui y est inscrit
+ *     (`sessions_select_authenticated`). Elle n'est plus écartée en silence :
+ *     elle apparaît en disant ce qu'on ne sait pas d'elle ;
  *   - historique en lignes hairline dessous ;
  *   - aucune inscription → StateView (illustration circuit) + CTA vers la
  *     réservation (drapeau `app_payments`, fail-closed) ou la porte Club.
@@ -31,7 +44,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 
-import { listMyRegistrations, type MyRegistration } from '@/services/eventsService';
+import { listMesJournees, type MaJournee } from '@/services/journeesService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import {
   Chip,
@@ -47,40 +60,45 @@ import {
   typo,
   useDoorTransition,
 } from '@/ui/v2';
+import { passEmptyCta, URL_JOURNEES_SITE, qrCheckinPayload } from '@/features/club/passLogic';
 import {
-  canShowQr,
-  offerLabel,
-  passEmptyCta,
-  URL_JOURNEES_SITE,
-  qrCheckinPayload,
-  splitPasses,
-  statusLabel,
-} from '@/features/club/passLogic';
+  libelleCreneau,
+  libelleOffre,
+  libelleStatut,
+  ligneJournee,
+  partagerJournees,
+  qrAffichable,
+  raisonSansQr,
+} from '@/features/club/passJourneeLogic';
 
 // ---------------------------------------------------------------------------
 // Format
 // ---------------------------------------------------------------------------
 
-/** « Samedi 19 juillet » depuis un datetime ISO. */
-function dayLabel(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return '';
+/**
+ * Les journées portent une DATE (`sessions.date`, `YYYY-MM-DD`), pas un
+ * datetime. `new Date('2026-08-20')` l'interprète en UTC et rend la veille au
+ * soir dans les fuseaux à l'ouest — le pilote lirait « vendredi 19 » pour une
+ * journée du samedi 20. On construit donc la date en LOCAL, champ par champ.
+ */
+function dateLocale(dateIso: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateIso.trim());
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/** « Samedi 19 juillet » depuis une date `YYYY-MM-DD`. */
+function dayLabel(dateIso: string): string {
+  const d = dateLocale(dateIso);
+  if (d === null) return '';
   const txt = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
   return txt.charAt(0).toUpperCase() + txt.slice(1);
 }
 
-/** « 9 h 30 » depuis un datetime ISO (null si illisible). */
-function timeLabel(iso: string): string | null {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return null;
-  const txt = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  return txt.replace(':', ' h ');
-}
-
 /** « 12 mai 2026 » — historique compact. */
-function shortDate(iso: string): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return '';
+function shortDate(dateIso: string): string {
+  const d = dateLocale(dateIso);
+  if (d === null) return '';
   return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -95,7 +113,7 @@ export default function PassScreen() {
   const door = useDoorTransition();
 
   const [phase, setPhase] = useState<Phase>('loading');
-  const [regs, setRegs] = useState<MyRegistration[]>([]);
+  const [regs, setRegs] = useState<MaJournee[]>([]);
   const [paymentsEnabled, setPaymentsEnabled] = useState(false);
 
   // QR plein écran.
@@ -105,7 +123,10 @@ export default function PassScreen() {
     setPhase('loading');
     try {
       const [list, flag] = await Promise.all([
-        listMyRegistrations(),
+        // STRICT : `listMesJournees` LÈVE sur panne de base. Un `[]` avalé se
+        // lirait « vous n'avez aucune journée » — l'affirmation exacte que cet
+        // écran faisait à tort.
+        listMesJournees(),
         isFlagEnabled('app_payments').catch(() => false),
       ]);
       setRegs(list);
@@ -122,7 +143,10 @@ export default function PassScreen() {
     }, [reload])
   );
 
-  const { upcoming, history } = useMemo(() => splitPasses(regs, Date.now()), [regs]);
+  const { aVenir, historique, illisibles } = useMemo(
+    () => partagerJournees(regs, Date.now()),
+    [regs]
+  );
 
   const onEmptyCta = useCallback(() => {
     // Paiements fermés → LE SITE, pas la porte Club. Le repli précédent
@@ -181,7 +205,7 @@ export default function PassScreen() {
             errorMessage="Vos pass n'ont pas pu se charger."
             onRetry={reload}
           />
-        ) : upcoming.length === 0 && history.length === 0 ? (
+        ) : aVenir.length === 0 && historique.length === 0 && illisibles.length === 0 ? (
           <View style={styles.emptyBlock}>
             <StateView
               state="empty"
@@ -204,40 +228,66 @@ export default function PassScreen() {
           </View>
         ) : (
           <>
-            {upcoming.length > 0 ? (
+            {aVenir.length > 0 ? (
               <View style={styles.section}>
-                <SectionHeader eyebrow="À VENIR" count={upcoming.length} />
+                <SectionHeader eyebrow="À VENIR" count={aVenir.length} />
                 <View style={styles.cards}>
-                  {upcoming.map((reg, index) =>
-                    reg.event ? (
-                      <PassCard
-                        key={reg.registrationId}
-                        reg={reg}
-                        index={index}
-                        onShowQr={() => setQrValue(qrCheckinPayload(reg.registrationId))}
-                      />
-                    ) : null
-                  )}
+                  {aVenir.map((reg, index) => (
+                    <PassCard
+                      key={reg.registrationId}
+                      reg={reg}
+                      index={index}
+                      onShowQr={() => setQrValue(qrCheckinPayload(reg.registrationId))}
+                    />
+                  ))}
                 </View>
               </View>
             ) : null}
 
-            {history.length > 0 ? (
+            {/*
+              LES JOURNÉES QU'ON NE PEUT PAS LIRE. `sessions` n'ouvre pas les
+              journées privées au pilote qui y est inscrit. L'ancien écran les
+              écartait des deux listes, en silence : le pilote payait et ne
+              voyait rien. On dit son inscription, et on dit ce qu'on ignore.
+            */}
+            {illisibles.length > 0 ? (
               <View style={styles.section}>
-                <SectionHeader eyebrow="HISTORIQUE" count={history.length} />
+                <SectionHeader eyebrow="INSCRIPTIONS PRIVÉES" count={illisibles.length} />
                 <View style={styles.historyCard}>
-                  {history.map((reg, index) =>
-                    reg.event ? (
-                      <ListRow
-                        key={reg.registrationId}
-                        icon="drapeau-damier"
-                        label={reg.event.name}
-                        sublabel={`${shortDate(reg.event.startsAt)} · ${reg.event.locationName}`}
-                        value={statusLabel(reg.status)}
-                        divider={index < history.length - 1}
-                      />
-                    ) : null
-                  )}
+                  {illisibles.map((reg, index) => (
+                    <ListRow
+                      key={reg.registrationId}
+                      icon="drapeau-damier"
+                      label={libelleOffre(reg.offerType)}
+                      sublabel="Le détail de cette journée ne vous est pas ouvert."
+                      value={libelleStatut(reg.status)}
+                      divider={index < illisibles.length - 1}
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {historique.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader eyebrow="HISTORIQUE" count={historique.length} />
+                <View style={styles.historyCard}>
+                  {historique.map((reg, index) => (
+                    <ListRow
+                      key={reg.registrationId}
+                      icon="drapeau-damier"
+                      label={libelleOffre(reg.offerType)}
+                      sublabel={
+                        reg.journee
+                          ? [shortDate(reg.journee.date), ligneJournee(reg.journee)]
+                              .filter((x) => x !== '')
+                              .join(' · ')
+                          : undefined
+                      }
+                      value={libelleStatut(reg.status)}
+                      divider={index < historique.length - 1}
+                    />
+                  ))}
                 </View>
               </View>
             ) : null}
@@ -263,34 +313,48 @@ function PassCard({
   index,
   onShowQr,
 }: {
-  reg: MyRegistration;
+  reg: MaJournee;
   index: number;
   onShowQr: () => void;
 }) {
-  const event = reg.event;
-  if (!event) return null;
-  const time = timeLabel(event.startsAt);
-  const showQr = canShowQr(reg.status);
+  const j = reg.journee;
+  if (!j) return null;
+
+  const ligne = ligneJournee(j);
+  const creneau = libelleCreneau(reg.slot);
+  const showQr = qrAffichable(reg.status);
+  const sansQr = raisonSansQr(reg.status);
 
   return (
     <Animated.View entering={staggerEntering(index)}>
       <PressScale
         onPress={onShowQr}
         disabled={!showQr}
-        accessibilityLabel={`${event.name}, ${dayLabel(event.startsAt)}. Agrandir votre code de présence.`}
+        accessibilityLabel={
+          showQr
+            ? `${dayLabel(j.date)}. Agrandir votre code de présence.`
+            : `${dayLabel(j.date)}. ${sansQr ?? ''}`
+        }
       >
         <View style={styles.card}>
           <View style={styles.cardMain}>
             <Text style={styles.cardCircuit} numberOfLines={1}>
-              {event.locationName.toUpperCase()}
+              {(j.circuitName ?? 'JOURNÉE OXV').toUpperCase()}
             </Text>
             <Text style={styles.cardDate} numberOfLines={1}>
-              {dayLabel(event.startsAt)}
+              {dayLabel(j.date)}
             </Text>
-            {time ? <Text style={styles.cardTime}>Début à {time}</Text> : null}
+            {ligne !== '' ? <Text style={styles.cardTime}>{ligne}</Text> : null}
             <View style={styles.cardChips}>
-              <Chip label={offerLabel(event.eventType)} />
+              <Chip label={libelleOffre(reg.offerType)} />
+              {creneau !== null ? <Chip label={creneau} /> : null}
             </View>
+            {/*
+              CE QUI EMPÊCHE LE QR SE DIT, ET SANS REPROCHE. Un code présenté
+              au portail pour une journée non réglée fait vivre un refus devant
+              les autres ; mieux vaut le lire la veille, ici.
+            */}
+            {sansQr !== null ? <Text style={styles.cardSansQr}>{sansQr}</Text> : null}
           </View>
 
           {showQr ? (
@@ -462,6 +526,13 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: 'center',
     gap: 4,
+  },
+  cardSansQr: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.mid,
+    marginTop: space.sm,
   },
   qrChipHint: {
     fontFamily: typo.mono,

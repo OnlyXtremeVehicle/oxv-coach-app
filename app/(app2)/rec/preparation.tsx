@@ -51,7 +51,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { storage } from '@/lib/mmkv';
 import { getDefaultCircuit } from '@/services/circuitsService';
-import { listMyRegistrations, type MyRegistration } from '@/services/eventsService';
+import { listMesJournees, type MaJournee } from '@/services/journeesService';
+import { prochaineJourneeAvecQr } from '@/features/club/passJourneeLogic';
 import { getMyNextTrackDay, type NextTrackDay } from '@/services/nextTrackDayService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import {
@@ -99,7 +100,6 @@ import {
   heroCountdownKind,
   hydrateChecklist,
   longDayLabel,
-  pickActivePass,
   qrCheckinPayload,
   serializeChecklist,
   startTimeLabel,
@@ -142,7 +142,7 @@ export default function PreparationScreen() {
   );
 
   // Pass OXV.
-  const [pass, setPass] = useState<MyRegistration | null>(null);
+  const [pass, setPass] = useState<MaJournee | null>(null);
   const [qrOpen, setQrOpen] = useState(false);
 
   // C1 « Qui roule ».
@@ -216,10 +216,21 @@ export default function PreparationScreen() {
     }
   }, [uid]);
 
-  // Pass — inscription active (flux pass-oxv v1).
+  /**
+   * Pass — la journée à présenter à l'accueil.
+   *
+   * LIT `registrations` DEPUIS LE 12/08/2026. Cet écran lisait
+   * `event_registrations`, table à zéro ligne : la section Pass ne s'affichait
+   * jamais, pour personne, et le pilote arrivait au portail sans son code.
+   *
+   * `prochaineJourneeAvecQr` applique la règle fail-closed : une journée
+   * réservée mais non réglée ne produit PAS de code ici. Le paddock est le
+   * pire endroit pour découvrir qu'un QR ne passe pas — il y a la file, et
+   * les autres. Le Pass, lui, dit ce qui manque.
+   */
   const loadPass = useCallback(async () => {
-    const regs = await listMyRegistrations().catch(() => [] as MyRegistration[]);
-    setPass(pickActivePass(regs, Date.now()));
+    const regs = await listMesJournees().catch(() => [] as MaJournee[]);
+    setPass(prochaineJourneeAvecQr(regs, Date.now()));
   }, []);
 
   useFocusEffect(
@@ -413,7 +424,7 @@ export default function PreparationScreen() {
         </View>
 
         {/* Pass OXV */}
-        {pass && pass.event ? (
+        {pass ? (
           <View style={styles.section}>
             <SectionHeader eyebrow="PASS OXV" />
             <PressScale
@@ -563,7 +574,7 @@ export default function PreparationScreen() {
         </Text>
       </CondensingHeaderBar>
 
-      {pass && pass.event ? (
+      {pass ? (
         <QrFullScreen
           visible={qrOpen}
           value={qrCheckinPayload(pass.registrationId)}
