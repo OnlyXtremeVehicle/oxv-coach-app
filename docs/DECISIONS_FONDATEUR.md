@@ -508,6 +508,10 @@ raccourcissent.*
 
 | Date | Sujet | Décision |
 |---|---|---|
+| 12/08 | Fenêtre du radar Signature | **Tranchée en autonomie** — les 30 jours tombent, le radar lit l'historique borné (24 séances). Pour six journées de piste par an, une fenêtre d'un mois laissait le radar vide onze mois sur douze ; le plan V3 fixe d'ailleurs les effectifs du sélecteur en séances d'historique (« Signature générale · 11 séances »). La Saison reste l'objet du temps. **Réversible :** `BASELINE_MAX_SESSIONS` dans `useSignature`. |
+| 12/08 | Destination du bouton central | **Tranchée en autonomie** — le Pass, sauf capture en cours. Le plan le dit deux fois (« le bouton central ouvre le Pass », « le bouton Réserver ouvre le Pass y compris quand `app_payments` est fermé »). Le câblage L0 menait à la porte Club. **Réversible :** `centralButtonRoute`. |
+| 12/08 | QR de pointage — statuts éligibles | **Tranchée en autonomie**, fail-closed : `confirmed` et `attended` seulement. Une journée réservée non réglée se voit dans le Pass mais ne produit pas de code — le portail, devant la file, est le pire endroit pour l'apprendre. **Réversible :** `qrAffichable`. |
+| 12/08 | Véhicule à l'armement | **Tranchée en autonomie** — le principal est pré-sélectionné ET affiché. L'attacher en silence ferait découvrir au débrief que la séance est rangée sous une voiture non choisie. |
 | 03/08 | Fonction de détection des virages | Déployer et calculer |
 | 03/08 | Rayon de Valence | Délégué — « je te laisse réfléchir au mieux » |
 | 03/08 | La Charade | Détacher puis supprimer |
