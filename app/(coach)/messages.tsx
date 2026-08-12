@@ -9,7 +9,9 @@
  *   - CONSOLE tablette (≥ COACH_CONSOLE_MIN_WIDTH) : deux colonnes fidèles à la
  *     maquette — liste des fils à gauche (sélection, pas de navigation) + aperçu
  *     du fil sélectionné à droite (en-tête pilote + garantie « in-app · sans
- *     coordonnées », bulles temps réel via `useCoachThread`, saisie réelle via
+ *     coordonnées », bulles via `useCoachThread` — relecture au retour au
+ *     premier plan, le temps réel restant muet tant que `coach_messages`
+ *     n'est pas publiée —, saisie réelle via
  *     `sendMessage`). Le rail (CoachRail) est fourni par `_layout.tsx`.
  *   - COMPAGNON téléphone (< seuil) : une seule colonne — grand titre
  *     « Messages », garantie confidentialité, liste des fils ; le tap ouvre le

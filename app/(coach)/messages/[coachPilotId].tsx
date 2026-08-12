@@ -21,7 +21,9 @@
  * maquette n'est pas rendue (pas de contrôle mort, cf. rapport). Vouvoiement,
  * zéro emoji, descriptif jamais prescriptif.
  *
- * Temps réel via useCoachThread (Realtime). À l'ouverture, les reçus sont
+ * Mise à jour par useCoachThread : relecture au retour au premier plan, et
+ * temps réel LE JOUR OÙ `coach_messages` rejoindra la publication Supabase —
+ * elle n'y est pas (vérifié le 12/08/2026). À l'ouverture, les reçus sont
  * marqués lus. Le clavier ne recouvre pas la saisie (KeyboardAvoidingView).
  */
 

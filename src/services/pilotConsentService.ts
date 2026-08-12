@@ -69,6 +69,47 @@ export const COACH_ACCESS_LEVELS: { value: CoachAccessLevel; label: string; hint
 export const COACH_COMPARAISON_PHRASE =
   'Votre coach peut rapprocher vos données de celles de ses autres pilotes, pour sa lecture. Rien de cette comparaison ne vous est présenté comme un classement.';
 
+/**
+ * CE QUE L'ACCÈS COACH N'OUVRE PAS — et qui ne se devine pas.
+ *
+ * ---
+ *
+ * LE PLAN DEMANDE UNE PHRASE QUI SERAIT FAUSSE
+ *
+ * *« La phrase de consentement doit dire : il voit vos séances, votre
+ * télémétrie, VOTRE CARDIO ET VOTRE CARNET. »* — Plan de montage, jalon 6.
+ *
+ * Écrite telle quelle, elle mentirait à la majorité des pilotes. Vérifié en
+ * production le 12/08/2026, les deux dernières catégories ont chacune leur
+ * porte, indépendante du niveau d'accès :
+ *
+ *   `biometry_raw` — policy `biometry_coach_read` :
+ *       is_detailed_coach_of(user_id)
+ *       AND users.biometry_coach_share_consent_at IS NOT NULL
+ *
+ *   `pilot_notes` — policy `pilot_notes_coach_select` :
+ *       shared_with_coach = true AND is_coach_of(user_id)
+ *
+ * Un pilote qui accorde « Analyse détaillée » sans consentir au partage
+ * cardio ne montre AUCUN cardio. Une note non marquée « partagée » reste
+ * invisible, note par note.
+ *
+ * ---
+ *
+ * CE QU'ON ÉCRIT DONC À LA PLACE
+ *
+ * L'énumération du plan, mais dans le bon sens : ces deux catégories existent,
+ * le coach peut les voir, et **jamais par ce consentement-ci**. Le pilote
+ * apprend la portée complète de la relation sans qu'on lui fasse accepter
+ * quelque chose qu'il n'accepte pas.
+ *
+ * Dire « il voit votre cardio » à quelqu'un dont le cardio n'est pas partagé,
+ * c'est le même défaut que le zéro fabriqué : une affirmation que la donnée ne
+ * soutient pas.
+ */
+export const COACH_HORS_NIVEAU_PHRASE =
+  'Votre cardio et votre carnet ne sont pas compris dans ce niveau. Chacun a son propre accord, que vous donnez — et retirez — séparément.';
+
 export interface MyCoachAssignment {
   /** ID de la ligne coach_pilots. */
   id: string;

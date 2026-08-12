@@ -44,9 +44,9 @@ const ECRAN = join(process.cwd(), 'app', '(app2)', 'club', 'coaching.tsx');
 const service = readFileSync(SERVICE, 'utf8');
 const ecran = readFileSync(ECRAN, 'utf8');
 
-/** Extrait la valeur de la phrase, telle qu'elle est écrite dans le service. */
-function phraseDeclaree(): string {
-  const m = service.match(/COACH_COMPARAISON_PHRASE\s*=\s*\n?\s*'([^']+)'/);
+/** Extrait la valeur d'une phrase, telle qu'elle est écrite dans le service. */
+function phraseDeclaree(nom = 'COACH_COMPARAISON_PHRASE'): string {
+  const m = service.match(new RegExp(`${nom}\\s*=\\s*\\n?\\s*'([^']+)'`));
   return m?.[1] ?? '';
 }
 
@@ -83,5 +83,60 @@ describe('garde — la comparaison d’élèves est divulguée', () => {
     // On exige donc une INTERPOLATION JSX : { … COACH_COMPARAISON_PHRASE … }.
     const rendu = /\{\s*COACH_COMPARAISON_PHRASE\s*\}/.test(ecran);
     expect(rendu).toBe(true);
+  });
+
+  /**
+   * ---
+   *
+   * LA PHRASE QUE LE PLAN DEMANDE SERAIT FAUSSE
+   *
+   * Le plan veut : « il voit vos séances, votre télémétrie, VOTRE CARDIO ET
+   * VOTRE CARNET ». Écrite telle quelle, elle mentirait à la plupart des
+   * pilotes — vérifié en production le 12/08/2026 :
+   *
+   *   `biometry_raw` exige `biometry_coach_share_consent_at IS NOT NULL` ;
+   *   `pilot_notes` exige `shared_with_coach = true`, note par note.
+   *
+   * Un pilote qui accorde « Analyse détaillée » sans partager son cardio ne
+   * montre AUCUN cardio. Lui dire l'inverse, c'est le zéro fabriqué appliqué
+   * au consentement : une affirmation que la donnée ne soutient pas.
+   *
+   * On énumère donc les deux catégories — le plan a raison sur ce point — mais
+   * pour dire qu'elles NE SONT PAS comprises.
+   */
+  it('la portée hors niveau nomme le cardio ET le carnet', () => {
+    const p = phraseDeclaree('COACH_HORS_NIVEAU_PHRASE');
+    expect(p.length).toBeGreaterThan(40);
+    expect(p).toMatch(/cardio/i);
+    expect(p).toMatch(/carnet/i);
+  });
+
+  it('elle dit que chacun a son propre accord, séparable', () => {
+    const p = phraseDeclaree('COACH_HORS_NIVEAU_PHRASE');
+    expect(p).toMatch(/accord|consentement/i);
+    // Un consentement qu'on ne peut pas retirer n'en est pas un.
+    expect(p).toMatch(/retir/i);
+  });
+
+  it('elle n’affirme PAS que le coach voit ces deux choses', () => {
+    const p = phraseDeclaree('COACH_HORS_NIVEAU_PHRASE');
+    expect(p).not.toMatch(/votre coach voit votre cardio|il voit votre cardio/i);
+  });
+
+  /**
+   * AFFICHÉE DANS LES DEUX ÉTATS, et c'est le point. C'est une limite de
+   * PORTÉE, pas un pouvoir accordé : la cacher au pilote qui hésite lui ferait
+   * manquer l'information au moment exact où elle compte.
+   */
+  it('elle est affichée sans dépendre du consentement déjà donné', () => {
+    const rendu = /\{\s*COACH_HORS_NIVEAU_PHRASE\s*\}/.test(ecran);
+    expect(rendu).toBe(true);
+    // Pas sous un ternaire `consented ? … : null`, contrairement à la phrase
+    // de comparaison qui, elle, décrit bien un pouvoir déjà accordé. On lit la
+    // LIGNE qui la rend : un ternaire de rendu tient sur une ligne dans ce
+    // fichier, et `prettier` le garantit.
+    const ligne = ecran.split(/\r?\n/).find((l) => l.includes('{COACH_HORS_NIVEAU_PHRASE}'));
+    expect(ligne).toBeDefined();
+    expect(ligne).not.toContain('consented');
   });
 });

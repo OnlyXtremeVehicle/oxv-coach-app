@@ -380,9 +380,60 @@ export async function startPilotLiveRelay(input: {
     };
   }
 
-  // Révocation EN SÉANCE : on écoute coach_pilots en temps réel et on réconcilie.
-  // Révoquer UN coach le fait sortir de son roster ; révoquer le dernier coupe
-  // tout — « Coupez quand vous voulez » est tenu en vol.
+  /**
+   * RÉVOCATION EN SÉANCE — deux mécanismes, parce que le premier est muet.
+   *
+   * ===========================================================================
+   * CE QUE CE BLOC PROMETTAIT SANS POUVOIR LE TENIR
+   * ===========================================================================
+   *
+   * Il n'y avait ici qu'un abonnement `postgres_changes` sur `coach_pilots`,
+   * sous un commentaire affirmant : « Coupez quand vous voulez est tenu en
+   * vol ».
+   *
+   * **`coach_pilots` n'est pas dans la publication `supabase_realtime`** —
+   * vérifié en production le 12/08/2026, où seules `telemetry_sessions` et
+   * `coach_annotations` y figurent. L'abonnement rejoint le canal, passe
+   * `SUBSCRIBED`, et ne reçoit jamais rien. Aucune erreur n'est levée.
+   *
+   * Conséquence, et elle n'est pas cosmétique : **un pilote qui retirait son
+   * consentement pendant une séance continuait d'être diffusé à son coach
+   * jusqu'à la fin du run.** La promesse la plus importante de ce fichier
+   * n'était pas tenue, et son commentaire certifiait qu'elle l'était.
+   *
+   * ===========================================================================
+   * LA RÉCONCILIATION PÉRIODIQUE
+   * ===========================================================================
+   *
+   * L'abonnement est CONSERVÉ : le jour où la table rejoint la publication, il
+   * coupe à la seconde. En attendant, une relecture périodique tient la
+   * promesse — avec un délai BORNÉ, écrit, et court.
+   *
+   * Quinze secondes. C'est le compromis entre le réseau du circuit — le pire
+   * que cette application rencontre — et ce qu'un pilote accepte d'attendre
+   * après avoir retiré son accord. Ce n'est pas instantané, et il ne faut pas
+   * le présenter comme tel.
+   *
+   * Une lecture qui échoue NE COUPE PAS : un réseau tombé n'est pas un retrait
+   * de consentement, et couper sur une panne rendrait le direct inutilisable au
+   * circuit. Le consentement retiré, lui, reste retiré en base et sera lu au
+   * tick suivant.
+   */
+  const RECONCILIATION_MS = 15_000;
+
+  const reconcilier = (): void => {
+    void consentedCoaches(input.pilotId)
+      .then((liste) => {
+        if (liste.length === 0) stopPilotLiveRelay();
+        else syncRosters(liste);
+      })
+      .catch(() => {
+        // Panne réseau : on ne coupe pas. Voir ci-dessus.
+      });
+  };
+
+  const consentTimer = setInterval(reconcilier, RECONCILIATION_MS);
+
   const consentCh = supabase
     .channel(`relay-consent:${input.pilotId}`)
     .on(
@@ -414,7 +465,8 @@ export async function startPilotLiveRelay(input: {
     board?.close();
     for (const leave of rosterLeaves.values()) leave();
     rosterLeaves.clear();
-    supabase.removeChannel(consentCh);
+    clearInterval(consentTimer);
+    void supabase.removeChannel(consentCh);
   };
 }
 

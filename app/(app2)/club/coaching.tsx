@@ -32,6 +32,7 @@ import {
 import {
   COACH_ACCESS_LEVELS,
   COACH_COMPARAISON_PHRASE,
+  COACH_HORS_NIVEAU_PHRASE,
   type MyCoachAssignment,
 } from '@/services/pilotConsentService';
 import { formatInvoiceAmount, type MyCoachInvoice } from '@/services/pilotCoachBillingService';
@@ -413,6 +414,11 @@ function AssignmentCard({
               annoncer « votre coach peut… » sous « Accès en attente de votre
               accord » décrirait un pouvoir qu'il n'a pas encore. */}
           {consented ? <Text style={styles.switchHint}>{COACH_COMPARAISON_PHRASE}</Text> : null}
+          {/* CE QUE CET ACCÈS N'OUVRE PAS. Affiché AVANT comme APRÈS l'accord :
+              c'est une limite de portée, pas un pouvoir accordé. La cacher au
+              pilote qui hésite lui ferait manquer l'information qui compte le
+              plus au moment où elle compte. */}
+          <Text style={styles.switchHint}>{COACH_HORS_NIVEAU_PHRASE}</Text>
         </View>
         <Switch
           value={consented}
