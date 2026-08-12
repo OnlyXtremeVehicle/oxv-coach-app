@@ -56,6 +56,26 @@ export function useFirstViewport(waitForViewport: boolean): FirstViewport {
       if (seen.value) return;
       if (info.timestamp - lastCheck.value < CHECK_INTERVAL_MS) return;
       lastCheck.value = info.timestamp;
+      /**
+       * LE REF PEUT NE JAMAIS AVOIR ÉTÉ ATTACHÉ, ET `measure` NE LE SURVIT PAS.
+       *
+       * Un appelant qui arme ce hook puis rend `null` — parce qu'une condition
+       * de forme n'est pas remplie — laisse `ref.current` à `null` pour
+       * toujours. Le garde-fou JS de Reanimated ne l'attrape pas : il ne teste
+       * que `viewTag === -1`, et `null !== -1`. L'appel descend donc en natif,
+       * où `shadowNodeFromValue` fait `asObject()` sur une valeur nulle et lève
+       * une `JSIException`. Émise depuis un frame callback du fil UI, elle n'est
+       * rattrapée par personne : **elle tue l'application**.
+       *
+       * C'est ce qui faisait planter l'écran Data à chaque ouverture le
+       * 13/08/2026 — `SectionBande` armait le hook, puis sortait par `return
+       * null` tant que la séance portait moins de 25 tours, c'est-à-dire
+       * toujours. L'écran se peignait, puis l'app mourait 120 ms plus tard.
+       *
+       * L'appelant a été corrigé ; cette garde existe pour que le suivant n'ait
+       * pas à découvrir le mécanisme au circuit.
+       */
+      if (ref.current === null) return;
       const m = measure(ref);
       if (m === null || m.height <= 0) return;
       if (m.pageY < windowHeight && m.pageY + m.height > 0) {

@@ -261,8 +261,21 @@ function FounderApproved() {
 }
 
 function FounderGaugeCard({ founder }: { founder: VousFounder }) {
-  const fv = useFirstViewport(true);
   const gauge = founder.gauge;
+  /**
+   * LE HOOK N'EST ARMÉ QUE SI LA JAUGE SERA RENDUE.
+   *
+   * `ref={fv.ref}` vit dans une branche conditionnelle : quand le compteur de
+   * fondateurs n'est pas lisible (`gauge === null` — le repli délibéré qui
+   * évite d'afficher un zéro d'erreur), le ref n'est JAMAIS attaché.
+   *
+   * `useFirstViewport` lance alors un `measure(ref)` toutes les 120 ms sur le
+   * fil UI avec un ref nul, ce qui lève une `JSIException` FATALE — c'est le
+   * mécanisme exact qui tuait l'écran Data à chaque ouverture le 13/08/2026
+   * (`SectionBande`). Ce site-ci ne s'était pas encore manifesté : il attendait
+   * simplement une lecture du compteur en échec.
+   */
+  const fv = useFirstViewport(gauge !== null);
   const pending = founder.state === 'pending';
   const gaugeLabel = gauge !== null ? `${gauge.filled}/${FOUNDERS_MAX}` : null;
 

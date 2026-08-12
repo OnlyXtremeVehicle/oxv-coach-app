@@ -47,11 +47,31 @@ const PAD_CARTE = space.md;
 export function SectionBande({ sessionId, debutSeanceIso, laps }: SectionBandeProps) {
   const reduce = useReduceMotion();
   const { width: largeurEcran } = useWindowDimensions();
-  const { ref, visible } = useFirstViewport(!reduce);
-  const [resultat, setResultat] = useState<BandeSeance | null>(null);
 
+  /**
+   * LA FORME SE DÉCIDE AVANT D'ARMER LE HOOK — ET C'EST CE QUI FAISAIT PLANTER
+   * L'APPLICATION.
+   *
+   * `useFirstViewport` était armé inconditionnellement, alors que ce composant
+   * sort par `return null` (plus bas) dès que la forme n'est pas « bande ». Le
+   * `ref` n'était donc JAMAIS attaché à une vue — et il ne l'est jamais pour
+   * une séance de moins de 25 tours chronométrés, c'est-à-dire pour TOUTES les
+   * séances existantes.
+   *
+   * Le hook lance un `useFrameCallback` sur le fil UI qui appelle `measure(ref)`
+   * toutes les 120 ms. Sur un ref nul, l'appel descend en natif et lève une
+   * `JSIException` que personne ne rattrape : l'écran Data se peignait, puis
+   * l'application mourait aussitôt. C'est le « ça crashe directement » du
+   * premier essai terrain, le 13/08/2026.
+   *
+   * `chronometres` et `forme` ne dépendent que des props : les calculer avant
+   * le hook ne coûte rien et supprime la cause.
+   */
   const chronometres = laps.filter((l) => !l.is_outlap && !l.is_inlap).length;
   const forme = formeRecommandee(chronometres);
+
+  const { ref, visible } = useFirstViewport(!reduce && forme === 'bande');
+  const [resultat, setResultat] = useState<BandeSeance | null>(null);
 
   useEffect(() => {
     if (!visible || forme !== 'bande') return;
