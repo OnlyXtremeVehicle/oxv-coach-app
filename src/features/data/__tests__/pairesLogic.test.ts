@@ -12,6 +12,8 @@ import {
   CLE_GENERALE,
   VEHICULE_ABSENT,
   libelleSelection,
+  memePaire,
+  notePaire,
   pairesRoulees,
   seancesDeLaPaire,
   selecteurUtile,
@@ -151,6 +153,58 @@ describe('la ligne qui dit ce que l’écran montre', () => {
   it('sans séance, la ligne s’absente — elle n’annonce jamais zéro', () => {
     expect(libelleSelection([], CLE_GENERALE)).toBeNull();
     expect(libelleSelection(paires, 'c9::v9')).toBeNull();
+  });
+});
+
+describe('la note de comparaison — elle nomme, elle n’interdit pas', () => {
+  /**
+   * « Le filtre par paire s'applique, sinon la comparaison ment. » Deux
+   * chronos posés côte à côte AFFIRMENT se rapporter à la même chose. Quand
+   * c'est faux, il faut le dire — sans pour autant empêcher le pilote de
+   * regarder deux voitures côte à côte s'il le veut.
+   */
+  it('même paire, rien à dire', () => {
+    expect(notePaire(s('c1', 'v1'), s('c1', 'v1'))).toBeNull();
+  });
+
+  it('deux séances sans véhicule sur un même circuit restent comparables', () => {
+    // Tout l'historique d'avant le 12/08/2026 est dans ce cas : le déclarer
+    // incomparable rendrait chaque comparaison suspecte sans raison.
+    expect(notePaire(s('c1', null), s('c1', null))).toBeNull();
+    expect(memePaire(s('c1', null), s('c1', null))).toBe(true);
+  });
+
+  it('circuits différents : le tracé se dit', () => {
+    expect(notePaire(s('c1', 'v1'), s('c2', 'v1', 'Charente'))).toContain('même circuit');
+  });
+
+  it('véhicules différents sur le même circuit : la voiture se dit', () => {
+    expect(notePaire(s('c1', 'v1'), s('c1', 'v2'))).toContain('même véhicule');
+  });
+
+  it('un véhicule manquant d’un seul côté se dit comme tel', () => {
+    expect(notePaire(s('c1', 'v1'), s('c1', null))).toContain('aucun véhicule');
+  });
+
+  it('les deux à la fois se disent ensemble, pas deux fois', () => {
+    const n = notePaire(s('c1', 'v1'), s('c2', 'v2', 'Charente'));
+    expect(n).toContain('ni du même circuit ni du même véhicule');
+  });
+
+  it('elle ne conclut ni ne conseille jamais', () => {
+    const toutes = [
+      notePaire(s('c1', 'v1'), s('c2', 'v1', 'Charente')),
+      notePaire(s('c1', 'v1'), s('c1', 'v2')),
+      notePaire(s('c1', 'v1'), s('c1', null)),
+      notePaire(s('c1', 'v1'), s('c2', 'v2', 'Charente')),
+    ];
+    for (const n of toutes) {
+      expect(n).not.toBeNull();
+      expect(n).not.toMatch(/donc|devriez|évitez|préférez|impossible|invalide|faux/i);
+      expect(n).not.toMatch(/meilleur|gagnant|plus rapide/i);
+      expect(n).not.toMatch(/\blimite/i);
+      expect(n).not.toMatch(/\p{Extended_Pictographic}/u);
+    }
   });
 });
 

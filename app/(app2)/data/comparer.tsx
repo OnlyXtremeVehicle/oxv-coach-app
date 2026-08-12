@@ -74,6 +74,7 @@ import {
   type XY,
 } from '@/ui/v2';
 import { compareFacts, type ComparedRow, type SideFacts } from '@/features/data/comparerLogic';
+import { notePaire } from '@/features/data/pairesLogic';
 import { regularityHistogram } from '@/features/data/seasonLogic';
 import { fetchAllSessions, fetchSessionLaps } from '@/services/sessionsService';
 import { loadLapFrames, type SessionFrame } from '@/services/sessionTelemetryService';
@@ -412,6 +413,31 @@ export default function ComparerScreen() {
   const friendName =
     friendInfo?.firstName ?? (friendInfo?.handle ? `@${friendInfo.handle}` : 'Cet ami');
 
+  /**
+   * LA NOTE DE PAIRE — *« le filtre par paire s'applique, sinon la
+   * comparaison ment »*.
+   *
+   * Elle N'INTERDIT RIEN : un pilote peut vouloir regarder deux voitures côte
+   * à côte, et ce n'est pas à l'application d'en décider. Mais deux chronos
+   * posés côte à côte AFFIRMENT se rapporter à la même chose ; quand c'est
+   * faux, il faut le dire, sans reproche et sans conclusion.
+   */
+  const notePaireSeances = useMemo(() => {
+    if (!sessionA || !sessionB) return null;
+    return notePaire(
+      {
+        circuitId: sessionA.circuit_id,
+        circuitName: sessionA.circuit_name,
+        vehicleId: sessionA.vehicle_id,
+      },
+      {
+        circuitId: sessionB.circuit_id,
+        circuitName: sessionB.circuit_name,
+        vehicleId: sessionB.vehicle_id,
+      }
+    );
+  }, [sessionA, sessionB]);
+
   // ── Facts des trois modes (compareFacts — écart neutre, aucun gagnant)
   const seanceRows = useMemo(
     () =>
@@ -521,6 +547,7 @@ export default function ComparerScreen() {
               sessionB={sessionB}
               onReplace={setReplaceSlot}
               rows={seanceRows}
+              notePaire={notePaireSeances}
             />
           ) : (
             <ToursBody
@@ -536,6 +563,7 @@ export default function ComparerScreen() {
               framesA={framesA}
               framesB={framesB}
               onReplace={setReplaceSlot}
+              notePaire={notePaireSeances}
             />
           )}
         </Animated.View>
@@ -583,17 +611,23 @@ function SeancesBody({
   sessionB,
   onReplace,
   rows,
+  notePaire: note,
 }: {
   captureRef: React.RefObject<View | null>;
   sessionA: TelemetrySession | undefined;
   sessionB: TelemetrySession | undefined;
   onReplace: (slot: Slot) => void;
   rows: ComparedRow[];
+  /** Ce que les deux séances n'ont PAS en commun, ou `null`. */
+  notePaire: string | null;
 }) {
   return (
     <View>
       <SlotHead slot="A" color={A_COLOR} session={sessionA} onReplace={() => onReplace('A')} />
       <SlotHead slot="B" color={B_COLOR} session={sessionB} onReplace={() => onReplace('B')} />
+
+      {/* Au-DESSUS des chiffres : elle qualifie ce qu'on s'apprête à lire. */}
+      {note !== null ? <Text style={styles.notePaire}>{note}</Text> : null}
 
       <View ref={areaRef} collapsable={false} style={styles.factsCard}>
         {rows.map((row, i) => (
@@ -656,6 +690,7 @@ function ToursBody({
   framesA,
   framesB,
   onReplace,
+  notePaire: note,
 }: {
   captureRef: React.RefObject<View | null>;
   sessionA: TelemetrySession | undefined;
@@ -669,6 +704,8 @@ function ToursBody({
   framesA: SessionFrame[] | null;
   framesB: SessionFrame[] | null;
   onReplace: (slot: Slot) => void;
+  /** Ce que les deux séances n'ont PAS en commun, ou `null`. */
+  notePaire: string | null;
 }) {
   return (
     <View>
@@ -676,6 +713,12 @@ function ToursBody({
       <LapSelector slot="A" color={A_COLOR} laps={lapsA} selected={lapA} onSelect={onSelectLapA} />
       <SlotLine slot="B" color={B_COLOR} session={sessionB} onReplace={() => onReplace('B')} />
       <LapSelector slot="B" color={B_COLOR} laps={lapsB} selected={lapB} onSelect={onSelectLapB} />
+
+      {/*
+        Deux tracés SUPERPOSÉS sur des circuits différents ne se superposent
+        pas : la note vaut ici plus encore qu'au tableau des faits.
+      */}
+      {note !== null ? <Text style={styles.notePaire}>{note}</Text> : null}
 
       <View ref={areaRef} collapsable={false} style={styles.traceCard}>
         <TraceOverlay framesA={framesA} framesB={framesB} lapA={lapA} lapB={lapB} />
@@ -1479,6 +1522,13 @@ const styles = StyleSheet.create({
   },
 
   // Tableau des faits
+  notePaire: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 20,
+    color: colors.text.mid,
+    marginBottom: space.md,
+  },
   factsCard: {
     marginTop: space.xl,
     backgroundColor: colors.bg.card,

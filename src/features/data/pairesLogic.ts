@@ -182,6 +182,51 @@ export function libelleSelection(paires: readonly Paire[], cle: string): string 
 }
 
 /**
+ * Deux séances relèvent-elles de la même paire ?
+ *
+ * Deux séances sans véhicule sur le même circuit relèvent de la même paire —
+ * incomplète, mais la même : c'est le cas de tout l'historique d'avant le
+ * 12/08/2026, et prétendre le contraire les rendrait toutes incomparables
+ * entre elles.
+ */
+export function memePaire(a: SeanceAppariable, b: SeanceAppariable): boolean {
+  return cleDe(a.circuitId, a.vehicleId) === cleDe(b.circuitId, b.vehicleId);
+}
+
+/**
+ * La note qui accompagne une comparaison hors paire, ou `null`.
+ *
+ * *« Le filtre par paire s'applique, sinon la comparaison ment. »*
+ *
+ * ELLE N'INTERDIT RIEN. Un pilote peut vouloir regarder deux voitures côte à
+ * côte, et ce n'est pas à l'application d'en décider — la doctrine du miroir
+ * tient ici comme ailleurs. Mais deux chronos posés côte à côte AFFIRMENT
+ * qu'ils se rapportent à la même chose ; quand c'est faux, il faut le dire, et
+ * le dire sans reproche.
+ *
+ * Aucune conclusion, aucun conseil : on nomme la différence, le pilote en fait
+ * ce qu'il veut.
+ */
+export function notePaire(a: SeanceAppariable, b: SeanceAppariable): string | null {
+  if (memePaire(a, b)) return null;
+
+  const circuitsDifferents = a.circuitId !== b.circuitId;
+  const vehiculesDifferents = a.vehicleId !== b.vehicleId;
+  const vehiculeManquant = a.vehicleId === null || b.vehicleId === null;
+
+  if (circuitsDifferents && vehiculesDifferents) {
+    return 'Ces deux séances ne relèvent ni du même circuit ni du même véhicule.';
+  }
+  if (circuitsDifferents) {
+    return 'Ces deux séances n’ont pas été roulées sur le même circuit.';
+  }
+  if (vehiculeManquant) {
+    return 'L’une de ces deux séances ne porte aucun véhicule.';
+  }
+  return 'Ces deux séances n’ont pas été roulées avec le même véhicule.';
+}
+
+/**
  * Le sélecteur mérite-t-il d'être affiché ?
  *
  * UNE SEULE PAIRE NE SE FILTRE PAS. Proposer « général » et « Haute Saintonge
