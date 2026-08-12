@@ -74,7 +74,7 @@ Affichage : react-native-maps (déjà présent) OU Mapbox (décision §4)
 
 ## 3. Variables d'environnement (clés — JAMAIS commitées)
 ```
-EXPO_PUBLIC_ROUTING_PROVIDER=kurviger | graphhopper
+EXPO_PUBLIC_ROUTING_PROVIDER=graphhopper   # seule valeur depuis le 12/08/2026
 EXPO_PUBLIC_KURVIGER_KEY=…        (si kurviger)
 EXPO_PUBLIC_GRAPHHOPPER_KEY=…     (si graphhopper, ou URL self-host)
 # Overpass : pas de clé (endpoint public, à throttler ; self-host en phase 2)
@@ -105,3 +105,24 @@ EXPO_PUBLIC_GRAPHHOPPER_KEY=…     (si graphhopper, ou URL self-host)
 - Kurviger / GraphHopper : freemium puis à l'usage. Overpass : gratuit (fair use).
 - Mapbox : gratuit jusqu'à un quota, puis à la carte chargée / requête nav.
 - Google Places : payant à la requête (réserver à la phase 2).
+
+---
+
+## Kurviger a été retiré le 12/08/2026
+
+Ce document décrit encore Kurviger comme adaptateur possible. **Il ne l'est
+plus.**
+
+Son intégration passait les points en `point=<lat>,<lon>` dans la CHAÎNE DE
+REQUÊTE. Une donnée de localisation ne doit pas voyager en paramètre d'URL :
+la chaîne est journalisée par tous les intermédiaires, et le point de départ
+est ici la position GPS réelle du pilote.
+
+GraphHopper, le fournisseur effectivement configuré, est déjà en POST. Le
+retrait ne coûte donc aucune fonctionnalité, et retire un destinataire de la
+liste à déclarer dans la politique de confidentialité.
+
+Ce n'était pas un défaut actif — Kurviger n'était atteignable qu'en repointant
+`EXPO_PUBLIC_ROUTING_PROVIDER`. C'était un danger POSÉ, prêt à s'armer au
+premier changement de variable d'environnement, sans que personne ne relise ce
+fichier à ce moment-là.

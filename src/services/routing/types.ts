@@ -11,7 +11,15 @@ export interface GeoPoint {
   lon: number;
 }
 
-export type RoutingProvider = 'kurviger' | 'graphhopper';
+/**
+ * Un seul fournisseur depuis le 12/08/2026.
+ *
+ * Kurviger a été retiré : il recevait la position GPS du pilote en PARAMÈTRE
+ * D'URL, où elle se journalise chez le tiers. Voir la note dans
+ * `scenicRouteService.ts`. Le type reste une union d'une seule valeur pour que
+ * l'ajout d'un fournisseur reste une décision explicite.
+ */
+export type RoutingProvider = 'graphhopper';
 
 /** Préférence de balade (pas une métrique de perf). */
 export type Curviness = 'douce' | 'sinueuse' | 'tres_sinueuse';

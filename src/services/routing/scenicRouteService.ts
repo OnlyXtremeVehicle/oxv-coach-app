@@ -29,7 +29,6 @@ import type {
 } from './types';
 
 const PROVIDER = (process.env.EXPO_PUBLIC_ROUTING_PROVIDER as RoutingProvider) || 'graphhopper';
-const KURVIGER_KEY = process.env.EXPO_PUBLIC_KURVIGER_KEY ?? '';
 const GRAPHHOPPER_KEY = process.env.EXPO_PUBLIC_GRAPHHOPPER_KEY ?? '';
 
 // Réponse au format GraphHopper (partagée par Kurviger et GraphHopper).
@@ -71,13 +70,6 @@ function computeSinuosity(coords: GeoPoint[]): number {
   return polylineLengthM(coords) / straight;
 }
 
-// Kurviger : niveau de sinuosité natif (best-effort, à confirmer avec la doc).
-const KURVIGER_CURVINESS: Record<Curviness, string> = {
-  douce: '1',
-  sinueuse: '2',
-  tres_sinueuse: '3',
-};
-
 // GraphHopper custom model : pénalise les grands axes de plus en plus selon la
 // sinuosité voulue (multiplicateurs ≤ 1 → priorité abaissée, donc évités). C'est
 // ce qui produit une sinuosité RÉELLE côté GraphHopper (POST). À confirmer avec
@@ -100,9 +92,14 @@ const GH_CURVY_PRIORITY: Record<Curviness, { if: string; multiply_by: string }[]
   ],
 };
 
-function pointParam(p: GeoPoint): string {
-  return `${p.lat},${p.lon}`;
-}
+/*
+ * `pointParam` est parti avec Kurviger, et c'est le point : il n'existait que
+ * pour SÉRIALISER UNE POSITION DANS UNE URL. GraphHopper reçoit les points
+ * dans un corps JSON, où ils n'ont pas besoin d'être aplatis en chaîne.
+ *
+ * Une fonction qui met des coordonnées en forme de paramètre d'URL n'a pas de
+ * raison de survivre à l'appelant qui la justifiait.
+ */
 
 function orderedPoints(req: ScenicRouteRequest): GeoPoint[] {
   const pts: GeoPoint[] = [req.start, ...(req.waypoints ?? [])];
@@ -110,16 +107,35 @@ function orderedPoints(req: ScenicRouteRequest): GeoPoint[] {
   return pts;
 }
 
-function buildKurvigerUrl(req: ScenicRouteRequest): string {
-  const parts: string[] = orderedPoints(req).map(
-    (p) => `point=${encodeURIComponent(pointParam(p))}`
-  );
-  parts.push('vehicle=motorcycle', 'points_encoded=false', 'elevation=true');
-  parts.push(`curvature=${KURVIGER_CURVINESS[req.curviness ?? 'sinueuse']}`);
-  if (req.avoidMotorways !== false) parts.push('avoid=motorway');
-  if (KURVIGER_KEY) parts.push(`key=${encodeURIComponent(KURVIGER_KEY)}`);
-  return `https://api.kurviger.de/v1/route?${parts.join('&')}`;
-}
+/*
+ * `buildKurvigerUrl` ET LE FOURNISSEUR KURVIGER ONT ÉTÉ RETIRÉS LE 12/08/2026.
+ *
+ * Il concaténait les points en `point=<lat>,<lon>` dans la CHAÎNE DE REQUÊTE :
+ *
+ *     https://<hote-kurviger>/v1/route?point=45.24,-0.09&point=…&key=…
+ *
+ * Une donnée de localisation ne doit pas voyager en paramètre d'URL. Une
+ * chaîne de requête est journalisée par tous les intermédiaires — le serveur
+ * du tiers en premier — et s'y conserve indépendamment de ce que le tiers fait
+ * de la requête elle-même. Ici le point de départ est la POSITION GPS RÉELLE
+ * du pilote (`composer-route.tsx` appelle `Location.getCurrentPositionAsync`).
+ *
+ * Le retrait plutôt que la conversion en POST, pour trois raisons :
+ *
+ *   1. GraphHopper est le fournisseur RÉEL — `EXPO_PUBLIC_ROUTING_PROVIDER`
+ *      vaut `graphhopper` par défaut et dans `.env.example`. Kurviger n'était
+ *      atteignable qu'en repointant une variable d'environnement, et sa clé
+ *      n'est même pas déclarée dans `.env.example`.
+ *   2. Le chemin GraphHopper est DÉJÀ en POST. Il n'y avait donc rien à gagner
+ *      qu'un second fournisseur à tenir.
+ *   3. Un destinataire de moins est un destinataire de moins à déclarer dans
+ *      la politique de confidentialité — laquelle en nommait six quand le
+ *      dépôt en déclare trente et un.
+ *
+ * Ce n'était pas un défaut actif : c'était un danger POSÉ, prêt à s'armer au
+ * premier changement de variable d'environnement, et sans que personne ne
+ * relise ce fichier à ce moment-là.
+ */
 
 /** Corps POST GraphHopper (points_encoded=false → réponse au format GraphHopper). */
 interface GraphHopperBody {
@@ -175,20 +191,19 @@ export function parseGhResponse(json: GhResponse, provider: RoutingProvider): Sc
  */
 export async function planScenicRoute(req: ScenicRouteRequest): Promise<ScenicRoute | null> {
   const provider = PROVIDER;
-  const key = provider === 'kurviger' ? KURVIGER_KEY : GRAPHHOPPER_KEY;
+  const key = GRAPHHOPPER_KEY;
   if (!key) {
     console.warn(`[routing] clé ${provider} absente (EXPO_PUBLIC_*_KEY) — routing indisponible.`);
     return null;
   }
   try {
-    const res =
-      provider === 'kurviger'
-        ? await fetch(buildKurvigerUrl(req))
-        : await fetch(buildGraphHopperUrl(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(buildGraphHopperBody(req)),
-          });
+    // POST, toujours : les points ne transitent JAMAIS par une chaîne de
+    // requête. Voir la note sur le retrait de Kurviger, plus haut.
+    const res = await fetch(buildGraphHopperUrl(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildGraphHopperBody(req)),
+    });
     if (!res.ok) {
       console.warn(`[routing] ${provider} HTTP ${res.status}`);
       return null;

@@ -115,7 +115,6 @@ const HOTES_DECLARES = new Set([
   'api.openstreetmap.org',
   'graphhopper.com',
   'www.graphhopper.com',
-  'api.kurviger.de',
   'us1.locationiq.com',
   'www.google.com',
   // Mesure d'audience et notifications

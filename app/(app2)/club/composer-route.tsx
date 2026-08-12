@@ -125,9 +125,7 @@ const MAX_ETAPES = 3;
 const ARRIVAL_NAME_RADIUS_M = 250;
 
 // Sans clé, le moteur renvoie null d'office : on le DIT au lieu d'appeler dans le vide.
-const HAS_ROUTING_KEY = Boolean(
-  process.env.EXPO_PUBLIC_GRAPHHOPPER_KEY || process.env.EXPO_PUBLIC_KURVIGER_KEY
-);
+const HAS_ROUTING_KEY = Boolean(process.env.EXPO_PUBLIC_GRAPHHOPPER_KEY);
 
 const CURVINESS_OPTIONS: { label: string; value: Curviness }[] = [
   { label: 'Douce', value: 'douce' },
