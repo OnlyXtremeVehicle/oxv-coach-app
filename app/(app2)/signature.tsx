@@ -50,6 +50,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { QdiBranches } from '@/services/qdiLogic';
 import type { MonthlyQdi } from '@/services/qdiService';
 import {
+  Chip,
   CondensingHeaderBar,
   ListRow,
   PillarBar,
@@ -82,6 +83,7 @@ import {
   toggleMonth,
   type SignatureSelection,
 } from '@/features/miroir/signatureLogic';
+import { CLE_GENERALE } from '@/features/data/pairesLogic';
 import { useSignature } from '@/features/miroir/useSignature';
 
 /** Hauteur de la bande Empreinte (mini-radar + libellé + padding carte). */
@@ -192,7 +194,18 @@ export default function SignatureScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
   const { scrollHandler, headerStyle, condensedStyle, titleStyle } = useCondensingHeader();
-  const { status, baseline, monthly, physioVisible, reload } = useSignature();
+  const {
+    status,
+    baseline,
+    monthly,
+    physioVisible,
+    paires,
+    selection: paireCle,
+    choisirPaire,
+    selecteurVisible,
+    legende: legendePaire,
+    reload,
+  } = useSignature();
 
   const [selection, setSelection] = useState<SignatureSelection | null>(null);
   const hasBaseline = baseline !== null;
@@ -204,7 +217,19 @@ export default function SignatureScreen() {
   // Toucher un mois morphe le grand radar et change sa légende, plus HAUT
   // dans l'écran : le focus reste sur la cellule du mois et rien n'est perçu.
   // On annonce la légende RÉELLE, celle qui s'affiche — aucun texte ajouté.
-  const legende = selectionCaption(effectiveSelection, monthly);
+  /**
+   * LA LÉGENDE DIT TOUJOURS CE QUE LE RADAR MONTRE.
+   *
+   * Sur l'historique, elle vient du sélecteur de paire — « Signature générale
+   * · 11 séances », « Haute Saintonge · 911 GT3 · 4 séances ». Sur un mois de
+   * l'Empreinte, elle nomme le mois : l'Empreinte lit des médianes mensuelles
+   * agrégées, que la paire ne peut pas filtrer, et prétendre le contraire
+   * ferait passer un total pour un filtre.
+   */
+  const legende =
+    effectiveSelection.kind === 'window' && legendePaire !== null
+      ? legendePaire
+      : selectionCaption(effectiveSelection, monthly);
   const premiereLegende = useRef(true);
   useEffect(() => {
     if (premiereLegende.current) {
@@ -301,6 +326,36 @@ export default function SignatureScreen() {
               <Text style={styles.caption}>{legende}</Text>
               {axes < 5 ? <Text style={styles.axesNote}>{formatMeasuredAxes(axes)}</Text> : null}
             </View>
+
+            {/*
+              SÉLECTEUR DE PAIRE — les paires sont DÉRIVÉES des séances qui
+              nourrissent le radar : aucune combinaison sans données n'est
+              proposée. Choisir une paire ramène le radar à l'historique, car
+              une paire ne filtre pas un mois de l'Empreinte.
+            */}
+            {selecteurVisible ? (
+              <View style={styles.paireRow}>
+                <Chip
+                  label="Général"
+                  active={effectiveSelection.kind === 'window' && paireCle === CLE_GENERALE}
+                  onPress={() => {
+                    setSelection({ kind: 'window' });
+                    choisirPaire(CLE_GENERALE);
+                  }}
+                />
+                {paires.map((p) => (
+                  <Chip
+                    key={p.cle}
+                    label={p.libelle}
+                    active={effectiveSelection.kind === 'window' && paireCle === p.cle}
+                    onPress={() => {
+                      setSelection({ kind: 'window' });
+                      choisirPaire(p.cle);
+                    }}
+                  />
+                ))}
+              </View>
+            ) : null}
 
             {/* EMPREINTE — mini-radars mensuels, morph du grand radar au toucher. */}
             {monthly.length > 0 ? (
@@ -403,6 +458,12 @@ const styles = StyleSheet.create({
   },
   radarZone: {
     alignItems: 'center',
+  },
+  paireRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginTop: space.lg,
   },
   caption: {
     fontFamily: typo.mono,

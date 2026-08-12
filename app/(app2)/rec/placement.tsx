@@ -33,6 +33,8 @@ import type { LatLon } from '@/circuit/circuitGenerator';
 import { libelleAction, verdictArmement } from '@/features/rec/armementGateLogic';
 import { ARM_HOLD_MS } from '@/features/rec/armementLogic';
 import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
+import { listMyVehicles, type Vehicle } from '@/services/garageService';
+import { primaryVehicleId, vehicleName } from '@/features/vous/garageLogic';
 import { startCaptureSession } from '@/services/captureSessionService';
 import {
   fetchCircuitCenterline,
@@ -242,6 +244,8 @@ export default function PlacementScreen() {
    * On lit l'état au montage puis on suit ses changements : le boîtier peut
    * tomber pendant que le pilote choisit son circuit.
    */
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [vehicleId, setVehicleId] = useState<string | null>(null);
   const [ble, setBle] = useState(() => bluetoothService.getStatus());
   useEffect(() => bluetoothService.onStatusChange(setBle), []);
 
@@ -266,6 +270,35 @@ export default function PlacementScreen() {
   }, []);
 
   const selected = circuits.find((c) => c.id === selectedId) ?? null;
+
+  /**
+   * LE VÉHICULE ATTACHÉ À LA SÉANCE — posé ici le 12/08/2026.
+   *
+   * `startCaptureSession` accepte un `vehicleId` depuis toujours et cet écran
+   * ne le passait pas : les dix séances de production portent donc
+   * `vehicle_id = null`, sans exception. Le filtre par paire circuit-véhicule
+   * que la Signature et la Saison attendent n'aurait eu AUCUNE paire à
+   * proposer — il aurait été vert en test et vide au circuit.
+   *
+   * Le principal est pré-sélectionné, et il se dit. L'attacher en silence
+   * serait pire que ne rien attacher : le pilote découvrirait au débrief que
+   * sa séance est rangée sous une voiture qu'il n'a pas choisie.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    listMyVehicles()
+      .then((rows) => {
+        if (cancelled) return;
+        setVehicles(rows);
+        setVehicleId(primaryVehicleId(rows));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const vehicleChoisi = vehicles.find((v) => v.id === vehicleId) ?? null;
 
   // Géométrie du circuit choisi (tracé réel ; null → pas de silhouette inventée).
   useEffect(() => {
@@ -316,6 +349,9 @@ export default function PlacementScreen() {
         circuitId: circuit?.id ?? null,
         circuitName: circuit?.name ?? null,
         finishLine: captureFinishLineFor(circuit),
+        // Garage vide → `null`, et la séance reste lisible : une paire
+        // incomplète ne se range pas, elle ne s'invente pas non plus.
+        vehicleId,
       });
       if (res.ok) {
         router.replace('/(app2)/rec/roulage' as never);
@@ -349,6 +385,19 @@ export default function PlacementScreen() {
           </View>
         ) : null}
 
+        {vehicles.length > 1 ? (
+          <View style={styles.chips}>
+            {vehicles.map((v) => (
+              <Chip
+                key={v.id}
+                label={vehicleName(v)}
+                active={v.id === vehicleId}
+                onPress={() => setVehicleId(v.id)}
+              />
+            ))}
+          </View>
+        ) : null}
+
         {/* Carte circuit : tracé réel + ligne d'arrivée, ou repli sobre. */}
         <View style={styles.trackCard}>
           {centerline ? (
@@ -365,6 +414,10 @@ export default function PlacementScreen() {
           Posez le boîtier sur le support magnétique, côté passager.
         </Text>
         <Text style={styles.manifest}>Vous le verrez peu. Il s’occupera du reste.</Text>
+
+        {vehicleChoisi !== null ? (
+          <Text style={styles.vehicleNote}>Séance rattachée à {vehicleName(vehicleChoisi)}.</Text>
+        ) : null}
 
         {error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
@@ -458,6 +511,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
     color: colors.text.mid,
+  },
+  vehicleNote: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 20,
+    // `text.mid`, pas `text.low` : les huit écrans du flux REC tiennent un
+    // plancher de contraste de 7:1 (garde `contrasteFluxRec`), et `text.low`
+    // plafonne à 6,10. Une note lue au paddock, en plein soleil, avec des
+    // gants — c'est le pire contexte de lecture de l'application.
+    color: colors.text.mid,
+    marginTop: space.sm,
   },
   error: {
     fontFamily: typo.body,

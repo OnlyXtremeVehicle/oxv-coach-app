@@ -158,11 +158,28 @@ export function lerpRadar(from: QdiBranches, to: QdiBranches, t: number): QdiBra
 // Sélection — fenêtre 30 jours ↔ mois de l'Empreinte
 // ---------------------------------------------------------------------------
 
-/** Fenêtre par défaut du grand radar : les 30 derniers jours (vous vs vous). */
+/**
+ * Fenêtre historique du grand radar, en jours.
+ *
+ * ELLE VALAIT 30 JOURS JUSQU'AU 12/08/2026, et c'était une erreur pour un
+ * usage saisonnier : six journées de piste par an laissaient le radar vide
+ * onze mois sur douze. Le radar lit désormais l'historique borné en NOMBRE de
+ * séances (`BASELINE_MAX_SESSIONS` dans `useSignature`), pas en jours — la
+ * Saison reste l'objet du temps.
+ *
+ * La constante survit pour l'Empreinte mensuelle, seule lecture qui découpe
+ * encore par mois.
+ */
 export const SIGNATURE_WINDOW_DAYS = 30;
 
-/** Légende mono centrée sous le radar, état fenêtre. */
-export const SIGNATURE_WINDOW_CAPTION = 'vous vs vous · 30 jours';
+/**
+ * Légende de repli du grand radar.
+ *
+ * Le libellé réel vient de `libelleSelection` (pairesLogic) — « Signature
+ * générale · 11 séances », « Haute Saintonge · 911 GT3 · 4 séances ». Celui-ci
+ * ne sert que lorsque rien n'est encore chargé.
+ */
+export const SIGNATURE_WINDOW_CAPTION = 'vous vs vous';
 
 export type SignatureSelection = { kind: 'window' } | { kind: 'month'; monthKey: string };
 

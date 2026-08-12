@@ -203,7 +203,7 @@ const MONTHS: MonthEntry[] = [
 ];
 
 describe('defaultSelection / toggleMonth', () => {
-  it('fenêtre 30 jours par défaut quand elle contient des données', () => {
+  it('historique par défaut quand il contient des données', () => {
     expect(defaultSelection(true, MONTHS)).toEqual({ kind: 'window' });
   });
 
@@ -226,7 +226,7 @@ describe('defaultSelection / toggleMonth', () => {
     });
   });
 
-  it('second toucher du même mois → retour 30 jours (si la fenêtre existe)', () => {
+  it('second toucher du même mois → retour à l’historique (s’il existe)', () => {
     expect(toggleMonth({ kind: 'month', monthKey: '2026-06' }, '2026-06', true)).toEqual({
       kind: 'window',
     });
@@ -257,9 +257,9 @@ describe('selectionBranches / selectionCaption', () => {
     );
   });
 
-  it('légende : « vous vs vous · 30 jours », ou le mois affiché', () => {
+  it('légende de repli, ou le mois affiché', () => {
     expect(selectionCaption({ kind: 'window' }, MONTHS)).toBe(SIGNATURE_WINDOW_CAPTION);
-    expect(selectionCaption({ kind: 'window' }, MONTHS)).toBe('vous vs vous · 30 jours');
+    expect(selectionCaption({ kind: 'window' }, MONTHS)).toBe('vous vs vous');
     expect(selectionCaption({ kind: 'month', monthKey: '2026-06' }, MONTHS)).toBe(
       'vous vs vous · JUIN'
     );
