@@ -16,7 +16,6 @@ import {
   canIssueInvoice,
   computeInvoiceTotals,
   formatInvoiceNumber,
-  isAcceptablePaymentLink,
   linesAmountHtCents,
   tauxTvaUtilisable,
   type VatRegime,
@@ -24,7 +23,6 @@ import {
 import { listMyPilots } from '@/services/coachService';
 
 export interface CoachBillingProfile {
-  paymentLink: string | null;
   invoicingAssistEnabled: boolean;
   billingName: string | null;
   billingAddress: string | null;
@@ -35,7 +33,6 @@ export interface CoachBillingProfile {
 }
 
 interface ProfileRow {
-  payment_link: string | null;
   invoicing_assist_enabled: boolean | null;
   billing_name: string | null;
   billing_address: string | null;
@@ -62,7 +59,6 @@ export async function getMyBillingProfile(): Promise<CoachBillingProfile | null>
   if (!data) return null;
   const r = data as unknown as ProfileRow;
   return {
-    paymentLink: r.payment_link ?? null,
     invoicingAssistEnabled: Boolean(r.invoicing_assist_enabled),
     billingName: r.billing_name ?? null,
     billingAddress: r.billing_address ?? null,
@@ -96,16 +92,10 @@ export async function updateMyBillingProfile(
 ): Promise<{ ok: boolean; error?: string }> {
   const coachId = await currentCoachId();
   if (!coachId) return { ok: false, error: 'not_authenticated' };
-  // Garde SEC-1 : payment_link est publié (policy read_published) — on refuse
-  // tout ce qui n'est pas une URL http(s), en particulier un IBAN.
-  if (fields.paymentLink !== undefined && !isAcceptablePaymentLink(fields.paymentLink)) {
-    return { ok: false, error: 'invalid_payment_link' };
-  }
+  // `payment_link` N'EST PLUS ÉCRIT depuis le 12/08/2026 — le plan V3 supprime
+  // la colonne (« place de marché seule »), et la garde SEC-1 qui refusait un
+  // IBAN dans ce champ public disparaît avec son objet.
   const patch: Record<string, unknown> = { coach_id: coachId };
-  if (fields.paymentLink !== undefined) {
-    const trimmed = (fields.paymentLink ?? '').trim();
-    patch.payment_link = trimmed === '' ? null : trimmed;
-  }
   if (fields.billingName !== undefined) patch.billing_name = fields.billingName;
   if (fields.billingAddress !== undefined) patch.billing_address = fields.billingAddress;
   if (fields.billingSiret !== undefined) patch.billing_siret = fields.billingSiret;

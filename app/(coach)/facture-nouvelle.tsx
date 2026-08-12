@@ -219,7 +219,7 @@ export default function FactureNouvelleScreen() {
     if (!issued?.id) return;
     setSharing(true);
     const detail = await getInvoiceDetail(issued.id);
-    if (detail) await exportAndShareCoachInvoice(detail, profile?.paymentLink ?? null);
+    if (detail) await exportAndShareCoachInvoice(detail);
     setSharing(false);
   }
 

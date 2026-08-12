@@ -148,7 +148,7 @@ export default function FacturationScreen() {
     setErreurPdf(false);
     const detail = await getInvoiceDetail(id);
     if (detail) {
-      await exportAndShareCoachInvoice(detail, profile?.paymentLink ?? null);
+      await exportAndShareCoachInvoice(detail);
     } else {
       setErreurPdf(true);
     }

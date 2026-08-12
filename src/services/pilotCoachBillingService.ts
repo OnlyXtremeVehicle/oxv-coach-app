@@ -10,13 +10,16 @@
  * Accès aux données (zéro schéma, tout existe) :
  *   - factures : `coach_invoices`, RLS `coach_invoices_pilot_select`
  *     (pilot_id = auth.uid()) — le pilote ne lit QUE les siennes.
- *   - lien de paiement : CHEMIN A. Le lien vit sur `coach_profiles.payment_link`,
- *     lisible par le pilote via la policy déjà en prod `coach_profiles_read_published`
- *     (USING is_published = true) — la même que la découverte coach
- *     (`coachMarketplaceService`) et la résolution de nom de `listMyBookings`.
- *     Couvre TOUTES les factures (passées et futures), sans snapshot ni
- *     changement de schéma. Repli honnête : si la fiche du coach n'est pas
- *     publiée, le lien reste `null` et l'écran l'indique sobrement.
+ *   - lien de paiement : RETIRÉ LE 12/08/2026. Il vivait sur
+ *     `coach_profiles.payment_link`, colonne lisible par TOUS via
+ *     `coach_profiles_read_published`. Le plan V3 la supprime — « place de
+ *     marché seule ». Zéro coach l'avait renseignée en production.
+ *
+ *     CONSÉQUENCE À DIRE : le pilote n'a plus de bouton « Régler » dans
+ *     l'application. Le règlement se fait hors application, entre lui et son
+ *     coach, jusqu'à ce que le drapeau `app_payments` soit armé. La facture
+ *     porte d'ailleurs déjà cette mention en toutes lettres — OXV « n'intervient
+ *     ni dans son émission, ni dans l'encaissement du règlement ».
  *   - état « réglé » : `coaching_bookings.billing_status`, posé par le coach,
  *     lisible par le pilote via `coaching_bookings_pilot_select`.
  *
@@ -42,8 +45,6 @@ export interface MyCoachInvoice {
   currency: string;
   /** Nom du coach émetteur (réel si résolu, « — » sinon). */
   coachName: string;
-  /** Lien de paiement DIRECT du coach (chemin A), ou null si non résolu/invalide. */
-  paymentLink: string | null;
   /** Vrai UNIQUEMENT si le règlement est positivement constaté (billing_status='settled'). */
   settled: boolean;
 }
@@ -68,43 +69,31 @@ export function formatInvoiceAmount(cents: number, currency = 'EUR'): string {
 }
 
 /**
- * Ne retient un lien de paiement que s'il ressemble à une URL http(s). On ne
- * FABRIQUE jamais de lien : on lit ce que le coach a renseigné, ou rien.
- */
-function normalizePaymentLink(raw: string | null | undefined): string | null {
-  const v = (raw ?? '').trim();
-  if (!v) return null;
-  return /^https?:\/\/\S+$/i.test(v) ? v : null;
-}
-
-/**
- * Annuaire coach (chemin A) : lien de paiement + headline (repli de nom), résolu
- * pour les `coachIds` des factures. RLS `coach_profiles_read_published` borne aux
- * fiches publiées ; une fiche non publiée n'apparaît pas (lien restera null).
+ * Annuaire coach : headline seul, repli de nom pour les factures.
+ *
+ * Le lien de paiement a été retiré de cette lecture le 12/08/2026 — voir
+ * l'en-tête du fichier.
  */
 async function loadCoachDirectory(coachIds: string[]): Promise<{
-  paymentLink: Map<string, string | null>;
   headline: Map<string, string>;
 }> {
-  const paymentLink = new Map<string, string | null>();
   const headline = new Map<string, string>();
-  if (coachIds.length === 0) return { paymentLink, headline };
+  if (coachIds.length === 0) return { headline };
 
   const { data, error } = await supabase
     .from('coach_profiles')
-    .select('coach_id, headline, payment_link')
+    .select('coach_id, headline')
     .in('coach_id', coachIds);
 
   if (error) {
     console.warn('[OXV][pilot] listMyCoachInvoices profiles :', error.message);
-    return { paymentLink, headline };
+    return { headline };
   }
 
   for (const p of data ?? []) {
     if (p.headline && p.headline.trim()) headline.set(p.coach_id, p.headline.trim());
-    paymentLink.set(p.coach_id, normalizePaymentLink(p.payment_link));
   }
-  return { paymentLink, headline };
+  return { headline };
 }
 
 /**
@@ -186,7 +175,6 @@ export async function listMyCoachInvoices(limit = 30): Promise<MyCoachInvoice[]>
     amountTotalCents: r.amount_total,
     currency: r.currency ?? 'EUR',
     coachName: realName.get(r.coach_id) ?? directory.headline.get(r.coach_id) ?? '—',
-    paymentLink: directory.paymentLink.get(r.coach_id) ?? null,
     settled: r.coaching_booking_id ? (settledMap.get(r.coaching_booking_id) ?? false) : false,
   }));
 }

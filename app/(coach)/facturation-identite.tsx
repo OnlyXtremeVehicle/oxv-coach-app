@@ -81,7 +81,6 @@ export default function FacturationIdentiteScreen() {
   const [legalForm, setLegalForm] = useState('');
   const [regime, setRegime] = useState<VatRegime>('franchise');
   const [vatRate, setVatRate] = useState('');
-  const [paymentLink, setPaymentLink] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -96,7 +95,6 @@ export default function FacturationIdentiteScreen() {
         setLegalForm(p.billingLegalForm ?? '');
         setRegime(p.vatRegime);
         setVatRate(p.vatRate != null ? String(p.vatRate) : '');
-        setPaymentLink(p.paymentLink ?? '');
       }
       setState('nominal');
     })().catch(() => {
@@ -122,7 +120,6 @@ export default function FacturationIdentiteScreen() {
       vatRegime: regime,
       vatRate:
         parsedRate != null && Number.isFinite(parsedRate) && parsedRate > 0 ? parsedRate : null,
-      paymentLink: paymentLink.trim() || null,
     });
     setSaving(false);
     if (res.ok) {
@@ -210,16 +207,18 @@ export default function FacturationIdentiteScreen() {
         />
       ) : null}
 
-      <Field
-        label="Coordonnées de règlement"
-        value={paymentLink}
-        onChangeText={setPaymentLink}
-        placeholder="IBAN, lien de paiement…"
-        optional
-        helper="Figurera sur la facture. Le règlement vous revient directement, hors OXV."
-        maxLength={200}
-        containerStyle={{ marginBottom: 0 }}
-      />
+      {/*
+        LE CHAMP « COORDONNÉES DE RÈGLEMENT » A ÉTÉ RETIRÉ LE 12/08/2026.
+
+        Il écrivait `coach_profiles.payment_link`, colonne lisible par TOUS via
+        la policy `coach_profiles_read_published`. Le plan V3 la supprime —
+        « place de marché seule ».
+
+        Il se contredisait de surcroît avec sa propre garde : le libellé
+        invitait à saisir « IBAN, lien de paiement… », et le service REFUSAIT
+        les IBAN (garde SEC-1, précisément parce que la colonne est publique).
+        Un coach qui suivait la consigne affichée récoltait un refus.
+      */}
     </View>
   );
 

@@ -15,7 +15,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -477,7 +477,6 @@ function InvoicesList({ invoices }: { invoices: MyCoachInvoice[] }) {
     <View style={styles.invoiceBlock}>
       <Text style={styles.invoiceEyebrow}>FACTURES</Text>
       {invoices.map((inv) => {
-        const canPay = !inv.settled && inv.paymentLink !== null;
         return (
           <View key={inv.id} style={styles.invoiceRow}>
             <View style={{ flex: 1 }}>
@@ -489,17 +488,19 @@ function InvoicesList({ invoices }: { invoices: MyCoachInvoice[] }) {
                 {inv.settled ? ' · Réglée' : ''}
               </Text>
             </View>
-            {canPay ? (
-              <PressScale
-                onPress={() =>
-                  void Linking.openURL(inv.paymentLink as string).catch(() => undefined)
-                }
-                accessibilityLabel={`Régler la facture ${inv.number}`}
-                style={styles.payBtn}
-              >
-                <Text style={styles.payBtnLabel}>Régler</Text>
-              </PressScale>
-            ) : null}
+            {/*
+              LE BOUTON « RÉGLER » A ÉTÉ RETIRÉ LE 12/08/2026.
+
+              Il ouvrait `coach_profiles.payment_link`, colonne supprimée par le
+              plan V3 (« place de marché seule ») et lisible par TOUS.
+
+              CONSÉQUENCE ASSUMÉE, ET DITE : le règlement se fait hors
+              application, entre le pilote et son coach, jusqu'à ce que le
+              drapeau `app_payments` soit armé. Le pied de la facture le disait
+              déjà — OXV « n'intervient ni dans son émission, ni dans
+              l'encaissement du règlement ». L'application cesse simplement de
+              suggérer le contraire.
+            */}
           </View>
         );
       })}

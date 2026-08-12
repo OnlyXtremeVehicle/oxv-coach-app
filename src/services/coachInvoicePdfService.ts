@@ -33,13 +33,20 @@ function euros(cents: number): string {
   return `${grouped},${dec} €`;
 }
 
-/** Génère et partage le PDF d'une facture coach. `paymentLink` = coordonnées de paiement (optionnel). */
+/**
+ * Génère et partage le PDF d'une facture coach.
+ *
+ * LE BLOC « RÈGLEMENT » A DISPARU LE 12/08/2026, avec la colonne
+ * `coach_profiles.payment_link` que le plan V3 supprime. Le pied de la facture
+ * porte déjà l'essentiel : OXV « n'intervient ni dans son émission, ni dans
+ * l'encaissement du règlement ». Les coordonnées de règlement se transmettent
+ * hors application, comme le règlement lui-même.
+ */
 export async function exportAndShareCoachInvoice(
-  invoice: CoachInvoiceDetail,
-  paymentLink?: string | null
+  invoice: CoachInvoiceDetail
 ): Promise<InvoicePdfResult> {
   try {
-    const html = buildInvoiceHtml(invoice, paymentLink ?? null);
+    const html = buildInvoiceHtml(invoice);
     const { uri } = await Print.printToFileAsync({ html, base64: false, width: 595, height: 842 });
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, {
@@ -56,7 +63,7 @@ export async function exportAndShareCoachInvoice(
   }
 }
 
-function buildInvoiceHtml(inv: CoachInvoiceDetail, paymentLink: string | null): string {
+function buildInvoiceHtml(inv: CoachInvoiceDetail): string {
   const s = inv.seller;
   const issued = formatDateLong(inv.issuedAt);
   const service = inv.serviceDate ? formatDateLong(inv.serviceDate) : null;
@@ -162,12 +169,6 @@ function buildInvoiceHtml(inv: CoachInvoiceDetail, paymentLink: string | null): 
     ${vatLine}
     <div class="tot-row grand"><span>Total à régler</span><span>${euros(inv.amountTotalCents)}</span></div>
   </div>
-
-  ${
-    paymentLink
-      ? `<div class="pay"><div class="cap">Règlement</div><div>${escapeHtml(paymentLink)}</div></div>`
-      : ''
-  }
 
   <div class="legal">
     Facture établie par l'émetteur ci-dessus, seul responsable de sa conformité (mentions,

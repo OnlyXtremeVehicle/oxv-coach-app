@@ -1,0 +1,108 @@
+-- =============================================================================
+-- PROPOSITION — DEUX SUPPRESSIONS DU JALON 6, ET LE PIÈGE D-24 QUI VA AVEC
+-- =============================================================================
+--
+-- NON HORODATÉE VOLONTAIREMENT : `supabase db push` ignore ce fichier.
+--
+-- Le CODE applicatif ne lit ni n'écrit plus rien de tout cela depuis le
+-- 12/08/2026 — cet ordre est délibéré. Retirer le code avant le schéma est
+-- réversible ; l'inverse casse la production.
+--
+-- =============================================================================
+-- 1 · `coach_profiles.payment_link` — sans danger
+-- =============================================================================
+--
+-- Plan V3 : *« Suppression de payment_link — place de marché seule. »*
+--
+-- Balayage D-24 fait AVANT d'écrire cette proposition :
+--
+--   select p.proname from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+--    where ns.nspname = 'public' and pg_get_functiondef(p.oid) ilike '%payment_link%'
+--   → aucune ligne
+--
+--   select table_name from information_schema.views
+--    where table_schema = 'public' and view_definition ilike '%payment_link%'
+--   → aucune ligne
+--
+-- Aucune fonction, aucune vue. Et aucune donnée : `count(payment_link) = 0` sur
+-- une unique fiche coach.
+--
+-- POURQUOI LA RETIRER PLUTÔT QUE LA LAISSER DORMIR. La colonne est lisible par
+-- TOUS via `coach_profiles_read_published`. Le lot SEC-1 avait dû ajouter une
+-- garde applicative refusant qu'un coach y colle un IBAN — garde que l'écran
+-- contredisait, son libellé invitant à saisir « IBAN, lien de paiement… ».
+-- La meilleure garde sur un champ public est de ne pas avoir le champ.
+
+alter table public.coach_profiles drop column if exists payment_link;
+
+-- =============================================================================
+-- 2 · `coach_testimonials` — DEUX FONCTIONS LA RÉFÉRENCENT
+-- =============================================================================
+--
+-- Plan V3 : *« Suppression de coach_testimonials. Remplacée par la vérification
+-- OXV et les faits d'activité dérivés de coaching_bookings — un relevé que le
+-- coach ne peut pas écrire lui-même. »*
+--
+-- La table est VIDE (0 ligne). Mais le balayage D-24 rend deux fonctions :
+--
+--   purge_user_data              -- effacement RGPD
+--   moderation_validate_target   -- validation de cible de modération
+--
+-- **C'est exactement l'incident `duels` du 01/08.** plpgsql ne vérifie pas
+-- l'existence des tables à la création d'une fonction : le `drop table` passe,
+-- et la fonction casse à son PROCHAIN APPEL — c'est-à-dire, pour
+-- `purge_user_data`, au premier pilote qui exerce son droit à l'effacement.
+--
+-- LES DEUX FONCTIONS DOIVENT ÊTRE AMENDÉES DANS CETTE MÊME MIGRATION, avant le
+-- `drop`. Leur définition exacte n'est pas reproduite ici : il faut la relire au
+-- moment de l'application (`pg_get_functiondef`), car elle a pu changer.
+--
+-- Marche à suivre, dans cet ordre :
+--
+--   a) select pg_get_functiondef(oid) from pg_proc
+--       where proname in ('purge_user_data', 'moderation_validate_target')
+--         and pronamespace = 'public'::regnamespace;
+--
+--   b) Réécrire chacune SANS `coach_testimonials` (create or replace).
+--      Dans `purge_user_data`, le bras est probablement déjà gardé par
+--      `to_regclass('public.coach_testimonials') is not null` — auquel cas il
+--      devient inerte tout seul et peut être retiré proprement. VÉRIFIEZ-LE
+--      plutôt que de le supposer.
+--
+--   c) Alors seulement :
+--
+--        drop table if exists public.coach_testimonials;
+--
+--   d) Re-balayer, pour être sûr que rien n'a été manqué :
+--
+--        select proname from pg_proc
+--         where pronamespace = 'public'::regnamespace
+--           and pg_get_functiondef(oid) ilike '%coach_testimonials%';
+--        -- doit rendre zéro ligne
+--
+-- LE `DROP` N'EST PAS ÉCRIT DANS CE FICHIER, et c'est délibéré : l'écrire
+-- inviterait à l'exécuter seul. Il ne vaut qu'après (b).
+--
+-- -----------------------------------------------------------------------------
+-- CE QUI REMPLACE LES TÉMOIGNAGES
+-- -----------------------------------------------------------------------------
+--
+-- Le plan : *« les faits d'activité dérivés de `coaching_bookings` — un relevé
+-- que le coach ne peut pas écrire lui-même »*. Par exemple « 12 séances
+-- accompagnées cette saison, sur 3 circuits ».
+--
+-- Ce n'est PAS écrit à ce jour, et il faut le dire : supprimer les témoignages
+-- avant d'avoir le relevé laisse la fiche coach sans aucune validation tierce.
+-- `coaching_bookings` compte 2 lignes en production — le relevé serait donc
+-- « 2 séances », ce qui n'aide personne.
+--
+-- Ordre suggéré : écrire le relevé d'abord, supprimer les témoignages ensuite.
+-- La table étant vide, rien ne presse.
+--
+-- -----------------------------------------------------------------------------
+-- CE QUI RESTE, ET QUI NE DOIT PAS PARTIR AVEC
+-- -----------------------------------------------------------------------------
+--
+-- `billing_siret`, `billing_name`, `billing_address`, `vat_regime`, `vat_rate`.
+-- Le plan est explicite : *« le mandat d'encaissement suppose une facture au nom
+-- du coach »*. Aucune n'est publique, aucune n'est touchée ici.
