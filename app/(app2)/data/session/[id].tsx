@@ -128,6 +128,7 @@ import {
 import type { SessionFrame } from '@/services/sessionTelemetryMapping';
 import { loadWeatherCorrelation } from '@/services/weatherCorrelationService';
 import type { WeatherBucket, WeatherCorrelation } from '@/services/weatherCorrelationService';
+import { hauteursBarres, libelleEffectif, noteMethode } from '@/services/weatherEchelleLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 import type { MarginZone } from '@/types/domain';
 import type { Lap, TelemetrySession } from '@/types/telemetry';
@@ -2319,36 +2320,59 @@ function ConditionsSection({
   );
 }
 
-/** Un petit multiple : barres du tour de réf moyen par tranche (sans rouge). */
+/**
+ * Un petit multiple : le tour de référence moyen par tranche.
+ *
+ * DEUX CORRECTIFS DU 05/08/2026, ET LE PLAN LES AVAIT DEMANDÉS. Il pose, avant
+ * de dessiner : « une jointure est un fait, une corrélation serait causale ».
+ * Le calcul était honnête ; la FORME, elle, affirmait davantage.
+ *
+ * 1. L'échelle était normalisée entre le min et le max des seules tranches
+ *    affichées. Deux tranches séparées de cent millisecondes produisaient donc
+ *    l'écart visuel MAXIMAL — une barre au plafond, l'autre au plancher. Le
+ *    pilote y lisait un effet là où il n'y avait que le bruit d'un tour à
+ *    l'autre. `hauteursBarres` impose désormais un plancher d'amplitude.
+ *
+ * 2. Le nombre de séances existait dans la donnée et n'était PAS affiché. Une
+ *    tranche bâtie sur une seule séance se lisait comme une tranche bâtie sur
+ *    dix. C'est ce qui transforme un rangement en conclusion.
+ *
+ * Une corrélation ne s'écrit pas seulement avec des mots. Elle s'installe très
+ * bien avec deux barres de hauteurs différentes.
+ */
 function WeatherSmallMultiple({ title, buckets }: { title: string; buckets: WeatherBucket[] }) {
-  const withData = buckets.filter((b) => b.avgLapMs !== null && b.count > 0);
+  const withData = buckets
+    .filter((b) => b.avgLapMs !== null && b.count > 0)
+    .map((b) => ({ label: b.label, avgLapMs: b.avgLapMs as number, count: b.count }));
   if (withData.length === 0) return null;
-  const values = withData.map((b) => b.avgLapMs as number);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = Math.max(1, max - min);
+
+  const hauteurs = hauteursBarres(withData, { min: 18, max: 52 });
+  const note = noteMethode(withData);
 
   return (
     <View style={styles.multipleBlock}>
       <Text style={styles.multipleTitle}>{title}</Text>
       <View style={styles.multipleRow}>
-        {withData.map((b) => {
-          // Barre plus haute = tour plus rapide (écart inversé, comme les tours).
-          const t = ((b.avgLapMs as number) - min) / range;
-          const h = lerp(52, 18, t);
-          return (
-            <View key={b.label} style={styles.multipleCol}>
-              <View
-                style={[styles.multipleBar, { height: h, backgroundColor: colors.qdi.trajectoire }]}
-              />
-              <Text style={styles.multipleValue}>{formatChronoMs(b.avgLapMs as number)}</Text>
-              <Text style={styles.multipleLabel} numberOfLines={1}>
-                {b.label}
-              </Text>
-            </View>
-          );
-        })}
+        {withData.map((b, i) => (
+          <View key={b.label} style={styles.multipleCol}>
+            <View
+              style={[
+                styles.multipleBar,
+                { height: hauteurs[i], backgroundColor: colors.qdi.trajectoire },
+              ]}
+            />
+            <Text style={styles.multipleValue}>{formatChronoMs(b.avgLapMs)}</Text>
+            <Text style={styles.multipleLabel} numberOfLines={1}>
+              {b.label}
+            </Text>
+            {/* L'effectif s'affiche TOUJOURS, et surtout quand il vaut un. */}
+            <Text style={styles.multipleEffectif} numberOfLines={1}>
+              {libelleEffectif(b.count)}
+            </Text>
+          </View>
+        ))}
       </View>
+      {note ? <Text style={styles.multipleNote}>{note}</Text> : null}
     </View>
   );
 }
@@ -2358,6 +2382,20 @@ function WeatherSmallMultiple({ title, buckets }: { title: string; buckets: Weat
 // ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
+  multipleEffectif: {
+    fontFamily: typo.mono,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    color: colors.text.mid,
+    marginTop: 1,
+  },
+  multipleNote: {
+    fontFamily: typo.body,
+    fontSize: 11,
+    lineHeight: 16,
+    color: colors.text.mid,
+    marginTop: space.sm,
+  },
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,
