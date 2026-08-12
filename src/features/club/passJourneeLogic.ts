@@ -98,7 +98,18 @@ export function finJourneeMs(j: JourneeLike): number | null {
 
   if (j.endTime !== null) {
     const h = /^(\d{2}):(\d{2})/.exec(j.endTime.trim());
-    if (h) return new Date(an, mois, jour, Number(h[1]), Number(h[2]), 0, 0).getTime();
+    if (h) {
+      const fin = new Date(an, mois, jour, Number(h[1]), Number(h[2]), 0, 0).getTime();
+      /**
+       * JOURNÉE QUI FRANCHIT MINUIT. Une séance 22h00 → 02h00 porte une heure de
+       * fin ANTÉRIEURE à son heure de début : calculée sur la même date, elle
+       * plaçait la fin quatre heures AVANT le début, et la journée disparaissait
+       * de « à venir » alors qu'elle n'avait pas commencé.
+       */
+      const debut = debutJourneeMs(j);
+      if (debut !== null && fin < debut) return fin + 24 * 60 * 60 * 1000;
+      return fin;
+    }
   }
   // Fin du jour local : 23:59:59,999.
   return new Date(an, mois, jour, 23, 59, 59, 999).getTime();
@@ -119,6 +130,42 @@ export function debutJourneeMs(j: JourneeLike): number | null {
     0,
     0
   ).getTime();
+}
+
+/**
+ * C'EST AUJOURD'HUI QU'ON ROULE — la journée doit-elle ouvrir le jour J ?
+ *
+ * ===========================================================================
+ * POURQUOI CETTE FONCTION EXISTE
+ * ===========================================================================
+ *
+ * La carte d'une journée « à venir » n'avait qu'un seul geste : agrandir le QR
+ * de présence. Elle n'importait même pas les routes du flux de capture. Le
+ * pilote arrivait au circuit avec, dans la main, la seule page qui parlait de
+ * sa journée — et cette page ne pouvait ni appairer, ni lancer, ni arrêter.
+ *
+ * Relevé au premier essai terrain, le 13/08/2026 : le fondateur a dû quitter
+ * son Pass et retrouver l'entrée ailleurs, dans le Paddock.
+ *
+ * ===========================================================================
+ * CE QU'ELLE DÉCIDE
+ * ===========================================================================
+ *
+ * `true` quand l'instant courant tombe DANS la journée, ou qu'il en reste moins
+ * de deux heures avant le début. Deux heures : le temps d'arriver, de décharger
+ * et de s'installer — pas plus, sinon l'entrée s'affiche la veille et perd son
+ * sens d'« aujourd'hui ».
+ *
+ * Une journée finie rend `false` : le jour J est passé, c'est le bilan qui
+ * prend le relais.
+ */
+const AVANCE_JOUR_J_MS = 2 * 60 * 60 * 1000;
+
+export function estJourJ(j: JourneeLike, maintenantMs: number): boolean {
+  const debut = debutJourneeMs(j);
+  const fin = finJourneeMs(j);
+  if (debut === null || fin === null) return false;
+  return maintenantMs >= debut - AVANCE_JOUR_J_MS && maintenantMs <= fin;
 }
 
 // ---------------------------------------------------------------------------

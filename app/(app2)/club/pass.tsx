@@ -30,7 +30,15 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Linking,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import QRCode from 'react-native-qrcode-svg';
 import Toast from 'react-native-toast-message';
@@ -62,6 +70,7 @@ import {
 } from '@/ui/v2';
 import { passEmptyCta, URL_JOURNEES_SITE, qrCheckinPayload } from '@/features/club/passLogic';
 import {
+  estJourJ,
   libelleCreneau,
   libelleOffre,
   libelleStatut,
@@ -71,6 +80,7 @@ import {
   qrAffichable,
   raisonSansQr,
 } from '@/features/club/passJourneeLogic';
+import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 
 // ---------------------------------------------------------------------------
 // Format
@@ -239,6 +249,11 @@ export default function PassScreen() {
                       reg={reg}
                       index={index}
                       onShowQr={() => setQrValue(qrCheckinPayload(reg.registrationId))}
+                      onJourJ={
+                        reg.journee !== null && estJourJ(reg.journee, Date.now())
+                          ? () => router.push(REC_ROUTES.preparation as never)
+                          : null
+                      }
                     />
                   ))}
                 </View>
@@ -313,10 +328,13 @@ function PassCard({
   reg,
   index,
   onShowQr,
+  onJourJ,
 }: {
   reg: MaJournee;
   index: number;
   onShowQr: () => void;
+  /** Ouvre le flux du jour J. Absent → la journée n'est pas celle d'aujourd'hui. */
+  onJourJ: (() => void) | null;
 }) {
   const j = reg.journee;
   if (!j) return null;
@@ -372,6 +390,31 @@ function PassCard({
           ) : null}
         </View>
       </PressScale>
+
+      {/*
+        L'ENTRÉE DU JOUR J — hors du PressScale de la carte, et volontairement.
+
+        Deux cibles imbriquées se disputent le toucher : le dépôt en a déjà payé
+        le prix sur les pastilles de circuits, où le hitSlop de la rangée du
+        dessous raflait les appuis de celle du dessus. Ce bouton est donc un
+        FRÈRE de la carte, séparé par une marge, avec sa propre hauteur de 56 pt
+        — au-dessus du plancher de 44 pt d'une cible gantée.
+
+        Il ne s'affiche que le jour même : le reste du temps, la carte reste ce
+        qu'elle était.
+      */}
+      {onJourJ !== null ? (
+        <Pressable
+          onPress={onJourJ}
+          accessibilityRole="button"
+          accessibilityLabel={`Ouvrir votre journée du ${dayLabel(j.date)}`}
+          accessibilityHint="Appairer le boîtier, lancer et arrêter votre séance"
+          style={styles.jourJ}
+        >
+          <Text style={styles.jourJLabel}>OUVRIR LE JOUR J</Text>
+          <Text style={styles.jourJHint}>Appairer, lancer, arrêter, relire</Text>
+        </Pressable>
+      ) : null}
     </Animated.View>
   );
 }
@@ -528,6 +571,36 @@ const styles = StyleSheet.create({
     padding: 6,
     alignItems: 'center',
     gap: 4,
+  },
+  /**
+   * L'entrée du jour J. FRÈRE de la carte, jamais imbriquée : deux cibles
+   * tactiles superposées se disputent le toucher, et le dépôt a déjà payé ce
+   * prix sur les pastilles de circuits. 56 pt de haut — au-dessus du plancher
+   * de 44 pt d'une cible gantée, au paddock, avec du soleil dans l'écran.
+   */
+  jourJ: {
+    minHeight: 56,
+    marginTop: space.sm,
+    paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    backgroundColor: colors.bg.card2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jourJLabel: {
+    fontFamily: typo.bodySemi,
+    fontSize: 14,
+    letterSpacing: 1.4,
+    color: colors.text.hi,
+  },
+  jourJHint: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    color: colors.text.mid,
+    marginTop: 2,
   },
   cardSansQr: {
     fontFamily: typo.body,

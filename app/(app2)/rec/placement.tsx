@@ -34,6 +34,7 @@ import { libelleAction, verdictArmement } from '@/features/rec/armementGateLogic
 import { ARM_HOLD_MS } from '@/features/rec/armementLogic';
 import { libelleOrigineCircuit, type JourneeRetenue } from '@/features/rec/journeeDuJourLogic';
 import { circuitDeMaJournee } from '@/services/journeeDuJourService';
+import { phraseSensParcours } from '@/features/rec/sensParcoursLogic';
 import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import { primaryVehicleId, vehicleName } from '@/features/vous/garageLogic';
@@ -279,7 +280,9 @@ export default function PlacementScreen() {
   const [ble, setBle] = useState(() => bluetoothService.getStatus());
   useEffect(() => bluetoothService.onStatusChange(setBle), []);
 
-  const verdict = verdictArmement(ble, starting);
+  // Le 4e argument ferme le chemin « armer sans circuit », qui retombait sur
+  // `BELTOISE_FINISH` — une ligne d'arrivée qui n'appartient à aucun tracé réel.
+  const verdict = verdictArmement(ble, starting, false, selectedId !== null);
   const actionSecondaire = libelleAction(verdict.action);
 
   /**
@@ -353,6 +356,8 @@ export default function PlacementScreen() {
    * on ne meuble pas une ligne pour rassurer.
    */
   const origineCircuit = libelleOrigineCircuit(journee, selectedId);
+  /** Le sens obligatoire de franchissement. `null` en mode rayon (pas de sens). */
+  const sensParcours = phraseSensParcours(selected?.finishLineHeading);
 
   /**
    * LE VÉHICULE ATTACHÉ À LA SÉANCE — posé ici le 12/08/2026.
@@ -410,7 +415,10 @@ export default function PlacementScreen() {
     // Seconde barrière, côté action. Le bouton est déjà désactivé, mais un
     // chemin non gestuel existe (le double-tap d'accessibilité) et une garde qui
     // ne vit que dans le rendu est une garde qu'on contourne sans le savoir.
-    if (!verdictArmement(bluetoothService.getStatus(), starting).peutArmer) return;
+    if (
+      !verdictArmement(bluetoothService.getStatus(), starting, false, selectedId !== null).peutArmer
+    )
+      return;
     haptic('arm');
     if (!profile?.id) {
       setError('Profil non chargé. Reconnectez-vous.');
@@ -487,6 +495,19 @@ export default function PlacementScreen() {
           {selected?.name ?? '—'}
         </Text>
         {origineCircuit ? <Text style={styles.circuitOrigine}>{origineCircuit}</Text> : null}
+        {/*
+          LE SENS DE PARCOURS, ÉCRIT NULLE PART JUSQU'ICI.
+
+          La ligne d'arrivée est une PORTE ORIENTÉE : franchie à contresens, elle
+          ne compte rien — pas un tour approximatif, zéro. C'est le seul réglage
+          d'un circuit qui décide de la journée avant même de démarrer, et
+          l'application ne le disait à personne. Le pilote ne pouvait le
+          découvrir qu'au bilan, sur une séance sans chrono.
+
+          Muet quand le cap n'est pas relevé (mode rayon) : il n'y a alors pas de
+          sens obligatoire, et l'affirmer serait faux.
+        */}
+        {sensParcours ? <Text style={styles.circuitSens}>{sensParcours}</Text> : null}
 
         {circuits.length > 1 ? (
           <View style={styles.chips}>
@@ -624,6 +645,13 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 36,
     color: colors.text.hi,
+  },
+  circuitSens: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.mid,
+    marginTop: space.xs,
   },
   circuitOrigine: {
     fontFamily: typo.body,

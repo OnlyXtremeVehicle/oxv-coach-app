@@ -117,3 +117,42 @@ describe('ton OXV', () => {
     }
   });
 });
+
+describe('aucun circuit retenu — le refus qui manquait', () => {
+  /**
+   * `startCaptureSession` accepte un `circuitId` nul et retombe alors sur
+   * `BELTOISE_FINISH`, des coordonnées qui n'appartiennent à AUCUN circuit
+   * réel. La capture démarrait, le voyant s'allumait, et pas un tour ne pouvait
+   * être compté. Le seul garde-fou était un `console.warn` que personne ne lit
+   * au paddock.
+   */
+  it('refuse l’armement, même boîtier connecté', () => {
+    const v = verdictArmement('connected', false, false, false);
+    expect(v.peutArmer).toBe(false);
+    expect(v.action).toBe('choisir_circuit');
+    expect(v.raison).toMatch(/circuit/i);
+  });
+
+  /**
+   * Rouler sans mesure reste un choix légitime — mais il ne fabrique pas un
+   * circuit. Le refus doit donc PRÉCÉDER ce raccourci, sinon il se contourne
+   * sans le savoir.
+   */
+  it('« rouler sans mesure » ne le contourne pas', () => {
+    expect(verdictArmement('connected', false, true, false).peutArmer).toBe(false);
+  });
+
+  it('avec un circuit, rien ne change pour les cas existants', () => {
+    expect(verdictArmement('connected', false, false, true).peutArmer).toBe(true);
+    expect(verdictArmement('disconnected', false, false, true).peutArmer).toBe(false);
+  });
+
+  /** Le défaut du paramètre garde intacts les appelants d'avant. */
+  it('le paramètre est optionnel et vaut « circuit retenu »', () => {
+    expect(verdictArmement('connected', false).peutArmer).toBe(true);
+  });
+
+  it('aucune action de navigation : le choix est SUR cet écran', () => {
+    expect(libelleAction('choisir_circuit')).toBeNull();
+  });
+});

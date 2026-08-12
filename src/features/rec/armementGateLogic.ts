@@ -38,7 +38,8 @@ import type { BleStatus } from '@/types/telemetry';
 export type ActionArmement =
   | 'armer' // la voie normale
   | 'patienter' // une connexion est en cours, rien à faire qu'attendre
-  | 'diagnostic'; // aller régler l'appairage
+  | 'diagnostic' // aller régler l'appairage
+  | 'choisir_circuit'; // aucun tracé retenu : sans lui, aucun tour ne peut être compté
 
 export interface VerdictArmement {
   peutArmer: boolean;
@@ -61,10 +62,40 @@ export interface VerdictArmement {
 export function verdictArmement(
   statut: BleStatus,
   enCours: boolean,
-  sansMesure = false
+  sansMesure = false,
+  /**
+   * Un circuit est-il retenu ? `false` → refus.
+   *
+   * ── POURQUOI CE QUATRIÈME ARGUMENT (posé le 13/08/2026) ────────────────────
+   *
+   * `startCaptureSession` accepte un `circuitId` nul et retombe alors sur
+   * `BELTOISE_FINISH` — des coordonnées qui ne correspondent à AUCUN circuit
+   * réel. La capture démarre, le voyant s'allume, et pas un tour ne peut être
+   * compté : la ligne d'arrivée est à des centaines de mètres de la piste.
+   *
+   * Le garde-fou prévu pour ce cas est un `console.warn`, que personne ne lit
+   * au paddock. Une séance sans circuit est une séance sans chrono ; il vaut
+   * mieux le dire avant de rouler que de le découvrir au bilan.
+   *
+   * Le défaut est resté invisible tant que l'écran pré-sélectionnait TOUJOURS
+   * un circuit. Il s'arme dès que la liste peut être vide — hors-ligne, au
+   * premier lancement, ou sur une lecture filtrée par la RLS.
+   */
+  circuitRetenu = true
 ): VerdictArmement {
   if (enCours) {
     return { peutArmer: false, raison: 'Démarrage en cours.', action: 'patienter' };
+  }
+
+  // AVANT le raccourci `sansMesure` : rouler sans mesure reste un choix
+  // légitime, mais il ne fabrique pas un circuit pour autant. Sans tracé, la
+  // séance n'a pas de ligne d'arrivée — et aucun geste ne peut y suppléer.
+  if (!circuitRetenu) {
+    return {
+      peutArmer: false,
+      raison: 'Aucun circuit retenu. Sans tracé, aucun tour ne sera compté.',
+      action: 'choisir_circuit',
+    };
   }
 
   if (sansMesure) return { peutArmer: true, action: 'armer' };
@@ -104,5 +135,10 @@ export function verdictArmement(
  * s'établit invite à l'interrompre.
  */
 export function libelleAction(action: ActionArmement): string | null {
-  return action === 'diagnostic' ? 'Régler l’appairage' : null;
+  if (action === 'diagnostic') return 'Régler l’appairage';
+  // Le refus « aucun circuit » n'a pas d'ailleurs où aller : le choix est SUR
+  // cet écran. Proposer une navigation ferait sortir le pilote de la seule page
+  // qui porte la réponse.
+  if (action === 'choisir_circuit') return null;
+  return null;
 }
