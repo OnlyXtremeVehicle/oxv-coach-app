@@ -87,6 +87,29 @@ export function decideCentralButton(inputs: CentralButtonInputs): CentralButtonD
 }
 
 // ---------------------------------------------------------------------------
+// La destination du bouton central
+// ---------------------------------------------------------------------------
+
+/**
+ * Où mène le bouton central.
+ *
+ * *« Le bouton central ouvre le Pass. »* — et *« le bouton "Réserver" ouvre le
+ * Pass, y compris quand `app_payments` est fermé »*.
+ *
+ * Il menait à la porte Club en mode « réserver », c'est-à-dire à un hub de sept
+ * enfants où le pilote devait trouver lui-même celui qu'il cherchait. Le Pass
+ * répond aux deux questions à la fois : ce qu'il possède, et le chemin pour en
+ * obtenir une journée quand il n'en a aucune.
+ *
+ * SEULE LA CAPTURE EN COURS FAIT EXCEPTION, et ce n'est pas une exception au
+ * principe : pendant qu'on roule, le bouton n'ouvre pas un document, il ramène
+ * à ce qui est en train de se passer.
+ */
+export function centralButtonRoute(mode: CentralButtonMode): string {
+  return mode === 'rec' ? '/(app2)/rec' : '/(app2)/club/pass';
+}
+
+// ---------------------------------------------------------------------------
 // Flux capture V2 — masquage de la TabBar (mécanisme prêt pour le lot L2)
 // ---------------------------------------------------------------------------
 

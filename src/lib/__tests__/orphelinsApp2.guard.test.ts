@@ -90,18 +90,39 @@ describe("garde — aucun écran d'app2 n'est orphelin", () => {
     expect(orphelins).toEqual([]);
   });
 
-  it('les trois lieux du Club sont atteints SANS condition de donnée', () => {
+  it('les portes du Club sont atteintes SANS condition de donnée', () => {
     // Le défaut d'origine : les liens existaient bien… sous `hasAnyBlock`, faux
-    // pour un pilote sans coaching ni écurie. Le bloc « LES LIEUX » est rendu
-    // hors de cette condition, et ce contrôle le fige.
+    // pour un pilote sans coaching ni écurie. Le bloc de portes est rendu hors
+    // de cette condition, et ce contrôle le fige.
+    //
+    // `club/roulages` REJOINT LA LISTE LE 12/08/2026. Il n'était atteignable
+    // que par le bloc « invitations » — donc seulement quand quelqu'un venait
+    // d'inviter le pilote. Ses amis lui étaient inaccessibles le reste du
+    // temps, et l'écran n'existait qu'au bon vouloir d'autrui.
     const hub = readFileSync(join(RACINE, 'app', '(app2)', 'club', 'index.tsx'), 'utf8');
-    expect(hub).toContain('<LieuxBlock />');
-    for (const lieu of ['club/galerie', 'club/routes', 'club/territoire']) {
+    expect(hub).toContain('<PortesBlock />');
+    for (const lieu of [
+      'club/galerie',
+      'club/routes',
+      'club/territoire',
+      'club/roulages',
+      'data/comparer',
+    ]) {
       expect(hub).toContain(`/(app2)/${lieu}`);
     }
-    // `LieuxBlock` est monté APRÈS la fermeture du ternaire `hasAnyBlock` :
+    // `PortesBlock` est monté APRÈS la fermeture du ternaire `hasAnyBlock` :
     // il ne doit pas figurer à l'intérieur du `Stagger` conditionnel.
     const stagger = hub.slice(hub.indexOf('<Stagger'), hub.indexOf('</Stagger>'));
-    expect(stagger).not.toContain('LieuxBlock');
+    expect(stagger).not.toContain('PortesBlock');
+  });
+
+  /**
+   * Le bouton central est une porte à lui seul : il ouvre le Pass. Le vérifier
+   * ici évite qu'un câblage « provisoire » y survive, comme celui du lot L0 —
+   * qui menait à la porte Club, c'est-à-dire à un hub de sept enfants.
+   */
+  it('le bouton central mène au Pass, jamais à un hub', () => {
+    const layout = readFileSync(join(RACINE, 'app', '(app2)', '_layout.tsx'), 'utf8');
+    expect(layout).toContain('centralButtonRoute(central.mode)');
   });
 });

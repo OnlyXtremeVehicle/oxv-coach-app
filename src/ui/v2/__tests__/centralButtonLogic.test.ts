@@ -7,6 +7,7 @@
 
 import {
   V2_HIDDEN_SEGMENTS,
+  centralButtonRoute,
   countdownLabel,
   daysUntilTrackDay,
   decideCentralButton,
@@ -132,5 +133,21 @@ describe('isV2CaptureFlowPath — masquage de la TabBar sous /rec/<segment>', ()
     expect(isV2CaptureFlowPath('/rec/inconnu')).toBe(false);
     // Segment v1 hors /rec : couvert par shouldShowTabBar (appMap), pas ici.
     expect(isV2CaptureFlowPath('/roulage')).toBe(false);
+  });
+});
+
+describe('la destination — le bouton central ouvre le Pass', () => {
+  /**
+   * Il menait à la porte Club en mode « réserver » : un hub de sept enfants,
+   * où le pilote devait trouver lui-même celui qu'il cherchait. Le Pass répond
+   * aux deux questions — ce qu'il possède, et le chemin quand il n'a rien.
+   */
+  it('réserver et compte à rebours mènent au Pass', () => {
+    expect(centralButtonRoute('reserve')).toBe('/(app2)/club/pass');
+    expect(centralButtonRoute('countdown')).toBe('/(app2)/club/pass');
+  });
+
+  it('une capture en cours ramène à la capture, jamais à un document', () => {
+    expect(centralButtonRoute('rec')).toBe('/(app2)/rec');
   });
 });

@@ -154,11 +154,12 @@ export default function ClubHubScreen() {
                     atteint-il tous ses enfants ? » Le plan relevait « le Club
                     trois sur sept » ; le compte est refait ici.
 
-                    Ces trois entrées ne montrent aucune donnée : ce sont des
-                    PORTES. Elles s'affichent pour un pilote de son premier jour
-                    comme pour un habitué.
+                    Ces entrées ne montrent aucune donnée : ce sont des PORTES.
+                    Elles s'affichent pour un pilote de son premier jour comme
+                    pour un habitué — y compris « Les amis », qui n'était
+                    atteignable que quand quelqu'un venait d'inviter le pilote.
                   */}
-                  <LieuxBlock />
+                  <PortesBlock />
                 </>
               )}
             </Animated.ScrollView>
@@ -399,36 +400,59 @@ function PassBlock({ pass }: { pass: HubPass }) {
 // ---------------------------------------------------------------------------
 
 /**
- * Les lieux du Club — trois portes, aucune donnée.
+ * Les portes permanentes du Club — deux couches, aucune donnée.
  *
- * L'ordre suit les trois couches du plan : *« le Pass en tête, puis ce que vous
- * partagez, puis ce que vous découvrez »*. Le Pass a son bloc plus haut ; voici
- * les deux autres couches, plus vos propres routes.
+ * LES TROIS COUCHES DU PLAN : *« ce que vous possédez · ce que vous partagez ·
+ * ce que vous découvrez »*. Le Pass tient la première, plus haut. Voici les
+ * deux autres.
+ *
+ * `roulages` A PERDU SA DÉPENDANCE À UNE NOTIFICATION le 12/08/2026. L'écran
+ * n'était atteignable que par le bloc « invitations » — donc seulement quand
+ * quelqu'un venait d'inviter le pilote. Sans invitation en attente, ses amis
+ * lui étaient inaccessibles depuis le Club, et l'écran des amis n'existait
+ * qu'au bon vouloir d'autrui.
  *
  * Aucun compte, aucun chiffre : une porte qui annonce « 0 souvenir » se lit
  * comme un reproche. Elle dit ce qu'il y a derrière, pas ce qui manque.
  */
-function LieuxBlock() {
+function PortesBlock() {
   return (
-    <View style={styles.block}>
-      <SectionHeader eyebrow="LES LIEUX" />
-      <ListRow
-        label="Vos souvenirs"
-        sublabel="Photos de séance, carte-souvenir, liens de partage."
-        onPress={() => router.navigate('/(app2)/club/galerie' as never)}
-      />
-      <ListRow
-        label="Vos belles routes"
-        sublabel="Les itinéraires que vous avez composés."
-        onPress={() => router.navigate('/(app2)/club/routes' as never)}
-      />
-      <ListRow
-        label="Le territoire"
-        sublabel="Circuits, routes certifiées, points de la carte OXV."
-        divider={false}
-        onPress={() => router.navigate('/(app2)/club/territoire' as never)}
-      />
-    </View>
+    <>
+      <View style={styles.block}>
+        <SectionHeader eyebrow="CE QUE VOUS PARTAGEZ" />
+        <ListRow
+          label="Les amis"
+          sublabel="Vos amis, leurs derniers circuits, et les roulages partagés."
+          onPress={() => router.navigate('/(app2)/club/roulages' as never)}
+        />
+        <ListRow
+          label="Comparer"
+          sublabel="Deux séances côte à côte, sans vainqueur."
+          onPress={() => router.navigate('/(app2)/data/comparer' as never)}
+        />
+        <ListRow
+          label="Vos souvenirs"
+          sublabel="Photos de séance, carte-souvenir, liens de partage."
+          divider={false}
+          onPress={() => router.navigate('/(app2)/club/galerie' as never)}
+        />
+      </View>
+
+      <View style={styles.block}>
+        <SectionHeader eyebrow="CE QUE VOUS DÉCOUVREZ" />
+        <ListRow
+          label="Le territoire"
+          sublabel="Circuits, routes certifiées, points de la carte OXV."
+          onPress={() => router.navigate('/(app2)/club/territoire' as never)}
+        />
+        <ListRow
+          label="Vos belles routes"
+          sublabel="Les itinéraires que vous avez composés."
+          divider={false}
+          onPress={() => router.navigate('/(app2)/club/routes' as never)}
+        />
+      </View>
+    </>
   );
 }
 

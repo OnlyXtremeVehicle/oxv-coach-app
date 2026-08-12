@@ -1,6 +1,13 @@
 /**
- * ROULAGES & AMIS — porte CLUB, écran 3/7 du lot V2-L5 (Mission B).
+ * LES AMIS — porte CLUB, écran 3/7 du lot V2-L5 (Mission B).
  * Route `club/roulages`.
+ *
+ * Titré « ROULAGES & AMIS » jusqu'au 12/08/2026. Le plan V3 le nomme « Les
+ * amis » : le roulage est ce qu'on fait ENSEMBLE, l'amitié est ce qui le rend
+ * possible. Mettre le roulage en tête faisait de l'écran une boîte de
+ * réception, ce qu'il était d'ailleurs en pratique — il n'était atteignable
+ * que par une invitation reçue. Le hub Club lui donne désormais une porte
+ * permanente.
  *
  * Deux onglets Chip :
  *   - Roulages : invitations à venir (Accepter / Décliner, `roulagesService`)
@@ -111,7 +118,7 @@ export default function ClubRoulagesScreen() {
           <BackGlyph />
         </PressScale>
         <Text style={styles.headerTitle} accessibilityRole="header">
-          ROULAGES & AMIS
+          LES AMIS
         </Text>
         <View style={styles.headerSpacer} />
       </View>

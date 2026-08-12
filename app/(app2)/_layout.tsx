@@ -31,6 +31,7 @@ import { HeroMorphProvider } from '@/ui/v2/motion';
 import { TabBar } from '@/ui/v2/TabBar';
 import { isV2CaptureFlowPath } from '@/ui/v2/centralButtonLogic';
 import { colors } from '@/ui/v2/tokens';
+import { centralButtonRoute } from '@/ui/v2/centralButtonLogic';
 import { useCentralButtonState } from '@/ui/v2/useCentralButtonState';
 import type { TabKey } from '@/ui/v2/shellLogic';
 
@@ -99,14 +100,13 @@ export default function App2Layout() {
           central={{
             mode: central.mode,
             label: central.label,
-            // Câblage provisoire (lot L0) : rec/countdown mènent à l'écran
-            // capture ; « Réserver » ouvre la porte Club en attendant le
-            // vrai flux de réservation (lot L4). navigate, pas push : taper
-            // plusieurs fois le bouton n'empile pas de doublons.
-            onPress: () =>
-              router.navigate(
-                (central.mode === 'reserve' ? '/(app2)/club' : '/(app2)/rec') as never
-              ),
+            // Destination décidée par `centralButtonRoute` (logique pure,
+            // testée) : le Pass, sauf capture en cours. Le câblage provisoire
+            // du lot L0 menait « Réserver » à la porte Club — un hub de sept
+            // enfants où le pilote devait trouver lui-même ce qu'il cherchait.
+            // navigate, pas push : taper plusieurs fois n'empile pas de
+            // doublons.
+            onPress: () => router.navigate(centralButtonRoute(central.mode) as never),
           }}
         />
       ) : null}
