@@ -40,6 +40,24 @@ export function captureLinkMessage(status: CaptureLinkStatus): CaptureLinkMessag
         sub: 'Le boîtier ne répond plus. Votre session a été enregistrée jusqu’ici.',
         tone: 'lost',
       };
+    /**
+     * MUET — connecté, et pourtant rien n'arrive.
+     *
+     * C'est l'état qui manquait la nuit du 13/08/2026 : le boîtier était
+     * apparié, le voyant REC pulsait en rouge, et pas une trame n'a été
+     * enregistrée de toute la séance. Le pilote ne l'a appris qu'au retour.
+     *
+     * Le message ne dit PAS quoi faire — la doctrine l'interdit, et de toute
+     * façon on ne sait pas : boîtier en veille, notifications refusées,
+     * application passée en arrière-plan. Il dit ce qui est, ce qui suffit à
+     * décider de s'arrêter en bord de piste plutôt que de rouler pour rien.
+     */
+    case 'muet':
+      return {
+        title: 'AUCUNE DONNÉE',
+        sub: 'Le boîtier est connecté mais n’envoie rien. Rien n’est enregistré depuis le départ.',
+        tone: 'lost',
+      };
     case 'recording':
     case 'idle':
       return null;

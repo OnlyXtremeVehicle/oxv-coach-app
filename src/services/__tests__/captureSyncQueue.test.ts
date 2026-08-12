@@ -22,6 +22,8 @@ function fsMap(): Map<string, string> {
 interface SbCtrl {
   remainingOk: number;
   frameCount: number;
+  /** `true` → l'UPDATE ne touche AUCUNE ligne (RLS, jeton, ligne absente). */
+  updateTouchesNoRow: boolean;
   calls: { table: string; kind: string; opts: any; rows: any[] | null }[];
   errorByTable: Record<string, { message: string; code?: string }>;
   /** Force une erreur UNIQUEMENT sur les upserts d'une table (garde 42P10). */
@@ -45,6 +47,7 @@ function sbCtrl(): SbCtrl {
     g.__OXV_SB__ = {
       remainingOk: 1e9,
       frameCount: 0,
+      updateTouchesNoRow: false,
       calls: [],
       errorByTable: {},
       upsertErrorByTable: {},
@@ -135,7 +138,19 @@ jest.mock('@/lib/supabase', () => {
       this.kind = 'update';
       return this;
     }
+    /**
+     * Un `.select()` qui SUIT un `.update()` est une clause RETURNING, pas une
+     * lecture : il ne doit pas changer la nature de l'appel enregistré. Sans
+     * cette distinction, `execComplete` (qui lit désormais les lignes touchées
+     * pour ne plus confondre « clôturée » et « je n'ai touché personne »)
+     * apparaissait comme un `select`.
+     */
+    returning = false;
     select(_cols?: unknown, opts?: unknown) {
+      if (this.kind === 'update') {
+        this.returning = true;
+        return this;
+      }
       this.kind = 'select';
       this.opts = opts;
       return this;
@@ -164,7 +179,14 @@ jest.mock('@/lib/supabase', () => {
         if (forced) return { error: forced, count: null, data: null };
         if (c.remainingOk > 0) {
           c.remainingOk -= 1;
-          const rows = this.kind === 'select' ? (c.selectRowsByTable[this.table] ?? null) : null;
+          const rows =
+            this.kind === 'select'
+              ? (c.selectRowsByTable[this.table] ?? null)
+              : this.returning
+                ? c.updateTouchesNoRow
+                  ? []
+                  : [{ id: 'ligne-touchee' }]
+                : null;
           return {
             error: null,
             count: this.kind === 'select' ? c.frameCount : null,
@@ -726,8 +748,42 @@ describe('complete : réconciliation total_frames', () => {
     const res = await processQueue();
     expect(res.processed).toBe(1);
     // Un select count (telemetry_frames) précède l’update (telemetry_sessions).
+    // L'update porte un RETURNING (`.select('id')`) — il reste un update.
     const kinds = sbCtrl().calls.map((c) => `${c.table}:${c.kind}`);
     expect(kinds).toEqual(['telemetry_frames:select', 'telemetry_sessions:update']);
+  });
+});
+
+describe('complete : une clôture qui ne touche AUCUNE ligne n’a pas réussi', () => {
+  /**
+   * LE DÉFAUT DU 13/08/2026, ET LA RAISON DE CE FICHIER.
+   *
+   * PostgREST rend 204 SANS erreur quand le WHERE ne rencontre aucune ligne :
+   * RLS qui filtre parce que le jeton n'est pas encore restauré, `user_id` qui
+   * ne correspond pas, ligne pas encore présente côté serveur.
+   *
+   * L'ancien code ne regardait que `error`, comptait l'opération comme
+   * traitée, et SUPPRIMAIT DU DISQUE le fichier qui portait la clôture. La
+   * séance restait `recording` à vie et plus rien ne la rejouait — c'est
+   * exactement l'état dans lequel la séance du premier essai terrain a été
+   * retrouvée.
+   *
+   * Ces deux tests éprouvent les deux moitiés du contrat : elle échoue, ET
+   * elle reste en file.
+   */
+  it('zéro ligne touchée → l’opération échoue', async () => {
+    sbCtrl().updateTouchesNoRow = true;
+    await enqueue(completeOp('s1'));
+    const res = await processQueue();
+    expect(res.processed).toBe(0);
+  });
+
+  it('zéro ligne touchée → l’opération est CONSERVÉE, jamais mise en quarantaine', async () => {
+    sbCtrl().updateTouchesNoRow = true;
+    await enqueue(completeOp('s1'));
+    await processQueue();
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
   });
 });
 

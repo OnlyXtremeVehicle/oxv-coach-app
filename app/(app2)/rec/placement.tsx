@@ -21,7 +21,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Canvas, Path as SkPath } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -32,6 +32,8 @@ import { bluetoothService } from '@/ble/bluetoothService';
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { libelleAction, verdictArmement } from '@/features/rec/armementGateLogic';
 import { ARM_HOLD_MS } from '@/features/rec/armementLogic';
+import { libelleOrigineCircuit, type JourneeRetenue } from '@/features/rec/journeeDuJourLogic';
+import { circuitDeMaJournee } from '@/services/journeeDuJourService';
 import { captureFinishLineFor } from '@/services/captureFinishLineLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import { primaryVehicleId, vehicleName } from '@/features/vous/garageLogic';
@@ -53,14 +55,19 @@ import {
   haptic,
   radius,
   space,
-  tabBarSpace,
   typo,
   useDoorTransition,
 } from '@/ui/v2';
 import { REC_ROUTES } from '@/features/rec/captureStepLogic';
 
-/** Côté du canevas de la jauge circulaire d'armement. */
-const GAUGE_SIZE = 96;
+/**
+ * Côté du canevas de la jauge circulaire d'armement.
+ *
+ * 56 et non 96 : à 96 l'anneau (rayon 40) débordait d'un bouton de 72 pt et
+ * traversait le libellé. Il vit maintenant EN FLUX, à gauche du texte — cf. le
+ * commentaire au point d'insertion.
+ */
+const GAUGE_SIZE = 56;
 
 /**
  * Fraction d'arc (0..1) de la ligne d'arrivée le long du tracé, pour placer le
@@ -189,6 +196,25 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
           if (nativeEvent.actionName === 'activate') fire();
         }}
       >
+        {/*
+          LA JAUGE EST SORTIE DE DESSOUS LE TEXTE.
+
+          Elle était un canevas de 96 pt en `position: 'absolute'` SANS aucun
+          inset, dans un bouton de 72. Yoga la centrait donc dans un conteneur
+          plus petit qu'elle : l'anneau (rayon 40) dépassait de 4 pt en haut et
+          en bas du pilulier, et surtout ses extrémités gauche et droite —
+          à ±40 pt du centre, exactement à mi-hauteur — traversaient
+          « ARMER LA CAPTURE », qui s'étend à ±84 pt.
+
+          Un trait blanc lumineux barrait le seul libellé de l'écran, pendant
+          les 600 ms de l'appui, à chaque armement, sur tous les téléphones. De
+          nuit, c'est ce que le fondateur a décrit par « les affichages se
+          montent dessus ».
+
+          Un absolu sans inset dans un conteneur plus petit que lui EST le
+          mécanisme du recouvrement. La jauge passe donc en flux, à gauche du
+          libellé, et rétrécit à 56 pt.
+        */}
         <Canvas
           style={styles.gauge}
           accessibilityElementsHidden
@@ -210,8 +236,10 @@ function ArmButton({ onArm, disabled }: { onArm: () => void; disabled: boolean }
             progress={progress}
           />
         </Canvas>
-        <Text style={styles.armLabel}>ARMER LA CAPTURE</Text>
-        <Text style={styles.armHint}>Maintenez pour armer</Text>
+        <View style={styles.armTexts}>
+          <Text style={styles.armLabel}>ARMER LA CAPTURE</Text>
+          <Text style={styles.armHint}>Maintenez pour armer</Text>
+        </View>
       </View>
     </GestureDetector>
   );
@@ -228,6 +256,8 @@ export default function PlacementScreen() {
 
   const [circuits, setCircuits] = useState<Circuit[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** La journée réservée du pilote, quand il y en a une à rouler maintenant. */
+  const [journee, setJournee] = useState<JourneeRetenue | null>(null);
   const [centerline, setCenterline] = useState<LatLon[] | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -276,6 +306,39 @@ export default function PlacementScreen() {
       const official = all.filter((c) => c.isOfficial);
       const list = official.length > 0 ? official : all;
       setCircuits(list);
+
+      /**
+       * LA JOURNÉE RÉSERVÉE COMMANDE LE CIRCUIT — posé le 13/08/2026, après.
+       *
+       * Cette ligne appelait `getDefaultCircuit()`, qui rend le circuit marqué
+       * `is_default` : Haute Saintonge, depuis toujours. L'écran qui arme la
+       * capture ne consultait JAMAIS la journée du pilote.
+       *
+       * La nuit du 12 au 13/08, le fondateur avait une journée à Bouteville.
+       * Le Paddock la lui affichait, le Pass la lui affichait, il a appairé son
+       * boîtier et armé. **La séance est partie sur Haute Saintonge**, avec une
+       * ligne d'arrivée à quarante kilomètres de l'endroit où il roulait. Zéro
+       * tour, et rien qui le lui dise.
+       *
+       * Bouteville ÉTAIT dans la rangée de choix. Il fallait le désigner à la
+       * main — un geste de plus, de nuit, avec des gants. Toute l'application
+       * savait où il allait ; l'écran qui arme ne le demandait à personne.
+       *
+       * L'ordre est maintenant : la journée d'abord, le défaut ensuite. Le
+       * pilote reste libre de changer, et la phrase sous la carte dit d'où
+       * vient le circuit armé (cf. `libelleOrigineCircuit`) — une
+       * pré-sélection muette reproduirait le même défaut à l'envers.
+       */
+      const retenue = await circuitDeMaJournee();
+      if (cancelled) return;
+      setJournee(retenue);
+
+      const deLaJournee =
+        retenue && list.some((c) => c.id === retenue.circuitId) ? retenue.circuitId : null;
+      if (deLaJournee) {
+        setSelectedId(deLaJournee);
+        return;
+      }
       const def = await getDefaultCircuit();
       if (!cancelled) setSelectedId(def?.id ?? list[0]?.id ?? null);
     })().catch(() => undefined);
@@ -285,6 +348,11 @@ export default function PlacementScreen() {
   }, []);
 
   const selected = circuits.find((c) => c.id === selectedId) ?? null;
+  /**
+   * D'où vient le circuit affiché. Muet quand il n'y a rien de factuel à dire :
+   * on ne meuble pas une ligne pour rassurer.
+   */
+  const origineCircuit = libelleOrigineCircuit(journee, selectedId);
 
   /**
    * LE VÉHICULE ATTACHÉ À LA SÉANCE — posé ici le 12/08/2026.
@@ -386,7 +454,40 @@ export default function PlacementScreen() {
         PLACEMENT
       </Text>
 
-      <View style={styles.body}>
+      {/*
+        DÉFILEMENT, ET CE N'EST PAS UN CONFORT.
+
+        Ce bloc était un `View` en `flex: 1` avec `justifyContent: 'center'`.
+        Tant que le contenu tenait, le centrage était joli. Passé la hauteur
+        disponible — quatre circuits dont la rangée déborde sur deux lignes,
+        une rangée de véhicules, la carte de 180 px, trois paragraphes — un
+        conteneur centré ne coupe pas : il déborde des DEUX côtés, sans barre
+        de défilement, et les éléments se recouvrent.
+
+        C'est ce que le fondateur a vu la nuit du 13/08 : « les affichages se
+        montent dessus ». Le quatrième circuit ajouté la veille a suffi à faire
+        basculer l'écran.
+      */}
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/*
+          LE CIRCUIT ARMÉ, EN GRAND ET EN PREMIER.
+
+          Il était déduit d'une pastille active dans une rangée de quatre. Sur
+          un écran de nuit, à travers un pare-brise, cette nuance de fond n'a
+          pas suffi — et la séance est partie sur le mauvais tracé sans que
+          rien ne le dise. Le nom du circuit est désormais la première chose
+          que l'écran affirme.
+        */}
+        <Text style={styles.circuitEyebrow}>CIRCUIT</Text>
+        <Text style={styles.circuitName} accessibilityRole="header">
+          {selected?.name ?? '—'}
+        </Text>
+        {origineCircuit ? <Text style={styles.circuitOrigine}>{origineCircuit}</Text> : null}
+
         {circuits.length > 1 ? (
           <View style={styles.chips}>
             {circuits.map((c) => (
@@ -439,9 +540,20 @@ export default function PlacementScreen() {
             {error}
           </Text>
         ) : null}
-      </View>
+      </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: tabBarSpace(insets.bottom) + space.lg }]}>
+      {/*
+        `tabBarSpace` RÉSERVAIT LA PLACE D'UNE BARRE QUI N'EST PAS RENDUE ICI.
+
+        `placement` figure dans `V2_HIDDEN_SEGMENTS` : le layout masque
+        explicitement la TabBar sur cet écran. Le pied de page lui gardait
+        pourtant 56 pt de hauteur plus l'encoche — 106 pt pris sur le corps,
+        soit à eux seuls plus que le débordement constaté sur un iPhone mini.
+        La formule reste juste là où la barre existe (`rec/index`, `entre-runs`).
+      */}
+      <View
+        style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space.sm) + space.lg }]}
+      >
         {/* La raison du refus est dite AVANT le geste, pas après. Un pilote qui
             maintient six cents millisecondes pour rien a déjà perdu son tour. */}
         {verdict.raison ? (
@@ -483,18 +595,76 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     color: colors.text.hi,
     textAlign: 'center',
+    // Bande tampon sous le titre, comme `rec/index` en porte une. Son absence
+    // ici était un oubli : le premier pixel qui débordait du corps atterrissait
+    // directement dessus.
+    marginBottom: space.lg,
   },
   body: {
     flex: 1,
-    justifyContent: 'center',
   },
+  // Le contenu respire quand il tient, et défile quand il ne tient plus.
+  // `flexGrow` (et non `flex: 1`) : sans lui, un contenu court se collerait en
+  // haut au lieu de rester centré comme avant la correction.
+  bodyContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: space.lg,
+  },
+  // Le circuit armé — la première affirmation de l'écran.
+  circuitEyebrow: {
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: colors.text.mid,
+    marginBottom: space.xs,
+  },
+  circuitName: {
+    fontFamily: typo.display,
+    fontSize: 30,
+    lineHeight: 36,
+    color: colors.text.hi,
+  },
+  circuitOrigine: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 19,
+    // `text.mid` et non `text.low` : plancher de contraste 7:1 sur les huit
+    // écrans du flux REC (garde `contrasteFluxRec`), et cette ligne se lit de
+    // nuit, au paddock — c'est elle qui dit sur quel tracé la séance part.
+    color: colors.text.mid,
+    marginTop: space.xs,
+  },
+  /**
+   * `rowGap` SÉPARÉ, ET C'EST UNE CORRECTION DE ZONE TACTILE.
+   *
+   * `gap: space.sm` réglait l'écart des colonnes ET des lignes à 8 pt. Or
+   * `Chip` porte `hitSlop={{ top: 6, bottom: 6 }}` : deux rangées distantes de
+   * 8 pt ont donc 12 pt de débord cumulé, soit une bande de 4 pt où les deux
+   * rectangles de test se superposent. iOS parcourt les sous-vues en ordre
+   * INVERSE — c'est la rangée DU DESSOUS qui rafle le toucher.
+   *
+   * Cette bande n'existait pas avant le 12/08 : avec trois circuits la rangée
+   * tenait sur une ligne. Le quatrième l'a créée, et avec elle
+   * « l'interface n'est pas très fiable » — un appui sur le bas de
+   * « Bouteville » sélectionnait « Ricardo Tormo ».
+   *
+   * Plancher : `rowGap >= 12` tant que `Chip` porte un hitSlop de 6.
+   */
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: space.sm,
+    columnGap: space.sm,
+    rowGap: space.lg,
     marginBottom: space.xl,
   },
   trackCard: {
+    // HAUTEUR STABLE. La carte passait par trois hauteurs au montage et à
+    // chaque changement de circuit (212 → 32 → 229) : `setCenterline(null)`
+    // remet le repli, puis `TraceCircuit` ne rend rien tant que son `onLayout`
+    // n'a pas donné de largeur. Le corps étant centré, tout l'écran sautait.
+    minHeight: 229,
+    justifyContent: 'center',
     backgroundColor: colors.bg.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border.card,
@@ -574,18 +744,27 @@ const styles = StyleSheet.create({
   },
   // Bouton d'armement
   armBtn: {
-    minHeight: 72,
+    minHeight: 76,
     backgroundColor: colors.accent,
     borderRadius: radius.hero,
+    // Jauge à gauche, textes à droite : plus aucun recouvrement (cf. le
+    // commentaire au point d'insertion de la jauge).
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: space.md,
     paddingVertical: space.md,
+    paddingHorizontal: space.lg,
+  },
+  armTexts: {
+    alignItems: 'flex-start',
   },
   armBtnDisabled: {
     opacity: 0.6,
   },
+  // PAS de `position: 'absolute'` : un absolu sans inset dans un conteneur
+  // plus petit que lui est le mécanisme même du recouvrement.
   gauge: {
-    position: 'absolute',
     width: GAUGE_SIZE,
     height: GAUGE_SIZE,
   },

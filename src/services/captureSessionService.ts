@@ -153,7 +153,39 @@ const LONG_INTERRUPT_TIMEOUT_MS = 15 * 60 * 1000;
  *                     capture finalisée proprement.
  *   - `idle`        : aucune capture active.
  */
-export type CaptureLinkStatus = 'idle' | 'recording' | 'interrupted' | 'lost';
+export type CaptureLinkStatus = 'idle' | 'recording' | 'interrupted' | 'lost' | 'muet';
+
+/**
+ * Délai au-delà duquel une capture qui n'a reçu AUCUNE trame se déclare muette.
+ *
+ * ── POURQUOI CET ÉTAT EXISTE (posé le 13/08/2026, après le premier essai) ────
+ *
+ * La garde d'armement lit `bluetoothService.getStatus()`. Or `connect()` pose
+ * 'connected' juste après avoir APPELÉ `monitorCharacteristicForService`, qui
+ * rend la main immédiatement : si l'abonnement aux notifications échoue,
+ * l'erreur arrive plus tard dans le callback et ne fait qu'un `emitError` — le
+ * statut RESTE 'connected'.
+ *
+ * **La garde prouvait la CONNEXION, jamais le FLUX.** Et rien, pendant la
+ * capture, ne vérifiait qu'une seule trame était arrivée : `setLinkStatus`
+ * était posé à 'recording' inconditionnellement, le voyant REC pulsait en
+ * rouge, et une séance parfaitement muette ressemblait trait pour trait à une
+ * séance qui enregistre.
+ *
+ * La nuit du 12 au 13/08, le fondateur a roulé une séance entière et l'a
+ * découverte vide au retour : zéro trame en base. Il n'avait eu aucun moyen de
+ * le savoir avant de descendre de voiture.
+ *
+ * Douze secondes : un RaceBox émet à 25 Hz, et même un fix GPS difficile
+ * n'interrompt pas le flux de trames (le filtre `Fix3D` ne s'applique qu'à la
+ * détection de tours, pas à l'écriture). Au-delà de douze secondes sans une
+ * seule trame, il ne se passe rien — et il faut le dire.
+ *
+ * SILENCE EN PISTE : ce n'est pas un HUD. C'est le même canal sobre que
+ * « lien interrompu », sur l'écran qui ne montre déjà rien d'autre. Une app qui
+ * affiche REC sur du vide n'est pas silencieuse, elle est mensongère.
+ */
+const MUET_APRES_MS = 12_000;
 
 type CaptureLinkListener = (status: CaptureLinkStatus) => void;
 
@@ -225,6 +257,12 @@ interface CaptureState {
    * clôturée pour abandon prolongé (cf. LONG_INTERRUPT_TIMEOUT_MS).
    */
   interruptTimer: ReturnType<typeof setTimeout> | null;
+  /**
+   * Veille du SILENCE : bascule la capture en `muet` si aucune trame n'est
+   * arrivée depuis `MUET_APRES_MS`. Désarmée à la première trame reçue, et
+   * réarmée à chaque trame — c'est un chien de garde, pas un compte à rebours.
+   */
+  muetTimer: ReturnType<typeof setTimeout> | null;
   /**
    * Timestamp (ms) du début du trou de liaison courant, ou `null` si le lien
    * n'est pas interrompu. Sert à tracer la durée du trou à la reprise.
@@ -354,10 +392,15 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     flushing: false,
     flushPromise: null,
     interruptTimer: null,
+    muetTimer: null,
     gapStartMs: null,
   };
   current = state;
   setLinkStatus('recording');
+  // Le chien de garde part AVEC la capture : si la première trame n'arrive
+  // jamais, c'est lui qui le dira. Sans lui, « connecté » et « qui émet » sont
+  // indiscernables à l'écran — c'est ce qui a coûté la séance du 13/08.
+  armerVeilleSilence(state);
 
   // Filet de sécurité : capture .ubx brute locale (jamais bloquant).
   try {
@@ -401,6 +444,12 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     // `lastElapsed` (monotone NON strict) laisserait deux trames RÉELLES émises
     // dans la même ms partager une clé — l'UPSERT DO NOTHING en jetterait une
     // en silence. Cf. `nextElapsedMs` pour l'arbitrage complet.
+    // Une trame est arrivée : le lien ÉMET. On réarme la veille et, si l'écran
+    // affichait « aucune donnée », on le corrige — un boîtier qui repart après
+    // douze secondes de silence doit reprendre la main sur le message.
+    armerVeilleSilence(state);
+    if (linkStatus === 'muet') setLinkStatus('recording');
+
     const elapsed = nextElapsedMs(Date.now(), state.startMs, state.lastElapsed);
     state.lastElapsed = elapsed;
     state.buffer.push(raceBoxToFrameInsert(frame, sessionId, elapsed));
@@ -501,6 +550,35 @@ function startInterruptTimeout(state: CaptureState): void {
     releaseKeepAwake();
     void finalizeOnLostLink();
   }, LONG_INTERRUPT_TIMEOUT_MS);
+}
+
+/**
+ * (Ré)arme la veille du silence. Appelée au démarrage puis à CHAQUE trame :
+ * tant que le flux vient, l'échéance recule et rien ne s'affiche.
+ *
+ * Ne touche PAS à `interrupted` ni à `lost` : une coupure de lien a déjà son
+ * message, plus précis, et le remplacer par « aucune donnée » ferait perdre au
+ * pilote l'information que la reconnexion est en cours.
+ */
+function armerVeilleSilence(state: CaptureState): void {
+  if (state.muetTimer) clearTimeout(state.muetTimer);
+  state.muetTimer = setTimeout(() => {
+    state.muetTimer = null;
+    if (current !== state) return;
+    if (linkStatus === 'interrupted' || linkStatus === 'lost') return;
+    console.warn(
+      `[OXV][capture] aucune trame depuis ${MUET_APRES_MS} ms — le boîtier est connecté mais n'émet pas.`
+    );
+    setLinkStatus('muet');
+  }, MUET_APRES_MS);
+}
+
+/** Désarme la veille du silence (arrêt, abandon, clôture). */
+function desarmerVeilleSilence(state: CaptureState): void {
+  if (state.muetTimer) {
+    clearTimeout(state.muetTimer);
+    state.muetTimer = null;
+  }
 }
 
 /** Annule le timeout long d'interruption s'il est armé (reprise / arrêt / abandon). */
@@ -759,6 +837,7 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   bluetoothService.setUnlimitedReconnect(false);
   releaseKeepAwake();
   clearInterruptTimeout(state);
+  desarmerVeilleSilence(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   void stopBiometryCapture().catch(() => undefined); // préserve le cardio (offline-first)
   if (state.timer) clearInterval(state.timer);
@@ -854,6 +933,7 @@ export async function abortCaptureSession(): Promise<void> {
   bluetoothService.setUnlimitedReconnect(false);
   releaseKeepAwake();
   clearInterruptTimeout(state);
+  desarmerVeilleSilence(state);
   stopPilotLiveRelay(); // coupe le relais live (fin de capture / lien perdu)
   discardBiometryCapture(); // séance abandonnée → purge le cardio local, rien préservé
   if (state.timer) clearInterval(state.timer);

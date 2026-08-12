@@ -400,6 +400,15 @@ const NETWORK_RE =
   /network|fetch failed|failed to fetch|timeout|timed out|econn|enotfound|socket|offline|unreachable|abort|load failed/i;
 const MISSING_FILE_RE = /introuvable|not found|no such file|enoent/i;
 
+/**
+ * Marqueur de l'échec « l'UPDATE de clôture n'a touché aucune ligne ».
+ *
+ * Il est reconnu par sa CHAÎNE et non par un code d'erreur, parce qu'il n'en a
+ * pas : PostgREST rend un succès. C'est nous qui levons (cf. `execComplete`),
+ * et c'est ici qu'on refuse de l'abandonner.
+ */
+const CLOTURE_SANS_CIBLE_RE = /CLOTURE_SANS_CIBLE/;
+
 function isNetworkFailure(err: unknown): boolean {
   return NETWORK_RE.test(errorMessage(err));
 }
@@ -487,6 +496,14 @@ function isDroppableFailure(op: CaptureQueueOp, err: unknown): boolean {
   // des heures de piste effacées.
   if (op.type === 'create_session') return false;
   if (isNetworkFailure(err)) return false;
+  /**
+   * Une CLÔTURE SANS CIBLE n'est jamais abandonnée. Elle signale que l'UPDATE
+   * n'a touché aucune ligne — jeton pas encore restauré, RLS qui filtre, ligne
+   * pas encore créée côté serveur. Ce sont tous des états TRANSITOIRES, et la
+   * mettre en quarantaine laisserait la séance en `recording` pour toujours,
+   * exactement comme le 13/08/2026. Elle attend, et elle sera rejouée.
+   */
+  if (CLOTURE_SANS_CIBLE_RE.test(errorMessage(err))) return false;
   if (MISSING_FILE_RE.test(errorMessage(err))) return true;
   const code = errorCode(err);
   if (code.length === 0) return isStorageDroppable(err);
@@ -686,12 +703,44 @@ async function execComplete(op: Extract<CaptureQueueOp, { type: 'complete' }>) {
     }
   }
 
-  const { error } = await supabase
+  /**
+   * `.select('id')` N'EST PAS DÉCORATIF — c'est ce qui distingue « clôturée »
+   * de « je n'ai touché personne ».
+   *
+   * Cet UPDATE ne regardait que `error`. Or PostgREST rend 204 SANS erreur
+   * quand le WHERE ne rencontre AUCUNE ligne : RLS qui filtre parce que le
+   * jeton n'est pas encore restauré, `user_id` qui ne correspond pas, ligne pas
+   * encore présente côté serveur. `drainOnce` enchaînait alors `deleteOp` et
+   * comptait l'opération comme traitée : **le fichier qui portait la clôture
+   * était détruit, la ligne n'avait jamais bougé, et plus rien au monde ne
+   * rejouait cette clôture.**
+   *
+   * C'est exactement l'état relevé le 13/08/2026 sur la séance du premier essai
+   * terrain : `started_at` posé, `ended_at` null, `status` 'recording' à vie.
+   *
+   * Le chemin qui rend ce scénario réel est câblé : `app/_layout.tsx` lance
+   * `initialize()` (restauration asynchrone de la session depuis SecureStore) et
+   * `resumeUnsyncedCaptures()` dans le MÊME effet. Si le rafraîchissement du
+   * jeton échoue à ce moment — réseau de campagne au relancement —, supabase-js
+   * retombe sur la clé anonyme, la RLS filtre à zéro ligne, aucune erreur n'est
+   * levée, et l'opération est supprimée.
+   *
+   * Zéro ligne mise à jour est donc traité comme une panne TRANSITOIRE : l'op
+   * reste en file et sera rejouée. Une clôture qui ne trouve pas sa séance n'a
+   * pas réussi.
+   */
+  const { data, error } = await supabase
     .from('telemetry_sessions')
     .update(updates)
     .eq('id', op.sessionId)
-    .eq('user_id', op.userId);
+    .eq('user_id', op.userId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      `CLOTURE_SANS_CIBLE: la séance ${op.sessionId} n'a pas été trouvée (RLS, jeton ou ligne absente) — opération conservée pour rejeu.`
+    );
+  }
 }
 
 async function execUbxUpload(op: Extract<CaptureQueueOp, { type: 'ubx_upload' }>) {
