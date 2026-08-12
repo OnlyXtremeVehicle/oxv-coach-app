@@ -50,6 +50,7 @@ import {
   lireCumul,
   localDayIso,
 } from '@/features/rec/journeeLogic';
+import { bilanInterruptions, phraseInterruptions } from '@/features/rec/interruptionLogic';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSessionStore } from '@/store/useSessionStore';
 import {
@@ -95,6 +96,7 @@ export default function FinScreen() {
   const userId = useAuthStore((s) => s.profile?.id ?? null);
   const lapCount = useSessionStore((s) => s.lapCount);
   const bestLapMs = useSessionStore((s) => s.bestLapMs);
+  const linkGaps = useSessionStore((s) => s.linkGaps);
   const meta = useSessionStore((s) => s.meta);
 
   const [phase, setPhase] = useState<FinPhase>('fini');
@@ -144,6 +146,20 @@ export default function FinScreen() {
   // Sur la première sortie, cumul et run disent le même chiffre : afficher les
   // deux sous deux titres différents ferait douter des deux.
   const faitsDuJour = journeeAPlusieursRuns(cumul) ? faitsJournee(cumul) : [];
+
+  /**
+   * LE RELEVÉ DES INTERRUPTIONS — lot 21e, et il se dit ICI, au retour.
+   *
+   * Le seuil suit le tour de référence du pilote : vingt secondes ne veulent
+   * pas dire la même chose sur un tour de 1:41 et sur un tour de 3:00. Les
+   * trous sous le seuil ne sont pas comptés — les additionner ferait annoncer
+   * « quatre minutes d'interruption » là où il n'y a eu que des reconnexions
+   * ordinaires.
+   *
+   * Rien ne s'affiche quand rien n'a dépassé le seuil : `phraseInterruptions`
+   * rend `null`, et un bloc sans matière est un bloc qu'on ne rend pas.
+   */
+  const phraseTrous = phraseInterruptions(bilanInterruptions(linkGaps, bestLapMs));
 
   // Célébration : AUCUN RecordFlash ici. La garde partagée recordCelebration.ts
   // fait du Bilan la SOURCE UNIQUE de la célébration d'un record (all-time) —
@@ -251,6 +267,7 @@ export default function FinScreen() {
           <FiniPhase
             summary={summary}
             faitsDuJour={faitsDuJour}
+            phraseTrous={phraseTrous}
             durationMin={finDurationMin(
               meta?.startedAt?.getTime() ?? null,
               (meta?.endedAt ?? new Date()).getTime()
@@ -334,11 +351,13 @@ export default function FinScreen() {
 // ---------------------------------------------------------------------------
 
 function FiniPhase({
+  phraseTrous,
   faitsDuJour,
   summary,
   durationMin,
   onPreserve,
 }: {
+  phraseTrous: string | null;
   faitsDuJour: ReturnType<typeof faitsJournee>;
   summary: ReturnType<typeof buildFinSummary>;
   durationMin: number | null;
@@ -370,6 +389,10 @@ function FiniPhase({
           {durationMin !== null ? `${durationMin} min de piste.` : 'Séance enregistrée.'}
         </Text>
       )}
+
+      {/* Le relevé des interruptions de liaison. Descriptif, jamais un
+          reproche : une liaison qui tombe n'est pas une faute du pilote. */}
+      {phraseTrous ? <Text style={styles.trous}>{phraseTrous}</Text> : null}
 
       {/* LA JOURNÉE, et seulement à partir de la deuxième sortie. Sur la
           première, elle répéterait le run mot pour mot. */}
@@ -641,6 +664,15 @@ function IncidentSheet({
 }
 
 const styles = StyleSheet.create({
+  trous: {
+    fontFamily: typo.body,
+    fontSize: 13,
+    lineHeight: 19,
+    color: colors.text.mid,
+    textAlign: 'center',
+    marginTop: space.md,
+    paddingHorizontal: space.lg,
+  },
   jourBloc: {
     marginTop: space.lg,
     alignItems: 'center',

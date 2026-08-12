@@ -514,6 +514,21 @@ function logLinkGap(state: CaptureState): void {
   if (state.gapStartMs == null) return;
   const durationMs = Date.now() - state.gapStartMs;
   console.warn(`[OXV][capture] trou de liaison ${durationMs} ms`);
+  // LOT 21e — LA SEULE LIGNE AJOUTÉE À CE SERVICE, ET ELLE NE CHANGE RIEN À LA
+  // CAPTURE.
+  //
+  // La durée était calculée puis JETÉE dans la console. La restitution que le
+  // plan attend au retour — durée du trou, part du tour de référence — n'avait
+  // donc aucune source de données. On cesse de la jeter ; on ne mesure rien de
+  // neuf, on ne décide rien de neuf, et la clôture pour lien perdu reste ce
+  // qu'elle était : quinze minutes d'interruption continue.
+  //
+  // SILENCE EN PISTE : c'est un relevé, pas un signal. Rien ne s'affiche
+  // pendant le roulage.
+  useSessionStore.getState().addLinkGap({
+    dureeMs: durationMs,
+    repriseIso: new Date().toISOString(),
+  });
   state.gapStartMs = null;
 }
 
