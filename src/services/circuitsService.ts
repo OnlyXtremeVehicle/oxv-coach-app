@@ -9,7 +9,7 @@
  * par #14 (Carte du circuit) pour récupérer le SVG du tracé.
  */
 
-import { cacheGet, cacheSet, STORAGE_KEYS } from '@/lib/mmkv';
+import { cacheGet, cacheGetStale, cacheSet, STORAGE_KEYS } from '@/lib/mmkv';
 import { supabase } from '@/lib/supabase';
 import type { LatLon } from '@/circuit/circuitGenerator';
 
@@ -48,8 +48,16 @@ export async function fetchCircuits(forceRefresh = false): Promise<Circuit[]> {
     .order('name');
 
   if (error) {
-    console.warn('[OXV] fetchCircuits erreur, fallback cache stale :', error.message);
-    return cacheGet<Circuit[]>(STORAGE_KEYS.CIRCUITS) ?? [];
+    // `cacheGetStale` et non `cacheGet` : le repli n'a de sens QUE périmé.
+    // `cacheGet` rendait `null` passé le TTL — et, jusqu'au 13/08/2026, il
+    // EFFAÇAIT même l'entrée. Le « repli sur cache stale » annoncé ici
+    // n'existait donc pas : au circuit, une lecture ratée rendait une liste
+    // vide, et il n'y avait plus aucun circuit à armer.
+    console.warn(
+      '[OXV] fetchCircuits erreur, repli sur le cache (périmé accepté) :',
+      error.message
+    );
+    return cacheGetStale<Circuit[]>(STORAGE_KEYS.CIRCUITS) ?? [];
   }
 
   const circuits: Circuit[] = (data ?? []).map((row) => ({
@@ -135,14 +143,52 @@ function parseCenterline(raw: unknown): LatLon[] | null {
  * Renvoie null si la colonne est absente ou illisible : l'appelant retombe
  * alors sur sa géométrie de repli (aucun écran vide, aucune donnée inventée).
  */
+/**
+ * Clé de cache d'une géométrie. Une par circuit : les tracés sont indépendants,
+ * et en mettre plusieurs sous une même clé ferait perdre les autres à chaque
+ * changement de circuit.
+ */
+function cleCenterline(circuitId: string): string {
+  return `${STORAGE_KEYS.CIRCUITS}:centerline:${circuitId}`;
+}
+
+/**
+ * Durée de fraîcheur d'une géométrie. Sept jours, contre 24 h pour la liste :
+ * un tracé ne bouge pas. Il n'a changé qu'une fois dans l'histoire du dépôt, et
+ * c'était pour en gagner en précision.
+ */
+const CENTERLINE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 export async function fetchCircuitCenterline(circuitId: string): Promise<LatLon[] | null> {
+  const cle = cleCenterline(circuitId);
+  const frais = cacheGet<LatLon[]>(cle);
+  if (frais !== null && frais.length > 3) return frais;
+
   // Colonne centerline_latlon absente des types générés : accès non typé localisé.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const table = supabase.from('circuits') as any;
   const { data, error } = await table.select('centerline_latlon').eq('id', circuitId).maybeSingle();
 
-  if (error || !data?.centerline_latlon) return null;
-  return parseCenterline(data.centerline_latlon);
+  /**
+   * LE TRACÉ N'ÉTAIT PAS CACHÉ DU TOUT — posé le 13/08/2026.
+   *
+   * Hors-ligne, cette lecture rendait `null`, et l'écran d'armement affichait
+   * son repli sobre : une icône et un nom. Or le tracé avec sa ligne d'arrivée
+   * est la SEULE vérification visuelle dont dispose le pilote avant de rouler —
+   * celle qui lui aurait montré, la nuit du 13/08, qu'il s'apprêtait à partir
+   * sur la silhouette de Haute Saintonge.
+   *
+   * Un tracé d'il y a une semaine vaut mieux qu'aucun tracé : la géométrie d'un
+   * circuit ne change pas d'un jour à l'autre.
+   */
+  if (error || !data?.centerline_latlon) {
+    return cacheGetStale<LatLon[]>(cle);
+  }
+  const points = parseCenterline(data.centerline_latlon);
+  // On ne met JAMAIS un vide en cache — même raisonnement que pour la liste :
+  // un vide est presque toujours un vide d'accès, pas un vide de vérité.
+  if (points !== null) cacheSet(cle, points, CENTERLINE_TTL_MS);
+  return points;
 }
 
 /** Centerline du circuit officiel par défaut (Haute Saintonge en V1). */

@@ -56,16 +56,54 @@ export function cacheSet<T>(key: string, value: T, ttlMs?: number): void {
   storage.set(key, JSON.stringify(entry));
 }
 
+/**
+ * La valeur si elle est FRAÎCHE, sinon `null`.
+ *
+ * ── L'ENTRÉE PÉRIMÉE N'EST PLUS DÉTRUITE (13/08/2026) ────────────────────────
+ *
+ * Cette fonction faisait `storage.delete(key)` à l'expiration. Conséquence :
+ * **il n'existait aucun « repli sur cache stale »**, alors que `circuitsService`
+ * en promettait un noir sur blanc dans son commentaire, et que tout son
+ * comportement hors-ligne reposait dessus. Passé le TTL, la donnée était
+ * effacée ; une lecture réseau en échec retombait donc sur `null`, c'est-à-dire
+ * sur rien.
+ *
+ * Au circuit, en rase campagne, cela veut dire : plus de liste de circuits,
+ * plus de tracé, plus de choix à l'armement. Le repli existait dans le
+ * commentaire et nulle part ailleurs.
+ *
+ * Une entrée périmée n'est pas une entrée fausse : c'est une entrée qu'on
+ * préfère rafraîchir. Quand le rafraîchissement est impossible, elle vaut
+ * infiniment mieux que le vide — et `cacheGetStale` la rend explicitement, pour
+ * que l'appelant sache qu'il sert une donnée d'hier.
+ */
 export function cacheGet<T>(key: string): T | null {
   const raw = storage.getString(key);
   if (!raw) return null;
   try {
     const entry = JSON.parse(raw) as CacheEntry<T>;
-    if (entry.expiresAt !== null && Date.now() > entry.expiresAt) {
-      storage.delete(key);
-      return null;
-    }
+    if (entry.expiresAt !== null && Date.now() > entry.expiresAt) return null;
     return entry.value;
+  } catch {
+    // Entrée ILLISIBLE — celle-là se supprime : elle ne sera jamais meilleure,
+    // et la garder ferait échouer chaque lecture à venir.
+    storage.delete(key);
+    return null;
+  }
+}
+
+/**
+ * La valeur MÊME PÉRIMÉE, ou `null` si rien n'a jamais été mis en cache.
+ *
+ * À n'employer que sur un chemin d'ERREUR, et en le disant à l'utilisateur
+ * quand la fraîcheur compte. Servir une donnée d'hier en la présentant comme
+ * celle d'aujourd'hui serait le défaut inverse.
+ */
+export function cacheGetStale<T>(key: string): T | null {
+  const raw = storage.getString(key);
+  if (!raw) return null;
+  try {
+    return (JSON.parse(raw) as CacheEntry<T>).value;
   } catch {
     storage.delete(key);
     return null;
