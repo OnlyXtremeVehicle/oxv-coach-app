@@ -21,6 +21,19 @@ import { handleJMinus7 } from './handlers/jminus7.ts';
 import { handleJMinus2 } from './handlers/jminus2.ts';
 import { handleJMinus1 } from './handlers/jminus1.ts';
 
+/**
+ * Les rituels qui appellent un MODÈLE, et sont donc soumis au consentement IA.
+ *
+ * Relevé par les imports, pas par mémoire : seul `handlers/jminus2.ts` importe
+ * `generateAudioScript` (OpenAI) et `generateAudioFile` (ElevenLabs). J-7 et
+ * J-1 composent des gabarits Resend, sans modèle et sans transfert hors UE.
+ *
+ * **CETTE LISTE DOIT SUIVRE LES IMPORTS.** Si un jour J-1 appelle un modèle et
+ * n'est pas ajouté ici, la promesse « aucune donnée ne sera transmise »
+ * redevient fausse en silence — c'est exactement ce qui vient d'arriver à J-2.
+ */
+const RITUELS_AVEC_IA = new Set(['jminus2']);
+
 // -----------------------------------------------------------------------------
 // HTTP entry point
 // -----------------------------------------------------------------------------
@@ -107,6 +120,44 @@ async function processDispatch(dispatchId: string, results: { sent: number; skip
     | 'ritual_jminus1_enabled';
   if (!ctx.pilot[optInKey]) {
     await markDispatchSkipped(dispatchId, `Pilote a désactivé ${ctx.dispatch.ritual_type}`);
+    results.skipped++;
+    return;
+  }
+
+  /**
+   * 3bis) SECONDE PORTE — LE CONSENTEMENT AU TRAITEMENT PAR IA.
+   *
+   * ===========================================================================
+   * CE QUE LA POLITIQUE PROMET, ET CE QUI PASSAIT QUAND MÊME
+   * ===========================================================================
+   *
+   * La politique de confidentialité, affichée dans l'application, dit :
+   * *« vous pouvez désactiver le debrief assisté par IA dans vos paramètres.
+   * AUCUNE DONNÉE ne sera alors transmise à ce prestataire américain. »*
+   *
+   * Ce dispatcher ne lisait que `ritual_<type>_enabled`. Le rituel J-2 —
+   * l'audio de veille de journée — appelait donc OpenAI puis ElevenLabs avec le
+   * PRÉNOM du pilote, la marque et le modèle de son véhicule et l'historique de
+   * ses séances, pour quelqu'un qui avait coupé l'IA dans ses réglages.
+   *
+   * La promesse portait sur une absence TOTALE de transfert. Elle est
+   * maintenant vraie : tout rituel qui appelle un modèle est fermé par ce
+   * réglage, en plus du sien.
+   *
+   * ===========================================================================
+   * FAIL-CLOSED, ET C'EST DÉLIBÉRÉ
+   * ===========================================================================
+   *
+   * `null` — colonne jamais renseignée — coupe aussi. Un consentement au
+   * traitement par IA ne se présume pas : l'absence de réponse n'est pas un
+   * oui. Le pilote reçoit alors son rituel sans la partie générée, ou ne le
+   * reçoit pas ; il ne reçoit jamais un transfert qu'il n'a pas accepté.
+   */
+  if (RITUELS_AVEC_IA.has(ctx.dispatch.ritual_type) && ctx.pilot.ai_debrief_enabled !== true) {
+    await markDispatchSkipped(
+      dispatchId,
+      `Traitement IA non consenti (ai_debrief_enabled) — ${ctx.dispatch.ritual_type}`
+    );
     results.skipped++;
     return;
   }

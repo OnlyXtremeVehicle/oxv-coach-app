@@ -1,0 +1,87 @@
+-- =============================================================================
+-- SÉCURITÉ — LA FONCTION ÉTAIT PLUS OUVERTE QUE SA PROPRE VUE
+-- =============================================================================
+--
+-- Découvert le 12/08/2026 par la chasse aux promesses non tenues.
+--
+-- -----------------------------------------------------------------------------
+-- LE DÉFAUT
+-- -----------------------------------------------------------------------------
+--
+-- `pavillon_pilotes_jour` est une vue `security_invoker = true` posée sur la
+-- fonction `pavillon_pilotes_jour_rows()`, laquelle est SECURITY DEFINER.
+--
+-- La VUE est bien fermée à `anon` — relevé en production :
+--
+--   select grantee, privilege_type from information_schema.role_table_grants
+--    where table_schema='public' and table_name='pavillon_pilotes_jour'
+--   → authenticated SELECT · postgres · service_role     (aucun `anon`)
+--
+-- La FONCTION, elle, ne l'est pas :
+--
+--   select proacl from pg_proc where proname='pavillon_pilotes_jour_rows'
+--   → {postgres=X/postgres, anon=X/postgres, authenticated=X/postgres, …}
+--
+-- `anon` a donc l'EXECUTE. Et une fonction SECURITY DEFINER s'appelle
+-- directement par RPC PostgREST — la vue n'est pas un passage obligé.
+--
+-- CE QUE CELA EXPOSAIT à un appelant non authentifié, pour chaque pilote ayant
+-- roulé dans la journée : son `user_id` (UUID), son `public_handle`, son
+-- numéro de voiture, la marque et le modèle de son véhicule, l'identifiant de
+-- sa séance, son statut et son heure de départ.
+--
+-- La clé `anon` est publique par construction, et **le dépôt de code est
+-- public**. Il n'y a aucun secret à deviner.
+--
+-- Le nom, lui, était correctement protégé : `display_name` n'est composé que
+-- si `pavilion_name_optin` est vrai. La pseudonymisation tenait ; c'est la
+-- porte d'à côté qui était ouverte.
+--
+-- -----------------------------------------------------------------------------
+-- POURQUOI LA MIGRATION D'ORIGINE N'A PAS SUFFI
+-- -----------------------------------------------------------------------------
+--
+-- `20260718111517_pavillon_vues_et_photos.sql` déclare l'intention en toutes
+-- lettres — « Pseudonymisation CÔTÉ SERVEUR : jamais de nom complet sans
+-- opt-in » — et exécute `revoke ... from public`.
+--
+-- `revoke from public` ne retire PAS un privilège accordé explicitement à
+-- `anon`. Or Supabase pose ce GRANT par ses privilèges par défaut. Le REVOKE
+-- portait sur un rôle, le GRANT sur un autre : les deux ont coexisté sans
+-- jamais se rencontrer.
+--
+-- C'est un piège de relecture : la migration a l'air correcte, et elle l'est —
+-- elle ne va simplement pas assez loin.
+--
+-- -----------------------------------------------------------------------------
+-- COORDINATION SITE — À LIRE AVANT D'APPLIQUER
+-- -----------------------------------------------------------------------------
+--
+-- L'application mobile n'appelle NI la vue NI la fonction (grep sur `src/` et
+-- `app/` : aucune occurrence hors types générés). Le pavillon est affiché par
+-- le site oxvehicle.fr.
+--
+-- Si le site lit cette fonction en `anon`, son pavillon cessera d'afficher les
+-- pilotes du jour. **C'est le comportement voulu** : la vue leur est déjà
+-- fermée, et une liste nominative de pilotes présents n'a pas à être lisible
+-- sans authentification. Le site doit lire en session authentifiée.
+--
+-- Retour arrière, s'il faut du temps pour adapter le site :
+--
+--   grant execute on function public.pavillon_pilotes_jour_rows() to anon;
+--
+-- =============================================================================
+
+revoke execute on function public.pavillon_pilotes_jour_rows() from anon;
+revoke execute on function public.pavillon_pilotes_jour_rows() from public;
+
+comment on function public.pavillon_pilotes_jour_rows() is
+  'Pilotes ayant roulé aujourd''hui. FERMÉE À anon depuis le 12/08/2026 : elle rendait UUID, handle, numéro et véhicule à un appelant non authentifié, alors que sa vue jumelle pavillon_pilotes_jour était déjà réservée à authenticated.';
+
+-- -----------------------------------------------------------------------------
+-- `pavillon_meteo_rows` RESTE ouverte à anon — et c'est délibéré
+-- -----------------------------------------------------------------------------
+--
+-- Sa vue jumelle `pavillon_meteo` est elle aussi accordée à `anon` : les deux
+-- concordent, et la météo d'un circuit n'est la donnée personnelle de
+-- personne. On ne ferme pas par symétrie ce qui n'a pas de raison de l'être.

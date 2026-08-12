@@ -54,6 +54,21 @@ export interface DispatchContext {
     ritual_jminus7_enabled: boolean;
     ritual_jminus2_enabled: boolean;
     ritual_jminus1_enabled: boolean;
+    /**
+     * Consentement au traitement par IA — LA MÊME PORTE QUE LE DÉBRIEF.
+     *
+     * La politique de confidentialité affichée au pilote dit : « vous pouvez
+     * désactiver le debrief assisté par IA dans vos paramètres. AUCUNE DONNÉE
+     * ne sera alors transmise à ce prestataire américain ».
+     *
+     * Ce dispatcher ne lisait pas cette colonne. Le rituel J-2 envoyait donc le
+     * prénom du pilote, la marque et le modèle de son véhicule et l'historique
+     * de ses séances à OpenAI, puis le texte à ElevenLabs — pour un pilote qui
+     * avait coupé l'IA dans ses réglages. La promesse d'absence TOTALE de
+     * transfert était fausse par une seconde porte que le réglage ne fermait
+     * pas.
+     */
+    ai_debrief_enabled: boolean | null;
   };
   session: {
     id: string;
@@ -124,7 +139,9 @@ export async function loadDispatchContext(dispatch: DispatchRow): Promise<Dispat
   // Charge pilote
   const { data: pilot, error: pilotErr } = await supabase
     .from('users')
-    .select('id, first_name, last_name, email, ritual_jminus7_enabled, ritual_jminus2_enabled, ritual_jminus1_enabled')
+    .select(
+      'id, first_name, last_name, email, ritual_jminus7_enabled, ritual_jminus2_enabled, ritual_jminus1_enabled, ai_debrief_enabled'
+    )
     .eq('id', dispatch.user_id)
     .single();
   if (pilotErr || !pilot) throw new Error(`Pilote ${dispatch.user_id} introuvable: ${pilotErr?.message}`);
