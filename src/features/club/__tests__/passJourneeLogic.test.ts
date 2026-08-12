@@ -15,6 +15,7 @@ import {
   libelleCreneau,
   libelleOffre,
   libelleStatut,
+  ligneHoraire,
   ligneJournee,
   partagerJournees,
   prochaineJourneeAvecQr,
@@ -246,6 +247,27 @@ describe('les libellés — l’énumération réelle', () => {
     expect(libelleCreneau('   ')).toBeNull();
     // Une valeur non prévue s'affiche plutôt que de disparaître.
     expect(libelleCreneau('soirée')).toBe('soirée');
+  });
+});
+
+describe('l’horaire seul — la carte porte déjà le circuit en titre', () => {
+  /**
+   * LE DOUBLON TROUVÉ SUR LA DONNÉE RÉELLE, pas en test. La carte affichait
+   * « HAUTE SAINTONGE » en titre, puis « Haute Saintonge · 09h00 – 17h30 »
+   * juste dessous. Chaque fonction était juste ; c'est leur composition qui ne
+   * l'était pas, et aucun test unitaire ne pouvait le voir.
+   */
+  it('l’horaire ne répète pas le circuit', () => {
+    expect(ligneHoraire(j())).toBe('09h00 – 18h00');
+    expect(ligneHoraire(j())).not.toContain('Saintonge');
+  });
+
+  it('sans heure de fin, on ne fabrique pas la fin', () => {
+    expect(ligneHoraire(j({ endTime: null }))).toBe('à partir de 09h00');
+  });
+
+  it('sans heure du tout, la chaîne est vide — l’appelant n’affiche rien', () => {
+    expect(ligneHoraire(j({ startTime: null, endTime: null }))).toBe('');
   });
 });
 

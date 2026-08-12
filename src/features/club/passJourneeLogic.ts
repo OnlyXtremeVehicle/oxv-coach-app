@@ -250,20 +250,37 @@ export function libelleCreneau(slot: string | null): string | null {
 }
 
 /**
- * La ligne d'une journée : circuit et horaire, sans rien inventer.
+ * L'horaire seul, sans le circuit.
  *
- * Sans circuit renseigné, on ne dit pas « Circuit » — on ne dit rien de plus
- * que ce qu'on sait, et l'horaire porte seul la ligne.
+ * DEUX FONCTIONS PARCE QU'IL Y A DEUX CONTEXTES, et l'unique qui existait
+ * répétait le circuit sous son propre titre. Vérifié sur la seule inscription
+ * réelle de production le 12/08/2026 : la carte affichait « HAUTE SAINTONGE »
+ * en titre, puis « Haute Saintonge · 09h00 – 17h30 » juste dessous. Aucun test
+ * ne pouvait le voir — chaque fonction était juste, c'est leur composition qui
+ * ne l'était pas.
+ *
+ * Sans heure connue, la chaîne est VIDE et l'appelant n'affiche rien. On ne
+ * fabrique pas une plage horaire pour remplir une ligne.
+ */
+export function ligneHoraire(j: JourneeLike): string {
+  const hDeb = j.startTime !== null ? /^(\d{2}):(\d{2})/.exec(j.startTime.trim()) : null;
+  const hFin = j.endTime !== null ? /^(\d{2}):(\d{2})/.exec(j.endTime.trim()) : null;
+  if (hDeb && hFin) return `${hDeb[1]}h${hDeb[2]} – ${hFin[1]}h${hFin[2]}`;
+  if (hDeb) return `à partir de ${hDeb[1]}h${hDeb[2]}`;
+  return '';
+}
+
+/**
+ * Circuit et horaire — pour les lignes d'historique, qui n'ont pas de titre.
+ *
+ * Sans circuit renseigné, on ne dit pas « Circuit » : ce serait un mot pour
+ * cacher une absence. L'horaire porte alors seul la ligne.
  */
 export function ligneJournee(j: JourneeLike): string {
   const morceaux: string[] = [];
   if (j.circuitName !== null && j.circuitName.trim() !== '') morceaux.push(j.circuitName.trim());
-
-  const hDeb = j.startTime !== null ? /^(\d{2}):(\d{2})/.exec(j.startTime.trim()) : null;
-  const hFin = j.endTime !== null ? /^(\d{2}):(\d{2})/.exec(j.endTime.trim()) : null;
-  if (hDeb && hFin) morceaux.push(`${hDeb[1]}h${hDeb[2]} – ${hFin[1]}h${hFin[2]}`);
-  else if (hDeb) morceaux.push(`à partir de ${hDeb[1]}h${hDeb[2]}`);
-
+  const horaire = ligneHoraire(j);
+  if (horaire !== '') morceaux.push(horaire);
   return morceaux.join(' · ');
 }
 

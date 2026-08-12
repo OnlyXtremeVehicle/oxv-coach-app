@@ -65,6 +65,7 @@ import {
   libelleCreneau,
   libelleOffre,
   libelleStatut,
+  ligneHoraire,
   ligneJournee,
   partagerJournees,
   qrAffichable,
@@ -320,7 +321,8 @@ function PassCard({
   const j = reg.journee;
   if (!j) return null;
 
-  const ligne = ligneJournee(j);
+  // L'HORAIRE SEUL : le circuit est déjà le titre de la carte, juste au-dessus.
+  const ligne = ligneHoraire(j);
   const creneau = libelleCreneau(reg.slot);
   const showQr = qrAffichable(reg.status);
   const sansQr = raisonSansQr(reg.status);
