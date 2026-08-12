@@ -148,15 +148,18 @@ export default function AdminCoachDetailScreen() {
     Alert.alert(
       'Consentement sur papier signé',
       'Vous allez inscrire que ce pilote a consenti à ce que ce coach lise ses séances. ' +
-        'Ne le faites que si vous détenez son accord écrit. Ce geste ne conserve pas votre ' +
-        "nom : la base n'enregistre pas qui l'a posé.",
+        'Ne le faites que si vous détenez son accord écrit. Votre nom est enregistré ' +
+        'avec ce geste.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Inscrire le consentement',
           style: 'destructive',
           onPress: async () => {
-            const result = await forcePilotConsent(a.id);
+            // L'auteur n'était PAS transmis, et le service l'exige : ce bouton
+            // échouait systématiquement, sur « Auteur inconnu ». Il n'a jamais
+            // pu fonctionner depuis son écriture.
+            const result = await forcePilotConsent(a.id, adminId ?? null);
             if (result.ok) {
               await reload();
               return;

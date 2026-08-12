@@ -3801,6 +3801,7 @@ export type Database = {
       }
       eligibility_items: {
         Row: {
+          declared_at: string | null
           document_id: string | null
           id: string
           item_key: string
@@ -3812,6 +3813,7 @@ export type Database = {
           validated_by: string | null
         }
         Insert: {
+          declared_at?: string | null
           document_id?: string | null
           id?: string
           item_key: string
@@ -3823,6 +3825,7 @@ export type Database = {
           validated_by?: string | null
         }
         Update: {
+          declared_at?: string | null
           document_id?: string | null
           id?: string
           item_key?: string
@@ -5810,8 +5813,10 @@ export type Database = {
           body: string
           created_at: string
           id: string
+          ressenti: string | null
           session_id: string | null
           shared_with_coach: boolean
+          theme: string | null
           updated_at: string
           user_id: string
         }
@@ -5819,8 +5824,10 @@ export type Database = {
           body: string
           created_at?: string
           id?: string
+          ressenti?: string | null
           session_id?: string | null
           shared_with_coach?: boolean
+          theme?: string | null
           updated_at?: string
           user_id: string
         }
@@ -5828,8 +5835,10 @@ export type Database = {
           body?: string
           created_at?: string
           id?: string
+          ressenti?: string | null
           session_id?: string | null
           shared_with_coach?: boolean
+          theme?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -8667,6 +8676,14 @@ export type Database = {
           name: string
           validated_members: number
         }[]
+      }
+      declare_eligibility_item: {
+        Args: {
+          p_declare?: boolean
+          p_item_key: string
+          p_registration_id: string
+        }
+        Returns: string
       }
       founders_count: { Args: never; Returns: number }
       generate_oxv_reference: { Args: never; Returns: string }

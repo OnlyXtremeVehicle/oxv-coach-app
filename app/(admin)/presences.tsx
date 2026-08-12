@@ -118,7 +118,9 @@ export default function AdminPresencesScreen() {
   const onToggle = async (registrationId: string, attended: boolean) => {
     if (busyId) return;
     setBusyId(registrationId);
-    const res = await setAttendance(registrationId, attended);
+    // `validateurId` était lu ligne 41 et JAMAIS transmis : `attended_by` partait
+    // donc à NULL sur chaque pointage, et la colonne d'audit ne servait à rien.
+    const res = await setAttendance(registrationId, attended, validateurId);
     if (res.ok) {
       setSessions((prev) =>
         prev.map((s) => ({

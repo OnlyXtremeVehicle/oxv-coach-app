@@ -18,17 +18,33 @@ export interface PilotNote {
   sessionId: string | null;
   body: string;
   sharedWithCoach: boolean;
+  /** Thème du ressenti structuré (QCM entre-runs). `null` pour une note libre. */
+  theme: string | null;
+  /** Réponse au QCM, en clair. `null` pour une note libre. */
+  ressenti: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
-const COLS = 'id, session_id, body, shared_with_coach, created_at, updated_at';
+/**
+ * `theme` et `ressenti` sont dans cette liste, et c'est un correctif du
+ * 12/08/2026 : la veille, j'ai ajouté leur ÉCRITURE sans ajouter leur LECTURE.
+ * La donnée du QCM entrait en base et n'en ressortait jamais.
+ *
+ * C'est exactement le défaut du ThumbHash, corrigé le 04/08 : une colonne
+ * écrite, transportée, puis perdue au dernier maillon. Deux fois la même faute
+ * en huit jours — la leçon est qu'un ajout de colonne se vérifie sur le trajet
+ * COMPLET, aller ET retour, avant d'être déclaré fait.
+ */
+const COLS = 'id, session_id, body, theme, ressenti, shared_with_coach, created_at, updated_at';
 
 function mapNote(r: Record<string, unknown>): PilotNote {
   return {
     id: r.id as string,
     sessionId: (r.session_id as string | null) ?? null,
     body: r.body as string,
+    theme: (r.theme as string | null) ?? null,
+    ressenti: (r.ressenti as string | null) ?? null,
     sharedWithCoach: Boolean(r.shared_with_coach),
     createdAt: r.created_at as string,
     updatedAt: r.updated_at as string,
