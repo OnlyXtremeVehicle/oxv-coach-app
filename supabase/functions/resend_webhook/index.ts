@@ -185,7 +185,40 @@ async function processEvent(event: ResendEvent): Promise<void> {
     .eq('resend_message_id', event.data.email_id)
     .maybeSingle();
 
-  // 2. Archiver l'event brut (toujours, même sans dispatch matché)
+  // 2. Archiver l'event — SANS LES DONNÉES IDENTIFIANTES.
+  //
+  // ==========================================================================
+  // MINIMISATION À LA SOURCE, ET POURQUOI C'EST MIEUX QU'UNE PURGE
+  // ==========================================================================
+  //
+  // Cette insertion écrivait `raw_payload: event`, c'est-à-dire la charge
+  // BRUTE du webhook : l'adresse du destinataire, le sujet, l'expéditeur, les
+  // en-têtes. Relevé en production le 12/08/2026 : 49 lignes, **11 adresses
+  // e-mail distinctes en clair**, du 16/06 au 21/07.
+  //
+  // On a d'abord corrigé en aval — `purge_user_data` rattache ces lignes par
+  // l'adresse, et un cron les borne à six mois. Mais 21 des 49 lignes portent
+  // des adresses **qui n'ont jamais eu de compte** : aucune purge par
+  // utilisateur ne peut les atteindre, par construction.
+  //
+  // La vraie correction est ici. **Rien ne relit `raw_payload`** — vérifié :
+  // aucune lecture dans les fonctions serveur ni dans l'application, et
+  // l'événement est appliqué par `apply_resend_event` via des paramètres
+  // séparés. Une colonne que personne ne lit et qui porte une adresse n'a pas
+  // de raison d'être écrite (article 5.1.c, minimisation).
+  //
+  // Ce qu'on garde : de quoi diagnostiquer une non-délivrance — le type et la
+  // description du rebond. Ce qu'on jette : `to`, `subject`, `from`, les
+  // en-têtes, et tout le reste de la charge.
+  //
+  // `event_type`, `resend_email_id` et `occurred_at` restent en colonnes
+  // propres : ils suffisent à compter et à recouper, et `resend_email_id` est
+  // l'identifiant technique de Resend, pas une adresse.
+  const chargeMinimale = {
+    bounce_type: event.data.bounce?.type ?? null,
+    bounce_description: event.data.bounce?.description ?? null,
+  };
+
   const { error: insertErr } = await supabase
     .from('resend_events')
     .insert({
@@ -193,7 +226,7 @@ async function processEvent(event: ResendEvent): Promise<void> {
       resend_email_id: event.data.email_id,
       dispatch_id: dispatch?.id ?? null,
       occurred_at: event.created_at,
-      raw_payload: event,
+      raw_payload: chargeMinimale,
     });
   if (insertErr) {
     console.error('Erreur insert resend_events:', insertErr.message);
