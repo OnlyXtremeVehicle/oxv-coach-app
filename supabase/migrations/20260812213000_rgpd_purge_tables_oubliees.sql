@@ -56,11 +56,32 @@
 -- le nom et le prénom du pilote EN CLAIR.
 --
 -- **La question n'est pas technique, elle est juridique** : une décharge signée
--- relève-t-elle de la conservation probatoire (auquel cas on ANONYMISE en
--- gardant le hash du document et la date, et on l'écrit dans la politique), ou
--- de l'effacement pur ? La prescription de la responsabilité civile est de cinq
--- ans en droit français (article 2224 du code civil), ce qui plaide pour
--- l'archivage — mais ce n'est pas à moi de trancher.
+-- relève-t-elle de la conservation probatoire (auquel cas on ARCHIVE en accès
+-- restreint, et on l'écrit dans la politique), ou de l'effacement pur ?
+--
+-- CORRECTION DU 12/08/2026 — J'AVAIS CITÉ LE MAUVAIS ARTICLE. Une première
+-- rédaction de ce commentaire invoquait l'article 2224 du code civil et sa
+-- prescription de cinq ans. C'est le droit commun, et ce n'est pas celui qui
+-- gouverne l'objet même d'une décharge de circuit.
+--
+--   Article 2226 : « L'action en responsabilité née à raison d'un événement
+--   ayant entraîné un DOMMAGE CORPOREL […] se prescrit par DIX ANS à compter
+--   de la date de la CONSOLIDATION du dommage initial ou aggravé. »
+--
+-- Deux conséquences, et aucune n'est théorique. Le point de départ est la
+-- consolidation — une date INCONNUE au moment de la signature, qui peut
+-- survenir des années après la séance, et qu'une aggravation rouvre. Et
+-- l'article 2232 alinéa 2 EXCLUT expressément l'article 2226 du délai butoir
+-- de vingt ans : il n'existe donc aucune borne supérieure calculable.
+--
+-- Autrement dit : **aucune durée ne se déduit du calcul.** Elle doit être
+-- arrêtée forfaitairement, documentée, et alignée sur le contrat d'assurance
+-- responsabilité civile d'OXV — qui est la pièce qu'il faut lire, car aucun
+-- texte français n'IMPOSE de conserver une décharge de circuit (recherché,
+-- non trouvé, y compris au Code du sport).
+--
+-- Ce n'est donc pas à moi de trancher, et ce n'est pas non plus une question
+-- d'opportunité : c'est une lecture de contrat d'assurance.
 --
 -- La table est à zéro ligne et la fonctionnalité est gatée (drapeau
 -- `pilot_waivers` à `false`). Rien ne presse ; la décision revient au conseil.
