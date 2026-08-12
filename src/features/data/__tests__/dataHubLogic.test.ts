@@ -6,60 +6,12 @@
 
 import {
   canCompare,
-  circuitFilters,
   compareHref,
   confidenceBadge,
   filterSessions,
   toggleSelect,
   type FilterableSession,
-  type SessionCircuitRef,
 } from '../dataHubLogic';
-
-// ---------------------------------------------------------------------------
-// circuitFilters
-// ---------------------------------------------------------------------------
-
-describe('circuitFilters', () => {
-  it('rend les circuits distincts, dans l’ordre de première apparition', () => {
-    const sessions: SessionCircuitRef[] = [
-      { circuitId: 'hs', circuitName: 'Haute Saintonge' },
-      { circuitId: 'val', circuitName: 'Valencia' },
-      { circuitId: 'hs', circuitName: 'Haute Saintonge' }, // doublon
-    ];
-    expect(circuitFilters(sessions)).toEqual([
-      { id: 'hs', label: 'Haute Saintonge' },
-      { id: 'val', label: 'Valencia' },
-    ]);
-  });
-
-  it('ignore les sessions sans circuitId (null)', () => {
-    const sessions: SessionCircuitRef[] = [
-      { circuitId: null, circuitName: 'Sans identifiant' },
-      { circuitId: '  ', circuitName: 'Vide' },
-      { circuitId: 'hs', circuitName: 'Haute Saintonge' },
-    ];
-    expect(circuitFilters(sessions)).toEqual([{ id: 'hs', label: 'Haute Saintonge' }]);
-  });
-
-  it('complète le libellé si une occurrence ultérieure porte le nom', () => {
-    const sessions: SessionCircuitRef[] = [
-      { circuitId: 'hs', circuitName: null },
-      { circuitId: 'hs', circuitName: 'Haute Saintonge' },
-    ];
-    // Un seul circuit, libellé complété — jamais un doublon.
-    expect(circuitFilters(sessions)).toEqual([{ id: 'hs', label: 'Haute Saintonge' }]);
-  });
-
-  it('rend un repli neutre quand aucun nom n’est disponible', () => {
-    expect(circuitFilters([{ circuitId: 'x', circuitName: null }])).toEqual([
-      { id: 'x', label: 'Circuit' },
-    ]);
-  });
-
-  it('rend une liste vide sans session', () => {
-    expect(circuitFilters([])).toEqual([]);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // filterSessions
@@ -67,10 +19,10 @@ describe('circuitFilters', () => {
 
 describe('filterSessions', () => {
   const sessions: FilterableSession[] = [
-    { circuitId: 'hs', startedAt: '2026-07-16T09:00:00Z' },
-    { circuitId: 'val', startedAt: '2025-11-02T09:00:00Z' },
-    { circuitId: 'hs', startedAt: '2025-05-01T09:00:00Z' },
-    { circuitId: null, startedAt: null },
+    { circuitId: 'hs', circuitName: 'HS', vehicleId: 'v1', startedAt: '2026-07-16T09:00:00Z' },
+    { circuitId: 'val', circuitName: 'Val', vehicleId: 'v1', startedAt: '2025-11-02T09:00:00Z' },
+    { circuitId: 'hs', circuitName: 'HS', vehicleId: 'v2', startedAt: '2025-05-01T09:00:00Z' },
+    { circuitId: null, circuitName: null, vehicleId: null, startedAt: null },
   ];
 
   it('all : renvoie toutes les sessions (copie, pas la même référence)', () => {
@@ -79,10 +31,17 @@ describe('filterSessions', () => {
     expect(out).not.toBe(sessions);
   });
 
-  it('circuit : ne garde que le circuitId demandé', () => {
-    const out = filterSessions(sessions, { kind: 'circuit', circuitId: 'hs' });
-    expect(out).toHaveLength(2);
-    expect(out.every((s) => s.circuitId === 'hs')).toBe(true);
+  /**
+   * LE FILTRE PORTE SUR LA PAIRE, PAS SUR LE CIRCUIT — depuis le 12/08/2026.
+   *
+   * Deux voitures sur le même circuit produisent des chronos qui ne se
+   * comparent pas. L'ancienne puce « Haute Saintonge » les mélangeait en
+   * silence : deux séances y entraient, dont une roulée avec une autre auto.
+   */
+  it('paire : le même circuit avec deux voitures fait deux filtres distincts', () => {
+    const out = filterSessions(sessions, { kind: 'paire', paireCle: 'hs::v1' });
+    expect(out).toHaveLength(1);
+    expect(out[0].startedAt).toBe('2026-07-16T09:00:00Z');
   });
 
   it('season : ne garde que l’année de startedAt demandée', () => {
@@ -91,8 +50,8 @@ describe('filterSessions', () => {
     expect(out.map((s) => s.circuitId)).toEqual(['val', 'hs']);
   });
 
-  it('circuit sans circuitId ne fait correspondre aucune session', () => {
-    expect(filterSessions(sessions, { kind: 'circuit' })).toEqual([]);
+  it('paire sans clé ne fait correspondre aucune session', () => {
+    expect(filterSessions(sessions, { kind: 'paire' })).toEqual([]);
   });
 
   it('season sans year ne fait correspondre aucune session', () => {

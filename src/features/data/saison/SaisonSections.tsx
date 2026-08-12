@@ -89,7 +89,9 @@ import {
   useFirstViewport,
   useReduceMotion,
 } from '@/ui/v2';
-import { circuitFilters } from '@/features/data/dataHubLogic';
+import { pairesRoulees, seancesDeLaPaire } from '@/features/data/pairesLogic';
+import { vehicleName } from '@/features/vous/garageLogic';
+import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import {
   bestLapCurve,
   pilotStatCells,
@@ -229,7 +231,9 @@ export function useSaisonData() {
   const [lapsBySession, setLapsBySession] = useState<Map<string, number[]>>(new Map());
   const [lapsStatus, setLapsStatus] = useState<LoadStatus>('loading');
 
-  const [selectedCircuitId, setSelectedCircuitId] = useState<string | null>(null);
+  const [selectedPaireCle, setSelectedPaireCle] = useState<string | null>(null);
+  /** Le garage ne sert QU'À NOMMER les véhicules des puces. */
+  const [garage, setGarage] = useState<Vehicle[]>([]);
   const [focus, setFocus] = useState<CircuitFocus | null>(null);
 
   const reload = useCallback(() => setReloadKey((k) => k + 1), []);
@@ -262,19 +266,46 @@ export function useSaisonData() {
     };
   }, [userId, reloadKey]);
 
-  // ── Circuit sélectionné par défaut : le plus roulé (première puce) ──────────
-  const chips = useMemo(
-    () =>
-      circuitFilters(
-        sessions.map((s) => ({ circuitId: s.circuit_id, circuitName: s.circuit_name }))
-      ),
-    [sessions]
-  );
   useEffect(() => {
-    if (selectedCircuitId === null && chips.length > 0) {
-      setSelectedCircuitId(chips[0].id);
+    let annule = false;
+    listMyVehicles()
+      .then((rows) => {
+        if (!annule) setGarage(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, []);
+
+  /**
+   * ── Paire sélectionnée par défaut : la plus roulée (première puce) ────────
+   *
+   * LES PUCES ÉTAIENT DES CIRCUITS JUSQU'AU 12/08/2026. Le plan V3 demande un
+   * filtre par PAIRE circuit-véhicule, et la courbe du tour de référence est
+   * exactement l'endroit où la différence se voit : deux voitures sur le même
+   * circuit tracent une progression qui n'en est pas une — le pilote lit une
+   * amélioration là où il a seulement changé d'auto.
+   */
+  const chips = useMemo(() => {
+    const nomDe = (id: string): string | null => {
+      const v = garage.find((x) => x.id === id);
+      return v ? vehicleName(v) : null;
+    };
+    return pairesRoulees(
+      sessions.map((s) => ({
+        circuitId: s.circuit_id,
+        circuitName: s.circuit_name,
+        vehicleId: s.vehicle_id,
+      })),
+      nomDe
+    );
+  }, [sessions, garage]);
+  useEffect(() => {
+    if (selectedPaireCle === null && chips.length > 0) {
+      setSelectedPaireCle(chips[0].cle);
     }
-  }, [chips, selectedCircuitId]);
+  }, [chips, selectedPaireCle]);
 
   // ── Tours des séances (borné) → Map<sessionId, number[] ms> ─────────────────
   useEffect(() => {
@@ -313,13 +344,20 @@ export function useSaisonData() {
     };
   }, [sessions]);
 
-  // ── Séances du circuit sélectionné ──────────────────────────────────────────
-  const filteredSessions = useMemo(
-    () =>
-      selectedCircuitId === null ? [] : sessions.filter((s) => s.circuit_id === selectedCircuitId),
-    [sessions, selectedCircuitId]
-  );
-  const selectedName = chips.find((c) => c.id === selectedCircuitId)?.label ?? null;
+  // ── Séances de la paire sélectionnée ────────────────────────────────────────
+  const filteredSessions = useMemo(() => {
+    if (selectedPaireCle === null) return [];
+    return seancesDeLaPaire(
+      sessions.map((s) => ({
+        ...s,
+        circuitId: s.circuit_id,
+        circuitName: s.circuit_name,
+        vehicleId: s.vehicle_id,
+      })),
+      selectedPaireCle
+    );
+  }, [sessions, selectedPaireCle]);
+  const selectedName = chips.find((c) => c.cle === selectedPaireCle)?.libelle ?? null;
 
   // Courbe du tour de référence. `bestLapCurve` filtre/trie sans cloner : les
   // objets rendus sont les MÊMES références que l'entrée (id conservé au
@@ -370,8 +408,8 @@ export function useSaisonData() {
     userId,
     reload,
     chips,
-    selectedCircuitId,
-    setSelectedCircuitId,
+    selectedPaireCle,
+    setSelectedPaireCle,
     selectedName,
     curve,
     regularity,
@@ -400,8 +438,8 @@ export function SaisonSections({ data }: { data: SaisonData }) {
     userId,
     reload,
     chips,
-    selectedCircuitId,
-    setSelectedCircuitId,
+    selectedPaireCle,
+    setSelectedPaireCle,
     selectedName,
     curve,
     regularity,
@@ -456,7 +494,7 @@ export function SaisonSections({ data }: { data: SaisonData }) {
         </Text>
       </View>
 
-      {/* ── Sélecteur de circuit (pilote courbe + régularité) ───────────── */}
+      {/* ── Sélecteur de PAIRE circuit-véhicule (pilote courbe + régularité) ── */}
       {chips.length > 0 ? (
         <ScrollView
           horizontal
@@ -466,10 +504,10 @@ export function SaisonSections({ data }: { data: SaisonData }) {
         >
           {chips.map((c) => (
             <Chip
-              key={c.id}
-              label={c.label}
-              active={c.id === selectedCircuitId}
-              onPress={() => setSelectedCircuitId(c.id)}
+              key={c.cle}
+              label={c.libelle}
+              active={c.cle === selectedPaireCle}
+              onPress={() => setSelectedPaireCle(c.cle)}
             />
           ))}
         </ScrollView>

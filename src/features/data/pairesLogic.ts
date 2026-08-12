@@ -118,11 +118,30 @@ export function pairesRoulees(
     });
   }
 
+  const paires = [...parCle.values()];
+
+  /**
+   * QUAND AUCUNE SÉANCE NE PORTE DE VÉHICULE, LE DIRE PARTOUT NE DIT RIEN.
+   *
+   * C'est l'état de toute la production d'avant le 12/08/2026 : « Véhicule non
+   * renseigné » apparaîtrait alors sur chaque puce, identique, et une mention
+   * constante n'est pas une information — c'est du bruit qui allonge chaque
+   * libellé. La paire se réduit à son circuit, ce qu'elle est en fait.
+   *
+   * Dès qu'UNE séance porte un véhicule, la distinction redevient réelle et la
+   * mention reprend sa place : le pilote doit voir que ces séances-là ne sont
+   * pas rangées avec les autres.
+   */
+  const aucunVehicule = paires.every((p) => p.incomplete);
+  if (aucunVehicule) {
+    for (const p of paires) {
+      p.libelle = p.libelle.slice(0, p.libelle.length - ` · ${VEHICULE_ABSENT}`.length);
+    }
+  }
+
   // Ordre d'usage : la plus roulée d'abord, puis alphabétique à effectif égal
   // pour que la liste ne bouge pas d'un chargement à l'autre.
-  return [...parCle.values()].sort(
-    (a, b) => b.seances - a.seances || a.libelle.localeCompare(b.libelle, 'fr')
-  );
+  return paires.sort((a, b) => b.seances - a.seances || a.libelle.localeCompare(b.libelle, 'fr'));
 }
 
 /**

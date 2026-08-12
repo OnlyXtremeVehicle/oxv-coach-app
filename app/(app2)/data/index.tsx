@@ -4,7 +4,10 @@
  * Remplace le placeholder `data.tsx` du lot L0. C'est la LISTE de VOS séances —
  * self-only, données réelles uniquement (Doctrine L3) :
  *  - header condensable « DATA » + eyebrow « VOS SÉANCES » ;
- *  - filtres `Chip` scrollables : Tous · <par circuit dynamique> · Cette saison ;
+ *  - filtres `Chip` scrollables : Tous · <par PAIRE circuit-véhicule roulée> ·
+ *    Cette saison. La puce par circuit seul est tombée le 12/08/2026 : deux
+ *    voitures sur le même circuit produisent des chronos qui ne se comparent
+ *    pas, et une puce unique les mélangeait en silence ;
  *  - FlashList de `SessionCard` (chrono au millième, badge d'honnêteté de la
  *    donnée via `confidenceBadge`), entrée en `Stagger`, `PullToRefreshDial` ;
  *  - MODE COMPARAISON (le vieux TODO v1 enfin réglé) : appui long → sélection
@@ -56,13 +59,15 @@ import {
 } from '@/ui/v2';
 import {
   canCompare,
-  circuitFilters,
   compareHref,
   confidenceBadge,
   filterSessions,
   toggleSelect,
   type SessionFilter,
 } from '@/features/data/dataHubLogic';
+import { pairesRoulees } from '@/features/data/pairesLogic';
+import { vehicleName } from '@/features/vous/garageLogic';
+import { listMyVehicles, type Vehicle } from '@/services/garageService';
 import { fetchAllSessions } from '@/services/sessionsService';
 import {
   SaisonCircuitSheet,
@@ -77,11 +82,12 @@ type Session = Awaited<ReturnType<typeof fetchAllSessions>>[number];
 
 /**
  * Vue normalisée en camelCase attendue par la logique pure du hub
- * (`circuitFilters`, `filterSessions`) : miroir exact des champs snake_case.
+ * (`pairesRoulees`, `filterSessions`) : miroir exact des champs snake_case.
  */
 type HubSession = Session & {
   circuitId: string | null;
   circuitName: string | null;
+  vehicleId: string | null;
   startedAt: string | null;
 };
 
@@ -117,6 +123,19 @@ export default function DataHubScreen() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<SessionFilter>({ kind: 'all' });
+  // Le garage ne sert QU'À NOMMER les véhicules des puces de paire.
+  const [garage, setGarage] = useState<Vehicle[]>([]);
+  useEffect(() => {
+    let annule = false;
+    listMyVehicles()
+      .then((rows) => {
+        if (!annule) setGarage(rows);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, []);
 
   // Mode comparaison : sélection bornée à deux (aucun gagnant).
   const [selectionMode, setSelectionMode] = useState(false);
@@ -161,12 +180,25 @@ export default function DataHubScreen() {
         ...s,
         circuitId: s.circuit_id,
         circuitName: s.circuit_name,
+        vehicleId: s.vehicle_id,
         startedAt: s.started_at,
       })),
     [sessions]
   );
 
-  const circuitChips = useMemo(() => circuitFilters(hubSessions), [hubSessions]);
+  /**
+   * Les puces sont des PAIRES réellement roulées, jamais le produit des
+   * circuits par les véhicules. Le garage ne sert qu'à nommer : son échec
+   * n'empêche pas de filtrer, `pairesRoulees` sait dire un véhicule qu'elle
+   * ne peut pas nommer.
+   */
+  const paireChips = useMemo(() => {
+    const nomDe = (id: string): string | null => {
+      const v = garage.find((x) => x.id === id);
+      return v ? vehicleName(v) : null;
+    };
+    return pairesRoulees(hubSessions, nomDe);
+  }, [hubSessions, garage]);
   const filtered = useMemo(() => filterSessions(hubSessions, filter), [hubSessions, filter]);
   const seasonYear = useMemo(() => new Date().getFullYear(), []);
 
@@ -321,12 +353,12 @@ export default function DataHubScreen() {
           active={filter.kind === 'all'}
           onPress={() => setFilter({ kind: 'all' })}
         />
-        {circuitChips.map((c) => (
+        {paireChips.map((p) => (
           <Chip
-            key={c.id}
-            label={c.label}
-            active={filter.kind === 'circuit' && filter.circuitId === c.id}
-            onPress={() => setFilter({ kind: 'circuit', circuitId: c.id })}
+            key={p.cle}
+            label={p.libelle}
+            active={filter.kind === 'paire' && filter.paireCle === p.cle}
+            onPress={() => setFilter({ kind: 'paire', paireCle: p.cle })}
           />
         ))}
         <Chip

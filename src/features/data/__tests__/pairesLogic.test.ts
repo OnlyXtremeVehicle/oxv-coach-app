@@ -65,17 +65,35 @@ describe('la paire incomplète — l’historique ne disparaît pas', () => {
    * d'armement n'attachait aucun véhicule avant le 12/08/2026. Les exclure
    * ferait disparaître tout l'historique du sélecteur.
    */
-  it('une séance sans véhicule forme sa propre paire, et le dit', () => {
+  it('une séance sans véhicule forme sa propre paire', () => {
     const paires = pairesRoulees([s('c1', null)], nom);
     expect(paires).toHaveLength(1);
     expect(paires[0].incomplete).toBe(true);
-    expect(paires[0].libelle).toContain(VEHICULE_ABSENT);
+    // Le libellé, lui, dépend du reste du jeu — voir les deux cas plus bas.
+    expect(paires[0].circuitId).toBe('c1');
   });
 
   it('les séances sans véhicule d’un même circuit se regroupent', () => {
     const paires = pairesRoulees([s('c1', null), s('c1', null)], nom);
     expect(paires).toHaveLength(1);
     expect(paires[0].seances).toBe(2);
+  });
+
+  /**
+   * L'ÉTAT DE TOUTE LA PRODUCTION D'AVANT LE 12/08/2026. Répéter « Véhicule
+   * non renseigné » sur chaque puce n'informe de rien : une mention constante
+   * est du bruit, et elle double la longueur de chaque libellé.
+   */
+  it('quand AUCUNE séance ne porte de véhicule, la paire se réduit au circuit', () => {
+    const paires = pairesRoulees([s('c1', null), s('c2', null, 'Charente')], nom);
+    expect(paires.map((p) => p.libelle).sort()).toEqual(['Charente', 'Haute Saintonge']);
+  });
+
+  it('dès qu’UNE séance porte un véhicule, la mention reprend sa place', () => {
+    const paires = pairesRoulees([s('c1', null), s('c1', 'v1')], nom);
+    const sans = paires.find((p) => p.incomplete);
+    expect(sans?.libelle).toContain(VEHICULE_ABSENT);
+    expect(paires.find((p) => !p.incomplete)?.libelle).toContain('911 GT3');
   });
 
   it('un circuit non renseigné se dit aussi, il ne devient pas « inconnu »', () => {

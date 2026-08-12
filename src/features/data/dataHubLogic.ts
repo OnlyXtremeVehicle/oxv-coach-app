@@ -12,75 +12,62 @@
  *
  * Toute l'I/O (chargement des sessions, des trames) vit dans le hook d'écran ;
  * ce module reçoit des formes déjà normalisées en camelCase (`circuitId`,
- * `circuitName`, `startedAt`), miroir de `TelemetrySession` côté service.
+ * `circuitName`, `vehicleId`, `startedAt`), miroir de `TelemetrySession` côté
+ * service.
  */
 
+import { seancesDeLaPaire } from './pairesLogic';
+
 // ---------------------------------------------------------------------------
-// Filtres de circuit — puces « Tous » / « Cette saison » gérées par l'écran.
+// Filtres de PAIRE — les puces viennent de `pairesLogic`.
 // ---------------------------------------------------------------------------
-
-/** Référence minimale d'une session pour construire les puces de circuit. */
-export interface SessionCircuitRef {
-  circuitId: string | null;
-  circuitName: string | null;
-}
-
-/** Une puce de filtre circuit prête à afficher. */
-export interface CircuitFilterChip {
-  id: string;
-  label: string;
-}
-
-/** Repli de libellé quand une session porte un `circuitId` mais aucun nom. */
-const CIRCUIT_FALLBACK_LABEL = 'Circuit';
-
-/**
- * Liste les circuits DISTINCTS présents dans les sessions, pour les puces de
- * filtre (en plus des puces implicites « Tous » / « Cette saison » gérées par
- * l'écran). Ordre stable (première apparition), sans doublon, les sessions sans
- * `circuitId` étant ignorées. Si une occurrence porte un nom là où une
- * précédente n'en avait pas, le libellé est complété (jamais inventé).
- */
-export function circuitFilters(sessions: readonly SessionCircuitRef[]): CircuitFilterChip[] {
-  const order: string[] = [];
-  const labelById = new Map<string, string>();
-
-  for (const s of sessions) {
-    const id = s.circuitId?.trim();
-    if (!id) continue; // pas d'identifiant : pas de puce (on ignore les null)
-    const name = s.circuitName?.trim();
-
-    if (!labelById.has(id)) {
-      order.push(id);
-      labelById.set(id, name && name.length > 0 ? name : CIRCUIT_FALLBACK_LABEL);
-    } else if (labelById.get(id) === CIRCUIT_FALLBACK_LABEL && name && name.length > 0) {
-      // Complète le repli si une occurrence ultérieure porte un vrai nom.
-      labelById.set(id, name);
-    }
-  }
-
-  return order.map((id) => ({ id, label: labelById.get(id) as string }));
-}
+//
+// `circuitFilters`, `SessionCircuitRef` et `CircuitFilterChip` vivaient ici et
+// ont été SUPPRIMÉS le 12/08/2026, avec leurs six tests.
+//
+// Ils construisaient les puces à partir des circuits seuls. Le plan V3 impose
+// la paire circuit-véhicule, et les deux appelants — le hub Data et la Saison —
+// sont passés à `pairesRoulees`. Ce qui restait n'était plus appelé nulle part.
+//
+// Le garder aurait été pire que du code mort : une fonction toute prête,
+// nommée exactement comme le besoin apparent, qu'un futur écran aurait
+// rebranchée sans savoir que le filtre par circuit seul mélange deux voitures
+// sous une puce unique.
 
 // ---------------------------------------------------------------------------
 // Filtrage des sessions — pur, déterministe.
 // ---------------------------------------------------------------------------
 
-/** Forme minimale filtrable : identifiant de circuit + date de début ISO. */
+/** Forme minimale filtrable : la paire, plus la date de début ISO. */
 export interface FilterableSession {
   circuitId: string | null;
+  circuitName: string | null;
+  vehicleId: string | null;
   startedAt: string | null;
 }
 
 /**
  * Filtre appliqué à la liste :
  *  - `all` : aucune restriction ;
- *  - `circuit` : sessions du `circuitId` donné (égalité stricte) ;
+ *  - `paire` : sessions de la PAIRE circuit-véhicule donnée (`pairesLogic`) ;
  *  - `season` : sessions dont l'année de `startedAt` vaut `year`.
+ *
+ * ---
+ *
+ * LE FILTRE `circuit` EST DEVENU `paire` LE 12/08/2026.
+ *
+ * Le plan V3 : *« filtre par paire réellement roulée, jamais deux filtres
+ * indépendants »*. Un filtre par circuit seul n'est pas faux, il est
+ * incomplet : deux voitures sur le même circuit produisent des chronos qui ne
+ * se comparent pas, et les ranger sous une seule puce les mélange en silence.
+ *
+ * Les paires viennent de `pairesRoulees`, qui ne propose que ce qui a été
+ * roulé — jamais le produit des circuits par les véhicules.
  */
 export interface SessionFilter {
-  kind: 'all' | 'circuit' | 'season';
-  circuitId?: string;
+  kind: 'all' | 'paire' | 'season';
+  /** Clé de paire (`pairesLogic`), pas un identifiant de circuit. */
+  paireCle?: string;
   year?: number;
 }
 
@@ -105,8 +92,10 @@ export function filterSessions<T extends FilterableSession>(
   switch (filter.kind) {
     case 'all':
       return [...sessions];
-    case 'circuit':
-      return sessions.filter((s) => s.circuitId === filter.circuitId);
+    case 'paire':
+      // Une clé absente ne fait correspondre aucune séance : on ne devine pas.
+      if (filter.paireCle === undefined) return [];
+      return seancesDeLaPaire(sessions, filter.paireCle);
     case 'season':
       return sessions.filter((s) => parseYear(s.startedAt) === filter.year);
     default:
