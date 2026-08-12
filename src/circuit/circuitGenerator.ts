@@ -121,6 +121,26 @@ export function projectToMeters(points: LatLon[]): Point[] {
   return points.map((p) => ({ x: p.lon * mPerLon - x0, y: p.lat * mPerLat - y0 }));
 }
 
+/**
+ * L'inverse de `projectToMeters` — retour d'un point projeté en lat/lon.
+ *
+ * La projection est équirectangulaire et son origine est le PREMIER point du
+ * tracé : l'inverse est donc exact, à condition de lui redonner ce même
+ * premier point. On le passe explicitement plutôt que de mémoriser un état :
+ * une origine implicite se perdrait au premier appel dans le désordre.
+ *
+ * Sert à rendre les cordes détectées — `detectCorners` travaille en mètres,
+ * et la résolution d'un marqueur travaille en lat/lon.
+ */
+export function unprojectFromMeters(points: Point[], origin: LatLon): LatLon[] {
+  const lat0 = (origin.lat * Math.PI) / 180;
+  const mPerLat = 111320;
+  const mPerLon = 111320 * Math.cos(lat0);
+  const x0 = origin.lon * mPerLon;
+  const y0 = origin.lat * mPerLat;
+  return points.map((p) => ({ lat: (p.y + y0) / mPerLat, lon: (p.x + x0) / mPerLon }));
+}
+
 // --- 3. Débruitage : moyenne glissante (passe-bas) ---------------------------
 // win = demi-fenêtre. Sur tracé OSM propre : 1. Sur GPS RaceBox brut : 6 à 10.
 export function smooth(pts: Point[], win: number, closed: boolean): Point[] {

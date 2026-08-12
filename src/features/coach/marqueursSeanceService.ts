@@ -26,6 +26,7 @@
 
 import { bornesDesTours, tramesPourMarqueurs } from '@/features/coach/filSeanceService';
 import { supabase } from '@/lib/supabase';
+import { cordesForCircuit } from '@/circuit/circuitCorners';
 import { phraseMarqueur, resoudreMarqueur } from '@/telemetry/marqueur';
 
 /**
@@ -84,10 +85,15 @@ export async function chargerMarqueursSeance(captureId: string): Promise<Marqueu
 
   const { data: seance } = await supabase
     .from('telemetry_sessions')
-    .select('started_at')
+    .select('started_at, circuit_id, circuit_name')
     .eq('id', captureId)
     .maybeSingle();
-  const debutIso = (seance as { started_at?: string | null } | null)?.started_at ?? null;
+  const ligne = seance as {
+    started_at?: string | null;
+    circuit_id?: string | null;
+    circuit_name?: string | null;
+  } | null;
+  const debutIso = ligne?.started_at ?? null;
 
   // On ne lit QUE les secondes utiles autour de chaque marqueur. Sans ce
   // ciblage, afficher trois cases à cocher téléchargeait toute la télémétrie
@@ -96,18 +102,27 @@ export async function chargerMarqueursSeance(captureId: string): Promise<Marqueu
     .map((r) => r.marker_elapsed_ms)
     .filter((v): v is number => typeof v === 'number' && Number.isFinite(v));
 
-  const [trames, bornes] = await Promise.all([
+  const [trames, bornes, cordes] = await Promise.all([
     tramesPourMarqueurs(captureId, instants).catch(() => []),
     bornesDesTours(captureId, debutIso).catch(() => []),
+    // Les cordes du circuit de LA SÉANCE. Sans circuit renseigné, aucune : le
+    // marqueur rendra `virage: null`, et c'est l'affichage juste.
+    ligne?.circuit_id != null
+      ? cordesForCircuit({ id: ligne.circuit_id, name: ligne.circuit_name ?? '' }).catch(() => [])
+      : Promise.resolve([]),
   ]);
 
   return (data as Record<string, unknown>[])
     .map((row): MarqueurSeance | null => {
       const at = row.marker_elapsed_ms;
       if (typeof at !== 'number' || !Number.isFinite(at)) return null;
-      // Aucune corde de référence n'existe encore : `virage` vaudra `null`, et
-      // c'est l'affichage juste. La position, elle, tient toujours.
-      const m = resoudreMarqueur(at, trames, bornes, []);
+      // LES CORDES ARRIVENT ENFIN ICI. Cet appel passait `[]`, sous un
+      // commentaire affirmant qu'« aucune corde de référence n'existe encore ».
+      // C'était vrai le jour où il a été écrit : les sept cordes de Haute
+      // Saintonge portent depuis des relevés GPS, et les autres circuits ont
+      // leur centerline. `virage` valait donc `null` pour tout marqueur, quel
+      // que soit l'endroit du geste.
+      const m = resoudreMarqueur(at, trames, bornes, cordes);
       // FAIL-CLOSED : seul un `shared` EXPLICITE ouvre le texte au document.
       // Une visibilité inconnue vaut privé.
       const partagee = row.visibility === 'shared';

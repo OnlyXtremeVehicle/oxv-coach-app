@@ -64,6 +64,7 @@ import {
   phraseMarqueur,
   resoudreMarqueur,
 } from '@/telemetry/marqueur';
+import { type CordeCirconstanciee, cordesForCircuit } from '@/circuit/circuitCorners';
 import { type MarginZone, marginLabelOf } from '@/types/domain';
 import { formatChronoTenths } from '@/utils/format';
 
@@ -371,7 +372,11 @@ export async function bornesDesTours(
     .filter((b): b is BorneTour => b !== null);
 }
 
-async function annotationsCoach(captureId: string, debutIso: string | null): Promise<Morceau> {
+async function annotationsCoach(
+  captureId: string,
+  debutIso: string | null,
+  cordes: readonly CordeCirconstanciee[]
+): Promise<Morceau> {
   const { data, error } = await supabase
     .from('coach_annotations')
     .select(
@@ -417,8 +422,12 @@ async function annotationsCoach(captureId: string, debutIso: string | null): Pro
       // UN MARQUEUR POSE : on le resout ICI. Ce que le calcul rend PRIME sur les
       // index saisis a la main — la mesure sait ou etait le pilote, la saisie
       // dit ou le coach croyait qu'il etait.
+      // LES CORDES ARRIVENT ENFIN ICI. Cet appel passait `[]` : `virage` et
+      // `distanceAvantCordeM` valaient donc TOUJOURS `null`, quel que soit le
+      // marqueur. Le calcul était juste et complet — il n'avait jamais reçu de
+      // quoi travailler.
       const m = nombreFini(row.marker_elapsed_ms)
-        ? resoudreMarqueur(row.marker_elapsed_ms, trames, bornes, [])
+        ? resoudreMarqueur(row.marker_elapsed_ms, trames, bornes, cordes)
         : null;
       const faits = m !== null ? phraseMarqueur(m) : null;
       const texte = typeof corps === 'string' && corps.trim().length > 0 ? corps : null;
@@ -499,16 +508,36 @@ export async function chargerFilSeance(captureId: string): Promise<FilCharge> {
   // etre situe dans un tour.
   const { data: seance } = await supabase
     .from('telemetry_sessions')
-    .select('started_at')
+    .select('started_at, circuit_id, circuit_name')
     .eq('id', captureId)
     .maybeSingle();
-  const debutIso = (seance as { started_at?: string | null } | null)?.started_at ?? null;
+  const ligne = seance as {
+    started_at?: string | null;
+    circuit_id?: string | null;
+    circuit_name?: string | null;
+  } | null;
+  const debutIso = ligne?.started_at ?? null;
+
+  /**
+   * Les cordes du circuit de LA SÉANCE, pas d'un circuit par défaut.
+   *
+   * Une séance sans circuit renseigné n'en a aucune, et le marqueur rendra
+   * `virage: null` — l'affichage juste. Situer le geste du coach sur un
+   * circuit qu'on a supposé serait pire qu'une absence.
+   */
+  const cordes =
+    ligne?.circuit_id != null
+      ? await cordesForCircuit({
+          id: ligne.circuit_id,
+          name: ligne.circuit_name ?? '',
+        }).catch(() => [])
+      : [];
 
   const morceaux = await Promise.all([
     lectureGlobale(captureId).catch(() => PANNE),
     margesParVirage(captureId).catch(() => PANNE),
     toursBoucles(captureId).catch(() => PANNE),
-    annotationsCoach(captureId, debutIso).catch(() => PANNE),
+    annotationsCoach(captureId, debutIso, cordes).catch(() => PANNE),
     intentionPilote(captureId).catch(() => PANNE),
   ]);
 
