@@ -19,8 +19,12 @@
  * HONNÊTETÉ SCHÉMA (repli documenté) :
  *   - pas de colonne cover dédiée → la couverture = photo de profil récente ;
  *   - l'avatar n'a aucun write-path dans l'app (géré hors app) → non éditable ;
- *   - bio / car_number / pavilion_name_optin : masqués tant que la migration
- *     profil/pavillon n'est pas appliquée (migrationPavillon = false).
+ *   - bio / car_number / pavilion_name_optin : la migration EST appliquée
+ *     depuis le 29/07/2026, les champs sont éditables. Le drapeau
+ *     `migrationPavillon` qui les masquait valait `true` en dur et a été
+ *     retiré le 12/08 — il masquait deux champs derrière un `if` toujours
+ *     vrai, ce qui se lit comme une incertitude alors qu'il n'en reste
+ *     aucune.
  *
  * Doctrine : sobre, vouvoiement, zéro emoji, jamais prescriptif ; un seul
  * accent rouge par zone ; l'or reste au chrono (absent ici).
@@ -213,9 +217,8 @@ export default function ProfilPublicScreen() {
 
   async function enregistrer() {
     if (etat.phase !== 'ready' || saving) return;
-    const migrationPavillon = etat.donnees.profil.migrationPavillon;
     const hErr = handleError(handle);
-    const bErr = migrationPavillon ? bioError(bio) : null;
+    const bErr = bioError(bio);
     setHandleErr(hErr);
     setBioErr(bErr);
     setSaveErr(null);
@@ -231,13 +234,10 @@ export default function ProfilPublicScreen() {
         return;
       }
     }
-    const r2 = await sauvegarderProfil(
-      {
-        ...(migrationPavillon ? { bio } : {}),
-        reseaux: { instagram, youtube, linkedin },
-      },
-      { migrationPavillon }
-    );
+    const r2 = await sauvegarderProfil({
+      bio,
+      reseaux: { instagram, youtube, linkedin },
+    });
     setSaving(false);
     if (!r2.ok) {
       setSaveErr(r2.error);
@@ -253,7 +253,7 @@ export default function ProfilPublicScreen() {
         profil: {
           ...etat.donnees.profil,
           handle: nouveauHandle ?? etat.donnees.profil.handle,
-          bio: migrationPavillon ? nettoie(bio) : etat.donnees.profil.bio,
+          bio: nettoie(bio),
           reseaux: {
             instagram: nettoie(instagram),
             youtube: nettoie(youtube),
@@ -488,7 +488,7 @@ function ProfilBody(props: BodyProps) {
         {since ? <Text style={styles.since}>{since}</Text> : null}
 
         {/* ── BIO ── */}
-        {editing && profil.migrationPavillon ? (
+        {editing ? (
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>BIO</Text>
             <TextInput
@@ -549,7 +549,7 @@ function ProfilBody(props: BodyProps) {
         ) : null}
 
         {/* ── OPT-IN PAVILLON — édition, si la migration est appliquée ── */}
-        {editing && profil.migrationPavillon && profil.pavillonOptin !== null ? (
+        {editing && profil.pavillonOptin !== null ? (
           <View style={styles.section}>
             <SectionHeader eyebrow="LE PAVILLON" />
             <ListRow

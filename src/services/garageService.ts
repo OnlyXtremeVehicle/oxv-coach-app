@@ -13,6 +13,15 @@ export interface Vehicle {
   year: number | null;
   color: string | null;
   notes: string | null;
+  /**
+   * Véhicule principal du pilote. La colonne existe en base depuis la migration
+   * `20260729034110`, avec un index unique PARTIEL : au plus un `true` par
+   * pilote, et aucun n'est obligatoire.
+   *
+   * Le service l'ignorait complètement jusqu'au 12/08/2026 — d'où le repli
+   * « le premier enregistré » qui vivait dans `garageLogic`.
+   */
+  isPrimary: boolean;
 }
 
 export interface VehicleSetup {
@@ -36,6 +45,7 @@ function mapVehicle(r: Record<string, unknown>): Vehicle {
     year: r.year != null ? Number(r.year) : null,
     color: (r.color as string | null) ?? null,
     notes: (r.notes as string | null) ?? null,
+    isPrimary: r.is_primary === true,
   };
 }
 
@@ -68,7 +78,7 @@ export interface MutationResult {
 export async function listMyVehicles(): Promise<Vehicle[]> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes')
+    .select('id, brand, model, year, color, notes, is_primary')
     .order('created_at', { ascending: true });
   if (error) {
     console.warn('[OXV][garage] listMyVehicles :', error.message);
@@ -80,7 +90,7 @@ export async function listMyVehicles(): Promise<Vehicle[]> {
 export async function getVehicle(id: string): Promise<Vehicle | null> {
   const { data, error } = await supabase
     .from('vehicles')
-    .select('id, brand, model, year, color, notes')
+    .select('id, brand, model, year, color, notes, is_primary')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
@@ -155,4 +165,50 @@ export async function addSetup(vehicleId: string, input: AddSetupInput): Promise
     notes: input.notes?.trim() || null,
   } as never);
   return error ? { ok: false, error: error.message } : { ok: true };
+}
+
+/**
+ * Désigne le véhicule principal du pilote.
+ *
+ * ===========================================================================
+ * DEUX ÉCRITURES, ET L'ORDRE COMPTE
+ * ===========================================================================
+ *
+ * L'index en base est UNIQUE PARTIEL : au plus une ligne `is_primary = true`
+ * par pilote. Poser le nouveau avant d'avoir retiré l'ancien violerait donc la
+ * contrainte, et l'opération échouerait — sans rien casser, mais sans rien
+ * faire non plus.
+ *
+ * On retire d'abord, on pose ensuite. Entre les deux, le pilote n'a
+ * momentanément aucun principal : c'est un état que la base accepte, et que
+ * l'interface sait afficher, puisque `isPrimary` est faux partout.
+ *
+ * L'inverse — poser puis retirer — laisserait deux principaux si la seconde
+ * écriture échouait. La base le refuserait, mais on aurait construit une
+ * opération dont l'échec dépend d'une contrainte plutôt que d'une intention.
+ */
+export async function setPrimaryVehicle(vehicleId: string): Promise<MutationResult> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { ok: false, error: 'Session expirée.' };
+
+  // 1. Retirer le principal actuel, quel qu'il soit. Aucune ligne concernée
+  //    n'est une erreur : un garage sans principal est un cas normal.
+  const { error: retrait } = await supabase
+    .from('vehicles')
+    .update({ is_primary: false } as never)
+    .eq('user_id', uid)
+    .eq('is_primary', true);
+  if (retrait) return { ok: false, error: retrait.message };
+
+  // 2. Poser le nouveau. La RLS borne déjà au pilote ; le filtre `user_id`
+  //    reste explicite, comme partout dans ce service.
+  const { error: pose } = await supabase
+    .from('vehicles')
+    .update({ is_primary: true } as never)
+    .eq('id', vehicleId)
+    .eq('user_id', uid);
+  if (pose) return { ok: false, error: pose.message };
+
+  return { ok: true };
 }

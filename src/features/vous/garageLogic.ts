@@ -4,11 +4,21 @@
  * Aucun import natif : ts-jest node (les types `Vehicle`/`VehicleSetup` sont
  * importés en `import type`, effacés à la compilation).
  *
- * Véhicule principal — HONNÊTETÉ SCHÉMA : il N'EXISTE PAS de colonne is_primary
- * ni de setPrimary dans garageService. Le principal = le PREMIER enregistré
- * (ordre created_at ascendant du service), celui dont la cover illustre déjà
- * l'accueil/hub. On le marque donc factuellement, sans jamais inventer un
- * bouton « Définir principal » (capacité absente, consignée au rapport).
+ * Véhicule principal — LA COLONNE EXISTE, ET ELLE EST LUE DEPUIS LE 12/08/2026.
+ *
+ * Cet en-tête affirmait le contraire : « il N'EXISTE PAS de colonne is_primary
+ * ni de setPrimary dans garageService ». C'était vrai le jour où il a été
+ * écrit ; la migration `20260729034110` l'a posée le 29/07, et le service ne
+ * l'a jamais lue. Le repli « le principal = le premier enregistré » a donc
+ * survécu à sa propre raison d'être pendant deux semaines.
+ *
+ * Conséquence du repli, et elle n'était pas anodine : un pilote qui ajoutait un
+ * second véhicule voyait son principal rester le premier, sans pouvoir en
+ * changer — et l'accueil illustrait une voiture qu'il ne roulait plus.
+ *
+ * Désormais : le principal est celui que le pilote a DÉSIGNÉ. Le repli sur le
+ * premier enregistré demeure, mais comme repli — un garage sans désignation est
+ * un cas normal, pas une anomalie.
  *
  * Pressions en bar. Aucun jugement sur les réglages (miroir) : on résume des
  * faits matériels, rien de prescriptif.
@@ -18,22 +28,46 @@ import type { Vehicle, VehicleSetup } from '@/services/garageService';
 
 export interface GarageEntry {
   vehicle: Vehicle;
-  /** Premier enregistré = celui affiché sur l'accueil (fait, non modifiable). */
+  /** Désigné principal par le pilote, ou premier enregistré à défaut. */
   isPrimary: boolean;
+  /**
+   * Vrai quand ce véhicule n'est principal QUE par défaut — aucune désignation
+   * n'existe dans le garage. L'écran s'en sert pour ne pas afficher une
+   * désignation que le pilote n'a jamais faite.
+   */
+  parDefaut: boolean;
 }
 
 /**
- * Ordonne le garage pour l'affichage : le principal (index 0 du service) en
- * tête, marqué. L'ordre created_at ascendant est déjà celui du service — cette
- * fonction encode le contrat (et le normalise si la liste arrivait non triée).
+ * Ordonne le garage : le principal en tête, marqué.
+ *
+ * LA DÉSIGNATION PRIME, LE PREMIER ENREGISTRÉ REPLIE. Un garage sans
+ * désignation est un cas normal — c'est celui de tout pilote qui n'a jamais
+ * touché au réglage. On marque alors le premier, et on dit que c'est un repli.
  */
 export function markGarage(vehicles: Vehicle[]): GarageEntry[] {
-  return vehicles.map((vehicle, i) => ({ vehicle, isPrimary: i === 0 }));
+  const designe = vehicles.findIndex((v) => v.isPrimary);
+  const aucuneDesignation = designe < 0;
+  const indexPrincipal = aucuneDesignation ? 0 : designe;
+
+  const entrees = vehicles.map((vehicle, i) => ({
+    vehicle,
+    isPrimary: i === indexPrincipal,
+    parDefaut: aucuneDesignation,
+  }));
+
+  // Le principal remonte en tête ; l'ordre relatif des autres est conservé.
+  return [...entrees.filter((e) => e.isPrimary), ...entrees.filter((e) => !e.isPrimary)];
 }
 
-/** Identifiant du véhicule principal (le premier), null si garage vide. */
+/**
+ * Identifiant du véhicule principal, `null` si le garage est vide.
+ *
+ * Le désigné d'abord, le premier enregistré à défaut.
+ */
 export function primaryVehicleId(vehicles: Vehicle[]): string | null {
-  return vehicles.length > 0 ? vehicles[0].id : null;
+  if (vehicles.length === 0) return null;
+  return (vehicles.find((v) => v.isPrimary) ?? vehicles[0]).id;
 }
 
 /** Nom lisible (marque + modèle), repli neutre si vide. */

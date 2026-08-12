@@ -45,6 +45,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 
 import {
+  type MutationResult,
   type Vehicle,
   type VehicleSetup,
   addSetup,
@@ -52,6 +53,7 @@ import {
   getVehicle,
   listMyVehicles,
   listSetups,
+  setPrimaryVehicle,
 } from '@/services/garageService';
 import {
   type PilotMediaView,
@@ -165,7 +167,18 @@ export default function GarageScreen() {
   );
 
   const entries: GarageEntry[] = markGarage(vehicles);
+  const selectedEntry = entries.find((e) => e.vehicle.id === selectedId) ?? null;
   const selectedIsPrimary = selectedId !== null && primaryVehicleId(vehicles) === selectedId;
+
+  /**
+   * Désigner le principal. Le service retire l'ancien AVANT de poser le
+   * nouveau — l'index unique partiel en base n'en tolère qu'un.
+   */
+  const designerPrincipal = async (id: string) => {
+    const res = await setPrimaryVehicle(id);
+    if (res.ok) await reload();
+    return res;
+  };
 
   const openVehicle = (id: string) => setSelectedId(id);
 
@@ -228,6 +241,8 @@ export default function GarageScreen() {
       <VehicleSheet
         vehicleId={selectedId}
         isPrimary={selectedIsPrimary}
+        parDefaut={selectedEntry?.parDefaut ?? false}
+        onSetPrimary={designerPrincipal}
         onClose={() => setSelectedId(null)}
         onChanged={reload}
       />
@@ -298,11 +313,16 @@ function AddVehicleCard({ onPress }: { onPress: () => void }) {
 function VehicleSheet({
   vehicleId,
   isPrimary,
+  parDefaut,
+  onSetPrimary,
   onClose,
   onChanged,
 }: {
   vehicleId: string | null;
   isPrimary: boolean;
+  /** Le véhicule n'est en tête que faute de désignation — on ne le prétend pas choisi. */
+  parDefaut: boolean;
+  onSetPrimary: (id: string) => Promise<MutationResult>;
   onClose: () => void;
   onChanged: () => Promise<void> | void;
 }) {
@@ -319,6 +339,8 @@ function VehicleSheet({
   const [draft, setDraft] = useState<SetupDraft>(EMPTY_SETUP_DRAFT);
   const [saving, setSaving] = useState(false);
   const [setupErr, setSetupErr] = useState<string | null>(null);
+  const [primaryBusy, setPrimaryBusy] = useState(false);
+  const [primaryErr, setPrimaryErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (vehicleId === null) return;
@@ -455,11 +477,43 @@ function VehicleSheet({
           {/* ── IDENTITÉ ── */}
           <Text style={styles.sheetName}>{vehicleName(vehicle)}</Text>
           <Text style={styles.sheetSpecs}>{vehicleSpecsLine(vehicle)}</Text>
+          {/*
+            LE VÉHICULE PRINCIPAL SE DÉSIGNE — depuis le 12/08/2026. La colonne
+            `is_primary` existait en base depuis le 29/07 et n'était pas lue :
+            le principal était forcément le premier enregistré, et un pilote à
+            deux voitures voyait son accueil illustré par celle qu'il ne roulait
+            plus, sans recours.
+          */}
           <Text style={styles.primaryNote}>
-            {isPrimary
+            {isPrimary && !parDefaut
               ? 'Ce véhicule illustre votre accueil.'
-              : 'Le véhicule en tête (le premier enregistré) illustre votre accueil.'}
+              : isPrimary
+                ? 'Ce véhicule illustre votre accueil, faute d’une autre désignation.'
+                : 'Un autre véhicule illustre votre accueil.'}
           </Text>
+
+          {!isPrimary ? (
+            <PressScale
+              onPress={async () => {
+                if (primaryBusy) return;
+                setPrimaryBusy(true);
+                setPrimaryErr(null);
+                const res = await onSetPrimary(vehicle.id);
+                setPrimaryBusy(false);
+                if (!res.ok) setPrimaryErr(res.error ?? 'Enregistrement impossible.');
+              }}
+              accessibilityLabel="Désigner ce véhicule pour l’accueil"
+              containerStyle={styles.designerContainer}
+            >
+              <View style={[styles.consignerBtn, primaryBusy && styles.primaryDisabled]}>
+                <Text style={styles.consignerLabel}>
+                  {primaryBusy ? 'Enregistrement…' : 'Désigner pour l’accueil'}
+                </Text>
+              </View>
+            </PressScale>
+          ) : null}
+
+          {primaryErr !== null ? <Text style={styles.designerErr}>{primaryErr}</Text> : null}
 
           {/* ── SPÉCIFICATIONS ── */}
           <View style={styles.sheetSection}>
@@ -916,6 +970,14 @@ const styles = StyleSheet.create({
     fontFamily: typo.bodyMedium,
     fontSize: 14,
     color: colors.text.hi,
+  },
+  designerContainer: { marginTop: space.md },
+  designerErr: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    lineHeight: 18,
+    color: colors.text.mid,
+    marginTop: space.xs,
   },
   ghostContainer: { flex: 1 },
   ghostBtn: {

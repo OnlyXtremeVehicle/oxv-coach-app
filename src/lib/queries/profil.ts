@@ -44,13 +44,11 @@ export interface ProfilPilote {
   avatarUrl: string | null;
   /** ISO — users.created_at (« Membre · depuis {mois année} »). */
   creeLe: string | null;
-  /** null tant que la migration profil/pavillon n'est pas appliquée. */
+  /** `null` quand le pilote n'a rien écrit — jamais une chaîne vide affichée. */
   bio: string | null;
   carNumber: number | null;
   pavillonOptin: boolean | null;
   reseaux: ReseauxProfil;
-  /** false = colonnes bio/car_number/pavilion_name_optin absentes (§5.4). */
-  migrationPavillon: boolean;
 }
 
 export interface VehiculeGarage {
@@ -125,10 +123,14 @@ function parseReseaux(raw: unknown): ReseauxProfil {
  * Un repli qui ne peut plus se déclencher est du code mort qui affirme une
  * incertitude levée : il ferait croire, à la relecture, que le schéma peut
  * encore varier.
+ *
+ * LE DRAPEAU LUI-MÊME A SUIVI, LE 12/08/2026. Le repli était parti, mais
+ * `migrationPavillon` restait — câblé en dur à `true`, traversant six sites
+ * d'appel et un sac d'options. Six conditions dont aucune ne pouvait être
+ * fausse, et un écran qui masquait deux champs derrière un `if` toujours
+ * vrai. C'est la même erreur, une couche plus haut.
  */
-async function lireLigneUser(
-  userId: string
-): Promise<{ ligne: LigneUserBrute; migrationPavillon: boolean }> {
+async function lireLigneUser(userId: string): Promise<LigneUserBrute> {
   const { data, error } = await supabase
     .from('users')
     .select(COLONNES_MIGRATION)
@@ -137,7 +139,7 @@ async function lireLigneUser(
   if (error || !data) {
     throw new Error(error?.message ?? 'PROFIL_ILLISIBLE');
   }
-  return { ligne: data as unknown as LigneUserBrute, migrationPavillon: true };
+  return data as unknown as LigneUserBrute;
 }
 
 /**
@@ -149,15 +151,14 @@ export async function getProfil(): Promise<DonneesProfil> {
   const user = auth.user;
   if (!user) throw new Error('AUTH_REQUIRED');
 
-  const [{ ligne, migrationPavillon }, vehicules, compteur, circuitPrincipal] =
-    await avecDelaiGarde(
-      Promise.all([
-        lireLigneUser(user.id),
-        chargerGarage(user.id),
-        compterCartes(user.id),
-        chargerCircuitPrincipal(user.id),
-      ])
-    );
+  const [ligne, vehicules, compteur, circuitPrincipal] = await avecDelaiGarde(
+    Promise.all([
+      lireLigneUser(user.id),
+      chargerGarage(user.id),
+      compterCartes(user.id),
+      chargerCircuitPrincipal(user.id),
+    ])
+  );
 
   return {
     profil: {
@@ -167,12 +168,10 @@ export async function getProfil(): Promise<DonneesProfil> {
       handle: texte(ligne.public_handle),
       avatarUrl: texte(ligne.avatar_url),
       creeLe: texte(ligne.created_at),
-      bio: migrationPavillon ? texte(ligne.bio) : null,
-      carNumber:
-        migrationPavillon && typeof ligne.car_number === 'number' ? ligne.car_number : null,
-      pavillonOptin: migrationPavillon ? (ligne.pavilion_name_optin ?? false) : null,
+      bio: texte(ligne.bio),
+      carNumber: typeof ligne.car_number === 'number' ? ligne.car_number : null,
+      pavillonOptin: ligne.pavilion_name_optin ?? false,
       reseaux: parseReseaux(ligne.socials),
-      migrationPavillon,
     },
     vehicules,
     compteurCartes: compteur,
@@ -284,10 +283,7 @@ export interface EditionProfilInput {
  * `socials` est FUSIONNÉ avec le jsonb existant : les clés hors lot
  * (website…) sont préservées.
  */
-export async function sauvegarderProfil(
-  input: EditionProfilInput,
-  opts: { migrationPavillon: boolean }
-): Promise<ResultatEcriture> {
+export async function sauvegarderProfil(input: EditionProfilInput): Promise<ResultatEcriture> {
   const { data: auth } = await supabase.auth.getUser();
   const user = auth.user;
   if (!user) return { ok: false, error: 'Vous devez être connecté.' };
@@ -297,7 +293,7 @@ export async function sauvegarderProfil(
   // Whitelist explicite — aucune autre clé ne peut entrer dans ce patch.
   const patch: { bio?: string | null; socials?: Json } = {};
 
-  if (input.bio !== undefined && opts.migrationPavillon) {
+  if (input.bio !== undefined) {
     patch.bio = nettoie(input.bio);
   }
 

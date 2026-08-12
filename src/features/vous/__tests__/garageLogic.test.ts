@@ -36,6 +36,7 @@ const veh = (over: Partial<Vehicle> = {}): Vehicle => ({
   year: 2019,
   color: 'Bleu',
   notes: null,
+  isPrimary: false,
   ...over,
 });
 
@@ -65,8 +66,48 @@ describe('véhicule principal', () => {
     expect(markGarage([])).toEqual([]);
   });
 
-  it('primaryVehicleId = id du premier', () => {
+  it('primaryVehicleId = id du premier, À DÉFAUT de désignation', () => {
     expect(primaryVehicleId([veh({ id: 'x' }), veh({ id: 'y' })])).toBe('x');
+  });
+
+  /**
+   * LA RÈGLE NEUVE — 12/08/2026. La colonne `is_primary` existe en base depuis
+   * le 29/07 et le service ne la lisait pas : le principal était FORCÉMENT le
+   * premier enregistré, sans recours.
+   *
+   * Conséquence pour un pilote à deux voitures : l'accueil illustrait celle
+   * qu'il ne roulait plus, et rien ne lui permettait d'en changer.
+   */
+  it('la DÉSIGNATION prime sur l’ordre d’enregistrement', () => {
+    const garage = [veh({ id: 'x' }), veh({ id: 'y', isPrimary: true })];
+    expect(primaryVehicleId(garage)).toBe('y');
+    expect(markGarage(garage)[0].vehicle.id).toBe('y');
+  });
+
+  it('le désigné remonte en tête, l’ordre des autres est conservé', () => {
+    const garage = [veh({ id: 'a' }), veh({ id: 'b' }), veh({ id: 'c', isPrimary: true })];
+    expect(markGarage(garage).map((e) => e.vehicle.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  /**
+   * `parDefaut` existe pour que l'écran n'affiche pas une désignation que le
+   * pilote n'a jamais faite. Un garage sans désignation est un cas NORMAL —
+   * celui de tout pilote qui n'a jamais touché au réglage.
+   */
+  it('un principal par repli se dit comme tel', () => {
+    const sansDesignation = markGarage([veh({ id: 'a' }), veh({ id: 'b' })]);
+    expect(sansDesignation[0].isPrimary).toBe(true);
+    expect(sansDesignation[0].parDefaut).toBe(true);
+
+    const avecDesignation = markGarage([veh({ id: 'a' }), veh({ id: 'b', isPrimary: true })]);
+    expect(avecDesignation[0].parDefaut).toBe(false);
+  });
+
+  it('un seul véhicule reste principal, et par repli', () => {
+    const seul = markGarage([veh({ id: 'a' })]);
+    expect(seul).toHaveLength(1);
+    expect(seul[0].isPrimary).toBe(true);
+    expect(seul[0].parDefaut).toBe(true);
   });
 });
 
