@@ -51,13 +51,26 @@ export interface WeatherData {
   // dégagé » chez Open-Meteo. L'application annonçait donc un ciel dégagé
   // qu'elle n'avait jamais mesuré — à un pilote qui prépare sa séance.
   //
-  // Un ciel inconnu se dit inconnu. Les trois champs tombent ensemble.
+  // Un ciel inconnu se dit inconnu. Les deux champs tombent ensemble.
+  //
+  // `weatherIcon` A ÉTÉ SUPPRIMÉ le 12/08/2026 : c'était un EMOJI (☀️, 🌦️),
+  // proscrit par le principe 4 de la doctrine — « pas d'emojis sauf si
+  // explicitement demandé ». Aucun écran ne le lisait, et c'est bien le
+  // problème : un champ prêt à l'emploi, nommé exactement comme le besoin,
+  // qu'un futur écran aurait affiché sans savoir qu'il violait la charte.
+  // Le repli était de surcroît un emoji « ciel voilé » posé sur un code
+  // INCONNU — une condition affirmée par défaut.
   weatherCode: number | null;
   weatherLabel: string | null;
-  weatherIcon: string | null;
 
   // Sun
-  isDay: boolean;
+  //
+  // `isDay` VAUT `null` QUAND ON NE SAIT PAS — depuis le 12/08/2026. À la
+  // relecture d'un instantané en base, il était forcé à `true` : une séance de
+  // fin de journée se relisait « de jour » sans que rien ne l'ait mesuré. Le
+  // champ n'a aujourd'hui aucun consommateur ; le laisser mentir garantissait
+  // qu'il mentirait au premier écran qui le lirait.
+  isDay: boolean | null;
   sunriseAt: string | null;
   sunsetAt: string | null;
 
@@ -70,39 +83,47 @@ export interface WeatherData {
 // CODES MÉTÉO WMO → labels FR
 // ============================================================
 
-const WMO_LABELS: Record<number, { label: string; icon: string }> = {
-  0: { label: 'Ciel dégagé', icon: '☀️' },
-  1: { label: 'Globalement clair', icon: '🌤️' },
-  2: { label: 'Partiellement nuageux', icon: '⛅' },
-  3: { label: 'Couvert', icon: '☁️' },
-  45: { label: 'Brouillard', icon: '🌫️' },
-  48: { label: 'Brouillard givrant', icon: '🌫️' },
-  51: { label: 'Bruine légère', icon: '🌦️' },
-  53: { label: 'Bruine modérée', icon: '🌦️' },
-  55: { label: 'Bruine dense', icon: '🌦️' },
-  56: { label: 'Bruine verglaçante légère', icon: '🌨️' },
-  57: { label: 'Bruine verglaçante dense', icon: '🌨️' },
-  61: { label: 'Pluie légère', icon: '🌧️' },
-  63: { label: 'Pluie modérée', icon: '🌧️' },
-  65: { label: 'Pluie forte', icon: '🌧️' },
-  66: { label: 'Pluie verglaçante légère', icon: '🌨️' },
-  67: { label: 'Pluie verglaçante forte', icon: '🌨️' },
-  71: { label: 'Neige légère', icon: '🌨️' },
-  73: { label: 'Neige modérée', icon: '🌨️' },
-  75: { label: 'Neige forte', icon: '❄️' },
-  77: { label: 'Grains de neige', icon: '❄️' },
-  80: { label: 'Averses légères', icon: '🌦️' },
-  81: { label: 'Averses modérées', icon: '🌧️' },
-  82: { label: 'Averses violentes', icon: '⛈️' },
-  85: { label: 'Averses de neige', icon: '🌨️' },
-  86: { label: 'Averses de neige fortes', icon: '🌨️' },
-  95: { label: 'Orage', icon: '⛈️' },
-  96: { label: 'Orage avec grêle', icon: '⛈️' },
-  99: { label: 'Orage violent avec grêle', icon: '⛈️' },
+const WMO_LABELS: Record<number, string> = {
+  0: 'Ciel dégagé',
+  1: 'Globalement clair',
+  2: 'Partiellement nuageux',
+  3: 'Couvert',
+  45: 'Brouillard',
+  48: 'Brouillard givrant',
+  51: 'Bruine légère',
+  53: 'Bruine modérée',
+  55: 'Bruine dense',
+  56: 'Bruine verglaçante légère',
+  57: 'Bruine verglaçante dense',
+  61: 'Pluie légère',
+  63: 'Pluie modérée',
+  65: 'Pluie forte',
+  66: 'Pluie verglaçante légère',
+  67: 'Pluie verglaçante forte',
+  71: 'Neige légère',
+  73: 'Neige modérée',
+  75: 'Neige forte',
+  77: 'Grains de neige',
+  80: 'Averses légères',
+  81: 'Averses modérées',
+  82: 'Averses violentes',
+  85: 'Averses de neige',
+  86: 'Averses de neige fortes',
+  95: 'Orage',
+  96: 'Orage avec grêle',
+  99: 'Orage violent avec grêle',
 };
 
-function getWeatherInfo(code: number): { label: string; icon: string } {
-  return WMO_LABELS[code] || { label: 'Conditions inconnues', icon: '🌥️' };
+/**
+ * Libellé d'un code WMO, ou `null` pour un code que la table ne connaît pas.
+ *
+ * `null`, PAS « Conditions inconnues ». Cette chaîne-là était affichable : un
+ * écran l'aurait posée à côté d'une température réelle, et le pilote y aurait
+ * lu une mesure. Un code non répertorié est une absence, et une absence rend
+ * « — » à l'écran, comme toutes les autres.
+ */
+function weatherLabelOf(code: number): string | null {
+  return WMO_LABELS[code] ?? null;
 }
 
 // ============================================================
@@ -166,7 +187,7 @@ export async function fetchCurrentWeather(
 
     // Le code ABSENT reste absent. Le convertir en 0 annoncerait « Ciel dégagé ».
     const code: number | null = current.weather_code ?? null;
-    const info = code !== null ? getWeatherInfo(code) : null;
+    const label = code !== null ? weatherLabelOf(code) : null;
 
     const data: WeatherData = {
       latitude: lat,
@@ -188,10 +209,11 @@ export async function fetchCurrentWeather(
       precipitationProbabilityPct: daily.precipitation_probability_max?.[0] ?? null,
 
       weatherCode: code,
-      weatherLabel: info?.label ?? null,
-      weatherIcon: info?.icon ?? null,
+      weatherLabel: label,
 
-      isDay: current.is_day === 1,
+      // `is_day` absent → `null`. Le tester avec `=== 1` rendait `false` sur
+      // une absence, c'est-à-dire « il fait nuit » — affirmé, jamais mesuré.
+      isDay: current.is_day === undefined || current.is_day === null ? null : current.is_day === 1,
       sunriseAt: daily.sunrise?.[0] ?? null,
       sunsetAt: daily.sunset?.[0] ?? null,
 
@@ -304,11 +326,10 @@ export async function fetchSessionWeather(sessionId: string): Promise<WeatherDat
         // La fabrication passait par cette seconde porte.
         weatherCode: n(row.weather_code),
         weatherLabel: row.weather_label ?? null,
-        weatherIcon:
-          row.weather_code !== null && row.weather_code !== undefined
-            ? getWeatherInfo(Number(row.weather_code)).icon
-            : null,
-        isDay: true,
+        // `isDay` N'EST PAS STOCKÉ : on ne le sait donc pas à la relecture. Il
+        // valait `true` en dur — une séance de fin de journée se relisait
+        // « de jour » sans que rien ne l'ait mesuré.
+        isDay: null,
         sunriseAt: null,
         sunsetAt: null,
         capturedAt: s(row.captured_at),

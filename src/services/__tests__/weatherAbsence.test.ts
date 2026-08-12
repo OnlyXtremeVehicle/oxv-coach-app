@@ -23,11 +23,59 @@ import { join } from 'path';
 
 const SOURCE = readFileSync(join(__dirname, '..', 'weatherService.ts'), 'utf8');
 
+/**
+ * Le fichier PRIVÉ DE SES COMMENTAIRES.
+ *
+ * Sans cela, ces tests se retournent contre eux-mêmes : le commentaire qui
+ * explique le retrait d'une chaîne CONTIENT cette chaîne, et le test échoue en
+ * signalant sa propre documentation. Pire dans l'autre sens — un mécanisme
+ * décrit dans un commentaire ferait passer un test qui croit vérifier du code.
+ */
+const CODE = SOURCE.split(/\r?\n/)
+  .filter((l) => {
+    const t = l.trimStart();
+    return !t.startsWith('*') && !t.startsWith('//') && !t.startsWith('/*');
+  })
+  .join('\n');
+
 describe('A-WEATHER-1 — le ciel inconnu se dit inconnu', () => {
-  it('déclare les trois champs de condition nullables', () => {
+  it('déclare les deux champs de condition nullables', () => {
     expect(SOURCE).toContain('weatherCode: number | null;');
     expect(SOURCE).toContain('weatherLabel: string | null;');
-    expect(SOURCE).toContain('weatherIcon: string | null;');
+  });
+
+  /**
+   * `weatherIcon` était un EMOJI (☀️, 🌦️), proscrit par le principe 4 de la
+   * doctrine. Aucun écran ne le lisait — et c'est ce qui le rendait dangereux :
+   * un champ prêt à l'emploi, nommé exactement comme le besoin, qu'un futur
+   * écran aurait affiché sans savoir qu'il violait la charte. Son repli était
+   * de surcroît un emoji posé sur un code INCONNU.
+   */
+  it('n’expose plus d’icône emoji, ni le champ, ni la table', () => {
+    expect(CODE).not.toContain('weatherIcon:');
+    expect(CODE).not.toMatch(/icon: '/);
+    // Aucun pictogramme dans le CODE : les commentaires qui expliquent
+    // le retrait en contiennent, forcément.
+    expect(CODE).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
+  /**
+   * `isDay` valait `true` en dur à la relecture : une séance de fin de journée
+   * se relisait « de jour » sans que rien ne l'ait mesuré. La colonne n'est pas
+   * stockée — on ne le sait donc pas, et on le dit.
+   */
+  it('ne fabrique plus le jour à la relecture', () => {
+    expect(SOURCE).toContain('isDay: boolean | null;');
+    expect(CODE).not.toContain('isDay: true');
+  });
+
+  /**
+   * « Conditions inconnues » était une chaîne AFFICHABLE, posée à côté d'une
+   * température réelle. Le pilote y aurait lu une mesure. Une absence rend
+   * « — », comme toutes les autres.
+   */
+  it('un code non répertorié rend une absence, pas une phrase', () => {
+    expect(CODE).not.toContain('Conditions inconnues');
   });
 
   it('ne convertit plus un code météo absent en 0 à la source', () => {
