@@ -22,6 +22,7 @@ import { GpsFix } from '@/types/telemetry';
 import { nextMonotonic } from '@/utils/monotonicClock';
 import {
   type LapDetectorState,
+  avancerOdometre,
   createLapDetector,
   processGpsPoint,
   resetLapDetector,
@@ -95,7 +96,26 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
 
   unsubscribe = bluetoothService.onData((frame) => {
     if (!state) return;
-    if (frame.gps.fix < GpsFix.Fix3D) return;
+    /**
+     * FIX INCOMPLET : on n'arbitre PAS le franchissement, mais on avance quand
+     * même l'odomètre.
+     *
+     * Ce `return` écartait la trame en entier. Or un fix 2D porte une position
+     * et une vitesse Doppler exploitables : le véhicule roulait, et le compteur
+     * de distance restait immobile. Après une zone de mauvaise réception, la
+     * garde de distance minimale voyait donc moins de kilomètres que la
+     * réalité, et pouvait refuser un tour VRAI.
+     */
+    if (frame.gps.fix < GpsFix.Fix3D) {
+      avancerOdometre(
+        state,
+        frame.gps.latitude,
+        frame.gps.longitude,
+        nextMonotonic(lastMonoMs, Date.now()),
+        frame.motion.speed
+      );
+      return;
+    }
 
     // Deux horloges, deux usages distincts (Valencia §4.6) :
     //   - `wallNow` (horloge murale) : instant D'AFFICHAGE, horodate les dates de
@@ -194,4 +214,17 @@ export function getLapDetectorStatus(): LapDetectorStatus {
     active: state !== null,
     rawCrossings: state?.lapEndTimestamps.length ?? 0,
   };
+}
+
+/**
+ * Distance TOTALE parcourue depuis le début de la détection, en mètres.
+ *
+ * Elle alimente `telemetry_sessions.distance_km`, qui n'a jamais reçu de valeur
+ * jusqu'au 13/08/2026 : la colonne existait, le bilan et la Saison la lisaient,
+ * et elle valait `null` sur toutes les séances. La mesure était pourtant là.
+ *
+ * `null` quand aucune détection n'est active : l'absence, pas un zéro.
+ */
+export function getDistanceTotaleM(): number | null {
+  return state?.distanceTotaleM ?? null;
 }

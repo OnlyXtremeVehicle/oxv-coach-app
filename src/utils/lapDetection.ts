@@ -142,6 +142,16 @@ export interface LapDetectorState {
    * dans les deux modes, et remis à zéro quand un tour est compté.
    */
   distanceSinceLapM: number;
+  /**
+   * Distance TOTALE de la séance (m). Même mesure que ci-dessus, mais elle ne
+   * se remet JAMAIS à zéro : `distanceSinceLapM` repart à chaque tour compté et
+   * ne peut donc pas servir de kilométrage de séance.
+   *
+   * `telemetry_sessions.distance_km` n'a jamais reçu de valeur jusqu'au
+   * 13/08/2026 — la colonne existait, le bilan et la Saison la lisaient, et
+   * elle valait `null` partout. La mesure était pourtant là, à la trame près.
+   */
+  distanceTotaleM: number;
   /** Dernier point reçu, en degrés — sert uniquement à l'odomètre. */
   lastOdoLat: number | null;
   lastOdoLon: number | null;
@@ -259,6 +269,7 @@ export function createLapDetector(
     previousPointM: null,
     lastLapEndAt: null,
     distanceSinceLapM: 0,
+    distanceTotaleM: 0,
     lastOdoLat: null,
     lastOdoLon: null,
     lastOdoAt: null,
@@ -315,7 +326,9 @@ function accumulerOdometre(
   if (vitesseUtilisable && dtMs > 0 && dtMs <= ODO_MAX_DT_MS) {
     // Régime nominal. La bande morte écarte le plancher de bruit du Doppler.
     const v = (speedKmh as number) < ODO_SPEED_DEADBAND_KMH ? 0 : (speedKmh as number);
-    state.distanceSinceLapM += (v / 3.6) * (dtMs / 1000);
+    const avance = (v / 3.6) * (dtMs / 1000);
+    state.distanceSinceLapM += avance;
+    state.distanceTotaleM += avance;
     return;
   }
 
@@ -323,7 +336,9 @@ function accumulerOdometre(
   // seule estimation disponible, et elle MINORE la distance réellement
   // parcourue — le bon sens de l'erreur pour une garde qui ne doit jamais
   // refuser un tour réel.
-  state.distanceSinceLapM += haversineDistance(lastLat, lastLon, lat, lon);
+  const corde = haversineDistance(lastLat, lastLon, lat, lon);
+  state.distanceSinceLapM += corde;
+  state.distanceTotaleM += corde;
 }
 
 /** Produit vectoriel 2D (composante z). */
@@ -473,6 +488,36 @@ export function processGpsPoint(
 }
 
 /**
+ * Avance l'odomètre SANS évaluer de franchissement.
+ *
+ * ── POURQUOI CETTE PORTE SÉPARÉE (13/08/2026) ────────────────────────────────
+ *
+ * `lapDetectionRunner` écarte les trames sous `Fix3D` AVANT d'appeler
+ * `processGpsPoint` : elles n'atteignaient donc pas l'odomètre. Or un fix 2D
+ * porte une position ET une vitesse Doppler parfaitement exploitables — le
+ * véhicule roule, et le compteur de distance restait immobile.
+ *
+ * Conséquence : après une zone de mauvaise réception, la garde de distance
+ * minimale voyait moins de kilomètres que la réalité et pouvait refuser un tour
+ * VRAI. On alimente donc l'odomètre pour toutes les trames, et on réserve
+ * l'arbitrage du franchissement à celles qui portent un fix complet.
+ *
+ * Ce qui n'est délibérément PAS fait ici : toucher à `previousPointM`. Le pas
+ * évalué au prochain fix 3D doit relier deux positions de bonne qualité, pas
+ * s'appuyer sur une position dégradée.
+ */
+export function avancerOdometre(
+  state: LapDetectorState,
+  lat: number,
+  lon: number,
+  timestamp: number,
+  speedKmh?: number
+): void {
+  if (!lat || !lon) return;
+  accumulerOdometre(state, lat, lon, timestamp, speedKmh);
+}
+
+/**
  * Réinitialise le détecteur (à la fin d'une session)
  */
 export function resetLapDetector(state: LapDetectorState): void {
@@ -481,6 +526,7 @@ export function resetLapDetector(state: LapDetectorState): void {
   state.previousPointM = null;
   state.lastLapEndAt = null;
   state.distanceSinceLapM = 0;
+  state.distanceTotaleM = 0;
   state.lastOdoLat = null;
   state.lastOdoLon = null;
   state.lastOdoAt = null;

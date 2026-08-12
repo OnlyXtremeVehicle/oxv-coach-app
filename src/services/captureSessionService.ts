@@ -48,6 +48,7 @@ import {
 import {
   type RecordedLap,
   getCurrentLapNumber,
+  getDistanceTotaleM,
   getRecordedLaps,
   startLapDetection,
   stopLapDetection,
@@ -102,6 +103,19 @@ export const BELTOISE_FINISH: CaptureFinishLineInput = { lat: 45.6004, lon: -0.1
 
 const FLUSH_EVERY_FRAMES = 50;
 const FLUSH_INTERVAL_MS = 4_000;
+
+/**
+ * Plafond du buffer en mémoire, au-delà duquel le surplus part sur disque.
+ *
+ * 1 500 trames — une minute à 25 Hz. Assez large pour absorber une salve
+ * d'écritures lentes sans toucher au régime nominal (le flush part à 50), assez
+ * étroit pour qu'un réseau muet ne fasse pas croître le tableau indéfiniment.
+ *
+ * Sans ce plafond, une séance de vingt minutes sur un réseau en échec accumule
+ * trente mille objets en mémoire vive, et l'application finit tuée par le
+ * système — en emportant ce qui n'avait pas encore été écrit sur disque.
+ */
+const BUFFER_MAX_FRAMES = 1_500;
 
 /**
  * Stratégie écran v1 (Valencia §4.4) : PREMIER PLAN ASSUMÉ. La capture BLE tourne
@@ -248,6 +262,19 @@ interface CaptureState {
   unsubData: () => void;
   /** Désabonnement du suivi de reconnexion BLE (interruption/lost). */
   unsubReconnect: () => void;
+  /**
+   * Désabonnement du suivi de STATUT BLE.
+   *
+   * La capture n'observait QUE la phase de reconnexion. Or
+   * `handleUnexpectedDisconnection` a une sortie MUETTE : sans cible de
+   * reconnexion connue, elle émet 'disconnected' et retourne sans jamais poser
+   * la phase 'reconnecting'. Aucun évènement n'atteignait donc la capture, le
+   * voyant REC continuait de pulser, et plus une seule trame n'arrivait —
+   * jusqu'à la fin des temps, le timeout long n'étant armé que par la phase.
+   */
+  unsubStatus: () => void;
+  /** Désabonnement du suivi d'état d'application (premier plan / arrière-plan). */
+  unsubAppState: () => void;
   timer: ReturnType<typeof setInterval> | null;
   flushing: boolean;
   flushPromise: Promise<void> | null;
@@ -388,6 +415,8 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     currentLapNumber: 0,
     unsubData: () => undefined,
     unsubReconnect: () => undefined,
+    unsubStatus: () => undefined,
+    unsubAppState: () => undefined,
     timer: null,
     flushing: false,
     flushPromise: null,
@@ -455,6 +484,36 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     state.buffer.push(raceBoxToFrameInsert(frame, sessionId, elapsed));
     state.maxima = updateMaxima(state.maxima, frame);
     accumulateLapMaxima(state, frame);
+
+    /**
+     * LE BUFFER EST BORNÉ — et son débordement va sur DISQUE, jamais à la
+     * poubelle.
+     *
+     * Le producteur émet à 25 Hz sans jamais attendre. Le consommateur est une
+     * écriture réseau. Sur une 4G qui tousse, chaque `flush` échoue, requeue son
+     * lot, et pendant ce temps le tableau continue de croître : une séance de
+     * vingt minutes accumule trente mille objets en mémoire vive, et
+     * l'application finit par être tuée par le système — en emportant tout ce
+     * qui n'a pas encore été écrit sur disque.
+     *
+     * Au-delà du plafond, on DRAINE vers la file de synchro (fichier), qui est
+     * durable et rejouable. On ne jette rien : c'est le principe même du
+     * local-first de ce service.
+     */
+    if (state.buffer.length >= BUFFER_MAX_FRAMES) {
+      const surplus = state.buffer.splice(0, state.buffer.length - FLUSH_EVERY_FRAMES);
+      void enqueue({ type: 'frames', sessionId: state.sessionId, batch: surplus })
+        .then(() => {
+          state.requeued += surplus.length;
+        })
+        .catch((e) =>
+          console.warn(
+            '[OXV][capture] débordement de buffer non persisté (filet .ubx) :',
+            e instanceof Error ? e.message : e
+          )
+        );
+    }
+
     if (state.buffer.length >= FLUSH_EVERY_FRAMES) void flush(state);
   });
   state.timer = setInterval(() => void flush(state), FLUSH_INTERVAL_MS);
@@ -472,6 +531,46 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     if (current !== state) return;
     handleReconnect(state, rc);
   });
+
+  /**
+   * LE STATUT BLE, ET PAS SEULEMENT LA PHASE DE RECONNEXION.
+   *
+   * Une coupure qui ne fait pas changer la PHASE était invisible pour la
+   * capture : `handleUnexpectedDisconnection` sort en silence quand aucune
+   * cible de reconnexion n'est connue — ce qui arrive après tout `disconnect()`
+   * explicite, ou après « continuer sans équipement ». Le lien tombait, le
+   * voyant REC restait rouge, et rien n'arrivait plus jamais.
+   *
+   * On traite donc 'disconnected' et 'error' comme une INTERRUPTION : même
+   * chemin que la phase de reconnexion — pause, trou horodaté, timeout long
+   * armé. Le pilote voit enfin ce qui se passe, et la séance finit par se
+   * clore au lieu de rester ouverte indéfiniment.
+   */
+  state.unsubStatus = bluetoothService.onStatusChange((statut) => {
+    if (current !== state) return;
+    if (statut !== 'disconnected' && statut !== 'error') return;
+    if (linkStatus === 'interrupted' || linkStatus === 'lost') return;
+    setLinkStatus('interrupted');
+    useSessionStore.getState().pauseSession();
+    state.gapStartMs = Date.now();
+    startInterruptTimeout(state);
+  });
+
+  /**
+   * L'ARRIÈRE-PLAN SE VOIT, MÊME SI ON NE PEUT PAS L'EMPÊCHER.
+   *
+   * L'application ne revendique aucun mode BLE en arrière-plan, et le
+   * keep-awake est best-effort — son échec n'est qu'un `console.warn`. Si iOS
+   * suspend l'application (bouton latéral, appel entrant), le fil JS gèle :
+   * plus de notification BLE, plus de timer de flush, plus rien. Au retour,
+   * `current` est toujours là, la séance toujours 'recording', REC pulse à
+   * nouveau — et le trou n'est ni horodaté ni dit.
+   *
+   * On ne prétend pas capturer en arrière-plan. On CONSTATE le trou, on
+   * l'horodate comme n'importe quelle interruption, et le bilan pourra le
+   * dire. Une lacune connue vaut infiniment mieux qu'une lacune invisible.
+   */
+  state.unsubAppState = ecouterArrierePlan(state);
 
   // Relais LIVE vers le coach — UNIQUEMENT si le pilote a activé le « partage en
   // direct » (garde-fou dans le runner). Best-effort, non bloquant, MUET côté
@@ -550,6 +649,56 @@ function startInterruptTimeout(state: CaptureState): void {
     releaseKeepAwake();
     void finalizeOnLostLink();
   }, LONG_INTERRUPT_TIMEOUT_MS);
+}
+
+/**
+ * Observe le passage en arrière-plan pendant une capture.
+ *
+ * Rend une fonction de désabonnement. Best-effort : si `AppState` n'est pas
+ * disponible, on ne fait rien plutôt que d'empêcher la capture de démarrer.
+ */
+function ecouterArrierePlan(state: CaptureState): () => void {
+  try {
+    /**
+     * `require` PARESSEUX, et non un `import` en tête de fichier.
+     *
+     * Ce service est chargé par des tests en environnement `node`, où un
+     * `import` de `react-native` tire tout l'index du paquet — que Jest ne sait
+     * pas transformer (`Cannot use import statement outside a module`). Le
+     * résoudre à l'appel garde ce service testable sans banc React Native, et
+     * c'est le motif que `biometryCaptureRunner` emploie déjà pour la même
+     * raison.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { AppState } = require('react-native') as typeof import('react-native');
+    const sub = AppState.addEventListener('change', (etat) => {
+      if (current !== state) return;
+      if (etat === 'background' || etat === 'inactive') {
+        if (linkStatus === 'interrupted' || linkStatus === 'lost') return;
+        console.warn('[OXV][capture] application en arrière-plan — le flux BLE va se taire.');
+        setLinkStatus('interrupted');
+        useSessionStore.getState().pauseSession();
+        state.gapStartMs = Date.now();
+        startInterruptTimeout(state);
+        return;
+      }
+      if (etat === 'active' && linkStatus === 'interrupted') {
+        // Le retour au premier plan ne garantit pas que le boîtier réémet : on
+        // laisse la première trame reçue rétablir 'recording' (cf. `onData`),
+        // et on se contente de clore le trou et de relancer la veille.
+        clearInterruptTimeout(state);
+        logLinkGap(state);
+        armerVeilleSilence(state);
+      }
+    });
+    return () => sub.remove();
+  } catch (e) {
+    console.warn(
+      '[OXV][capture] écoute de l’état d’application indisponible :',
+      e instanceof Error ? e.message : e
+    );
+    return () => undefined;
+  }
 }
 
 /**
@@ -832,6 +981,8 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   //    puis flush final complet (les lots en échec sont requeués sur fichier).
   state.unsubData();
   state.unsubReconnect();
+  state.unsubStatus();
+  state.unsubAppState();
   // Désarme la reconnexion illimitée + le timeout long : hors capture, on
   // repasse en mode borné (initBle / paddock) et aucun timer ne fuite.
   bluetoothService.setUnlimitedReconnect(false);
@@ -852,6 +1003,10 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   //    plus nous ; le tour est alors ENREGISTRÉ, et sans ce gel il partirait avec
   //    des colonnes vides alors qu'il a bien été mesuré.
   freezeCurrentLap(state);
+  // La distance se relève AVANT `stopLapDetection`, qui détruit l'état du
+  // détecteur. Une seconde d'inattention ici et la colonne resterait `null`
+  // comme elle l'a été depuis toujours.
+  const distanceM = getDistanceTotaleM();
   stopLapDetection();
   const recordedLaps = getRecordedLaps();
   const store = useSessionStore.getState();
@@ -895,6 +1050,19 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
       max_speed_kmh: state.maxima.maxSpeedKmh || null,
       max_g_lateral: state.maxima.maxGLateral || null,
       max_g_longitudinal: state.maxima.maxGLongitudinal || null,
+      /**
+       * LA DISTANCE PARCOURUE, ENFIN ÉCRITE — posée le 13/08/2026.
+       *
+       * `telemetry_sessions.distance_km` n'a jamais reçu de valeur : la colonne
+       * existe, le bilan et la Saison la lisent, et elle valait `null` sur
+       * toutes les séances. L'écran affichait « — » là où la mesure existait
+       * pourtant — l'odomètre du détecteur de tours la tient déjà, à la trame
+       * près, et personne ne la relevait.
+       *
+       * `null` si aucune distance n'a été parcourue : on n'écrit pas un zéro
+       * pour une mesure qui n'a pas eu lieu.
+       */
+      distance_km: distanceM !== null && distanceM > 0 ? Math.round(distanceM / 10) / 100 : null,
       total_frames: emittedFrames,
     },
   }).catch((e) =>
@@ -929,6 +1097,8 @@ export async function abortCaptureSession(): Promise<void> {
   setLinkStatus('idle');
   state.unsubData();
   state.unsubReconnect();
+  state.unsubStatus();
+  state.unsubAppState();
   // Désarme la reconnexion illimitée + le timeout long (cf. stopCaptureSession).
   bluetoothService.setUnlimitedReconnect(false);
   releaseKeepAwake();

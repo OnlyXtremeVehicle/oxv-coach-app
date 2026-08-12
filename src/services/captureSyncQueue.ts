@@ -459,6 +459,26 @@ function isDroppableCode(code: string): boolean {
   // doit être absorbé en UPSERT (cf. insertFramesIdempotent). Jeter 50 trames
   // pour une collision sur une seule serait absurde.
   if (code === '23505') return false;
+  /**
+   * 42501 (insufficient_privilege) N'EST PAS UNE ERREUR DE DONNÉE.
+   *
+   * La classe 42 est listée comme abandonnable — syntaxe, type, privilège — et
+   * c'est juste pour la syntaxe et le type : rejouer n'y changera rien. Mais un
+   * refus RLS est presque toujours TRANSITOIRE dans cette application : le
+   * jeton n'est pas encore restauré depuis SecureStore, son rafraîchissement a
+   * échoué sur un réseau de campagne, et supabase-js est retombé sur la clé
+   * anonyme. La requête part alors « anonyme », la RLS refuse, et le code arrive.
+   *
+   * Le traiter comme définitif mettait en QUARANTAINE — c'est-à-dire hors de
+   * portée de tout rejeu — les trames, les tours ET la clôture d'une séance
+   * entière. Vingt minutes de piste perdues parce qu'un jeton avait dix
+   * secondes de retard au lancement.
+   *
+   * Le cas réellement définitif — une policy qui interdit VRAIMENT cette
+   * écriture — se voit autrement : la file reste pleine et visible, ce qui est
+   * réparable. Une quarantaine silencieuse ne l'est pas.
+   */
+  if (code === '42501') return false;
   const cls = code.slice(0, 2);
   if (TRANSIENT_SQLSTATE_CLASSES.has(cls)) return false;
   if (DROPPABLE_SQLSTATE_CLASSES.has(cls)) return true;

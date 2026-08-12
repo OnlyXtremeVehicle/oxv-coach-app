@@ -136,14 +136,6 @@ function parseCenterline(raw: unknown): LatLon[] | null {
 }
 
 /**
- * Lit la géométrie centerline (points lat/lon) d'un circuit, pour le ruban 3D.
- *
- * La colonne `circuits.centerline_latlon` est absente des types générés
- * (database.types antérieur à son ajout), d'où l'accès non typé localisé ici.
- * Renvoie null si la colonne est absente ou illisible : l'appelant retombe
- * alors sur sa géométrie de repli (aucun écran vide, aucune donnée inventée).
- */
-/**
  * Clé de cache d'une géométrie. Une par circuit : les tracés sont indépendants,
  * et en mettre plusieurs sous une même clé ferait perdre les autres à chaque
  * changement de circuit.
@@ -159,6 +151,19 @@ function cleCenterline(circuitId: string): string {
  */
 const CENTERLINE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * Lit la géométrie centerline (points lat/lon) d'un circuit, pour le ruban 3D.
+ *
+ * CACHE-FIRST depuis le 13/08/2026 (7 jours), avec repli sur le cache PÉRIMÉ
+ * quand la lecture échoue : hors-ligne, le tracé est la seule vérification
+ * visuelle du pilote avant de rouler.
+ *
+ * La colonne `circuits.centerline_latlon` est absente des types générés
+ * (database.types antérieur à son ajout), d'où l'accès non typé localisé ici.
+ * Renvoie null si la colonne est absente, illisible, et qu'aucun cache
+ * n'existe : l'appelant retombe alors sur sa géométrie de repli (aucun écran
+ * vide, aucune donnée inventée).
+ */
 export async function fetchCircuitCenterline(circuitId: string): Promise<LatLon[] | null> {
   const cle = cleCenterline(circuitId);
   const frais = cacheGet<LatLon[]>(cle);

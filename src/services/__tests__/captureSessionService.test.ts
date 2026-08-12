@@ -80,6 +80,19 @@ jest.mock('@/ble/bluetoothService', () => ({
         g.__OXV_CS__.onReconnect = null;
       };
     },
+    /**
+     * Le STATUT BLE, ajouté le 13/08/2026. La capture ne s'abonnait qu'à la
+     * PHASE de reconnexion, et une coupure sans cible de reconnexion connue
+     * n'émet jamais de phase : le lien tombait, le voyant REC restait rouge, et
+     * plus une trame n'arrivait.
+     */
+    onStatusChange: (cb: (s: string) => void) => {
+      const g = globalThis as any;
+      g.__OXV_CS__.onStatus = cb;
+      return () => {
+        g.__OXV_CS__.onStatus = null;
+      };
+    },
     setUnlimitedReconnect: (v: boolean) => setUnlimitedReconnect(v),
   },
 }));
@@ -101,6 +114,9 @@ jest.mock('@/ble/lapDetectionRunner', () => ({
   // Le runner est la SOURCE des frontières de tour ; le test le joue en pilotant
   // ce numéro entre deux trames, exactement comme un franchissement de ligne.
   getCurrentLapNumber: jest.fn(() => (globalThis as any).__OXV_CS__.currentLapNumber),
+  // Distance totale de séance — alimente `telemetry_sessions.distance_km`, qui
+  // n'avait jamais reçu de valeur avant le 13/08/2026.
+  getDistanceTotaleM: jest.fn(() => (globalThis as any).__OXV_CS__.distanceTotaleM ?? null),
 }));
 
 jest.mock('@/services/liveRelayRunner', () => ({

@@ -18,6 +18,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -107,12 +108,39 @@ export default function RoulageScreen() {
     // rend sessionId + ubxUri pour le bilan.
     const res = await stopCaptureSession();
     if (res.ok && res.sessionId) {
+      /**
+       * LE COMPTE DE TRAMES SUIT LA SÉANCE — posé le 13/08/2026.
+       *
+       * `stopCaptureSession` rend `totalFrames` depuis toujours, et cet écran
+       * le jetait. Une séance à ZÉRO trame arrivait donc au bilan exactement
+       * comme une séance pleine, et le pilote devait DÉDUIRE le vide d'un écran
+       * qui ne montrait rien. C'est ce qui s'est passé la nuit du 13/08.
+       *
+       * Il est transmis pour que l'écran de fin puisse le DIRE. Une séance sans
+       * données doit s'annoncer, pas se deviner.
+       */
       router.replace({
         pathname: REC_ROUTES.fin,
-        params: { sessionId: res.sessionId, ubxUri: res.ubxUri ?? '' },
+        params: {
+          sessionId: res.sessionId,
+          ubxUri: res.ubxUri ?? '',
+          totalFrames: String(res.totalFrames ?? 0),
+        },
       } as never);
     } else {
-      // Capture déjà close ou erreur : on ne bloque pas le pilote.
+      /**
+       * LE REFUS SE DIT AVANT DE PARTIR.
+       *
+       * `{ ok: false }` survient réellement : après une clôture pour lien perdu
+       * (timeout de quinze minutes), ou sur un second appui. Le pilote appuyait
+       * sur « Terminer », se retrouvait à l'accueil, et n'apprenait jamais que
+       * sa séance avait été close un quart d'heure plus tôt.
+       */
+      Toast.show({
+        type: 'info',
+        text1: 'Séance déjà clôturée.',
+        text2: res.error ?? 'Elle a été fermée automatiquement.',
+      });
       router.replace('/(app2)' as never);
     }
   }
