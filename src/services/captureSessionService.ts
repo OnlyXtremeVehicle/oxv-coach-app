@@ -85,6 +85,11 @@ export interface CaptureFinishLineInput {
   radiusM?: number;
   /** Cap de la piste au franchissement (degrés). Fourni → détection par PORTE. */
   headingDeg?: number | null;
+  /**
+   * Distance minimale (m) entre deux tours comptés. Écarte les tours fabriqués
+   * par un véhicule immobile sur la ligne (dérive GPS). Absente → aucune garde.
+   */
+  minLapDistanceM?: number;
 }
 
 /**
@@ -375,6 +380,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     finishLineLon: finish.lon,
     finishLineRadiusM: finish.radiusM,
     finishLineHeadingDeg: finish.headingDeg,
+    minLapDistanceM: finish.minLapDistanceM,
   });
 
   // État de session partagé (compteurs live).

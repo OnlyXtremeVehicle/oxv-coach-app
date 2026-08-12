@@ -126,9 +126,32 @@ describe('garde — un abonnement temps réel porte sur une table publiée', () 
     expect(src).toMatch(/setInterval\(\s*reconcilier/);
     // Nettoyée à l'arrêt : un relais coupé ne doit pas continuer d'interroger.
     expect(src).toContain('clearInterval(consentTimer)');
-    // Une panne réseau NE COUPE PAS le direct — sinon il devient inutilisable
-    // au circuit, et une panne n'est pas un retrait de consentement.
-    expect(src).toMatch(/\.catch\(\(\) => \{[\s\S]{0,200}on ne coupe pas/);
+
+    /**
+     * ===================================================================
+     * CE TEST VÉRIFIAIT UN COMMENTAIRE. IL VÉRIFIE MAINTENANT LE CÂBLAGE.
+     * ===================================================================
+     *
+     * Sa première version exigeait
+     * `/\.catch\(\(\) => \{[\s\S]{0,200}on ne coupe pas/` — c'est-à-dire
+     * la PRÉSENCE D'UNE PHRASE dans un commentaire, à côté d'un `.catch`.
+     *
+     * Il était vert pendant que le code faisait l'inverse : `consentedCoaches`
+     * ignorait `error` et rendait `[]` sur panne, donc le `.catch` ne se
+     * déclenchait jamais et la réconciliation coupait le direct dès que le
+     * réseau du circuit toussait.
+     *
+     * Un test qui lit la prose qu'un développeur a écrite pour se rassurer est
+     * pire qu'aucun test : il transforme l'intention en preuve. C'est
+     * exactement le motif que cette garde poursuit ailleurs, retourné contre
+     * elle.
+     *
+     * Ce qu'on exige désormais est vérifiable : la réconciliation appelle la
+     * lecture en mode STRICT, seule forme qui distingue « aucun coach » de
+     * « je n'ai pas pu lire ». Le comportement lui-même est tenu par
+     * `liveRelayConsentement.test.ts`, qui exécute la fonction.
+     */
+    expect(src).toMatch(/consentedCoaches\(input\.pilotId,\s*true\)/);
   });
 
   /**

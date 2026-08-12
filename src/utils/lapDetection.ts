@@ -33,7 +33,60 @@
  *
  * Communs aux deux modes :
  *   - cooldown de 10 s minimum entre deux tours (anti-double-comptage) ;
- *   - premier passage de ligne = outlap (arbitré par `lapDetectionRunner`).
+ *   - premier passage de ligne = outlap (arbitré par `lapDetectionRunner`) ;
+ *   - DISTANCE MINIMALE de tour, quand le circuit renseigne sa longueur.
+ *
+ * ── POURQUOI UNE DISTANCE MINIMALE (posée le 12/08/2026) ──────────────────────
+ * `MAX_STEP_M` borne le pas PAR LE HAUT — un trou de données ne fabrique pas de
+ * franchissement. Rien ne le bornait PAR LE BAS, et c'est l'autre extrémité du
+ * même défaut : un véhicule À L'ARRÊT sur la ligne dérive de quelques mètres au
+ * gré du GPS, et chaque oscillation qui traverse la porte dans le sens du cap
+ * compte un tour. Simulé sur le tracé de Bouteville avant le premier essai :
+ * cinq minutes d'arrêt sur la ligne, dérive de ±2 m → **30 tours comptés**, un
+ * toutes les dix secondes, exactement la cadence du cooldown.
+ *
+ * Le coût n'est pas cosmétique. Ces tours de dix secondes deviennent le
+ * MEILLEUR TOUR de la séance, et tout le bilan se lit ensuite par rapport à eux.
+ * Un tour de 10 s sur une boucle de 5,9 km est une donnée fabriquée.
+ *
+ * La garde est physique : on ne boucle pas un circuit sans le parcourir. On
+ * cumule donc la distance parcourue depuis le dernier tour compté, et on refuse
+ * un franchissement qui n'en a pas assez à son actif.
+ *
+ * ── L'ODOMÈTRE SE FAIT SUR LA VITESSE, PAS SUR LES POSITIONS ─────────────────
+ * Première écriture de cette garde : cumuler la distance entre points
+ * successifs. Elle ne servait À RIEN, et le test l'a montré tout de suite —
+ * l'arrêt de cinq minutes comptait encore sept tours.
+ *
+ * La raison est que **la dérive du GPS est une distance**. À 25 Hz, un véhicule
+ * immobile saute de deux ou trois mètres à chaque point ; en cinq minutes, la
+ * somme de ces sauts dépasse vingt kilomètres. L'odomètre par positions mesure
+ * le bruit avec autant de zèle que le mouvement, et le seuil était franchi bien
+ * avant que la voiture n'ait bougé d'un mètre.
+ *
+ * La vitesse Doppler du RaceBox, elle, lit ~0 à l'arrêt : elle vient du décalage
+ * de fréquence des porteuses, pas d'une différence de positions bruitées. On
+ * intègre donc `vitesse × durée`, avec une bande morte sous 3 km/h.
+ *
+ * Les positions restent le repli pour DEUX cas où la vitesse ne dit rien :
+ * l'appelant qui ne la fournit pas, et le TROU de données — pendant une coupure
+ * il n'y a aucun échantillon de vitesse à intégrer, et la corde entre les deux
+ * points encadrant le trou est la meilleure estimation disponible (elle minore
+ * la distance réellement parcourue, ce qui est le bon sens de l'erreur).
+ *
+ * Trois précautions, et chacune protège un tour RÉEL :
+ *   - le PREMIER franchissement n'est jamais soumis à la garde. C'est la fin de
+ *     l'outlap, et le pilote peut avoir armé dix mètres avant la ligne : l'y
+ *     soumettre retarderait le tour 1 d'une boucle entière ;
+ *   - le seuil vaut la MOITIÉ de la longueur du circuit, pas sa longueur. On
+ *     cherche à écarter des tours de quelques mètres, pas à arbitrer au mètre
+ *     près une trajectoire qui coupe court ;
+ *   - un pas écarté par `MAX_STEP_M` compte QUAND MÊME dans la distance. Après
+ *     un trou de liaison, le véhicule a bien roulé ; ne pas le compter ferait
+ *     refuser le tour suivant, qui lui est vrai. Dans le doute, on penche du
+ *     côté qui garde les tours réels.
+ *
+ * Circuit sans longueur renseignée → aucun seuil, comportement inchangé.
  */
 
 import { haversineDistance } from './geo';
@@ -68,6 +121,11 @@ export interface LapDetectorState {
   finishLineHeadingDeg: number | null;
   /** Porte précalculée. null → mode rayon (repli). */
   gate: GateGeometry | null;
+  /**
+   * Distance minimale (m) à parcourir entre deux tours comptés. null → aucune
+   * garde (circuit sans longueur renseignée), comportement historique.
+   */
+  minLapDistanceM: number | null;
 
   // État interne — mode rayon uniquement (inutilisés en mode porte)
   isInsideZone: boolean; // actuellement dans la zone d'arrivée
@@ -79,6 +137,16 @@ export interface LapDetectorState {
 
   // Commun
   lastLapEndAt: number | null; // timestamp ms de fin du dernier tour
+  /**
+   * Odomètre depuis le dernier tour COMPTÉ (m). Alimenté à chaque point reçu,
+   * dans les deux modes, et remis à zéro quand un tour est compté.
+   */
+  distanceSinceLapM: number;
+  /** Dernier point reçu, en degrés — sert uniquement à l'odomètre. */
+  lastOdoLat: number | null;
+  lastOdoLon: number | null;
+  /** Instant du dernier point reçu — base de temps de l'intégration en vitesse. */
+  lastOdoAt: number | null;
 
   // Tours détectés (timestamps de fin de tour)
   lapEndTimestamps: number[];
@@ -97,6 +165,25 @@ const COOLDOWN_MS = 10000; // 10 sec minimum entre 2 tours
  * Un tour manqué se voit ; un faux tour corrompt le bilan en silence.
  */
 const MAX_STEP_M = 50;
+
+/**
+ * Sous cette vitesse, l'odomètre n'avance pas.
+ *
+ * La vitesse Doppler d'un boîtier à l'arrêt n'est pas exactement nulle — elle
+ * oscille sous le km/h. Intégrée sur une journée elle finirait par franchir
+ * n'importe quel seuil. 3 km/h est très au-dessus de ce plancher de bruit et
+ * très en dessous de toute allure de roulage, fût-ce au pas dans la voie de
+ * décélération.
+ */
+const ODO_SPEED_DEADBAND_KMH = 3;
+
+/**
+ * Au-delà de cet intervalle entre deux points, on cesse d'intégrer la vitesse :
+ * il n'y a pas eu d'échantillon pendant l'intervalle, et prolonger la dernière
+ * vitesse connue sur un trou de trente secondes inventerait des centaines de
+ * mètres. On se rabat alors sur la corde entre les deux points.
+ */
+const ODO_MAX_DT_MS = 2_000;
 
 const DEG_TO_RAD = Math.PI / 180;
 
@@ -142,7 +229,12 @@ export function createLapDetector(
    * Cap de la piste au franchissement (degrés). Fourni → mode PORTE.
    * Absent/null/non fini → mode RAYON (repli rétrocompatible).
    */
-  finishLineHeadingDeg: number | null = null
+  finishLineHeadingDeg: number | null = null,
+  /**
+   * Distance minimale (m) entre deux tours comptés. Absent/null/non fini/≤ 0 →
+   * aucune garde, comportement historique strictement inchangé.
+   */
+  minLapDistanceM: number | null = null
 ): LapDetectorState {
   const headingDeg =
     typeof finishLineHeadingDeg === 'number' && Number.isFinite(finishLineHeadingDeg)
@@ -158,12 +250,80 @@ export function createLapDetector(
       headingDeg === null
         ? null
         : buildGate(finishLineLat, finishLineLon, finishLineRadius, headingDeg),
+    minLapDistanceM:
+      typeof minLapDistanceM === 'number' && Number.isFinite(minLapDistanceM) && minLapDistanceM > 0
+        ? minLapDistanceM
+        : null,
     isInsideZone: false,
     enteredZoneAt: null,
     previousPointM: null,
     lastLapEndAt: null,
+    distanceSinceLapM: 0,
+    lastOdoLat: null,
+    lastOdoLon: null,
+    lastOdoAt: null,
     lapEndTimestamps: [],
   };
+}
+
+/**
+ * Le franchissement a-t-il assez de distance à son actif ?
+ *
+ * Toujours vrai sans seuil, et toujours vrai pour le PREMIER franchissement —
+ * celui-ci clôt l'outlap, dont la longueur ne dépend que de l'endroit où le
+ * pilote a armé.
+ */
+function distanceSuffisante(state: LapDetectorState): boolean {
+  if (state.minLapDistanceM === null) return true;
+  if (state.lastLapEndAt === null) return true;
+  return state.distanceSinceLapM >= state.minLapDistanceM;
+}
+
+/** Un tour est compté : on repart d'un odomètre vierge. */
+function compterTour(state: LapDetectorState, timestamp: number): void {
+  state.lastLapEndAt = timestamp;
+  state.distanceSinceLapM = 0;
+  state.lapEndTimestamps.push(timestamp);
+}
+
+/**
+ * Avance l'odomètre d'un point. Appelé pour TOUS les points, y compris ceux
+ * qu'un trou de données fera écarter de l'arbitrage : après une coupure le
+ * véhicule a bien roulé, et ne pas le compter ferait refuser le tour suivant,
+ * qui lui est réel.
+ */
+function accumulerOdometre(
+  state: LapDetectorState,
+  lat: number,
+  lon: number,
+  timestamp: number,
+  speedKmh?: number
+): void {
+  const lastLat = state.lastOdoLat;
+  const lastLon = state.lastOdoLon;
+  const lastAt = state.lastOdoAt;
+  state.lastOdoLat = lat;
+  state.lastOdoLon = lon;
+  state.lastOdoAt = timestamp;
+
+  if (lastLat === null || lastLon === null || lastAt === null) return; // premier point
+
+  const dtMs = timestamp - lastAt;
+  const vitesseUtilisable =
+    typeof speedKmh === 'number' && Number.isFinite(speedKmh) && speedKmh >= 0;
+
+  if (vitesseUtilisable && dtMs > 0 && dtMs <= ODO_MAX_DT_MS) {
+    // Régime nominal. La bande morte écarte le plancher de bruit du Doppler.
+    const v = (speedKmh as number) < ODO_SPEED_DEADBAND_KMH ? 0 : (speedKmh as number);
+    state.distanceSinceLapM += (v / 3.6) * (dtMs / 1000);
+    return;
+  }
+
+  // Vitesse absente, ou trou de données : la corde entre les deux points est la
+  // seule estimation disponible, et elle MINORE la distance réellement
+  // parcourue — le bon sens de l'erreur pour une garde qui ne doit jamais
+  // refuser un tour réel.
+  state.distanceSinceLapM += haversineDistance(lastLat, lastLon, lat, lon);
 }
 
 /** Produit vectoriel 2D (composante z). */
@@ -234,8 +394,10 @@ function processGateCrossing(
     return false;
   }
 
-  state.lastLapEndAt = timestamp;
-  state.lapEndTimestamps.push(timestamp);
+  // Garde de distance : on ne boucle pas un circuit sans le parcourir.
+  if (!distanceSuffisante(state)) return false;
+
+  compterTour(state, timestamp);
   return true;
 }
 
@@ -265,9 +427,12 @@ function processRadiusZone(
       }
     }
 
+    // Garde de distance : même règle qu'en mode porte (un véhicule immobile
+    // dans le disque n'entre et ne sort qu'au gré de la dérive du GPS).
+    if (!distanceSuffisante(state)) return false;
+
     // C'est un nouveau passage → fin du tour précédent (si tour en cours)
-    state.lastLapEndAt = timestamp;
-    state.lapEndTimestamps.push(timestamp);
+    compterTour(state, timestamp);
     return true;
   }
 
@@ -288,9 +453,18 @@ export function processGpsPoint(
   state: LapDetectorState,
   lat: number,
   lon: number,
-  timestamp: number
+  timestamp: number,
+  /**
+   * Vitesse instantanée (km/h) mesurée par le boîtier. Fournie → l'odomètre
+   * l'intègre, et un véhicule à l'arrêt n'avance pas. Absente → repli sur la
+   * distance entre points, qui confond le bruit du GPS avec du mouvement (cf.
+   * l'en-tête). Le flux BLE la fournit toujours.
+   */
+  speedKmh?: number
 ): boolean {
   if (!lat || !lon) return false;
+
+  accumulerOdometre(state, lat, lon, timestamp, speedKmh);
 
   if (state.gate !== null) {
     return processGateCrossing(state, state.gate, lat, lon, timestamp);
@@ -306,6 +480,10 @@ export function resetLapDetector(state: LapDetectorState): void {
   state.enteredZoneAt = null;
   state.previousPointM = null;
   state.lastLapEndAt = null;
+  state.distanceSinceLapM = 0;
+  state.lastOdoLat = null;
+  state.lastOdoLon = null;
+  state.lastOdoAt = null;
   state.lapEndTimestamps = [];
 }
 

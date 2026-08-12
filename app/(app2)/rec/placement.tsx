@@ -252,11 +252,26 @@ export default function PlacementScreen() {
   const verdict = verdictArmement(ble, starting);
   const actionSecondaire = libelleAction(verdict.action);
 
-  // Circuits disponibles (même source et même préférence officiel que la v1).
+  /**
+   * Circuits disponibles — RELECTURE FORCÉE, et c'est le seul écran où ça se
+   * justifie.
+   *
+   * `fetchCircuits()` sert un cache de 24 h. Ailleurs c'est un confort ; ici
+   * c'est le piège : un circuit ajouté en base le matin reste INVISIBLE au
+   * paddock jusqu'au lendemain, sur un téléphone qui a consulté la liste la
+   * veille. Aucune erreur, aucun symptôme — juste un tracé absent de la rangée
+   * de choix, le jour où on vient rouler dessus. Vérifié en ajoutant Bouteville
+   * le 12/08/2026, quelques heures avant le premier essai terrain.
+   *
+   * Le coût est d'une requête par armement. Le repli hors-ligne est intact :
+   * en cas d'erreur réseau, `fetchCircuits` rend le cache — le pilote n'est
+   * jamais bloqué avant la piste (cf. le commentaire du service sur le vide
+   * d'accès).
+   */
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const all = await fetchCircuits();
+      const all = await fetchCircuits(true);
       if (cancelled) return;
       const official = all.filter((c) => c.isOfficial);
       const list = official.length > 0 ? official : all;

@@ -75,8 +75,42 @@ interface LiveCoach {
  * trames. Un coach en `lecture_simple` a droit au direct de pilotage, pas à une
  * donnée de santé.
  */
-async function consentedCoaches(pilotId: string): Promise<LiveCoach[]> {
-  const { data } = await supabase
+/**
+ * ===========================================================================
+ * « AUCUN COACH » ET « JE N'AI PAS PU LIRE » NE SONT PAS LA MÊME CHOSE
+ * ===========================================================================
+ *
+ * Cette fonction ne lisait que `data` et ignorait `error` : sur panne réseau,
+ * elle rendait `[]` — indiscernable d'un pilote qui n'a consenti à personne.
+ *
+ * Conséquence introduite le 12/08/2026 avec la réconciliation périodique : un
+ * réseau qui tousse au circuit faisait voir `liste.length === 0`, donc
+ * `stopPilotLiveRelay()`. **Une panne coupait le direct**, l'inverse exact de
+ * ce que le commentaire de la réconciliation certifiait. Le `.catch` posé pour
+ * l'éviter était du code mort — la promesse ne rejetait jamais.
+ *
+ * Trouvé par un audit adversarial du même jour, quelques heures après.
+ *
+ * `strict` porte l'asymétrie, et elle est délibérée :
+ *
+ *   AU DÉMARRAGE, ne pas pouvoir lire le consentement doit EMPÊCHER de
+ *   diffuser. On ne commence pas à envoyer la position d'un pilote sur la foi
+ *   d'une lecture ratée. Fail-closed.
+ *
+ *   EN COURS DE SÉANCE, ne pas pouvoir lire ne doit PAS couper. Une panne
+ *   n'est pas un retrait de consentement, et le pilote a explicitement
+ *   accepté. Le consentement retiré, lui, reste retiré en base : il sera lu au
+ *   tick suivant.
+ *
+ * EXPORTÉE POUR ÊTRE ÉPROUVÉE. Elle n'a aucun appelant hors de ce fichier, et
+ * n'a pas vocation à en avoir. Elle est visible parce que le défaut ci-dessus
+ * ne se voit QU'À L'EXÉCUTION : le `.catch` était écrit, la phrase qui promet
+ * de ne pas couper était écrite, et une garde lexicale les trouvait tous les
+ * deux pendant que le code faisait l'inverse. Ce qui manquait était que la
+ * promesse rejette — et cela, seul un appel le montre.
+ */
+export async function consentedCoaches(pilotId: string, strict = false): Promise<LiveCoach[]> {
+  const { data, error } = await supabase
     .from('coach_pilots')
     .select('coach_id, level')
     .eq('pilot_id', pilotId)
@@ -84,6 +118,9 @@ async function consentedCoaches(pilotId: string): Promise<LiveCoach[]> {
     .eq('status', 'active')
     .not('pilot_consent_at', 'is', null)
     .not('live_sharing_at', 'is', null);
+  // `strict` REJETTE au lieu d'avaler : c'est la seule façon pour l'appelant
+  // de distinguer les deux cas.
+  if (error && strict) throw new Error(error.message);
   return (data ?? []).map((r) => {
     const row = r as { coach_id: string; level?: string | null };
     return {
@@ -422,13 +459,16 @@ export async function startPilotLiveRelay(input: {
   const RECONCILIATION_MS = 15_000;
 
   const reconcilier = (): void => {
-    void consentedCoaches(input.pilotId)
+    // `strict` : la lecture REJETTE sur erreur. Sans lui, une panne rendait
+    // `[]` — indiscernable d'un retrait — et coupait le direct.
+    void consentedCoaches(input.pilotId, true)
       .then((liste) => {
         if (liste.length === 0) stopPilotLiveRelay();
         else syncRosters(liste);
       })
       .catch(() => {
-        // Panne réseau : on ne coupe pas. Voir ci-dessus.
+        // Panne réseau : on ne coupe pas. Une panne n'est pas un retrait, et
+        // le consentement retiré sera lu au tick suivant.
       });
   };
 
@@ -449,10 +489,18 @@ export async function startPilotLiveRelay(input: {
         // consentement, un passage en `lecture_simple` ou une fin de binôme
         // sont donc pris en compte EN VOL — le premier coupe le flux, le second
         // ferme la biométrie au tick suivant.
-        consentedCoaches(input.pilotId).then((liste) => {
-          if (liste.length === 0) stopPilotLiveRelay();
-          else syncRosters(liste);
-        });
+        // MÊME ASYMÉTRIE QUE LA RÉCONCILIATION : `strict`, sinon une panne
+        // réseau au moment où l'événement arrive rendrait `[]` et couperait le
+        // direct. Ce chemin est muet aujourd'hui (`coach_pilots` n'est pas
+        // publiée), mais il ne doit pas porter le défaut le jour où il parle.
+        void consentedCoaches(input.pilotId, true)
+          .then((liste) => {
+            if (liste.length === 0) stopPilotLiveRelay();
+            else syncRosters(liste);
+          })
+          .catch(() => {
+            // Une panne n'est pas un retrait.
+          });
       }
     )
     .subscribe();

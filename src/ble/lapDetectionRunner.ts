@@ -69,6 +69,11 @@ export interface LapDetectionStartOptions {
    * parallèle. Absent → repli sur le mode rayon historique.
    */
   finishLineHeadingDeg?: number | null;
+  /**
+   * Distance minimale (m) entre deux tours comptés — dérivée de la longueur du
+   * circuit par `captureFinishLineFor`. Absente → aucune garde de distance.
+   */
+  minLapDistanceM?: number | null;
 }
 
 export function startLapDetection(opts: LapDetectionStartOptions): void {
@@ -77,7 +82,8 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
     opts.finishLineLat,
     opts.finishLineLon,
     opts.finishLineRadiusM ?? 30,
-    opts.finishLineHeadingDeg ?? null
+    opts.finishLineHeadingDeg ?? null,
+    opts.minLapDistanceM ?? null
   );
   previousLapWallMs = null;
   previousLapMonoMs = null;
@@ -103,7 +109,16 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
     const wallNow = Date.now();
     lastMonoMs = nextMonotonic(lastMonoMs, wallNow);
     const monoNow = lastMonoMs;
-    const completedLap = processGpsPoint(state, frame.gps.latitude, frame.gps.longitude, monoNow);
+    // `frame.motion.speed` est en km/h (parser UBX : mm/s × 3,6 / 1000). Elle
+    // alimente l'odomètre de la garde de distance minimale — c'est la vitesse
+    // Doppler, nulle à l'arrêt, là où la position dérive (cf. `lapDetection`).
+    const completedLap = processGpsPoint(
+      state,
+      frame.gps.latitude,
+      frame.gps.longitude,
+      monoNow,
+      frame.motion.speed
+    );
 
     if (!completedLap) {
       return;

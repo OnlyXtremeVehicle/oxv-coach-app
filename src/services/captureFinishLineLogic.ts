@@ -24,6 +24,8 @@ export interface FinishLineSource {
   finishLineRadiusM: number;
   /** Cap de la piste au franchissement (degrés, 0 = nord). NULL en base = non relevé. */
   finishLineHeading?: number | null;
+  /** Longueur du circuit (km). NULL en base = non renseignée → aucune garde de distance. */
+  lengthKm?: number | null;
 }
 
 export interface CaptureFinishLine {
@@ -33,9 +35,28 @@ export interface CaptureFinishLine {
   radiusM: number;
   /** Cap de franchissement, ou null si non relevé (→ repli mode rayon). */
   headingDeg?: number | null;
+  /**
+   * Distance minimale (m) entre deux tours comptés, dérivée de la longueur du
+   * circuit. Absente si la longueur n'est pas renseignée : on ne devine pas un
+   * seuil, on laisse la détection sans garde plutôt que d'en inventer une qui
+   * refuserait des tours réels.
+   */
+  minLapDistanceM?: number;
 }
 
 const DEFAULT_RADIUS_M = 40;
+
+/**
+ * Fraction de la longueur du circuit exigée entre deux tours comptés.
+ *
+ * La MOITIÉ, et pas davantage. La garde vise les tours de quelques mètres
+ * fabriqués par un véhicule arrêté sur la ligne (cf. l'en-tête de
+ * `utils/lapDetection`) ; elle n'a pas à arbitrer une trajectoire qui coupe
+ * court, ni à se prononcer sur un tracé dont la longueur déclarée serait
+ * approximative. Trop haut, elle mangerait des tours réels — c'est la seule
+ * façon dont elle peut nuire, et on s'en tient loin.
+ */
+const MIN_LAP_FRACTION = 0.5;
 
 export function captureFinishLineFor(
   c: FinishLineSource | null | undefined
@@ -50,11 +71,17 @@ export function captureFinishLineFor(
     Number.isFinite(c.finishLineRadiusM) && c.finishLineRadiusM > 0
       ? c.finishLineRadiusM
       : DEFAULT_RADIUS_M;
+  const km = c.lengthKm;
+  const minLapDistanceM =
+    typeof km === 'number' && Number.isFinite(km) && km > 0
+      ? km * 1000 * MIN_LAP_FRACTION
+      : undefined;
+
   const heading = c.finishLineHeading;
   // Cap non relevé → on ne l'invente pas : la clé est simplement absente et la
   // détection reste en mode rayon.
   if (typeof heading !== 'number' || !Number.isFinite(heading)) {
-    return { lat, lon, radiusM };
+    return { lat, lon, radiusM, minLapDistanceM };
   }
-  return { lat, lon, radiusM, headingDeg: heading };
+  return { lat, lon, radiusM, headingDeg: heading, minLapDistanceM };
 }
