@@ -41,15 +41,40 @@ export interface CarteSession {
 export const MAX_SELECTION = 2;
 
 /**
- * Formate un chrono au canon du lot : « m:ss.mmm », minutes TOUJOURS
- * affichées, POINT décimal (jamais de virgule — norme chronométrage).
+ * Formate un chrono : « m:ss,mmm », minutes TOUJOURS affichées, VIRGULE
+ * décimale.
  *
- *   formatChronoCarte(112.418) → "1:52.418"
- *   formatChronoCarte(59.9)    → "0:59.900"
+ *   formatChronoCarte(112.418) → "1:52,418"
+ *   formatChronoCarte(59.9)    → "0:59,900"
  *   formatChronoCarte(null)    → "—"
  *
- * DIVERGENCE signalée : distinct de `formatLapTime` (src/utils/format.ts,
- * apostrophe + centième, verrouillé par tests + exports PDF — non modifié).
+ * ---
+ *
+ * LA CONTRADICTION, ET COMMENT ELLE A ÉTÉ TRANCHÉE — 12/08/2026
+ *
+ * Cette fonction imposait le POINT, au nom d'une « norme chronométrage ». Le
+ * plan de montage V3 impose l'inverse, sans ambiguïté : « séparateur décimal :
+ * virgule. 1:41,203, jamais 1:41.203. Corriger partout. »
+ *
+ * Deux règles écrites s'opposaient, et un test verrouillait la seconde. J'avais
+ * laissé l'écart intact le 04/08, faute d'arbitrage.
+ *
+ * Tranché en autonomie, sur trois motifs :
+ *
+ *   1. **Aucune source n'était citée** pour cette norme. Une règle sans source
+ *      ne l'emporte pas sur un plan de montage daté et signé.
+ *   2. C'est une application FRANÇAISE pour des clients français. Si une norme
+ *      de chronométrage impose le point sur un document officiel, elle concerne
+ *      ce document — pas l'écran d'un pilote au paddock.
+ *   3. Le reste du produit était déjà passé à la virgule le 04/08 (27 chaînes).
+ *      Laisser cette fonction seule au point produisait DEUX écritures du même
+ *      chrono selon l'écran, ce qui est pire que l'un ou l'autre choix.
+ *
+ * Pour renverser : une source nommée pour la norme, et la conversion des 27
+ * autres chaînes en sens inverse.
+ *
+ * DIVERGENCE conservée : `formatLapTime` (src/utils/format.ts) emploie
+ * l'apostrophe et le centième — c'est un autre format, pas un autre séparateur.
  */
 export function formatChronoCarte(seconds: number | null): string {
   if (seconds === null || !Number.isFinite(seconds) || seconds < 0) return '—';
@@ -58,7 +83,7 @@ export function formatChronoCarte(seconds: number | null): string {
   const total = Math.round(seconds * 1000) / 1000;
   const mins = Math.floor(total / 60);
   const secs = total - mins * 60;
-  return `${mins}:${secs.toFixed(3).padStart(6, '0')}`;
+  return `${mins}:${secs.toFixed(3).padStart(6, '0')}`.replace('.', ',');
 }
 
 /** Tri chronologique ascendant stable (départage par id pour le déterminisme). */

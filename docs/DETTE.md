@@ -2041,3 +2041,47 @@ et de ses tests — c'est un lot, pas une retouche en marge d'un correctif
 d'affichage.
 
 **Non consigné ailleurs** : `docs/J3_JOUR_J.md` ne mentionne pas ce chemin.
+
+---
+
+## D-47 — Trois arbitrages pris en autonomie le 12/08/2026
+
+Le fondateur a demandé une autonomie continue : *« Tu fais en sorte que tous les
+jalons soient finis. Quand tu as une erreur, tu la corriges automatiquement. »*
+Trois arbitrages bloquaient le Jalon 2 depuis le 04/08. Ils sont tranchés,
+appliqués, et écrits ici pour qu'on puisse les renverser.
+
+**1. La virgule décimale l'emporte sur la « norme chronométrage ».**
+
+`cartesLogic.formatChronoCarte` imposait le point, avec un test qui le
+verrouillait. Le plan de montage impose la virgule sans ambiguïté. Trois motifs
+pour trancher ainsi : aucune source n'était citée pour cette norme, et une règle
+sans source ne l'emporte pas sur un plan daté ; c'est une application française
+pour des clients français ; et le reste du produit était déjà converti le 04/08,
+donc cette fonction seule produisait **deux écritures du même chrono selon
+l'écran** — pire que l'un ou l'autre choix.
+
+*Pour renverser* : nommer la source de la norme, et reconvertir les 27 autres
+chaînes en sens inverse.
+
+**2. `space.lg` passe de 18 à 16.**
+
+Seule valeur de l'échelle hors du pas de 8 comme du demi-pas de 4. Employée 236
+fois, couverte par aucun test, justifiée par aucun document. Ce n'était pas un
+choix, c'était un oubli.
+
+*Pour renverser* : la remettre à 18 et écrire pourquoi.
+
+**3. Le trio typographique du plan reste refusé.**
+
+D-12 le refusait déjà, avec un motif solide — Söhne Breit est une fonte
+commerciale sous licence Klim, SF Pro est réservée à Apple. Je l'avais rouvert
+parce que D-12 s'attribuait une « décision fondateur » dont je ne trouvais
+aucune trace. L'autonomie accordée le referme : le motif juridique tient seul,
+indépendamment de qui l'a écrit.
+
+*Reste ouvert et distinct* : le dépôt porte CINQ familles là où trois sont
+prévues — Michroma et Syncopate s'y sont ajoutées avant le plan. Consolider
+touche l'identité visuelle de dizaines d'écrans et ne se décide pas dans un
+correctif ; c'est un lot, et il est au dossier.
+

@@ -35,13 +35,13 @@ function carte(partiel: Partial<CarteSession> & { id: string; startedAt: string 
   };
 }
 
-describe('formatChronoCarte — m:ss.mmm, point, minutes toujours affichées', () => {
-  it('112.418 → "1:52.418"', () => {
-    expect(formatChronoCarte(112.418)).toBe('1:52.418');
+describe('formatChronoCarte — m:ss,mmm, virgule, minutes toujours affichées', () => {
+  it('112.418 → "1:52,418"', () => {
+    expect(formatChronoCarte(112.418)).toBe('1:52,418');
   });
 
-  it('59.9 → "0:59.900" (minutes toujours affichées)', () => {
-    expect(formatChronoCarte(59.9)).toBe('0:59.900');
+  it('59.9 → "0:59,900" (minutes toujours affichées)', () => {
+    expect(formatChronoCarte(59.9)).toBe('0:59,900');
   });
 
   it('null → "—"', () => {
@@ -54,13 +54,20 @@ describe('formatChronoCarte — m:ss.mmm, point, minutes toujours affichées', (
     expect(formatChronoCarte(-1)).toBe('—');
   });
 
-  it('bord de retenue : 119.9995 → "2:00.000", jamais "1:60.000"', () => {
-    expect(formatChronoCarte(119.9995)).toBe('2:00.000');
+  it('bord de retenue : 119.9995 → "2:00,000", jamais "1:60,000"', () => {
+    expect(formatChronoCarte(119.9995)).toBe('2:00,000');
   });
 
-  it('jamais de virgule française (norme chronométrage)', () => {
-    expect(formatChronoCarte(84.318)).not.toContain(',');
-    expect(formatChronoCarte(84.318)).toBe('1:24.318');
+  /**
+   * CE TEST DISAIT L'INVERSE JUSQU'AU 12/08/2026. Il verrouillait le point au
+   * nom d'une « norme chronométrage » dont aucune source n'était citée, contre
+   * un plan de montage qui impose la virgule sans ambiguïté. Le reste du
+   * produit était déjà converti : cette fonction seule produisait deux
+   * écritures du même chrono selon l'écran.
+   */
+  it('virgule française, comme partout ailleurs dans le produit', () => {
+    expect(formatChronoCarte(84.318)).toBe('1:24,318');
+    expect(formatChronoCarte(84.318)).not.toContain('.');
   });
 });
 

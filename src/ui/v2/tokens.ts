@@ -61,7 +61,22 @@ export const type = {
   monoSemi: 'JetBrainsMono_600SemiBold',
 } as const;
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 18, xl: 24, xxl: 36 } as const;
+/**
+ * Échelle d'espacement — base 8, demi-pas 4.
+ *
+ * `lg` VALAIT 18 JUSQU'AU 12/08/2026, et c'était la seule valeur hors du pas
+ * comme du demi-pas. Employée 236 fois, couverte par aucun test : elle avait
+ * échappé à la règle sans que rien ne le dise.
+ *
+ * Passée à 16, elle rentre dans le rythme et resserre les marges de deux
+ * points. Tranché en autonomie : 18 n'était pas un choix, c'était un oubli —
+ * aucune note, aucun test, aucun document ne la justifiait. Pour renverser, il
+ * suffit de la remettre à 18 et d'écrire pourquoi.
+ *
+ * `xl` reste à 24, `xxl` à 36 : tous deux sont des multiples de 4, et 36 est
+ * délibérément un demi-pas au-dessus de 32 pour ouvrir les grandes respirations.
+ */
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 36 } as const;
 
 export const radius = { card: 18, cell: 12, hero: 24, pill: 999 } as const;
 
