@@ -44,6 +44,7 @@ import {
   type MessageThread,
 } from '@/services/coachMessagesService';
 import { loadBiometryConsents } from '@/services/consentService';
+import { getIntentionForSession, type SessionIntention } from '@/services/intentionsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { computeKeyMoments, type KeyMoment } from '@/services/keyMomentsLogic';
 import { QDI_ALGO_VERSION } from '@/services/qdiLogic';
@@ -131,6 +132,14 @@ export interface BilanData {
     audioUrl: string | null;
   } | null;
   media: SessionMediaItem[];
+  /**
+   * CE QUE LE PILOTE S'ÉTAIT DIT AVANT DE ROULER — `null` = section ABSENTE.
+   *
+   * Elle est JUXTAPOSÉE, jamais évaluée : l'application ne dit pas si
+   * l'intention a été tenue. Le pilote relit ce qu'il avait posé, il voit ce
+   * qui s'est passé, il conclut. C'est la doctrine du miroir prise au mot.
+   */
+  intention: SessionIntention | null;
   /** null = section ABSENTE (flag/consentement/données — fail-closed). */
   biometry: BilanBiometry | null;
   debrief: BilanDebrief;
@@ -215,6 +224,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         threadsR,
         annotationsR,
         noteSeanceR,
+        intentionR,
         videoFlagR,
         biometryFlagR,
         consentsR,
@@ -243,6 +253,15 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         // ci-dessus : celle-ci interroge virage par virage, et une note de
         // séance n'a pas de virage. La RLS filtre déjà sur `shared`.
         listSessionNotes(userId, sessionId),
+        // L'INTENTION POSÉE AVANT LA SÉANCE.
+        //
+        // `traceNarrativeService` la charge depuis le 18/07 et la rend à son
+        // appelant en la commentant « à juxtaposer (le pilote conclut) ».
+        // `useMiroirHome` ne gardait que `trace.narrative` et la jetait ligne
+        // suivante ; le bilan ne la demandait pas. La chaîne entière — écriture
+        // dans `rec/fin`, rattachement à la séance, relecture au carnet —
+        // existait sans sa moitié qui lui donne son sens.
+        getIntentionForSession(sessionId),
         isFlagEnabled('video_overlay'),
         isFlagEnabled('biometry'),
         loadBiometryConsents(userId),
@@ -394,6 +413,9 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         traceMarkers,
         coachNotes,
         coachSessionNote,
+        // `settled(..., null)` : une intention illisible masque la section,
+        // elle ne casse pas le bilan.
+        intention: settled(intentionR, null),
         media,
         biometry,
         // marginGlobalMeasured (jamais le `?? 0` historique) : une marge

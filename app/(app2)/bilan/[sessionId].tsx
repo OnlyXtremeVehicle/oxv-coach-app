@@ -356,6 +356,30 @@ export default function BilanScreen() {
           */}
           {bandeBilanCoach ? <View style={styles.section}>{bandeBilanCoach}</View> : null}
 
+          {/*
+            CE QUE VOUS VOUS ÉTIEZ DIT AVANT DE ROULER.
+
+            Écrit dans `rec/fin`, rattaché à la séance suivante, relu au carnet
+            — et jamais remontré ICI, là où il prend son sens. La chaîne
+            existait tout entière sauf sa moitié utile.
+
+            Elle est POSÉE, pas évaluée. Aucun « tenue » ni « manquée », aucune
+            coche, aucune couleur : l'application ne sait pas ce que le pilote
+            voulait dire par sa phrase, et prétendre la juger serait sortir du
+            miroir. Il relit, il voit sa séance, il conclut.
+
+            Placée avant le tracé, comme le mot du coach : ce qui se lit se
+            range avant ce qui se regarde.
+          */}
+          {data.intention ? (
+            <View style={styles.section}>
+              <View style={styles.intentionCard}>
+                <Text style={styles.intentionEyebrow}>CE QUE VOUS AVIEZ POSÉ</Text>
+                <Text style={styles.intentionBody}>{data.intention.body}</Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* Carte tracé + puces + bande annotation coach (absente sans note) */}
           <View style={styles.section}>
             <SectionHeader eyebrow="LE TRACÉ" />
@@ -1011,6 +1035,34 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: colors.heritage.text,
     marginTop: space.xs,
+  },
+
+  /**
+   * L'intention est une carte SOBRE, sans liseré d'accent.
+   *
+   * Le rouge de marque dit la voix du coach ; l'or dit le chrono. Ici, c'est la
+   * voix du pilote lui-même — elle n'a besoin d'aucune couleur pour être
+   * légitime, et lui en donner une la rangerait parmi les jugements.
+   */
+  intentionCard: {
+    borderWidth: 1,
+    borderColor: colors.border.hairline,
+    borderRadius: radius.cell,
+    backgroundColor: colors.bg.card,
+    padding: space.lg,
+  },
+  intentionEyebrow: {
+    fontFamily: typo.mono,
+    fontSize: 10,
+    letterSpacing: 1.6,
+    color: colors.text.low,
+  },
+  intentionBody: {
+    fontFamily: typo.body,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text.hi,
+    marginTop: space.sm,
   },
   noteDots: {
     flexDirection: 'row',
