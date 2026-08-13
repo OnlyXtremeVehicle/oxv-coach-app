@@ -275,12 +275,29 @@ export async function poserMarqueur(input: {
     visibility: 'private',
     // `corner_index` N'EST PAS ÉCRIT — ni valeur, ni null explicite.
     //
-    // La colonne est NOT NULL avec CHECK (1..7) jusqu'à ce que
-    // `PROPOSITION_L30` soit appliquée. Envoyer `null` produisait une violation
-    // 23502 : l'insertion échouait à tous les coups, pour cette raison EN PLUS
-    // de la contrainte sur `body`. Deux blocages indépendants, tous deux
-    // invisibles au typage — l'objet est casté, et un cast éteint exactement la
-    // vérification qui aurait servi ici.
+    // CE COMMENTAIRE DISAIT LE CONTRAIRE DE LA BASE, jusqu'au 14/08/2026. Il
+    // annonçait « NOT NULL avec CHECK (1..7) jusqu'à ce que PROPOSITION_L30
+    // soit appliquée ». Elle l'est — `20260802065500_l30_marqueur_sans_texte_
+    // ni_virage.sql` — et l'état réel, relu en production, est :
+    //
+    //   corner_index         nullable
+    //   virage_note_ou_marqueur   CHECK (
+    //     (corner_index IS NULL AND marker_elapsed_ms IS NOT NULL)
+    //     OR (corner_index BETWEEN 1 AND 30) )
+    //   texte_ou_marqueur         CHECK (
+    //     (length(body) BETWEEN 1 AND 1000)
+    //     OR (body = '' AND marker_elapsed_ms IS NOT NULL) )
+    //
+    // Ce que la contrainte AUTORISE, et qu'il faut lire avant d'écrire ici :
+    // une note de virage (1..30), ou un marqueur horodaté sans virage ni texte.
+    // **Pas une note de séance** — `corner_index` nul sans instant est refusé.
+    //
+    // C'est ce qui bloque « rapport devient la carte de séance » (jalon 6) :
+    // le bilan d'une séance entière n'a pas de place dans cette table tant que
+    // le CHECK n'est pas élargi. Voir `PROPOSITION_J6_note_de_seance.sql`.
+    //
+    // Les deux contraintes restent invisibles au typage : l'objet est casté, et
+    // un cast éteint exactement la vérification qui aurait servi.
   } as never);
 
   if (error) {

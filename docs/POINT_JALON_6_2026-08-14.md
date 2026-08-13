@@ -30,7 +30,7 @@ part, deux attendent qu'un compte coach existe.
 | **Suppression de `payment_link` (colonne)** | **votre commande** | `PROPOSITION_J6_payment_link_et_testimonials.sql` |
 | **Suppression de `coach_testimonials`** | **bloqué par la RLS** | Voir ci-dessous — il manque une fonction serveur |
 | **Suppression des quatre écrans** | **DEUX supprimés, deux gardés** | Voir ci-dessous — le plan se trompe sur deux d'entre eux |
-| **`rapport` devient la carte de séance** | **non commencé** | |
+| **`rapport` devient la carte de séance** | **bloqué par un CHECK** | Voir ci-dessous — la table refuse une note de séance |
 | **`assistant` devient le transcripteur** | **hors de ma portée** | Aucune transcription n'existe dans le dépôt. Voir ci-dessous |
 | **Phase 5bis — statut fondateur** | **colonnes en base** | `founder_since`, `founder_number` existent |
 | **Phase 5ter — écuries** | **non commencé** | Aucun écran. Le plan note lui-même que l'annuaire *« restera vide toute la première saison »* |
@@ -99,6 +99,42 @@ l'appelant d'une fonction qui n'existe pas produit une erreur à l'exécution ;
 deux.
 
 Rien à perdre au remplacement : **zéro témoignage en base.**
+
+### `rapport` : le produit est le PDF, et la table refuse l'inverse
+
+*« `rapport` devient la composition de la carte de séance — le PDF reste un
+export, plus le produit. »*
+
+Le défaut est réel et il est écrit dans l'en-tête de l'écran : le coach rédige
+son bilan, le PDF est généré, et **le bilan n'est stocké nulle part** — « il
+voyage dans le document ». Si le pilote perd le fichier, le bilan de sa séance
+n'existe plus. Le critère d'acceptation n° 3 — *« une carte de séance est-elle
+reçue par un pilote ? »* — ne peut pas être satisfait : rien n'est reçu,
+quelque chose est partagé.
+
+`coach_annotations` semblait convenir sans une ligne de schéma : elle porte
+`telemetry_session_id`, `corner_index` est nullable, et `audio_url` existe déjà.
+
+**Le CHECK dit non**, et il fallait le lire :
+
+```
+CHECK ( (corner_index IS NULL AND marker_elapsed_ms IS NOT NULL)
+     OR (corner_index BETWEEN 1 AND 30) )
+```
+
+`corner_index` nul n'est permis QUE pour un marqueur horodaté. Une note portant
+sur la séance entière est refusée. Le typage ne voyait rien — l'insertion est
+castée.
+
+`PROPOSITION_J6_note_de_seance.sql` élargit la contrainte à trois formes
+exclusives, dont la troisième exige la séance ET un texte : sans cela on
+créerait une note qui ne porte sur rien. Aucune colonne, aucune RLS touchée.
+
+**Et le code disait le contraire de la base.** Le commentaire de
+`poserMarqueur` annonçait « NOT NULL avec CHECK (1..7) jusqu'à ce que
+PROPOSITION_L30 soit appliquée ». Elle l'est depuis le 02/08, et la borne est
+30, pas 7. Corrigé : le commentaire porte désormais l'état relu en production,
+et ce que la contrainte autorise vraiment.
 
 ### `assistant` : le plan demande un backend qui n'existe pas
 
