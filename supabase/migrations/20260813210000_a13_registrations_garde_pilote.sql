@@ -1,9 +1,28 @@
 -- =============================================================================
--- PROPOSITION — un pilote peut aujourd'hui valider son propre paiement
+-- APPLIQUÉE EN PRODUCTION LE 13/08/2026 — un pilote pouvait valider son
+-- propre paiement
 -- =============================================================================
 --
--- NON APPLIQUÉE. Écriture en production, sur le contrôle d'accès de la journée.
--- Elle vous revient.
+-- Sur instruction fondateur. Éprouvée par exécution après application, en se
+-- faisant passer pour un vrai pilote (`request.jwt.claims` posé sur son `sub`),
+-- dans un bloc dont la levée finale annule tout :
+--
+--            PILOTE            ADMIN
+--   pointage          refusé   autorisé
+--   -> attended       refusé   —
+--   -> no_show        refusé   —
+--   -> cancelled    autorisé   —
+--
+-- Le contre-test est celui qui décide : une garde qui aurait aussi bloqué
+-- l'annulation aurait passé les trois premières lignes sans rien protéger de
+-- plus, et cassé le parcours légitime du pilote le jour même.
+--
+-- PREMIÈRE VÉRIFICATION FAUSSE, ET CE QU'ELLE ENSEIGNE. Le premier essai a
+-- rapporté « confirmed est passé » et j'ai failli le noter comme un défaut de
+-- la garde. L'inscription était DÉJÀ `confirmed` : `new.status IS DISTINCT FROM
+-- old.status` valait faux, il n'y avait aucune transition à refuser. Le test
+-- était trop faible, pas la garde. Une vérification qui n'éprouve pas un vrai
+-- changement d'état ne prouve rien.
 --
 -- -----------------------------------------------------------------------------
 -- LE DÉFAUT, MESURÉ SUR LA BASE LE 13/08/2026

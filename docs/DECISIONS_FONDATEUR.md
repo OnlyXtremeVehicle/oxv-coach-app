@@ -4,9 +4,9 @@
 > Bouteville**. Un seul endroit pour tout ce qui est arrêté faute d'un arbitrage,
 > à travers les neuf jalons du programme V3 et la coordination avec le site.
 >
-> **Si vous ne lisez qu'une section, lisez la § 0.** Sept points courts. Deux
-> d'entre eux sont des failles ouvertes EN PRODUCTION, vérifiées sur la base le
-> 13/08 ; un troisième arrête l'envoi de deux mesures inventées à vos clients.
+> **Si vous ne lisez qu'une section, lisez la § 0.** Six points courts. L'un
+> d'eux est une faille ouverte EN PRODUCTION depuis mai, vérifiée sur la base le
+> 13/08 ; un autre arrête l'envoi de deux mesures inventées à vos clients.
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -41,9 +41,9 @@ rien aujourd'hui, et c'est écrit aussi.
 tête parce qu'ils sont courts, qu'ils touchent des données ou des clients réels,
 et qu'aucun ne demande de réfléchir longtemps.*
 
-*Les § 0.4 et § 0.5 ne viennent pas du terrain mais d'une lecture directe de la
-base : elles étaient ouvertes depuis mai et août, et aucun document ne les
-mentionnait. Elles passent devant le reste.*
+*Le § 0.4 ne vient pas du terrain mais d'une lecture directe de la base : il est
+ouvert depuis mai, et aucun document ne le mentionnait. Il passe devant le
+reste.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -111,26 +111,7 @@ colonne, qui ment.
 tout de suite. Si oui, posez `is_admin = true` pour que l'interface cesse de
 mentir — un administrateur qu'aucun écran ne liste n'est pas administré.
 
-## 0.5 — DÉCISION · Un pilote peut valider son propre paiement
-
-*Ajouté le 13/08 après vérification directe sur la base.*
-
-Trois faits qui se combinent : `authenticated` détient `UPDATE` sur `status`,
-`attended_at`, `attended_by` ; la policy autorise `user_id = auth.uid()` ; et
-**aucun trigger `BEFORE UPDATE` ne garde la table** — les trois existants sont en
-`AFTER`, qui ne peut rien refuser.
-
-Depuis n'importe quel client porteur d'un jeton pilote, une inscription passe de
-`pending_payment` à `confirmed` et se pointe présente elle-même.
-
-`supabase/migrations/PROPOSITION_A13_registrations_before_update.sql` ferme les
-deux abus **sans casser l'annulation**, que le pilote provoque légitimement et
-qui écrit `status` — c'est pourquoi un trigger et pas un `REVOKE`. Ni RPC, ni
-bascule applicative, ni revue App Store.
-
-**Non appliquée : c'est le contrôle d'accès de la journée, en production.**
-
-## 0.6 — DÉCISION · Le quota de builds iOS est épuisé
+## 0.5 — DÉCISION · Le quota de builds iOS est épuisé
 
 Le plan gratuit EAS ne rend ses builds iOS que le **1er septembre**.
 
@@ -145,7 +126,7 @@ une séance a perdu des trames côté serveur, ce qui n'est pas arrivé.
 **Deux issues, et c'est un choix d'argent :** passer le compte EAS en plan payant,
 ou faire un build local avec Xcode. Aucune n'est à moi de trancher.
 
-## 0.7 — GESTE · La vérification qu'aucun test ne remplacera
+## 0.6 — GESTE · La vérification qu'aucun test ne remplacera
 
 **Verrouillez l'écran en pleine séance, roulez dix minutes, regardez si les
 trames sont là.**
@@ -655,6 +636,7 @@ raccourcissent.*
 
 | Date | Sujet | Décision |
 |---|---|---|
+| 13/08 | **Pointage et statut d'inscription** | **CORRIGÉ EN PRODUCTION** sur instruction fondateur. Un pilote pouvait faire passer son inscription en `confirmed` et se pointer présent lui-même : grant `UPDATE`, policy `own_or_admin`, et aucun trigger `BEFORE UPDATE`. Un trigger — pas un `REVOKE` — pour ne pas casser l'annulation, que le pilote provoque légitimement et qui écrit `status`. Éprouvé par exécution sous un vrai jeton pilote, dans les deux sens. |
 | 13/08 | **Chaîne de freinage** | **GARDÉE et rendue fiable** — contre l'arbitrage, qui proposait de la retirer. Armée sur l'écran de triage du coach (il manquait une prop), et la détection cesse de confondre un lever de pied avec un freinage : la décélération se dérive de la distance et se compare au seuil PARTAGÉ −0,3 g. Le test qui la « prouvait » employait une trajectoire qui est physiquement un lever de pied. |
 | 13/08 | **Typographie — trio du plan** | **Refus RATIFIÉ et daté du 13/08** (il s'auto-attribuait une décision du 28/07 sans trace). Söhne sous licence Klim, SF Pro réservée à Apple : motif juridique, pas esthétique. Tombera avec l'achat d'une licence. |
 | 13/08 | **Typographie — consolidation** | **Inter sort** (redondance pure avec Hanken Grotesk, 66 fichiers basculent). **Michroma RESTE en attente d'un œil** : `typo.display` porte 39 écrans, dont tout REC et tout Club, et le quota de builds iOS est épuisé jusqu'au 1er septembre. Mesure faite : les 5 familles = 2 tables de jetons en parallèle, migration L6 à l'arrêt. |
