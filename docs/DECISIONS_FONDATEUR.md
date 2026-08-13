@@ -37,13 +37,16 @@ rien aujourd'hui, et c'est écrit aussi.
 
 # 0 · APRÈS L'ESSAI TERRAIN DU 13/08 — le plus court chemin
 
-*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces sept points sont en
+*Ajouté le 13/08, étendu le même jour après l'arbitrage. Ces huit points sont en
 tête parce qu'ils sont courts, qu'ils touchent des données ou des clients réels,
 et qu'aucun ne demande de réfléchir longtemps.*
 
 *Le § 0.4 ne vient pas du terrain mais d'une lecture directe de la base : il est
 ouvert depuis mai, et aucun document ne le mentionnait. Il passe devant le
 reste.*
+
+*Le § 0.7 est arrivé en dernier, et c'est le seul du lot où deux de vos propres
+décisions se contredisent. Il tient la dernière ligne ouverte du jalon 5.*
 
 ## 0.1 — GESTE · Renseigner la longueur de vos trois tours
 
@@ -160,6 +163,82 @@ UI. C'est la seule vérification qui compte, et elle est au circuit.
 
 Si les trames ne suivent pas, le message « AUCUNE DONNÉE » s'affichera au bout de
 douze secondes — vous le saurez sur place, plus au retour.
+
+---
+
+## 0.7 — DÉCISION · Deux de vos décisions se contredisent sur un mot
+
+**C'est la dernière ligne ouverte du jalon 5, et je ne peux pas la trancher :
+elle vous oppose à vous-même.**
+
+Le 19 juillet, vous avez arbitré le vocabulaire de l'écran Signature. C'est
+inscrit dans le code, avec la mention que vous aviez demandée :
+
+> *« le mapping ci-dessous est SON arbitrage (message du 19/07), re-négociable
+> mot à mot seulement »* — `src/features/miroir/signatureLogic.ts`
+
+Le mapping :
+
+| Branche technique | Libellé Signature |
+|---|---|
+| `trajectoire` | **Cap** |
+| `regularite` | **Trajectoire** |
+| `freinage` | **Visée** |
+| `acceleration` | **Plongée** |
+| `fluidite` | **Anticipation** |
+
+Et la conséquence y est écrite noir sur blanc, comme un choix conscient :
+
+> *« sur CET écran, "Trajectoire" désigne la branche `regularite` — un sens
+> Signature distinct de la légende technique de l'accueil/du Bilan »*
+
+L'Arbre Pilote V3, lui, demande l'inverse :
+
+> *« **Vocabulaire technique** — Trajectoire, Fluidité, Freinage, Accélération,
+> Régularité, Intensité. Le double vocabulaire disparaît ; le test qui
+> verrouillait le mapping tombe. Cap, Visée, Plongée et Anticipation survivent
+> en **langage narratif** — sur-titres, phrases de ciel. »*
+> — `OXV_Mirror_V3_Arbre_Pilote.md`
+
+### Ce que ça change, exactement
+
+J'ai mesuré la portée avant de vous demander quoi que ce soit. **Elle est
+minuscule** — un écran, un module, un test :
+
+| Fichier | Ce qui bouge |
+|---|---|
+| `app/(app2)/signature.tsx` | les cinq libellés de sommet du radar |
+| `src/features/miroir/signatureLogic.ts` | `SIGNATURE_LABEL_BY_BRANCH` disparaît, remplacé par `QDI_BRANCH_LABELS` |
+| `src/features/miroir/__tests__/signatureLogic.test.ts` | le verrou sémantique tombe (l'Arbre le dit explicitement) |
+
+Rien d'autre ne lit ce vocabulaire. Les couleurs et les valeurs sont déjà
+attachées aux branches techniques : seuls les mots changent.
+
+### Le vrai coût de ne rien décider
+
+Un mot qui désigne deux branches selon l'écran. Aujourd'hui « Trajectoire »
+vaut `regularite` sur Signature et `trajectoire` sur le Bilan. Tant que les
+deux écrans ne se regardent pas, personne ne le voit. Le jour où un pilote
+compare, ou le jour où un coach lit les deux, la question tombe — et elle
+tombera sur vous.
+
+### Ce que je propose
+
+**Suivre l'Arbre V3** : vocabulaire technique partout, poétique en narration.
+C'est la décision la plus récente, elle règle la collision, et elle coûte trois
+fichiers. Mais votre arbitrage du 19/07 dit « re-négociable mot à mot
+seulement », et je le respecte : **un mot de vous suffit à le faire ou à le
+laisser.**
+
+### Un point annexe, que personne n'a relevé
+
+L'Arbre liste **six** branches techniques — Trajectoire, Fluidité, Freinage,
+Accélération, Régularité, **Intensité**. Le code en porte **cinq** :
+`QDI_BRANCHES` n'a pas d'`intensite`, et `colors.qdi` non plus. « Intensité »
+existe ailleurs dans le dépôt, mais jamais comme branche QDI.
+
+Soit l'Arbre demande une sixième branche — et c'est un vrai travail, pas un
+renommage —, soit le mot s'y est glissé. **À dire aussi.**
 
 ---
 
