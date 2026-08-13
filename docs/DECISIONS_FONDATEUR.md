@@ -4,9 +4,9 @@
 > Bouteville**. Un seul endroit pour tout ce qui est arrêté faute d'un arbitrage,
 > à travers les neuf jalons du programme V3 et la coordination avec le site.
 >
-> **Si vous ne lisez qu'une section, lisez la § 0.** Six points courts. L'un
-> d'eux est une faille ouverte EN PRODUCTION depuis mai, vérifiée sur la base le
-> 13/08 ; un autre arrête l'envoi de deux mesures inventées à vos clients.
+> **Si vous ne lisez qu'une section, lisez la § 0.** Six points courts. Le § 0.4
+> se répond par oui ou par non et vous seul le pouvez ; le § 0.2 arrête l'envoi
+> de deux mesures inventées à vos clients.
 >
 > **Ce document ne remplace pas `docs/DETTE.md`.** La dette recense ce qui est
 > constaté ; celui-ci recense ce qui est *bloqué*, et par quoi.
@@ -94,22 +94,42 @@ lancement, une fois.
 par un tiers ne vaut rien, et ce n'est pas à moi de cocher une case qui vous
 engage.
 
-## 0.4 — DÉCISION · Deux comptes ont un accès administrateur invisible
+## 0.4 — DÉCISION · Deux comptes sont administrateurs. Est-ce voulu ?
 
-*Ajouté le 13/08 après vérification directe sur la base.*
+*Ajouté le 13/08 après vérification directe sur la base — puis RÉDUIT le même
+jour, la moitié du constat étant déjà réglée.*
 
-`julie.huet.perso@gmail.com` (créé le 09/05) et `bitaube.p@gmail.com` (13/05)
-portent `role = 'admin'`. `is_admin()` lit `role` — donc **ils ont un accès
-complet aux données de tous les pilotes, depuis mai.**
+**Le fait, et il tient :** `julie.huet.perso@gmail.com` (créé le 09/05) et
+`bitaube.p@gmail.com` (13/05) portent `role = 'admin'`. `is_admin()` lit `role`
+— ils ont donc **un accès complet aux données de tous les pilotes, depuis
+mai**.
 
-Et leur colonne `is_admin` affiche `false`. Tout écran d'administration qui liste
-les administrateurs en lisant la colonne **ne les montre pas.** Deux systèmes
-d'autorisation divergent en production : la fonction, qui dit vrai, et la
-colonne, qui ment.
+Vous seul pouvez dire si c'est voulu. **Répondez par oui ou par non.** Si non,
+c'est un retrait de privilège :
 
-**Répondez par oui ou par non.** Si non, c'est un retrait de privilège à faire
-tout de suite. Si oui, posez `is_admin = true` pour que l'interface cesse de
-mentir — un administrateur qu'aucun écran ne liste n'est pas administré.
+```bash
+psql "$SUPABASE_DB_URL" -c "update public.users set role='pilot' where email in ('julie.huet.perso@gmail.com','bitaube.p@gmail.com');"
+```
+
+---
+
+**Ce qui N'EST PLUS un problème, et que l'arbitrage croyait ouvert.** Il annonce
+« deux administrateurs invisibles » et « deux systèmes d'autorisation divergents
+en production ». C'était vrai le 28 juillet. Ça ne l'est plus :
+
+- `accesLogic.estAdmin` ne lit QUE `role`, en miroir exact de `is_admin()` — le
+  repli `OR is_admin` a été retiré au lot 8, et un commentaire de vingt lignes
+  explique pourquoi le réintroduire recréerait le défaut en sens inverse ;
+- la colonne porte en base l'annotation : *« INERTE depuis le 28/07/2026 —
+  `role` fait seule autorité. Conservée le temps de vérifier le site web. Ne
+  plus s'en servir. »*
+
+**Aucun écran de l'application ne lit cette colonne pour décider d'un accès.**
+L'arbitrage ne pouvait pas le savoir : sa § F prévient qu'il n'a pas lu les
+fichiers de l'application mobile. C'est la cinquième fois que cette réserve se
+vérifie.
+
+Reste donc une seule question, et elle est de fait, pas de conception.
 
 ## 0.5 — DÉCISION · Le quota de builds iOS est épuisé
 
