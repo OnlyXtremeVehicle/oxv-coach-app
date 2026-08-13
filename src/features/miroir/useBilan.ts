@@ -123,6 +123,12 @@ export interface BilanData {
     /** Nom du coach — la voix est ATTRIBUÉE, jamais anonyme. */
     coachName: string | null;
     updatedAt: string;
+    /**
+     * Chemin de l'objet dans le bucket `coach-audio` (= id de l'annotation), ou
+     * `null` si le coach n'a rien dit à la voix. Ce n'est PAS une URL jouable :
+     * le bucket est privé, il faut une URL signée — cf. `getAnnotationAudioUrl`.
+     */
+    audioUrl: string | null;
   } | null;
   media: SessionMediaItem[];
   /** null = section ABSENTE (flag/consentement/données — fail-closed). */
@@ -353,6 +359,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
               body: premiere.body,
               coachName: nomParCoach.get(premiere.coachId) ?? null,
               updatedAt: premiere.updatedAt,
+              audioUrl: premiere.audioUrl,
             }
           : null;
       const traceMarkers = buildTraceMarkers({

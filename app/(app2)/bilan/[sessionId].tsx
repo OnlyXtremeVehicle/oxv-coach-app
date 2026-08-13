@@ -77,6 +77,7 @@ import {
   viewerShouldDismiss,
   VIEWER_PAN_ZOOM_THRESHOLD,
 } from '@/features/miroir/bilanLogic';
+import { EcouteNoteCoach } from '@/features/miroir/EcouteNoteCoach';
 import { useBilan } from '@/features/miroir/useBilan';
 import { exportAndShareBilanPdf } from '@/services/bilanPdfExportService';
 import type { SessionMediaItem } from '@/services/sessionMediaService';
@@ -303,6 +304,12 @@ export default function BilanScreen() {
             : '')}
       </Text>
       <Text style={styles.noteBody}>« {data.coachSessionNote.body} »</Text>
+      {/* La voix, quand il y en a une. Le lecteur ne se monte QUE si le coach a
+          enregistré : un bouton de lecture inerte laisserait croire à un mémo
+          absent. */}
+      {data.coachSessionNote.audioUrl ? (
+        <EcouteNoteCoach audioPath={data.coachSessionNote.audioUrl} />
+      ) : null}
     </View>
   ) : null;
 

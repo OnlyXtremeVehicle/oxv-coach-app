@@ -69,6 +69,7 @@ import {
 import { RecordingPresets, useAudioRecorder } from 'expo-audio';
 import { type CoachAnnotationTemplate } from '@/services/coachCurationLogic';
 import { listMyTemplates } from '@/services/coachCurationService';
+import { MemoVocal } from '@/features/coach/MemoVocal';
 import { theme } from '@/theme/v2';
 import { AppBar } from '@/ui/AppBar';
 import { Button } from '@/ui/Button';
@@ -83,14 +84,6 @@ const { palette, spacing, fonts, fontSize, radius } = theme;
 /** Profil de virage (topologie réelle) → étiquette sobre en clair. */
 function paceLabel(pace: CornerTopology['pace']): string {
   return pace === 'slow' ? 'Épingle' : pace === 'fast' ? 'Courbe rapide' : 'Virage moyen';
-}
-
-/** Durée du mémo vocal en « m:ss » (chrono réel de l'enregistrement). */
-function fmtDuration(ms: number): string {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const sec = totalSec % 60;
-  return `${m}:${String(sec).padStart(2, '0')}`;
 }
 
 export default function CoachAnnoterScreen() {
@@ -332,7 +325,7 @@ export default function CoachAnnoterScreen() {
         maxLength={1000}
         showCounter
       />
-      <VoiceMemo
+      <MemoVocal
         recording={!!recording}
         hasRecording={!!recordedUri}
         elapsedMs={recElapsedMs}
@@ -557,67 +550,6 @@ function TemplateChips({
           </Pressable>
         ))}
       </View>
-    </View>
-  );
-}
-
-/** Mémo vocal — bouton micro rouge + glyphe waveform (décoratif) + durée réelle. */
-function VoiceMemo({
-  recording,
-  hasRecording,
-  elapsedMs,
-  onToggle,
-}: {
-  recording: boolean;
-  hasRecording: boolean;
-  elapsedMs: number;
-  onToggle: () => void;
-}) {
-  const active = recording || hasRecording;
-  const label = recording
-    ? 'Arrêter l’enregistrement'
-    : hasRecording
-      ? 'Mémo prêt · réenregistrer'
-      : 'Appuyez pour enregistrer';
-  return (
-    <View style={s.voiceCard}>
-      <Text style={s.eyebrow}>MÉMO VOCAL</Text>
-      <View style={s.voiceRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            recording ? 'Arrêter l’enregistrement' : 'Enregistrer une note vocale'
-          }
-          onPress={onToggle}
-          style={({ pressed }) => [s.micBtn, pressed && { opacity: 0.85 }]}
-        >
-          <View style={recording ? s.micStop : s.micDot} />
-        </Pressable>
-        <View style={s.voiceMid}>
-          <Waveform active={active} />
-          <Text style={s.voiceLabel}>{label}</Text>
-        </View>
-        {active ? <Text style={s.voiceDuration}>{fmtDuration(elapsedMs)}</Text> : null}
-      </View>
-    </View>
-  );
-}
-
-/** Glyphe waveform décoratif (identité de la carte mémo), masqué de l'a11y —
- *  ce n'est pas une amplitude mesurée. Motif fixe (déterministe). */
-function Waveform({ active }: { active: boolean }) {
-  const heights = [7, 14, 22, 12, 26, 9, 20, 16, 28, 11, 18, 24, 10, 15];
-  const color = active ? palette.coachAccent : palette.cardBorderProminent;
-  return (
-    <View
-      style={s.waveform}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-    >
-      {heights.map((h, i) => (
-        <View key={i} style={[s.waveBar, { height: h, backgroundColor: color }]} />
-      ))}
     </View>
   );
 }
@@ -929,65 +861,6 @@ const s = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.6,
     color: palette.creamSoft,
-  },
-
-  // — Mémo vocal —
-  voiceCard: {
-    marginTop: spacing.sm,
-    padding: spacing.lg,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.card2,
-  },
-  voiceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  micBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: palette.coachAccent,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  micDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: palette.cream,
-  },
-  micStop: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    backgroundColor: palette.cream,
-  },
-  voiceMid: { flex: 1, gap: spacing.xs },
-  waveform: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    height: 28,
-  },
-  waveBar: {
-    width: 3,
-    borderRadius: 2,
-  },
-  voiceLabel: {
-    fontFamily: fonts.mono,
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: palette.creamMute,
-  },
-  voiceDuration: {
-    fontFamily: fonts.monoMedium,
-    fontSize: fontSize.body,
-    color: palette.creamSoft,
-    letterSpacing: 0.5,
   },
 
   // — Partage (toggle) —

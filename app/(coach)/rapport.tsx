@@ -45,7 +45,7 @@
  * expo-print ne tourne pas en Expo Go (build natif) : on le signale honnêtement.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -67,7 +67,16 @@ import {
   type MarqueurSeance,
 } from '@/features/coach/marqueursSeanceService';
 import { PressableScale } from '@/components/motion';
+import { RecordingPresets, useAudioRecorder } from 'expo-audio';
+
+import { MemoVocal } from '@/features/coach/MemoVocal';
 import { upsertSessionNote, listSessionNotes } from '@/services/coachAnnotationsService';
+import {
+  attachAudioToAnnotation,
+  requestRecordingPermission,
+  startRecording,
+  stopRecording,
+} from '@/services/coachAudioService';
 import { exportAndShareCoachReport } from '@/services/coachReportPdfService';
 import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -112,6 +121,29 @@ export default function CoachRapportScreen() {
   const [saving, setSaving] = useState(false);
   /** Horodatage du dernier enregistrement — `null` tant que rien n'est écrit. */
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  /**
+   * LA VOIX DU COACH.
+   *
+   * Le critère d'acceptation n° 3 du jalon 6 demande une carte de séance reçue
+   * par un pilote *avec l'audio*. `coach_annotations.audio_url` existe depuis le
+   * lot PR-59 et le bucket `coach-audio` aussi ; il ne manquait que le geste.
+   *
+   * L'enregistreur vit ICI et non dans le service : depuis le SDK 55,
+   * `useAudioRecorder` est un hook et expo-audio n'expose aucune fabrique hors
+   * React. Le service opère sur l'enregistreur qu'on lui passe.
+   *
+   * `noteAudioUrl` porte le mémo DÉJÀ envoyé, relu à l'ouverture. Sans lui,
+   * rouvrir une séance déjà commentée à la voix afficherait « appuyez pour
+   * enregistrer » — le coach croirait n'avoir rien dit. C'est le même défaut que
+   * le champ de texte vide, corrigé au même endroit.
+   */
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const [recording, setRecording] = useState(false);
+  const [recordedUri, setRecordedUri] = useState<string | null>(null);
+  const [noteAudioUrl, setNoteAudioUrl] = useState<string | null>(null);
+  const [recElapsedMs, setRecElapsedMs] = useState(0);
+  const recStartRef = useRef<number | null>(null);
   const [generating, setGenerating] = useState(false);
   /**
    * LES MOMENTS RETENUS — « le coach retient un marqueur, envoie ».
@@ -180,6 +212,7 @@ export default function CoachRapportScreen() {
         if (annule || notes.length === 0) return;
         setBilan(notes[0].body);
         setSavedAt(notes[0].updatedAt);
+        setNoteAudioUrl(notes[0].audioUrl);
       })
       .catch(() => undefined);
     return () => {
@@ -203,6 +236,41 @@ export default function CoachRapportScreen() {
         .filter((l): l is string => l !== null),
     [marqueurs, retenus]
   );
+
+  /**
+   * Chrono d'enregistrement — mesuré depuis l'horloge de démarrage, jamais
+   * estimé. Il se fige au `stop` (nettoyage) pour donner la durée du mémo prêt.
+   */
+  useEffect(() => {
+    if (!recording) return;
+    recStartRef.current = Date.now();
+    setRecElapsedMs(0);
+    const id = setInterval(() => {
+      if (recStartRef.current != null) setRecElapsedMs(Date.now() - recStartRef.current);
+    }, 250);
+    return () => {
+      clearInterval(id);
+      if (recStartRef.current != null) {
+        setRecElapsedMs(Date.now() - recStartRef.current);
+        recStartRef.current = null;
+      }
+    };
+  }, [recording]);
+
+  async function onToggleRecord() {
+    if (recording) {
+      const uri = await stopRecording(recorder);
+      setRecording(false);
+      setRecordedUri(uri);
+      return;
+    }
+    const ok = await requestRecordingPermission();
+    if (!ok) return;
+    if (await startRecording(recorder)) {
+      setRecordedUri(null);
+      setRecording(true);
+    }
+  }
 
   /** Retenir ou relacher un moment. Rien n'est retenu par defaut. */
   function basculeRetenu(id: string) {
@@ -229,11 +297,36 @@ export default function CoachRapportScreen() {
       telemetrySessionId: sessionId,
       body: bilan,
     });
+
+    /**
+     * L'AUDIO NE PEUT PAS PRÉCÉDER LA NOTE.
+     *
+     * La policy `coach_audio_insert` lit l'objet par son NOM, qui doit être
+     * l'uuid de l'annotation : sans annotation, l'envoi est refusé. L'ordre
+     * n'est donc pas une commodité, c'est la contrainte du stockage.
+     *
+     * Et l'échec de l'audio ne doit pas se lire comme un échec du bilan : le
+     * texte est écrit, il est visible du pilote, le dire autrement ferait
+     * recommencer le coach sur une note déjà enregistrée.
+     */
+    let audioEchoue = false;
+    if (note && recordedUri) {
+      const res = await attachAudioToAnnotation(note.id, recordedUri);
+      if (res.ok) setNoteAudioUrl(note.id);
+      else audioEchoue = true;
+    }
+
     setSaving(false);
     if (note) setSavedAt(note.updatedAt);
     Toast.show(
       note
-        ? { type: 'success', text1: 'Bilan enregistré. Votre pilote le voit.' }
+        ? audioEchoue
+          ? {
+              type: 'error',
+              text1: 'Bilan enregistré, mémo vocal non envoyé.',
+              text2: 'Votre pilote voit le texte. Réessayez pour la voix.',
+            }
+          : { type: 'success', text1: 'Bilan enregistré. Votre pilote le voit.' }
         : {
             type: 'error',
             // Trois causes possibles, toutes dites par le service dans la
@@ -269,6 +362,20 @@ export default function CoachRapportScreen() {
       : !sessionId || !studio
         ? 'empty'
         : 'nominal';
+
+  /**
+   * Un seul mémo pour les deux mises en page. L'élément est construit ici et
+   * passé aux deux `Editor` : le monter deux fois créerait deux enregistreurs.
+   */
+  const memoVocal = (
+    <MemoVocal
+      eyebrow="VOTRE VOIX (FACULTATIF)"
+      recording={recording}
+      hasRecording={!!recordedUri || !!noteAudioUrl}
+      elapsedMs={recElapsedMs}
+      onToggle={onToggleRecord}
+    />
+  );
 
   const dateLabel = params.startedAt ? formatDateShort(params.startedAt).toUpperCase() : null;
   const canGenerate = !!sessionId && !!studio;
@@ -347,7 +454,7 @@ export default function CoachRapportScreen() {
                           retenus={retenus}
                           onToggle={basculeRetenu}
                         />
-                        <Editor bilan={bilan} onChange={setBilan} />
+                        <Editor bilan={bilan} onChange={setBilan} memo={memoVocal} />
                       </View>
                       <View style={s.colPreview}>
                         <PdfPreview
@@ -370,7 +477,7 @@ export default function CoachRapportScreen() {
                       retenus={retenus}
                       onToggle={basculeRetenu}
                     />
-                    <Editor bilan={bilan} onChange={setBilan} />
+                    <Editor bilan={bilan} onChange={setBilan} memo={memoVocal} />
                     <PdfPreview
                       studio={studio}
                       bilan={bilan}
@@ -486,8 +593,23 @@ function MomentsPanel({
   );
 }
 
-/** VOTRE RÉDACTION — un seul champ libre (le service ne rend qu'un bilan). */
-function Editor({ bilan, onChange }: { bilan: string; onChange: (t: string) => void }) {
+/**
+ * VOTRE RÉDACTION — un seul champ libre (le service ne rend qu'un bilan).
+ *
+ * `memo` est passé plutôt que monté ici : l'écran a deux mises en page (console
+ * et compagnon) donc deux appels à `Editor`, et l'enregistreur ne peut exister
+ * qu'en UN exemplaire — deux `useAudioRecorder` sur un même écran se
+ * disputeraient le micro.
+ */
+function Editor({
+  bilan,
+  onChange,
+  memo,
+}: {
+  bilan: string;
+  onChange: (t: string) => void;
+  memo?: ReactNode;
+}) {
   return (
     <View>
       <Text style={s.sectionLabel}>VOTRE RÉDACTION</Text>
@@ -502,6 +624,7 @@ function Editor({ bilan, onChange }: { bilan: string; onChange: (t: string) => v
         showCounter
         optional
       />
+      {memo}
     </View>
   );
 }

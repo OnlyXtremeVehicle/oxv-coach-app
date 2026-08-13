@@ -8,9 +8,10 @@
 
 ## En une ligne
 
-**Le jalon 6 est fait aux trois quarts, et ce qui reste n'est pas du code.**
-Neuf lignes sur quatorze sont livrées, trois attendent une commande de votre
-part, deux attendent qu'un compte coach existe.
+**Toutes les lignes de code du jalon 6 sont traitées ; ce qui reste n'est pas
+du code.** Onze lignes sur quatorze sont livrées, une attend une commande de
+votre part (`payment_link`), deux attendent qu'un compte coach existe et qu'un
+run ait lieu.
 
 ---
 
@@ -30,7 +31,7 @@ part, deux attendent qu'un compte coach existe.
 | **Suppression de `payment_link` (colonne)** | **votre commande** | `PROPOSITION_J6_payment_link_et_testimonials.sql` |
 | **Suppression de `coach_testimonials`** | **bloqué par la RLS** | Voir ci-dessous — il manque une fonction serveur |
 | **Suppression des quatre écrans** | **DEUX supprimés, deux gardés** | Voir ci-dessous — le plan se trompe sur deux d'entre eux |
-| **`rapport` devient la carte de séance** | **bloqué par un CHECK** | Voir ci-dessous — la table refuse une note de séance |
+| **`rapport` devient la carte de séance** | **fait le 14/08** | Contrainte élargie, note écrite, LUE par le pilote, et la voix avec |
 | **`assistant` devient le transcripteur** | **hors de ma portée** | Aucune transcription n'existe dans le dépôt. Voir ci-dessous |
 | **Phase 5bis — statut fondateur** | **colonnes en base** | `founder_since`, `founder_number` existent |
 | **Phase 5ter — écuries** | **non commencé** | Aucun écran. Le plan note lui-même que l'annuaire *« restera vide toute la première saison »* |
@@ -100,7 +101,7 @@ deux.
 
 Rien à perdre au remplacement : **zéro témoignage en base.**
 
-### `rapport` : le produit est le PDF, et la table refuse l'inverse
+### `rapport` : le produit était le PDF — il ne l'est plus
 
 *« `rapport` devient la composition de la carte de séance — le PDF reste un
 export, plus le produit. »*
@@ -126,9 +127,30 @@ CHECK ( (corner_index IS NULL AND marker_elapsed_ms IS NOT NULL)
 sur la séance entière est refusée. Le typage ne voyait rien — l'insertion est
 castée.
 
-`PROPOSITION_J6_note_de_seance.sql` élargit la contrainte à trois formes
-exclusives, dont la troisième exige la séance ET un texte : sans cela on
-créerait une note qui ne porte sur rien. Aucune colonne, aucune RLS touchée.
+`20260814210000_j6_note_de_seance.sql` — **appliquée** — élargit la contrainte à
+trois formes exclusives, dont la troisième exige la séance ET un texte : sans
+cela on créerait une note qui ne porte sur rien. Aucune colonne, aucune RLS
+touchée.
+
+**Les deux moitiés sont câblées.** Le coach enregistre (`upsertSessionNote`,
+une note par séance et par coach : rédiger à nouveau REMPLACE) ; le pilote la
+lit dans son bilan, sous « LE MOT DE VOTRE COACH · *nom* », voix attribuée.
+N'écrire que la première moitié aurait reproduit le défaut corrigé : quelque
+chose d'écrit que personne ne lit.
+
+**Et la voix, qui manquait au critère n° 3.** `audio_url` et le bucket privé
+`coach-audio` existent depuis le 18/06, avec quatre policies dont une écrite
+exprès pour laisser le pilote lire. Mesuré le 14/08 : `getAnnotationAudioUrl`
+n'avait **aucun appelant**. Le coach pouvait parler, personne ne pouvait
+entendre — la garde posée, non armée, dans sa forme la plus nue. Le mémo vocal
+est sorti de `annoter` (composant partagé, styles compris, pour ne pas dépendre
+de la survie d'un écran), le rapport l'enregistre, le bilan le joue.
+
+L'ordre des deux écritures n'est pas un confort : `coach_audio_insert` autorise
+l'objet si son NOM est l'uuid d'une annotation. L'audio ne peut donc pas
+précéder la note. `chaineAudioArmee.guard.test.ts` tient cet ordre, et surtout
+tient l'invariant qui manquait — **les deux moitiés ont un appelant de
+production**.
 
 **Et le code disait le contraire de la base.** Le commentaire de
 `poserMarqueur` annonçait « NOT NULL avec CHECK (1..7) jusqu'à ce que
@@ -147,7 +169,7 @@ transcription demande trois choses que le dépôt n'a pas :
 
 | | |
 |---|---|
-| un moteur de transcription | **zéro occurrence** dans tout le dépôt. `coachAudioService` enregistre et attache un fichier ; rien ne le lit |
+| un moteur de transcription | **zéro occurrence** dans tout le dépôt. Depuis le 14/08 le fichier est enregistré, envoyé et JOUÉ — mais jouer n'est pas transcrire, et rien ne le transcrit |
 | une fonction serveur | l'audio ne peut pas être transcrit côté application |
 | une clé d'API payante | donc une **dépendance critique** — validation fondateur (CLAUDE.md) |
 
