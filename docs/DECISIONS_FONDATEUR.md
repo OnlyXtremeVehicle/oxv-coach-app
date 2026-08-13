@@ -282,11 +282,17 @@ débriefing sont calculés, stockés, et affichés nulle part.
 
 - **`coach_reading_weights.w_regularity`** garde son nom : c'est une colonne, et
   le schéma vous revient. Le champ TypeScript est passé à `wConsistency`, la
-  correspondance est faite au seul endroit qui mappe la table.
-- **`dataColors.regularity`** sert encore de teinte à la pondération « Constance »
-  de l'écran coach. C'est la couleur de la BRANCHE QDI : l'employer là rejoue en
-  couleur l'homonymie qu'on vient de retirer des mots. Une teinte propre à la
-  marge est à trancher.
+  correspondance est faite au seul endroit qui mappe la table. La migration est
+  écrite et prête —
+  `supabase/migrations/PROPOSITION_J6_w_regularity_vers_w_consistency.sql`.
+  **Le moment est bon et ne le restera pas** : la table est vide tant qu'aucun
+  compte coach n'existe, et il n'en existe aucun. Un mot suffit.
+- **Les teintes empruntées : RÉGLÉ le 14/08**, sans rien vous demander. « Constance »
+  portait `dataColors.regularity` et « Fluidité » `dataColors.flow` — deux
+  couleurs de BRANCHES QDI posées sur des sous-composantes de la marge qui ne
+  sont pas ces branches. La couleur ne distinguait d'ailleurs rien : véhicule et
+  pilote partageaient déjà la même. Les quatre poids sont désormais neutres —
+  ce sont des réglages, pas des données.
 
 ---
 

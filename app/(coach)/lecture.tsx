@@ -142,6 +142,26 @@ export default function CoachLectureScreen() {
   // Quatre composantes RÉELLES de la lecture (coachReadingLogic). Couleur = QDI
   // fixe si la composante est une branche QDI, neutre sinon (cf. en-tête).
   const shares = normalizedShares([vehicle, pilot, constance, smoothness]);
+
+  /*
+    LES QUATRE POIDS PORTENT LA MÊME TEINTE — corrigé le 14/08/2026.
+
+    « Constance » prenait `dataColors.regularity` et « Fluidité »
+    `dataColors.flow` : deux teintes de BRANCHES QDI, posées sur des
+    sous-composantes de la MARGE qui ne sont pas ces branches.
+
+    Le canon est explicite — « couleurs QDI = données uniquement » — et l'emprunt
+    rejouait en couleur l'homonymie qu'on venait de retirer des mots : le violet
+    de la branche `regularite` sur une constance qui vaut 0 quand la branche vaut
+    34, sur la même séance.
+
+    La couleur ne distinguait d'ailleurs rien de fiable : véhicule et pilote
+    partageaient DÉJÀ `palette.secondary`. Deux rangs sur quatre teintés, deux
+    non — ce n'était pas un code, c'était un reste.
+
+    Ces quatre lignes sont des RÉGLAGES, pas des données. Le libellé et la valeur
+    les distinguent, comme ils le faisaient déjà pour les deux premières.
+  */
   const components = [
     {
       key: 'vehicle',
@@ -160,17 +180,14 @@ export default function CoachLectureScreen() {
       label: 'Constance',
       value: constance,
       onChange: setConstance,
-      // TODO couleur : `dataColors.regularity` est la teinte de la BRANCHE QDI.
-      // L'employer ici rejoue en couleur l'homonymie qu'on vient de retirer des
-      // mots. Une teinte propre à la marge est à trancher (registre fondateur).
-      color: dataColors.regularity,
+      color: palette.secondary,
     },
     {
       key: 'smoothness',
       label: 'Fluidité',
       value: smoothness,
       onChange: setSmoothness,
-      color: dataColors.flow,
+      color: palette.secondary,
     },
   ].map((c, i) => ({ ...c, share: shares[i] }));
 
