@@ -40,7 +40,25 @@ const POLAR_PROTOCOL = {
  * boot dans Expo Go (où le module natif n'existe pas). Retourne `null`
  * si l'import échoue — le service tombe alors en mode no-op.
  */
-function loadBleManagerCtor(): (new () => BleManager) | null {
+/**
+ * IDENTIFIANT DE RESTAURATION D'ÉTAT — la condition que l'arrière-plan exige.
+ *
+ * Déclarer `UIBackgroundModes: ["bluetooth-central"]` ne suffit pas. iOS ne
+ * réveille l'application pour un évènement Bluetooth QUE si le gestionnaire
+ * central a été créé avec un identifiant de restauration : c'est par lui que le
+ * système retrouve la session à réanimer.
+ *
+ * Sans lui, le manifeste est accepté, la revue App Store passe, et rien ne se
+ * produit — l'application est suspendue à l'extinction de l'écran exactement
+ * comme avant. Le mode existerait sur le papier et ne protégerait rien : la
+ * forme même du défaut que ce dépôt combat.
+ *
+ * La chaîne doit être STABLE d'un lancement à l'autre. La changer revient à
+ * abandonner la session précédente.
+ */
+const BLE_RESTORE_ID = 'fr.oxvehicle.app.ble.central';
+
+function loadBleManagerCtor(): (new (opts?: unknown) => BleManager) | null {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('react-native-ble-plx').BleManager;
@@ -161,7 +179,23 @@ export class RaceBoxBluetoothService {
 
   constructor() {
     const Ctor = loadBleManagerCtor();
-    this.manager = Ctor ? new Ctor() : null;
+    // `restoreStateIdentifier` est ce qui rend l'arrière-plan RÉEL (cf.
+    // `BLE_RESTORE_ID`). `restoreStateFunction` est appelée par iOS au réveil
+    // avec les périphériques restaurés : on ne s'en sert pas pour reconnecter —
+    // le service a déjà sa reconnexion illimitée — mais l'omettre laisse
+    // react-native-ble-plx sans point d'entrée de restauration.
+    this.manager = Ctor
+      ? new Ctor({
+          restoreStateIdentifier: BLE_RESTORE_ID,
+          restoreStateFunction: (etat: unknown) => {
+            const n = (etat as { connectedPeripherals?: unknown[] } | null)?.connectedPeripherals
+              ?.length;
+            console.warn(
+              `[OXV][ble] état restauré par iOS (${n ?? 0} périphérique(s) connecté(s)).`
+            );
+          },
+        })
+      : null;
     this.frameBuffer = new UbxFrameBuffer();
   }
 

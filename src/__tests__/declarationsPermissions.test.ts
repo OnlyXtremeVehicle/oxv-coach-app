@@ -230,23 +230,58 @@ describe('localisation — les options du plugin, qui possède les clés', () =>
  * refus classique en revue App Store, et promesse contredite par le libellé de
  * localisation livré dans le même binaire.
  *
- * `modes` a été retiré d'app.json. La garde porte désormais sur la SOURCE QUI
- * GAGNE — les options du greffon — comme pour la localisation et l'audio.
+ * `modes` avait été retiré d'app.json. La garde porte sur la SOURCE QUI GAGNE —
+ * les options du greffon — comme pour la localisation et l'audio.
+ *
+ * ===========================================================================
+ * LE 13/08/2026, LA DÉCISION S'EST INVERSÉE — ET LA GARDE AVEC ELLE
+ * ===========================================================================
+ *
+ * Le mode est désormais RÉCLAMÉ, sur décision explicite du fondateur, parce que
+ * l'usage a rattrapé la déclaration : la capture doit survivre à un écran
+ * verrouillé. Le premier essai terrain l'a montré — un téléphone posé, et le
+ * flux se tait sans que personne ne l'apprenne avant le retour.
+ *
+ * **Ce qui ne change pas, c'est l'exigence de COHÉRENCE.** Ce fichier
+ * n'interdisait pas le mode : il interdisait de le réclamer sans l'exercer. La
+ * garde s'inverse donc sans s'affaiblir, et vérifie maintenant que les trois
+ * morceaux tiennent ENSEMBLE.
+ *
+ * Deux sur trois reste le pire des états : un manifeste qui promet à Apple une
+ * activité qu'aucune ligne n'exerce, ou un identifiant de restauration qu'aucun
+ * mode ne réveille jamais. Le refus en revue App Store est le même dans les deux
+ * sens, et le silence de la capture aussi.
  */
-describe('arrière-plan Bluetooth — les options du greffon, qui possède la clé', () => {
-  it('aucun mode n’est réclamé : c’est `modes` qui écrit UIBackgroundModes', () => {
-    expect(BLE_PLX?.modes).toBeUndefined();
+describe('arrière-plan Bluetooth — réclamé, et RÉELLEMENT exercé', () => {
+  /**
+   * C'est `modes` qui écrit `UIBackgroundModes` sur iOS — vérifié dans le
+   * greffon installé (`plugin/build/withBLE.js:22`), et non déduit. La clé ne
+   * doit donc JAMAIS être recopiée à la main dans `ios.infoPlist` : deux
+   * sources pour une même valeur finissent par diverger, et c'est celle du
+   * greffon qui gagne.
+   */
+  it('le mode central est réclamé par les options du greffon', () => {
+    expect(BLE_PLX?.modes).toContain('central');
   });
 
-  it('le drapeau Android reste explicitement faux', () => {
+  it('la clé n’est PAS recopiée à la main dans le manifeste', () => {
+    expect(PLIST.UIBackgroundModes).toBeUndefined();
+  });
+
+  it('le drapeau Android suit la même décision', () => {
     // Sans effet sur iOS, mais il commande bien le manifeste Android.
-    expect(BLE_PLX?.isBackgroundEnabled).toBe(false);
+    expect(BLE_PLX?.isBackgroundEnabled).toBe(true);
   });
 
-  it('le code n’ouvre aucune session BLE restaurable', () => {
-    // Un identifiant de restauration serait le seul usage légitime du mode
-    // d'arrière-plan. Il n'y en a pas : la cohérence tient dans les deux sens.
-    expect(BLE).not.toMatch(/restoreStateIdentifier|CBCentralManagerOptionRestore/);
+  /**
+   * LE MORCEAU QUI REND LE MODE RÉEL. iOS ne réveille l'application pour un
+   * évènement Bluetooth QUE si le gestionnaire central porte un identifiant de
+   * restauration : c'est par lui que le système retrouve la session.
+   *
+   * Sans lui, le manifeste est accepté, la revue passe, et rien ne se produit.
+   */
+  it('le code ouvre bien une session BLE restaurable', () => {
+    expect(BLE).toMatch(/restoreStateIdentifier/);
   });
 });
 

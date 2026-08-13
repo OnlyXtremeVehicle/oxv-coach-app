@@ -19,9 +19,14 @@
  * Le mapping trame→ligne est isolé et testé (captureFrameMapping). Ici on ne
  * fait que l'orchestration réseau/état.
  *
- * Doctrine « silence en piste » : ce service n'affiche rien. La capture tourne
- * tant que l'app est au premier plan (V1 ; BLE arrière-plan = entitlements à
- * venir).
+ * Doctrine « silence en piste » : ce service n'affiche rien.
+ *
+ * DEPUIS LE 13/08/2026, LA CAPTURE SURVIT À L'ARRIÈRE-PLAN. `UIBackgroundModes:
+ * ["bluetooth-central"]` est déclaré et le gestionnaire BLE porte un identifiant
+ * de restauration : iOS réveille l'application pour chaque notification du
+ * boîtier, écran verrouillé, téléphone en poche. Le keep-awake reste posé — il
+ * évite le réveil constant quand l'écran peut rester allumé — mais il n'est plus
+ * la seule chose qui tienne la séance debout.
  *
  * `elapsed_ms` dérive de l'horloge murale et est rendu STRICTEMENT CROISSANT
  * par session (`nextElapsedMs`) : ce n'est pas un confort d'ordonnancement,
@@ -120,12 +125,15 @@ const FLUSH_INTERVAL_MS = 4_000;
 const BUFFER_MAX_FRAMES = 1_500;
 
 /**
- * Stratégie écran v1 (Valencia §4.4) : PREMIER PLAN ASSUMÉ. La capture BLE tourne
- * au premier plan ; pour survivre à un relais de 20 min sans que l'auto-verrouillage
- * coupe la radio, on maintient l'écran allumé pendant toute la capture (activé à
- * l'armement, libéré à l'arrêt). `app.json` est mis en cohérence : pas de mode
- * arrière-plan BLE revendiqué (le keep-awake couvre le besoin ; l'arrière-plan BLE
- * = entitlements à venir). Le tag isole notre verrou des autres usages.
+ * L'écran reste allumé pendant la capture (activé à l'armement, libéré à
+ * l'arrêt). Le tag isole notre verrou des autres usages.
+ *
+ * CE N'EST PLUS LA SEULE DÉFENSE. Jusqu'au 13/08/2026, ce service assumait le
+ * premier plan et ne réclamait aucun mode système : un écran verrouillé
+ * arrêtait donc la capture, sans le dire à personne.
+ * Le mode `bluetooth-central` est maintenant déclaré. Le keep-awake devient ce
+ * qu'il aurait toujours dû être : un confort qui épargne des réveils, pas la
+ * condition de survie d'une séance.
  */
 const KEEP_AWAKE_TAG = 'oxv-capture';
 
@@ -742,22 +750,30 @@ function ecouterArrierePlan(state: CaptureState): () => void {
     const { AppState } = require('react-native') as typeof import('react-native');
     const sub = AppState.addEventListener('change', (etat) => {
       if (current !== state) return;
+      /**
+       * L'ARRIÈRE-PLAN N'EST PLUS UNE COUPURE — depuis l'activation du mode
+       * `bluetooth-central` (13/08/2026).
+       *
+       * Ce chemin déclarait la capture INTERROMPUE dès que l'écran s'éteignait.
+       * C'était juste tant que l'application n'était pas réveillée en
+       * arrière-plan : le fil JS gelait, les notifications BLE cessaient, et le
+       * dire valait mieux que de laisser croire à un enregistrement continu.
+       *
+       * Avec `UIBackgroundModes` et l'identifiant de restauration, iOS réveille
+       * l'application pour chaque notification du boîtier : les trames
+       * continuent d'arriver, écran verrouillé, téléphone en poche. Déclarer
+       * une interruption ici afficherait maintenant une panne qui n'existe pas,
+       * et — pire — armerait le timeout d'abandon de quinze minutes sur une
+       * séance parfaitement vivante.
+       *
+       * On se contente donc de TRACER le passage, et on laisse la veille du
+       * silence faire son travail : si le flux s'arrête vraiment, elle le dira
+       * au bout de douze secondes, arrière-plan ou pas. C'est la mesure qui
+       * décide, pas la supposition.
+       */
       if (etat === 'background' || etat === 'inactive') {
-        if (linkStatus === 'interrupted' || linkStatus === 'lost') return;
-        console.warn('[OXV][capture] application en arrière-plan — le flux BLE va se taire.');
-        setLinkStatus('interrupted');
-        useSessionStore.getState().pauseSession();
-        state.gapStartMs = Date.now();
-        startInterruptTimeout(state);
+        console.warn('[OXV][capture] passage en arrière-plan — la capture continue (BLE central).');
         return;
-      }
-      if (etat === 'active' && linkStatus === 'interrupted') {
-        // Le retour au premier plan ne garantit pas que le boîtier réémet : on
-        // laisse la première trame reçue rétablir 'recording' (cf. `onData`),
-        // et on se contente de clore le trou et de relancer la veille.
-        clearInterruptTimeout(state);
-        logLinkGap(state);
-        armerVeilleSilence(state);
       }
     });
     return () => sub.remove();
