@@ -68,7 +68,8 @@ import {
 import { pairesRoulees } from '@/features/data/pairesLogic';
 import { vehicleName } from '@/features/vous/garageLogic';
 import { listMyVehicles, type Vehicle } from '@/services/garageService';
-import { fetchAllSessions } from '@/services/sessionsService';
+import { messageHorsLigne } from '@/features/data/horsLigneLogic';
+import { fetchAllSessions, seancesDuCache } from '@/services/sessionsService';
 import {
   SaisonCircuitSheet,
   SaisonSections,
@@ -138,6 +139,11 @@ export default function DataHubScreen() {
   }, []);
 
   // Mode comparaison : sélection bornée à deux (aucun gagnant).
+  /**
+   * ISO de la dernière lecture réseau réussie, quand la liste affichée vient de
+   * la copie locale. `null` = liste fraîche.
+   */
+  const [horsLigneDepuis, setHorsLigneDepuis] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -152,9 +158,30 @@ export default function DataHubScreen() {
       try {
         const rows = await fetchAllSessions(userId, { strict: true });
         setSessions(rows);
+        setHorsLigneDepuis(null);
         setStatus('ready');
       } catch {
-        setStatus('error');
+        /**
+         * PAS DE RÉSEAU N'EST PAS PAS DE SÉANCES.
+         *
+         * L'écran basculait en état d'erreur, avec un bouton « Réessayer ». Au
+         * retour de Bouteville — rase campagne — le pilote venait de rouler,
+         * ses séances étaient en base, ses trames sur son téléphone, et il ne
+         * pouvait rien regarder.
+         *
+         * On sert donc la dernière liste connue, ET ON DIT qu'elle date :
+         * présenter une donnée d'hier comme celle du jour serait le défaut
+         * inverse, et le plus grave des deux. Sans copie locale — un téléphone
+         * qui n'a jamais lu la liste — l'état d'erreur reste le bon.
+         */
+        const copie = seancesDuCache(userId);
+        if (copie !== null) {
+          setSessions(copie.seances);
+          setHorsLigneDepuis(copie.capturéLe);
+          setStatus('ready');
+        } else {
+          setStatus('error');
+        }
       } finally {
         if (mode === 'refresh') setRefreshing(false);
       }
@@ -371,6 +398,21 @@ export default function DataHubScreen() {
   );
 
   // Corps : loading / error / vide / liste.
+  /**
+   * LE BANDEAU HORS-LIGNE — au-dessus de la liste, jamais dedans.
+   *
+   * Il cadre la lecture de tout ce qui suit. Placé plus bas, il commenterait des
+   * séances qu'on aurait déjà lues comme si elles étaient d'aujourd'hui.
+   * `null` quand la liste est fraîche : le cas nominal est SILENCIEUX.
+   */
+  const phraseHorsLigne = messageHorsLigne(horsLigneDepuis);
+  const bandeauHorsLigne =
+    phraseHorsLigne !== null ? (
+      <View style={styles.horsLigne} accessible accessibilityRole="alert">
+        <Text style={styles.horsLigneTexte}>{phraseHorsLigne}</Text>
+      </View>
+    ) : null;
+
   let body: ReactNode;
   if (status === 'loading') {
     body = (
@@ -395,6 +437,7 @@ export default function DataHubScreen() {
     body = (
       <View style={styles.staticWrap}>
         {bigHeader}
+        {bandeauHorsLigne}
         <StateView
           state="empty"
           emptyMessage="Vos séances apparaîtront ici après votre première journée."
@@ -415,7 +458,17 @@ export default function DataHubScreen() {
               data={filtered}
               renderItem={renderItem}
               keyExtractor={(item) => item.id}
-              ListHeaderComponent={bigHeader}
+              /**
+               * Le bandeau hors-ligne voyage AVEC l'en-tête, et non collé au
+               * haut de l'écran : il doit défiler avec la liste qu'il qualifie.
+               * Fixe, il finirait par commenter des séances qu'on ne voit plus.
+               */
+              ListHeaderComponent={
+                <>
+                  {bigHeader}
+                  {bandeauHorsLigne}
+                </>
+              }
               showsVerticalScrollIndicator={false}
               onScroll={onScroll}
               scrollEventThrottle={scrollProps.scrollEventThrottle}
@@ -575,6 +628,20 @@ const styles = StyleSheet.create({
   },
 
   // États
+  horsLigne: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.text.mid,
+    paddingLeft: 12,
+    marginBottom: space.md,
+  },
+  horsLigneTexte: {
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 1.5,
+    // `text.mid`, jamais `text.low` : ce bandeau se lit au retour du circuit,
+    // en voiture ou en plein soleil. Plancher de contraste 7:1.
+    color: colors.text.mid,
+  },
   loading: {
     marginTop: space.lg,
   },

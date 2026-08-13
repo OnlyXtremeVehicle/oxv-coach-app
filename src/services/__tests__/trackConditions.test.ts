@@ -46,9 +46,9 @@
  * on neutralise l'import, et la fonction devient appelable. Patron déjà employé
  * par une quinzaine de suites du dépôt.
  */
-jest.mock('@/lib/supabase', () => ({ supabase: {} }));
-
 import { trackConditions, type WeatherData } from '../weatherService';
+
+jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 
 /** Une météo dont AUCUNE mesure n'est renseignée — le cas du repli. */
 const RIEN: WeatherData = {

@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
  * il faisait célébrer CHAQUE séance comme record personnel. Deux copies d'une
  * même règle finissent toujours par ne plus couvrir les mêmes tables.
  */
+import { cacheGetStale, cacheSet, STORAGE_KEYS } from '@/lib/mmkv';
 import { nombresDuTour, seancesEnNombres } from '@/lib/numeriquesPostgrest';
 import type { TelemetrySession, Lap } from '@/types/telemetry';
 
@@ -179,6 +180,67 @@ export function calculateEvolution(
 }
 
 // ============================================================
+// COPIE LOCALE DE LA LISTE — pour le retour du circuit, sans réseau
+// ============================================================
+
+/**
+ * `STORAGE_KEYS.LAST_SESSIONS` ÉTAIT DÉCLARÉE ET JAMAIS ÉCRITE.
+ *
+ * `cacheClearReadCache()` la vidait consciencieusement à chaque déconnexion.
+ * Rien ne l'avait jamais remplie.
+ *
+ * Ce que ça donnait au retour de Bouteville, en rase campagne : `fetchAllSessions`
+ * est appelée en mode strict par l'écran Data, l'absence de réseau lève, et
+ * l'écran bascule en état d'ERREUR. Le pilote venait de rouler, ses séances
+ * étaient en base et ses trames sur son téléphone — et il voyait un bouton
+ * « Réessayer ».
+ *
+ * Le repli sert UNIQUEMENT le chemin d'erreur, et l'écran DIT qu'il sert une
+ * liste d'hier. Présenter une donnée périmée comme celle du jour serait le
+ * défaut inverse, et celui-là est plus grave.
+ */
+const CACHE_SEANCES_MAX = 50;
+
+function cleSeances(userId: string): string {
+  return `${STORAGE_KEYS.LAST_SESSIONS}:${userId}`;
+}
+
+/** Ce que la copie locale contient, avec sa date de prise. */
+export interface SeancesEnCache {
+  seances: TelemetrySession[];
+  /** ISO — l'instant de la dernière lecture réseau réussie. */
+  capturéLe: string;
+}
+
+function cacheSeances(userId: string, seances: TelemetrySession[]): void {
+  try {
+    // Bornée : la liste est déjà triée du plus récent au plus ancien, et un
+    // pilote de trois saisons n'a pas besoin de tout emporter hors ligne.
+    const charge: SeancesEnCache = {
+      seances: seances.slice(0, CACHE_SEANCES_MAX),
+      capturéLe: new Date().toISOString(),
+    };
+    cacheSet(cleSeances(userId), charge);
+  } catch (e) {
+    // Best-effort : un cache qui n'a pas pu s'écrire ne doit jamais faire
+    // échouer la lecture qui, elle, a réussi.
+    console.warn('[Sessions] mise en cache locale KO :', e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * La dernière liste connue, MÊME PÉRIMÉE, ou `null` si l'on n'a jamais lu.
+ *
+ * À n'appeler que sur un chemin d'erreur, et à ne jamais afficher sans dire
+ * d'où elle vient — `capturéLe` est là pour ça.
+ */
+export function seancesDuCache(userId: string): SeancesEnCache | null {
+  const charge = cacheGetStale<SeancesEnCache>(cleSeances(userId));
+  if (charge === null || !Array.isArray(charge.seances) || charge.seances.length === 0) return null;
+  return charge;
+}
+
+// ============================================================
 // NOUVEAU B.5 — Liste sessions et stats globales
 // ============================================================
 
@@ -234,7 +296,18 @@ export async function fetchAllSessions(
       console.error('[Sessions] Fetch all error:', error);
       return [];
     }
-    return seancesEnNombres(data as TelemetrySession[]);
+    const seances = seancesEnNombres(data as TelemetrySession[]);
+    /**
+     * On garde une copie locale — pour le retour du circuit, sans réseau.
+     *
+     * Seulement quand la lecture n'était pas filtrée : une liste restreinte à un
+     * circuit ou à une plage de dates n'est pas « la liste des séances », et la
+     * mettre en cache sous ce nom ferait servir un sous-ensemble comme un tout.
+     */
+    const listeComplete =
+      !options.circuitId && !options.fromDate && !options.toDate && !options.offset;
+    if (listeComplete) cacheSeances(userId, seances);
+    return seances;
   } catch (error) {
     if (options.strict) throw error;
     console.error('[Sessions] Fetch all exception:', error);
