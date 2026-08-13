@@ -32,6 +32,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { analyzeAndPersistSession } from '@/services/analyzeSessionService';
+import {
+  concerneLaSeance,
+  messageSynchro,
+  type EtatSynchro,
+} from '@/features/rec/syncEnAttenteLogic';
+import { lireEtatSynchro, rejouerMaintenant } from '@/services/syncEnAttenteService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
 import { loadBiometryConsents } from '@/services/consentService';
 import { computeQuality } from '@/services/v2/biometryLogic';
@@ -263,6 +269,22 @@ export default function FinScreen() {
       ]}
     >
       <View style={styles.center}>
+        {/*
+          CE QUI RESTE SUR LE TÉLÉPHONE, DIT ICI ET NULLE PART AILLEURS.
+
+          `hasPending`, `pendingSessionIds` et le dossier de quarantaine
+          existaient depuis longtemps et n'avaient AUCUN appelant. Une séance
+          entière pouvait dormir sur le disque sans le moindre signe — pas de
+          bandeau, pas de compteur. Le seul symptôme externe était une ligne
+          figée en `recording`, découverte en interrogeant la base à la main.
+
+          C'est ce silence qui transforme un incident RÉPARABLE — les octets
+          sont là — en perte apparente. Le bandeau est muet quand tout est
+          parti : annoncer « tout est synchronisé » à chaque séance diluerait
+          le seul message qui compte.
+        */}
+        <BandeauSynchro sessionId={sessionId} />
+
         {phase === 'fini' ? (
           <FiniPhase
             summary={summary}
@@ -663,7 +685,103 @@ function IncidentSheet({
   );
 }
 
+/**
+ * Bandeau d'état de la file de synchronisation.
+ *
+ * Il ne s'affiche QUE s'il a quelque chose de factuel à dire, et il propose un
+ * rejeu manuel uniquement quand ce rejeu peut aboutir — proposer un bouton qui
+ * ne sort rien de la quarantaine serait promettre ce qu'on ne peut pas tenir.
+ */
+function BandeauSynchro({ sessionId }: { sessionId: string }) {
+  const [etat, setEtat] = useState<EtatSynchro | null>(null);
+  const [enCours, setEnCours] = useState(false);
+
+  useEffect(() => {
+    let vivant = true;
+    lireEtatSynchro()
+      .then((e) => {
+        if (vivant) setEtat(e);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivant = false;
+    };
+  }, []);
+
+  if (etat === null) return null;
+  const msg = messageSynchro(etat);
+  if (msg === null) return null;
+  // Une opération d'une séance d'avant-hier n'a rien à faire sur l'écran de
+  // fin de CELLE-CI — sauf si elle est bloquée, qui se dit toujours.
+  if (msg.registre === 'attente' && !concerneLaSeance(etat, sessionId || null)) return null;
+
+  const rejouer = () => {
+    if (enCours) return;
+    setEnCours(true);
+    rejouerMaintenant()
+      .then(setEtat)
+      .catch(() => undefined)
+      .finally(() => setEnCours(false));
+  };
+
+  return (
+    <View style={styles.syncBandeau} accessibilityLiveRegion="polite">
+      <Text style={styles.syncTitre}>{msg.titre}</Text>
+      <Text style={styles.syncCorps}>{msg.corps}</Text>
+      {msg.rejeuUtile ? (
+        <PressScale
+          onPress={rejouer}
+          accessibilityLabel="Réessayer l’envoi maintenant"
+          containerStyle={styles.syncActionContainer}
+          style={styles.syncAction}
+        >
+          <Text style={styles.syncActionLabel}>
+            {enCours ? 'Envoi en cours…' : 'Réessayer maintenant'}
+          </Text>
+        </PressScale>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  // Bandeau de synchronisation — sobre, factuel, jamais alarmiste.
+  syncBandeau: {
+    marginHorizontal: space.xl,
+    marginBottom: space.lg,
+    padding: space.lg,
+    borderRadius: radius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border.card,
+    backgroundColor: colors.bg.card2,
+  },
+  syncTitre: {
+    fontFamily: typo.mono,
+    fontSize: 11,
+    letterSpacing: 2,
+    color: colors.text.mid,
+    marginBottom: space.xs,
+  },
+  syncCorps: {
+    fontFamily: typo.body,
+    fontSize: 14,
+    lineHeight: 20,
+    color: colors.text.hi,
+  },
+  syncActionContainer: {
+    marginTop: space.md,
+  },
+  syncAction: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  syncActionLabel: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 14,
+    color: colors.text.hi,
+    textDecorationLine: 'underline',
+  },
   trous: {
     fontFamily: typo.body,
     fontSize: 13,

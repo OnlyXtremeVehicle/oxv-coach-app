@@ -985,6 +985,39 @@ export async function hasPending(): Promise<boolean> {
   return (await listOpFiles()).length > 0;
 }
 
+/**
+ * Nombre d'opérations en quarantaine — écartées définitivement du rejeu.
+ *
+ * `quarantineOp` existe depuis longtemps et déplace les opérations abandonnées
+ * dans un dossier séparé plutôt que de les détruire. Personne ne lisait jamais
+ * ce dossier : une séance pouvait y être entière, et rien, nulle part, ne le
+ * disait. C'est ce silence qui transforme un incident réparable — les octets
+ * sont là — en perte apparente.
+ *
+ * `0` en cas d'erreur de lecture : ce compteur alimente un message
+ * d'information, il ne doit jamais empêcher un écran de s'afficher.
+ */
+export async function quarantineCount(): Promise<number> {
+  try {
+    const dir = quarantineDir();
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) return 0;
+    const noms = await FileSystem.readDirectoryAsync(dir);
+    return noms.filter((n) => n.endsWith('.json') || n.endsWith('.tmp')).length;
+  } catch {
+    return 0;
+  }
+}
+
+/** Nombre d'opérations encore en file d'attente. */
+export async function pendingCount(): Promise<number> {
+  try {
+    return (await listOpFiles()).length;
+  } catch {
+    return 0;
+  }
+}
+
 /** Identifiants de séances ayant encore des opérations en attente (dédupliqués). */
 export async function pendingSessionIds(): Promise<string[]> {
   const files = await listOpFiles();

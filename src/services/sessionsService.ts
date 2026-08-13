@@ -26,7 +26,22 @@ export async function fetchPreviousSessions(
       .from('telemetry_sessions')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'completed')
+      /**
+       * LES SÉANCES NON CLÔTURÉES SONT VISIBLES — posé le 13/08/2026.
+       *
+       * Ce filtre valait `status = 'completed'` en dur. Or aucune séance captée
+       * par l'application ne pouvait se clore (`duration_seconds` est une
+       * colonne générée, et la clôture l'écrivait) : TOUTES les séances réelles
+       * étaient donc absentes de toutes les listes, et l'écran de séance
+       * basculait sur son chemin « lecture d'autrui » pour la séance du pilote
+       * lui-même.
+       *
+       * La cause est réparée, mais le filtre reste faux dans son principe : une
+       * séance qui n'a pas pu se synchroniser existe, elle a des trames, et son
+       * pilote doit la voir. `aborted` reste exclue — c'est un abandon
+       * délibéré, pas une lecture en attente.
+       */
+      .in('status', ['completed', 'recording'])
       .order('started_at', { ascending: false })
       .limit(limit);
 
@@ -231,7 +246,9 @@ export async function fetchAllSessions(
       .from('telemetry_sessions')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'completed')
+      // Même raisonnement que ci-dessus : une séance non clôturée existe et se
+      // lit. `aborted` reste exclue.
+      .in('status', ['completed', 'recording'])
       .order('started_at', { ascending: false });
 
     if (options.circuitId) {
