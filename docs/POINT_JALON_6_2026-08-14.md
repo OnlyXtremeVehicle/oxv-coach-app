@@ -34,7 +34,7 @@ run ait lieu.
 | **`rapport` devient la carte de séance** | **fait le 14/08** | Contrainte élargie, note écrite, LUE par le pilote, et la voix avec |
 | **`assistant` devient le transcripteur** | **hors de ma portée** | Aucune transcription n'existe dans le dépôt. Voir ci-dessous |
 | **Phase 5bis — statut fondateur** | **colonnes en base** | `founder_since`, `founder_number` existent |
-| **Phase 5ter — écuries** | **non commencé** | Aucun écran. Le plan note lui-même que l'annuaire *« restera vide toute la première saison »* |
+| **Phase 5ter — écuries** | **fait le 14/08** | Écran, baptême et annuaire livrés. Deux fonctions serveur avaient dormi depuis le 04/07 |
 
 ---
 
@@ -175,6 +175,61 @@ transcription demande trois choses que le dépôt n'a pas :
 
 Ce n'est pas un refus, c'est une frontière. Les 1 311 lignes de l'écran actuel
 ne sont pas le problème : le problème est qu'il n'y a rien à brancher derrière.
+
+---
+
+## Les écuries — deux fonctions serveur dormaient depuis six semaines
+
+Vous aviez demandé de garder cette ligne pour la fin. La mesure explique
+pourquoi elle valait mieux que « non commencé ».
+
+`crews` et `crew_members` sont en production depuis le **04/07**, avec quatre
+fonctions serveur et une cinquième pour l'annuaire. `referralService.ts` les
+expose toutes, testées, commentées. Mesuré le 14/08 :
+
+| Fonction | Rôle | Appelants |
+|---|---|---:|
+| `getMyCode` | le code de parrainage | VOUS |
+| `redeem` | rejoindre une écurie | VOUS |
+| `getMyCrew` | mon écurie | 5 |
+| **`nameMyCrew`** | **le baptême** | **0** |
+| **`crews_public_rows`** | **l'annuaire public** | **0** |
+
+Une écurie ne pouvait donc pas être nommée, et l'annuaire n'existait nulle
+part. Le code était écrit, correct, testé — et sans personne pour l'appeler.
+
+`app/(app2)/club/ecurie.tsx` les arme. **Zéro migration, zéro colonne** : il ne
+manquait que l'appelant.
+
+### Deux règles tenues par des tests, pas par des commentaires
+
+*« L'ordre porte l'information, le numéro déclarerait un verdict. »* L'annuaire
+est trié par taille et ne porte **aucun rang**. Un test vérifie que les lignes
+rendues ne portent que les trois clés du serveur — un index ajouté au tri
+traverserait jusqu'à l'écran.
+
+*« Aucun chrono nulle part dans l'écurie. »* La raison n'est pas affaire de
+goût : A rejoint l'écurie de B, puis C la rejoint — **A et C ne se sont jamais
+choisis**. `are_friends()` exige les deux accords ; l'appartenance à une écurie,
+non. La garde cherche onze marqueurs de chrono **après avoir retiré les
+commentaires**, sinon elle tomberait sur sa propre documentation — l'en-tête de
+l'écran écrit le mot pour énoncer la règle.
+
+### Ce qui n'est pas livré, et pourquoi ce n'est pas un choix
+
+Le plan prévoit aussi le logo téléversé par le capitaine, l'exclusion par le
+capitaine et l'invitation par tous. **Les fonctions serveur n'existent pas**, et
+aucun bucket de logo n'est déclaré. Les écrire côté application supposerait
+d'écrire dans `crew_members` en direct — ce que la RLS refuse, à juste titre :
+c'est au serveur d'arbitrer qui exclut qui.
+
+Poser des boutons qui échoueraient serait le défaut que ce lot corrige ailleurs.
+
+### Une ligne du plan était déjà satisfaite
+
+*« Le parrainage quitte définitivement `rec/preparation`. »* Mesuré : cet écran
+n'y porte plus aucun recrutement. Il garde un filtre « mon groupe » sur la liste
+des présents, ce qui n'est pas recruter. Le code de parrainage vit dans VOUS.
 
 ---
 
