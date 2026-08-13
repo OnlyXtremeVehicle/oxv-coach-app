@@ -32,7 +32,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captureLinkMessage } from '@/services/captureLinkStatusLogic';
 import {
   abortCaptureSession,
+  isCapturePaused,
   onCaptureLinkStatus,
+  pauseCaptureSession,
+  resumeCaptureSession,
   stopCaptureSession,
   type CaptureLinkStatus,
 } from '@/services/captureSessionService';
@@ -94,12 +97,31 @@ export default function RoulageScreen() {
 
   // Statut du lien BLE (recording/interrupted/lost) — affiché honnêtement.
   const [linkStatus, setLinkStatus] = useState<CaptureLinkStatus>('recording');
+  const [enPause, setEnPause] = useState(() => isCapturePaused());
   useEffect(() => onCaptureLinkStatus(setLinkStatus), []);
 
   const recording = status === 'recording';
   const linkMsg = captureLinkMessage(linkStatus);
   // Le point REC ne pulse en rouge que si l'enregistrement tient réellement.
   const recActive = recording && linkMsg === null;
+
+  /**
+   * Bascule la pause. Le geste est SYMÉTRIQUE et immédiat : aucun réseau, aucun
+   * délai — le pilote est à l'arrêt, il veut que ça s'arrête maintenant.
+   */
+  function onTogglePause() {
+    if (ending) return;
+    // AUCUN retour haptique ici, et c'est délibéré : le silence en piste
+    // proscrit tout signal sensoriel sur cet écran. Le libellé qui bascule et
+    // le voyant REC qui s'éteint disent déjà ce qui s'est passé.
+    if (isCapturePaused()) {
+      resumeCaptureSession();
+      setEnPause(false);
+      return;
+    }
+    pauseCaptureSession();
+    setEnPause(true);
+  }
 
   async function onFinish() {
     if (ending) return;
@@ -183,6 +205,27 @@ export default function RoulageScreen() {
         )}
       </View>
 
+      {/*
+        LA PAUSE — le rythme réel d'une journée de circuit.
+
+        Le pilote n'avait que deux gestes : « Terminer le run », qui CLÔT la
+        séance, ou laisser tourner l'enregistrement sur un véhicule à l'arrêt
+        aux stands — ce qui gonfle la durée, la distance et les moyennes avec du
+        temps qui n'est pas du roulage.
+
+        Un relais, un arrêt, un relais : c'est la journée nominale, et elle
+        n'avait aucun geste.
+      */}
+      <PressScale
+        onPress={onTogglePause}
+        disabled={ending}
+        accessibilityLabel={enPause ? 'Reprendre l’enregistrement' : 'Mettre en pause'}
+        containerStyle={styles.pauseContainer}
+        style={styles.pause}
+      >
+        <Text style={styles.pauseLabel}>{enPause ? 'Reprendre' : 'Mettre en pause'}</Text>
+      </PressScale>
+
       <PressScale
         onPress={onFinish}
         disabled={ending}
@@ -210,6 +253,22 @@ export default function RoulageScreen() {
 const DOT = 30;
 
 const styles = StyleSheet.create({
+  // La pause est une action SECONDAIRE : elle ne doit pas concurrencer
+  // « Terminer le run », mais rester prenable avec des gants (56 pt).
+  pauseContainer: {
+    marginBottom: space.md,
+  },
+  pause: {
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pauseLabel: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 15,
+    color: colors.text.hi,
+    textDecorationLine: 'underline',
+  },
   root: {
     flex: 1,
     backgroundColor: colors.bg.base,

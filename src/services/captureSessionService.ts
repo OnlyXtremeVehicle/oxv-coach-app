@@ -50,6 +50,8 @@ import {
   getCurrentLapNumber,
   getDistanceTotaleM,
   getRecordedLaps,
+  pauseLapDetection,
+  resumeLapDetection,
   startLapDetection,
   stopLapDetection,
 } from '@/ble/lapDetectionRunner';
@@ -167,7 +169,24 @@ const LONG_INTERRUPT_TIMEOUT_MS = 15 * 60 * 1000;
  *                     capture finalisée proprement.
  *   - `idle`        : aucune capture active.
  */
-export type CaptureLinkStatus = 'idle' | 'recording' | 'interrupted' | 'lost' | 'muet';
+export type CaptureLinkStatus =
+  | 'idle'
+  | 'recording'
+  | 'interrupted'
+  | 'lost'
+  | 'muet'
+  /**
+   * PAUSE DU PILOTE — distincte d'`interrupted`, qui subit une coupure.
+   *
+   * « Mettre en pause » n'existait comme geste nulle part, alors que c'est le
+   * rythme normal d'une journée de circuit : on roule un relais, on rentre aux
+   * stands, on repart. Sans elle, le pilote n'avait que « Terminer le run » —
+   * ce qui clôt la séance — ou laisser tourner l'enregistrement sur un véhicule
+   * à l'arrêt, en gonflant la durée et en diluant les moyennes.
+   *
+   * On ne subit pas cet état, on le choisit : il ne s'arme jamais tout seul.
+   */
+  | 'pause';
 
 /**
  * Délai au-delà duquel une capture qui n'a reçu AUCUNE trame se déclare muette.
@@ -295,6 +314,8 @@ interface CaptureState {
    * n'est pas interrompu. Sert à tracer la durée du trou à la reprise.
    */
   gapStartMs: number | null;
+  /** Pause DEMANDÉE par le pilote. Ni une panne, ni une coupure. */
+  enPause: boolean;
 }
 
 let current: CaptureState | null = null;
@@ -423,6 +444,7 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
     interruptTimer: null,
     muetTimer: null,
     gapStartMs: null,
+    enPause: false,
   };
   current = state;
   setLinkStatus('recording');
@@ -468,6 +490,10 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   // Flux de trames → buffer → flush par paquets.
   state.unsubData = bluetoothService.onData((frame: RaceBoxData) => {
     if (current !== state) return;
+    // Pause du pilote : la trame est ÉCARTÉE. Elle mesure un véhicule à
+    // l'arrêt aux stands — l'écrire gonflerait la durée, la distance et les
+    // moyennes de la séance avec du temps qui n'est pas du roulage.
+    if (state.enPause) return;
     // elapsed STRICTEMENT croissant : `elapsed_ms` est la CLÉ D'IDEMPOTENCE des
     // trames (UNIQUE (session_id, elapsed_ms)). Un simple `Math.max` avec
     // `lastElapsed` (monotone NON strict) laisserait deux trames RÉELLES émises
@@ -587,6 +613,49 @@ export async function startCaptureSession(input: StartCaptureInput): Promise<Sta
   void startBiometryCapture({ sessionId, pilotId: input.userId }).catch(() => undefined);
 
   return { ok: true, sessionId };
+}
+
+/**
+ * Met la capture en PAUSE à la demande du pilote.
+ *
+ * La séance reste OUVERTE et le lien BLE intact : on cesse simplement d'écrire.
+ * Le trou est horodaté comme n'importe quelle interruption, et il sera dit au
+ * bilan — une pause de vingt minutes qui disparaîtrait du récit serait une
+ * donnée manquante déguisée en donnée continue.
+ *
+ * Le timeout long d'abandon n'est PAS armé : une pause voulue n'est pas un
+ * abandon, et clore la séance d'un pilote parti déjeuner serait absurde.
+ *
+ * Idempotent, et sans effet hors capture.
+ */
+export function pauseCaptureSession(): void {
+  const state = current;
+  if (!state || state.enPause) return;
+  state.enPause = true;
+  state.gapStartMs = Date.now();
+  desarmerVeilleSilence(state);
+  pauseLapDetection();
+  useSessionStore.getState().pauseSession();
+  setLinkStatus('pause');
+}
+
+/** Reprend une capture mise en pause. Idempotent. */
+export function resumeCaptureSession(): void {
+  const state = current;
+  if (!state || !state.enPause) return;
+  state.enPause = false;
+  logLinkGap(state);
+  resumeLapDetection();
+  useSessionStore.getState().resumeSession();
+  setLinkStatus('recording');
+  // La veille du silence repart de zéro : douze secondes après la reprise, si
+  // rien n'arrive, c'est que le boîtier n'a pas suivi.
+  armerVeilleSilence(state);
+}
+
+/** La capture est-elle en pause du fait du pilote ? */
+export function isCapturePaused(): boolean {
+  return current?.enPause === true;
 }
 
 /**

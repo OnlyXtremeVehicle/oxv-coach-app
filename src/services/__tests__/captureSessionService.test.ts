@@ -117,6 +117,10 @@ jest.mock('@/ble/lapDetectionRunner', () => ({
   // Distance totale de séance — alimente `telemetry_sessions.distance_km`, qui
   // n'avait jamais reçu de valeur avant le 13/08/2026.
   getDistanceTotaleM: jest.fn(() => (globalThis as any).__OXV_CS__.distanceTotaleM ?? null),
+  // Pause du pilote — SUSPEND sans détruire l'état (arrêt aux stands). Sans
+  // cette distinction, une pause effacerait le chronométrage de la séance.
+  pauseLapDetection: jest.fn(),
+  resumeLapDetection: jest.fn(),
 }));
 
 jest.mock('@/services/liveRelayRunner', () => ({
@@ -139,6 +143,9 @@ jest.mock('@/store/useSessionStore', () => ({
       resumeSession: jest.fn(),
       endSession: jest.fn(),
       abortSession: jest.fn(),
+      // Relevé FACTUEL du trou de liaison, posé au lot 21e. Il est appelé par
+      // `logLinkGap` — donc par toute reprise, y compris celle d'une pause.
+      addLinkGap: jest.fn(),
       lapCount: 0,
       bestLapMs: null,
     }),
@@ -169,7 +176,10 @@ jest.mock('../captureSyncQueue', () => ({
 
 import {
   getCaptureLinkStatus,
+  isCapturePaused,
   isCaptureSessionActive,
+  pauseCaptureSession,
+  resumeCaptureSession,
   startCaptureSession,
   stopCaptureSession,
 } from '../captureSessionService';
@@ -646,5 +656,78 @@ describe('les tours survivent à une application tuée en piste', () => {
     const final = ctrl().enqueued.find((o: any) => o.type === 'laps' && o.final === true);
     expect(final).toBeDefined();
     expect(final.rows.some((r: any) => r.is_best_lap === true)).toBe(true);
+  });
+});
+
+describe('la pause du pilote — le rythme réel d’une journée', () => {
+  /**
+   * ===========================================================================
+   * LE GESTE QUI N'EXISTAIT NULLE PART
+   * ===========================================================================
+   *
+   * Un relais, un arrêt aux stands, un relais : c'est la journée nominale. Le
+   * pilote n'avait pourtant que deux gestes — « Terminer le run », qui CLÔT la
+   * séance, ou laisser tourner l'enregistrement sur un véhicule à l'arrêt.
+   *
+   * La seconde option gonfle la durée, la distance et les moyennes avec du
+   * temps qui n'est pas du roulage : la séance ment sans qu'aucune ligne de
+   * code ne soit fausse.
+   */
+  it('la pause ÉCARTE les trames — le temps aux stands n’est pas du roulage', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+
+    emit(raceBoxFrame({ speed: 100, gx: 0.3, gy: -0.4 }));
+    pauseCaptureSession();
+    expect(isCapturePaused()).toBe(true);
+
+    // Dix trames à l'arrêt : aucune ne doit entrer.
+    for (let i = 0; i < 10; i++) emit(raceBoxFrame({ speed: 0, gx: 0, gy: 0 }));
+
+    resumeCaptureSession();
+    emit(raceBoxFrame({ speed: 110, gx: 0.3, gy: -0.5 }));
+    const res = await stopCaptureSession();
+    // 2 trames roulées, jamais 12.
+    expect(res.totalFrames).toBe(2);
+  });
+
+  it('la reprise remet la capture en enregistrement', async () => {
+    await startCaptureSession(START);
+    pauseCaptureSession();
+    resumeCaptureSession();
+    expect(isCapturePaused()).toBe(false);
+    await stopCaptureSession();
+  });
+
+  /** Deux appuis de suite ne doivent pas empiler deux pauses. */
+  it('les deux gestes sont idempotents', async () => {
+    await startCaptureSession(START);
+    pauseCaptureSession();
+    pauseCaptureSession();
+    expect(isCapturePaused()).toBe(true);
+    resumeCaptureSession();
+    resumeCaptureSession();
+    expect(isCapturePaused()).toBe(false);
+    await stopCaptureSession();
+  });
+
+  /** Hors capture, les deux gestes sont sans effet — jamais d’exception. */
+  it('sans capture active, rien ne se passe et rien ne lève', () => {
+    expect(() => pauseCaptureSession()).not.toThrow();
+    expect(() => resumeCaptureSession()).not.toThrow();
+    expect(isCapturePaused()).toBe(false);
+  });
+
+  /**
+   * La séance reste OUVERTE : une pause n'est pas un abandon, et le pilote
+   * doit pouvoir déjeuner sans que sa matinée soit clôturée.
+   */
+  it('une séance en pause peut encore être terminée normalement', async () => {
+    await startCaptureSession(START);
+    ctrl().onData!(raceBoxFrame({ speed: 100, gx: 0.3, gy: -0.4 }));
+    pauseCaptureSession();
+    const res = await stopCaptureSession();
+    expect(res.ok).toBe(true);
+    expect(res.sessionId).toBeDefined();
   });
 });

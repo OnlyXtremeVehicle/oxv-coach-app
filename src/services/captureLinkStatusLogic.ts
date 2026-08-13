@@ -58,6 +58,20 @@ export function captureLinkMessage(status: CaptureLinkStatus): CaptureLinkMessag
         sub: 'Le boîtier est connecté mais n’envoie rien. Rien n’est enregistré depuis le départ.',
         tone: 'lost',
       };
+    /**
+     * PAUSE — un état CHOISI, et le message le dit autrement.
+     *
+     * `interrupted` subit une coupure et annonce une reconnexion ; ici le
+     * pilote a décidé. Le confondre avec une panne inquiéterait sans raison,
+     * et l'omettre laisserait un écran figé sans explication : le voyant REC ne
+     * pulse plus, et rien ne dirait pourquoi.
+     */
+    case 'pause':
+      return {
+        title: 'EN PAUSE',
+        sub: 'L’enregistrement est suspendu. Votre séance reste ouverte.',
+        tone: 'warn',
+      };
     case 'recording':
     case 'idle':
       return null;

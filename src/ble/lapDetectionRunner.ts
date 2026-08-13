@@ -40,6 +40,16 @@ let lastMonoMs = 0;
 let previousLapLat: number | null = null;
 let previousLapLon: number | null = null;
 let lapNumber = 0;
+/**
+ * Détection SUSPENDUE par le pilote (arrêt aux stands).
+ *
+ * Distinct de `stopLapDetection`, qui DÉTRUIT l'état : ici le détecteur, les
+ * tours déjà enregistrés et le numéro de tour survivent intacts. Sans cette
+ * distinction, une pause aux stands effacerait le chronométrage de la séance —
+ * ou, si l'on ne suspendait rien, un retour en piste par la ligne compterait un
+ * tour de plusieurs minutes passées à l'arrêt.
+ */
+let suspendu = false;
 
 /** Un tour complet détecté, prêt à être persisté dans la table `laps`. */
 export interface RecordedLap {
@@ -107,9 +117,13 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
   previousLapLon = null;
   lapNumber = 0;
   recordedLaps = [];
+  suspendu = false;
 
   unsubscribe = bluetoothService.onData((frame) => {
     if (!state) return;
+    // Pause du pilote : on n'arbitre plus rien et on n'alimente plus l'odomètre.
+    // Le temps passé aux stands n'appartient à aucun tour.
+    if (suspendu) return;
     /**
      * FIX INCOMPLET : on n'arbitre PAS le franchissement, mais on avance quand
      * même l'odomètre.
@@ -185,6 +199,21 @@ export function startLapDetection(opts: LapDetectionStartOptions): void {
   });
 }
 
+/**
+ * Suspend la détection SANS perdre l'état (arrêt aux stands).
+ *
+ * Le pilote reste maître : rien ne se suspend tout seul. Une interruption BLE
+ * a son propre chemin, qui n'emprunte pas celui-ci.
+ */
+export function pauseLapDetection(): void {
+  suspendu = true;
+}
+
+/** Reprend la détection là où elle s'était arrêtée. */
+export function resumeLapDetection(): void {
+  suspendu = false;
+}
+
 export function stopLapDetection(): void {
   if (unsubscribe) {
     unsubscribe();
@@ -192,6 +221,7 @@ export function stopLapDetection(): void {
   }
   if (state) resetLapDetector(state);
   state = null;
+  suspendu = false;
   previousLapWallMs = null;
   previousLapMonoMs = null;
   lastMonoMs = 0;

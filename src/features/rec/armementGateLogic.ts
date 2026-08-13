@@ -53,11 +53,22 @@ export interface VerdictArmement {
  *
  * @param statut     état de la liaison au boîtier (`bluetoothService.getStatus()`)
  * @param enCours    un démarrage est déjà lancé (garde de ré-entrance)
- * @param sansMesure le pilote a choisi DÉLIBÉRÉMENT de rouler sans mesure
+ * @param sansMesure CONSERVÉ POUR COMPATIBILITÉ, sans chemin d'appel.
  *
- * `sansMesure` ne se déduit jamais : il vient d'un geste explicite, après que le
- * refus a été montré. Le déduire d'un échec transformerait une panne en décision
- * du pilote, ce qu'elle n'est pas.
+ * ── « ROULER SANS MESURE » NE PASSE PLUS PAR ICI (13/08/2026) ────────────────
+ *
+ * Ce paramètre exprimait une doctrine juste — « refuser n'est pas bloquer la
+ * journée » — mais AUCUN écran ne le passait à `true` : c'était une porte
+ * documentée que rien n'ouvrait. Et la lui faire ouvrir aurait été pire :
+ * armer sans boîtier crée une séance qui porte un identifiant, un circuit, une
+ * heure, et pas une seule mesure. Elle entre dans les listes, dans la Saison,
+ * dans les moyennes, puis se fait clore trois heures plus tard par la reprise
+ * automatique qui la marque abandonnée. Une ligne creuse en base est un
+ * mensonge de plus, pas un réconfort.
+ *
+ * La doctrine est désormais tenue par un VRAI chemin : l'écran d'appairage
+ * offre « Rouler sans mesure », qui quitte la préparation sans rien enregistrer
+ * et le dit. Le pilote roule, l'application se tait.
  */
 export function verdictArmement(
   statut: BleStatus,

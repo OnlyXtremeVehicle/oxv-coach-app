@@ -27,6 +27,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
+import Toast from 'react-native-toast-message';
 import * as SecureStore from 'expo-secure-store';
 import { Canvas, Circle } from '@shopify/react-native-skia';
 import Animated, {
@@ -314,6 +315,26 @@ export default function EquipementScreen() {
   const insets = useSafeAreaInsets();
   const door = useDoorTransition();
   const profile = useAuthStore((s) => s.profile);
+
+  /**
+   * Quitte la préparation SANS armer de capture.
+   *
+   * On ne démarre PAS une séance vide : elle porterait un identifiant, un
+   * circuit, une heure — et pas une seule mesure. Elle entrerait dans les
+   * listes, dans la Saison, dans les moyennes, et se ferait clore trois heures
+   * plus tard par la reprise automatique, qui la marquerait abandonnée. Une
+   * ligne creuse en base est un mensonge de plus, pas un réconfort.
+   *
+   * Le pilote roule, l'application se tait, et le dit avant de se taire.
+   */
+  const sortirSansMesure = useCallback(() => {
+    Toast.show({
+      type: 'info',
+      text1: 'Séance non enregistrée.',
+      text2: 'Vous roulez, l’application n’enregistre rien.',
+    });
+    router.replace('/(app2)' as never);
+  }, []);
 
   const [status, setStatus] = useState<BleStatus>(bluetoothService.getStatus());
   const [devices, setDevices] = useState<RaceBoxDevice[]>([]);
@@ -968,12 +989,66 @@ export default function EquipementScreen() {
             ) : null}
           </View>
         ) : null}
+
+        {/*
+          LA SORTIE — parce qu'un boîtier en panne ne doit pas coûter la journée.
+
+          Tout le flux de capture était derrière une connexion BLE RÉUSSIE :
+          batterie à plat, boîtier oublié, radio capricieuse, et le pilote
+          restait sur cet écran sans autre issue que de dépiler l'application.
+          La doctrine du dossier dit pourtant l'inverse — « cela ne bloque pas
+          la journée : cela la route par le diagnostic, où rouler sans mesure
+          reste ouvert ». La phrase était écrite, le chemin n'existait pas.
+
+          Elle n'apparaît QUE si le boîtier n'est pas connecté : la proposer à
+          côté d'un boîtier qui fonctionne inviterait à s'en passer sans raison.
+        */}
+        {status !== 'connected' ? (
+          <PressScale
+            onPress={sortirSansMesure}
+            accessibilityLabel="Rouler sans mesure"
+            accessibilityHint="Quitte la préparation. Aucune donnée ne sera enregistrée."
+            containerStyle={styles.sansMesureContainer}
+            style={styles.sansMesure}
+          >
+            <Text style={styles.sansMesureLabel}>Rouler sans mesure</Text>
+            <Text style={styles.sansMesureHint}>
+              Votre journée continue. Rien ne sera enregistré.
+            </Text>
+          </PressScale>
+        ) : null}
       </ScrollView>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  /**
+   * La sortie « rouler sans mesure ». Discrète — c'est un repli, pas une
+   * proposition — mais d'une cible de 56 pt : elle se prend avec des gants,
+   * au paddock, quand le boîtier vient de lâcher.
+   */
+  sansMesureContainer: {
+    marginTop: space.xxl,
+  },
+  sansMesure: {
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: space.md,
+  },
+  sansMesureLabel: {
+    fontFamily: typo.bodyMedium,
+    fontSize: 15,
+    color: colors.text.hi,
+    textDecorationLine: 'underline',
+  },
+  sansMesureHint: {
+    fontFamily: typo.body,
+    fontSize: 12,
+    color: colors.text.mid,
+    marginTop: 2,
+  },
   // --- Panneau de diagnostic (lot 21c) --------------------------------------
   diagBloc: {
     marginTop: space.lg,
