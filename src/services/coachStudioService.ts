@@ -55,6 +55,14 @@ export interface StudioSession {
   circuitName: string | null;
   /** Nom du pilote de la séance (via listMyPilots, RLS consentement), null si non résolu. */
   pilotName: string | null;
+  /**
+   * Identifiant du pilote — `null` quand le binôme n'est pas résolu.
+   *
+   * Exposé le 14/08/2026 pour la NOTE DE SÉANCE : écrire le bilan du coach dans
+   * `coach_annotations` exige `pilot_id`, et l'écran ne l'avait pas. Le service
+   * le résolvait déjà pour le nom ; il le jetait une ligne plus loin.
+   */
+  pilotId: string | null;
   /** Début de séance (ISO), null si non renseigné. */
   startedAt: string | null;
   bestLapSeconds: number | null;
@@ -115,6 +123,7 @@ export async function getStudioSession(telemetrySessionId: string): Promise<Stud
     sessionId: telemetrySessionId,
     circuitName: session.circuit_name ?? null,
     pilotName,
+    pilotId: pilot?.pilotId ?? null,
     startedAt: (session as { started_at?: string | null }).started_at ?? null,
     // Colonnes `numeric` rendues en CHAÎNE par PostgREST : on coerce, sinon le
     // formateur affiche « — » sur un chrono pourtant présent.

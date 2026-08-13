@@ -32,7 +32,10 @@ import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { fetchSessionCircuitCenterlineExact } from '@/services/circuitsService';
-import { listVisibleAnnotationsForCorner } from '@/services/coachAnnotationsService';
+import {
+  listSessionNotes,
+  listVisibleAnnotationsForCorner,
+} from '@/services/coachAnnotationsService';
 import {
   listMyThreads,
   markThreadRead,
@@ -107,6 +110,20 @@ export interface BilanData {
   traceMarkers: BilanTraceMarker[];
   /** Notes du coach visibles — [] = bande ABSENTE. */
   coachNotes: CoachNoteModel[];
+  /**
+   * Le bilan du coach sur la séance entière — `null` = bande ABSENTE.
+   *
+   * Distinct des notes de virage : celles-ci désignent un endroit, celui-là
+   * porte sur l'ensemble. Il vient de `coach_annotations` sans virage ni
+   * instant, écrit par l'écran `rapport` du coach.
+   */
+  coachSessionNote: {
+    id: string;
+    body: string;
+    /** Nom du coach — la voix est ATTRIBUÉE, jamais anonyme. */
+    coachName: string | null;
+    updatedAt: string;
+  } | null;
   media: SessionMediaItem[];
   /** null = section ABSENTE (flag/consentement/données — fail-closed). */
   biometry: BilanBiometry | null;
@@ -191,6 +208,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         centerlineR,
         threadsR,
         annotationsR,
+        noteSeanceR,
         videoFlagR,
         biometryFlagR,
         consentsR,
@@ -214,6 +232,11 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         Promise.all(
           BELTOISE_CORNERS.map((c) => listVisibleAnnotationsForCorner(userId, c.index, sessionId))
         ).then((lists) => lists.flat()),
+        // LA NOTE DE SÉANCE — le bilan que le coach écrit sur la séance
+        // ENTIÈRE, depuis le 14/08/2026. Elle ne passe pas par la requête
+        // ci-dessus : celle-ci interroge virage par virage, et une note de
+        // séance n'a pas de virage. La RLS filtre déjà sur `shared`.
+        listSessionNotes(userId, sessionId),
         isFlagEnabled('video_overlay'),
         isFlagEnabled('biometry'),
         loadBiometryConsents(userId),
@@ -308,6 +331,30 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
       });
 
       const coachNotes = buildCoachNotes(annotations, threads);
+
+      /**
+       * LE BILAN DU COACH SUR LA SÉANCE — voix ATTRIBUÉE, jamais celle de l'app.
+       *
+       * On garde la plus récente : un coach n'en écrit qu'une par séance
+       * (`upsertSessionNote` remplace la sienne), mais un pilote peut avoir eu
+       * deux coachs. La plus récente est celle qui a le dernier mot, et le nom
+       * l'accompagne toujours — une phrase sans auteur se lirait comme une
+       * phrase de l'application.
+       *
+       * `null` quand il n'y en a pas : la bande est ABSENTE, pas vide.
+       */
+      const notesSeance = settled(noteSeanceR, []);
+      const nomParCoach = new Map(threads.map((t) => [t.coachId, t.otherName]));
+      const premiere = notesSeance[0];
+      const coachSessionNote =
+        premiere && premiere.body.trim().length > 0
+          ? {
+              id: premiere.id,
+              body: premiere.body,
+              coachName: nomParCoach.get(premiere.coachId) ?? null,
+              updatedAt: premiere.updatedAt,
+            }
+          : null;
       const traceMarkers = buildTraceMarkers({
         segments,
         annotatedCornerIndexes: coachNotes.map((n) => n.cornerIndex),
@@ -339,6 +386,7 @@ export function useBilan(sessionId: string | undefined): UseBilanResult {
         centerline,
         traceMarkers,
         coachNotes,
+        coachSessionNote,
         media,
         biometry,
         // marginGlobalMeasured (jamais le `?? 0` historique) : une marge

@@ -19,7 +19,12 @@ export interface CoachAnnotation {
   coachId: string;
   pilotId: string;
   telemetrySessionId: string | null;
-  cornerIndex: number;
+  /**
+   * `null` pour ce qui ne porte pas sur un virage : un marqueur horodaté, ou
+   * une NOTE DE SÉANCE. La colonne est nullable en base depuis le 02/08 ; ce
+   * type disait `number` et mentait donc sur les deux formes.
+   */
+  cornerIndex: number | null;
   body: string;
   visibility: AnnotationVisibility;
   /** Observation pré-rédigée par l'assistant IA puis validée par le coach. */
@@ -40,7 +45,7 @@ interface RawRow {
   coach_id: string;
   pilot_id: string;
   telemetry_session_id: string | null;
-  corner_index: number;
+  corner_index: number | null;
   body: string;
   visibility: AnnotationVisibility;
   ai_assisted: boolean | null;
@@ -56,7 +61,7 @@ function mapRow(row: RawRow): CoachAnnotation {
     coachId: row.coach_id,
     pilotId: row.pilot_id,
     telemetrySessionId: row.telemetry_session_id,
-    cornerIndex: row.corner_index,
+    cornerIndex: row.corner_index ?? null,
     body: row.body,
     visibility: row.visibility,
     aiAssisted: row.ai_assisted === true,
@@ -249,6 +254,130 @@ export async function deleteAnnotation(id: string): Promise<boolean> {
  * ici. Le direct ne transporte pas de position — délibérément — et le résolveur
  * la retrouve dans les trames stockées.
  */
+/**
+ * LA NOTE DE SÉANCE — le bilan que le coach écrit sur une séance entière.
+ *
+ * ===========================================================================
+ * POURQUOI ELLE EXISTE
+ * ===========================================================================
+ *
+ * *« `rapport` devient la composition de la carte de séance — le PDF reste un
+ * export, plus le produit. »* — plan de montage, jalon 6.
+ *
+ * L'écran `rapport` faisait l'inverse : le coach rédigeait, un PDF était
+ * généré, et **le bilan n'était stocké nulle part** — il voyageait dans le
+ * document. Un fichier perdu, et le bilan de la séance n'existait plus.
+ *
+ * ===========================================================================
+ * TROIS FORMES, ET LA CONTRAINTE LES SÉPARE
+ * ===========================================================================
+ *
+ * `coach_annotations` accepte depuis le 14/08 :
+ *
+ *   note de virage    `corner_index` entre 1 et 30 ;
+ *   marqueur          `corner_index` nul, `marker_elapsed_ms` présent ;
+ *   NOTE DE SÉANCE    les deux nuls, mais une séance ET un texte.
+ *
+ * La troisième exige `telemetry_session_id` : sans elle, on créerait une note
+ * qui ne porte sur rien. C'est le CHECK qui l'interdit, pas l'appelant — une
+ * garde applicative se contourne, une contrainte non.
+ */
+export async function listSessionNotes(
+  pilotId: string,
+  telemetrySessionId: string
+): Promise<CoachAnnotation[]> {
+  const { data, error } = await supabase
+    .from('coach_annotations')
+    .select('*')
+    .eq('pilot_id', pilotId)
+    .eq('telemetry_session_id', telemetrySessionId)
+    .is('corner_index', null)
+    .is('marker_elapsed_ms', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[OXV][annotations] listSessionNotes :', error.message);
+    return [];
+  }
+  return (data as unknown as RawRow[]).map(mapRow);
+}
+
+/**
+ * Écrit — ou réécrit — la note de séance du coach courant.
+ *
+ * Le coach n'en a qu'UNE par séance : rédiger à nouveau remplace, plutôt que
+ * d'empiler deux bilans que le pilote lirait comme deux avis. On met donc à
+ * jour la sienne si elle existe.
+ *
+ * Le garde-fou doctrinal est le même que pour une note de virage : une note
+ * PARTAGÉE ne peut pas être prescriptive. Le rempart réel est le trigger en
+ * base ; celui-ci évite l'aller-retour et le message d'erreur brut.
+ */
+export async function upsertSessionNote(input: {
+  pilotId: string;
+  telemetrySessionId: string;
+  body: string;
+  visibility?: AnnotationVisibility;
+}): Promise<CoachAnnotation | null> {
+  const { data: authData } = await supabase.auth.getUser();
+  const coachId = authData?.user?.id;
+  if (!coachId) {
+    console.warn('[OXV][annotations] note de séance : pas de user connecté');
+    return null;
+  }
+
+  const body = input.body.trim();
+  if (body.length === 0) {
+    // Le CHECK l'interdit aussi ; on ne fait pas l'aller-retour pour l'apprendre.
+    console.warn('[OXV][annotations] note de séance : texte vide');
+    return null;
+  }
+
+  const visibility = input.visibility ?? 'shared';
+  if (visibility === 'shared' && !isDoctrineSafe(body)) {
+    console.warn('[OXV][annotations] note de séance : non conforme (doctrine)');
+    return null;
+  }
+
+  const existantes = await supabase
+    .from('coach_annotations')
+    .select('id')
+    .eq('coach_id', coachId)
+    .eq('pilot_id', input.pilotId)
+    .eq('telemetry_session_id', input.telemetrySessionId)
+    .is('corner_index', null)
+    .is('marker_elapsed_ms', null)
+    .limit(1);
+
+  const dejaLa = existantes.data?.[0]?.id as string | undefined;
+
+  const { data, error } = dejaLa
+    ? await supabase
+        .from('coach_annotations')
+        .update({ body, visibility } as never)
+        .eq('id', dejaLa)
+        .select('*')
+        .single()
+    : await supabase
+        .from('coach_annotations')
+        .insert({
+          coach_id: coachId,
+          pilot_id: input.pilotId,
+          telemetry_session_id: input.telemetrySessionId,
+          body,
+          visibility,
+        } as never)
+        .select('*')
+        .single();
+
+  if (error || !data) {
+    console.warn('[OXV][annotations] note de séance :', error?.message ?? 'no data');
+    return null;
+  }
+  OxvEvent.coachNoteEnvoyee();
+  return mapRow(data as unknown as RawRow);
+}
+
 export async function poserMarqueur(input: {
   pilotId: string;
   telemetrySessionId: string;

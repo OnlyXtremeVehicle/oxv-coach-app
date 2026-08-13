@@ -271,6 +271,55 @@ describe('buildCoachNotes', () => {
     expect(buildCoachNotes([], threads)).toEqual([]);
   });
 
+  /**
+   * LA NOTE DE SÉANCE N'EST PAS UNE NOTE DE VIRAGE.
+   *
+   * Depuis le 14/08/2026, `coach_annotations` accepte une note qui porte sur la
+   * séance entière : `cornerIndex` nul, pas d'instant. Elle arrive par la même
+   * requête que les notes de virage et doit être ÉCARTÉE ici — sinon la bande
+   * afficherait « Virage null », et le tri comparerait des `null`.
+   *
+   * Elle a sa propre place dans le bilan, sous son propre libellé.
+   */
+  it('une note de séance (sans virage) est écartée de la bande des virages', () => {
+    const notes = buildCoachNotes(
+      [
+        {
+          id: 'seance',
+          coachId: 'coach-1',
+          cornerIndex: null,
+          body: 'Belle constance sur les trois tours.',
+          telemetrySessionId: 's1',
+        },
+        {
+          id: 'virage',
+          coachId: 'coach-1',
+          cornerIndex: 4,
+          body: 'Appui franc observé ici.',
+          telemetrySessionId: 's1',
+        },
+      ],
+      threads
+    );
+    expect(notes.map((n) => n.id)).toEqual(['virage']);
+  });
+
+  it('une bande faite QUE de notes de séance est vide, pas remplie de « Virage null »', () => {
+    const notes = buildCoachNotes(
+      [
+        {
+          id: 'seance',
+          coachId: 'coach-1',
+          cornerIndex: null,
+          body: 'Un bilan de séance.',
+          telemetrySessionId: 's1',
+        },
+      ],
+      threads
+    );
+    expect(notes).toEqual([]);
+  });
+
   it('annotation présente → note mappée : virage réel + nom réel du coach', () => {
     const notes = buildCoachNotes(
       [

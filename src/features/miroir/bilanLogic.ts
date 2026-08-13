@@ -329,7 +329,13 @@ export function buildTraceMarkers(args: {
 export interface AnnotationLite {
   id: string;
   coachId: string;
-  cornerIndex: number;
+  /**
+   * `null` quand la note ne porte pas sur un virage — un marqueur horodaté, ou
+   * une NOTE DE SÉANCE (le bilan du coach sur la séance entière, depuis le
+   * 14/08). Ces deux formes ne sont PAS des notes de virage et n'entrent pas
+   * dans cette liste : `buildCoachNotes` les écarte.
+   */
+  cornerIndex: number | null;
   body: string;
   /** Séance rattachée — null = note GÉNÉRIQUE du coach (« Repère général »). */
   telemetrySessionId: string | null;
@@ -369,9 +375,18 @@ export function buildCoachNotes(
   threads: readonly ThreadLite[]
 ): CoachNoteModel[] {
   const nameByCoach = new Map(threads.map((t) => [t.coachId, t.otherName]));
-  const byCorner = (a: AnnotationLite, b: AnnotationLite) => a.cornerIndex - b.cornerIndex;
-  const specific = annotations.filter((a) => a.telemetrySessionId !== null).sort(byCorner);
-  const generic = annotations.filter((a) => a.telemetrySessionId === null).sort(byCorner);
+
+  // Seules les notes DE VIRAGE entrent ici. Une note de séance et un marqueur
+  // portent `cornerIndex = null` : les laisser passer donnerait « Virage null »
+  // et un tri qui compare des `null`. Ils ont leur propre place.
+  const surVirage = annotations.filter(
+    (a): a is AnnotationLite & { cornerIndex: number } => a.cornerIndex !== null
+  );
+
+  const byCorner = (a: { cornerIndex: number }, b: { cornerIndex: number }) =>
+    a.cornerIndex - b.cornerIndex;
+  const specific = surVirage.filter((a) => a.telemetrySessionId !== null).sort(byCorner);
+  const generic = surVirage.filter((a) => a.telemetrySessionId === null).sort(byCorner);
   return [...specific, ...generic].map((a) => ({
     id: a.id,
     cornerIndex: a.cornerIndex,

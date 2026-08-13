@@ -1,10 +1,30 @@
 /**
  * Coach — Rapport de séance (PDF). Reskin refonte-v2 §12, RESPONSIVE deux formats.
  *
- * Le coach rédige SON bilan d'une séance et génère un PDF de synthèse (faits clés
- * + son bilan attribué), partagé via la share sheet native (= « envoi pilote »).
- * Câble getStudioSession (données) + coachReportPdfService (rendu). Aucun schéma
- * nouveau ; le bilan n'est pas stocké — il voyage dans le document.
+ * Le coach rédige SON bilan d'une séance. Il est ENREGISTRÉ, et le pilote le lit
+ * dans son bilan. Le PDF n'est plus qu'un export.
+ *
+ * ---
+ *
+ * CE QUE CET ÉCRAN FAISAIT JUSQU'AU 14/08/2026
+ *
+ * *« Aucun schéma nouveau ; le bilan n'est pas stocké — IL VOYAGE DANS LE
+ * DOCUMENT. »* C'était écrit ici, et c'était le défaut : le produit était le
+ * PDF. Un fichier perdu, et le bilan de la séance n'existait plus. Le critère
+ * d'acceptation du jalon 6 — *« une carte de séance est-elle REÇUE par un
+ * pilote ? »* — ne pouvait pas être satisfait : rien n'était reçu, quelque
+ * chose était partagé.
+ *
+ * Le plan demandait l'inverse : *« rapport devient la composition de la carte de
+ * séance — le PDF reste un export, plus le produit. »*
+ *
+ * `coach_annotations` accepte depuis le 14/08 une NOTE DE SÉANCE — ni virage ni
+ * instant, mais une séance et un texte. Le bilan y est écrit, une seule par
+ * séance et par coach : rédiger à nouveau REMPLACE, plutôt que d'empiler deux
+ * avis que le pilote lirait comme deux.
+ *
+ * Le garde-fou doctrinal est celui des notes de virage — une note partagée ne
+ * peut pas être prescriptive, et le rempart réel est le trigger en base.
  *
  * Deux formats (décision fondateur 2026-07-13) :
  *   - CONSOLE (largeur ≥ COACH_CONSOLE_MIN_WIDTH, maquette coach/05-rapport) :
@@ -47,6 +67,7 @@ import {
   type MarqueurSeance,
 } from '@/features/coach/marqueursSeanceService';
 import { PressableScale } from '@/components/motion';
+import { upsertSessionNote, listSessionNotes } from '@/services/coachAnnotationsService';
 import { exportAndShareCoachReport } from '@/services/coachReportPdfService';
 import { getStudioSession, type StudioSession } from '@/services/coachStudioService';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -88,6 +109,9 @@ export default function CoachRapportScreen() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [bilan, setBilan] = useState('');
+  const [saving, setSaving] = useState(false);
+  /** Horodatage du dernier enregistrement — `null` tant que rien n'est écrit. */
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   /**
    * LES MOMENTS RETENUS — « le coach retient un marqueur, envoie ».
@@ -142,6 +166,28 @@ export default function CoachRapportScreen() {
   }, [sessionId, reloadKey]);
 
   /**
+   * RELIRE LE BILAN DÉJÀ ÉCRIT.
+   *
+   * Sans cela, rouvrir l'écran présenterait un champ vide sur une séance déjà
+   * commentée — et le coach, croyant n'avoir rien écrit, recommencerait. Le
+   * `upsert` remplacerait alors sa propre note sans qu'il l'ait voulu.
+   */
+  useEffect(() => {
+    if (!sessionId || !studio?.pilotId) return;
+    let annule = false;
+    listSessionNotes(studio.pilotId, sessionId)
+      .then((notes) => {
+        if (annule || notes.length === 0) return;
+        setBilan(notes[0].body);
+        setSavedAt(notes[0].updatedAt);
+      })
+      .catch(() => undefined);
+    return () => {
+      annule = true;
+    };
+  }, [sessionId, studio?.pilotId]);
+
+  /**
    * CE QUI PARTIRA DANS LE DOCUMENT — calculé UNE fois.
    *
    * L'aperçu et la génération lisent la même liste. Deux calculs séparés
@@ -166,6 +212,36 @@ export default function CoachRapportScreen() {
       else next.add(id);
       return next;
     });
+  }
+
+  /**
+   * ENREGISTRER — le geste principal désormais.
+   *
+   * Le pilote reçoit la note dans son bilan ; le PDF, lui, ne part que si le
+   * coach le demande. On n'enchaîne donc PAS les deux : un export raté ne doit
+   * pas faire croire que le bilan n'a pas été enregistré, ni l'inverse.
+   */
+  async function onEnregistrer() {
+    if (!sessionId || !studio?.pilotId || saving) return;
+    setSaving(true);
+    const note = await upsertSessionNote({
+      pilotId: studio.pilotId,
+      telemetrySessionId: sessionId,
+      body: bilan,
+    });
+    setSaving(false);
+    if (note) setSavedAt(note.updatedAt);
+    Toast.show(
+      note
+        ? { type: 'success', text1: 'Bilan enregistré. Votre pilote le voit.' }
+        : {
+            type: 'error',
+            // Trois causes possibles, toutes dites par le service dans la
+            // console : texte vide, tournure prescriptive, écriture refusée.
+            text1: 'Bilan non enregistré.',
+            text2: 'Texte vide, ou tournure prescriptive.',
+          }
+    );
   }
 
   async function onGenerate() {
@@ -212,7 +288,15 @@ export default function CoachRapportScreen() {
               Votre bilan de coach
             </Text>
           </View>
-          <GenerateButton generating={generating} disabled={!canGenerate} onPress={onGenerate} />
+          <View style={{ gap: spacing.sm, alignItems: 'flex-end' }}>
+            <EnregistrerButton
+              saving={saving}
+              disabled={!sessionId || !studio?.pilotId}
+              savedAt={savedAt}
+              onPress={onEnregistrer}
+            />
+            <GenerateButton generating={generating} disabled={!canGenerate} onPress={onGenerate} />
+          </View>
         </View>
       ) : (
         <AppBar title="RAPPORT" onBack={() => router.back()} />
@@ -294,6 +378,13 @@ export default function CoachRapportScreen() {
                       coachName={coachName}
                       coachInitials={coachInitials}
                       moments={lignesRetenues}
+                    />
+                    <EnregistrerButton
+                      saving={saving}
+                      disabled={!sessionId || !studio?.pilotId}
+                      savedAt={savedAt}
+                      onPress={onEnregistrer}
+                      block
                     />
                     <GenerateButton
                       generating={generating}
@@ -528,6 +619,54 @@ function DoctrineNote() {
 }
 
 /** CTA d'action réelle (rouge coach). L'or reste au chrono ; le coach porte le rouge. */
+/**
+ * ENREGISTRER — le geste principal.
+ *
+ * Il précède l'export dans les deux formats : le bilan atteint le pilote par la
+ * base, pas par un fichier. Le PDF reste offert, il n'est plus le produit.
+ *
+ * L'état « enregistré » porte son HORODATAGE plutôt qu'une coche : une coche dit
+ * qu'on a cliqué, une date dit ce qui est en base. Sans note écrite, la ligne
+ * est ABSENTE — pas un « jamais enregistré » qui ferait du vide une alerte.
+ */
+function EnregistrerButton({
+  saving,
+  disabled,
+  savedAt,
+  onPress,
+  block,
+}: {
+  saving: boolean;
+  disabled: boolean;
+  savedAt: string | null;
+  onPress: () => void;
+  block?: boolean;
+}) {
+  const inert = disabled || saving;
+  return (
+    <View style={block ? { alignSelf: 'stretch' } : undefined}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Enregistrer le bilan — votre pilote le verra dans sa séance"
+        accessibilityState={{ disabled, busy: saving }}
+        disabled={inert}
+        onPress={inert ? undefined : onPress}
+        style={({ pressed }) => [
+          s.cta,
+          block ? { alignSelf: 'stretch' } : null,
+          disabled ? s.ctaDisabled : null,
+          pressed && !inert ? { opacity: 0.85 } : null,
+        ]}
+      >
+        <Text style={s.ctaTxt}>{saving ? 'ENREGISTREMENT…' : 'ENREGISTRER'}</Text>
+      </Pressable>
+      {savedAt ? (
+        <Text style={s.enregistreLe}>Enregistré le {formatDateShort(savedAt)}</Text>
+      ) : null}
+    </View>
+  );
+}
+
 function GenerateButton({
   generating,
   disabled,
@@ -814,6 +953,13 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaDisabled: { backgroundColor: '#2A2A2E' },
+  enregistreLe: {
+    fontFamily: fonts.body,
+    fontSize: fontSize.small,
+    color: palette.creamMute,
+    marginTop: spacing.xs,
+    textAlign: 'right',
+  },
   ctaContent: { flexDirection: 'row', alignItems: 'center' },
   ctaTxt: {
     fontFamily: fonts.mono,

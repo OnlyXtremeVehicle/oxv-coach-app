@@ -279,6 +279,33 @@ export default function BilanScreen() {
     </View>
   ) : null;
 
+  /**
+   * LE BILAN DU COACH SUR LA SÉANCE — arrivé le 14/08/2026.
+   *
+   * Distinct des notes de virage juste au-dessus : celles-ci désignent un
+   * endroit, celui-ci porte sur l'ensemble. Il est donc présenté à part, et
+   * AVANT elles — on lit le mot d'ensemble, puis les points.
+   *
+   * VOIX ATTRIBUÉE. Le nom du coach est dans le sur-titre, le texte entre
+   * guillemets. Une phrase sans auteur, sur cet écran, se lirait comme une
+   * phrase de l'application — et l'application ne commente pas un pilotage.
+   *
+   * Jusqu'au 14/08, ce bilan n'existait que dans un PDF partagé : il n'était
+   * reçu par personne. Écrit dans `coach_annotations` (note de séance), il
+   * arrive maintenant ici.
+   */
+  const bandeBilanCoach = data.coachSessionNote ? (
+    <View style={styles.bilanCoach} accessible>
+      <Text style={styles.noteEyebrow}>
+        {'LE MOT DE VOTRE COACH' +
+          (data.coachSessionNote.coachName
+            ? ` · ${data.coachSessionNote.coachName.toUpperCase()}`
+            : '')}
+      </Text>
+      <Text style={styles.noteBody}>« {data.coachSessionNote.body} »</Text>
+    </View>
+  ) : null;
+
   return (
     <View style={styles.root}>
       <Animated.ScrollView
@@ -310,6 +337,18 @@ export default function BilanScreen() {
 
         {/* ── Le reste entre par la porte (démarrée au passage à ready) ── */}
         <DoorIn>
+          {/*
+            LE MOT DU COACH, AVANT LE TRACÉ.
+
+            Il porte sur la séance entière : le lire avant les points précis est
+            l'ordre naturel, et cela le sort des DEUX chemins de la carte —
+            avec tracé, sans tracé — où il aurait fallu le poser deux fois, donc
+            l'oublier une fois.
+
+            Absent sans note : la section entière disparaît, elle ne se vide pas.
+          */}
+          {bandeBilanCoach ? <View style={styles.section}>{bandeBilanCoach}</View> : null}
+
           {/* Carte tracé + puces + bande annotation coach (absente sans note) */}
           <View style={styles.section}>
             <SectionHeader eyebrow="LE TRACÉ" />
@@ -932,6 +971,14 @@ const styles = StyleSheet.create({
   },
   // Bande annotation hors TraceCircuit (tracé indisponible) : même signal
   // que la bande du kit — bord OR Heritage 2 px, réservé à la parole du coach.
+  bilanCoach: {
+    marginTop: space.lg,
+    paddingLeft: space.md,
+    // Le liseré dit la VOIX, pas une alerte : rouge de marque coach, jamais le
+    // rouge de donnée ni l'or du chrono.
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+  },
   noteBandBare: {
     marginTop: space.sm,
     borderLeftWidth: 2,
