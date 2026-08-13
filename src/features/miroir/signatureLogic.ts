@@ -4,27 +4,63 @@
  * Module .ts sans React ni react-native : testé sous ts-jest/node
  * (src/features/miroir/__tests__/signatureLogic.test.ts).
  *
- * MAPPING LABELS ↔ BRANCHES — ARBITRÉ PAR LE FONDATEUR (19/07/2026) :
- * // TODO_ARBITRAGE — marqueur conservé à la demande du fondateur : le mapping
- * // ci-dessous est SON arbitrage (message du 19/07), re-négociable mot à mot
- * // seulement. Sens retenu, dans ses termes :
- * //
- * //   trajectoire  → « Cap »          (la direction tenue, l'axe visé —
- * //                                    le sens premier de « cap »)
- * //   regularite   → « Trajectoire »  (ici le mot désigne la CONSTANCE du
- * //                                    tracé tour après tour)
- * //   freinage     → « Visée »        (la visée du point de corde se joue
- * //                                    au freinage, à l'entrée)
- * //   acceleration → « Plongée »      (l'engagement en sortie, la remise
- * //                                    des gaz — le plongeon vers l'avant)
- * //   fluidite     → « Anticipation » (anticiper = enchaîner sans rupture,
- * //                                    lire le virage suivant dans le présent)
- * //
- * // CONSÉQUENCE ASSUMÉE (choix conscient du fondateur) : sur CET écran,
- * // « Trajectoire » désigne la branche regularite — un sens Signature
- * // distinct de la légende technique de l'accueil/du Bilan
- * // (QDI_BRANCH_LABELS, où Trajectoire = branche trajectoire). Le vocabulaire
- * // Signature est un registre poétique à part, pas la légende télémétrique.
+ * ===========================================================================
+ * MAPPING LABELS ↔ BRANCHES — CORRIGÉ LE 13/08/2026 PAR UN CHIFFRE
+ * ===========================================================================
+ *
+ * L'arbitrage du 19/07/2026 posait `trajectoire → « Cap »` et
+ * `regularite → « Trajectoire »`, avec cette conséquence écrite et assumée :
+ * *« sur CET écran, Trajectoire désigne la branche regularite »*.
+ *
+ * LE QDI DE BOUTEVILLE A TRANCHÉ. Sur cette séance, le même objet JSON porte :
+ *
+ *     trajectoire: 97   ·   regularite: 34
+ *
+ * Un écran qui affiche « Trajectoire » en lisant `regularite` montre donc **34
+ * sous un mot dont la clé homonyme vaut 97, dans le même objet**. Ce n'était
+ * pas un double vocabulaire à arbitrer : c'était un homonyme piégé. Quiconque
+ * compare l'écran au JSON conclut à un bug, et le cherche.
+ *
+ * ===========================================================================
+ * CE QU'ON NE FAIT PAS : SUPPRIMER LE VOCABULAIRE CLIENT
+ * ===========================================================================
+ *
+ * L'Arbre Pilote V3 demandait la disparition du double vocabulaire. Ç'aurait
+ * été détruire cinq mots de marque — que les instructions du projet figent —
+ * pour régler un problème qui n'avait **qu'une seule occurrence**.
+ *
+ * On corrige donc UNE correspondance, pas le registre :
+ *
+ *     trajectoire  → « Trajectoire »   (le mot juste, et il était libre)
+ *     regularite   → « Cap »           (tenir un cap, c'est exactement la
+ *                                       constance du tracé tour après tour)
+ *     freinage     → « Visée »         (inchangé)
+ *     acceleration → « Plongée »       (inchangé)
+ *     fluidite     → « Anticipation »  (inchangé)
+ *
+ * Le 19/07 avait pris le mot le plus évident — « Trajectoire » — pour le
+ * brancher ailleurs, **alors que le mot juste était disponible dans la même
+ * liste**. Les cinq mots survivent, la marque est intacte, l'homonyme est
+ * parti. Même coût qu'une suppression : un écran, un module, un test.
+ *
+ * ===========================================================================
+ * NE PAS CONFONDRE AVEC `pilotSignatureService`
+ * ===========================================================================
+ *
+ * Ce service-là porte un AUTRE jeu de cinq axes, dont les clés SONT les mots
+ * poétiques : `cap`, `visee`, `plongee`, `trajectoire`, `anticipation`. Ils
+ * n'ont pas de branche QDI derrière — chacun a sa propre mesure (G latéral
+ * moyen pour `cap`, vitesse portée pour `trajectoire`…) — et le libellé y
+ * coïncide toujours avec la clé. Aucun homonyme piégé de ce côté.
+ *
+ * Un écart subsiste, ANTÉRIEUR à la correction du 13/08 et inchangé par elle :
+ * « Cap » désigne ici la branche `regularite`, et là-bas le G latéral moyen.
+ * Avant le 13/08, « Cap » désignait ici `trajectoire` — l'écart existait déjà,
+ * autrement apparié. Il est noté, pas corrigé : les deux surfaces ne se
+ * regardent jamais, et unifier deux jeux d'axes qui ne mesurent pas les mêmes
+ * choses serait le vrai mensonge.
+ *
+ * ===========================================================================
  *
  * Les couleurs QDI (colors.qdi) et les valeurs restent attachées aux branches
  * TECHNIQUES — seul le libellé de sommet change. Un test verrouille ce mapping
@@ -43,13 +79,18 @@ import { QDI_BRANCHES, type QdiBranch } from '@/ui/v2/vizMath';
 // ---------------------------------------------------------------------------
 
 /**
- * Mapping branche technique → libellé de sommet — ARBITRAGE FONDATEUR du
- * 19/07/2026 (voir l'en-tête). Verrouillé par test : tout changement est un
- * choix explicite, re-négociable mot à mot avec le fondateur uniquement.
+ * Mapping branche technique → libellé de sommet.
+ *
+ * Corrigé le 13/08/2026 : `trajectoire` reprend « Trajectoire », `regularite`
+ * prend « Cap » (voir l'en-tête — le QDI de Bouteville affichait 34 sous un mot
+ * dont la clé homonyme valait 97). Les cinq mots de marque sont conservés ;
+ * seules DEUX correspondances ont été échangées.
+ *
+ * Verrouillé par test : tout changement est un choix explicite.
  */
 export const SIGNATURE_LABEL_BY_BRANCH = {
-  trajectoire: 'Cap',
-  regularite: 'Trajectoire',
+  trajectoire: 'Trajectoire',
+  regularite: 'Cap',
   freinage: 'Visée',
   acceleration: 'Plongée',
   fluidite: 'Anticipation',

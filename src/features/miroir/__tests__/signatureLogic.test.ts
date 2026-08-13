@@ -51,33 +51,59 @@ const FULL = mk({
 // Mapping labels ↔ branches
 // ---------------------------------------------------------------------------
 
-describe('SIGNATURE_LABEL_BY_BRANCH — verrou de l’ARBITRAGE FONDATEUR (19/07/2026)', () => {
-  it('verrou du mapping arbitré : chaque branche porte le libellé tranché par le fondateur', () => {
-    // Arbitrage fondateur du 19/07/2026 (message, mot à mot) : Cap = la
-    // direction tenue (trajectoire) · Trajectoire = la constance du tracé
-    // (regularite) · Visée = le point de corde se joue au freinage · Plongée =
-    // l'engagement en sortie (acceleration) · Anticipation = enchaîner sans
-    // rupture (fluidite). Tout changement se re-négocie mot à mot avec lui.
+describe('SIGNATURE_LABEL_BY_BRANCH — verrou du mapping (corrigé le 13/08/2026)', () => {
+  it('verrou du mapping : chaque branche porte son libellé', () => {
+    // Le mapping du 19/07/2026 posait `trajectoire → Cap` et
+    // `regularite → Trajectoire`. Le QDI de Bouteville l'a tranché : sur cette
+    // séance, `trajectoire` vaut 97 et `regularite` vaut 34, dans le MÊME objet.
+    // Afficher « Trajectoire » en lisant `regularite` montrait donc 34 sous un
+    // mot dont la clé homonyme valait 97 — un lecteur qui compare conclut à un
+    // bug. Deux correspondances échangées ; les cinq mots de marque restent.
     expect(SIGNATURE_LABEL_BY_BRANCH).toEqual({
-      trajectoire: 'Cap',
-      regularite: 'Trajectoire',
+      trajectoire: 'Trajectoire',
+      regularite: 'Cap',
       freinage: 'Visée',
       acceleration: 'Plongée',
       fluidite: 'Anticipation',
     });
   });
 
-  it('registre Signature assumé : « Trajectoire » y désigne la régularité (choix fondateur)', () => {
-    // Choix CONSCIENT du fondateur : le vocabulaire Signature est un registre
-    // poétique à part — sur cet écran, « Trajectoire » = constance du tracé
-    // (branche regularite), distinct de la légende télémétrique de l'accueil
-    // et du Bilan (QDI_BRANCH_LABELS.trajectoire).
-    expect(SIGNATURE_LABEL_BY_BRANCH.regularite).toBe('Trajectoire');
-    expect(SIGNATURE_LABEL_BY_BRANCH.trajectoire).toBe('Cap');
-    // La légende technique, elle, ne bouge pas.
+  /**
+   * LE VERROU QUI COMPTE, et qui a manqué pendant trois semaines.
+   *
+   * Un mot d'écran ne doit jamais désigner une branche dont le NOM TECHNIQUE
+   * est un homonyme d'une AUTRE branche. C'est le piège exact du 19/07 :
+   * « Trajectoire » posé sur `regularite` alors qu'une clé `trajectoire`
+   * existe à côté, avec une autre valeur.
+   *
+   * Le test le vérifie par construction, sans énumérer de cas particulier : il
+   * ne peut donc pas être satisfait par un mapping qui recréerait le piège
+   * ailleurs — par exemple en posant « Régularité » sur `trajectoire`.
+   */
+  it('aucun libellé ne porte le nom d’une AUTRE branche technique', () => {
+    /** « Trajectoire » → « trajectoire » : accents retirés, minuscules. */
+    const cle = (mot: string) =>
+      mot
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase();
+
+    for (const branche of QDI_BRANCHES) {
+      const mot = cle(SIGNATURE_LABEL_BY_BRANCH[branche]);
+      const homonyme = QDI_BRANCHES.find((b) => cle(b) === mot);
+      // Soit le mot ne nomme aucune branche (Cap, Visée, Plongée…), soit il
+      // nomme EXACTEMENT celle qu'il légende.
+      if (homonyme !== undefined) {
+        expect(homonyme).toBe(branche);
+      }
+    }
+  });
+
+  it('la légende technique ne bouge pas, et les deux disent le même mot', () => {
     expect(QDI_BRANCH_LABELS.trajectoire).toBe('Trajectoire');
+    expect(SIGNATURE_LABEL_BY_BRANCH.trajectoire).toBe('Trajectoire');
     // Et un seul sommet Signature porte chaque mot.
-    QDI_BRANCHES.filter((b) => b !== 'regularite').forEach((b) => {
+    QDI_BRANCHES.filter((b) => b !== 'trajectoire').forEach((b) => {
       expect(SIGNATURE_LABEL_BY_BRANCH[b]).not.toBe('Trajectoire');
     });
   });
