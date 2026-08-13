@@ -128,6 +128,29 @@ export async function nameMyCrew(name: string): Promise<{ ok: boolean; error?: s
 }
 
 /**
+ * L'ANNUAIRE PUBLIC DES ÉCURIES.
+ *
+ * `crews_public_rows()` est `security definer` et ne rend QUE des agrégats —
+ * nom, nombre de membres validés, date de création. Jamais une ligne
+ * individuelle, jamais un identifiant : impossible d'en déduire qui roule avec
+ * qui. C'est le motif que le jalon 8 reprendra pour la mémoire du circuit.
+ *
+ * Le filtrage appartient au serveur : seules les écuries NOMMÉES dont les
+ * membres validés (capitaine inclus) atteignent vingt en sortent. Rien n'est
+ * refiltré ici — dupliquer le seuil, c'est se donner deux vérités.
+ *
+ * Une liste vide est un état NORMAL, pas une panne : le dossier de travail
+ * prévoit que l'annuaire reste vide toute la première saison.
+ */
+export async function listPublicCrews(): Promise<
+  { name: string; validated_members: number; created_at: string }[]
+> {
+  const { data, error } = await supabase.rpc('crews_public_rows');
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/**
  * Identifiant de l'écurie courante via la fonction serveur, ou null. Erreur
  * transport/RLS remontée.
  */

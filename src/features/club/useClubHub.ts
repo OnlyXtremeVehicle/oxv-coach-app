@@ -31,6 +31,7 @@ import { listMyCoaches } from '@/services/pilotConsentService';
 import { INVITATION_STATUS_LABELS } from '@/services/roulagesLogic';
 import { listMyInvitations, respondToInvitation } from '@/services/roulagesService';
 import { getMyCrew } from '@/services/v2/referralService';
+import { resolveCrewProfiles } from './crewProfilesService';
 
 import {
   bookingWhenLabel,
@@ -190,7 +191,6 @@ async function loadCrew(userId: string): Promise<HubCrew | null> {
   const crew = await getMyCrew().catch(() => null);
   if (crew === null) return null;
 
-  const memberIds = crew.members.map((m) => m.userId);
   const roleById = new Map(crew.members.map((m) => [m.userId, m.role] as const));
 
   // Canal opt-in : présence des membres à MES journées passées.
@@ -211,32 +211,12 @@ async function loadCrew(userId: string): Promise<HubCrew | null> {
   }
 
   // Prénoms (best-effort) : peut être borné par la RLS `users` own-or-admin.
-  const firstNameById = new Map<string, string | null>();
-  if (memberIds.length > 0) {
-    const { data: users } = await supabase
-      .from('users')
-      .select('id, first_name, public_handle, avatar_url')
-      .in('id', memberIds);
-    for (const u of users ?? []) {
-      const row = u as {
-        id: string;
-        first_name: string | null;
-        public_handle: string | null;
-        avatar_url: string | null;
-      };
-      firstNameById.set(row.id, row.first_name ?? null);
-      if (!handleById.get(row.id)) handleById.set(row.id, row.public_handle ?? null);
-      if (!avatarById.get(row.id)) avatarById.set(row.id, row.avatar_url ?? null);
-    }
-  }
-
-  const profiles: CrewMemberProfile[] = crew.members.map((m) => ({
-    userId: m.userId,
-    firstName: firstNameById.get(m.userId) ?? null,
-    handle: handleById.get(m.userId) ?? null,
-    avatarUrl: avatarById.get(m.userId) ?? null,
-    role: m.role,
-  }));
+  // La résolution vit dans `crewProfilesService` depuis le 14/08 — l'écran
+  // d'écurie en a besoin à l'identique, et deux copies auraient divergé.
+  const profiles: CrewMemberProfile[] = await resolveCrewProfiles(crew.members, {
+    handleById,
+    avatarById,
+  });
 
   const facts = crewFactFeed(profiles, attendance, { nowIso: todayIso(), limit: 4 });
 

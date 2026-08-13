@@ -258,46 +258,68 @@ function FacesRail({ faces }: { faces: HubCoaching['faces'] }) {
 // Bloc — Mon groupe (A3) : fil de FAITS d'écurie, jamais un chrono d'autrui.
 // ---------------------------------------------------------------------------
 
+/**
+ * Le groupe de route est DANS le chemin — convention du dépôt, et
+ * `orphelinsApp2.guard` la vérifie : elle cherche `/(app2)/<route>` dans le code
+ * vivant. Un lien écrit `/club/ecurie` fonctionnerait à l'exécution mais
+ * laisserait l'écran compté comme orphelin, donc invisible à la garde qui
+ * surveille précisément cela.
+ */
+const ECURIE_HREF = '/(app2)/club/ecurie';
+
 function CrewBlock({ crew }: { crew: HubCrew }) {
   const avatars = crew.avatars.slice(0, 6);
   return (
     <View style={styles.block}>
       <SectionHeader eyebrow="ÉCURIE" title="Mon groupe" />
-      <View style={styles.card}>
-        <View style={styles.cardRow}>
-          <View style={styles.crewIcon}>
-            <OxvIcon name="groupe" size={22} color={colors.text.mid} />
-          </View>
-          <View style={styles.cardBody}>
-            <Text style={styles.cardTitle} numberOfLines={1}>
-              {crew.title}
-            </Text>
-            <Text style={styles.cardMeta} numberOfLines={1}>
-              {crew.memberCount > 1 ? `${crew.memberCount} pilotes` : '1 pilote'}
-            </Text>
-          </View>
-        </View>
-
-        {avatars.length > 0 ? (
-          <View style={styles.crewAvatars}>
-            {avatars.map((a, i) => (
-              <View key={a.userId} style={[styles.faceWrap, i > 0 && styles.faceOverlap]}>
-                <Avatar uri={a.avatarUrl} size={36} />
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {crew.facts.length > 0 ? (
-          <View style={styles.factList}>
-            {crew.facts.map((fact) => (
-              <Text key={`${fact.userId}-${fact.dayIso}`} style={styles.factLine} numberOfLines={1}>
-                {crewFactLine(fact)}
+      {/* La carte OUVRE l'écurie depuis le 14/08. Sans ce geste, l'écran
+          d'écurie serait inatteignable — donc le baptême et l'annuaire
+          resteraient morts, ce qu'ils étaient déjà depuis le 04/07. */}
+      <PressScale
+        onPress={() => router.navigate(ECURIE_HREF as never)}
+        accessibilityRole="button"
+        accessibilityLabel={`Ouvrir ${crew.title}`}
+      >
+        <View style={styles.card}>
+          <View style={styles.cardRow}>
+            <View style={styles.crewIcon}>
+              <OxvIcon name="groupe" size={22} color={colors.text.mid} />
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={styles.cardTitle} numberOfLines={1}>
+                {crew.title}
               </Text>
-            ))}
+              <Text style={styles.cardMeta} numberOfLines={1}>
+                {crew.memberCount > 1 ? `${crew.memberCount} pilotes` : '1 pilote'}
+              </Text>
+            </View>
           </View>
-        ) : null}
-      </View>
+
+          {avatars.length > 0 ? (
+            <View style={styles.crewAvatars}>
+              {avatars.map((a, i) => (
+                <View key={a.userId} style={[styles.faceWrap, i > 0 && styles.faceOverlap]}>
+                  <Avatar uri={a.avatarUrl} size={36} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {crew.facts.length > 0 ? (
+            <View style={styles.factList}>
+              {crew.facts.map((fact) => (
+                <Text
+                  key={`${fact.userId}-${fact.dayIso}`}
+                  style={styles.factLine}
+                  numberOfLines={1}
+                >
+                  {crewFactLine(fact)}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+        </View>
+      </PressScale>
     </View>
   );
 }
