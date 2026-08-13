@@ -909,6 +909,51 @@ describe('attach_intention', () => {
     await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
     expect(await pendingSessionIds()).toEqual(['s1']);
   });
+
+  /**
+   * ===========================================================================
+   * LA MÊME GARDE QUE LA CLÔTURE, ET ELLE N'AVAIT PAS ÉTÉ POSÉE ICI
+   * ===========================================================================
+   *
+   * PostgREST rend 204 SANS erreur quand le WHERE ne rencontre aucune ligne.
+   * `execComplete` a reçu `.select('id')` le 13/08/2026 sur ce motif exact —
+   * un fichier de clôture détruit, une séance en `recording` à vie.
+   *
+   * `execAttachIntention` faisait le même UPDATE sans la même garde. Le trou
+   * était masqué par l'ORDONNANCEMENT : le FIFO place `create_session` devant,
+   * et un INSERT anonyme lève 42501, ce qui arrête le drain avant d'atteindre
+   * l'intention. Un trou masqué par un ordre d'exécution est un trou qui
+   * s'ouvrira le jour où l'ordre changera.
+   *
+   * Ce que ça coûterait : l'intention est la phrase que le pilote a écrite AVANT
+   * de rouler. La perdre en silence, c'est perdre la seule chose de la séance
+   * qui vienne de lui.
+   *
+   * Les deux moitiés du contrat, comme pour la clôture : elle ÉCHOUE, et elle
+   * RESTE EN FILE.
+   */
+  it('zéro ligne touchée → le rattachement échoue', async () => {
+    sbCtrl().updateTouchesNoRow = true;
+    await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
+    const res = await processQueue();
+    expect(res.processed).toBe(0);
+  });
+
+  it('zéro ligne touchée → le rattachement est CONSERVÉ, jamais en quarantaine', async () => {
+    sbCtrl().updateTouchesNoRow = true;
+    await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
+    await processQueue();
+    expect(await hasPending()).toBe(true);
+    expect(quarantined()).toEqual([]);
+  });
+
+  /** Et le chemin nominal reste nominal : une ligne touchée, l'op est traitée. */
+  it('une ligne touchée → le rattachement est traité et retiré de la file', async () => {
+    await enqueue({ type: 'attach_intention', sessionId: 's1', intentionId: 'i1' });
+    const res = await processQueue();
+    expect(res.processed).toBe(1);
+    expect(await hasPending()).toBe(false);
+  });
 });
 
 describe('hasPending / pendingSessionIds', () => {

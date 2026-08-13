@@ -454,13 +454,18 @@ const NETWORK_RE =
 const MISSING_FILE_RE = /introuvable|not found|no such file|enoent/i;
 
 /**
- * Marqueur de l'échec « l'UPDATE de clôture n'a touché aucune ligne ».
+ * Marqueurs des échecs « l'UPDATE n'a touché aucune ligne ».
  *
- * Il est reconnu par sa CHAÎNE et non par un code d'erreur, parce qu'il n'en a
- * pas : PostgREST rend un succès. C'est nous qui levons (cf. `execComplete`),
- * et c'est ici qu'on refuse de l'abandonner.
+ * Ils sont reconnus par leur CHAÎNE et non par un code d'erreur, parce qu'ils
+ * n'en ont pas : PostgREST rend un succès. C'est nous qui levons
+ * (`execComplete`, `execAttachIntention`), et c'est ici qu'on refuse de les
+ * abandonner.
+ *
+ * Un seul motif pour les deux : la cause est la même — RLS, jeton non restauré,
+ * ligne absente — et deux constantes finiraient par ne plus couvrir les mêmes
+ * cas. C'est la leçon de `nombresDuTour`, corrigé trois fois à trois endroits.
  */
-const CLOTURE_SANS_CIBLE_RE = /CLOTURE_SANS_CIBLE/;
+const SANS_CIBLE_RE = /(CLOTURE|ATTACHE)_SANS_CIBLE/;
 
 function isNetworkFailure(err: unknown): boolean {
   return NETWORK_RE.test(errorMessage(err));
@@ -570,13 +575,14 @@ function isDroppableFailure(op: CaptureQueueOp, err: unknown): boolean {
   if (op.type === 'create_session') return false;
   if (isNetworkFailure(err)) return false;
   /**
-   * Une CLÔTURE SANS CIBLE n'est jamais abandonnée. Elle signale que l'UPDATE
-   * n'a touché aucune ligne — jeton pas encore restauré, RLS qui filtre, ligne
-   * pas encore créée côté serveur. Ce sont tous des états TRANSITOIRES, et la
-   * mettre en quarantaine laisserait la séance en `recording` pour toujours,
-   * exactement comme le 13/08/2026. Elle attend, et elle sera rejouée.
+   * Un UPDATE SANS CIBLE n'est jamais abandonné. Il signale qu'aucune ligne n'a
+   * été touchée — jeton pas encore restauré, RLS qui filtre, ligne pas encore
+   * créée côté serveur. Ce sont tous des états TRANSITOIRES, et la mise en
+   * quarantaine laisserait la séance en `recording` pour toujours (ou
+   * l'intention rattachée à rien), exactement comme le 13/08/2026. Elle attend,
+   * et elle sera rejouée.
    */
-  if (CLOTURE_SANS_CIBLE_RE.test(errorMessage(err))) return false;
+  if (SANS_CIBLE_RE.test(errorMessage(err))) return false;
   if (MISSING_FILE_RE.test(errorMessage(err))) return true;
   const code = errorCode(err);
   if (code.length === 0) return isStorageDroppable(err);
@@ -750,12 +756,39 @@ async function execCreateSession(op: Extract<CaptureQueueOp, { type: 'create_ses
  * sont donc satisfaits. L'op ne porte QUE des identifiants : elle n'écrit jamais
  * de contenu, ne suggère rien (doctrine).
  */
+/**
+ * MÊME GARDE QUE `execComplete`, ET POUR LA MÊME RAISON.
+ *
+ * PostgREST rend 204 SANS erreur quand le WHERE ne rencontre AUCUNE ligne :
+ * RLS qui filtre parce que le jeton n'est pas encore restauré, ligne pas encore
+ * présente côté serveur. Sans `.select('id')`, l'opération était comptée comme
+ * réussie et son fichier détruit — l'intention n'était rattachée à rien, et
+ * plus rien ne rejouait le rattachement.
+ *
+ * `execComplete` a reçu cette garde le 13/08/2026, sur ce motif exact. Celle-ci
+ * n'a jamais été posée : le trou est réel, aujourd'hui masqué par
+ * l'ordonnancement — le FIFO place `create_session` devant, et un INSERT anonyme
+ * lève 42501, ce qui arrête le drain avant d'atteindre l'intention.
+ *
+ * Un trou masqué par un ordre d'exécution est un trou qui s'ouvrira le jour où
+ * l'ordre changera. Et l'intention est ce que le pilote a écrit AVANT de rouler :
+ * la perdre en silence, c'est perdre la seule phrase de la séance qui vienne
+ * de lui.
+ */
 async function execAttachIntention(op: Extract<CaptureQueueOp, { type: 'attach_intention' }>) {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('session_intentions')
     .update({ session_id: op.sessionId } as never)
-    .eq('id', op.intentionId);
+    .eq('id', op.intentionId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    // Panne TRANSITOIRE : l'op reste en file et sera rejouée. Le préfixe est
+    // reconnu par `isDroppableFailure`, qui refuse de l'abandonner.
+    throw new Error(
+      `ATTACHE_SANS_CIBLE: intention ${op.intentionId} introuvable ou filtrée (0 ligne touchée)`
+    );
+  }
 }
 
 async function execFrames(op: Extract<CaptureQueueOp, { type: 'frames' }>) {
