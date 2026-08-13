@@ -101,6 +101,7 @@ import { BarresG } from '@/components/telemetry/BarresG';
 import { NiveauxRestitution } from '@/components/telemetry/NiveauxRestitution';
 import { SectionBande } from '@/components/telemetry/SectionBande';
 import { SectionDelta } from '@/components/telemetry/SectionDelta';
+import { StripMap } from '@/components/telemetry/StripMap';
 import { TraceVirage } from '@/components/telemetry/TraceVirage';
 import { getCornerDuCircuit } from '@/lib/circuitTopology';
 import { trancheVirage } from '@/telemetry/virage';
@@ -587,6 +588,15 @@ export default function SeanceScreen() {
   );
 
   /**
+   * Largeur utile du strip map, mesurée plutôt que déduite.
+   *
+   * Elle vaut la largeur d'écran moins les marges de section — mais la déduire
+   * obligerait à recopier `space.xl` ici, et la valeur de `space.lg` a déjà
+   * dérivé une fois dans ce dépôt sans que rien ne le dise. On mesure.
+   */
+  const [stripWidth, setStripWidth] = useState(0);
+
+  /**
    * Ancre `?corner=` : amener aussi le DÉFILEMENT sur la section Tracé.
    *
    * La feuille du virage s'ouvre par-dessus tout ; sans ce déplacement, la
@@ -688,6 +698,24 @@ export default function SeanceScreen() {
         {/* ── 3 · DELTA ───────────────────────────────────────────────── */}
         <View style={styles.section} onLayout={registerSection(2)}>
           <SectionHeader eyebrow="DELTA" title="Où le temps se fait" />
+
+          {/*
+            LE STRIP MAP OUVRE LA SECTION, ET CE N'EST PAS DÉCORATIF.
+
+            « Dérouler le tracé fermé en un axe distance droit […] avec le tracé
+            lui-même comme règle graduée. » La courbe de delta juste dessous
+            partage exactement cet axe : le ruban dit OÙ, la courbe dit COMBIEN.
+            Un axe en mètres ne permettait pas de situer — personne ne connaît
+            son circuit en mètres.
+
+            Il vit DANS la section Delta plutôt qu'en section propre : les
+            positions de défilement sont enregistrées par index, et en insérer
+            une aurait décalé les six suivantes.
+          */}
+          <View style={styles.stripMap} onLayout={(e) => setStripWidth(e.nativeEvent.layout.width)}>
+            {stripWidth > 0 ? <StripMap segments={data.segments} width={stripWidth} /> : null}
+          </View>
+
           <SectionDelta
             sessionId={data.session.id}
             tours={data.laps.map((l) => ({
@@ -2453,6 +2481,10 @@ const styles = StyleSheet.create({
   section: {
     paddingHorizontal: space.xl,
     marginTop: space.xxl,
+  },
+  /** Le développement linéaire, en tête de la section Delta dont il est la règle. */
+  stripMap: {
+    marginBottom: space.xl,
   },
   /** L'orientation de lecture, sous le résumé — dans la même section. */
   niveaux: {

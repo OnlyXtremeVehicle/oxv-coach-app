@@ -93,12 +93,27 @@ Elle solde à elle seule cinq entrées d'inventaire, comptées dans deux jalons.
 
 | Lot | Ce qui bloque |
 |---|---|
-| Le carnet en section séparée | rien — la rupture de fond est posée, le déplacement reste |
-| Strip map | rien, mais tout est à écrire |
-| Petits multiples / sparklines | rien — les primitives existent (`vizMath.ts`) |
-| Bandes de saison en rampe séquentielle | rien — `src/render/ramp.ts` existe, sans appelant |
 | *Curve boxplot* pré-calculé serveur | données réelles + travail serveur |
 | Énergie de freinage | masse du véhicule — proposition écrite |
+
+### Les quatre lots « rien ne bloque » — faits le 13/08/2026
+
+Ils portaient tous les quatre la mention « rien ne bloque ». Rien ne les
+bloquait, en effet ; ils attendaient d'être écrits.
+
+| Lot | Ce qui a été fait | Ce que la mesure a montré |
+|---|---|---|
+| **Bandes de saison en rampe séquentielle** | `src/features/data/saison/rampeEcarts.ts` — premier appelant de `src/render/ramp.ts` | L'histogramme peignait ses cinq seaux d'UNE seule teinte alors que l'axe porte un ordre. `ramp.ts` — interpolation Oklab écrite et testée depuis le socle T1 — n'avait **aucun appelant**, pas plus que `ribbon.ts` à côté |
+| **Petits multiples / sparklines** | `petitsMultiplesLogic.ts` + `PetitsMultiples.tsx`, section « SÉANCE PAR SÉANCE » du hub Data | « Les primitives existent » était vrai et trompeur : `normalizeSparkline` échelonne **série par série**. Réutilisée telle quelle, elle aurait produit des vignettes auto-échelonnées — deux séances de rythmes éloignés y dessinent la même courbe |
+| **Le carnet en section séparée** | `vous/carnet` → `data/carnet`, logique comprise ; VOUS passe de sept portes à six | Un seul lien entrant. Le déplacement tenait en une ligne de tableau depuis des semaines |
+| **Strip map** | `stripMapLogic.ts` + `StripMap.tsx`, en tête de la section DELTA dont il devient la règle | « Tout est à écrire » était faux : `app_segment_analyses` portait déjà position curviligne, genre, nom et grandeurs par segment. Il manquait le développement linéaire, pas la donnée |
+
+Trois honnêtetés posées au passage, chacune vérifiée par test plutôt
+qu'affirmée en commentaire : l'échelle commune des petits multiples est
+**mesurée** sur les ordonnées écrites dans le chemin ; la couverture du strip
+map est l'**union** des intervalles, jamais leur somme ; le signe des G a été
+**confronté aux deux écrivains** (`captureFrameMapping` et `trackviz/analysis`)
+avant de dessiner une barre.
 
 ### Acceptation du jalon 4
 
