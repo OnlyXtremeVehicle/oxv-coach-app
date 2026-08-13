@@ -247,9 +247,24 @@ function recordedLap(lapNumber: number, durationMs = 100_000): any {
 }
 
 /** Les lignes `laps` réellement enfilées à la clôture. */
+/**
+ * Les lignes du lot de tours qui FAIT AUTORITÉ.
+ *
+ * Depuis le 13/08/2026, chaque tour est aussi enfilé DÈS QU'IL SE CLÔT — le
+ * filet contre une application tuée en piste. Il y a donc plusieurs ops `laps`
+ * par séance, et `find` attrapait la première, c'est-à-dire un tour isolé.
+ *
+ * Le lot construit à l'arrêt porte `final: true` : c'est lui qui contient tous
+ * les tours, `is_best_lap` et les maxima définitifs.
+ */
 function enqueuedLapRows(): any[] {
-  const op = ctrl().enqueued.find((o: any) => o.type === 'laps');
+  const op = ctrl().enqueued.find((o: any) => o.type === 'laps' && o.final === true);
   return op ? op.rows : [];
+}
+
+/** Les lots enfilés À CHAUD, un par tour clos pendant la séance. */
+function enqueuedLapsAChaud(): any[] {
+  return ctrl().enqueued.filter((o: any) => o.type === 'laps' && o.final !== true);
 }
 
 const START = { userId: 'user-1', finishLine: { lat: 45.6, lon: -0.141, radiusM: 40 } };
@@ -558,5 +573,78 @@ describe('rattachement de l’intention', () => {
     await startCaptureSession(START);
     expect(ctrl().enqueued.map((o) => o.type)).toEqual(['create_session']);
     expect(ctrl().forgotIntention).toBe(0);
+  });
+});
+
+describe('les tours survivent à une application tuée en piste', () => {
+  /**
+   * ===========================================================================
+   * LE DÉFAUT QUE CES TESTS FERMENT
+   * ===========================================================================
+   *
+   * Les tours détectés vivaient UNIQUEMENT en mémoire et n'étaient enfilés qu'à
+   * l'arrêt de la capture. Les trames, elles, partent toutes les quatre
+   * secondes.
+   *
+   * Une application tuée en piste — iOS qui réclame de la mémoire, un plantage,
+   * une batterie à plat — effaçait donc vingt minutes de chronométrage pendant
+   * que les trames correspondantes étaient déjà en base.
+   *
+   * Le cas n'est pas théorique : la nuit du 13/08/2026, l'application s'est
+   * arrêtée juste après l'envoi des tours.
+   */
+  it('chaque tour est enfilé DÈS QU’IL SE CLÔT, sans attendre l’arrêt', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 150, gx: 0.7, gy: -0.9 }));
+
+    // Le runner clôt le tour 1 : le changement de numéro EST le signal.
+    ctrl().recordedLaps = [recordedLap(1)];
+    ctrl().currentLapNumber = 2;
+    emit(raceBoxFrame({ speed: 120, gx: 0.2, gy: -0.3 }));
+
+    // AVANT tout arrêt, le tour 1 doit déjà être sur la file.
+    const aChaud = enqueuedLapsAChaud();
+    expect(aChaud.length).toBeGreaterThan(0);
+    expect(aChaud[0].rows[0].lap_number).toBe(1);
+    expect(aChaud[0].rows[0].duration_seconds).toBeGreaterThan(0);
+
+    await stopCaptureSession();
+  });
+
+  /**
+   * Le tour écrit à chaud ne PRÉTEND pas savoir s'il est le meilleur : au
+   * moment où il se clôt, les suivants n'existent pas.
+   */
+  it('le tour écrit à chaud ne se déclare jamais meilleur tour', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 150, gx: 0.7, gy: -0.9 }));
+    ctrl().recordedLaps = [recordedLap(1)];
+    ctrl().currentLapNumber = 2;
+    emit(raceBoxFrame({ speed: 120, gx: 0.2, gy: -0.3 }));
+
+    expect(enqueuedLapsAChaud()[0].rows[0].is_best_lap).toBe(false);
+    await stopCaptureSession();
+  });
+
+  /**
+   * Et le lot final FAIT AUTORITÉ : il écrase les lignes écrites à chaud pour
+   * poser le bon meilleur tour et les maxima définitifs.
+   */
+  it('le lot final est marqué autoritaire', async () => {
+    await startCaptureSession(START);
+    const emit = ctrl().onData!;
+    ctrl().currentLapNumber = 1;
+    emit(raceBoxFrame({ speed: 150, gx: 0.7, gy: -0.9 }));
+    ctrl().recordedLaps = [recordedLap(1)];
+    await stopCaptureSession();
+
+    const final = ctrl().enqueued.find((o: any) => o.type === 'laps' && o.final === true);
+    expect(final).toBeDefined();
+    expect(final.rows.some((r: any) => r.is_best_lap === true)).toBe(true);
   });
 });

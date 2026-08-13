@@ -21,6 +21,7 @@ import { isExpoGo, runtimeLabel } from '@/lib/runtime';
 import { initSentry } from '@/lib/sentry';
 import { trackEvent } from '@/services/analyticsService';
 import { resumeUnsyncedCaptures } from '@/services/captureSyncQueue';
+import { reprendreSeancesOuvertes } from '@/services/repriseSeanceService';
 import { registerForPushNotifications } from '@/services/pushNotificationsService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAppFonts } from '@/theme/fonts';
@@ -44,10 +45,14 @@ export default function RootLayout() {
     console.warn(`[OXV] Runtime : ${runtimeLabel()}`);
     initialize();
     initNetInfo();
-    // Reprend les captures non synchronisées d'un run précédent (crash / arrêt
-    // hors-ligne) : draine la file de synchro si elle n'est pas vide. Silencieux,
-    // non bloquant (silence en piste).
-    void resumeUnsyncedCaptures();
+    // `resumeUnsyncedCaptures` NE PART PLUS D'ICI — voir l'effet authentifié.
+    //
+    // Il était lancé dans le MÊME effet qu'`initialize()`, c'est-à-dire au même
+    // tick que la restauration asynchrone de la session depuis SecureStore. Si
+    // le rafraîchissement du jeton échouait à cet instant — un réseau de
+    // campagne au relancement —, supabase-js retombait sur la clé anonyme, la
+    // RLS filtrait à zéro ligne, et l'opération de clôture était supprimée sans
+    // qu'aucune erreur ne soit levée.
     // Mesure d'audience anonyme (§9) — no-op si non configurée ou opt-out.
     trackEvent('app_ouverte');
     if (!isExpoGo()) {
@@ -81,6 +86,31 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => undefined);
     }
   }, [status, fontsLoaded, fontError]);
+
+  /**
+   * RATTRAPAGE DES SÉANCES, UNE FOIS LE PILOTE CONNECTÉ.
+   *
+   * Deux gestes, dans cet ordre, et tous deux exigent un jeton valide :
+   *
+   *   1. draine la file de synchro — c'est là que dorment les trames et la
+   *      clôture d'une séance interrompue ;
+   *   2. reprend les séances restées en `recording`, en les clôturant SUR
+   *      LEURS PROPRES TRAMES.
+   *
+   * Le second existe parce que le premier ne suffit pas : une clôture partie en
+   * quarantaine, ou une application tuée avant même d'avoir enfilé son
+   * opération, laisse une séance ouverte que plus rien ne rejouera. C'est
+   * exactement l'état dans lequel la séance du 13/08/2026 a été retrouvée —
+   * 26 999 trames en base, et un statut qui n'avait jamais bougé.
+   *
+   * Silencieux et non bloquant : un échec laisse les séances là où elles sont.
+   */
+  useEffect(() => {
+    if (status !== 'authenticated' || !profileId) return;
+    void resumeUnsyncedCaptures()
+      .then(() => reprendreSeancesOuvertes(profileId))
+      .catch((e) => console.warn('[OXV] rattrapage des séances :', e));
+  }, [status, profileId]);
 
   // Démarre la géolocalisation UNE FOIS LE PILOTE CONNECTÉ.
   //

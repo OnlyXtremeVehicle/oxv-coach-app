@@ -915,8 +915,74 @@ function accumulateLapMaxima(state: CaptureState, frame: RaceBoxData): void {
 function freezeCurrentLap(state: CaptureState): void {
   if (state.currentLapNumber > 0) {
     state.lapMaxima.set(state.currentLapNumber, state.currentLapMaxima);
+    // Le tour vient de se clore et ses mesures sont figées : on le met sur
+    // disque MAINTENANT, sans attendre l'arrêt (cf. `persisterTourClos`).
+    persisterTourClos(state, state.currentLapNumber);
   }
   state.currentLapMaxima = { ...EMPTY_LAP_MAXIMA };
+}
+
+/**
+ * ÉCRIT UN TOUR DÈS QU'IL SE CLÔT — le filet contre une application tuée.
+ *
+ * ===========================================================================
+ * LE DÉFAUT QUE CETTE FONCTION FERME
+ * ===========================================================================
+ *
+ * Les tours détectés vivaient UNIQUEMENT en mémoire, dans `recordedLaps` du
+ * runner, et n'étaient enfilés qu'à l'arrêt de la capture. Les trames, elles,
+ * partent toutes les quatre secondes.
+ *
+ * Une application tuée en piste — iOS qui réclame de la mémoire, un plantage,
+ * une batterie à plat — effaçait donc VINGT MINUTES de chronométrage pendant
+ * que les trames correspondantes étaient déjà en base. La séance survivait,
+ * amputée de ce qu'elle avait de plus cher.
+ *
+ * Le cas n'est pas théorique : la nuit du 13/08/2026, l'application s'est
+ * arrêtée juste après l'envoi des tours. Ils sont passés d'un cheveu.
+ *
+ * ===========================================================================
+ * CE QUE CETTE LIGNE NE PRÉTEND PAS ÊTRE
+ * ===========================================================================
+ *
+ * `is_best_lap` y vaut toujours `false` : au moment où un tour se clôt, on ne
+ * sait pas encore s'il sera le meilleur. Le lot construit à l'arrêt porte
+ * `final: true` et ÉCRASE ces lignes avec les valeurs définitives.
+ *
+ * Si l'application meurt avant, il reste des tours justes sans meilleur tour
+ * désigné — et `best_lap_seconds` de la séance est de toute façon posé par le
+ * déclencheur `on_lap_inserted`. On perd un drapeau, plus une séance.
+ *
+ * Best-effort et JAMAIS bloquant : un échec d'écriture disque ne doit pas
+ * interrompre une capture en cours.
+ */
+function persisterTourClos(state: CaptureState, lapNumber: number): void {
+  const tour = getRecordedLaps().find((l) => l.lapNumber === lapNumber);
+  if (!tour) return;
+  const ligne: LapInsert = {
+    session_id: state.sessionId,
+    lap_number: tour.lapNumber,
+    duration_seconds: tour.durationMs / 1000,
+    started_at: new Date(tour.startedAtMs).toISOString(),
+    ended_at: new Date(tour.endedAtMs).toISOString(),
+    start_lat: tour.startLat,
+    start_lon: tour.startLon,
+    end_lat: tour.endLat,
+    end_lon: tour.endLon,
+    // Inconnu à cet instant — le lot final tranchera.
+    is_best_lap: false,
+    is_outlap: false,
+    is_inlap: false,
+    ...lapMaximaToColumns(state.lapMaxima.get(lapNumber)),
+  };
+  void enqueue({ type: 'laps', sessionId: state.sessionId, rows: [ligne] })
+    .then(() => processQueue())
+    .catch((e) =>
+      console.warn(
+        '[OXV][capture] persistance à chaud du tour KO (le lot final reste le filet) :',
+        e instanceof Error ? e.message : e
+      )
+    );
 }
 
 /**
@@ -1031,7 +1097,10 @@ export async function stopCaptureSession(): Promise<StopCaptureResult> {
   // 4. Enqueue la clôture (tours → agrégats → upload) DANS L'ORDRE FIFO.
   const lapRows = buildLapRows(sessionId, recordedLaps, state.lapMaxima);
   if (lapRows.length > 0) {
-    await enqueue({ type: 'laps', sessionId, rows: lapRows }).catch((e) =>
+    // `final: true` : ce lot ÉCRASE les lignes écrites au fil de la séance. Il
+    // porte `is_best_lap` — qu'on ne peut connaître qu'ici — et les maxima
+    // définitifs.
+    await enqueue({ type: 'laps', sessionId, rows: lapRows, final: true }).catch((e) =>
       console.warn('[OXV][capture] enqueue laps KO :', e instanceof Error ? e.message : e)
     );
   }

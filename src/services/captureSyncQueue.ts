@@ -125,7 +125,18 @@ export type CaptureQueueOp =
   | { type: 'create_session'; sessionId: string; row: CaptureSessionRow }
   | { type: 'attach_intention'; sessionId: string; intentionId: string }
   | { type: 'frames'; sessionId: string; batch: TelemetryFrameInsert[] }
-  | { type: 'laps'; sessionId: string; rows: LapInsert[] }
+  /**
+   * Tours à écrire. `final` distingue les deux régimes :
+   *
+   *   - SANS `final` : un tour enfilé DÈS QU'IL SE CLÔT, pendant la séance.
+   *     C'est le filet contre une application tuée en piste. Il porte des
+   *     mesures justes, mais `is_best_lap` y vaut toujours `false` — on ne
+   *     sait pas encore quel sera le meilleur.
+   *   - AVEC `final` : le lot construit à l'arrêt, qui FAIT AUTORITÉ. Il écrase
+   *     les lignes déjà présentes, ce qui pose le bon `is_best_lap` et les
+   *     maxima définitifs.
+   */
+  | { type: 'laps'; sessionId: string; rows: LapInsert[]; final?: boolean }
   | { type: 'complete'; sessionId: string; userId: string; updates: CaptureSessionUpdate }
   | { type: 'ubx_upload'; sessionId: string; userId: string; fileUri: string };
 
@@ -651,14 +662,27 @@ async function insertFramesIdempotent(batch: TelemetryFrameInsert[]): Promise<vo
  * collision. Une séance de 12 tours en affichait 24, avec `is_best_lap` vrai sur
  * deux lignes et `loadLapFrames` (.maybeSingle) en erreur « multiple rows ».
  */
-async function insertLapsIdempotent(rows: LapInsert[]): Promise<void> {
+/**
+ * @param autoritaire quand `true`, les lignes ÉCRASENT celles déjà en base.
+ *
+ * Le lot construit à l'arrêt fait autorité : il porte `is_best_lap` — qu'on ne
+ * peut connaître qu'une fois tous les tours faits — et les maxima définitifs.
+ * Les lignes écrites au fil de la séance, elles, ne prétendent à rien de plus
+ * qu'exister si l'application meurt avant l'arrêt.
+ *
+ * `laps_session_lap_number_unique` existe en production (vérifié le
+ * 13/08/2026) : le repli sans contrainte, qui insérerait en double, n'est pas
+ * emprunté. Il reste pour les bases qui n'auraient pas la migration.
+ */
+async function insertLapsIdempotent(rows: LapInsert[], autoritaire = false): Promise<void> {
   await writeIdempotent(
     lapsGuard,
     '(session_id,lap_number)',
     async () =>
-      await supabase
-        .from('laps')
-        .upsert(rows, { onConflict: 'session_id,lap_number', ignoreDuplicates: true }),
+      await supabase.from('laps').upsert(rows, {
+        onConflict: 'session_id,lap_number',
+        ignoreDuplicates: !autoritaire,
+      }),
     async () => await supabase.from('laps').insert(rows)
   );
 }
@@ -699,7 +723,7 @@ async function execFrames(op: Extract<CaptureQueueOp, { type: 'frames' }>) {
 
 async function execLaps(op: Extract<CaptureQueueOp, { type: 'laps' }>) {
   if (op.rows.length === 0) return;
-  await insertLapsIdempotent(op.rows);
+  await insertLapsIdempotent(op.rows, op.final === true);
 }
 
 /**
