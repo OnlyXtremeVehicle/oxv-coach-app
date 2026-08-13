@@ -53,7 +53,12 @@ import path from 'path';
 import { createLapDetector, processGpsPoint } from '@/utils/lapDetection';
 
 import { ECART_LONGUEUR_TOLERE } from '../adaptation';
-import { compteToursComparables, etatDepuisSeance, etatNiveau, type TourComptable } from '../niveaux';
+import {
+  compteToursComparables,
+  etatDepuisSeance,
+  etatNiveau,
+  type TourComptable,
+} from '../niveaux';
 
 // ---------------------------------------------------------------------------
 // Géométrie réelle — même source que `lapDetectionDistance.test.ts`
@@ -67,10 +72,7 @@ interface Geo {
 }
 
 const GEO = JSON.parse(
-  fs.readFileSync(
-    path.join(__dirname, '..', '..', 'circuit', 'data', 'bouteville.geojson'),
-    'utf8'
-  )
+  fs.readFileSync(path.join(__dirname, '..', '..', 'circuit', 'data', 'bouteville.geojson'), 'utf8')
 ) as Geo;
 
 const TRACE = GEO.features.find((f) => f.geometry.type === 'LineString')!.geometry.coordinates as [

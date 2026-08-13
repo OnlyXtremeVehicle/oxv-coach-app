@@ -35,8 +35,26 @@
  * faible qu'un rendu — cela ne voit pas un attachement CONDITIONNEL — et c'est
  * dit plutôt que sous-entendu, ici comme au-dessus de la vérification.
  *
- * La vraie parade est ailleurs, et elle est posée : `useFirstViewport` refuse
- * désormais de mesurer un ref nul.
+ * ===========================================================================
+ * ET LA PHRASE QUI CONCLUAIT CE COMMENTAIRE ÉTAIT FAUSSE
+ * ===========================================================================
+ *
+ * On lisait ici : « La vraie parade est ailleurs, et elle est posée :
+ * `useFirstViewport` refuse désormais de mesurer un ref nul. »
+ *
+ * Elle ne l'était pas. La garde testait `ref.current === null`, une condition
+ * qui ne peut pas être vraie sur le fil UI : `AnimatedRef` y est une fonction
+ * fléchée sans propriété `current`, donc `undefined`, donc jamais `null`. Et
+ * le test qui la « couvrait » — dans CE fichier — comparait deux positions de
+ * chaîne : il serait resté vert si la condition avait dit `=== 'bleu'`.
+ *
+ * Trois affirmations concordantes — code, commit, test — et zéro exécution.
+ *
+ * La parade est maintenant dans `refMesurable.ts`, sortie du worklet pour
+ * qu'un test puisse l'APPELER : `refMesurable.test.ts` l'éprouve avec les
+ * valeurs que Reanimated rend réellement (`null`, `-1`, `NaN`, un vrai tag).
+ * Ce fichier-ci garde son rôle plus faible et le dit : vérifier que chaque
+ * appelant écrit un `ref={…}`.
  */
 
 import fs from 'fs';
@@ -109,13 +127,20 @@ describe('useFirstViewport — le ref doit être attaché par tout appelant', ()
     expect(src).toMatch(/useFirstViewport\(\s*!reduce\s*&&\s*forme === 'bande'\s*\)/);
   });
 
-  /** La parade générique, celle qui protège les appelants à venir. */
-  it('le hook refuse de mesurer un ref nul', () => {
-    const src = fs.readFileSync(path.join(RACINE, 'ui', 'v2', 'useFirstViewport.ts'), 'utf8');
-    // Le garde doit PRÉCÉDER l'appel à measure.
-    const garde = src.indexOf('ref.current === null');
-    const mesure = src.indexOf('measure(ref)');
-    expect(garde).toBeGreaterThan(-1);
-    expect(garde).toBeLessThan(mesure);
+  /**
+   * LA PARADE GÉNÉRIQUE A DÉMÉNAGÉ, ET CE TEST NE PRÉTEND PLUS LA PROUVER.
+   *
+   * Il vivait ici et comparait `indexOf('ref.current === null')` à
+   * `indexOf('measure(ref)')` — un test qui ne pouvait pas échouer sur une
+   * condition FAUSSE, seulement sur une condition absente. Elle était fausse.
+   *
+   * La décision est maintenant une fonction pure, et `refMesurable.test.ts`
+   * l'APPELLE avec `null`, `-1`, `NaN` et un vrai tag. On ne vérifie plus ici
+   * que le point de raccord, ce qui est tout ce qu'un test lexical sait faire.
+   */
+  it('la parade générique est éprouvée ailleurs, en l’exécutant', () => {
+    const suite = fs.readFileSync(path.join(__dirname, 'refMesurable.test.ts'), 'utf8');
+    expect(suite).toMatch(/import \{ tagMesurable \} from '\.\.\/refMesurable'/);
+    expect(suite).toMatch(/expect\(tagMesurable\(null\)\)\.toBe\(false\)/);
   });
 });

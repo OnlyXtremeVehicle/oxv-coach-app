@@ -194,6 +194,72 @@ describe('isPersonalRecord', () => {
   });
 });
 
+/**
+ * ===========================================================================
+ * LE DÉFAUT QUE LES TESTS CI-DESSUS N'ONT PAS VU, ET NE POUVAIENT PAS VOIR
+ * ===========================================================================
+ *
+ * Ils passent `best_lap_seconds: 92.5` — un NOMBRE, ce que le type annonce.
+ * Le fil, lui, envoie `"92.5"` : PostgREST sérialise `numeric` en chaîne, et
+ * `fetchAllSessions` ne convertissait rien.
+ *
+ * Le filtre `typeof s.best_lap_seconds === 'number'` écartait donc TOUTES les
+ * autres séances, `others` était toujours vide, et la fonction tombait sur son
+ * `return true`. **Chaque séance était célébrée comme record personnel** —
+ * flash et retour haptique — y compris la plus lente jamais roulée. Et
+ * `markCelebrated` consommait au passage la garde une-fois-par-séance : un
+ * vrai record ultérieur n'aurait plus rien déclenché.
+ *
+ * Huit tests verts au-dessus, et le défaut vivait entre eux, parce qu'aucun
+ * n'employait le format que la base envoie vraiment.
+ */
+describe('le record, avec le format que PostgREST envoie vraiment', () => {
+  /** Ce que la conversion de `@/lib/numeriquesPostgrest` produit désormais. */
+  const converties = [
+    { id: 'a', best_lap_seconds: 92.5 },
+    { id: 'b', best_lap_seconds: 88.0 },
+  ];
+
+  it('une séance plus lente que ses aînées n’est PAS un record', () => {
+    expect(isPersonalRecord(92500, 'a', converties)).toBe(false);
+  });
+
+  /**
+   * LE CAS QUI FABRIQUAIT LA CÉLÉBRATION. Si la conversion venait à sauter,
+   * les chronos redeviendraient des chaînes ; on exige alors le SILENCE, pas
+   * un record. Être sans comparaison n'est pas être le meilleur.
+   */
+  it('des chronos illisibles ferment la célébration, ils ne l’ouvrent pas', () => {
+    const brutes = [
+      { id: 'a', best_lap_seconds: '92.5' },
+      { id: 'b', best_lap_seconds: '88.0' },
+    ] as unknown as { id: string; best_lap_seconds: number | null }[];
+    expect(isPersonalRecord(92500, 'a', brutes)).toBe(false);
+  });
+
+  it('des autres séances toutes sans chrono ferment aussi la célébration', () => {
+    const sansChrono = [
+      { id: 'a', best_lap_seconds: 92.5 },
+      { id: 'b', best_lap_seconds: null },
+      { id: 'c', best_lap_seconds: null },
+    ];
+    expect(isPersonalRecord(92500, 'a', sansChrono)).toBe(false);
+  });
+
+  /**
+   * ET LA VRAIE PREMIÈRE SÉANCE RESTE UN RECORD. Une garde qui refuserait tout
+   * passerait les trois tests précédents sans rien protéger.
+   */
+  it('la toute première séance du pilote reste un record', () => {
+    expect(isPersonalRecord(92500, 'a', [{ id: 'a', best_lap_seconds: 92.5 }])).toBe(true);
+    expect(isPersonalRecord(92500, 'a', [])).toBe(true);
+  });
+
+  it('et un vrai record en reste un', () => {
+    expect(isPersonalRecord(87000, 'c', converties)).toBe(true);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Bande annotation coach — présente / absente, séance avant générique
 // ---------------------------------------------------------------------------

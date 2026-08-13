@@ -24,6 +24,8 @@ import Animated, {
   type FrameInfo,
 } from 'react-native-reanimated';
 
+import { tagMesurable, type TagDeVue } from './refMesurable';
+
 export interface FirstViewport {
   /** À poser sur le Animated.View racine du composant. */
   ref: AnimatedRef<Animated.View>;
@@ -74,8 +76,33 @@ export function useFirstViewport(waitForViewport: boolean): FirstViewport {
        *
        * L'appelant a été corrigé ; cette garde existe pour que le suivant n'ait
        * pas à découvrir le mécanisme au circuit.
+       *
+       * =====================================================================
+       * ET LA PREMIÈRE ÉCRITURE DE CETTE GARDE NE S'EXÉCUTAIT JAMAIS
+       * =====================================================================
+       *
+       * Elle testait `ref.current === null`. Sur le fil JS, c'est juste. Sur le
+       * fil UI, `ref` N'EST PAS l'objet JS : `useAnimatedRef` enregistre dans
+       * `serializableMappingCache` un handle dont l'`__init` rend la fonction
+       * `() => sharedWrapper.value`. Le worklet capture donc une FONCTION
+       * FLÉCHÉE, qui n'a pas de propriété `current` — `ref.current` vaut
+       * `undefined`, et `undefined === null` est faux. La garde rendait la main
+       * à `measure` exactement comme si elle n'existait pas.
+       *
+       * `measure.js` documente lui-même le piège : « on Native platforms
+       * `AnimatedRef` is mapped as a different function ».
+       *
+       * On lit donc la même chose que `measure` lit — le tag de vue, en
+       * appelant le ref — et on refuse ce que `measure` accepte à tort : un tag
+       * nul. Reanimated ne teste que `viewTag === -1`.
+       *
+       * Second piège, si l'on était tenté de revenir au `.current` : au
+       * démontage, React appelle le callback avec `null` et `useAnimatedRef` ne
+       * réaffecte `fun.current` que dans `if (ref)`. La propriété conserve donc
+       * l'ANCIENNE vue, et `ref.current === null` serait faux là aussi.
        */
-      if (ref.current === null) return;
+      const tag = (ref as unknown as () => TagDeVue)();
+      if (!tagMesurable(tag)) return;
       const m = measure(ref);
       if (m === null || m.height <= 0) return;
       if (m.pageY < windowHeight && m.pageY + m.height > 0) {

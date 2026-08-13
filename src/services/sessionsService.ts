@@ -9,6 +9,13 @@
  */
 
 import { supabase } from '@/lib/supabase';
+/**
+ * La conversion des colonnes `numeric` vit dans `@/lib/numeriquesPostgrest`,
+ * et non plus ici : le même défaut existait aussi sur `telemetry_sessions`, où
+ * il faisait célébrer CHAQUE séance comme record personnel. Deux copies d'une
+ * même règle finissent toujours par ne plus couvrir les mêmes tables.
+ */
+import { nombresDuTour, seancesEnNombres } from '@/lib/numeriquesPostgrest';
 import type { TelemetrySession, Lap } from '@/types/telemetry';
 
 // ============================================================
@@ -56,7 +63,7 @@ export async function fetchPreviousSessions(
     const { data, error } = await query;
 
     if (error || !data) return [];
-    return data as TelemetrySession[];
+    return seancesEnNombres(data as TelemetrySession[]);
   } catch (error) {
     console.error('[Sessions] Fetch previous error:', error);
     return [];
@@ -89,57 +96,6 @@ export async function fetchSessionLaps(
     console.error('[Sessions] Fetch laps error:', error);
     return [];
   }
-}
-
-/**
- * Les colonnes `numeric` d'un tour, converties en NOMBRES.
- *
- * ===========================================================================
- * `as Lap[]` MENTAIT, ET LA COMPARAISON DE TOURS EN MOURAIT
- * ===========================================================================
- *
- * PostgREST sérialise `numeric` en CHAÎNE JSON — pour préserver la précision
- * décimale, et le dépôt le documentait déjà pour `distance_km`. Les onze
- * colonnes numériques de `laps` arrivaient donc en `"83.412"`, pendant qu'un
- * `as Lap[]` affirmait le contraire au compilateur.
- *
- * Conséquence mesurée le 13/08/2026 : `choixPaireTours.retenu()` teste
- * `Number.isFinite(t.durationSeconds)`, qui rend **false** sur une chaîne. La
- * liste des tours exploitables était donc TOUJOURS vide, et la section DELTA
- * affichait « cette séance ne porte pas deux tours chronométrés à comparer »
- * même sur une séance de vingt tours.
- *
- * Ça ne plantait pas. Ça mentait, en silence, et le mensonge était invisible
- * tant qu'aucune séance ne portait de tour — c'est-à-dire jusqu'à la première
- * capture réussie.
- *
- * La conversion se fait ICI, à la frontière du réseau, et pas chez les vingt
- * appelants : c'est le seul endroit où l'on sait d'où vient la valeur.
- */
-function nombresDuTour(row: Record<string, unknown>): Record<string, unknown> {
-  const NUMERIQUES = [
-    'duration_seconds',
-    'max_speed_kmh',
-    'avg_speed_kmh',
-    'max_g_lateral',
-    'max_g_braking',
-    'max_g_accel',
-    'distance_meters',
-    'start_lat',
-    'start_lon',
-    'end_lat',
-    'end_lon',
-  ] as const;
-  const converti: Record<string, unknown> = { ...row };
-  for (const col of NUMERIQUES) {
-    const v = converti[col];
-    if (v === null || v === undefined) continue;
-    const n = Number(v);
-    // Une valeur illisible devient `null`, jamais `NaN` : `NaN` traverse les
-    // gardes `!== null` et ressort en « — » ou en trait de graphique corrompu.
-    converti[col] = Number.isFinite(n) ? n : null;
-  }
-  return converti;
 }
 
 export interface Evolution {
@@ -278,7 +234,7 @@ export async function fetchAllSessions(
       console.error('[Sessions] Fetch all error:', error);
       return [];
     }
-    return (data || []) as TelemetrySession[];
+    return seancesEnNombres(data as TelemetrySession[]);
   } catch (error) {
     if (options.strict) throw error;
     console.error('[Sessions] Fetch all exception:', error);

@@ -75,9 +75,41 @@ export interface SessionChronoLite {
 
 /**
  * Record personnel : le meilleur tour de CETTE séance bat strictement le
- * meilleur de toutes les AUTRES séances closes. Sans autre séance chiffrée,
- * le premier chrono est par définition le meilleur jamais réalisé → record.
- * Soi contre soi uniquement — jamais un autre pilote.
+ * meilleur de toutes les AUTRES séances closes. Soi contre soi uniquement —
+ * jamais un autre pilote.
+ *
+ * ===========================================================================
+ * CETTE FONCTION A CÉLÉBRÉ CHAQUE SÉANCE COMME UN RECORD
+ * ===========================================================================
+ *
+ * Le filtre testait `typeof s.best_lap_seconds === 'number'`. Or PostgREST
+ * sérialise `numeric` en CHAÎNE, et `fetchAllSessions` ne convertissait rien :
+ * `typeof` valait `'string'` sur TOUTES les autres séances, `others` était
+ * TOUJOURS vide, et la fonction tombait sur son `return true`.
+ *
+ * Conséquence à l'écran : flash de record et retour haptique sur chaque
+ * séance, y compris la plus lente jamais roulée. Et comme `markCelebrated` est
+ * posé au passage, la fausse célébration consommait la garde une-fois-par-
+ * séance : un VRAI record ultérieur n'aurait plus rien déclenché.
+ *
+ * La conversion est réparée à la frontière (`@/lib/numeriquesPostgrest`). Mais
+ * une conversion réparée ne suffit pas ici, parce que le défaut ne venait pas
+ * seulement du typage :
+ *
+ * ===========================================================================
+ * LE DÉFAUT DE PRINCIPE : ÊTRE SANS COMPARAISON N'EST PAS ÊTRE LE MEILLEUR
+ * ===========================================================================
+ *
+ * `others.length === 0 → true` confondait deux situations opposées :
+ *
+ *   - « c'est votre première séance chronométrée » — le record est vrai ;
+ *   - « les autres séances sont là mais aucune n'est lisible » — on ne sait
+ *     rien, et l'app décidait de célébrer.
+ *
+ * On distingue désormais les deux. Une séance qui existe mais dont le chrono
+ * ne se lit pas EMPÊCHE la célébration : l'absence de comparaison n'est pas
+ * une victoire, et fabriquer une distinction est précisément ce que la
+ * doctrine interdit. Le premier chrono d'un pilote reste un record.
  */
 export function isPersonalRecord(
   bestLapMs: number | null,
@@ -85,12 +117,22 @@ export function isPersonalRecord(
   allSessions: readonly SessionChronoLite[]
 ): boolean {
   if (bestLapMs === null || !Number.isFinite(bestLapMs) || bestLapMs <= 0) return false;
-  const others = allSessions.filter(
-    (s) => s.id !== sessionId && typeof s.best_lap_seconds === 'number' && s.best_lap_seconds > 0
+
+  const autres = allSessions.filter((s) => s.id !== sessionId);
+  const chiffrees = autres.filter(
+    (s) =>
+      typeof s.best_lap_seconds === 'number' &&
+      Number.isFinite(s.best_lap_seconds) &&
+      (s.best_lap_seconds as number) > 0
   );
-  if (others.length === 0) return true;
+
+  // Aucune autre séance du tout : ce chrono est le premier, donc le meilleur.
+  if (autres.length === 0) return true;
+  // Des séances existent, aucune n'est lisible : on ne tranche pas.
+  if (chiffrees.length === 0) return false;
+
   const bestOtherMs = Math.min(
-    ...others.map((s) => Math.round((s.best_lap_seconds as number) * 1000))
+    ...chiffrees.map((s) => Math.round((s.best_lap_seconds as number) * 1000))
   );
   return bestLapMs < bestOtherMs;
 }

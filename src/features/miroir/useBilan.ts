@@ -28,6 +28,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { LatLon } from '@/circuit/circuitGenerator';
 import { useCoachThread } from '@/hooks/useCoachThread';
 import { BELTOISE_CORNERS } from '@/lib/circuitTopology';
+import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import { getAnalysisForSession } from '@/services/analysesService';
 import { fetchSessionCircuitCenterlineExact } from '@/services/circuitsService';
@@ -142,7 +143,17 @@ async function fetchSessionById(sessionId: string): Promise<TelemetrySession | n
     .eq('id', sessionId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as TelemetrySession | null) ?? null;
+  if (!data) return null;
+  /**
+   * SANS CETTE CONVERSION, `best_lap_seconds` ARRIVE EN CHAÎNE.
+   *
+   * `bestLapMsOf` teste `typeof sessionBestSeconds === 'number'` pour son repli
+   * d'agrégat — celui prévu exactement pour le cas « les lignes `laps` sont
+   * encore dans la file de synchro », c'est-à-dire une capture hors-ligne au
+   * retour du circuit. Le repli ne s'activait jamais, et le héros du bilan
+   * affichait « — » sur un chrono parfaitement présent en base.
+   */
+  return nombresDeSeance(data as TelemetrySession);
 }
 
 export function useBilan(sessionId: string | undefined): UseBilanResult {

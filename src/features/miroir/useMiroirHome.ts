@@ -31,6 +31,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { storage } from '@/lib/mmkv';
+import { nombresDeSeance } from '@/lib/numeriquesPostgrest';
 import { supabase } from '@/lib/supabase';
 import { fetchCircuits } from '@/services/circuitsService';
 import { isFlagEnabled } from '@/services/featureFlagsService';
@@ -186,7 +187,9 @@ async function fetchLastSession(userId: string): Promise<SessionRow | null> {
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(`fetchLastSession : ${error.message}`);
-  return (data as SessionRow | null) ?? null;
+  if (!data) return null;
+  // `best_lap_seconds` est une colonne `numeric` : elle arrive en CHAÎNE.
+  return nombresDeSeance(data as SessionRow);
 }
 
 /** Inscriptions récentes — même lecture que getQdiAccessLevel (tri DESC). */
